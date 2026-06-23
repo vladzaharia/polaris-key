@@ -1,0 +1,55 @@
+{
+  "slug": "djdl",
+  "name": "DJDL",
+  "signingKid": "pkey-djdl-prod-2026-06",
+  "signingKeySecret": "SIGNING_KEY__DJDL",
+  "signingPub": "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
+  "compatMin": "0.0.0",
+  "compatMax": "99.0.0",
+  "defaultMaxOfflineDays": 30,
+  "defaultMachineLimit": 5,
+  "adminGroup": "admin",
+  "oidc": {
+    "issuer": "https://id.scruffy.spot",
+    "clientId": "djdl",
+    "clientSecretSecret": "OIDC_CLIENT_SECRET__DJDL",
+    "redirectUris": ["https://key.plrs.im/djdl/auth/callback"],
+    "groupRoleMap": {
+      "family": { "role": "user", "tier": "standard" },
+      "friends": { "role": "user", "tier": "standard" },
+      "admin": { "role": "admin" }
+    }
+  },
+  "tiers": [
+    { "id": "standard", "label": "Standard", "profileId": null, "policyExpiryDays": null, "policyMachineLimit": 5 }
+  ],
+  "provisioning": [
+    { "claim": "remnawaveAccess", "entitlementKey": "polarisVpn", "entitlementValue": true },
+    {
+      "claim": "remnawaveSub",
+      "secretKey": "proxy.subscriptionUrl",
+      "secretUrlTemplate": "https://vpn.polaris.rest/{claim}",
+      "allowedHosts": ["vpn.polaris.rest"]
+    }
+  ],
+  "edgeMint": [
+    {
+      "id": "applemusic",
+      "alg": "ES256",
+      "signingKeySecret": "EDGE_MINT__DJDL__APPLEMUSIC",
+      "kid": "REPLACE_WITH_APPLE_MUSICKIT_KEY_ID",
+      "claimsTemplate": { "iss": "REPLACE_WITH_APPLE_TEAM_ID" },
+      "ttlSeconds": 3600
+    }
+  ],
+  "release": {
+    "ghOwner": "vladzaharia",
+    "ghRepo": "djdl",
+    "ghInstallationId": 0,
+    "channelWorkflow": "channel.yml",
+    "betaBranch": "main",
+    "binaryName": "djdl",
+    "summaryMarker": "pkey:summary",
+    "sparkleEd25519Pub": "REPLACE_WITH_SPARKLE_PUBLIC_KEY"
+  }
+}

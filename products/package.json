@@ -1,0 +1,14 @@
+{
+  "name": "@polaris-key/products",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen-seed": "tsx gen-seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@polaris-key/catalog": "workspace:*"
+  }
+}

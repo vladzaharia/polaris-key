@@ -36,3 +36,6 @@ __pycache__/
 # OS / editor
 .DS_Store
 *.log
+
+# Generated product seeds
+products/*/seed.sql
