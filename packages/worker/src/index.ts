@@ -8,6 +8,9 @@ import { handleJwks } from "./jwks.js";
 import { handleMintAuth, handleMintToken } from "./edgeMint.js";
 import { handleSubscribe } from "./subscribe.js";
 import { handleAuthCallback, handleAuthPoll, handleAuthStart } from "./oidc.js";
+import { handleRelease } from "./release/index.js";
+import type { Arch } from "./release/assets.js";
+import { handleAdmin } from "./admin/index.js";
 import { errorResponse, notFound } from "./http.js";
 import {
   handleConfig,
@@ -34,6 +37,11 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "mintToken",
   "mintAuth",
   "appcast",
+  "install",
+  "version",
+  "changelog",
+  "cli",
+  "dmg",
 ]);
 
 const NOT_IMPLEMENTED = (what: string): Response =>
@@ -77,20 +85,32 @@ export default {
         case "authPoll":
           return handleAuthPoll(req, env, db, product, now);
         case "appcast":
-          return NOT_IMPLEMENTED("releases"); // Phase 2 (release engine)
+          return handleRelease(req, env, db, product, route.channel ? "channelAppcast" : "appcast", {
+            channel: route.channel,
+          });
+        case "install":
+          return handleRelease(req, env, db, product, "install", {});
+        case "version":
+          return handleRelease(req, env, db, product, "version", {});
+        case "changelog":
+          return handleRelease(req, env, db, product, "changelog", {});
+        case "cli":
+          return handleRelease(req, env, db, product, "cli", { version: route.version, arch: route.arch as Arch });
+        case "dmg":
+          return handleRelease(req, env, db, product, "dmg", { version: route.version, arch: route.arch as Arch });
         default:
           return notFound();
       }
     }
 
-    // Admin + platform routes — Phase 5.
+    // Admin + platform routes.
     switch (route.kind) {
       case "adminSpa":
       case "adminApi":
       case "adminLogin":
       case "adminCallback":
       case "products":
-        return NOT_IMPLEMENTED("admin");
+        return handleAdmin(req, env, db, url.pathname.slice("/admin".length) || "/");
       default:
         return notFound();
     }

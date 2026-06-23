@@ -21,7 +21,14 @@ export type Route =
   | { kind: "mintToken"; product: string; mintId: string }
   | { kind: "mintAuth"; product: string; mintId: string }
   | { kind: "appcast"; product: string; channel?: string }
+  | { kind: "install"; product: string }
+  | { kind: "version"; product: string }
+  | { kind: "changelog"; product: string }
+  | { kind: "cli"; product: string; version: string; arch: string }
+  | { kind: "dmg"; product: string; version: string; arch: string }
   | { kind: "notFound" };
+
+const ARCH = /^(?:[^/]+)-(arm64|aarch64|x86_64|amd64)$/;
 
 export function matchRoute(pathname: string): Route {
   const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
@@ -64,6 +71,25 @@ export function matchRoute(pathname: string): Route {
       return { kind: "authPoll", product };
     case "/appcast.xml":
       return { kind: "appcast", product };
+    case "/install.sh":
+      return { kind: "install", product };
+    case "/version":
+      return { kind: "version", product };
+    case "/changelog":
+      return { kind: "changelog", product };
+  }
+
+  // /cli/<version>/<binary>-<arch>
+  const cli = rest.match(/^\/cli\/([^/]+)\/([^/]+)$/);
+  if (cli && cli[1] && cli[2]) {
+    const a = cli[2].match(ARCH);
+    if (a && a[1]) return { kind: "cli", product, version: cli[1], arch: a[1] };
+  }
+  // /dmg/<version>/<binary>-<arch>.dmg
+  const dmg = rest.match(/^\/dmg\/([^/]+)\/([^/]+)\.dmg$/);
+  if (dmg && dmg[1] && dmg[2]) {
+    const a = dmg[2].match(ARCH);
+    if (a && a[1]) return { kind: "dmg", product, version: dmg[1], arch: a[1] };
   }
 
   const mint = rest.match(/^\/mint\/([a-z0-9-]+)\/(token|auth)$/);

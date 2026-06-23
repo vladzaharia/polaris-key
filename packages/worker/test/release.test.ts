@@ -1,0 +1,417 @@
+import { describe, expect, it } from "vitest";
+import { makeTestDb } from "./helpers.js";
+import { KvMock } from "./kvMock.js";
+import { makeEnv, seedProduct } from "./seed.js";
+import type { Db } from "../src/db/types.js";
+import type { Product } from "../src/product.js";
+import type { Env } from "../src/env.js";
+import type { FetchImpl } from "../src/release/githubApp.js";
+import {
+  classifyChannel,
+  parseManualChannels,
+  resolveChannel,
+} from "../src/release/channels.js";
+import type { Release, ReleaseAsset } from "../src/release/github.js";
+import { findBinaryAsset, matchAsset } from "../src/release/assets.js";
+import { extractSummary } from "../src/release/changelog.js";
+import { applyInstallTemplate, defaultInstallScript } from "../src/release/install.js";
+import { renderAppcast } from "../src/release/appcast.js";
+import { handleRelease } from "../src/release/index.js";
+
+// ── Fixtures ───────────────────────────────────────────────────────────────
+
+const SLUG = "djdl";
+
+function asset(name: string, id = name.length, size = 1024): ReleaseAsset {
+  return { id, name, size, content_type: "application/octet-stream", browser_download_url: `https://example/${name}` };
+}
+
+function release(over: Partial<Release> = {}): Release {
+  return {
+    tag_name: "v1.2.3",
+    name: "1.2.3",
+    body: null,
+    published_at: "2026-01-02T03:04:05Z",
+    html_url: "https://github.com/acme/djdl/releases/tag/v1.2.3",
+    prerelease: false,
+    draft: false,
+    assets: [],
+    ...over,
+  };
+}
+
+/** Seed the product + its release_config (release_config.product FKs to products). */
+async function seedReleaseConfig(db: Db, over: Record<string, unknown> = {}): Promise<void> {
+  await seedProduct(db, SLUG);
+  const row = {
+    product: SLUG,
+    gh_owner: "acme",
+    gh_repo: "djdl",
+    gh_installation_id: 42,
+    channel_workflow: "channel.yml",
+    beta_branch: "main",
+    manual_channels_json: JSON.stringify([{ name: "nightly", regex: "v\\d+\\.\\d+\\.\\d+-nightly\\.\\d+" }]),
+    binary_name: "djdl",
+    install_template: null as string | null,
+    sparkle_ed25519_pub: "PUBKEY==",
+    summary_marker: "pkey:summary",
+    ...over,
+  };
+  await db.run(
+    `INSERT INTO release_config
+       (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
+        manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    row.product, row.gh_owner, row.gh_repo, row.gh_installation_id, row.channel_workflow, row.beta_branch,
+    row.manual_channels_json, row.binary_name, row.install_template, row.sparkle_ed25519_pub, row.summary_marker,
+  );
+}
+
+function makeProduct(): Product {
+  return {
+    slug: SLUG,
+    name: "djdl",
+    signingKid: "kid",
+    signingKeyPem: "pem",
+    signingPub: null,
+    compatMin: "0.0.0",
+    compatMax: "99.0.0",
+    defaultMaxOfflineDays: 30,
+    defaultMachineLimit: 5,
+    adminGroup: null,
+    schemaVersion: 1,
+  };
+}
+
+/**
+ * A fetch stub. `routes` maps a URL substring -> a response builder. The GitHub App
+ * token exchange is always answered so the engine can mint a token; everything else is
+ * matched by substring (first hit wins).
+ */
+function stubFetch(routes: Array<[string, () => Response]>): { fetchImpl: FetchImpl; calls: string[] } {
+  const calls: string[] = [];
+  const fetchImpl: FetchImpl = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes("/access_tokens")) {
+      return new Response(JSON.stringify({ token: "ghs_installation_token" }), { status: 200 });
+    }
+    for (const [needle, build] of routes) {
+      if (url.includes(needle)) return build();
+    }
+    return new Response("not found", { status: 404 });
+  };
+  return { fetchImpl, calls };
+}
+
+function envFor(): { env: Env; kv: KvMock } {
+  const kv = new KvMock();
+  const env = makeEnv(kv, [SLUG]);
+  env.GITHUB_APP_ID = "12345";
+  // A throwaway 2048-bit RSA key so the App-JWT signer actually runs (WebCrypto imports
+  // it); the fetch stub then shortcuts the installation-token exchange. Never a prod key.
+  env.GITHUB_APP_PRIVATE_KEY = TEST_RSA_PKCS8;
+  return { env, kv };
+}
+
+// A throwaway 2048-bit RSA private key (PKCS#8 PEM) for tests only.
+const TEST_RSA_PKCS8 = `-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCsEMREsWAll4vT
+9mDM1zr8yF9klknqOJPqLj/1SvQx3IJNKks0LfEhPK+1LqTIrALhx3UM3N8hmmY6
+Kk7C8cXsA0b49QtF/KtFPFnK+cSBGtOmZMJ7tJBQhUswWeJ2BPr24sDJZaCS4JH5
+QlCi2g7Lchwkzp6d2H23rm9CD8LT6OPcgXnALdM4wfQ3Wa1gklDi0zd29FyKsdtF
+3PjhzUVn7xRJQFOQU3vOqizauuYvM2WmV9K3BnkZZyPRgSVIEggBwlyrJLBSVZYI
+8C2zmxLs7SeUaoq29rewma3h5mLhwL62VN0WC6B7rM18cifR0sR46VVc3/2gNAZ3
+BxnHKG+TAgMBAAECggEAAvfVEuRGZs+a62CcIdxymYqxTpBjHQW103vRwZ714GhP
+3RnmKzPBrZOY6lSwJgAFmrRwmfSzaqZ5rfYt3qICCoSx9Dhx5daqc6rLV7uAPsPi
+M8QYML8YIDN0bRSX2fZTB/A4aCD3KKF0EysoLe76A1toDeB8jvd9j64UID0aXMJn
+7UNX6BrmAj36r/gUZNiIPDQRg0RZV+weDv8Q0BG2yE6wpA2B5jdEJbX4jq7Tr2WU
+3xJlG2GBOt1kNcaVKlr2FmF+3xFAdafJW/AYaMBL5EWytiMqP9bu/H3cm/laphKA
++phJ2fGgw094+ZS+fP2Qja7yqI6/6rDg53pGWCVuVQKBgQDhvS/Q8BM2dJIZUy+B
+KZpZKuQSKvYvKvuNvjkuUSj8XA6AvfehcQWWJRngB7S1cYJoANsO3KvAyHQ4RUe9
+s6AHDGJljnB/kfqMdQKbMtmw7u8MEtLRHCELZ0eVcd/8nHBmCgkCe1sj8OmXBVkN
+pqW16lfsLu58g8u/qzPRrRQ+bwKBgQDDIaKwhhl0UD9+9wNBLZZ2lurLUiNnK4ZM
+0yHaYselF8WkBRRlpTYJrEEYetlFLxToNlqk4VlWES0ZtJQ5SQJgqzG2cmMApvAJ
+hurjuDBPaGcu56K7wUobYFbw9aNM7Nnm+Tpt+DehIJ48rjBMKSBAqLj2QXBSP+ST
+QU/BYgbzHQKBgBFz+h1yYlnke2M/3j1jRQ691TJeZfhRn29fFLazCbMxPuHPTjUK
+Mv9f0PdUQTGCHC4EWut0PkdCeFHdcWWGXMoOuBDYCXSjibaQWWo8bT5TyuGpFumZ
+/igOjSdNzZ6PTdVl0zqA5RQLTVQi0rbOeqNtAe0916yC2B7ykqgUdKs7AoGBAI2L
+MYsgywgPSe/cWDUIT5OYZ5qy61FkRhgmMvFKJA3Cj7ApqyEMVYVwuQt72W0Q+PZ0
+rw3ZFUeUUAXMcpSXPC1JIVd55AzOC2KtxmcG7aw8TFS+29GcJRh0qrxBQoKDcJDW
+CqdInXm4wm+73vbwAiBFA15GG6beB/01LBhX9jiVAoGBAM2aHdDaIHzO71WMB7Qi
+6e6lkI53ovO8vzw/hITzvTqbEslxweqRjv0LHwMo1/+zdFtnxyWHUTFQtT4VM7FV
+86FY7DjzErSUSOhQfXvKGVvy2oAYxQUqqJgHI2iowSMVNg1O45wW4O3eUsJuMx06
+d+RKUGe97dQXkny7eE7qJPbg
+-----END PRIVATE KEY-----`;
+
+// ── Pure unit tests ─────────────────────────────────────────────────────────
+
+describe("channels", () => {
+  const manual = parseManualChannels(
+    JSON.stringify([{ name: "nightly", regex: "v\\d+\\.\\d+\\.\\d+-nightly\\.\\d+" }]),
+  );
+
+  it("classifies stable / beta / pr / manual selectors", () => {
+    expect(classifyChannel("latest", manual)?.kind).toBe("stable");
+    expect(classifyChannel("1.2.3", manual)?.kind).toBe("stable");
+    expect(classifyChannel("beta", manual)?.kind).toBe("beta");
+    const pr = classifyChannel("pr-42", manual);
+    expect(pr?.kind).toBe("pr");
+    expect(pr?.pr).toBe(42);
+    expect(classifyChannel("nightly", manual)?.kind).toBe("manual");
+    expect(classifyChannel("bogus", manual)).toBeNull();
+  });
+
+  it("resolves stable latest to the newest non-prerelease", () => {
+    const releases = [
+      release({ tag_name: "v2.0.0-rc.1", prerelease: true }),
+      release({ tag_name: "v1.9.0", prerelease: false }),
+    ];
+    const sel = classifyChannel("latest", manual)!;
+    expect(resolveChannel(sel, releases)?.tag_name).toBe("v1.9.0");
+  });
+
+  it("resolves a pinned tag exactly", () => {
+    const releases = [release({ tag_name: "v1.2.3" }), release({ tag_name: "v1.0.0" })];
+    const sel = classifyChannel("1.0.0", manual)!;
+    expect(resolveChannel(sel, releases)?.tag_name).toBe("v1.0.0");
+  });
+
+  it("resolves a manual regex channel to the newest matching tag", () => {
+    const releases = [
+      release({ tag_name: "v1.3.0" }),
+      release({ tag_name: "v1.3.0-nightly.7", prerelease: true }),
+      release({ tag_name: "v1.3.0-nightly.5", prerelease: true }),
+    ];
+    const sel = classifyChannel("nightly", manual)!;
+    expect(resolveChannel(sel, releases)?.tag_name).toBe("v1.3.0-nightly.7");
+  });
+
+  it("resolves beta via channel tags, else falls back to newest prerelease", () => {
+    const releases = [
+      release({ tag_name: "v2.0.0-beta.2", prerelease: true }),
+      release({ tag_name: "v2.0.0-beta.1", prerelease: true }),
+    ];
+    const sel = classifyChannel("beta", manual)!;
+    expect(resolveChannel(sel, releases, new Set(["v2.0.0-beta.1"]))?.tag_name).toBe("v2.0.0-beta.1");
+    expect(resolveChannel(sel, releases)?.tag_name).toBe("v2.0.0-beta.2");
+  });
+
+  it("rejects an over-long / unsafe manual regex", () => {
+    const bad = parseManualChannels(JSON.stringify([{ name: "x", regex: "a".repeat(200) }]));
+    expect(bad).toHaveLength(0);
+    const broken = parseManualChannels(JSON.stringify([{ name: "x", regex: "(" }]));
+    expect(broken).toHaveLength(0);
+  });
+});
+
+describe("assets", () => {
+  it("matches the correct arch + extension", () => {
+    const assets = [
+      asset("djdl-arm64.dmg"),
+      asset("djdl-x86_64.dmg"),
+      asset("djdl-arm64"),
+      asset("djdl-x86_64"),
+    ];
+    expect(matchAsset(assets, { arch: "arm64", ext: "dmg", binaryName: "djdl" })?.name).toBe("djdl-arm64.dmg");
+    expect(matchAsset(assets, { arch: "x86_64", ext: "dmg", binaryName: "djdl" })?.name).toBe("djdl-x86_64.dmg");
+    expect(findBinaryAsset(assets, "djdl", "arm64")?.name).toBe("djdl-arm64");
+  });
+
+  it("accepts arch aliases (aarch64 / amd64)", () => {
+    const assets = [asset("MyApp-1.2.3-aarch64.dmg"), asset("MyApp-1.2.3-amd64.dmg")];
+    expect(matchAsset(assets, { arch: "arm64", ext: "dmg" })?.name).toBe("MyApp-1.2.3-aarch64.dmg");
+    expect(matchAsset(assets, { arch: "x86_64", ext: "dmg" })?.name).toBe("MyApp-1.2.3-amd64.dmg");
+  });
+
+  it("returns null when ambiguous", () => {
+    // Two arm64 dmgs with no distinguishing binary/channel token -> ambiguous.
+    const assets = [asset("build-one-arm64.dmg"), asset("build-two-arm64.dmg")];
+    expect(matchAsset(assets, { arch: "arm64", ext: "dmg" })).toBeNull();
+  });
+
+  it("disambiguates a channel build by suffix", () => {
+    const assets = [asset("djdl-arm64"), asset("djdl-staging-arm64")];
+    expect(findBinaryAsset(assets, "djdl", "arm64", "staging")?.name).toBe("djdl-staging-arm64");
+    expect(findBinaryAsset(assets, "djdl", "arm64")?.name).toBe("djdl-arm64");
+  });
+});
+
+describe("changelog", () => {
+  it("extracts the marker block", () => {
+    const body = "Intro line.\n\n<!-- pkey:summary -->\n**New:** thing\n<!-- /pkey:summary -->\n\n## Changes\n- detail";
+    expect(extractSummary(body)).toBe("New: thing");
+  });
+
+  it("honors a custom marker token", () => {
+    const body = "<!-- co:notes -->Custom summary<!-- /co:notes -->\n## Changes";
+    expect(extractSummary(body, "co:notes")).toBe("Custom summary");
+  });
+
+  it("falls back to the first paragraph above the first heading", () => {
+    const body = "A friendly summary paragraph that users see.\n\n## Detailed changes\n- nerdy detail";
+    expect(extractSummary(body)).toBe("A friendly summary paragraph that users see.");
+  });
+
+  it("returns null with no usable prose", () => {
+    expect(extractSummary("## Only headings\n## More")).toBeNull();
+    expect(extractSummary(null)).toBeNull();
+  });
+});
+
+describe("install templating", () => {
+  it("substitutes the supported placeholders", () => {
+    const out = applyInstallTemplate(
+      "install {{binaryName}} from {{origin}} channels={{channels}}",
+      { origin: "https://key.plrs.im", cliBase: "/djdl/cli", binaryName: "djdl", channels: ["staging", "beta"], versionEnv: "DJDL_VERSION" },
+    );
+    expect(out).toBe("install djdl from https://key.plrs.im channels=staging beta");
+  });
+
+  it("ports arch detection in the default script", () => {
+    const script = defaultInstallScript({
+      origin: "https://key.plrs.im",
+      cliBase: "/djdl/cli",
+      binaryName: "djdl",
+      channels: ["staging"],
+      versionEnv: "DJDL_VERSION",
+    });
+    expect(script).toContain("arm64|aarch64) ARCH=\"arm64\"");
+    expect(script).toContain("x86_64|amd64)  ARCH=\"x86_64\"");
+    expect(script).toContain("$ORIGIN$CLI_BASE/$VERSION/djdl-$ARCH");
+  });
+});
+
+describe("appcast XML", () => {
+  it("renders a stable Sparkle feed (snapshot)", () => {
+    const xml = renderAppcast({
+      channelTitle: "djdl",
+      link: "https://key.plrs.im",
+      items: [
+        {
+          title: "djdl 1.2.3",
+          shortVersion: "1.2.3",
+          build: "1.2.3",
+          url: "https://key.plrs.im/djdl/dmg/1.2.3/djdl-arm64.dmg",
+          length: 12345,
+          pubDate: "Thu, 02 Jan 2026 03:04:05 GMT",
+          edSignature: "ABCDEF==",
+          minimumSystemVersion: "13.0",
+        },
+      ],
+    });
+    expect(xml).toMatchInlineSnapshot(`
+      "<?xml version="1.0" encoding="utf-8"?>
+      <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+        <channel>
+          <title>djdl</title>
+          <link>https://key.plrs.im</link>
+          <item>
+            <title>djdl 1.2.3</title>
+            <pubDate>Thu, 02 Jan 2026 03:04:05 GMT</pubDate>
+            <sparkle:version>1.2.3</sparkle:version>
+            <sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://key.plrs.im/djdl/dmg/1.2.3/djdl-arm64.dmg" type="application/octet-stream" length="12345" sparkle:edSignature="ABCDEF==" />
+          </item>
+        </channel>
+      </rss>
+      "
+    `);
+  });
+});
+
+// ── End-to-end handler tests (injected fetch, no network) ────────────────────
+
+describe("handleRelease", () => {
+  it("404s when the product has no release config", async () => {
+    const db = makeTestDb();
+    const { env } = envFor();
+    const { fetchImpl } = stubFetch([]);
+    const res = await handleRelease(req(), env, db, makeProduct(), "version", {}, fetchImpl);
+    expect(res.status).toBe(404);
+  });
+
+  it("serves /version for latest via the App token", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const { env } = envFor();
+    const releases = [release({ tag_name: "v1.9.0" }), release({ tag_name: "v1.0.0" })];
+    const { fetchImpl, calls } = stubFetch([
+      ["/releases?per_page", () => new Response(JSON.stringify(releases), { status: 200 })],
+    ]);
+    const res = await handleRelease(req(), env, db, makeProduct(), "version", { version: "latest" }, fetchImpl);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { version: string; tag: string };
+    expect(body.version).toBe("1.9.0");
+    expect(calls.some((u) => u.includes("/access_tokens"))).toBe(true);
+  });
+
+  it("renders /changelog with curated summaries", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const { env } = envFor();
+    const releases = [
+      release({ tag_name: "v1.1.0", body: "<!-- pkey:summary -->Faster sync<!-- /pkey:summary -->\n## Changes" }),
+      release({ tag_name: "v1.0.0", body: "Initial public release.\n\n## Changes" }),
+    ];
+    const { fetchImpl } = stubFetch([
+      ["/releases?per_page", () => new Response(JSON.stringify(releases), { status: 200 })],
+    ]);
+    const res = await handleRelease(req(), env, db, makeProduct(), "changelog", {}, fetchImpl);
+    const body = (await res.json()) as { entries: Array<{ version: string; summary: string | null }> };
+    expect(body.entries[0]).toMatchObject({ version: "1.1.0", summary: "Faster sync" });
+    expect(body.entries[1]?.summary).toBe("Initial public release.");
+  });
+
+  it("serves the install script with the product binary name", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const { env } = envFor();
+    const { fetchImpl } = stubFetch([]);
+    const res = await handleRelease(req(), env, db, makeProduct(), "install", {}, fetchImpl);
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("djdl installer");
+    expect(text).toContain('CLI_BASE="/djdl/cli"');
+    expect(text).toContain("$ORIGIN$CLI_BASE/$VERSION/djdl-$ARCH");
+  });
+
+  it("streams a cli binary asset", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const { env } = envFor();
+    const rel = release({ tag_name: "v1.2.3", assets: [asset("djdl-arm64", 777)] });
+    const { fetchImpl } = stubFetch([
+      ["/releases/tags/", () => new Response(JSON.stringify(rel), { status: 200 })],
+      ["/releases/assets/777", () => new Response("BINARY", { status: 200, headers: { "Content-Type": "application/octet-stream" } })],
+    ]);
+    const res = await handleRelease(req(), env, db, makeProduct(), "cli", { version: "1.2.3", arch: "arm64" }, fetchImpl);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("BINARY");
+  });
+
+  it("generates an appcast reading the sibling .sig asset", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const { env } = envFor();
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64.dmg", 100, 4096), asset("djdl-arm64.dmg.sig", 101)],
+    });
+    const { fetchImpl } = stubFetch([
+      ["/releases?per_page", () => new Response(JSON.stringify([rel]), { status: 200 })],
+      ["/releases/assets/101", () => new Response("SIG_BASE64==", { status: 200 })],
+    ]);
+    const res = await handleRelease(req(), env, db, makeProduct(), "appcast", {}, fetchImpl);
+    expect(res.status).toBe(200);
+    const xml = await res.text();
+    expect(xml).toContain('sparkle:edSignature="SIG_BASE64=="');
+    expect(xml).toContain("/djdl/dmg/1.2.3/djdl-arm64.dmg");
+    expect(xml).toContain("<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>");
+  });
+});
+
+function req(url = "https://key.plrs.im/djdl/version"): Request {
+  return new Request(url) as unknown as Request;
+}
