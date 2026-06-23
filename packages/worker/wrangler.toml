@@ -1,0 +1,58 @@
+name = "polaris-key"
+main = "src/index.ts"
+# 2026-04-07 enables WebCrypto Ed25519 (config-doc JWS signing) and
+# web_socket_auto_reply_to_close for the hibernatable HubDO.
+compatibility_date = "2026-04-07"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "HubDO"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["HubDO"]
+
+# ---------------------------------------------------------------------------
+# Per-environment bindings. KV/D1 ids come from `terraform output -json` (see infra/).
+# Replace the placeholder ids before deploying.
+# ---------------------------------------------------------------------------
+[env.prod]
+[[env.prod.routes]]
+pattern = "key.plrs.im"
+custom_domain = true
+[[env.prod.kv_namespaces]]
+binding = "HOT"
+id = "REPLACE_ME_PROD_KV_ID"
+[[env.prod.d1_databases]]
+binding = "DB"
+database_name = "polaris_key_prod"
+database_id = "REPLACE_ME_PROD_D1_ID"
+
+[env.staging]
+[[env.staging.routes]]
+pattern = "key-staging.plrs.im"
+custom_domain = true
+[[env.staging.kv_namespaces]]
+binding = "HOT"
+id = "REPLACE_ME_STAGING_KV_ID"
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "polaris_key_staging"
+database_id = "REPLACE_ME_STAGING_D1_ID"
+
+[env.dev]
+[[env.dev.routes]]
+pattern = "key-dev.plrs.im"
+custom_domain = true
+[[env.dev.kv_namespaces]]
+binding = "HOT"
+id = "REPLACE_ME_DEV_KV_ID"
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "polaris_key_dev"
+database_id = "REPLACE_ME_DEV_D1_ID"
+
+# Required secrets (set with `wrangler secret put <NAME> --env <env>`):
+#   KEY_HASH_PEPPER, ADMIN_SESSION_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY,
+#   and per-product: SIGNING_KEY__<SLUG>, OIDC_CLIENT_SECRET__<SLUG>, EDGE_MINT__<SLUG>__<ID>.

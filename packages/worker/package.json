@@ -1,0 +1,25 @@
+{
+  "name": "@polaris-key/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "dryrun": "wrangler deploy --dry-run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@polaris-key/catalog": "workspace:*",
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251001.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "better-sqlite3": "^11.8.0",
+    "wrangler": "^4.40.0"
+  }
+}
