@@ -38,6 +38,7 @@ import {
   getTokenRecord,
   putTokenRecord,
 } from "./kv.js";
+import { clientIp, rateLimitOk } from "./rateLimit.js";
 
 function docProfile(license: LicenseRow): DocProfile {
   const name = license.name ?? "";
@@ -92,6 +93,9 @@ export async function handleEnroll(
   now: number,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
+  if (!(await rateLimitOk(env, product.slug, { bucket: "enroll", id: clientIp(req), limit: 30, windowSec: 60 }, now))) {
+    return errorResponse(429, "rate_limited", "too many enrollment attempts");
+  }
   const key = bearer(req);
   if (!key) return errorResponse(401, ErrorCode.Unauthorized);
   const deviceId = req.headers.get(HEADER_DEVICE);
@@ -161,6 +165,9 @@ export async function handleToken(
   now: number,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
+  if (!(await rateLimitOk(env, product.slug, { bucket: "token", id: clientIp(req), limit: 30, windowSec: 60 }, now))) {
+    return errorResponse(429, "rate_limited", "too many token requests");
+  }
   const deviceId = req.headers.get(HEADER_DEVICE);
   if (!deviceId) return errorResponse(400, ErrorCode.BadRequest, "missing device id");
   const machine = await getMachine(db, product.slug, deviceId);

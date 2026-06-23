@@ -12,6 +12,7 @@ import type { Product } from "./product.js";
 import { bearer, errorResponse } from "./http.js";
 import { hashKey } from "./crypto.js";
 import { getTokenRecord } from "./kv.js";
+import { clientIp, rateLimitOk } from "./rateLimit.js";
 
 interface EdgeMintRow {
   product: string;
@@ -76,6 +77,9 @@ export async function handleMintToken(
   mintId: string,
   now: number,
 ): Promise<Response> {
+  if (!(await rateLimitOk(env, product.slug, { bucket: "mint", id: clientIp(req), limit: 60, windowSec: 60 }, now))) {
+    return errorResponse(429, "rate_limited", "too many mint requests");
+  }
   // Confused-deputy guard: only a licensed machine may mint.
   const token = bearer(req);
   if (!token) return errorResponse(401, "unauthorized");
