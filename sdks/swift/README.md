@@ -1,0 +1,126 @@
+# PolarisKey — Swift SDK
+
+A product-agnostic native Swift client for **Polaris Key** (licensing + remotely-managed
+config). It implements the frozen Polaris wire crypto natively on **CryptoKit** (Ed25519
+compact JWS) and stores the per-machine token in the **Keychain** — no Node engine, no
+network dependency for verification. The same cross-language conformance corpus that pins
+the Node/Python/React SDKs is verified here byte-for-byte (`Tests/.../cases.json`).
+
+Two products:
+
+- **`PolarisKey`** — the headless core: JWS verifier, license gate, HTTP endpoints, device
+  id, stores, and the `PolarisKeyClient` actor.
+- **`PolarisKeyUI`** — a brandable SwiftUI drop-in gate layered over the core.
+
+Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
+
+## Install
+
+```swift
+// Package.swift
+dependencies: [
+    .package(path: "../polaris-key/sdks/swift")
+],
+targets: [
+    .target(name: "MyApp", dependencies: [
+        .product(name: "PolarisKey", package: "PolarisKey"),
+        .product(name: "PolarisKeyUI", package: "PolarisKey"),
+    ])
+]
+```
+
+## Headless usage
+
+```swift
+import PolarisKey
+
+let client = await PolarisKeyClient.create(options: .init(
+    productSlug: "djdl",
+    version: "1.4.2",
+    trust: PolarisTrust(pinnedKeys: [
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+    ])
+))
+
+// Offline-first: status comes from the cached signed doc with no network.
+if client.isLicensed() {
+    let concurrency = client.config("run.concurrency", default: .int(4)).intValue ?? 4
+    let vpnUrl = client.secret("proxy.subscriptionUrl")
+    let hasVpn = client.isEntitled("polarisVpn")
+}
+
+// Activate with a license key (exchanges key → token, persists, refreshes).
+let result = await client.activate(key: userEnteredKey)
+
+// Re-pull managed config online (single /token re-acquire on 401), then re-apply.
+await client.refresh()
+
+// Wipe local state + best-effort server deauthorize.
+await client.deactivate()
+```
+
+The client mirrors the Node SDK's surface: `start()`/`activate(key:)`/`deactivate()`/
+`refresh()`/`status()`/`isLicensed()`/`config(_:default:)`/`secret(_:)`/`isEntitled(_:)`/
+`entitlements()`/`profile()`.
+
+### Stores
+
+- `KeychainStore` (default) — token in the OS keychain (service `pkey:<product>`), device
+  id + offline cache as 0600 files under `~/.config/<product>/`.
+- `InMemoryStore` — for tests.
+- `Store` is a protocol; supply your own to back the token/cache differently.
+
+## SwiftUI gate
+
+`PolarisKeyLoginView` renders by status: an OIDC sign-in button + license-key entry card
+when enrollment is needed, an offline-grace banner over your content, version-block and
+expired/revoked screens, and your own UI once usable (ok/grace).
+
+```swift
+import PolarisKey
+import PolarisKeyUI
+
+@StateObject var gate = PolarisKeyGateModel(client: client)
+
+var body: some View {
+    PolarisKeyLoginView(
+        model: gate,
+        theme: PolarisKeyTheme(
+            accent: .indigo,
+            copy: PolarisKeyCopy(productName: "DJDL"),
+            logo: { AnyView(Image("BrandLogo").resizable().scaledToFit().frame(width: 56)) }
+        ),
+        onSignIn: { startMyOIDCFlow() }   // the SDK is transport-agnostic about the browser dance
+    ) {
+        MyAppRootView()   // shown when licensed
+    }
+}
+```
+
+Everything is brandable via `PolarisKeyTheme` (accent, logo, copy). The headless API stays
+on `PolarisKeyClient`; the view is a thin renderer over it.
+
+## The frozen wire contract
+
+Compact JWS, **EdDSA / Ed25519**:
+
+```
+header       = {"alg":"EdDSA","kid":<kid>}            (key order fixed)
+signingInput = base64url(utf8(JSON(header))) "." base64url(utf8(JSON(payload)))
+signature    = Ed25519 over the ASCII bytes of signingInput
+compact JWS  = signingInput "." base64url(signature)
+```
+
+The verifying key is selected by the header `kid` from a caller-supplied trust set (NEVER
+from the document); `alg == "EdDSA"` and a String `kid` are asserted *before* any signature
+math (a `none`/HMAC downgrade is rejected). Public keys are RAW 32 bytes
+(`Curve25519.Signing.PublicKey(rawRepresentation:)`) — no SPKI prefix. The signature is
+checked over the ASCII bytes of the original `encHeader.encPayload` substrings; the payload
+is never re-serialised, so verification is byte-stable across Node, Python, React, and Swift.
+
+## Develop
+
+```sh
+swift build
+swift test    # includes the cross-language conformance corpus
+```

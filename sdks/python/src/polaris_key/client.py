@@ -1,0 +1,335 @@
+"""The Polaris Key client: a small, product-agnostic facade over enroll/fetch/verify/
+cache/gate.
+
+Offline-first — ``__init__``/``create`` apply the cached doc with no network;
+``refresh()`` re-pulls (with a single ``/token`` re-acquire on 401) and re-applies.
+Mirrors ``client.ts``.
+"""
+
+from __future__ import annotations
+
+import os
+import time
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
+
+import httpx
+
+from .endpoints import (
+    EnrollOk,
+    EnrollResult,
+    deauthorize,
+    enroll_with_key,
+    reacquire_token,
+    report_snapshot,
+)
+from .fetch import (
+    FetchBlocked,
+    FetchDeviceCap,
+    FetchError,
+    FetchNotModified,
+    FetchOk,
+    FetchUnauthorized,
+    fetch_managed_config,
+)
+from .license import (
+    BlockedState,
+    LicenseState,
+    channel_for_version,
+    is_usable,
+    license_state,
+)
+from .models import DocProfile
+from .store import CacheRecord, FileStore, Store
+from .verify import TrustSet, verify_doc
+
+__all__ = ["PolarisKeyClient", "RefreshResult"]
+
+DEFAULT_BASE = "https://key.plrs.im"
+
+# Sentinel distinguishing "leave unchanged" from "clear to None" in patch_cache.
+_UNSET = object()
+
+
+def _now_sec() -> int:
+    return int(time.time())
+
+
+def _default_config_dir() -> str:
+    return os.environ.get("XDG_CONFIG_HOME") or os.path.join(
+        os.path.expanduser("~"), ".config"
+    )
+
+
+@dataclass(frozen=True)
+class RefreshResult:
+    applied: bool
+    unauthorized: bool = False
+    blocked: bool = False
+    deviceCap: bool = False
+
+
+class PolarisKeyClient:
+    """Product-agnostic license + managed-config client."""
+
+    def __init__(
+        self,
+        *,
+        product_slug: str,
+        version: str,
+        trust: TrustSet,
+        base_url: Optional[str] = None,
+        channel: Optional[str] = None,
+        store: Optional[Store] = None,
+        config_dir: Optional[str] = None,
+        client: Optional[httpx.Client] = None,
+    ) -> None:
+        self.product = product_slug
+        self._base_url = (base_url or DEFAULT_BASE).rstrip("/")
+        self._version = version
+        self._channel = channel or channel_for_version(version)
+        self._trust = trust
+        self._store: Store = store or FileStore(
+            product_slug, config_dir or _default_config_dir()
+        )
+        # An injected transport/client (tests) or a lazily-created default.
+        self._client = client
+        self._owns_client = client is None
+
+        self._token: Optional[str] = None
+        self._device_id = ""
+        self._cache: Optional[CacheRecord] = None
+
+    @classmethod
+    def create(cls, **opts: Any) -> "PolarisKeyClient":
+        c = cls(**opts)
+        c.init()
+        return c
+
+    @property
+    def _http(self) -> httpx.Client:
+        if self._client is None:
+            self._client = httpx.Client(timeout=30.0)
+        return self._client
+
+    def close(self) -> None:
+        if self._owns_client and self._client is not None:
+            self._client.close()
+            self._client = None
+
+    def __enter__(self) -> "PolarisKeyClient":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+    # ── Init ────────────────────────────────────────────────────────────────────
+    def init(self) -> None:
+        """Load token + device id + cached doc (no network)."""
+        self._device_id = self._store.get_device_id()
+        self._token = self._store.get_token()
+        self._cache = self._store.read_cache()
+
+    # ── Gate / reads ────────────────────────────────────────────────────────────
+    def status(self, now: Optional[int] = None) -> LicenseState:
+        now = _now_sec() if now is None else now
+        cache = self._cache
+        return license_state(
+            has_token=self._token is not None,
+            doc=cache.doc if cache else None,
+            now=now,
+            last_sync_unauthorized=cache.lastSyncUnauthorized if cache else False,
+            blocked=cache.blocked if cache else None,
+            last_verified_at=cache.lastVerifiedAt if cache else None,
+        )
+
+    def is_licensed(self, now: Optional[int] = None) -> bool:
+        return is_usable(self.status(now).status)
+
+    def get_config(self, key: str, fallback: Any = None) -> Any:
+        doc = self._cache.doc if self._cache else None
+        if not doc:
+            return fallback
+        e = doc.payload.config.get(key)
+        return e.value if e is not None else fallback
+
+    def get_secret(self, key: str) -> Optional[str]:
+        doc = self._cache.doc if self._cache else None
+        if not doc:
+            return None
+        e = doc.payload.secrets.get(key)
+        if e is not None and isinstance(e.value, str):
+            return e.value
+        return None
+
+    def is_entitled(self, name: str) -> bool:
+        doc = self._cache.doc if self._cache else None
+        if not doc:
+            return False
+        e = doc.payload.entitlements.get(name)
+        return bool(e is not None and e.value is True)
+
+    def get_entitlements(self) -> Dict[str, Any]:
+        doc = self._cache.doc if self._cache else None
+        if not doc:
+            return {}
+        return {k: v.value for k, v in doc.payload.entitlements.items()}
+
+    def get_profile(self) -> Optional[DocProfile]:
+        doc = self._cache.doc if self._cache else None
+        return doc.profile if doc else None
+
+    # ── Enrollment ──────────────────────────────────────────────────────────────
+    def activate_with_key(self, key: str) -> EnrollResult:
+        r = enroll_with_key(
+            base_url=self._base_url,
+            product=self.product,
+            key=key,
+            device_id=self._device_id,
+            client=self._http,
+        )
+        if isinstance(r, EnrollOk):
+            self._token = r.token
+            self._store.set_token(r.token)
+            self.refresh(force=True)
+        return r
+
+    def deactivate(self) -> None:
+        if self._token:
+            deauthorize(
+                base_url=self._base_url,
+                product=self.product,
+                token=self._token,
+                client=self._http,
+            )
+        self._token = None
+        self._cache = None
+        self._store.clear_token()
+        self._store.clear_cache()
+
+    # ── Refresh ─────────────────────────────────────────────────────────────────
+    def refresh(self, force: bool = False) -> RefreshResult:
+        if not self._token:
+            return RefreshResult(applied=False)
+        result = self._fetch_and_apply(allow_reacquire=True)
+        if result.applied or not result.unauthorized:
+            report_snapshot(
+                base_url=self._base_url,
+                product=self.product,
+                token=self._token,
+                snapshot=self._report_snapshot_body(),
+                client=self._http,
+            )
+        return result
+
+    def _fetch_and_apply(self, allow_reacquire: bool) -> RefreshResult:
+        if not self._token:
+            return RefreshResult(applied=False)
+        res = fetch_managed_config(
+            base_url=self._base_url,
+            product=self.product,
+            token=self._token,
+            device_id=self._device_id,
+            version=self._version,
+            channel=self._channel,
+            etag=self._cache.etag if self._cache else None,
+            client=self._http,
+        )
+
+        if isinstance(res, FetchNotModified):
+            self._patch_cache(blocked=None, last_sync_unauthorized=False)
+            return RefreshResult(applied=False)
+
+        if isinstance(res, FetchUnauthorized):
+            if allow_reacquire:
+                re = reacquire_token(
+                    base_url=self._base_url,
+                    product=self.product,
+                    device_id=self._device_id,
+                    client=self._http,
+                )
+                if isinstance(re, EnrollOk):
+                    self._token = re.token
+                    self._store.set_token(re.token)
+                    return self._fetch_and_apply(allow_reacquire=False)
+            self._patch_cache(last_sync_unauthorized=True)
+            return RefreshResult(applied=False, unauthorized=True)
+
+        if isinstance(res, FetchDeviceCap):
+            return RefreshResult(applied=False, deviceCap=True)
+
+        if isinstance(res, FetchBlocked):
+            self._patch_cache(
+                blocked=BlockedState(reason=res.reason, allowedRange=res.allowedRange)
+            )
+            return RefreshResult(applied=False, blocked=True)
+
+        if isinstance(res, FetchOk):
+            doc = verify_doc(
+                res.jws,
+                self._trust,
+                expected_aud=self.product,
+                device_id=self._device_id,
+                last_accepted_issued_at=(
+                    self._cache.lastAcceptedIssuedAt if self._cache else None
+                ),
+            )
+            if doc is None:
+                return RefreshResult(applied=False)
+            self._cache = CacheRecord(
+                doc=doc,
+                etag=res.etag,
+                lastAcceptedIssuedAt=doc.issuedAt,
+                lastVerifiedAt=_now_sec(),
+                lastSyncUnauthorized=False,
+                blocked=None,
+            )
+            self._store.write_cache(self._cache)
+            return RefreshResult(applied=True)
+
+        # FetchError
+        return RefreshResult(applied=False)
+
+    def _patch_cache(
+        self,
+        *,
+        blocked: Any = _UNSET,
+        last_sync_unauthorized: Any = _UNSET,
+    ) -> None:
+        """Update the bookkeeping fields, tolerating a doc-less cache.
+
+        Mirrors ``patchCache``: when there's no cache yet, only persist the
+        bookkeeping when something meaningful (a block or a 401) is being set; the gate
+        tolerates a ``doc``-less cache. ``_UNSET`` means "leave that field unchanged".
+        """
+        if self._cache is None:
+            sets_block = blocked is not _UNSET and blocked is not None
+            sets_unauth = last_sync_unauthorized is True
+            if sets_block or sets_unauth:
+                self._cache = CacheRecord(
+                    doc=None,
+                    lastAcceptedIssuedAt=0,
+                    blocked=blocked if blocked is not _UNSET else None,
+                    lastSyncUnauthorized=(
+                        last_sync_unauthorized
+                        if last_sync_unauthorized is not _UNSET
+                        else False
+                    ),
+                )
+            return
+        if blocked is not _UNSET:
+            self._cache.blocked = blocked
+        if last_sync_unauthorized is not _UNSET:
+            self._cache.lastSyncUnauthorized = last_sync_unauthorized
+        self._store.write_cache(self._cache)
+
+    def _report_snapshot_body(self) -> Dict[str, Dict[str, Any]]:
+        doc = self._cache.doc if self._cache else None
+        config: Dict[str, Any] = {}
+        entitlements: Dict[str, Any] = {}
+        if doc:
+            for k, v in doc.payload.config.items():
+                config[k] = v.value
+            for k, v in doc.payload.entitlements.items():
+                entitlements[k] = v.value
+        return {"config": config, "entitlements": entitlements}
