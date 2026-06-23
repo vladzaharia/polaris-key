@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS products (
   -- is derived from the slug (e.g. SIGNING_KEY__<SLUG>).
   signing_kid             TEXT NOT NULL,
   signing_key_secret      TEXT NOT NULL,
+  -- Raw 32-byte Ed25519 public key (base64url), exposed at /<product>/.well-known/jwks.json.
+  signing_pub             TEXT,
   compat_min              TEXT NOT NULL DEFAULT '0.0.0',
   compat_max              TEXT NOT NULL DEFAULT '99.0.0',
   default_max_offline_days INTEGER NOT NULL DEFAULT 30,

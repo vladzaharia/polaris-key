@@ -4,6 +4,10 @@ import { D1Db } from "./db/d1.js";
 import { matchRoute, type Route } from "./router.js";
 import { loadProduct } from "./product.js";
 import { handleSchema } from "./schema.js";
+import { handleJwks } from "./jwks.js";
+import { handleMintAuth, handleMintToken } from "./edgeMint.js";
+import { handleSubscribe } from "./subscribe.js";
+import { handleAuthCallback, handleAuthPoll, handleAuthStart } from "./oidc.js";
 import { errorResponse, notFound } from "./http.js";
 import {
   handleConfig,
@@ -59,18 +63,21 @@ export default {
         case "schema":
           return handleSchema(db, product);
         case "jwks":
-          return NOT_IMPLEMENTED("jwks"); // Phase 2
+          return handleJwks(product);
         case "configSubscribe":
-          return NOT_IMPLEMENTED("config/subscribe"); // Phase 2
-        case "authStart":
-        case "authCallback":
-        case "authPoll":
-          return NOT_IMPLEMENTED("oidc"); // Phase 2
+          return handleSubscribe(req, env, product);
         case "mintToken":
+          return handleMintToken(req, env, db, product, route.mintId, now);
         case "mintAuth":
-          return NOT_IMPLEMENTED("edge-mint"); // Phase 2
+          return handleMintAuth(db, product, route.mintId);
+        case "authStart":
+          return handleAuthStart(req, env, db, product);
+        case "authCallback":
+          return handleAuthCallback(req, env, db, product, now);
+        case "authPoll":
+          return handleAuthPoll(req, env, db, product, now);
         case "appcast":
-          return NOT_IMPLEMENTED("releases"); // Phase 2
+          return NOT_IMPLEMENTED("releases"); // Phase 2 (release engine)
         default:
           return notFound();
       }

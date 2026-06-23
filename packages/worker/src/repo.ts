@@ -10,6 +10,7 @@ export interface ProductRow {
   name: string;
   signing_kid: string;
   signing_key_secret: string;
+  signing_pub: string | null;
   compat_min: string;
   compat_max: string;
   default_max_offline_days: number;
@@ -117,10 +118,10 @@ export async function listProducts(db: Db): Promise<ProductRow[]> {
 
 export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
   await db.run(
-    `INSERT INTO products (slug, name, signing_kid, signing_key_secret, compat_min, compat_max,
+    `INSERT INTO products (slug, name, signing_kid, signing_key_secret, signing_pub, compat_min, compat_max,
        default_max_offline_days, default_machine_limit, admin_group, branding_json, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    row.slug, row.name, row.signing_kid, row.signing_key_secret, row.compat_min, row.compat_max,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    row.slug, row.name, row.signing_kid, row.signing_key_secret, row.signing_pub, row.compat_min, row.compat_max,
     row.default_max_offline_days, row.default_machine_limit, row.admin_group, row.branding_json,
     row.created_at, row.modified_at,
   );

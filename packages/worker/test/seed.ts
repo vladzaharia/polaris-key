@@ -33,6 +33,7 @@ export async function seedProduct(db: Db, slug: string): Promise<void> {
     name: slug,
     signing_kid: TEST_KID,
     signing_key_secret: secretName(slug),
+    signing_pub: TEST_PUB,
     compat_min: "0.0.0",
     compat_max: "99.0.0",
     default_max_offline_days: 30,

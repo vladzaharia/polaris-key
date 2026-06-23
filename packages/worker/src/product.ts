@@ -11,6 +11,7 @@ export interface Product {
   name: string;
   signingKid: string;
   signingKeyPem: string;
+  signingPub: string | null;
   compatMin: string;
   compatMax: string;
   defaultMaxOfflineDays: number;
@@ -32,6 +33,7 @@ export async function loadProduct(env: Env, db: Db, slug: string): Promise<Produ
     name: row.name,
     signingKid: row.signing_kid,
     signingKeyPem: pem,
+    signingPub: row.signing_pub,
     compatMin: row.compat_min,
     compatMax: row.compat_max,
     defaultMaxOfflineDays: row.default_max_offline_days,
