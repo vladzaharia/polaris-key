@@ -168,6 +168,92 @@ async function build(): Promise<unknown> {
     expect: { verify: "fail" },
   });
 
+  // 7. Second key (djdl-test-2026) verified under a trust set containing BOTH keys —
+  //    the verifier must pick the right pubkey by `kid`, not by position/first-entry.
+  const multiTrust = {
+    "djdl-test-2026": pub("djdl-test-2026"),
+    "pkey-test-prod-2026": pub("pkey-test-prod-2026"),
+  };
+  const secondKeyDoc = polarisDoc({ licenseId: "lic_second_key" });
+  const secondKeyJws = await signJws(secondKeyDoc, pem("djdl-test-2026"), "djdl-test-2026");
+  cases.push({
+    id: "valid-second-key-multi-trust",
+    description:
+      "A doc signed by djdl-test-2026, verified against a trust set holding BOTH test keys — selection is by kid.",
+    jws: secondKeyJws,
+    trust: multiTrust,
+    expect: { verify: "ok", kid: "djdl-test-2026", doc: secondKeyDoc },
+  });
+
+  // 8. Forward-compat: extra/unknown top-level fields must NOT break verification. The
+  //    signature covers the exact bytes (including the unknown keys), so it still verifies
+  //    and the payload round-trips verbatim.
+  const forwardDoc = polarisDoc({
+    futureFeature: { tier: "gold", seats: 5 },
+    unknownTopLevel: "ignored-by-old-clients",
+  });
+  const forwardJws = await signJws(forwardDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  cases.push({
+    id: "valid-forward-compat-extra-fields",
+    description:
+      "A doc carrying unknown top-level fields still verifies and round-trips byte-for-byte (forward-compat).",
+    jws: forwardJws,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: forwardDoc },
+  });
+
+  // 9. Right kid, WRONG key bytes — a signature from key A presented under a trust set
+  //    that maps the SAME kid to key B's pubkey. Presence of the kid is not enough; the
+  //    bytes must match, so the signature math must fail.
+  cases.push({
+    id: "right-kid-wrong-key",
+    description:
+      "Signature from pkey-test-prod-2026 verified against a trust mapping that kid to djdl-test-2026's pubkey — must fail.",
+    jws: validJws,
+    trust: { "pkey-test-prod-2026": pub("djdl-test-2026") },
+    expect: { verify: "fail" },
+  });
+
+  // 10. Empty string — degenerate structural failure (zero segments).
+  cases.push({
+    id: "malformed-empty-string",
+    description: "An empty-string JWS — structurally invalid, must fail cleanly.",
+    jws: "",
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "fail" },
+  });
+
+  // 11. Four segments — too many parts; must fail before any signature math.
+  const [fh, fp, fs] = validJws.split(".") as [string, string, string];
+  cases.push({
+    id: "malformed-four-parts",
+    description: "A 4-segment JWS (extra trailing part) — structurally invalid, must fail.",
+    jws: `${fh}.${fp}.${fs}.extra`,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "fail" },
+  });
+
+  // 12. Unicode in profile.name — non-ASCII UTF-8 must encode + round-trip exactly, so
+  //     cross-language verifiers agree on the byte-level UTF-8 of the signed payload.
+  const unicodeDoc = polarisDoc({
+    licenseId: "lic_unicode",
+    profile: {
+      name: "Ada Lovelace 💻 — 北京 — Ångström",
+      firstName: "Ada",
+      email: "ada@example.com",
+      enrolledAt: 1690000000,
+    },
+  });
+  const unicodeJws = await signJws(unicodeDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  cases.push({
+    id: "valid-unicode-profile-name",
+    description:
+      "A doc whose profile.name contains emoji + CJK + diacritics — verifies and round-trips the exact UTF-8.",
+    jws: unicodeJws,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: unicodeDoc },
+  });
+
   return { corpusVersion: 1, keys: KEYS, cases };
 }
 

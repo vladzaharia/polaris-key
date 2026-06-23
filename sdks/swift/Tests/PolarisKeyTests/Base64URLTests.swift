@@ -46,4 +46,34 @@ final class Base64URLTests: XCTestCase {
         // A space is not in the base64url alphabet → nil.
         XCTAssertNil(Base64URL.decode("not valid!!"))
     }
+
+    func testEncodeEmptyIsEmpty() {
+        XCTAssertEqual(Base64URL.encode(Data()), "")
+        XCTAssertEqual(Base64URL.decode(""), Data())
+    }
+
+    func testRoundTripVariableLengthsExerciseAllPaddingCases() {
+        // Lengths 1..6 cover the 0/1/2 trailing "=" re-padding branches.
+        for len in 1...6 {
+            let bytes = Data((0..<len).map { UInt8(($0 * 37 + 11) & 0xff) })
+            let enc = Base64URL.encode(bytes)
+            XCTAssertFalse(enc.contains("="), "len \(len) must be unpadded")
+            XCTAssertEqual(Base64URL.decode(enc), bytes, "len \(len) must round-trip")
+        }
+    }
+
+    func testDecodeMatchesEncodeForCorpusPubKey() {
+        // The 32-byte prod test pubkey decodes to exactly 32 bytes and re-encodes stably.
+        let pub = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+        let decoded = Base64URL.decode(pub)
+        XCTAssertEqual(decoded?.count, 32)
+        XCTAssertEqual(Base64URL.encode(decoded!), pub)
+    }
+
+    func testStringEncodeHandlesUnicode() {
+        // Emoji + CJK + diacritics must encode via UTF-8 and round-trip byte-for-byte.
+        let s = "Ada 💻 北京 Ångström"
+        let enc = Base64URL.encode(string: s)
+        XCTAssertEqual(Base64URL.decode(enc), Data(s.utf8))
+    }
 }

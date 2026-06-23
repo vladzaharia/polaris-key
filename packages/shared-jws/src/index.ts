@@ -150,12 +150,20 @@ export async function verifyJws<T = unknown>(
     return null;
   }
 
-  const ok = await crypto.subtle.verify(
-    { name: "Ed25519" },
-    key,
-    toArrayBuffer(base64UrlDecode(encSig)),
-    toArrayBuffer(enc.encode(encHeader + "." + encPayload)),
-  );
+  // Decoding the signature segment + the verify itself must fail CLOSED: a signature
+  // with characters outside the base64url alphabet makes `atob` throw, and we promise
+  // `null` on ANY failure (matching the Python/Swift mirrors), never a thrown error.
+  let ok: boolean;
+  try {
+    ok = await crypto.subtle.verify(
+      { name: "Ed25519" },
+      key,
+      toArrayBuffer(base64UrlDecode(encSig)),
+      toArrayBuffer(enc.encode(encHeader + "." + encPayload)),
+    );
+  } catch {
+    return null;
+  }
   if (!ok) return null;
   return { kid: header.kid, payload };
 }

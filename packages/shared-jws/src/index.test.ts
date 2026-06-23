@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { signJws, verifyJws, base64UrlDecode, base64UrlEncodeBytes, importVerifyKey, type TrustSet } from "./index.js";
+import {
+  signJws,
+  verifyJws,
+  base64UrlDecode,
+  base64UrlEncodeBytes,
+  importVerifyKey,
+  sha256Base64Url,
+  type TrustSet,
+} from "./index.js";
 
 const b64u = (o: unknown): string => base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(o)));
 
@@ -96,7 +104,142 @@ describe("importVerifyKey", () => {
     await expect(importVerifyKey("AAAA")).rejects.toThrow(/32 bytes/);
   });
 
+  it("rejects an empty key (0 bytes)", async () => {
+    await expect(importVerifyKey("")).rejects.toThrow(/0/);
+  });
+
+  it("rejects a 33-byte key (off-by-one too long)", async () => {
+    const tooLong = base64UrlEncodeBytes(new Uint8Array(33));
+    await expect(importVerifyKey(tooLong)).rejects.toThrow(/33/);
+  });
+
+  it("accepts the exact 32-byte corpus key without throwing", async () => {
+    await expect(importVerifyKey(DJDL_TEST_PUB)).resolves.toBeDefined();
+  });
+
   it("base64UrlDecode handles unpadded -_ alphabet", () => {
     expect(base64UrlDecode(DJDL_TEST_PUB).length).toBe(32);
+  });
+});
+
+describe("base64url encode/decode edge cases", () => {
+  it("round-trips every byte value 0..255 byte-for-byte", () => {
+    const all = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) all[i] = i;
+    const enc = base64UrlEncodeBytes(all);
+    // Unpadded, URL-safe alphabet only.
+    expect(enc).not.toContain("=");
+    expect(enc).not.toContain("+");
+    expect(enc).not.toContain("/");
+    expect([...base64UrlDecode(enc)]).toEqual([...all]);
+  });
+
+  it("encodes 0xFB 0xFF to the URL-safe '-_' alphabet", () => {
+    // Standard base64 of [0xFB,0xFF] is "+/8="; URL-safe unpadded is "-_8".
+    expect(base64UrlEncodeBytes(new Uint8Array([0xfb, 0xff]))).toBe("-_8");
+    expect([...base64UrlDecode("-_8")]).toEqual([0xfb, 0xff]);
+  });
+
+  it("decodes regardless of how many padding chars the input is missing", () => {
+    // Lengths 1..4 bytes exercise all 0/1/2 trailing '=' cases.
+    for (const len of [1, 2, 3, 4, 5, 6]) {
+      const bytes = new Uint8Array(len).map((_, i) => (i * 37 + 11) & 0xff);
+      const enc = base64UrlEncodeBytes(bytes);
+      expect(enc).not.toContain("=");
+      expect([...base64UrlDecode(enc)]).toEqual([...bytes]);
+    }
+  });
+
+  it("round-trips a unicode JSON payload (emoji + CJK + diacritics) byte-stably", () => {
+    const payload = { name: "Ada 💻 北京 Ångström", n: 42 };
+    const enc = base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(payload)));
+    const back = JSON.parse(new TextDecoder().decode(base64UrlDecode(enc)));
+    expect(back).toEqual(payload);
+  });
+});
+
+describe("signJws determinism", () => {
+  it("is deterministic — re-signing the same doc yields identical bytes (Ed25519)", async () => {
+    const doc = { hello: "world", n: 7, nested: { a: [1, 2, 3] } };
+    const a = await signJws(doc, DJDL_TEST_PEM, DJDL_TEST_KID);
+    const b = await signJws(doc, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect(a).toBe(b);
+  });
+
+  it("produces a 3-segment compact JWS whose header decodes to {alg:EdDSA,kid}", async () => {
+    const jws = await signJws({ x: 1 }, DJDL_TEST_PEM, DJDL_TEST_KID);
+    const parts = jws.split(".");
+    expect(parts).toHaveLength(3);
+    const header = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[0]!)));
+    expect(header).toEqual({ alg: "EdDSA", kid: DJDL_TEST_KID });
+  });
+
+  it("a signature over a unicode payload verifies under its own key", async () => {
+    const doc = { msg: "héllo 世界 🌍" };
+    const jws = await signJws(doc, ROTATE_PEM, ROTATE_KID);
+    const r = await verifyJws(jws, TRUST);
+    expect(r?.kid).toBe(ROTATE_KID);
+    expect(r?.payload).toEqual(doc);
+  });
+});
+
+describe("sha256Base64Url known vectors", () => {
+  it("hashes the empty input to the canonical SHA-256 base64url", async () => {
+    const out = await sha256Base64Url(new Uint8Array(0));
+    expect(out).toBe("47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU");
+  });
+
+  it('hashes "abc" to the canonical SHA-256 base64url', async () => {
+    const out = await sha256Base64Url(new TextEncoder().encode("abc"));
+    expect(out).toBe("ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0");
+  });
+
+  it("output is unpadded base64url of a 32-byte digest", async () => {
+    const out = await sha256Base64Url(new TextEncoder().encode("anything"));
+    expect(out).not.toContain("=");
+    expect(base64UrlDecode(out).length).toBe(32);
+  });
+});
+
+describe("verifyJws structural failures", () => {
+  it("rejects a wrong number of segments (0, 1, 2, 4)", async () => {
+    const valid = await signJws(DJDL_DOC, DJDL_TEST_PEM, DJDL_TEST_KID);
+    const [h, p, s] = valid.split(".");
+    expect(await verifyJws("", TRUST)).toBeNull();
+    expect(await verifyJws(h!, TRUST)).toBeNull();
+    expect(await verifyJws(`${h}.${p}`, TRUST)).toBeNull();
+    expect(await verifyJws(`${h}.${p}.${s}.extra`, TRUST)).toBeNull();
+  });
+
+  it("rejects a header that is not valid base64url JSON", async () => {
+    const valid = await signJws(DJDL_DOC, DJDL_TEST_PEM, DJDL_TEST_KID);
+    const [, p, s] = valid.split(".");
+    // "!!!" is not decodable JSON once base64url-decoded.
+    expect(await verifyJws(`${b64u("not-an-object")}.${p}.${s}`, TRUST)).toBeNull();
+    expect(await verifyJws(`@@@.${p}.${s}`, TRUST)).toBeNull();
+  });
+
+  it("rejects a header missing a string kid", async () => {
+    const header = b64u({ alg: "EdDSA", kid: 123 });
+    const payload = b64u(DJDL_DOC);
+    expect(await verifyJws(`${header}.${payload}.`, TRUST)).toBeNull();
+  });
+
+  it("rejects when the signature segment is not valid base64url", async () => {
+    const valid = await signJws(DJDL_DOC, DJDL_TEST_PEM, DJDL_TEST_KID);
+    const [h, p] = valid.split(".");
+    // A space is outside the base64url alphabet → decode/verify fails, returns null.
+    expect(await verifyJws(`${h}.${p}. bad sig `, TRUST)).toBeNull();
+  });
+
+  it("rejects an empty trust set even for an otherwise-valid JWS", async () => {
+    const valid = await signJws(DJDL_DOC, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect(await verifyJws(valid, {})).toBeNull();
+  });
+
+  it("rejects when the trust set maps the kid to a malformed (non-32-byte) key", async () => {
+    const valid = await signJws(DJDL_DOC, DJDL_TEST_PEM, DJDL_TEST_KID);
+    // Right kid, but a 4-byte key — import throws internally and verify returns null.
+    expect(await verifyJws(valid, { [DJDL_TEST_KID]: "AAAA" })).toBeNull();
   });
 });

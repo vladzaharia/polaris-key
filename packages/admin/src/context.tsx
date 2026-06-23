@@ -92,6 +92,11 @@ function load<T>(e: CacheEntry<T>, fetcher: () => Promise<T>, force: boolean): v
     .finally(() => {
       e.loading = false;
       e.promise = undefined;
+      // Stamp the settle time on BOTH success and error so the auto-load effect
+      // (guarded on `loadedAt === 0`) doesn't re-fire forever on an errored entry —
+      // an infinite render loop. `reload()`/`invalidate()` still force a refetch
+      // (reload bypasses the guard; invalidate resets `loadedAt` to 0).
+      if (e.loadedAt === 0) e.loadedAt = Date.now();
       notify(e);
     });
 }
@@ -130,7 +135,10 @@ export function useResource<T>(key: string, fetcher: () => Promise<T>): Resource
   }, [e]);
 
   useEffect(() => {
-    if (!e.data || e.loadedAt === 0) load(e, () => fetcherRef.current(), false);
+    // `loadedAt === 0` is the single "no settled attempt yet" signal (stamped on both
+    // success and error in `load`). Guarding on `!e.data` instead would re-fire forever
+    // on an errored entry (data stays null) — an infinite render loop.
+    if (e.loadedAt === 0) load(e, () => fetcherRef.current(), false);
   });
 
   return { data: e.data, loading: e.loading, error: e.error, reload };

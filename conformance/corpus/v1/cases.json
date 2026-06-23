@@ -156,6 +156,207 @@
       "expect": {
         "verify": "fail"
       }
+    },
+    {
+      "id": "valid-second-key-multi-trust",
+      "description": "A doc signed by djdl-test-2026, verified against a trust set holding BOTH test keys — selection is by kid.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6ImRqZGwtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfc2Vjb25kX2tleSIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDM2MDAsImdyYWNlVW50aWwiOjE3MDI1OTIwMDAsInByb2ZpbGUiOnsibmFtZSI6IkdyYWNlIEhvcHBlciIsImZpcnN0TmFtZSI6IkdyYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOjR9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoibWFuYWdlZCIsInZhbHVlIjp0cnVlfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOiIxLjAuMCJ9fX19.qjbWPFHRmBfeHAn_cuDFM9GXYgBRrZyOOEZ2cOhrUvyrdSZTkerJHtKXX2xaO1nJ9odtBz03d4wdrFEBlrI3Aw",
+      "trust": {
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U",
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "djdl-test-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_second_key",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 1700000000,
+          "expiresAt": 1700003600,
+          "graceUntil": 1702592000,
+          "profile": {
+            "name": "Grace Hopper",
+            "firstName": "Grace",
+            "email": "grace@example.com",
+            "enrolledAt": 1690000000
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "managed",
+                "value": 4
+              }
+            },
+            "secrets": {},
+            "entitlements": {
+              "polarisVpn": {
+                "state": "managed",
+                "value": true
+              },
+              "channels": {
+                "state": "managed",
+                "value": [
+                  "stable",
+                  "staging"
+                ]
+              },
+              "app.minVersion": {
+                "state": "managed",
+                "value": "1.0.0"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-forward-compat-extra-fields",
+      "description": "A doc carrying unknown top-level fields still verifies and round-trips byte-for-byte (forward-compat).",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fSwiZnV0dXJlRmVhdHVyZSI6eyJ0aWVyIjoiZ29sZCIsInNlYXRzIjo1fSwidW5rbm93blRvcExldmVsIjoiaWdub3JlZC1ieS1vbGQtY2xpZW50cyJ9.-w45d1spkKhQMPv_J16PSfNJnXQ_dSl_7c8NGyvu-bf6AyEvHUzZyXBjvI9qrUctEoaqIvrjGL6Bzu2uzFuyBQ",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "pkey-test-prod-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_3f8a9b",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 1700000000,
+          "expiresAt": 1700003600,
+          "graceUntil": 1702592000,
+          "profile": {
+            "name": "Grace Hopper",
+            "firstName": "Grace",
+            "email": "grace@example.com",
+            "enrolledAt": 1690000000
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "managed",
+                "value": 4
+              }
+            },
+            "secrets": {},
+            "entitlements": {
+              "polarisVpn": {
+                "state": "managed",
+                "value": true
+              },
+              "channels": {
+                "state": "managed",
+                "value": [
+                  "stable",
+                  "staging"
+                ]
+              },
+              "app.minVersion": {
+                "state": "managed",
+                "value": "1.0.0"
+              }
+            }
+          },
+          "futureFeature": {
+            "tier": "gold",
+            "seats": 5
+          },
+          "unknownTopLevel": "ignored-by-old-clients"
+        }
+      }
+    },
+    {
+      "id": "right-kid-wrong-key",
+      "description": "Signature from pkey-test-prod-2026 verified against a trust mapping that kid to djdl-test-2026's pubkey — must fail.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fX0.Np87RITCYN6A4cTiet3V8Evj0J4_qZVfaQskam49Xk59h_AbJArsz3W9qzeT3lx9Nf0Eb8DbxkJPEYwLJGxaCg",
+      "trust": {
+        "pkey-test-prod-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "malformed-empty-string",
+      "description": "An empty-string JWS — structurally invalid, must fail cleanly.",
+      "jws": "",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "malformed-four-parts",
+      "description": "A 4-segment JWS (extra trailing part) — structurally invalid, must fail.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fX0.Np87RITCYN6A4cTiet3V8Evj0J4_qZVfaQskam49Xk59h_AbJArsz3W9qzeT3lx9Nf0Eb8DbxkJPEYwLJGxaCg.extra",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "valid-unicode-profile-name",
+      "description": "A doc whose profile.name contains emoji + CJK + diacritics — verifies and round-trips the exact UTF-8.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfdW5pY29kZSIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDM2MDAsImdyYWNlVW50aWwiOjE3MDI1OTIwMDAsInByb2ZpbGUiOnsibmFtZSI6IkFkYSBMb3ZlbGFjZSDwn5K7IOKAlCDljJfkuqwg4oCUIMOFbmdzdHLDtm0iLCJmaXJzdE5hbWUiOiJBZGEiLCJlbWFpbCI6ImFkYUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOjR9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoibWFuYWdlZCIsInZhbHVlIjp0cnVlfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOiIxLjAuMCJ9fX19.Fb-jWJcx1EUJhKOQvT3YiAS9ywYdN-CegoSMBdrQDaWTtlSfW9V_3GvI_TILwSAWh-Mz19bSooWe0nAt4s-eCw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "pkey-test-prod-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_unicode",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 1700000000,
+          "expiresAt": 1700003600,
+          "graceUntil": 1702592000,
+          "profile": {
+            "name": "Ada Lovelace 💻 — 北京 — Ångström",
+            "firstName": "Ada",
+            "email": "ada@example.com",
+            "enrolledAt": 1690000000
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "managed",
+                "value": 4
+              }
+            },
+            "secrets": {},
+            "entitlements": {
+              "polarisVpn": {
+                "state": "managed",
+                "value": true
+              },
+              "channels": {
+                "state": "managed",
+                "value": [
+                  "stable",
+                  "staging"
+                ]
+              },
+              "app.minVersion": {
+                "state": "managed",
+                "value": "1.0.0"
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }
