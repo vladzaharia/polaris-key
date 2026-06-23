@@ -1,0 +1,34 @@
+{
+  "name": "polaris-key",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "dev": "turbo run dev --no-cache --continue",
+    "gen:corpus": "tsx tools/sign-corpus.ts",
+    "gen:mirrors": "tsx tools/gen-mirrors.ts",
+    "conformance": "turbo run test --filter=@polaris-key/conformance-node",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "format": "prettier --check \"**/*.{ts,tsx,md,json}\"",
+    "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@types/node": "^22.14.0",
+    "prettier": "^3.5.0",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
+  }
+}

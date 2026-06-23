@@ -1,0 +1,14 @@
+{
+  "name": "@polaris-key/conformance-node",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
+  }
+}
