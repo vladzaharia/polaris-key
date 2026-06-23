@@ -1,0 +1,35 @@
+{
+  "name": "@polaris-key/node",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "default": "./dist/cli/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@polaris-key/catalog": "workspace:*",
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "^1.1.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0"
+  }
+}
