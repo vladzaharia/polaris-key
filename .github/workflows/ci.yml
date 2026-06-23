@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  js:
+    name: JS/TS (build · typecheck · test · conformance)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # Drift gate: the cross-language conformance corpus must be regenerable in place.
+      - run: pnpm gen:corpus -- --check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter @polaris-key/admin build
+
+  python:
+    name: Python SDK
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e "sdks/python[keyring,click,typer]" pytest
+      - run: cd sdks/python && python -m pytest -q
+
+  swift:
+    name: Swift SDK
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd sdks/swift && swift build && swift test
+
+  infra:
+    name: Terraform validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: cd infra && terraform fmt -check -recursive && terraform init -backend=false && terraform validate
