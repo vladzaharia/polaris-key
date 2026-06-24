@@ -73,14 +73,14 @@ function arrEnt(e: ManagedEntry | undefined): string[] | undefined {
 }
 
 /** The tighter (higher) of two minimums. */
-function tighterMin(a: string | undefined, b: string | undefined): string | undefined {
+export function tighterMin(a: string | undefined, b: string | undefined): string | undefined {
   if (!a) return b;
   if (!b) return a;
   return compareSemver(a, b) >= 0 ? a : b;
 }
 
 /** The tighter (lower) of two maximums. */
-function tighterMax(a: string | undefined, b: string | undefined): string | undefined {
+export function tighterMax(a: string | undefined, b: string | undefined): string | undefined {
   if (!a) return b;
   if (!b) return a;
   return compareSemver(a, b) <= 0 ? a : b;

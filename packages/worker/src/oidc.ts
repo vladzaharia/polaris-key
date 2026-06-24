@@ -193,6 +193,9 @@ export async function enrollFromIdentity(
     expires_at: expiresAt,
     max_offline_days: null,
     overrides_json: JSON.stringify(overrides),
+    channels_json: null,
+    min_version: null,
+    max_version: null,
     modified_by: "oidc",
     modified_at: now,
   });

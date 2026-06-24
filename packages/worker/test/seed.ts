@@ -70,13 +70,38 @@ export const DJDL_CATALOG: unknown = JSON.parse(
   readFileSync(join(HERE, "..", "..", "..", "products", "djdl", "catalog.json"), "utf8"),
 );
 
+/** Seed a tier row (with optional admin channel/version policy). */
+export async function seedTier(
+  db: Db,
+  slug: string,
+  id: string,
+  opts: { channels?: string[]; minVersion?: string | null; maxVersion?: string | null } = {},
+): Promise<void> {
+  await db.run(
+    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit,
+       channels_json, min_version, max_version, modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    slug, id, id, null, null, null,
+    opts.channels ? JSON.stringify(opts.channels) : null,
+    opts.minVersion ?? null, opts.maxVersion ?? null, null, NOW,
+  );
+}
+
 /** Insert an active license + a fresh key; returns the raw key to enroll with. */
 export async function seedLicenseWithKey(
   db: Db,
   slug: string,
-  opts: { entitlements?: Record<string, ManagedEntry>; expiresAt?: number | null } = {},
+  opts: {
+    id?: string;
+    entitlements?: Record<string, ManagedEntry>;
+    expiresAt?: number | null;
+    tierId?: string | null;
+    channels?: string[];
+    minVersion?: string | null;
+    maxVersion?: string | null;
+  } = {},
 ): Promise<{ licenseId: string; key: string }> {
-  const licenseId = `lic_${slug}_1`;
+  const licenseId = opts.id ?? `lic_${slug}_1`;
   const overrides = { config: {}, secrets: {}, entitlements: opts.entitlements ?? {} };
   await insertLicense(db, {
     product: slug,
@@ -86,12 +111,15 @@ export async function seedLicenseWithKey(
     name: "Ada Lovelace",
     email: "ada@example.com",
     groups_json: null,
-    tier_id: null,
+    tier_id: opts.tierId ?? null,
     profile_id: null,
     enrolled_at: NOW,
     expires_at: opts.expiresAt ?? null,
     max_offline_days: null,
     overrides_json: JSON.stringify(overrides),
+    channels_json: opts.channels ? JSON.stringify(opts.channels) : null,
+    min_version: opts.minVersion ?? null,
+    max_version: opts.maxVersion ?? null,
     modified_by: null,
     modified_at: NOW,
   });

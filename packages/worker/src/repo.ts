@@ -35,6 +35,10 @@ export interface LicenseRow {
   expires_at: number | null;
   max_offline_days: number | null;
   overrides_json: string | null;
+  // Admin upgrade-channel + version-window policy (injected as enforced entitlements).
+  channels_json: string | null;
+  min_version: string | null;
+  max_version: string | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -81,6 +85,10 @@ export interface TierRow {
   profile_id: string | null;
   policy_expiry_days: number | null;
   policy_machine_limit: number | null;
+  // Admin upgrade-channel + version-window policy (injected as enforced entitlements).
+  channels_json: string | null;
+  min_version: string | null;
+  max_version: string | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -154,10 +162,12 @@ export async function getLicenseBySub(db: Db, product: string, sub: string): Pro
 export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
   await db.run(
     `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id, profile_id,
-       enrolled_at, expires_at, max_offline_days, overrides_json, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       enrolled_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
+       modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.product, row.id, row.status, row.sub, row.name, row.email, row.groups_json, row.tier_id,
     row.profile_id, row.enrolled_at, row.expires_at, row.max_offline_days, row.overrides_json,
+    row.channels_json, row.min_version, row.max_version,
     row.modified_by, row.modified_at,
   );
 }

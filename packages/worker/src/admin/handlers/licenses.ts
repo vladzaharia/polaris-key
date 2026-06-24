@@ -26,6 +26,14 @@ import { licenseSummary, loadCatalog } from "../lib/shape.js";
 import { handleKeys } from "./keys.js";
 import { handleMachines } from "./machines.js";
 
+/** Normalize a request-body `channels` field into a JSON string array column value.
+ *  An array (even empty) is stored as JSON; anything else (absent/null) clears the column. */
+function parseChannels(raw: unknown): string | null {
+  if (!Array.isArray(raw)) return null;
+  const channels = raw.filter((c) => typeof c === "string") as string[];
+  return JSON.stringify(channels);
+}
+
 export async function handleLicenses(
   req: Request,
   env: Env,
@@ -61,6 +69,9 @@ export async function handleLicenses(
         expires_at: typeof body.expiresAt === "number" ? body.expiresAt : null,
         max_offline_days: typeof body.maxOfflineDays === "number" ? body.maxOfflineDays : null,
         overrides_json: JSON.stringify({ config: {}, secrets: {}, entitlements: {} }),
+        channels_json: parseChannels(body.channels),
+        min_version: typeof body.minVersion === "string" ? body.minVersion : null,
+        max_version: typeof body.maxVersion === "string" ? body.maxVersion : null,
         modified_by: session.sub,
         modified_at: now,
       });
@@ -130,6 +141,9 @@ export async function handleLicenses(
           email: typeof body.email === "string" ? body.email : undefined,
           expires_at: body.expiresAt === null ? null : typeof body.expiresAt === "number" ? body.expiresAt : undefined,
           max_offline_days: typeof body.maxOfflineDays === "number" ? body.maxOfflineDays : undefined,
+          channels_json: "channels" in body ? parseChannels(body.channels) : undefined,
+          min_version: body.minVersion === null ? null : typeof body.minVersion === "string" ? body.minVersion : undefined,
+          max_version: body.maxVersion === null ? null : typeof body.maxVersion === "string" ? body.maxVersion : undefined,
         },
         session.sub,
         now,

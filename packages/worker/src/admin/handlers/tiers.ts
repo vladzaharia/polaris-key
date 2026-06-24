@@ -11,6 +11,12 @@ import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
 
+/** Normalize a request-body `channels` field into a JSON string array column value, or null. */
+function parseChannels(raw: unknown): string | null {
+  if (!Array.isArray(raw)) return null;
+  return JSON.stringify(raw.filter((c) => typeof c === "string") as string[]);
+}
+
 export async function handleTiers(
   req: Request,
   db: Db,
@@ -22,7 +28,16 @@ export async function handleTiers(
   if (!id) {
     if (req.method === "GET") {
       const rows = await listTiers(db, slug);
-      return adminJson({ tiers: rows.map((t) => ({ id: t.id, label: t.label, profile: t.profile_id, policyExpiryDays: t.policy_expiry_days, policyMachineLimit: t.policy_machine_limit })) });
+      return adminJson({ tiers: rows.map((t) => ({
+        id: t.id,
+        label: t.label,
+        profile: t.profile_id,
+        policyExpiryDays: t.policy_expiry_days,
+        policyMachineLimit: t.policy_machine_limit,
+        channels: t.channels_json ? (JSON.parse(t.channels_json) as string[]) : [],
+        minVersion: t.min_version,
+        maxVersion: t.max_version,
+      })) });
     }
     if (req.method === "POST") {
       const body = await readBody(req);
@@ -34,6 +49,9 @@ export async function handleTiers(
         profile_id: typeof body.profile === "string" ? body.profile : null,
         policy_expiry_days: typeof body.policyExpiryDays === "number" ? body.policyExpiryDays : null,
         policy_machine_limit: typeof body.policyMachineLimit === "number" ? body.policyMachineLimit : null,
+        channels_json: parseChannels(body.channels),
+        min_version: typeof body.minVersion === "string" ? body.minVersion : null,
+        max_version: typeof body.maxVersion === "string" ? body.maxVersion : null,
         modified_by: session.sub,
         modified_at: now,
       });
@@ -52,6 +70,9 @@ export async function handleTiers(
       profile_id: typeof body.profile === "string" ? body.profile : row.profile_id,
       policy_expiry_days: typeof body.policyExpiryDays === "number" ? body.policyExpiryDays : row.policy_expiry_days,
       policy_machine_limit: typeof body.policyMachineLimit === "number" ? body.policyMachineLimit : row.policy_machine_limit,
+      channels_json: "channels" in body ? parseChannels(body.channels) : row.channels_json,
+      min_version: body.minVersion === null ? null : typeof body.minVersion === "string" ? body.minVersion : row.min_version,
+      max_version: body.maxVersion === null ? null : typeof body.maxVersion === "string" ? body.maxVersion : row.max_version,
       modified_by: session.sub,
       modified_at: now,
     });

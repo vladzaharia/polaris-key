@@ -30,7 +30,8 @@ import {
 const lic = (slug: string, id: string, over: Partial<LicenseRow> = {}): LicenseRow => ({
   product: slug, id, status: "active", sub: null, name: null, email: null, groups_json: null,
   tier_id: null, profile_id: null, enrolled_at: NOW, expires_at: null, max_offline_days: null,
-  overrides_json: null, modified_by: null, modified_at: NOW, ...over,
+  overrides_json: null, channels_json: null, min_version: null, max_version: null,
+  modified_by: null, modified_at: NOW, ...over,
 });
 
 const machine = (slug: string, id: string, licId: string, over: Partial<MachineRow> = {}): MachineRow => ({
