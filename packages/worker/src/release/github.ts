@@ -1,9 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Authenticated GitHub Releases client (generalized from djdl's gateway).
+ * Authenticated GitHub Releases client.
  *
- * Unlike the djdl original this is repo-agnostic: every call takes an explicit
+ * This is repo-agnostic: every call takes an explicit
  * `(token, owner, repo)` so one engine serves many products, and an injectable
  * `fetchImpl` so the whole module unit-tests without network. Any auth/visibility
  * error (401/403/404) is mapped to a clean `NotFoundError` so callers never reveal

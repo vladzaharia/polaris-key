@@ -1,8 +1,9 @@
 # Polaris Key — operations runbook
 
-How to stand up `key.plrs.im` and operate it. Cloudflare resources are Terraform-managed
-(`infra/`); the Worker + admin are deployed by wrangler (CI). One-time external setup
-(GitHub App, OIDC client, DNS, signing keys) is manual.
+How to stand up `key.plrs.im` and operate it. Cloudflare resources (D1, KV, the Worker
+custom domain) are provisioned natively with wrangler — there is no separate
+infrastructure layer. The Worker + admin are deployed by wrangler (CI). One-time external
+setup (GitHub App, OIDC client, DNS, signing keys) is manual.
 
 ## One-time prerequisites (manual)
 
@@ -18,22 +19,26 @@ How to stand up `key.plrs.im` and operate it. Cloudflare resources are Terraform
    `docs/DJDL-MIGRATION.md` §2); the private PEM is a Worker secret, the public base64url
    goes in `products/<product>/product.json#signingPub`.
 
-## Infrastructure (Terraform)
+## Infrastructure bootstrap (wrangler)
 
-```sh
-cd infra
-export TF_VAR_cloudflare_api_token="<token>"
-terraform init
-terraform apply -var-file=envs/prod.tfvars     # or dev/staging
-terraform output -json                          # -> d1_database_id, kv_namespace_id
-```
+Each environment (`dev` / `staging` / `prod`) needs a D1 database and a KV namespace,
+created once with wrangler. The custom domain (`key.plrs.im` and its dev/staging peers) is
+bound declaratively by the `[[routes]] custom_domain = true` entries in
+`packages/worker/wrangler.toml` and is created on the first `wrangler deploy`.
 
-Wire the output ids into the matching `[env.<env>]` block of
-`packages/worker/wrangler.toml` (the `REPLACE_ME_*` placeholders), then create the D1
-schema:
+Create the resources for an environment (example: `prod`) and note the returned ids:
 
 ```sh
 cd packages/worker
+wrangler d1 create polaris_key_prod              # -> database_id
+wrangler kv namespace create POLARIS_HOT_prod    # -> id
+```
+
+Paste the returned `database_id` and `id` over the `REPLACE_ME_PROD_*` placeholders in the
+matching `[env.prod]` block of `packages/worker/wrangler.toml` (and likewise for
+`dev`/`staging`). Then apply the D1 schema:
+
+```sh
 wrangler d1 migrations apply polaris_key_prod --remote   # applies migrations/0001_init.sql
 ```
 
@@ -73,5 +78,5 @@ set the product's secrets.
 
 `.github/workflows/ci.yml` runs on every PR: JS/TS build + typecheck + test + the
 **conformance corpus drift gate** (`gen:corpus --check`) + admin build; Python (pytest,
-ubuntu+macOS); Swift (`swift test`); and `terraform validate`. A red conformance/drift job
-means a wire-contract change wasn't reflected in the corpus — regenerate and commit it.
+ubuntu+macOS); and Swift (`swift test`). A red conformance/drift job means a wire-contract
+change wasn't reflected in the corpus — regenerate and commit it.

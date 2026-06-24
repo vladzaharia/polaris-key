@@ -9,13 +9,6 @@ coverage/
 .dev.vars
 .dev.vars.*
 
-# Terraform
-infra/.terraform/
-infra/*.tfstate
-infra/*.tfstate.*
-infra/.terraform.lock.hcl
-*.tfvars.local
-
 # Secrets — never commit
 *.pem
 secrets.created.json
@@ -26,7 +19,10 @@ secrets.created.json
 # Python
 .venv/
 __pycache__/
+**/__pycache__/
 *.egg-info/
+*.pyc
+**/*.pyc
 .pytest_cache/
 
 # Swift

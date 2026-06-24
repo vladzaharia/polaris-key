@@ -16,7 +16,7 @@ export interface UiHints {
   placeholder?: string;
   order?: number;
   /** Admin scopes where the value is meaningful (omitted ⇒ all). */
-  tiers?: ("profile" | "license" | "machine")[];
+  scopes?: ("profile" | "license" | "device")[];
   advanced?: boolean;
   unit?: string;
   optionLabels?: Record<string, string>;

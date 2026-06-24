@@ -19,7 +19,7 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@polaris-key/catalog": "workspace:*",

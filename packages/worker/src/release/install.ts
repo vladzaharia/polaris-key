@@ -6,7 +6,7 @@
  * The script body is operator-templated per product (`release_config.install_template`)
  * with `{{binaryName}}` / `{{origin}}` / `{{channels}}` placeholders, so each product
  * controls its own wording/install layout. When no template is configured we fall back
- * to a built-in script (ported from djdl): detect the CPU architecture, download the
+ * to a built-in script: detect the CPU architecture, download the
  * matching binary from this gateway, install it to `/usr/local/bin` when writable
  * (no sudo escalation) or `~/.local/bin` otherwise, and mark it executable. The binary
  * is expected to be notarized, so there is NO Gatekeeper/`xattr` workaround.
@@ -37,7 +37,7 @@ export function applyInstallTemplate(template: string, ctx: InstallContext): str
 }
 
 /**
- * The built-in installer (used when a product has no `install_template`). Ports djdl's
+ * The built-in installer (used when a product has no `install_template`). Does
  * arch-detection + writable-dir selection, parameterized by binary name and origin.
  */
 export function defaultInstallScript(ctx: InstallContext): string {

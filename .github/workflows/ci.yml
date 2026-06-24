@@ -45,11 +45,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cd sdks/swift && swift build && swift test
-
-  infra:
-    name: Terraform validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-      - run: cd infra && terraform fmt -check -recursive && terraform init -backend=false && terraform validate

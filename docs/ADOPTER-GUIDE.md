@@ -1,7 +1,11 @@
-# DJDL → Polaris Key migration & cutover
+# Adopter guide: onboarding a product onto Polaris Key
 
-djdl is the first Polaris Key product. The cutover is a **fresh start** — no KV data is
-migrated; keys are re-issued (users sign in again). `djdl.vlad.gg` is retired once the new
+This guide is a template for bringing a product onto Polaris Key, using **djdl** — the
+first Polaris Key product — as the worked example throughout. Substitute your own product
+slug, repo, and secrets wherever djdl appears.
+
+For djdl specifically the cutover was a **fresh start** — no KV data was migrated; keys are
+re-issued (users sign in again), and the legacy `djdl.vlad.gg` host is retired once the new
 djdl release is live and verified.
 
 ## 1. Stand up Polaris Key (prod)

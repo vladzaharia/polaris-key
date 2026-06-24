@@ -14,8 +14,13 @@ tag = "v1"
 new_classes = ["HubDO"]
 
 # ---------------------------------------------------------------------------
-# Per-environment bindings. KV/D1 ids come from `terraform output -json` (see infra/).
-# Replace the placeholder ids before deploying.
+# Per-environment bindings. The D1 database and KV namespace are created once,
+# per environment, with wrangler (see docs/RUNBOOK.md "Infrastructure bootstrap"):
+#   wrangler d1 create polaris_key_<env>          -> database_id
+#   wrangler kv namespace create POLARIS_HOT_<env> -> id
+# Paste the returned ids over the REPLACE_ME_* placeholders below before deploying;
+# they require a one-time bootstrap against the Cloudflare account and cannot be
+# committed here as real values.
 # ---------------------------------------------------------------------------
 [env.prod]
 [[env.prod.routes]]

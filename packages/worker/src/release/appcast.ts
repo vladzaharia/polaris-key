@@ -3,8 +3,8 @@
 /**
  * Sparkle appcast generation.
  *
- * djdl baked appcast.xml at build time with Sparkle's `generate_appcast`. Here the
- * Worker GENERATES it on the fly from GitHub release + asset metadata so any product
+ * The first product baked appcast.xml at build time with Sparkle's `generate_appcast`.
+ * Here the Worker GENERATES it on the fly from GitHub release + asset metadata so any product
  * gets a feed for free. The mandatory `sparkle:edSignature` is NOT recomputed (the
  * Worker never holds the private key) — it is read from a sibling `<dmg>.sig` asset
  * that the release pipeline uploads alongside the DMG, exactly as Sparkle expects.

@@ -177,7 +177,7 @@ export function renderSwift(catalog: ProductCatalog): string {
         `category: ${swiftStr(e.category)}, label: ${swiftStr(e.label)}, ` +
         `description: ${swiftStr(e.description)}, widget: ${swiftOptStr(ui.widget as string | undefined)}, ` +
         `help: ${swiftOptStr(ui.help as string | undefined)}, placeholder: ${swiftOptStr(ui.placeholder as string | undefined)}, ` +
-        `order: ${swiftOptInt(ui.order as number | undefined)}, tiers: ${swiftStringArray(ui.tiers as string[] | undefined)}, ` +
+        `order: ${swiftOptInt(ui.order as number | undefined)}, scopes: ${swiftStringArray(ui.scopes as string[] | undefined)}, ` +
         `advanced: ${ui.advanced ? "true" : "false"}, unit: ${swiftOptStr(ui.unit as string | undefined)}, ` +
         `optionLabels: ${swiftStringDict(ui.optionLabels as Record<string, string> | undefined)}, adminSection: ${swiftOptStr(ui.adminSection as string | undefined)}, ` +
         `isSecret: ${e.kind === "secret" ? "true" : "false"}, ` +
@@ -205,7 +205,7 @@ struct ConfigSchemaEntry: Identifiable, Sendable {
     let help: String?
     let placeholder: String?
     let order: Int?
-    let tiers: [String]
+    let scopes: [String]
     let advanced: Bool
     let unit: String?
     let optionLabels: [String: String]
