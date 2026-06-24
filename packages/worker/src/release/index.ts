@@ -332,11 +332,14 @@ async function handleAppcast(
   const dmg = matchAsset(release.assets, { arch: "arm64", ext: "dmg", binaryName, channelSuffix: suffix });
   if (!dmg) return notFound();
 
-  // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline. When
-  // that sidecar is ABSENT, fall back to omitting the signature (render the item without
-  // `<sparkle:edSignature>`) instead of 404 — the feed stays valid for unsigned channels.
+  // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline. A
+  // product that configures a Sparkle public key (`sparkle_ed25519_pub`) expects SIGNED
+  // updates — if its `.sig` is missing we FAIL CLOSED (404) rather than silently ship an
+  // unsigned feed. Only products with no configured pubkey (genuinely unsigned channels)
+  // fall back to omitting `<sparkle:edSignature>`.
   const tok = await token(env, cfg, product.slug, now, fetchImpl);
   const sig = release.assets.find((a) => a.name === sigAssetName(dmg.name));
+  if (!sig && cfg.sparkle_ed25519_pub) return notFound();
   const edSignature = sig
     ? (await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)).trim()
     : undefined;

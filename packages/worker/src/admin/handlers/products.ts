@@ -20,11 +20,12 @@ import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import {
   getProduct,
-  insertProduct,
   insertProductKey,
-  insertSchema,
   listProducts,
   retireProductKeys,
+  stmtInsertProduct,
+  stmtInsertProductKey,
+  stmtInsertSchema,
   upsertProductSecret,
 } from "../../repo.js";
 import { deleteProduct, updateProduct } from "../repo.js";
@@ -163,39 +164,43 @@ async function manualCreate(
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
   const encPrivate = await seal(env, privatePkcs8Pem);
 
-  await insertProduct(db, {
-    slug,
-    name: String(body.name ?? slug),
-    signing_kid: kid,
-    signing_key_secret: signingKeySecretName(slug),
-    signing_pub: publicRawB64url,
-    compat_min: String(body.compatMin ?? "0.0.0"),
-    compat_max: String(body.compatMax ?? "99.0.0"),
-    default_max_offline_days: Number(body.defaultMaxOfflineDays ?? 30),
-    default_machine_limit: Number(body.defaultMachineLimit ?? 5),
-    admin_group: typeof body.adminGroup === "string" ? body.adminGroup : null,
-    branding_json: null,
-    release_source: null,
-    created_at: now,
-    modified_at: now,
-  });
-  await insertProductKey(db, {
-    product: slug,
-    kid,
-    alg: "Ed25519",
-    public_b64url: publicRawB64url,
-    enc_private_json: encPrivate,
-    status: "active",
-    created_at: now,
-    rotated_at: null,
-  });
-  await insertSchema(db, {
-    product: slug,
-    catalog_version: 1,
-    catalog_json: JSON.stringify(catalogObj),
-    active: 1,
-    created_at: now,
-  });
+  // Atomic: product + signing key + active catalog in ONE batch, so a product can never
+  // exist without a usable signing key (matches the link-repo invariant).
+  await db.batch([
+    stmtInsertProduct({
+      slug,
+      name: String(body.name ?? slug),
+      signing_kid: kid,
+      signing_key_secret: signingKeySecretName(slug),
+      signing_pub: publicRawB64url,
+      compat_min: String(body.compatMin ?? "0.0.0"),
+      compat_max: String(body.compatMax ?? "99.0.0"),
+      default_max_offline_days: Number(body.defaultMaxOfflineDays ?? 30),
+      default_machine_limit: Number(body.defaultMachineLimit ?? 5),
+      admin_group: typeof body.adminGroup === "string" ? body.adminGroup : null,
+      branding_json: null,
+      release_source: null,
+      created_at: now,
+      modified_at: now,
+    }),
+    stmtInsertProductKey({
+      product: slug,
+      kid,
+      alg: "Ed25519",
+      public_b64url: publicRawB64url,
+      enc_private_json: encPrivate,
+      status: "active",
+      created_at: now,
+      rotated_at: null,
+    }),
+    stmtInsertSchema({
+      product: slug,
+      catalog_version: 1,
+      catalog_json: JSON.stringify(catalogObj),
+      active: 1,
+      created_at: now,
+    }),
+  ]);
   await audit(db, slug, session, now, "product.create", { kind: "product", id: slug }, `Created product ${slug}`);
   const created = await getProduct(db, slug);
   return adminJson({ ok: true, slug, kid, product: created ? productView(created) : null }, 201);

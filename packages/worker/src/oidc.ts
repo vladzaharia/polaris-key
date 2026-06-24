@@ -293,9 +293,18 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
     await env.HOT.delete(flowKey(product.slug, state));
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
-  // The OIDC client secret is now KEK-custodied in product_secrets (sealed). Undefined ⇒
-  // public client (omit client_secret) — the existing behavior.
-  const clientSecret = await openProductSecret(db, env, product.slug, "OIDC_CLIENT_SECRET");
+  // The OIDC client secret is KEK-custodied in product_secrets (sealed), keyed by the name
+  // the config declares in `client_secret_secret`. A null column ⇒ a public client (omit
+  // client_secret). But if the config DECLARES a secret name and it's missing/unsealable, we
+  // MUST fail closed — never silently downgrade a confidential client to a public one.
+  let clientSecret: string | undefined;
+  if (oidc.client_secret_secret) {
+    clientSecret = await openProductSecret(db, env, product.slug, oidc.client_secret_secret);
+    if (!clientSecret) {
+      await env.HOT.delete(flowKey(product.slug, state));
+      return errorResponse(500, "misconfigured", "oidc client secret unavailable");
+    }
+  }
 
   const tokenRes = await fetch(`${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`, {
     method: "POST",
