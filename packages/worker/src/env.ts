@@ -10,6 +10,7 @@ export interface Env {
   DB: D1Database;
   HOT: KVNamespace;
   HUB: DurableObjectNamespace;
+  RL: DurableObjectNamespace;
 
   // platform-wide secrets / vars (optional so tests can omit them)
   KEY_HASH_PEPPER?: string;

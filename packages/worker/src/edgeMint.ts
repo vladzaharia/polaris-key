@@ -68,6 +68,20 @@ export async function getEdgeMintConfig(db: Db, product: string, id: string): Pr
   return db.first<EdgeMintRow>("SELECT * FROM edge_mint_config WHERE product = ? AND id = ?", product, id);
 }
 
+/**
+ * Strip the server-time claims (`iat`/`exp`/`nbf`) from a parsed template so a recipe can
+ * never override the values the worker stamps below. We deliberately KEEP `iss`/`aud`:
+ * Apple MusicKit's recipe legitimately sets `iss` (the team id) via the template, and the
+ * `aud`/`iss` trusted-column design lands in a later phase.
+ *
+ * TODO(P4.5): move `iss`/`aud` out of the free-form template into trusted recipe columns
+ * so they too become server-controlled rather than template-supplied.
+ */
+function sanitizeTemplate(t: Record<string, unknown>): Record<string, unknown> {
+  const { iat: _iat, exp: _exp, nbf: _nbf, ...rest } = t;
+  return rest;
+}
+
 /** POST/GET /<product>/mint/<id>/token — mint an edge token for the recipe. */
 export async function handleMintToken(
   req: Request,
@@ -95,8 +109,9 @@ export async function handleMintToken(
   const template = cfg.claims_template_json
     ? (JSON.parse(cfg.claims_template_json) as Record<string, unknown>)
     : {};
-  // Reserved claims are server-set and not overridable from the template.
-  const claims: Record<string, unknown> = { ...template, iat: now, exp: now + cfg.ttl_seconds };
+  // Reserved claims are server-set and not overridable from the template: sanitize first
+  // so any template-supplied iat/exp/nbf is dropped before the server values are stamped.
+  const claims: Record<string, unknown> = { ...sanitizeTemplate(template), iat: now, exp: now + cfg.ttl_seconds };
   const minted = await signEs256(claims, pem, cfg.kid ?? undefined);
   return new Response(JSON.stringify({ token: minted, expiresAt: claims.exp }), {
     status: 200,

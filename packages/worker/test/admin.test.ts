@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, mkReq as mkLicReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/admin/index.js";
-import { ADMIN_COOKIE, CSRF_HEADER, issueSession, type SessionIdentity } from "../src/admin/session.js";
+import { handleAdminLogin } from "../src/admin/auth.js";
+import { ADMIN_COOKIE, CSRF_HEADER, issueSession, verifySession, type SessionIdentity } from "../src/admin/session.js";
 import { listAudit } from "../src/repo.js";
+import { loadProduct } from "../src/product.js";
+import { handleEnroll } from "../src/licensing.js";
+import { getTokenRecord } from "../src/kv.js";
+import { hashKey } from "../src/crypto.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -207,6 +212,63 @@ describe("admin api", () => {
     expect(deniedThere.status).toBe(403);
   });
 
+  it("disabling a license purges its devices' hot-path bearer tokens immediately", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = adminEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const { licenseId, key } = await seedLicenseWithKey(db, "djdl");
+
+    // Enroll a device so a token record lands in KV.
+    const enrollRes = await handleEnroll(
+      mkLicReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
+      env, db, product, NOW,
+    );
+    const { token } = (await enrollRes.json()) as { token: string };
+    const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+    expect(await getTokenRecord(env, "djdl", tokenHash)).not.toBeNull();
+
+    // Disable the license via the admin API.
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+    });
+    const disabled = await dispatch(
+      mkReq("POST", `/api/products/djdl/licenses/${licenseId}/disable`, { cookie, csrf }),
+      env, db, `/api/products/djdl/licenses/${licenseId}/disable`,
+    );
+    expect(disabled.status).toBe(200);
+
+    // The bearer token no longer authenticates — its KV record is gone.
+    expect(await getTokenRecord(env, "djdl", tokenHash)).toBeNull();
+  });
+
+  it("audits an authenticated cross-product access denial (403 + access.denied row)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl", "acme"]);
+    await seedProduct(db, "djdl");
+    await seedProduct(db, "acme");
+    await db.run("UPDATE products SET admin_group = ? WHERE slug = ?", DJDL_ADMIN_GROUP, "djdl");
+    await db.run("UPDATE products SET admin_group = ? WHERE slug = ?", "acme-admins", "acme");
+
+    // A djdl-only admin (NOT platform) reaches for product acme.
+    const { cookie } = await sessionCookie(env, {
+      sub: "u3", name: "Cy", email: "c@x.io", groups: [DJDL_ADMIN_GROUP],
+    });
+    const denied = await dispatch(
+      mkReq("GET", "/api/products/acme/licenses", { cookie }),
+      env, db, "/api/products/acme/licenses",
+    );
+    expect(denied.status).toBe(403);
+
+    // An access.denied audit row, attributed to the verified actor, lands on the target product.
+    const rows = await listAudit(db, "acme", {});
+    const row = rows.find((r) => r.action === "access.denied");
+    expect(row).toBeDefined();
+    expect(row?.actor_sub).toBe("u3");
+    expect(row?.target_id).toBe("acme");
+  });
+
   it("writes an audit row on every mutation", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
@@ -223,5 +285,42 @@ describe("admin api", () => {
     expect(rows[0]?.action).toBe("license.create");
     // Actor is the verified session subject, never a request field.
     expect(rows[0]?.actor_sub).toBe("u1");
+  });
+
+  it("fails closed: with NO ADMIN_SESSION_SECRET, issuing/verifying a session throws (D1)", async () => {
+    const env = adminEnv(new KvMock(), []);
+    // Remove the secret — the worker must NOT fall back to a guessable signing key.
+    delete (env as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
+    await expect(
+      issueSession(env, { sub: "u1", name: "Ada", email: "a@x.io", groups: [] }, NOW),
+    ).rejects.toThrow("ADMIN_SESSION_SECRET is required");
+    // Verification of any token must also throw (so no request can authenticate).
+    await expect(verifySession(env, "forged.token", NOW)).rejects.toThrow(
+      "ADMIN_SESSION_SECRET is required",
+    );
+  });
+
+  it("rate-limits repeated admin logins → eventually 429 (D5)", async () => {
+    const env = adminEnv(new KvMock(), []);
+    // Configure the IdP so login would otherwise 302; the limiter must bite first.
+    env.ADMIN_OIDC_ISSUER = "https://id.example";
+    env.ADMIN_OIDC_CLIENT_ID = "admin-client";
+    const ip = "203.0.113.7";
+    const req = () =>
+      new Request("https://key.plrs.im/admin/login", {
+        headers: { "cf-connecting-ip": ip },
+      }) as unknown as Request;
+
+    // Limit is 20/60s → the first 20 succeed (302), the 21st is throttled (429).
+    let throttled = false;
+    for (let i = 0; i < 25; i++) {
+      const res = await handleAdminLogin(req(), env);
+      if (res.status === 429) {
+        throttled = true;
+        break;
+      }
+      expect(res.status).toBe(302);
+    }
+    expect(throttled).toBe(true);
   });
 });

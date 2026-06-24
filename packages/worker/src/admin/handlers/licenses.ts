@@ -8,7 +8,7 @@ import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import { hashKey, mintLicenseKey, randomId } from "../../crypto.js";
-import { putKeyRecord } from "../../kv.js";
+import { deleteTokenRecord, putKeyRecord } from "../../kv.js";
 import {
   getLicense,
   insertLicense,
@@ -145,6 +145,14 @@ export async function handleLicenses(
     if (req.method !== "POST") return err(405, ErrorCode.BadRequest, "method not allowed");
     const status = sub === "disable" ? "disabled" : "active";
     await setLicenseStatus(db, slug, id, status, session.sub, now);
+    if (sub === "disable") {
+      // Purge hot-path bearer tokens immediately so disabled credentials stop authenticating
+      // right away, instead of waiting for the next licenseUsable() check on a cached token.
+      const machines = await listMachinesByLicense(db, slug, id);
+      for (const m of machines) {
+        if (m.token_hash) await deleteTokenRecord(env, slug, m.token_hash);
+      }
+    }
     await audit(db, slug, session, now, `license.${sub}`, { kind: "license", id }, `${sub === "disable" ? "Disabled" : "Enabled"} license ${id}`);
     return adminJson({ ok: true, id, status });
   }

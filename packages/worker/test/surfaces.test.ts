@@ -62,6 +62,43 @@ describe("worker surfaces", () => {
     expect(payload.exp).toBe(NOW + 3600);
   });
 
+  it("edge-mint server-set iat/exp are not overridable from the template", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = makeEnv(kv, ["djdl"]);
+    env["EDGE_MINT__DJDL__APPLEMUSIC"] = ES_PEM;
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    const enrollRes = await handleEnroll(
+      mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
+      env, db, product, NOW,
+    );
+    const { token } = (await enrollRes.json()) as { token: string };
+
+    // A hostile template tries to pin iat/exp to attacker-chosen far-future values.
+    await db.run(
+      "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,auth_page_template) VALUES (?,?,?,?,?,?,?,?)",
+      "djdl", "applemusic", "ES256", "EDGE_MINT__DJDL__APPLEMUSIC", "KID123",
+      JSON.stringify({ iss: "TEAMID123", iat: 1, exp: 9_999_999_999, nbf: 2 }), 3600, null,
+    );
+
+    const res = await handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      env, db, product, "applemusic", NOW,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { token: string; expiresAt: number };
+    const payload = jwtPart(body.token.split(".")[1] as string);
+    // Server values win regardless of the template; nbf is dropped entirely.
+    expect(payload.iat).toBe(NOW);
+    expect(payload.exp).toBe(NOW + 3600);
+    expect(payload.nbf).toBeUndefined();
+    expect(body.expiresAt).toBe(NOW + 3600);
+    // A legitimate non-reserved claim (iss) still flows through.
+    expect(payload.iss).toBe("TEAMID123");
+  });
+
   it("edge-mint rejects an unauthenticated caller", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);

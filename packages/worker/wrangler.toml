@@ -9,9 +9,17 @@ compatibility_flags = ["nodejs_compat"]
 name = "HUB"
 class_name = "HubDO"
 
+[[durable_objects.bindings]]
+name = "RL"
+class_name = "RateLimitDO"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["HubDO"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["RateLimitDO"]
 
 # ---------------------------------------------------------------------------
 # Per-environment bindings. The D1 database and KV namespace are created once,

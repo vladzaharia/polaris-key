@@ -11,7 +11,8 @@ import { handleConfig } from "../src/licensing.js";
 async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
   await db.run(
     "INSERT INTO oidc_config (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json) VALUES (?,?,?,?,?,?)",
-    "djdl", "https://id.example", "client-djdl", null, null,
+    "djdl", "https://id.example", "client-djdl", null,
+    JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
     JSON.stringify({ family: { role: "user", tier: "pro" }, admin: { role: "admin" } }),
   );
   await db.run(

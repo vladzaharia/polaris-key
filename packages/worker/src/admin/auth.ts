@@ -17,6 +17,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { listProducts } from "../repo.js";
+import { clientIp, rateLimitOk } from "../rateLimit.js";
 import { hasAnyAdminGrant } from "./authz.js";
 import { buildSessionCookie, issueSession, type SessionIdentity } from "./session.js";
 
@@ -113,7 +114,9 @@ export const joseIdTokenVerifier: IdTokenVerifier = {
         algorithms: ["RS256", "ES256", "EdDSA"],
       });
       const claims = verified.payload as Record<string, unknown>;
-      if (flow.nonce && claims.nonce !== flow.nonce) return null;
+      // Reject unconditionally on a missing or mismatched nonce — a token with no nonce
+      // must never satisfy the binding to this flow (replay / token-injection defense).
+      if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce) return null;
       return mapClaims(claims);
     } catch {
       return null;
@@ -131,6 +134,13 @@ function htmlError(status: number, message: string): Response {
 
 /** GET /admin/login — start PKCE + redirect to the IdP authorize endpoint. */
 export async function handleAdminLogin(req: Request, env: Env): Promise<Response> {
+  const ok = await rateLimitOk(
+    env,
+    "_admin",
+    { bucket: "adminLogin", id: clientIp(req), limit: 20, windowSec: 60 },
+    Math.floor(Date.now() / 1000),
+  );
+  if (!ok) return htmlError(429, "Too many sign-in attempts. Please wait and try again.");
   const issuer = adminIssuer(env);
   const clientId = adminClientId(env);
   if (!issuer || !clientId) return htmlError(500, "Admin sign-in is not configured.");
@@ -163,6 +173,13 @@ export async function handleAdminCallback(
   now: number,
   verifier: IdTokenVerifier = joseIdTokenVerifier,
 ): Promise<Response> {
+  const ok = await rateLimitOk(
+    env,
+    "_admin",
+    { bucket: "adminCallback", id: clientIp(req), limit: 20, windowSec: 60 },
+    Math.floor(Date.now() / 1000),
+  );
+  if (!ok) return htmlError(429, "Too many sign-in attempts. Please wait and try again.");
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");

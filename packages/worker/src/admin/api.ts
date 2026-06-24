@@ -26,6 +26,7 @@ import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { getProduct } from "../repo.js";
 import { canAdminProduct } from "./authz.js";
+import { audit } from "./audit.js";
 import {
   buildClearCookie,
   CSRF_HEADER,
@@ -53,7 +54,13 @@ async function handleProductScoped(
 ): Promise<Response> {
   const product = await getProduct(db, slug);
   if (!product) return notFound();
-  if (!canAdminProduct(env, session, product)) return forbidden("not an admin of this product");
+  if (!canAdminProduct(env, session, product)) {
+    // Authenticated-but-unauthorized cross-product access is low-volume + high-signal, so we
+    // audit it (attributed to the verified actor). NOTE: we intentionally do NOT audit the
+    // unauthenticated credential-path 401s — that would be a D1-write DoS amplifier.
+    await audit(db, slug, session, now, "access.denied", { kind: "product", id: slug }, `Denied admin access to product ${slug}`);
+    return forbidden("not an admin of this product");
+  }
 
   const [resource, id, sub, subId, action] = rest;
 

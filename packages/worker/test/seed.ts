@@ -5,6 +5,7 @@ import type { Env } from "../src/env.js";
 import { insertKey, insertLicense, insertProduct, insertSchema } from "../src/repo.js";
 import { hashKey, mintLicenseKey } from "../src/crypto.js";
 import { KvMock, asKv } from "./kvMock.js";
+import { makeRlNamespace } from "./rlMock.js";
 
 // The committed Polaris Key test signing key (pkey-test-prod-2026) from the conformance corpus.
 export const TEST_KID = "pkey-test-prod-2026";
@@ -22,6 +23,7 @@ export function makeEnv(kv: KvMock, slugs: string[]): Env {
     HOT: asKv(kv),
     DB: undefined,
     HUB: undefined,
+    RL: makeRlNamespace(),
   };
   for (const slug of slugs) env[secretName(slug)] = TEST_PEM;
   return env as Env;
