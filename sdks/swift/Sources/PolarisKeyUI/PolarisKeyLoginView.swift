@@ -98,16 +98,15 @@ public struct PolarisKeyLoginView<Content: View>: View {
                 graceScreen
             case .needsEnroll:
                 enrollScreen
-            case .revoked:
-                messageScreen(
-                    title: theme.copy.revokedTitle, subtitle: theme.copy.revokedSubtitle,
-                    symbol: "xmark.seal.fill")
-            case .expired:
-                messageScreen(
-                    title: theme.copy.expiredTitle, subtitle: theme.copy.expiredSubtitle,
-                    symbol: "clock.badge.exclamationmark")
-            case .versionTooOld, .versionTooNew, .channelNotEntitled:
-                versionBlockScreen
+            case .revoked, .expired, .versionTooOld, .versionTooNew, .channelNotEntitled:
+                // One shared mapping for every terminal "message" surface — see
+                // `PolarisKeyCopy.message(for:allowedRange:)`.
+                if let copy = theme.copy.message(
+                    for: model.state.status, allowedRange: model.state.allowedRange)
+                {
+                    messageScreen(
+                        title: copy.title, subtitle: copy.subtitle, symbol: copy.symbol)
+                }
             }
         }
         .task { await model.reload() }
@@ -117,10 +116,16 @@ public struct PolarisKeyLoginView<Content: View>: View {
     private var enrollScreen: some View {
         cardShell {
             theme.logo()
-            Text(theme.copy.welcomeTitle).font(.title2).bold()
+                .accessibilityHidden(true)
+            Text(theme.copy.welcomeTitle)
+                .font(.title2).bold()
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
             Text(theme.copy.welcomeSubtitle)
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
 
             Button(action: onSignIn) {
                 Text(theme.copy.signInButton)
@@ -129,8 +134,16 @@ public struct PolarisKeyLoginView<Content: View>: View {
             .buttonStyle(.borderedProminent)
             .tint(theme.accent)
             .disabled(model.isWorking)
+            .accessibilityLabel(theme.copy.signInButton)
+            .accessibilityHint("Opens single sign-on to license \(theme.copy.productName).")
 
-            HStack { divider; Text("or").font(.caption).foregroundStyle(.secondary); divider }
+            HStack {
+                divider
+                Text(theme.copy.orDividerLabel).font(.caption).foregroundStyle(.secondary)
+                divider
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(theme.copy.orDividerLabel)
 
             VStack(spacing: 8) {
                 #if os(iOS)
@@ -138,10 +151,14 @@ public struct PolarisKeyLoginView<Content: View>: View {
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+                    .accessibilityLabel(theme.copy.licenseKeyPlaceholder)
+                    .accessibilityHint("Enter a license key to activate without signing in.")
                 #else
                 TextField(theme.copy.licenseKeyPlaceholder, text: $licenseKey)
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
+                    .accessibilityLabel(theme.copy.licenseKeyPlaceholder)
+                    .accessibilityHint("Enter a license key to activate without signing in.")
                 #endif
                 Button(theme.copy.activateButton) {
                     let key = licenseKey
@@ -150,13 +167,21 @@ public struct PolarisKeyLoginView<Content: View>: View {
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.bordered)
                 .disabled(model.isWorking || licenseKey.isEmpty)
+                .accessibilityLabel(theme.copy.activateButton)
+                .accessibilityHint("Activates the license key you entered above.")
             }
 
             if let err = model.lastError {
-                Text(err).font(.caption).foregroundStyle(.red)
+                Text(err)
+                    .font(.caption).foregroundStyle(.red)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isStaticText)
             }
-            if model.isWorking { ProgressView() }
+            if model.isWorking {
+                ProgressView()
+                    .accessibilityLabel("Working")
+            }
         }
     }
 
@@ -170,32 +195,33 @@ public struct PolarisKeyLoginView<Content: View>: View {
         }
     }
 
-    private var versionBlockScreen: some View {
-        let title: String
-        switch model.state.status {
-        case .versionTooNew: title = theme.copy.versionTooNewTitle
-        case .channelNotEntitled: title = theme.copy.channelNotEntitledTitle
-        default: title = theme.copy.versionTooOldTitle
-        }
-        var subtitle = theme.copy.versionBlockSubtitle
-        if let range = model.state.allowedRange {
-            let parts = [range.min.map { "min \($0)" }, range.max.map { "max \($0)" }]
-                .compactMap { $0 }
-            if !parts.isEmpty { subtitle += " (allowed: \(parts.joined(separator: ", ")))" }
-        }
-        return messageScreen(title: title, subtitle: subtitle, symbol: "exclamationmark.triangle.fill")
-    }
-
     // ── shared building blocks ──
     private func messageScreen(title: String, subtitle: String, symbol: String) -> some View {
         cardShell {
-            Image(systemName: symbol).font(.system(size: 40)).foregroundStyle(theme.accent)
-            Text(title).font(.title2).bold()
-            Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("Retry") { Task { await model.refresh() } }
+            // Group the glyph + title + body so VoiceOver reads them as one status card
+            // ("<title>. <subtitle>.") instead of three disjoint swipes; the glyph carries
+            // no independent meaning, so it folds into the combined label.
+            VStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 40)).foregroundStyle(theme.accent)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.title2).bold()
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                Text(subtitle)
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+
+            Button(theme.copy.retryButton) { Task { await model.refresh() } }
                 .buttonStyle(.bordered)
                 .disabled(model.isWorking)
+                .accessibilityLabel(theme.copy.retryButton)
+                .accessibilityHint("Re-checks your license with the server.")
         }
     }
 
@@ -216,18 +242,30 @@ public struct PolarisKeyLoginView<Content: View>: View {
     private func banner(title: String, subtitle: String, symbol: String, tint: Color) -> some View {
         HStack(spacing: 10) {
             Image(systemName: symbol).foregroundStyle(tint)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline).bold()
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                Text(title)
+                    .font(.subheadline).bold()
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(subtitle)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            // Combine the title + body into a single announced label; flag it as an alert so
+            // VoiceOver proactively reads the grace state when the banner appears.
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isStaticText)
             Spacer()
-            Button("Reconnect") { Task { await model.refresh() } }
+            Button(theme.copy.reconnectButton) { Task { await model.refresh() } }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .disabled(model.isWorking)
+                .accessibilityLabel(theme.copy.reconnectButton)
+                .accessibilityHint("Re-checks your license to leave the offline grace period.")
         }
         .padding(10)
         .background(tint.opacity(0.12))
+        .accessibilityElement(children: .contain)
     }
 
     private var divider: some View { Rectangle().fill(.quaternary).frame(height: 1) }

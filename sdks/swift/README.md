@@ -63,6 +63,25 @@ The client mirrors the Node SDK's surface: `start()`/`activate(key:)`/`deactivat
 `refresh()`/`status()`/`isLicensed()`/`config(_:default:)`/`secret(_:)`/`isEntitled(_:)`/
 `entitlements()`/`profile()`.
 
+### Layered config
+
+`config(_:default:)` resolves a value through the **same precedence** as every Polaris Key
+SDK; `configSource(_:)` returns which layer won:
+
+```
+enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default  >  fallback
+```
+
+`enforced`/`hidden` remote values are **locked to the server** — `localOverrides` and env
+vars are ignored for those keys; `hidden` keys are additionally withheld from
+`listUserConfig()` (but still applied by `config(_:default:)`). Otherwise the order is
+`localOverrides[key]` → env → remote value → your `default`.
+
+The env var for a key is `envPrefix + key` with dots replaced by `__` (default prefix
+`PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The raw string is
+JSON-decoded when it parses (`"4"` → int, `"true"` → bool, `"[1,2]"` → array); otherwise it
+is taken as a plain string. Supply `localOverrides` / `envPrefix` via the client options.
+
 ### Stores
 
 - `KeychainStore` (default) — token in the OS keychain (service `pkey:<product>`), device

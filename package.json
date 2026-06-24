@@ -9,6 +9,7 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:all": "turbo run test && (cd sdks/python && .venv/bin/python -m pytest -q) && (cd sdks/swift && swift test)",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "dev": "turbo run dev --no-cache --continue",

@@ -18,7 +18,7 @@ pip install polaris-key
 pip install "polaris-key[keyring,click,typer]"
 ```
 
-Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`, `platformdirs`.
+Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`.
 
 ## Quickstart
 
@@ -65,10 +65,44 @@ transport.
 `version-too-old`, `version-too-new`, `channel-not-entitled`. `is_licensed()` is true
 for `ok`/`grace`.
 
+## Layered config
+
+`get_config(key, fallback)` resolves a value through the **same precedence** as every
+Polaris Key SDK; `get_config_source(key)` returns which layer won:
+
+```
+enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
+```
+
+`enforced`/`hidden` remote values are **locked to the server** — `local_overrides` and env
+vars are ignored for those keys; `hidden` keys are additionally withheld from
+`list_user_config()` (but still applied by `get_config`). A `default` (or absent) key falls
+through local → env → remote value → your `fallback`.
+
+```python
+client = PolarisKeyClient.create(
+    product_slug="djdl", version="1.0.0", trust=TRUST,
+    local_overrides={"run.concurrency": 6},   # beats a `default`, never an `enforced`/`hidden`
+    env_prefix="PKEY_CONFIG_",                  # the default
+)
+client.get_config_source("run.concurrency")     # "local" | "env" | "remote-default" | ...
+```
+
+### The `PKEY_CONFIG_*` env convention
+
+An override env var is `env_prefix + key.replace(".", "__")` (dots → double underscores):
+`run.concurrency` → `PKEY_CONFIG_run__concurrency`, `quality.floor` →
+`PKEY_CONFIG_quality__floor`. The value is JSON-parsed when it parses (`"4"` → int, `"true"`
+→ bool, `"[…]"` → list); otherwise it is taken as the raw string.
+
 ## CLI
 
-A framework-agnostic command core powers a dependency-free `argparse` front end (plus
-optional `click` / `typer` adapters under the matching extras):
+A framework-agnostic command **core** (`polaris_key.cli.core` — `activate` / `deactivate` /
+`status`) powers a dependency-free **argparse** front end (`polaris_key.cli.argparse_cli`, the
+default), plus optional **click** (`polaris_key.cli.click_cli`) and **typer**
+(`polaris_key.cli.typer_cli`) adapters under the matching extras. All three wrap the same
+core, so they never diverge. Trust keys are passed as repeatable `--trust kid=rawBase64url`
+pairs so the CLI stays product-agnostic:
 
 ```sh
 polaris-key activate PKEY-XXXX-XXXX --product djdl --version 1.0.0 \
@@ -77,6 +111,10 @@ polaris-key status --product djdl --trust pkey-prod-2026=...
 polaris-key deactivate --product djdl --trust pkey-prod-2026=...
 # equivalently: python -m polaris_key ...
 ```
+
+To mount the commands onto your own program, import the adapter you use: the click adapter
+exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter exposes an
+`app` (`polaris_key.cli.typer_cli.app`); both are thin wrappers over `core`.
 
 ## Low-level verification
 

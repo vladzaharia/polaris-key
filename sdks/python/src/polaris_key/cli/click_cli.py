@@ -1,27 +1,17 @@
-"""Optional ``click`` adapter over the shared command core.
+"""Optional ``click`` adapter + injectable hook over the shared command core.
 
 Importing this module requires the ``click`` extra. The commands are thin wrappers over
-:mod:`polaris_key.cli.core`, so they never diverge from the argparse front end.
+:mod:`polaris_key.cli.core`, so they never diverge from the argparse front end. A consumer
+attaches the group to their own app via ``app.add_command(polaris_click_group(...))``.
 """
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Optional
 
 import click
 
 from . import core
-
-
-def _parse_trust(pairs: List[str]) -> Dict[str, str]:
-    trust: Dict[str, str] = {}
-    for p in pairs:
-        if "=" not in p:
-            raise click.BadParameter(f"--trust expects kid=rawBase64url, got: {p}")
-        kid, raw = p.split("=", 1)
-        trust[kid] = raw
-    return trust
-
 
 _common = [
     click.option("--product", required=True, help="Product slug (the doc audience)."),
@@ -40,64 +30,71 @@ def _with_common(f):
     return f
 
 
-@click.group()
-def cli() -> None:
-    """Polaris Key client."""
-
-
-@cli.command()
-@_with_common
-@click.argument("key")
-def activate(product, version, base_url, config_dir, trust, key):  # noqa: ANN001
-    client = core.build_client(
+def _options(product, version, base_url, config_dir, trust) -> core.ClientOptions:
+    try:
+        parsed = core.parse_trust(trust)
+    except ValueError as e:
+        raise click.BadParameter(str(e))
+    return core.ClientOptions(
         product=product,
         version=version,
-        trust=_parse_trust(list(trust)),
+        trust=parsed,
         base_url=base_url,
         config_dir=config_dir,
     )
-    try:
-        result = core.activate(client, key)
-    finally:
-        client.close()
-    result.emit()
-    raise SystemExit(result.code)
 
 
-@cli.command()
-@_with_common
-def deactivate(product, version, base_url, config_dir, trust):  # noqa: ANN001
-    client = core.build_client(
-        product=product,
-        version=version,
-        trust=_parse_trust(list(trust)),
-        base_url=base_url,
-        config_dir=config_dir,
-    )
-    try:
-        result = core.deactivate(client)
-    finally:
-        client.close()
-    result.emit()
-    raise SystemExit(result.code)
+def polaris_click_group(
+    client_factory: Optional[core.ClientFactory] = None,
+    name: str = "polaris-key",
+) -> click.Group:
+    """Return a ``click.Group`` exposing the Polaris Key commands.
+
+    Mount it with ``app.add_command(polaris_click_group(...))``. ``client_factory``
+    (default: build from the parsed options) lets a consumer pin trust keys / base URL.
+    """
+    factory = client_factory or core.default_client_factory
+
+    @click.group(name=name, help="Polaris Key client.")
+    def group() -> None:
+        pass
+
+    def _emit(result: core.CommandResult) -> None:
+        result.emit()
+        raise SystemExit(result.code)
+
+    @group.command()
+    @_with_common
+    @click.argument("key")
+    def activate(product, version, base_url, config_dir, trust, key):  # noqa: ANN001
+        opts = _options(product, version, base_url, config_dir, trust)
+        _emit(core.run_command(factory, opts, lambda c: core.activate(c, key)))
+
+    @group.command()
+    @_with_common
+    def deactivate(product, version, base_url, config_dir, trust):  # noqa: ANN001
+        opts = _options(product, version, base_url, config_dir, trust)
+        _emit(core.run_command(factory, opts, core.deactivate))
+
+    @group.command()
+    @_with_common
+    def status(product, version, base_url, config_dir, trust):  # noqa: ANN001
+        opts = _options(product, version, base_url, config_dir, trust)
+        _emit(core.run_command(factory, opts, core.status))
+
+    @group.command()
+    @_with_common
+    @click.argument("key")
+    @click.option("--fallback", default=None, help="Value if the key is unset.")
+    def config(product, version, base_url, config_dir, trust, key, fallback):  # noqa: ANN001
+        opts = _options(product, version, base_url, config_dir, trust)
+        _emit(core.run_command(factory, opts, lambda c: core.config(c, key, fallback)))
+
+    return group
 
 
-@cli.command()
-@_with_common
-def status(product, version, base_url, config_dir, trust):  # noqa: ANN001
-    client = core.build_client(
-        product=product,
-        version=version,
-        trust=_parse_trust(list(trust)),
-        base_url=base_url,
-        config_dir=config_dir,
-    )
-    try:
-        result = core.status(client)
-    finally:
-        client.close()
-    result.emit()
-    raise SystemExit(result.code)
+# Standalone entry point (``python -m polaris_key.cli.click_cli``).
+cli = polaris_click_group(name="cli")
 
 
 if __name__ == "__main__":

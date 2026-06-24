@@ -169,7 +169,9 @@ describe("LicenseGate — error screen", () => {
       </PolarisKeyProvider>,
     );
     await waitFor(() => expect(container.querySelector('[data-polaris-gate="error"]')).toBeTruthy());
-    expect(container.textContent).toContain("ipc broke");
+    // First-load failures surface as a `network`-coded PolarisError → the gate shows the
+    // clearer, remediation-oriented copy (not the raw IPC message).
+    expect(container.textContent).toContain("couldn't reach the licensing service");
     adapter.dispose();
   });
 });

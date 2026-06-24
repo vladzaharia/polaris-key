@@ -23,8 +23,10 @@ export {
 // ── Components ───────────────────────────────────────────────────────────────
 export { LicenseGate, type LicenseGateProps, type LicenseGateSlots } from "./components/LicenseGate.js";
 export { PolarisLogin, type PolarisLoginProps } from "./components/PolarisLogin.js";
+export { PolarisLogout, type PolarisLogoutProps } from "./components/PolarisLogout.js";
 export {
   defaultTheme,
+  highContrastTheme,
   mergeTheme,
   themeVars,
   type PolarisTheme,

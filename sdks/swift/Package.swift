@@ -25,7 +25,7 @@ let package = Package(
         ),
         .testTarget(
             name: "PolarisKeyTests",
-            dependencies: ["PolarisKey"],
+            dependencies: ["PolarisKey", "PolarisKeyUI"],
             // Bundle the SAME cross-language corpus so the Swift verifier is held to
             // byte-for-byte conformance with the Node/Python/React runners.
             resources: [.copy("Resources/cases.json")],
