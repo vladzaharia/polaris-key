@@ -26,9 +26,13 @@ public struct VerifiedJws: Sendable, Equatable {
 }
 
 public enum JWSVerifier {
+    /// P1.7 hard cap: reject any payload whose decoded byte length exceeds this before JSON
+    /// decoding, bounding the parser's work on adversarial input.
+    public static let maxPayloadBytes = 65_536
+
     /// Verify a compact JWS against a trust set. Returns the decoded `kid` + payload, or
     /// `nil` on ANY failure (malformed, unknown `kid`, wrong `alg`, non-32-byte key, bad
-    /// signature, undecodable payload). Never throws.
+    /// signature, oversized/undecodable payload). Never throws.
     public static func verify(_ jws: String, trust: TrustSet) -> VerifiedJws? {
         // 1. Structure: exactly three "."-separated segments.
         let parts = jws.split(separator: ".", omittingEmptySubsequences: false)
@@ -70,7 +74,11 @@ public enum JWSVerifier {
         let signingInput = Data((encHeader + "." + encPayload).utf8)
         guard publicKey.isValidSignature(sig, for: signingInput) else { return nil }
 
-        // 6. Only after a valid signature, decode the payload into the typed doc.
+        // 6. P1.7 size cap: reject an oversized payload BEFORE handing it to the JSON
+        //    decoder, so a giant blob can't drive unbounded parse work.
+        guard payloadData.count <= maxPayloadBytes else { return nil }
+
+        // 7. Only after a valid signature, decode the payload into the typed doc.
         guard let doc = try? JSONDecoder().decode(ManagedConfigDoc.self, from: payloadData)
         else { return nil }
 

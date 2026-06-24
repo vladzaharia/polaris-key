@@ -44,6 +44,10 @@ __all__ = [
 # A trust set: kid -> raw 32-byte Ed25519 public key, base64url-encoded.
 TrustSet = Dict[str, str]
 
+# Hard cap on the decoded JWS payload size (bytes) before JSON parsing — a cheap
+# denial-of-service guard against a hostile, oversized document.
+MAX_PAYLOAD_BYTES = 65536
+
 
 @dataclass(frozen=True)
 class VerifiedJws:
@@ -77,8 +81,18 @@ def verify_jws(jws: str, trusted_keys: TrustSet) -> Optional[VerifiedJws]:
     enc_header, enc_payload, enc_sig = parts
 
     try:
-        header = json.loads(b64url_decode(enc_header).decode("utf-8"))
-        payload = json.loads(b64url_decode(enc_payload).decode("utf-8"))
+        header_bytes = b64url_decode(enc_header)
+        payload_bytes = b64url_decode(enc_payload)
+    except Exception:
+        return None
+
+    # Reject an oversized payload BEFORE json.loads to bound the parse cost.
+    if len(payload_bytes) > MAX_PAYLOAD_BYTES:
+        return None
+
+    try:
+        header = json.loads(header_bytes.decode("utf-8"))
+        payload = json.loads(payload_bytes.decode("utf-8"))
     except Exception:
         return None
 

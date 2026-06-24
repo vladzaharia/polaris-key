@@ -1,4 +1,10 @@
-export { PolarisKeyClient, type PolarisKeyOptions, type RefreshResult } from "./client.js";
+export {
+  PolarisKeyClient,
+  type PolarisKeyOptions,
+  type RefreshResult,
+  type ConfigSource,
+  type UserConfigEntry,
+} from "./client.js";
 export { licenseState, isUsable, type LicenseState, type GateInput } from "./gate.js";
 export { verifyDoc, type VerifyOptions } from "./verify.js";
 export { fetchManagedConfig, type FetchResult, type FetchOptions } from "./fetch.js";

@@ -187,7 +187,7 @@ describe("licensing edge cases", () => {
   // ── machine-limit boundaries ─────────────────────────────────────────────
   it("allows enrollment up to exactly the limit, then blocks (count == limit)", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl", {
-      entitlements: { machineLimit: { state: "managed", value: 2 } },
+      entitlements: { machineLimit: { state: "enforced", value: 2, updatedAt: NOW } },
     });
     await enroll(env, db, product, key, "dev-1");
     await enroll(env, db, product, key, "dev-2");
@@ -203,7 +203,7 @@ describe("licensing edge cases", () => {
 
   it("treats a machineLimit of 0 as unlimited", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl", {
-      entitlements: { machineLimit: { state: "managed", value: 0 } },
+      entitlements: { machineLimit: { state: "enforced", value: 0, updatedAt: NOW } },
     });
     for (const d of ["a", "b", "c", "d", "e", "f"]) await enroll(env, db, product, key, d);
     // (default product machine limit is 5, but the entitlement override of 0 means unlimited)
@@ -215,7 +215,7 @@ describe("licensing edge cases", () => {
 
   it("re-authorizing a deauthorized device frees no extra slot but re-counts it", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl", {
-      entitlements: { machineLimit: { state: "managed", value: 1 } },
+      entitlements: { machineLimit: { state: "enforced", value: 1, updatedAt: NOW } },
     });
     const token = await enroll(env, db, product, key, "dev-1");
     await handleDeauthorize(mkReq("POST", { authorization: `Bearer ${token}` }), env, db, product);

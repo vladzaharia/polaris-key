@@ -12,7 +12,7 @@ const CATALOG: ProductCatalog = {
       description: "How many downloads run in parallel.",
       accessor: "run.concurrency",
       schema: { type: "integer", minimum: 1, maximum: 8 },
-      managementDefault: "unmanaged",
+      managementDefault: "default",
     },
     {
       key: "proxy.subscriptionUrl",

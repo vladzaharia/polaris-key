@@ -13,9 +13,9 @@ import { TEST_KID, TEST_PEM, TEST_PUB, NOW } from "./seed.js";
 
 const profile: DocProfile = { name: "Ada Lovelace", firstName: "Ada", email: "ada@x.io", enrolledAt: NOW };
 const payload: ManagedPayload = {
-  config: { "run.concurrency": { state: "managed", value: 4 } },
+  config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: NOW } },
   secrets: {},
-  entitlements: { polarisVpn: { state: "managed", value: true } },
+  entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: NOW } },
 };
 
 const input = (over: Partial<Parameters<typeof buildDoc>[0]> = {}) => ({
@@ -68,7 +68,7 @@ describe("computeETag", () => {
     const a = await computeETag(buildDoc(input()));
     const altered: ManagedPayload = {
       ...payload,
-      config: { "run.concurrency": { state: "managed", value: 8 } },
+      config: { "run.concurrency": { state: "enforced", value: 8, updatedAt: NOW } },
     };
     const b = await computeETag(buildDoc(input({ payload: altered })));
     expect(a).not.toBe(b);

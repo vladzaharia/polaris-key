@@ -10,18 +10,23 @@ import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
 /** Strip stored secret values out of a payload before it goes over the wire. */
 export function redactPayload(payload: ManagedPayload, catalog: Catalog | null): {
   config: Record<string, ManagedEntry>;
-  secrets: Record<string, { state: string; configured: boolean }>;
+  secrets: Record<string, { state: string; configured: boolean; updatedAt: number }>;
   entitlements: Record<string, ManagedEntry>;
 } {
-  const secrets: Record<string, { state: string; configured: boolean }> = {};
+  const secrets: Record<string, { state: string; configured: boolean; updatedAt: number }> = {};
   for (const [key, entry] of Object.entries(payload.secrets ?? {})) {
-    secrets[key] = { state: entry.state, configured: entry.value != null && entry.value !== "" };
+    secrets[key] = {
+      state: entry.state,
+      configured: entry.value != null && entry.value !== "",
+      updatedAt: entry.updatedAt,
+    };
   }
-  // A config key flagged `secret` in the catalog is also redacted.
+  // A config key flagged `secret` in the catalog is also redacted (value blanked, but its
+  // state + updatedAt are preserved so the admin UI can still show change metadata).
   const config: Record<string, ManagedEntry> = {};
   for (const [key, entry] of Object.entries(payload.config ?? {})) {
     const meta = catalog?.entryByKey(key);
-    config[key] = meta?.secret ? { state: entry.state, value: "" } : entry;
+    config[key] = meta?.secret ? { state: entry.state, value: "", updatedAt: entry.updatedAt } : entry;
   }
   return { config, secrets, entitlements: payload.entitlements ?? {} };
 }

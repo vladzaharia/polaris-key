@@ -3,7 +3,7 @@ import { verifyJws } from "@polaris-key/jws";
 import type { ManagedConfigDoc } from "@polaris-key/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, mkReq, NOW, seedProduct, TEST_KID, TEST_PUB } from "./seed.js";
+import { makeEnv, mkReq, NOW, seedProduct, DJDL_CATALOG, TEST_KID, TEST_PUB } from "./seed.js";
 import { loadProduct } from "../src/product.js";
 import { enrollFromIdentity, authorizeAndMint, type OidcIdentity } from "../src/oidc.js";
 import { handleConfig } from "../src/licensing.js";
@@ -62,7 +62,9 @@ describe("OIDC enrollment", () => {
   it("applies provisioning hooks (claim → entitlement + host-allowed secret) into the signed doc", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);
-    await seedProduct(db, "djdl");
+    // Seed the real catalog so handleConfig's defense-in-depth validation keeps the
+    // provisioned secret (proxy.subscriptionUrl) instead of pruning it as unknown.
+    await seedProduct(db, "djdl", { catalog: DJDL_CATALOG });
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
 

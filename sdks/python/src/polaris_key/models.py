@@ -47,7 +47,7 @@ HEADER_CHANNEL = "X-PKey-Channel"
 # A JSON-serialisable value — the type every managed entry carries.
 JSONValue = Any
 
-ManagementState = Literal["unmanaged", "managed", "hidden"]
+ManagementState = Literal["default", "enforced", "hidden"]
 LicenseStatus = Literal[
     "ok",
     "grace",
@@ -63,17 +63,32 @@ BlockReason = Literal["version-too-old", "version-too-new", "channel-not-entitle
 
 @dataclass(frozen=True)
 class ManagedEntry:
-    """A managed value plus its per-key management state."""
+    """A managed value plus its per-key management state.
+
+    ``state`` is one of ``default`` (advisory; a local override may win), ``enforced``
+    (the remote value is authoritative and cannot be overridden), or ``hidden`` (an
+    enforced value that is also withheld from user-facing config listings).
+    ``updated_at`` is epoch SECONDS; the wire key is camelCase ``updatedAt``.
+    """
 
     state: ManagementState
     value: JSONValue
+    updated_at: int = 0
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "ManagedEntry":
-        return ManagedEntry(state=d["state"], value=d.get("value"))
+        return ManagedEntry(
+            state=d["state"],
+            value=d.get("value"),
+            updated_at=d.get("updatedAt", 0),
+        )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"state": self.state, "value": self.value}
+        return {
+            "state": self.state,
+            "value": self.value,
+            "updatedAt": self.updated_at,
+        }
 
 
 @dataclass(frozen=True)

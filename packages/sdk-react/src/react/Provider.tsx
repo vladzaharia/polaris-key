@@ -5,6 +5,7 @@
 // disposed on unmount, so credential/session state is stable across renders.
 
 import { useEffect, useMemo, type ReactNode } from "react";
+import type { JSONValue } from "@polaris-key/protocol";
 import { browserAdapter } from "../browser/browserAdapter.js";
 import { desktopAdapter } from "../desktop/desktopAdapter.js";
 import { resolveBridge, type PolarisBridge } from "../desktop/bridge.js";
@@ -23,6 +24,9 @@ export interface PolarisKeyProviderProps {
   bridge?: PolarisBridge;
   /** Brand theme tokens/copy/logo. */
   theme?: PartialTheme;
+  /** Client-supplied local/user overrides for `default`-state config keys. `enforced`/`hidden`
+   *  keys are never overridable (server wins). Ignored when an `adapter` is injected. */
+  localOverrides?: Record<string, JSONValue>;
   /** Inject a pre-built adapter (tests) — bypasses mode resolution entirely. */
   adapter?: PolarisAdapter;
   /** Test seams forwarded to the constructed adapter. */
@@ -45,6 +49,7 @@ export function PolarisKeyProvider(props: PolarisKeyProviderProps): JSX.Element 
     mode = "auto",
     bridge,
     theme: themeProp,
+    localOverrides,
     adapter: injected,
     fetchImpl,
     navigate,
@@ -58,11 +63,11 @@ export function PolarisKeyProvider(props: PolarisKeyProviderProps): JSX.Element 
     if (injected) return injected;
     const resolved = resolveMode(mode, bridge);
     if (resolved === "desktop") {
-      return desktopAdapter({ bridge, now });
+      return desktopAdapter({ bridge, now, localOverrides });
     }
-    return browserAdapter({ productSlug, baseUrl, fetchImpl, navigate, now });
+    return browserAdapter({ productSlug, baseUrl, fetchImpl, navigate, now, localOverrides });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [injected, mode, bridge, productSlug, baseUrl, fetchImpl, navigate, now]);
+  }, [injected, mode, bridge, productSlug, baseUrl, fetchImpl, navigate, now, localOverrides]);
 
   // Dispose the adapter when it (or the provider) goes away.
   useEffect(() => () => adapter.dispose(), [adapter]);

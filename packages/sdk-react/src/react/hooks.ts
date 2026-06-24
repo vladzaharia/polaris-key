@@ -5,7 +5,14 @@
 
 import { useCallback, useContext, useMemo, useSyncExternalStore } from "react";
 import type { JSONValue, LicenseStatus } from "@polaris-key/protocol";
-import { isUsable, type LicenseState, type PolarisAdapter, type PolarisState } from "../core/index.js";
+import {
+  isUsable,
+  type ConfigSource,
+  type LicenseState,
+  type PolarisAdapter,
+  type PolarisState,
+  type UserConfigEntry,
+} from "../core/index.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 import type { PolarisTheme } from "../components/theme.js";
 
@@ -49,6 +56,10 @@ export interface UsePolarisKey {
   submitKey: (key: string) => Promise<void>;
   signOut: () => Promise<void>;
   getConfig: PolarisAdapter["getConfig"];
+  /** Config for a settings UI: every key EXCEPT `hidden`, each `{ key, value, enforced }`. */
+  listUserConfig: () => UserConfigEntry[];
+  /** The provenance of a key's effective value. */
+  getConfigSource: (key: string) => ConfigSource;
   getSecret: PolarisAdapter["getSecret"];
   isEntitled: (name: string) => boolean;
 }
@@ -71,6 +82,8 @@ export function usePolarisKey(): UsePolarisKey {
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
       getConfig: (key, fallback) => adapter.getConfig(key, fallback),
+      listUserConfig: () => adapter.listUserConfig(),
+      getConfigSource: (key) => adapter.getConfigSource(key),
       getSecret: (key) => adapter.getSecret(key),
       isEntitled: (name) => adapter.isEntitled(name),
     }),
@@ -90,16 +103,26 @@ export function useLicense(): { gate: LicenseState; status: LicenseStatus; usabl
   };
 }
 
-/** The delivered managed config map (key → value), plus a typed getter. */
+/** The delivered managed config — the v2 EFFECTIVE map (per-key precedence:
+ *  `enforced|hidden` > local override > remote-default > fallback) plus a typed getter, a
+ *  user-facing enumeration (excludes `hidden`), and a per-key provenance source. */
 export function useManagedConfig(): {
+  /** The effective config map (key → resolved value). */
   config: Record<string, JSONValue>;
+  /** Read one key's effective value with a typed fallback. */
   get: <T = JSONValue>(key: string, fallback: T) => T;
+  /** Config rows for a settings UI: every key EXCEPT `hidden`, each `{ key, value, enforced }`. */
+  listUserConfig: () => UserConfigEntry[];
+  /** Where a key's effective value came from (its provenance). */
+  getConfigSource: (key: string) => ConfigSource;
 } {
   const { adapter } = useCtx();
   const state = useAdapterState(adapter);
   return {
     config: state.config,
     get: (key, fallback) => adapter.getConfig(key, fallback),
+    listUserConfig: () => adapter.listUserConfig(),
+    getConfigSource: (key) => adapter.getConfigSource(key),
   };
 }
 

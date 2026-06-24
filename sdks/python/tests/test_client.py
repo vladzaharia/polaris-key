@@ -46,19 +46,37 @@ def _make_doc(device_id: str, *, issued: int = 1700000000) -> Dict[str, Any]:
             "enrolledAt": 1690000000,
         },
         "payload": {
-            "config": {"run.concurrency": {"state": "managed", "value": 4}},
+            "config": {
+                "run.concurrency": {
+                    "state": "enforced",
+                    "value": 4,
+                    "updatedAt": 1699990000,
+                },
+                "ui.theme": {
+                    "state": "default",
+                    "value": "light",
+                    "updatedAt": 1699990000,
+                },
+            },
             "secrets": {
                 "proxy.subscriptionUrl": {
                     "state": "hidden",
                     "value": "https://vpn.example.com/sub/abc",
+                    "updatedAt": 1699990000,
                 }
             },
-            "entitlements": {"polarisVpn": {"state": "managed", "value": True}},
+            "entitlements": {
+                "polarisVpn": {
+                    "state": "enforced",
+                    "value": True,
+                    "updatedAt": 1699990000,
+                }
+            },
         },
     }
 
 
-def _client(handler) -> PolarisKeyClient:
+def _client(handler, **kw) -> PolarisKeyClient:
     transport = httpx.MockTransport(handler)
     http = httpx.Client(transport=transport, base_url="")
     store = InMemoryStore(PRODUCT)
@@ -69,9 +87,88 @@ def _client(handler) -> PolarisKeyClient:
         base_url="https://key.example",
         store=store,
         client=http,
+        **kw,
     )
     c.init()
     return c
+
+
+def _ok_handler(request: httpx.Request) -> httpx.Response:
+    path = request.url.path
+    if path == f"/{PRODUCT}/enroll":
+        return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
+    if path == f"/{PRODUCT}/config":
+        device_id = request.headers["X-PKey-Device"]
+        jws = sign_jws(_make_doc(device_id), PRIVATE_PEM, KID)
+        return httpx.Response(200, text=jws, headers={"etag": "v1"})
+    if path == f"/{PRODUCT}/config/report":
+        return httpx.Response(200, json={"ok": True})
+    return httpx.Response(404)
+
+
+def test_enforced_remote_value_wins_over_local_and_env() -> None:
+    c = _client(
+        _ok_handler,
+        local_overrides={"run.concurrency": 99},
+        env={"PKEY_CONFIG_run__concurrency": "42"},
+    )
+    c.activate_with_key("my-license-key")
+    # enforced -> remote wins regardless of override/env.
+    assert c.get_config("run.concurrency") == 4
+    assert c.get_config_source("run.concurrency") == "enforced"
+    c.close()
+
+
+def test_default_state_local_override_then_env_then_remote() -> None:
+    # local override wins over env + remote-default.
+    c = _client(_ok_handler, local_overrides={"ui.theme": "solarized"})
+    c.activate_with_key("my-license-key")
+    assert c.get_config("ui.theme") == "solarized"
+    assert c.get_config_source("ui.theme") == "local"
+    c.close()
+
+    # env wins over remote-default; JSON-parsed when it parses.
+    c = _client(_ok_handler, env={"PKEY_CONFIG_ui__theme": '"dark"'})
+    c.activate_with_key("my-license-key")
+    assert c.get_config("ui.theme") == "dark"
+    assert c.get_config_source("ui.theme") == "env"
+    c.close()
+
+    # no override/env -> remote default value.
+    c = _client(_ok_handler, env={})
+    c.activate_with_key("my-license-key")
+    assert c.get_config("ui.theme") == "light"
+    assert c.get_config_source("ui.theme") == "remote-default"
+    c.close()
+
+
+def test_env_raw_string_when_not_json_and_fallback_source() -> None:
+    c = _client(_ok_handler, env={"PKEY_CONFIG_ui__theme": "not json {"})
+    c.activate_with_key("my-license-key")
+    assert c.get_config("ui.theme") == "not json {"
+    assert c.get_config_source("ui.theme") == "env"
+    # An unknown key falls back.
+    assert c.get_config("missing.key", "fb") == "fb"
+    assert c.get_config_source("missing.key") == "fallback"
+    c.close()
+
+
+def test_list_user_config_excludes_hidden_and_marks_enforced() -> None:
+    c = _client(_ok_handler, local_overrides={"ui.theme": "solarized"})
+    c.activate_with_key("my-license-key")
+    items = {i["key"]: i for i in c.list_user_config()}
+    # No hidden config keys exist here, but enforced + default both appear.
+    assert items["run.concurrency"] == {
+        "key": "run.concurrency",
+        "value": 4,
+        "enforced": True,
+    }
+    assert items["ui.theme"] == {
+        "key": "ui.theme",
+        "value": "solarized",
+        "enforced": False,
+    }
+    c.close()
 
 
 def test_enroll_then_reads_config_secret_entitlement() -> None:
@@ -143,6 +240,34 @@ def test_config_403_version_too_old_blocks() -> None:
     assert st.status == "version-too-old"
     assert st.allowedRange is not None and st.allowedRange.min == "2.0.0"
     assert c.is_licensed(now=1700000100) is False
+    c.close()
+
+
+def test_blocked_with_no_prior_doc_does_not_raise() -> None:
+    """D5 regression: a 403/blocked refresh with no prior cached doc patches the cache
+    via ``dataclasses.replace`` and must NOT raise (no FrozenInstanceError)."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path == f"/{PRODUCT}/enroll":
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
+        if path == f"/{PRODUCT}/config":
+            return httpx.Response(
+                403, json={"reason": "version-too-old", "allowedRange": {"min": "2.0.0"}}
+            )
+        if path == f"/{PRODUCT}/config/report":
+            return httpx.Response(200, json={"ok": True})
+        return httpx.Response(404)
+
+    c = _client(handler)
+    # First activate -> 403 creates a doc-less blocked cache.
+    r = c.activate_with_key("my-license-key")
+    assert r.kind == "ok"
+    assert c.status(now=1700000100).status == "version-too-old"
+    # A SECOND refresh patches the existing doc-less cache (the previously-crashing path).
+    res = c.refresh(force=True)
+    assert res.blocked is True
+    assert c.status(now=1700000100).status == "version-too-old"
     c.close()
 
 

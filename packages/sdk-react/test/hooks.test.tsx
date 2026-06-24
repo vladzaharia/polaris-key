@@ -14,7 +14,7 @@ import {
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { BridgeState } from "../src/desktop/bridge.js";
 import type { PolarisAdapter } from "../src/core/index.js";
-import { makeDoc, makeFakeBridge, NOW_SEC } from "./fixtures.js";
+import { entry, makeConfigDoc, makeDoc, makeFakeBridge, makeFakeFetch, NOW_SEC } from "./fixtures.js";
 
 afterEach(cleanup);
 
@@ -66,6 +66,53 @@ describe("useManagedConfig", () => {
     expect(result.current.get("theme.mode", "light")).toBe("dark");
     expect(result.current.get("nope", "fallback")).toBe("fallback");
     adapter.dispose();
+  });
+
+  it("exposes listUserConfig + getConfigSource honoring v2 precedence", async () => {
+    const doc = makeConfigDoc({
+      enforcedKey: entry("enforced", "srv"),
+      hiddenKey: entry("hidden", "srv-hidden"),
+      defaultKey: entry("default", "remote"),
+    });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge({ hasToken: true, doc, lastVerifiedAt: NOW_SEC * 1000 }),
+      now: () => NOW_SEC,
+      localOverrides: { enforcedKey: "ignored", defaultKey: "local" },
+    });
+    const { result } = renderHook(() => useManagedConfig(), { wrapper: wrapperFor(adapter) });
+    await waitFor(() => expect(result.current.config.defaultKey).toBe("local"));
+    // enforced beats local; default overridden by local.
+    expect(result.current.get("enforcedKey", "fb")).toBe("srv");
+    expect(result.current.get("defaultKey", "fb")).toBe("local");
+    // hidden excluded from the settings-UI enumeration.
+    const keys = result.current.listUserConfig().map((r) => r.key);
+    expect(keys).toContain("enforcedKey");
+    expect(keys).toContain("defaultKey");
+    expect(keys).not.toContain("hiddenKey");
+    // provenance.
+    expect(result.current.getConfigSource("enforcedKey")).toBe("enforced");
+    expect(result.current.getConfigSource("defaultKey")).toBe("local");
+    adapter.dispose();
+  });
+
+  it("Provider forwards localOverrides into a built (browser) adapter", async () => {
+    const doc = makeConfigDoc({ defaultKey: entry("default", "remote") });
+    function Probe(): JSX.Element {
+      const cfg = useManagedConfig();
+      return <span data-testid="v">{String(cfg.get("defaultKey", "fb"))}</span>;
+    }
+    const { findByTestId } = render(
+      <PolarisKeyProvider
+        productSlug="acme"
+        fetchImpl={makeFakeFetch(doc)}
+        now={() => NOW_SEC}
+        localOverrides={{ defaultKey: "fromProvider" }}
+      >
+        <Probe />
+      </PolarisKeyProvider>,
+    );
+    const node = await findByTestId("v");
+    await waitFor(() => expect(node.textContent).toBe("fromProvider"));
   });
 });
 

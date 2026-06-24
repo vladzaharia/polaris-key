@@ -12,7 +12,15 @@ from polaris_key.deviceid import derive_device_id
 from polaris_key.license import BlockedState
 from polaris_key.models import AllowedRange, DocProfile, ManagedConfigDoc, ManagedPayload
 from polaris_key.store import CacheRecord, FileStore, InMemoryStore
-from polaris_key.verify import verify_jws
+from polaris_key.verify import MAX_PAYLOAD_BYTES, sign_jws, verify_jws
+
+KID = "pkey-test-prod-2026"
+PUBKEY_RAW = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+PRIVATE_PEM = (
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n"
+    "-----END PRIVATE KEY-----"
+)
 
 
 def test_b64url_roundtrip_no_padding() -> None:
@@ -36,6 +44,18 @@ def test_verify_rejects_two_part_jws() -> None:
 def test_verify_rejects_garbage() -> None:
     assert verify_jws("not-a-jws", {}) is None
     assert verify_jws("...", {}) is None
+
+
+def test_verify_rejects_oversized_payload() -> None:
+    """P1.7: a validly-signed JWS whose decoded payload exceeds the size cap is rejected
+    BEFORE json.loads, so an oversized doc never reaches the parser."""
+    trust = {KID: PUBKEY_RAW}
+    big = "x" * (MAX_PAYLOAD_BYTES + 1)
+    oversized = sign_jws({"blob": big}, PRIVATE_PEM, KID)
+    assert verify_jws(oversized, trust) is None
+    # A small, validly-signed payload under the cap still verifies.
+    ok = sign_jws({"blob": "x" * 16}, PRIVATE_PEM, KID)
+    assert verify_jws(ok, trust) is not None
 
 
 def test_device_id_is_stable_and_short() -> None:

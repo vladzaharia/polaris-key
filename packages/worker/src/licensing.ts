@@ -17,7 +17,8 @@ import type { Product } from "./product.js";
 import { bearer, errorResponse, ErrorCode, json, methodNotAllowed } from "./http.js";
 import { hashKey, mintToken } from "./crypto.js";
 import { checkBuildGate } from "./gate.js";
-import { buildDoc, computeETag, signDoc } from "./configDoc.js";
+import { Catalog } from "@polaris-key/catalog";
+import { buildDoc, computeETag, signDoc, validatePayload } from "./configDoc.js";
 import { mergePayloads } from "./merge.js";
 import {
   getKey,
@@ -25,6 +26,7 @@ import {
   getMachine,
   getProfile,
   getTier,
+  getActiveSchema,
   countActiveMachines,
   touchKey,
   upsertMachine,
@@ -208,7 +210,19 @@ export async function handleConfig(
   const machine = await getMachine(db, product.slug, rec.machineId);
   if (!machine || machine.status !== "authorized") return errorResponse(401, ErrorCode.Unauthorized);
 
-  const payload = await resolveEffective(db, product.slug, license, machine);
+  let payload = await resolveEffective(db, product.slug, license, machine);
+
+  // Defense-in-depth: re-validate the merged config/secret keys against the active catalog
+  // and drop anything unknown or invalid before signing (a stale/misconfigured override must
+  // never reach the client). Entitlements pass through — the gate below governs them.
+  const schemaRow = await getActiveSchema(db, product.slug);
+  if (schemaRow) {
+    try {
+      payload = validatePayload(payload, new Catalog(JSON.parse(schemaRow.catalog_json)));
+    } catch {
+      // An unparseable catalog is non-fatal here — fall back to the unfiltered payload.
+    }
+  }
 
   const version = req.headers.get(HEADER_VERSION) ?? "0.0.0";
   const channel = req.headers.get(HEADER_CHANNEL) ?? undefined;

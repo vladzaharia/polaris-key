@@ -7,7 +7,7 @@
 // Times are epoch SECONDS (matching the JOSE world the Worker signs in), never millis.
 
 /** Bumped on any wire-breaking change to the document shape or HTTP contract. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 /** The `iss` every Polaris Key document carries — the control-plane origin host. */
 export const ISSUER = "key.plrs.im";
@@ -21,15 +21,20 @@ export type JSONValue =
   | JSONValue[]
   | { [key: string]: JSONValue };
 
-/** Per-key MDM-style management state. `managed`/`hidden` ⇒ the server value wins
- *  (shown read-only / invisible). `unmanaged` ⇒ the user owns it, but a present `value`
- *  is an admin-set DEFAULT applied only where the user hasn't set that key. */
-export type ManagementState = "unmanaged" | "managed" | "hidden";
+/** Per-key MDM-style management state.
+ *  - `enforced` ⇒ the server value wins; the client CANNOT override it (shown read-only).
+ *  - `hidden`   ⇒ `enforced` AND withheld from user-facing enumeration (still applied).
+ *  - `default`  ⇒ the server's `value` is a default; the client may override it via a
+ *    local/user override or an environment variable (precedence: enforced|hidden > local >
+ *    env > remote-default > schema-default). */
+export type ManagementState = "default" | "enforced" | "hidden";
 
-/** A managed value plus its management state. */
+/** A managed value, its management state, and when an admin last changed it. */
 export interface ManagedEntry {
   state: ManagementState;
   value: JSONValue;
+  /** Epoch seconds of the last admin change to this key (for client change-detection). */
+  updatedAt: number;
 }
 
 /** The three payload kinds, each routed to a different store on arrival: `config` →

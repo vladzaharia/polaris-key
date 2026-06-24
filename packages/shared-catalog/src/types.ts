@@ -6,8 +6,10 @@
 
 export type ConfigKind = "config" | "secret" | "flag";
 
-/** Per-key MDM-style management state — applies to `config` keys only. */
-export type ManagementState = "unmanaged" | "managed" | "hidden";
+/** Per-key MDM-style management state — applies to `config` keys only.
+ *  `default` (overridable by user/env) | `enforced` (server wins, read-only) |
+ *  `hidden` (enforced + withheld from user-facing enumeration). */
+export type ManagementState = "default" | "enforced" | "hidden";
 
 /** rjsf/SwiftUI rendering hints — never affect validation, only presentation. */
 export interface UiHints {

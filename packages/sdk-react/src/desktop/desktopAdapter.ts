@@ -7,15 +7,17 @@
 // glue + state projection. `submitKey` IS supported here (unlike browser): desktop apps
 // allow typed-key enrollment as an offline-friendly path.
 
-import { projectState, readConfig, readEntitled } from "../core/adapter.js";
+import { configSource, listUserConfig, projectState, readConfig, readEntitled } from "../core/adapter.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
   initialState,
+  type ConfigSource,
   type JSONValue,
   type OidcSignInHandle,
   type PolarisAdapter,
   type PolarisState,
+  type UserConfigEntry,
 } from "../core/index.js";
 import {
   resolveBridge,
@@ -28,6 +30,9 @@ export interface DesktopAdapterOptions {
   bridge?: PolarisBridge;
   /** Override the clock (seconds) — for tests. */
   now?: () => number;
+  /** Client-supplied local/user overrides for `default`-state config keys. Never override
+   *  `enforced`/`hidden` keys (server wins). The node host owns env layering, not this. */
+  localOverrides?: Record<string, JSONValue>;
 }
 
 const nowSec = (): number => Math.floor(Date.now() / 1000);
@@ -37,6 +42,7 @@ export class DesktopAdapter implements PolarisAdapter {
   private readonly bridge: PolarisBridge;
   private readonly store: Store<PolarisState>;
   private readonly clock: () => number;
+  private readonly localOverrides: Record<string, JSONValue>;
   private offBridge: (() => void) | null = null;
 
   constructor(opts: DesktopAdapterOptions = {}) {
@@ -49,7 +55,8 @@ export class DesktopAdapter implements PolarisAdapter {
     }
     this.bridge = bridge;
     this.clock = opts.now ?? nowSec;
-    this.store = createStore<PolarisState>(initialState("desktop"));
+    this.localOverrides = opts.localOverrides ?? {};
+    this.store = createStore<PolarisState>(initialState("desktop", this.localOverrides));
     // Subscribe to pushed hot-reload signals from the privileged process.
     this.offBridge = this.bridge.on("stateChanged", (s) => this.apply(s));
     // Kick off the first load. Errors surface into the snapshot, not as a throw.
@@ -76,7 +83,7 @@ export class DesktopAdapter implements PolarisAdapter {
           blocked: s.blocked,
           lastVerifiedAt: s.lastVerifiedAt,
         },
-        flags,
+        { ...flags, localOverrides: this.localOverrides },
       ),
     );
   }
@@ -180,6 +187,14 @@ export class DesktopAdapter implements PolarisAdapter {
 
   getConfig<T = JSONValue>(key: string, fallback: T): T {
     return readConfig(this.store.get(), key, fallback);
+  }
+
+  listUserConfig(): UserConfigEntry[] {
+    return listUserConfig(this.store.get());
+  }
+
+  getConfigSource(key: string): ConfigSource {
+    return configSource(this.store.get(), key);
   }
 
   getSecret(key: string): string | null {

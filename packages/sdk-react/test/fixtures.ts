@@ -2,11 +2,26 @@
 // each transport read it: a fake `PolarisBridge` (desktop) and a fake `fetch` returning the
 // browser session shape. The same doc → identical hook outputs is the parity guarantee.
 
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
+import type { ManagedConfigDoc, ManagedEntry } from "@polaris-key/protocol";
 import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
 
 /** A fixed "now" (seconds) every adapter is pinned to so the gate is deterministic. */
 export const NOW_SEC = 2000;
+
+/** Shorthand v2 `ManagedEntry` builder for tests (every entry now carries `updatedAt`). */
+export function entry(
+  state: ManagedEntry["state"],
+  value: ManagedEntry["value"],
+  updatedAt = 950,
+): ManagedEntry {
+  return { state, value, updatedAt };
+}
+
+/** A doc whose `config` payload is exactly the given v2 entries (secrets/entitlements empty).
+ *  Used by the v2 precedence/provenance suites where only config state matters. */
+export function makeConfigDoc(config: Record<string, ManagedEntry>): ManagedConfigDoc {
+  return makeDoc({ payload: { config, secrets: {}, entitlements: {} } });
+}
 
 export function makeDoc(over: Partial<ManagedConfigDoc> = {}): ManagedConfigDoc {
   return {
@@ -20,9 +35,12 @@ export function makeDoc(over: Partial<ManagedConfigDoc> = {}): ManagedConfigDoc 
     graceUntil: 1000 + 30 * 86400,
     profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@acme.test", enrolledAt: 900 },
     payload: {
-      config: { "theme.mode": { state: "managed", value: "dark" } },
-      secrets: { "api.token": { state: "managed", value: "s3cr3t" } },
-      entitlements: { polarisVpn: { state: "managed", value: true }, beta: { state: "managed", value: false } },
+      config: { "theme.mode": { state: "enforced", value: "dark", updatedAt: 950 } },
+      secrets: { "api.token": { state: "enforced", value: "s3cr3t", updatedAt: 950 } },
+      entitlements: {
+        polarisVpn: { state: "enforced", value: true, updatedAt: 950 },
+        beta: { state: "enforced", value: false, updatedAt: 950 },
+      },
     },
     ...over,
   };

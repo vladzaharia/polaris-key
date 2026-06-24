@@ -2,7 +2,7 @@
 // and desktop adapters — this is what makes the hooks return the same shapes regardless
 // of transport (mode-parity). The adapters differ only in HOW they fill a `PolarisState`.
 
-import type { DocProfile, JSONValue, LicenseStatus } from "@polaris-key/protocol";
+import type { DocProfile, JSONValue, LicenseStatus, ManagedEntry } from "@polaris-key/protocol";
 import type { LicenseState } from "./gateModel.js";
 
 export type { LicenseState } from "./gateModel.js";
@@ -25,6 +25,20 @@ export type PolarisErrorCode =
   | "network"
   | "bridge-missing"
   | "unknown";
+
+/** Where a resolved config value came from, in precedence order. `enforced`/`hidden` are
+ *  server-locked; `local` is a client `localOverrides` win; `remote-default` is the doc's
+ *  `default` value untouched by any override; `fallback` means the key was absent entirely.
+ *  (Environment-variable layering is a node/python/swift concern and never appears here.) */
+export type ConfigSource = "enforced" | "hidden" | "local" | "remote-default" | "fallback";
+
+/** One user-facing config row for a settings UI: `hidden` keys are excluded entirely, and
+ *  `enforced` flags whether the row should render read-only (server value wins). */
+export interface UserConfigEntry {
+  key: string;
+  value: JSONValue;
+  enforced: boolean;
+}
 
 /** A typed error every adapter throws so callers can branch on `.code` not on strings. */
 export class PolarisError extends Error {
@@ -49,8 +63,16 @@ export interface PolarisState {
   status: LicenseStatus;
   /** The signed profile (name/email), once a doc is present. */
   profile: DocProfile | null;
-  /** Plaintext config entries (key → value). */
+  /** Plaintext config, RESOLVED to effective values (key → value): per-key precedence is
+   *  `enforced|hidden` (remote, locked) > `local` override > `remote-default` > fallback.
+   *  This is the map every existing hook/getter reads, so it stays effective, not raw. */
   config: Record<string, JSONValue>;
+  /** The raw v2 config entries off the doc (state + value + updatedAt), kept so provenance
+   *  (`getConfigSource`) and user-facing enumeration (`listUserConfig`) can be derived. */
+  configEntries: Record<string, ManagedEntry>;
+  /** The client-supplied local/user overrides applied to `default`-state keys (never to
+   *  `enforced`/`hidden`). Frozen onto the snapshot so reads are pure. */
+  localOverrides: Record<string, JSONValue>;
   /** Capability map (entitlement name → value). */
   entitlements: Record<string, JSONValue>;
   /** True while a refresh/sign-in/sign-out op is in flight (post first load). */
@@ -86,8 +108,14 @@ export interface PolarisAdapter {
   submitKey(key: string): Promise<void>;
   /** Sign out / deauthorize and wipe local state. */
   signOut(): Promise<void>;
-  /** Read a single config value with a fallback. */
+  /** Read a single config value with a fallback, honoring v2 state + local overrides:
+   *  `enforced`/`hidden` → remote value (locked); else `localOverrides[key] ?? remote ?? fallback`. */
   getConfig<T = JSONValue>(key: string, fallback: T): T;
+  /** Enumerate config for a settings UI: every key EXCEPT `hidden`, each resolved to its
+   *  effective value with an `enforced` flag (true ⇒ render read-only, server value wins). */
+  listUserConfig(): UserConfigEntry[];
+  /** Where the effective value for `key` comes from (provenance), for diagnostics/UI. */
+  getConfigSource(key: string): ConfigSource;
   /** Read a single secret value (browser: never exposed → always null). */
   getSecret(key: string): string | null;
   /** True when a boolean entitlement is granted. */
@@ -96,8 +124,12 @@ export interface PolarisAdapter {
   dispose(): void;
 }
 
-/** Build the initial `loading` state for a given mode (shared adapter seed). */
-export function initialState(mode: PolarisMode): PolarisState {
+/** Build the initial `loading` state for a given mode (shared adapter seed). Local overrides
+ *  are carried from the very first seed so a getter is correct even before the first doc. */
+export function initialState(
+  mode: PolarisMode,
+  localOverrides: Record<string, JSONValue> = {},
+): PolarisState {
   return {
     phase: "loading",
     mode,
@@ -105,6 +137,8 @@ export function initialState(mode: PolarisMode): PolarisState {
     status: "needs-enroll",
     profile: null,
     config: {},
+    configEntries: {},
+    localOverrides,
     entitlements: {},
     busy: false,
     error: null,

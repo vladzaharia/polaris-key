@@ -9,14 +9,16 @@
 // shape-identical to a desktop one. `submitKey` is intentionally unsupported (OIDC-only).
 
 import type { BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
-import { projectState, readConfig, readEntitled } from "../core/adapter.js";
+import { configSource, listUserConfig, projectState, readConfig, readEntitled } from "../core/adapter.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
   initialState,
+  type ConfigSource,
   type JSONValue,
   type PolarisAdapter,
   type PolarisState,
+  type UserConfigEntry,
 } from "../core/index.js";
 
 const DEFAULT_BASE = "https://key.plrs.im";
@@ -32,6 +34,9 @@ export interface BrowserAdapterOptions {
   navigate?: (url: string) => void;
   /** Override the clock (seconds) — for tests. */
   now?: () => number;
+  /** Client-supplied local/user overrides for `default`-state config keys. Never override
+   *  `enforced`/`hidden` keys (server wins). */
+  localOverrides?: Record<string, JSONValue>;
 }
 
 /** The JSON shape the Worker's authenticated session endpoint returns. */
@@ -56,6 +61,7 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly navigate: (url: string) => void;
   private readonly clock: () => number;
   private readonly store: Store<PolarisState>;
+  private readonly localOverrides: Record<string, JSONValue>;
   private csrf: string | null = null;
   private hadSession = false;
 
@@ -69,7 +75,8 @@ export class BrowserAdapter implements PolarisAdapter {
         if (typeof window !== "undefined") window.location.assign(url);
       });
     this.clock = opts.now ?? nowSec;
-    this.store = createStore<PolarisState>(initialState("browser"));
+    this.localOverrides = opts.localOverrides ?? {};
+    this.store = createStore<PolarisState>(initialState("browser", this.localOverrides));
     void this.load();
   }
 
@@ -100,7 +107,7 @@ export class BrowserAdapter implements PolarisAdapter {
           blocked: s.blocked,
           lastVerifiedAt: s.doc ? Date.now() : undefined,
         },
-        flags,
+        { ...flags, localOverrides: this.localOverrides },
       ),
     );
   }
@@ -128,7 +135,7 @@ export class BrowserAdapter implements PolarisAdapter {
     } catch (e) {
       const err = e instanceof PolarisError ? e : new PolarisError("network", (e as Error).message);
       this.store.set(() =>
-        projectState("browser", null, { hasToken: false, now: this.clock() }, { error: err }),
+        projectState("browser", null, { hasToken: false, now: this.clock() }, { error: err, localOverrides: this.localOverrides }),
       );
     }
   }
@@ -148,6 +155,7 @@ export class BrowserAdapter implements PolarisAdapter {
             "browser",
             null,
             { hasToken: true, now: this.clock(), lastSyncUnauthorized: true },
+            { localOverrides: this.localOverrides },
           ),
         );
         return;
@@ -191,7 +199,9 @@ export class BrowserAdapter implements PolarisAdapter {
       }
       this.csrf = null;
       this.hadSession = false;
-      this.store.set(() => projectState("browser", null, { hasToken: false, now: this.clock() }));
+      this.store.set(() =>
+        projectState("browser", null, { hasToken: false, now: this.clock() }, { localOverrides: this.localOverrides }),
+      );
     } catch (e) {
       const err = e instanceof PolarisError ? e : new PolarisError("sign-out-failed", (e as Error).message);
       this.store.set((prev) => ({ ...prev, busy: false, error: err }));
@@ -201,6 +211,14 @@ export class BrowserAdapter implements PolarisAdapter {
 
   getConfig<T = JSONValue>(key: string, fallback: T): T {
     return readConfig(this.store.get(), key, fallback);
+  }
+
+  listUserConfig(): UserConfigEntry[] {
+    return listUserConfig(this.store.get());
+  }
+
+  getConfigSource(key: string): ConfigSource {
+    return configSource(this.store.get(), key);
   }
 
   getSecret(_key: string): string | null {

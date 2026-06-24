@@ -89,9 +89,9 @@ function mockFetch(opts: MockOpts = {}): MockState {
         graceUntil: now + 30 * 86400,
         profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@example.com", enrolledAt: now },
         payload: {
-          config: { "quality.floor": { state: "managed", value: "flac" } },
-          secrets: { "soundcloud.oauth": { state: "hidden", value: "tok" } },
-          entitlements: { polarisVpn: { state: "managed", value: true } },
+          config: { "quality.floor": { state: "enforced", value: "flac", updatedAt: now } },
+          secrets: { "soundcloud.oauth": { state: "hidden", value: "tok", updatedAt: now } },
+          entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: now } },
         },
       };
       const jws = await signJws(doc, TEST_PEM, TEST_KID);
@@ -148,9 +148,9 @@ describe("PolarisKeyClient — refresh / persistence", () => {
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
 
     const cache = await store.readCache();
-    expect(cache?.doc.payload.config["quality.floor"]?.value).toBe("flac");
+    expect(cache?.doc?.payload.config["quality.floor"]?.value).toBe("flac");
     expect(cache?.etag).toBe('"v1"');
-    expect(cache?.lastAcceptedIssuedAt).toBe(cache?.doc.issuedAt);
+    expect(cache?.lastAcceptedIssuedAt).toBe(cache?.doc?.issuedAt);
     expect(typeof cache?.lastVerifiedAt).toBe("number");
     // A report was posted after applying.
     expect(m.reportCount()).toBeGreaterThanOrEqual(1);
@@ -249,7 +249,7 @@ describe("PolarisKeyClient — refresh / persistence", () => {
           expiresAt: now + 3600,
           graceUntil: now + 30 * 86400,
           profile: { name: "Ada", firstName: "Ada", email: "a@b.c", enrolledAt: now },
-          payload: { config: { "quality.floor": { state: "managed", value: "flac" } }, secrets: {}, entitlements: {} },
+          payload: { config: { "quality.floor": { state: "enforced", value: "flac", updatedAt: now } }, secrets: {}, entitlements: {} },
         };
         return new Response(await signJws(doc, TEST_PEM, TEST_KID), { status: 200, headers: { etag: '"v1"' } });
       }
@@ -285,9 +285,9 @@ describe("PolarisKeyClient — offline-first init", () => {
       graceUntil: now + 30 * 86400,
       profile: { name: "Ada", firstName: "Ada", email: "a@b.c", enrolledAt: now },
       payload: {
-        config: { "quality.floor": { state: "managed", value: "mp3" } },
+        config: { "quality.floor": { state: "enforced", value: "mp3", updatedAt: now } },
         secrets: {},
-        entitlements: { polarisVpn: { state: "managed", value: true } },
+        entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: now } },
       },
     };
     await store.setToken("pkeyt_cached");

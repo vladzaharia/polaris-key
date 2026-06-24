@@ -24,7 +24,7 @@ export function renderTs(catalog: ProductCatalog): string {
 export const CATALOG_VERSION = ${catalog.schemaVersion};
 
 export type ConfigKind = "config" | "secret" | "flag";
-export type ManagementState = "unmanaged" | "managed" | "hidden";
+export type ManagementState = "default" | "enforced" | "hidden";
 export type JsonSchema = Record<string, unknown>;
 
 export interface ConfigEntry {
@@ -170,7 +170,11 @@ export function renderSwift(catalog: ProductCatalog): string {
       const ui = (e.ui ?? {}) as Record<string, unknown>;
       const dep = e.dependsOn ? swiftStr(e.dependsOn.key) : "nil";
       const depEquals = e.dependsOn ? swiftDependsOnEquals(e.dependsOn.equals) : "nil";
-      const mgmt = e.managementDefault ? `.${e.managementDefault}` : "nil";
+      // `default` is a Swift reserved word — the enum case is escaped with backticks, so the
+      // member access must be escaped too: `.`default`` (not `.default`).
+      const mgmt = e.managementDefault
+        ? `.${e.managementDefault === "default" ? "`default`" : e.managementDefault}`
+        : "nil";
       const grantLabel = e.grantLabel ? swiftStr(e.grantLabel) : "nil";
       return (
         `    ConfigSchemaEntry(key: ${swiftStr(e.key)}, kind: .${e.kind}, ` +
@@ -193,7 +197,7 @@ export function renderSwift(catalog: ProductCatalog): string {
 import Foundation
 
 enum ConfigKind: String { case config, secret, flag }
-enum ManagementState: String { case unmanaged, managed, hidden }
+enum ManagementState: String { case \`default\`, enforced, hidden }
 
 struct ConfigSchemaEntry: Identifiable, Sendable {
     let key: String

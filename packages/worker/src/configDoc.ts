@@ -3,12 +3,14 @@
 // scope each doc to one tenant, and `aud`/`iss` bind it to the product as defense-in-depth.
 
 import { signJws, sha256Base64Url } from "@polaris-key/jws";
+import type { Catalog } from "@polaris-key/catalog";
 import {
   DOC_EXPIRY_SECONDS,
   ISSUER,
   SECONDS_PER_DAY,
   type DocProfile,
   type ManagedConfigDoc,
+  type ManagedEntry,
   type ManagedPayload,
 } from "@polaris-key/protocol";
 
@@ -21,6 +23,29 @@ export interface BuildDocInput {
   maxOfflineDays: number;
   profile: DocProfile;
   payload: ManagedPayload;
+}
+
+/** Defense-in-depth: drop any config/secret entry whose key is unknown to the active
+ *  catalog or whose value fails the catalog schema, BEFORE signing. A misconfigured or
+ *  stale override must never be minted into a signed doc. Entitlements pass through (their
+ *  keys are `flag` entries the gate already governs). */
+export function validatePayload(payload: ManagedPayload, catalog: Catalog): ManagedPayload {
+  const prune = (
+    entries: Record<string, ManagedEntry>,
+  ): Record<string, ManagedEntry> => {
+    const out: Record<string, ManagedEntry> = {};
+    for (const [key, entry] of Object.entries(entries)) {
+      if (!catalog.entryByKey(key)) continue;
+      if (!catalog.validateKeyValue(key, entry.value).ok) continue;
+      out[key] = entry;
+    }
+    return out;
+  };
+  return {
+    config: prune(payload.config ?? {}),
+    secrets: prune(payload.secrets ?? {}),
+    entitlements: payload.entitlements ?? {},
+  };
 }
 
 /** Stamp the time-bound fields into a doc (field order matches the conformance corpus). */

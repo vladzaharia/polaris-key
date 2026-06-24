@@ -109,12 +109,14 @@ function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
 }
 
 // ── identity mapping + provisioning ──────────────────────────────────────────
-/** Apply provisioning hooks (verified claim -> entitlement + secret) into a payload. */
+/** Apply provisioning hooks (verified claim -> entitlement + secret) into a payload.
+ *  `now` (epoch seconds) is stamped as `updatedAt` on every entry written. */
 export async function applyProvisioning(
   db: Db,
   product: string,
   identity: OidcIdentity,
   payload: ManagedPayload,
+  now: number,
 ): Promise<void> {
   const hooks = await getProvisioning(db, product);
   for (const h of hooks) {
@@ -122,7 +124,7 @@ export async function applyProvisioning(
     if (claimVal === undefined || claimVal === null || claimVal === false) continue;
     if (h.entitlement_key) {
       const value = h.entitlement_value_json ? (JSON.parse(h.entitlement_value_json) as ManagedEntry["value"]) : true;
-      payload.entitlements[h.entitlement_key] = { state: "managed", value };
+      payload.entitlements[h.entitlement_key] = { state: "enforced", value, updatedAt: now };
     }
     if (h.secret_key && h.secret_url_template) {
       const url = h.secret_url_template.replace("{claim}", encodeURIComponent(String(claimVal)));
@@ -135,7 +137,7 @@ export async function applyProvisioning(
           continue;
         }
       }
-      payload.secrets[h.secret_key] = { state: "hidden", value: url };
+      payload.secrets[h.secret_key] = { state: "hidden", value: url, updatedAt: now };
     }
   }
 }
@@ -174,7 +176,7 @@ export async function enrollFromIdentity(
   }
 
   const overrides: ManagedPayload = { config: {}, secrets: {}, entitlements: {} };
-  await applyProvisioning(db, product.slug, identity, overrides);
+  await applyProvisioning(db, product.slug, identity, overrides, now);
 
   const licenseId = randomId("lic");
   await insertLicense(db, {

@@ -9,15 +9,17 @@ import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
 
 export interface OverrideUpdate {
   key: string;
-  state?: "unmanaged" | "managed" | "hidden";
+  state?: "default" | "enforced" | "hidden";
   value?: unknown;
 }
 
-/** Apply a validated batch onto a stored payload JSON; returns the new payload or errors. */
+/** Apply a validated batch onto a stored payload JSON; returns the new payload or errors.
+ *  `now` (epoch seconds) is stamped as `updatedAt` on every entry written. */
 export function applyOverrides(
   current: ManagedPayload,
   updates: OverrideUpdate[],
   catalog: Catalog,
+  now: number,
 ): { ok: true; payload: ManagedPayload } | { ok: false; fields: string[] } {
   const fields: string[] = [];
   const next: ManagedPayload = {
@@ -37,7 +39,7 @@ export function applyOverrides(
     }
     const bucket =
       entry.kind === "secret" ? next.secrets : entry.kind === "flag" ? next.entitlements : next.config;
-    if (u.value === undefined && (u.state === "unmanaged" || u.state === undefined)) {
+    if (u.value === undefined && (u.state === "default" || u.state === undefined)) {
       // Clearing an override.
       delete bucket[u.key];
       continue;
@@ -50,8 +52,10 @@ export function applyOverrides(
       }
     }
     bucket[u.key] = {
-      state: u.state ?? "managed",
+      // Default-when-omitted is "enforced" so an admin-set value wins (old "managed" behavior).
+      state: u.state ?? "enforced",
       value: (u.value ?? bucket[u.key]?.value ?? true) as ManagedEntry["value"],
+      updatedAt: now,
     };
   }
   if (fields.length) return { ok: false, fields };

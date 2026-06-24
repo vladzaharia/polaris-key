@@ -56,7 +56,7 @@ export async function handleProfiles(
     if (!catalog) return err(409, ErrorCode.BadRequest, "no active catalog");
     const body = await readBody(req);
     const updates = Array.isArray(body.updates) ? (body.updates as OverrideUpdate[]) : [];
-    const result = applyOverrides(parsePayload(row.payload_json), updates, catalog);
+    const result = applyOverrides(parsePayload(row.payload_json), updates, catalog, now);
     if (!result.ok) return err(422, ErrorCode.BadRequest, "validation failed", { fields: result.fields });
     await upsertProfile(db, { ...row, payload_json: JSON.stringify(result.payload), modified_by: session.sub, modified_at: now });
     await audit(db, slug, session, now, "profile.overrides", { kind: "profile", id }, `Updated profile ${id}`);

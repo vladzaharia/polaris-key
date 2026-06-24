@@ -11,22 +11,30 @@
 
 import Foundation
 
-/// Per-key MDM-style management state. `managed`/`hidden` ⇒ the server value wins;
-/// `unmanaged` ⇒ the user owns it, but a present `value` is an admin-set default.
+/// Per-key MDM-style management state (wire v2). `enforced`/`hidden` ⇒ the server value
+/// wins (the user cannot override it); `default` ⇒ the user owns it, but a present `value`
+/// is an admin-set default that local/env overrides may replace.
+///
+/// `default` is a Swift reserved word, so the case is escaped with backticks; the raw value
+/// is still the bare `"default"` string the wire carries.
 public enum ManagementState: String, Sendable, Codable, Equatable {
-    case unmanaged
-    case managed
+    case `default`
+    case enforced
     case hidden
 }
 
-/// A managed value plus its management state.
+/// A managed value plus its management state and the epoch-seconds timestamp it last
+/// changed server-side (wire v2). Clients change-detect on `updatedAt`.
 public struct ManagedEntry: Sendable, Codable, Equatable {
     public let state: ManagementState
     public let value: JSONValue
+    /// Epoch SECONDS the entry was last set/changed server-side.
+    public let updatedAt: Int
 
-    public init(state: ManagementState, value: JSONValue) {
+    public init(state: ManagementState, value: JSONValue, updatedAt: Int) {
         self.state = state
         self.value = value
+        self.updatedAt = updatedAt
     }
 }
 

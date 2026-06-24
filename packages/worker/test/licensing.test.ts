@@ -41,7 +41,7 @@ describe("licensing", () => {
 
   it("enroll → config returns a verifiable signed doc scoped to the product", async () => {
     const { licenseId, key } = await seedLicenseWithKey(db, "djdl", {
-      entitlements: { polarisVpn: { state: "managed", value: true } },
+      entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: NOW } },
     });
     const token = await enroll(env, db, product, key, "dev-1");
 
@@ -82,7 +82,7 @@ describe("licensing", () => {
 
   it("enforces the machine limit", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl", {
-      entitlements: { machineLimit: { state: "managed", value: 1 } },
+      entitlements: { machineLimit: { state: "enforced", value: 1, updatedAt: NOW } },
     });
     await enroll(env, db, product, key, "dev-1");
     const res = await handleEnroll(
@@ -97,7 +97,7 @@ describe("licensing", () => {
 
   it("re-enrolling the same device does not consume another machine slot", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl", {
-      entitlements: { machineLimit: { state: "managed", value: 1 } },
+      entitlements: { machineLimit: { state: "enforced", value: 1, updatedAt: NOW } },
     });
     await enroll(env, db, product, key, "dev-1");
     const again = await handleEnroll(
@@ -109,7 +109,7 @@ describe("licensing", () => {
 
   it("blocks a build below app.minVersion with allowedRange", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl", {
-      entitlements: { "app.minVersion": { state: "managed", value: "2.0.0" } },
+      entitlements: { "app.minVersion": { state: "enforced", value: "2.0.0", updatedAt: NOW } },
     });
     const token = await enroll(env, db, product, key, "dev-1");
     const res = await handleConfig(

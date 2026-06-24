@@ -55,6 +55,10 @@ export {
   flattenEntries,
   readConfig,
   readEntitled,
+  resolveConfig,
+  resolveConfigValue,
+  configSource,
+  listUserConfig,
   PolarisError,
   initialState,
   type LicenseState,
@@ -66,6 +70,8 @@ export {
   type PolarisErrorCode,
   type PolarisState,
   type OidcSignInHandle,
+  type ConfigSource,
+  type UserConfigEntry,
 } from "./core/index.js";
 
 export type {

@@ -1,4 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
@@ -6,6 +9,8 @@ import { insertKey, insertLicense, insertProduct, insertSchema } from "../src/re
 import { hashKey, mintLicenseKey } from "../src/crypto.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 // The committed Polaris Key test signing key (pkey-test-prod-2026) from the conformance corpus.
 export const TEST_KID = "pkey-test-prod-2026";
@@ -29,7 +34,11 @@ export function makeEnv(kv: KvMock, slugs: string[]): Env {
   return env as Env;
 }
 
-export async function seedProduct(db: Db, slug: string): Promise<void> {
+export async function seedProduct(
+  db: Db,
+  slug: string,
+  opts: { catalog?: unknown } = {},
+): Promise<void> {
   await insertProduct(db, {
     slug,
     name: slug,
@@ -45,14 +54,21 @@ export async function seedProduct(db: Db, slug: string): Promise<void> {
     created_at: NOW,
     modified_at: NOW,
   });
+  const catalog = opts.catalog ?? { schemaVersion: 1, entries: [] };
   await insertSchema(db, {
     product: slug,
     catalog_version: 1,
-    catalog_json: JSON.stringify({ schemaVersion: 1, entries: [] }),
+    catalog_json: JSON.stringify(catalog),
     active: 1,
     created_at: NOW,
   });
 }
+
+/** The real djdl product catalog (from products/djdl/catalog.json) — used by tests that
+ *  exercise handleConfig's catalog-driven validation against actual declared keys. */
+export const DJDL_CATALOG: unknown = JSON.parse(
+  readFileSync(join(HERE, "..", "..", "..", "products", "djdl", "catalog.json"), "utf8"),
+);
 
 /** Insert an active license + a fresh key; returns the raw key to enroll with. */
 export async function seedLicenseWithKey(

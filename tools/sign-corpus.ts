@@ -58,9 +58,9 @@ const LEGACY_DOC = {
   graceUntil: 1702592000,
   profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@example.com", enrolledAt: 1690000000 },
   payload: {
-    config: { "run.concurrency": { state: "managed", value: 4 } },
-    secrets: { "proxy.subscriptionUrl": { state: "hidden", value: "https://vpn.example.com/sub/abc" } },
-    entitlements: { polarisVpn: { state: "managed", value: true } },
+    config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: 1699990000 } },
+    secrets: { "proxy.subscriptionUrl": { state: "hidden", value: "https://vpn.example.com/sub/abc", updatedAt: 1699990000 } },
+    entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: 1699990000 } },
   },
 } as const;
 
@@ -77,12 +77,12 @@ function polarisDoc(overrides: Record<string, unknown> = {}): Record<string, unk
     graceUntil: 1702592000,
     profile: { name: "Grace Hopper", firstName: "Grace", email: "grace@example.com", enrolledAt: 1690000000 },
     payload: {
-      config: { "run.concurrency": { state: "managed", value: 4 } },
+      config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: 1699990000 } },
       secrets: {},
       entitlements: {
-        polarisVpn: { state: "managed", value: true },
-        channels: { state: "managed", value: ["stable", "staging"] },
-        "app.minVersion": { state: "managed", value: "1.0.0" },
+        polarisVpn: { state: "enforced", value: true, updatedAt: 1699990000 },
+        channels: { state: "enforced", value: ["stable", "staging"], updatedAt: 1699990000 },
+        "app.minVersion": { state: "enforced", value: "1.0.0", updatedAt: 1699990000 },
       },
     },
     ...overrides,
@@ -130,7 +130,7 @@ async function build(): Promise<unknown> {
   // 3. Tampered payload — flip a value, keep the original signature.
   const [h, , s] = validJws.split(".") as [string, string, string];
   const tampered = polarisDoc({
-    payload: { config: { "run.concurrency": { state: "managed", value: 999 } }, secrets: {}, entitlements: {} },
+    payload: { config: { "run.concurrency": { state: "enforced", value: 999, updatedAt: 1699990000 } }, secrets: {}, entitlements: {} },
   });
   cases.push({
     id: "tampered-payload",
@@ -252,6 +252,54 @@ async function build(): Promise<unknown> {
     jws: unicodeJws,
     trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
     expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: unicodeDoc },
+  });
+
+  // 13. Wire contract v2 management states — a doc carrying an `enforced`, a `hidden`, and a
+  //     `default` entry, each with an `updatedAt` (epoch seconds). Verifies + round-trips
+  //     the exact entry shapes so every SDK agrees on the v2 ManagedEntry encoding.
+  const v2StatesDoc = polarisDoc({
+    licenseId: "lic_v2_states",
+    payload: {
+      config: {
+        "run.concurrency": { state: "enforced", value: 4, updatedAt: 1699991111 },
+        "ui.theme": { state: "default", value: "dark", updatedAt: 1699992222 },
+      },
+      secrets: {
+        "proxy.subscriptionUrl": { state: "hidden", value: "https://vpn.example.com/sub/xyz", updatedAt: 1699993333 },
+      },
+      entitlements: {
+        polarisVpn: { state: "enforced", value: true, updatedAt: 1699994444 },
+      },
+    },
+  });
+  const v2StatesJws = await signJws(v2StatesDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  cases.push({
+    id: "valid-v2-management-states",
+    description:
+      "A v2 doc with enforced + hidden + default ManagedEntry shapes (each carrying updatedAt) — verifies and round-trips the exact entry shapes.",
+    jws: v2StatesJws,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: v2StatesDoc },
+  });
+
+  // 14. `updatedAt` round-trip — a distinct epoch-seconds stamp per entry must survive
+  //     signing + verification byte-for-byte (clients change-detect on this field).
+  const updatedAtDoc = polarisDoc({
+    licenseId: "lic_updated_at",
+    payload: {
+      config: { "run.concurrency": { state: "enforced", value: 8, updatedAt: 1700123456 } },
+      secrets: {},
+      entitlements: { polarisVpn: { state: "default", value: false, updatedAt: 1700654321 } },
+    },
+  });
+  const updatedAtJws = await signJws(updatedAtDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  cases.push({
+    id: "valid-updated-at-roundtrip",
+    description:
+      "Per-entry updatedAt (epoch seconds) round-trips exactly through sign + verify — clients change-detect on it.",
+    jws: updatedAtJws,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: updatedAtDoc },
   });
 
   return { corpusVersion: 1, keys: KEYS, cases };

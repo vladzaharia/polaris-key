@@ -163,7 +163,7 @@ export async function handleLicenses(
     if (!catalog) return err(409, ErrorCode.BadRequest, "no active catalog");
     const body = await readBody(req);
     const updates = Array.isArray(body.updates) ? (body.updates as OverrideUpdate[]) : [];
-    const result = applyOverrides(parsePayload(license.overrides_json), updates, catalog);
+    const result = applyOverrides(parsePayload(license.overrides_json), updates, catalog, now);
     if (!result.ok) return err(422, ErrorCode.BadRequest, "validation failed", { fields: result.fields });
     await patchLicense(db, slug, id, { overrides_json: JSON.stringify(result.payload) }, session.sub, now);
     await audit(db, slug, session, now, "license.overrides", { kind: "license", id }, `Updated overrides for ${id}`);

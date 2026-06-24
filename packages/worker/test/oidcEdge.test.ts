@@ -124,14 +124,14 @@ describe("applyProvisioning", () => {
 
   it("fires only when the claim is present and truthy", async () => {
     const p = emptyPayload();
-    await applyProvisioning(db, "djdl", identity({ claims: { sub: "x" } }), p); // no remnawaveSub
+    await applyProvisioning(db, "djdl", identity({ claims: { sub: "x" } }), p, NOW); // no remnawaveSub
     expect(p.entitlements.polarisVpn).toBeUndefined();
     expect(p.secrets["proxy.subscriptionUrl"]).toBeUndefined();
   });
 
   it("skips a claim that is explicitly false", async () => {
     const p = emptyPayload();
-    await applyProvisioning(db, "djdl", identity({ claims: { sub: "x", remnawaveSub: false } }), p);
+    await applyProvisioning(db, "djdl", identity({ claims: { sub: "x", remnawaveSub: false } }), p, NOW);
     expect(p.entitlements.polarisVpn).toBeUndefined();
   });
 
@@ -142,7 +142,7 @@ describe("applyProvisioning", () => {
       "https://evil.example/{claim}",
     );
     const p = emptyPayload();
-    await applyProvisioning(db, "djdl", identity(), p);
+    await applyProvisioning(db, "djdl", identity(), p, NOW);
     // The entitlement still applies, but the disallowed secret is dropped.
     expect(p.entitlements.polarisVpn?.value).toBe(true);
     expect(p.secrets["proxy.subscriptionUrl"]).toBeUndefined();
@@ -150,7 +150,7 @@ describe("applyProvisioning", () => {
 
   it("URL-encodes the claim value into the secret URL", async () => {
     const p = emptyPayload();
-    await applyProvisioning(db, "djdl", identity({ claims: { sub: "x", remnawaveSub: "a/b c" } }), p);
+    await applyProvisioning(db, "djdl", identity({ claims: { sub: "x", remnawaveSub: "a/b c" } }), p, NOW);
     expect(p.secrets["proxy.subscriptionUrl"]?.value).toBe("https://vpn.polaris.rest/a%2Fb%20c");
     expect(p.secrets["proxy.subscriptionUrl"]?.state).toBe("hidden");
   });
