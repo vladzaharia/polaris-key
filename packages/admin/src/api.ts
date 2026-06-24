@@ -1,16 +1,21 @@
 /**
- * Same-origin client for the `/admin/api/*` surface (packages/worker/src/admin/api.ts is
- * the source of truth for these shapes). Auth is the HttpOnly session cookie (sent
- * automatically); every state-changing call must echo the per-session CSRF token in the
- * `X-PKey-CSRF` header or the server rejects it. A 401 means the session lapsed -> bounce
- * to the login redirect so the operator re-authenticates.
+ * Same-origin typed client for the `/admin/api/*` surface. The worker
+ * (`packages/worker/src/admin/api.ts` + `handlers/*`) is the source of truth for these
+ * shapes. Auth is the HttpOnly session cookie (sent automatically); every state-changing
+ * call echoes the per-session CSRF token in the `X-PKey-CSRF` header or the server rejects
+ * it. A 401 means the session lapsed → bounce to the login redirect to re-authenticate.
  *
- * Secrets NEVER cross the wire as values: a managed *secret* is delivered as
- * `{ state, configured }` only — mirrored in the types so the UI can't render one.
+ * Secrets are write-only: a managed *secret* comes back as `{ state, configured, updatedAt }`
+ * only — its value NEVER crosses the wire, mirrored here so the UI can't render one.
+ *
+ * Management state is the v2 MDM model: `default` (server value is a default the client may
+ * override) | `enforced` (server value wins, read-only) | `hidden` (enforced + withheld from
+ * enumeration). Every managed entry carries `updatedAt` (epoch seconds) for change detection.
  */
 
+// ── catalog / config shapes ──────────────────────────────────────────────────
 export type ConfigKind = "config" | "secret" | "flag";
-export type ManagementState = "unmanaged" | "managed" | "hidden";
+export type ManagementState = "default" | "enforced" | "hidden";
 
 export interface ConfigEntry {
   key: string;
@@ -34,6 +39,7 @@ export interface ProductCatalog {
   entries: ConfigEntry[];
 }
 
+// ── identity ──────────────────────────────────────────────────────────────────
 export interface ProductRef {
   slug: string;
   name: string;
@@ -49,6 +55,7 @@ export interface Me {
   products: ProductRef[];
 }
 
+// ── products (platform registry) ──────────────────────────────────────────────
 export interface ProductDetail {
   slug: string;
   name: string;
@@ -62,6 +69,84 @@ export interface ProductDetail {
   modifiedAt: number;
 }
 
+export interface CreateManualProductBody {
+  slug: string;
+  name?: string;
+  schema?: ProductCatalog | string;
+  signingKid?: string;
+  compatMin?: string;
+  compatMax?: string;
+  defaultMaxOfflineDays?: number;
+  defaultMachineLimit?: number;
+  adminGroup?: string;
+}
+
+export interface CreateManualProductResult {
+  ok: true;
+  slug: string;
+  kid: string;
+  product: ProductDetail | null;
+}
+
+export interface LinkRepoResult {
+  ok: true;
+  slug: string;
+  kid: string;
+  install?: unknown;
+  remainingSecrets?: string[];
+}
+
+export interface UpdateProductBody {
+  name?: string;
+  compatMin?: string;
+  compatMax?: string;
+  defaultMaxOfflineDays?: number;
+  defaultMachineLimit?: number;
+  adminGroup?: string;
+}
+
+export interface RotateKeyResult {
+  ok: true;
+  kid: string;
+  publicKey: string;
+}
+
+export interface ResyncResult {
+  ok: true;
+  slug: string;
+  updated?: unknown;
+}
+
+// ── managed-payload (overrides / profile payloads) ────────────────────────────
+/** A managed value: its state, value, and when an admin last changed it (epoch seconds). */
+export interface ManagedEntry {
+  state: ManagementState;
+  value?: unknown;
+  updatedAt: number;
+}
+
+/** A redacted secret entry — value withheld; only whether one is configured + when. */
+export interface ManagedSecretView {
+  state: ManagementState;
+  configured: boolean;
+  updatedAt: number;
+}
+
+/** The redacted, over-the-wire payload shape (secrets never carry a value). */
+export interface RedactedPayload {
+  config: Record<string, ManagedEntry>;
+  secrets: Record<string, ManagedSecretView>;
+  entitlements: Record<string, ManagedEntry>;
+}
+
+/** A single override/payload key update sent on a PUT batch. */
+export interface OverrideUpdate {
+  key: string;
+  state?: ManagementState;
+  value?: unknown;
+}
+
+// ── licenses ──────────────────────────────────────────────────────────────────
 export type LicenseStatus = "active" | "disabled";
 export type KeyStatus = "active" | "revoked";
 
@@ -77,6 +162,9 @@ export interface LicenseSummary {
   machineCount: number;
   profile: string | null;
   tier: string | null;
+  channels: string[];
+  minVersion: string | null;
+  maxVersion: string | null;
   identityProvider: "manual" | "oidc";
   oidcSubject?: string;
   modifiedBy?: string;
@@ -102,20 +190,6 @@ export interface MachineDto {
   reported?: unknown;
 }
 
-export interface ManagedValueView {
-  state: ManagementState;
-  value?: unknown;
-}
-export interface ManagedSecretView {
-  state: ManagementState;
-  configured: boolean;
-}
-export interface RedactedPayload {
-  config: Record<string, ManagedValueView>;
-  secrets: Record<string, ManagedSecretView>;
-  entitlements: Record<string, ManagedValueView>;
-}
-
 export interface LicenseDetail extends LicenseSummary {
   groups?: string[];
   maxOfflineDays?: number | null;
@@ -124,6 +198,29 @@ export interface LicenseDetail extends LicenseSummary {
   machines: MachineDto[];
 }
 
+export interface CreateLicenseBody {
+  name: string;
+  email: string;
+  expiresAt?: number;
+  profile?: string;
+  tier?: string;
+  maxOfflineDays?: number;
+  channels?: string[];
+  minVersion?: string;
+  maxVersion?: string;
+}
+
+export interface PatchLicenseBody {
+  name?: string;
+  email?: string;
+  expiresAt?: number | null;
+  maxOfflineDays?: number;
+  channels?: string[];
+  minVersion?: string | null;
+  maxVersion?: string | null;
+}
+
+// ── profiles ──────────────────────────────────────────────────────────────────
 export interface ProfileSummary {
   id: string;
   name: string;
@@ -135,14 +232,30 @@ export interface ProfileDetail extends ProfileSummary {
   payload: RedactedPayload;
 }
 
+// ── tiers ─────────────────────────────────────────────────────────────────────
 export interface TierSummary {
   id: string;
   label: string;
   profile: string | null;
   policyExpiryDays: number | null;
   policyMachineLimit: number | null;
+  channels: string[];
+  minVersion: string | null;
+  maxVersion: string | null;
 }
 
+export interface TierBody {
+  id?: string;
+  label?: string;
+  profile?: string;
+  policyExpiryDays?: number;
+  policyMachineLimit?: number;
+  channels?: string[];
+  minVersion?: string | null;
+  maxVersion?: string | null;
+}
+
+// ── activity ──────────────────────────────────────────────────────────────────
 export interface ActivityItem {
   id: string;
   at: number;
@@ -155,14 +268,14 @@ export interface ActivityCursor {
   beforeAt: number;
   beforeId: string;
 }
-
-export interface OverrideUpdate {
-  key: string;
-  state?: ManagementState;
-  value?: unknown;
+export interface ActivityPage {
+  items: ActivityItem[];
+  nextCursor: ActivityCursor | null;
 }
 
-// ── transport ────────────────────────────────────────────────────────────────
+// ── transport ─────────────────────────────────────────────────────────────────
+export const CSRF_HEADER = "X-PKey-CSRF";
+
 let csrf = "";
 export function setCsrf(token: string): void {
   csrf = token;
@@ -171,6 +284,7 @@ export function setCsrf(token: string): void {
 let redirectToLogin = (): void => {
   window.location.href = "/admin/login";
 };
+/** Override the 401 redirect (tests pass a spy; call with no arg to restore the default). */
 export function setLoginRedirectForTests(fn?: () => void): void {
   redirectToLogin =
     fn ??
@@ -186,14 +300,15 @@ export class ApiError extends Error {
     public readonly code?: string,
   ) {
     super(`api ${status}`);
+    this.name = "ApiError";
   }
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  const mutating = init.method && init.method !== "GET";
+  const mutating = init.method != null && init.method !== "GET";
   if (mutating) {
-    headers.set("X-PKey-CSRF", csrf);
+    headers.set(CSRF_HEADER, csrf);
     if (init.body) headers.set("Content-Type", "application/json");
   }
   const res = await fetch(path, { ...init, headers, credentials: "same-origin" });
@@ -217,7 +332,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (message) error.message = message;
     throw error;
   }
-  return (await res.json()) as T;
+  // 204/empty bodies are tolerated (returns undefined cast to T).
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 const enc = encodeURIComponent;
@@ -225,78 +342,103 @@ const enc = encodeURIComponent;
 const p = (slug: string): string => `/admin/api/products/${enc(slug)}`;
 
 export const api = {
+  // ── identity ────────────────────────────────────────────────────────────────
   me: () => call<Me>("/admin/api/me"),
   logout: () => call<{ ok: true }>("/admin/api/logout", { method: "POST" }),
 
-  // Platform: products
+  // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/admin/api/products"),
-  createProduct: (body: { slug: string; name?: string; adminGroup?: string }) =>
-    call<{ ok: true; product: ProductDetail; signingKeySecret: string }>("/admin/api/products", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  patchProduct: (slug: string, body: Partial<{ name: string; compatMin: string; compatMax: string; defaultMachineLimit: number; defaultMaxOfflineDays: number; adminGroup: string }>) =>
-    call<{ ok: true }>(`${p(slug)}`, { method: "PATCH", body: JSON.stringify(body) }),
-  deleteProduct: (slug: string) => call<{ ok: true }>(`${p(slug)}`, { method: "DELETE" }),
+  product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
+  createManualProduct: (body: CreateManualProductBody) =>
+    call<CreateManualProductResult>("/admin/api/products", { method: "POST", body: JSON.stringify(body) }),
+  linkRepo: (repoUrl: string) =>
+    call<LinkRepoResult>("/admin/api/products/link-repo", { method: "POST", body: JSON.stringify({ repoUrl }) }),
+  updateProduct: (slug: string, body: UpdateProductBody) =>
+    call<{ ok: true; slug: string }>(p(slug), { method: "PATCH", body: JSON.stringify(body) }),
+  deleteProduct: (slug: string) => call<{ ok: true; slug: string }>(p(slug), { method: "DELETE" }),
+  resyncProduct: (slug: string) =>
+    call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
+  putProductSecret: (slug: string, name: string, value: string) =>
+    call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, { method: "PUT", body: JSON.stringify({ value }) }),
+  rotateProductKey: (slug: string) =>
+    call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
 
-  // Per-product: schema
+  // ── schema / catalog ──────────────────────────────────────────────────────────
   schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/schema`),
   publishSchema: (slug: string, catalog: ProductCatalog) =>
-    call<{ ok: true; schemaVersion: number }>(`${p(slug)}/schema`, {
-      method: "PUT",
-      body: JSON.stringify({ catalog }),
-    }),
+    call<{ ok: true; schemaVersion: number }>(`${p(slug)}/schema`, { method: "PUT", body: JSON.stringify({ catalog }) }),
 
-  // Per-product: licenses
+  // ── licenses ────────────────────────────────────────────────────────────────
   licenses: (slug: string) => call<{ licenses: LicenseSummary[] }>(`${p(slug)}/licenses`),
   license: (slug: string, id: string) => call<LicenseDetail>(`${p(slug)}/licenses/${enc(id)}`),
-  createLicense: (slug: string, body: { name: string; email: string; expiresAt?: number; profile?: string }) =>
+  createLicense: (slug: string, body: CreateLicenseBody) =>
     call<{ licenseId: string; key: string; license: LicenseSummary }>(`${p(slug)}/licenses`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  patchLicense: (slug: string, id: string, body: Partial<{ name: string; email: string; expiresAt: number | null; maxOfflineDays: number }>) =>
+  patchLicense: (slug: string, id: string, body: PatchLicenseBody) =>
     call<{ ok: true; id: string }>(`${p(slug)}/licenses/${enc(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
   setLicenseEnabled: (slug: string, id: string, enabled: boolean) =>
-    call<{ ok: true; id: string; status: LicenseStatus }>(`${p(slug)}/licenses/${enc(id)}/${enabled ? "enable" : "disable"}`, { method: "POST" }),
-  setLicenseOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/licenses/${enc(id)}/overrides`, { method: "PUT", body: JSON.stringify({ updates }) }),
+    call<{ ok: true; id: string; status: LicenseStatus }>(
+      `${p(slug)}/licenses/${enc(id)}/${enabled ? "enable" : "disable"}`,
+      { method: "POST" },
+    ),
+  putLicenseOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
+    call<{ ok: true; id: string }>(`${p(slug)}/licenses/${enc(id)}/overrides`, {
+      method: "PUT",
+      body: JSON.stringify({ updates }),
+    }),
 
-  // Keys
+  // ── license keys ──────────────────────────────────────────────────────────────
+  licenseKeys: (slug: string, id: string) =>
+    call<{ keys: KeyDto[] }>(`${p(slug)}/licenses/${enc(id)}/keys`),
   mintKey: (slug: string, id: string, label?: string) =>
-    call<{ key: string; hash: string; record: KeyDto }>(`${p(slug)}/licenses/${enc(id)}/keys`, { method: "POST", body: JSON.stringify({ label }) }),
+    call<{ key: string; hash: string; record: KeyDto }>(`${p(slug)}/licenses/${enc(id)}/keys`, {
+      method: "POST",
+      body: JSON.stringify({ label }),
+    }),
   revokeKey: (slug: string, id: string, keyHash: string) =>
-    call<{ ok: true; hash: string; status: KeyStatus }>(`${p(slug)}/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`, { method: "POST" }),
+    call<{ ok: true; hash: string; status: KeyStatus }>(
+      `${p(slug)}/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`,
+      { method: "POST" },
+    ),
 
-  // Machines
+  // ── license machines ──────────────────────────────────────────────────────────
+  licenseMachines: (slug: string, id: string) =>
+    call<{ machines: MachineDto[] }>(`${p(slug)}/licenses/${enc(id)}/machines`),
   deauthorizeMachine: (slug: string, id: string, machineId: string) =>
-    call<{ ok: true; machineId: string }>(`${p(slug)}/licenses/${enc(id)}/machines/${enc(machineId)}`, { method: "DELETE" }),
+    call<{ ok: true; machineId: string }>(`${p(slug)}/licenses/${enc(id)}/machines/${enc(machineId)}`, {
+      method: "DELETE",
+    }),
 
-  // Profiles
+  // ── profiles ────────────────────────────────────────────────────────────────
   profiles: (slug: string) => call<{ profiles: ProfileSummary[] }>(`${p(slug)}/profiles`),
   profile: (slug: string, id: string) => call<ProfileDetail>(`${p(slug)}/profiles/${enc(id)}`),
   createProfile: (slug: string, body: { id?: string; name?: string; description?: string }) =>
     call<{ ok: true; id: string }>(`${p(slug)}/profiles`, { method: "POST", body: JSON.stringify(body) }),
-  setProfileOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
+  putProfilePayload: (slug: string, id: string, updates: OverrideUpdate[]) =>
     call<{ ok: true; id: string }>(`${p(slug)}/profiles/${enc(id)}`, { method: "PUT", body: JSON.stringify({ updates }) }),
   deleteProfile: (slug: string, id: string) =>
     call<{ ok: true; id: string }>(`${p(slug)}/profiles/${enc(id)}`, { method: "DELETE" }),
 
-  // Tiers
+  // ── tiers ─────────────────────────────────────────────────────────────────────
   tiers: (slug: string) => call<{ tiers: TierSummary[] }>(`${p(slug)}/tiers`),
-  createTier: (slug: string, body: { id?: string; label?: string; profile?: string; policyExpiryDays?: number; policyMachineLimit?: number }) =>
+  createTier: (slug: string, body: TierBody) =>
     call<{ ok: true; id: string }>(`${p(slug)}/tiers`, { method: "POST", body: JSON.stringify(body) }),
-  patchTier: (slug: string, id: string, body: Partial<{ label: string; profile: string; policyExpiryDays: number; policyMachineLimit: number }>) =>
+  patchTier: (slug: string, id: string, body: TierBody) =>
     call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
-  deleteTier: (slug: string, id: string) => call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, { method: "DELETE" }),
+  deleteTier: (slug: string, id: string) =>
+    call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, { method: "DELETE" }),
 
-  // Activity (keyset)
-  activity: (slug: string, cursor?: ActivityCursor, limit = 50) => {
+  // ── activity (keyset) ─────────────────────────────────────────────────────────
+  activity: (slug: string, cursor?: ActivityCursor | null, limit = 50) => {
     const search = new URLSearchParams({ limit: String(limit) });
     if (cursor) {
       search.set("beforeAt", String(cursor.beforeAt));
       search.set("beforeId", cursor.beforeId);
     }
-    return call<{ items: ActivityItem[]; nextCursor: ActivityCursor | null }>(`${p(slug)}/activity?${search.toString()}`);
+    return call<ActivityPage>(`${p(slug)}/activity?${search.toString()}`);
   },
 };
+
+export type Api = typeof api;

@@ -1,13 +1,26 @@
-import React, { useMemo, useState } from "react";
-import type { ConfigEntry } from "./api.js";
+import * as React from "react";
+import type { ConfigEntry, ManagementState } from "./api.js";
+import {
+  Badge,
+  Checkbox,
+  Field,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./components/ui/index.js";
 
 /**
- * A tiny schema-driven form. Given a catalog entry's JSON-Schema fragment it renders the
- * right input (boolean -> switch, enum -> select, number -> stepper, string -> text) and
- * validates the value against the fragment locally so the SchemaCatalog "live preview" and
- * the override editor share one renderer. This is a deliberately small subset of Draft-07
- * (type / enum / minimum / maximum / minLength / maxLength / pattern) — the same fragments
- * the worker's Ajv validates server-side, so a value that passes here also passes there.
+ * Schema-driven form fields. Given a catalog entry's JSON-Schema fragment it renders the
+ * right primitive (boolean → checkbox, enum → select, number → number input, string → text /
+ * password) and validates locally against the fragment. This is a deliberately small subset
+ * of Draft-07 (type / enum / minimum / maximum / minLength / maxLength / pattern) — the same
+ * fragments the worker's Ajv validates server-side, so a value valid here is valid there.
+ *
+ * `ManagedField` wraps a `SchemaField` with the v2 management-state controls (default /
+ * enforced / hidden) and an `updatedAt` stamp, mirroring the managed-payload wire shape.
  */
 
 export interface FieldResult {
@@ -49,52 +62,63 @@ export function validate(schema: Record<string, unknown>, value: unknown): strin
   return null;
 }
 
+const KIND_VARIANT: Record<string, "primary" | "warning" | "default"> = {
+  config: "default",
+  secret: "warning",
+  flag: "primary",
+};
+
 export function SchemaField({
   entry,
   value,
   onChange,
+  disabled,
 }: {
   entry: ConfigEntry;
   value: unknown;
   onChange: (result: FieldResult) => void;
+  disabled?: boolean;
 }): React.ReactElement {
   const schema = entry.schema;
-  const error = useMemo(() => validate(schema, value), [schema, value]);
-  const emit = (raw: string) => {
+  const error = React.useMemo(() => validate(schema, value), [schema, value]);
+  const emit = (raw: string): void => {
     const v = coerce(schema, raw);
-    onChange({ value: v, valid: validate(schema, v) === null, error: validate(schema, v) ?? undefined });
+    const e = validate(schema, v);
+    onChange({ value: v, valid: e === null, error: e ?? undefined });
   };
 
-  const inputId = `f-${entry.key}`;
   let control: React.ReactElement;
   if (schema.type === "boolean") {
     control = (
-      <input
-        id={inputId}
-        type="checkbox"
-        checked={value === true}
+      <Checkbox
         aria-label={entry.label}
-        onChange={(ev) => onChange({ value: ev.target.checked, valid: true })}
+        checked={value === true}
+        disabled={disabled}
+        onCheckedChange={(checked) => onChange({ value: checked === true, valid: true })}
       />
     );
   } else if (Array.isArray(schema.enum)) {
     control = (
-      <select id={inputId} value={String(value ?? "")} aria-label={entry.label} onChange={(ev) => emit(ev.target.value)}>
-        <option value="">—</option>
-        {(schema.enum as unknown[]).map((opt) => (
-          <option key={String(opt)} value={String(opt)}>
-            {String(opt)}
-          </option>
-        ))}
-      </select>
+      <Select value={value == null ? "" : String(value)} disabled={disabled} onValueChange={(v) => emit(v)}>
+        <SelectTrigger aria-label={entry.label}>
+          <SelectValue placeholder="—" />
+        </SelectTrigger>
+        <SelectContent>
+          {(schema.enum as unknown[]).map((opt) => (
+            <SelectItem key={String(opt)} value={String(opt)}>
+              {String(opt)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     );
   } else if (schema.type === "integer" || schema.type === "number") {
     control = (
-      <input
-        id={inputId}
+      <Input
         type="number"
-        value={value === undefined || value === null ? "" : String(value)}
         aria-label={entry.label}
+        disabled={disabled}
+        value={value === undefined || value === null ? "" : String(value)}
         min={typeof schema.minimum === "number" ? schema.minimum : undefined}
         max={typeof schema.maximum === "number" ? schema.maximum : undefined}
         onChange={(ev) => emit(ev.target.value)}
@@ -102,11 +126,11 @@ export function SchemaField({
     );
   } else {
     control = (
-      <input
-        id={inputId}
+      <Input
         type={entry.secret || entry.kind === "secret" ? "password" : "text"}
-        value={String(value ?? "")}
         aria-label={entry.label}
+        disabled={disabled}
+        value={value == null ? "" : String(value)}
         placeholder={entry.ui?.placeholder}
         onChange={(ev) => emit(ev.target.value)}
       />
@@ -114,18 +138,83 @@ export function SchemaField({
   }
 
   return (
-    <div className={`field${error ? " field-invalid" : ""}`}>
-      <label htmlFor={inputId} className="field-label">
-        {entry.label}
-        <span className="field-kind">{entry.kind}</span>
-      </label>
+    <Field
+      label={entry.label}
+      help={entry.description || undefined}
+      error={error ?? undefined}
+      labelAside={<Badge variant={KIND_VARIANT[entry.kind] ?? "default"}>{entry.kind}</Badge>}
+    >
       {control}
-      {entry.description ? <p className="field-help">{entry.description}</p> : null}
-      {error ? (
-        <p className="field-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+    </Field>
+  );
+}
+
+const STATES: { value: ManagementState; label: string }[] = [
+  { value: "default", label: "Default (overridable)" },
+  { value: "enforced", label: "Enforced (locked)" },
+  { value: "hidden", label: "Hidden (enforced + withheld)" },
+];
+
+const STATE_VARIANT: Record<ManagementState, "default" | "primary" | "warning"> = {
+  default: "default",
+  enforced: "primary",
+  hidden: "warning",
+};
+
+function formatStamp(updatedAt?: number): string | null {
+  if (!updatedAt) return null;
+  try {
+    return new Date(updatedAt * 1000).toLocaleString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A managed-payload field: a `SchemaField` value editor plus the v2 management-state selector
+ * and an `updatedAt` stamp. When the state is `enforced`/`hidden` the value still edits (the
+ * server enforces it on clients), but the badge communicates the lock. Drives one entry of a
+ * license-override or profile-payload batch.
+ */
+export function ManagedField({
+  entry,
+  value,
+  state,
+  updatedAt,
+  onValueChange,
+  onStateChange,
+}: {
+  entry: ConfigEntry;
+  value: unknown;
+  state: ManagementState;
+  updatedAt?: number;
+  onValueChange: (result: FieldResult) => void;
+  onStateChange: (state: ManagementState) => void;
+}): React.ReactElement {
+  const stamp = formatStamp(updatedAt);
+  return (
+    <div className="space-y-2 rounded-md border border-border bg-card/40 p-3">
+      <SchemaField entry={entry} value={value} onChange={onValueChange} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Field label="Management state" className="min-w-48 flex-1">
+          <Select value={state} onValueChange={(v) => onStateChange(v as ManagementState)}>
+            <SelectTrigger aria-label={`Management state for ${entry.label}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <div className="flex flex-col items-end gap-1 self-end pb-1">
+          <Badge variant={STATE_VARIANT[state]}>{state}</Badge>
+          {stamp ? <span className="text-xs text-muted-foreground">Updated {stamp}</span> : null}
+        </div>
+      </div>
     </div>
   );
 }

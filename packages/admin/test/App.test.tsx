@@ -1,16 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { App } from "../src/App.js";
 import { resetCache } from "../src/context.js";
 import { setLoginRedirectForTests } from "../src/api.js";
 
-// A scripted fetch: maps a path -> JSON body. Mutations echo `ok`.
+// A scripted fetch: maps a path -> JSON body. These are SMOKE tests for the app shell — the
+// per-product views are placeholders other agents fill, so we assert navigation + chrome only.
 function mockFetch(routes: Record<string, unknown>): void {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      const path = url.replace("http://localhost", "");
+      const path = url.replace("http://localhost", "").split("?")[0]!;
       const body = routes[path] ?? routes[Object.keys(routes).find((k) => path.startsWith(k)) ?? ""] ?? {};
       return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
     }),
@@ -33,6 +35,9 @@ beforeEach(() => {
   window.location.hash = "";
   resetCache();
   setLoginRedirectForTests(() => undefined);
+  // jsdom lacks these Radix-needed APIs.
+  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
+  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
 });
 
 afterEach(() => {
@@ -40,41 +45,44 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("admin SPA", () => {
-  it("renders the shell with the signed-in operator", async () => {
-    mockFetch({
-      "/admin/api/me": ME,
-      "/admin/api/products/djdl/licenses": { licenses: [] },
-    });
+describe("admin SPA shell", () => {
+  it("boots, shows the brand, and lands on the dashboard", async () => {
+    mockFetch({ "/admin/api/me": ME });
     render(<App />);
-    expect(await screen.findByText("Ada Lovelace")).toBeTruthy();
-    // The product switcher offers both administered products.
-    const select = (await screen.findByLabelText("Product")) as HTMLSelectElement;
-    expect([...select.options].map((o) => o.value)).toEqual(["djdl", "acme"]);
+    // The dashboard greets the signed-in operator.
+    expect(await screen.findByText(/Welcome, Ada/)).toBeTruthy();
+    // The brand lockup is present (sidebar logo, label "Polaris Key").
+    expect(screen.getAllByLabelText("Polaris Key").length).toBeGreaterThan(0);
   });
 
-  it("switches products via the switcher", async () => {
-    mockFetch({
-      "/admin/api/me": ME,
-      "/admin/api/products/djdl/licenses": { licenses: [] },
-      "/admin/api/products/acme/licenses": { licenses: [{ id: "lic_a", name: "Bob", email: "b@x.io", status: "active", enrolledAt: 0, expiresAt: null, keyCount: 1, activeKeyCount: 1, machineCount: 0, profile: null, tier: null, identityProvider: "manual" }] },
-    });
+  it("exposes the account menu with the operator identity", async () => {
+    mockFetch({ "/admin/api/me": ME });
     render(<App />);
-    const select = (await screen.findByLabelText("Product")) as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "acme" } });
-    // Navigating to acme loads its licenses (Bob appears).
-    expect(await screen.findByText("Bob")).toBeTruthy();
-    expect(window.location.hash).toContain("/p/acme/");
+    await screen.findByText(/Welcome, Ada/);
+    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByText("ada@x.io")).toBeTruthy();
+    expect(within(menu).getByText("Sign out")).toBeTruthy();
+  });
+
+  it("navigates to a per-product tab placeholder via the hash", async () => {
+    mockFetch({ "/admin/api/me": ME });
+    window.location.hash = "#/p/djdl/tiers";
+    render(<App />);
+    expect(await screen.findByText("Tiers — coming soon")).toBeTruthy();
   });
 
   it("shows the platform Products view for platform admins", async () => {
-    mockFetch({
-      "/admin/api/me": ME,
-      "/admin/api/products": { products: [{ slug: "djdl", name: "DJDL", signingKid: "k", compatMin: "0", compatMax: "9", defaultMaxOfflineDays: 30, defaultMachineLimit: 5, adminGroup: null, createdAt: 0, modifiedAt: 0 }] },
-    });
+    mockFetch({ "/admin/api/me": ME });
     window.location.hash = "#/products";
     render(<App />);
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Products" })).toBeTruthy());
-    expect(screen.getByText("New product")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("Products — coming soon")).toBeTruthy());
+  });
+
+  it("blocks a product the operator does not administer", async () => {
+    mockFetch({ "/admin/api/me": { ...ME, platformAdmin: false } });
+    window.location.hash = "#/p/nope/licenses";
+    render(<App />);
+    expect(await screen.findByText("Not authorized")).toBeTruthy();
   });
 });

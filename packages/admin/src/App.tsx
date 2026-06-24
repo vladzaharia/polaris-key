@@ -1,31 +1,45 @@
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { AlertTriangle } from "lucide-react";
 import { api, setCsrf, type Me } from "./api.js";
-import { AdminProvider, StatusProvider } from "./context.js";
-import { hashFor, parseRoute, tabOf, type Route, type Tab } from "./route.js";
+import { AdminProvider } from "./context.js";
+import { ThemeProvider } from "./components/theme.js";
+import { Toaster } from "./components/ui/index.js";
+import { Shell } from "./components/Shell.js";
+import { navigate, parseRoute, TABS, type Route } from "./route.js";
+import { Spinner, EmptyState } from "./components/ui/index.js";
+import { LogoMark } from "./components/brand/Logo.js";
+import { Dashboard } from "./views/Dashboard.js";
 import { Products } from "./views/Products.js";
-import { Licenses } from "./views/Licenses.js";
-import { LicenseDetailView } from "./views/LicenseDetail.js";
-import { Tiers } from "./views/Tiers.js";
-import { SchemaCatalog } from "./views/SchemaCatalog.js";
-import { Activity } from "./views/Activity.js";
+import { ComingSoon } from "./views/ComingSoon.js";
 
 /**
  * Top-level shell. Boots the admin identity + CSRF + the set of products the operator may
- * administer, then renders a product switcher + per-product nav. Routing is hash-based so
- * deep links + back/forward work without a router dependency.
+ * administer, then renders the responsive app frame. Routing is hash-based so deep links +
+ * back/forward work without a router dependency. Per-product views are placeholders other
+ * agents fill — every route is reachable today so the app compiles and navigates.
  */
 export function App(): React.ReactElement {
-  const [me, setMe] = useState<Me | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.hash));
+  return (
+    <ThemeProvider>
+      <Toaster>
+        <Boot />
+      </Toaster>
+    </ThemeProvider>
+  );
+}
 
-  useEffect(() => {
-    const onHash = () => setRoute(parseRoute(window.location.hash));
+function Boot(): React.ReactElement {
+  const [me, setMe] = React.useState<Me | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [route, setRoute] = React.useState<Route>(() => parseRoute(window.location.hash));
+
+  React.useEffect(() => {
+    const onHash = (): void => setRoute(parseRoute(window.location.hash));
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     void (async () => {
       try {
         const m = await api.me();
@@ -37,116 +51,98 @@ export function App(): React.ReactElement {
     })();
   }, []);
 
-  if (error)
+  if (error) {
     return (
-      <div className="boot">
-        <p className="note note-error">{error}</p>
-      </div>
+      <BootScreen>
+        <EmptyState
+          icon={<AlertTriangle aria-hidden />}
+          title="Session unavailable"
+          description={error}
+        />
+      </BootScreen>
     );
-  if (!me)
+  }
+  if (!me) {
     return (
-      <div className="boot">
-        <p className="muted">Loading console…</p>
-      </div>
+      <BootScreen>
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Spinner className="size-5 text-primary" />
+          Loading console…
+        </div>
+      </BootScreen>
     );
+  }
 
-  // Resolve the active product: route slug, else the first the operator can admin.
   const activeSlug = route.kind === "product" ? route.slug : me.products[0]?.slug ?? "";
 
   return (
-    <AdminProvider value={{ me, product: activeSlug, setProduct: (slug) => (window.location.hash = hashFor({ kind: "product", slug, view: "licenses" })) }}>
-      <StatusProvider>
-        <div className="app">
-          <Sidebar me={me} route={route} activeSlug={activeSlug} />
-          <main className="main" key={route.kind === "product" ? `${route.slug}:${route.view}:${route.id ?? ""}` : "products"}>
-            {renderRoute(route, me, activeSlug)}
-          </main>
-        </div>
-      </StatusProvider>
+    <AdminProvider
+      value={{
+        me,
+        product: activeSlug,
+        setProduct: (slug) => navigate({ kind: "product", slug, view: "licenses" }),
+      }}
+    >
+      <Shell
+        me={me}
+        route={route}
+        activeSlug={activeSlug}
+        onNavigate={navigate}
+        onSignOut={() => void api.logout().finally(() => (window.location.href = "/admin/login"))}
+      >
+        <div key={routeKey(route)}>{renderRoute(route, me, activeSlug)}</div>
+      </Shell>
     </AdminProvider>
   );
 }
 
-function renderRoute(route: Route, me: Me, activeSlug: string): React.ReactElement {
-  if (route.kind === "products") return <Products />;
-  if (!me.products.some((prod) => prod.slug === activeSlug)) {
-    return <p className="note note-error">You do not administer “{activeSlug}”.</p>;
-  }
-  switch (route.view) {
-    case "licenses":
-      return <Licenses />;
-    case "license":
-      return route.id ? <LicenseDetailView id={route.id} /> : <Licenses />;
-    case "tiers":
-      return <Tiers />;
-    case "catalog":
-      return <SchemaCatalog />;
-    case "activity":
-      return <Activity />;
-  }
+function BootScreen({ children }: { children: React.ReactNode }): React.ReactElement {
+  return (
+    <ThemeBackdrop>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4">
+        <LogoMark className="size-10" />
+        {children}
+      </div>
+    </ThemeBackdrop>
+  );
 }
 
-const TABS: { tab: Tab; label: string }[] = [
-  { tab: "licenses", label: "Licenses" },
-  { tab: "tiers", label: "Tiers" },
-  { tab: "catalog", label: "Schema catalog" },
-  { tab: "activity", label: "Activity" },
-];
+/** Apply background tokens even before the shell mounts. */
+function ThemeBackdrop({ children }: { children: React.ReactNode }): React.ReactElement {
+  return <div className="min-h-screen bg-background text-foreground">{children}</div>;
+}
 
-function Sidebar({ me, route, activeSlug }: { me: Me; route: Route; activeSlug: string }): React.ReactElement {
-  const active = tabOf(route);
-  return (
-    <aside className="sidebar">
-      <a className="side-brand" href={hashFor({ kind: "products" })}>
-        <span className="brand-dot" aria-hidden="true" />
-        Polaris Key<span className="brand-sub">admin</span>
-      </a>
+function routeKey(route: Route): string {
+  if (route.kind === "product") return `${route.slug}:${route.view}:${route.id ?? ""}`;
+  return route.kind;
+}
 
-      {me.platformAdmin ? (
-        <a className={`side-link${route.kind === "products" ? " active" : ""}`} href={hashFor({ kind: "products" })}>
-          Products
-        </a>
-      ) : null}
+const TAB_LABEL = new Map(TABS.map((t) => [t.tab, t.label]));
 
-      <label className="product-switcher">
-        <span className="sr-only">Product</span>
-        <select
-          aria-label="Product"
-          value={activeSlug}
-          onChange={(e) => (window.location.hash = hashFor({ kind: "product", slug: e.target.value, view: "licenses" }))}
-        >
-          {me.products.map((prod) => (
-            <option key={prod.slug} value={prod.slug}>
-              {prod.name}
-            </option>
-          ))}
-        </select>
-      </label>
+function renderRoute(route: Route, me: Me, activeSlug: string): React.ReactElement {
+  if (route.kind === "dashboard") return <Dashboard />;
+  if (route.kind === "products") return <Products />;
 
-      <nav className="side-nav" aria-label="Primary">
-        {TABS.map(({ tab, label }) => (
-          <a
-            key={tab}
-            className={`side-link${active === tab ? " active" : ""}`}
-            aria-current={active === tab ? "page" : undefined}
-            href={hashFor({ kind: "product", slug: activeSlug, view: tab })}
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
+  if (!me.products.some((prod) => prod.slug === activeSlug)) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle aria-hidden />}
+        title="Not authorized"
+        description={`You do not administer “${activeSlug}”.`}
+      />
+    );
+  }
 
-      <div className="side-foot">
-        <span className="side-who" title={me.email}>
-          {me.name}
-        </span>
-        <button
-          className="side-signout"
-          onClick={() => void api.logout().finally(() => (window.location.href = "/admin/login"))}
-        >
-          Sign out
-        </button>
-      </div>
-    </aside>
-  );
+  if (route.view === "license") {
+    return (
+      <ComingSoon
+        title="License detail"
+        description={`Detail for ${route.id ?? "a license"} — keys, machines, and overrides.`}
+      />
+    );
+  }
+
+  const label = TAB_LABEL.get(route.view) ?? "Console";
+  // Every per-product tab renders a placeholder until its owning agent builds it.
+  return <ComingSoon title={label} />;
 }

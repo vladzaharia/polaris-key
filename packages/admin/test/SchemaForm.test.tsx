@@ -1,8 +1,13 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { SchemaField, validate, type FieldResult } from "../src/SchemaForm.js";
+import { ManagedField, SchemaField, validate, type FieldResult } from "../src/SchemaForm.js";
 import type { ConfigEntry } from "../src/api.js";
 
+beforeEach(() => {
+  // jsdom lacks these Radix-needed APIs.
+  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
+  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
+});
 afterEach(cleanup);
 
 function entry(over: Partial<ConfigEntry> = {}): ConfigEntry {
@@ -45,20 +50,17 @@ describe("validate — the Draft-07 subset", () => {
 });
 
 describe("SchemaField — control per schema/kind", () => {
-  it("boolean renders a checkbox and emits a boolean (always valid)", () => {
+  it("boolean renders a checkbox role and emits a boolean", () => {
     const onChange = vi.fn();
     render(<SchemaField entry={entry({ schema: { type: "boolean" } })} value={false} onChange={onChange} />);
-    const box = screen.getByLabelText("A field") as HTMLInputElement;
-    expect(box.type).toBe("checkbox");
+    const box = screen.getByRole("checkbox", { name: "A field" });
     fireEvent.click(box);
     expect(onChange).toHaveBeenCalledWith({ value: true, valid: true });
   });
 
-  it("an enum renders a select with the options", () => {
+  it("an enum renders a select trigger (combobox role)", () => {
     render(<SchemaField entry={entry({ schema: { type: "string", enum: ["dark", "light"] } })} value="" onChange={vi.fn()} />);
-    const select = screen.getByLabelText("A field") as HTMLSelectElement;
-    expect(select.tagName).toBe("SELECT");
-    expect([...select.options].map((o) => o.value)).toEqual(["", "dark", "light"]);
+    expect(screen.getByRole("combobox", { name: "A field" })).toBeTruthy();
   });
 
   it("a number schema renders a number input with min/max", () => {
@@ -110,5 +112,33 @@ describe("SchemaField — coercion + validation feedback", () => {
   it("renders a role=alert with the validation error for the current value", () => {
     render(<SchemaField entry={entry({ schema: { type: "string", minLength: 5 } })} value="ab" onChange={vi.fn()} />);
     expect(screen.getByRole("alert").textContent).toMatch(/min length 5/);
+  });
+});
+
+describe("ManagedField — v2 management state + updatedAt", () => {
+  it("renders the value editor, the current state badge, and the updatedAt stamp", () => {
+    render(
+      <ManagedField
+        entry={entry()}
+        value="hi"
+        state="enforced"
+        updatedAt={1_700_000_000}
+        onValueChange={vi.fn()}
+        onStateChange={vi.fn()}
+      />,
+    );
+    // The state badge reflects the v2 ManagementState.
+    expect(screen.getByText("enforced")).toBeTruthy();
+    // An updatedAt stamp is rendered.
+    expect(screen.getByText(/Updated/)).toBeTruthy();
+    // The state selector is present + labelled.
+    expect(screen.getByRole("combobox", { name: /Management state for A field/ })).toBeTruthy();
+  });
+
+  it("omits the stamp when never updated", () => {
+    render(
+      <ManagedField entry={entry()} value="" state="default" onValueChange={vi.fn()} onStateChange={vi.fn()} />,
+    );
+    expect(screen.queryByText(/Updated/)).toBeNull();
   });
 });

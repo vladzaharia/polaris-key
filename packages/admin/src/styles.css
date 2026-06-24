@@ -1,324 +1,132 @@
-:root {
-  --bg: #0f1117;
-  --surface: #171a23;
-  --surface-2: #1f2430;
-  --border: #2a3040;
-  --text: #e6e9ef;
-  --muted: #8b93a6;
-  --accent: #5b8cff;
-  --ok: #3ddc97;
-  --error: #ff6b6b;
-  --radius: 10px;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Polaris Key brand tokens.
+ *
+ * A dark-first control-plane aesthetic: deep slate surfaces, a single indigo→cyan accent,
+ * and an accessible neutral ramp. Colors are stored as raw HSL channels in `--pk-*` so the
+ * Tailwind theme (tailwind.config.ts) can compose them with alpha and a `.light` class can
+ * swap the whole palette. All foreground/background pairings are tuned to clear WCAG AA
+ * (>= 4.5:1 body text, >= 3:1 large text / UI chrome).
+ */
+@layer base {
+  :root,
+  .dark {
+    /* Surfaces — layered deep slate. */
+    --pk-background: 225 24% 7%; /* #0c0f17 page */
+    --pk-foreground: 220 22% 92%; /* near-white body text — ~13:1 on bg */
+    --pk-card: 224 22% 10%; /* raised panel */
+    --pk-card-foreground: 220 22% 92%;
+    --pk-popover: 224 24% 11%;
+    --pk-popover-foreground: 220 22% 92%;
+    --pk-sidebar: 226 26% 8%;
+    --pk-sidebar-foreground: 220 16% 72%;
+    --pk-sidebar-border: 225 18% 16%;
+    --pk-sidebar-accent: 226 22% 14%;
+
+    /* Brand accent — indigo with a cyan-leaning highlight. */
+    --pk-primary: 232 92% 68%; /* #5b7cfa indigo */
+    --pk-primary-foreground: 226 40% 8%; /* dark text on the accent — AA on the light accent */
+    --pk-accent: 226 22% 16%; /* subtle hover fill */
+    --pk-accent-foreground: 220 22% 92%;
+
+    /* Neutral controls. */
+    --pk-secondary: 225 18% 16%;
+    --pk-secondary-foreground: 220 18% 86%;
+    --pk-muted: 225 16% 15%;
+    --pk-muted-foreground: 220 12% 64%; /* ~4.7:1 on bg — AA */
+
+    /* State. */
+    --pk-success: 158 64% 52%;
+    --pk-success-foreground: 160 60% 8%;
+    --pk-warning: 38 92% 58%;
+    --pk-warning-foreground: 40 60% 10%;
+    --pk-destructive: 0 72% 60%;
+    --pk-destructive-foreground: 0 40% 10%;
+
+    /* Lines + focus. */
+    --pk-border: 225 16% 18%;
+    --pk-input: 225 16% 20%;
+    --pk-ring: 232 92% 70%;
+    --pk-shadow: 225 60% 2%;
+
+    --pk-radius: 0.625rem;
+  }
+
+  .light {
+    --pk-background: 220 30% 98%;
+    --pk-foreground: 226 32% 12%;
+    --pk-card: 0 0% 100%;
+    --pk-card-foreground: 226 32% 12%;
+    --pk-popover: 0 0% 100%;
+    --pk-popover-foreground: 226 32% 12%;
+    --pk-sidebar: 220 28% 96%;
+    --pk-sidebar-foreground: 226 18% 32%;
+    --pk-sidebar-border: 220 18% 88%;
+    --pk-sidebar-accent: 220 24% 92%;
+
+    --pk-primary: 232 80% 56%; /* darker indigo — AA on white */
+    --pk-primary-foreground: 0 0% 100%;
+    --pk-accent: 220 24% 92%;
+    --pk-accent-foreground: 226 32% 12%;
+
+    --pk-secondary: 220 22% 92%;
+    --pk-secondary-foreground: 226 28% 20%;
+    --pk-muted: 220 22% 93%;
+    --pk-muted-foreground: 226 12% 40%; /* ~5:1 on light bg — AA */
+
+    --pk-success: 158 68% 34%;
+    --pk-success-foreground: 0 0% 100%;
+    --pk-warning: 32 84% 40%;
+    --pk-warning-foreground: 0 0% 100%;
+    --pk-destructive: 0 70% 46%;
+    --pk-destructive-foreground: 0 0% 100%;
+
+    --pk-border: 220 18% 86%;
+    --pk-input: 220 18% 84%;
+    --pk-ring: 232 80% 56%;
+    --pk-shadow: 226 40% 40%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    margin: 0;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Visible focus everywhere keyboard users land. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  .pk-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--pk-border)) transparent;
+  }
 }
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: var(--bg);
-  color: var(--text);
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
-
-.app {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  min-height: 100vh;
-}
-
-.boot {
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-}
-
-/* ── sidebar ── */
-.sidebar {
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: 1.25rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.side-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  color: var(--text);
-  text-decoration: none;
-  margin-bottom: 1rem;
-}
-
-.brand-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.brand-sub {
-  color: var(--muted);
-  font-weight: 500;
-  margin-left: 0.25rem;
-}
-
-.product-switcher {
-  margin: 0.75rem 0;
-}
-
-.product-switcher select,
-.inline-form input,
-.inline-form select,
-.field input,
-.field select,
-.authoring input,
-.authoring select,
-.authoring textarea,
-.form-grid label input,
-.form-grid label select {
-  width: 100%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 0.5rem;
-}
-
-.side-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.side-link {
-  color: var(--muted);
-  text-decoration: none;
-  padding: 0.5rem 0.6rem;
-  border-radius: 8px;
-}
-
-.side-link:hover {
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.side-link.active {
-  background: var(--surface-2);
-  color: var(--text);
-  font-weight: 600;
-}
-
-.side-foot {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-
-.side-signout {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  border-radius: 8px;
-  padding: 0.35rem;
-  cursor: pointer;
-}
-
-/* ── main ── */
-.main {
-  padding: 1.75rem 2rem;
-}
-
-h1 {
-  margin-top: 0;
-}
-
-.muted {
-  color: var(--muted);
-}
-
-.crumbs a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.row-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
-}
-
-button {
-  background: var(--accent);
-  border: none;
-  color: #fff;
-  border-radius: 8px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
-}
-
-.data-table th,
-.data-table td {
-  text-align: left;
-  padding: 0.55rem 0.6rem;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.92rem;
-}
-
-.data-table th {
-  color: var(--muted);
-  font-weight: 600;
-}
-
-code {
-  background: var(--surface-2);
-  padding: 0.1rem 0.35rem;
-  border-radius: 5px;
-  font-size: 0.85em;
-}
-
-.pill {
-  border-radius: 999px;
-  padding: 0.1rem 0.6rem;
-  font-size: 0.8rem;
-}
-
-.pill-active {
-  background: rgba(61, 220, 151, 0.15);
-  color: var(--ok);
-}
-
-.pill-disabled {
-  background: rgba(255, 107, 107, 0.15);
-  color: var(--error);
-}
-
-.note {
-  border-radius: var(--radius);
-  padding: 0.75rem 1rem;
-  margin: 0.75rem 0;
-}
-
-.note-ok {
-  background: rgba(61, 220, 151, 0.12);
-  color: var(--ok);
-}
-
-.note-error {
-  background: rgba(255, 107, 107, 0.12);
-  color: var(--error);
-}
-
-.inline-form,
-.authoring {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1rem;
-  margin-top: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  max-width: 640px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
-.field-label,
-.authoring label,
-.form-grid label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-.field-kind {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.field-help {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin: 0.2rem 0 0;
-}
-
-.field-error {
-  color: var(--error);
-  font-size: 0.8rem;
-  margin: 0.2rem 0 0;
-}
-
-.field-invalid input,
-.field-invalid select {
-  border-color: var(--error);
-}
-
-.block {
-  display: block;
-}
-
-.preview {
-  background: var(--surface-2);
-  border-radius: var(--radius);
-  padding: 1rem;
-  margin: 0.75rem 0;
-}
-
-textarea {
-  font-family: ui-monospace, monospace;
-}
-
-.app-status {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  border-radius: 8px;
-  padding: 0.5rem 0.9rem;
-  background: var(--surface-2);
-}
-
-.app-status:empty {
-  display: none;
-}
-
-.app-status-ok {
-  color: var(--ok);
-}
-
-.app-status-error {
-  color: var(--error);
+@layer utilities {
+  .pk-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
