@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, mkReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import { makeEnv, mkReq, NOW, seedLicenseWithKey, seedProduct, seedProductSecret } from "./seed.js";
 import { loadProduct, type Product } from "../src/product.js";
 import { handleEnroll } from "../src/licensing.js";
 import { getEdgeMintConfig, handleMintAuth, handleMintToken } from "../src/edgeMint.js";
@@ -27,13 +27,13 @@ async function enroll(env: Env, db: SqliteDb, product: Product): Promise<string>
 
 async function seedRecipe(db: SqliteDb, over: Record<string, unknown> = {}): Promise<void> {
   const row = {
-    id: "applemusic", alg: "ES256", signing_key_secret: "EDGE_MINT__DJDL__APPLEMUSIC",
+    id: "applemusic", alg: "ES256", signing_key_secret: "applemusic_devkey",
     kid: "KID123", claims_template_json: JSON.stringify({ iss: "TEAMID123" }), ttl_seconds: 3600,
-    auth_page_template: null as string | null, ...over,
+    audience: null as string | null, auth_page_template: null as string | null, ...over,
   };
   await db.run(
-    "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,auth_page_template) VALUES (?,?,?,?,?,?,?,?)",
-    "djdl", row.id, row.alg, row.signing_key_secret, row.kid, row.claims_template_json, row.ttl_seconds, row.auth_page_template,
+    "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
+    "djdl", row.id, row.alg, row.signing_key_secret, row.kid, row.claims_template_json, row.ttl_seconds, row.audience, row.auth_page_template,
   );
 }
 
@@ -45,8 +45,9 @@ describe("edge-mint token", () => {
   beforeEach(async () => {
     db = makeTestDb();
     env = makeEnv(new KvMock(), ["djdl"]);
-    env["EDGE_MINT__DJDL__APPLEMUSIC"] = ES_PEM;
     await seedProduct(db, "djdl");
+    // Mint key now lives sealed in product_secrets, addressed by the recipe's NAME.
+    await seedProductSecret(db, "djdl", "applemusic_devkey", ES_PEM);
     product = (await loadProduct(env, db, "djdl"))!;
   });
 

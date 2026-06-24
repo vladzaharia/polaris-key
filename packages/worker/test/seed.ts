@@ -5,8 +5,9 @@ import { fileURLToPath } from "node:url";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
-import { insertKey, insertLicense, insertProduct, insertSchema } from "../src/repo.js";
+import { insertKey, insertLicense, insertProduct, insertProductKey, insertSchema, upsertProductSecret } from "../src/repo.js";
 import { hashKey, mintLicenseKey } from "../src/crypto.js";
+import { seal } from "../src/keyvault.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
 
@@ -18,17 +19,23 @@ export const TEST_PUB = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI";
 export const TEST_PEM =
   "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----";
 
+// The test platform KEK: base64 of 32 zero bytes. Imports as a raw AES-256-GCM key; used to
+// seal TEST_PEM into the product_keys row that loadProduct now opens.
+export const TEST_KEK = btoa("\0".repeat(32));
+
 export const NOW = 1_700_000_000;
 
 const secretName = (slug: string): string => `SIGNING_KEY__${slug.toUpperCase().replace(/-/g, "_")}`;
 
-/** An Env whose KV is the mock and whose per-product signing keys are all the test key. */
+/** An Env whose KV is the mock, whose PLATFORM_KEK is the test KEK, and whose per-product
+ *  signing-key worker secrets are all the test key (kept harmlessly for legacy paths). */
 export function makeEnv(kv: KvMock, slugs: string[]): Env {
   const env: Record<string, unknown> = {
     HOT: asKv(kv),
     DB: undefined,
     HUB: undefined,
     RL: makeRlNamespace(),
+    PLATFORM_KEK: TEST_KEK,
   };
   for (const slug of slugs) env[secretName(slug)] = TEST_PEM;
   return env as Env;
@@ -51,8 +58,22 @@ export async function seedProduct(
     default_machine_limit: 5,
     admin_group: null,
     branding_json: null,
+    release_source: null,
     created_at: NOW,
     modified_at: NOW,
+  });
+  // KEK-custody: seal TEST_PEM under the constant TEST_KEK and insert the active product key
+  // that loadProduct now opens (replaces the SIGNING_KEY__<SLUG> worker-secret path).
+  const encPrivate = await seal({ PLATFORM_KEK: TEST_KEK } as Env, TEST_PEM);
+  await insertProductKey(db, {
+    product: slug,
+    kid: TEST_KID,
+    alg: "Ed25519",
+    public_b64url: TEST_PUB,
+    enc_private_json: encPrivate,
+    status: "active",
+    created_at: NOW,
+    rotated_at: null,
   });
   const catalog = opts.catalog ?? { schemaVersion: 1, entries: [] };
   await insertSchema(db, {
@@ -61,6 +82,24 @@ export async function seedProduct(
     catalog_json: JSON.stringify(catalog),
     active: 1,
     created_at: NOW,
+  });
+}
+
+/** Seal `value` under the test KEK and upsert it into product_secrets as `name`. Used by
+ *  edge-mint tests: the recipe's `signing_key_secret` is now a product_secrets NAME. */
+export async function seedProductSecret(
+  db: Db,
+  slug: string,
+  name: string,
+  value: string,
+): Promise<void> {
+  const enc_value_json = await seal({ PLATFORM_KEK: TEST_KEK } as Env, value);
+  await upsertProductSecret(db, {
+    product: slug,
+    name,
+    enc_value_json,
+    created_at: NOW,
+    modified_at: NOW,
   });
 }
 

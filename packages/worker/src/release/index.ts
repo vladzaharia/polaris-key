@@ -18,7 +18,6 @@ import { json, notFound } from "../http.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import {
   type Release,
-  findAsset,
   fetchTextAsset,
   listReleases,
   NotFoundError,
@@ -333,10 +332,14 @@ async function handleAppcast(
   const dmg = matchAsset(release.assets, { arch: "arm64", ext: "dmg", binaryName, channelSuffix: suffix });
   if (!dmg) return notFound();
 
-  // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline.
-  const sig = findAsset(release, sigAssetName(dmg.name));
+  // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline. When
+  // that sidecar is ABSENT, fall back to omitting the signature (render the item without
+  // `<sparkle:edSignature>`) instead of 404 — the feed stays valid for unsigned channels.
   const tok = await token(env, cfg, product.slug, now, fetchImpl);
-  const edSignature = (await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)).trim();
+  const sig = release.assets.find((a) => a.name === sigAssetName(dmg.name));
+  const edSignature = sig
+    ? (await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)).trim()
+    : undefined;
 
   // Stable feeds (latest/stable/pinned) point the enclosure at the concrete version so
   // the DMG URL is immutable; moving channels point at their channel segment.

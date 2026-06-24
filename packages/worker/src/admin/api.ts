@@ -35,7 +35,7 @@ import {
 } from "./session.js";
 import { adminJson, forbidden, isMutation, notFound, unauthorized } from "./lib/respond.js";
 import { handleMe } from "./handlers/me.js";
-import { handleProducts } from "./handlers/products.js";
+import { handleProducts, handleProductScopedResource } from "./handlers/products.js";
 import { handleSchema } from "./handlers/schema.js";
 import { handleLicenses } from "./handlers/licenses.js";
 import { handleProfiles } from "./handlers/profiles.js";
@@ -63,6 +63,14 @@ async function handleProductScoped(
   }
 
   const [resource, id, sub, subId, action] = rest;
+
+  // New per-product resources: write-only secrets, signing-key rotation, repo resync.
+  //   PUT  /products/<slug>/secrets/<name>
+  //   POST /products/<slug>/keys/rotate
+  //   POST /products/<slug>/release/resync
+  if (resource === "secrets" || resource === "keys" || resource === "release") {
+    return handleProductScopedResource(req, env, db, session, slug, resource, id, now);
+  }
 
   if (resource === "schema") {
     return handleSchema(req, db, session, slug, now);
@@ -113,7 +121,9 @@ export async function handleAdminApi(req: Request, env: Env, db: Db, path: strin
     return adminJson({ ok: true }, 200, { "set-cookie": buildClearCookie() });
   }
   if (head === "products") {
-    // /products  or  /products/<slug>/...
+    // /products, /products/link-repo, or /products/<slug>/...
+    // `link-repo` is a single-segment action, NOT a slug — handleProducts special-cases it
+    // (with its platform-admin gate) before treating the segment as a product slug.
     if (rest.length <= 1) return handleProducts(req, env, db, session, rest, now);
     const [slug, ...productRest] = rest;
     return handleProductScoped(req, env, db, session, slug!, productRest, now);

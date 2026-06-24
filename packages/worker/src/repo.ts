@@ -2,7 +2,7 @@
 // every statement) so a tenant boundary can't be crossed even on a logic bug. Repos take
 // the `Db` abstraction, so they unit-test against in-memory SQLite and run unchanged on D1.
 
-import type { Db } from "./db/types.js";
+import type { Db, DbStatement } from "./db/types.js";
 
 // ── Row types (mirror migrations/0001_init.sql) ──────────────────────────────
 export interface ProductRow {
@@ -17,6 +17,29 @@ export interface ProductRow {
   default_machine_limit: number;
   admin_group: string | null;
   branding_json: string | null;
+  release_source: string | null;
+  created_at: number;
+  modified_at: number;
+}
+
+// Sealed Ed25519 signing key material (migrations/0003_keyvault.sql). enc_private_json is a
+// `JSON.stringify(Sealed)` blob opened under the platform KEK; public_b64url is the raw key.
+export interface ProductKeyRow {
+  product: string;
+  kid: string;
+  alg: string;
+  public_b64url: string;
+  enc_private_json: string;
+  status: string;
+  created_at: number;
+  rotated_at: number | null;
+}
+
+// Sealed per-product secret (OIDC client secret, edge-mint key material, …).
+export interface ProductSecretRow {
+  product: string;
+  name: string;
+  enc_value_json: string;
   created_at: number;
   modified_at: number;
 }
@@ -127,11 +150,53 @@ export async function listProducts(db: Db): Promise<ProductRow[]> {
 export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
   await db.run(
     `INSERT INTO products (slug, name, signing_kid, signing_key_secret, signing_pub, compat_min, compat_max,
-       default_max_offline_days, default_machine_limit, admin_group, branding_json, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       default_max_offline_days, default_machine_limit, admin_group, branding_json, release_source, created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.slug, row.name, row.signing_kid, row.signing_key_secret, row.signing_pub, row.compat_min, row.compat_max,
     row.default_max_offline_days, row.default_machine_limit, row.admin_group, row.branding_json,
-    row.created_at, row.modified_at,
+    row.release_source, row.created_at, row.modified_at,
+  );
+}
+
+// ── Sealed key custody (envelope-encrypted under the platform KEK; see src/keyvault.ts) ──
+export async function getActiveProductKey(db: Db, product: string): Promise<ProductKeyRow | null> {
+  return db.first<ProductKeyRow>(
+    "SELECT * FROM product_keys WHERE product = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+    product,
+  );
+}
+
+export async function insertProductKey(db: Db, row: ProductKeyRow): Promise<void> {
+  await db.run(
+    `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    row.product, row.kid, row.alg, row.public_b64url, row.enc_private_json, row.status,
+    row.created_at, row.rotated_at,
+  );
+}
+
+/** Retire every currently-active key for a product (key rotation: old → retired). */
+export async function retireProductKeys(db: Db, product: string, at: number): Promise<void> {
+  await db.run(
+    "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active'",
+    at, product,
+  );
+}
+
+export async function getProductSecret(db: Db, product: string, name: string): Promise<ProductSecretRow | null> {
+  return db.first<ProductSecretRow>(
+    "SELECT * FROM product_secrets WHERE product = ? AND name = ?",
+    product, name,
+  );
+}
+
+export async function upsertProductSecret(db: Db, row: ProductSecretRow): Promise<void> {
+  await db.run(
+    `INSERT INTO product_secrets (product, name, enc_value_json, created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(product, name) DO UPDATE SET
+       enc_value_json = excluded.enc_value_json, modified_at = excluded.modified_at`,
+    row.product, row.name, row.enc_value_json, row.created_at, row.modified_at,
   );
 }
 
@@ -148,6 +213,137 @@ export async function insertSchema(db: Db, row: SchemaRow): Promise<void> {
     "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",
     row.product, row.catalog_version, row.catalog_json, row.active, row.created_at,
   );
+}
+
+// ── Product registration statement-builders ──────────────────────────────────
+// These return `DbStatement`s (rather than running themselves) so a product-creation flow
+// can compose them into a single atomic `db.batch([...])`. Column order mirrors
+// products/gen-seed.ts so the manual + GitHub paths persist identically to the seed SQL.
+
+export interface OidcConfigInput {
+  product: string;
+  issuer: string;
+  clientId: string;
+  clientSecretSecret: string;
+  redirectUris: string[];
+  groupRoleMap: Record<string, unknown>;
+}
+export function stmtInsertOidcConfig(o: OidcConfigInput): DbStatement {
+  return {
+    sql: `INSERT INTO oidc_config (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+    params: [o.product, o.issuer, o.clientId, o.clientSecretSecret, JSON.stringify(o.redirectUris), JSON.stringify(o.groupRoleMap)],
+  };
+}
+
+export interface TierInput {
+  product: string;
+  id: string;
+  label: string;
+  profileId: string | null;
+  policyExpiryDays: number | null;
+  policyMachineLimit: number | null;
+  modifiedAt: number;
+}
+export function stmtInsertTier(t: TierInput): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit, modified_by, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, NULL, ?)`,
+    params: [t.product, t.id, t.label, t.profileId, t.policyExpiryDays, t.policyMachineLimit, t.modifiedAt],
+  };
+}
+
+export interface ProvisioningInput {
+  product: string;
+  claim: string;
+  entitlementKey?: string;
+  entitlementValue?: unknown;
+  secretKey?: string;
+  secretUrlTemplate?: string;
+  allowedHosts?: string[];
+}
+export function stmtInsertProvisioning(h: ProvisioningInput): DbStatement {
+  return {
+    sql: `INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      h.product, h.claim, h.entitlementKey ?? null,
+      h.entitlementValue !== undefined ? JSON.stringify(h.entitlementValue) : null,
+      h.secretKey ?? null, h.secretUrlTemplate ?? null,
+      h.allowedHosts ? JSON.stringify(h.allowedHosts) : null,
+    ],
+  };
+}
+
+export interface ReleaseConfigInput {
+  product: string;
+  ghOwner: string;
+  ghRepo: string;
+  ghInstallationId: number;
+  channelWorkflow: string | null;
+  betaBranch: string;
+  binaryName: string;
+  sparkleEd25519Pub: string | null;
+  summaryMarker: string;
+}
+export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
+  return {
+    sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
+            manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
+          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?)`,
+    params: [
+      r.product, r.ghOwner, r.ghRepo, r.ghInstallationId, r.channelWorkflow, r.betaBranch,
+      r.binaryName, r.sparkleEd25519Pub, r.summaryMarker,
+    ],
+  };
+}
+
+export interface EdgeMintInput {
+  product: string;
+  id: string;
+  alg: string;
+  signingKeySecret: string;
+  kid?: string;
+  claimsTemplate: Record<string, unknown>;
+  ttlSeconds: number;
+}
+export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
+  return {
+    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, auth_page_template)
+          VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+    params: [e.product, e.id, e.alg, e.signingKeySecret, e.kid ?? null, JSON.stringify(e.claimsTemplate), e.ttlSeconds],
+  };
+}
+
+/** Build the `products`-INSERT as a statement (for atomic batch with its child rows). */
+export function stmtInsertProduct(row: ProductRow): DbStatement {
+  return {
+    sql: `INSERT INTO products (slug, name, signing_kid, signing_key_secret, signing_pub, compat_min, compat_max,
+            default_max_offline_days, default_machine_limit, admin_group, branding_json, release_source, created_at, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      row.slug, row.name, row.signing_kid, row.signing_key_secret, row.signing_pub, row.compat_min, row.compat_max,
+      row.default_max_offline_days, row.default_machine_limit, row.admin_group, row.branding_json,
+      row.release_source, row.created_at, row.modified_at,
+    ],
+  };
+}
+
+/** Build the active-schema INSERT as a statement (for atomic batch). */
+export function stmtInsertSchema(row: SchemaRow): DbStatement {
+  return {
+    sql: "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",
+    params: [row.product, row.catalog_version, row.catalog_json, row.active, row.created_at],
+  };
+}
+
+/** Build the sealed product-key INSERT as a statement (for atomic batch). */
+export function stmtInsertProductKey(row: ProductKeyRow): DbStatement {
+  return {
+    sql: `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    params: [row.product, row.kid, row.alg, row.public_b64url, row.enc_private_json, row.status, row.created_at, row.rotated_at],
+  };
 }
 
 // ── Licenses ─────────────────────────────────────────────────────────────────

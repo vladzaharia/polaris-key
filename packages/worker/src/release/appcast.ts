@@ -28,8 +28,9 @@ export interface AppcastItemInput {
   length: number;
   /** RFC-1123 pubDate string (already formatted; kept explicit for determinism). */
   pubDate: string;
-  /** Base64 EdDSA signature from the sibling `.sig` asset. */
-  edSignature: string;
+  /** Base64 EdDSA signature from the sibling `.sig` asset. Omitted when no sidecar exists,
+   *  in which case the enclosure renders WITHOUT a `sparkle:edSignature` attribute. */
+  edSignature?: string;
   /** Optional minimum macOS version (sparkle:minimumSystemVersion). */
   minimumSystemVersion?: string;
   /** Optional HTML release notes embedded as the item <description>. */
@@ -64,12 +65,17 @@ function renderItem(item: AppcastItemInput): string {
   const desc = item.descriptionHtml
     ? `\n      <description><![CDATA[${item.descriptionHtml}]]></description>`
     : "";
+  // When the pipeline didn't publish a sibling `.sig`, omit the attribute rather than 404 —
+  // the feed is still valid; Sparkle clients that require signing simply won't auto-update.
+  const ed = item.edSignature
+    ? ` sparkle:edSignature="${xmlEscape(item.edSignature)}"`
+    : "";
   return `    <item>
       <title>${xmlEscape(item.title)}</title>
       <pubDate>${xmlEscape(item.pubDate)}</pubDate>
       <sparkle:version>${xmlEscape(item.build)}</sparkle:version>
       <sparkle:shortVersionString>${xmlEscape(item.shortVersion)}</sparkle:shortVersionString>${minSys}${desc}
-      <enclosure url="${xmlEscape(item.url)}" type="application/octet-stream" length="${item.length}" sparkle:edSignature="${xmlEscape(item.edSignature)}" />
+      <enclosure url="${xmlEscape(item.url)}" type="application/octet-stream" length="${item.length}"${ed} />
     </item>`;
 }
 
@@ -106,7 +112,7 @@ export function rfc1123(iso: string | null): string {
 export function buildAppcastItem(
   release: Release,
   dmg: ReleaseAsset,
-  edSignature: string,
+  edSignature: string | null | undefined,
   enclosureUrl: string,
   opts: { title?: string; minimumSystemVersion?: string; descriptionHtml?: string } = {},
 ): AppcastItemInput {
@@ -118,7 +124,7 @@ export function buildAppcastItem(
     url: enclosureUrl,
     length: dmg.size,
     pubDate: rfc1123(release.published_at),
-    edSignature,
+    ...(edSignature ? { edSignature } : {}),
     ...(opts.minimumSystemVersion ? { minimumSystemVersion: opts.minimumSystemVersion } : {}),
     ...(opts.descriptionHtml ? { descriptionHtml: opts.descriptionHtml } : {}),
   };

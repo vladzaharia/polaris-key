@@ -144,6 +144,42 @@ export async function streamAsset(
   return new Response(upstream.body, { status: upstream.status, headers: out });
 }
 
+/**
+ * Read a file from a repo via the GitHub Contents API. Returns the decoded UTF-8 text, or
+ * `null` on 404 (file/ref absent). `ref` pins a branch/tag/sha; omitted ⇒ default branch.
+ * Any other non-OK status maps to a `NotFoundError` so callers stay information-leak-free.
+ *
+ * The Contents API returns a JSON object whose `content` is base64 (with embedded newlines)
+ * when `Accept: application/vnd.github+json`; we decode it here so callers get plain text.
+ */
+export async function fetchRepoFile(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  fetchImpl: FetchImpl = fetch,
+  ref?: string,
+): Promise<string | null> {
+  const q = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${path
+    .split("/")
+    .map((s) => encodeURIComponent(s))
+    .join("/")}${q}`;
+  const res = await fetchImpl(url, { headers: apiHeaders(token, "application/vnd.github+json") });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new NotFoundError(`repo file fetch failed: ${res.status}`);
+  const body = (await res.json()) as { content?: string; encoding?: string };
+  if (typeof body.content !== "string") throw new NotFoundError("repo file: unexpected shape");
+  if (body.encoding && body.encoding !== "base64") {
+    throw new NotFoundError(`repo file: unexpected encoding ${body.encoding}`);
+  }
+  // GitHub base64-wraps the content at 60 cols with `\n`; strip whitespace before decoding.
+  const bin = atob(body.content.replace(/\s+/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
 /** Fetch a small text asset (e.g. a `.sig` sidecar) and return its decoded body. */
 export async function fetchTextAsset(
   token: string,

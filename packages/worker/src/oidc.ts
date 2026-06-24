@@ -8,9 +8,9 @@
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
-import { type Env, secret } from "./env.js";
+import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import type { Product } from "./product.js";
+import { openProductSecret, type Product } from "./product.js";
 import { errorResponse, json } from "./http.js";
 import { hashKey, mintToken, randomId } from "./crypto.js";
 import { putTokenRecord } from "./kv.js";
@@ -293,7 +293,9 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
     await env.HOT.delete(flowKey(product.slug, state));
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
-  const clientSecret = oidc.client_secret_secret ? secret(env, oidc.client_secret_secret) : undefined;
+  // The OIDC client secret is now KEK-custodied in product_secrets (sealed). Undefined ⇒
+  // public client (omit client_secret) — the existing behavior.
+  const clientSecret = await openProductSecret(db, env, product.slug, "OIDC_CLIENT_SECRET");
 
   const tokenRes = await fetch(`${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`, {
     method: "POST",

@@ -15,7 +15,8 @@
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
-    "jose": "^5.9.6"
+    "jose": "^5.9.6",
+    "yaml": "^2.6.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251001.0",
