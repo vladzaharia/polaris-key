@@ -5,12 +5,20 @@ import { AdminProvider } from "./context.js";
 import { ThemeProvider } from "./components/theme.js";
 import { Toaster } from "./components/ui/index.js";
 import { Shell } from "./components/Shell.js";
-import { navigate, parseRoute, TABS, type Route } from "./route.js";
+import { navigate, parseRoute, type Route } from "./route.js";
 import { Spinner, EmptyState } from "./components/ui/index.js";
 import { LogoMark } from "./components/brand/Logo.js";
 import { Dashboard } from "./views/Dashboard.js";
 import { Products } from "./views/Products.js";
-import { ComingSoon } from "./views/ComingSoon.js";
+import { Licenses } from "./views/Licenses.js";
+import { LicenseDetail } from "./views/LicenseDetail.js";
+import { Tiers } from "./views/Tiers.js";
+import { Profiles } from "./views/Profiles.js";
+import { Catalog } from "./views/Catalog.js";
+import { Releases } from "./views/Releases.js";
+import { Oidc } from "./views/Oidc.js";
+import { Activity } from "./views/Activity.js";
+import { Settings } from "./views/Settings.js";
 
 /**
  * Top-level shell. Boots the admin identity + CSRF + the set of products the operator may
@@ -117,8 +125,6 @@ function routeKey(route: Route): string {
   return route.kind;
 }
 
-const TAB_LABEL = new Map(TABS.map((t) => [t.tab, t.label]));
-
 function renderRoute(route: Route, me: Me, activeSlug: string): React.ReactElement {
   if (route.kind === "dashboard") return <Dashboard />;
   if (route.kind === "products") return <Products />;
@@ -133,16 +139,24 @@ function renderRoute(route: Route, me: Me, activeSlug: string): React.ReactEleme
     );
   }
 
-  if (route.view === "license") {
-    return (
-      <ComingSoon
-        title="License detail"
-        description={`Detail for ${route.id ?? "a license"} — keys, machines, and overrides.`}
-      />
-    );
+  switch (route.view) {
+    case "license":
+      return <LicenseDetail slug={activeSlug} id={route.id ?? ""} />;
+    case "licenses":
+      return <Licenses slug={activeSlug} />;
+    case "tiers":
+      return <Tiers slug={activeSlug} />;
+    case "profiles":
+      return <Profiles slug={activeSlug} />;
+    case "catalog":
+      return <Catalog slug={activeSlug} />;
+    case "releases":
+      return <Releases slug={activeSlug} />;
+    case "oidc":
+      return <Oidc slug={activeSlug} />;
+    case "activity":
+      return <Activity slug={activeSlug} />;
+    case "settings":
+      return <Settings slug={activeSlug} />;
   }
-
-  const label = TAB_LABEL.get(route.view) ?? "Console";
-  // Every per-product tab renders a placeholder until its owning agent builds it.
-  return <ComingSoon title={label} />;
 }

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../src/App.js";
 import { resetCache } from "../src/context.js";
 import { setLoginRedirectForTests } from "../src/api.js";
 
-// A scripted fetch: maps a path -> JSON body. These are SMOKE tests for the app shell — the
-// per-product views are placeholders other agents fill, so we assert navigation + chrome only.
+// A scripted fetch: maps a path -> JSON body. These are SMOKE tests for the app shell — we
+// assert navigation + chrome (the views' own behavior is covered by their dedicated suites).
 function mockFetch(routes: Record<string, unknown>): void {
   vi.stubGlobal(
     "fetch",
@@ -65,18 +65,19 @@ describe("admin SPA shell", () => {
     expect(within(menu).getByText("Sign out")).toBeTruthy();
   });
 
-  it("navigates to a per-product tab placeholder via the hash", async () => {
+  it("navigates to a per-product tab via the hash", async () => {
     mockFetch({ "/admin/api/me": ME });
     window.location.hash = "#/p/djdl/tiers";
     render(<App />);
-    expect(await screen.findByText("Tiers — coming soon")).toBeTruthy();
+    // The shell title + the view header both name the tab, so assert at least one heading.
+    expect((await screen.findAllByRole("heading", { name: "Tiers" })).length).toBeGreaterThan(0);
   });
 
   it("shows the platform Products view for platform admins", async () => {
     mockFetch({ "/admin/api/me": ME });
     window.location.hash = "#/products";
     render(<App />);
-    await waitFor(() => expect(screen.getByText("Products — coming soon")).toBeTruthy());
+    expect((await screen.findAllByRole("heading", { name: "Products" })).length).toBeGreaterThan(0);
   });
 
   it("blocks a product the operator does not administer", async () => {
