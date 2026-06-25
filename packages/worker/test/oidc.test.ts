@@ -79,6 +79,96 @@ describe("OIDC enrollment", () => {
     expect(r2).toEqual(r1);
   });
 
+  it("refreshes OIDC-owned license metadata and provisioning on reuse", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedOidc(db);
+    const product = (await loadProduct(env, db, "djdl"))!;
+
+    const r1 = await enrollFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r1)) throw new Error("expected license");
+    const r2 = await enrollFromIdentity(
+      db,
+      product,
+      identity({
+        name: "Ada Changed",
+        email: "ada.changed@example.com",
+        claims: { sub: "user-123", remnawaveSub: "next-sub" },
+      }),
+      NOW + 60,
+    );
+    expect(r2).toEqual(r1);
+
+    const row = await db.first<{
+      name: string;
+      email: string;
+      overrides_json: string;
+      expires_at: number;
+    }>(
+      "SELECT * FROM licenses WHERE product = ? AND id = ?",
+      "djdl",
+      r1.licenseId,
+    );
+    expect(row?.name).toBe("Ada Changed");
+    expect(row?.email).toBe("ada.changed@example.com");
+    expect(row?.expires_at).toBe(NOW + 60 + 365 * 86400);
+    const overrides = JSON.parse(row!.overrides_json) as {
+      secrets: Record<string, { value: string }>;
+    };
+    expect(overrides.secrets["proxy.subscriptionUrl"]?.value).toBe(
+      "https://vpn.polaris.rest/next-sub",
+    );
+  });
+
+  it("refuses to reuse disabled or expired OIDC licenses", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedOidc(db);
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const r1 = await enrollFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r1)) throw new Error("expected license");
+    await db.run(
+      "UPDATE licenses SET status = ? WHERE product = ? AND id = ?",
+      "disabled",
+      "djdl",
+      r1.licenseId,
+    );
+    const disabled = await enrollFromIdentity(db, product, identity(), NOW);
+    expect(disabled).toEqual({ error: "license-unusable" });
+
+    await db.run(
+      "UPDATE licenses SET status = ?, expires_at = ? WHERE product = ? AND id = ?",
+      "active",
+      NOW - 1,
+      "djdl",
+      r1.licenseId,
+    );
+    const expired = await enrollFromIdentity(db, product, identity(), NOW);
+    expect(expired).toEqual({ error: "license-unusable" });
+  });
+
+  it("enforces OIDC machine limits through the shared authorizer", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedOidc(db);
+    await db.run(
+      "UPDATE tiers SET policy_machine_limit = ? WHERE product = ? AND id = ?",
+      1,
+      "djdl",
+      "pro",
+    );
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r)) throw new Error("expected license");
+    await authorizeAndMint(env, db, product, r.licenseId, "dev-1", NOW);
+    await expect(
+      authorizeAndMint(env, db, product, r.licenseId, "dev-2", NOW),
+    ).rejects.toThrow("machine_limit");
+  });
+
   it("denies an identity whose groups grant nothing", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);

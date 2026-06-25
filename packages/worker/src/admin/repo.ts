@@ -52,8 +52,10 @@ export async function deleteProduct(db: Db, slug: string): Promise<void> {
   // Order matters under foreign keys: child rows first, then the product.
   for (const table of [
     "audit",
+    "product_sync_state",
     "machines",
     "keys_index",
+    "license_profiles",
     "licenses",
     "tiers",
     "profiles",
@@ -238,7 +240,13 @@ export async function countLicensesUsingProfile(
   profileId: string,
 ): Promise<number> {
   const r = await db.first<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM licenses WHERE product = ? AND profile_id = ?",
+    `SELECT COUNT(*) AS n FROM (
+       SELECT id FROM licenses WHERE product = ? AND profile_id = ?
+       UNION
+       SELECT license_id AS id FROM license_profiles WHERE product = ? AND profile_id = ?
+     )`,
+    product,
+    profileId,
     product,
     profileId,
   );

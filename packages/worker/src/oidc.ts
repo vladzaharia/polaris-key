@@ -7,20 +7,19 @@
 // against the issuer JWKS via jose (asymmetric algs only).
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
+import {
+  HEADER_DEVICE,
+  type ManagedEntry,
+  type ManagedPayload,
+} from "@polaris-key/protocol";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { openProductSecret, type Product } from "./product.js";
-import { errorResponse, json } from "./http.js";
-import { hashKey, mintToken, randomId } from "./crypto.js";
-import { putTokenRecord } from "./kv.js";
-import {
-  getLicenseBySub,
-  getMachine,
-  getTier,
-  insertLicense,
-  upsertMachine,
-} from "./repo.js";
+import { errorResponse, json, methodNotAllowed } from "./http.js";
+import { randomId } from "./crypto.js";
+import { getLicense, getLicenseBySub, getTier, insertLicense } from "./repo.js";
+import { authorizeMachine, licenseUsable } from "./licenseCore.js";
+import { createBrowserSession } from "./browserSession.js";
 
 const FLOW_TTL_SECONDS = 600;
 const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];
@@ -56,8 +55,14 @@ interface FlowRecord {
   verifier: string;
   nonce: string;
   redirectUri: string;
+  returnTo?: string;
   licenseId?: string;
   error?: string;
+}
+
+interface DeviceFlowRecord {
+  state: string;
+  machineId: string;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -107,6 +112,29 @@ async function getProvisioning(
 
 function flowKey(product: string, state: string): string {
   return `p:${product}:flow:${state}`;
+}
+
+function deviceFlowKey(product: string, code: string): string {
+  return `p:${product}:device-flow:${code}`;
+}
+
+function deviceUserCode(state: string): string {
+  return state
+    .slice(0, 8)
+    .toUpperCase()
+    .replace(/(.{4})/, "$1-");
+}
+
+function safeReturnTo(req: Request, raw: string | null): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = new URL(raw);
+    const here = new URL(req.url);
+    if (parsed.origin !== here.origin) return undefined;
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -184,9 +212,6 @@ export async function enrollFromIdentity(
   identity: OidcIdentity,
   now: number,
 ): Promise<{ licenseId: string } | { error: string }> {
-  const existing = await getLicenseBySub(db, product.slug, identity.sub);
-  if (existing) return { licenseId: existing.id };
-
   const oidc = await getOidcConfig(db, product.slug);
   const map = oidc?.group_role_map_json
     ? (JSON.parse(oidc.group_role_map_json) as Record<
@@ -219,6 +244,27 @@ export async function enrollFromIdentity(
     entitlements: {},
   };
   await applyProvisioning(db, product.slug, identity, overrides, now);
+
+  const existing = await getLicenseBySub(db, product.slug, identity.sub);
+  if (existing) {
+    if (!licenseUsable(existing, now)) return { error: "license-unusable" };
+    await db.run(
+      `UPDATE licenses SET name = ?, email = ?, groups_json = ?, tier_id = ?,
+         expires_at = ?, overrides_json = ?, modified_by = ?, modified_at = ?
+       WHERE product = ? AND id = ?`,
+      identity.name ?? null,
+      identity.email ?? null,
+      JSON.stringify(identity.groups),
+      tierId,
+      expiresAt,
+      JSON.stringify(overrides),
+      "oidc",
+      now,
+      product.slug,
+      existing.id,
+    );
+    return { licenseId: existing.id };
+  }
 
   const licenseId = randomId("lic");
   await insertLicense(db, {
@@ -253,38 +299,29 @@ export async function authorizeAndMint(
   deviceId: string,
   now: number,
 ): Promise<string> {
-  const token = mintToken();
-  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const existing = await getMachine(db, product.slug, deviceId);
-  await upsertMachine(db, {
-    product: product.slug,
-    machine_id: deviceId,
-    license_id: licenseId,
-    status: "authorized",
-    first_seen: existing?.first_seen ?? now,
-    last_seen: now,
-    ua: null,
-    label: existing?.label ?? null,
-    overrides_json: existing?.overrides_json ?? null,
-    reported_json: existing?.reported_json ?? null,
-    token_hash: tokenHash,
-  });
-  await putTokenRecord(env, product.slug, tokenHash, {
-    product: product.slug,
-    machineId: deviceId,
-    licenseId,
-  });
-  return token;
+  const row = await getLicense(db, product.slug, licenseId);
+  if (!row) throw new Error("license not found");
+  const result = await authorizeMachine(env, db, product, row, deviceId, now);
+  if ("error" in result) throw new Error(result.error);
+  return result.token;
 }
 
 // ── HTTP handlers ────────────────────────────────────────────────────────────
-/** GET /<product>/auth/start — begin PKCE, redirect to the IdP authorize endpoint. */
-export async function handleAuthStart(
+async function beginAuthFlow(
   req: Request,
   env: Env,
   db: Db,
   product: Product,
-): Promise<Response> {
+  returnTo?: string,
+): Promise<
+  | {
+      ok: true;
+      state: string;
+      authorizeUrl: string;
+      redirectUri: string;
+    }
+  | Response
+> {
   const oidc = await getOidcConfig(db, product.slug);
   if (!oidc?.issuer || !oidc.client_id)
     return errorResponse(500, "misconfigured", "no oidc config");
@@ -295,7 +332,7 @@ export async function handleAuthStart(
   if (!redirectUriAllowed(oidc, redirectUri)) {
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
-  const flow: FlowRecord = { verifier, nonce, redirectUri };
+  const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo };
   await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
@@ -309,9 +346,74 @@ export async function handleAuthStart(
   authorize.searchParams.set("nonce", nonce);
   authorize.searchParams.set("code_challenge", challenge);
   authorize.searchParams.set("code_challenge_method", "S256");
+  return {
+    ok: true,
+    state,
+    authorizeUrl: authorize.toString(),
+    redirectUri,
+  };
+}
+
+/** GET /<product>/auth/start — begin PKCE, redirect to the IdP authorize endpoint. */
+export async function handleAuthStart(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+): Promise<Response> {
+  const rawReturnTo = new URL(req.url).searchParams.get("return_to");
+  const returnTo = safeReturnTo(req, rawReturnTo);
+  if (rawReturnTo && !returnTo)
+    return errorResponse(400, "bad_request", "return_to not allowed");
+  const flow = await beginAuthFlow(req, env, db, product, returnTo);
+  if (flow instanceof Response) return flow;
   return new Response(null, {
     status: 302,
-    headers: { location: authorize.toString() },
+    headers: { location: flow.authorizeUrl },
+  });
+}
+
+/** POST /<product>/auth/device/start — begin desktop/CLI sign-in and return a poll handle. */
+export async function handleAuthDeviceStart(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+): Promise<Response> {
+  if (req.method !== "POST") return methodNotAllowed();
+  let body: Record<string, unknown> = {};
+  try {
+    const text = await req.text();
+    body = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    return errorResponse(400, "bad_request", "invalid json");
+  }
+  const url = new URL(req.url);
+  const machineId =
+    (typeof body.deviceId === "string" && body.deviceId) ||
+    (typeof body.machine === "string" && body.machine) ||
+    req.headers.get(HEADER_DEVICE) ||
+    url.searchParams.get("machine");
+  if (!machineId) return errorResponse(400, "bad_request", "missing device id");
+  const flow = await beginAuthFlow(req, env, db, product);
+  if (flow instanceof Response) return flow;
+  const deviceCode = b64url(randomBytes(16));
+  const deviceRecord: DeviceFlowRecord = { state: flow.state, machineId };
+  await env.HOT.put(
+    deviceFlowKey(product.slug, deviceCode),
+    JSON.stringify(deviceRecord),
+    { expirationTtl: FLOW_TTL_SECONDS },
+  );
+  return json({
+    status: "pending",
+    deviceCode,
+    userCode: deviceUserCode(deviceCode),
+    verificationUri: flow.authorizeUrl,
+    verificationUriComplete: flow.authorizeUrl,
+    authorizationUrl: flow.authorizeUrl,
+    expiresIn: FLOW_TTL_SECONDS,
+    interval: 2,
+    pollUrl: `${new URL(req.url).origin}/${product.slug}/auth/device/poll`,
   });
 }
 
@@ -402,8 +504,17 @@ export async function handleAuthCallback(
     await env.HOT.delete(flowKey(product.slug, state));
     return errorResponse(502, "oidc_error", "token exchange failed");
   }
-  const tokens = (await tokenRes.json()) as { id_token?: string };
-  if (!tokens.id_token) return errorResponse(502, "oidc_error", "no id_token");
+  let tokens: { id_token?: string };
+  try {
+    tokens = (await tokenRes.json()) as { id_token?: string };
+  } catch {
+    await env.HOT.delete(flowKey(product.slug, state));
+    return errorResponse(502, "oidc_error", "token response invalid");
+  }
+  if (!tokens.id_token) {
+    await env.HOT.delete(flowKey(product.slug, state));
+    return errorResponse(502, "oidc_error", "no id_token");
+  }
 
   const jwks = createRemoteJWKSet(
     new URL(`${oidc.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
@@ -432,6 +543,30 @@ export async function handleAuthCallback(
     return errorResponse(403, "forbidden", "not entitled");
   }
   flow.licenseId = result.licenseId;
+  if (flow.returnTo) {
+    const license = await getLicense(db, product.slug, result.licenseId);
+    if (!license) {
+      await env.HOT.delete(flowKey(product.slug, state));
+      return errorResponse(401, "unauthorized", "license unavailable");
+    }
+    const session = await createBrowserSession(env, db, product, license, now);
+    await env.HOT.delete(flowKey(product.slug, state));
+    if (!session.ok) {
+      return errorResponse(
+        session.status,
+        session.code,
+        session.message,
+        session.extra,
+      );
+    }
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: flow.returnTo,
+        "set-cookie": session.cookie,
+      },
+    });
+  }
   await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
@@ -439,6 +574,40 @@ export async function handleAuthCallback(
     '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You\'re signed in</h1><p>You can close this tab and return to the app.</p>',
     { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
   );
+}
+
+async function pollAuthFlow(
+  env: Env,
+  db: Db,
+  product: Product,
+  state: string | null,
+  machine: string | null,
+  now: number,
+): Promise<Response> {
+  if (!state || !machine)
+    return errorResponse(400, "bad_request", "missing state/machine");
+  const raw = await env.HOT.get(flowKey(product.slug, state));
+  if (!raw) return json({ status: "timeout" });
+  const flow = JSON.parse(raw) as FlowRecord;
+  // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
+  if (flow.error) return json({ status: "error" });
+  if (!flow.licenseId) return json({ status: "pending" });
+
+  let token: string;
+  try {
+    token = await authorizeAndMint(
+      env,
+      db,
+      product,
+      flow.licenseId,
+      machine,
+      now,
+    );
+  } catch {
+    return json({ status: "error" });
+  }
+  await env.HOT.delete(flowKey(product.slug, state));
+  return json({ status: "ready", token, schemaVersion: product.schemaVersion });
 }
 
 /** GET /<product>/auth/poll?state=&machine= — return a token once the flow completes. */
@@ -450,25 +619,64 @@ export async function handleAuthPoll(
   now: number,
 ): Promise<Response> {
   const url = new URL(req.url);
-  const state = url.searchParams.get("state");
-  const machine = url.searchParams.get("machine");
-  if (!state || !machine)
-    return errorResponse(400, "bad_request", "missing state/machine");
-  const raw = await env.HOT.get(flowKey(product.slug, state));
-  if (!raw) return json({ status: "timeout" });
-  const flow = JSON.parse(raw) as FlowRecord;
-  // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
-  if (flow.error) return json({ status: "error" });
-  if (!flow.licenseId) return json({ status: "pending" });
-
-  const token = await authorizeAndMint(
+  return pollAuthFlow(
     env,
     db,
     product,
-    flow.licenseId,
-    machine,
+    url.searchParams.get("state"),
+    url.searchParams.get("machine"),
     now,
   );
-  await env.HOT.delete(flowKey(product.slug, state));
-  return json({ status: "ready", token, schemaVersion: product.schemaVersion });
+}
+
+/** POST /<product>/auth/device/poll — JSON equivalent of the legacy poll route. */
+export async function handleAuthDevicePoll(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "POST") return methodNotAllowed();
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return errorResponse(400, "bad_request", "invalid json");
+  }
+  const state =
+    typeof body.deviceCode === "string"
+      ? body.deviceCode
+      : typeof body.state === "string"
+        ? body.state
+        : null;
+  const machine =
+    typeof body.deviceId === "string"
+      ? body.deviceId
+      : typeof body.machine === "string"
+        ? body.machine
+        : null;
+  if (!state || !machine)
+    return errorResponse(400, "bad_request", "missing deviceCode/deviceId");
+  const raw = await env.HOT.get(deviceFlowKey(product.slug, state));
+  if (!raw) return json({ status: "timeout" });
+  const deviceFlow = JSON.parse(raw) as DeviceFlowRecord;
+  if (deviceFlow.machineId !== machine)
+    return errorResponse(401, "unauthorized", "device mismatch");
+  const res = await pollAuthFlow(
+    env,
+    db,
+    product,
+    deviceFlow.state,
+    deviceFlow.machineId,
+    now,
+  );
+  const bodyOut = (await res
+    .clone()
+    .json()
+    .catch(() => null)) as { status?: string } | null;
+  if (bodyOut?.status === "ready" || bodyOut?.status === "timeout") {
+    await env.HOT.delete(deviceFlowKey(product.slug, state));
+  }
+  return res;
 }

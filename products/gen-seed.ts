@@ -1,8 +1,9 @@
-// Emit the D1 seed SQL that registers a product on Polaris Key from its data files
-// (product.json + catalog.json). Apply it with:
-//   pnpm --filter @polaris-key/products gen-seed products/djdl > products/djdl/seed.sql
-//   wrangler d1 execute polaris_key_prod --remote --file products/djdl/seed.sql
-// (Alternatively register the product via the admin API once deployed.)
+// Emit legacy fixture SQL from product.json + catalog.json.
+//
+// This does NOT mint sealed product_keys or store product secret values, so it is not a
+// live onboarding path. Register real products through the admin/GitHub-link flow.
+//
+//   pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -14,6 +15,9 @@ interface Tier {
   profileId: string | null;
   policyExpiryDays: number | null;
   policyMachineLimit: number | null;
+  channels?: string[];
+  minVersion?: string | null;
+  maxVersion?: string | null;
 }
 interface Hook {
   claim: string;
@@ -30,6 +34,7 @@ interface Mint {
   kid?: string;
   claimsTemplate: Record<string, unknown>;
   ttlSeconds: number;
+  audience?: string | null;
 }
 interface ProductDef {
   slug: string;
@@ -102,7 +107,7 @@ function main(): void {
   );
   for (const t of product.tiers) {
     out.push(
-      `INSERT INTO tiers (product,id,label,profile_id,policy_expiry_days,policy_machine_limit,modified_by,modified_at) VALUES (${q(p)},${q(t.id)},${q(t.label)},${t.profileId ? q(t.profileId) : "NULL"},${t.policyExpiryDays ?? "NULL"},${t.policyMachineLimit ?? "NULL"},NULL,${now});`,
+      `INSERT INTO tiers (product,id,label,profile_id,policy_expiry_days,policy_machine_limit,channels_json,min_version,max_version,modified_by,modified_at) VALUES (${q(p)},${q(t.id)},${q(t.label)},${t.profileId ? q(t.profileId) : "NULL"},${t.policyExpiryDays ?? "NULL"},${t.policyMachineLimit ?? "NULL"},${t.channels ? j(t.channels) : "NULL"},${t.minVersion ? q(t.minVersion) : "NULL"},${t.maxVersion ? q(t.maxVersion) : "NULL"},NULL,${now});`,
     );
   }
   for (const h of product.provisioning) {
@@ -112,7 +117,7 @@ function main(): void {
   }
   for (const e of product.edgeMint) {
     out.push(
-      `INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,auth_page_template) VALUES (${q(p)},${q(e.id)},${q(e.alg)},${q(e.signingKeySecret)},${e.kid ? q(e.kid) : "NULL"},${j(e.claimsTemplate)},${e.ttlSeconds},NULL);`,
+      `INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (${q(p)},${q(e.id)},${q(e.alg)},${q(e.signingKeySecret)},${e.kid ? q(e.kid) : "NULL"},${j(e.claimsTemplate)},${e.ttlSeconds},${e.audience ? q(e.audience) : "NULL"},NULL);`,
     );
   }
   const r = product.release;

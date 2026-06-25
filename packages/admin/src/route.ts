@@ -18,13 +18,15 @@ export type Tab =
   | "setup"
   | "licenses"
   | "config"
+  | "tiers"
+  | "profiles"
   | "releases"
   | "identity"
   | "secrets"
   | "activity"
   | "settings";
 
-type LegacyView = "tiers" | "profiles" | "catalog" | "oidc";
+type LegacyView = "catalog" | "oidc";
 
 /** The full set of per-product views (tabs plus the license-detail leaf and legacy aliases). */
 export type View = Tab | LegacyView | "license";
@@ -34,6 +36,8 @@ export const TABS: { tab: Tab; label: string }[] = [
   { tab: "setup", label: "Setup" },
   { tab: "licenses", label: "Licenses" },
   { tab: "config", label: "Config" },
+  { tab: "tiers", label: "Tiers" },
+  { tab: "profiles", label: "Profiles" },
   { tab: "identity", label: "Identity" },
   { tab: "releases", label: "Releases" },
   { tab: "secrets", label: "Secrets" },
@@ -43,8 +47,6 @@ export const TABS: { tab: Tab; label: string }[] = [
 
 const KNOWN_TABS: Tab[] = TABS.map((t) => t.tab);
 const LEGACY_ALIASES: Record<LegacyView, Tab> = {
-  tiers: "config",
-  profiles: "config",
   catalog: "config",
   oidc: "identity",
 };

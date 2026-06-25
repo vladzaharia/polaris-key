@@ -92,15 +92,51 @@ describe("BrowserAdapter — signInWithOidc redirect", () => {
   });
 });
 
-describe("BrowserAdapter — submitKey is unsupported", () => {
-  it("throws key-entry-unsupported (browser is OIDC-only)", async () => {
+describe("BrowserAdapter — submitKey", () => {
+  it("posts a license key and refreshes the cookie session", async () => {
+    const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc()),
+      fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
     });
-    await expect(adapter.submitKey("any")).rejects.toMatchObject({
-      code: "key-entry-unsupported",
+    await ready(adapter);
+    await adapter.submitKey("pkey_acme_test");
+    const call = fetchImpl.mock.calls.find((c) =>
+      String(c[0]).includes("/session/license"),
+    );
+    expect(call).toBeTruthy();
+    const init = call?.[1] as RequestInit;
+    expect(init.method).toBe("POST");
+    expect(init.credentials).toBe("include");
+    expect(JSON.parse(String(init.body))).toEqual({ key: "pkey_acme_test" });
+    expect(adapter.snapshot().status).toBe("ok");
+    adapter.dispose();
+  });
+
+  it("surfaces rejected keys as sign-in-failed with a clear message", async () => {
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/session/license")) {
+        return new Response(JSON.stringify({ error: "unauthorized" }), {
+          status: 401,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ authenticated: false, doc: null }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl,
+      now: () => NOW_SEC,
+    });
+    await ready(adapter);
+    await expect(adapter.submitKey("bad")).rejects.toMatchObject({
+      code: "sign-in-failed",
+      message: "That key was not accepted.",
     });
     adapter.dispose();
   });

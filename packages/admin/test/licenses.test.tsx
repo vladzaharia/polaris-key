@@ -18,6 +18,8 @@ vi.mock("../src/api.js", () => {
     license: vi.fn(),
     schema: vi.fn(),
     createLicense: vi.fn(),
+    tiers: vi.fn(),
+    profiles: vi.fn(),
     patchLicense: vi.fn(),
     setLicenseEnabled: vi.fn(),
     putLicenseOverrides: vi.fn(),
@@ -165,6 +167,8 @@ beforeEach(() => {
   mockApi.licenses.mockResolvedValue({ licenses: [SUMMARY] });
   mockApi.license.mockResolvedValue(DETAIL);
   mockApi.schema.mockResolvedValue(CATALOG);
+  mockApi.tiers.mockResolvedValue({ tiers: [] });
+  mockApi.profiles.mockResolvedValue({ profiles: [] });
   mockApi.createLicense.mockResolvedValue({
     licenseId: "lic_2",
     key: "PK-NEWKEY-ONESHOT",

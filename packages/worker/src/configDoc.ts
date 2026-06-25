@@ -26,27 +26,30 @@ export interface BuildDocInput {
 }
 
 /** Defense-in-depth: drop any config/secret entry whose key is unknown to the active
- *  catalog or whose value fails the catalog schema, BEFORE signing. A misconfigured or
- *  stale override must never be minted into a signed doc. Entitlements pass through (their
- *  keys are `flag` entries the gate already governs). */
+ *  catalog, sits in the wrong payload bucket, or whose value fails the catalog schema,
+ *  BEFORE signing. A misconfigured or stale override must never be minted into a signed
+ *  doc. Entitlements pass through because server-side gates may be policy-only and not
+ *  declared as user-facing catalog flags. */
 export function validatePayload(
   payload: ManagedPayload,
   catalog: Catalog,
 ): ManagedPayload {
   const prune = (
     entries: Record<string, ManagedEntry>,
+    kind: "config" | "secret" | "flag",
   ): Record<string, ManagedEntry> => {
     const out: Record<string, ManagedEntry> = {};
     for (const [key, entry] of Object.entries(entries)) {
-      if (!catalog.entryByKey(key)) continue;
+      const catalogEntry = catalog.entryByKey(key);
+      if (!catalogEntry || catalogEntry.kind !== kind) continue;
       if (!catalog.validateKeyValue(key, entry.value).ok) continue;
       out[key] = entry;
     }
     return out;
   };
   return {
-    config: prune(payload.config ?? {}),
-    secrets: prune(payload.secrets ?? {}),
+    config: prune(payload.config ?? {}, "config"),
+    secrets: prune(payload.secrets ?? {}, "secret"),
     entitlements: payload.entitlements ?? {},
   };
 }

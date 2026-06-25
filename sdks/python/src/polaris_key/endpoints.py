@@ -81,11 +81,11 @@ def enroll_with_key(
 
 
 def reacquire_token(
-    *, base_url: str, product: str, device_id: str, client: httpx.Client
+    *, base_url: str, product: str, token: str, device_id: str, client: httpx.Client
 ) -> EnrollResult:
     return _enroll_like(
         f"{base_url}/{product}/token",
-        {HEADER_DEVICE: device_id},
+        {"authorization": f"Bearer {token}", HEADER_DEVICE: device_id},
         client,
     )
 

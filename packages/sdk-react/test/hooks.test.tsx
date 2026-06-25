@@ -177,7 +177,7 @@ describe("useEntitlement", () => {
 });
 
 describe("usePolarisAuth", () => {
-  it("exposes the profile, busy/error, needsAuth, and key-entry support flag (desktop)", async () => {
+  it("exposes the profile, busy/error, needsAuth, and key-entry support flag", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(okBridge()),
       now: () => NOW_SEC,

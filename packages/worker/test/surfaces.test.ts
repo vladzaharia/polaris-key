@@ -58,7 +58,7 @@ describe("worker surfaces", () => {
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const product = (await loadProduct(env, db, "djdl"))!;
-    const res = handleJwks(product);
+    const res = await handleJwks(db, product);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       keys: Array<{ kid: string; x: string; crv: string }>;
@@ -121,7 +121,12 @@ describe("worker surfaces", () => {
     const body = (await res.json()) as {
       product: string;
       name: string;
-      endpoints: { config: string; jwks: string };
+      endpoints: {
+        config: string;
+        jwks: string;
+        authDeviceStart: string;
+        authDevicePoll: string;
+      };
       trust: {
         pinnedKeys: Record<string, string>;
         signingKid: string;
@@ -130,7 +135,12 @@ describe("worker surfaces", () => {
       modules: {
         auth: {
           tokenUrl: string;
-          oidc: { issuer: string; clientId: string } | null;
+          oidc: {
+            issuer: string;
+            clientId: string;
+            deviceStartUrl: string;
+            devicePollUrl: string;
+          } | null;
         };
         config: { schemaVersion: number; schemaUrl: string };
         release: {
@@ -152,6 +162,12 @@ describe("worker surfaces", () => {
     expect(body.endpoints.jwks).toBe(
       "https://key.plrs.im/djdl/.well-known/jwks.json",
     );
+    expect(body.endpoints.authDeviceStart).toBe(
+      "https://key.plrs.im/djdl/auth/device/start",
+    );
+    expect(body.endpoints.authDevicePoll).toBe(
+      "https://key.plrs.im/djdl/auth/device/poll",
+    );
     expect(body.trust).toMatchObject({
       signingKid: TEST_KID,
       signingPub: TEST_PUB,
@@ -161,6 +177,8 @@ describe("worker surfaces", () => {
     expect(body.modules.auth.oidc).toMatchObject({
       issuer: "https://id.example",
       clientId: "client-123",
+      deviceStartUrl: "https://key.plrs.im/djdl/auth/device/start",
+      devicePollUrl: "https://key.plrs.im/djdl/auth/device/poll",
     });
     expect(body.modules.config).toMatchObject({
       schemaVersion: 1,

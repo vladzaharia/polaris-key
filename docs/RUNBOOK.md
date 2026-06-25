@@ -10,9 +10,10 @@ secrets are managed through Polaris itself and stored sealed in D1 under `PLATFO
 
 1. **DNS / zone** — the `plrs.im` zone must be active in the Cloudflare account. The
    custom-domain bindings create `key.plrs.im` / `key-staging.plrs.im` / `key-dev.plrs.im`.
-2. **GitHub App** `polaris-key` — permissions Contents:read + Actions:read, no webhook;
-   generate a private key (`.pem`), note the App ID; install it on each product's repo
-   (e.g. `vladzaharia/djdl`).
+2. **GitHub App** `polaris-key` — permissions Contents:read + Actions:read; configure the
+   webhook URL `https://key.plrs.im/webhooks/github` with content type `application/json`
+   and a shared secret stored as `GITHUB_WEBHOOK_SECRET`; generate a private key (`.pem`),
+   note the App ID; install it on each product's repo (e.g. `vladzaharia/djdl`).
 3. **PocketID OIDC client** — register the admin client with redirect URI
    `https://key.plrs.im/admin/callback`; per product, register the loopback CLI callback +
    `https://key.plrs.im/<product>/auth/callback`. Ensure the `groups` claim is mapped.
@@ -40,7 +41,7 @@ matching `[env.prod]` block of `packages/worker/wrangler.toml` (and likewise for
 `dev`/`staging`). Then apply the D1 schema:
 
 ```sh
-wrangler d1 migrations apply polaris_key_prod --remote   # applies migrations/0001_init.sql
+wrangler d1 migrations apply polaris_key_prod --remote   # applies every pending migration
 ```
 
 ## Secrets (Worker)
@@ -53,6 +54,7 @@ wrangler secret put KEY_HASH_PEPPER --env prod
 wrangler secret put ADMIN_SESSION_SECRET --env prod
 wrangler secret put GITHUB_APP_ID --env prod
 wrangler secret put GITHUB_APP_PRIVATE_KEY --env prod
+wrangler secret put GITHUB_WEBHOOK_SECRET --env prod
 wrangler secret put PLATFORM_ADMIN_GROUP --env prod
 wrangler secret put PLATFORM_KEK --env prod
 ```
@@ -75,10 +77,13 @@ cd packages/worker && wrangler deploy --env prod
 
 ## Register a product
 
-Use the admin portal or platform CLI to link a product repo containing `.pkey/`, or import
-the manifest directly. The registration flow validates the manifest, mints the sealed
-product signing key, shows the public trust key, and lists missing per-product secrets to
-set in the admin UI.
+Use the admin portal or platform CLI to link a product repo containing `.pkey/`. For early
+experiments before a repo exists, create a manual product with a schema document and add
+release/OIDC/provisioning later. Registration validates the catalog/manifest, mints the
+sealed product signing key, shows the public trust key, and lists missing per-product
+secrets to set in the admin UI. After linking, GitHub push webhooks on the repo's default
+branch re-parse `.pkey/` changes automatically; the Releases view also exposes manual
+resync, last sync status, changed paths, manifest errors, and release health checks.
 
 ## CI gates
 

@@ -261,7 +261,8 @@ public actor PolarisKeyClient {
         case .unauthorized:
             if allowReacquire {
                 let re = await Endpoints.reacquireToken(
-                    baseUrl: baseUrl, product: product, deviceId: deviceId, session: session)
+                    baseUrl: baseUrl, product: product, token: token, deviceId: deviceId,
+                    session: session)
                 if case .ok(let newToken, _) = re {
                     self.token = newToken
                     await store.setToken(newToken)

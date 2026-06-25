@@ -1,9 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Worker bindings + secrets. Known bindings are typed; per-product secrets (signing keys,
- * OIDC client secrets, edge-mint key material) are looked up by NAME via `secret(env, ...)`
- * — their names are stored in D1 (e.g. `signing_key_secret`), the values are Worker secrets.
+ * Worker bindings + platform secrets. Product signing keys, OIDC client secrets, and
+ * edge-mint key material are sealed in D1 under PLATFORM_KEK, not stored as Worker secrets.
  */
 export interface Env {
   // bindings
@@ -20,13 +19,14 @@ export interface Env {
   ADMIN_SESSION_SECRET?: string;
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
+  GITHUB_WEBHOOK_SECRET?: string;
   PLATFORM_ADMIN_GROUP?: string;
 
-  // per-product secrets resolved by name (SIGNING_KEY__<SLUG>, etc.)
+  // additional platform secrets/vars resolved by name
   [key: string]: unknown;
 }
 
-/** Read a named secret/var from the env (per-product signing keys, OIDC secrets, …). */
+/** Read a named platform secret/var from the env. */
 export function secret(env: Env, name: string): string | undefined {
   const v = env[name];
   return typeof v === "string" ? v : undefined;

@@ -25,6 +25,7 @@ export function ResyncButton({ slug }: { slug: string }): React.ReactElement {
       );
       // Refresh anything derived from the product row + its catalog.
       invalidate(`product:${slug}`);
+      invalidate(`release-health:${slug}`);
       invalidate(`schema:${slug}`);
       setOpen(false);
     } catch (err) {

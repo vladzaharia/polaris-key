@@ -49,6 +49,17 @@ export interface ManifestTier {
   profileId: string | null;
   policyExpiryDays: number | null;
   policyMachineLimit: number | null;
+  channels: string[];
+  minVersion: string | null;
+  maxVersion: string | null;
+}
+
+/** A reusable managed-payload profile (`profiles` row). */
+export interface ManifestProfile {
+  id: string;
+  name: string;
+  description?: string | null;
+  payload: Record<string, unknown>;
 }
 
 /** A provisioning hook (`provisioning_config` row). */
@@ -80,6 +91,7 @@ export interface ManifestEdgeMint {
   kid?: string;
   claimsTemplate: Record<string, unknown>;
   ttlSeconds: number;
+  audience?: string | null;
 }
 
 /** Everything a `.pkey/` directory resolves to, ready for DB insertion by a later step. */
@@ -87,6 +99,7 @@ export interface ParsedManifest {
   product: ManifestProduct;
   catalog: ProductCatalog;
   oidc?: ManifestOidc;
+  profiles: ManifestProfile[];
   tiers: ManifestTier[];
   provisioning: ManifestProvisioning[];
   release?: ManifestRelease;
@@ -128,6 +141,81 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+function asObject(v: unknown): Record<string, unknown> {
+  return isObject(v) ? v : {};
+}
+
+function nestedProductDoc(p: Record<string, unknown>): Record<string, unknown> {
+  return isObject(p.product) ? p.product : p;
+}
+
+function normalizeCatalog(parsed: unknown): ProductCatalog | null {
+  if (!isObject(parsed)) return null;
+  if (Array.isArray(parsed.entries)) return parsed as unknown as ProductCatalog;
+  if (Array.isArray(parsed.catalog)) {
+    return {
+      schemaVersion: Number(parsed.schemaVersion ?? 1),
+      entries: parsed.catalog,
+    } as unknown as ProductCatalog;
+  }
+  return null;
+}
+
+function normalizeTier(raw: unknown): ManifestTier | null {
+  if (!isObject(raw) || typeof raw.id !== "string") return null;
+  const channels = Array.isArray(raw.channels)
+    ? (raw.channels.filter((c) => typeof c === "string") as string[])
+    : [];
+  return {
+    id: raw.id,
+    label: String(raw.label ?? raw.id),
+    profileId:
+      typeof raw.profileId === "string"
+        ? raw.profileId
+        : typeof raw.profile === "string"
+          ? raw.profile
+          : null,
+    policyExpiryDays:
+      typeof raw.policyExpiryDays === "number"
+        ? raw.policyExpiryDays
+        : typeof raw.expiryDays === "number"
+          ? raw.expiryDays
+          : null,
+    policyMachineLimit:
+      typeof raw.policyMachineLimit === "number"
+        ? raw.policyMachineLimit
+        : typeof raw.machineLimit === "number"
+          ? raw.machineLimit
+          : null,
+    channels,
+    minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
+    maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
+  };
+}
+
+function normalizeProfile(raw: unknown): ManifestProfile | null {
+  if (!isObject(raw) || typeof raw.id !== "string") return null;
+  return {
+    id: raw.id,
+    name: String(raw.name ?? raw.label ?? raw.id),
+    description: typeof raw.description === "string" ? raw.description : null,
+    payload: asObject(raw.payload),
+  };
+}
+
+function normalizeEdgeMint(raw: unknown): ManifestEdgeMint | null {
+  if (!isObject(raw) || typeof raw.id !== "string") return null;
+  return {
+    id: raw.id,
+    alg: String(raw.alg ?? ""),
+    signingKeySecret: String(raw.signingKeySecret ?? raw.signingKeyRef ?? ""),
+    kid: typeof raw.kid === "string" ? raw.kid : undefined,
+    claimsTemplate: asObject(raw.claimsTemplate),
+    ttlSeconds: typeof raw.ttlSeconds === "number" ? raw.ttlSeconds : 3600,
+    audience: typeof raw.audience === "string" ? raw.audience : null,
+  };
+}
+
 /**
  * Parse a multi-file `.pkey/` manifest. `files` maps base names (no extension —
  * `"schema"`, `"product"`, `"release"`) to raw file contents. Each value may be JSON or
@@ -154,15 +242,12 @@ export function parseManifest(
     errors.push("schema: required (.pkey/schema.{json,yaml,yml} is missing)");
   } else if ("schema" in docs) {
     const parsed = docs.schema;
-    if (
-      !isObject(parsed) ||
-      !Array.isArray((parsed as { entries?: unknown }).entries)
-    ) {
+    const candidate = normalizeCatalog(parsed);
+    if (!candidate) {
       errors.push(
-        "schema: must be a ProductCatalog object with an `entries` array",
+        "schema: must be a ProductCatalog object with an `entries` array or v1 `catalog` array",
       );
     } else {
-      const candidate = parsed as unknown as ProductCatalog;
       try {
         new Catalog(candidate).compileAll();
         catalog = candidate;
@@ -176,6 +261,7 @@ export function parseManifest(
   // ── product (required) → valid slug ─────────────────────────────────────────
   let product: ManifestProduct | undefined;
   let oidc: ManifestOidc | undefined;
+  let profiles: ManifestProfile[] = [];
   let tiers: ManifestTier[] = [];
   let provisioning: ManifestProvisioning[] = [];
   if (files.product === undefined) {
@@ -185,7 +271,9 @@ export function parseManifest(
     if (!isObject(p)) {
       errors.push("product: must be an object");
     } else {
-      const slug = p.slug;
+      const prod = nestedProductDoc(p);
+      const licensing = asObject(p.licensing);
+      const slug = prod.slug;
       if (typeof slug !== "string" || !SLUG_RE.test(slug)) {
         errors.push(
           `product: invalid slug ${JSON.stringify(slug)} (must match ${SLUG_RE.source})`,
@@ -193,22 +281,58 @@ export function parseManifest(
       } else {
         product = {
           slug,
-          name: String(p.name ?? slug),
-          compatMin: String(p.compatMin ?? "0.0.0"),
-          compatMax: String(p.compatMax ?? "99.0.0"),
-          defaultMaxOfflineDays: Number(p.defaultMaxOfflineDays ?? 0),
-          defaultMachineLimit: Number(p.defaultMachineLimit ?? 0),
-          adminGroup: String(p.adminGroup ?? "admin"),
+          name: String(prod.name ?? slug),
+          compatMin: String(prod.compatMin ?? p.compatMin ?? "0.0.0"),
+          compatMax: String(prod.compatMax ?? p.compatMax ?? "99.0.0"),
+          defaultMaxOfflineDays: Number(
+            prod.defaultMaxOfflineDays ??
+              p.defaultMaxOfflineDays ??
+              licensing.defaultMaxOfflineDays ??
+              0,
+          ),
+          defaultMachineLimit: Number(
+            prod.defaultMachineLimit ??
+              p.defaultMachineLimit ??
+              licensing.defaultMachineLimit ??
+              0,
+          ),
+          adminGroup: String(prod.adminGroup ?? p.adminGroup ?? "admin"),
         };
       }
       if (p.oidc !== undefined) {
         if (!isObject(p.oidc)) errors.push("product.oidc: must be an object");
-        else oidc = p.oidc as unknown as ManifestOidc;
+        else {
+          const o = p.oidc;
+          oidc = {
+            issuer: String(o.issuer ?? ""),
+            clientId: String(o.clientId ?? ""),
+            clientSecretSecret: String(
+              o.clientSecretSecret ?? o.clientSecretRef ?? "",
+            ),
+            redirectUris: Array.isArray(o.redirectUris)
+              ? (o.redirectUris.filter(
+                  (u) => typeof u === "string",
+                ) as string[])
+              : [],
+            groupRoleMap: asObject(o.groupRoleMap),
+          };
+        }
       }
-      if (p.tiers !== undefined) {
-        if (!Array.isArray(p.tiers))
-          errors.push("product.tiers: must be an array");
-        else tiers = p.tiers as ManifestTier[];
+      const rawProfiles = p.profiles ?? licensing.profiles;
+      if (rawProfiles !== undefined) {
+        if (!Array.isArray(rawProfiles))
+          errors.push("product.licensing.profiles: must be an array");
+        else
+          profiles = rawProfiles
+            .map(normalizeProfile)
+            .filter(Boolean) as ManifestProfile[];
+      }
+      const rawTiers = p.tiers ?? licensing.tiers;
+      if (rawTiers !== undefined) {
+        if (!Array.isArray(rawTiers))
+          errors.push("product.licensing.tiers: must be an array");
+        else
+          tiers = rawTiers.map(normalizeTier).filter(Boolean) as ManifestTier[];
       }
       if (p.provisioning !== undefined) {
         if (!Array.isArray(p.provisioning))
@@ -227,11 +351,16 @@ export function parseManifest(
       errors.push("release: must be an object");
     } else {
       const rel = isObject(r.release) ? r.release : r;
+      const provider = isObject(rel.provider) ? rel.provider : {};
       // `release` block fields. Carry them through even if partial — the DB-insert agent
       // applies its own column constraints; the parser only rejects a non-object shape.
       release = {
-        ghOwner: String((rel as Record<string, unknown>).ghOwner ?? ""),
-        ghRepo: String((rel as Record<string, unknown>).ghRepo ?? ""),
+        ghOwner: String(
+          (rel as Record<string, unknown>).ghOwner ?? provider.owner ?? "",
+        ),
+        ghRepo: String(
+          (rel as Record<string, unknown>).ghRepo ?? provider.repo ?? "",
+        ),
         binaryName: String((rel as Record<string, unknown>).binaryName ?? ""),
         channelWorkflow: String(
           (rel as Record<string, unknown>).channelWorkflow ?? "",
@@ -247,7 +376,10 @@ export function parseManifest(
       if (r.edgeMint !== undefined) {
         if (!Array.isArray(r.edgeMint))
           errors.push("release.edgeMint: must be an array");
-        else edgeMint = r.edgeMint as ManifestEdgeMint[];
+        else
+          edgeMint = r.edgeMint
+            .map(normalizeEdgeMint)
+            .filter(Boolean) as ManifestEdgeMint[];
       }
     }
   }
@@ -261,6 +393,7 @@ export function parseManifest(
       product: product as ManifestProduct,
       catalog: catalog as ProductCatalog,
       oidc,
+      profiles,
       tiers,
       provisioning,
       release,

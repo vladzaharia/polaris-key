@@ -68,4 +68,5 @@ database_id = "REPLACE_ME_DEV_D1_ID"
 
 # Required secrets (set with `wrangler secret put <NAME> --env <env>`):
 #   KEY_HASH_PEPPER, ADMIN_SESSION_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY,
-#   and per-product: SIGNING_KEY__<SLUG>, OIDC_CLIENT_SECRET__<SLUG>, EDGE_MINT__<SLUG>__<ID>.
+#   GITHUB_WEBHOOK_SECRET, PLATFORM_ADMIN_GROUP, PLATFORM_KEK.
+# Product signing keys and product-scoped secrets are sealed in D1 through the admin API.

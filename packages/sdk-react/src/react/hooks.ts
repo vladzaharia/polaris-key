@@ -148,10 +148,10 @@ export interface UsePolarisAuth {
   /** True when the user must enroll/sign in. */
   needsAuth: boolean;
   signInWithOidc: PolarisAdapter["signInWithOidc"];
-  /** Desktop only — throws `key-entry-unsupported` in browser mode. */
+  /** Activate with a license key using the active transport. */
   submitKey: (key: string) => Promise<void>;
   signOut: () => Promise<void>;
-  /** True when typed-key entry is offered (desktop). */
+  /** True when typed-key entry is offered. */
   supportsKeyEntry: boolean;
 }
 
@@ -168,7 +168,7 @@ export function usePolarisAuth(): UsePolarisAuth {
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
-      supportsKeyEntry: state.mode === "desktop",
+      supportsKeyEntry: true,
     }),
     [adapter, state],
   );

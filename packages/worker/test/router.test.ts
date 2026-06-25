@@ -18,6 +18,10 @@ describe("matchRoute — platform + admin (matched before product slugs)", () =>
     );
   });
 
+  it("matches GitHub webhook before product-scoped routes", () => {
+    expect(matchRoute("/webhooks/github").kind).toBe("githubWebhook");
+  });
+
   it("never lets a product slug shadow an admin route", () => {
     // A product literally named "admin" still resolves to the admin SPA, not a product route.
     expect(matchRoute("/admin/config").kind).toBe("adminSpa");
@@ -35,7 +39,13 @@ describe("matchRoute — product-scoped routes", () => {
     ["/djdl/config", "config"],
     ["/djdl/config/report", "configReport"],
     ["/djdl/config/subscribe", "configSubscribe"],
+    ["/djdl/session", "browserSession"],
+    ["/djdl/session/license", "browserSessionLicense"],
     ["/djdl/auth/start", "authStart"],
+    ["/djdl/auth/login", "authLogin"],
+    ["/djdl/auth/logout", "authLogout"],
+    ["/djdl/auth/device/start", "authDeviceStart"],
+    ["/djdl/auth/device/poll", "authDevicePoll"],
     ["/djdl/auth/callback", "authCallback"],
     ["/djdl/auth/poll", "authPoll"],
     ["/djdl/appcast.xml", "appcast"],

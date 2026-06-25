@@ -19,6 +19,7 @@ import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { hashKey } from "../src/crypto.js";
 import { getTokenRecord } from "../src/kv.js";
+import { setLicenseProfiles } from "../src/repo.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 
@@ -196,6 +197,116 @@ describe("licensing", () => {
       NOW,
     );
     expect(res.status).toBe(401);
+  });
+
+  it("rejects a stale KV token when the machine row points at a different token hash", async () => {
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    const token = await enroll(env, db, product, key, "dev-1");
+    await db.run(
+      "UPDATE machines SET token_hash = ? WHERE product = ? AND machine_id = ?",
+      "different-hash",
+      "djdl",
+      "dev-1",
+    );
+
+    const res = await handleConfig(
+      mkReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-version": "1.2.3",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("builds config from catalog defaults plus ordered license profiles", async () => {
+    await db.run("DELETE FROM product_schema WHERE product = ?", "djdl");
+    await db.run(
+      "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?,?,?,?,?)",
+      "djdl",
+      2,
+      JSON.stringify({
+        schemaVersion: 2,
+        entries: [
+          {
+            key: "app.theme",
+            kind: "config",
+            category: "app",
+            label: "Theme",
+            description: "",
+            schema: { type: "string" },
+            default: "system",
+            managementDefault: "default",
+          },
+          {
+            key: "app.region",
+            kind: "config",
+            category: "app",
+            label: "Region",
+            description: "",
+            schema: { type: "string" },
+            default: "us",
+            managementDefault: "default",
+          },
+        ],
+      }),
+      1,
+      NOW,
+    );
+    product = (await loadProduct(env, db, "djdl"))!;
+    await db.run(
+      "INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at) VALUES (?,?,?,?,?,?,?)",
+      "djdl",
+      "base",
+      "Base",
+      null,
+      JSON.stringify({
+        config: {
+          "app.theme": { state: "default", value: "light", updatedAt: NOW },
+        },
+        secrets: {},
+        entitlements: {},
+      }),
+      null,
+      NOW,
+    );
+    await db.run(
+      "INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at) VALUES (?,?,?,?,?,?,?)",
+      "djdl",
+      "override",
+      "Override",
+      null,
+      JSON.stringify({
+        config: {
+          "app.theme": { state: "default", value: "dark", updatedAt: NOW + 1 },
+        },
+        secrets: {},
+        entitlements: {},
+      }),
+      null,
+      NOW,
+    );
+    const { licenseId, key } = await seedLicenseWithKey(db, "djdl");
+    await setLicenseProfiles(db, "djdl", licenseId, ["base", "override"]);
+    const token = await enroll(env, db, product, key, "dev-1");
+
+    const res = await handleConfig(
+      mkReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-version": "1.2.3",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    const v = await verifyJws<ManagedConfigDoc>(await res.text(), TRUST);
+    expect(v!.payload.payload.config["app.theme"]?.value).toBe("dark");
+    expect(v!.payload.payload.config["app.region"]?.value).toBe("us");
   });
 
   it("requires the current bearer token to replace a token", async () => {

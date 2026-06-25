@@ -28,6 +28,16 @@ function mergeMap(
   const out: Record<string, ManagedEntry> = { ...base };
   for (const [key, overEntry] of Object.entries(over)) {
     const baseEntry = out[key];
+    if (
+      (baseEntry?.state === "enforced" || baseEntry?.state === "hidden") &&
+      overEntry.state === "default"
+    ) {
+      out[key] = {
+        ...baseEntry,
+        updatedAt: Math.max(baseEntry.updatedAt ?? 0, overEntry.updatedAt ?? 0),
+      };
+      continue;
+    }
     // The higher-precedence layer's value + state win, but `updatedAt` reflects the most
     // recent admin change across BOTH layers so clients detect any change in either layer.
     out[key] = baseEntry

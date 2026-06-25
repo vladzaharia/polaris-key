@@ -13,9 +13,13 @@
 import type { Env } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import {
+  getActiveSchema,
   getProduct,
   insertSchema,
+  stmtInsertEdgeMint,
   stmtInsertOidcConfig,
+  stmtInsertProfile,
+  stmtInsertProvisioning,
   stmtInsertTier,
 } from "../repo.js";
 import { deactivateSchemas, nextSchemaVersion } from "../admin/repo.js";
@@ -44,9 +48,10 @@ async function readPkeyFile(
   repo: string,
   paths: string[],
   fetchImpl: FetchImpl,
+  ref?: string,
 ): Promise<string | undefined> {
   for (const path of paths) {
-    const text = await fetchRepoFile(token, owner, repo, path, fetchImpl);
+    const text = await fetchRepoFile(token, owner, repo, path, fetchImpl, ref);
     if (text !== null) return text;
   }
   return undefined;
@@ -62,6 +67,7 @@ export async function resyncRepo(
   slug: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
+  ref?: string,
 ): Promise<ResyncResult> {
   const product = await getProduct(db, slug);
   if (!product) return { ok: false, error: "unknown product" };
@@ -88,15 +94,24 @@ export async function resyncRepo(
   }
 
   const files: Record<string, string> = {};
-  for (const name of ["schema", "product", "release"] as const) {
-    const text = await readPkeyFile(
-      token,
-      owner,
-      repo,
-      PKEY_FILES[name],
-      fetchImpl,
-    );
-    if (text !== undefined) files[name] = text;
+  try {
+    for (const name of ["schema", "product", "release"] as const) {
+      const text = await readPkeyFile(
+        token,
+        owner,
+        repo,
+        PKEY_FILES[name],
+        fetchImpl,
+        ref,
+      );
+      if (text !== undefined) files[name] = text;
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? err.message : "github manifest fetch failed",
+    };
   }
 
   const result = parseManifest(files);
@@ -110,17 +125,36 @@ export async function resyncRepo(
 
   const updated: string[] = [];
 
-  // ── schema: publish a new active version (preserves history) ────────────────
-  const version = await nextSchemaVersion(db, slug);
-  await deactivateSchemas(db, slug);
-  await insertSchema(db, {
-    product: slug,
-    catalog_version: version,
-    catalog_json: JSON.stringify(manifest.catalog),
-    active: 1,
-    created_at: now,
-  });
-  updated.push("schema");
+  await db.run(
+    `UPDATE products SET name = ?, compat_min = ?, compat_max = ?,
+       default_max_offline_days = ?, default_machine_limit = ?, admin_group = ?,
+       modified_at = ? WHERE slug = ?`,
+    manifest.product.name,
+    manifest.product.compatMin,
+    manifest.product.compatMax,
+    manifest.product.defaultMaxOfflineDays,
+    manifest.product.defaultMachineLimit,
+    manifest.product.adminGroup,
+    now,
+    slug,
+  );
+  updated.push("product");
+
+  // ── schema: publish a new active version only when the catalog changed ──────
+  const nextCatalogJson = JSON.stringify(manifest.catalog);
+  const activeSchema = await getActiveSchema(db, slug);
+  if (activeSchema?.catalog_json !== nextCatalogJson) {
+    const version = await nextSchemaVersion(db, slug);
+    await deactivateSchemas(db, slug);
+    await insertSchema(db, {
+      product: slug,
+      catalog_version: version,
+      catalog_json: nextCatalogJson,
+      active: 1,
+      created_at: now,
+    });
+    updated.push("schema");
+  }
 
   // ── release_config: update the GitHub-distribution block in place ───────────
   const rel = manifest.release;
@@ -138,13 +172,13 @@ export async function resyncRepo(
     updated.push("release");
   }
 
-  // ── oidc + tiers: replace the rows (delete-then-insert via a single batch) ───
+  // ── manifest-owned rows: replace from the code-first source of truth ─────────
   const stmts: DbStatement[] = [];
+  stmts.push({
+    sql: "DELETE FROM oidc_config WHERE product = ?",
+    params: [slug],
+  });
   if (manifest.oidc) {
-    stmts.push({
-      sql: "DELETE FROM oidc_config WHERE product = ?",
-      params: [slug],
-    });
     stmts.push(
       stmtInsertOidcConfig({
         product: slug,
@@ -155,25 +189,70 @@ export async function resyncRepo(
         groupRoleMap: manifest.oidc.groupRoleMap ?? {},
       }),
     );
-    updated.push("oidc");
   }
-  if (manifest.tiers.length > 0) {
-    stmts.push({ sql: "DELETE FROM tiers WHERE product = ?", params: [slug] });
-    for (const t of manifest.tiers) {
-      stmts.push(
-        stmtInsertTier({
-          product: slug,
-          id: t.id,
-          label: t.label,
-          profileId: t.profileId ?? null,
-          policyExpiryDays: t.policyExpiryDays ?? null,
-          policyMachineLimit: t.policyMachineLimit ?? null,
-          modifiedAt: now,
-        }),
-      );
-    }
-    updated.push("tiers");
+  updated.push("oidc");
+
+  stmts.push({ sql: "DELETE FROM profiles WHERE product = ?", params: [slug] });
+  for (const p of manifest.profiles) {
+    stmts.push(
+      stmtInsertProfile({
+        product: slug,
+        id: p.id,
+        name: p.name,
+        description: p.description ?? null,
+        payloadJson: JSON.stringify(p.payload),
+        modifiedAt: now,
+      }),
+    );
   }
+  updated.push("profiles");
+
+  stmts.push({ sql: "DELETE FROM tiers WHERE product = ?", params: [slug] });
+  for (const t of manifest.tiers) {
+    stmts.push(
+      stmtInsertTier({
+        product: slug,
+        id: t.id,
+        label: t.label,
+        profileId: t.profileId ?? null,
+        policyExpiryDays: t.policyExpiryDays ?? null,
+        policyMachineLimit: t.policyMachineLimit ?? null,
+        channels: t.channels,
+        minVersion: t.minVersion,
+        maxVersion: t.maxVersion,
+        modifiedAt: now,
+      }),
+    );
+  }
+  updated.push("tiers");
+
+  stmts.push({
+    sql: "DELETE FROM provisioning_config WHERE product = ?",
+    params: [slug],
+  });
+  for (const h of manifest.provisioning)
+    stmts.push(stmtInsertProvisioning({ product: slug, ...h }));
+  updated.push("provisioning");
+
+  stmts.push({
+    sql: "DELETE FROM edge_mint_config WHERE product = ?",
+    params: [slug],
+  });
+  for (const e of manifest.edgeMint) {
+    stmts.push(
+      stmtInsertEdgeMint({
+        product: slug,
+        id: e.id,
+        alg: e.alg,
+        signingKeySecret: e.signingKeySecret,
+        kid: e.kid,
+        claimsTemplate: e.claimsTemplate ?? {},
+        ttlSeconds: e.ttlSeconds,
+        audience: e.audience ?? null,
+      }),
+    );
+  }
+  updated.push("edgeMint");
   if (stmts.length > 0) await db.batch(stmts);
 
   return { ok: true, updated };

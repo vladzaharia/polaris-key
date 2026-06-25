@@ -20,8 +20,7 @@ export type PolarisMode = "browser" | "desktop";
  *  snapshot resolves we render a loading screen, not a (misleading) `needs-enroll`. */
 export type PolarisPhase = "loading" | "ready";
 
-/** Stable error codes surfaced by adapter operations. `key-entry-unsupported` is thrown
- *  by the browser adapter's `submitKey` (browser enrollment is OIDC-only). */
+/** Stable error codes surfaced by adapter operations. */
 export type PolarisErrorCode =
   | "key-entry-unsupported"
   | "sign-in-failed"
@@ -114,7 +113,7 @@ export interface PolarisAdapter {
   /** Begin an OIDC sign-in. Desktop returns a verification handle; browser navigates
    *  the page (and never resolves, since the page unloads). */
   signInWithOidc(): Promise<OidcSignInHandle | void>;
-  /** Enroll with a typed key. **Desktop only** — browser throws `key-entry-unsupported`. */
+  /** Enroll with a typed key using the active transport. */
   submitKey(key: string): Promise<void>;
   /** Sign out / deauthorize and wipe local state. */
   signOut(): Promise<void>;

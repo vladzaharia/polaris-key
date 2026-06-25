@@ -2,11 +2,12 @@
 // `fetch(..., { credentials: "include" })`. There is NO token/keyring/loopback here —
 // the browser is online-only and the session lives in a first-party HttpOnly cookie the
 // Worker sets. OIDC sign-in is a full-page navigation (`window.location.assign`), so the
-// page unloads and `signInWithOidc` never resolves by design.
+// page unloads and `signInWithOidc` never resolves by design. License-key entry exchanges
+// a key for the same cookie session via `/<product>/session/license`.
 //
 // Mode-parity: it reduces the authenticated `/config` read to the SAME `GateInput` the
 // desktop bridge produces and runs the SAME shared gateModel, so a browser snapshot is
-// shape-identical to a desktop one. `submitKey` is intentionally unsupported (OIDC-only).
+// shape-identical to a desktop one.
 
 import type { BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
 import {
@@ -202,12 +203,49 @@ export class BrowserAdapter implements PolarisAdapter {
     this.navigate(target);
   }
 
-  async submitKey(_key: string): Promise<void> {
-    // Browser enrollment is OIDC-only; there is no typed-key path in a cookie session.
-    throw new PolarisError(
-      "key-entry-unsupported",
-      "Key entry is unsupported in browser mode — sign in with OIDC instead.",
-    );
+  async submitKey(key: string): Promise<void> {
+    this.setBusy(true);
+    try {
+      const res = await this.fetchImpl(this.url("/session/license"), {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ key }),
+      });
+      if (res.status === 401) {
+        throw new PolarisError("sign-in-failed", "That key was not accepted.");
+      }
+      if (res.status === 403) {
+        let message = `activation ${res.status}`;
+        try {
+          const body = (await res.json()) as {
+            error?: string;
+            message?: string;
+          };
+          message =
+            body.error === "machine_limit"
+              ? "This license has reached its device limit."
+              : (body.message ?? message);
+        } catch {
+          // Keep the generic message when the response is not JSON.
+        }
+        throw new PolarisError("sign-in-failed", message);
+      }
+      if (!res.ok) {
+        throw new PolarisError("sign-in-failed", `activation ${res.status}`);
+      }
+      this.apply(await this.fetchSession(), { busy: false, error: null });
+    } catch (e) {
+      const err =
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("sign-in-failed", (e as Error).message);
+      this.store.set((prev) => ({ ...prev, busy: false, error: err }));
+      throw err;
+    }
   }
 
   async signOut(): Promise<void> {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { verifyJws } from "@polaris-key/jws";
+import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
 import {
   DOC_EXPIRY_SECONDS,
   ISSUER,
@@ -8,7 +9,12 @@ import {
   type ManagedConfigDoc,
   type ManagedPayload,
 } from "@polaris-key/protocol";
-import { buildDoc, computeETag, signDoc } from "../src/configDoc.js";
+import {
+  buildDoc,
+  computeETag,
+  signDoc,
+  validatePayload,
+} from "../src/configDoc.js";
 import { TEST_KID, TEST_PEM, TEST_PUB, NOW } from "./seed.js";
 
 const profile: DocProfile = {
@@ -136,5 +142,64 @@ describe("signDoc", () => {
     const jws = await signDoc(buildDoc(input()), TEST_PEM, TEST_KID);
     const v = await verifyJws<ManagedConfigDoc>(jws, { "other-kid": TEST_PUB });
     expect(v).toBeNull();
+  });
+});
+
+describe("validatePayload", () => {
+  const catalog = new Catalog({
+    schemaVersion: 1,
+    entries: [
+      {
+        key: "theme.mode",
+        kind: "config",
+        category: "General",
+        label: "Theme",
+        description: "Theme mode",
+        schema: { type: "string" },
+      },
+      {
+        key: "api.token",
+        kind: "secret",
+        category: "Secrets",
+        label: "API token",
+        description: "Token",
+        schema: { type: "string" },
+      },
+      {
+        key: "polarisVpn",
+        kind: "flag",
+        category: "Access",
+        label: "VPN",
+        description: "VPN access",
+        schema: { type: "boolean" },
+      },
+    ],
+  } satisfies ProductCatalog);
+
+  it("drops entries that are in the wrong payload bucket", () => {
+    const filtered = validatePayload(
+      {
+        config: {
+          "theme.mode": { state: "enforced", value: "dark", updatedAt: NOW },
+          "api.token": { state: "enforced", value: "leak", updatedAt: NOW },
+        },
+        secrets: {
+          "api.token": { state: "hidden", value: "secret", updatedAt: NOW },
+          "theme.mode": { state: "hidden", value: "dark", updatedAt: NOW },
+        },
+        entitlements: {
+          polarisVpn: { state: "enforced", value: true, updatedAt: NOW },
+          "theme.mode": { state: "enforced", value: true, updatedAt: NOW },
+        },
+      },
+      catalog,
+    );
+
+    expect(Object.keys(filtered.config)).toEqual(["theme.mode"]);
+    expect(Object.keys(filtered.secrets)).toEqual(["api.token"]);
+    expect(Object.keys(filtered.entitlements)).toEqual([
+      "polarisVpn",
+      "theme.mode",
+    ]);
   });
 });

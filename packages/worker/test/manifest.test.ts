@@ -37,6 +37,9 @@ const PRODUCT = {
       profileId: null,
       policyExpiryDays: null,
       policyMachineLimit: 5,
+      channels: ["stable", "beta"],
+      minVersion: "1.0.0",
+      maxVersion: "2.0.0",
     },
   ],
   provisioning: [
@@ -66,6 +69,7 @@ const RELEASE = {
       kid: "KID",
       claimsTemplate: { iss: "TEAM" },
       ttlSeconds: 3600,
+      audience: "music.apple.com",
     },
   ],
 };
@@ -90,11 +94,19 @@ describe("parseManifest", () => {
     );
     expect(m.oidc?.clientId).toBe("djdl");
     expect(m.tiers).toHaveLength(1);
+    expect(m.tiers[0]).toMatchObject({
+      channels: ["stable", "beta"],
+      minVersion: "1.0.0",
+      maxVersion: "2.0.0",
+    });
     expect(m.provisioning).toHaveLength(1);
     expect(m.release?.ghOwner).toBe("vladzaharia");
     expect(m.release?.binaryName).toBe("djdl");
     expect(m.edgeMint).toHaveLength(1);
-    expect(m.edgeMint[0]?.id).toBe("applemusic");
+    expect(m.edgeMint[0]).toMatchObject({
+      id: "applemusic",
+      audience: "music.apple.com",
+    });
   });
 
   it("parses the SAME content expressed as YAML, yielding an identical ParsedManifest", () => {

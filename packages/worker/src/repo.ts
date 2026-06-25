@@ -66,6 +66,13 @@ export interface LicenseRow {
   modified_at: number;
 }
 
+export interface LicenseProfileRow {
+  product: string;
+  license_id: string;
+  profile_id: string;
+  sort_order: number;
+}
+
 export interface KeyRow {
   product: string;
   key_hash: string;
@@ -138,6 +145,19 @@ export interface AuditRow {
   summary: string | null;
 }
 
+export interface ProductSyncStateRow {
+  product: string;
+  source: string;
+  status: string;
+  last_checked_at: number;
+  last_synced_at: number | null;
+  commit_sha: string | null;
+  changed_paths_json: string | null;
+  updated_json: string | null;
+  errors_json: string | null;
+  message: string | null;
+}
+
 // ── Products ─────────────────────────────────────────────────────────────────
 export async function getProduct(
   db: Db,
@@ -172,6 +192,65 @@ export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
   );
 }
 
+export async function getProductSyncState(
+  db: Db,
+  product: string,
+): Promise<ProductSyncStateRow | null> {
+  return db.first<ProductSyncStateRow>(
+    "SELECT * FROM product_sync_state WHERE product = ?",
+    product,
+  );
+}
+
+export async function listProductsByGithubRepo(
+  db: Db,
+  owner: string,
+  repo: string,
+): Promise<ProductRow[]> {
+  return db.all<ProductRow>(
+    `SELECT p.* FROM products p
+       JOIN release_config r ON r.product = p.slug
+      WHERE p.release_source = 'github'
+        AND lower(r.gh_owner) = lower(?)
+        AND lower(r.gh_repo) = lower(?)
+      ORDER BY p.slug`,
+    owner,
+    repo,
+  );
+}
+
+export async function upsertProductSyncState(
+  db: Db,
+  row: ProductSyncStateRow,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO product_sync_state
+       (product, source, status, last_checked_at, last_synced_at, commit_sha,
+        changed_paths_json, updated_json, errors_json, message)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(product) DO UPDATE SET
+       source = excluded.source,
+       status = excluded.status,
+       last_checked_at = excluded.last_checked_at,
+       last_synced_at = excluded.last_synced_at,
+       commit_sha = excluded.commit_sha,
+       changed_paths_json = excluded.changed_paths_json,
+       updated_json = excluded.updated_json,
+       errors_json = excluded.errors_json,
+       message = excluded.message`,
+    row.product,
+    row.source,
+    row.status,
+    row.last_checked_at,
+    row.last_synced_at,
+    row.commit_sha,
+    row.changed_paths_json,
+    row.updated_json,
+    row.errors_json,
+    row.message,
+  );
+}
+
 // ── Sealed key custody (envelope-encrypted under the platform KEK; see src/keyvault.ts) ──
 export async function getActiveProductKey(
   db: Db,
@@ -179,6 +258,18 @@ export async function getActiveProductKey(
 ): Promise<ProductKeyRow | null> {
   return db.first<ProductKeyRow>(
     "SELECT * FROM product_keys WHERE product = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+    product,
+  );
+}
+
+export async function listVerificationProductKeys(
+  db: Db,
+  product: string,
+): Promise<ProductKeyRow[]> {
+  return db.all<ProductKeyRow>(
+    `SELECT * FROM product_keys
+     WHERE product = ? AND status IN ('active', 'retired')
+     ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, created_at DESC`,
     product,
   );
 }
@@ -212,6 +303,16 @@ export async function retireProductKeys(
     at,
     product,
   );
+}
+
+export function stmtRetireProductKeys(
+  product: string,
+  at: number,
+): DbStatement {
+  return {
+    sql: "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active'",
+    params: [at, product],
+  };
 }
 
 export async function getProductSecret(
@@ -300,12 +401,39 @@ export interface TierInput {
   profileId: string | null;
   policyExpiryDays: number | null;
   policyMachineLimit: number | null;
+  channels?: string[] | null;
+  minVersion?: string | null;
+  maxVersion?: string | null;
   modifiedAt: number;
+}
+
+export interface ProfileInput {
+  product: string;
+  id: string;
+  name: string;
+  description?: string | null;
+  payloadJson: string;
+  modifiedAt: number;
+}
+export function stmtInsertProfile(p: ProfileInput): DbStatement {
+  return {
+    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
+          VALUES (?, ?, ?, ?, ?, NULL, ?)`,
+    params: [
+      p.product,
+      p.id,
+      p.name,
+      p.description ?? null,
+      p.payloadJson,
+      p.modifiedAt,
+    ],
+  };
 }
 export function stmtInsertTier(t: TierInput): DbStatement {
   return {
-    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit, modified_by, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, NULL, ?)`,
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit,
+             channels_json, min_version, max_version, modified_by, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
     params: [
       t.product,
       t.id,
@@ -313,6 +441,9 @@ export function stmtInsertTier(t: TierInput): DbStatement {
       t.profileId,
       t.policyExpiryDays,
       t.policyMachineLimit,
+      t.channels && t.channels.length > 0 ? JSON.stringify(t.channels) : null,
+      t.minVersion ?? null,
+      t.maxVersion ?? null,
       t.modifiedAt,
     ],
   };
@@ -383,11 +514,12 @@ export interface EdgeMintInput {
   kid?: string;
   claimsTemplate: Record<string, unknown>;
   ttlSeconds: number;
+  audience?: string | null;
 }
 export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
   return {
-    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, auth_page_template)
-          VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
     params: [
       e.product,
       e.id,
@@ -396,6 +528,7 @@ export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
       e.kid ?? null,
       JSON.stringify(e.claimsTemplate),
       e.ttlSeconds,
+      e.audience ?? null,
     ],
   };
 }
@@ -507,6 +640,41 @@ export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
     row.modified_by,
     row.modified_at,
   );
+}
+
+export async function listLicenseProfiles(
+  db: Db,
+  product: string,
+  licenseId: string,
+): Promise<LicenseProfileRow[]> {
+  return db.all<LicenseProfileRow>(
+    "SELECT * FROM license_profiles WHERE product = ? AND license_id = ? ORDER BY sort_order ASC, profile_id ASC",
+    product,
+    licenseId,
+  );
+}
+
+export async function setLicenseProfiles(
+  db: Db,
+  product: string,
+  licenseId: string,
+  profileIds: string[],
+): Promise<void> {
+  const unique = [...new Set(profileIds.filter((id) => id.trim()))];
+  await db.batch([
+    {
+      sql: "DELETE FROM license_profiles WHERE product = ? AND license_id = ?",
+      params: [product, licenseId],
+    },
+    {
+      sql: "UPDATE licenses SET profile_id = ? WHERE product = ? AND id = ?",
+      params: [unique[0] ?? null, product, licenseId],
+    },
+    ...unique.map((profileId, sortOrder) => ({
+      sql: "INSERT INTO license_profiles (product, license_id, profile_id, sort_order) VALUES (?, ?, ?, ?)",
+      params: [product, licenseId, profileId, sortOrder],
+    })),
+  ]);
 }
 
 // ── Keys (list source-of-truth; KV is the hot read) ──────────────────────────

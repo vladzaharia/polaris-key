@@ -68,7 +68,7 @@ describe("PolarisLogin — key card visibility", () => {
     adapter.dispose();
   });
 
-  it("browser hides the key card (OIDC-only)", async () => {
+  it("browser shows the typed-key card", async () => {
     const browser = browserAdapter({
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
@@ -78,7 +78,7 @@ describe("PolarisLogin — key card visibility", () => {
     await waitFor(() =>
       expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy(),
     );
-    expect(container.querySelector("[data-polaris-key-input]")).toBeNull();
+    expect(container.querySelector("[data-polaris-key-input]")).toBeTruthy();
     browser.dispose();
   });
 

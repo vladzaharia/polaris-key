@@ -7,15 +7,18 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ProductDetail, ResyncResult } from "../src/api.js";
+import type { ProductDetail, ReleaseHealth, ResyncResult } from "../src/api.js";
 import { resetCache } from "../src/context.js";
 
 const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
 const resyncProduct = vi.fn<(slug: string) => Promise<ResyncResult>>();
+const releaseHealth =
+  vi.fn<(slug: string) => Promise<{ health: ReleaseHealth }>>();
 vi.mock("../src/api.js", () => ({
   api: {
     product: (slug: string) => product(slug),
     resyncProduct: (slug: string) => resyncProduct(slug),
+    releaseHealth: (slug: string) => releaseHealth(slug),
   },
 }));
 
@@ -30,15 +33,57 @@ const PRODUCT: ProductDetail = {
   defaultMaxOfflineDays: 14,
   defaultMachineLimit: 3,
   adminGroup: "djdl-admins",
+  setup: {
+    sync: {
+      source: "webhook",
+      status: "ok",
+      lastCheckedAt: 1_720_000_000,
+      lastSyncedAt: 1_720_000_000,
+      commitSha: "abc123",
+      changedPaths: [".pkey/product.yaml"],
+      updated: ["product", "release"],
+      errors: [],
+      message: null,
+    },
+  },
   createdAt: 1_700_000_000,
   modifiedAt: 1_710_000_000,
+};
+
+const HEALTH: ReleaseHealth = {
+  status: "healthy",
+  healthy: true,
+  missing: [],
+  release: {
+    tag: "v1.2.3",
+    name: "1.2.3",
+    prerelease: false,
+    assetCount: 5,
+    htmlUrl: "https://github.com/acme/djdl/releases/tag/v1.2.3",
+  },
+  checks: [
+    {
+      id: "github",
+      label: "GitHub access",
+      status: "ok",
+      message: "Listed 1 release.",
+    },
+    {
+      id: "sparkle-signature",
+      label: "Sparkle signature",
+      status: "ok",
+      message: "Found djdl-arm64.dmg.sig.",
+    },
+  ],
 };
 
 beforeEach(() => {
   resetCache();
   product.mockReset();
   resyncProduct.mockReset();
+  releaseHealth.mockReset();
   product.mockResolvedValue({ product: PRODUCT });
+  releaseHealth.mockResolvedValue({ health: HEALTH });
   (
     Element.prototype as unknown as { hasPointerCapture: () => boolean }
   ).hasPointerCapture = () => false;
@@ -57,6 +102,11 @@ describe("Releases view", () => {
     expect(screen.getByText("min 1.0.0")).toBeTruthy();
     expect(screen.getByText("max 2.0.0")).toBeTruthy();
     expect(screen.getByText("djdl-admins")).toBeTruthy();
+    expect(await screen.findByText("v1.2.3")).toBeTruthy();
+    expect(screen.getByText("GitHub access")).toBeTruthy();
+    expect(screen.getByText(".pkey/product.yaml")).toBeTruthy();
+    expect(screen.getByText("product")).toBeTruthy();
+    expect(screen.getByText("release")).toBeTruthy();
 
     // The note explaining release config lives in the repo manifest.
     expect(screen.getByText(/managed from the repo manifest/i)).toBeTruthy();

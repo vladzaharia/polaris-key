@@ -1,5 +1,11 @@
 import * as React from "react";
-import { AlertTriangle, KeyRound, RotateCw, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  KeyRound,
+  RotateCw,
+  Trash2,
+} from "lucide-react";
 import {
   ApiError,
   api,
@@ -10,6 +16,7 @@ import { useAdmin } from "../context.js";
 import { invalidate, useResource } from "../context.js";
 import { hashFor } from "../route.js";
 import {
+  Badge,
   Button,
   Card,
   CardContent,
@@ -68,7 +75,7 @@ export function Settings({ slug }: { slug: string }): React.ReactElement {
       ) : data ? (
         <div className="space-y-6">
           <GeneralCard slug={slug} product={data.product} />
-          <SecretCard slug={slug} />
+          <SecretCard slug={slug} product={data.product} />
           <KeyCard slug={slug} product={data.product} />
           <DangerCard slug={slug} product={data.product} />
         </div>
@@ -257,7 +264,13 @@ function GeneralCard({
 
 // ── secrets ─────────────────────────────────────────────────────────────────────
 
-function SecretCard({ slug }: { slug: string }): React.ReactElement {
+function SecretCard({
+  slug,
+  product,
+}: {
+  slug: string;
+  product: ProductDetail;
+}): React.ReactElement {
   const toast = useToast();
   const [name, setName] = React.useState("");
   const [value, setValue] = React.useState("");
@@ -275,10 +288,12 @@ function SecretCard({ slug }: { slug: string }): React.ReactElement {
     if (errs.name || errs.value) return;
     setSaving(true);
     try {
-      await api.putProductSecret(slug, name.trim(), value);
+      const secretName = name.trim();
+      await api.putProductSecret(slug, secretName, value);
+      invalidate(`product:${slug}`);
       toast.success(
         "Secret saved",
-        `“${name.trim()}” was stored. Its value is never shown again.`,
+        `“${secretName}” was stored. Its value is never shown again.`,
       );
       setName("");
       setValue("");
@@ -292,6 +307,7 @@ function SecretCard({ slug }: { slug: string }): React.ReactElement {
     }
   };
 
+  const requiredSecrets = product.setup?.secrets ?? [];
   return (
     <Card>
       <form onSubmit={onSubmit} noValidate>
@@ -302,25 +318,61 @@ function SecretCard({ slug }: { slug: string }): React.ReactElement {
             key). Values are stored encrypted and never read back.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <Field label="Secret name" error={errors.name}>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. oidc_client_secret"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </Field>
-          <Field label="Value" error={errors.value}>
-            <Input
-              type="password"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              autoComplete="new-password"
-              spellCheck={false}
-            />
-          </Field>
+        <CardContent className="space-y-4">
+          {requiredSecrets.length ? (
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <p className="text-sm font-medium">Required secrets</p>
+              <div className="space-y-2">
+                {requiredSecrets.map((secret) => (
+                  <div
+                    key={secret.name}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        className="break-all text-left font-mono text-xs text-primary underline-offset-4 hover:underline"
+                        onClick={() => setName(secret.name)}
+                      >
+                        {secret.name}
+                      </button>
+                      {secret.sources?.length ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {secret.sources.join(", ")}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Badge variant={secret.configured ? "success" : "warning"}>
+                      {secret.configured ? (
+                        <CheckCircle2 aria-hidden className="size-3" />
+                      ) : null}
+                      {secret.configured ? "Configured" : "Missing"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Secret name" error={errors.name}>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. oidc_client_secret"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </Field>
+            <Field label="Value" error={errors.value}>
+              <Input
+                type="password"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+            </Field>
+          </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" variant="secondary" loading={saving}>

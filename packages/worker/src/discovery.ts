@@ -2,7 +2,7 @@
 
 import type { Db } from "./db/types.js";
 import type { Product } from "./product.js";
-import { loadPublicSigningKey } from "./product.js";
+import { loadPublicSigningKey, loadPublicSigningKeys } from "./product.js";
 import { methodNotAllowed } from "./http.js";
 import { getProduct } from "./repo.js";
 import { parseManualChannels } from "./release/channels.js";
@@ -46,6 +46,7 @@ export async function handleDiscovery(
     product.slug,
   );
   const activeKey = await loadPublicSigningKey(db, product.slug);
+  const verificationKeys = await loadPublicSigningKeys(db, product.slug);
   const signingKid = activeKey?.kid ?? product.signingKid;
   const signingPublicKey = activeKey?.publicKey ?? product.signingPub;
   const jwksUrl = `${base}/.well-known/jwks.json`;
@@ -55,6 +56,12 @@ export async function handleDiscovery(
     config: `${base}/config`,
     report: `${base}/config/report`,
     subscribe: `${base}/config/subscribe`,
+    session: `${base}/session`,
+    sessionLicense: `${base}/session/license`,
+    authLogin: `${base}/auth/login`,
+    authLogout: `${base}/auth/logout`,
+    authDeviceStart: `${base}/auth/device/start`,
+    authDevicePoll: `${base}/auth/device/poll`,
     schema: `${base}/schema`,
     jwks: jwksUrl,
     version: `${base}/version`,
@@ -62,11 +69,15 @@ export async function handleDiscovery(
     install: `${base}/install.sh`,
     appcast: `${base}/appcast.xml`,
   };
-  const trustKeys = signingPublicKey ? { [signingKid]: signingPublicKey } : {};
+  const trustKeys = Object.fromEntries(
+    verificationKeys.map((key) => [key.kid, key.publicKey]),
+  );
+  if (signingPublicKey && Object.keys(trustKeys).length === 0)
+    trustKeys[signingKid] = signingPublicKey;
 
   const body = {
     version: 1,
-    schemaVersion: 1,
+    schemaVersion: product.schemaVersion,
     product: product.slug,
     slug: product.slug,
     name: product.name,
@@ -88,10 +99,19 @@ export async function handleDiscovery(
                 issuer: oidc.issuer,
                 clientId: oidc.client_id,
                 startUrl: `${base}/auth/start`,
+                loginUrl: `${base}/auth/login`,
                 callbackUrl: `${base}/auth/callback`,
                 pollUrl: `${base}/auth/poll`,
+                deviceStartUrl: endpoints.authDeviceStart,
+                devicePollUrl: endpoints.authDevicePoll,
+                logoutUrl: `${base}/auth/logout`,
               }
             : null,
+      },
+      browserSession: {
+        sessionUrl: endpoints.session,
+        licenseUrl: endpoints.sessionLicense,
+        logoutUrl: endpoints.authLogout,
       },
       config: {
         documentUrl: endpoints.config,
@@ -130,15 +150,14 @@ export async function handleDiscovery(
       signing: {
         jwksUrl,
         keys: signingPublicKey
-          ? [
-              {
-                kid: signingKid,
-                alg: "EdDSA",
-                kty: "OKP",
-                crv: "Ed25519",
-                publicKey: signingPublicKey,
-              },
-            ]
+          ? verificationKeys.map((key) => ({
+              kid: key.kid,
+              alg: "EdDSA",
+              kty: "OKP",
+              crv: "Ed25519",
+              publicKey: key.publicKey,
+              active: key.kid === signingKid,
+            }))
           : [],
       },
     },

@@ -8,19 +8,21 @@ add a product.
 
 ## Register a product
 
-1. Create or import the product manifest. Repo-link is preferred because the manifest stays
-   with the product source. Direct import is useful before a repo exists.
+1. Create the product manifest. Repo-link is preferred because the manifest stays with the
+   product source. Manual schema creation is useful before a repo exists.
 2. Register the product through the admin portal or platform CLI. Polaris validates the
    manifest, discovers the release provider where possible, mints a sealed Ed25519 signing
    key in `product_keys`, and returns the `kid -> publicKey` trust set for SDKs.
-3. Set any required product secrets from the admin UI/API. Manifest secret names are stable
+3. Configure the GitHub App webhook so default-branch `.pkey/` changes auto-sync; the admin
+   Releases view shows last sync, changed paths, manifest errors, and release health.
+4. Set any required product secrets from the admin UI/API. Manifest secret names are stable
    references; secret values are sealed into `product_secrets` and are never echoed back.
 
-The legacy seed path remains only for local/bootstrap fixtures:
+The legacy seed path remains only for local fixture regeneration. It does not mint sealed
+`product_keys` and must not be used for live product onboarding:
 
 ```sh
-pnpm --filter @polaris-key/products gen-seed products/djdl > products/djdl/seed.sql
-wrangler d1 execute polaris_key_prod --remote --file products/djdl/seed.sql
+pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
 ```
 
 Do not create per-product Worker signing secrets. Product signing keys are sealed in D1, and

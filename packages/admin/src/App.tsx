@@ -14,6 +14,8 @@ import { ProductOverview } from "./views/ProductOverview.js";
 import { Licenses } from "./views/Licenses.js";
 import { LicenseDetail } from "./views/LicenseDetail.js";
 import { Catalog } from "./views/Catalog.js";
+import { Tiers } from "./views/Tiers.js";
+import { Profiles } from "./views/Profiles.js";
 import { Releases } from "./views/Releases.js";
 import { Oidc } from "./views/Oidc.js";
 import { Activity } from "./views/Activity.js";
@@ -172,6 +174,10 @@ function renderRoute(
       return <Licenses slug={activeSlug} />;
     case "config":
       return <Catalog slug={activeSlug} />;
+    case "tiers":
+      return <Tiers slug={activeSlug} />;
+    case "profiles":
+      return <Profiles slug={activeSlug} />;
     case "releases":
       return <Releases slug={activeSlug} />;
     case "identity":

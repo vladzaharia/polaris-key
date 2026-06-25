@@ -1,8 +1,8 @@
 # Authoring a product's config — the `.pkey/` convention
 
 A Polaris Key product is **data, not code**. Its catalog, metadata, and release coordinates
-live in a `.pkey/` directory in the product's own repo (or are supplied inline when an admin
-creates the product by hand). The Worker, the admin SPA, and all five SDKs read that data;
+live in a `.pkey/` directory in the product's own repo. The Worker, the admin SPA, and all
+five SDKs read that data;
 adding or changing a product never requires a Worker redeploy.
 
 This doc is the source of truth for the `.pkey/` files and the `ConfigEntry` shape, using
@@ -99,26 +99,29 @@ parses, else taken as a raw string. (See each SDK README for the per-language AP
 
 ## Registering + re-syncing a product
 
-There are three ways the catalog reaches D1; repo-link and direct import are the normal
-paths and must share the same validated shape.
+There are three ways the catalog reaches D1. Repo-link is the normal product setup path;
+manual create is for early experiments; seed SQL is a legacy fixture tool only.
 
 1. **Repo-link (preferred).** The product hosts a `.pkey/` directory. The admin links the
    repo; the Worker fetches + `parseManifest`s the three files and registers the product.
-   Re-linking (or a webhook on push) re-parses and updates the rows.
-2. **Manifest import.** Paste or upload the same JSON/YAML manifest files into the admin
-   product setup flow (handy before a repo exists). Internally this runs the same
-   `parseManifest` path as repo-link.
-3. **Seed SQL (bootstrap / this monorepo only).** Generate the D1 seed from the fixture data
-   files and apply it:
+   Re-linking or a signed GitHub push webhook re-parses and updates the rows. Webhook sync
+   is pinned to the pushed commit SHA, records changed `.pkey/` paths, and surfaces applied
+   sections or validation errors in the admin Releases view.
+2. **Manual schema create.** The admin can create a product with metadata plus a schema
+   JSON/YAML document. Polaris still mints the sealed product signing key, but release,
+   OIDC, provisioning, profiles, tiers, and edge-mint rows are configured later in admin or
+   by linking a repo.
+3. **Seed SQL (legacy fixture generation only).** Generate fixture SQL from the monorepo's
+   `products/<slug>` files:
 
    ```sh
-   pnpm --filter @polaris-key/products gen-seed products/djdl > products/djdl/seed.sql
-   wrangler d1 execute polaris_key_prod --remote --file products/djdl/seed.sql
+   pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
    ```
 
-   This path is for local/bootstrap fixtures. Normal product registration should use the
-   admin portal or platform CLI so Polaris can mint the sealed product signing key, return
-   the public trust key, and list missing product secrets.
+   Do not use this for live onboarding: it cannot mint sealed `product_keys` or store
+   product secret values. Normal product registration must use the admin portal or platform
+   CLI so Polaris can mint the sealed signing key, return the public trust key, and list
+   missing product secrets.
 
 ### Admin override vs re-sync
 

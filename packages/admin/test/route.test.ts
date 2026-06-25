@@ -55,16 +55,6 @@ describe("parseRoute", () => {
       slug: "djdl",
       view: "config",
     });
-    expect(parseRoute("#/p/djdl/tiers")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "config",
-    });
-    expect(parseRoute("#/p/djdl/profiles")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "config",
-    });
     expect(parseRoute("#/p/djdl/oidc")).toEqual({
       kind: "product",
       slug: "djdl",

@@ -29,12 +29,12 @@ public enum Endpoints {
 
     /// Re-acquire a token for an already-enrolled device (`POST /<product>/token`).
     public static func reacquireToken(
-        baseUrl: String, product: String, deviceId: String,
+        baseUrl: String, product: String, token: String, deviceId: String,
         session: URLSession = .shared
     ) async -> EnrollResult {
         await enrollLike(
             urlString: "\(baseUrl)/\(product)/token",
-            headers: [HEADER_DEVICE: deviceId],
+            headers: ["Authorization": "Bearer \(token)", HEADER_DEVICE: deviceId],
             session: session)
     }
 

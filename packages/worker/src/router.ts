@@ -7,6 +7,7 @@ export type Route =
   | { kind: "adminLogin" }
   | { kind: "adminCallback" }
   | { kind: "products" }
+  | { kind: "githubWebhook" }
   | { kind: "discovery"; product: string }
   | { kind: "jwks"; product: string }
   | { kind: "schema"; product: string }
@@ -16,7 +17,13 @@ export type Route =
   | { kind: "config"; product: string }
   | { kind: "configReport"; product: string }
   | { kind: "configSubscribe"; product: string }
+  | { kind: "browserSession"; product: string }
+  | { kind: "browserSessionLicense"; product: string }
   | { kind: "authStart"; product: string }
+  | { kind: "authLogin"; product: string }
+  | { kind: "authLogout"; product: string }
+  | { kind: "authDeviceStart"; product: string }
+  | { kind: "authDevicePoll"; product: string }
   | { kind: "authCallback"; product: string }
   | { kind: "authPoll"; product: string }
   | { kind: "mintToken"; product: string; mintId: string }
@@ -40,6 +47,7 @@ export function matchRoute(pathname: string): Route {
   // Platform + admin (matched before product slugs).
   if (path === "/admin/api/products" || path.startsWith("/admin/api/products/"))
     return { kind: "products" };
+  if (path === "/webhooks/github") return { kind: "githubWebhook" };
   if (path === "/admin/login") return { kind: "adminLogin" };
   if (path === "/admin/callback") return { kind: "adminCallback" };
   if (path === "/admin/api" || path.startsWith("/admin/api/"))
@@ -72,8 +80,20 @@ export function matchRoute(pathname: string): Route {
       return { kind: "configReport", product };
     case "/config/subscribe":
       return { kind: "configSubscribe", product };
+    case "/session":
+      return { kind: "browserSession", product };
+    case "/session/license":
+      return { kind: "browserSessionLicense", product };
     case "/auth/start":
       return { kind: "authStart", product };
+    case "/auth/login":
+      return { kind: "authLogin", product };
+    case "/auth/logout":
+      return { kind: "authLogout", product };
+    case "/auth/device/start":
+      return { kind: "authDeviceStart", product };
+    case "/auth/device/poll":
+      return { kind: "authDevicePoll", product };
     case "/auth/callback":
       return { kind: "authCallback", product };
     case "/auth/poll":

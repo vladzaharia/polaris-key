@@ -15,23 +15,25 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
+import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import {
   getProduct,
-  insertProductKey,
   listProducts,
-  retireProductKeys,
   stmtInsertProduct,
   stmtInsertProductKey,
+  stmtRetireProductKeys,
   stmtInsertSchema,
+  upsertProductSyncState,
   upsertProductSecret,
 } from "../../repo.js";
 import { deleteProduct, updateProduct } from "../repo.js";
 import { generateEd25519, seal } from "../../keyvault.js";
 import { linkRepo } from "../../release/linkRepo.js";
 import { resyncRepo } from "../../release/resync.js";
+import { checkReleaseHealth } from "../../release/health.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
@@ -54,11 +56,11 @@ function compileSchema(
     try {
       parsed = JSON.parse(input);
     } catch {
-      // Not JSON — fall back to YAML, mirroring the manifest parser's per-file detection.
-      return {
-        ok: false,
-        message: "schema must be valid JSON (YAML supported via link-repo)",
-      };
+      try {
+        parsed = parseYaml(input);
+      } catch {
+        return { ok: false, message: "schema must be valid JSON or YAML" };
+      }
     }
   }
   try {
@@ -400,17 +402,19 @@ async function handleKeys(
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
   const encPrivate = await seal(env, privatePkcs8Pem);
 
-  await retireProductKeys(db, slug, now);
-  await insertProductKey(db, {
-    product: slug,
-    kid,
-    alg: "Ed25519",
-    public_b64url: publicRawB64url,
-    enc_private_json: encPrivate,
-    status: "active",
-    created_at: now,
-    rotated_at: null,
-  });
+  await db.batch([
+    stmtRetireProductKeys(slug, now),
+    stmtInsertProductKey({
+      product: slug,
+      kid,
+      alg: "Ed25519",
+      public_b64url: publicRawB64url,
+      enc_private_json: encPrivate,
+      status: "active",
+      created_at: now,
+      rotated_at: null,
+    }),
+  ]);
   await audit(
     db,
     slug,
@@ -424,7 +428,7 @@ async function handleKeys(
   return adminJson({ ok: true, kid, publicKey: publicRawB64url });
 }
 
-/** POST /api/products/<slug>/release/resync — re-fetch `.pkey/` and re-apply (diff-then-update). */
+/** GET/POST /api/products/<slug>/release/* — release health + linked repo resync. */
 async function handleRelease(
   req: Request,
   env: Env,
@@ -434,11 +438,28 @@ async function handleRelease(
   action: string | undefined,
   now: number,
 ): Promise<Response> {
+  if (action === "health") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    return adminJson({ health: await checkReleaseHealth(env, db, slug, now) });
+  }
   if (action !== "resync") return notFound();
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
   const result = await resyncRepo(env, db, slug, now);
   if (!result.ok) {
+    await upsertProductSyncState(db, {
+      product: slug,
+      source: "manual",
+      status: "error",
+      last_checked_at: now,
+      last_synced_at: null,
+      commit_sha: null,
+      changed_paths_json: null,
+      updated_json: null,
+      errors_json: result.errors ? JSON.stringify(result.errors) : null,
+      message: result.error,
+    });
     return err(
       422,
       ErrorCode.BadRequest,
@@ -446,6 +467,18 @@ async function handleRelease(
       result.errors ? { errors: result.errors } : undefined,
     );
   }
+  await upsertProductSyncState(db, {
+    product: slug,
+    source: "manual",
+    status: "ok",
+    last_checked_at: now,
+    last_synced_at: now,
+    commit_sha: null,
+    changed_paths_json: null,
+    updated_json: JSON.stringify(result.updated),
+    errors_json: null,
+    message: null,
+  });
   await audit(
     db,
     slug,

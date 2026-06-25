@@ -4,13 +4,7 @@
 // signed doc), report, deauthorize. Product isolation is structural — every repo/KV call
 // is product-scoped, the signing key is the product's, and the doc carries aud = product.
 
-import {
-  HEADER_CHANNEL,
-  HEADER_VERSION,
-  type DocProfile,
-  type ManagedEntry,
-  type ManagedPayload,
-} from "@polaris-key/protocol";
+import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol";
 import { HEADER_DEVICE } from "@polaris-key/protocol";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
@@ -22,7 +16,6 @@ import {
   json,
   methodNotAllowed,
 } from "./http.js";
-import { hashKey, mintToken } from "./crypto.js";
 import { checkBuildGate, tighterMin, tighterMax } from "./gate.js";
 import { Catalog } from "@polaris-key/catalog";
 import {
@@ -31,136 +24,24 @@ import {
   signDoc,
   validatePayload,
 } from "./configDoc.js";
-import { mergePayloads } from "./merge.js";
 import {
   getKey,
   getLicense,
-  getMachine,
-  getProfile,
-  getTier,
   getActiveSchema,
-  countActiveMachines,
   touchKey,
-  upsertMachine,
   setMachineStatus,
   setMachineReported,
-  type LicenseRow,
-  type MachineRow,
-  type TierRow,
 } from "./repo.js";
-import { deleteTokenRecord, getTokenRecord, putTokenRecord } from "./kv.js";
+import { hashKey } from "./crypto.js";
+import { deleteTokenRecord } from "./kv.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
-
-function docProfile(license: LicenseRow): DocProfile {
-  const name = license.name ?? "";
-  return {
-    name,
-    firstName: name.split(" ")[0] ?? "",
-    email: license.email ?? "",
-    enrolledAt: license.enrolled_at,
-  };
-}
-
-/** Parse a JSON string-array column, ignoring null/invalid. */
-function parseChannelsJson(json: string | null): string[] {
-  if (!json) return [];
-  try {
-    const v = JSON.parse(json);
-    return Array.isArray(v)
-      ? (v.filter((c) => typeof c === "string") as string[])
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Inject the admin upgrade-channel + version-window policy (from the tier and license rows)
- * as ENFORCED entitlements, so the existing gate (gate.ts checkBuildGate) governs them with
- * no gate-logic changes. Admin policy wins: channels = union of tier+license arrays; min/max
- * = the tighter of the two. `updatedAt` is the license's modified_at.
- */
-function injectAdminPolicy(
-  payload: ManagedPayload,
-  tier: TierRow | null,
-  license: LicenseRow,
-): void {
-  const updatedAt = license.modified_at;
-  const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({
-    state: "enforced",
-    value,
-    updatedAt,
-  });
-
-  const channels = [
-    ...new Set([
-      ...parseChannelsJson(tier?.channels_json ?? null),
-      ...parseChannelsJson(license.channels_json),
-    ]),
-  ];
-  if (channels.length > 0)
-    payload.entitlements["channels"] = enforced(channels);
-
-  const minVersion = tighterMin(
-    tier?.min_version ?? undefined,
-    license.min_version ?? undefined,
-  );
-  if (minVersion) payload.entitlements["app.minVersion"] = enforced(minVersion);
-
-  const maxVersion = tighterMax(
-    tier?.max_version ?? undefined,
-    license.max_version ?? undefined,
-  );
-  if (maxVersion) payload.entitlements["app.maxVersion"] = enforced(maxVersion);
-}
-
-/** Effective managed payload: tier(profile) -> license(profile) -> license overrides -> machine. */
-async function resolveEffective(
-  db: Db,
-  product: string,
-  license: LicenseRow,
-  machine?: MachineRow | null,
-): Promise<ManagedPayload> {
-  let tier: TierRow | null = null;
-  let tierProfileJson: string | null = null;
-  if (license.tier_id) {
-    tier = await getTier(db, product, license.tier_id);
-    if (tier?.profile_id) {
-      const p = await getProfile(db, product, tier.profile_id);
-      tierProfileJson = p?.payload_json ?? null;
-    }
-  }
-  let licProfileJson: string | null = null;
-  if (license.profile_id) {
-    const p = await getProfile(db, product, license.profile_id);
-    licProfileJson = p?.payload_json ?? null;
-  }
-  const payload = mergePayloads(
-    tierProfileJson,
-    licProfileJson,
-    license.overrides_json,
-    machine?.overrides_json ?? null,
-  );
-  injectAdminPolicy(payload, tier, license);
-  return payload;
-}
-
-function resolveMachineLimit(
-  payload: ManagedPayload,
-  fallback: number,
-): number {
-  const e = payload.entitlements["machineLimit"];
-  return e && typeof e.value === "number" ? e.value : fallback;
-}
-
-function licenseUsable(
-  license: LicenseRow | null,
-  now: number,
-): license is LicenseRow {
-  if (!license || license.status !== "active") return false;
-  if (license.expires_at !== null && now > license.expires_at) return false;
-  return true;
-}
+import {
+  authorizeMachine,
+  docProfile,
+  resolveEffective,
+  rotateMachineToken,
+  validateMachineToken,
+} from "./licenseCore.js";
 
 /** POST /<product>/enroll — exchange a license key for a per-machine token. */
 export async function handleEnroll(
@@ -193,59 +74,30 @@ export async function handleEnroll(
     return errorResponse(401, ErrorCode.Unauthorized);
 
   const license = await getLicense(db, product.slug, keyRow.license_id);
-  if (!licenseUsable(license, now))
-    return errorResponse(401, ErrorCode.Unauthorized);
-
-  const existing = await getMachine(db, product.slug, deviceId);
-  const isNewAuthorization = !existing || existing.status !== "authorized";
-  if (isNewAuthorization) {
-    const eff = await resolveEffective(db, product.slug, license);
-    const limit = resolveMachineLimit(eff, product.defaultMachineLimit);
-    if (limit > 0) {
-      const count = await countActiveMachines(db, product.slug, license.id);
-      if (count >= limit) {
-        return errorResponse(
-          403,
-          ErrorCode.MachineLimit,
-          "device limit reached",
-          {
-            limit,
-            machineCount: count,
-          },
-        );
-      }
-    }
+  if (!license) return errorResponse(401, ErrorCode.Unauthorized);
+  const authorized = await authorizeMachine(
+    env,
+    db,
+    product,
+    license,
+    deviceId,
+    now,
+    { userAgent: req.headers.get("user-agent") },
+  );
+  if ("error" in authorized) {
+    if (authorized.error === "unauthorized")
+      return errorResponse(401, ErrorCode.Unauthorized);
+    return errorResponse(403, ErrorCode.MachineLimit, "device limit reached", {
+      limit: authorized.limit,
+      machineCount: authorized.machineCount,
+    });
   }
-
-  const token = mintToken();
-  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-
-  // Drop the machine's previous token record (if any) so it can't keep authenticating.
-  if (existing?.token_hash && existing.token_hash !== tokenHash) {
-    await deleteTokenRecord(env, product.slug, existing.token_hash);
-  }
-
-  await upsertMachine(db, {
-    product: product.slug,
-    machine_id: deviceId,
-    license_id: license.id,
-    status: "authorized",
-    first_seen: existing?.first_seen ?? now,
-    last_seen: now,
-    ua: req.headers.get("user-agent"),
-    label: existing?.label ?? null,
-    overrides_json: existing?.overrides_json ?? null,
-    reported_json: existing?.reported_json ?? null,
-    token_hash: tokenHash,
-  });
-  await putTokenRecord(env, product.slug, tokenHash, {
-    product: product.slug,
-    machineId: deviceId,
-    licenseId: license.id,
-  });
   await touchKey(db, product.slug, keyHash, now);
 
-  return json({ token, schemaVersion: product.schemaVersion });
+  return json({
+    token: authorized.token,
+    schemaVersion: product.schemaVersion,
+  });
 }
 
 /** POST /<product>/token — replace the current token for an already-authorized machine.
@@ -274,40 +126,19 @@ export async function handleToken(
     return errorResponse(400, ErrorCode.BadRequest, "missing device id");
 
   const currentToken = bearer(req);
-  if (!currentToken) return errorResponse(401, ErrorCode.Unauthorized);
-  const currentTokenHash = await hashKey(currentToken, env.KEY_HASH_PEPPER);
-  const rec = await getTokenRecord(env, product.slug, currentTokenHash);
-  if (!rec || rec.product !== product.slug || rec.machineId !== deviceId) {
-    return errorResponse(401, ErrorCode.Unauthorized);
-  }
+  const valid = await validateMachineToken(
+    env,
+    db,
+    product,
+    currentToken,
+    now,
+    {
+      deviceId,
+    },
+  );
+  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
 
-  const machine = await getMachine(db, product.slug, rec.machineId);
-  if (!machine || machine.status !== "authorized")
-    return errorResponse(401, ErrorCode.Unauthorized);
-  if (
-    machine.license_id !== rec.licenseId ||
-    machine.token_hash !== currentTokenHash
-  ) {
-    return errorResponse(401, ErrorCode.Unauthorized);
-  }
-
-  const license = await getLicense(db, product.slug, rec.licenseId);
-  if (!licenseUsable(license, now))
-    return errorResponse(401, ErrorCode.Unauthorized);
-
-  const token = mintToken();
-  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  await deleteTokenRecord(env, product.slug, currentTokenHash);
-  await upsertMachine(db, {
-    ...machine,
-    last_seen: now,
-    token_hash: tokenHash,
-  });
-  await putTokenRecord(env, product.slug, tokenHash, {
-    product: product.slug,
-    machineId: deviceId,
-    licenseId: license.id,
-  });
+  const token = await rotateMachineToken(env, db, product, valid, now);
   return json({ token, schemaVersion: product.schemaVersion });
 }
 
@@ -320,19 +151,17 @@ export async function handleConfig(
   now: number,
 ): Promise<Response> {
   const token = bearer(req);
-  if (!token) return errorResponse(401, ErrorCode.Unauthorized);
-  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const rec = await getTokenRecord(env, product.slug, tokenHash);
-  if (!rec) return errorResponse(401, ErrorCode.Unauthorized);
+  const valid = await validateMachineToken(env, db, product, token, now);
+  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
 
-  const license = await getLicense(db, product.slug, rec.licenseId);
-  if (!licenseUsable(license, now))
-    return errorResponse(401, ErrorCode.Unauthorized);
-  const machine = await getMachine(db, product.slug, rec.machineId);
-  if (!machine || machine.status !== "authorized")
-    return errorResponse(401, ErrorCode.Unauthorized);
-
-  let payload = await resolveEffective(db, product.slug, license, machine);
+  let payload = await resolveEffective(
+    db,
+    product.slug,
+    valid.license,
+    valid.machine,
+    now,
+    { tighterMin, tighterMax },
+  );
 
   // Defense-in-depth: re-validate the merged config/secret keys against the active catalog
   // and drop anything unknown or invalid before signing (a stale/misconfigured override must
@@ -366,15 +195,15 @@ export async function handleConfig(
   }
 
   const maxOfflineDays =
-    license.max_offline_days ?? product.defaultMaxOfflineDays;
+    valid.license.max_offline_days ?? product.defaultMaxOfflineDays;
   const doc = buildDoc({
     schemaVersion: product.schemaVersion,
     aud: product.slug,
-    licenseId: license.id,
-    deviceId: rec.machineId,
+    licenseId: valid.license.id,
+    deviceId: valid.machine.machine_id,
     now,
     maxOfflineDays,
-    profile: docProfile(license),
+    profile: docProfile(valid.license),
     payload,
   });
   const etag = await computeETag(doc);
@@ -402,10 +231,8 @@ export async function handleReport(
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   const token = bearer(req);
-  if (!token) return errorResponse(401, ErrorCode.Unauthorized);
-  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const rec = await getTokenRecord(env, product.slug, tokenHash);
-  if (!rec) return errorResponse(401, ErrorCode.Unauthorized);
+  const valid = await validateMachineToken(env, db, product, token, now);
+  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
   let snapshot: unknown;
   try {
     snapshot = await req.json();
@@ -415,7 +242,7 @@ export async function handleReport(
   await setMachineReported(
     db,
     product.slug,
-    rec.machineId,
+    valid.machine.machine_id,
     JSON.stringify(snapshot ?? {}),
     now,
   );
@@ -433,9 +260,20 @@ export async function handleDeauthorize(
   const token = bearer(req);
   if (!token) return errorResponse(401, ErrorCode.Unauthorized);
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const rec = await getTokenRecord(env, product.slug, tokenHash);
-  if (!rec) return errorResponse(401, ErrorCode.Unauthorized);
-  await setMachineStatus(db, product.slug, rec.machineId, "deauthorized");
+  const valid = await validateMachineToken(
+    env,
+    db,
+    product,
+    token,
+    Math.floor(Date.now() / 1000),
+  );
+  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+  await setMachineStatus(
+    db,
+    product.slug,
+    valid.machine.machine_id,
+    "deauthorized",
+  );
   await deleteTokenRecord(env, product.slug, tokenHash);
   return json({ ok: true });
 }

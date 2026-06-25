@@ -70,6 +70,25 @@ describe("mergePayloads", () => {
     expect(out.config.a).toEqual(ent(2, "enforced", 900));
   });
 
+  it("does not let a default layer override an enforced or hidden value", () => {
+    const out = mergePayloads(
+      layer({
+        config: {
+          locked: ent("server", "enforced", 100),
+          concealed: ent("secret", "hidden", 100),
+        },
+      }),
+      layer({
+        config: {
+          locked: ent("local", "default", 200),
+          concealed: ent("visible", "default", 200),
+        },
+      }),
+    );
+    expect(out.config.locked).toEqual(ent("server", "enforced", 200));
+    expect(out.config.concealed).toEqual(ent("secret", "hidden", 200));
+  });
+
   it("tolerates malformed JSON layers (skips them as empty)", () => {
     const out = mergePayloads(
       "{not valid json",

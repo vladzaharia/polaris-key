@@ -314,6 +314,7 @@ class PolarisKeyClient:
                 re = reacquire_token(
                     base_url=self._base_url,
                     product=self.product,
+                    token=self._token,
                     device_id=self._device_id,
                     client=self._http,
                 )

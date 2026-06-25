@@ -14,7 +14,9 @@ import {
   insertLicense,
   insertKey,
   listKeysByLicense,
+  listLicenseProfiles,
   listMachinesByLicense,
+  setLicenseProfiles,
 } from "../../repo.js";
 import { listLicenses, patchLicense, setLicenseStatus } from "../repo.js";
 import { audit } from "../audit.js";
@@ -32,6 +34,13 @@ function parseChannels(raw: unknown): string | null {
   if (!Array.isArray(raw)) return null;
   const channels = raw.filter((c) => typeof c === "string") as string[];
   return JSON.stringify(channels);
+}
+
+function parseProfiles(body: Record<string, unknown>): string[] {
+  if (Array.isArray(body.profiles)) {
+    return body.profiles.filter((p) => typeof p === "string") as string[];
+  }
+  return typeof body.profile === "string" && body.profile ? [body.profile] : [];
 }
 
 export async function handleLicenses(
@@ -57,6 +66,7 @@ export async function handleLicenses(
     if (req.method === "POST") {
       const body = await readBody(req);
       const licenseId = randomId("lic");
+      const profiles = parseProfiles(body);
       await insertLicense(db, {
         product: slug,
         id: licenseId,
@@ -66,7 +76,7 @@ export async function handleLicenses(
         email: typeof body.email === "string" ? body.email : null,
         groups_json: null,
         tier_id: typeof body.tier === "string" ? body.tier : null,
-        profile_id: typeof body.profile === "string" ? body.profile : null,
+        profile_id: profiles[0] ?? null,
         enrolled_at: now,
         expires_at: typeof body.expiresAt === "number" ? body.expiresAt : null,
         max_offline_days:
@@ -84,6 +94,8 @@ export async function handleLicenses(
         modified_by: session.sub,
         modified_at: now,
       });
+      if (profiles.length > 0)
+        await setLicenseProfiles(db, slug, licenseId, profiles);
       // Mint the first key — returned ONCE, only here.
       const key = mintLicenseKey(slug);
       const keyHash = await hashKey(key, env.KEY_HASH_PEPPER);
@@ -133,12 +145,18 @@ export async function handleLicenses(
     if (req.method === "GET") {
       const keys = await listKeysByLicense(db, slug, id);
       const machines = await listMachinesByLicense(db, slug, id);
+      const profiles = await listLicenseProfiles(db, slug, id);
       const overrides = parsePayload(license.overrides_json);
       return adminJson({
         ...(await licenseSummary(db, slug, license)),
         groups: license.groups_json
           ? (JSON.parse(license.groups_json) as string[])
           : [],
+        profiles: profiles.length
+          ? profiles.map((p) => p.profile_id)
+          : license.profile_id
+            ? [license.profile_id]
+            : [],
         maxOfflineDays: license.max_offline_days,
         overrides: redactPayload(overrides, catalog),
         keys: keys.map((k) => ({
@@ -164,6 +182,7 @@ export async function handleLicenses(
     }
     if (req.method === "PATCH") {
       const body = await readBody(req);
+      const profiles = parseProfiles(body);
       await patchLicense(
         db,
         slug,
@@ -181,6 +200,12 @@ export async function handleLicenses(
             typeof body.maxOfflineDays === "number"
               ? body.maxOfflineDays
               : undefined,
+          tier_id:
+            body.tier === null
+              ? null
+              : typeof body.tier === "string"
+                ? body.tier
+                : undefined,
           channels_json:
             "channels" in body ? parseChannels(body.channels) : undefined,
           min_version:
@@ -199,6 +224,8 @@ export async function handleLicenses(
         session.sub,
         now,
       );
+      if ("profiles" in body || "profile" in body)
+        await setLicenseProfiles(db, slug, id, profiles);
       await audit(
         db,
         slug,

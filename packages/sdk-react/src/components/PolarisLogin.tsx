@@ -1,7 +1,7 @@
-// `<PolarisLogin>` — the drop-in sign-in card: an OIDC button plus (desktop only) a typed
+// `<PolarisLogin>` — the drop-in sign-in card: an OIDC button plus a typed
 // key-entry form. Themed entirely via the `--pk-*` custom properties the Provider sets, so
 // it inherits the brand without any CSS-in-JS. All copy comes from the theme so it's fully
-// localizable/brandable. The key-entry card is hidden in browser mode (OIDC-only there).
+// localizable/brandable.
 //
 // Accessibility: the primary action (OIDC button) is auto-focused on mount; the key form
 // submits on Enter; the input has an associated <label> and is wired to its error via
@@ -13,7 +13,7 @@ import { usePolarisAuth } from "../react/hooks.js";
 import { usePolarisTheme } from "../react/hooks.js";
 
 export interface PolarisLoginProps {
-  /** Hide the typed-key card even on desktop. */
+  /** Hide the typed-key card. */
   hideKeyEntry?: boolean;
   /** Extra className on the root. */
   className?: string;

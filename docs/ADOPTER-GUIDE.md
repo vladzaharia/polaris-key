@@ -15,23 +15,20 @@ secrets, `wrangler deploy --env prod`, confirm `https://key.plrs.im` answers.
 
 ## 2. Register the djdl product
 
-1. Generate the djdl signing keypair and fill `products/djdl/product.json`:
-
-   ```sh
-   openssl genpkey -algorithm ed25519 -out djdl-prod.pem
-   openssl pkey -in djdl-prod.pem -pubout -outform DER | tail -c 32 | openssl base64 -A | tr '+/' '-_' | tr -d '='
-   ```
-
-   Put the private PEM in `SIGNING_KEY__DJDL` (Worker secret), the public base64url in
-   `product.json#signingPub`, under kid `pkey-djdl-prod-2026-06`.
-
-2. Fill the Apple MusicKit (`EDGE_MINT__DJDL__APPLEMUSIC` PEM + `kid`/`iss` in product.json),
-   GitHub App installation id, and Sparkle public key placeholders.
-3. `pnpm --filter @polaris-key/products gen-seed products/djdl > products/djdl/seed.sql`
-   then `wrangler d1 execute polaris_key_prod --remote --file products/djdl/seed.sql`.
-4. Install the Polaris Key GitHub App on `vladzaharia/djdl`; set `EDGE_MINT__*`,
-   `OIDC_CLIENT_SECRET__DJDL`. Verify `GET /djdl/appcast.xml` streams and
-   `GET /djdl/.well-known/jwks.json` returns the kid.
+1. Add `.pkey/product.yaml`, `.pkey/schema.yaml`, and `.pkey/release.yaml` to the product
+   repo. `pkey init` can scaffold the v1 files; edit them until `pkey validate` passes.
+2. Install the Polaris Key GitHub App on `vladzaharia/djdl`, then link the repo in the
+   admin portal. Polaris fetches the default-branch `.pkey/` files, validates them, mints a
+   sealed Ed25519 product signing key in `product_keys`, and returns the public trust key.
+   Confirm the GitHub App webhook is active so future default-branch `.pkey/` changes sync
+   automatically and appear in the Releases view with changed paths and validation errors.
+3. In Settings, set every required product secret shown by setup health. For djdl this
+   includes the OIDC client secret and the Apple MusicKit edge-mint private key. These are
+   write-only admin/API values stored sealed in `product_secrets`; they are not Worker
+   secrets and are never echoed back.
+4. Verify `GET /djdl/.well-known/jwks.json` returns the active kid, `GET /djdl/appcast.xml`
+   streams, and product setup/release health has no missing required secrets or release
+   assets.
 
 ## 3. Engine + app changes (in the djdl repo)
 

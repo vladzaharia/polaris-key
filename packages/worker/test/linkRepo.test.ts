@@ -7,10 +7,13 @@ import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/release/githubApp.js";
 import { linkRepo, parseRepoUrl } from "../src/release/linkRepo.js";
+import { resyncRepo } from "../src/release/resync.js";
+import { handleGithubWebhook } from "../src/githubWebhook.js";
 import { open } from "../src/keyvault.js";
 import {
   getActiveProductKey,
   getActiveSchema,
+  getProductSyncState,
   getProduct,
 } from "../src/repo.js";
 import { getReleaseConfig } from "../src/release/index.js";
@@ -59,6 +62,41 @@ function contentsResponse(text: string): Response {
   return new Response(JSON.stringify({ content: b64, encoding: "base64" }), {
     status: 200,
   });
+}
+
+function hex(bytes: Uint8Array): string {
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function signedWebhookRequest(
+  payload: unknown,
+  secret: string,
+  signatureOverride?: string,
+): Promise<Request> {
+  const body = typeof payload === "string" ? payload : JSON.stringify(payload);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(body) as BufferSource,
+    ),
+  );
+  return new Request("https://key.plrs.im/webhooks/github", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-github-event": "push",
+      "x-hub-signature-256": signatureOverride ?? `sha256=${hex(sig)}`,
+    },
+    body,
+  }) as unknown as Request;
 }
 
 /**
@@ -332,5 +370,164 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       "SELECT * FROM product_keys",
     );
     expect(keys.length).toBe(0);
+  });
+
+  it("resyncRepo is idempotent for an unchanged catalog", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    const { fetchImpl } = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": RELEASE_JSON,
+    });
+    const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
+    expect(linked.ok).toBe(true);
+
+    const first = await resyncRepo(env, db, "acme", NOW + 1, fetchImpl);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.updated).not.toContain("schema");
+
+    const second = await resyncRepo(env, db, "acme", NOW + 2, fetchImpl);
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.updated).not.toContain("schema");
+    const max = await db.first<{ v: number }>(
+      "SELECT MAX(catalog_version) AS v FROM product_schema WHERE product = ?",
+      "acme",
+    );
+    expect(max?.v).toBe(1);
+  });
+
+  it("GitHub webhook verifies HMAC, pins the push SHA, and records sync state", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
+    const { fetchImpl, calls } = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": RELEASE_JSON,
+    });
+    const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
+    expect(linked.ok).toBe(true);
+    calls.length = 0;
+
+    const payload = {
+      ref: "refs/heads/main",
+      after: "abc123",
+      repository: {
+        name: "acme-app",
+        full_name: "acme-org/acme-app",
+        default_branch: "main",
+        owner: { login: "acme-org" },
+      },
+      head_commit: { modified: [".pkey/product.yaml"] },
+      commits: [],
+    };
+    const res = await handleGithubWebhook(
+      await signedWebhookRequest(payload, env.GITHUB_WEBHOOK_SECRET),
+      env,
+      db,
+      NOW + 10,
+      fetchImpl,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      products: Array<{ product: string; ok: boolean; updated: string[] }>;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.products).toEqual([
+      {
+        product: "acme",
+        ok: true,
+        updated: [
+          "product",
+          "release",
+          "oidc",
+          "profiles",
+          "tiers",
+          "provisioning",
+          "edgeMint",
+        ],
+      },
+    ]);
+    expect(
+      calls
+        .filter((url) => url.includes("/contents/"))
+        .every((url) => url.includes("ref=abc123")),
+    ).toBe(true);
+
+    const sync = await getProductSyncState(db, "acme");
+    expect(sync).toMatchObject({
+      source: "webhook",
+      status: "ok",
+      commit_sha: "abc123",
+    });
+    expect(JSON.parse(sync!.changed_paths_json!)).toEqual([
+      ".pkey/product.yaml",
+    ]);
+    expect(JSON.parse(sync!.updated_json!)).not.toContain("schema");
+    const max = await db.first<{ v: number }>(
+      "SELECT MAX(catalog_version) AS v FROM product_schema WHERE product = ?",
+      "acme",
+    );
+    expect(max?.v).toBe(1);
+  });
+
+  it("GitHub webhook rejects invalid signatures before JSON parsing", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
+    const res = await handleGithubWebhook(
+      await signedWebhookRequest(
+        "{not json",
+        env.GITHUB_WEBHOOK_SECRET,
+        "sha256=" + "0".repeat(64),
+      ),
+      env,
+      db,
+      NOW,
+      stubFetch({}).fetchImpl,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("resyncRepo returns a structured error when GitHub content fetch fails", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    const { fetchImpl } = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": RELEASE_JSON,
+    });
+    const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
+    expect(linked.ok).toBe(true);
+
+    const failingFetch: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens")) {
+        return new Response(
+          JSON.stringify({ token: "ghs_installation_token" }),
+          {
+            status: 200,
+          },
+        );
+      }
+      if (url.includes("/contents/"))
+        return new Response("forbidden", { status: 403 });
+      return new Response("not found", { status: 404 });
+    };
+    const result = await resyncRepo(env, db, "acme", NOW + 1, failingFetch);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("repo file fetch failed: 403");
+    const product = await getProduct(db, "acme");
+    expect(product?.name).toBe("Acme");
+    const max = await db.first<{ v: number }>(
+      "SELECT MAX(catalog_version) AS v FROM product_schema WHERE product = ?",
+      "acme",
+    );
+    expect(max?.v).toBe(1);
   });
 });

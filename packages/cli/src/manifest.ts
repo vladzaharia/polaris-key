@@ -129,7 +129,7 @@ export function validateLoadedManifest(
       "product",
       "/apiVersion",
       "missing_api_version",
-      "Set apiVersion to pkey.dev/v2.",
+      "Set apiVersion to pkey.dev/v1.",
     );
   if (!productNode)
     add(
@@ -353,7 +353,7 @@ function productYaml(opts: InitOptions): string {
   const oidc = opts.modules.includes("oidc")
     ? `\noidc:\n  issuer: "https://id.example.com"\n  clientId: "${opts.slug}"\n  clientSecretRef: oidc_client_secret\n  groupRoleMap: {}\n`
     : "";
-  return `apiVersion: pkey.dev/v2
+  return `apiVersion: pkey.dev/v1
 product:
   slug: ${quoteYaml(opts.slug)}
   name: ${quoteYaml(opts.name)}
@@ -365,33 +365,48 @@ licensing:
   defaultMaxOfflineDays: 14
   keyActivation:
     enabled: ${opts.modules.includes("licensing") ? "true" : "false"}
+  profiles:
+    - id: standard-defaults
+      name: Standard defaults
+      payload:
+        config: {}
+        secrets: {}
+        entitlements: {}
   tiers:
     - id: standard
       label: Standard
+      profile: standard-defaults
       machineLimit: 5
       maxOfflineDays: 14
       channels: ["stable"]${oidc}${secrets}`;
 }
 
 function schemaYaml(): string {
-  return `apiVersion: pkey.dev/v2
+  return `apiVersion: pkey.dev/v1
+schemaVersion: 1
 catalog:
   - key: feature.example
     kind: flag
     label: Example feature
     category: General
+    description: Example feature entitlement.
+    schema:
+      type: boolean
     default: false
   - key: app.welcomeMessage
     kind: config
     label: Welcome message
     category: General
+    description: Greeting shown in the app.
+    schema:
+      type: string
     default: "Welcome"
     managementDefault: default
 `;
 }
 
 function releaseYaml(opts: InitOptions): string {
-  return `apiVersion: pkey.dev/v2
+  return `apiVersion: pkey.dev/v1
 release:
   provider:
     type: github

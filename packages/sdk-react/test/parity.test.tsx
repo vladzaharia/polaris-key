@@ -89,36 +89,30 @@ describe("mode parity", () => {
     });
     const browserOut = await renderWith(browser);
 
-    // Everything EXCEPT the transport-specific affordances must match.
-    const { "supports-key": dKey, ...desktopShared } = desktopOut;
-    const { "supports-key": bKey, ...browserShared } = browserOut;
-    expect(desktopShared).toEqual(browserShared);
+    expect(desktopOut).toEqual(browserOut);
 
     // Sanity on the shared values.
+    const desktopShared = desktopOut;
     expect(desktopShared.status).toBe("ok");
     expect(desktopShared.usable).toBe("true");
     expect(desktopShared["theme-mode"]).toBe("dark");
     expect(desktopShared.vpn).toBe("true");
     expect(desktopShared.beta).toBe("false");
     expect(desktopShared.profile).toBe("ada@acme.test");
-
-    // The one intentional divergence: only desktop offers typed-key entry.
-    expect(dKey).toBe("true");
-    expect(bKey).toBe("false");
+    expect(desktopShared["supports-key"]).toBe("true");
 
     desktop.dispose();
     browser.dispose();
   });
 
-  it("browser submitKey throws key-entry-unsupported", async () => {
+  it("browser submitKey activates through the cookie-session exchange", async () => {
     const browser = browserAdapter({
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
       now: () => NOW_SEC,
     });
-    await expect(browser.submitKey("anything")).rejects.toMatchObject({
-      code: "key-entry-unsupported",
-    });
+    await expect(browser.submitKey("anything")).resolves.toBeUndefined();
+    expect(browser.snapshot().status).toBe("ok");
     browser.dispose();
   });
 

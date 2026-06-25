@@ -11,10 +11,9 @@ import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { type Product, openProductSecret } from "./product.js";
 import { bearer, errorResponse } from "./http.js";
-import { hashKey } from "./crypto.js";
-import { getTokenRecord } from "./kv.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
 import { signJws } from "@polaris-key/jws";
+import { validateMachineToken } from "./licenseCore.js";
 
 interface EdgeMintRow {
   product: string;
@@ -186,12 +185,8 @@ export async function handleMintToken(
   // Confused-deputy guard: only a licensed machine may mint.
   const token = bearer(req);
   if (!token) return errorResponse(401, "unauthorized");
-  const rec = await getTokenRecord(
-    env,
-    product.slug,
-    await hashKey(token, env.KEY_HASH_PEPPER),
-  );
-  if (!rec) return errorResponse(401, "unauthorized");
+  const valid = await validateMachineToken(env, db, product, token, now);
+  if ("error" in valid) return errorResponse(401, "unauthorized");
 
   const cfg = await getEdgeMintConfig(db, product.slug, mintId);
   if (!cfg) return errorResponse(404, "not_found", "no such edge-mint recipe");

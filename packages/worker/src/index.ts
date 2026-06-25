@@ -8,10 +8,22 @@ import { handleSchema } from "./schema.js";
 import { handleJwks } from "./jwks.js";
 import { handleMintAuth, handleMintToken } from "./edgeMint.js";
 import { handleSubscribe } from "./subscribe.js";
-import { handleAuthCallback, handleAuthPoll, handleAuthStart } from "./oidc.js";
+import {
+  handleAuthCallback,
+  handleAuthDevicePoll,
+  handleAuthDeviceStart,
+  handleAuthPoll,
+  handleAuthStart,
+} from "./oidc.js";
+import {
+  handleBrowserLogout,
+  handleBrowserSession,
+  handleBrowserSessionLicense,
+} from "./browserSession.js";
 import { handleRelease } from "./release/index.js";
 import type { Arch } from "./release/assets.js";
 import { handleAdmin } from "./admin/index.js";
+import { handleGithubWebhook } from "./githubWebhook.js";
 import { errorResponse, notFound } from "./http.js";
 import {
   handleConfig,
@@ -34,7 +46,13 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "config",
   "configReport",
   "configSubscribe",
+  "browserSession",
+  "browserSessionLicense",
   "authStart",
+  "authLogin",
+  "authLogout",
+  "authDeviceStart",
+  "authDevicePoll",
   "authCallback",
   "authPoll",
   "mintToken",
@@ -76,15 +94,27 @@ export default {
         case "schema":
           return handleSchema(db, product);
         case "jwks":
-          return handleJwks(product);
+          return handleJwks(db, product);
         case "configSubscribe":
-          return handleSubscribe(req, env, product);
+          return handleSubscribe(req, env, db, product, now);
+        case "browserSession":
+          return handleBrowserSession(req, env, db, product, now);
+        case "browserSessionLicense":
+          return handleBrowserSessionLicense(req, env, db, product, now);
         case "mintToken":
           return handleMintToken(req, env, db, product, route.mintId, now);
         case "mintAuth":
           return handleMintAuth(db, product, route.mintId);
         case "authStart":
           return handleAuthStart(req, env, db, product);
+        case "authLogin":
+          return handleAuthStart(req, env, db, product);
+        case "authLogout":
+          return handleBrowserLogout(req, env, db, product);
+        case "authDeviceStart":
+          return handleAuthDeviceStart(req, env, db, product);
+        case "authDevicePoll":
+          return handleAuthDevicePoll(req, env, db, product, now);
         case "authCallback":
           return handleAuthCallback(req, env, db, product, now);
         case "authPoll":
@@ -123,6 +153,8 @@ export default {
 
     // Admin + platform routes.
     switch (route.kind) {
+      case "githubWebhook":
+        return handleGithubWebhook(req, env, db, now);
       case "adminSpa":
       case "adminApi":
       case "adminLogin":

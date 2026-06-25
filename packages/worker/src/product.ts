@@ -11,6 +11,7 @@ import {
   getActiveSchema,
   getProduct,
   getProductSecret,
+  listVerificationProductKeys,
 } from "./repo.js";
 import { open } from "./keyvault.js";
 
@@ -50,6 +51,22 @@ export async function loadPublicSigningKey(
     };
   } catch {
     return null;
+  }
+}
+
+export async function loadPublicSigningKeys(
+  db: Db,
+  slug: string,
+): Promise<PublicSigningKey[]> {
+  try {
+    const rows = await listVerificationProductKeys(db, slug);
+    return rows.map((row) => ({
+      kid: row.kid,
+      alg: row.alg,
+      publicKey: row.public_b64url,
+    }));
+  } catch {
+    return [];
   }
 }
 

@@ -106,10 +106,59 @@ export interface ProductSetupState {
   missing?: string[];
   warnings?: string[];
   requiredSecrets?: string[];
+  missingSecrets?: string[];
+  secrets?: {
+    name: string;
+    configured: boolean;
+    sources?: string[];
+  }[];
   modules?:
     | ProductModuleSummary[]
     | Record<string, ProductModuleSummary | boolean | string>;
+  sync?: ProductSyncState | null;
   nextActions?: ProductSetupAction[] | string[];
+}
+
+export interface ProductSyncState {
+  source?: string;
+  status?: string;
+  lastCheckedAt?: number | null;
+  lastSyncedAt?: number | null;
+  commitSha?: string | null;
+  changedPaths?: string[];
+  updated?: string[];
+  errors?: string[];
+  message?: string | null;
+}
+
+export type ReleaseHealthStatus =
+  | "healthy"
+  | "needs-setup"
+  | "not-configured"
+  | "error";
+
+export type ReleaseHealthCheckStatus = "ok" | "missing" | "warning" | "error";
+
+export interface ReleaseHealthCheck {
+  id: string;
+  label: string;
+  status: ReleaseHealthCheckStatus;
+  message?: string;
+  missing?: string[];
+}
+
+export interface ReleaseHealth {
+  status: ReleaseHealthStatus;
+  healthy: boolean;
+  missing: string[];
+  checks: ReleaseHealthCheck[];
+  release?: {
+    tag: string;
+    name: string | null;
+    prerelease: boolean;
+    assetCount: number;
+    htmlUrl: string;
+  };
 }
 
 export interface ProductOnboarding {
@@ -269,6 +318,7 @@ export interface LicenseSummary {
   activeKeyCount: number;
   machineCount: number;
   profile: string | null;
+  profiles?: string[];
   tier: string | null;
   channels: string[];
   minVersion: string | null;
@@ -311,6 +361,7 @@ export interface CreateLicenseBody {
   email: string;
   expiresAt?: number;
   profile?: string;
+  profiles?: string[];
   tier?: string;
   maxOfflineDays?: number;
   channels?: string[];
@@ -323,6 +374,9 @@ export interface PatchLicenseBody {
   email?: string;
   expiresAt?: number | null;
   maxOfflineDays?: number;
+  profile?: string | null;
+  profiles?: string[];
+  tier?: string | null;
   channels?: string[];
   minVersion?: string | null;
   maxVersion?: string | null;
@@ -484,6 +538,8 @@ export const api = {
     call<{ ok: true; slug: string }>(p(slug), { method: "DELETE" }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
+  releaseHealth: (slug: string) =>
+    call<{ health: ReleaseHealth }>(`${p(slug)}/release/health`),
   putProductSecret: (slug: string, name: string, value: string) =>
     call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, {
       method: "PUT",

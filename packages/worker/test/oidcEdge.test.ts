@@ -16,6 +16,8 @@ import {
   authorizeAndMint,
   enrollFromIdentity,
   handleAuthCallback,
+  handleAuthDevicePoll,
+  handleAuthDeviceStart,
   handleAuthPoll,
   handleAuthStart,
   type OidcIdentity,
@@ -313,6 +315,87 @@ describe("handleAuthPoll states", () => {
       ((await (await poll("s3")).json()) as { status: string }).status,
     ).toBe("timeout");
   });
+
+  it("starts a JSON device flow with a poll handle", async () => {
+    const res = await handleAuthDeviceStart(
+      new Request("https://key.plrs.im/djdl/auth/device/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceId: "dev-json" }),
+      }) as unknown as Request,
+      env,
+      db,
+      product,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      deviceCode: string;
+      userCode: string;
+      verificationUri: string;
+      pollUrl: string;
+      expiresIn: number;
+      interval: number;
+    };
+    expect(body.deviceCode).toBeTruthy();
+    expect(body.userCode).toMatch(/^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$/);
+    expect(body.verificationUri).toContain("https://id.example/authorize?");
+    expect(body.pollUrl).toBe("https://key.plrs.im/djdl/auth/device/poll");
+    expect(body.expiresIn).toBe(600);
+    expect(body.interval).toBeGreaterThan(0);
+    expect(
+      await env.HOT.get(`p:djdl:device-flow:${body.deviceCode}`),
+    ).toBeTruthy();
+  });
+
+  it("polls a JSON device flow and mints through the shared authorizer", async () => {
+    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r)) throw new Error("expected license");
+    await putFlow("oauth-state", { licenseId: r.licenseId });
+    await env.HOT.put(
+      "p:djdl:device-flow:device-code",
+      JSON.stringify({ state: "oauth-state", machineId: "dev-json" }),
+    );
+    const res = await handleAuthDevicePoll(
+      new Request("https://key.plrs.im/djdl/auth/device/poll", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          deviceCode: "device-code",
+          deviceId: "dev-json",
+        }),
+      }) as unknown as Request,
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const body = (await res.json()) as { status: string; token: string };
+    expect(body.status).toBe("ready");
+    expect(body.token.startsWith("pkeyt_")).toBe(true);
+  });
+
+  it("rejects JSON device polls from a different device id", async () => {
+    await putFlow("oauth-state", {});
+    await env.HOT.put(
+      "p:djdl:device-flow:device-code",
+      JSON.stringify({ state: "oauth-state", machineId: "dev-json" }),
+    );
+    const res = await handleAuthDevicePoll(
+      new Request("https://key.plrs.im/djdl/auth/device/poll", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          deviceCode: "device-code",
+          deviceId: "other-device",
+        }),
+      }) as unknown as Request,
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(res.status).toBe(401);
+  });
 });
 
 describe("authorizeAndMint", () => {
@@ -365,6 +448,14 @@ describe("handleAuthStart redirect-URI allowlist (D7)", () => {
     // A request arriving at a different origin computes an off-allowlist redirect URI.
     const req = new Request(
       "https://evil.example/djdl/auth/start",
+    ) as unknown as Request;
+    const res = await handleAuthStart(req, env, db, product);
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects cross-origin browser return_to redirects", async () => {
+    const req = new Request(
+      "https://key.plrs.im/djdl/auth/login?return_to=https%3A%2F%2Fapp.example%2Fdone",
     ) as unknown as Request;
     const res = await handleAuthStart(req, env, db, product);
     expect(res.status).toBe(400);

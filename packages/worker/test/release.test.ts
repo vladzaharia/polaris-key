@@ -20,6 +20,7 @@ import {
 } from "../src/release/install.js";
 import { renderAppcast } from "../src/release/appcast.js";
 import { handleRelease } from "../src/release/index.js";
+import { checkReleaseHealth } from "../src/release/health.js";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -632,6 +633,103 @@ describe("handleRelease", () => {
     expect(xml).toContain(
       "<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>",
     );
+  });
+});
+
+describe("release health", () => {
+  it("reports healthy release setup when required assets and signatures exist", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const { env } = envFor();
+    const rel = release({
+      assets: [
+        asset("djdl-arm64.dmg"),
+        asset("djdl-arm64.dmg.sig"),
+        asset("djdl-x86_64.dmg"),
+        asset("djdl-arm64"),
+        asset("djdl-x86_64"),
+      ],
+    });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+
+    const health = await checkReleaseHealth(
+      env,
+      db,
+      SLUG,
+      1_700_000_100,
+      fetchImpl,
+    );
+    expect(health.status).toBe("healthy");
+    expect(health.release?.tag).toBe("v1.2.3");
+    expect(
+      health.checks.find((c) => c.id === "sparkle-signature")?.status,
+    ).toBe("ok");
+  });
+
+  it("reports missing Sparkle signature when a public key is configured", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const { env } = envFor();
+    const rel = release({
+      assets: [
+        asset("djdl-arm64.dmg"),
+        asset("djdl-arm64"),
+        asset("djdl-x86_64"),
+      ],
+    });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+
+    const health = await checkReleaseHealth(
+      env,
+      db,
+      SLUG,
+      1_700_000_100,
+      fetchImpl,
+    );
+    expect(health.status).toBe("needs-setup");
+    expect(health.missing).toContain("djdl-arm64.dmg.sig");
+  });
+
+  it("treats unsigned appcast mode as a warning instead of a hard failure", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { sparkle_ed25519_pub: null });
+    const { env } = envFor();
+    const rel = release({
+      assets: [
+        asset("djdl-arm64.dmg"),
+        asset("djdl-arm64"),
+        asset("djdl-x86_64"),
+      ],
+    });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+
+    const health = await checkReleaseHealth(
+      env,
+      db,
+      SLUG,
+      1_700_000_100,
+      fetchImpl,
+    );
+    expect(health.status).toBe("healthy");
+    expect(health.checks.find((c) => c.id === "sparkle-key")?.status).toBe(
+      "warning",
+    );
+    expect(health.checks.some((c) => c.id === "sparkle-signature")).toBe(false);
   });
 });
 

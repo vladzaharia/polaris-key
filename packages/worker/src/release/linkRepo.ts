@@ -25,6 +25,7 @@ import {
   stmtInsertOidcConfig,
   stmtInsertProduct,
   stmtInsertProductKey,
+  stmtInsertProfile,
   stmtInsertProvisioning,
   stmtInsertReleaseConfig,
   stmtInsertSchema,
@@ -237,6 +238,19 @@ async function registerFromManifest(
     );
   }
 
+  for (const p of manifest.profiles) {
+    statements.push(
+      stmtInsertProfile({
+        product: slug,
+        id: p.id,
+        name: p.name,
+        description: p.description ?? null,
+        payloadJson: JSON.stringify(p.payload),
+        modifiedAt: now,
+      }),
+    );
+  }
+
   for (const t of manifest.tiers) {
     statements.push(
       stmtInsertTier({
@@ -246,6 +260,9 @@ async function registerFromManifest(
         profileId: t.profileId ?? null,
         policyExpiryDays: t.policyExpiryDays ?? null,
         policyMachineLimit: t.policyMachineLimit ?? null,
+        channels: t.channels,
+        minVersion: t.minVersion,
+        maxVersion: t.maxVersion,
         modifiedAt: now,
       }),
     );
@@ -280,6 +297,7 @@ async function registerFromManifest(
         kid: e.kid,
         claimsTemplate: e.claimsTemplate ?? {},
         ttlSeconds: e.ttlSeconds,
+        audience: e.audience ?? null,
       }),
     );
   }

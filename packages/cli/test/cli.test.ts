@@ -63,7 +63,7 @@ describe("@polaris-key/cli", () => {
       path.join(cwd, ".pkey/product.yaml"),
       "utf8",
     );
-    expect(productYaml).toContain("apiVersion: pkey.dev/v2");
+    expect(productYaml).toContain("apiVersion: pkey.dev/v1");
     expect(
       await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8"),
     ).toContain("catalog:");

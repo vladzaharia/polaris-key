@@ -183,6 +183,22 @@ describe("admin api", () => {
       "github",
       "djdl",
     );
+    await db.run(
+      `INSERT INTO product_sync_state
+         (product, source, status, last_checked_at, last_synced_at, commit_sha,
+          changed_paths_json, updated_json, errors_json, message)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      "djdl",
+      "webhook",
+      "error",
+      NOW,
+      null,
+      "abc123",
+      JSON.stringify([".pkey/product.yaml"]),
+      JSON.stringify(["product"]),
+      JSON.stringify(["bad manifest"]),
+      "manifest validation failed",
+    );
     const { cookie } = await sessionCookie(env, {
       sub: "u1",
       name: "Ada",
@@ -203,6 +219,17 @@ describe("admin api", () => {
         signingKid: string;
         signingPublicKey: string | null;
         signingKey: { kid: string; alg: string; publicKey: string } | null;
+        setup: {
+          sync: {
+            source: string;
+            status: string;
+            commitSha: string;
+            changedPaths: string[];
+            updated: string[];
+            errors: string[];
+            message: string;
+          };
+        };
       };
     };
     expect(body.product.releaseSource).toBe("github");
@@ -212,6 +239,15 @@ describe("admin api", () => {
       kid: "pkey-test-prod-2026",
       alg: "Ed25519",
       publicKey: body.product.signingPublicKey,
+    });
+    expect(body.product.setup.sync).toMatchObject({
+      source: "webhook",
+      status: "error",
+      commitSha: "abc123",
+      changedPaths: [".pkey/product.yaml"],
+      updated: ["product"],
+      errors: ["bad manifest"],
+      message: "manifest validation failed",
     });
   });
 
@@ -251,16 +287,38 @@ describe("admin api", () => {
     expect(djdl!.signingKey).toBeNull();
   });
 
-  it("product deletion removes sealed keys and secrets", async () => {
+  it("product deletion removes sealed keys, secrets, and sync state", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     await seedProductSecret(db, "djdl", "OIDC_SECRET", "secret-value");
+    await db.run(
+      `INSERT INTO product_sync_state
+         (product, source, status, last_checked_at, last_synced_at, commit_sha,
+          changed_paths_json, updated_json, errors_json, message)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      "djdl",
+      "manual",
+      "ok",
+      NOW,
+      NOW,
+      "abc123",
+      JSON.stringify([".pkey/product.yaml"]),
+      JSON.stringify(["product"]),
+      null,
+      null,
+    );
     expect(
       await db.first("SELECT * FROM product_keys WHERE product = ?", "djdl"),
     ).not.toBeNull();
     expect(
       await db.first("SELECT * FROM product_secrets WHERE product = ?", "djdl"),
+    ).not.toBeNull();
+    expect(
+      await db.first(
+        "SELECT * FROM product_sync_state WHERE product = ?",
+        "djdl",
+      ),
     ).not.toBeNull();
 
     const { cookie, csrf } = await sessionCookie(env, {
@@ -285,6 +343,12 @@ describe("admin api", () => {
     ).toBeNull();
     expect(
       await db.first("SELECT * FROM product_secrets WHERE product = ?", "djdl"),
+    ).toBeNull();
+    expect(
+      await db.first(
+        "SELECT * FROM product_sync_state WHERE product = ?",
+        "djdl",
+      ),
     ).toBeNull();
   });
 
@@ -801,6 +865,76 @@ describe("admin api", () => {
     expect(row).not.toBeNull();
     expect(row!.enc_value_json).not.toContain("super-secret-value");
     expect(await open(env, row!.enc_value_json)).toBe("super-secret-value");
+  });
+
+  it("product detail reports persistent required-secret setup status", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      `INSERT INTO oidc_config
+         (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?,?,?,?,?,?)`,
+      "djdl",
+      "https://id.example",
+      "client-djdl",
+      "OIDC_SECRET",
+      "[]",
+      "{}",
+    );
+    await db.run(
+      `INSERT INTO edge_mint_config
+         (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      "djdl",
+      "music",
+      "ES256",
+      "MUSIC_KEY",
+      null,
+      "{}",
+      3600,
+      "music.apple.com",
+      null,
+    );
+    await seedProductSecret(db, "djdl", "OIDC_SECRET", "oidc-value");
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+
+    const res = await dispatch(
+      mkReq("GET", "/api/products/djdl", { cookie }),
+      env,
+      db,
+      "/api/products/djdl",
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      product: {
+        setup: {
+          healthy: boolean;
+          requiredSecrets: string[];
+          missingSecrets: string[];
+          secrets: Array<{ name: string; configured: boolean }>;
+        };
+      };
+    };
+    expect(body.product.setup.healthy).toBe(false);
+    expect(body.product.setup.requiredSecrets).toEqual([
+      "MUSIC_KEY",
+      "OIDC_SECRET",
+    ]);
+    expect(body.product.setup.missingSecrets).toEqual(["MUSIC_KEY"]);
+    expect(body.product.setup.secrets).toEqual([
+      { name: "MUSIC_KEY", configured: false, sources: ["Edge mint music"] },
+      {
+        name: "OIDC_SECRET",
+        configured: true,
+        sources: ["OIDC client secret"],
+      },
+    ]);
   });
 
   it("keys/rotate retires the old key and activates a new kid (private never returned)", async () => {

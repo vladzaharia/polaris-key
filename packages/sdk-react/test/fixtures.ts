@@ -100,7 +100,7 @@ export function makeFakeBridge(
   };
 }
 
-/** A fake `fetch` that answers the browser adapter's `GET /<product>/session` with the doc. */
+/** A fake `fetch` that answers the browser adapter's cookie-session routes with the doc. */
 export function makeFakeFetch(doc: ManagedConfigDoc | null): typeof fetch {
   const body = JSON.stringify({
     authenticated: doc !== null,
@@ -114,6 +114,12 @@ export function makeFakeFetch(doc: ManagedConfigDoc | null): typeof fetch {
         : input instanceof URL
           ? input.href
           : input.url;
+    if (url.includes("/session/license")) {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      });
+    }
     if (url.includes("/session")) {
       return new Response(body, {
         status: 200,

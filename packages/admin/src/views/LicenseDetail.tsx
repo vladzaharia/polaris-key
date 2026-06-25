@@ -184,7 +184,9 @@ export function LicenseDetail({
         <MetaItem label="Tier">
           {license.tier ? <Badge variant="outline">{license.tier}</Badge> : "—"}
         </MetaItem>
-        <MetaItem label="Profile">{license.profile || "—"}</MetaItem>
+        <MetaItem label="Profiles">
+          {license.profiles?.length ? license.profiles.join(" -> ") : "—"}
+        </MetaItem>
         <MetaItem label="Enrolled">{formatStamp(license.enrolledAt)}</MetaItem>
         <MetaItem label="Expires">{formatDate(license.expiresAt)}</MetaItem>
         <MetaItem label="Max offline days">

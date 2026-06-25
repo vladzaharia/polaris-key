@@ -307,6 +307,7 @@ def test_config_401_reacquires_token_then_succeeds() -> None:
             return httpx.Response(200, json={"token": "stale", "schemaVersion": 1})
         if path == f"/{PRODUCT}/token":
             assert request.headers["X-PKey-Device"]
+            assert request.headers["authorization"] == "Bearer stale"
             return httpx.Response(200, json={"token": "fresh", "schemaVersion": 1})
         if path == f"/{PRODUCT}/config":
             state["config_calls"] += 1

@@ -1,6 +1,17 @@
 import * as React from "react";
-import { AlertTriangle, GitBranch, Info, Package } from "lucide-react";
-import type { ProductDetail } from "../api.js";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  GitBranch,
+  Info,
+  Package,
+} from "lucide-react";
+import type {
+  ProductDetail,
+  ProductSyncState,
+  ReleaseHealth,
+  ReleaseHealthCheck,
+} from "../api.js";
 import { api } from "../api.js";
 import { useResource } from "../context.js";
 import {
@@ -17,19 +28,15 @@ import {
 import { ResyncButton } from "./releases/ResyncButton.js";
 
 /**
- * Releases view: the product's release/distribution configuration.
- *
- * API GAP (flagged): the admin surface exposes NO read endpoint for the release block itself —
- * GitHub coordinates (owner/repo/binaryName/channel workflow/Sparkle key) and edge-mint recipes
- * live in `release_config` / `edge_mint_config`, sourced from the repo's `.pkey/release.*`, but
- * the only release-related admin route is `POST /products/<slug>/release/resync`. So this view
- * renders the read-only product metadata that IS exposed (`getProduct`) plus a clear note that
- * release config is managed via the repo manifest and applied with the Resync action. If/when a
- * `GET .../release` endpoint lands, this view should grow a coordinates panel + minter list.
+ * Releases view: manifest-driven release/distribution status. Release config is still edited
+ * in `.pkey/release.*`; admin exposes health checks, last sync state, and manual resync.
  */
 export function Releases({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
     api.product(slug).then((r) => r.product),
+  );
+  const health = useResource(`release-health:${slug}`, () =>
+    api.releaseHealth(slug).then((r) => r.health),
   );
 
   if (loading && !data) return <ReleasesSkeleton />;
@@ -68,6 +75,15 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
     <section className="space-y-6">
       <Header slug={slug} />
       <ManifestNote />
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <ReleaseHealthCard
+          health={health.data ?? null}
+          loading={health.loading}
+          error={health.error}
+          onRetry={health.reload}
+        />
+        <SyncStateCard sync={data.setup?.sync ?? null} />
+      </div>
       <DistributionCard product={data} />
     </section>
   );
@@ -114,6 +130,176 @@ function ManifestNote(): React.ReactElement {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ReleaseHealthCard({
+  health,
+  loading,
+  error,
+  onRetry,
+}: {
+  health: ReleaseHealth | null;
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+}): React.ReactElement {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2
+              className="size-4 text-muted-foreground"
+              aria-hidden
+            />
+            <CardTitle>Release health</CardTitle>
+          </div>
+          {health ? <StatusBadge status={health.status} /> : null}
+        </div>
+        <CardDescription>
+          GitHub App access, published releases, assets, and Sparkle material.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading && !health ? <Skeleton className="h-28 w-full" /> : null}
+        {error && !health ? (
+          <div className="space-y-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+            <p className="font-medium text-warning">Health check failed</p>
+            <p className="text-muted-foreground">{error}</p>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              Retry
+            </Button>
+          </div>
+        ) : null}
+        {health ? (
+          <>
+            {health.release ? (
+              <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                <Row term="Latest tag" mono>
+                  {health.release.tag}
+                </Row>
+                <Row term="Assets">{String(health.release.assetCount)}</Row>
+              </dl>
+            ) : null}
+            <ul className="space-y-2">
+              {health.checks.map((item) => (
+                <HealthCheckRow key={item.id} check={item} />
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function HealthCheckRow({
+  check,
+}: {
+  check: ReleaseHealthCheck;
+}): React.ReactElement {
+  return (
+    <li className="rounded-md border border-border p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium">{check.label}</span>
+        <StatusBadge status={check.status} />
+      </div>
+      {check.message ? (
+        <p className="mt-1 text-xs text-muted-foreground">{check.message}</p>
+      ) : null}
+      {check.missing?.length ? (
+        <p className="mt-1 text-xs text-warning">
+          Missing: {check.missing.join(", ")}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+function SyncStateCard({
+  sync,
+}: {
+  sync: ProductSyncState | null;
+}): React.ReactElement {
+  const changed = sync?.changedPaths ?? [];
+  const updated = sync?.updated ?? [];
+  const errors = sync?.errors ?? [];
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <GitBranch className="size-4 text-muted-foreground" aria-hidden />
+            <CardTitle>Manifest sync</CardTitle>
+          </div>
+          {sync?.status ? <StatusBadge status={sync.status} /> : null}
+        </div>
+        <CardDescription>
+          Last `.pkey/` sync attempt, changed paths, and applied sections.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {sync ? (
+          <>
+            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              <Row term="Source">{sync.source ?? "—"}</Row>
+              <Row term="Last checked">
+                {formatStamp(sync.lastCheckedAt ?? undefined)}
+              </Row>
+              <Row term="Last synced">
+                {formatStamp(sync.lastSyncedAt ?? undefined)}
+              </Row>
+              <Row term="Commit" mono>
+                {sync.commitSha ?? "—"}
+              </Row>
+            </dl>
+            <SyncList title="Changed paths" values={changed} mono />
+            <SyncList title="Updated sections" values={updated} />
+            <SyncList title="Errors" values={errors} tone="warning" />
+            {sync.message ? (
+              <p className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+                {sync.message}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No repo sync attempt has been recorded yet.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SyncList({
+  title,
+  values,
+  mono,
+  tone,
+}: {
+  title: string;
+  values: string[];
+  mono?: boolean;
+  tone?: "warning";
+}): React.ReactElement | null {
+  if (!values.length) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+        {title}
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {values.slice(0, 12).map((value) => (
+          <li key={value}>
+            <Badge variant={tone === "warning" ? "warning" : "outline"}>
+              <span className={mono ? "font-mono" : undefined}>{value}</span>
+            </Badge>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -199,6 +385,22 @@ function formatStamp(epochSeconds: number | undefined): string {
   } catch {
     return "—";
   }
+}
+
+function StatusBadge({ status }: { status: string }): React.ReactElement {
+  const normalized = status.toLowerCase();
+  const variant =
+    normalized === "ok" || normalized === "healthy"
+      ? "success"
+      : normalized === "warning" ||
+          normalized === "needs-setup" ||
+          normalized === "not-configured" ||
+          normalized === "missing"
+        ? "warning"
+        : normalized === "error"
+          ? "destructive"
+          : "outline";
+  return <Badge variant={variant}>{status}</Badge>;
 }
 
 function ReleasesSkeleton(): React.ReactElement {
