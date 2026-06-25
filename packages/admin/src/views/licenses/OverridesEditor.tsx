@@ -37,11 +37,22 @@ type Draft = { value: unknown; state: ManagementState };
 function baselineFor(
   entry: ConfigEntry,
   payload: RedactedPayload,
-): { state: ManagementState; value: unknown; updatedAt: number; configured?: boolean; modifiedBy?: string } {
+): {
+  state: ManagementState;
+  value: unknown;
+  updatedAt: number;
+  configured?: boolean;
+  modifiedBy?: string;
+} {
   const fallbackState = entry.managementDefault ?? "default";
   if (entry.kind === "secret") {
     const s: ManagedSecretView | undefined = payload.secrets[entry.key];
-    return { state: s?.state ?? fallbackState, value: undefined, updatedAt: s?.updatedAt ?? 0, configured: s?.configured ?? false };
+    return {
+      state: s?.state ?? fallbackState,
+      value: undefined,
+      updatedAt: s?.updatedAt ?? 0,
+      configured: s?.configured ?? false,
+    };
   }
   const bucket = entry.kind === "flag" ? payload.entitlements : payload.config;
   const m: ManagedEntry | undefined = bucket[entry.key];
@@ -49,7 +60,8 @@ function baselineFor(
     state: m?.state ?? fallbackState,
     value: m?.value,
     updatedAt: m?.updatedAt ?? 0,
-    modifiedBy: (m as ManagedEntry & { modifiedBy?: string } | undefined)?.modifiedBy,
+    modifiedBy: (m as (ManagedEntry & { modifiedBy?: string }) | undefined)
+      ?.modifiedBy,
   };
 }
 
@@ -67,7 +79,8 @@ export function OverridesEditor({
   // Stable baseline keyed off the loaded payload so re-renders don't clobber edits.
   const baseline = React.useMemo(() => {
     const map = new Map<string, ReturnType<typeof baselineFor>>();
-    for (const entry of catalog.entries) map.set(entry.key, baselineFor(entry, payload));
+    for (const entry of catalog.entries)
+      map.set(entry.key, baselineFor(entry, payload));
     return map;
   }, [catalog, payload]);
 
@@ -87,7 +100,9 @@ export function OverridesEditor({
   const sorted = React.useMemo(
     () =>
       [...catalog.entries].sort(
-        (a, b) => (a.ui?.order ?? 0) - (b.ui?.order ?? 0) || a.label.localeCompare(b.label),
+        (a, b) =>
+          (a.ui?.order ?? 0) - (b.ui?.order ?? 0) ||
+          a.label.localeCompare(b.label),
       ),
     [catalog],
   );
@@ -150,7 +165,9 @@ export function OverridesEditor({
             <Card key={entry.key}>
               <CardHeader className="pb-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="font-mono text-sm">{entry.key}</CardTitle>
+                  <CardTitle className="font-mono text-sm">
+                    {entry.key}
+                  </CardTitle>
                   <div className="flex items-center gap-2">
                     {entry.kind === "secret" ? (
                       <Badge variant={b.configured ? "success" : "outline"}>
@@ -160,7 +177,9 @@ export function OverridesEditor({
                     <Badge variant="outline">{entry.category}</Badge>
                   </div>
                 </div>
-                {entry.description ? <CardDescription>{entry.description}</CardDescription> : null}
+                {entry.description ? (
+                  <CardDescription>{entry.description}</CardDescription>
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-2 pt-0">
                 <ManagedField
@@ -173,7 +192,9 @@ export function OverridesEditor({
                 />
                 {b.modifiedBy || b.updatedAt ? (
                   <p className="text-xs text-muted-foreground">
-                    {b.modifiedBy ? `Last changed by ${b.modifiedBy}` : "Last changed"}
+                    {b.modifiedBy
+                      ? `Last changed by ${b.modifiedBy}`
+                      : "Last changed"}
                     {b.updatedAt ? ` · ${formatStamp(b.updatedAt)}` : ""}
                   </p>
                 ) : null}
@@ -184,10 +205,20 @@ export function OverridesEditor({
       </div>
 
       <div className="flex items-center justify-end gap-2">
-        <span className="mr-auto text-sm text-muted-foreground" aria-live="polite">
-          {dirty.length === 0 ? "No pending changes" : `${dirty.length} pending change${dirty.length === 1 ? "" : "s"}`}
+        <span
+          className="mr-auto text-sm text-muted-foreground"
+          aria-live="polite"
+        >
+          {dirty.length === 0
+            ? "No pending changes"
+            : `${dirty.length} pending change${dirty.length === 1 ? "" : "s"}`}
         </span>
-        <Button type="button" variant="outline" disabled={saving || dirty.length === 0} onClick={reset}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={saving || dirty.length === 0}
+          onClick={reset}
+        >
           Reset
         </Button>
         <Button type="submit" loading={saving} disabled={dirty.length === 0}>

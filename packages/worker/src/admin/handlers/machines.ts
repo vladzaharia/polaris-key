@@ -7,7 +7,11 @@ import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import { deleteTokenRecord } from "../../kv.js";
-import { listMachinesByLicense, setMachineStatus, getMachine } from "../../repo.js";
+import {
+  listMachinesByLicense,
+  setMachineStatus,
+  getMachine,
+} from "../../repo.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound } from "../lib/respond.js";
@@ -26,7 +30,14 @@ export async function handleMachines(
     if (req.method === "GET") {
       const machines = await listMachinesByLicense(db, slug, licenseId);
       return adminJson({
-        machines: machines.map((m) => ({ machineId: m.machine_id, status: m.status, firstSeen: m.first_seen, lastSeen: m.last_seen, ua: m.ua ?? undefined, label: m.label ?? undefined })),
+        machines: machines.map((m) => ({
+          machineId: m.machine_id,
+          status: m.status,
+          firstSeen: m.first_seen,
+          lastSeen: m.last_seen,
+          ua: m.ua ?? undefined,
+          label: m.label ?? undefined,
+        })),
       });
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");
@@ -35,8 +46,17 @@ export async function handleMachines(
   if (!machine || machine.license_id !== licenseId) return notFound();
   if (req.method === "DELETE" || req.method === "POST") {
     await setMachineStatus(db, slug, machineId, "deauthorized");
-    if (machine.token_hash) await deleteTokenRecord(env, slug, machine.token_hash);
-    await audit(db, slug, session, now, "machine.deauthorize", { kind: "machine", id: machineId }, `Deauthorized ${machineId}`);
+    if (machine.token_hash)
+      await deleteTokenRecord(env, slug, machine.token_hash);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "machine.deauthorize",
+      { kind: "machine", id: machineId },
+      `Deauthorized ${machineId}`,
+    );
     return adminJson({ ok: true, machineId });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");

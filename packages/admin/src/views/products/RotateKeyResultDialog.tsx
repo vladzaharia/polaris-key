@@ -34,15 +34,18 @@ export function RotateKeyResultDialog({
             Signing key rotated
           </DialogTitle>
           <DialogDescription>
-            “{slug}” now signs with a new key. Record the new kid and public key in your verification
-            tooling — old releases stay valid under the previous key.
+            “{slug}” now signs with a new key. Record the new kid and public key
+            in your verification tooling — old releases stay valid under the
+            previous key.
           </DialogDescription>
         </DialogHeader>
         {result ? (
           <div className="space-y-3">
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="text-muted-foreground">New kid</span>
-              <span className="font-mono break-all text-right">{result.kid}</span>
+              <span className="font-mono break-all text-right">
+                {result.kid}
+              </span>
             </div>
             <div className="space-y-1">
               <span className="text-sm text-muted-foreground">Public key</span>

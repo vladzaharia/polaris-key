@@ -107,7 +107,10 @@ const SLUG_RE = /^[a-z0-9-]+$/;
  * successful JSON.parse is authoritative; only on JSON failure do we hand the text to the
  * `yaml` parser (pure-JS, workerd-safe). Returns the parsed value or an error string.
  */
-function parseDocument(name: string, raw: string): { value: unknown } | { error: string } {
+function parseDocument(
+  name: string,
+  raw: string,
+): { value: unknown } | { error: string } {
   try {
     return { value: JSON.parse(raw) };
   } catch {
@@ -130,7 +133,9 @@ function isObject(v: unknown): v is Record<string, unknown> {
  * `"schema"`, `"product"`, `"release"`) to raw file contents. Each value may be JSON or
  * YAML. All validation errors are aggregated; on any failure `ok` is false.
  */
-export function parseManifest(files: Record<string, string>): ParseManifestResult {
+export function parseManifest(
+  files: Record<string, string>,
+): ParseManifestResult {
   const errors: string[] = [];
 
   // Parse each present document up front so syntax errors are surfaced once.
@@ -149,8 +154,13 @@ export function parseManifest(files: Record<string, string>): ParseManifestResul
     errors.push("schema: required (.pkey/schema.{json,yaml,yml} is missing)");
   } else if ("schema" in docs) {
     const parsed = docs.schema;
-    if (!isObject(parsed) || !Array.isArray((parsed as { entries?: unknown }).entries)) {
-      errors.push("schema: must be a ProductCatalog object with an `entries` array");
+    if (
+      !isObject(parsed) ||
+      !Array.isArray((parsed as { entries?: unknown }).entries)
+    ) {
+      errors.push(
+        "schema: must be a ProductCatalog object with an `entries` array",
+      );
     } else {
       const candidate = parsed as unknown as ProductCatalog;
       try {
@@ -177,7 +187,9 @@ export function parseManifest(files: Record<string, string>): ParseManifestResul
     } else {
       const slug = p.slug;
       if (typeof slug !== "string" || !SLUG_RE.test(slug)) {
-        errors.push(`product: invalid slug ${JSON.stringify(slug)} (must match ${SLUG_RE.source})`);
+        errors.push(
+          `product: invalid slug ${JSON.stringify(slug)} (must match ${SLUG_RE.source})`,
+        );
       } else {
         product = {
           slug,
@@ -194,11 +206,13 @@ export function parseManifest(files: Record<string, string>): ParseManifestResul
         else oidc = p.oidc as unknown as ManifestOidc;
       }
       if (p.tiers !== undefined) {
-        if (!Array.isArray(p.tiers)) errors.push("product.tiers: must be an array");
+        if (!Array.isArray(p.tiers))
+          errors.push("product.tiers: must be an array");
         else tiers = p.tiers as ManifestTier[];
       }
       if (p.provisioning !== undefined) {
-        if (!Array.isArray(p.provisioning)) errors.push("product.provisioning: must be an array");
+        if (!Array.isArray(p.provisioning))
+          errors.push("product.provisioning: must be an array");
         else provisioning = p.provisioning as ManifestProvisioning[];
       }
     }
@@ -219,13 +233,20 @@ export function parseManifest(files: Record<string, string>): ParseManifestResul
         ghOwner: String((rel as Record<string, unknown>).ghOwner ?? ""),
         ghRepo: String((rel as Record<string, unknown>).ghRepo ?? ""),
         binaryName: String((rel as Record<string, unknown>).binaryName ?? ""),
-        channelWorkflow: String((rel as Record<string, unknown>).channelWorkflow ?? ""),
+        channelWorkflow: String(
+          (rel as Record<string, unknown>).channelWorkflow ?? "",
+        ),
         betaBranch: String((rel as Record<string, unknown>).betaBranch ?? ""),
-        summaryMarker: String((rel as Record<string, unknown>).summaryMarker ?? ""),
-        sparkleEd25519Pub: String((rel as Record<string, unknown>).sparkleEd25519Pub ?? ""),
+        summaryMarker: String(
+          (rel as Record<string, unknown>).summaryMarker ?? "",
+        ),
+        sparkleEd25519Pub: String(
+          (rel as Record<string, unknown>).sparkleEd25519Pub ?? "",
+        ),
       };
       if (r.edgeMint !== undefined) {
-        if (!Array.isArray(r.edgeMint)) errors.push("release.edgeMint: must be an array");
+        if (!Array.isArray(r.edgeMint))
+          errors.push("release.edgeMint: must be an array");
         else edgeMint = r.edgeMint as ManifestEdgeMint[];
       }
     }

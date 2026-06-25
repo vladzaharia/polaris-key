@@ -52,14 +52,18 @@ describe("gen-mirrors", () => {
     expect(out).toContain("struct ConfigSchemaEntry");
     expect(out).toContain("enum ProductCatalog");
     expect(out).toContain("static let version = 2");
-    expect(out).toContain('ConfigSchemaEntry(key: "run.concurrency", kind: .config');
-    expect(out).toContain('kind: .flag');
+    expect(out).toContain(
+      'ConfigSchemaEntry(key: "run.concurrency", kind: .config',
+    );
+    expect(out).toContain("kind: .flag");
   });
 
   it("Swift mirror escapes the `default` reserved word in the enum + member access", () => {
     const out = renderSwift(CATALOG);
     // The enum case is backtick-escaped.
-    expect(out).toContain("enum ManagementState: String { case `default`, enforced, hidden }");
+    expect(out).toContain(
+      "enum ManagementState: String { case `default`, enforced, hidden }",
+    );
     // A managementDefault of "default" emits an escaped member access, not `.default`.
     expect(out).toContain("managementDefault: .`default`");
     expect(out).not.toContain("managementDefault: .default");

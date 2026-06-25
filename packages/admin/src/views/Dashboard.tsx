@@ -1,5 +1,11 @@
 import * as React from "react";
-import { ArrowRight, Boxes, KeyRound, PackageOpen, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Boxes,
+  KeyRound,
+  PackageOpen,
+  ShieldCheck,
+} from "lucide-react";
 import { useAdmin } from "../context.js";
 import { hashFor } from "../route.js";
 import type { ProductRef } from "../api.js";
@@ -28,22 +34,36 @@ export function Dashboard(): React.ReactElement {
   return (
     <section aria-labelledby="dashboard-title" className="space-y-6">
       <header className="space-y-1">
-        <h2 id="dashboard-title" className="text-2xl font-semibold tracking-tight">
+        <h2
+          id="dashboard-title"
+          className="text-2xl font-semibold tracking-tight"
+        >
           Welcome, {firstName}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {me.platformAdmin ? "Platform administrator" : "Product administrator"} · {me.email}
+          {me.platformAdmin
+            ? "Platform administrator"
+            : "Product administrator"}{" "}
+          · {me.email}
         </p>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard icon={<Boxes aria-hidden />} label="Products" value={String(products.length)} />
+        <StatCard
+          icon={<Boxes aria-hidden />}
+          label="Products"
+          value={String(products.length)}
+        />
         <StatCard
           icon={<ShieldCheck aria-hidden />}
           label="Role"
           value={me.platformAdmin ? "Platform" : "Product"}
         />
-        <StatCard icon={<KeyRound aria-hidden />} label="Session" value="Active" />
+        <StatCard
+          icon={<KeyRound aria-hidden />}
+          label="Session"
+          value="Active"
+        />
       </div>
 
       <section aria-labelledby="products-heading" className="space-y-3">
@@ -93,17 +113,26 @@ export function Dashboard(): React.ReactElement {
 }
 
 function ProductCard({ product }: { product: ProductRef }): React.ReactElement {
-  const href = hashFor({ kind: "product", slug: product.slug, view: "licenses" });
+  const href = hashFor({
+    kind: "product",
+    slug: product.slug,
+    view: "overview",
+  });
   return (
     <Card className="flex h-full flex-col transition-colors hover:border-primary/40">
       <CardHeader className="flex-1">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="truncate">{product.name}</CardTitle>
-          <Badge variant="outline" title={`Config schema version ${product.schemaVersion}`}>
+          <Badge
+            variant="outline"
+            title={`Config schema version ${product.schemaVersion}`}
+          >
             schema v{product.schemaVersion}
           </Badge>
         </div>
-        <CardDescription className="font-mono text-xs">{product.slug}</CardDescription>
+        <CardDescription className="font-mono text-xs">
+          {product.slug}
+        </CardDescription>
       </CardHeader>
       <CardFooter>
         <Button asChild variant="secondary" size="sm" className="w-full">
@@ -133,7 +162,9 @@ function StatCard({
           {icon}
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
           <p className="text-lg font-semibold">{value}</p>
         </div>
       </CardContent>

@@ -9,12 +9,18 @@ export class D1Db implements Db {
     return this.d1.prepare(sql).bind(...params.map(normParam));
   }
 
-  async all<T = Record<string, unknown>>(sql: string, ...params: DbParam[]): Promise<T[]> {
+  async all<T = Record<string, unknown>>(
+    sql: string,
+    ...params: DbParam[]
+  ): Promise<T[]> {
     const r = await this.stmt(sql, params).all<T>();
     return r.results ?? [];
   }
 
-  async first<T = Record<string, unknown>>(sql: string, ...params: DbParam[]): Promise<T | null> {
+  async first<T = Record<string, unknown>>(
+    sql: string,
+    ...params: DbParam[]
+  ): Promise<T | null> {
     return (await this.stmt(sql, params).first<T>()) ?? null;
   }
 

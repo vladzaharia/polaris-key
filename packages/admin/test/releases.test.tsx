@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductDetail, ResyncResult } from "../src/api.js";
 import { resetCache } from "../src/context.js";
@@ -33,8 +39,12 @@ beforeEach(() => {
   product.mockReset();
   resyncProduct.mockReset();
   product.mockResolvedValue({ product: PRODUCT });
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { scrollIntoView: () => void }
+  ).scrollIntoView = () => undefined;
 });
 afterEach(cleanup);
 
@@ -57,16 +67,22 @@ describe("Releases view", () => {
     render(<Releases slug="djdl" />);
     await screen.findByText("DJDL");
 
-    await userEvent.click(screen.getByRole("button", { name: /Resync from repo/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Resync from repo/ }),
+    );
     const dialog = await screen.findByRole("alertdialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Resync" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Resync" }),
+    );
 
     await waitFor(() => expect(resyncProduct).toHaveBeenCalledWith("djdl"));
   });
 
   it("shows an error state with retry when the product fails to load", async () => {
     product.mockReset();
-    product.mockRejectedValueOnce(new Error("nope")).mockResolvedValueOnce({ product: PRODUCT });
+    product
+      .mockRejectedValueOnce(new Error("nope"))
+      .mockResolvedValueOnce({ product: PRODUCT });
     render(<Releases slug="djdl" />);
 
     expect(await screen.findByText("Couldn’t load the product")).toBeTruthy();

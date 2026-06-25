@@ -40,10 +40,16 @@ export function ConfirmDialog({
 }: ConfirmDialogProps): React.ReactElement {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" role="alertdialog" onEscapeKeyDown={(e) => loading && e.preventDefault()}>
+      <DialogContent
+        className="max-w-md"
+        role="alertdialog"
+        onEscapeKeyDown={(e) => loading && e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
+          {description ? (
+            <DialogDescription>{description}</DialogDescription>
+          ) : null}
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
@@ -51,7 +57,11 @@ export function ConfirmDialog({
               {cancelLabel}
             </Button>
           </DialogClose>
-          <Button variant={confirmVariant} loading={loading} onClick={() => void onConfirm()}>
+          <Button
+            variant={confirmVariant}
+            loading={loading}
+            onClick={() => void onConfirm()}
+          >
             {confirmLabel}
           </Button>
         </DialogFooter>

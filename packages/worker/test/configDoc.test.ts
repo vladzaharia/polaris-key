@@ -11,16 +11,32 @@ import {
 import { buildDoc, computeETag, signDoc } from "../src/configDoc.js";
 import { TEST_KID, TEST_PEM, TEST_PUB, NOW } from "./seed.js";
 
-const profile: DocProfile = { name: "Ada Lovelace", firstName: "Ada", email: "ada@x.io", enrolledAt: NOW };
+const profile: DocProfile = {
+  name: "Ada Lovelace",
+  firstName: "Ada",
+  email: "ada@x.io",
+  enrolledAt: NOW,
+};
 const payload: ManagedPayload = {
-  config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: NOW } },
+  config: {
+    "run.concurrency": { state: "enforced", value: 4, updatedAt: NOW },
+  },
   secrets: {},
-  entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: NOW } },
+  entitlements: {
+    polarisVpn: { state: "enforced", value: true, updatedAt: NOW },
+  },
 };
 
 const input = (over: Partial<Parameters<typeof buildDoc>[0]> = {}) => ({
-  schemaVersion: 1, aud: "djdl", licenseId: "lic_1", deviceId: "dev-1",
-  now: NOW, maxOfflineDays: 30, profile, payload, ...over,
+  schemaVersion: 1,
+  aud: "djdl",
+  licenseId: "lic_1",
+  deviceId: "dev-1",
+  now: NOW,
+  maxOfflineDays: 30,
+  profile,
+  payload,
+  ...over,
 });
 
 describe("buildDoc", () => {
@@ -39,15 +55,25 @@ describe("buildDoc", () => {
   });
 
   it("derives graceUntil from the maxOfflineDays window", () => {
-    expect(buildDoc(input({ maxOfflineDays: 7 })).graceUntil).toBe(NOW + 7 * SECONDS_PER_DAY);
+    expect(buildDoc(input({ maxOfflineDays: 7 })).graceUntil).toBe(
+      NOW + 7 * SECONDS_PER_DAY,
+    );
     expect(buildDoc(input({ maxOfflineDays: 0 })).graceUntil).toBe(NOW);
   });
 
   it("emits fields in the conformance-corpus order", () => {
     const keys = Object.keys(buildDoc(input()));
     expect(keys).toEqual([
-      "schemaVersion", "aud", "iss", "licenseId", "deviceId",
-      "issuedAt", "expiresAt", "graceUntil", "profile", "payload",
+      "schemaVersion",
+      "aud",
+      "iss",
+      "licenseId",
+      "deviceId",
+      "issuedAt",
+      "expiresAt",
+      "graceUntil",
+      "profile",
+      "payload",
     ]);
   });
 });
@@ -60,7 +86,9 @@ describe("computeETag", () => {
 
   it("is stable across differing timestamps (content-only)", async () => {
     const a = await computeETag(buildDoc(input({ now: NOW })));
-    const b = await computeETag(buildDoc(input({ now: NOW + 100_000, maxOfflineDays: 99 })));
+    const b = await computeETag(
+      buildDoc(input({ now: NOW + 100_000, maxOfflineDays: 99 })),
+    );
     expect(a).toBe(b);
   });
 
@@ -68,7 +96,9 @@ describe("computeETag", () => {
     const a = await computeETag(buildDoc(input()));
     const altered: ManagedPayload = {
       ...payload,
-      config: { "run.concurrency": { state: "enforced", value: 8, updatedAt: NOW } },
+      config: {
+        "run.concurrency": { state: "enforced", value: 8, updatedAt: NOW },
+      },
     };
     const b = await computeETag(buildDoc(input({ payload: altered })));
     expect(a).not.toBe(b);
@@ -77,10 +107,16 @@ describe("computeETag", () => {
   it("changes when identity (aud/licenseId/deviceId/profile) changes", async () => {
     const base = await computeETag(buildDoc(input()));
     expect(await computeETag(buildDoc(input({ aud: "acme" })))).not.toBe(base);
-    expect(await computeETag(buildDoc(input({ licenseId: "lic_2" })))).not.toBe(base);
-    expect(await computeETag(buildDoc(input({ deviceId: "dev-2" })))).not.toBe(base);
+    expect(await computeETag(buildDoc(input({ licenseId: "lic_2" })))).not.toBe(
+      base,
+    );
+    expect(await computeETag(buildDoc(input({ deviceId: "dev-2" })))).not.toBe(
+      base,
+    );
     const profile2: DocProfile = { ...profile, name: "Grace Hopper" };
-    expect(await computeETag(buildDoc(input({ profile: profile2 })))).not.toBe(base);
+    expect(await computeETag(buildDoc(input({ profile: profile2 })))).not.toBe(
+      base,
+    );
   });
 });
 

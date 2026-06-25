@@ -32,8 +32,12 @@ export function EditProductDialog({
   const [name, setName] = React.useState(product.name);
   const [compatMin, setCompatMin] = React.useState(product.compatMin);
   const [compatMax, setCompatMax] = React.useState(product.compatMax);
-  const [maxOfflineDays, setMaxOfflineDays] = React.useState(String(product.defaultMaxOfflineDays ?? ""));
-  const [machineLimit, setMachineLimit] = React.useState(String(product.defaultMachineLimit ?? ""));
+  const [maxOfflineDays, setMaxOfflineDays] = React.useState(
+    String(product.defaultMaxOfflineDays ?? ""),
+  );
+  const [machineLimit, setMachineLimit] = React.useState(
+    String(product.defaultMachineLimit ?? ""),
+  );
   const [adminGroup, setAdminGroup] = React.useState(product.adminGroup ?? "");
   const [busy, setBusy] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -78,7 +82,10 @@ export function EditProductDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Edit “{product.slug}”</DialogTitle>
-          <DialogDescription>Update the product&apos;s name, compatibility range, and default policy.</DialogDescription>
+          <DialogDescription>
+            Update the product&apos;s name, compatibility range, and default
+            policy.
+          </DialogDescription>
         </DialogHeader>
         <form
           className="space-y-4"
@@ -88,14 +95,26 @@ export function EditProductDialog({
           }}
         >
           <Field label="Name">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={product.slug} />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={product.slug}
+            />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Compat min">
-              <Input value={compatMin} onChange={(e) => setCompatMin(e.target.value)} placeholder="1.0.0" />
+              <Input
+                value={compatMin}
+                onChange={(e) => setCompatMin(e.target.value)}
+                placeholder="1.0.0"
+              />
             </Field>
             <Field label="Compat max">
-              <Input value={compatMax} onChange={(e) => setCompatMax(e.target.value)} placeholder="2.0.0" />
+              <Input
+                value={compatMax}
+                onChange={(e) => setCompatMax(e.target.value)}
+                placeholder="2.0.0"
+              />
             </Field>
             <Field label="Default max offline days">
               <Input
@@ -114,8 +133,15 @@ export function EditProductDialog({
               />
             </Field>
           </div>
-          <Field label="Admin group" help="OIDC group that administers this product.">
-            <Input value={adminGroup} onChange={(e) => setAdminGroup(e.target.value)} placeholder="pkey-admins" />
+          <Field
+            label="Admin group"
+            help="OIDC group that administers this product."
+          >
+            <Input
+              value={adminGroup}
+              onChange={(e) => setAdminGroup(e.target.value)}
+              placeholder="pkey-admins"
+            />
           </Field>
 
           {formError ? (
@@ -125,7 +151,12 @@ export function EditProductDialog({
           ) : null}
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={busy}
+            >
               Cancel
             </Button>
             <Button type="submit" loading={busy}>

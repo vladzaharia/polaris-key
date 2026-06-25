@@ -3,7 +3,11 @@ import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
 import { emptyPayload, mergePayloads } from "../src/merge.js";
 
 const layer = (p: Partial<ManagedPayload>): string =>
-  JSON.stringify({ config: p.config ?? {}, secrets: p.secrets ?? {}, entitlements: p.entitlements ?? {} });
+  JSON.stringify({
+    config: p.config ?? {},
+    secrets: p.secrets ?? {},
+    entitlements: p.entitlements ?? {},
+  });
 const ent = (
   value: ManagedEntry["value"],
   state: ManagedEntry["state"] = "enforced",
@@ -21,7 +25,11 @@ describe("emptyPayload", () => {
 
 describe("mergePayloads", () => {
   it("returns an empty payload with no layers", () => {
-    expect(mergePayloads()).toEqual({ config: {}, secrets: {}, entitlements: {} });
+    expect(mergePayloads()).toEqual({
+      config: {},
+      secrets: {},
+      entitlements: {},
+    });
   });
 
   it("merges key-by-key across the three maps", () => {
@@ -72,7 +80,12 @@ describe("mergePayloads", () => {
   });
 
   it("tolerates null/undefined/empty-string layers", () => {
-    const out = mergePayloads(null, undefined, "", layer({ config: { a: ent(1) } }));
+    const out = mergePayloads(
+      null,
+      undefined,
+      "",
+      layer({ config: { a: ent(1) } }),
+    );
     expect(out.config).toEqual({ a: ent(1) });
   });
 

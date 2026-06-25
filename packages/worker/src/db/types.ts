@@ -2,7 +2,13 @@
 // can be unit-tested against in-memory SQLite (better-sqlite3) without miniflare, then run
 // unchanged against real D1 in production.
 
-export type DbParam = string | number | boolean | null | undefined | ArrayBuffer;
+export type DbParam =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | ArrayBuffer;
 
 export interface DbStatement {
   sql: string;
@@ -10,8 +16,14 @@ export interface DbStatement {
 }
 
 export interface Db {
-  all<T = Record<string, unknown>>(sql: string, ...params: DbParam[]): Promise<T[]>;
-  first<T = Record<string, unknown>>(sql: string, ...params: DbParam[]): Promise<T | null>;
+  all<T = Record<string, unknown>>(
+    sql: string,
+    ...params: DbParam[]
+  ): Promise<T[]>;
+  first<T = Record<string, unknown>>(
+    sql: string,
+    ...params: DbParam[]
+  ): Promise<T | null>;
   run(sql: string, ...params: DbParam[]): Promise<void>;
   /** Atomic batch (D1 batch / SQLite transaction). */
   batch(statements: DbStatement[]): Promise<void>;

@@ -18,6 +18,9 @@ export function handleJwks(product: Product): Response {
     : [];
   return new Response(JSON.stringify({ keys }), {
     status: 200,
-    headers: { "content-type": "application/json", "cache-control": "public, max-age=300" },
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "public, max-age=300",
+    },
   });
 }

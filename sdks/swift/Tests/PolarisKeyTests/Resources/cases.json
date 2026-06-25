@@ -104,10 +104,7 @@
               },
               "channels": {
                 "state": "enforced",
-                "value": [
-                  "stable",
-                  "staging"
-                ],
+                "value": ["stable", "staging"],
                 "updatedAt": 1699990000
               },
               "app.minVersion": {
@@ -127,9 +124,7 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "wrong-kid",
@@ -138,9 +133,7 @@
       "trust": {
         "some-other-kid": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "wrong-alg-none",
@@ -149,9 +142,7 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "malformed-two-parts",
@@ -160,9 +151,7 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "valid-second-key-multi-trust",
@@ -207,10 +196,7 @@
               },
               "channels": {
                 "state": "enforced",
-                "value": [
-                  "stable",
-                  "staging"
-                ],
+                "value": ["stable", "staging"],
                 "updatedAt": 1699990000
               },
               "app.minVersion": {
@@ -265,10 +251,7 @@
               },
               "channels": {
                 "state": "enforced",
-                "value": [
-                  "stable",
-                  "staging"
-                ],
+                "value": ["stable", "staging"],
                 "updatedAt": 1699990000
               },
               "app.minVersion": {
@@ -278,10 +261,7 @@
               }
             }
           },
-          "futureFeature": {
-            "tier": "gold",
-            "seats": 5
-          },
+          "futureFeature": { "tier": "gold", "seats": 5 },
           "unknownTopLevel": "ignored-by-old-clients"
         }
       }
@@ -293,9 +273,7 @@
       "trust": {
         "pkey-test-prod-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "malformed-empty-string",
@@ -304,9 +282,7 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "malformed-four-parts",
@@ -315,9 +291,7 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "valid-unicode-profile-name",
@@ -361,10 +335,7 @@
               },
               "channels": {
                 "state": "enforced",
-                "value": [
-                  "stable",
-                  "staging"
-                ],
+                "value": ["stable", "staging"],
                 "updatedAt": 1699990000
               },
               "app.minVersion": {
@@ -485,9 +456,7 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "wrong-alg-hs256",
@@ -496,18 +465,14 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "empty-trust-set",
       "description": "A valid token verified with an empty trust set ({}) — no key can match, must be null.",
       "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
       "trust": {},
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "foreign-kid-only",
@@ -516,9 +481,7 @@
       "trust": {
         "fleet-key-eu-2027": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "valid-large-integer-timestamps",
@@ -572,9 +535,7 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "base64url-payload-trailing-data",
@@ -583,9 +544,7 @@
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
-      "expect": {
-        "verify": "fail"
-      }
+      "expect": { "verify": "fail" }
     },
     {
       "id": "valid-nul-byte-in-string",
@@ -629,10 +588,7 @@
               },
               "channels": {
                 "state": "enforced",
-                "value": [
-                  "stable",
-                  "staging"
-                ],
+                "value": ["stable", "staging"],
                 "updatedAt": 1699990000
               },
               "app.minVersion": {

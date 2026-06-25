@@ -24,6 +24,7 @@ secrets, `wrangler deploy --env prod`, confirm `https://key.plrs.im` answers.
 
    Put the private PEM in `SIGNING_KEY__DJDL` (Worker secret), the public base64url in
    `product.json#signingPub`, under kid `pkey-djdl-prod-2026-06`.
+
 2. Fill the Apple MusicKit (`EDGE_MINT__DJDL__APPLEMUSIC` PEM + `kid`/`iss` in product.json),
    GitHub App installation id, and Sparkle public key placeholders.
 3. `pnpm --filter @polaris-key/products gen-seed products/djdl > products/djdl/seed.sql`
@@ -36,15 +37,15 @@ secrets, `wrangler deploy --env prod`, confirm `https://key.plrs.im` answers.
 
 The engine's managed-config client moves from `djdl.vlad.gg` to `key.plrs.im/djdl`:
 
-| File | Change |
-|------|--------|
-| `src/integrations/remoteConfig/fetch.ts` | `DEFAULT_CONFIG_URL = "https://key.plrs.im/djdl/config"` (keep the `DJDL_CONFIG_URL` override). |
-| `src/integrations/remoteConfig/{enroll,report,subscribe}.ts` | Endpoints become product-scoped (`/djdl/enroll`, `/djdl/token`, `/djdl/deauthorize`, `/djdl/config/report`, `/djdl/config/subscribe`); update `subscribeUrl()` + tests. |
-| request headers | `X-DJDL-Device/Version/Channel` → `X-PKey-Device/Version/Channel`. |
-| `src/integrations/remoteConfig/verify.ts` | Replace the prod entry in `TRUSTED_KEYS` with `pkey-djdl-prod-2026-06` → its base64url pubkey. **Keep** `djdl-test-2026` so the committed vector still verifies. The engine tolerates the new `aud`/`iss` fields (it JSON-parses and ignores unknowns). |
-| `macos/project.yml` | `SUFeedURL → https://key.plrs.im/djdl/appcast.xml` (keep `SUPublicEDKey`). |
-| `macos/djdl/Services/AppleMusicAuthService.swift` | dev-token URL → `https://key.plrs.im/djdl/mint/applemusic/token`; auth page → `…/mint/applemusic/auth`. |
-| `LicenseGateView.swift` / landing / `CloudSettings.swift` | copy `djdl.vlad.gg` → `key.plrs.im`. |
+| File                                                         | Change                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/integrations/remoteConfig/fetch.ts`                     | `DEFAULT_CONFIG_URL = "https://key.plrs.im/djdl/config"` (keep the `DJDL_CONFIG_URL` override).                                                                                                                                                         |
+| `src/integrations/remoteConfig/{enroll,report,subscribe}.ts` | Endpoints become product-scoped (`/djdl/enroll`, `/djdl/token`, `/djdl/deauthorize`, `/djdl/config/report`, `/djdl/config/subscribe`); update `subscribeUrl()` + tests.                                                                                 |
+| request headers                                              | `X-DJDL-Device/Version/Channel` → `X-PKey-Device/Version/Channel`.                                                                                                                                                                                      |
+| `src/integrations/remoteConfig/verify.ts`                    | Replace the prod entry in `TRUSTED_KEYS` with `pkey-djdl-prod-2026-06` → its base64url pubkey. **Keep** `djdl-test-2026` so the committed vector still verifies. The engine tolerates the new `aud`/`iss` fields (it JSON-parses and ignores unknowns). |
+| `macos/project.yml`                                          | `SUFeedURL → https://key.plrs.im/djdl/appcast.xml` (keep `SUPublicEDKey`).                                                                                                                                                                              |
+| `macos/djdl/Services/AppleMusicAuthService.swift`            | dev-token URL → `https://key.plrs.im/djdl/mint/applemusic/token`; auth page → `…/mint/applemusic/auth`.                                                                                                                                                 |
+| `LicenseGateView.swift` / landing / `CloudSettings.swift`    | copy `djdl.vlad.gg` → `key.plrs.im`.                                                                                                                                                                                                                    |
 
 The macOS app keeps **delegating licensing to the embedded engine** (it is not retrofitted
 to the Swift SDK now). Optionally, the engine's `remoteConfig` client can later be replaced

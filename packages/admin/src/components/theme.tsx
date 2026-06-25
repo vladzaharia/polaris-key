@@ -19,7 +19,11 @@ function readInitial(): Theme {
 }
 
 /** Provide + persist the light/dark theme. Applies the class to <html> so tokens swap. */
-export function ThemeProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+export function ThemeProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
   const [theme, setThemeState] = React.useState<Theme>(readInitial);
 
   React.useEffect(() => {
@@ -48,6 +52,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
 
 export function useTheme(): ThemeContextValue {
   const ctx = React.useContext(ThemeCtx);
-  if (!ctx) return { theme: "dark", setTheme: () => undefined, toggle: () => undefined };
+  if (!ctx)
+    return {
+      theme: "dark",
+      setTheme: () => undefined,
+      toggle: () => undefined,
+    };
   return ctx;
 }

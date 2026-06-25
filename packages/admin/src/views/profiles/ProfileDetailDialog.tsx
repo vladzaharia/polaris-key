@@ -41,7 +41,8 @@ export function ProfileDetailDialog({
             <Badge variant="outline">{summary.id}</Badge>
           </DialogTitle>
           <DialogDescription>
-            {summary.description || "Edit the managed config, secret, and flag values for this profile."}
+            {summary.description ||
+              "Edit the managed config, secret, and flag values for this profile."}
           </DialogDescription>
         </DialogHeader>
         {open ? <Body slug={slug} id={summary.id} /> : null}
@@ -51,7 +52,9 @@ export function ProfileDetailDialog({
 }
 
 function Body({ slug, id }: { slug: string; id: string }): React.ReactElement {
-  const res = useResource<ProfileDetail>(`profile:${slug}:${id}`, () => api.profile(slug, id));
+  const res = useResource<ProfileDetail>(`profile:${slug}:${id}`, () =>
+    api.profile(slug, id),
+  );
 
   if (res.loading && !res.data) {
     return (

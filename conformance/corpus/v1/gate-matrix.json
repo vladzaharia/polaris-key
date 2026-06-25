@@ -4,8 +4,20 @@
   "rows": [
     {
       "name": "ok — stable build inside window, valid doc",
-      "gate": { "version": "2.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500, "lastVerifiedAt": 1490 },
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500,
+        "lastVerifiedAt": 1490
+      },
       "expect": { "status": "ok", "ok": true }
     },
     {
@@ -15,52 +27,137 @@
         "channel": "staging",
         "compatMin": "0.0.0",
         "compatMax": "99.0.0",
-        "entitlements": { "channels": { "state": "enforced", "value": ["stable", "staging"], "updatedAt": 1699990000 } }
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["stable", "staging"],
+            "updatedAt": 1699990000
+          }
+        }
       },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500 },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
       "expect": { "status": "ok", "ok": true }
     },
     {
       "name": "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel",
-      "gate": { "version": "0.0.0-dev+abc123", "channel": "staging", "compatMin": "5.0.0", "compatMax": "6.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500 },
+      "gate": {
+        "version": "0.0.0-dev+abc123",
+        "channel": "staging",
+        "compatMin": "5.0.0",
+        "compatMax": "6.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
       "expect": { "status": "ok", "ok": true }
     },
     {
       "name": "grace — doc past expiresAt but within graceUntil (offline grace)",
-      "gate": { "version": "2.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 5000, "lastVerifiedAt": 4600 },
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 5000,
+        "lastVerifiedAt": 4600
+      },
       "expect": { "status": "grace", "ok": true }
     },
     {
       "name": "expired — doc past graceUntil",
-      "gate": { "version": "2.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 2593001 },
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 2593001
+      },
       "expect": { "status": "expired", "ok": false }
     },
     {
       "name": "revoked — hard 401 on the last sync even with a valid doc",
-      "gate": { "version": "2.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500, "lastSyncUnauthorized": true },
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500,
+        "lastSyncUnauthorized": true
+      },
       "expect": { "status": "revoked", "ok": false }
     },
     {
       "name": "needs-enroll — no token (no credential stored)",
-      "gate": { "version": "2.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
       "license": { "hasToken": false, "now": 1500 },
       "expect": { "status": "needs-enroll", "ok": false }
     },
     {
       "name": "needs-enroll — token present but no cached doc yet",
-      "gate": { "version": "2.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
       "license": { "hasToken": true, "now": 1500 },
       "expect": { "status": "needs-enroll", "ok": false }
     },
     {
       "name": "version-too-old — build below the product compat min",
-      "gate": { "version": "0.9.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500 },
-      "expect": { "status": "version-too-old", "ok": false, "reason": "version-too-old", "allowedRange": { "min": "1.0.0", "max": "3.0.0" } }
+      "gate": {
+        "version": "0.9.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "version-too-old",
+        "ok": false,
+        "reason": "version-too-old",
+        "allowedRange": { "min": "1.0.0", "max": "3.0.0" }
+      }
     },
     {
       "name": "version-too-old — per-key app.minVersion tighter than product min wins",
@@ -68,16 +165,49 @@
         "version": "1.5.0",
         "compatMin": "1.0.0",
         "compatMax": "3.0.0",
-        "entitlements": { "app.minVersion": { "state": "enforced", "value": "2.0.0", "updatedAt": 1699990000 } }
+        "entitlements": {
+          "app.minVersion": {
+            "state": "enforced",
+            "value": "2.0.0",
+            "updatedAt": 1699990000
+          }
+        }
       },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500 },
-      "expect": { "status": "version-too-old", "ok": false, "reason": "version-too-old", "allowedRange": { "min": "2.0.0", "max": "3.0.0" } }
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "version-too-old",
+        "ok": false,
+        "reason": "version-too-old",
+        "allowedRange": { "min": "2.0.0", "max": "3.0.0" }
+      }
     },
     {
       "name": "version-too-new — build above the product compat max",
-      "gate": { "version": "4.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500 },
-      "expect": { "status": "version-too-new", "ok": false, "reason": "version-too-new", "allowedRange": { "min": "1.0.0", "max": "3.0.0" } }
+      "gate": {
+        "version": "4.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "version-too-new",
+        "ok": false,
+        "reason": "version-too-new",
+        "allowedRange": { "min": "1.0.0", "max": "3.0.0" }
+      }
     },
     {
       "name": "version-too-new — per-key app.maxVersion tighter than product max wins",
@@ -85,16 +215,49 @@
         "version": "2.5.0",
         "compatMin": "1.0.0",
         "compatMax": "3.0.0",
-        "entitlements": { "app.maxVersion": { "state": "enforced", "value": "2.0.0", "updatedAt": 1699990000 } }
+        "entitlements": {
+          "app.maxVersion": {
+            "state": "enforced",
+            "value": "2.0.0",
+            "updatedAt": 1699990000
+          }
+        }
       },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500 },
-      "expect": { "status": "version-too-new", "ok": false, "reason": "version-too-new", "allowedRange": { "min": "1.0.0", "max": "2.0.0" } }
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "version-too-new",
+        "ok": false,
+        "reason": "version-too-new",
+        "allowedRange": { "min": "1.0.0", "max": "2.0.0" }
+      }
     },
     {
       "name": "channel-not-entitled — staging build without the channels entitlement",
-      "gate": { "version": "2.0.0", "channel": "staging", "compatMin": "0.0.0", "compatMax": "99.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500 },
-      "expect": { "status": "channel-not-entitled", "ok": false, "reason": "channel-not-entitled" }
+      "gate": {
+        "version": "2.0.0",
+        "channel": "staging",
+        "compatMin": "0.0.0",
+        "compatMax": "99.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
     },
     {
       "name": "channel-not-entitled — pr build, channels grants only staging",
@@ -103,16 +266,49 @@
         "channel": "pr-42",
         "compatMin": "0.0.0",
         "compatMax": "99.0.0",
-        "entitlements": { "channels": { "state": "enforced", "value": ["staging"], "updatedAt": 1699990000 } }
+        "entitlements": {
+          "channels": {
+            "state": "enforced",
+            "value": ["staging"],
+            "updatedAt": 1699990000
+          }
+        }
       },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500 },
-      "expect": { "status": "channel-not-entitled", "ok": false, "reason": "channel-not-entitled" }
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "expect": {
+        "status": "channel-not-entitled",
+        "ok": false,
+        "reason": "channel-not-entitled"
+      }
     },
     {
       "name": "precedence — a build block wins even over a doc that would otherwise be ok",
-      "gate": { "version": "4.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {} },
-      "license": { "hasToken": true, "issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000, "now": 1500, "lastVerifiedAt": 1490 },
-      "expect": { "status": "version-too-new", "ok": false, "reason": "version-too-new", "allowedRange": { "min": "1.0.0", "max": "3.0.0" } }
+      "gate": {
+        "version": "4.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "hasToken": true,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500,
+        "lastVerifiedAt": 1490
+      },
+      "expect": {
+        "status": "version-too-new",
+        "ok": false,
+        "reason": "version-too-new",
+        "allowedRange": { "min": "1.0.0", "max": "3.0.0" }
+      }
     }
   ]
 }

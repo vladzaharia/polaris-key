@@ -128,12 +128,16 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
       data-polaris-login=""
       aria-labelledby={titleId}
     >
-      {logo ? <div style={{ display: "flex", justifyContent: "center" }}>{logo}</div> : null}
+      {logo ? (
+        <div style={{ display: "flex", justifyContent: "center" }}>{logo}</div>
+      ) : null}
       <div>
         <h2 id={titleId} style={{ margin: "0 0 4px", fontSize: "20px" }}>
           {theme.copy.signInTitle}
         </h2>
-        <p style={{ margin: 0, color: "var(--pk-text-muted)", fontSize: "14px" }}>
+        <p
+          style={{ margin: 0, color: "var(--pk-text-muted)", fontSize: "14px" }}
+        >
           {theme.copy.signInSubtitle}
         </p>
       </div>
@@ -155,8 +159,14 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
       </button>
 
       {showKeyEntry ? (
-        <form onSubmit={onSubmitKey} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label htmlFor={keyInputId} style={{ fontSize: "13px", color: "var(--pk-text-muted)" }}>
+        <form
+          onSubmit={onSubmitKey}
+          style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+        >
+          <label
+            htmlFor={keyInputId}
+            style={{ fontSize: "13px", color: "var(--pk-text-muted)" }}
+          >
             {theme.copy.keyEntryLabel}
           </label>
           <input

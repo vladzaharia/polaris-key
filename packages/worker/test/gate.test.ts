@@ -9,19 +9,38 @@ import {
 } from "../src/gate.js";
 
 // Convenience: an enforced entitlement entry.
-const ent = (value: ManagedEntry["value"]): ManagedEntry => ({ state: "enforced", value, updatedAt: 1_700_000_000 });
+const ent = (value: ManagedEntry["value"]): ManagedEntry => ({
+  state: "enforced",
+  value,
+  updatedAt: 1_700_000_000,
+});
 
 describe("parseSemver", () => {
   it("parses MAJOR.MINOR.PATCH", () => {
-    expect(parseSemver("1.2.3")).toEqual({ major: 1, minor: 2, patch: 3, prerelease: [] });
+    expect(parseSemver("1.2.3")).toEqual({
+      major: 1,
+      minor: 2,
+      patch: 3,
+      prerelease: [],
+    });
   });
 
   it("parses a prerelease into dot-separated identifiers", () => {
-    expect(parseSemver("1.0.0-beta.2")).toEqual({ major: 1, minor: 0, patch: 0, prerelease: ["beta", "2"] });
+    expect(parseSemver("1.0.0-beta.2")).toEqual({
+      major: 1,
+      minor: 0,
+      patch: 0,
+      prerelease: ["beta", "2"],
+    });
   });
 
   it("ignores build metadata", () => {
-    expect(parseSemver("1.0.0+abc.def")).toEqual({ major: 1, minor: 0, patch: 0, prerelease: [] });
+    expect(parseSemver("1.0.0+abc.def")).toEqual({
+      major: 1,
+      minor: 0,
+      patch: 0,
+      prerelease: [],
+    });
     expect(parseSemver("1.0.0-rc.1+build.7")?.prerelease).toEqual(["rc", "1"]);
   });
 
@@ -96,7 +115,11 @@ describe("isDevBuild", () => {
 });
 
 describe("checkBuildGate — version window", () => {
-  const base = { compatMin: "1.0.0", compatMax: "3.0.0", entitlements: {} as Record<string, ManagedEntry> };
+  const base = {
+    compatMin: "1.0.0",
+    compatMax: "3.0.0",
+    entitlements: {} as Record<string, ManagedEntry>,
+  };
 
   it("allows a version inside the product compat window", () => {
     const r = checkBuildGate({ version: "2.0.0", ...base });
@@ -179,7 +202,12 @@ describe("checkBuildGate — channel entitlement", () => {
   });
 
   it("blocks a staging build when channels are not entitled", () => {
-    const r = checkBuildGate({ version: "2.0.0", channelHeader: "staging", entitlements: {}, ...win });
+    const r = checkBuildGate({
+      version: "2.0.0",
+      channelHeader: "staging",
+      entitlements: {},
+      ...win,
+    });
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("channel-not-entitled");
   });
@@ -196,9 +224,21 @@ describe("checkBuildGate — channel entitlement", () => {
 
   it("permits a pr build when entitled, blocks when not", () => {
     expect(
-      checkBuildGate({ version: "1.0.0", channelHeader: "pr-42", entitlements: { channels: ent(["pr"]) }, ...win }).ok,
+      checkBuildGate({
+        version: "1.0.0",
+        channelHeader: "pr-42",
+        entitlements: { channels: ent(["pr"]) },
+        ...win,
+      }).ok,
     ).toBe(true);
-    expect(checkBuildGate({ version: "1.0.0", channelHeader: "pr-42", entitlements: {}, ...win }).ok).toBe(false);
+    expect(
+      checkBuildGate({
+        version: "1.0.0",
+        channelHeader: "pr-42",
+        entitlements: {},
+        ...win,
+      }).ok,
+    ).toBe(false);
   });
 
   it("derives a stable channel from a stable version when no header is sent", () => {
@@ -210,7 +250,12 @@ describe("checkBuildGate — channel entitlement", () => {
   });
 
   it("never blocks the stable channel on entitlement", () => {
-    const r = checkBuildGate({ version: "1.2.3", channelHeader: "stable", entitlements: {}, ...win });
+    const r = checkBuildGate({
+      version: "1.2.3",
+      channelHeader: "stable",
+      entitlements: {},
+      ...win,
+    });
     expect(r.ok).toBe(true);
   });
 });

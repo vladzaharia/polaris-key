@@ -28,7 +28,8 @@ const client = await PolarisKeyClient.create({
     pinnedKeys: {
       // kid -> raw Ed25519 public key (base64url). Pinned by the caller; NEVER read
       // from the document.
-      "pkey-djdl-prod-2026-06": "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
+      "pkey-djdl-prod-2026-06":
+        "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
     },
   },
 });
@@ -58,40 +59,40 @@ PolarisKeyClient(opts)` then `await client.init()`.
 
 ### `PolarisKeyOptions`
 
-| Option | Notes |
-|--------|-------|
-| `productSlug` | The product slug; also the doc `aud`. Scopes every route + cache. |
-| `version` | This client's semver; sent on `/config` and used to derive the channel. |
+| Option             | Notes                                                                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `productSlug`      | The product slug; also the doc `aud`. Scopes every route + cache.                                                            |
+| `version`          | This client's semver; sent on `/config` and used to derive the channel.                                                      |
 | `trust.pinnedKeys` | `{ kid -> rawEd25519PubBase64url }`. The verifying key is chosen by the header `kid` from this set, never from the document. |
-| `baseUrl` | Control-plane origin (default `https://key.plrs.im`). |
-| `channel` | Override the channel (default derived from `version`). |
-| `store` | A `Store` (default `FileStore`; `InMemoryStore` for tests). |
-| `configDir` | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`). |
-| `localOverrides` | User/local config overrides (beat a `default`, never an `enforced`/`hidden`). |
-| `envPrefix` | Env-var prefix for overrides (default `PKEY_CONFIG_`). |
-| `env` | Env table to read overrides from (default `process.env`). |
+| `baseUrl`          | Control-plane origin (default `https://key.plrs.im`).                                                                        |
+| `channel`          | Override the channel (default derived from `version`).                                                                       |
+| `store`            | A `Store` (default `FileStore`; `InMemoryStore` for tests).                                                                  |
+| `configDir`        | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                                     |
+| `localOverrides`   | User/local config overrides (beat a `default`, never an `enforced`/`hidden`).                                                |
+| `envPrefix`        | Env-var prefix for overrides (default `PKEY_CONFIG_`).                                                                       |
+| `env`              | Env table to read overrides from (default `process.env`).                                                                    |
 
 ### Reads (no network)
 
-| Method | Returns |
-|--------|---------|
-| `status(now?)` | `LicenseState` — gate status (`ok`/`grace`/`login`/`expired`/`revoked`/version-block/…). |
-| `isLicensed(now?)` | `boolean` — true iff the status is usable (`ok` or `grace`). |
-| `getConfig<T>(key, fallback)` | The effective value per the precedence below. |
-| `getConfigSource(key)` | Where `getConfig` sourced the value (for settings/diagnostics UIs). |
-| `listUserConfig()` | Catalog entries minus `hidden` ones, each `{ key, value, enforced }`. |
-| `getSecret(key)` | A managed secret string, or `null`. |
-| `isEntitled(name)` | `boolean` — true iff the `flag` entitlement is present and `=== true`. |
-| `getEntitlements()` | `Record<string, JSONValue>` of all entitlement values. |
-| `getProfile()` | The signed `DocProfile` (name/email), or `null`. |
+| Method                        | Returns                                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------------------- |
+| `status(now?)`                | `LicenseState` — gate status (`ok`/`grace`/`login`/`expired`/`revoked`/version-block/…). |
+| `isLicensed(now?)`            | `boolean` — true iff the status is usable (`ok` or `grace`).                             |
+| `getConfig<T>(key, fallback)` | The effective value per the precedence below.                                            |
+| `getConfigSource(key)`        | Where `getConfig` sourced the value (for settings/diagnostics UIs).                      |
+| `listUserConfig()`            | Catalog entries minus `hidden` ones, each `{ key, value, enforced }`.                    |
+| `getSecret(key)`              | A managed secret string, or `null`.                                                      |
+| `isEntitled(name)`            | `boolean` — true iff the `flag` entitlement is present and `=== true`.                   |
+| `getEntitlements()`           | `Record<string, JSONValue>` of all entitlement values.                                   |
+| `getProfile()`                | The signed `DocProfile` (name/email), or `null`.                                         |
 
 ### Enrollment + refresh (network)
 
-| Method | Effect |
-|--------|--------|
-| `activateWithKey(key)` | Exchange a `pkey_…` key → device token, persist it, then `refresh({ force })`. Returns an `EnrollResult` (`ok` / device-limit / unauthorized / error). |
-| `refresh({ force? })` | Re-pull `/config` (304-aware via ETag; one `/token` re-acquire on 401), verify, re-apply, and best-effort report a usage snapshot. Returns `{ applied, unauthorized?, blocked?, deviceCap? }`. |
-| `deactivate()` | Best-effort server deauthorize, then wipe the local token + cache. |
+| Method                 | Effect                                                                                                                                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `activateWithKey(key)` | Exchange a `pkey_…` key → device token, persist it, then `refresh({ force })`. Returns an `EnrollResult` (`ok` / device-limit / unauthorized / error).                                         |
+| `refresh({ force? })`  | Re-pull `/config` (304-aware via ETag; one `/token` re-acquire on 401), verify, re-apply, and best-effort report a usage snapshot. Returns `{ applied, unauthorized?, blocked?, deviceCap? }`. |
+| `deactivate()`         | Best-effort server deauthorize, then wipe the local token + cache.                                                                                                                             |
 
 ## Layered config precedence
 
@@ -114,11 +115,11 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 An override env var is `${envPrefix}${key.replaceAll(".", "__")}` (dots → double
 underscores). With the default prefix:
 
-| Config key | Env var |
-|------------|---------|
+| Config key        | Env var                        |
+| ----------------- | ------------------------------ |
 | `run.concurrency` | `PKEY_CONFIG_run__concurrency` |
-| `quality.floor` | `PKEY_CONFIG_quality__floor` |
-| `outputDir` | `PKEY_CONFIG_outputDir` |
+| `quality.floor`   | `PKEY_CONFIG_quality__floor`   |
+| `outputDir`       | `PKEY_CONFIG_outputDir`        |
 
 The value is JSON-parsed when it looks like JSON (`4` → number, `true` → boolean, `[…]`/`{…}`
 → array/object, `"…"` → string); otherwise it is taken as the raw string. Malformed

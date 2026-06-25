@@ -3,6 +3,7 @@ import type { Env } from "./env.js";
 import { D1Db } from "./db/d1.js";
 import { matchRoute, type Route } from "./router.js";
 import { loadProduct } from "./product.js";
+import { handleDiscovery } from "./discovery.js";
 import { handleSchema } from "./schema.js";
 import { handleJwks } from "./jwks.js";
 import { handleMintAuth, handleMintToken } from "./edgeMint.js";
@@ -24,6 +25,7 @@ export { HubDO } from "./hub.js";
 export { RateLimitDO } from "./rateLimitDo.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
+  "discovery",
   "jwks",
   "schema",
   "enroll",
@@ -59,6 +61,8 @@ export default {
       const product = await loadProduct(env, db, route.product);
       if (!product) return notFound();
       switch (route.kind) {
+        case "discovery":
+          return handleDiscovery(req, db, product);
         case "enroll":
           return handleEnroll(req, env, db, product, now);
         case "token":
@@ -86,9 +90,16 @@ export default {
         case "authPoll":
           return handleAuthPoll(req, env, db, product, now);
         case "appcast":
-          return handleRelease(req, env, db, product, route.channel ? "channelAppcast" : "appcast", {
-            channel: route.channel,
-          });
+          return handleRelease(
+            req,
+            env,
+            db,
+            product,
+            route.channel ? "channelAppcast" : "appcast",
+            {
+              channel: route.channel,
+            },
+          );
         case "install":
           return handleRelease(req, env, db, product, "install", {});
         case "version":
@@ -96,9 +107,15 @@ export default {
         case "changelog":
           return handleRelease(req, env, db, product, "changelog", {});
         case "cli":
-          return handleRelease(req, env, db, product, "cli", { version: route.version, arch: route.arch as Arch });
+          return handleRelease(req, env, db, product, "cli", {
+            version: route.version,
+            arch: route.arch as Arch,
+          });
         case "dmg":
-          return handleRelease(req, env, db, product, "dmg", { version: route.version, arch: route.arch as Arch });
+          return handleRelease(req, env, db, product, "dmg", {
+            version: route.version,
+            arch: route.arch as Arch,
+          });
         default:
           return notFound();
       }
@@ -111,7 +128,12 @@ export default {
       case "adminLogin":
       case "adminCallback":
       case "products":
-        return handleAdmin(req, env, db, url.pathname.slice("/admin".length) || "/");
+        return handleAdmin(
+          req,
+          env,
+          db,
+          url.pathname.slice("/admin".length) || "/",
+        );
       default:
         return notFound();
     }

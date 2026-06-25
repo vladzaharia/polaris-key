@@ -22,22 +22,40 @@ function doc(over: Partial<ManagedConfigDoc> = {}): ManagedConfigDoc {
 
 describe("licenseState (React port)", () => {
   it("needs-enroll without a token", () => {
-    expect(licenseState({ hasToken: false, doc: null, now: 1000 }).status).toBe("needs-enroll");
+    expect(licenseState({ hasToken: false, doc: null, now: 1000 }).status).toBe(
+      "needs-enroll",
+    );
   });
   it("needs-enroll with a token but no doc", () => {
-    expect(licenseState({ hasToken: true, doc: null, now: 1000 }).status).toBe("needs-enroll");
+    expect(licenseState({ hasToken: true, doc: null, now: 1000 }).status).toBe(
+      "needs-enroll",
+    );
   });
   it("revoked on a hard 401", () => {
-    expect(licenseState({ hasToken: true, doc: doc(), now: 1000, lastSyncUnauthorized: true }).status).toBe("revoked");
+    expect(
+      licenseState({
+        hasToken: true,
+        doc: doc(),
+        now: 1000,
+        lastSyncUnauthorized: true,
+      }).status,
+    ).toBe("revoked");
   });
   it("ok within expiry", () => {
-    expect(licenseState({ hasToken: true, doc: doc(), now: 1500 }).status).toBe("ok");
+    expect(licenseState({ hasToken: true, doc: doc(), now: 1500 }).status).toBe(
+      "ok",
+    );
   });
   it("grace past expiry but within graceUntil", () => {
-    expect(licenseState({ hasToken: true, doc: doc(), now: 1000 + 3601 }).status).toBe("grace");
+    expect(
+      licenseState({ hasToken: true, doc: doc(), now: 1000 + 3601 }).status,
+    ).toBe("grace");
   });
   it("expired past graceUntil", () => {
-    expect(licenseState({ hasToken: true, doc: doc(), now: 1000 + 31 * 86400 }).status).toBe("expired");
+    expect(
+      licenseState({ hasToken: true, doc: doc(), now: 1000 + 31 * 86400 })
+        .status,
+    ).toBe("expired");
   });
   it("reflects a 403 block reason + range", () => {
     const s = licenseState({

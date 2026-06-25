@@ -17,7 +17,8 @@ export function createStore<T>(initial: T): Store<T> {
   return {
     get: () => value,
     set(next) {
-      const resolved = typeof next === "function" ? (next as (prev: T) => T)(value) : next;
+      const resolved =
+        typeof next === "function" ? (next as (prev: T) => T)(value) : next;
       if (resolved === value) return; // identity-equal: skip the notify churn.
       value = resolved;
       for (const cb of subs) cb(value);

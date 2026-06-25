@@ -11,10 +11,21 @@ function mockFetch(routes: Record<string, unknown>): void {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
       const path = url.replace("http://localhost", "").split("?")[0]!;
-      const body = routes[path] ?? routes[Object.keys(routes).find((k) => path.startsWith(k)) ?? ""] ?? {};
-      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+      const body =
+        routes[path] ??
+        routes[Object.keys(routes).find((k) => path.startsWith(k)) ?? ""] ??
+        {};
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     }),
   );
 }
@@ -36,8 +47,12 @@ beforeEach(() => {
   resetCache();
   setLoginRedirectForTests(() => undefined);
   // jsdom lacks these Radix-needed APIs.
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { scrollIntoView: () => void }
+  ).scrollIntoView = () => undefined;
 });
 
 afterEach(() => {
@@ -66,18 +81,45 @@ describe("admin SPA shell", () => {
   });
 
   it("navigates to a per-product tab via the hash", async () => {
-    mockFetch({ "/admin/api/me": ME });
-    window.location.hash = "#/p/djdl/tiers";
+    mockFetch({
+      "/admin/api/me": ME,
+      "/admin/api/products/djdl": {
+        product: {
+          slug: "djdl",
+          name: "DJDL",
+          schemaVersion: 1,
+          compatMin: "0.1.0",
+          compatMax: "2.x",
+          defaultMachineLimit: 5,
+          defaultMaxOfflineDays: 14,
+          releaseSource: "github",
+          signingKid: "pkey-djdl-prod",
+          publicKey: "pub_djdl",
+          trustKeys: { "pkey-djdl-prod": "pub_djdl" },
+          modules: {
+            licensing: { enabled: true, status: "configured" },
+            config: { enabled: true, status: "configured" },
+          },
+          setup: { status: "ok", healthy: true, nextActions: [] },
+        },
+      },
+    });
+    window.location.hash = "#/p/djdl/overview";
     render(<App />);
     // The shell title + the view header both name the tab, so assert at least one heading.
-    expect((await screen.findAllByRole("heading", { name: "Tiers" })).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByRole("heading", { name: "Overview" })).length,
+    ).toBeGreaterThan(0);
+    expect(await screen.findByText("SDK trust key")).toBeTruthy();
   });
 
   it("shows the platform Products view for platform admins", async () => {
     mockFetch({ "/admin/api/me": ME });
     window.location.hash = "#/products";
     render(<App />);
-    expect((await screen.findAllByRole("heading", { name: "Products" })).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByRole("heading", { name: "Products" })).length,
+    ).toBeGreaterThan(0);
   });
 
   it("blocks a product the operator does not administer", async () => {

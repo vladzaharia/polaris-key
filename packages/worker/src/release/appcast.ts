@@ -114,7 +114,11 @@ export function buildAppcastItem(
   dmg: ReleaseAsset,
   edSignature: string | null | undefined,
   enclosureUrl: string,
-  opts: { title?: string; minimumSystemVersion?: string; descriptionHtml?: string } = {},
+  opts: {
+    title?: string;
+    minimumSystemVersion?: string;
+    descriptionHtml?: string;
+  } = {},
 ): AppcastItemInput {
   const shortVersion = versionFromTag(release.tag_name);
   return {
@@ -125,7 +129,9 @@ export function buildAppcastItem(
     length: dmg.size,
     pubDate: rfc1123(release.published_at),
     ...(edSignature ? { edSignature } : {}),
-    ...(opts.minimumSystemVersion ? { minimumSystemVersion: opts.minimumSystemVersion } : {}),
+    ...(opts.minimumSystemVersion
+      ? { minimumSystemVersion: opts.minimumSystemVersion }
+      : {}),
     ...(opts.descriptionHtml ? { descriptionHtml: opts.descriptionHtml } : {}),
   };
 }

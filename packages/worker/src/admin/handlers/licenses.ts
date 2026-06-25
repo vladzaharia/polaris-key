@@ -49,7 +49,9 @@ export async function handleLicenses(
   if (!id) {
     if (req.method === "GET") {
       const rows = await listLicenses(db, slug);
-      const licenses = await Promise.all(rows.map((r) => licenseSummary(db, slug, r)));
+      const licenses = await Promise.all(
+        rows.map((r) => licenseSummary(db, slug, r)),
+      );
       return adminJson({ licenses });
     }
     if (req.method === "POST") {
@@ -67,11 +69,18 @@ export async function handleLicenses(
         profile_id: typeof body.profile === "string" ? body.profile : null,
         enrolled_at: now,
         expires_at: typeof body.expiresAt === "number" ? body.expiresAt : null,
-        max_offline_days: typeof body.maxOfflineDays === "number" ? body.maxOfflineDays : null,
-        overrides_json: JSON.stringify({ config: {}, secrets: {}, entitlements: {} }),
+        max_offline_days:
+          typeof body.maxOfflineDays === "number" ? body.maxOfflineDays : null,
+        overrides_json: JSON.stringify({
+          config: {},
+          secrets: {},
+          entitlements: {},
+        }),
         channels_json: parseChannels(body.channels),
-        min_version: typeof body.minVersion === "string" ? body.minVersion : null,
-        max_version: typeof body.maxVersion === "string" ? body.maxVersion : null,
+        min_version:
+          typeof body.minVersion === "string" ? body.minVersion : null,
+        max_version:
+          typeof body.maxVersion === "string" ? body.maxVersion : null,
         modified_by: session.sub,
         modified_at: now,
       });
@@ -88,10 +97,29 @@ export async function handleLicenses(
         created_by: session.sub,
         last_used_at: null,
       });
-      await putKeyRecord(env, slug, keyHash, { product: slug, licenseId, status: "active" });
-      await audit(db, slug, session, now, "license.create", { kind: "license", id: licenseId }, `Created license for ${body.email ?? body.name ?? licenseId}`);
+      await putKeyRecord(env, slug, keyHash, {
+        product: slug,
+        licenseId,
+        status: "active",
+      });
+      await audit(
+        db,
+        slug,
+        session,
+        now,
+        "license.create",
+        { kind: "license", id: licenseId },
+        `Created license for ${body.email ?? body.name ?? licenseId}`,
+      );
       const row = await getLicense(db, slug, licenseId);
-      return adminJson({ licenseId, key, license: row ? await licenseSummary(db, slug, row) : null }, 201);
+      return adminJson(
+        {
+          licenseId,
+          key,
+          license: row ? await licenseSummary(db, slug, row) : null,
+        },
+        201,
+      );
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");
   }
@@ -108,7 +136,9 @@ export async function handleLicenses(
       const overrides = parsePayload(license.overrides_json);
       return adminJson({
         ...(await licenseSummary(db, slug, license)),
-        groups: license.groups_json ? (JSON.parse(license.groups_json) as string[]) : [],
+        groups: license.groups_json
+          ? (JSON.parse(license.groups_json) as string[])
+          : [],
         maxOfflineDays: license.max_offline_days,
         overrides: redactPayload(overrides, catalog),
         keys: keys.map((k) => ({
@@ -126,7 +156,9 @@ export async function handleLicenses(
           lastSeen: m.last_seen,
           ua: m.ua ?? undefined,
           label: m.label ?? undefined,
-          reported: m.reported_json ? (JSON.parse(m.reported_json) as unknown) : undefined,
+          reported: m.reported_json
+            ? (JSON.parse(m.reported_json) as unknown)
+            : undefined,
         })),
       });
     }
@@ -139,16 +171,43 @@ export async function handleLicenses(
         {
           name: typeof body.name === "string" ? body.name : undefined,
           email: typeof body.email === "string" ? body.email : undefined,
-          expires_at: body.expiresAt === null ? null : typeof body.expiresAt === "number" ? body.expiresAt : undefined,
-          max_offline_days: typeof body.maxOfflineDays === "number" ? body.maxOfflineDays : undefined,
-          channels_json: "channels" in body ? parseChannels(body.channels) : undefined,
-          min_version: body.minVersion === null ? null : typeof body.minVersion === "string" ? body.minVersion : undefined,
-          max_version: body.maxVersion === null ? null : typeof body.maxVersion === "string" ? body.maxVersion : undefined,
+          expires_at:
+            body.expiresAt === null
+              ? null
+              : typeof body.expiresAt === "number"
+                ? body.expiresAt
+                : undefined,
+          max_offline_days:
+            typeof body.maxOfflineDays === "number"
+              ? body.maxOfflineDays
+              : undefined,
+          channels_json:
+            "channels" in body ? parseChannels(body.channels) : undefined,
+          min_version:
+            body.minVersion === null
+              ? null
+              : typeof body.minVersion === "string"
+                ? body.minVersion
+                : undefined,
+          max_version:
+            body.maxVersion === null
+              ? null
+              : typeof body.maxVersion === "string"
+                ? body.maxVersion
+                : undefined,
         },
         session.sub,
         now,
       );
-      await audit(db, slug, session, now, "license.update", { kind: "license", id }, `Updated license ${id}`);
+      await audit(
+        db,
+        slug,
+        session,
+        now,
+        "license.update",
+        { kind: "license", id },
+        `Updated license ${id}`,
+      );
       return adminJson({ ok: true, id });
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");
@@ -156,7 +215,8 @@ export async function handleLicenses(
 
   // /licenses/<id>/disable | enable
   if (sub === "disable" || sub === "enable") {
-    if (req.method !== "POST") return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (req.method !== "POST")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
     const status = sub === "disable" ? "disabled" : "active";
     await setLicenseStatus(db, slug, id, status, session.sub, now);
     if (sub === "disable") {
@@ -167,20 +227,54 @@ export async function handleLicenses(
         if (m.token_hash) await deleteTokenRecord(env, slug, m.token_hash);
       }
     }
-    await audit(db, slug, session, now, `license.${sub}`, { kind: "license", id }, `${sub === "disable" ? "Disabled" : "Enabled"} license ${id}`);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      `license.${sub}`,
+      { kind: "license", id },
+      `${sub === "disable" ? "Disabled" : "Enabled"} license ${id}`,
+    );
     return adminJson({ ok: true, id, status });
   }
 
   // /licenses/<id>/overrides (PUT batch)
   if (sub === "overrides") {
-    if (req.method !== "PUT") return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (req.method !== "PUT")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
     if (!catalog) return err(409, ErrorCode.BadRequest, "no active catalog");
     const body = await readBody(req);
-    const updates = Array.isArray(body.updates) ? (body.updates as OverrideUpdate[]) : [];
-    const result = applyOverrides(parsePayload(license.overrides_json), updates, catalog, now);
-    if (!result.ok) return err(422, ErrorCode.BadRequest, "validation failed", { fields: result.fields });
-    await patchLicense(db, slug, id, { overrides_json: JSON.stringify(result.payload) }, session.sub, now);
-    await audit(db, slug, session, now, "license.overrides", { kind: "license", id }, `Updated overrides for ${id}`);
+    const updates = Array.isArray(body.updates)
+      ? (body.updates as OverrideUpdate[])
+      : [];
+    const result = applyOverrides(
+      parsePayload(license.overrides_json),
+      updates,
+      catalog,
+      now,
+    );
+    if (!result.ok)
+      return err(422, ErrorCode.BadRequest, "validation failed", {
+        fields: result.fields,
+      });
+    await patchLicense(
+      db,
+      slug,
+      id,
+      { overrides_json: JSON.stringify(result.payload) },
+      session.sub,
+      now,
+    );
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "license.overrides",
+      { kind: "license", id },
+      `Updated overrides for ${id}`,
+    );
     return adminJson({ ok: true, id });
   }
 

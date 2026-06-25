@@ -1,6 +1,12 @@
 import * as React from "react";
 import { AlertTriangle, Layers, Pencil, Plus, Trash2 } from "lucide-react";
-import { api, ApiError, type ProfileSummary, type TierBody, type TierSummary } from "../api.js";
+import {
+  api,
+  ApiError,
+  type ProfileSummary,
+  type TierBody,
+  type TierSummary,
+} from "../api.js";
 import { invalidate, useResource } from "../context.js";
 import {
   Badge,
@@ -11,7 +17,11 @@ import {
   useToast,
   type ColumnDef,
 } from "../components/ui/index.js";
-import { CreateTierDialog, EditTierDialog, type ProfileOption } from "./tiers/dialogs.js";
+import {
+  CreateTierDialog,
+  EditTierDialog,
+  type ProfileOption,
+} from "./tiers/dialogs.js";
 
 /**
  * Tiers view: list every tier for a product, create new tiers, edit an existing tier's label,
@@ -26,13 +36,16 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
   const profilesRes = useResource(`profiles:${slug}`, () => api.profiles(slug));
 
   const tiers = tiersRes.data?.tiers ?? [];
-  const profiles: ProfileOption[] = (profilesRes.data?.profiles ?? []).map((p: ProfileSummary) => ({
-    id: p.id,
-    name: p.name,
-  }));
+  const profiles: ProfileOption[] = (profilesRes.data?.profiles ?? []).map(
+    (p: ProfileSummary) => ({
+      id: p.id,
+      name: p.name,
+    }),
+  );
   const profileName = React.useMemo(() => {
     const map = new Map(profiles.map((p) => [p.id, p.name || p.id]));
-    return (id: string | null): string | null => (id ? map.get(id) ?? id : null);
+    return (id: string | null): string | null =>
+      id ? (map.get(id) ?? id) : null;
   }, [profiles]);
 
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -117,14 +130,24 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
       header: "Expiry (days)",
       accessor: (t) => t.policyExpiryDays ?? -1,
       sortable: true,
-      cell: (t) => (t.policyExpiryDays == null ? <Muted>default</Muted> : t.policyExpiryDays),
+      cell: (t) =>
+        t.policyExpiryDays == null ? (
+          <Muted>default</Muted>
+        ) : (
+          t.policyExpiryDays
+        ),
     },
     {
       id: "machines",
       header: "Machine limit",
       accessor: (t) => t.policyMachineLimit ?? -1,
       sortable: true,
-      cell: (t) => (t.policyMachineLimit == null ? <Muted>default</Muted> : t.policyMachineLimit),
+      cell: (t) =>
+        t.policyMachineLimit == null ? (
+          <Muted>default</Muted>
+        ) : (
+          t.policyMachineLimit
+        ),
     },
     {
       id: "channels",
@@ -181,7 +204,8 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold tracking-tight">Tiers</h2>
           <p className="text-sm text-muted-foreground">
-            Reusable license templates — a profile plus policy, channel, and version defaults.
+            Reusable license templates — a profile plus policy, channel, and
+            version defaults.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -256,11 +280,21 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
   );
 }
 
-function Muted({ children }: { children: React.ReactNode }): React.ReactElement {
+function Muted({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
   return <span className="text-muted-foreground">{children}</span>;
 }
 
-function VersionWindow({ min, max }: { min: string | null; max: string | null }): React.ReactElement {
+function VersionWindow({
+  min,
+  max,
+}: {
+  min: string | null;
+  max: string | null;
+}): React.ReactElement {
   if (!min && !max) return <Muted>any</Muted>;
   return (
     <span className="font-mono text-xs">

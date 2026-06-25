@@ -2,9 +2,18 @@
 // `PolarisState`. Centralizing this is what guarantees mode-parity: the browser and
 // desktop adapters disagree on transport, never on how a doc becomes state.
 
-import type { JSONValue, ManagedConfigDoc, ManagedEntry } from "@polaris-key/protocol";
+import type {
+  JSONValue,
+  ManagedConfigDoc,
+  ManagedEntry,
+} from "@polaris-key/protocol";
 import { licenseState, type GateInput } from "./gateModel.js";
-import { type ConfigSource, type PolarisMode, type PolarisState, type UserConfigEntry } from "./types.js";
+import {
+  type ConfigSource,
+  type PolarisMode,
+  type PolarisState,
+  type UserConfigEntry,
+} from "./types.js";
 
 /** Flatten a `Record<string, ManagedEntry>` to `key → value`. */
 export function flattenEntries(
@@ -43,7 +52,10 @@ export function resolveConfig(
   localOverrides: Record<string, JSONValue>,
 ): Record<string, JSONValue> {
   const out: Record<string, JSONValue> = {};
-  const keys = new Set([...Object.keys(entries), ...Object.keys(localOverrides)]);
+  const keys = new Set([
+    ...Object.keys(entries),
+    ...Object.keys(localOverrides),
+  ]);
   for (const key of keys) {
     const v = resolveConfigValue(entries, localOverrides, key);
     if (v !== undefined) out[key] = v;
@@ -58,7 +70,11 @@ export function projectState(
   mode: PolarisMode,
   doc: ManagedConfigDoc | null,
   gateInput: Omit<GateInput, "doc">,
-  flags: { busy?: boolean; error?: PolarisState["error"]; localOverrides?: Record<string, JSONValue> } = {},
+  flags: {
+    busy?: boolean;
+    error?: PolarisState["error"];
+    localOverrides?: Record<string, JSONValue>;
+  } = {},
 ): PolarisState {
   const gate = licenseState({ ...gateInput, doc });
   const configEntries = doc?.payload.config ?? {};
@@ -79,7 +95,11 @@ export function projectState(
 }
 
 /** Read a config value off a snapshot with a typed fallback, via the v2 precedence. */
-export function readConfig<T = JSONValue>(state: PolarisState, key: string, fallback: T): T {
+export function readConfig<T = JSONValue>(
+  state: PolarisState,
+  key: string,
+  fallback: T,
+): T {
   const v = resolveConfigValue(state.configEntries, state.localOverrides, key);
   return v === undefined ? fallback : (v as unknown as T);
 }
@@ -99,11 +119,18 @@ export function configSource(state: PolarisState, key: string): ConfigSource {
  *  Override-only keys (no server entry) are included as un-enforced rows. */
 export function listUserConfig(state: PolarisState): UserConfigEntry[] {
   const out: UserConfigEntry[] = [];
-  const keys = new Set([...Object.keys(state.configEntries), ...Object.keys(state.localOverrides)]);
+  const keys = new Set([
+    ...Object.keys(state.configEntries),
+    ...Object.keys(state.localOverrides),
+  ]);
   for (const key of keys) {
     const entry = state.configEntries[key];
     if (entry?.state === "hidden") continue; // withheld from user-facing enumeration.
-    const value = resolveConfigValue(state.configEntries, state.localOverrides, key);
+    const value = resolveConfigValue(
+      state.configEntries,
+      state.localOverrides,
+      key,
+    );
     if (value === undefined) continue;
     out.push({ key, value, enforced: entry?.state === "enforced" });
   }

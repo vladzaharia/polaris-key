@@ -35,7 +35,9 @@ export function EditMetadataDialog({
   const toast = useToast();
   const [name, setName] = React.useState(license.name);
   const [email, setEmail] = React.useState(license.email);
-  const [expires, setExpires] = React.useState(epochToDateInput(license.expiresAt));
+  const [expires, setExpires] = React.useState(
+    epochToDateInput(license.expiresAt),
+  );
   const [maxOffline, setMaxOffline] = React.useState(
     license.maxOfflineDays == null ? "" : String(license.maxOfflineDays),
   );
@@ -46,7 +48,9 @@ export function EditMetadataDialog({
       setName(license.name);
       setEmail(license.email);
       setExpires(epochToDateInput(license.expiresAt));
-      setMaxOffline(license.maxOfflineDays == null ? "" : String(license.maxOfflineDays));
+      setMaxOffline(
+        license.maxOfflineDays == null ? "" : String(license.maxOfflineDays),
+      );
       setSaving(false);
     }
   }, [open, license]);
@@ -59,9 +63,12 @@ export function EditMetadataDialog({
       if (name.trim() !== license.name) body.name = name.trim();
       if (email.trim() !== license.email) body.email = email.trim();
       const nextExpiry = dateInputToEpoch(expires);
-      if (nextExpiry !== (license.expiresAt ?? null)) body.expiresAt = nextExpiry;
-      const nextOffline = maxOffline.trim() === "" ? undefined : Number(maxOffline);
-      if (nextOffline !== undefined && nextOffline !== license.maxOfflineDays) body.maxOfflineDays = nextOffline;
+      if (nextExpiry !== (license.expiresAt ?? null))
+        body.expiresAt = nextExpiry;
+      const nextOffline =
+        maxOffline.trim() === "" ? undefined : Number(maxOffline);
+      if (nextOffline !== undefined && nextOffline !== license.maxOfflineDays)
+        body.maxOfflineDays = nextOffline;
 
       if (Object.keys(body).length === 0) {
         onOpenChange(false);
@@ -72,7 +79,10 @@ export function EditMetadataDialog({
       onSaved();
       onOpenChange(false);
     } catch (err) {
-      toast.error("Could not update license", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Could not update license",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setSaving(false);
     }
@@ -83,20 +93,37 @@ export function EditMetadataDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit license</DialogTitle>
-          <DialogDescription>Update the holder details, expiry, and offline grace.</DialogDescription>
+          <DialogDescription>
+            Update the holder details, expiry, and offline grace.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={save} className="space-y-4">
           <Field label="Name">
-            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
           </Field>
           <Field label="Email">
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Expires" help="Blank means no expiry.">
-              <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+              <Input
+                type="date"
+                value={expires}
+                onChange={(e) => setExpires(e.target.value)}
+              />
             </Field>
-            <Field label="Max offline days" help="How long a device may run without checking in.">
+            <Field
+              label="Max offline days"
+              help="How long a device may run without checking in."
+            >
               <Input
                 type="number"
                 min={0}
@@ -107,7 +134,12 @@ export function EditMetadataDialog({
             </Field>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
             <Button type="submit" loading={saving}>

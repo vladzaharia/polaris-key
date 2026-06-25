@@ -2,7 +2,13 @@ import * as React from "react";
 import { cn } from "../../lib/cn.js";
 
 /** An accessible inline loading spinner (a spinning ring, no text). */
-export function Spinner({ className, label = "Loading" }: { className?: string; label?: string }): React.ReactElement {
+export function Spinner({
+  className,
+  label = "Loading",
+}: {
+  className?: string;
+  label?: string;
+}): React.ReactElement {
   return (
     <span
       role="status"

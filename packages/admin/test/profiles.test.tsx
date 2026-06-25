@@ -1,7 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ProductCatalog, ProfileDetail, ProfileSummary } from "../src/api.js";
+import type {
+  ProductCatalog,
+  ProfileDetail,
+  ProfileSummary,
+} from "../src/api.js";
 import { resetCache } from "../src/context.js";
 import { Toaster } from "../src/components/ui/index.js";
 import { Profiles } from "../src/views/Profiles.js";
@@ -35,7 +45,13 @@ const mockApi = api as unknown as {
 };
 
 const PROFILES: ProfileSummary[] = [
-  { id: "default", name: "Default", description: "Baseline config", modifiedBy: "ada@x.io", modifiedAt: 1_700_000_000 },
+  {
+    id: "default",
+    name: "Default",
+    description: "Baseline config",
+    modifiedBy: "ada@x.io",
+    modifiedAt: 1_700_000_000,
+  },
   { id: "vip", name: "VIP" },
 ];
 
@@ -66,9 +82,13 @@ const DETAIL: ProfileDetail = {
   name: "Default",
   description: "Baseline config",
   payload: {
-    config: { theme: { state: "default", value: "dark", updatedAt: 1_700_000_000 } },
+    config: {
+      theme: { state: "default", value: "dark", updatedAt: 1_700_000_000 },
+    },
     secrets: {},
-    entitlements: { beta_features: { state: "default", value: false, updatedAt: 0 } },
+    entitlements: {
+      beta_features: { state: "default", value: false, updatedAt: 0 },
+    },
   },
 };
 
@@ -87,13 +107,18 @@ beforeEach(() => {
   mockApi.profile.mockResolvedValue(DETAIL);
   mockApi.schema.mockResolvedValue(CATALOG);
   // jsdom lacks these Radix-needed APIs.
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
-  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  };
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { scrollIntoView: () => void }
+  ).scrollIntoView = () => undefined;
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
+    class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
 });
 
 afterEach(cleanup);
@@ -131,13 +156,22 @@ describe("Profiles view", () => {
 
     await userEvent.type(within(dialog).getByLabelText(/^Id/), "trial");
     await userEvent.type(within(dialog).getByLabelText("Name"), "Trial");
-    await userEvent.type(within(dialog).getByLabelText("Description"), "Time-limited");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create profile" }));
+    await userEvent.type(
+      within(dialog).getByLabelText("Description"),
+      "Time-limited",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create profile" }),
+    );
 
     await waitFor(() => expect(mockApi.createProfile).toHaveBeenCalledTimes(1));
     const [slug, body] = mockApi.createProfile.mock.calls[0]!;
     expect(slug).toBe("djdl");
-    expect(body).toMatchObject({ id: "trial", name: "Trial", description: "Time-limited" });
+    expect(body).toMatchObject({
+      id: "trial",
+      name: "Trial",
+      description: "Time-limited",
+    });
   });
 
   it("opens a profile and edits its managed payload via putProfilePayload", async () => {
@@ -156,9 +190,13 @@ describe("Profiles view", () => {
     const theme = within(dialog).getByLabelText("Theme") as HTMLInputElement;
     await userEvent.clear(theme);
     await userEvent.type(theme, "light");
-    await userEvent.click(within(dialog).getByRole("button", { name: /Save payload/ }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Save payload/ }),
+    );
 
-    await waitFor(() => expect(mockApi.putProfilePayload).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockApi.putProfilePayload).toHaveBeenCalledTimes(1),
+    );
     const [slug, id, updates] = mockApi.putProfilePayload.mock.calls[0]!;
     expect(slug).toBe("djdl");
     expect(id).toBe("default");
@@ -172,10 +210,16 @@ describe("Profiles view", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Delete vip" }));
     const confirmDialog = await screen.findByRole("alertdialog");
-    expect(within(confirmDialog).getByText(/Delete profile “vip”\?/)).toBeTruthy();
+    expect(
+      within(confirmDialog).getByText(/Delete profile “vip”\?/),
+    ).toBeTruthy();
     expect(mockApi.deleteProfile).not.toHaveBeenCalled();
 
-    await userEvent.click(within(confirmDialog).getByRole("button", { name: "Delete profile" }));
-    await waitFor(() => expect(mockApi.deleteProfile).toHaveBeenCalledWith("djdl", "vip"));
+    await userEvent.click(
+      within(confirmDialog).getByRole("button", { name: "Delete profile" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.deleteProfile).toHaveBeenCalledWith("djdl", "vip"),
+    );
   });
 });

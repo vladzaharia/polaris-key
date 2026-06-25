@@ -14,13 +14,21 @@ describe("parseRoute", () => {
     expect(parseRoute("#/products")).toEqual({ kind: "products" });
   });
 
-  it("a product root defaults to the licenses view", () => {
-    expect(parseRoute("#/p/djdl")).toEqual({ kind: "product", slug: "djdl", view: "licenses" });
+  it("a product root defaults to the overview view", () => {
+    expect(parseRoute("#/p/djdl")).toEqual({
+      kind: "product",
+      slug: "djdl",
+      view: "overview",
+    });
   });
 
   it("each known tab parses through", () => {
     for (const { tab } of TABS) {
-      expect(parseRoute(`#/p/djdl/${tab}`)).toEqual({ kind: "product", slug: "djdl", view: tab });
+      expect(parseRoute(`#/p/djdl/${tab}`)).toEqual({
+        kind: "product",
+        slug: "djdl",
+        view: tab,
+      });
     }
   });
 
@@ -34,7 +42,34 @@ describe("parseRoute", () => {
   });
 
   it("an unknown view falls back to licenses", () => {
-    expect(parseRoute("#/p/djdl/bogus")).toEqual({ kind: "product", slug: "djdl", view: "licenses" });
+    expect(parseRoute("#/p/djdl/bogus")).toEqual({
+      kind: "product",
+      slug: "djdl",
+      view: "licenses",
+    });
+  });
+
+  it("legacy product views route to the new workspace tabs", () => {
+    expect(parseRoute("#/p/djdl/catalog")).toEqual({
+      kind: "product",
+      slug: "djdl",
+      view: "config",
+    });
+    expect(parseRoute("#/p/djdl/tiers")).toEqual({
+      kind: "product",
+      slug: "djdl",
+      view: "config",
+    });
+    expect(parseRoute("#/p/djdl/profiles")).toEqual({
+      kind: "product",
+      slug: "djdl",
+      view: "config",
+    });
+    expect(parseRoute("#/p/djdl/oidc")).toEqual({
+      kind: "product",
+      slug: "djdl",
+      view: "identity",
+    });
   });
 
   it("decodes a URL-encoded slug and id (encoded slashes survive)", () => {
@@ -58,19 +93,27 @@ describe("hashFor", () => {
   });
 
   it("serializes a tab route", () => {
-    expect(hashFor({ kind: "product", slug: "djdl", view: "tiers" })).toBe("#/p/djdl/tiers");
+    expect(hashFor({ kind: "product", slug: "djdl", view: "config" })).toBe(
+      "#/p/djdl/config",
+    );
   });
 
   it("serializes a license-detail route with its id", () => {
-    expect(hashFor({ kind: "product", slug: "djdl", view: "license", id: "lic_1" })).toBe("#/p/djdl/license/lic_1");
+    expect(
+      hashFor({ kind: "product", slug: "djdl", view: "license", id: "lic_1" }),
+    ).toBe("#/p/djdl/license/lic_1");
   });
 
   it("a license view without an id degrades to the slug root", () => {
-    expect(hashFor({ kind: "product", slug: "djdl", view: "license" })).toBe("#/p/djdl/license");
+    expect(hashFor({ kind: "product", slug: "djdl", view: "license" })).toBe(
+      "#/p/djdl/license",
+    );
   });
 
   it("encodes slugs + ids with special characters", () => {
-    expect(hashFor({ kind: "product", slug: "a/b", view: "license", id: "c d" })).toBe("#/p/a%2Fb/license/c%20d");
+    expect(
+      hashFor({ kind: "product", slug: "a/b", view: "license", id: "c d" }),
+    ).toBe("#/p/a%2Fb/license/c%20d");
   });
 });
 
@@ -78,6 +121,7 @@ describe("parseRoute ∘ hashFor round-trip", () => {
   const routes: Route[] = [
     { kind: "dashboard" },
     { kind: "products" },
+    { kind: "product", slug: "djdl", view: "overview" },
     { kind: "product", slug: "djdl", view: "licenses" },
     { kind: "product", slug: "acme", view: "activity" },
     { kind: "product", slug: "djdl", view: "settings" },
@@ -97,10 +141,23 @@ describe("tabOf", () => {
   });
 
   it("a license detail maps back to the licenses tab", () => {
-    expect(tabOf({ kind: "product", slug: "djdl", view: "license", id: "x" })).toBe("licenses");
+    expect(
+      tabOf({ kind: "product", slug: "djdl", view: "license", id: "x" }),
+    ).toBe("licenses");
   });
 
   it("a tab view maps to itself", () => {
-    expect(tabOf({ kind: "product", slug: "djdl", view: "tiers" })).toBe("tiers");
+    expect(tabOf({ kind: "product", slug: "djdl", view: "config" })).toBe(
+      "config",
+    );
+  });
+
+  it("legacy views map to their workspace tab", () => {
+    expect(tabOf({ kind: "product", slug: "djdl", view: "catalog" })).toBe(
+      "config",
+    );
+    expect(tabOf({ kind: "product", slug: "djdl", view: "oidc" })).toBe(
+      "identity",
+    );
   });
 });

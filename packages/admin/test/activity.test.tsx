@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ActivityCursor, ActivityItem, ActivityPage } from "../src/api.js";
 
@@ -8,12 +14,19 @@ import type { ActivityCursor, ActivityItem, ActivityPage } from "../src/api.js";
 const activity = vi.fn();
 vi.mock("../src/api.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/api.js")>();
-  return { ...actual, api: { ...actual.api, activity: (...args: unknown[]) => activity(...args) } };
+  return {
+    ...actual,
+    api: { ...actual.api, activity: (...args: unknown[]) => activity(...args) },
+  };
 });
 
 import { Activity } from "../src/views/Activity.js";
 
-function item(id: string, at: number, over: Partial<ActivityItem> = {}): ActivityItem {
+function item(
+  id: string,
+  at: number,
+  over: Partial<ActivityItem> = {},
+): ActivityItem {
   return {
     id,
     at,
@@ -27,8 +40,12 @@ function item(id: string, at: number, over: Partial<ActivityItem> = {}): Activit
 
 beforeEach(() => {
   activity.mockReset();
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { scrollIntoView: () => void }
+  ).scrollIntoView = () => undefined;
 });
 afterEach(cleanup);
 
@@ -38,9 +55,13 @@ describe("Activity view", () => {
       items: [item("a3", 3000), item("a2", 2000)],
       nextCursor: { beforeAt: 2000, beforeId: "a2" },
     };
-    const page2: ActivityPage = { items: [item("a1", 1000, { action: "key.revoke" })], nextCursor: null };
-    activity.mockImplementation(async (_slug: string, cursor: ActivityCursor | null) =>
-      cursor ? page2 : page1,
+    const page2: ActivityPage = {
+      items: [item("a1", 1000, { action: "key.revoke" })],
+      nextCursor: null,
+    };
+    activity.mockImplementation(
+      async (_slug: string, cursor: ActivityCursor | null) =>
+        cursor ? page2 : page1,
     );
 
     render(<Activity slug="djdl" />);
@@ -58,7 +79,10 @@ describe("Activity view", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load more" }));
     await waitFor(() => expect(screen.getByText("did thing a1")).toBeTruthy());
     expect(activity).toHaveBeenCalledTimes(2);
-    expect(activity.mock.calls[1]![1]).toEqual({ beforeAt: 2000, beforeId: "a2" });
+    expect(activity.mock.calls[1]![1]).toEqual({
+      beforeAt: 2000,
+      beforeId: "a2",
+    });
 
     // No more pages → the Load more button is gone, footer shows the count.
     expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
@@ -66,9 +90,14 @@ describe("Activity view", () => {
   });
 
   it("shows an empty state when there is no activity", async () => {
-    activity.mockResolvedValue({ items: [], nextCursor: null } satisfies ActivityPage);
+    activity.mockResolvedValue({
+      items: [],
+      nextCursor: null,
+    } satisfies ActivityPage);
     render(<Activity slug="djdl" />);
-    await waitFor(() => expect(screen.getByText("No activity yet")).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText("No activity yet")).toBeTruthy(),
+    );
   });
 
   it("surfaces a load error with a retry", async () => {
@@ -78,7 +107,10 @@ describe("Activity view", () => {
     expect(screen.getByText("Couldn’t load activity")).toBeTruthy();
 
     // Retry succeeds.
-    activity.mockResolvedValueOnce({ items: [item("a1", 1000)], nextCursor: null } satisfies ActivityPage);
+    activity.mockResolvedValueOnce({
+      items: [item("a1", 1000)],
+      nextCursor: null,
+    } satisfies ActivityPage);
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText("did thing a1")).toBeTruthy());
   });

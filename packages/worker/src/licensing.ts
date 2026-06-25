@@ -15,11 +15,22 @@ import { HEADER_DEVICE } from "@polaris-key/protocol";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import type { Product } from "./product.js";
-import { bearer, errorResponse, ErrorCode, json, methodNotAllowed } from "./http.js";
+import {
+  bearer,
+  errorResponse,
+  ErrorCode,
+  json,
+  methodNotAllowed,
+} from "./http.js";
 import { hashKey, mintToken } from "./crypto.js";
 import { checkBuildGate, tighterMin, tighterMax } from "./gate.js";
 import { Catalog } from "@polaris-key/catalog";
-import { buildDoc, computeETag, signDoc, validatePayload } from "./configDoc.js";
+import {
+  buildDoc,
+  computeETag,
+  signDoc,
+  validatePayload,
+} from "./configDoc.js";
 import { mergePayloads } from "./merge.js";
 import {
   getKey,
@@ -37,11 +48,7 @@ import {
   type MachineRow,
   type TierRow,
 } from "./repo.js";
-import {
-  deleteTokenRecord,
-  getTokenRecord,
-  putTokenRecord,
-} from "./kv.js";
+import { deleteTokenRecord, getTokenRecord, putTokenRecord } from "./kv.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
 
 function docProfile(license: LicenseRow): DocProfile {
@@ -59,7 +66,9 @@ function parseChannelsJson(json: string | null): string[] {
   if (!json) return [];
   try {
     const v = JSON.parse(json);
-    return Array.isArray(v) ? (v.filter((c) => typeof c === "string") as string[]) : [];
+    return Array.isArray(v)
+      ? (v.filter((c) => typeof c === "string") as string[])
+      : [];
   } catch {
     return [];
   }
@@ -71,19 +80,37 @@ function parseChannelsJson(json: string | null): string[] {
  * no gate-logic changes. Admin policy wins: channels = union of tier+license arrays; min/max
  * = the tighter of the two. `updatedAt` is the license's modified_at.
  */
-function injectAdminPolicy(payload: ManagedPayload, tier: TierRow | null, license: LicenseRow): void {
+function injectAdminPolicy(
+  payload: ManagedPayload,
+  tier: TierRow | null,
+  license: LicenseRow,
+): void {
   const updatedAt = license.modified_at;
-  const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({ state: "enforced", value, updatedAt });
+  const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({
+    state: "enforced",
+    value,
+    updatedAt,
+  });
 
   const channels = [
-    ...new Set([...parseChannelsJson(tier?.channels_json ?? null), ...parseChannelsJson(license.channels_json)]),
+    ...new Set([
+      ...parseChannelsJson(tier?.channels_json ?? null),
+      ...parseChannelsJson(license.channels_json),
+    ]),
   ];
-  if (channels.length > 0) payload.entitlements["channels"] = enforced(channels);
+  if (channels.length > 0)
+    payload.entitlements["channels"] = enforced(channels);
 
-  const minVersion = tighterMin(tier?.min_version ?? undefined, license.min_version ?? undefined);
+  const minVersion = tighterMin(
+    tier?.min_version ?? undefined,
+    license.min_version ?? undefined,
+  );
   if (minVersion) payload.entitlements["app.minVersion"] = enforced(minVersion);
 
-  const maxVersion = tighterMax(tier?.max_version ?? undefined, license.max_version ?? undefined);
+  const maxVersion = tighterMax(
+    tier?.max_version ?? undefined,
+    license.max_version ?? undefined,
+  );
   if (maxVersion) payload.entitlements["app.maxVersion"] = enforced(maxVersion);
 }
 
@@ -108,17 +135,28 @@ async function resolveEffective(
     const p = await getProfile(db, product, license.profile_id);
     licProfileJson = p?.payload_json ?? null;
   }
-  const payload = mergePayloads(tierProfileJson, licProfileJson, license.overrides_json, machine?.overrides_json ?? null);
+  const payload = mergePayloads(
+    tierProfileJson,
+    licProfileJson,
+    license.overrides_json,
+    machine?.overrides_json ?? null,
+  );
   injectAdminPolicy(payload, tier, license);
   return payload;
 }
 
-function resolveMachineLimit(payload: ManagedPayload, fallback: number): number {
+function resolveMachineLimit(
+  payload: ManagedPayload,
+  fallback: number,
+): number {
   const e = payload.entitlements["machineLimit"];
   return e && typeof e.value === "number" ? e.value : fallback;
 }
 
-function licenseUsable(license: LicenseRow | null, now: number): license is LicenseRow {
+function licenseUsable(
+  license: LicenseRow | null,
+  now: number,
+): license is LicenseRow {
   if (!license || license.status !== "active") return false;
   if (license.expires_at !== null && now > license.expires_at) return false;
   return true;
@@ -133,20 +171,30 @@ export async function handleEnroll(
   now: number,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
-  if (!(await rateLimitOk(env, product.slug, { bucket: "enroll", id: clientIp(req), limit: 30, windowSec: 60 }, now))) {
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "enroll", id: clientIp(req), limit: 30, windowSec: 60 },
+      now,
+    ))
+  ) {
     return errorResponse(429, "rate_limited", "too many enrollment attempts");
   }
   const key = bearer(req);
   if (!key) return errorResponse(401, ErrorCode.Unauthorized);
   const deviceId = req.headers.get(HEADER_DEVICE);
-  if (!deviceId) return errorResponse(400, ErrorCode.BadRequest, "missing device id");
+  if (!deviceId)
+    return errorResponse(400, ErrorCode.BadRequest, "missing device id");
 
   const keyHash = await hashKey(key, env.KEY_HASH_PEPPER);
   const keyRow = await getKey(db, product.slug, keyHash);
-  if (!keyRow || keyRow.status !== "active") return errorResponse(401, ErrorCode.Unauthorized);
+  if (!keyRow || keyRow.status !== "active")
+    return errorResponse(401, ErrorCode.Unauthorized);
 
   const license = await getLicense(db, product.slug, keyRow.license_id);
-  if (!licenseUsable(license, now)) return errorResponse(401, ErrorCode.Unauthorized);
+  if (!licenseUsable(license, now))
+    return errorResponse(401, ErrorCode.Unauthorized);
 
   const existing = await getMachine(db, product.slug, deviceId);
   const isNewAuthorization = !existing || existing.status !== "authorized";
@@ -156,10 +204,15 @@ export async function handleEnroll(
     if (limit > 0) {
       const count = await countActiveMachines(db, product.slug, license.id);
       if (count >= limit) {
-        return errorResponse(403, ErrorCode.MachineLimit, "device limit reached", {
-          limit,
-          machineCount: count,
-        });
+        return errorResponse(
+          403,
+          ErrorCode.MachineLimit,
+          "device limit reached",
+          {
+            limit,
+            machineCount: count,
+          },
+        );
       }
     }
   }
@@ -195,8 +248,9 @@ export async function handleEnroll(
   return json({ token, schemaVersion: product.schemaVersion });
 }
 
-/** POST /<product>/token — re-acquire a token for an already-authorized machine (after a
- *  local wipe). Bound to the device id; rate-limited at the edge (Phase 7). */
+/** POST /<product>/token — replace the current token for an already-authorized machine.
+ *  The compatibility route name remains, but this is no longer a device-id-only re-mint:
+ *  callers must present the current bearer token and the matching device id. */
 export async function handleToken(
   req: Request,
   env: Env,
@@ -205,22 +259,50 @@ export async function handleToken(
   now: number,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
-  if (!(await rateLimitOk(env, product.slug, { bucket: "token", id: clientIp(req), limit: 30, windowSec: 60 }, now))) {
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "token", id: clientIp(req), limit: 30, windowSec: 60 },
+      now,
+    ))
+  ) {
     return errorResponse(429, "rate_limited", "too many token requests");
   }
   const deviceId = req.headers.get(HEADER_DEVICE);
-  if (!deviceId) return errorResponse(400, ErrorCode.BadRequest, "missing device id");
-  const machine = await getMachine(db, product.slug, deviceId);
-  if (!machine || machine.status !== "authorized") return errorResponse(401, ErrorCode.Unauthorized);
-  const license = await getLicense(db, product.slug, machine.license_id);
-  if (!licenseUsable(license, now)) return errorResponse(401, ErrorCode.Unauthorized);
+  if (!deviceId)
+    return errorResponse(400, ErrorCode.BadRequest, "missing device id");
+
+  const currentToken = bearer(req);
+  if (!currentToken) return errorResponse(401, ErrorCode.Unauthorized);
+  const currentTokenHash = await hashKey(currentToken, env.KEY_HASH_PEPPER);
+  const rec = await getTokenRecord(env, product.slug, currentTokenHash);
+  if (!rec || rec.product !== product.slug || rec.machineId !== deviceId) {
+    return errorResponse(401, ErrorCode.Unauthorized);
+  }
+
+  const machine = await getMachine(db, product.slug, rec.machineId);
+  if (!machine || machine.status !== "authorized")
+    return errorResponse(401, ErrorCode.Unauthorized);
+  if (
+    machine.license_id !== rec.licenseId ||
+    machine.token_hash !== currentTokenHash
+  ) {
+    return errorResponse(401, ErrorCode.Unauthorized);
+  }
+
+  const license = await getLicense(db, product.slug, rec.licenseId);
+  if (!licenseUsable(license, now))
+    return errorResponse(401, ErrorCode.Unauthorized);
 
   const token = mintToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  if (machine.token_hash && machine.token_hash !== tokenHash) {
-    await deleteTokenRecord(env, product.slug, machine.token_hash);
-  }
-  await upsertMachine(db, { ...machine, last_seen: now, token_hash: tokenHash });
+  await deleteTokenRecord(env, product.slug, currentTokenHash);
+  await upsertMachine(db, {
+    ...machine,
+    last_seen: now,
+    token_hash: tokenHash,
+  });
   await putTokenRecord(env, product.slug, tokenHash, {
     product: product.slug,
     machineId: deviceId,
@@ -244,9 +326,11 @@ export async function handleConfig(
   if (!rec) return errorResponse(401, ErrorCode.Unauthorized);
 
   const license = await getLicense(db, product.slug, rec.licenseId);
-  if (!licenseUsable(license, now)) return errorResponse(401, ErrorCode.Unauthorized);
+  if (!licenseUsable(license, now))
+    return errorResponse(401, ErrorCode.Unauthorized);
   const machine = await getMachine(db, product.slug, rec.machineId);
-  if (!machine || machine.status !== "authorized") return errorResponse(401, ErrorCode.Unauthorized);
+  if (!machine || machine.status !== "authorized")
+    return errorResponse(401, ErrorCode.Unauthorized);
 
   let payload = await resolveEffective(db, product.slug, license, machine);
 
@@ -256,7 +340,10 @@ export async function handleConfig(
   const schemaRow = await getActiveSchema(db, product.slug);
   if (schemaRow) {
     try {
-      payload = validatePayload(payload, new Catalog(JSON.parse(schemaRow.catalog_json)));
+      payload = validatePayload(
+        payload,
+        new Catalog(JSON.parse(schemaRow.catalog_json)),
+      );
     } catch {
       // An unparseable catalog is non-fatal here — fall back to the unfiltered payload.
     }
@@ -278,7 +365,8 @@ export async function handleConfig(
     });
   }
 
-  const maxOfflineDays = license.max_offline_days ?? product.defaultMaxOfflineDays;
+  const maxOfflineDays =
+    license.max_offline_days ?? product.defaultMaxOfflineDays;
   const doc = buildDoc({
     schemaVersion: product.schemaVersion,
     aud: product.slug,
@@ -296,7 +384,11 @@ export async function handleConfig(
   const jws = await signDoc(doc, product.signingKeyPem, product.signingKid);
   return new Response(jws, {
     status: 200,
-    headers: { "content-type": "application/jwt", etag, "cache-control": "no-store" },
+    headers: {
+      "content-type": "application/jwt",
+      etag,
+      "cache-control": "no-store",
+    },
   });
 }
 
@@ -320,7 +412,13 @@ export async function handleReport(
   } catch {
     return errorResponse(400, ErrorCode.BadRequest, "invalid body");
   }
-  await setMachineReported(db, product.slug, rec.machineId, JSON.stringify(snapshot ?? {}), now);
+  await setMachineReported(
+    db,
+    product.slug,
+    rec.machineId,
+    JSON.stringify(snapshot ?? {}),
+    now,
+  );
   return json({ ok: true });
 }
 

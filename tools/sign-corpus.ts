@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { signJws, base64UrlEncodeBytes } from "@polaris-key/jws";
+import { format } from "prettier";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORPUS_DIR = join(HERE, "..", "conformance", "corpus", "v1");
@@ -19,7 +20,15 @@ const OUT = join(CORPUS_DIR, "cases.json");
 /** The Swift test target bundles its fixtures as copied resources (it can't reach up the
  *  monorepo at test time). To keep those copies from drifting from the canonical corpus, the
  *  generator mirrors them here and `--check` guards the mirror exactly like the source. */
-const SWIFT_RESOURCES = join(HERE, "..", "sdks", "swift", "Tests", "PolarisKeyTests", "Resources");
+const SWIFT_RESOURCES = join(
+  HERE,
+  "..",
+  "sdks",
+  "swift",
+  "Tests",
+  "PolarisKeyTests",
+  "Resources",
+);
 const GATE_MATRIX = join(CORPUS_DIR, "gate-matrix.json");
 
 /** Committed TEST keypairs. These are NOT production keys — they exist only to sign the
@@ -53,7 +62,8 @@ function keyOf(kid: string): CorpusKey {
 }
 const pem = (kid: string): string => keyOf(kid).privateKeyPkcs8Pem;
 const pub = (kid: string): string => keyOf(kid).publicKeyRaw;
-const encSeg = (o: unknown): string => base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(o)));
+const encSeg = (o: unknown): string =>
+  base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(o)));
 
 /** The original djdl doc (NO aud/iss) — its bytes must reproduce the committed fixture. */
 const LEGACY_DOC = {
@@ -63,16 +73,33 @@ const LEGACY_DOC = {
   issuedAt: 1700000000,
   expiresAt: 1700003600,
   graceUntil: 1702592000,
-  profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@example.com", enrolledAt: 1690000000 },
+  profile: {
+    name: "Ada Lovelace",
+    firstName: "Ada",
+    email: "ada@example.com",
+    enrolledAt: 1690000000,
+  },
   payload: {
-    config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: 1699990000 } },
-    secrets: { "proxy.subscriptionUrl": { state: "hidden", value: "https://vpn.example.com/sub/abc", updatedAt: 1699990000 } },
-    entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: 1699990000 } },
+    config: {
+      "run.concurrency": { state: "enforced", value: 4, updatedAt: 1699990000 },
+    },
+    secrets: {
+      "proxy.subscriptionUrl": {
+        state: "hidden",
+        value: "https://vpn.example.com/sub/abc",
+        updatedAt: 1699990000,
+      },
+    },
+    entitlements: {
+      polarisVpn: { state: "enforced", value: true, updatedAt: 1699990000 },
+    },
   },
 } as const;
 
 /** A Polaris Key v1 doc — adds `aud` (product) + `iss`, the canonical field order. */
-function polarisDoc(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function polarisDoc(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
   return {
     schemaVersion: 1,
     aud: "djdl",
@@ -82,14 +109,33 @@ function polarisDoc(overrides: Record<string, unknown> = {}): Record<string, unk
     issuedAt: 1700000000,
     expiresAt: 1700003600,
     graceUntil: 1702592000,
-    profile: { name: "Grace Hopper", firstName: "Grace", email: "grace@example.com", enrolledAt: 1690000000 },
+    profile: {
+      name: "Grace Hopper",
+      firstName: "Grace",
+      email: "grace@example.com",
+      enrolledAt: 1690000000,
+    },
     payload: {
-      config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: 1699990000 } },
+      config: {
+        "run.concurrency": {
+          state: "enforced",
+          value: 4,
+          updatedAt: 1699990000,
+        },
+      },
       secrets: {},
       entitlements: {
         polarisVpn: { state: "enforced", value: true, updatedAt: 1699990000 },
-        channels: { state: "enforced", value: ["stable", "staging"], updatedAt: 1699990000 },
-        "app.minVersion": { state: "enforced", value: "1.0.0", updatedAt: 1699990000 },
+        channels: {
+          state: "enforced",
+          value: ["stable", "staging"],
+          updatedAt: 1699990000,
+        },
+        "app.minVersion": {
+          state: "enforced",
+          value: "1.0.0",
+          updatedAt: 1699990000,
+        },
       },
     },
     ...overrides,
@@ -114,10 +160,15 @@ async function build(): Promise<unknown> {
   const cases: CorpusCase[] = [];
 
   // 1. Legacy djdl baseline — reproduces the original fixture bytes exactly.
-  const legacyJws = await signJws(LEGACY_DOC, pem("djdl-test-2026"), "djdl-test-2026");
+  const legacyJws = await signJws(
+    LEGACY_DOC,
+    pem("djdl-test-2026"),
+    "djdl-test-2026",
+  );
   cases.push({
     id: "legacy-djdl-baseline",
-    description: "Original djdl cross-platform vector (no aud/iss) — proves the encoding is unchanged.",
+    description:
+      "Original djdl cross-platform vector (no aud/iss) — proves the encoding is unchanged.",
     jws: legacyJws,
     trust: { "djdl-test-2026": pub("djdl-test-2026") },
     expect: { verify: "ok", kid: "djdl-test-2026", doc: LEGACY_DOC },
@@ -125,7 +176,11 @@ async function build(): Promise<unknown> {
 
   // 2. Valid Polaris v1 doc under the prod-like test key.
   const validDoc = polarisDoc();
-  const validJws = await signJws(validDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  const validJws = await signJws(
+    validDoc,
+    pem("pkey-test-prod-2026"),
+    "pkey-test-prod-2026",
+  );
   cases.push({
     id: "valid-stable",
     description: "A valid Polaris v1 managed-config document (with aud/iss).",
@@ -137,7 +192,17 @@ async function build(): Promise<unknown> {
   // 3. Tampered payload — flip a value, keep the original signature.
   const [h, , s] = validJws.split(".") as [string, string, string];
   const tampered = polarisDoc({
-    payload: { config: { "run.concurrency": { state: "enforced", value: 999, updatedAt: 1699990000 } }, secrets: {}, entitlements: {} },
+    payload: {
+      config: {
+        "run.concurrency": {
+          state: "enforced",
+          value: 999,
+          updatedAt: 1699990000,
+        },
+      },
+      secrets: {},
+      entitlements: {},
+    },
   });
   cases.push({
     id: "tampered-payload",
@@ -148,7 +213,11 @@ async function build(): Promise<unknown> {
   });
 
   // 4. Unknown kid — signed by a key not present in the trust set.
-  const unknownJws = await signJws(validDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  const unknownJws = await signJws(
+    validDoc,
+    pem("pkey-test-prod-2026"),
+    "pkey-test-prod-2026",
+  );
   cases.push({
     id: "wrong-kid",
     description: "Valid signature, but the kid is absent from the trust set.",
@@ -182,7 +251,11 @@ async function build(): Promise<unknown> {
     "pkey-test-prod-2026": pub("pkey-test-prod-2026"),
   };
   const secondKeyDoc = polarisDoc({ licenseId: "lic_second_key" });
-  const secondKeyJws = await signJws(secondKeyDoc, pem("djdl-test-2026"), "djdl-test-2026");
+  const secondKeyJws = await signJws(
+    secondKeyDoc,
+    pem("djdl-test-2026"),
+    "djdl-test-2026",
+  );
   cases.push({
     id: "valid-second-key-multi-trust",
     description:
@@ -199,7 +272,11 @@ async function build(): Promise<unknown> {
     futureFeature: { tier: "gold", seats: 5 },
     unknownTopLevel: "ignored-by-old-clients",
   });
-  const forwardJws = await signJws(forwardDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  const forwardJws = await signJws(
+    forwardDoc,
+    pem("pkey-test-prod-2026"),
+    "pkey-test-prod-2026",
+  );
   cases.push({
     id: "valid-forward-compat-extra-fields",
     description:
@@ -224,7 +301,8 @@ async function build(): Promise<unknown> {
   // 10. Empty string — degenerate structural failure (zero segments).
   cases.push({
     id: "malformed-empty-string",
-    description: "An empty-string JWS — structurally invalid, must fail cleanly.",
+    description:
+      "An empty-string JWS — structurally invalid, must fail cleanly.",
     jws: "",
     trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
     expect: { verify: "fail" },
@@ -234,7 +312,8 @@ async function build(): Promise<unknown> {
   const [fh, fp, fs] = validJws.split(".") as [string, string, string];
   cases.push({
     id: "malformed-four-parts",
-    description: "A 4-segment JWS (extra trailing part) — structurally invalid, must fail.",
+    description:
+      "A 4-segment JWS (extra trailing part) — structurally invalid, must fail.",
     jws: `${fh}.${fp}.${fs}.extra`,
     trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
     expect: { verify: "fail" },
@@ -251,7 +330,11 @@ async function build(): Promise<unknown> {
       enrolledAt: 1690000000,
     },
   });
-  const unicodeJws = await signJws(unicodeDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  const unicodeJws = await signJws(
+    unicodeDoc,
+    pem("pkey-test-prod-2026"),
+    "pkey-test-prod-2026",
+  );
   cases.push({
     id: "valid-unicode-profile-name",
     description:
@@ -268,18 +351,30 @@ async function build(): Promise<unknown> {
     licenseId: "lic_v2_states",
     payload: {
       config: {
-        "run.concurrency": { state: "enforced", value: 4, updatedAt: 1699991111 },
+        "run.concurrency": {
+          state: "enforced",
+          value: 4,
+          updatedAt: 1699991111,
+        },
         "ui.theme": { state: "default", value: "dark", updatedAt: 1699992222 },
       },
       secrets: {
-        "proxy.subscriptionUrl": { state: "hidden", value: "https://vpn.example.com/sub/xyz", updatedAt: 1699993333 },
+        "proxy.subscriptionUrl": {
+          state: "hidden",
+          value: "https://vpn.example.com/sub/xyz",
+          updatedAt: 1699993333,
+        },
       },
       entitlements: {
         polarisVpn: { state: "enforced", value: true, updatedAt: 1699994444 },
       },
     },
   });
-  const v2StatesJws = await signJws(v2StatesDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  const v2StatesJws = await signJws(
+    v2StatesDoc,
+    pem("pkey-test-prod-2026"),
+    "pkey-test-prod-2026",
+  );
   cases.push({
     id: "valid-v2-management-states",
     description:
@@ -294,12 +389,24 @@ async function build(): Promise<unknown> {
   const updatedAtDoc = polarisDoc({
     licenseId: "lic_updated_at",
     payload: {
-      config: { "run.concurrency": { state: "enforced", value: 8, updatedAt: 1700123456 } },
+      config: {
+        "run.concurrency": {
+          state: "enforced",
+          value: 8,
+          updatedAt: 1700123456,
+        },
+      },
       secrets: {},
-      entitlements: { polarisVpn: { state: "default", value: false, updatedAt: 1700654321 } },
+      entitlements: {
+        polarisVpn: { state: "default", value: false, updatedAt: 1700654321 },
+      },
     },
   });
-  const updatedAtJws = await signJws(updatedAtDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  const updatedAtJws = await signJws(
+    updatedAtDoc,
+    pem("pkey-test-prod-2026"),
+    "pkey-test-prod-2026",
+  );
   cases.push({
     id: "valid-updated-at-roundtrip",
     description:
@@ -318,7 +425,8 @@ async function build(): Promise<unknown> {
   //     any signature math (no asymmetric-vs-symmetric / curve confusion).
   cases.push({
     id: "wrong-alg-es256",
-    description: "Header alg=ES256 against an Ed25519 trust set — rejected as algorithm confusion.",
+    description:
+      "Header alg=ES256 against an Ed25519 trust set — rejected as algorithm confusion.",
     jws: `${encSeg({ alg: "ES256", kid: "pkey-test-prod-2026" })}.${validHeaderless}`,
     trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
     expect: { verify: "fail" },
@@ -329,7 +437,8 @@ async function build(): Promise<unknown> {
   //     Must be rejected because alg !== EdDSA.
   cases.push({
     id: "wrong-alg-hs256",
-    description: "Header alg=HS256 (symmetric) against an Ed25519 trust set — rejected, no key-confusion.",
+    description:
+      "Header alg=HS256 (symmetric) against an Ed25519 trust set — rejected, no key-confusion.",
     jws: `${encSeg({ alg: "HS256", kid: "pkey-test-prod-2026" })}.${validHeaderless}`,
     trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
     expect: { verify: "fail" },
@@ -339,7 +448,8 @@ async function build(): Promise<unknown> {
   //     verify anything → null.
   cases.push({
     id: "empty-trust-set",
-    description: "A valid token verified with an empty trust set ({}) — no key can match, must be null.",
+    description:
+      "A valid token verified with an empty trust set ({}) — no key can match, must be null.",
     jws: validJws,
     trust: {},
     expect: { verify: "fail" },
@@ -350,7 +460,8 @@ async function build(): Promise<unknown> {
   //     here the trusted key bytes are genuine, just keyed under an unrelated kid.)
   cases.push({
     id: "foreign-kid-only",
-    description: "Valid token whose kid is absent from a non-empty (foreign-keyed) trust set — null.",
+    description:
+      "Valid token whose kid is absent from a non-empty (foreign-keyed) trust set — null.",
     jws: validJws,
     trust: { "fleet-key-eu-2027": pub("djdl-test-2026") },
     expect: { verify: "fail" },
@@ -366,14 +477,27 @@ async function build(): Promise<unknown> {
     issuedAt: MAX_SAFE - 2,
     expiresAt: MAX_SAFE - 1,
     graceUntil: MAX_SAFE,
-    profile: { name: "Grace Hopper", firstName: "Grace", email: "grace@example.com", enrolledAt: MAX_SAFE - 3 },
+    profile: {
+      name: "Grace Hopper",
+      firstName: "Grace",
+      email: "grace@example.com",
+      enrolledAt: MAX_SAFE - 3,
+    },
     payload: {
-      config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: MAX_SAFE } },
+      config: {
+        "run.concurrency": { state: "enforced", value: 4, updatedAt: MAX_SAFE },
+      },
       secrets: {},
-      entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: MAX_SAFE - 1 } },
+      entitlements: {
+        polarisVpn: { state: "enforced", value: true, updatedAt: MAX_SAFE - 1 },
+      },
     },
   });
-  const bigIntJws = await signJws(bigIntDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  const bigIntJws = await signJws(
+    bigIntDoc,
+    pem("pkey-test-prod-2026"),
+    "pkey-test-prod-2026",
+  );
   cases.push({
     id: "valid-large-integer-timestamps",
     description:
@@ -391,7 +515,8 @@ async function build(): Promise<unknown> {
   const [vh, vp, vs] = validJws.split(".") as [string, string, string];
   cases.push({
     id: "base64url-payload-padding",
-    description: "Payload segment carries a `=` base64url padding char — alters the signing input, must be rejected.",
+    description:
+      "Payload segment carries a `=` base64url padding char — alters the signing input, must be rejected.",
     jws: `${vh}.${vp}=.${vs}`,
     trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
     expect: { verify: "fail" },
@@ -401,7 +526,8 @@ async function build(): Promise<unknown> {
   //     payload change the signing input, so the (unchanged) signature no longer matches → null.
   cases.push({
     id: "base64url-payload-trailing-data",
-    description: "Trailing data appended to the payload segment — signing input differs, signature must fail.",
+    description:
+      "Trailing data appended to the payload segment — signing input differs, signature must fail.",
     jws: `${vh}.${vp}AAAA.${vs}`,
     trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
     expect: { verify: "fail" },
@@ -419,7 +545,11 @@ async function build(): Promise<unknown> {
       enrolledAt: 1690000000,
     },
   });
-  const nulByteJws = await signJws(nulByteDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  const nulByteJws = await signJws(
+    nulByteDoc,
+    pem("pkey-test-prod-2026"),
+    "pkey-test-prod-2026",
+  );
   cases.push({
     id: "valid-nul-byte-in-string",
     description:
@@ -458,7 +588,7 @@ function reconcile(path: string, content: string, check: boolean): boolean {
 async function main(): Promise<void> {
   const check = process.argv.includes("--check");
   const corpus = await build();
-  const content = JSON.stringify(corpus, null, 2) + "\n";
+  const content = await format(JSON.stringify(corpus), { parser: "json" });
 
   // The canonical corpus.
   let stale = reconcile(OUT, content, check);
@@ -472,9 +602,12 @@ async function main(): Promise<void> {
   } catch {
     gateMatrix = undefined;
   }
-  stale = reconcile(join(SWIFT_RESOURCES, "cases.json"), content, check) || stale;
+  stale =
+    reconcile(join(SWIFT_RESOURCES, "cases.json"), content, check) || stale;
   if (gateMatrix !== undefined) {
-    stale = reconcile(join(SWIFT_RESOURCES, "gate-matrix.json"), gateMatrix, check) || stale;
+    stale =
+      reconcile(join(SWIFT_RESOURCES, "gate-matrix.json"), gateMatrix, check) ||
+      stale;
   }
 
   if (check && stale) process.exit(1);

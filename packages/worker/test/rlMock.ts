@@ -29,23 +29,32 @@ class RlNamespaceMock {
     return { name } as unknown as DurableObjectId;
   }
 
-  get(id: DurableObjectId): { fetch: (input: string, init?: RequestInit) => Promise<Response> } {
+  get(id: DurableObjectId): {
+    fetch: (input: string, init?: RequestInit) => Promise<Response>;
+  } {
     const name = (id as unknown as { name: string }).name;
     let inst = this.instances.get(name);
     if (!inst) {
-      inst = new RateLimitDO(new StateMock() as unknown as DurableObjectState, {} as Env);
+      inst = new RateLimitDO(
+        new StateMock() as unknown as DurableObjectState,
+        {} as Env,
+      );
       this.instances.set(name, inst);
     }
     const target = inst;
     return {
       fetch: (input: string, init?: RequestInit) => {
-        const run = (): Promise<Response> => target.fetch(new Request(input, init) as unknown as Request);
+        const run = (): Promise<Response> =>
+          target.fetch(new Request(input, init) as unknown as Request);
         const prior = this.tails.get(name) ?? Promise.resolve();
         const result = prior.then(run, run);
-        this.tails.set(name, result.then(
-          () => undefined,
-          () => undefined,
-        ));
+        this.tails.set(
+          name,
+          result.then(
+            () => undefined,
+            () => undefined,
+          ),
+        );
         return result;
       },
     };

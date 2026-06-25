@@ -42,14 +42,23 @@ describe("Catalog", () => {
 
   it("looks up entries by key and kind", () => {
     expect(catalog.entryByKey("run.concurrency")?.kind).toBe("config");
-    expect(catalog.entriesByKind("secret").map((e) => e.key)).toEqual(["proxy.subscriptionUrl"]);
-    expect(catalog.entriesByKind("flag").map((e) => e.key)).toEqual(["polarisVpn"]);
+    expect(catalog.entriesByKind("secret").map((e) => e.key)).toEqual([
+      "proxy.subscriptionUrl",
+    ]);
+    expect(catalog.entriesByKind("flag").map((e) => e.key)).toEqual([
+      "polarisVpn",
+    ]);
     expect(catalog.categories()).toEqual(["Run", "VPN"]);
   });
 
   it("validates good values", () => {
     expect(catalog.validateKeyValue("run.concurrency", 4).ok).toBe(true);
-    expect(catalog.validateKeyValue("proxy.subscriptionUrl", "https://vpn.example.com/sub/x").ok).toBe(true);
+    expect(
+      catalog.validateKeyValue(
+        "proxy.subscriptionUrl",
+        "https://vpn.example.com/sub/x",
+      ).ok,
+    ).toBe(true);
     expect(catalog.validateKeyValue("polarisVpn", true).ok).toBe(true);
   });
 
@@ -60,7 +69,9 @@ describe("Catalog", () => {
   });
 
   it("rejects a malformed secret (not a uri)", () => {
-    expect(catalog.validateKeyValue("proxy.subscriptionUrl", "not a url").ok).toBe(false);
+    expect(
+      catalog.validateKeyValue("proxy.subscriptionUrl", "not a url").ok,
+    ).toBe(false);
   });
 
   it("rejects unknown keys (admins assign values, never invent keys)", () => {
@@ -166,9 +177,13 @@ describe("Catalog — JSON-Schema keyword validation", () => {
   });
 
   it("format uri + maxLength: accepts a URL, rejects garbage and over-length", () => {
-    expect(catalog.validateKeyValue("k.uri", "https://vpn.example.com/sub").ok).toBe(true);
+    expect(
+      catalog.validateKeyValue("k.uri", "https://vpn.example.com/sub").ok,
+    ).toBe(true);
     expect(catalog.validateKeyValue("k.uri", "not a uri").ok).toBe(false);
-    expect(catalog.validateKeyValue("k.uri", "https://" + "x".repeat(100)).ok).toBe(false);
+    expect(
+      catalog.validateKeyValue("k.uri", "https://" + "x".repeat(100)).ok,
+    ).toBe(false);
   });
 
   it("boolean: rejects non-booleans", () => {
@@ -202,13 +217,45 @@ describe("Catalog — ordering, dependsOn, idempotency", () => {
     const cat = new Catalog({
       schemaVersion: 1,
       entries: [
-        { key: "a", kind: "config", category: "X", label: "", description: "", schema: { type: "string" } },
-        { key: "b", kind: "config", category: "Y", label: "", description: "", schema: { type: "string" } },
-        { key: "c", kind: "secret", category: "X", label: "", description: "", schema: { type: "string" } },
-        { key: "d", kind: "config", category: "X", label: "", description: "", schema: { type: "string" } },
+        {
+          key: "a",
+          kind: "config",
+          category: "X",
+          label: "",
+          description: "",
+          schema: { type: "string" },
+        },
+        {
+          key: "b",
+          kind: "config",
+          category: "Y",
+          label: "",
+          description: "",
+          schema: { type: "string" },
+        },
+        {
+          key: "c",
+          kind: "secret",
+          category: "X",
+          label: "",
+          description: "",
+          schema: { type: "string" },
+        },
+        {
+          key: "d",
+          kind: "config",
+          category: "X",
+          label: "",
+          description: "",
+          schema: { type: "string" },
+        },
       ],
     });
-    expect(cat.entriesByKind("config").map((e) => e.key)).toEqual(["a", "b", "d"]);
+    expect(cat.entriesByKind("config").map((e) => e.key)).toEqual([
+      "a",
+      "b",
+      "d",
+    ]);
     expect(cat.entriesByKind("secret").map((e) => e.key)).toEqual(["c"]);
     expect(cat.entriesByKind("flag")).toEqual([]);
   });
@@ -217,10 +264,38 @@ describe("Catalog — ordering, dependsOn, idempotency", () => {
     const cat = new Catalog({
       schemaVersion: 1,
       entries: [
-        { key: "a", kind: "config", category: "Run", label: "", description: "", schema: {} },
-        { key: "b", kind: "config", category: "VPN", label: "", description: "", schema: {} },
-        { key: "c", kind: "config", category: "Run", label: "", description: "", schema: {} },
-        { key: "d", kind: "config", category: "Advanced", label: "", description: "", schema: {} },
+        {
+          key: "a",
+          kind: "config",
+          category: "Run",
+          label: "",
+          description: "",
+          schema: {},
+        },
+        {
+          key: "b",
+          kind: "config",
+          category: "VPN",
+          label: "",
+          description: "",
+          schema: {},
+        },
+        {
+          key: "c",
+          kind: "config",
+          category: "Run",
+          label: "",
+          description: "",
+          schema: {},
+        },
+        {
+          key: "d",
+          kind: "config",
+          category: "Advanced",
+          label: "",
+          description: "",
+          schema: {},
+        },
       ],
     });
     expect(cat.categories()).toEqual(["Run", "VPN", "Advanced"]);
@@ -230,7 +305,14 @@ describe("Catalog — ordering, dependsOn, idempotency", () => {
     const cat = new Catalog({
       schemaVersion: 1,
       entries: [
-        { key: "proxy.enabled", kind: "config", category: "VPN", label: "", description: "", schema: { type: "boolean" } },
+        {
+          key: "proxy.enabled",
+          kind: "config",
+          category: "VPN",
+          label: "",
+          description: "",
+          schema: { type: "boolean" },
+        },
         {
           key: "proxy.subscriptionUrl",
           kind: "secret",
@@ -245,7 +327,9 @@ describe("Catalog — ordering, dependsOn, idempotency", () => {
     const dep = cat.entryByKey("proxy.subscriptionUrl");
     expect(dep?.dependsOn).toEqual({ key: "proxy.enabled", equals: true });
     // dependsOn is presentation metadata — it does not gate value validation.
-    expect(cat.validateKeyValue("proxy.subscriptionUrl", "https://x.example/sub").ok).toBe(true);
+    expect(
+      cat.validateKeyValue("proxy.subscriptionUrl", "https://x.example/sub").ok,
+    ).toBe(true);
   });
 
   it("compileAll() is idempotent — repeat calls reuse compiled validators and still validate", () => {

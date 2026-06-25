@@ -111,7 +111,7 @@ Concretely, to add a config key or a wire-visible capability:
 4. **Implement in each SDK** — Node (`packages/sdk-node`), Python (`sdks/python`), Swift
    (`sdks/swift`), React (`packages/sdk-react`), and the Worker. Mirror the existing surface
    and the layered-config precedence (`enforced|hidden > local > env > remote-default >
-   fallback`).
+fallback`).
 5. **Verify parity** — run every conformance runner + the SDK test suites (the green-gate
    commands). Update the relevant README(s) and `docs/`.
 
@@ -122,9 +122,9 @@ expected verify outcomes — that **every** SDK and the Worker verify byte-for-b
 five independent implementations agree on the wire.
 
 - `tools/sign-corpus.ts` (run via `pnpm gen:corpus`) regenerates the corpus from a fixed key
-  + fixed cases. `pnpm gen:corpus -- --check` is the **drift gate**: it regenerates in memory
-  and fails if the committed `cases.json` differs. A red drift job means a wire-affecting
-  change wasn't reflected in the corpus — regenerate and commit it in the same PR.
+  - fixed cases. `pnpm gen:corpus -- --check` is the **drift gate**: it regenerates in memory
+    and fails if the committed `cases.json` differs. A red drift job means a wire-affecting
+    change wasn't reflected in the corpus — regenerate and commit it in the same PR.
 - Each runner (`conformance/runners/<lang>`, plus the Python/Swift test suites that read the
   corpus) asserts byte-identical verify outcomes. Never edit `cases.json` by hand; never
   weaken a runner to make a change "pass."

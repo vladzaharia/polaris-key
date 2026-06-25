@@ -1,12 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductCatalog } from "../src/api.js";
 import { resetCache } from "../src/context.js";
 
 // Mock the typed client so the view's `useResource(schema)` + publish path are scripted.
 const schema = vi.fn<(slug: string) => Promise<ProductCatalog>>();
-const publishSchema = vi.fn<(slug: string, c: ProductCatalog) => Promise<{ ok: true; schemaVersion: number }>>();
+const publishSchema =
+  vi.fn<
+    (
+      slug: string,
+      c: ProductCatalog,
+    ) => Promise<{ ok: true; schemaVersion: number }>
+  >();
 vi.mock("../src/api.js", () => ({
   api: {
     schema: (slug: string) => schema(slug),
@@ -56,8 +68,12 @@ beforeEach(() => {
   schema.mockReset();
   publishSchema.mockReset();
   schema.mockResolvedValue(CATALOG);
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { scrollIntoView: () => void }
+  ).scrollIntoView = () => undefined;
 });
 afterEach(cleanup);
 
@@ -94,7 +110,9 @@ describe("Catalog view", () => {
 
   it("shows an error state with a retry that re-fetches", async () => {
     schema.mockReset();
-    schema.mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce(CATALOG);
+    schema
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce(CATALOG);
     render(<Catalog slug="djdl" />);
 
     expect(await screen.findByText("Couldn’t load the catalog")).toBeTruthy();
@@ -107,14 +125,20 @@ describe("Catalog view", () => {
     render(<Catalog slug="djdl" />);
     await screen.findByText("Theme");
 
-    await userEvent.click(screen.getByRole("button", { name: /Publish new version/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Publish new version/ }),
+    );
 
     // The editor is seeded with the catalog at a bumped version.
-    const editor = (await screen.findByLabelText("Catalog JSON")) as HTMLTextAreaElement;
+    const editor = (await screen.findByLabelText(
+      "Catalog JSON",
+    )) as HTMLTextAreaElement;
     expect(editor.value).toContain('"schemaVersion": 4');
 
     const dialog = screen.getByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Publish" }),
+    );
 
     await waitFor(() => expect(publishSchema).toHaveBeenCalledTimes(1));
     const [calledSlug, calledCatalog] = publishSchema.mock.calls[0]!;
@@ -126,16 +150,22 @@ describe("Catalog view", () => {
   it("disables Publish and shows an error when the draft JSON is invalid", async () => {
     render(<Catalog slug="djdl" />);
     await screen.findByText("Theme");
-    await userEvent.click(screen.getByRole("button", { name: /Publish new version/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Publish new version/ }),
+    );
 
     const editor = await screen.findByLabelText("Catalog JSON");
     await userEvent.clear(editor);
     await userEvent.type(editor, "{{ not json");
 
     const dialog = screen.getByRole("dialog");
-    const publishBtn = within(dialog).getByRole("button", { name: "Publish" }) as HTMLButtonElement;
+    const publishBtn = within(dialog).getByRole("button", {
+      name: "Publish",
+    }) as HTMLButtonElement;
     expect(publishBtn.disabled).toBe(true);
-    expect(within(dialog).getByRole("alert").textContent).toMatch(/Invalid JSON/);
+    expect(within(dialog).getByRole("alert").textContent).toMatch(
+      /Invalid JSON/,
+    );
     expect(publishSchema).not.toHaveBeenCalled();
   });
 });

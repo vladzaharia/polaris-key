@@ -31,7 +31,13 @@ interface MockOpts {
 
 interface MockState {
   impl: typeof fetch;
-  calls: Array<{ path: string; method: string; ifNoneMatch: string | null; bearer: string | null }>;
+  calls: Array<{
+    path: string;
+    method: string;
+    ifNoneMatch: string | null;
+    bearer: string | null;
+    device: string | null;
+  }>;
   /** Count of /token re-acquires. */
   tokenCount: () => number;
   /** Count of /config/report posts. */
@@ -41,7 +47,10 @@ interface MockState {
 function mockFetch(opts: MockOpts = {}): MockState {
   const calls: MockState["calls"] = [];
   let reacquired = false;
-  const impl = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  const impl = (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
     const u = new URL(typeof input === "string" ? input : input.toString());
     const headers = new Headers(init?.headers);
     calls.push({
@@ -49,23 +58,32 @@ function mockFetch(opts: MockOpts = {}): MockState {
       method: init?.method ?? "GET",
       ifNoneMatch: headers.get("if-none-match"),
       bearer: headers.get("authorization"),
+      device: headers.get("x-pkey-device"),
     });
 
     if (u.pathname.endsWith("/enroll")) {
-      return new Response(JSON.stringify({ token: "pkeyt_enrolled", schemaVersion: 1 }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ token: "pkeyt_enrolled", schemaVersion: 1 }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
     }
     if (u.pathname.endsWith("/token")) {
       reacquired = true;
-      return new Response(JSON.stringify({ token: "pkeyt_reacquired", schemaVersion: 1 }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ token: "pkeyt_reacquired", schemaVersion: 1 }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
     }
-    if (u.pathname.endsWith("/config/report")) return new Response("{}", { status: 200 });
-    if (u.pathname.endsWith("/deauthorize")) return new Response("{}", { status: 200 });
+    if (u.pathname.endsWith("/config/report"))
+      return new Response("{}", { status: 200 });
+    if (u.pathname.endsWith("/deauthorize"))
+      return new Response("{}", { status: 200 });
     if (u.pathname.endsWith("/config")) {
       if (opts.configStatus === 403) {
         return new Response(JSON.stringify(opts.blockedBody), {
@@ -87,17 +105,39 @@ function mockFetch(opts: MockOpts = {}): MockState {
         issuedAt: now,
         expiresAt: now + 3600,
         graceUntil: now + 30 * 86400,
-        profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@example.com", enrolledAt: now },
+        profile: {
+          name: "Ada Lovelace",
+          firstName: "Ada",
+          email: "ada@example.com",
+          enrolledAt: now,
+        },
         payload: {
-          config: { "quality.floor": { state: "enforced", value: "flac", updatedAt: now } },
-          secrets: { "soundcloud.oauth": { state: "hidden", value: "tok", updatedAt: now } },
-          entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: now } },
+          config: {
+            "quality.floor": {
+              state: "enforced",
+              value: "flac",
+              updatedAt: now,
+            },
+          },
+          secrets: {
+            "soundcloud.oauth": {
+              state: "hidden",
+              value: "tok",
+              updatedAt: now,
+            },
+          },
+          entitlements: {
+            polarisVpn: { state: "enforced", value: true, updatedAt: now },
+          },
         },
       };
       const jws = await signJws(doc, TEST_PEM, TEST_KID);
       return new Response(jws, {
         status: 200,
-        headers: { "content-type": "application/jwt", etag: opts.etag ?? '"v1"' },
+        headers: {
+          "content-type": "application/jwt",
+          etag: opts.etag ?? '"v1"',
+        },
       });
     }
     return new Response("", { status: 404 });
@@ -107,13 +147,18 @@ function mockFetch(opts: MockOpts = {}): MockState {
     impl,
     calls,
     tokenCount: () => calls.filter((c) => c.path.endsWith("/token")).length,
-    reportCount: () => calls.filter((c) => c.path.endsWith("/config/report")).length,
+    reportCount: () =>
+      calls.filter((c) => c.path.endsWith("/config/report")).length,
   };
 }
 
 describe("PolarisKeyClient — enrollment + reads", () => {
   it("enroll → ok; reads config, entitlement, secret, profile", async () => {
-    const client = await PolarisKeyClient.create({ ...base, store: new InMemoryStore("djdl"), fetchImpl: mockFetch().impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore("djdl"),
+      fetchImpl: mockFetch().impl,
+    });
     expect(client.status().status).toBe("needs-enroll");
 
     const r = await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
@@ -131,7 +176,11 @@ describe("PolarisKeyClient — enrollment + reads", () => {
   });
 
   it("reads return fallbacks/null/empty when no doc is cached", async () => {
-    const client = await PolarisKeyClient.create({ ...base, store: new InMemoryStore("djdl"), fetchImpl: mockFetch().impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore("djdl"),
+      fetchImpl: mockFetch().impl,
+    });
     expect(client.getConfig("quality.floor", "def")).toBe("def");
     expect(client.getSecret("x")).toBeNull();
     expect(client.isEntitled("polarisVpn")).toBe(false);
@@ -144,7 +193,11 @@ describe("PolarisKeyClient — refresh / persistence", () => {
   it("activate persists the verified doc to the store and reports a snapshot", async () => {
     const store = new InMemoryStore("djdl");
     const m = mockFetch();
-    const client = await PolarisKeyClient.create({ ...base, store, fetchImpl: m.impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store,
+      fetchImpl: m.impl,
+    });
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
 
     const cache = await store.readCache();
@@ -154,12 +207,22 @@ describe("PolarisKeyClient — refresh / persistence", () => {
     expect(typeof cache?.lastVerifiedAt).toBe("number");
     // A report was posted after applying.
     expect(m.reportCount()).toBeGreaterThanOrEqual(1);
-    expect(m.calls.some((c) => c.path.endsWith("/config/report") && c.bearer === "Bearer pkeyt_enrolled")).toBe(true);
+    expect(
+      m.calls.some(
+        (c) =>
+          c.path.endsWith("/config/report") &&
+          c.bearer === "Bearer pkeyt_enrolled",
+      ),
+    ).toBe(true);
   });
 
   it("sends If-None-Match on the second refresh using the held etag", async () => {
     const m = mockFetch();
-    const client = await PolarisKeyClient.create({ ...base, store: new InMemoryStore("djdl"), fetchImpl: m.impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore("djdl"),
+      fetchImpl: m.impl,
+    });
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA"); // first /config: no etag
     const firstConfig = m.calls.find((c) => c.path.endsWith("/config"))!;
     expect(firstConfig.ifNoneMatch).toBeNull();
@@ -171,40 +234,66 @@ describe("PolarisKeyClient — refresh / persistence", () => {
 
   it("refresh is a no-op without a token", async () => {
     const m = mockFetch();
-    const client = await PolarisKeyClient.create({ ...base, store: new InMemoryStore("djdl"), fetchImpl: m.impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore("djdl"),
+      fetchImpl: m.impl,
+    });
     expect(await client.refresh()).toEqual({ applied: false });
     expect(m.calls.length).toBe(0);
   });
 
   it("performs exactly ONE /token re-acquire on a 401, then retries /config and applies", async () => {
     const m = mockFetch({ unauthorizedUntilReacquire: true });
-    const client = await PolarisKeyClient.create({ ...base, store: new InMemoryStore("djdl"), fetchImpl: m.impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore("djdl"),
+      fetchImpl: m.impl,
+    });
     // activate stores the token then forces a refresh → 401 → one /token → 200.
     const r = await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     expect(r.kind).toBe("ok");
     expect(client.status().status).toBe("ok");
     expect(m.tokenCount()).toBe(1); // exactly one re-acquire, no retry loop
+    const tokenCall = m.calls.find((c) => c.path.endsWith("/token"));
+    expect(tokenCall?.bearer).toBe("Bearer pkeyt_enrolled");
+    expect(tokenCall?.device).toBeTruthy();
   });
 
   it("a persistent 401 (re-acquire also fails to help) lands on revoked", async () => {
     // /token returns a token but /config keeps 401ing → after the single retry the
     // second /config (allowReacquire=false) returns 401 → unauthorized.
     const calls: string[] = [];
-    const impl = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    const impl = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ): Promise<Response> => {
       const u = new URL(typeof input === "string" ? input : input.toString());
       calls.push(u.pathname);
       if (u.pathname.endsWith("/enroll")) {
-        return new Response(JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }), { status: 200 });
+        return new Response(
+          JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }),
+          { status: 200 },
+        );
       }
       if (u.pathname.endsWith("/token")) {
-        return new Response(JSON.stringify({ token: "pkeyt_r", schemaVersion: 1 }), { status: 200 });
+        return new Response(
+          JSON.stringify({ token: "pkeyt_r", schemaVersion: 1 }),
+          { status: 200 },
+        );
       }
-      if (u.pathname.endsWith("/config/report")) return new Response("{}", { status: 200 });
-      if (u.pathname.endsWith("/config")) return new Response("", { status: 401 });
+      if (u.pathname.endsWith("/config/report"))
+        return new Response("{}", { status: 200 });
+      if (u.pathname.endsWith("/config"))
+        return new Response("", { status: 401 });
       return new Response("", { status: 404 });
     }) as typeof fetch;
 
-    const client = await PolarisKeyClient.create({ ...base, store: new InMemoryStore("djdl"), fetchImpl: impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore("djdl"),
+      fetchImpl: impl,
+    });
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     expect(client.status().status).toBe("revoked");
     // Exactly one /token attempt despite repeated 401s.
@@ -215,7 +304,13 @@ describe("PolarisKeyClient — refresh / persistence", () => {
     const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore("djdl"),
-      fetchImpl: mockFetch({ configStatus: 403, blockedBody: { reason: "version-too-old", allowedRange: { min: "2.0.0" } } }).impl,
+      fetchImpl: mockFetch({
+        configStatus: 403,
+        blockedBody: {
+          reason: "version-too-old",
+          allowedRange: { min: "2.0.0" },
+        },
+      }).impl,
     });
     const r = await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     expect(r.kind).toBe("ok"); // enroll still succeeded; the block is on /config
@@ -228,13 +323,20 @@ describe("PolarisKeyClient — refresh / persistence", () => {
   it("not-modified keeps the existing cached doc and clears any prior block", async () => {
     // First populate the cache via a normal 200, then a refresh that 304s.
     let phase: "ok" | "notmod" = "ok";
-    const impl = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    const impl = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ): Promise<Response> => {
       const u = new URL(typeof input === "string" ? input : input.toString());
       const headers = new Headers(init?.headers);
       if (u.pathname.endsWith("/enroll")) {
-        return new Response(JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }), { status: 200 });
+        return new Response(
+          JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }),
+          { status: 200 },
+        );
       }
-      if (u.pathname.endsWith("/config/report")) return new Response("{}", { status: 200 });
+      if (u.pathname.endsWith("/config/report"))
+        return new Response("{}", { status: 200 });
       if (u.pathname.endsWith("/config")) {
         if (phase === "notmod") return new Response(null, { status: 304 });
         const device = headers.get("x-pkey-device") ?? "d";
@@ -248,15 +350,37 @@ describe("PolarisKeyClient — refresh / persistence", () => {
           issuedAt: now,
           expiresAt: now + 3600,
           graceUntil: now + 30 * 86400,
-          profile: { name: "Ada", firstName: "Ada", email: "a@b.c", enrolledAt: now },
-          payload: { config: { "quality.floor": { state: "enforced", value: "flac", updatedAt: now } }, secrets: {}, entitlements: {} },
+          profile: {
+            name: "Ada",
+            firstName: "Ada",
+            email: "a@b.c",
+            enrolledAt: now,
+          },
+          payload: {
+            config: {
+              "quality.floor": {
+                state: "enforced",
+                value: "flac",
+                updatedAt: now,
+              },
+            },
+            secrets: {},
+            entitlements: {},
+          },
         };
-        return new Response(await signJws(doc, TEST_PEM, TEST_KID), { status: 200, headers: { etag: '"v1"' } });
+        return new Response(await signJws(doc, TEST_PEM, TEST_KID), {
+          status: 200,
+          headers: { etag: '"v1"' },
+        });
       }
       return new Response("", { status: 404 });
     }) as typeof fetch;
 
-    const client = await PolarisKeyClient.create({ ...base, store: new InMemoryStore("djdl"), fetchImpl: impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore("djdl"),
+      fetchImpl: impl,
+    });
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     expect(client.getConfig("quality.floor", "x")).toBe("flac");
 
@@ -283,15 +407,29 @@ describe("PolarisKeyClient — offline-first init", () => {
       issuedAt: now,
       expiresAt: now + 3600,
       graceUntil: now + 30 * 86400,
-      profile: { name: "Ada", firstName: "Ada", email: "a@b.c", enrolledAt: now },
+      profile: {
+        name: "Ada",
+        firstName: "Ada",
+        email: "a@b.c",
+        enrolledAt: now,
+      },
       payload: {
-        config: { "quality.floor": { state: "enforced", value: "mp3", updatedAt: now } },
+        config: {
+          "quality.floor": { state: "enforced", value: "mp3", updatedAt: now },
+        },
         secrets: {},
-        entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: now } },
+        entitlements: {
+          polarisVpn: { state: "enforced", value: true, updatedAt: now },
+        },
       },
     };
     await store.setToken("pkeyt_cached");
-    const rec: CacheRecord = { doc, etag: '"v1"', lastAcceptedIssuedAt: now, lastVerifiedAt: now * 1000 };
+    const rec: CacheRecord = {
+      doc,
+      etag: '"v1"',
+      lastAcceptedIssuedAt: now,
+      lastVerifiedAt: now * 1000,
+    };
     await store.writeCache(rec);
 
     // A fetch that throws if EVER called — proving init() touches no network.
@@ -299,7 +437,11 @@ describe("PolarisKeyClient — offline-first init", () => {
       throw new Error("network must not be used during init");
     }) as unknown as typeof fetch;
 
-    const client = await PolarisKeyClient.create({ ...base, store, fetchImpl: exploding });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store,
+      fetchImpl: exploding,
+    });
     expect(client.status().status).toBe("ok");
     expect(client.isLicensed()).toBe(true);
     expect(client.getConfig("quality.floor", "x")).toBe("mp3");
@@ -311,7 +453,11 @@ describe("PolarisKeyClient — deactivate", () => {
   it("deactivate POSTs /deauthorize, wipes the store, and resets to needs-enroll", async () => {
     const store = new InMemoryStore("djdl");
     const m = mockFetch();
-    const client = await PolarisKeyClient.create({ ...base, store, fetchImpl: m.impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store,
+      fetchImpl: m.impl,
+    });
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     expect(client.status().status).toBe("ok");
 
@@ -319,7 +465,11 @@ describe("PolarisKeyClient — deactivate", () => {
     expect(client.status().status).toBe("needs-enroll");
     expect(await store.getToken()).toBeNull();
     expect(await store.readCache()).toBeNull();
-    expect(m.calls.some((c) => c.path.endsWith("/deauthorize") && c.method === "POST")).toBe(true);
+    expect(
+      m.calls.some(
+        (c) => c.path.endsWith("/deauthorize") && c.method === "POST",
+      ),
+    ).toBe(true);
   });
 
   it("deactivate works offline (deauthorize swallows the error) and still wipes locally", async () => {
@@ -329,7 +479,10 @@ describe("PolarisKeyClient — deactivate", () => {
       const u = new URL(typeof input === "string" ? input : input.toString());
       if (u.pathname.endsWith("/enroll")) {
         enrolled = true;
-        return new Response(JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }), { status: 200 });
+        return new Response(
+          JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }),
+          { status: 200 },
+        );
       }
       if (u.pathname.endsWith("/config") && enrolled) {
         const now = Math.floor(Date.now() / 1000);
@@ -342,17 +495,30 @@ describe("PolarisKeyClient — deactivate", () => {
           issuedAt: now,
           expiresAt: now + 3600,
           graceUntil: now + 30 * 86400,
-          profile: { name: "A", firstName: "A", email: "a@b.c", enrolledAt: now },
+          profile: {
+            name: "A",
+            firstName: "A",
+            email: "a@b.c",
+            enrolledAt: now,
+          },
           payload: { config: {}, secrets: {}, entitlements: {} },
         };
-        return new Response(await signJws(doc, TEST_PEM, TEST_KID), { status: 200, headers: { etag: '"v1"' } });
+        return new Response(await signJws(doc, TEST_PEM, TEST_KID), {
+          status: 200,
+          headers: { etag: '"v1"' },
+        });
       }
-      if (u.pathname.endsWith("/config/report")) return new Response("{}", { status: 200 });
+      if (u.pathname.endsWith("/config/report"))
+        return new Response("{}", { status: 200 });
       if (u.pathname.endsWith("/deauthorize")) throw new Error("offline");
       return new Response("", { status: 404 });
     }) as typeof fetch;
 
-    const client = await PolarisKeyClient.create({ ...base, store, fetchImpl: impl });
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store,
+      fetchImpl: impl,
+    });
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     await client.deactivate(); // /deauthorize throws but is swallowed
     expect(client.status().status).toBe("needs-enroll");
@@ -363,7 +529,12 @@ describe("PolarisKeyClient — deactivate", () => {
 describe("PolarisKeyClient — channel derivation", () => {
   it("derives the channel from the version when not given explicitly", async () => {
     const m = mockFetch();
-    const client = new PolarisKeyClient({ ...base, version: "0.0.0-staging+abc", store: new InMemoryStore("djdl"), fetchImpl: m.impl });
+    const client = new PolarisKeyClient({
+      ...base,
+      version: "0.0.0-staging+abc",
+      store: new InMemoryStore("djdl"),
+      fetchImpl: m.impl,
+    });
     await client.init();
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     // The /config request carries the derived channel header.

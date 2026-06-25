@@ -9,7 +9,13 @@
 // shape-identical to a desktop one. `submitKey` is intentionally unsupported (OIDC-only).
 
 import type { BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
-import { configSource, listUserConfig, projectState, readConfig, readEntitled } from "../core/adapter.js";
+import {
+  configSource,
+  listUserConfig,
+  projectState,
+  readConfig,
+  readEntitled,
+} from "../core/adapter.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -46,7 +52,10 @@ interface SessionResponse {
   /** The verified managed-config doc (already validated server-side for the session). */
   doc: ManagedConfigDoc | null;
   /** A 403-equivalent block, surfaced inline rather than as an HTTP error. */
-  blocked?: { reason: BlockReason; allowedRange?: { min?: string; max?: string } };
+  blocked?: {
+    reason: BlockReason;
+    allowedRange?: { min?: string; max?: string };
+  };
   /** A CSRF token to echo back on writes (sign-out). */
   csrfToken?: string;
 }
@@ -76,7 +85,9 @@ export class BrowserAdapter implements PolarisAdapter {
       });
     this.clock = opts.now ?? nowSec;
     this.localOverrides = opts.localOverrides ?? {};
-    this.store = createStore<PolarisState>(initialState("browser", this.localOverrides));
+    this.store = createStore<PolarisState>(
+      initialState("browser", this.localOverrides),
+    );
     void this.load();
   }
 
@@ -92,7 +103,10 @@ export class BrowserAdapter implements PolarisAdapter {
     return `${this.base}/${this.product}${path}`;
   }
 
-  private apply(s: SessionResponse, flags: { busy?: boolean; error?: PolarisError | null } = {}): void {
+  private apply(
+    s: SessionResponse,
+    flags: { busy?: boolean; error?: PolarisError | null } = {},
+  ): void {
     if (s.csrfToken) this.csrf = s.csrfToken;
     this.hadSession = s.authenticated;
     this.store.set(
@@ -133,9 +147,17 @@ export class BrowserAdapter implements PolarisAdapter {
     try {
       this.apply(await this.fetchSession());
     } catch (e) {
-      const err = e instanceof PolarisError ? e : new PolarisError("network", (e as Error).message);
+      const err =
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("network", (e as Error).message);
       this.store.set(() =>
-        projectState("browser", null, { hasToken: false, now: this.clock() }, { error: err, localOverrides: this.localOverrides }),
+        projectState(
+          "browser",
+          null,
+          { hasToken: false, now: this.clock() },
+          { error: err, localOverrides: this.localOverrides },
+        ),
       );
     }
   }
@@ -162,7 +184,10 @@ export class BrowserAdapter implements PolarisAdapter {
       }
       this.apply(s);
     } catch (e) {
-      const err = e instanceof PolarisError ? e : new PolarisError("refresh-failed", (e as Error).message);
+      const err =
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("refresh-failed", (e as Error).message);
       this.store.set((prev) => ({ ...prev, busy: false, error: err }));
       throw err;
     }
@@ -171,7 +196,8 @@ export class BrowserAdapter implements PolarisAdapter {
   async signInWithOidc(): Promise<void> {
     // Full-page redirect to the Worker's OIDC entrypoint; it round-trips back with a
     // set-cookie. The page unloads, so this Promise intentionally never resolves.
-    const ret = typeof window !== "undefined" ? window.location.href : this.base;
+    const ret =
+      typeof window !== "undefined" ? window.location.href : this.base;
     const target = `${this.url("/auth/login")}?return_to=${encodeURIComponent(ret)}`;
     this.navigate(target);
   }
@@ -200,10 +226,18 @@ export class BrowserAdapter implements PolarisAdapter {
       this.csrf = null;
       this.hadSession = false;
       this.store.set(() =>
-        projectState("browser", null, { hasToken: false, now: this.clock() }, { localOverrides: this.localOverrides }),
+        projectState(
+          "browser",
+          null,
+          { hasToken: false, now: this.clock() },
+          { localOverrides: this.localOverrides },
+        ),
       );
     } catch (e) {
-      const err = e instanceof PolarisError ? e : new PolarisError("sign-out-failed", (e as Error).message);
+      const err =
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("sign-out-failed", (e as Error).message);
       this.store.set((prev) => ({ ...prev, busy: false, error: err }));
       throw err;
     }

@@ -77,13 +77,18 @@ function main(): void {
     console.error("usage: gen-seed <product-dir>");
     process.exit(2);
   }
-  const product = JSON.parse(readFileSync(join(dir, "product.json"), "utf8")) as ProductDef;
+  const product = JSON.parse(
+    readFileSync(join(dir, "product.json"), "utf8"),
+  ) as ProductDef;
   const catalogRaw = readFileSync(join(dir, "catalog.json"), "utf8");
   // Sanity-check the catalog (throws on a malformed schema fragment).
   new Catalog(JSON.parse(catalogRaw) as ProductCatalog).compileAll();
   const now = Math.floor(Date.now() / 1000);
   const p = product.slug;
-  const out: string[] = [`-- Polaris Key seed for product '${p}' (generated).`, "PRAGMA foreign_keys = OFF;"];
+  const out: string[] = [
+    `-- Polaris Key seed for product '${p}' (generated).`,
+    "PRAGMA foreign_keys = OFF;",
+  ];
 
   out.push(
     `INSERT INTO products (slug,name,signing_kid,signing_key_secret,signing_pub,compat_min,compat_max,default_max_offline_days,default_machine_limit,admin_group,branding_json,created_at,modified_at) VALUES (${q(p)},${q(product.name)},${q(product.signingKid)},${q(product.signingKeySecret)},${q(product.signingPub)},${q(product.compatMin)},${q(product.compatMax)},${product.defaultMaxOfflineDays},${product.defaultMachineLimit},${q(product.adminGroup)},NULL,${now},${now});`,

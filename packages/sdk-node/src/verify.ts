@@ -12,7 +12,10 @@ export interface VerifyOptions {
   lastAcceptedIssuedAt?: number;
 }
 
-export async function verifyDoc(jws: string, opts: VerifyOptions): Promise<ManagedConfigDoc | null> {
+export async function verifyDoc(
+  jws: string,
+  opts: VerifyOptions,
+): Promise<ManagedConfigDoc | null> {
   // The JWS payload size cap (MAX_DOC_BYTES = 65536) is enforced inside `verifyJws`,
   // which rejects (returns null) an oversized payload BEFORE JSON.parse — a JSON-parse
   // memory-DoS guard. This SDK never re-parses the payload here, so no local cap is needed.
@@ -21,7 +24,10 @@ export async function verifyDoc(jws: string, opts: VerifyOptions): Promise<Manag
   const doc = v.payload;
   if (doc.aud !== opts.expectedAud) return null;
   if (doc.deviceId !== opts.deviceId) return null;
-  if (opts.lastAcceptedIssuedAt !== undefined && doc.issuedAt <= opts.lastAcceptedIssuedAt) {
+  if (
+    opts.lastAcceptedIssuedAt !== undefined &&
+    doc.issuedAt <= opts.lastAcceptedIssuedAt
+  ) {
     return null;
   }
   return doc;

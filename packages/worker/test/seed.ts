@@ -5,7 +5,14 @@ import { fileURLToPath } from "node:url";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
-import { insertKey, insertLicense, insertProduct, insertProductKey, insertSchema, upsertProductSecret } from "../src/repo.js";
+import {
+  insertKey,
+  insertLicense,
+  insertProduct,
+  insertProductKey,
+  insertSchema,
+  upsertProductSecret,
+} from "../src/repo.js";
 import { hashKey, mintLicenseKey } from "../src/crypto.js";
 import { seal } from "../src/keyvault.js";
 import { KvMock, asKv } from "./kvMock.js";
@@ -25,7 +32,8 @@ export const TEST_KEK = btoa("\0".repeat(32));
 
 export const NOW = 1_700_000_000;
 
-const secretName = (slug: string): string => `SIGNING_KEY__${slug.toUpperCase().replace(/-/g, "_")}`;
+const secretName = (slug: string): string =>
+  `SIGNING_KEY__${slug.toUpperCase().replace(/-/g, "_")}`;
 
 /** An Env whose KV is the mock, whose PLATFORM_KEK is the test KEK, and whose per-product
  *  signing-key worker secrets are all the test key (kept harmlessly for legacy paths). */
@@ -106,7 +114,10 @@ export async function seedProductSecret(
 /** The real djdl product catalog (from products/djdl/catalog.json) — used by tests that
  *  exercise handleConfig's catalog-driven validation against actual declared keys. */
 export const DJDL_CATALOG: unknown = JSON.parse(
-  readFileSync(join(HERE, "..", "..", "..", "products", "djdl", "catalog.json"), "utf8"),
+  readFileSync(
+    join(HERE, "..", "..", "..", "products", "djdl", "catalog.json"),
+    "utf8",
+  ),
 );
 
 /** Seed a tier row (with optional admin channel/version policy). */
@@ -114,15 +125,27 @@ export async function seedTier(
   db: Db,
   slug: string,
   id: string,
-  opts: { channels?: string[]; minVersion?: string | null; maxVersion?: string | null } = {},
+  opts: {
+    channels?: string[];
+    minVersion?: string | null;
+    maxVersion?: string | null;
+  } = {},
 ): Promise<void> {
   await db.run(
     `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit,
        channels_json, min_version, max_version, modified_by, modified_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    slug, id, id, null, null, null,
+    slug,
+    id,
+    id,
+    null,
+    null,
+    null,
     opts.channels ? JSON.stringify(opts.channels) : null,
-    opts.minVersion ?? null, opts.maxVersion ?? null, null, NOW,
+    opts.minVersion ?? null,
+    opts.maxVersion ?? null,
+    null,
+    NOW,
   );
 }
 

@@ -45,7 +45,10 @@ export function envVarName(envPrefix: string, key: string): string {
 
 /** Read a key from the environment, JSON-parsing when the value looks like JSON, else
  *  returning the raw string. Returns `undefined` when the var is unset. */
-export function readEnvValue(ctx: ResolveContext, key: string): JSONValue | undefined {
+export function readEnvValue(
+  ctx: ResolveContext,
+  key: string,
+): JSONValue | undefined {
   const raw = ctx.env[envVarName(ctx.envPrefix, key)];
   if (raw === undefined) return undefined;
   return looksLikeJson(raw) ? safeJsonParse(raw) : raw;
@@ -74,7 +77,8 @@ export function resolveSource(ctx: ResolveContext, key: string): ConfigSource {
   if (entry && entry.state === "enforced") return "enforced";
   if (entry && entry.state === "hidden") return "hidden";
   // `default` or absent → layered overrides.
-  if (Object.prototype.hasOwnProperty.call(ctx.localOverrides, key)) return "local";
+  if (Object.prototype.hasOwnProperty.call(ctx.localOverrides, key))
+    return "local";
   if (readEnvValue(ctx, key) !== undefined) return "env";
   if (entry) return "remote-default";
   return "fallback";
@@ -82,12 +86,17 @@ export function resolveSource(ctx: ResolveContext, key: string): ConfigSource {
 
 /** Resolve the effective value for a key, honoring management state + the override layers.
  *  Returns `undefined` only when nothing matched (the caller substitutes its fallback). */
-export function resolveValue(ctx: ResolveContext, key: string): JSONValue | undefined {
+export function resolveValue(
+  ctx: ResolveContext,
+  key: string,
+): JSONValue | undefined {
   const entry = ctx.remote?.[key];
   // enforced | hidden → the remote value is locked; local/env are ignored.
-  if (entry && (entry.state === "enforced" || entry.state === "hidden")) return entry.value;
+  if (entry && (entry.state === "enforced" || entry.state === "hidden"))
+    return entry.value;
   // default | absent → local > env > remote-default > (caller's fallback).
-  if (Object.prototype.hasOwnProperty.call(ctx.localOverrides, key)) return ctx.localOverrides[key];
+  if (Object.prototype.hasOwnProperty.call(ctx.localOverrides, key))
+    return ctx.localOverrides[key];
   const envValue = readEnvValue(ctx, key);
   if (envValue !== undefined) return envValue;
   if (entry) return entry.value;
@@ -96,7 +105,9 @@ export function resolveValue(ctx: ResolveContext, key: string): JSONValue | unde
 
 /** Build the user-facing catalog list (for settings UIs): every remote entry MINUS the
  *  `hidden` ones, each marked with whether it is `enforced` (read-only in the UI). */
-export function listUserEntries(remote: Record<string, ManagedEntry> | undefined): UserConfigEntry[] {
+export function listUserEntries(
+  remote: Record<string, ManagedEntry> | undefined,
+): UserConfigEntry[] {
   const out: UserConfigEntry[] = [];
   for (const [key, entry] of Object.entries(remote ?? {})) {
     if (entry.state === "hidden") continue;

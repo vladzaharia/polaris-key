@@ -67,7 +67,10 @@ function b64url(bytes: Uint8Array): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+  return b.buffer.slice(
+    b.byteOffset,
+    b.byteOffset + b.byteLength,
+  ) as ArrayBuffer;
 }
 function randomBytes(n: number): Uint8Array {
   const a = new Uint8Array(n);
@@ -76,15 +79,30 @@ function randomBytes(n: number): Uint8Array {
 }
 async function pkce(): Promise<{ verifier: string; challenge: string }> {
   const verifier = b64url(randomBytes(32));
-  const digest = await crypto.subtle.digest("SHA-256", toAB(new TextEncoder().encode(verifier)));
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    toAB(new TextEncoder().encode(verifier)),
+  );
   return { verifier, challenge: b64url(new Uint8Array(digest)) };
 }
 
-async function getOidcConfig(db: Db, product: string): Promise<OidcConfigRow | null> {
-  return db.first<OidcConfigRow>("SELECT * FROM oidc_config WHERE product = ?", product);
+async function getOidcConfig(
+  db: Db,
+  product: string,
+): Promise<OidcConfigRow | null> {
+  return db.first<OidcConfigRow>(
+    "SELECT * FROM oidc_config WHERE product = ?",
+    product,
+  );
 }
-async function getProvisioning(db: Db, product: string): Promise<ProvisioningRow[]> {
-  return db.all<ProvisioningRow>("SELECT * FROM provisioning_config WHERE product = ?", product);
+async function getProvisioning(
+  db: Db,
+  product: string,
+): Promise<ProvisioningRow[]> {
+  return db.all<ProvisioningRow>(
+    "SELECT * FROM provisioning_config WHERE product = ?",
+    product,
+  );
 }
 
 function flowKey(product: string, state: string): string {
@@ -121,15 +139,27 @@ export async function applyProvisioning(
   const hooks = await getProvisioning(db, product);
   for (const h of hooks) {
     const claimVal = identity.claims[h.claim];
-    if (claimVal === undefined || claimVal === null || claimVal === false) continue;
+    if (claimVal === undefined || claimVal === null || claimVal === false)
+      continue;
     if (h.entitlement_key) {
-      const value = h.entitlement_value_json ? (JSON.parse(h.entitlement_value_json) as ManagedEntry["value"]) : true;
-      payload.entitlements[h.entitlement_key] = { state: "enforced", value, updatedAt: now };
+      const value = h.entitlement_value_json
+        ? (JSON.parse(h.entitlement_value_json) as ManagedEntry["value"])
+        : true;
+      payload.entitlements[h.entitlement_key] = {
+        state: "enforced",
+        value,
+        updatedAt: now,
+      };
     }
     if (h.secret_key && h.secret_url_template) {
-      const url = h.secret_url_template.replace("{claim}", encodeURIComponent(String(claimVal)));
+      const url = h.secret_url_template.replace(
+        "{claim}",
+        encodeURIComponent(String(claimVal)),
+      );
       // Host allowlist (defense against templated-secret injection).
-      const allowed = h.allowed_hosts_json ? (JSON.parse(h.allowed_hosts_json) as string[]) : null;
+      const allowed = h.allowed_hosts_json
+        ? (JSON.parse(h.allowed_hosts_json) as string[])
+        : null;
       if (allowed) {
         try {
           if (!allowed.includes(new URL(url).host)) continue;
@@ -137,7 +167,11 @@ export async function applyProvisioning(
           continue;
         }
       }
-      payload.secrets[h.secret_key] = { state: "hidden", value: url, updatedAt: now };
+      payload.secrets[h.secret_key] = {
+        state: "hidden",
+        value: url,
+        updatedAt: now,
+      };
     }
   }
 }
@@ -155,7 +189,10 @@ export async function enrollFromIdentity(
 
   const oidc = await getOidcConfig(db, product.slug);
   const map = oidc?.group_role_map_json
-    ? (JSON.parse(oidc.group_role_map_json) as Record<string, { role: string; tier?: string }>)
+    ? (JSON.parse(oidc.group_role_map_json) as Record<
+        string,
+        { role: string; tier?: string }
+      >)
     : {};
 
   let entitled = false;
@@ -172,10 +209,15 @@ export async function enrollFromIdentity(
   let expiresAt: number | null = null;
   if (tierId) {
     const tier = await getTier(db, product.slug, tierId);
-    if (tier?.policy_expiry_days) expiresAt = now + tier.policy_expiry_days * 86400;
+    if (tier?.policy_expiry_days)
+      expiresAt = now + tier.policy_expiry_days * 86400;
   }
 
-  const overrides: ManagedPayload = { config: {}, secrets: {}, entitlements: {} };
+  const overrides: ManagedPayload = {
+    config: {},
+    secrets: {},
+    entitlements: {},
+  };
   await applyProvisioning(db, product.slug, identity, overrides, now);
 
   const licenseId = randomId("lic");
@@ -237,9 +279,15 @@ export async function authorizeAndMint(
 
 // ── HTTP handlers ────────────────────────────────────────────────────────────
 /** GET /<product>/auth/start — begin PKCE, redirect to the IdP authorize endpoint. */
-export async function handleAuthStart(req: Request, env: Env, db: Db, product: Product): Promise<Response> {
+export async function handleAuthStart(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+): Promise<Response> {
   const oidc = await getOidcConfig(db, product.slug);
-  if (!oidc?.issuer || !oidc.client_id) return errorResponse(500, "misconfigured", "no oidc config");
+  if (!oidc?.issuer || !oidc.client_id)
+    return errorResponse(500, "misconfigured", "no oidc config");
   const state = b64url(randomBytes(16));
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
@@ -248,7 +296,9 @@ export async function handleAuthStart(req: Request, env: Env, db: Db, product: P
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
   const flow: FlowRecord = { verifier, nonce, redirectUri };
-  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), { expirationTtl: FLOW_TTL_SECONDS });
+  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
 
   const authorize = new URL(`${oidc.issuer.replace(/\/$/, "")}/authorize`);
   authorize.searchParams.set("response_type", "code");
@@ -259,14 +309,22 @@ export async function handleAuthStart(req: Request, env: Env, db: Db, product: P
   authorize.searchParams.set("nonce", nonce);
   authorize.searchParams.set("code_challenge", challenge);
   authorize.searchParams.set("code_challenge_method", "S256");
-  return new Response(null, { status: 302, headers: { location: authorize.toString() } });
+  return new Response(null, {
+    status: 302,
+    headers: { location: authorize.toString() },
+  });
 }
 
 function mapClaims(payload: Record<string, unknown>): OidcIdentity {
-  const groups = Array.isArray(payload.groups) ? (payload.groups.filter((g) => typeof g === "string") as string[]) : [];
+  const groups = Array.isArray(payload.groups)
+    ? (payload.groups.filter((g) => typeof g === "string") as string[])
+    : [];
   const name =
     (typeof payload.name === "string" && payload.name) ||
-    [payload.given_name, payload.family_name].filter((s) => typeof s === "string").join(" ").trim() ||
+    [payload.given_name, payload.family_name]
+      .filter((s) => typeof s === "string")
+      .join(" ")
+      .trim() ||
     (typeof payload.email === "string" ? payload.email : "");
   return {
     sub: String(payload.sub ?? ""),
@@ -278,16 +336,24 @@ function mapClaims(payload: Record<string, unknown>): OidcIdentity {
 }
 
 /** GET /<product>/auth/callback — exchange the code, verify the ID token, mint a license. */
-export async function handleAuthCallback(req: Request, env: Env, db: Db, product: Product, now: number): Promise<Response> {
+export async function handleAuthCallback(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+): Promise<Response> {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  if (!code || !state) return errorResponse(400, "bad_request", "missing code/state");
+  if (!code || !state)
+    return errorResponse(400, "bad_request", "missing code/state");
   const raw = await env.HOT.get(flowKey(product.slug, state));
   if (!raw) return errorResponse(400, "bad_request", "unknown state");
   const flow = JSON.parse(raw) as FlowRecord;
   const oidc = await getOidcConfig(db, product.slug);
-  if (!oidc?.issuer || !oidc.client_id) return errorResponse(500, "misconfigured", "no oidc config");
+  if (!oidc?.issuer || !oidc.client_id)
+    return errorResponse(500, "misconfigured", "no oidc config");
   // Defense in depth: the stored flow's redirect_uri must still be allow-listed.
   if (!redirectUriAllowed(oidc, flow.redirectUri)) {
     await env.HOT.delete(flowKey(product.slug, state));
@@ -299,25 +365,37 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
   // MUST fail closed — never silently downgrade a confidential client to a public one.
   let clientSecret: string | undefined;
   if (oidc.client_secret_secret) {
-    clientSecret = await openProductSecret(db, env, product.slug, oidc.client_secret_secret);
+    clientSecret = await openProductSecret(
+      db,
+      env,
+      product.slug,
+      oidc.client_secret_secret,
+    );
     if (!clientSecret) {
       await env.HOT.delete(flowKey(product.slug, state));
-      return errorResponse(500, "misconfigured", "oidc client secret unavailable");
+      return errorResponse(
+        500,
+        "misconfigured",
+        "oidc client secret unavailable",
+      );
     }
   }
 
-  const tokenRes = await fetch(`${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: flow.redirectUri,
-      client_id: oidc.client_id,
-      code_verifier: flow.verifier,
-      ...(clientSecret ? { client_secret: clientSecret } : {}),
-    }),
-  });
+  const tokenRes = await fetch(
+    `${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: flow.redirectUri,
+        client_id: oidc.client_id,
+        code_verifier: flow.verifier,
+        ...(clientSecret ? { client_secret: clientSecret } : {}),
+      }),
+    },
+  );
   if (!tokenRes.ok) {
     // Delete the flow rather than recording a reason — pollers must not be able to
     // enumerate IdP failure modes (D8). The poll surface returns a generic error.
@@ -327,7 +405,9 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
   const tokens = (await tokenRes.json()) as { id_token?: string };
   if (!tokens.id_token) return errorResponse(502, "oidc_error", "no id_token");
 
-  const jwks = createRemoteJWKSet(new URL(`${oidc.issuer.replace(/\/$/, "")}/.well-known/jwks.json`));
+  const jwks = createRemoteJWKSet(
+    new URL(`${oidc.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
+  );
   let claims: Record<string, unknown>;
   try {
     const verified = await jwtVerify(tokens.id_token, jwks, {
@@ -338,7 +418,8 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
     claims = verified.payload as Record<string, unknown>;
     // Reject unconditionally on a missing or mismatched nonce — a token with no nonce must
     // never satisfy the binding to this flow (replay / token-injection defense).
-    if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce) throw new Error("nonce mismatch");
+    if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce)
+      throw new Error("nonce mismatch");
   } catch {
     await env.HOT.delete(flowKey(product.slug, state));
     return errorResponse(401, "unauthorized", "id token invalid");
@@ -351,19 +432,28 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
     return errorResponse(403, "forbidden", "not entitled");
   }
   flow.licenseId = result.licenseId;
-  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), { expirationTtl: FLOW_TTL_SECONDS });
+  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
   return new Response(
-    "<!doctype html><meta charset=utf-8><title>Signed in</title><body style=\"font-family:system-ui;padding:3rem;text-align:center\"><h1>You're signed in</h1><p>You can close this tab and return to the app.</p>",
+    '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You\'re signed in</h1><p>You can close this tab and return to the app.</p>',
     { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
   );
 }
 
 /** GET /<product>/auth/poll?state=&machine= — return a token once the flow completes. */
-export async function handleAuthPoll(req: Request, env: Env, db: Db, product: Product, now: number): Promise<Response> {
+export async function handleAuthPoll(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+): Promise<Response> {
   const url = new URL(req.url);
   const state = url.searchParams.get("state");
   const machine = url.searchParams.get("machine");
-  if (!state || !machine) return errorResponse(400, "bad_request", "missing state/machine");
+  if (!state || !machine)
+    return errorResponse(400, "bad_request", "missing state/machine");
   const raw = await env.HOT.get(flowKey(product.slug, state));
   if (!raw) return json({ status: "timeout" });
   const flow = JSON.parse(raw) as FlowRecord;
@@ -371,7 +461,14 @@ export async function handleAuthPoll(req: Request, env: Env, db: Db, product: Pr
   if (flow.error) return json({ status: "error" });
   if (!flow.licenseId) return json({ status: "pending" });
 
-  const token = await authorizeAndMint(env, db, product, flow.licenseId, machine, now);
+  const token = await authorizeAndMint(
+    env,
+    db,
+    product,
+    flow.licenseId,
+    machine,
+    now,
+  );
   await env.HOT.delete(flowKey(product.slug, state));
   return json({ status: "ready", token, schemaVersion: product.schemaVersion });
 }

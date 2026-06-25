@@ -39,7 +39,11 @@ export async function putTokenRecord(
   await env.HOT.put(pk(product, "token", tokenHash), JSON.stringify(rec));
 }
 
-export async function deleteTokenRecord(env: Env, product: string, tokenHash: string): Promise<void> {
+export async function deleteTokenRecord(
+  env: Env,
+  product: string,
+  tokenHash: string,
+): Promise<void> {
   await env.HOT.delete(pk(product, "token", tokenHash));
 }
 
@@ -61,6 +65,10 @@ export async function putKeyRecord(
   await env.HOT.put(pk(product, "key", keyHash), JSON.stringify(rec));
 }
 
-export async function deleteKeyRecord(env: Env, product: string, keyHash: string): Promise<void> {
+export async function deleteKeyRecord(
+  env: Env,
+  product: string,
+  keyHash: string,
+): Promise<void> {
   await env.HOT.delete(pk(product, "key", keyHash));
 }

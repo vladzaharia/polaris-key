@@ -8,7 +8,12 @@ import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import { hashKey, mintLicenseKey } from "../../crypto.js";
 import { putKeyRecord, deleteKeyRecord } from "../../kv.js";
-import { insertKey, listKeysByLicense, setKeyStatus, getKey } from "../../repo.js";
+import {
+  insertKey,
+  listKeysByLicense,
+  setKeyStatus,
+  getKey,
+} from "../../repo.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound } from "../lib/respond.js";
@@ -29,7 +34,14 @@ export async function handleKeys(
     if (req.method === "GET") {
       const keys = await listKeysByLicense(db, slug, licenseId);
       return adminJson({
-        keys: keys.map((k) => ({ hash: k.key_hash, status: k.status, label: k.label ?? undefined, createdAt: k.created_at, createdBy: k.created_by ?? "", lastUsedAt: k.last_used_at ?? undefined })),
+        keys: keys.map((k) => ({
+          hash: k.key_hash,
+          status: k.status,
+          label: k.label ?? undefined,
+          createdAt: k.created_at,
+          createdBy: k.created_by ?? "",
+          lastUsedAt: k.last_used_at ?? undefined,
+        })),
       });
     }
     if (req.method === "POST") {
@@ -46,10 +58,34 @@ export async function handleKeys(
         created_by: session.sub,
         last_used_at: null,
       });
-      await putKeyRecord(env, slug, hash, { product: slug, licenseId, status: "active" });
-      await audit(db, slug, session, now, "key.create", { kind: "key", id: hash }, `Minted key for ${licenseId}`);
+      await putKeyRecord(env, slug, hash, {
+        product: slug,
+        licenseId,
+        status: "active",
+      });
+      await audit(
+        db,
+        slug,
+        session,
+        now,
+        "key.create",
+        { kind: "key", id: hash },
+        `Minted key for ${licenseId}`,
+      );
       // Raw key returned ONCE.
-      return adminJson({ key, hash, record: { hash, status: "active", createdAt: now, createdBy: session.sub } }, 201);
+      return adminJson(
+        {
+          key,
+          hash,
+          record: {
+            hash,
+            status: "active",
+            createdAt: now,
+            createdBy: session.sub,
+          },
+        },
+        201,
+      );
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");
   }
@@ -58,10 +94,19 @@ export async function handleKeys(
   if (!existing || existing.license_id !== licenseId) return notFound();
 
   if (action === "revoke") {
-    if (req.method !== "POST") return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (req.method !== "POST")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
     await setKeyStatus(db, slug, keyHash, "revoked");
     await deleteKeyRecord(env, slug, keyHash);
-    await audit(db, slug, session, now, "key.revoke", { kind: "key", id: keyHash }, `Revoked key ${keyHash.slice(0, 8)}`);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "key.revoke",
+      { kind: "key", id: keyHash },
+      `Revoked key ${keyHash.slice(0, 8)}`,
+    );
     return adminJson({ ok: true, hash: keyHash, status: "revoked" });
   }
   return notFound();

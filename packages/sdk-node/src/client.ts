@@ -10,7 +10,13 @@ import { channelForVersion } from "./semver.js";
 import { isUsable, licenseState, type LicenseState } from "./gate.js";
 import { verifyDoc } from "./verify.js";
 import { fetchManagedConfig } from "./fetch.js";
-import { deauthorize, enrollWithKey, reacquireToken, reportSnapshot, type EnrollResult } from "./endpoints.js";
+import {
+  deauthorize,
+  enrollWithKey,
+  reacquireToken,
+  reportSnapshot,
+  type EnrollResult,
+} from "./endpoints.js";
 import { FileStore, type CacheRecord, type Store } from "./store.js";
 import {
   listUserEntries,
@@ -82,7 +88,9 @@ export class PolarisKeyClient {
     this.version = opts.version;
     this.channel = opts.channel ?? channelForVersion(opts.version);
     this.trust = opts.trust.pinnedKeys;
-    this.store = opts.store ?? new FileStore(opts.productSlug, opts.configDir ?? defaultConfigDir());
+    this.store =
+      opts.store ??
+      new FileStore(opts.productSlug, opts.configDir ?? defaultConfigDir());
     this.fetchImpl = opts.fetchImpl;
     this.localOverrides = opts.localOverrides ?? {};
     this.envPrefix = opts.envPrefix ?? DEFAULT_ENV_PREFIX;
@@ -169,7 +177,8 @@ export class PolarisKeyClient {
     const out: Record<string, JSONValue> = {};
     const doc = this.cache?.doc;
     if (!doc) return out;
-    for (const [k, v] of Object.entries(doc.payload.entitlements)) out[k] = v.value;
+    for (const [k, v] of Object.entries(doc.payload.entitlements))
+      out[k] = v.value;
     return out;
   }
 
@@ -197,7 +206,12 @@ export class PolarisKeyClient {
 
   async deactivate(): Promise<void> {
     if (this.token) {
-      await deauthorize({ baseUrl: this.baseUrl, product: this.product, token: this.token, fetchImpl: this.fetchImpl });
+      await deauthorize({
+        baseUrl: this.baseUrl,
+        product: this.product,
+        token: this.token,
+        fetchImpl: this.fetchImpl,
+      });
     }
     this.token = null;
     this.cache = null;
@@ -236,13 +250,17 @@ export class PolarisKeyClient {
 
     switch (res.kind) {
       case "not-modified":
-        await this.patchCache({ blocked: undefined, lastSyncUnauthorized: false });
+        await this.patchCache({
+          blocked: undefined,
+          lastSyncUnauthorized: false,
+        });
         return { applied: false };
       case "unauthorized": {
         if (allowReacquire) {
           const re = await reacquireToken({
             baseUrl: this.baseUrl,
             product: this.product,
+            token: this.token,
             deviceId: this.deviceId,
             fetchImpl: this.fetchImpl,
           });
@@ -258,7 +276,9 @@ export class PolarisKeyClient {
       case "device-cap":
         return { applied: false, deviceCap: true };
       case "blocked":
-        await this.patchCache({ blocked: { reason: res.reason, allowedRange: res.allowedRange } });
+        await this.patchCache({
+          blocked: { reason: res.reason, allowedRange: res.allowedRange },
+        });
         return { applied: false, blocked: true };
       case "ok": {
         const doc = await verifyDoc(res.jws, {
@@ -301,13 +321,18 @@ export class PolarisKeyClient {
     await this.store.writeCache(this.cache);
   }
 
-  private reportSnapshotBody(): { config: Record<string, JSONValue>; entitlements: Record<string, JSONValue> } {
+  private reportSnapshotBody(): {
+    config: Record<string, JSONValue>;
+    entitlements: Record<string, JSONValue>;
+  } {
     const doc = this.cache?.doc;
     const config: Record<string, JSONValue> = {};
     const entitlements: Record<string, JSONValue> = {};
     if (doc) {
-      for (const [k, v] of Object.entries(doc.payload.config)) config[k] = v.value;
-      for (const [k, v] of Object.entries(doc.payload.entitlements)) entitlements[k] = v.value;
+      for (const [k, v] of Object.entries(doc.payload.config))
+        config[k] = v.value;
+      for (const [k, v] of Object.entries(doc.payload.entitlements))
+        entitlements[k] = v.value;
     }
     return { config, entitlements };
   }

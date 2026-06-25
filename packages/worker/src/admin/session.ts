@@ -124,7 +124,11 @@ export async function issueSession(
   };
   const body = base64UrlEncodeString(JSON.stringify(session));
   const key = await sessionKey(env);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(body),
+  );
   const token = `${body}.${base64UrlEncode(new Uint8Array(sig))}`;
   return { token, session };
 }
@@ -144,7 +148,11 @@ export async function verifySession(
   const key = await sessionKey(env);
   let ok: boolean;
   try {
-    const expected = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+    const expected = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(body),
+    );
     ok = safeEqual(sig, base64UrlEncode(new Uint8Array(expected)));
   } catch {
     return null;
@@ -190,7 +198,14 @@ export function buildSessionCookie(token: string): string {
 
 /** Build a clearing cookie for sign-out. */
 export function buildClearCookie(): string {
-  return [`${ADMIN_COOKIE}=`, "Path=/admin", "HttpOnly", "Secure", "SameSite=Strict", "Max-Age=0"].join("; ");
+  return [
+    `${ADMIN_COOKIE}=`,
+    "Path=/admin",
+    "HttpOnly",
+    "Secure",
+    "SameSite=Strict",
+    "Max-Age=0",
+  ].join("; ");
 }
 
 /** Read the session out of a request's Cookie header + verify it. */

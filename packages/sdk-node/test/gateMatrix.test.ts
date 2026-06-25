@@ -57,7 +57,19 @@ interface Matrix {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const matrix = JSON.parse(
-  readFileSync(join(here, "..", "..", "..", "conformance", "corpus", "v1", "gate-matrix.json"), "utf8"),
+  readFileSync(
+    join(
+      here,
+      "..",
+      "..",
+      "..",
+      "conformance",
+      "corpus",
+      "v1",
+      "gate-matrix.json",
+    ),
+    "utf8",
+  ),
 ) as Matrix;
 
 // ── Build-gate port (mirrors packages/worker/src/gate.ts `checkBuildGate`) ──────────
@@ -67,14 +79,22 @@ function strEnt(e: ManagedEntry | undefined): string | undefined {
   return e && typeof e.value === "string" ? e.value : undefined;
 }
 function arrEnt(e: ManagedEntry | undefined): string[] | undefined {
-  return e && Array.isArray(e.value) ? (e.value.filter((v) => typeof v === "string") as string[]) : undefined;
+  return e && Array.isArray(e.value)
+    ? (e.value.filter((v) => typeof v === "string") as string[])
+    : undefined;
 }
-function tighterMin(a: string | undefined, b: string | undefined): string | undefined {
+function tighterMin(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
   if (!a) return b;
   if (!b) return a;
   return compareSemver(a, b) >= 0 ? a : b;
 }
-function tighterMax(a: string | undefined, b: string | undefined): string | undefined {
+function tighterMax(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
   if (!a) return b;
   if (!b) return a;
   return compareSemver(a, b) <= 0 ? a : b;
@@ -98,8 +118,10 @@ function checkBuildGate(g: GateInputs): Blocked | undefined {
   const allowedRange: AllowedRange = {};
   if (min) allowedRange.min = min;
   if (max) allowedRange.max = max;
-  if (min && compareSemver(g.version, min) < 0) return { reason: "version-too-old", allowedRange };
-  if (max && compareSemver(g.version, max) > 0) return { reason: "version-too-new", allowedRange };
+  if (min && compareSemver(g.version, min) < 0)
+    return { reason: "version-too-old", allowedRange };
+  if (max && compareSemver(g.version, max) > 0)
+    return { reason: "version-too-new", allowedRange };
   const channel = normalizeChannel(g.channel ?? channelForVersion(g.version));
   if (channel !== "stable" && channel !== "dev") {
     const allowed = arrEnt(g.entitlements["channels"]) ?? ["stable"];
@@ -109,7 +131,12 @@ function checkBuildGate(g: GateInputs): Blocked | undefined {
 }
 
 function buildDoc(l: LicenseInputs): ManagedConfigDoc | null {
-  if (l.issuedAt === undefined || l.expiresAt === undefined || l.graceUntil === undefined) return null;
+  if (
+    l.issuedAt === undefined ||
+    l.expiresAt === undefined ||
+    l.graceUntil === undefined
+  )
+    return null;
   return {
     schemaVersion: 1,
     aud: "djdl",
@@ -146,9 +173,14 @@ describe(`gate-matrix v${matrix.gateMatrixVersion} (Node)`, () => {
         expect(blocked?.reason, `${row.name} reason`).toBe(row.expect.reason);
       }
       if (row.expect.allowedRange !== undefined) {
-        expect(state.allowedRange, `${row.name} allowedRange`).toEqual(row.expect.allowedRange);
+        expect(state.allowedRange, `${row.name} allowedRange`).toEqual(
+          row.expect.allowedRange,
+        );
       } else {
-        expect(state.allowedRange, `${row.name} no allowedRange`).toBeUndefined();
+        expect(
+          state.allowedRange,
+          `${row.name} no allowedRange`,
+        ).toBeUndefined();
       }
     });
   }

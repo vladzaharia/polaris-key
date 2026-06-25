@@ -21,10 +21,20 @@
     }
   },
   "tiers": [
-    { "id": "standard", "label": "Standard", "profileId": null, "policyExpiryDays": null, "policyMachineLimit": 5 }
+    {
+      "id": "standard",
+      "label": "Standard",
+      "profileId": null,
+      "policyExpiryDays": null,
+      "policyMachineLimit": 5
+    }
   ],
   "provisioning": [
-    { "claim": "remnawaveAccess", "entitlementKey": "polarisVpn", "entitlementValue": true },
+    {
+      "claim": "remnawaveAccess",
+      "entitlementKey": "polarisVpn",
+      "entitlementValue": true
+    },
     {
       "claim": "remnawaveSub",
       "secretKey": "proxy.subscriptionUrl",

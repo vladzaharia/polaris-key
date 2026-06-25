@@ -4,11 +4,12 @@ import type { Env } from "../src/env.js";
 import { generateEd25519, open, seal, type Sealed } from "../src/keyvault.js";
 import { TEST_KEK } from "./seed.js";
 
-const env = ({ PLATFORM_KEK: TEST_KEK } as unknown) as Env;
+const env = { PLATFORM_KEK: TEST_KEK } as unknown as Env;
 
 describe("keyvault seal/open", () => {
   it("round-trips a value (open(seal(x)) === x)", async () => {
-    const plaintext = "-----BEGIN PRIVATE KEY-----\nhello world\n-----END PRIVATE KEY-----";
+    const plaintext =
+      "-----BEGIN PRIVATE KEY-----\nhello world\n-----END PRIVATE KEY-----";
     const sealed = await seal(env, plaintext);
     expect(await open(env, sealed)).toBe(plaintext);
   });
@@ -22,9 +23,12 @@ describe("keyvault seal/open", () => {
 
   it("THROWS on a tampered ciphertext (auth-tag failure, never a partial value)", async () => {
     const sealed = JSON.parse(await seal(env, "top-secret")) as Sealed;
-    // Flip the last base64url char of the ciphertext to corrupt the GCM auth tag.
-    const last = sealed.ct.at(-1) === "A" ? "B" : "A";
-    const tampered = JSON.stringify({ ...sealed, ct: sealed.ct.slice(0, -1) + last });
+    // Flip the first base64url char so the decoded ciphertext bytes definitely change.
+    const first = sealed.ct[0] === "A" ? "B" : "A";
+    const tampered = JSON.stringify({
+      ...sealed,
+      ct: first + sealed.ct.slice(1),
+    });
     await expect(open(env, tampered)).rejects.toThrow();
   });
 
@@ -35,7 +39,7 @@ describe("keyvault seal/open", () => {
   });
 
   it("accepts a non-32-byte KEK by SHA-256'ing it to 32 bytes", async () => {
-    const weird = ({ PLATFORM_KEK: btoa("short-kek") } as unknown) as Env;
+    const weird = { PLATFORM_KEK: btoa("short-kek") } as unknown as Env;
     const sealed = await seal(weird, "value");
     expect(await open(weird, sealed)).toBe("value");
   });
@@ -46,7 +50,9 @@ describe("keyvault generateEd25519", () => {
     const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
     const kid = "kv-test-2026";
     const jws = await signJws({ hello: "world", n: 7 }, privatePkcs8Pem, kid);
-    const verified = await verifyJws<{ hello: string; n: number }>(jws, { [kid]: publicRawB64url });
+    const verified = await verifyJws<{ hello: string; n: number }>(jws, {
+      [kid]: publicRawB64url,
+    });
     expect(verified).not.toBeNull();
     expect(verified!.kid).toBe(kid);
     expect(verified!.payload).toEqual({ hello: "world", n: 7 });

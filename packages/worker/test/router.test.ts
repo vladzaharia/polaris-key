@@ -13,7 +13,9 @@ describe("matchRoute — platform + admin (matched before product slugs)", () =>
 
   it("matches the products platform routes (more specific than adminApi)", () => {
     expect(matchRoute("/admin/api/products").kind).toBe("products");
-    expect(matchRoute("/admin/api/products/djdl/licenses").kind).toBe("products");
+    expect(matchRoute("/admin/api/products/djdl/licenses").kind).toBe(
+      "products",
+    );
   });
 
   it("never lets a product slug shadow an admin route", () => {
@@ -24,6 +26,7 @@ describe("matchRoute — platform + admin (matched before product slugs)", () =>
 
 describe("matchRoute — product-scoped routes", () => {
   const cases: Array<[string, Route["kind"]]> = [
+    ["/djdl/.well-known/polaris.json", "discovery"],
     ["/djdl/.well-known/jwks.json", "jwks"],
     ["/djdl/schema", "schema"],
     ["/djdl/enroll", "enroll"],
@@ -57,29 +60,56 @@ describe("matchRoute — product-scoped routes", () => {
 describe("matchRoute — mint / cli / dmg / appcast(channel)", () => {
   it("routes mint token + auth recipes", () => {
     const t = matchRoute("/djdl/mint/applemusic/token");
-    expect(t).toMatchObject({ kind: "mintToken", product: "djdl", mintId: "applemusic" });
+    expect(t).toMatchObject({
+      kind: "mintToken",
+      product: "djdl",
+      mintId: "applemusic",
+    });
     const a = matchRoute("/djdl/mint/applemusic/auth");
-    expect(a).toMatchObject({ kind: "mintAuth", product: "djdl", mintId: "applemusic" });
+    expect(a).toMatchObject({
+      kind: "mintAuth",
+      product: "djdl",
+      mintId: "applemusic",
+    });
   });
 
   it("routes a cli binary by version + arch (and aliases)", () => {
     expect(matchRoute("/djdl/cli/1.2.3/djdl-arm64")).toMatchObject({
-      kind: "cli", product: "djdl", version: "1.2.3", arch: "arm64",
+      kind: "cli",
+      product: "djdl",
+      version: "1.2.3",
+      arch: "arm64",
     });
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-aarch64")).toMatchObject({ kind: "cli", arch: "aarch64" });
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-x86_64")).toMatchObject({ kind: "cli", arch: "x86_64" });
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-amd64")).toMatchObject({ kind: "cli", arch: "amd64" });
+    expect(matchRoute("/djdl/cli/1.2.3/djdl-aarch64")).toMatchObject({
+      kind: "cli",
+      arch: "aarch64",
+    });
+    expect(matchRoute("/djdl/cli/1.2.3/djdl-x86_64")).toMatchObject({
+      kind: "cli",
+      arch: "x86_64",
+    });
+    expect(matchRoute("/djdl/cli/1.2.3/djdl-amd64")).toMatchObject({
+      kind: "cli",
+      arch: "amd64",
+    });
   });
 
   it("routes a dmg download by version + arch", () => {
     expect(matchRoute("/djdl/dmg/1.2.3/djdl-arm64.dmg")).toMatchObject({
-      kind: "dmg", product: "djdl", version: "1.2.3", arch: "arm64",
+      kind: "dmg",
+      product: "djdl",
+      version: "1.2.3",
+      arch: "arm64",
     });
   });
 
   it("routes a channel-suffixed appcast", () => {
     const r = matchRoute("/djdl/staging/appcast.xml");
-    expect(r).toMatchObject({ kind: "appcast", product: "djdl", channel: "staging" });
+    expect(r).toMatchObject({
+      kind: "appcast",
+      product: "djdl",
+      channel: "staging",
+    });
   });
 
   it("rejects a cli path with an unknown arch", () => {

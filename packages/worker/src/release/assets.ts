@@ -74,9 +74,14 @@ export interface MatchSpec {
  *  2. Otherwise score remaining candidates by binary-name + channel-suffix presence
  *     and keep the strictly-best. A tie returns `null`.
  */
-export function matchAsset(assets: ReleaseAsset[], spec: MatchSpec): ReleaseAsset | null {
+export function matchAsset(
+  assets: ReleaseAsset[],
+  spec: MatchSpec,
+): ReleaseAsset | null {
   // Candidate pool: right extension + right arch (and not the wrong arch).
-  const pool = assets.filter((a) => extOf(a.name) === spec.ext && archMatches(a.name, spec.arch));
+  const pool = assets.filter(
+    (a) => extOf(a.name) === spec.ext && archMatches(a.name, spec.arch),
+  );
   if (pool.length === 0) return null;
   if (pool.length === 1) return pool[0] ?? null;
 
@@ -116,7 +121,11 @@ export function matchAsset(assets: ReleaseAsset[], spec: MatchSpec): ReleaseAsse
  * the exact-match fast path in installers (e.g. `djdl-arm64`). Channel builds get a
  * `-<channel>` infix on the binary name (e.g. `djdl-staging-arm64`).
  */
-export function conventionalBinaryName(binaryName: string, arch: Arch, channelSuffix?: string): string {
+export function conventionalBinaryName(
+  binaryName: string,
+  arch: Arch,
+  channelSuffix?: string,
+): string {
   const base = channelSuffix ? `${binaryName}-${channelSuffix}` : binaryName;
   return `${base}-${arch}`;
 }

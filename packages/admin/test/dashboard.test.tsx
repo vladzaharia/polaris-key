@@ -22,7 +22,13 @@ function makeMe(over: Partial<Me> = {}): Me {
 
 function withAdmin(me: Me): ReactElement {
   return (
-    <AdminProvider value={{ me, product: me.products[0]?.slug ?? "", setProduct: () => undefined }}>
+    <AdminProvider
+      value={{
+        me,
+        product: me.products[0]?.slug ?? "",
+        setProduct: () => undefined,
+      }}
+    >
       <Dashboard />
     </AdminProvider>
   );
@@ -48,10 +54,10 @@ describe("Dashboard view", () => {
     expect(screen.getByText("Products")).toBeTruthy();
   });
 
-  it("links each card into the product's licenses view", () => {
+  it("links each card into the product overview", () => {
     render(withAdmin(makeMe()));
     const open = screen.getByRole("link", { name: "Open Acme" });
-    expect(open.getAttribute("href")).toBe("#/p/acme/licenses");
+    expect(open.getAttribute("href")).toBe("#/p/acme/overview");
   });
 
   it("shows an empty state when the operator administers no products", () => {

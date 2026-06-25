@@ -56,7 +56,9 @@ function envFor(): Env {
 /** Encode UTF-8 text the way the GitHub Contents API does (base64, JSON envelope). */
 function contentsResponse(text: string): Response {
   const b64 = Buffer.from(text, "utf8").toString("base64");
-  return new Response(JSON.stringify({ content: b64, encoding: "base64" }), { status: 200 });
+  return new Response(JSON.stringify({ content: b64, encoding: "base64" }), {
+    status: 200,
+  });
 }
 
 /**
@@ -64,7 +66,10 @@ function contentsResponse(text: string): Response {
  * exchange, then serves `.pkey/` files from a `files` map (keyed by the path that appears in the
  * Contents API URL). A missing file yields 404 so the linkRepo extension-fallback runs.
  */
-function stubFetch(files: Record<string, string>): { fetchImpl: FetchImpl; calls: string[] } {
+function stubFetch(files: Record<string, string>): {
+  fetchImpl: FetchImpl;
+  calls: string[];
+} {
   const calls: string[] = [];
   const fetchImpl: FetchImpl = async (input) => {
     const url = String(input);
@@ -73,7 +78,9 @@ function stubFetch(files: Record<string, string>): { fetchImpl: FetchImpl; calls
       return new Response(JSON.stringify({ id: 4242 }), { status: 200 });
     }
     if (url.includes("/access_tokens")) {
-      return new Response(JSON.stringify({ token: "ghs_installation_token" }), { status: 200 });
+      return new Response(JSON.stringify({ token: "ghs_installation_token" }), {
+        status: 200,
+      });
     }
     if (url.includes("/contents/")) {
       // fetchRepoFile encodes each path segment with encodeURIComponent; `.pkey/schema.json`
@@ -93,7 +100,14 @@ function stubFetch(files: Record<string, string>): { fetchImpl: FetchImpl; calls
 const SCHEMA_JSON = JSON.stringify({
   schemaVersion: 1,
   entries: [
-    { key: "run.concurrency", kind: "config", category: "run", label: "Concurrency", description: "", schema: { type: "integer", minimum: 1 } },
+    {
+      key: "run.concurrency",
+      kind: "config",
+      category: "run",
+      label: "Concurrency",
+      description: "",
+      schema: { type: "integer", minimum: 1 },
+    },
   ],
 });
 
@@ -112,7 +126,15 @@ const PRODUCT_JSON = JSON.stringify({
     redirectUris: ["https://acme.example/cb"],
     groupRoleMap: { "acme-admins": { role: "admin" } },
   },
-  tiers: [{ id: "pro", label: "Pro", profileId: null, policyExpiryDays: 365, policyMachineLimit: 5 }],
+  tiers: [
+    {
+      id: "pro",
+      label: "Pro",
+      profileId: null,
+      policyExpiryDays: 365,
+      policyMachineLimit: 5,
+    },
+  ],
   provisioning: [],
 });
 
@@ -127,7 +149,13 @@ const RELEASE_JSON = JSON.stringify({
     sparkleEd25519Pub: "PUBKEY==",
   },
   edgeMint: [
-    { id: "applemusic", alg: "ES256", signingKeySecret: "MINT_KEY__ACME", claimsTemplate: { iss: "TEAMID" }, ttlSeconds: 3600 },
+    {
+      id: "applemusic",
+      alg: "ES256",
+      signingKeySecret: "MINT_KEY__ACME",
+      claimsTemplate: { iss: "TEAMID" },
+      ttlSeconds: 3600,
+    },
   ],
 });
 
@@ -161,9 +189,18 @@ entries:
 
 describe("parseRepoUrl", () => {
   it("parses https, ssh, and bare owner/repo forms", () => {
-    expect(parseRepoUrl("https://github.com/acme/repo")).toEqual({ owner: "acme", repo: "repo" });
-    expect(parseRepoUrl("https://github.com/acme/repo.git")).toEqual({ owner: "acme", repo: "repo" });
-    expect(parseRepoUrl("git@github.com:acme/repo")).toEqual({ owner: "acme", repo: "repo" });
+    expect(parseRepoUrl("https://github.com/acme/repo")).toEqual({
+      owner: "acme",
+      repo: "repo",
+    });
+    expect(parseRepoUrl("https://github.com/acme/repo.git")).toEqual({
+      owner: "acme",
+      repo: "repo",
+    });
+    expect(parseRepoUrl("git@github.com:acme/repo")).toEqual({
+      owner: "acme",
+      repo: "repo",
+    });
     expect(parseRepoUrl("acme/repo")).toEqual({ owner: "acme", repo: "repo" });
     expect(parseRepoUrl("not a url")).toBeNull();
   });
@@ -179,7 +216,13 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/release.json": RELEASE_JSON,
     });
 
-    const result = await linkRepo(env, db, "https://github.com/acme-org/acme-app", NOW, fetchImpl);
+    const result = await linkRepo(
+      env,
+      db,
+      "https://github.com/acme-org/acme-app",
+      NOW,
+      fetchImpl,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.slug).toBe("acme");
@@ -209,11 +252,20 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(rel?.binary_name).toBe("acme");
 
     // oidc + tiers + edge_mint rows landed.
-    const oidc = await db.first<{ client_id: string }>("SELECT * FROM oidc_config WHERE product = ?", "acme");
+    const oidc = await db.first<{ client_id: string }>(
+      "SELECT * FROM oidc_config WHERE product = ?",
+      "acme",
+    );
     expect(oidc?.client_id).toBe("acme-client");
-    const tier = await db.first<{ id: string }>("SELECT * FROM tiers WHERE product = ?", "acme");
+    const tier = await db.first<{ id: string }>(
+      "SELECT * FROM tiers WHERE product = ?",
+      "acme",
+    );
     expect(tier?.id).toBe("pro");
-    const mint = await db.first<{ id: string; alg: string }>("SELECT * FROM edge_mint_config WHERE product = ?", "acme");
+    const mint = await db.first<{ id: string; alg: string }>(
+      "SELECT * FROM edge_mint_config WHERE product = ?",
+      "acme",
+    );
     expect(mint?.id).toBe("applemusic");
     expect(mint?.alg).toBe("ES256");
 
@@ -222,7 +274,9 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(keyRow).not.toBeNull();
     const pem = await open(env, keyRow!.enc_private_json);
     const jws = await signJws({ hello: "world" }, pem, keyRow!.kid);
-    const verified = await verifyJws<{ hello: string }>(jws, { [keyRow!.kid]: keyRow!.public_b64url });
+    const verified = await verifyJws<{ hello: string }>(jws, {
+      [keyRow!.kid]: keyRow!.public_b64url,
+    });
     expect(verified).not.toBeNull();
     expect(verified!.payload.hello).toBe("world");
   });
@@ -252,7 +306,9 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(keyRow).not.toBeNull();
     const pem = await open(env, keyRow!.enc_private_json);
     const jws = await signJws({ ok: 1 }, pem, keyRow!.kid);
-    expect(await verifyJws(jws, { [keyRow!.kid]: keyRow!.public_b64url })).not.toBeNull();
+    expect(
+      await verifyJws(jws, { [keyRow!.kid]: keyRow!.public_b64url }),
+    ).not.toBeNull();
   });
 
   it("a manifest error writes NO rows", async () => {
@@ -272,7 +328,9 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     // Nothing was written for any slug.
     const products = await db.all<{ slug: string }>("SELECT * FROM products");
     expect(products.length).toBe(0);
-    const keys = await db.all<{ product: string }>("SELECT * FROM product_keys");
+    const keys = await db.all<{ product: string }>(
+      "SELECT * FROM product_keys",
+    );
     expect(keys.length).toBe(0);
   });
 });

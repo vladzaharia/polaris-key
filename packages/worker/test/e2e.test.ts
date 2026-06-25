@@ -33,7 +33,11 @@ import type { SqliteDb } from "../src/db/sqlite.js";
 
 // The trust set a real client would pin: the product's kid → its published Ed25519 pubkey.
 const TRUST = { [TEST_KID]: TEST_PUB };
-const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({ state: "enforced", value, updatedAt: NOW });
+const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({
+  state: "enforced",
+  value,
+  updatedAt: NOW,
+});
 
 interface World {
   db: SqliteDb;
@@ -68,14 +72,23 @@ async function enrollAndFetch(
 ): Promise<{ jws: string; etag: string }> {
   const enrollRes = await handleEnroll(
     mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": device }),
-    w.env, w.db, w.product, now,
+    w.env,
+    w.db,
+    w.product,
+    now,
   );
   expect(enrollRes.status).toBe(200);
   const { token } = (await enrollRes.json()) as { token: string };
 
   const cfgRes = await handleConfig(
-    mkReq("GET", { authorization: `Bearer ${token}`, "x-pkey-version": "1.2.3" }),
-    w.env, w.db, w.product, now,
+    mkReq("GET", {
+      authorization: `Bearer ${token}`,
+      "x-pkey-version": "1.2.3",
+    }),
+    w.env,
+    w.db,
+    w.product,
+    now,
   );
   expect(cfgRes.status).toBe(200);
   const etag = cfgRes.headers.get("etag")!;
@@ -93,7 +106,11 @@ async function clientWithCachedDoc(
   // The client binds doc.deviceId === its own device id; align the store's id to the doc.
   (store as unknown as { deviceId: string }).deviceId = device;
   await store.setToken("pkeyt_cached");
-  await store.writeCache({ doc, lastAcceptedIssuedAt: doc.issuedAt, lastVerifiedAt: Date.now() });
+  await store.writeCache({
+    doc,
+    lastAcceptedIssuedAt: doc.issuedAt,
+    lastVerifiedAt: Date.now(),
+  });
   const client = new PolarisKeyClient({
     productSlug: "djdl",
     version: "1.2.3",
@@ -107,7 +124,9 @@ async function clientWithCachedDoc(
 
 describe("e2e: worker handlers → JWS → Node SDK gate", () => {
   it("enroll → config → verifyJws → licenseState reports ok", async () => {
-    const w = await bootstrap({ config: { "quality.losslessOnly": enforced(true) } });
+    const w = await bootstrap({
+      config: { "quality.losslessOnly": enforced(true) },
+    });
     const { jws } = await enrollAndFetch(w, w.key, "dev-1");
 
     // 1) The frozen JWS path verifies under the product's pinned pubkey.
@@ -125,11 +144,23 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
 
     // 3) v2 entries carry management `state` + `updatedAt` (not bare values).
     const cfgEntry = doc.payload.config["quality.losslessOnly"];
-    expect(cfgEntry).toEqual({ state: "enforced", value: true, updatedAt: NOW });
-    expect(doc.payload.entitlements.polarisVpn).toEqual({ state: "enforced", value: true, updatedAt: NOW });
+    expect(cfgEntry).toEqual({
+      state: "enforced",
+      value: true,
+      updatedAt: NOW,
+    });
+    expect(doc.payload.entitlements.polarisVpn).toEqual({
+      state: "enforced",
+      value: true,
+      updatedAt: NOW,
+    });
 
     // 4) The SDK's verifyDoc (aud/device/replay checks) accepts it for THIS device.
-    const sdkDoc = await verifyDoc(jws, { trust: TRUST, expectedAud: "djdl", deviceId: "dev-1" });
+    const sdkDoc = await verifyDoc(jws, {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+    });
     expect(sdkDoc).not.toBeNull();
 
     // 5) The real SDK gate reports `ok` (fresh doc, has token, not blocked).
@@ -142,14 +173,22 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
     const w = await bootstrap();
     const { jws } = await enrollAndFetch(w, w.key, "dev-1");
     // Same valid JWS, wrong device binding ⇒ the SDK refuses to apply it.
-    const wrongDevice = await verifyDoc(jws, { trust: TRUST, expectedAud: "djdl", deviceId: "dev-OTHER" });
+    const wrongDevice = await verifyDoc(jws, {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-OTHER",
+    });
     expect(wrongDevice).toBeNull();
   });
 
   it("offline → online transition: cache a doc, let it expire to grace/expired, then re-fetch to ok", async () => {
     const w = await bootstrap();
     const { jws } = await enrollAndFetch(w, w.key, "dev-1");
-    const doc = await verifyDoc(jws, { trust: TRUST, expectedAud: "djdl", deviceId: "dev-1" });
+    const doc = await verifyDoc(jws, {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+    });
     expect(doc).not.toBeNull();
 
     // The real client, offline, reads its cached doc and reports `ok` while fresh.
@@ -172,32 +211,55 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
     // strictly-newer issuedAt (the SDK's monotonic-issuedAt replay guard accepts it).
     const { jws: jws2 } = await enrollAndFetch(w, w.key, "dev-1", expired);
     const doc2 = await verifyDoc(jws2, {
-      trust: TRUST, expectedAud: "djdl", deviceId: "dev-1", lastAcceptedIssuedAt: doc!.issuedAt,
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+      lastAcceptedIssuedAt: doc!.issuedAt,
     });
     expect(doc2).not.toBeNull();
     expect(doc2!.issuedAt).toBeGreaterThan(doc!.issuedAt);
-    expect(licenseState({ hasToken: true, doc: doc2, now: expired }).status).toBe("ok");
+    expect(
+      licenseState({ hasToken: true, doc: doc2, now: expired }).status,
+    ).toBe("ok");
   });
 
   it("ENFORCED override: getConfig returns the server value even with a conflicting localOverride", async () => {
     // Admin enforces quality.losslessOnly=true on the license; the doc carries it as `enforced`.
-    const w = await bootstrap({ config: { "quality.losslessOnly": enforced(true) } });
+    const w = await bootstrap({
+      config: { "quality.losslessOnly": enforced(true) },
+    });
     const { jws } = await enrollAndFetch(w, w.key, "dev-1");
-    const doc = await verifyDoc(jws, { trust: TRUST, expectedAud: "djdl", deviceId: "dev-1" });
+    const doc = await verifyDoc(jws, {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+    });
     expect(doc!.payload.config["quality.losslessOnly"]?.state).toBe("enforced");
 
     // The real client, given a CONFLICTING localOverride, must still surface the server value
     // for the enforced key — the client cannot override an enforced config entry.
-    const client = await clientWithCachedDoc(doc!, "dev-1", { "quality.losslessOnly": false });
+    const client = await clientWithCachedDoc(doc!, "dev-1", {
+      "quality.losslessOnly": false,
+    });
     expect(client.getConfig("quality.losslessOnly", false)).toBe(true); // server wins
     expect(client.getConfigSource("quality.losslessOnly")).toBe("enforced");
 
     // A `default`-state key, by contrast, IS overridable by the client (proves the override
     // path is wired and only the `enforced` state is locking the value above).
-    const w2 = await bootstrap({ config: { "quality.floor": { state: "default", value: "any", updatedAt: NOW } } });
+    const w2 = await bootstrap({
+      config: {
+        "quality.floor": { state: "default", value: "any", updatedAt: NOW },
+      },
+    });
     const { jws: jws2 } = await enrollAndFetch(w2, w2.key, "dev-1");
-    const doc2 = await verifyDoc(jws2, { trust: TRUST, expectedAud: "djdl", deviceId: "dev-1" });
-    const client2 = await clientWithCachedDoc(doc2!, "dev-1", { "quality.floor": "flac" });
+    const doc2 = await verifyDoc(jws2, {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+    });
+    const client2 = await clientWithCachedDoc(doc2!, "dev-1", {
+      "quality.floor": "flac",
+    });
     expect(client2.getConfig("quality.floor", "any")).toBe("flac"); // client override beats a default
   });
 });

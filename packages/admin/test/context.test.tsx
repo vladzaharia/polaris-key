@@ -1,7 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
-import { AdminProvider, StatusProvider, invalidate, resetCache, useAdmin, useResource, useStatus } from "../src/context.js";
+import {
+  AdminProvider,
+  StatusProvider,
+  invalidate,
+  resetCache,
+  useAdmin,
+  useResource,
+  useStatus,
+} from "../src/context.js";
 import type { Me } from "../src/api.js";
 
 afterEach(cleanup);
@@ -62,7 +77,9 @@ describe("invalidate — prefix refetch", () => {
   it("re-fetches every key under the prefix on next render", async () => {
     let count = 0;
     const fetcher = vi.fn(async () => ({ n: ++count }));
-    const { result, rerender } = renderHook(() => useResource("licenses:djdl", fetcher));
+    const { result, rerender } = renderHook(() =>
+      useResource("licenses:djdl", fetcher),
+    );
     await waitFor(() => expect(result.current.data).toEqual({ n: 1 }));
     act(() => invalidate("licenses:"));
     rerender();
@@ -88,7 +105,11 @@ describe("useAdmin", () => {
   it("returns the provided context value", () => {
     const { result } = renderHook(() => useAdmin(), {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <AdminProvider value={{ me: ME, product: "djdl", setProduct: () => undefined }}>{children}</AdminProvider>
+        <AdminProvider
+          value={{ me: ME, product: "djdl", setProduct: () => undefined }}
+        >
+          {children}
+        </AdminProvider>
       ),
     });
     expect(result.current.product).toBe("djdl");
@@ -96,7 +117,9 @@ describe("useAdmin", () => {
   });
 
   it("throws when used outside an AdminProvider", () => {
-    expect(() => renderHook(() => useAdmin())).toThrowError(/useAdmin used outside AdminProvider/);
+    expect(() => renderHook(() => useAdmin())).toThrowError(
+      /useAdmin used outside AdminProvider/,
+    );
   });
 });
 

@@ -9,7 +9,8 @@ import {
   type TrustSet,
 } from "./index.js";
 
-const b64u = (o: unknown): string => base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(o)));
+const b64u = (o: unknown): string =>
+  base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(o)));
 
 // The committed djdl cross-platform vector (fixtures/config-jws.vector.json). Reproducing
 // it here proves the Polaris Key JWS encoding is byte-identical to the original contract.
@@ -24,10 +25,20 @@ const DJDL_DOC = {
   issuedAt: 1700000000,
   expiresAt: 1700003600,
   graceUntil: 1702592000,
-  profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@example.com", enrolledAt: 1690000000 },
+  profile: {
+    name: "Ada Lovelace",
+    firstName: "Ada",
+    email: "ada@example.com",
+    enrolledAt: 1690000000,
+  },
   payload: {
     config: { "run.concurrency": { state: "managed", value: 4 } },
-    secrets: { "proxy.subscriptionUrl": { state: "hidden", value: "https://vpn.example.com/sub/abc" } },
+    secrets: {
+      "proxy.subscriptionUrl": {
+        state: "hidden",
+        value: "https://vpn.example.com/sub/abc",
+      },
+    },
     entitlements: { polarisVpn: { state: "managed", value: true } },
   },
 };
@@ -40,7 +51,10 @@ const ROTATE_PUB = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI";
 const ROTATE_PEM =
   "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----";
 
-const TRUST: TrustSet = { [DJDL_TEST_KID]: DJDL_TEST_PUB, [ROTATE_KID]: ROTATE_PUB };
+const TRUST: TrustSet = {
+  [DJDL_TEST_KID]: DJDL_TEST_PUB,
+  [ROTATE_KID]: ROTATE_PUB,
+};
 
 describe("verifyJws — frozen contract", () => {
   it("verifies the committed djdl cross-platform vector and reproduces the doc", async () => {
@@ -65,8 +79,17 @@ describe("verifyJws — frozen contract", () => {
       issuedAt: 1700000000,
       expiresAt: 1700003600,
       graceUntil: 1702592000,
-      profile: { name: "Grace Hopper", firstName: "Grace", email: "grace@example.com", enrolledAt: 1690000000 },
-      payload: { config: {}, secrets: {}, entitlements: { polarisVpn: { state: "managed", value: true } } },
+      profile: {
+        name: "Grace Hopper",
+        firstName: "Grace",
+        email: "grace@example.com",
+        enrolledAt: 1690000000,
+      },
+      payload: {
+        config: {},
+        secrets: {},
+        entitlements: { polarisVpn: { state: "managed", value: true } },
+      },
     };
     const jws = await signJws(doc, ROTATE_PEM, ROTATE_KID);
     const result = await verifyJws(jws, TRUST);
@@ -76,7 +99,13 @@ describe("verifyJws — frozen contract", () => {
 
   it("rejects a tampered payload (flipped value, signature unchanged)", async () => {
     const [h, , s] = DJDL_JWS.split(".");
-    const tampered = { ...DJDL_DOC, payload: { ...DJDL_DOC.payload, config: { "run.concurrency": { state: "managed", value: 999 } } } };
+    const tampered = {
+      ...DJDL_DOC,
+      payload: {
+        ...DJDL_DOC.payload,
+        config: { "run.concurrency": { state: "managed", value: 999 } },
+      },
+    };
     const forged = `${h}.${b64u(tampered)}.${s}`;
     expect(await verifyJws(forged, TRUST)).toBeNull();
   });
@@ -152,7 +181,9 @@ describe("base64url encode/decode edge cases", () => {
 
   it("round-trips a unicode JSON payload (emoji + CJK + diacritics) byte-stably", () => {
     const payload = { name: "Ada 💻 北京 Ångström", n: 42 };
-    const enc = base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(payload)));
+    const enc = base64UrlEncodeBytes(
+      new TextEncoder().encode(JSON.stringify(payload)),
+    );
     const back = JSON.parse(new TextDecoder().decode(base64UrlDecode(enc)));
     expect(back).toEqual(payload);
   });
@@ -170,7 +201,9 @@ describe("signJws determinism", () => {
     const jws = await signJws({ x: 1 }, DJDL_TEST_PEM, DJDL_TEST_KID);
     const parts = jws.split(".");
     expect(parts).toHaveLength(3);
-    const header = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[0]!)));
+    const header = JSON.parse(
+      new TextDecoder().decode(base64UrlDecode(parts[0]!)),
+    );
     expect(header).toEqual({ alg: "EdDSA", kid: DJDL_TEST_KID });
   });
 
@@ -215,7 +248,9 @@ describe("verifyJws structural failures", () => {
     const valid = await signJws(DJDL_DOC, DJDL_TEST_PEM, DJDL_TEST_KID);
     const [, p, s] = valid.split(".");
     // "!!!" is not decodable JSON once base64url-decoded.
-    expect(await verifyJws(`${b64u("not-an-object")}.${p}.${s}`, TRUST)).toBeNull();
+    expect(
+      await verifyJws(`${b64u("not-an-object")}.${p}.${s}`, TRUST),
+    ).toBeNull();
     expect(await verifyJws(`@@@.${p}.${s}`, TRUST)).toBeNull();
   });
 

@@ -29,7 +29,9 @@ function escapeRegex(s: string): string {
 
 function cap(s: string): string {
   const t = s.trim();
-  return t.length > MAX_SUMMARY_CHARS ? `${t.slice(0, MAX_SUMMARY_CHARS).trimEnd()}…` : t;
+  return t.length > MAX_SUMMARY_CHARS
+    ? `${t.slice(0, MAX_SUMMARY_CHARS).trimEnd()}…`
+    : t;
 }
 
 /** Strip light markdown (emphasis, links, leading list/heading markers) to plain prose. */
@@ -55,7 +57,9 @@ export function extractSummary(
   if (!body) return null;
 
   const tok = escapeRegex(marker.trim() || DEFAULT_MARKER);
-  const markerRe = new RegExp(`<!--\\s*${tok}\\s*-->\\s*([\\s\\S]*?)\\s*<!--\\s*/${tok}\\s*-->`);
+  const markerRe = new RegExp(
+    `<!--\\s*${tok}\\s*-->\\s*([\\s\\S]*?)\\s*<!--\\s*/${tok}\\s*-->`,
+  );
   const fenced = body.match(markerRe)?.[1];
   if (fenced && fenced.trim()) return cap(stripMarkdown(fenced));
 

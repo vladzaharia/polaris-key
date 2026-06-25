@@ -1,17 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { channelForVersion, compareSemver, isDevBuild, parseSemver } from "../src/semver.js";
+import {
+  channelForVersion,
+  compareSemver,
+  isDevBuild,
+  parseSemver,
+} from "../src/semver.js";
 
 describe("parseSemver", () => {
   it("parses a plain version into its numeric parts", () => {
-    expect(parseSemver("1.2.3")).toEqual({ major: 1, minor: 2, patch: 3, prerelease: [] });
+    expect(parseSemver("1.2.3")).toEqual({
+      major: 1,
+      minor: 2,
+      patch: 3,
+      prerelease: [],
+    });
   });
   it("splits a dotted prerelease tag", () => {
-    expect(parseSemver("1.0.0-beta.2")).toEqual({ major: 1, minor: 0, patch: 0, prerelease: ["beta", "2"] });
+    expect(parseSemver("1.0.0-beta.2")).toEqual({
+      major: 1,
+      minor: 0,
+      patch: 0,
+      prerelease: ["beta", "2"],
+    });
   });
   it("ignores build metadata (after +)", () => {
-    expect(parseSemver("1.2.3+build.99")).toEqual({ major: 1, minor: 2, patch: 3, prerelease: [] });
+    expect(parseSemver("1.2.3+build.99")).toEqual({
+      major: 1,
+      minor: 2,
+      patch: 3,
+      prerelease: [],
+    });
     // A prerelease AND build metadata together: the build part is still dropped.
-    expect(parseSemver("1.0.0-rc.1+sha")).toEqual({ major: 1, minor: 0, patch: 0, prerelease: ["rc", "1"] });
+    expect(parseSemver("1.0.0-rc.1+sha")).toEqual({
+      major: 1,
+      minor: 0,
+      patch: 0,
+      prerelease: ["rc", "1"],
+    });
   });
   it("returns null for an unparseable version", () => {
     expect(parseSemver("weird")).toBeNull();

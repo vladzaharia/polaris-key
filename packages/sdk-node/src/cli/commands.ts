@@ -29,10 +29,15 @@ export interface ClientFactoryOptions {
 
 /** Builds (and initializes) a `PolarisKeyClient` from parsed flags. A consumer wires this
  *  once with its product slug + pinned trust, and the adapters call it per-invocation. */
-export type ClientFactory = (opts: ClientFactoryOptions) => Promise<PolarisKeyClient>;
+export type ClientFactory = (
+  opts: ClientFactoryOptions,
+) => Promise<PolarisKeyClient>;
 
 /** Enroll this device with a license `key` and pull the first config doc. */
-export async function activate(client: PolarisKeyClient, key: string): Promise<CommandResult> {
+export async function activate(
+  client: PolarisKeyClient,
+  key: string,
+): Promise<CommandResult> {
   const r = await client.activateWithKey(key);
   switch (r.kind) {
     case "ok": {
@@ -41,18 +46,30 @@ export async function activate(client: PolarisKeyClient, key: string): Promise<C
     }
     case "machine-limit": {
       const detail =
-        r.limit !== undefined ? ` (${r.machineCount ?? "?"}/${r.limit} devices in use)` : "";
-      return { ok: false, message: `Activation failed: device limit reached${detail}.`, data: r };
+        r.limit !== undefined
+          ? ` (${r.machineCount ?? "?"}/${r.limit} devices in use)`
+          : "";
+      return {
+        ok: false,
+        message: `Activation failed: device limit reached${detail}.`,
+        data: r,
+      };
     }
     case "unauthorized":
-      return { ok: false, message: "Activation failed: invalid or revoked key.", data: r };
+      return {
+        ok: false,
+        message: "Activation failed: invalid or revoked key.",
+        data: r,
+      };
     case "error":
       return { ok: false, message: `Activation failed: ${r.message}`, data: r };
   }
 }
 
 /** Deauthorize this device and wipe the local token + cache. */
-export async function deactivate(client: PolarisKeyClient): Promise<CommandResult> {
+export async function deactivate(
+  client: PolarisKeyClient,
+): Promise<CommandResult> {
   await client.deactivate();
   return { ok: true, message: "Deactivated. Local credentials wiped." };
 }
@@ -62,13 +79,17 @@ export async function deactivate(client: PolarisKeyClient): Promise<CommandResul
 export function status(client: PolarisKeyClient): CommandResult {
   const st = client.status();
   const lines = [`Status: ${st.status}`];
-  if (st.graceUntil !== undefined) lines.push(`Grace until (epoch): ${st.graceUntil}`);
+  if (st.graceUntil !== undefined)
+    lines.push(`Grace until (epoch): ${st.graceUntil}`);
   if (st.allowedRange !== undefined) {
     const ar = st.allowedRange;
-    lines.push(`Allowed version range: min=${ar.min ?? "-"} max=${ar.max ?? "-"}`);
+    lines.push(
+      `Allowed version range: min=${ar.min ?? "-"} max=${ar.max ?? "-"}`,
+    );
   }
   const profile = client.getProfile();
-  if (profile !== null) lines.push(`Licensed to: ${profile.name} <${profile.email}>`);
+  if (profile !== null)
+    lines.push(`Licensed to: ${profile.name} <${profile.email}>`);
   const usable = client.isLicensed();
   lines.push(`Usable: ${usable}`);
   return { ok: usable, message: lines.join("\n"), data: st };
@@ -86,7 +107,10 @@ export function getConfig(
   const value = client.getConfig<JSONValue | typeof sentinel>(key, sentinel);
   if (value === sentinel) {
     if (fallback === undefined) {
-      return { ok: false, message: `${key} is not set (no value and no fallback).` };
+      return {
+        ok: false,
+        message: `${key} is not set (no value and no fallback).`,
+      };
     }
     return {
       ok: true,

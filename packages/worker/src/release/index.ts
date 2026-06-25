@@ -33,7 +33,12 @@ import {
 } from "./channels.js";
 import { type Arch, findBinaryAsset, matchAsset } from "./assets.js";
 import { type ChangelogEntry, extractSummary } from "./changelog.js";
-import { buildAppcastItem, renderAppcast, sigAssetName, versionFromTag } from "./appcast.js";
+import {
+  buildAppcastItem,
+  renderAppcast,
+  sigAssetName,
+  versionFromTag,
+} from "./appcast.js";
 import { type InstallContext, renderInstallScript } from "./install.js";
 
 export type ReleaseKind =
@@ -72,8 +77,14 @@ const MOVING_CACHE = "public, max-age=120";
 const PINNED_CACHE = "public, max-age=86400, immutable";
 const APPCAST_CACHE = "public, max-age=300";
 
-export async function getReleaseConfig(db: Db, product: string): Promise<ReleaseConfigRow | null> {
-  return db.first<ReleaseConfigRow>("SELECT * FROM release_config WHERE product = ?", product);
+export async function getReleaseConfig(
+  db: Db,
+  product: string,
+): Promise<ReleaseConfigRow | null> {
+  return db.first<ReleaseConfigRow>(
+    "SELECT * FROM release_config WHERE product = ?",
+    product,
+  );
 }
 
 /** A release config that has the GitHub coordinates needed to talk to the API. */
@@ -115,13 +126,53 @@ export async function handleRelease(
       case "changelog":
         return handleChangelog(env, db, cfg, product, now, fetchImpl);
       case "cli":
-        return handleBinary(env, db, cfg, product, params, "cli", req, now, origin, fetchImpl);
+        return handleBinary(
+          env,
+          db,
+          cfg,
+          product,
+          params,
+          "cli",
+          req,
+          now,
+          origin,
+          fetchImpl,
+        );
       case "dmg":
-        return handleBinary(env, db, cfg, product, params, "dmg", req, now, origin, fetchImpl);
+        return handleBinary(
+          env,
+          db,
+          cfg,
+          product,
+          params,
+          "dmg",
+          req,
+          now,
+          origin,
+          fetchImpl,
+        );
       case "appcast":
-        return handleAppcast(env, db, cfg, product, { ...params, channel: "stable" }, origin, now, fetchImpl);
+        return handleAppcast(
+          env,
+          db,
+          cfg,
+          product,
+          { ...params, channel: "stable" },
+          origin,
+          now,
+          fetchImpl,
+        );
       case "channelAppcast":
-        return handleAppcast(env, db, cfg, product, params, origin, now, fetchImpl);
+        return handleAppcast(
+          env,
+          db,
+          cfg,
+          product,
+          params,
+          origin,
+          now,
+          fetchImpl,
+        );
       default:
         return notFound();
     }
@@ -131,8 +182,20 @@ export async function handleRelease(
   }
 }
 
-async function token(env: Env, cfg: ResolvedConfig, product: string, now: number, fetchImpl: FetchImpl): Promise<string> {
-  return getInstallationToken(env, product, cfg.gh_installation_id, now, fetchImpl);
+async function token(
+  env: Env,
+  cfg: ResolvedConfig,
+  product: string,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<string> {
+  return getInstallationToken(
+    env,
+    product,
+    cfg.gh_installation_id,
+    now,
+    fetchImpl,
+  );
 }
 
 /** Resolve a version/channel selector to a concrete release. */
@@ -151,12 +214,31 @@ async function resolveSelector(
 
   // A pinned stable tag can be resolved directly; moving selectors scan the release list.
   if (sel.kind === "stable" && sel.raw !== "latest" && sel.raw !== "stable") {
-    const release = await resolveRelease(tok, cfg.gh_owner, cfg.gh_repo, sel.raw, fetchImpl);
+    const release = await resolveRelease(
+      tok,
+      cfg.gh_owner,
+      cfg.gh_repo,
+      sel.raw,
+      fetchImpl,
+    );
     return { release, sel };
   }
 
-  const releases = await listReleases(tok, cfg.gh_owner, cfg.gh_repo, 100, fetchImpl);
-  const channelTags = await channelTagsFor(env, cfg, product, sel, now, fetchImpl);
+  const releases = await listReleases(
+    tok,
+    cfg.gh_owner,
+    cfg.gh_repo,
+    100,
+    fetchImpl,
+  );
+  const channelTags = await channelTagsFor(
+    env,
+    cfg,
+    product,
+    sel,
+    now,
+    fetchImpl,
+  );
   const release = resolveChannel(sel, releases, channelTags);
   if (!release) throw new NotFoundError(`no release for selector: ${selector}`);
   return { release, sel };
@@ -197,8 +279,11 @@ async function channelTagsFor(
   }
 
   const res = await fetchImpl(runsUrl, { headers });
-  if (!res.ok) throw new NotFoundError(`channel runs lookup failed: ${res.status}`);
-  const data = (await res.json()) as { workflow_runs: Array<{ head_branch: string | null; head_sha: string }> };
+  if (!res.ok)
+    throw new NotFoundError(`channel runs lookup failed: ${res.status}`);
+  const data = (await res.json()) as {
+    workflow_runs: Array<{ head_branch: string | null; head_sha: string }>;
+  };
   // Map runs -> their associated release tags. Channel runs publish a tag named after
   // the run's head ref/sha; we accept any release whose tag references that head sha.
   const tags = new Set<string>();
@@ -222,7 +307,11 @@ function cacheHeader(sel: ChannelSelector): string {
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────
 
-function handleInstall(cfg: ReleaseConfigRow, product: Product, origin: string): Response {
+function handleInstall(
+  cfg: ReleaseConfigRow,
+  product: Product,
+  origin: string,
+): Response {
   const binaryName = cfg.binary_name ?? product.slug;
   const ctx: InstallContext = {
     origin,
@@ -234,7 +323,10 @@ function handleInstall(cfg: ReleaseConfigRow, product: Product, origin: string):
   const body = renderInstallScript(cfg.install_template, ctx);
   return new Response(body, {
     status: 200,
-    headers: { "content-type": "text/x-shellscript; charset=utf-8", "cache-control": "public, max-age=300" },
+    headers: {
+      "content-type": "text/x-shellscript; charset=utf-8",
+      "cache-control": "public, max-age=300",
+    },
   });
 }
 
@@ -248,9 +340,20 @@ async function handleVersion(
   fetchImpl: FetchImpl,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
-  const { release, sel } = await resolveSelector(env, cfg, product.slug, params.version ?? params.channel, now, fetchImpl);
+  const { release, sel } = await resolveSelector(
+    env,
+    cfg,
+    product.slug,
+    params.version ?? params.channel,
+    now,
+    fetchImpl,
+  );
   return json(
-    { version: versionFromTag(release.tag_name), tag: release.tag_name, url: release.html_url },
+    {
+      version: versionFromTag(release.tag_name),
+      tag: release.tag_name,
+      url: release.html_url,
+    },
     { headers: { "cache-control": cacheHeader(sel) } },
   );
 }
@@ -265,7 +368,13 @@ async function handleChangelog(
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
   const tok = await token(env, cfg, product.slug, now, fetchImpl);
-  const releases = await listReleases(tok, cfg.gh_owner, cfg.gh_repo, 50, fetchImpl);
+  const releases = await listReleases(
+    tok,
+    cfg.gh_owner,
+    cfg.gh_repo,
+    50,
+    fetchImpl,
+  );
   const entries: ChangelogEntry[] = releases
     .filter((r) => !r.draft)
     .map((r) => ({
@@ -275,7 +384,10 @@ async function handleChangelog(
       summary: extractSummary(r.body, cfg.summary_marker),
       url: r.html_url,
     }));
-  return json({ entries }, { headers: { "cache-control": "public, max-age=300" } });
+  return json(
+    { entries },
+    { headers: { "cache-control": "public, max-age=300" } },
+  );
 }
 
 async function handleBinary(
@@ -294,20 +406,40 @@ async function handleBinary(
   const arch = params.arch;
   if (!arch) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
-  const { release, sel } = await resolveSelector(env, cfg, product.slug, params.version ?? params.channel, now, fetchImpl);
+  const { release, sel } = await resolveSelector(
+    env,
+    cfg,
+    product.slug,
+    params.version ?? params.channel,
+    now,
+    fetchImpl,
+  );
 
   const suffix = channelSuffix(sel);
   const asset =
     kind === "cli"
       ? findBinaryAsset(release.assets, binaryName, arch, suffix)
-      : matchAsset(release.assets, { arch, ext: "dmg", binaryName, channelSuffix: suffix });
+      : matchAsset(release.assets, {
+          arch,
+          ext: "dmg",
+          binaryName,
+          channelSuffix: suffix,
+        });
   if (!asset) return notFound();
 
   const tok = await token(env, cfg, product.slug, now, fetchImpl);
-  const res = await streamAsset(tok, cfg.gh_owner, cfg.gh_repo, asset.id, req, fetchImpl);
+  const res = await streamAsset(
+    tok,
+    cfg.gh_owner,
+    cfg.gh_repo,
+    asset.id,
+    req,
+    fetchImpl,
+  );
   // Preserve streamed headers; add our cache policy.
   const headers = new Headers(res.headers);
-  if (!headers.has("cache-control")) headers.set("cache-control", cacheHeader(sel));
+  if (!headers.has("cache-control"))
+    headers.set("cache-control", cacheHeader(sel));
   return new Response(res.body, { status: res.status, headers });
 }
 
@@ -324,12 +456,24 @@ async function handleAppcast(
   if (!isResolved(cfg)) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
   const selectorStr = params.channel ?? params.version ?? "stable";
-  const { release, sel } = await resolveSelector(env, cfg, product.slug, selectorStr, now, fetchImpl);
+  const { release, sel } = await resolveSelector(
+    env,
+    cfg,
+    product.slug,
+    selectorStr,
+    now,
+    fetchImpl,
+  );
 
   const suffix = channelSuffix(sel);
   // Pick the arm64 DMG as the primary enclosure (Sparkle feeds are per-arch; arm64 is
   // the default mac arch and the convention here).
-  const dmg = matchAsset(release.assets, { arch: "arm64", ext: "dmg", binaryName, channelSuffix: suffix });
+  const dmg = matchAsset(release.assets, {
+    arch: "arm64",
+    ext: "dmg",
+    binaryName,
+    channelSuffix: suffix,
+  });
   if (!dmg) return notFound();
 
   // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline. A
@@ -341,7 +485,9 @@ async function handleAppcast(
   const sig = release.assets.find((a) => a.name === sigAssetName(dmg.name));
   if (!sig && cfg.sparkle_ed25519_pub) return notFound();
   const edSignature = sig
-    ? (await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)).trim()
+    ? (
+        await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)
+      ).trim()
     : undefined;
 
   // Stable feeds (latest/stable/pinned) point the enclosure at the concrete version so
@@ -349,7 +495,8 @@ async function handleAppcast(
   const segment =
     sel.kind === "stable" ? versionFromTag(release.tag_name) : selectorStr;
   const enclosureUrl = `${origin}/${product.slug}/dmg/${segment}/${dmg.name}`;
-  const channelTitle = sel.kind === "stable" ? binaryName : `${binaryName} (${sel.raw})`;
+  const channelTitle =
+    sel.kind === "stable" ? binaryName : `${binaryName} (${sel.raw})`;
   const item = buildAppcastItem(release, dmg, edSignature, enclosureUrl, {
     title: `${binaryName} ${versionFromTag(release.tag_name)}`,
   });
@@ -357,6 +504,9 @@ async function handleAppcast(
 
   return new Response(xml, {
     status: 200,
-    headers: { "content-type": "application/xml; charset=utf-8", "cache-control": APPCAST_CACHE },
+    headers: {
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": APPCAST_CACHE,
+    },
   });
 }

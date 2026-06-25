@@ -4,7 +4,10 @@
 // this barrel re-exports the full surface for the common case.
 
 // ── React layer ──────────────────────────────────────────────────────────────
-export { PolarisKeyProvider, type PolarisKeyProviderProps } from "./react/Provider.js";
+export {
+  PolarisKeyProvider,
+  type PolarisKeyProviderProps,
+} from "./react/Provider.js";
 export { PolarisContext, type PolarisContextValue } from "./react/context.js";
 export {
   usePolarisKey,
@@ -21,9 +24,19 @@ export {
 } from "./react/hooks.js";
 
 // ── Components ───────────────────────────────────────────────────────────────
-export { LicenseGate, type LicenseGateProps, type LicenseGateSlots } from "./components/LicenseGate.js";
-export { PolarisLogin, type PolarisLoginProps } from "./components/PolarisLogin.js";
-export { PolarisLogout, type PolarisLogoutProps } from "./components/PolarisLogout.js";
+export {
+  LicenseGate,
+  type LicenseGateProps,
+  type LicenseGateSlots,
+} from "./components/LicenseGate.js";
+export {
+  PolarisLogin,
+  type PolarisLoginProps,
+} from "./components/PolarisLogin.js";
+export {
+  PolarisLogout,
+  type PolarisLogoutProps,
+} from "./components/PolarisLogout.js";
 export {
   defaultTheme,
   highContrastTheme,
@@ -36,8 +49,16 @@ export {
 } from "./components/theme.js";
 
 // ── Adapters (so callers can build/inject them directly) ─────────────────────
-export { browserAdapter, BrowserAdapter, type BrowserAdapterOptions } from "./browser/browserAdapter.js";
-export { desktopAdapter, DesktopAdapter, type DesktopAdapterOptions } from "./desktop/desktopAdapter.js";
+export {
+  browserAdapter,
+  BrowserAdapter,
+  type BrowserAdapterOptions,
+} from "./browser/browserAdapter.js";
+export {
+  desktopAdapter,
+  DesktopAdapter,
+  type DesktopAdapterOptions,
+} from "./desktop/desktopAdapter.js";
 export {
   resolveBridge,
   type PolarisBridge,

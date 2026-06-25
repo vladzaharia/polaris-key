@@ -46,16 +46,37 @@ export function epochToDateInput(epochSeconds?: number | null): string {
   }
 }
 
-export function LicenseStatusBadge({ status }: { status: LicenseStatus }): React.ReactElement {
-  return <Badge variant={status === "active" ? "success" : "default"}>{status}</Badge>;
+export function LicenseStatusBadge({
+  status,
+}: {
+  status: LicenseStatus;
+}): React.ReactElement {
+  return (
+    <Badge variant={status === "active" ? "success" : "default"}>
+      {status}
+    </Badge>
+  );
 }
 
-export function KeyStatusBadge({ status }: { status: KeyStatus }): React.ReactElement {
-  return <Badge variant={status === "active" ? "success" : "destructive"}>{status}</Badge>;
+export function KeyStatusBadge({
+  status,
+}: {
+  status: KeyStatus;
+}): React.ReactElement {
+  return (
+    <Badge variant={status === "active" ? "success" : "destructive"}>
+      {status}
+    </Badge>
+  );
 }
 
-export function MachineStatusBadge({ status }: { status: string }): React.ReactElement {
-  const variant = status === "active" || status === "authorized" ? "success" : "default";
+export function MachineStatusBadge({
+  status,
+}: {
+  status: string;
+}): React.ReactElement {
+  const variant =
+    status === "active" || status === "authorized" ? "success" : "default";
   return <Badge variant={variant}>{status}</Badge>;
 }
 
@@ -86,7 +107,11 @@ export function ChannelMultiSelect({
     onChange(CHANNELS.filter((c) => next.has(c)));
   };
   return (
-    <div role="group" aria-label="Release channels" className="flex flex-wrap gap-3">
+    <div
+      role="group"
+      aria-label="Release channels"
+      className="flex flex-wrap gap-3"
+    >
       {CHANNELS.map((channel) => {
         const id = `${idPrefix}-${channel}`;
         return (
@@ -112,8 +137,13 @@ export function ChannelMultiSelect({
 }
 
 /** Render a comma-separated channel list (or an em-dash when none). */
-export function ChannelList({ channels }: { channels: string[] }): React.ReactElement {
-  if (channels.length === 0) return <span className="text-muted-foreground">—</span>;
+export function ChannelList({
+  channels,
+}: {
+  channels: string[];
+}): React.ReactElement {
+  if (channels.length === 0)
+    return <span className="text-muted-foreground">—</span>;
   return (
     <span className="flex flex-wrap gap-1">
       {channels.map((c) => (
@@ -149,7 +179,8 @@ export function CopyButton({
     };
     try {
       const clipboard = navigator.clipboard as Clipboard | undefined;
-      if (clipboard?.writeText) void clipboard.writeText(value).then(done, done);
+      if (clipboard?.writeText)
+        void clipboard.writeText(value).then(done, done);
       else done();
     } catch {
       done();
@@ -215,10 +246,18 @@ export function OneTimeKeyPanel({
 }
 
 /** A labelled key/value pair for the detail header metadata grid. */
-export function MetaItem({ label, children }: { label: string; children: React.ReactNode }): React.ReactElement {
+export function MetaItem({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}): React.ReactElement {
   return (
     <div className="space-y-0.5">
-      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
       <dd className="text-sm text-foreground">{children}</dd>
     </div>
   );

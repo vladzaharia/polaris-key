@@ -7,7 +7,13 @@
 // glue + state projection. `submitKey` IS supported here (unlike browser): desktop apps
 // allow typed-key enrollment as an offline-friendly path.
 
-import { configSource, listUserConfig, projectState, readConfig, readEntitled } from "../core/adapter.js";
+import {
+  configSource,
+  listUserConfig,
+  projectState,
+  readConfig,
+  readEntitled,
+} from "../core/adapter.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -56,7 +62,9 @@ export class DesktopAdapter implements PolarisAdapter {
     this.bridge = bridge;
     this.clock = opts.now ?? nowSec;
     this.localOverrides = opts.localOverrides ?? {};
-    this.store = createStore<PolarisState>(initialState("desktop", this.localOverrides));
+    this.store = createStore<PolarisState>(
+      initialState("desktop", this.localOverrides),
+    );
     // Subscribe to pushed hot-reload signals from the privileged process.
     this.offBridge = this.bridge.on("stateChanged", (s) => this.apply(s));
     // Kick off the first load. Errors surface into the snapshot, not as a throw.
@@ -71,7 +79,10 @@ export class DesktopAdapter implements PolarisAdapter {
     return this.store.subscribe(cb);
   }
 
-  private apply(s: BridgeState, flags: { busy?: boolean; error?: PolarisError | null } = {}): void {
+  private apply(
+    s: BridgeState,
+    flags: { busy?: boolean; error?: PolarisError | null } = {},
+  ): void {
     this.store.set(
       projectState(
         "desktop",
@@ -121,7 +132,10 @@ export class DesktopAdapter implements PolarisAdapter {
       const begin = await this.bridge.beginSignIn();
       // Poll in the background; flip out of busy + apply the fresh state on completion.
       void this.pollUntilSettled(begin.flowId);
-      return { verificationUrl: begin.verificationUrl, userCode: begin.userCode };
+      return {
+        verificationUrl: begin.verificationUrl,
+        userCode: begin.userCode,
+      };
     } catch (e) {
       const err = new PolarisError("sign-in-failed", (e as Error).message);
       this.store.set((prev) => ({ ...prev, busy: false, error: err }));
@@ -142,7 +156,10 @@ export class DesktopAdapter implements PolarisAdapter {
           this.apply(await this.bridge.getState());
           return;
         }
-        const err = new PolarisError("sign-in-failed", r.kind === "error" ? r.message : r.kind);
+        const err = new PolarisError(
+          "sign-in-failed",
+          r.kind === "error" ? r.message : r.kind,
+        );
         this.store.set((prev) => ({ ...prev, busy: false, error: err }));
         return;
       }
@@ -167,7 +184,10 @@ export class DesktopAdapter implements PolarisAdapter {
       }
       this.apply(await this.bridge.getState());
     } catch (e) {
-      const err = e instanceof PolarisError ? e : new PolarisError("sign-in-failed", (e as Error).message);
+      const err =
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("sign-in-failed", (e as Error).message);
       this.store.set((prev) => ({ ...prev, busy: false, error: err }));
       throw err;
     }
@@ -218,6 +238,8 @@ function delay(ms: number): Promise<void> {
 }
 
 /** Construct a desktop adapter (the canonical factory the Provider uses). */
-export function desktopAdapter(opts: DesktopAdapterOptions = {}): PolarisAdapter {
+export function desktopAdapter(
+  opts: DesktopAdapterOptions = {},
+): PolarisAdapter {
   return new DesktopAdapter(opts);
 }

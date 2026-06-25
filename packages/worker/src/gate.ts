@@ -3,7 +3,11 @@
 // (tighter wins); pre-release channels (staging/pr) require the `channels` entitlement.
 // Dev builds (0.0.0-dev+…) bypass all gating so local dev is never blocked.
 
-import type { AllowedRange, BlockReason, ManagedEntry } from "@polaris-key/protocol";
+import type {
+  AllowedRange,
+  BlockReason,
+  ManagedEntry,
+} from "@polaris-key/protocol";
 
 export type ReleaseChannel = "stable" | "staging" | "pr" | "dev";
 
@@ -15,7 +19,9 @@ interface ParsedSemver {
 }
 
 export function parseSemver(v: string): ParsedSemver | null {
-  const m = v.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-.]+))?(?:\+[0-9A-Za-z-.]+)?$/);
+  const m = v.match(
+    /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-.]+))?(?:\+[0-9A-Za-z-.]+)?$/,
+  );
   if (!m) return null;
   return {
     major: Number(m[1]),
@@ -69,18 +75,26 @@ function strEnt(e: ManagedEntry | undefined): string | undefined {
 }
 
 function arrEnt(e: ManagedEntry | undefined): string[] | undefined {
-  return e && Array.isArray(e.value) ? (e.value.filter((v) => typeof v === "string") as string[]) : undefined;
+  return e && Array.isArray(e.value)
+    ? (e.value.filter((v) => typeof v === "string") as string[])
+    : undefined;
 }
 
 /** The tighter (higher) of two minimums. */
-export function tighterMin(a: string | undefined, b: string | undefined): string | undefined {
+export function tighterMin(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
   if (!a) return b;
   if (!b) return a;
   return compareSemver(a, b) >= 0 ? a : b;
 }
 
 /** The tighter (lower) of two maximums. */
-export function tighterMax(a: string | undefined, b: string | undefined): string | undefined {
+export function tighterMax(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
   if (!a) return b;
   if (!b) return a;
   return compareSemver(a, b) <= 0 ? a : b;
@@ -112,8 +126,14 @@ export function checkBuildGate(input: GateInput): GateResult {
   const { version, entitlements } = input;
   if (isDevBuild(version)) return { ok: true };
 
-  const min = tighterMin(input.compatMin, strEnt(entitlements["app.minVersion"]));
-  const max = tighterMax(input.compatMax, strEnt(entitlements["app.maxVersion"]));
+  const min = tighterMin(
+    input.compatMin,
+    strEnt(entitlements["app.minVersion"]),
+  );
+  const max = tighterMax(
+    input.compatMax,
+    strEnt(entitlements["app.maxVersion"]),
+  );
   const allowedRange: AllowedRange = {};
   if (min) allowedRange.min = min;
   if (max) allowedRange.max = max;
@@ -125,10 +145,13 @@ export function checkBuildGate(input: GateInput): GateResult {
     return { ok: false, reason: "version-too-new", allowedRange };
   }
 
-  const channel = normalizeChannel(input.channelHeader ?? channelForVersion(version));
+  const channel = normalizeChannel(
+    input.channelHeader ?? channelForVersion(version),
+  );
   if (channel !== "stable" && channel !== "dev") {
     const allowed = arrEnt(entitlements["channels"]) ?? ["stable"];
-    if (!allowed.includes(channel)) return { ok: false, reason: "channel-not-entitled" };
+    if (!allowed.includes(channel))
+      return { ok: false, reason: "channel-not-entitled" };
   }
   return { ok: true };
 }

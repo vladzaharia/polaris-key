@@ -17,12 +17,16 @@ const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
 ];
 
 /** A short relative label for an epoch-seconds timestamp, e.g. "3 hours ago" / "in 2 days". */
-export function relativeTime(epochSeconds: number, now: number = Date.now()): string {
+export function relativeTime(
+  epochSeconds: number,
+  now: number = Date.now(),
+): string {
   const deltaSeconds = epochSeconds - Math.floor(now / 1000);
   const abs = Math.abs(deltaSeconds);
   if (abs < 5) return "just now";
   for (const [unit, secs] of UNITS) {
-    if (abs >= secs) return RELATIVE.format(Math.round(deltaSeconds / secs), unit);
+    if (abs >= secs)
+      return RELATIVE.format(Math.round(deltaSeconds / secs), unit);
   }
   return "just now";
 }

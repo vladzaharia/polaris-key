@@ -33,9 +33,18 @@ import {
   sessionFromRequest,
   type AdminSession,
 } from "./session.js";
-import { adminJson, forbidden, isMutation, notFound, unauthorized } from "./lib/respond.js";
+import {
+  adminJson,
+  forbidden,
+  isMutation,
+  notFound,
+  unauthorized,
+} from "./lib/respond.js";
 import { handleMe } from "./handlers/me.js";
-import { handleProducts, handleProductScopedResource } from "./handlers/products.js";
+import {
+  handleProducts,
+  handleProductScopedResource,
+} from "./handlers/products.js";
 import { handleSchema } from "./handlers/schema.js";
 import { handleLicenses } from "./handlers/licenses.js";
 import { handleProfiles } from "./handlers/profiles.js";
@@ -58,7 +67,15 @@ async function handleProductScoped(
     // Authenticated-but-unauthorized cross-product access is low-volume + high-signal, so we
     // audit it (attributed to the verified actor). NOTE: we intentionally do NOT audit the
     // unauthenticated credential-path 401s — that would be a D1-write DoS amplifier.
-    await audit(db, slug, session, now, "access.denied", { kind: "product", id: slug }, `Denied admin access to product ${slug}`);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "access.denied",
+      { kind: "product", id: slug },
+      `Denied admin access to product ${slug}`,
+    );
     return forbidden("not an admin of this product");
   }
 
@@ -69,7 +86,16 @@ async function handleProductScoped(
   //   POST /products/<slug>/keys/rotate
   //   POST /products/<slug>/release/resync
   if (resource === "secrets" || resource === "keys" || resource === "release") {
-    return handleProductScopedResource(req, env, db, session, slug, resource, id, now);
+    return handleProductScopedResource(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      resource,
+      id,
+      now,
+    );
   }
 
   if (resource === "schema") {
@@ -77,7 +103,15 @@ async function handleProductScoped(
   }
 
   if (resource === "licenses") {
-    return handleLicenses(req, env, db, session, slug, [id, sub, subId, action].filter((s): s is string => s != null), now);
+    return handleLicenses(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      [id, sub, subId, action].filter((s): s is string => s != null),
+      now,
+    );
   }
 
   if (resource === "profiles") {
@@ -99,7 +133,13 @@ async function handleProductScoped(
  * Admin API dispatcher. `path` is everything AFTER `/admin` (so it begins with `/api`).
  * Verifies the session, CSRF-checks mutations, then routes. Returns 401/403 cleanly.
  */
-export async function handleAdminApi(req: Request, env: Env, db: Db, path: string, now: number): Promise<Response> {
+export async function handleAdminApi(
+  req: Request,
+  env: Env,
+  db: Db,
+  path: string,
+  now: number,
+): Promise<Response> {
   const session = await sessionFromRequest(env, req, now);
   if (!session) return unauthorized();
 
@@ -124,7 +164,8 @@ export async function handleAdminApi(req: Request, env: Env, db: Db, path: strin
     // /products, /products/link-repo, or /products/<slug>/...
     // `link-repo` is a single-segment action, NOT a slug — handleProducts special-cases it
     // (with its platform-admin gate) before treating the segment as a product slug.
-    if (rest.length <= 1) return handleProducts(req, env, db, session, rest, now);
+    if (rest.length <= 1)
+      return handleProducts(req, env, db, session, rest, now);
     const [slug, ...productRest] = rest;
     return handleProductScoped(req, env, db, session, slug!, productRest, now);
   }

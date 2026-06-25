@@ -38,8 +38,15 @@ export function applyOverrides(
       continue;
     }
     const bucket =
-      entry.kind === "secret" ? next.secrets : entry.kind === "flag" ? next.entitlements : next.config;
-    if (u.value === undefined && (u.state === "default" || u.state === undefined)) {
+      entry.kind === "secret"
+        ? next.secrets
+        : entry.kind === "flag"
+          ? next.entitlements
+          : next.config;
+    if (
+      u.value === undefined &&
+      (u.state === "default" || u.state === undefined)
+    ) {
       // Clearing an override.
       delete bucket[u.key];
       continue;

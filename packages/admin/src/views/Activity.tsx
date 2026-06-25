@@ -23,10 +23,8 @@ export function Activity({ slug }: { slug: string }): React.ReactElement {
     (cursor: ActivityCursor | null) => api.activity(slug, cursor),
     [slug],
   );
-  const { items, loading, error, hasMore, loadMore, reset } = useKeysetPagination<ActivityItem>(
-    fetchPage,
-    [slug],
-  );
+  const { items, loading, error, hasMore, loadMore, reset } =
+    useKeysetPagination<ActivityItem>(fetchPage, [slug]);
 
   // First page is "loading" only while we have nothing on screen yet.
   const firstLoad = loading && items.length === 0;
@@ -52,9 +50,13 @@ export function Activity({ slug }: { slug: string }): React.ReactElement {
         accessor: (r) => r.actor.name || r.actor.email,
         cell: (r) => (
           <div className="min-w-0">
-            <div className="truncate font-medium">{r.actor.name || r.actor.email || "—"}</div>
+            <div className="truncate font-medium">
+              {r.actor.name || r.actor.email || "—"}
+            </div>
             {r.actor.name && r.actor.email ? (
-              <div className="truncate text-xs text-muted-foreground">{r.actor.email}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {r.actor.email}
+              </div>
             ) : null}
           </div>
         ),
@@ -101,14 +103,24 @@ export function Activity({ slug }: { slug: string }): React.ReactElement {
       <section aria-labelledby="activity-title" className="space-y-4">
         <header className="flex items-end justify-between gap-3">
           <div className="space-y-1">
-            <h2 id="activity-title" className="text-xl font-semibold tracking-tight">
+            <h2
+              id="activity-title"
+              className="text-xl font-semibold tracking-tight"
+            >
               Activity
             </h2>
             <p className="text-sm text-muted-foreground">
-              The audit log of admin actions for <span className="font-medium text-foreground">{slug}</span>.
+              The audit log of admin actions for{" "}
+              <span className="font-medium text-foreground">{slug}</span>.
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={reset} disabled={loading} aria-label="Refresh activity">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={reset}
+            disabled={loading}
+            aria-label="Refresh activity"
+          >
             Refresh
           </Button>
         </header>
@@ -141,18 +153,28 @@ export function Activity({ slug }: { slug: string }): React.ReactElement {
               }
             />
 
-            <div className="flex items-center justify-center gap-3" aria-live="polite">
+            <div
+              className="flex items-center justify-center gap-3"
+              aria-live="polite"
+            >
               {error && items.length > 0 ? (
                 <p className="text-sm text-destructive" role="alert">
                   {error}
                 </p>
               ) : null}
               {hasMore ? (
-                <Button variant="outline" size="sm" onClick={loadMore} loading={loading && items.length > 0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadMore}
+                  loading={loading && items.length > 0}
+                >
                   Load more
                 </Button>
               ) : items.length > 0 ? (
-                <p className="text-xs text-muted-foreground">End of log · {items.length} entries</p>
+                <p className="text-xs text-muted-foreground">
+                  End of log · {items.length} entries
+                </p>
               ) : null}
             </div>
           </>

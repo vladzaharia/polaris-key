@@ -133,6 +133,12 @@ importers:
         specifier: ^3.1.0
         version: 3.2.6(@types/node@22.20.0)(jiti@1.21.7)(jsdom@26.1.0)(tsx@4.22.4)(yaml@2.9.0)
 
+  packages/cli:
+    dependencies:
+      yaml:
+        specifier: ^2.6.1
+        version: 2.9.0
+
   packages/sdk-node:
     dependencies:
       '@polaris-key/catalog':

@@ -29,7 +29,10 @@ export interface BuildDocInput {
  *  catalog or whose value fails the catalog schema, BEFORE signing. A misconfigured or
  *  stale override must never be minted into a signed doc. Entitlements pass through (their
  *  keys are `flag` entries the gate already governs). */
-export function validatePayload(payload: ManagedPayload, catalog: Catalog): ManagedPayload {
+export function validatePayload(
+  payload: ManagedPayload,
+  catalog: Catalog,
+): ManagedPayload {
   const prune = (
     entries: Record<string, ManagedEntry>,
   ): Record<string, ManagedEntry> => {
@@ -64,7 +67,11 @@ export function buildDoc(input: BuildDocInput): ManagedConfigDoc {
   };
 }
 
-export async function signDoc(doc: ManagedConfigDoc, signingKeyPem: string, kid: string): Promise<string> {
+export async function signDoc(
+  doc: ManagedConfigDoc,
+  signingKeyPem: string,
+  kid: string,
+): Promise<string> {
   return signJws(doc, signingKeyPem, kid);
 }
 

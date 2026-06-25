@@ -6,7 +6,12 @@
 
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import { getActiveProductKey, getActiveSchema, getProduct, getProductSecret } from "./repo.js";
+import {
+  getActiveProductKey,
+  getActiveSchema,
+  getProduct,
+  getProductSecret,
+} from "./repo.js";
 import { open } from "./keyvault.js";
 
 export interface Product {
@@ -23,10 +28,39 @@ export interface Product {
   schemaVersion: number;
 }
 
+export interface PublicSigningKey {
+  kid: string;
+  alg: string;
+  publicKey: string;
+}
+
+/** Best-effort public signing-key lookup. This never opens private key material and returns
+ *  null instead of throwing so admin/product discovery views can degrade safely. */
+export async function loadPublicSigningKey(
+  db: Db,
+  slug: string,
+): Promise<PublicSigningKey | null> {
+  try {
+    const keyRow = await getActiveProductKey(db, slug);
+    if (!keyRow) return null;
+    return {
+      kid: keyRow.kid,
+      alg: keyRow.alg,
+      publicKey: keyRow.public_b64url,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Load a product + its signing key from the sealed `product_keys` table. Returns null for
  *  an unknown product, a product with no active key, or one whose sealed key fails to open
  *  (fail-closed: no plaintext key ⇒ no Product ⇒ no signed config). */
-export async function loadProduct(env: Env, db: Db, slug: string): Promise<Product | null> {
+export async function loadProduct(
+  env: Env,
+  db: Db,
+  slug: string,
+): Promise<Product | null> {
   const row = await getProduct(db, slug);
   if (!row) return null;
   const keyRow = await getActiveProductKey(db, slug);

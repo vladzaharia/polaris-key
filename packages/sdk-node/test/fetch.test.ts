@@ -67,28 +67,49 @@ describe("fetchManagedConfig — status taxonomy", () => {
 
   it("304 → not-modified", async () => {
     const { impl } = fakeFetch(304, "");
-    expect(await fetchManagedConfig({ ...base, fetchImpl: impl })).toEqual({ kind: "not-modified" });
+    expect(await fetchManagedConfig({ ...base, fetchImpl: impl })).toEqual({
+      kind: "not-modified",
+    });
   });
 
   it("401 → unauthorized", async () => {
     const { impl } = fakeFetch(401, "");
-    expect(await fetchManagedConfig({ ...base, fetchImpl: impl })).toEqual({ kind: "unauthorized" });
+    expect(await fetchManagedConfig({ ...base, fetchImpl: impl })).toEqual({
+      kind: "unauthorized",
+    });
   });
 
   it("403 → blocked with reason + allowedRange parsed from the body", async () => {
-    const { impl } = fakeFetch(403, JSON.stringify({ reason: "version-too-old", allowedRange: { min: "1.0.0", max: "2.0.0" } }));
+    const { impl } = fakeFetch(
+      403,
+      JSON.stringify({
+        reason: "version-too-old",
+        allowedRange: { min: "1.0.0", max: "2.0.0" },
+      }),
+    );
     const res = await fetchManagedConfig({ ...base, fetchImpl: impl });
-    expect(res).toEqual({ kind: "blocked", reason: "version-too-old", allowedRange: { min: "1.0.0", max: "2.0.0" } });
+    expect(res).toEqual({
+      kind: "blocked",
+      reason: "version-too-old",
+      allowedRange: { min: "1.0.0", max: "2.0.0" },
+    });
   });
 
   it("403 with an empty/garbage body falls back to version-too-old", async () => {
     const { impl } = fakeFetch(403, "not json");
     const res = await fetchManagedConfig({ ...base, fetchImpl: impl });
-    expect(res).toEqual({ kind: "blocked", reason: "version-too-old", allowedRange: undefined });
+    expect(res).toEqual({
+      kind: "blocked",
+      reason: "version-too-old",
+      allowedRange: undefined,
+    });
   });
 
   it("429 → device-cap with limit + machineCount", async () => {
-    const { impl } = fakeFetch(429, JSON.stringify({ limit: 3, machineCount: 3 }));
+    const { impl } = fakeFetch(
+      429,
+      JSON.stringify({ limit: 3, machineCount: 3 }),
+    );
     const res = await fetchManagedConfig({ ...base, fetchImpl: impl });
     expect(res).toEqual({ kind: "device-cap", limit: 3, machineCount: 3 });
   });
@@ -96,7 +117,11 @@ describe("fetchManagedConfig — status taxonomy", () => {
   it("429 with a garbage body still yields device-cap (counts undefined)", async () => {
     const { impl } = fakeFetch(429, "nope");
     const res = await fetchManagedConfig({ ...base, fetchImpl: impl });
-    expect(res).toEqual({ kind: "device-cap", limit: undefined, machineCount: undefined });
+    expect(res).toEqual({
+      kind: "device-cap",
+      limit: undefined,
+      machineCount: undefined,
+    });
   });
 
   it("500 → error carrying the status + body message", async () => {

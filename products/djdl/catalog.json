@@ -10,11 +10,28 @@
       "accessor": "sources",
       "schema": {
         "type": "array",
-        "items": { "type": "string", "enum": ["soulseek", "bandcamp", "soundcloud", "youtube", "spotify", "appleMusic"] },
+        "items": {
+          "type": "string",
+          "enum": [
+            "soulseek",
+            "bandcamp",
+            "soundcloud",
+            "youtube",
+            "spotify",
+            "appleMusic"
+          ]
+        },
         "uniqueItems": true,
         "minItems": 1
       },
-      "default": ["soulseek", "bandcamp", "soundcloud", "youtube", "spotify", "appleMusic"],
+      "default": [
+        "soulseek",
+        "bandcamp",
+        "soundcloud",
+        "youtube",
+        "spotify",
+        "appleMusic"
+      ],
       "managementDefault": "default"
     },
     {
@@ -315,7 +332,10 @@
       "category": "Compatibility",
       "label": "Minimum app version",
       "description": "Oldest app/CLI version this key may run (semver).",
-      "schema": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z-.]+)?(?:\\+[0-9A-Za-z-.]+)?$" }
+      "schema": {
+        "type": "string",
+        "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z-.]+)?(?:\\+[0-9A-Za-z-.]+)?$"
+      }
     },
     {
       "key": "app.maxVersion",
@@ -323,7 +343,10 @@
       "category": "Compatibility",
       "label": "Maximum app version",
       "description": "Newest app/CLI version this key may run (semver).",
-      "schema": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z-.]+)?(?:\\+[0-9A-Za-z-.]+)?$" }
+      "schema": {
+        "type": "string",
+        "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z-.]+)?(?:\\+[0-9A-Za-z-.]+)?$"
+      }
     },
     {
       "key": "machineLimit",
@@ -332,7 +355,11 @@
       "label": "Machine limit",
       "description": "Maximum concurrently-authorized machines. Absent => default cap; 0 => unlimited.",
       "schema": { "type": "integer", "minimum": 0, "maximum": 100 },
-      "ui": { "widget": "stepper", "scopes": ["profile", "license"], "unit": "devices" }
+      "ui": {
+        "widget": "stepper",
+        "scopes": ["profile", "license"],
+        "unit": "devices"
+      }
     }
   ]
 }

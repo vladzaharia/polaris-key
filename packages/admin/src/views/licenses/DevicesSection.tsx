@@ -40,7 +40,10 @@ export function DevicesSection({
       onChanged();
       setTarget(null);
     } catch (err) {
-      toast.error("Could not deauthorize device", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Could not deauthorize device",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setBusy(false);
     }
@@ -52,19 +55,44 @@ export function DevicesSection({
       header: "Device",
       cell: (r) => (
         <div className="flex flex-col">
-          <span className="font-medium text-foreground">{r.label || r.machineId}</span>
-          {r.label ? <span className="font-mono text-xs text-muted-foreground">{r.machineId}</span> : null}
+          <span className="font-medium text-foreground">
+            {r.label || r.machineId}
+          </span>
+          {r.label ? (
+            <span className="font-mono text-xs text-muted-foreground">
+              {r.machineId}
+            </span>
+          ) : null}
         </div>
       ),
     },
-    { id: "status", header: "Status", cell: (r) => <MachineStatusBadge status={r.status} /> },
-    { id: "firstSeen", header: "First seen", accessor: (r) => r.firstSeen, sortable: true, cell: (r) => formatStamp(r.firstSeen) },
-    { id: "lastSeen", header: "Last seen", accessor: (r) => r.lastSeen, sortable: true, cell: (r) => formatStamp(r.lastSeen) },
+    {
+      id: "status",
+      header: "Status",
+      cell: (r) => <MachineStatusBadge status={r.status} />,
+    },
+    {
+      id: "firstSeen",
+      header: "First seen",
+      accessor: (r) => r.firstSeen,
+      sortable: true,
+      cell: (r) => formatStamp(r.firstSeen),
+    },
+    {
+      id: "lastSeen",
+      header: "Last seen",
+      accessor: (r) => r.lastSeen,
+      sortable: true,
+      cell: (r) => formatStamp(r.lastSeen),
+    },
     {
       id: "ua",
       header: "User agent",
       cell: (r) => (
-        <span className="block max-w-xs truncate text-xs text-muted-foreground" title={r.ua}>
+        <span
+          className="block max-w-xs truncate text-xs text-muted-foreground"
+          title={r.ua}
+        >
           {r.ua || "—"}
         </span>
       ),

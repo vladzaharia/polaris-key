@@ -14,7 +14,11 @@ import {
   writeSync,
 } from "node:fs";
 import { join } from "node:path";
-import type { AllowedRange, BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
+import type {
+  AllowedRange,
+  BlockReason,
+  ManagedConfigDoc,
+} from "@polaris-key/protocol";
 
 /** Bookkeeping shared by both cache shapes (doc-bearing and doc-less). */
 interface CacheBookkeeping {
@@ -46,14 +50,23 @@ export interface Store {
 function rawMachineId(): string | null {
   try {
     if (process.platform === "darwin") {
-      const out = execFileSync("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"], { encoding: "utf8" });
+      const out = execFileSync(
+        "ioreg",
+        ["-rd1", "-c", "IOPlatformExpertDevice"],
+        { encoding: "utf8" },
+      );
       const m = out.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/);
       return m?.[1] ?? null;
     }
     if (process.platform === "win32") {
       const out = execFileSync(
         "reg",
-        ["query", "HKLM\\SOFTWARE\\Microsoft\\Cryptography", "/v", "MachineGuid"],
+        [
+          "query",
+          "HKLM\\SOFTWARE\\Microsoft\\Cryptography",
+          "/v",
+          "MachineGuid",
+        ],
         { encoding: "utf8" },
       );
       const m = out.match(/MachineGuid\s+REG_SZ\s+([A-Za-z0-9-]+)/);
@@ -67,9 +80,15 @@ function rawMachineId(): string | null {
 }
 
 /** Derive a stable, hashed device id so the raw machine id never leaves the device. */
-export function deriveDeviceId(productSlug: string, fallback?: string | null): string {
+export function deriveDeviceId(
+  productSlug: string,
+  fallback?: string | null,
+): string {
   const base = rawMachineId() ?? fallback ?? randomUUID();
-  return createHash("sha256").update(`pkey-device:${productSlug}:${base}`).digest("base64url").slice(0, 32);
+  return createHash("sha256")
+    .update(`pkey-device:${productSlug}:${base}`)
+    .digest("base64url")
+    .slice(0, 32);
 }
 
 /** In-memory store for tests. */
@@ -106,7 +125,11 @@ export class InMemoryStore implements Store {
 
 function writeSecure(path: string, data: string): void {
   // O_NOFOLLOW refuses to follow a planted symlink at the target.
-  const fd = openSync(path, fsc.O_WRONLY | fsc.O_CREAT | fsc.O_TRUNC | fsc.O_NOFOLLOW, 0o600);
+  const fd = openSync(
+    path,
+    fsc.O_WRONLY | fsc.O_CREAT | fsc.O_TRUNC | fsc.O_NOFOLLOW,
+    0o600,
+  );
   try {
     writeSync(fd, data);
   } finally {

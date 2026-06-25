@@ -1,6 +1,10 @@
 import * as React from "react";
 import { CheckCircle2, Github, KeyRound, PlusCircle } from "lucide-react";
-import { api, type CreateManualProductResult, type LinkRepoResult } from "../../api.js";
+import {
+  api,
+  type CreateManualProductResult,
+  type LinkRepoResult,
+} from "../../api.js";
 import { invalidate } from "../../context.js";
 import {
   Badge,
@@ -25,35 +29,76 @@ import {
   errorMessage,
   intOrUndefined,
   parseSchemaField,
+  signingBundleOf,
   slugError,
   trimmedOrUndefined,
 } from "./util.js";
 
 /** A copyable read-only key/value row used in the success panels. */
-function ResultRow({ label, value }: { label: string; value: React.ReactNode }): React.ReactElement {
+function ResultRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}): React.ReactElement {
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-mono text-foreground break-all text-right">{value}</span>
+      <span className="font-mono text-foreground break-all text-right">
+        {value}
+      </span>
     </div>
   );
 }
 
 /** The "record the public key" reminder shared by both creation flows. */
-function KeyReminder({ kid }: { kid: string }): React.ReactElement {
+function KeyReminder({
+  result,
+}: {
+  result: CreateManualProductResult | LinkRepoResult;
+}): React.ReactElement {
+  const bundle = signingBundleOf(result);
+  const kid = bundle.kid ?? result.kid;
+  const trustSet =
+    Object.keys(bundle.trustKeys).length > 0
+      ? JSON.stringify(bundle.trustKeys, null, 2)
+      : null;
   return (
     <Card className="border-warning/40 bg-warning/5">
       <CardContent className="space-y-2 p-4">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <KeyRound aria-hidden className="size-4 text-warning" />
-          Record the signing key
+          Record the trust key
         </div>
         <ResultRow label="Signing kid" value={kid} />
+        {bundle.publicKey ? (
+          <ResultRow label="Public key" value={bundle.publicKey} />
+        ) : null}
+        {bundle.jwksUrl ? (
+          <ResultRow label="JWKS" value={bundle.jwksUrl} />
+        ) : null}
+        {trustSet ? (
+          <div className="space-y-1">
+            <span className="text-sm text-muted-foreground">Trust set</span>
+            <pre className="max-h-36 overflow-auto rounded-md border border-border bg-background/70 p-3 text-xs font-mono whitespace-pre-wrap break-all">
+              {trustSet}
+            </pre>
+          </div>
+        ) : null}
         <p className="text-xs text-muted-foreground">
-          Store this <code className="font-mono">kid</code> and the product&apos;s public key with your
-          release tooling now — the private key never leaves the platform and the public key is only
-          surfaced again on rotation.
+          Store this <code className="font-mono">kid</code>
+          {bundle.publicKey ? " and public key" : ""} with your release tooling
+          and SDK trust configuration now. The private key never leaves the
+          platform.
         </p>
+        {!bundle.publicKey && !trustSet ? (
+          <p className="text-xs text-muted-foreground">
+            This response did not include a public key yet. Use the product
+            overview/JWKS once the backend exposes it, or rotate the key to
+            retrieve fresh public key material.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -71,7 +116,9 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
   const [adminGroup, setAdminGroup] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
-  const [result, setResult] = React.useState<CreateManualProductResult | null>(null);
+  const [result, setResult] = React.useState<CreateManualProductResult | null>(
+    null,
+  );
 
   const slugErr = slug !== "" ? slugError(slug) : null;
   const schemaParsed = parseSchemaField(schema);
@@ -116,7 +163,7 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
           <CheckCircle2 aria-hidden className="size-5" />
           Product “{result.slug}” registered
         </div>
-        <KeyReminder kid={result.kid} />
+        <KeyReminder result={result} />
         <div className="flex justify-end">
           <Button onClick={onDone}>Done</Button>
         </div>
@@ -133,7 +180,12 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Slug" required error={slugErr ?? undefined} help="Lowercase id, e.g. djdl.">
+        <Field
+          label="Slug"
+          required
+          error={slugErr ?? undefined}
+          help="Lowercase id, e.g. djdl."
+        >
           <Input
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
@@ -143,14 +195,20 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
           />
         </Field>
         <Field label="Name">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="My Product" />
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="My Product"
+          />
         </Field>
       </div>
 
       <Field
         label="Catalog schema"
         help="Paste JSON or YAML for the product config catalog. Optional — publish later from Catalog."
-        error={schema !== "" && schemaParsed.error ? schemaParsed.error : undefined}
+        error={
+          schema !== "" && schemaParsed.error ? schemaParsed.error : undefined
+        }
       >
         <Textarea
           value={schema}
@@ -163,10 +221,18 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Compat min" help="Lowest supported client version.">
-          <Input value={compatMin} onChange={(e) => setCompatMin(e.target.value)} placeholder="1.0.0" />
+          <Input
+            value={compatMin}
+            onChange={(e) => setCompatMin(e.target.value)}
+            placeholder="1.0.0"
+          />
         </Field>
         <Field label="Compat max" help="Highest supported client version.">
-          <Input value={compatMax} onChange={(e) => setCompatMax(e.target.value)} placeholder="2.0.0" />
+          <Input
+            value={compatMax}
+            onChange={(e) => setCompatMax(e.target.value)}
+            placeholder="2.0.0"
+          />
         </Field>
         <Field label="Default max offline days">
           <Input
@@ -188,12 +254,22 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
         </Field>
       </div>
 
-      <Field label="Admin group" help="Optional OIDC group that administers this product.">
-        <Input value={adminGroup} onChange={(e) => setAdminGroup(e.target.value)} placeholder="pkey-djdl-admins" />
+      <Field
+        label="Admin group"
+        help="Optional OIDC group that administers this product."
+      >
+        <Input
+          value={adminGroup}
+          onChange={(e) => setAdminGroup(e.target.value)}
+          placeholder="pkey-djdl-admins"
+        />
       </Field>
 
       {formError ? (
-        <p role="alert" className="whitespace-pre-line text-sm font-medium text-destructive">
+        <p
+          role="alert"
+          className="whitespace-pre-line text-sm font-medium text-destructive"
+        >
           {formError}
         </p>
       ) : null}
@@ -249,35 +325,46 @@ function GithubTab({ onDone }: { onDone: () => void }): React.ReactElement {
             <ResultRow label="Signing kid" value={result.kid} />
           </CardContent>
         </Card>
-        <KeyReminder kid={result.kid} />
+        <KeyReminder result={result} />
         <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">Install the GitHub App</p>
+          <p className="text-sm font-medium text-foreground">
+            Install the GitHub App
+          </p>
           <p className="text-sm text-muted-foreground">
-            Install (or confirm) the Polaris Key GitHub App on the repository so release publishing
-            and resync can authenticate, then provide the secrets below.
+            Install (or confirm) the Polaris Key GitHub App on the repository so
+            release publishing and resync can authenticate, then provide the
+            secrets below.
           </p>
         </div>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-foreground">Remaining secrets</p>
+            <p className="text-sm font-medium text-foreground">
+              Remaining secrets
+            </p>
             <Badge variant={remaining.length ? "warning" : "success"}>
               {remaining.length ? `${remaining.length} to set` : "all set"}
             </Badge>
           </div>
           {remaining.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No secrets are outstanding.</p>
+            <p className="text-sm text-muted-foreground">
+              No secrets are outstanding.
+            </p>
           ) : (
             <ul className="space-y-1">
               {remaining.map((secret) => (
                 <li key={secret} className="flex items-center gap-2 text-sm">
-                  <span aria-hidden className="size-1.5 rounded-full bg-warning" />
+                  <span
+                    aria-hidden
+                    className="size-1.5 rounded-full bg-warning"
+                  />
                   <code className="font-mono">{secret}</code>
                 </li>
               ))}
             </ul>
           )}
           <p className="text-xs text-muted-foreground">
-            Set each secret from the product&apos;s Settings — values are write-only and never read back.
+            Set each secret from the product&apos;s Settings — values are
+            write-only and never read back.
           </p>
         </div>
         <div className="flex justify-end">
@@ -311,7 +398,10 @@ function GithubTab({ onDone }: { onDone: () => void }): React.ReactElement {
       </Field>
 
       {formError && repoUrl.trim() !== "" ? (
-        <p role="alert" className="whitespace-pre-line text-sm font-medium text-destructive">
+        <p
+          role="alert"
+          className="whitespace-pre-line text-sm font-medium text-destructive"
+        >
           {formError}
         </p>
       ) : null}
@@ -343,7 +433,8 @@ export function CreateProductDialog({
         <DialogHeader>
           <DialogTitle>New product</DialogTitle>
           <DialogDescription>
-            Register a product manually or link a GitHub repository the platform App can read.
+            Register a product manually or link a GitHub repository the platform
+            App can read.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="manual">

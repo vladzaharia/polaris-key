@@ -14,11 +14,22 @@ export interface RateLimit {
 }
 
 /** Returns true if the call is within the limit (and counts it), false if it should 429. */
-export async function rateLimitOk(env: Env, product: string, rl: RateLimit, now: number): Promise<boolean> {
+export async function rateLimitOk(
+  env: Env,
+  product: string,
+  rl: RateLimit,
+  now: number,
+): Promise<boolean> {
   const stub = env.RL.get(env.RL.idFromName(product));
   const res = await stub.fetch("https://rl/check", {
     method: "POST",
-    body: JSON.stringify({ bucket: rl.bucket, id: rl.id, limit: rl.limit, windowSec: rl.windowSec, now }),
+    body: JSON.stringify({
+      bucket: rl.bucket,
+      id: rl.id,
+      limit: rl.limit,
+      windowSec: rl.windowSec,
+      now,
+    }),
   });
   const { ok } = (await res.json()) as { ok: boolean };
   return ok;

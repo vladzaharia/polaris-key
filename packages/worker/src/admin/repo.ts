@@ -18,9 +18,18 @@ import type {
 export async function updateProduct(
   db: Db,
   slug: string,
-  fields: Partial<Pick<ProductRow,
-    | "name" | "compat_min" | "compat_max" | "default_max_offline_days"
-    | "default_machine_limit" | "admin_group" | "branding_json">>,
+  fields: Partial<
+    Pick<
+      ProductRow,
+      | "name"
+      | "compat_min"
+      | "compat_max"
+      | "default_max_offline_days"
+      | "default_machine_limit"
+      | "admin_group"
+      | "branding_json"
+    >
+  >,
   now: number,
 ): Promise<void> {
   const sets: string[] = [];
@@ -33,15 +42,29 @@ export async function updateProduct(
   sets.push("modified_at = ?");
   params.push(now);
   params.push(slug);
-  await db.run(`UPDATE products SET ${sets.join(", ")} WHERE slug = ?`, ...params);
+  await db.run(
+    `UPDATE products SET ${sets.join(", ")} WHERE slug = ?`,
+    ...params,
+  );
 }
 
 export async function deleteProduct(db: Db, slug: string): Promise<void> {
   // Order matters under foreign keys: child rows first, then the product.
   for (const table of [
-    "audit", "machines", "keys_index", "licenses", "tiers", "profiles",
-    "product_schema", "oidc_config", "provisioning_config", "edge_mint_config",
-    "release_config", "identity",
+    "audit",
+    "machines",
+    "keys_index",
+    "licenses",
+    "tiers",
+    "profiles",
+    "product_schema",
+    "product_keys",
+    "product_secrets",
+    "oidc_config",
+    "provisioning_config",
+    "edge_mint_config",
+    "release_config",
+    "identity",
   ]) {
     const col = table === "products" ? "slug" : "product";
     await db.run(`DELETE FROM ${table} WHERE ${col} = ?`, slug);
@@ -50,11 +73,20 @@ export async function deleteProduct(db: Db, slug: string): Promise<void> {
 }
 
 // ── Schema (catalog) writes ──────────────────────────────────────────────────
-export async function deactivateSchemas(db: Db, product: string): Promise<void> {
-  await db.run("UPDATE product_schema SET active = 0 WHERE product = ?", product);
+export async function deactivateSchemas(
+  db: Db,
+  product: string,
+): Promise<void> {
+  await db.run(
+    "UPDATE product_schema SET active = 0 WHERE product = ?",
+    product,
+  );
 }
 
-export async function nextSchemaVersion(db: Db, product: string): Promise<number> {
+export async function nextSchemaVersion(
+  db: Db,
+  product: string,
+): Promise<number> {
   const r = await db.first<{ v: number | null }>(
     "SELECT MAX(catalog_version) AS v FROM product_schema WHERE product = ?",
     product,
@@ -63,7 +95,10 @@ export async function nextSchemaVersion(db: Db, product: string): Promise<number
 }
 
 // ── Licenses ─────────────────────────────────────────────────────────────────
-export async function listLicenses(db: Db, product: string): Promise<LicenseRow[]> {
+export async function listLicenses(
+  db: Db,
+  product: string,
+): Promise<LicenseRow[]> {
   return db.all<LicenseRow>(
     "SELECT * FROM licenses WHERE product = ? ORDER BY enrolled_at DESC, id DESC",
     product,
@@ -80,7 +115,11 @@ export async function setLicenseStatus(
 ): Promise<void> {
   await db.run(
     "UPDATE licenses SET status = ?, modified_by = ?, modified_at = ? WHERE product = ? AND id = ?",
-    status, modifiedBy, now, product, id,
+    status,
+    modifiedBy,
+    now,
+    product,
+    id,
   );
 }
 
@@ -88,9 +127,21 @@ export async function patchLicense(
   db: Db,
   product: string,
   id: string,
-  fields: Partial<Pick<LicenseRow,
-    | "name" | "email" | "expires_at" | "max_offline_days" | "tier_id" | "profile_id" | "overrides_json"
-    | "channels_json" | "min_version" | "max_version">>,
+  fields: Partial<
+    Pick<
+      LicenseRow,
+      | "name"
+      | "email"
+      | "expires_at"
+      | "max_offline_days"
+      | "tier_id"
+      | "profile_id"
+      | "overrides_json"
+      | "channels_json"
+      | "min_version"
+      | "max_version"
+    >
+  >,
   modifiedBy: string | null,
   now: number,
 ): Promise<void> {
@@ -104,12 +155,21 @@ export async function patchLicense(
   if (sets.length === 0) return;
   sets.push("modified_by = ?", "modified_at = ?");
   params.push(modifiedBy, now, product, id);
-  await db.run(`UPDATE licenses SET ${sets.join(", ")} WHERE product = ? AND id = ?`, ...params);
+  await db.run(
+    `UPDATE licenses SET ${sets.join(", ")} WHERE product = ? AND id = ?`,
+    ...params,
+  );
 }
 
 // ── Machines ─────────────────────────────────────────────────────────────────
-export async function listMachinesByProduct(db: Db, product: string): Promise<MachineRow[]> {
-  return db.all<MachineRow>("SELECT * FROM machines WHERE product = ?", product);
+export async function listMachinesByProduct(
+  db: Db,
+  product: string,
+): Promise<MachineRow[]> {
+  return db.all<MachineRow>(
+    "SELECT * FROM machines WHERE product = ?",
+    product,
+  );
 }
 
 // ── Keys ─────────────────────────────────────────────────────────────────────
@@ -119,18 +179,27 @@ export async function countKeysByLicense(
   licenseId: string,
 ): Promise<{ total: number; active: number }> {
   const total = await db.first<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM keys_index WHERE product = ? AND license_id = ?", product, licenseId,
+    "SELECT COUNT(*) AS n FROM keys_index WHERE product = ? AND license_id = ?",
+    product,
+    licenseId,
   );
   const active = await db.first<{ n: number }>(
     "SELECT COUNT(*) AS n FROM keys_index WHERE product = ? AND license_id = ? AND status = 'active'",
-    product, licenseId,
+    product,
+    licenseId,
   );
   return { total: total?.n ?? 0, active: active?.n ?? 0 };
 }
 
 // ── Profiles ─────────────────────────────────────────────────────────────────
-export async function listProfiles(db: Db, product: string): Promise<ProfileRow[]> {
-  return db.all<ProfileRow>("SELECT * FROM profiles WHERE product = ? ORDER BY id", product);
+export async function listProfiles(
+  db: Db,
+  product: string,
+): Promise<ProfileRow[]> {
+  return db.all<ProfileRow>(
+    "SELECT * FROM profiles WHERE product = ? ORDER BY id",
+    product,
+  );
 }
 
 export async function upsertProfile(db: Db, row: ProfileRow): Promise<void> {
@@ -141,24 +210,47 @@ export async function upsertProfile(db: Db, row: ProfileRow): Promise<void> {
        name = excluded.name, description = excluded.description,
        payload_json = excluded.payload_json, modified_by = excluded.modified_by,
        modified_at = excluded.modified_at`,
-    row.product, row.id, row.name, row.description, row.payload_json, row.modified_by, row.modified_at,
+    row.product,
+    row.id,
+    row.name,
+    row.description,
+    row.payload_json,
+    row.modified_by,
+    row.modified_at,
   );
 }
 
-export async function deleteProfile(db: Db, product: string, id: string): Promise<void> {
-  await db.run("DELETE FROM profiles WHERE product = ? AND id = ?", product, id);
+export async function deleteProfile(
+  db: Db,
+  product: string,
+  id: string,
+): Promise<void> {
+  await db.run(
+    "DELETE FROM profiles WHERE product = ? AND id = ?",
+    product,
+    id,
+  );
 }
 
-export async function countLicensesUsingProfile(db: Db, product: string, profileId: string): Promise<number> {
+export async function countLicensesUsingProfile(
+  db: Db,
+  product: string,
+  profileId: string,
+): Promise<number> {
   const r = await db.first<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM licenses WHERE product = ? AND profile_id = ?", product, profileId,
+    "SELECT COUNT(*) AS n FROM licenses WHERE product = ? AND profile_id = ?",
+    product,
+    profileId,
   );
   return r?.n ?? 0;
 }
 
 // ── Tiers ────────────────────────────────────────────────────────────────────
 export async function listTiers(db: Db, product: string): Promise<TierRow[]> {
-  return db.all<TierRow>("SELECT * FROM tiers WHERE product = ? ORDER BY id", product);
+  return db.all<TierRow>(
+    "SELECT * FROM tiers WHERE product = ? ORDER BY id",
+    product,
+  );
 }
 
 export async function upsertTier(db: Db, row: TierRow): Promise<void> {
@@ -173,17 +265,32 @@ export async function upsertTier(db: Db, row: TierRow): Promise<void> {
        channels_json = excluded.channels_json, min_version = excluded.min_version,
        max_version = excluded.max_version,
        modified_by = excluded.modified_by, modified_at = excluded.modified_at`,
-    row.product, row.id, row.label, row.profile_id, row.policy_expiry_days,
-    row.policy_machine_limit, row.channels_json, row.min_version, row.max_version,
-    row.modified_by, row.modified_at,
+    row.product,
+    row.id,
+    row.label,
+    row.profile_id,
+    row.policy_expiry_days,
+    row.policy_machine_limit,
+    row.channels_json,
+    row.min_version,
+    row.max_version,
+    row.modified_by,
+    row.modified_at,
   );
 }
 
-export async function deleteTier(db: Db, product: string, id: string): Promise<void> {
+export async function deleteTier(
+  db: Db,
+  product: string,
+  id: string,
+): Promise<void> {
   await db.run("DELETE FROM tiers WHERE product = ? AND id = ?", product, id);
 }
 
 // ── Key (revoke by hash, list) — light wrappers used by the admin API ─────────
-export async function listKeysForProduct(db: Db, product: string): Promise<KeyRow[]> {
+export async function listKeysForProduct(
+  db: Db,
+  product: string,
+): Promise<KeyRow[]> {
   return db.all<KeyRow>("SELECT * FROM keys_index WHERE product = ?", product);
 }

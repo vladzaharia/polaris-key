@@ -66,7 +66,10 @@ export function base64UrlEncodeBytes(bytes: Uint8Array): string {
 }
 
 function toArrayBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+  return b.buffer.slice(
+    b.byteOffset,
+    b.byteOffset + b.byteLength,
+  ) as ArrayBuffer;
 }
 
 function pemToPkcs8(pem: string): Uint8Array {
@@ -89,7 +92,9 @@ export async function importSigningKey(pem: string): Promise<CryptoKey> {
 }
 
 /** Import a 32-byte raw Ed25519 public key (base64url) for verification. */
-export async function importVerifyKey(rawBase64Url: string): Promise<CryptoKey> {
+export async function importVerifyKey(
+  rawBase64Url: string,
+): Promise<CryptoKey> {
   const raw = base64UrlDecode(rawBase64Url);
   if (raw.length !== 32) {
     throw new Error(`Ed25519 public key must be 32 bytes, got ${raw.length}`);

@@ -1,14 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
-import { desktopAdapter, DesktopAdapter } from "../src/desktop/desktopAdapter.js";
+import {
+  desktopAdapter,
+  DesktopAdapter,
+} from "../src/desktop/desktopAdapter.js";
 import { resolveBridge } from "../src/desktop/bridge.js";
-import type { BridgeEnroll, BridgeOidcPoll, BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
-import { entry, makeConfigDoc, makeDoc, makeFakeBridge, NOW_SEC } from "./fixtures.js";
+import type {
+  BridgeEnroll,
+  BridgeOidcPoll,
+  BridgeState,
+  PolarisBridge,
+} from "../src/desktop/bridge.js";
+import {
+  entry,
+  makeConfigDoc,
+  makeDoc,
+  makeFakeBridge,
+  NOW_SEC,
+} from "./fixtures.js";
 
 // The desktop adapter is a thin renderer-side proxy over a PolarisBridge. These drive it
 // directly with a fake bridge so the proxying, the push channel, and the error mapping are
 // all covered without React.
 
-async function ready(adapter: ReturnType<typeof desktopAdapter>): Promise<void> {
+async function ready(
+  adapter: ReturnType<typeof desktopAdapter>,
+): Promise<void> {
   for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++) {
     await new Promise((r) => setTimeout(r, 0));
   }
@@ -16,7 +32,11 @@ async function ready(adapter: ReturnType<typeof desktopAdapter>): Promise<void> 
 
 describe("DesktopAdapter — construction", () => {
   it("loads the bridge state and projects it to an ok snapshot", async () => {
-    const bridge = makeFakeBridge({ hasToken: true, doc: makeDoc(), lastVerifiedAt: NOW_SEC * 1000 });
+    const bridge = makeFakeBridge({
+      hasToken: true,
+      doc: makeDoc(),
+      lastVerifiedAt: NOW_SEC * 1000,
+    });
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
     const s = adapter.snapshot();
@@ -39,7 +59,8 @@ describe("DesktopAdapter — construction", () => {
       expect(adapter).toBeInstanceOf(DesktopAdapter);
       adapter.dispose();
     } finally {
-      delete (globalThis as unknown as { polarisKey?: PolarisBridge }).polarisKey;
+      delete (globalThis as unknown as { polarisKey?: PolarisBridge })
+        .polarisKey;
     }
   });
 
@@ -60,7 +81,11 @@ describe("DesktopAdapter — construction", () => {
 
 describe("DesktopAdapter — bridge method proxying", () => {
   it("refresh re-pulls state through the bridge", async () => {
-    const bridge = makeFakeBridge({ hasToken: true, doc: makeDoc(), lastVerifiedAt: NOW_SEC * 1000 });
+    const bridge = makeFakeBridge({
+      hasToken: true,
+      doc: makeDoc(),
+      lastVerifiedAt: NOW_SEC * 1000,
+    });
     const refreshSpy = vi.spyOn(bridge, "refresh");
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
@@ -77,7 +102,9 @@ describe("DesktopAdapter — bridge method proxying", () => {
     });
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
-    await expect(adapter.refresh()).rejects.toMatchObject({ code: "refresh-failed" });
+    await expect(adapter.refresh()).rejects.toMatchObject({
+      code: "refresh-failed",
+    });
     expect(adapter.snapshot().busy).toBe(false);
     adapter.dispose();
   });
@@ -100,12 +127,18 @@ describe("DesktopAdapter — bridge method proxying", () => {
     });
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
-    await expect(adapter.signOut()).rejects.toMatchObject({ code: "sign-out-failed" });
+    await expect(adapter.signOut()).rejects.toMatchObject({
+      code: "sign-out-failed",
+    });
     adapter.dispose();
   });
 
   it("getConfig / getSecret / isEntitled read off the snapshot", async () => {
-    const bridge = makeFakeBridge({ hasToken: true, doc: makeDoc(), lastVerifiedAt: NOW_SEC * 1000 });
+    const bridge = makeFakeBridge({
+      hasToken: true,
+      doc: makeDoc(),
+      lastVerifiedAt: NOW_SEC * 1000,
+    });
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
     expect(adapter.getConfig("theme.mode", "x")).toBe("dark");
@@ -122,7 +155,11 @@ describe("DesktopAdapter — submitKey", () => {
     const submitSpy = vi.spyOn(bridge, "submitKey");
     // After a successful key, the bridge surfaces an authorized state.
     bridge.submitKey = vi.fn(async () => {
-      bridge.push({ hasToken: true, doc: makeDoc(), lastVerifiedAt: NOW_SEC * 1000 });
+      bridge.push({
+        hasToken: true,
+        doc: makeDoc(),
+        lastVerifiedAt: NOW_SEC * 1000,
+      });
       return { kind: "ok" } as const;
     });
     void submitSpy;
@@ -136,20 +173,28 @@ describe("DesktopAdapter — submitKey", () => {
 
   it("a machine-limit result throws a friendly sign-in-failed message", async () => {
     const bridge = makeFakeBridge({ hasToken: false, doc: null });
-    bridge.submitKey = vi.fn(async () => ({ kind: "machine-limit", limit: 3 }) as BridgeEnroll);
+    bridge.submitKey = vi.fn(
+      async () => ({ kind: "machine-limit", limit: 3 }) as BridgeEnroll,
+    );
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
-    await expect(adapter.submitKey("k")).rejects.toMatchObject({ code: "sign-in-failed" });
+    await expect(adapter.submitKey("k")).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
     expect(adapter.snapshot().error?.message).toMatch(/device limit/i);
     adapter.dispose();
   });
 
   it("an unauthorized result throws a not-accepted message", async () => {
     const bridge = makeFakeBridge({ hasToken: false, doc: null });
-    bridge.submitKey = vi.fn(async () => ({ kind: "unauthorized" }) as BridgeEnroll);
+    bridge.submitKey = vi.fn(
+      async () => ({ kind: "unauthorized" }) as BridgeEnroll,
+    );
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
-    await expect(adapter.submitKey("k")).rejects.toMatchObject({ code: "sign-in-failed" });
+    await expect(adapter.submitKey("k")).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
     expect(adapter.snapshot().error?.message).toMatch(/not accepted/i);
     adapter.dispose();
   });
@@ -158,9 +203,17 @@ describe("DesktopAdapter — submitKey", () => {
 describe("DesktopAdapter — OIDC sign-in", () => {
   it("returns a verification handle and applies state once polling settles", async () => {
     const bridge = makeFakeBridge({ hasToken: false, doc: null });
-    bridge.beginSignIn = vi.fn(async () => ({ flowId: "f1", verificationUrl: "https://v", userCode: "ABCD" }));
+    bridge.beginSignIn = vi.fn(async () => ({
+      flowId: "f1",
+      verificationUrl: "https://v",
+      userCode: "ABCD",
+    }));
     bridge.pollSignIn = vi.fn(async () => {
-      bridge.push({ hasToken: true, doc: makeDoc(), lastVerifiedAt: NOW_SEC * 1000 });
+      bridge.push({
+        hasToken: true,
+        doc: makeDoc(),
+        lastVerifiedAt: NOW_SEC * 1000,
+      });
       return { kind: "ok" } as BridgeOidcPoll;
     });
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
@@ -181,19 +234,33 @@ describe("DesktopAdapter — OIDC sign-in", () => {
     });
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
-    await expect(adapter.signInWithOidc()).rejects.toMatchObject({ code: "sign-in-failed" });
+    await expect(adapter.signInWithOidc()).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
     adapter.dispose();
   });
 });
 
 describe("DesktopAdapter — stateChanged push channel", () => {
   it("a pushed state updates the snapshot (hot reload)", async () => {
-    const bridge = makeFakeBridge({ hasToken: true, doc: makeDoc(), lastVerifiedAt: NOW_SEC * 1000 });
+    const bridge = makeFakeBridge({
+      hasToken: true,
+      doc: makeDoc(),
+      lastVerifiedAt: NOW_SEC * 1000,
+    });
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
     expect(adapter.snapshot().config["theme.mode"]).toBe("dark");
     // Push a new doc with a different config value.
-    const doc2 = makeDoc({ payload: { config: { "theme.mode": { state: "enforced", value: "light", updatedAt: 950 } }, secrets: {}, entitlements: {} } });
+    const doc2 = makeDoc({
+      payload: {
+        config: {
+          "theme.mode": { state: "enforced", value: "light", updatedAt: 950 },
+        },
+        secrets: {},
+        entitlements: {},
+      },
+    });
     bridge.push({ hasToken: true, doc: doc2, lastVerifiedAt: NOW_SEC * 1000 });
     expect(adapter.snapshot().config["theme.mode"]).toBe("light");
     adapter.dispose();
@@ -230,14 +297,22 @@ describe("DesktopAdapter — v2 config read APIs", () => {
 
   function adapterWith(localOverrides: Record<string, unknown>) {
     return desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: true, doc, lastVerifiedAt: NOW_SEC * 1000 }),
+      bridge: makeFakeBridge({
+        hasToken: true,
+        doc,
+        lastVerifiedAt: NOW_SEC * 1000,
+      }),
       now: () => NOW_SEC,
       localOverrides: localOverrides as Record<string, never>,
     });
   }
 
   it("getConfig honors enforced-beats-local and default<-local precedence", async () => {
-    const adapter = adapterWith({ enforcedKey: "mine", defaultKey: "mine", onlyLocal: "z" });
+    const adapter = adapterWith({
+      enforcedKey: "mine",
+      defaultKey: "mine",
+      onlyLocal: "z",
+    });
     await ready(adapter);
     expect(adapter.getConfig("enforcedKey", "fb")).toBe("srv"); // locked
     expect(adapter.getConfig("defaultKey", "fb")).toBe("mine"); // local wins
@@ -249,10 +324,16 @@ describe("DesktopAdapter — v2 config read APIs", () => {
   it("listUserConfig excludes hidden and flags enforced rows", async () => {
     const adapter = adapterWith({ defaultKey: "local" });
     await ready(adapter);
-    const byKey = Object.fromEntries(adapter.listUserConfig().map((r) => [r.key, r]));
+    const byKey = Object.fromEntries(
+      adapter.listUserConfig().map((r) => [r.key, r]),
+    );
     expect(byKey.hiddenKey).toBeUndefined();
     expect(byKey.enforcedKey?.enforced).toBe(true);
-    expect(byKey.defaultKey).toEqual({ key: "defaultKey", value: "local", enforced: false });
+    expect(byKey.defaultKey).toEqual({
+      key: "defaultKey",
+      value: "local",
+      enforced: false,
+    });
     adapter.dispose();
   });
 

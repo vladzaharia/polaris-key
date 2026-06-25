@@ -14,7 +14,14 @@ import {
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { BridgeState } from "../src/desktop/bridge.js";
 import type { PolarisAdapter } from "../src/core/index.js";
-import { entry, makeConfigDoc, makeDoc, makeFakeBridge, makeFakeFetch, NOW_SEC } from "./fixtures.js";
+import {
+  entry,
+  makeConfigDoc,
+  makeDoc,
+  makeFakeBridge,
+  makeFakeFetch,
+  NOW_SEC,
+} from "./fixtures.js";
 
 afterEach(cleanup);
 
@@ -32,8 +39,13 @@ function okBridge(): BridgeState {
 
 describe("usePolarisKey", () => {
   it("exposes the merged surface (mode, gate, status, usable, actions)", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge(okBridge()), now: () => NOW_SEC });
-    const { result } = renderHook(() => usePolarisKey(), { wrapper: wrapperFor(adapter) });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(okBridge()),
+      now: () => NOW_SEC,
+    });
+    const { result } = renderHook(() => usePolarisKey(), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.mode).toBe("desktop");
     expect(result.current.status).toBe("ok");
@@ -49,8 +61,13 @@ describe("usePolarisKey", () => {
 
 describe("useLicense", () => {
   it("returns the gate, status, usable, and loading flag", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge(okBridge()), now: () => NOW_SEC });
-    const { result } = renderHook(() => useLicense(), { wrapper: wrapperFor(adapter) });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(okBridge()),
+      now: () => NOW_SEC,
+    });
+    const { result } = renderHook(() => useLicense(), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current).toMatchObject({ status: "ok", usable: true });
     expect(result.current.gate.graceUntil).toBeGreaterThan(0);
@@ -60,9 +77,16 @@ describe("useLicense", () => {
 
 describe("useManagedConfig", () => {
   it("returns the config map + a typed getter", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge(okBridge()), now: () => NOW_SEC });
-    const { result } = renderHook(() => useManagedConfig(), { wrapper: wrapperFor(adapter) });
-    await waitFor(() => expect(result.current.config["theme.mode"]).toBe("dark"));
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(okBridge()),
+      now: () => NOW_SEC,
+    });
+    const { result } = renderHook(() => useManagedConfig(), {
+      wrapper: wrapperFor(adapter),
+    });
+    await waitFor(() =>
+      expect(result.current.config["theme.mode"]).toBe("dark"),
+    );
     expect(result.current.get("theme.mode", "light")).toBe("dark");
     expect(result.current.get("nope", "fallback")).toBe("fallback");
     adapter.dispose();
@@ -75,11 +99,17 @@ describe("useManagedConfig", () => {
       defaultKey: entry("default", "remote"),
     });
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: true, doc, lastVerifiedAt: NOW_SEC * 1000 }),
+      bridge: makeFakeBridge({
+        hasToken: true,
+        doc,
+        lastVerifiedAt: NOW_SEC * 1000,
+      }),
       now: () => NOW_SEC,
       localOverrides: { enforcedKey: "ignored", defaultKey: "local" },
     });
-    const { result } = renderHook(() => useManagedConfig(), { wrapper: wrapperFor(adapter) });
+    const { result } = renderHook(() => useManagedConfig(), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(result.current.config.defaultKey).toBe("local"));
     // enforced beats local; default overridden by local.
     expect(result.current.get("enforcedKey", "fb")).toBe("srv");
@@ -118,16 +148,28 @@ describe("useManagedConfig", () => {
 
 describe("useEntitlement", () => {
   it("returns true only for a granted boolean entitlement", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge(okBridge()), now: () => NOW_SEC });
-    const vpn = renderHook(() => useEntitlement("polarisVpn"), { wrapper: wrapperFor(adapter) });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(okBridge()),
+      now: () => NOW_SEC,
+    });
+    const vpn = renderHook(() => useEntitlement("polarisVpn"), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(vpn.result.current).toBe(true));
     adapter.dispose();
   });
 
   it("returns false for a disabled or unknown entitlement", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge(okBridge()), now: () => NOW_SEC });
-    const beta = renderHook(() => useEntitlement("beta"), { wrapper: wrapperFor(adapter) });
-    const unknown = renderHook(() => useEntitlement("nope"), { wrapper: wrapperFor(adapter) });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(okBridge()),
+      now: () => NOW_SEC,
+    });
+    const beta = renderHook(() => useEntitlement("beta"), {
+      wrapper: wrapperFor(adapter),
+    });
+    const unknown = renderHook(() => useEntitlement("nope"), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(beta.result.current).toBe(false));
     expect(unknown.result.current).toBe(false);
     adapter.dispose();
@@ -136,9 +178,16 @@ describe("useEntitlement", () => {
 
 describe("usePolarisAuth", () => {
   it("exposes the profile, busy/error, needsAuth, and key-entry support flag (desktop)", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge(okBridge()), now: () => NOW_SEC });
-    const { result } = renderHook(() => usePolarisAuth(), { wrapper: wrapperFor(adapter) });
-    await waitFor(() => expect(result.current.profile?.email).toBe("ada@acme.test"));
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(okBridge()),
+      now: () => NOW_SEC,
+    });
+    const { result } = renderHook(() => usePolarisAuth(), {
+      wrapper: wrapperFor(adapter),
+    });
+    await waitFor(() =>
+      expect(result.current.profile?.email).toBe("ada@acme.test"),
+    );
     expect(result.current.needsAuth).toBe(false);
     expect(result.current.supportsKeyEntry).toBe(true);
     expect(result.current.status).toBe("ok");
@@ -146,8 +195,13 @@ describe("usePolarisAuth", () => {
   });
 
   it("needsAuth is true when needs-enroll", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge({ hasToken: false, doc: null }), now: () => NOW_SEC });
-    const { result } = renderHook(() => usePolarisAuth(), { wrapper: wrapperFor(adapter) });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      now: () => NOW_SEC,
+    });
+    const { result } = renderHook(() => usePolarisAuth(), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(result.current.status).toBe("needs-enroll"));
     expect(result.current.needsAuth).toBe(true);
     adapter.dispose();
@@ -156,8 +210,13 @@ describe("usePolarisAuth", () => {
 
 describe("useLicenseGate", () => {
   it("maps status ok to the 'ok' screen and exposes the theme", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge(okBridge()), now: () => NOW_SEC });
-    const { result } = renderHook(() => useLicenseGate(), { wrapper: wrapperFor(adapter) });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(okBridge()),
+      now: () => NOW_SEC,
+    });
+    const { result } = renderHook(() => useLicenseGate(), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(result.current.screen).toBe("ok"));
     expect(result.current.usable).toBe(true);
     expect(result.current.theme.copy.productName).toBe("Polaris Key");
@@ -165,18 +224,29 @@ describe("useLicenseGate", () => {
   });
 
   it("maps needs-enroll to the 'login' screen", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge({ hasToken: false, doc: null }), now: () => NOW_SEC });
-    const { result } = renderHook(() => useLicenseGate(), { wrapper: wrapperFor(adapter) });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      now: () => NOW_SEC,
+    });
+    const { result } = renderHook(() => useLicenseGate(), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(result.current.screen).toBe("login"));
     adapter.dispose();
   });
 
   it("maps a 403 block to the 'version-block' screen", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: true, doc: makeDoc(), blocked: { reason: "version-too-old" } }),
+      bridge: makeFakeBridge({
+        hasToken: true,
+        doc: makeDoc(),
+        blocked: { reason: "version-too-old" },
+      }),
       now: () => NOW_SEC,
     });
-    const { result } = renderHook(() => useLicenseGate(), { wrapper: wrapperFor(adapter) });
+    const { result } = renderHook(() => useLicenseGate(), {
+      wrapper: wrapperFor(adapter),
+    });
     await waitFor(() => expect(result.current.screen).toBe("version-block"));
     adapter.dispose();
   });
@@ -184,10 +254,17 @@ describe("useLicenseGate", () => {
 
 describe("usePolarisTheme", () => {
   it("returns the resolved (merged) theme", async () => {
-    const adapter = desktopAdapter({ bridge: makeFakeBridge({ hasToken: false, doc: null }), now: () => NOW_SEC });
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      now: () => NOW_SEC,
+    });
     const { result } = renderHook(() => usePolarisTheme(), {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <PolarisKeyProvider productSlug="acme" adapter={adapter} theme={{ copy: { productName: "Acme" } }}>
+        <PolarisKeyProvider
+          productSlug="acme"
+          adapter={adapter}
+          theme={{ copy: { productName: "Acme" } }}
+        >
           {children}
         </PolarisKeyProvider>
       ),
@@ -209,7 +286,9 @@ describe("hooks outside a provider", () => {
     const spy = console.error;
     console.error = () => undefined;
     try {
-      expect(() => render(<Bad />)).toThrowError(/must be used within <PolarisKeyProvider>/);
+      expect(() => render(<Bad />)).toThrowError(
+        /must be used within <PolarisKeyProvider>/,
+      );
     } finally {
       console.error = spy;
     }

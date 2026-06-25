@@ -35,7 +35,12 @@ export function PublishDialog({
 }): React.ReactElement {
   const toast = useToast();
   const seed = React.useMemo(
-    () => JSON.stringify({ ...catalog, schemaVersion: catalog.schemaVersion + 1 }, null, 2),
+    () =>
+      JSON.stringify(
+        { ...catalog, schemaVersion: catalog.schemaVersion + 1 },
+        null,
+        2,
+      ),
     [catalog],
   );
   const [text, setText] = React.useState(seed);
@@ -59,7 +64,10 @@ export function PublishDialog({
     setServerError(null);
     try {
       const res = await api.publishSchema(slug, parsed.catalog);
-      toast.success("Catalog published", `Schema version is now v${res.schemaVersion}.`);
+      toast.success(
+        "Catalog published",
+        `Schema version is now v${res.schemaVersion}.`,
+      );
       invalidate(`schema:${slug}`);
       onOpenChange(false);
     } catch (err) {
@@ -72,13 +80,16 @@ export function PublishDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !submitting && onOpenChange(next)}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !submitting && onOpenChange(next)}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Publish new catalog version</DialogTitle>
           <DialogDescription>
-            Edit the catalog JSON below. It is validated locally before publishing; the worker
-            re-validates every fragment with Ajv on save.
+            Edit the catalog JSON below. It is validated locally before
+            publishing; the worker re-validates every fragment with Ajv on save.
           </DialogDescription>
         </DialogHeader>
 
@@ -101,10 +112,18 @@ export function PublishDialog({
         </Field>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={submitting}
+          >
             Cancel
           </Button>
-          <Button onClick={() => void submit()} loading={submitting} disabled={!parsed.ok}>
+          <Button
+            onClick={() => void submit()}
+            loading={submitting}
+            disabled={!parsed.ok}
+          >
             Publish
           </Button>
         </DialogFooter>

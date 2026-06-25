@@ -11,7 +11,10 @@ import {
   useToast,
   type ColumnDef,
 } from "../components/ui/index.js";
-import { CreateProfileDialog, type CreateProfileBody } from "./profiles/CreateProfileDialog.js";
+import {
+  CreateProfileDialog,
+  type CreateProfileBody,
+} from "./profiles/CreateProfileDialog.js";
 import { ProfileDetailDialog } from "./profiles/ProfileDetailDialog.js";
 
 /**
@@ -89,7 +92,9 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
       accessor: (p) => p.description ?? "",
       cell: (p) =>
         p.description ? (
-          <span className="line-clamp-1 max-w-sm text-muted-foreground">{p.description}</span>
+          <span className="line-clamp-1 max-w-sm text-muted-foreground">
+            {p.description}
+          </span>
         ) : (
           <span className="text-muted-foreground">—</span>
         ),
@@ -103,7 +108,9 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
         p.modifiedAt ? (
           <span className="text-sm" title={absoluteTime(p.modifiedAt)}>
             {relativeTime(p.modifiedAt)}
-            {p.modifiedBy ? <span className="text-muted-foreground"> · {p.modifiedBy}</span> : null}
+            {p.modifiedBy ? (
+              <span className="text-muted-foreground"> · {p.modifiedBy}</span>
+            ) : null}
           </span>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -116,10 +123,20 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
       className: "text-right",
       cell: (p) => (
         <div className="flex justify-end gap-1">
-          <Button variant="ghost" size="icon" aria-label={`Edit ${p.id}`} onClick={() => setEditing(p)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Edit ${p.id}`}
+            onClick={() => setEditing(p)}
+          >
             <Pencil aria-hidden />
           </Button>
-          <Button variant="ghost" size="icon" aria-label={`Delete ${p.id}`} onClick={() => setDeleting(p)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Delete ${p.id}`}
+            onClick={() => setDeleting(p)}
+          >
             <Trash2 aria-hidden />
           </Button>
         </div>
@@ -133,7 +150,8 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold tracking-tight">Profiles</h2>
           <p className="text-sm text-muted-foreground">
-            Named managed payloads — the config, secrets, and flags a tier or license inherits.
+            Named managed payloads — the config, secrets, and flags a tier or
+            license inherits.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>

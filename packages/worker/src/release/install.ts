@@ -26,7 +26,10 @@ export interface InstallContext {
 }
 
 /** Substitute the supported `{{...}}` placeholders in an operator-provided template. */
-export function applyInstallTemplate(template: string, ctx: InstallContext): string {
+export function applyInstallTemplate(
+  template: string,
+  ctx: InstallContext,
+): string {
   const channelsList = ctx.channels.join(" ");
   return template
     .replace(/\{\{\s*binaryName\s*\}\}/g, ctx.binaryName)
@@ -141,7 +144,10 @@ esac
 }
 
 /** Render the installer for a product: template if present, else the built-in script. */
-export function renderInstallScript(template: string | null | undefined, ctx: InstallContext): string {
+export function renderInstallScript(
+  template: string | null | undefined,
+  ctx: InstallContext,
+): string {
   if (template && template.trim()) return applyInstallTemplate(template, ctx);
   return defaultInstallScript(ctx);
 }

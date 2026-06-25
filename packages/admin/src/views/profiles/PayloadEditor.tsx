@@ -35,7 +35,10 @@ interface KeyState {
 }
 
 /** Pull the merged `{config, secrets, entitlements}` payload into a flat per-key map. */
-function seedFromPayload(payload: RedactedPayload, entries: ConfigEntry[]): Record<string, KeyState> {
+function seedFromPayload(
+  payload: RedactedPayload,
+  entries: ConfigEntry[],
+): Record<string, KeyState> {
   const out: Record<string, KeyState> = {};
   for (const entry of entries) {
     const isSecret = entry.kind === "secret" || entry.secret === true;
@@ -71,22 +74,36 @@ const CATEGORY_ORDER = (entry: ConfigEntry): number => entry.ui?.order ?? 0;
  * state against the seed and PUTs only the changed keys via `putProfilePayload`. Secrets are
  * write-only: their value box starts empty and only sends when an admin types a replacement.
  */
-export function PayloadEditor({ slug, profile }: { slug: string; profile: ProfileDetail }): React.ReactElement {
+export function PayloadEditor({
+  slug,
+  profile,
+}: {
+  slug: string;
+  profile: ProfileDetail;
+}): React.ReactElement {
   const toast = useToast();
-  const schemaRes = useResource<ProductCatalog>(`schema:${slug}`, () => api.schema(slug));
+  const schemaRes = useResource<ProductCatalog>(`schema:${slug}`, () =>
+    api.schema(slug),
+  );
   const entries = React.useMemo(() => {
     const list = schemaRes.data?.entries ?? [];
     return [...list].sort((a, b) => CATEGORY_ORDER(a) - CATEGORY_ORDER(b));
   }, [schemaRes.data]);
 
-  const seed = React.useMemo(() => seedFromPayload(profile.payload, entries), [profile.payload, entries]);
+  const seed = React.useMemo(
+    () => seedFromPayload(profile.payload, entries),
+    [profile.payload, entries],
+  );
   const [state, setState] = React.useState<Record<string, KeyState>>(seed);
   const [saving, setSaving] = React.useState(false);
 
   // Re-seed when the profile or catalog changes (e.g. after a save + invalidate reload).
   React.useEffect(() => setState(seed), [seed]);
 
-  const updates = React.useMemo(() => diff(seed, state, entries), [seed, state, entries]);
+  const updates = React.useMemo(
+    () => diff(seed, state, entries),
+    [seed, state, entries],
+  );
   const dirty = updates.length > 0;
 
   const setKey = (key: string, patch: Partial<KeyState>): void =>
@@ -101,7 +118,10 @@ export function PayloadEditor({ slug, profile }: { slug: string; profile: Profil
     setSaving(true);
     try {
       await api.putProfilePayload(slug, profile.id, updates);
-      toast.success("Payload saved", `Updated ${updates.length} ${updates.length === 1 ? "key" : "keys"}.`);
+      toast.success(
+        "Payload saved",
+        `Updated ${updates.length} ${updates.length === 1 ? "key" : "keys"}.`,
+      );
       invalidate(`profile:${slug}:${profile.id}`);
     } catch (err) {
       toast.error("Could not save payload", describeError(err));
@@ -156,7 +176,8 @@ export function PayloadEditor({ slug, profile }: { slug: string; profile: Profil
             <div key={entry.key} className="space-y-1">
               {ks.isSecret && ks.secretConfigured ? (
                 <p className="text-xs text-muted-foreground">
-                  <Badge variant="warning">secret set</Badge> A value is configured. Type to replace it; leave blank to keep.
+                  <Badge variant="warning">secret set</Badge> A value is
+                  configured. Type to replace it; leave blank to keep.
                 </p>
               ) : null}
               <ManagedField
@@ -173,13 +194,23 @@ export function PayloadEditor({ slug, profile }: { slug: string; profile: Profil
       </div>
 
       <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-        <span className="mr-auto text-sm text-muted-foreground" role="status" aria-live="polite">
-          {dirty ? `${updates.length} unsaved ${updates.length === 1 ? "change" : "changes"}` : "All changes saved"}
+        <span
+          className="mr-auto text-sm text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          {dirty
+            ? `${updates.length} unsaved ${updates.length === 1 ? "change" : "changes"}`
+            : "All changes saved"}
         </span>
         <Button variant="outline" disabled={!dirty || saving} onClick={reset}>
           Reset
         </Button>
-        <Button loading={saving} disabled={!dirty} onClick={() => void handleSave()}>
+        <Button
+          loading={saving}
+          disabled={!dirty}
+          onClick={() => void handleSave()}
+        >
           <Save aria-hidden />
           Save payload
         </Button>
@@ -217,7 +248,8 @@ function diff(
 function sameValue(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   // Treat undefined/null/"" as equivalent "no value" so re-seeds don't spuriously dirty.
-  const empty = (v: unknown): boolean => v === undefined || v === null || v === "";
+  const empty = (v: unknown): boolean =>
+    v === undefined || v === null || v === "";
   if (empty(a) && empty(b)) return true;
   return false;
 }

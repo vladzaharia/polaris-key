@@ -1,10 +1,18 @@
 import * as React from "react";
 import {
+  Activity,
   Boxes,
+  ClipboardList,
+  Fingerprint,
+  KeyRound,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Menu,
   Moon,
+  Rocket,
+  Settings,
+  SlidersHorizontal,
   Sun,
   type LucideIcon,
 } from "lucide-react";
@@ -29,7 +37,17 @@ import {
   TooltipProvider,
 } from "./ui/index.js";
 
-const TAB_ICONS: Partial<Record<Tab, LucideIcon>> = {};
+const TAB_ICONS: Partial<Record<Tab, LucideIcon>> = {
+  overview: LayoutDashboard,
+  setup: ListChecks,
+  licenses: KeyRound,
+  config: SlidersHorizontal,
+  identity: Fingerprint,
+  releases: Rocket,
+  secrets: ClipboardList,
+  activity: Activity,
+  settings: Settings,
+};
 
 export interface ShellProps {
   me: Me;
@@ -46,7 +64,14 @@ export interface ShellProps {
  * title, theme toggle, and user menu. Purely presentational — routing decisions come in via
  * `route`/`onNavigate`.
  */
-export function Shell({ me, route, activeSlug, onNavigate, onSignOut, children }: ShellProps): React.ReactElement {
+export function Shell({
+  me,
+  route,
+  activeSlug,
+  onNavigate,
+  onSignOut,
+  children,
+}: ShellProps): React.ReactElement {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const activeTab = tabOf(route);
 
@@ -126,7 +151,10 @@ function Sidebar({
         </button>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3" aria-label="Primary">
+      <nav
+        className="flex flex-1 flex-col gap-1 overflow-y-auto p-3"
+        aria-label="Primary"
+      >
         <NavItem
           icon={LayoutDashboard}
           label="Dashboard"
@@ -143,10 +171,14 @@ function Sidebar({
         ) : null}
 
         <div className="my-2 px-1">
-          <p className="px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product</p>
+          <p className="px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Product
+          </p>
           <Select
             value={activeSlug}
-            onValueChange={(slug) => go({ kind: "product", slug, view: "licenses" })}
+            onValueChange={(slug) =>
+              go({ kind: "product", slug, view: "overview" })
+            }
           >
             <SelectTrigger aria-label="Product" className="bg-sidebar-accent">
               <SelectValue placeholder="Select a product" />
@@ -169,7 +201,9 @@ function Sidebar({
                 icon={TAB_ICONS[tab]}
                 label={label}
                 active={route.kind === "product" && activeTab === tab}
-                onClick={() => go({ kind: "product", slug: activeSlug, view: tab })}
+                onClick={() =>
+                  go({ kind: "product", slug: activeSlug, view: tab })
+                }
               />
             ))}
           </div>
@@ -202,7 +236,11 @@ function NavItem({
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
       )}
     >
-      {Icon ? <Icon className="size-4 shrink-0" /> : <span className="size-4 shrink-0" aria-hidden />}
+      {Icon ? (
+        <Icon className="size-4 shrink-0" />
+      ) : (
+        <span className="size-4 shrink-0" aria-hidden />
+      )}
       <span className="truncate">{label}</span>
     </button>
   );
@@ -232,7 +270,13 @@ function Topbar({
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur sm:px-6">
-      <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenu} aria-label="Open navigation">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden"
+        onClick={onMenu}
+        aria-label="Open navigation"
+      >
         <Menu />
       </Button>
       <LogoMark className="size-5 lg:hidden" />
@@ -248,13 +292,24 @@ function Topbar({
 function ThemeToggle(): React.ReactElement {
   const { theme, toggle } = useTheme();
   return (
-    <Button variant="ghost" size="icon" onClick={toggle} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggle}
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+    >
       {theme === "dark" ? <Sun /> : <Moon />}
     </Button>
   );
 }
 
-function UserMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }): React.ReactElement {
+function UserMenu({
+  me,
+  onSignOut,
+}: {
+  me: Me;
+  onSignOut: () => void;
+}): React.ReactElement {
   const initials = me.name
     .split(/\s+/)
     .map((s) => s[0])
@@ -274,8 +329,12 @@ function UserMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }): React.R
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuLabel>
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-foreground">{me.name}</span>
-            <span className="truncate text-xs font-normal text-muted-foreground">{me.email}</span>
+            <span className="text-sm font-medium text-foreground">
+              {me.name}
+            </span>
+            <span className="truncate text-xs font-normal text-muted-foreground">
+              {me.email}
+            </span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -46,12 +46,14 @@ export function classifyChannel(
   selector: string | undefined,
   manualChannels: ManualChannel[] = [],
 ): ChannelSelector | null {
-  if (!selector || selector === "latest") return { kind: "stable", raw: selector ?? "latest" };
+  if (!selector || selector === "latest")
+    return { kind: "stable", raw: selector ?? "latest" };
   if (selector === "stable") return { kind: "stable", raw: "stable" };
   if (selector === "beta") return { kind: "beta", raw: "beta" };
 
   const prMatch = selector.match(/^pr-(\d{1,7})$/);
-  if (prMatch && prMatch[1]) return { kind: "pr", raw: selector, pr: Number(prMatch[1]) };
+  if (prMatch && prMatch[1])
+    return { kind: "pr", raw: selector, pr: Number(prMatch[1]) };
 
   const manual = manualChannels.find((c) => c.name === selector);
   if (manual) return { kind: "manual", raw: selector, manual };
@@ -64,7 +66,11 @@ export function classifyChannel(
 
 /** True for selectors whose target moves (short-cache); pinned `X.Y.Z` is immutable. */
 export function isMovingSelector(sel: ChannelSelector): boolean {
-  return !(sel.kind === "stable" && sel.raw !== "latest" && sel.raw !== "stable");
+  return !(
+    sel.kind === "stable" &&
+    sel.raw !== "latest" &&
+    sel.raw !== "stable"
+  );
 }
 
 /**
@@ -83,7 +89,9 @@ export function compileChannelRegex(source: string): RegExp | null {
 }
 
 /** Parse `manual_channels_json` into validated rules (drops malformed/unsafe entries). */
-export function parseManualChannels(json: string | null | undefined): ManualChannel[] {
+export function parseManualChannels(
+  json: string | null | undefined,
+): ManualChannel[] {
   if (!json) return [];
   let parsed: unknown;
   try {
@@ -94,9 +102,18 @@ export function parseManualChannels(json: string | null | undefined): ManualChan
   if (!Array.isArray(parsed)) return [];
   const out: ManualChannel[] = [];
   for (const entry of parsed) {
-    if (entry && typeof entry === "object" && "name" in entry && "regex" in entry) {
+    if (
+      entry &&
+      typeof entry === "object" &&
+      "name" in entry &&
+      "regex" in entry
+    ) {
       const { name, regex } = entry as Record<string, unknown>;
-      if (typeof name === "string" && typeof regex === "string" && compileChannelRegex(regex)) {
+      if (
+        typeof name === "string" &&
+        typeof regex === "string" &&
+        compileChannelRegex(regex)
+      ) {
         out.push({ name, regex });
       }
     }
@@ -105,7 +122,10 @@ export function parseManualChannels(json: string | null | undefined): ManualChan
 }
 
 /** Newest published, non-draft release (releases are returned newest-first by the API). */
-function newest(releases: Release[], pred: (r: Release) => boolean): Release | null {
+function newest(
+  releases: Release[],
+  pred: (r: Release) => boolean,
+): Release | null {
   for (const r of releases) {
     if (r.draft) continue;
     if (pred(r)) return r;
@@ -126,13 +146,19 @@ export function resolveChannel(
 ): Release | null {
   switch (sel.kind) {
     case "stable":
-      if (sel.raw === "latest" || sel.raw === "stable") return newest(releases, (r) => !r.prerelease);
-      return newest(releases, (r) => r.tag_name === `v${sel.raw}` || r.tag_name === sel.raw);
+      if (sel.raw === "latest" || sel.raw === "stable")
+        return newest(releases, (r) => !r.prerelease);
+      return newest(
+        releases,
+        (r) => r.tag_name === `v${sel.raw}` || r.tag_name === sel.raw,
+      );
     case "beta":
-      if (channelTags) return newest(releases, (r) => channelTags.has(r.tag_name));
+      if (channelTags)
+        return newest(releases, (r) => channelTags.has(r.tag_name));
       return newest(releases, (r) => r.prerelease);
     case "pr":
-      if (channelTags) return newest(releases, (r) => channelTags.has(r.tag_name));
+      if (channelTags)
+        return newest(releases, (r) => channelTags.has(r.tag_name));
       return null;
     case "manual": {
       const re = sel.manual ? compileChannelRegex(sel.manual.regex) : null;

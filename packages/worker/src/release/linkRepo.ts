@@ -31,7 +31,11 @@ import {
   stmtInsertTier,
 } from "../repo.js";
 import { parseManifest, type ParsedManifest } from "./manifest.js";
-import { discoverInstallation, type FetchImpl, getInstallationToken } from "./githubApp.js";
+import {
+  discoverInstallation,
+  type FetchImpl,
+  getInstallationToken,
+} from "./githubApp.js";
 import { fetchRepoFile } from "./github.js";
 
 export type LinkRepoResult =
@@ -39,6 +43,9 @@ export type LinkRepoResult =
       ok: true;
       slug: string;
       kid: string;
+      /** Raw Ed25519 public key (base64url) for SDK trust sets. */
+      publicKey: string;
+      trustKeys: Record<string, string>;
       /** Operator guidance for any post-link configuration (e.g. secrets to supply). */
       install: string;
       /** NAMES of the sealed secrets the manifest references but didn't ship — never values. */
@@ -54,8 +61,13 @@ const PKEY_FILES: Record<"schema" | "product" | "release", string[]> = {
 };
 
 /** Pull `{owner, repo}` from a GitHub URL or a bare `owner/repo`. Returns null on garbage. */
-export function parseRepoUrl(repoUrl: string): { owner: string; repo: string } | null {
-  const trimmed = repoUrl.trim().replace(/\.git$/, "").replace(/\/+$/, "");
+export function parseRepoUrl(
+  repoUrl: string,
+): { owner: string; repo: string } | null {
+  const trimmed = repoUrl
+    .trim()
+    .replace(/\.git$/, "")
+    .replace(/\/+$/, "");
   // Accept https://github.com/owner/repo, git@github.com:owner/repo, or owner/repo.
   const m =
     trimmed.match(/github\.com[/:]([^/]+)\/([^/]+)$/i) ??
@@ -92,7 +104,11 @@ export async function linkRepo(
   fetchImpl: FetchImpl = fetch,
 ): Promise<LinkRepoResult> {
   const parsed = parseRepoUrl(repoUrl);
-  if (!parsed) return { ok: false, error: "could not parse a github owner/repo from the URL" };
+  if (!parsed)
+    return {
+      ok: false,
+      error: "could not parse a github owner/repo from the URL",
+    };
   const { owner, repo } = parsed;
 
   // Discover the installation + mint a token. These throw on App-config / install problems;
@@ -103,26 +119,49 @@ export async function linkRepo(
     installId = await discoverInstallation(env, owner, repo, now, fetchImpl);
     token = await getInstallationToken(env, repo, installId, now, fetchImpl);
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "github access failed" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "github access failed",
+    };
   }
 
   // Read the `.pkey/` files (schema + product required, release optional). Missing required
   // files surface as parseManifest errors below.
   const files: Record<string, string> = {};
   for (const name of ["schema", "product", "release"] as const) {
-    const text = await readPkeyFile(token, owner, repo, PKEY_FILES[name], fetchImpl);
+    const text = await readPkeyFile(
+      token,
+      owner,
+      repo,
+      PKEY_FILES[name],
+      fetchImpl,
+    );
     if (text !== undefined) files[name] = text;
   }
 
   const result = parseManifest(files);
-  if (!result.ok) return { ok: false, error: "manifest validation failed", errors: result.errors };
+  if (!result.ok)
+    return {
+      ok: false,
+      error: "manifest validation failed",
+      errors: result.errors,
+    };
   const manifest = result.manifest;
 
   if (await getProduct(db, manifest.product.slug)) {
-    return { ok: false, error: `product already exists: ${manifest.product.slug}` };
+    return {
+      ok: false,
+      error: `product already exists: ${manifest.product.slug}`,
+    };
   }
 
-  return registerFromManifest(env, db, manifest, { owner, repo, installId }, now);
+  return registerFromManifest(
+    env,
+    db,
+    manifest,
+    { owner, repo, installId },
+    now,
+  );
 }
 
 /** Assemble + atomically insert all rows for a parsed manifest (GitHub coordinates supplied). */
@@ -256,14 +295,25 @@ async function registerFromManifest(
       ? `Linked ${gh.owner}/${gh.repo}. Supply these secrets via PUT /api/products/${slug}/secrets/<name>: ${remainingSecrets.join(", ")}.`
       : `Linked ${gh.owner}/${gh.repo}. No additional secrets required.`;
 
-  return { ok: true, slug, kid, install, remainingSecrets };
+  return {
+    ok: true,
+    slug,
+    kid,
+    publicKey: publicRawB64url,
+    trustKeys: { [kid]: publicRawB64url },
+    install,
+    remainingSecrets,
+  };
 }
 
 /** Collect the distinct secret NAMES a manifest references (OIDC + edge-mint key material). */
 function collectSecretNames(manifest: ParsedManifest): string[] {
   const names = new Set<string>();
-  if (manifest.oidc?.clientSecretSecret) names.add(manifest.oidc.clientSecretSecret);
-  for (const e of manifest.edgeMint) if (e.signingKeySecret) names.add(e.signingKeySecret);
-  for (const h of manifest.provisioning) if (h.secretKey) names.add(h.secretKey);
+  if (manifest.oidc?.clientSecretSecret)
+    names.add(manifest.oidc.clientSecretSecret);
+  for (const e of manifest.edgeMint)
+    if (e.signingKeySecret) names.add(e.signingKeySecret);
+  for (const h of manifest.provisioning)
+    if (h.secretKey) names.add(h.secretKey);
   return [...names];
 }

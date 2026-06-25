@@ -14,7 +14,10 @@ import {
 import type { Release, ReleaseAsset } from "../src/release/github.js";
 import { findBinaryAsset, matchAsset } from "../src/release/assets.js";
 import { extractSummary } from "../src/release/changelog.js";
-import { applyInstallTemplate, defaultInstallScript } from "../src/release/install.js";
+import {
+  applyInstallTemplate,
+  defaultInstallScript,
+} from "../src/release/install.js";
 import { renderAppcast } from "../src/release/appcast.js";
 import { handleRelease } from "../src/release/index.js";
 
@@ -23,7 +26,13 @@ import { handleRelease } from "../src/release/index.js";
 const SLUG = "djdl";
 
 function asset(name: string, id = name.length, size = 1024): ReleaseAsset {
-  return { id, name, size, content_type: "application/octet-stream", browser_download_url: `https://example/${name}` };
+  return {
+    id,
+    name,
+    size,
+    content_type: "application/octet-stream",
+    browser_download_url: `https://example/${name}`,
+  };
 }
 
 function release(over: Partial<Release> = {}): Release {
@@ -41,7 +50,10 @@ function release(over: Partial<Release> = {}): Release {
 }
 
 /** Seed the product + its release_config (release_config.product FKs to products). */
-async function seedReleaseConfig(db: Db, over: Record<string, unknown> = {}): Promise<void> {
+async function seedReleaseConfig(
+  db: Db,
+  over: Record<string, unknown> = {},
+): Promise<void> {
   await seedProduct(db, SLUG);
   const row = {
     product: SLUG,
@@ -50,7 +62,9 @@ async function seedReleaseConfig(db: Db, over: Record<string, unknown> = {}): Pr
     gh_installation_id: 42,
     channel_workflow: "channel.yml",
     beta_branch: "main",
-    manual_channels_json: JSON.stringify([{ name: "nightly", regex: "v\\d+\\.\\d+\\.\\d+-nightly\\.\\d+" }]),
+    manual_channels_json: JSON.stringify([
+      { name: "nightly", regex: "v\\d+\\.\\d+\\.\\d+-nightly\\.\\d+" },
+    ]),
     binary_name: "djdl",
     install_template: null as string | null,
     sparkle_ed25519_pub: "PUBKEY==",
@@ -62,8 +76,17 @@ async function seedReleaseConfig(db: Db, over: Record<string, unknown> = {}): Pr
        (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
         manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
      VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-    row.product, row.gh_owner, row.gh_repo, row.gh_installation_id, row.channel_workflow, row.beta_branch,
-    row.manual_channels_json, row.binary_name, row.install_template, row.sparkle_ed25519_pub, row.summary_marker,
+    row.product,
+    row.gh_owner,
+    row.gh_repo,
+    row.gh_installation_id,
+    row.channel_workflow,
+    row.beta_branch,
+    row.manual_channels_json,
+    row.binary_name,
+    row.install_template,
+    row.sparkle_ed25519_pub,
+    row.summary_marker,
   );
 }
 
@@ -88,13 +111,18 @@ function makeProduct(): Product {
  * token exchange is always answered so the engine can mint a token; everything else is
  * matched by substring (first hit wins).
  */
-function stubFetch(routes: Array<[string, () => Response]>): { fetchImpl: FetchImpl; calls: string[] } {
+function stubFetch(routes: Array<[string, () => Response]>): {
+  fetchImpl: FetchImpl;
+  calls: string[];
+} {
   const calls: string[] = [];
   const fetchImpl: FetchImpl = async (input) => {
     const url = String(input);
     calls.push(url);
     if (url.includes("/access_tokens")) {
-      return new Response(JSON.stringify({ token: "ghs_installation_token" }), { status: 200 });
+      return new Response(JSON.stringify({ token: "ghs_installation_token" }), {
+        status: 200,
+      });
     }
     for (const [needle, build] of routes) {
       if (url.includes(needle)) return build();
@@ -148,7 +176,9 @@ d+RKUGe97dQXkny7eE7qJPbg
 
 describe("channels", () => {
   const manual = parseManualChannels(
-    JSON.stringify([{ name: "nightly", regex: "v\\d+\\.\\d+\\.\\d+-nightly\\.\\d+" }]),
+    JSON.stringify([
+      { name: "nightly", regex: "v\\d+\\.\\d+\\.\\d+-nightly\\.\\d+" },
+    ]),
   );
 
   it("classifies stable / beta / pr / manual selectors", () => {
@@ -172,7 +202,10 @@ describe("channels", () => {
   });
 
   it("resolves a pinned tag exactly", () => {
-    const releases = [release({ tag_name: "v1.2.3" }), release({ tag_name: "v1.0.0" })];
+    const releases = [
+      release({ tag_name: "v1.2.3" }),
+      release({ tag_name: "v1.0.0" }),
+    ];
     const sel = classifyChannel("1.0.0", manual)!;
     expect(resolveChannel(sel, releases)?.tag_name).toBe("v1.0.0");
   });
@@ -193,14 +226,20 @@ describe("channels", () => {
       release({ tag_name: "v2.0.0-beta.1", prerelease: true }),
     ];
     const sel = classifyChannel("beta", manual)!;
-    expect(resolveChannel(sel, releases, new Set(["v2.0.0-beta.1"]))?.tag_name).toBe("v2.0.0-beta.1");
+    expect(
+      resolveChannel(sel, releases, new Set(["v2.0.0-beta.1"]))?.tag_name,
+    ).toBe("v2.0.0-beta.1");
     expect(resolveChannel(sel, releases)?.tag_name).toBe("v2.0.0-beta.2");
   });
 
   it("rejects an over-long / unsafe manual regex", () => {
-    const bad = parseManualChannels(JSON.stringify([{ name: "x", regex: "a".repeat(200) }]));
+    const bad = parseManualChannels(
+      JSON.stringify([{ name: "x", regex: "a".repeat(200) }]),
+    );
     expect(bad).toHaveLength(0);
-    const broken = parseManualChannels(JSON.stringify([{ name: "x", regex: "(" }]));
+    const broken = parseManualChannels(
+      JSON.stringify([{ name: "x", regex: "(" }]),
+    );
     expect(broken).toHaveLength(0);
   });
 });
@@ -213,15 +252,28 @@ describe("assets", () => {
       asset("djdl-arm64"),
       asset("djdl-x86_64"),
     ];
-    expect(matchAsset(assets, { arch: "arm64", ext: "dmg", binaryName: "djdl" })?.name).toBe("djdl-arm64.dmg");
-    expect(matchAsset(assets, { arch: "x86_64", ext: "dmg", binaryName: "djdl" })?.name).toBe("djdl-x86_64.dmg");
+    expect(
+      matchAsset(assets, { arch: "arm64", ext: "dmg", binaryName: "djdl" })
+        ?.name,
+    ).toBe("djdl-arm64.dmg");
+    expect(
+      matchAsset(assets, { arch: "x86_64", ext: "dmg", binaryName: "djdl" })
+        ?.name,
+    ).toBe("djdl-x86_64.dmg");
     expect(findBinaryAsset(assets, "djdl", "arm64")?.name).toBe("djdl-arm64");
   });
 
   it("accepts arch aliases (aarch64 / amd64)", () => {
-    const assets = [asset("MyApp-1.2.3-aarch64.dmg"), asset("MyApp-1.2.3-amd64.dmg")];
-    expect(matchAsset(assets, { arch: "arm64", ext: "dmg" })?.name).toBe("MyApp-1.2.3-aarch64.dmg");
-    expect(matchAsset(assets, { arch: "x86_64", ext: "dmg" })?.name).toBe("MyApp-1.2.3-amd64.dmg");
+    const assets = [
+      asset("MyApp-1.2.3-aarch64.dmg"),
+      asset("MyApp-1.2.3-amd64.dmg"),
+    ];
+    expect(matchAsset(assets, { arch: "arm64", ext: "dmg" })?.name).toBe(
+      "MyApp-1.2.3-aarch64.dmg",
+    );
+    expect(matchAsset(assets, { arch: "x86_64", ext: "dmg" })?.name).toBe(
+      "MyApp-1.2.3-amd64.dmg",
+    );
   });
 
   it("returns null when ambiguous", () => {
@@ -232,25 +284,32 @@ describe("assets", () => {
 
   it("disambiguates a channel build by suffix", () => {
     const assets = [asset("djdl-arm64"), asset("djdl-staging-arm64")];
-    expect(findBinaryAsset(assets, "djdl", "arm64", "staging")?.name).toBe("djdl-staging-arm64");
+    expect(findBinaryAsset(assets, "djdl", "arm64", "staging")?.name).toBe(
+      "djdl-staging-arm64",
+    );
     expect(findBinaryAsset(assets, "djdl", "arm64")?.name).toBe("djdl-arm64");
   });
 });
 
 describe("changelog", () => {
   it("extracts the marker block", () => {
-    const body = "Intro line.\n\n<!-- pkey:summary -->\n**New:** thing\n<!-- /pkey:summary -->\n\n## Changes\n- detail";
+    const body =
+      "Intro line.\n\n<!-- pkey:summary -->\n**New:** thing\n<!-- /pkey:summary -->\n\n## Changes\n- detail";
     expect(extractSummary(body)).toBe("New: thing");
   });
 
   it("honors a custom marker token", () => {
-    const body = "<!-- co:notes -->Custom summary<!-- /co:notes -->\n## Changes";
+    const body =
+      "<!-- co:notes -->Custom summary<!-- /co:notes -->\n## Changes";
     expect(extractSummary(body, "co:notes")).toBe("Custom summary");
   });
 
   it("falls back to the first paragraph above the first heading", () => {
-    const body = "A friendly summary paragraph that users see.\n\n## Detailed changes\n- nerdy detail";
-    expect(extractSummary(body)).toBe("A friendly summary paragraph that users see.");
+    const body =
+      "A friendly summary paragraph that users see.\n\n## Detailed changes\n- nerdy detail";
+    expect(extractSummary(body)).toBe(
+      "A friendly summary paragraph that users see.",
+    );
   });
 
   it("returns null with no usable prose", () => {
@@ -263,9 +322,17 @@ describe("install templating", () => {
   it("substitutes the supported placeholders", () => {
     const out = applyInstallTemplate(
       "install {{binaryName}} from {{origin}} channels={{channels}}",
-      { origin: "https://key.plrs.im", cliBase: "/djdl/cli", binaryName: "djdl", channels: ["staging", "beta"], versionEnv: "DJDL_VERSION" },
+      {
+        origin: "https://key.plrs.im",
+        cliBase: "/djdl/cli",
+        binaryName: "djdl",
+        channels: ["staging", "beta"],
+        versionEnv: "DJDL_VERSION",
+      },
     );
-    expect(out).toBe("install djdl from https://key.plrs.im channels=staging beta");
+    expect(out).toBe(
+      "install djdl from https://key.plrs.im channels=staging beta",
+    );
   });
 
   it("ports arch detection in the default script", () => {
@@ -276,8 +343,8 @@ describe("install templating", () => {
       channels: ["staging"],
       versionEnv: "DJDL_VERSION",
     });
-    expect(script).toContain("arm64|aarch64) ARCH=\"arm64\"");
-    expect(script).toContain("x86_64|amd64)  ARCH=\"x86_64\"");
+    expect(script).toContain('arm64|aarch64) ARCH="arm64"');
+    expect(script).toContain('x86_64|amd64)  ARCH="x86_64"');
     expect(script).toContain("$ORIGIN$CLI_BASE/$VERSION/djdl-$ARCH");
   });
 });
@@ -328,7 +395,15 @@ describe("handleRelease", () => {
     const db = makeTestDb();
     const { env } = envFor();
     const { fetchImpl } = stubFetch([]);
-    const res = await handleRelease(req(), env, db, makeProduct(), "version", {}, fetchImpl);
+    const res = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "version",
+      {},
+      fetchImpl,
+    );
     expect(res.status).toBe(404);
   });
 
@@ -336,11 +411,25 @@ describe("handleRelease", () => {
     const db = makeTestDb();
     await seedReleaseConfig(db);
     const { env } = envFor();
-    const releases = [release({ tag_name: "v1.9.0" }), release({ tag_name: "v1.0.0" })];
+    const releases = [
+      release({ tag_name: "v1.9.0" }),
+      release({ tag_name: "v1.0.0" }),
+    ];
     const { fetchImpl, calls } = stubFetch([
-      ["/releases?per_page", () => new Response(JSON.stringify(releases), { status: 200 })],
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify(releases), { status: 200 }),
+      ],
     ]);
-    const res = await handleRelease(req(), env, db, makeProduct(), "version", { version: "latest" }, fetchImpl);
+    const res = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "version",
+      { version: "latest" },
+      fetchImpl,
+    );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { version: string; tag: string };
     expect(body.version).toBe("1.9.0");
@@ -352,15 +441,37 @@ describe("handleRelease", () => {
     await seedReleaseConfig(db);
     const { env } = envFor();
     const releases = [
-      release({ tag_name: "v1.1.0", body: "<!-- pkey:summary -->Faster sync<!-- /pkey:summary -->\n## Changes" }),
-      release({ tag_name: "v1.0.0", body: "Initial public release.\n\n## Changes" }),
+      release({
+        tag_name: "v1.1.0",
+        body: "<!-- pkey:summary -->Faster sync<!-- /pkey:summary -->\n## Changes",
+      }),
+      release({
+        tag_name: "v1.0.0",
+        body: "Initial public release.\n\n## Changes",
+      }),
     ];
     const { fetchImpl } = stubFetch([
-      ["/releases?per_page", () => new Response(JSON.stringify(releases), { status: 200 })],
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify(releases), { status: 200 }),
+      ],
     ]);
-    const res = await handleRelease(req(), env, db, makeProduct(), "changelog", {}, fetchImpl);
-    const body = (await res.json()) as { entries: Array<{ version: string; summary: string | null }> };
-    expect(body.entries[0]).toMatchObject({ version: "1.1.0", summary: "Faster sync" });
+    const res = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "changelog",
+      {},
+      fetchImpl,
+    );
+    const body = (await res.json()) as {
+      entries: Array<{ version: string; summary: string | null }>;
+    };
+    expect(body.entries[0]).toMatchObject({
+      version: "1.1.0",
+      summary: "Faster sync",
+    });
     expect(body.entries[1]?.summary).toBe("Initial public release.");
   });
 
@@ -369,7 +480,15 @@ describe("handleRelease", () => {
     await seedReleaseConfig(db);
     const { env } = envFor();
     const { fetchImpl } = stubFetch([]);
-    const res = await handleRelease(req(), env, db, makeProduct(), "install", {}, fetchImpl);
+    const res = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "install",
+      {},
+      fetchImpl,
+    );
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(text).toContain("djdl installer");
@@ -381,12 +500,33 @@ describe("handleRelease", () => {
     const db = makeTestDb();
     await seedReleaseConfig(db);
     const { env } = envFor();
-    const rel = release({ tag_name: "v1.2.3", assets: [asset("djdl-arm64", 777)] });
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64", 777)],
+    });
     const { fetchImpl } = stubFetch([
-      ["/releases/tags/", () => new Response(JSON.stringify(rel), { status: 200 })],
-      ["/releases/assets/777", () => new Response("BINARY", { status: 200, headers: { "Content-Type": "application/octet-stream" } })],
+      [
+        "/releases/tags/",
+        () => new Response(JSON.stringify(rel), { status: 200 }),
+      ],
+      [
+        "/releases/assets/777",
+        () =>
+          new Response("BINARY", {
+            status: 200,
+            headers: { "Content-Type": "application/octet-stream" },
+          }),
+      ],
     ]);
-    const res = await handleRelease(req(), env, db, makeProduct(), "cli", { version: "1.2.3", arch: "arm64" }, fetchImpl);
+    const res = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "cli",
+      { version: "1.2.3", arch: "arm64" },
+      fetchImpl,
+    );
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("BINARY");
   });
@@ -397,18 +537,37 @@ describe("handleRelease", () => {
     const { env } = envFor();
     const rel = release({
       tag_name: "v1.2.3",
-      assets: [asset("djdl-arm64.dmg", 100, 4096), asset("djdl-arm64.dmg.sig", 101)],
+      assets: [
+        asset("djdl-arm64.dmg", 100, 4096),
+        asset("djdl-arm64.dmg.sig", 101),
+      ],
     });
     const { fetchImpl } = stubFetch([
-      ["/releases?per_page", () => new Response(JSON.stringify([rel]), { status: 200 })],
-      ["/releases/assets/101", () => new Response("SIG_BASE64==", { status: 200 })],
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+      [
+        "/releases/assets/101",
+        () => new Response("SIG_BASE64==", { status: 200 }),
+      ],
     ]);
-    const res = await handleRelease(req(), env, db, makeProduct(), "appcast", {}, fetchImpl);
+    const res = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "appcast",
+      {},
+      fetchImpl,
+    );
     expect(res.status).toBe(200);
     const xml = await res.text();
     expect(xml).toContain('sparkle:edSignature="SIG_BASE64=="');
     expect(xml).toContain("/djdl/dmg/1.2.3/djdl-arm64.dmg");
-    expect(xml).toContain("<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>");
+    expect(xml).toContain(
+      "<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>",
+    );
   });
 
   // ── P4 regression: unsigned-appcast fallback gating ───────────────────────────
@@ -420,11 +579,25 @@ describe("handleRelease", () => {
     await seedReleaseConfig(db); // sparkle_ed25519_pub = "PUBKEY==" by default
     const { env } = envFor();
     // The DMG exists but its sibling `<dmg>.sig` does NOT.
-    const rel = release({ tag_name: "v1.2.3", assets: [asset("djdl-arm64.dmg", 100, 4096)] });
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64.dmg", 100, 4096)],
+    });
     const { fetchImpl } = stubFetch([
-      ["/releases?per_page", () => new Response(JSON.stringify([rel]), { status: 200 })],
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
     ]);
-    const res = await handleRelease(req(), env, db, makeProduct(), "appcast", {}, fetchImpl);
+    const res = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "appcast",
+      {},
+      fetchImpl,
+    );
     expect(res.status).toBe(404);
   });
 
@@ -433,16 +606,32 @@ describe("handleRelease", () => {
     await seedReleaseConfig(db, { sparkle_ed25519_pub: null }); // genuinely unsigned channel
     const { env } = envFor();
     // No `.sig` asset, and that's fine: an unsigned-pubkey product may ship without a signature.
-    const rel = release({ tag_name: "v1.2.3", assets: [asset("djdl-arm64.dmg", 100, 4096)] });
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64.dmg", 100, 4096)],
+    });
     const { fetchImpl } = stubFetch([
-      ["/releases?per_page", () => new Response(JSON.stringify([rel]), { status: 200 })],
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
     ]);
-    const res = await handleRelease(req(), env, db, makeProduct(), "appcast", {}, fetchImpl);
+    const res = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "appcast",
+      {},
+      fetchImpl,
+    );
     expect(res.status).toBe(200);
     const xml = await res.text();
     expect(xml).not.toContain("sparkle:edSignature");
     expect(xml).toContain("/djdl/dmg/1.2.3/djdl-arm64.dmg");
-    expect(xml).toContain("<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>");
+    expect(xml).toContain(
+      "<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>",
+    );
   });
 });
 

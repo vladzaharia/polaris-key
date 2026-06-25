@@ -5,9 +5,26 @@ export {
   type ConfigSource,
   type UserConfigEntry,
 } from "./client.js";
-export { licenseState, isUsable, type LicenseState, type GateInput } from "./gate.js";
+export {
+  licenseState,
+  isUsable,
+  type LicenseState,
+  type GateInput,
+} from "./gate.js";
 export { verifyDoc, type VerifyOptions } from "./verify.js";
-export { fetchManagedConfig, type FetchResult, type FetchOptions } from "./fetch.js";
+export {
+  fetchManagedConfig,
+  type FetchResult,
+  type FetchOptions,
+} from "./fetch.js";
+export {
+  discoverProduct,
+  type DiscoverProductOptions,
+  type DiscoverProductResult,
+  type ProductDiscoveryDocument,
+  type ProductDiscoveryEndpoints,
+  type ProductDiscoveryTrust,
+} from "./discovery.js";
 export {
   enrollWithKey,
   reacquireToken,
@@ -22,7 +39,12 @@ export {
   type Store,
   type CacheRecord,
 } from "./store.js";
-export { parseSemver, compareSemver, channelForVersion, isDevBuild } from "./semver.js";
+export {
+  parseSemver,
+  compareSemver,
+  channelForVersion,
+  isDevBuild,
+} from "./semver.js";
 export type {
   ManagedConfigDoc,
   ManagedPayload,

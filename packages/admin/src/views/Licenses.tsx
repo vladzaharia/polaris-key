@@ -19,7 +19,11 @@ import {
   useToast,
   type ColumnDef,
 } from "../components/ui/index.js";
-import { ChannelList, LicenseStatusBadge, OneTimeKeyPanel } from "./licenses/shared.js";
+import {
+  ChannelList,
+  LicenseStatusBadge,
+  OneTimeKeyPanel,
+} from "./licenses/shared.js";
 
 /**
  * The per-product Licenses list. Loads the license summaries, renders them in a sortable +
@@ -29,7 +33,9 @@ import { ChannelList, LicenseStatusBadge, OneTimeKeyPanel } from "./licenses/sha
  */
 export function Licenses({ slug }: { slug: string }): React.ReactElement {
   const key = `licenses:${slug}`;
-  const { data, loading, error, reload } = useResource(key, () => api.licenses(slug));
+  const { data, loading, error, reload } = useResource(key, () =>
+    api.licenses(slug),
+  );
   const [createOpen, setCreateOpen] = React.useState(false);
   const licenses = data?.licenses ?? [];
 
@@ -43,11 +49,19 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
         cell: (r) => (
           <div className="flex flex-col">
             <span className="font-medium text-foreground">{r.name || "—"}</span>
-            <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {r.id}
+            </span>
           </div>
         ),
       },
-      { id: "email", header: "Email", sortable: true, accessor: (r) => r.email, cell: (r) => r.email || "—" },
+      {
+        id: "email",
+        header: "Email",
+        sortable: true,
+        accessor: (r) => r.email,
+        cell: (r) => r.email || "—",
+      },
       {
         id: "status",
         header: "Status",
@@ -79,7 +93,12 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
         header: "Tier",
         sortable: true,
         accessor: (r) => r.tier ?? "",
-        cell: (r) => (r.tier ? <Badge variant="outline">{r.tier}</Badge> : <span className="text-muted-foreground">—</span>),
+        cell: (r) =>
+          r.tier ? (
+            <Badge variant="outline">{r.tier}</Badge>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
       {
         id: "channels",
@@ -91,7 +110,13 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
         header: "Identity",
         sortable: true,
         accessor: (r) => r.identityProvider,
-        cell: (r) => <Badge variant={r.identityProvider === "oidc" ? "primary" : "default"}>{r.identityProvider}</Badge>,
+        cell: (r) => (
+          <Badge
+            variant={r.identityProvider === "oidc" ? "primary" : "default"}
+          >
+            {r.identityProvider}
+          </Badge>
+        ),
       },
     ],
     [],
@@ -102,7 +127,9 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold tracking-tight">Licenses</h2>
-          <p className="text-sm text-muted-foreground">Manage license holders, keys, and devices for {slug}.</p>
+          <p className="text-sm text-muted-foreground">
+            Manage license holders, keys, and devices for {slug}.
+          </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus aria-hidden />
@@ -140,7 +167,9 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
           loading={loading}
           filterable
           filterPlaceholder="Filter by name, email, status…"
-          onRowClick={(r) => navigate({ kind: "product", slug, view: "license", id: r.id })}
+          onRowClick={(r) =>
+            navigate({ kind: "product", slug, view: "license", id: r.id })
+          }
         />
       )}
 
@@ -193,7 +222,10 @@ function CreateLicenseDialog({
     if (!name.trim() || !email.trim()) return;
     setSubmitting(true);
     try {
-      const body: CreateLicenseBody = { name: name.trim(), email: email.trim() };
+      const body: CreateLicenseBody = {
+        name: name.trim(),
+        email: email.trim(),
+      };
       if (tier.trim()) body.tier = tier.trim();
       const res = await api.createLicense(slug, body);
       setMintedKey(res.key);
@@ -201,7 +233,10 @@ function CreateLicenseDialog({
       toast.success("License created", `${name.trim()} was added.`);
       onCreated();
     } catch (err) {
-      toast.error("Could not create license", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Could not create license",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setSubmitting(false);
     }
@@ -230,7 +265,12 @@ function CreateLicenseDialog({
                 <Button
                   onClick={() => {
                     onOpenChange(false);
-                    navigate({ kind: "product", slug, view: "license", id: createdId });
+                    navigate({
+                      kind: "product",
+                      slug,
+                      view: "license",
+                      id: createdId,
+                    });
                   }}
                 >
                   Open license
@@ -241,7 +281,12 @@ function CreateLicenseDialog({
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <Field label="Name" required>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" autoFocus />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ada Lovelace"
+                autoFocus
+              />
             </Field>
             <Field label="Email" required>
               <Input
@@ -251,14 +296,30 @@ function CreateLicenseDialog({
                 placeholder="ada@example.com"
               />
             </Field>
-            <Field label="Tier" help="Optional. Applies the tier's policy + profile.">
-              <Input value={tier} onChange={(e) => setTier(e.target.value)} placeholder="pro" />
+            <Field
+              label="Tier"
+              help="Optional. Applies the tier's policy + profile."
+            >
+              <Input
+                value={tier}
+                onChange={(e) => setTier(e.target.value)}
+                placeholder="pro"
+              />
             </Field>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={submitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit" loading={submitting} disabled={!name.trim() || !email.trim()}>
+              <Button
+                type="submit"
+                loading={submitting}
+                disabled={!name.trim() || !email.trim()}
+              >
                 Create license
               </Button>
             </DialogFooter>

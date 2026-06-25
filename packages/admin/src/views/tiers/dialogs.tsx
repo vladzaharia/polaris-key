@@ -25,7 +25,13 @@ import {
  * surfacing a fixed, accessible checklist keeps the editor honest and discoverable. Stable + the
  * "stable + beta" path are the common shapes; the list mirrors the worker's channel vocabulary.
  */
-export const CHANNELS = ["stable", "beta", "alpha", "nightly", "internal"] as const;
+export const CHANNELS = [
+  "stable",
+  "beta",
+  "alpha",
+  "nightly",
+  "internal",
+] as const;
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 
@@ -66,7 +72,10 @@ function PolicyFields({
 }): React.ReactElement {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Expiry (days)" help="License lifetime granted by this tier. Blank = product default.">
+      <Field
+        label="Expiry (days)"
+        help="License lifetime granted by this tier. Blank = product default."
+      >
         <Input
           type="number"
           min={1}
@@ -76,7 +85,10 @@ function PolicyFields({
           placeholder="default"
         />
       </Field>
-      <Field label="Machine limit" help="Activations allowed per license. Blank = product default.">
+      <Field
+        label="Machine limit"
+        help="Activations allowed per license. Blank = product default."
+      >
         <Input
           type="number"
           min={1}
@@ -86,11 +98,25 @@ function PolicyFields({
           placeholder="default"
         />
       </Field>
-      <Field label="Min version" help="Lowest app version this tier may run. Blank = no floor.">
-        <Input value={minVersion} onChange={(e) => setMinVersion(e.target.value)} placeholder="e.g. 1.0.0" />
+      <Field
+        label="Min version"
+        help="Lowest app version this tier may run. Blank = no floor."
+      >
+        <Input
+          value={minVersion}
+          onChange={(e) => setMinVersion(e.target.value)}
+          placeholder="e.g. 1.0.0"
+        />
       </Field>
-      <Field label="Max version" help="Highest app version this tier may run. Blank = no ceiling.">
-        <Input value={maxVersion} onChange={(e) => setMaxVersion(e.target.value)} placeholder="e.g. 2.0.0" />
+      <Field
+        label="Max version"
+        help="Highest app version this tier may run. Blank = no ceiling."
+      >
+        <Input
+          value={maxVersion}
+          onChange={(e) => setMaxVersion(e.target.value)}
+          placeholder="e.g. 2.0.0"
+        />
       </Field>
     </div>
   );
@@ -106,15 +132,27 @@ function ChannelPicker({
 }): React.ReactElement {
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="text-sm font-medium leading-none text-foreground">Channels</legend>
-      <p className="text-xs text-muted-foreground">Release channels this tier may receive updates from.</p>
+      <legend className="text-sm font-medium leading-none text-foreground">
+        Channels
+      </legend>
+      <p className="text-xs text-muted-foreground">
+        Release channels this tier may receive updates from.
+      </p>
       <div className="flex flex-wrap gap-3 pt-1">
         {CHANNELS.map((channel) => {
           const id = `tier-channel-${channel}`;
           const on = selected.includes(channel);
           return (
-            <label key={channel} htmlFor={id} className="flex items-center gap-2 text-sm">
-              <Checkbox id={id} checked={on} onCheckedChange={(c) => onToggle(channel, c === true)} />
+            <label
+              key={channel}
+              htmlFor={id}
+              className="flex items-center gap-2 text-sm"
+            >
+              <Checkbox
+                id={id}
+                checked={on}
+                onCheckedChange={(c) => onToggle(channel, c === true)}
+              />
               {channel}
             </label>
           );
@@ -166,11 +204,14 @@ export function CreateTierDialog({
 
   const trimmedId = id.trim();
   const idTaken = existingIds.includes(trimmedId);
-  const idError = trimmedId === "" ? undefined : !ID_PATTERN.test(trimmedId)
-    ? "Lowercase letters, digits, '-' and '_' only."
-    : idTaken
-      ? "A tier with this id already exists."
-      : undefined;
+  const idError =
+    trimmedId === ""
+      ? undefined
+      : !ID_PATTERN.test(trimmedId)
+        ? "Lowercase letters, digits, '-' and '_' only."
+        : idTaken
+          ? "A tier with this id already exists."
+          : undefined;
   const canSubmit = trimmedId !== "" && !idError && !saving;
 
   const submit = (): void => {
@@ -197,7 +238,9 @@ export function CreateTierDialog({
       >
         <DialogHeader>
           <DialogTitle>New tier</DialogTitle>
-          <DialogDescription>Tiers bundle a profile and license policies under a stable id.</DialogDescription>
+          <DialogDescription>
+            Tiers bundle a profile and license policies under a stable id.
+          </DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-4"
@@ -207,7 +250,12 @@ export function CreateTierDialog({
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Id" required error={idError} help="Stable, immutable identifier.">
+            <Field
+              label="Id"
+              required
+              error={idError}
+              help="Stable, immutable identifier."
+            >
               <Input
                 value={id}
                 onChange={(e) => setId(e.target.value)}
@@ -217,8 +265,15 @@ export function CreateTierDialog({
                 spellCheck={false}
               />
             </Field>
-            <Field label="Label" help="Human-friendly name shown in the console.">
-              <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Pro" />
+            <Field
+              label="Label"
+              help="Human-friendly name shown in the console."
+            >
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Pro"
+              />
             </Field>
           </div>
 
@@ -237,7 +292,9 @@ export function CreateTierDialog({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">The managed payload applied to licenses on this tier.</p>
+            <p className="text-xs text-muted-foreground">
+              The managed payload applied to licenses on this tier.
+            </p>
           </div>
 
           <PolicyFields
@@ -254,12 +311,19 @@ export function CreateTierDialog({
           <ChannelPicker
             selected={channels}
             onToggle={(channel, on) =>
-              setChannels((prev) => (on ? [...prev, channel] : prev.filter((c) => c !== channel)))
+              setChannels((prev) =>
+                on ? [...prev, channel] : prev.filter((c) => c !== channel),
+              )
             }
           />
 
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" loading={saving} disabled={!canSubmit}>
@@ -302,8 +366,12 @@ export function EditTierDialog({
     if (open && tier) {
       setLabel(tier.label ?? "");
       setProfile(tier.profile ?? NONE);
-      setExpiry(tier.policyExpiryDays == null ? "" : String(tier.policyExpiryDays));
-      setMachines(tier.policyMachineLimit == null ? "" : String(tier.policyMachineLimit));
+      setExpiry(
+        tier.policyExpiryDays == null ? "" : String(tier.policyExpiryDays),
+      );
+      setMachines(
+        tier.policyMachineLimit == null ? "" : String(tier.policyMachineLimit),
+      );
       setMinVersion(tier.minVersion ?? "");
       setMaxVersion(tier.maxVersion ?? "");
       setChannels(tier.channels ?? []);
@@ -348,7 +416,12 @@ export function EditTierDialog({
           }}
         >
           <Field label="Label" help="Human-friendly name shown in the console.">
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={tier.id} autoFocus />
+            <Input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder={tier.id}
+              autoFocus
+            />
           </Field>
 
           <div className="flex flex-col gap-1.5">
@@ -382,12 +455,19 @@ export function EditTierDialog({
           <ChannelPicker
             selected={channels}
             onToggle={(channel, on) =>
-              setChannels((prev) => (on ? [...prev, channel] : prev.filter((c) => c !== channel)))
+              setChannels((prev) =>
+                on ? [...prev, channel] : prev.filter((c) => c !== channel),
+              )
             }
           />
 
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" loading={saving}>

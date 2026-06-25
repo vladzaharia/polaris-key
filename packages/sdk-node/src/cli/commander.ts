@@ -6,7 +6,13 @@
 // that calls this passes in their own `Command` instance.
 
 import type { Command } from "commander";
-import { activate, deactivate, getConfig, status, type ClientFactory } from "./commands.js";
+import {
+  activate,
+  deactivate,
+  getConfig,
+  status,
+  type ClientFactory,
+} from "./commands.js";
 
 /** How the adapter reads CLI-wide options (product/version/baseUrl/configDir) off the
  *  commander program to feed the `ClientFactory`. By default it reads them from the root

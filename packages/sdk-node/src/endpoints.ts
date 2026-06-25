@@ -15,7 +15,11 @@ interface Base {
   fetchImpl?: typeof fetch;
 }
 
-async function enrollLike(url: string, headers: Record<string, string>, f: typeof fetch): Promise<EnrollResult> {
+async function enrollLike(
+  url: string,
+  headers: Record<string, string>,
+  f: typeof fetch,
+): Promise<EnrollResult> {
   let res: Response;
   try {
     res = await f(url, { method: "POST", headers });
@@ -27,14 +31,23 @@ async function enrollLike(url: string, headers: Record<string, string>, f: typeo
     return { kind: "ok", token: b.token, schemaVersion: b.schemaVersion };
   }
   if (res.status === 403) {
-    const b = (await res.json().catch(() => ({}))) as { limit?: number; machineCount?: number };
-    return { kind: "machine-limit", limit: b.limit, machineCount: b.machineCount };
+    const b = (await res.json().catch(() => ({}))) as {
+      limit?: number;
+      machineCount?: number;
+    };
+    return {
+      kind: "machine-limit",
+      limit: b.limit,
+      machineCount: b.machineCount,
+    };
   }
   if (res.status === 401) return { kind: "unauthorized" };
   return { kind: "error", message: await res.text().catch(() => "") };
 }
 
-export async function enrollWithKey(opts: Base & { key: string }): Promise<EnrollResult> {
+export async function enrollWithKey(
+  opts: Base & { key: string },
+): Promise<EnrollResult> {
   return enrollLike(
     `${opts.baseUrl}/${opts.product}/enroll`,
     { authorization: `Bearer ${opts.key}`, [HEADER_DEVICE]: opts.deviceId },
@@ -42,10 +55,12 @@ export async function enrollWithKey(opts: Base & { key: string }): Promise<Enrol
   );
 }
 
-export async function reacquireToken(opts: Base): Promise<EnrollResult> {
+export async function reacquireToken(
+  opts: Base & { token: string },
+): Promise<EnrollResult> {
   return enrollLike(
     `${opts.baseUrl}/${opts.product}/token`,
-    { [HEADER_DEVICE]: opts.deviceId },
+    { authorization: `Bearer ${opts.token}`, [HEADER_DEVICE]: opts.deviceId },
     opts.fetchImpl ?? fetch,
   );
 }
@@ -78,7 +93,10 @@ export async function reportSnapshot(opts: {
   try {
     const res = await f(`${opts.baseUrl}/${opts.product}/config/report`, {
       method: "POST",
-      headers: { authorization: `Bearer ${opts.token}`, "content-type": "application/json" },
+      headers: {
+        authorization: `Bearer ${opts.token}`,
+        "content-type": "application/json",
+      },
       body: JSON.stringify(opts.snapshot),
     });
     return res.ok;

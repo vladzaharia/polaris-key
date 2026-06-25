@@ -139,7 +139,10 @@ export interface AuditRow {
 }
 
 // ── Products ─────────────────────────────────────────────────────────────────
-export async function getProduct(db: Db, slug: string): Promise<ProductRow | null> {
+export async function getProduct(
+  db: Db,
+  slug: string,
+): Promise<ProductRow | null> {
   return db.first<ProductRow>("SELECT * FROM products WHERE slug = ?", slug);
 }
 
@@ -152,56 +155,99 @@ export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
     `INSERT INTO products (slug, name, signing_kid, signing_key_secret, signing_pub, compat_min, compat_max,
        default_max_offline_days, default_machine_limit, admin_group, branding_json, release_source, created_at, modified_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    row.slug, row.name, row.signing_kid, row.signing_key_secret, row.signing_pub, row.compat_min, row.compat_max,
-    row.default_max_offline_days, row.default_machine_limit, row.admin_group, row.branding_json,
-    row.release_source, row.created_at, row.modified_at,
+    row.slug,
+    row.name,
+    row.signing_kid,
+    row.signing_key_secret,
+    row.signing_pub,
+    row.compat_min,
+    row.compat_max,
+    row.default_max_offline_days,
+    row.default_machine_limit,
+    row.admin_group,
+    row.branding_json,
+    row.release_source,
+    row.created_at,
+    row.modified_at,
   );
 }
 
 // ── Sealed key custody (envelope-encrypted under the platform KEK; see src/keyvault.ts) ──
-export async function getActiveProductKey(db: Db, product: string): Promise<ProductKeyRow | null> {
+export async function getActiveProductKey(
+  db: Db,
+  product: string,
+): Promise<ProductKeyRow | null> {
   return db.first<ProductKeyRow>(
     "SELECT * FROM product_keys WHERE product = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
     product,
   );
 }
 
-export async function insertProductKey(db: Db, row: ProductKeyRow): Promise<void> {
+export async function insertProductKey(
+  db: Db,
+  row: ProductKeyRow,
+): Promise<void> {
   await db.run(
     `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    row.product, row.kid, row.alg, row.public_b64url, row.enc_private_json, row.status,
-    row.created_at, row.rotated_at,
+    row.product,
+    row.kid,
+    row.alg,
+    row.public_b64url,
+    row.enc_private_json,
+    row.status,
+    row.created_at,
+    row.rotated_at,
   );
 }
 
 /** Retire every currently-active key for a product (key rotation: old → retired). */
-export async function retireProductKeys(db: Db, product: string, at: number): Promise<void> {
+export async function retireProductKeys(
+  db: Db,
+  product: string,
+  at: number,
+): Promise<void> {
   await db.run(
     "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active'",
-    at, product,
+    at,
+    product,
   );
 }
 
-export async function getProductSecret(db: Db, product: string, name: string): Promise<ProductSecretRow | null> {
+export async function getProductSecret(
+  db: Db,
+  product: string,
+  name: string,
+): Promise<ProductSecretRow | null> {
   return db.first<ProductSecretRow>(
     "SELECT * FROM product_secrets WHERE product = ? AND name = ?",
-    product, name,
+    product,
+    name,
   );
 }
 
-export async function upsertProductSecret(db: Db, row: ProductSecretRow): Promise<void> {
+export async function upsertProductSecret(
+  db: Db,
+  row: ProductSecretRow,
+): Promise<void> {
   await db.run(
     `INSERT INTO product_secrets (product, name, enc_value_json, created_at, modified_at)
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(product, name) DO UPDATE SET
        enc_value_json = excluded.enc_value_json, modified_at = excluded.modified_at`,
-    row.product, row.name, row.enc_value_json, row.created_at, row.modified_at,
+    row.product,
+    row.name,
+    row.enc_value_json,
+    row.created_at,
+    row.modified_at,
   );
 }
 
 // ── Product schema (data-driven catalog) ─────────────────────────────────────
-export async function getActiveSchema(db: Db, product: string): Promise<SchemaRow | null> {
+export async function getActiveSchema(
+  db: Db,
+  product: string,
+): Promise<SchemaRow | null> {
   return db.first<SchemaRow>(
     "SELECT * FROM product_schema WHERE product = ? AND active = 1 ORDER BY catalog_version DESC LIMIT 1",
     product,
@@ -211,7 +257,11 @@ export async function getActiveSchema(db: Db, product: string): Promise<SchemaRo
 export async function insertSchema(db: Db, row: SchemaRow): Promise<void> {
   await db.run(
     "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",
-    row.product, row.catalog_version, row.catalog_json, row.active, row.created_at,
+    row.product,
+    row.catalog_version,
+    row.catalog_json,
+    row.active,
+    row.created_at,
   );
 }
 
@@ -232,7 +282,14 @@ export function stmtInsertOidcConfig(o: OidcConfigInput): DbStatement {
   return {
     sql: `INSERT INTO oidc_config (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
           VALUES (?, ?, ?, ?, ?, ?)`,
-    params: [o.product, o.issuer, o.clientId, o.clientSecretSecret, JSON.stringify(o.redirectUris), JSON.stringify(o.groupRoleMap)],
+    params: [
+      o.product,
+      o.issuer,
+      o.clientId,
+      o.clientSecretSecret,
+      JSON.stringify(o.redirectUris),
+      JSON.stringify(o.groupRoleMap),
+    ],
   };
 }
 
@@ -249,7 +306,15 @@ export function stmtInsertTier(t: TierInput): DbStatement {
   return {
     sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit, modified_by, modified_at)
           VALUES (?, ?, ?, ?, ?, ?, NULL, ?)`,
-    params: [t.product, t.id, t.label, t.profileId, t.policyExpiryDays, t.policyMachineLimit, t.modifiedAt],
+    params: [
+      t.product,
+      t.id,
+      t.label,
+      t.profileId,
+      t.policyExpiryDays,
+      t.policyMachineLimit,
+      t.modifiedAt,
+    ],
   };
 }
 
@@ -267,9 +332,14 @@ export function stmtInsertProvisioning(h: ProvisioningInput): DbStatement {
     sql: `INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json)
           VALUES (?, ?, ?, ?, ?, ?, ?)`,
     params: [
-      h.product, h.claim, h.entitlementKey ?? null,
-      h.entitlementValue !== undefined ? JSON.stringify(h.entitlementValue) : null,
-      h.secretKey ?? null, h.secretUrlTemplate ?? null,
+      h.product,
+      h.claim,
+      h.entitlementKey ?? null,
+      h.entitlementValue !== undefined
+        ? JSON.stringify(h.entitlementValue)
+        : null,
+      h.secretKey ?? null,
+      h.secretUrlTemplate ?? null,
       h.allowedHosts ? JSON.stringify(h.allowedHosts) : null,
     ],
   };
@@ -292,8 +362,15 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
             manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
           VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?)`,
     params: [
-      r.product, r.ghOwner, r.ghRepo, r.ghInstallationId, r.channelWorkflow, r.betaBranch,
-      r.binaryName, r.sparkleEd25519Pub, r.summaryMarker,
+      r.product,
+      r.ghOwner,
+      r.ghRepo,
+      r.ghInstallationId,
+      r.channelWorkflow,
+      r.betaBranch,
+      r.binaryName,
+      r.sparkleEd25519Pub,
+      r.summaryMarker,
     ],
   };
 }
@@ -311,7 +388,15 @@ export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
   return {
     sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, auth_page_template)
           VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
-    params: [e.product, e.id, e.alg, e.signingKeySecret, e.kid ?? null, JSON.stringify(e.claimsTemplate), e.ttlSeconds],
+    params: [
+      e.product,
+      e.id,
+      e.alg,
+      e.signingKeySecret,
+      e.kid ?? null,
+      JSON.stringify(e.claimsTemplate),
+      e.ttlSeconds,
+    ],
   };
 }
 
@@ -322,9 +407,20 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
             default_max_offline_days, default_machine_limit, admin_group, branding_json, release_source, created_at, modified_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
-      row.slug, row.name, row.signing_kid, row.signing_key_secret, row.signing_pub, row.compat_min, row.compat_max,
-      row.default_max_offline_days, row.default_machine_limit, row.admin_group, row.branding_json,
-      row.release_source, row.created_at, row.modified_at,
+      row.slug,
+      row.name,
+      row.signing_kid,
+      row.signing_key_secret,
+      row.signing_pub,
+      row.compat_min,
+      row.compat_max,
+      row.default_max_offline_days,
+      row.default_machine_limit,
+      row.admin_group,
+      row.branding_json,
+      row.release_source,
+      row.created_at,
+      row.modified_at,
     ],
   };
 }
@@ -333,7 +429,13 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
 export function stmtInsertSchema(row: SchemaRow): DbStatement {
   return {
     sql: "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",
-    params: [row.product, row.catalog_version, row.catalog_json, row.active, row.created_at],
+    params: [
+      row.product,
+      row.catalog_version,
+      row.catalog_json,
+      row.active,
+      row.created_at,
+    ],
   };
 }
 
@@ -342,17 +444,42 @@ export function stmtInsertProductKey(row: ProductKeyRow): DbStatement {
   return {
     sql: `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    params: [row.product, row.kid, row.alg, row.public_b64url, row.enc_private_json, row.status, row.created_at, row.rotated_at],
+    params: [
+      row.product,
+      row.kid,
+      row.alg,
+      row.public_b64url,
+      row.enc_private_json,
+      row.status,
+      row.created_at,
+      row.rotated_at,
+    ],
   };
 }
 
 // ── Licenses ─────────────────────────────────────────────────────────────────
-export async function getLicense(db: Db, product: string, id: string): Promise<LicenseRow | null> {
-  return db.first<LicenseRow>("SELECT * FROM licenses WHERE product = ? AND id = ?", product, id);
+export async function getLicense(
+  db: Db,
+  product: string,
+  id: string,
+): Promise<LicenseRow | null> {
+  return db.first<LicenseRow>(
+    "SELECT * FROM licenses WHERE product = ? AND id = ?",
+    product,
+    id,
+  );
 }
 
-export async function getLicenseBySub(db: Db, product: string, sub: string): Promise<LicenseRow | null> {
-  return db.first<LicenseRow>("SELECT * FROM licenses WHERE product = ? AND sub = ?", product, sub);
+export async function getLicenseBySub(
+  db: Db,
+  product: string,
+  sub: string,
+): Promise<LicenseRow | null> {
+  return db.first<LicenseRow>(
+    "SELECT * FROM licenses WHERE product = ? AND sub = ?",
+    product,
+    sub,
+  );
 }
 
 export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
@@ -361,10 +488,24 @@ export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
        enrolled_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
        modified_by, modified_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    row.product, row.id, row.status, row.sub, row.name, row.email, row.groups_json, row.tier_id,
-    row.profile_id, row.enrolled_at, row.expires_at, row.max_offline_days, row.overrides_json,
-    row.channels_json, row.min_version, row.max_version,
-    row.modified_by, row.modified_at,
+    row.product,
+    row.id,
+    row.status,
+    row.sub,
+    row.name,
+    row.email,
+    row.groups_json,
+    row.tier_id,
+    row.profile_id,
+    row.enrolled_at,
+    row.expires_at,
+    row.max_offline_days,
+    row.overrides_json,
+    row.channels_json,
+    row.min_version,
+    row.max_version,
+    row.modified_by,
+    row.modified_at,
   );
 }
 
@@ -373,39 +514,103 @@ export async function insertKey(db: Db, row: KeyRow): Promise<void> {
   await db.run(
     `INSERT INTO keys_index (product, key_hash, license_id, status, label, created_at, created_by, last_used_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    row.product, row.key_hash, row.license_id, row.status, row.label, row.created_at, row.created_by, row.last_used_at,
+    row.product,
+    row.key_hash,
+    row.license_id,
+    row.status,
+    row.label,
+    row.created_at,
+    row.created_by,
+    row.last_used_at,
   );
 }
 
-export async function getKey(db: Db, product: string, keyHash: string): Promise<KeyRow | null> {
-  return db.first<KeyRow>("SELECT * FROM keys_index WHERE product = ? AND key_hash = ?", product, keyHash);
+export async function getKey(
+  db: Db,
+  product: string,
+  keyHash: string,
+): Promise<KeyRow | null> {
+  return db.first<KeyRow>(
+    "SELECT * FROM keys_index WHERE product = ? AND key_hash = ?",
+    product,
+    keyHash,
+  );
 }
 
-export async function listKeysByLicense(db: Db, product: string, licenseId: string): Promise<KeyRow[]> {
-  return db.all<KeyRow>("SELECT * FROM keys_index WHERE product = ? AND license_id = ?", product, licenseId);
+export async function listKeysByLicense(
+  db: Db,
+  product: string,
+  licenseId: string,
+): Promise<KeyRow[]> {
+  return db.all<KeyRow>(
+    "SELECT * FROM keys_index WHERE product = ? AND license_id = ?",
+    product,
+    licenseId,
+  );
 }
 
-export async function touchKey(db: Db, product: string, keyHash: string, at: number): Promise<void> {
-  await db.run("UPDATE keys_index SET last_used_at = ? WHERE product = ? AND key_hash = ?", at, product, keyHash);
+export async function touchKey(
+  db: Db,
+  product: string,
+  keyHash: string,
+  at: number,
+): Promise<void> {
+  await db.run(
+    "UPDATE keys_index SET last_used_at = ? WHERE product = ? AND key_hash = ?",
+    at,
+    product,
+    keyHash,
+  );
 }
 
-export async function setKeyStatus(db: Db, product: string, keyHash: string, status: string): Promise<void> {
-  await db.run("UPDATE keys_index SET status = ? WHERE product = ? AND key_hash = ?", status, product, keyHash);
+export async function setKeyStatus(
+  db: Db,
+  product: string,
+  keyHash: string,
+  status: string,
+): Promise<void> {
+  await db.run(
+    "UPDATE keys_index SET status = ? WHERE product = ? AND key_hash = ?",
+    status,
+    product,
+    keyHash,
+  );
 }
 
 // ── Machines ─────────────────────────────────────────────────────────────────
-export async function getMachine(db: Db, product: string, machineId: string): Promise<MachineRow | null> {
-  return db.first<MachineRow>("SELECT * FROM machines WHERE product = ? AND machine_id = ?", product, machineId);
+export async function getMachine(
+  db: Db,
+  product: string,
+  machineId: string,
+): Promise<MachineRow | null> {
+  return db.first<MachineRow>(
+    "SELECT * FROM machines WHERE product = ? AND machine_id = ?",
+    product,
+    machineId,
+  );
 }
 
-export async function listMachinesByLicense(db: Db, product: string, licenseId: string): Promise<MachineRow[]> {
-  return db.all<MachineRow>("SELECT * FROM machines WHERE product = ? AND license_id = ?", product, licenseId);
+export async function listMachinesByLicense(
+  db: Db,
+  product: string,
+  licenseId: string,
+): Promise<MachineRow[]> {
+  return db.all<MachineRow>(
+    "SELECT * FROM machines WHERE product = ? AND license_id = ?",
+    product,
+    licenseId,
+  );
 }
 
-export async function countActiveMachines(db: Db, product: string, licenseId: string): Promise<number> {
+export async function countActiveMachines(
+  db: Db,
+  product: string,
+  licenseId: string,
+): Promise<number> {
   const r = await db.first<{ n: number }>(
     "SELECT COUNT(*) AS n FROM machines WHERE product = ? AND license_id = ? AND status = 'authorized'",
-    product, licenseId,
+    product,
+    licenseId,
   );
   return r?.n ?? 0;
 }
@@ -418,8 +623,17 @@ export async function upsertMachine(db: Db, row: MachineRow): Promise<void> {
      ON CONFLICT(product, machine_id) DO UPDATE SET
        license_id = excluded.license_id, status = excluded.status, last_seen = excluded.last_seen,
        ua = excluded.ua, token_hash = excluded.token_hash`,
-    row.product, row.machine_id, row.license_id, row.status, row.first_seen, row.last_seen, row.ua,
-    row.label, row.overrides_json, row.reported_json, row.token_hash,
+    row.product,
+    row.machine_id,
+    row.license_id,
+    row.status,
+    row.first_seen,
+    row.last_seen,
+    row.ua,
+    row.label,
+    row.overrides_json,
+    row.reported_json,
+    row.token_hash,
   );
 }
 
@@ -429,7 +643,12 @@ export async function setMachineStatus(
   machineId: string,
   status: string,
 ): Promise<void> {
-  await db.run("UPDATE machines SET status = ? WHERE product = ? AND machine_id = ?", status, product, machineId);
+  await db.run(
+    "UPDATE machines SET status = ? WHERE product = ? AND machine_id = ?",
+    status,
+    product,
+    machineId,
+  );
 }
 
 export async function setMachineReported(
@@ -441,17 +660,36 @@ export async function setMachineReported(
 ): Promise<void> {
   await db.run(
     "UPDATE machines SET reported_json = ?, last_seen = ? WHERE product = ? AND machine_id = ?",
-    reportedJson, at, product, machineId,
+    reportedJson,
+    at,
+    product,
+    machineId,
   );
 }
 
 // ── Profiles / tiers (for the effective-config merge) ────────────────────────
-export async function getProfile(db: Db, product: string, id: string): Promise<ProfileRow | null> {
-  return db.first<ProfileRow>("SELECT * FROM profiles WHERE product = ? AND id = ?", product, id);
+export async function getProfile(
+  db: Db,
+  product: string,
+  id: string,
+): Promise<ProfileRow | null> {
+  return db.first<ProfileRow>(
+    "SELECT * FROM profiles WHERE product = ? AND id = ?",
+    product,
+    id,
+  );
 }
 
-export async function getTier(db: Db, product: string, id: string): Promise<TierRow | null> {
-  return db.first<TierRow>("SELECT * FROM tiers WHERE product = ? AND id = ?", product, id);
+export async function getTier(
+  db: Db,
+  product: string,
+  id: string,
+): Promise<TierRow | null> {
+  return db.first<TierRow>(
+    "SELECT * FROM tiers WHERE product = ? AND id = ?",
+    product,
+    id,
+  );
 }
 
 // ── Audit (keyset pagination on (at DESC, id DESC)) ──────────────────────────
@@ -459,8 +697,17 @@ export async function appendAudit(db: Db, row: AuditRow): Promise<void> {
   await db.run(
     `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    row.product, row.id, row.at, row.actor_sub, row.actor_name, row.actor_email, row.action,
-    row.target_kind, row.target_id, row.parent_id, row.summary,
+    row.product,
+    row.id,
+    row.at,
+    row.actor_sub,
+    row.actor_name,
+    row.actor_email,
+    row.action,
+    row.target_kind,
+    row.target_id,
+    row.parent_id,
+    row.summary,
   );
 }
 
@@ -474,11 +721,16 @@ export async function listAudit(
     return db.all<AuditRow>(
       `SELECT * FROM audit WHERE product = ? AND (at < ? OR (at = ? AND id < ?))
        ORDER BY at DESC, id DESC LIMIT ?`,
-      product, opts.beforeAt, opts.beforeAt, opts.beforeId, limit,
+      product,
+      opts.beforeAt,
+      opts.beforeAt,
+      opts.beforeId,
+      limit,
     );
   }
   return db.all<AuditRow>(
     "SELECT * FROM audit WHERE product = ? ORDER BY at DESC, id DESC LIMIT ?",
-    product, limit,
+    product,
+    limit,
   );
 }

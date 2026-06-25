@@ -25,7 +25,10 @@ export async function handleSchema(
     if (!row) return notFound();
     return new Response(row.catalog_json, {
       status: 200,
-      headers: { "content-type": "application/json", "cache-control": "no-store" },
+      headers: {
+        "content-type": "application/json",
+        "cache-control": "no-store",
+      },
     });
   }
   if (req.method === "PUT") {
@@ -45,11 +48,22 @@ export async function handleSchema(
     await insertSchema(db, {
       product: slug,
       catalog_version: version,
-      catalog_json: JSON.stringify({ schemaVersion: version, entries: catalog.entries }),
+      catalog_json: JSON.stringify({
+        schemaVersion: version,
+        entries: catalog.entries,
+      }),
       active: 1,
       created_at: now,
     });
-    await audit(db, slug, session, now, "schema.publish", { kind: "schema", id: String(version) }, `Published catalog v${version}`);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "schema.publish",
+      { kind: "schema", id: String(version) },
+      `Published catalog v${version}`,
+    );
     return adminJson({ ok: true, schemaVersion: version });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");

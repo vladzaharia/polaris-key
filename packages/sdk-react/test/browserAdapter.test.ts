@@ -1,12 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { browserAdapter, BrowserAdapter } from "../src/browser/browserAdapter.js";
+import {
+  browserAdapter,
+  BrowserAdapter,
+} from "../src/browser/browserAdapter.js";
 import { makeDoc, makeFakeFetch, NOW_SEC } from "./fixtures.js";
 
 // The browser adapter is a cookie-session transport. These tests drive it directly (no
 // React) with an injected fetch/navigate/clock so every path is deterministic and offline.
 
 /** Resolve once the adapter has left the initial `loading` phase. */
-async function ready(adapter: ReturnType<typeof browserAdapter>): Promise<void> {
+async function ready(
+  adapter: ReturnType<typeof browserAdapter>,
+): Promise<void> {
   for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++) {
     await new Promise((r) => setTimeout(r, 0));
   }
@@ -14,7 +19,11 @@ async function ready(adapter: ReturnType<typeof browserAdapter>): Promise<void> 
 
 describe("BrowserAdapter — construction + first load", () => {
   it("loads the session and projects the doc to an ok snapshot", async () => {
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl: makeFakeFetch(makeDoc()), now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(makeDoc()),
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     const s = adapter.snapshot();
     expect(s.mode).toBe("browser");
@@ -25,7 +34,11 @@ describe("BrowserAdapter — construction + first load", () => {
   });
 
   it("an unauthenticated session lands on needs-enroll", async () => {
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl: makeFakeFetch(null), now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(null),
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     expect(adapter.snapshot().status).toBe("needs-enroll");
     adapter.dispose();
@@ -33,7 +46,11 @@ describe("BrowserAdapter — construction + first load", () => {
 
   it("scopes every request under /<product>", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl: fetchImpl as unknown as typeof fetch, now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     const url = String(fetchImpl.mock.calls[0]?.[0]);
     expect(url).toContain("/acme/session");
@@ -49,7 +66,9 @@ describe("BrowserAdapter — construction + first load", () => {
       now: () => NOW_SEC,
     });
     await ready(adapter);
-    expect(String(fetchImpl.mock.calls[0]?.[0])).toBe("https://example.test/acme/session");
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toBe(
+      "https://example.test/acme/session",
+    );
     adapter.dispose();
   });
 });
@@ -75,8 +94,14 @@ describe("BrowserAdapter — signInWithOidc redirect", () => {
 
 describe("BrowserAdapter — submitKey is unsupported", () => {
   it("throws key-entry-unsupported (browser is OIDC-only)", async () => {
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl: makeFakeFetch(makeDoc()), now: () => NOW_SEC });
-    await expect(adapter.submitKey("any")).rejects.toMatchObject({ code: "key-entry-unsupported" });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(makeDoc()),
+      now: () => NOW_SEC,
+    });
+    await expect(adapter.submitKey("any")).rejects.toMatchObject({
+      code: "key-entry-unsupported",
+    });
     adapter.dispose();
   });
 });
@@ -84,7 +109,11 @@ describe("BrowserAdapter — submitKey is unsupported", () => {
 describe("BrowserAdapter — signOut", () => {
   it("posts logout (echoing CSRF) and resets to needs-enroll", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl: fetchImpl as unknown as typeof fetch, now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     await adapter.signOut();
     const s = adapter.snapshot();
@@ -92,11 +121,15 @@ describe("BrowserAdapter — signOut", () => {
     expect(s.profile).toBeNull();
     expect(s.config).toEqual({});
     // The logout POST echoed the CSRF token from the session response.
-    const logoutCall = fetchImpl.mock.calls.find((c) => String(c[0]).includes("/auth/logout"));
+    const logoutCall = fetchImpl.mock.calls.find((c) =>
+      String(c[0]).includes("/auth/logout"),
+    );
     expect(logoutCall).toBeTruthy();
     const init = logoutCall?.[1] as RequestInit;
     expect(init.method).toBe("POST");
-    expect((init.headers as Record<string, string>)["x-csrf-token"]).toBe("csrf-1");
+    expect((init.headers as Record<string, string>)["x-csrf-token"]).toBe(
+      "csrf-1",
+    );
     adapter.dispose();
   });
 
@@ -104,14 +137,25 @@ describe("BrowserAdapter — signOut", () => {
     const fetchImpl = (async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/session")) {
-        return new Response(JSON.stringify({ authenticated: true, doc: makeDoc(), csrfToken: "c" }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            authenticated: true,
+            doc: makeDoc(),
+            csrfToken: "c",
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
       }
       return new Response(null, { status: 401 });
     }) as unknown as typeof fetch;
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl, now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl,
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     await expect(adapter.signOut()).resolves.toBeUndefined();
     expect(adapter.snapshot().status).toBe("needs-enroll");
@@ -122,16 +166,25 @@ describe("BrowserAdapter — signOut", () => {
     const fetchImpl = (async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/session")) {
-        return new Response(JSON.stringify({ authenticated: true, doc: makeDoc() }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ authenticated: true, doc: makeDoc() }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
       }
       return new Response("nope", { status: 500 });
     }) as unknown as typeof fetch;
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl, now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl,
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
-    await expect(adapter.signOut()).rejects.toMatchObject({ code: "sign-out-failed" });
+    await expect(adapter.signOut()).rejects.toMatchObject({
+      code: "sign-out-failed",
+    });
     expect(adapter.snapshot().error?.code).toBe("sign-out-failed");
     adapter.dispose();
   });
@@ -144,16 +197,27 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
       const url = String(input);
       if (url.includes("/session")) {
         if (authed) {
-          return new Response(JSON.stringify({ authenticated: true, doc: makeDoc(), csrfToken: "c" }), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({
+              authenticated: true,
+              doc: makeDoc(),
+              csrfToken: "c",
+            }),
+            {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            },
+          );
         }
         return new Response(null, { status: 401 });
       }
       return new Response("nf", { status: 404 });
     }) as unknown as typeof fetch;
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl, now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl,
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     expect(adapter.snapshot().status).toBe("ok");
     authed = false;
@@ -163,8 +227,13 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
   });
 
   it("a 401 with no prior session stays needs-enroll (not revoked)", async () => {
-    const fetchImpl = (async () => new Response(null, { status: 401 })) as unknown as typeof fetch;
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl, now: () => NOW_SEC });
+    const fetchImpl = (async () =>
+      new Response(null, { status: 401 })) as unknown as typeof fetch;
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl,
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     await adapter.refresh();
     expect(adapter.snapshot().status).toBe("needs-enroll");
@@ -172,8 +241,13 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
   });
 
   it("a non-ok, non-401 session response surfaces a network error on first load", async () => {
-    const fetchImpl = (async () => new Response("boom", { status: 503 })) as unknown as typeof fetch;
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl, now: () => NOW_SEC });
+    const fetchImpl = (async () =>
+      new Response("boom", { status: 503 })) as unknown as typeof fetch;
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl,
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     expect(adapter.snapshot().error?.code).toBe("network");
     expect(adapter.snapshot().status).toBe("needs-enroll");
@@ -185,16 +259,25 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
     const fetchImpl = (async (input: RequestInfo | URL) => {
       if (first && String(input).includes("/session")) {
         first = false;
-        return new Response(JSON.stringify({ authenticated: true, doc: makeDoc() }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ authenticated: true, doc: makeDoc() }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
       }
       throw new Error("network down");
     }) as unknown as typeof fetch;
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl, now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl,
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
-    await expect(adapter.refresh()).rejects.toMatchObject({ code: "refresh-failed" });
+    await expect(adapter.refresh()).rejects.toMatchObject({
+      code: "refresh-failed",
+    });
     expect(adapter.snapshot().busy).toBe(false);
     adapter.dispose();
   });
@@ -202,7 +285,11 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
 
 describe("BrowserAdapter — config / secret / entitlement accessors", () => {
   it("getConfig reads the doc value, getSecret is always null, isEntitled reflects flags", async () => {
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl: makeFakeFetch(makeDoc()), now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(makeDoc()),
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     expect(adapter.getConfig("theme.mode", "light")).toBe("dark");
     expect(adapter.getConfig("missing", 42)).toBe(42);
@@ -213,7 +300,11 @@ describe("BrowserAdapter — config / secret / entitlement accessors", () => {
   });
 
   it("exposes mode + the BrowserAdapter class as the factory's product", () => {
-    const adapter = browserAdapter({ productSlug: "acme", fetchImpl: makeFakeFetch(null), now: () => NOW_SEC });
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(null),
+      now: () => NOW_SEC,
+    });
     expect(adapter).toBeInstanceOf(BrowserAdapter);
     expect(adapter.mode).toBe("browser");
     adapter.dispose();

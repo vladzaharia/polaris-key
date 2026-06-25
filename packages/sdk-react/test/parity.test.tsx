@@ -39,7 +39,9 @@ function Probe(): JSX.Element {
   );
 }
 
-async function renderWith(adapter: PolarisAdapter): Promise<Record<string, string>> {
+async function renderWith(
+  adapter: PolarisAdapter,
+): Promise<Record<string, string>> {
   // Each render gets its own container + is cleaned up first, so cross-render DOM never
   // leaks into the queries (both probes would otherwise resolve to "ok").
   cleanup();
@@ -71,7 +73,11 @@ describe("mode parity", () => {
     const doc = makeDoc();
 
     const desktop = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: true, doc, lastVerifiedAt: NOW_SEC * 1000 }),
+      bridge: makeFakeBridge({
+        hasToken: true,
+        doc,
+        lastVerifiedAt: NOW_SEC * 1000,
+      }),
       now: () => NOW_SEC,
     });
     const desktopOut = await renderWith(desktop);
@@ -105,13 +111,23 @@ describe("mode parity", () => {
   });
 
   it("browser submitKey throws key-entry-unsupported", async () => {
-    const browser = browserAdapter({ productSlug: "acme", fetchImpl: makeFakeFetch(makeDoc()), now: () => NOW_SEC });
-    await expect(browser.submitKey("anything")).rejects.toMatchObject({ code: "key-entry-unsupported" });
+    const browser = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(makeDoc()),
+      now: () => NOW_SEC,
+    });
+    await expect(browser.submitKey("anything")).rejects.toMatchObject({
+      code: "key-entry-unsupported",
+    });
     browser.dispose();
   });
 
   it("browser never exposes secrets", async () => {
-    const browser = browserAdapter({ productSlug: "acme", fetchImpl: makeFakeFetch(makeDoc()), now: () => NOW_SEC });
+    const browser = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(makeDoc()),
+      now: () => NOW_SEC,
+    });
     await new Promise((r) => setTimeout(r, 0));
     expect(browser.getSecret("api.token")).toBeNull();
     browser.dispose();

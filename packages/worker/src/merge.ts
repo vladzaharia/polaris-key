@@ -31,14 +31,22 @@ function mergeMap(
     // The higher-precedence layer's value + state win, but `updatedAt` reflects the most
     // recent admin change across BOTH layers so clients detect any change in either layer.
     out[key] = baseEntry
-      ? { ...overEntry, updatedAt: Math.max(baseEntry.updatedAt ?? 0, overEntry.updatedAt ?? 0) }
+      ? {
+          ...overEntry,
+          updatedAt: Math.max(
+            baseEntry.updatedAt ?? 0,
+            overEntry.updatedAt ?? 0,
+          ),
+        }
       : overEntry;
   }
   return out;
 }
 
 /** Merge stored payload layers in precedence order (earliest = lowest precedence). */
-export function mergePayloads(...layers: (string | null | undefined)[]): ManagedPayload {
+export function mergePayloads(
+  ...layers: (string | null | undefined)[]
+): ManagedPayload {
   let out = emptyPayload();
   for (const layer of layers) {
     const p = parsePayload(layer);

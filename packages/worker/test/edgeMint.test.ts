@@ -1,10 +1,21 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, mkReq, NOW, seedLicenseWithKey, seedProduct, seedProductSecret } from "./seed.js";
+import {
+  makeEnv,
+  mkReq,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  seedProductSecret,
+} from "./seed.js";
 import { loadProduct, type Product } from "../src/product.js";
 import { handleEnroll } from "../src/licensing.js";
-import { getEdgeMintConfig, handleMintAuth, handleMintToken } from "../src/edgeMint.js";
+import {
+  getEdgeMintConfig,
+  handleMintAuth,
+  handleMintToken,
+} from "../src/edgeMint.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
@@ -13,27 +24,54 @@ const ES_PEM =
   "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgav85fotyJ04AYsKF\nDojZziUJg9TuJamPiszlECztPLuhRANCAATgaZHNpIiLDSEQHY4H4BE5HnA9L8hR\n11WcM/ABvqCnO5CWZyHKWoEnKnKnmQwVibF2w5YwimX7Z1hIqJPHGCTB\n-----END PRIVATE KEY-----";
 
 function jwtPart(part: string): Record<string, unknown> {
-  return JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as Record<string, unknown>;
+  return JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as Record<
+    string,
+    unknown
+  >;
 }
 
-async function enroll(env: Env, db: SqliteDb, product: Product): Promise<string> {
+async function enroll(
+  env: Env,
+  db: SqliteDb,
+  product: Product,
+): Promise<string> {
   const { key } = await seedLicenseWithKey(db, "djdl");
   const res = await handleEnroll(
     mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-    env, db, product, NOW,
+    env,
+    db,
+    product,
+    NOW,
   );
   return ((await res.json()) as { token: string }).token;
 }
 
-async function seedRecipe(db: SqliteDb, over: Record<string, unknown> = {}): Promise<void> {
+async function seedRecipe(
+  db: SqliteDb,
+  over: Record<string, unknown> = {},
+): Promise<void> {
   const row = {
-    id: "applemusic", alg: "ES256", signing_key_secret: "applemusic_devkey",
-    kid: "KID123", claims_template_json: JSON.stringify({ iss: "TEAMID123" }), ttl_seconds: 3600,
-    audience: null as string | null, auth_page_template: null as string | null, ...over,
+    id: "applemusic",
+    alg: "ES256",
+    signing_key_secret: "applemusic_devkey",
+    kid: "KID123",
+    claims_template_json: JSON.stringify({ iss: "TEAMID123" }),
+    ttl_seconds: 3600,
+    audience: null as string | null,
+    auth_page_template: null as string | null,
+    ...over,
   };
   await db.run(
     "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
-    "djdl", row.id, row.alg, row.signing_key_secret, row.kid, row.claims_template_json, row.ttl_seconds, row.audience, row.auth_page_template,
+    "djdl",
+    row.id,
+    row.alg,
+    row.signing_key_secret,
+    row.kid,
+    row.claims_template_json,
+    row.ttl_seconds,
+    row.audience,
+    row.auth_page_template,
   );
 }
 
@@ -53,14 +91,26 @@ describe("edge-mint token", () => {
 
   it("requires a licensed bearer token (401 without one)", async () => {
     await seedRecipe(db);
-    const res = await handleMintToken(mkReq("POST", {}), env, db, product, "applemusic", NOW);
+    const res = await handleMintToken(
+      mkReq("POST", {}),
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
+    );
     expect(res.status).toBe(401);
   });
 
   it("rejects an unknown / forged bearer token", async () => {
     await seedRecipe(db);
     const res = await handleMintToken(
-      mkReq("POST", { authorization: "Bearer pkeyt_forged" }), env, db, product, "applemusic", NOW,
+      mkReq("POST", { authorization: "Bearer pkeyt_forged" }),
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
     );
     expect(res.status).toBe(401);
   });
@@ -69,7 +119,12 @@ describe("edge-mint token", () => {
     const token = await enroll(env, db, product);
     await seedRecipe(db);
     const res = await handleMintToken(
-      mkReq("POST", { authorization: `Bearer ${token}` }), env, db, product, "applemusic", NOW,
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { token: string; expiresAt: number };
@@ -86,9 +141,20 @@ describe("edge-mint token", () => {
   it("does not let the template override the reserved iat/exp claims", async () => {
     const token = await enroll(env, db, product);
     // Malicious template tries to pin a far-future exp and a fake iat.
-    await seedRecipe(db, { claims_template_json: JSON.stringify({ iss: "T", iat: 1, exp: 99999999999 }) });
+    await seedRecipe(db, {
+      claims_template_json: JSON.stringify({
+        iss: "T",
+        iat: 1,
+        exp: 99999999999,
+      }),
+    });
     const res = await handleMintToken(
-      mkReq("POST", { authorization: `Bearer ${token}` }), env, db, product, "applemusic", NOW,
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
     );
     const body = (await res.json()) as { token: string };
     const payload = jwtPart(body.token.split(".")[1]!);
@@ -99,7 +165,12 @@ describe("edge-mint token", () => {
   it("404s for an unknown recipe id", async () => {
     const token = await enroll(env, db, product);
     const res = await handleMintToken(
-      mkReq("POST", { authorization: `Bearer ${token}` }), env, db, product, "does-not-exist", NOW,
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      "does-not-exist",
+      NOW,
     );
     expect(res.status).toBe(404);
   });
@@ -108,7 +179,12 @@ describe("edge-mint token", () => {
     const token = await enroll(env, db, product);
     await seedRecipe(db, { alg: "HS256" });
     const res = await handleMintToken(
-      mkReq("POST", { authorization: `Bearer ${token}` }), env, db, product, "applemusic", NOW,
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
     );
     expect(res.status).toBe(500);
   });
@@ -117,7 +193,12 @@ describe("edge-mint token", () => {
     const token = await enroll(env, db, product);
     await seedRecipe(db, { signing_key_secret: "EDGE_MINT__DJDL__MISSING" });
     const res = await handleMintToken(
-      mkReq("POST", { authorization: `Bearer ${token}` }), env, db, product, "applemusic", NOW,
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
     );
     expect(res.status).toBe(500);
   });

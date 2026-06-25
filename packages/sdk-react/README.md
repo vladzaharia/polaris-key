@@ -6,7 +6,7 @@ One React hook API over **two transports**, plus a brandable drop-in login gate.
   `PolarisBridge` (default `window.polarisKey`). The privileged process owns the token,
   keyring, and loopback-OIDC; the renderer is a thin proxy.
 - **Browser**: cookie-session OIDC against `key.plrs.im` over `fetch(..., { credentials:
-  "include" })`. Online-only — no token/keyring/loopback. Sign-in is a full-page redirect.
+"include" })`. Online-only — no token/keyring/loopback. Sign-in is a full-page redirect.
 
 Both adapters satisfy the **same `PolarisAdapter`** and the hooks return the **same shapes**,
 so a component renders identically in either mode (mode-parity).
@@ -50,7 +50,7 @@ version-block / error). Every screen is overridable per `slots` render-prop.
 - **`<LicenseGate>`** — the drop-in status gate above. Shows your children only when usable.
 - **`<PolarisLogin>`** — the drop-in sign-in card: an OIDC button plus (desktop only) a typed
   license-key entry. Embedded by `<LicenseGate>`'s login screen; usable standalone too.
-- **Sign-out** is an *action*, not a separate component — call `signOut` from
+- **Sign-out** is an _action_, not a separate component — call `signOut` from
   `usePolarisKey()` (or `usePolarisAuth()`) and wire it to your own button:
 
   ```tsx
@@ -62,14 +62,14 @@ version-block / error). Every screen is overridable per `slots` render-prop.
 
 ## Hooks
 
-| Hook | Returns |
-|------|---------|
-| `usePolarisKey()` | full state + bound actions (`refresh`, `signInWithOidc`, `submitKey`, `signOut`, `getConfig`, `getSecret`, `isEntitled`) |
-| `useLicense()` | `{ gate, status, usable, loading }` |
-| `useManagedConfig()` | `{ config, get(key, fallback) }` |
-| `useEntitlement(name)` | `boolean` |
-| `usePolarisAuth()` | profile + auth actions + `supportsKeyEntry` |
-| `useLicenseGate()` | headless gate (`screen`, `state`, `theme`, `retry`) for a fully custom UI |
+| Hook                   | Returns                                                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `usePolarisKey()`      | full state + bound actions (`refresh`, `signInWithOidc`, `submitKey`, `signOut`, `getConfig`, `getSecret`, `isEntitled`) |
+| `useLicense()`         | `{ gate, status, usable, loading }`                                                                                      |
+| `useManagedConfig()`   | `{ config, get(key, fallback) }`                                                                                         |
+| `useEntitlement(name)` | `boolean`                                                                                                                |
+| `usePolarisAuth()`     | profile + auth actions + `supportsKeyEntry`                                                                              |
+| `useLicenseGate()`     | headless gate (`screen`, `state`, `theme`, `retry`) for a fully custom UI                                                |
 
 ## Modes
 

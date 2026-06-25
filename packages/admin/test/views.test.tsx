@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { AdminProvider } from "../src/context.js";
@@ -33,12 +39,18 @@ const ME: Me = {
 
 function withAdmin(node: ReactElement) {
   return render(
-    <AdminProvider value={{ me: ME, product: "djdl", setProduct: () => undefined }}>{node}</AdminProvider>,
+    <AdminProvider
+      value={{ me: ME, product: "djdl", setProduct: () => undefined }}
+    >
+      {node}
+    </AdminProvider>,
   );
 }
 
 beforeEach(() => {
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
 });
 afterEach(cleanup);
 
@@ -53,7 +65,10 @@ describe("Button primitive", () => {
         Save
       </Button>,
     );
-    expect((screen.getByRole("button", { name: /Save/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: /Save/ }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 });
 
@@ -98,8 +113,20 @@ describe("DataTable primitive", () => {
     { id: "c", name: "Bob", count: 2 },
   ];
   const columns: ColumnDef<Row>[] = [
-    { id: "name", header: "Name", cell: (r) => r.name, accessor: (r) => r.name, sortable: true },
-    { id: "count", header: "Count", cell: (r) => r.count, accessor: (r) => r.count, sortable: true },
+    {
+      id: "name",
+      header: "Name",
+      cell: (r) => r.name,
+      accessor: (r) => r.name,
+      sortable: true,
+    },
+    {
+      id: "count",
+      header: "Count",
+      cell: (r) => r.count,
+      accessor: (r) => r.count,
+      sortable: true,
+    },
   ];
 
   it("renders rows and supports client-side sort", async () => {
@@ -113,14 +140,30 @@ describe("DataTable primitive", () => {
   });
 
   it("filters rows via the global filter", () => {
-    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} filterable />);
-    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "bob" } });
+    render(
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(r) => r.id}
+        filterable
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Filter rows"), {
+      target: { value: "bob" },
+    });
     expect(screen.getByText("Bob")).toBeTruthy();
     expect(screen.queryByText("Charlie")).toBeNull();
   });
 
   it("shows the empty state when there are no rows", () => {
-    render(<DataTable columns={columns} rows={[]} rowKey={(r) => r.id} empty={<EmptyState title="No data" />} />);
+    render(
+      <DataTable
+        columns={columns}
+        rows={[]}
+        rowKey={(r) => r.id}
+        empty={<EmptyState title="No data" />}
+      />,
+    );
     expect(screen.getByText("No data")).toBeTruthy();
   });
 });
@@ -129,10 +172,18 @@ describe("ConfirmDialog primitive", () => {
   it("invokes onConfirm when confirmed", async () => {
     const onConfirm = vi.fn();
     render(
-      <ConfirmDialog open onOpenChange={() => undefined} title="Delete it?" confirmLabel="Delete" onConfirm={onConfirm} />,
+      <ConfirmDialog
+        open
+        onOpenChange={() => undefined}
+        title="Delete it?"
+        confirmLabel="Delete"
+        onConfirm={onConfirm}
+      />,
     );
     const dialog = await screen.findByRole("alertdialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });

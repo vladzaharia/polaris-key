@@ -16,11 +16,16 @@ function randomBytes(n: number): Uint8Array {
 }
 
 function toArrayBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+  return b.buffer.slice(
+    b.byteOffset,
+    b.byteOffset + b.byteLength,
+  ) as ArrayBuffer;
 }
 
 function hex(bytes: ArrayBuffer): string {
-  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return [...new Uint8Array(bytes)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /** A license key: `pkey_<product>_<128-bit base64url>`, shown to the user once. */
@@ -45,7 +50,10 @@ export function productFromKey(key: string): string | null {
 }
 
 async function sha256(input: string): Promise<ArrayBuffer> {
-  return crypto.subtle.digest("SHA-256", toArrayBuffer(new TextEncoder().encode(input)));
+  return crypto.subtle.digest(
+    "SHA-256",
+    toArrayBuffer(new TextEncoder().encode(input)),
+  );
 }
 
 export async function sha256Hex(input: string): Promise<string> {
@@ -62,6 +70,10 @@ export async function hashKey(value: string, pepper?: string): Promise<string> {
     false,
     ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, toArrayBuffer(new TextEncoder().encode(value)));
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    toArrayBuffer(new TextEncoder().encode(value)),
+  );
   return hex(sig);
 }

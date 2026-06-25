@@ -47,7 +47,9 @@ type ConfirmKind = "delete" | "rotate" | "resync" | null;
  */
 export function Products(): React.ReactElement {
   const toast = useToast();
-  const { data, loading, error, reload } = useResource("products", () => api.products());
+  const { data, loading, error, reload } = useResource("products", () =>
+    api.products(),
+  );
   const products = data?.products ?? [];
 
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -57,11 +59,17 @@ export function Products(): React.ReactElement {
   const [busy, setBusy] = React.useState(false);
   const [rotated, setRotated] = React.useState<RotateKeyResult | null>(null);
 
-  const open = (kind: Exclude<DialogKind, null>, product: ProductDetail): void => {
+  const open = (
+    kind: Exclude<DialogKind, null>,
+    product: ProductDetail,
+  ): void => {
     setActive(product);
     setDialog(kind);
   };
-  const openConfirm = (kind: Exclude<ConfirmKind, null>, product: ProductDetail): void => {
+  const openConfirm = (
+    kind: Exclude<ConfirmKind, null>,
+    product: ProductDetail,
+  ): void => {
     setActive(product);
     setConfirm(kind);
   };
@@ -76,7 +84,10 @@ export function Products(): React.ReactElement {
         reload();
       } else if (confirm === "resync") {
         await api.resyncProduct(active.slug);
-        toast.success("Resync triggered", `“${active.slug}” is syncing from GitHub.`);
+        toast.success(
+          "Resync triggered",
+          `“${active.slug}” is syncing from GitHub.`,
+        );
         reload();
       } else if (confirm === "rotate") {
         const res = await api.rotateProductKey(active.slug);
@@ -105,7 +116,9 @@ export function Products(): React.ReactElement {
       header: "Name",
       accessor: (p) => p.name,
       sortable: true,
-      cell: (p) => <span className="font-medium text-foreground">{p.name}</span>,
+      cell: (p) => (
+        <span className="font-medium text-foreground">{p.name}</span>
+      ),
     },
     {
       id: "source",
@@ -130,21 +143,29 @@ export function Products(): React.ReactElement {
       header: "Created",
       accessor: (p) => p.createdAt,
       sortable: true,
-      cell: (p) => <span className="text-muted-foreground">{formatDate(p.createdAt)}</span>,
+      cell: (p) => (
+        <span className="text-muted-foreground">{formatDate(p.createdAt)}</span>
+      ),
     },
     {
       id: "modifiedAt",
       header: "Modified",
       accessor: (p) => p.modifiedAt,
       sortable: true,
-      cell: (p) => <span className="text-muted-foreground">{formatDate(p.modifiedAt)}</span>,
+      cell: (p) => (
+        <span className="text-muted-foreground">
+          {formatDate(p.modifiedAt)}
+        </span>
+      ),
     },
     {
       id: "actions",
       header: <span className="sr-only">Actions</span>,
       headerClassName: "w-px",
       className: "w-px text-right",
-      cell: (p) => <RowActions product={p} open={open} openConfirm={openConfirm} />,
+      cell: (p) => (
+        <RowActions product={p} open={open} openConfirm={openConfirm} />
+      ),
     },
   ];
 
@@ -154,7 +175,8 @@ export function Products(): React.ReactElement {
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
           <p className="text-sm text-muted-foreground">
-            The platform product registry — register products, link release repos, and manage signing keys.
+            The platform product registry — register products, link release
+            repos, and manage signing keys.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -181,7 +203,9 @@ export function Products(): React.ReactElement {
           loading={loading && products.length === 0}
           filterable
           filterPlaceholder="Filter products…"
-          onRowClick={(p) => navigate({ kind: "product", slug: p.slug, view: "licenses" })}
+          onRowClick={(p) =>
+            navigate({ kind: "product", slug: p.slug, view: "licenses" })
+          }
           empty={
             <EmptyState
               icon={<Boxes aria-hidden />}
@@ -261,7 +285,10 @@ function RowActions({
 }: {
   product: ProductDetail;
   open: (kind: "edit" | "secret", product: ProductDetail) => void;
-  openConfirm: (kind: "delete" | "rotate" | "resync", product: ProductDetail) => void;
+  openConfirm: (
+    kind: "delete" | "rotate" | "resync",
+    product: ProductDetail,
+  ) => void;
 }): React.ReactElement {
   const isGithub = releaseSourceOf(product) === "github";
   return (
@@ -293,7 +320,10 @@ function RowActions({
           <KeyRound aria-hidden /> Rotate signing key
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem destructive onSelect={() => openConfirm("delete", product)}>
+        <DropdownMenuItem
+          destructive
+          onSelect={() => openConfirm("delete", product)}
+        >
           <Trash2 aria-hidden /> Delete
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -31,10 +31,20 @@ const PRODUCT = {
     groupRoleMap: { admin: { role: "admin" } },
   },
   tiers: [
-    { id: "standard", label: "Standard", profileId: null, policyExpiryDays: null, policyMachineLimit: 5 },
+    {
+      id: "standard",
+      label: "Standard",
+      profileId: null,
+      policyExpiryDays: null,
+      policyMachineLimit: 5,
+    },
   ],
   provisioning: [
-    { claim: "remnawaveAccess", entitlementKey: "polarisVpn", entitlementValue: true },
+    {
+      claim: "remnawaveAccess",
+      entitlementKey: "polarisVpn",
+      entitlementValue: true,
+    },
   ],
 };
 
@@ -75,7 +85,9 @@ describe("parseManifest", () => {
     expect(m.product.name).toBe("DJDL");
     expect(m.product.defaultMachineLimit).toBe(5);
     expect(m.catalog.schemaVersion).toBe(1);
-    expect(m.catalog.entries.length).toBe((CATALOG.entries as unknown[]).length);
+    expect(m.catalog.entries.length).toBe(
+      (CATALOG.entries as unknown[]).length,
+    );
     expect(m.oidc?.clientId).toBe("djdl");
     expect(m.tiers).toHaveLength(1);
     expect(m.provisioning).toHaveLength(1);
@@ -156,15 +168,23 @@ describe("parseManifest", () => {
     if (res.ok) return;
     expect(res.errors.length).toBeGreaterThanOrEqual(2);
     expect(res.errors.some((e) => e.startsWith("schema:"))).toBe(true);
-    expect(res.errors.some((e) => e.startsWith("product:") && e.includes("slug"))).toBe(true);
+    expect(
+      res.errors.some((e) => e.startsWith("product:") && e.includes("slug")),
+    ).toBe(true);
   });
 
   it("reports missing schema and missing product as required errors", () => {
     const res = parseManifest({ release: JSON.stringify(RELEASE) });
     expect(res.ok).toBe(false);
     if (res.ok) return;
-    expect(res.errors.some((e) => e.startsWith("schema:") && e.includes("required"))).toBe(true);
-    expect(res.errors.some((e) => e.startsWith("product:") && e.includes("required"))).toBe(true);
+    expect(
+      res.errors.some((e) => e.startsWith("schema:") && e.includes("required")),
+    ).toBe(true);
+    expect(
+      res.errors.some(
+        (e) => e.startsWith("product:") && e.includes("required"),
+      ),
+    ).toBe(true);
   });
 
   it("surfaces an unparseable document as a JSON/YAML error", () => {

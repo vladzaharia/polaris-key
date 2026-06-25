@@ -21,7 +21,10 @@ const USER_AGENT = "polaris-key-release";
 const TOKEN_TTL_SECONDS = 55 * 60;
 
 /** A fetch with the same shape as the platform `fetch`, injectable for tests. */
-export type FetchImpl = (input: string, init?: RequestInit) => Promise<Response>;
+export type FetchImpl = (
+  input: string,
+  init?: RequestInit,
+) => Promise<Response>;
 
 function b64url(bytes: Uint8Array): string {
   let s = "";
@@ -32,7 +35,10 @@ function b64url(bytes: Uint8Array): string {
 const b64urlStr = (s: string): string => b64url(new TextEncoder().encode(s));
 
 function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+  return b.buffer.slice(
+    b.byteOffset,
+    b.byteOffset + b.byteLength,
+  ) as ArrayBuffer;
 }
 
 /** Strip PEM armor + whitespace and decode the base64 body to raw DER bytes. */
@@ -57,7 +63,10 @@ function toPkcs8(pem: string): ArrayBuffer {
   if (/BEGIN PRIVATE KEY/.test(pem)) return toAB(der);
 
   // PKCS#8 = SEQUENCE { version 0, AlgorithmIdentifier rsaEncryption NULL, OCTET STRING pkcs1 }
-  const rsaOid = [0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00];
+  const rsaOid = [
+    0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
+    0x01, 0x05, 0x00,
+  ];
   const version = [0x02, 0x01, 0x00];
   const octetHeader = derLen(0x04, der.length);
   const inner = [...version, ...rsaOid, ...octetHeader, ...der];
@@ -78,7 +87,11 @@ function derLen(tag: number, n: number): number[] {
 }
 
 /** Sign a JWT with RS256 (GitHub App JWTs are RS256). */
-async function signAppJwt(appId: string, pem: string, now: number): Promise<string> {
+async function signAppJwt(
+  appId: string,
+  pem: string,
+  now: number,
+): Promise<string> {
   const header = { alg: "RS256", typ: "JWT" };
   // 30s clock-skew backdate; 9-minute window (GitHub caps App JWTs at 10m).
   const payload = { iat: now - 30, exp: now + 9 * 60, iss: appId };
@@ -132,13 +145,18 @@ export async function discoverInstallation(
   fetchImpl: FetchImpl = fetch,
 ): Promise<number> {
   const jwt = await appJwt(env, now);
-  const res = await fetchImpl(`${GITHUB_API}/repos/${owner}/${repo}/installation`, {
-    headers: githubHeaders(`Bearer ${jwt}`),
-  });
-  if (res.status === 404) throw new Error("github app is not installed on this repository");
+  const res = await fetchImpl(
+    `${GITHUB_API}/repos/${owner}/${repo}/installation`,
+    {
+      headers: githubHeaders(`Bearer ${jwt}`),
+    },
+  );
+  if (res.status === 404)
+    throw new Error("github app is not installed on this repository");
   if (!res.ok) throw new Error(`installation discovery failed: ${res.status}`);
   const body = (await res.json()) as { id?: number };
-  if (typeof body.id !== "number") throw new Error("installation discovery: missing id");
+  if (typeof body.id !== "number")
+    throw new Error("installation discovery: missing id");
   return body.id;
 }
 
@@ -152,12 +170,14 @@ function backoffMillis(res: Response): number {
   const retryAfter = res.headers.get("Retry-After");
   if (retryAfter) {
     const secs = Number(retryAfter);
-    if (Number.isFinite(secs) && secs >= 0) return Math.min(secs, 5) * 1000 + jitter();
+    if (Number.isFinite(secs) && secs >= 0)
+      return Math.min(secs, 5) * 1000 + jitter();
   }
   const reset = res.headers.get("X-RateLimit-Reset");
   if (reset) {
     const resetMs = Number(reset) * 1000 - Date.now();
-    if (Number.isFinite(resetMs) && resetMs > 0) return Math.min(resetMs, 5000) + jitter();
+    if (Number.isFinite(resetMs) && resetMs > 0)
+      return Math.min(resetMs, 5000) + jitter();
   }
   return 500 + jitter();
 }
@@ -167,11 +187,13 @@ const jitter = (): number => Math.floor(Math.random() * 250);
 /** True when a response is a GitHub rate-limit signal (429, or 403 with remaining=0). */
 function isRateLimited(res: Response): boolean {
   if (res.status === 429) return true;
-  if (res.status === 403 && res.headers.get("X-RateLimit-Remaining") === "0") return true;
+  if (res.status === 403 && res.headers.get("X-RateLimit-Remaining") === "0")
+    return true;
   return false;
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number): Promise<void> =>
+  new Promise((r) => setTimeout(r, ms));
 
 /**
  * Get an installation token for `installId`, minting (and caching) one if absent or

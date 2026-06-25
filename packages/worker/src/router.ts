@@ -7,6 +7,7 @@ export type Route =
   | { kind: "adminLogin" }
   | { kind: "adminCallback" }
   | { kind: "products" }
+  | { kind: "discovery"; product: string }
   | { kind: "jwks"; product: string }
   | { kind: "schema"; product: string }
   | { kind: "enroll"; product: string }
@@ -31,14 +32,20 @@ export type Route =
 const ARCH = /^(?:[^/]+)-(arm64|aarch64|x86_64|amd64)$/;
 
 export function matchRoute(pathname: string): Route {
-  const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  const path =
+    pathname.length > 1 && pathname.endsWith("/")
+      ? pathname.slice(0, -1)
+      : pathname;
 
   // Platform + admin (matched before product slugs).
-  if (path === "/admin/api/products" || path.startsWith("/admin/api/products/")) return { kind: "products" };
+  if (path === "/admin/api/products" || path.startsWith("/admin/api/products/"))
+    return { kind: "products" };
   if (path === "/admin/login") return { kind: "adminLogin" };
   if (path === "/admin/callback") return { kind: "adminCallback" };
-  if (path === "/admin/api" || path.startsWith("/admin/api/")) return { kind: "adminApi" };
-  if (path === "/admin" || path.startsWith("/admin/")) return { kind: "adminSpa" };
+  if (path === "/admin/api" || path.startsWith("/admin/api/"))
+    return { kind: "adminApi" };
+  if (path === "/admin" || path.startsWith("/admin/"))
+    return { kind: "adminSpa" };
 
   // Product-scoped: /<product>/<rest>
   const m = path.match(/^\/([a-z0-9-]+)\/(.+)$/);
@@ -47,6 +54,8 @@ export function matchRoute(pathname: string): Route {
   const rest = "/" + m[2];
 
   switch (rest) {
+    case "/.well-known/polaris.json":
+      return { kind: "discovery", product };
     case "/.well-known/jwks.json":
       return { kind: "jwks", product };
     case "/schema":
@@ -100,7 +109,8 @@ export function matchRoute(pathname: string): Route {
   }
 
   const appcast = rest.match(/^\/([a-z0-9-]+)\/appcast\.xml$/);
-  if (appcast && appcast[1]) return { kind: "appcast", product, channel: appcast[1] };
+  if (appcast && appcast[1])
+    return { kind: "appcast", product, channel: appcast[1] };
 
   return { kind: "notFound" };
 }

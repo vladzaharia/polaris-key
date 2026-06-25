@@ -1,4 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Me } from "./api.js";
 
 /**
@@ -13,7 +21,13 @@ export interface AdminContextValue {
 
 const AdminCtx = createContext<AdminContextValue | null>(null);
 
-export function AdminProvider({ value, children }: { value: AdminContextValue; children: React.ReactNode }): React.ReactElement {
+export function AdminProvider({
+  value,
+  children,
+}: {
+  value: AdminContextValue;
+  children: React.ReactNode;
+}): React.ReactElement {
   return <AdminCtx.Provider value={value}>{children}</AdminCtx.Provider>;
 }
 
@@ -31,14 +45,29 @@ interface StatusContextValue {
 }
 const StatusCtx = createContext<StatusContextValue | null>(null);
 
-export function StatusProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  const [state, setState] = useState<{ message: string; tone: StatusContextValue["tone"] }>({ message: "", tone: "message" });
-  const announce = useCallback((message: string, tone: StatusContextValue["tone"] = "message") => setState({ message, tone }), []);
+export function StatusProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
+  const [state, setState] = useState<{
+    message: string;
+    tone: StatusContextValue["tone"];
+  }>({ message: "", tone: "message" });
+  const announce = useCallback(
+    (message: string, tone: StatusContextValue["tone"] = "message") =>
+      setState({ message, tone }),
+    [],
+  );
   const value = useMemo(() => ({ ...state, announce }), [state, announce]);
   return (
     <StatusCtx.Provider value={value}>
       {children}
-      <div className={`app-status app-status-${state.tone}`} role="status" aria-live="polite">
+      <div
+        className={`app-status app-status-${state.tone}`}
+        role="status"
+        aria-live="polite"
+      >
         {state.message}
       </div>
     </StatusCtx.Provider>
@@ -65,7 +94,13 @@ const CACHE = new Map<string, CacheEntry>();
 function entryFor<T>(key: string): CacheEntry<T> {
   let e = CACHE.get(key) as CacheEntry<T> | undefined;
   if (!e) {
-    e = { data: null, error: null, loading: false, loadedAt: 0, subscribers: new Set() };
+    e = {
+      data: null,
+      error: null,
+      loading: false,
+      loadedAt: 0,
+      subscribers: new Set(),
+    };
     CACHE.set(key, e);
   }
   return e;
@@ -75,7 +110,11 @@ function notify(e: CacheEntry): void {
   for (const s of e.subscribers) s();
 }
 
-function load<T>(e: CacheEntry<T>, fetcher: () => Promise<T>, force: boolean): void {
+function load<T>(
+  e: CacheEntry<T>,
+  fetcher: () => Promise<T>,
+  force: boolean,
+): void {
   if (e.promise && !force) return;
   e.loading = true;
   e.error = null;
@@ -118,13 +157,19 @@ export interface ResourceState<T> {
   reload: () => void;
 }
 
-export function useResource<T>(key: string, fetcher: () => Promise<T>): ResourceState<T> {
+export function useResource<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+): ResourceState<T> {
   const [, force] = useState(0);
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
   const e = entryFor<T>(key);
 
-  const reload = useCallback(() => load(e, () => fetcherRef.current(), true), [e]);
+  const reload = useCallback(
+    () => load(e, () => fetcherRef.current(), true),
+    [e],
+  );
 
   useEffect(() => {
     const refresh = () => force((n) => n + 1);

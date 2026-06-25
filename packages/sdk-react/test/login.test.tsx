@@ -10,7 +10,10 @@ afterEach(cleanup);
 
 // A render helper that returns the container for query-by-attribute (scoped per render).
 function renderGate(state: BridgeState) {
-  const adapter = desktopAdapter({ bridge: makeFakeBridge(state), now: () => NOW_SEC });
+  const adapter = desktopAdapter({
+    bridge: makeFakeBridge(state),
+    now: () => NOW_SEC,
+  });
   return render(
     <PolarisKeyProvider productSlug="acme" adapter={adapter}>
       <LicenseGate>
@@ -22,13 +25,23 @@ function renderGate(state: BridgeState) {
 
 describe("LicenseGate screen selection", () => {
   it("renders children when ok", async () => {
-    const { container } = renderGate({ hasToken: true, doc: makeDoc(), lastVerifiedAt: NOW_SEC * 1000 });
-    await waitFor(() => expect(within(container).getByTestId("app")).toBeTruthy());
+    const { container } = renderGate({
+      hasToken: true,
+      doc: makeDoc(),
+      lastVerifiedAt: NOW_SEC * 1000,
+    });
+    await waitFor(() =>
+      expect(within(container).getByTestId("app")).toBeTruthy(),
+    );
   });
 
   it("renders the login screen when needs-enroll", async () => {
     const { container } = renderGate({ hasToken: false, doc: null });
-    await waitFor(() => expect(container.querySelector('[data-polaris-gate="login"]')).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-polaris-gate="login"]'),
+      ).toBeTruthy(),
+    );
     expect(container.querySelector('[data-testid="app"]')).toBeNull();
     // The OIDC button is present.
     expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy();
@@ -37,8 +50,16 @@ describe("LicenseGate screen selection", () => {
   });
 
   it("renders the revoked screen on a hard 401", async () => {
-    const { container } = renderGate({ hasToken: true, doc: makeDoc(), lastSyncUnauthorized: true });
-    await waitFor(() => expect(container.querySelector('[data-polaris-gate="revoked"]')).toBeTruthy());
+    const { container } = renderGate({
+      hasToken: true,
+      doc: makeDoc(),
+      lastSyncUnauthorized: true,
+    });
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-polaris-gate="revoked"]'),
+      ).toBeTruthy(),
+    );
     expect(container.querySelector('[data-testid="app"]')).toBeNull();
   });
 
@@ -48,14 +69,30 @@ describe("LicenseGate screen selection", () => {
       doc: makeDoc(),
       blocked: { reason: "version-too-old", allowedRange: { min: "2.0.0" } },
     });
-    await waitFor(() => expect(container.querySelector('[data-polaris-gate="version-block"]')).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-polaris-gate="version-block"]'),
+      ).toBeTruthy(),
+    );
     expect(container.querySelector('[data-testid="app"]')).toBeNull();
   });
 
   it("renders children behind a grace banner when in grace", async () => {
-    const doc = makeDoc({ issuedAt: 100, expiresAt: 200, graceUntil: NOW_SEC + 10_000 });
-    const { container } = renderGate({ hasToken: true, doc, lastVerifiedAt: NOW_SEC * 1000 });
-    await waitFor(() => expect(container.querySelector('[data-polaris-gate="grace"]')).toBeTruthy());
+    const doc = makeDoc({
+      issuedAt: 100,
+      expiresAt: 200,
+      graceUntil: NOW_SEC + 10_000,
+    });
+    const { container } = renderGate({
+      hasToken: true,
+      doc,
+      lastVerifiedAt: NOW_SEC * 1000,
+    });
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-polaris-gate="grace"]'),
+      ).toBeTruthy(),
+    );
     // Grace still renders the app underneath the banner.
     expect(within(container).getByTestId("app")).toBeTruthy();
   });

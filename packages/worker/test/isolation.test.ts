@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, mkReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  makeEnv,
+  mkReq,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+} from "./seed.js";
 import { loadProduct, type Product } from "../src/product.js";
 import { handleConfig, handleEnroll } from "../src/licensing.js";
 import type { Env } from "../src/env.js";
@@ -18,11 +24,21 @@ interface Tenant {
   token: string;
 }
 
-async function enroll(env: Env, db: SqliteDb, product: Product, device: string): Promise<string> {
-  const { key } = await seedLicenseWithKey(db, product.slug, { id: `lic_${product.slug}_iso` });
+async function enroll(
+  env: Env,
+  db: SqliteDb,
+  product: Product,
+  device: string,
+): Promise<string> {
+  const { key } = await seedLicenseWithKey(db, product.slug, {
+    id: `lic_${product.slug}_iso`,
+  });
   const res = await handleEnroll(
     mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": device }),
-    env, db, product, NOW,
+    env,
+    db,
+    product,
+    NOW,
   );
   expect(res.status).toBe(200);
   return ((await res.json()) as { token: string }).token;
@@ -30,8 +46,14 @@ async function enroll(env: Env, db: SqliteDb, product: Product, device: string):
 
 const config = (env: Env, db: SqliteDb, product: Product, token: string) =>
   handleConfig(
-    mkReq("GET", { authorization: `Bearer ${token}`, "x-pkey-version": "1.0.0" }),
-    env, db, product, NOW,
+    mkReq("GET", {
+      authorization: `Bearer ${token}`,
+      "x-pkey-version": "1.0.0",
+    }),
+    env,
+    db,
+    product,
+    NOW,
   );
 
 describe("multi-tenant isolation (driven through the worker)", () => {
@@ -45,8 +67,14 @@ describe("multi-tenant isolation (driven through the worker)", () => {
     const acmeProduct = (await loadProduct(env, db, "acme"))!;
 
     // Each tenant: its own license + enrolled device + per-machine token.
-    const djdl: Tenant = { product: djdlProduct, token: await enroll(env, db, djdlProduct, "dev-djdl") };
-    const acme: Tenant = { product: acmeProduct, token: await enroll(env, db, acmeProduct, "dev-acme") };
+    const djdl: Tenant = {
+      product: djdlProduct,
+      token: await enroll(env, db, djdlProduct, "dev-djdl"),
+    };
+    const acme: Tenant = {
+      product: acmeProduct,
+      token: await enroll(env, db, acmeProduct, "dev-acme"),
+    };
 
     // Each token works at its own product (200).
     expect((await config(env, db, djdl.product, djdl.token)).status).toBe(200);
@@ -68,8 +96,14 @@ describe("multi-tenant isolation (driven through the worker)", () => {
     const acme = (await loadProduct(env, db, "acme"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const res = await handleEnroll(
-      mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-      env, db, acme, NOW,
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      acme,
+      NOW,
     );
     expect(res.status).toBe(401);
   });
@@ -88,7 +122,11 @@ describe("multi-tenant isolation (driven through the worker)", () => {
     // Defense-in-depth on the structural claim: enrolling in BOTH products produces ONLY
     // `p:<slug>:`-prefixed keys, and never leaks one tenant's keys under the other's prefix.
     expect(kv.keys().length).toBeGreaterThan(0);
-    expect(kv.keys().every((k) => k.startsWith("p:djdl:") || k.startsWith("p:acme:"))).toBe(true);
+    expect(
+      kv
+        .keys()
+        .every((k) => k.startsWith("p:djdl:") || k.startsWith("p:acme:")),
+    ).toBe(true);
     expect(kv.keys().some((k) => k.startsWith("p:djdl:"))).toBe(true);
     expect(kv.keys().some((k) => k.startsWith("p:acme:"))).toBe(true);
   });

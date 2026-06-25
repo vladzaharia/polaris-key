@@ -94,7 +94,10 @@ export type LicenseStatus =
   | "channel-not-entitled";
 
 /** A 403 block reason returned by `GET /<product>/config`. */
-export type BlockReason = "version-too-old" | "version-too-new" | "channel-not-entitled";
+export type BlockReason =
+  | "version-too-old"
+  | "version-too-new"
+  | "channel-not-entitled";
 
 /** The version window a blocked client may run within. */
 export interface AllowedRange {

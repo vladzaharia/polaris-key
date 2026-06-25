@@ -1,0 +1,28 @@
+{
+  "name": "@polaris-key/cli",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "pkey": "./dist/bin/pkey.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  }
+}

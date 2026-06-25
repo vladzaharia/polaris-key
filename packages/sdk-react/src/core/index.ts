@@ -2,7 +2,12 @@
 // specifics). Useful for tests, custom adapters, or non-React consumers that still want
 // the shared gate + state model.
 
-export { licenseState, isUsable, type LicenseState, type GateInput } from "./gateModel.js";
+export {
+  licenseState,
+  isUsable,
+  type LicenseState,
+  type GateInput,
+} from "./gateModel.js";
 export {
   PolarisError,
   initialState,

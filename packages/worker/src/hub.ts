@@ -41,7 +41,10 @@ export class HubDO implements DurableObject {
   }
 
   // One-way channel: no client -> server protocol. Defined for the hibernation API.
-  async webSocketMessage(_ws: WebSocket, _message: string | ArrayBuffer): Promise<void> {}
+  async webSocketMessage(
+    _ws: WebSocket,
+    _message: string | ArrayBuffer,
+  ): Promise<void> {}
   async webSocketClose(ws: WebSocket, code: number): Promise<void> {
     try {
       ws.close(code);

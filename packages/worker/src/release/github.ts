@@ -62,7 +62,9 @@ export async function resolveRelease(
     !version || version === "latest"
       ? `${base}/latest`
       : `${base}/tags/v${encodeURIComponent(version)}`;
-  const res = await fetchImpl(url, { headers: apiHeaders(token, "application/vnd.github+json") });
+  const res = await fetchImpl(url, {
+    headers: apiHeaders(token, "application/vnd.github+json"),
+  });
   if (!res.ok) throw new NotFoundError(`release lookup failed: ${res.status}`);
   return (await res.json()) as Release;
 }
@@ -76,7 +78,9 @@ export async function listReleases(
   fetchImpl: FetchImpl = fetch,
 ): Promise<Release[]> {
   const url = `${GITHUB_API}/repos/${owner}/${repo}/releases?per_page=${perPage}`;
-  const res = await fetchImpl(url, { headers: apiHeaders(token, "application/vnd.github+json") });
+  const res = await fetchImpl(url, {
+    headers: apiHeaders(token, "application/vnd.github+json"),
+  });
   if (!res.ok) throw new NotFoundError(`releases list failed: ${res.status}`);
   return (await res.json()) as Release[];
 }
@@ -90,7 +94,11 @@ export function findAsset(release: Release, name: string): ReleaseAsset {
 
 /** True for GitHub release-asset storage hosts the SSRF guard permits re-fetching. */
 export function isAllowedStorageHost(host: string): boolean {
-  return host === "github.com" || host === "githubusercontent.com" || host.endsWith(".githubusercontent.com");
+  return (
+    host === "github.com" ||
+    host === "githubusercontent.com" ||
+    host.endsWith(".githubusercontent.com")
+  );
 }
 
 /**
@@ -122,14 +130,19 @@ export async function streamAsset(
     if (!loc) throw new NotFoundError("asset redirect: missing location");
     // SSRF guard: only follow redirects into GitHub's own storage hosts.
     const host = new URL(loc).hostname;
-    if (!isAllowedStorageHost(host)) throw new NotFoundError(`asset redirect host not allowed: ${host}`);
+    if (!isAllowedStorageHost(host))
+      throw new NotFoundError(`asset redirect host not allowed: ${host}`);
     const storageHeaders = new Headers();
     if (range) storageHeaders.set("Range", range);
     if (ifNoneMatch) storageHeaders.set("If-None-Match", ifNoneMatch);
     upstream = await fetchImpl(loc, { headers: storageHeaders }); // signed URL — no Authorization
   }
 
-  if (upstream.status === 401 || upstream.status === 403 || upstream.status === 404) {
+  if (
+    upstream.status === 401 ||
+    upstream.status === 403 ||
+    upstream.status === 404
+  ) {
     throw new NotFoundError(`asset fetch failed: ${upstream.status}`);
   }
   if (!upstream.ok && upstream.status !== 206 && upstream.status !== 304) {
@@ -137,7 +150,14 @@ export async function streamAsset(
   }
 
   const out = new Headers();
-  for (const h of ["Content-Type", "Content-Length", "Content-Range", "Accept-Ranges", "ETag", "Last-Modified"]) {
+  for (const h of [
+    "Content-Type",
+    "Content-Length",
+    "Content-Range",
+    "Accept-Ranges",
+    "ETag",
+    "Last-Modified",
+  ]) {
     const v = upstream.headers.get(h);
     if (v) out.set(h, v);
   }
@@ -165,11 +185,14 @@ export async function fetchRepoFile(
     .split("/")
     .map((s) => encodeURIComponent(s))
     .join("/")}${q}`;
-  const res = await fetchImpl(url, { headers: apiHeaders(token, "application/vnd.github+json") });
+  const res = await fetchImpl(url, {
+    headers: apiHeaders(token, "application/vnd.github+json"),
+  });
   if (res.status === 404) return null;
   if (!res.ok) throw new NotFoundError(`repo file fetch failed: ${res.status}`);
   const body = (await res.json()) as { content?: string; encoding?: string };
-  if (typeof body.content !== "string") throw new NotFoundError("repo file: unexpected shape");
+  if (typeof body.content !== "string")
+    throw new NotFoundError("repo file: unexpected shape");
   if (body.encoding && body.encoding !== "base64") {
     throw new NotFoundError(`repo file: unexpected encoding ${body.encoding}`);
   }
@@ -197,7 +220,8 @@ export async function fetchTextAsset(
     const loc = res.headers.get("Location");
     if (!loc) throw new NotFoundError("asset redirect: missing location");
     const host = new URL(loc).hostname;
-    if (!isAllowedStorageHost(host)) throw new NotFoundError(`asset redirect host not allowed: ${host}`);
+    if (!isAllowedStorageHost(host))
+      throw new NotFoundError(`asset redirect host not allowed: ${host}`);
     res = await fetchImpl(loc);
   }
   if (!res.ok) throw new NotFoundError(`asset fetch failed: ${res.status}`);

@@ -3,26 +3,56 @@ import { verifyJws } from "@polaris-key/jws";
 import type { ManagedConfigDoc } from "@polaris-key/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, mkReq, NOW, seedProduct, DJDL_CATALOG, TEST_KID, TEST_PUB } from "./seed.js";
+import {
+  makeEnv,
+  mkReq,
+  NOW,
+  seedProduct,
+  DJDL_CATALOG,
+  TEST_KID,
+  TEST_PUB,
+} from "./seed.js";
 import { loadProduct } from "../src/product.js";
-import { enrollFromIdentity, authorizeAndMint, type OidcIdentity } from "../src/oidc.js";
+import {
+  enrollFromIdentity,
+  authorizeAndMint,
+  type OidcIdentity,
+} from "../src/oidc.js";
 import { handleConfig } from "../src/licensing.js";
 
 async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
   await db.run(
     "INSERT INTO oidc_config (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json) VALUES (?,?,?,?,?,?)",
-    "djdl", "https://id.example", "client-djdl", null,
+    "djdl",
+    "https://id.example",
+    "client-djdl",
+    null,
     JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
-    JSON.stringify({ family: { role: "user", tier: "pro" }, admin: { role: "admin" } }),
+    JSON.stringify({
+      family: { role: "user", tier: "pro" },
+      admin: { role: "admin" },
+    }),
   );
   await db.run(
     "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)",
-    "djdl", "pro", "Pro", null, 365, 5, null, NOW,
+    "djdl",
+    "pro",
+    "Pro",
+    null,
+    365,
+    5,
+    null,
+    NOW,
   );
   await db.run(
     "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?,?,?,?,?,?,?)",
-    "djdl", "remnawaveSub", "polarisVpn", JSON.stringify(true), "proxy.subscriptionUrl",
-    "https://vpn.polaris.rest/{claim}", JSON.stringify(["vpn.polaris.rest"]),
+    "djdl",
+    "remnawaveSub",
+    "polarisVpn",
+    JSON.stringify(true),
+    "proxy.subscriptionUrl",
+    "https://vpn.polaris.rest/{claim}",
+    JSON.stringify(["vpn.polaris.rest"]),
   );
 }
 
@@ -55,7 +85,12 @@ describe("OIDC enrollment", () => {
     await seedProduct(db, "djdl");
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
-    const r = await enrollFromIdentity(db, product, identity({ sub: "other", groups: ["randos"] }), NOW);
+    const r = await enrollFromIdentity(
+      db,
+      product,
+      identity({ sub: "other", groups: ["randos"] }),
+      NOW,
+    );
     expect(r).toEqual({ error: "not-entitled" });
   });
 
@@ -70,17 +105,36 @@ describe("OIDC enrollment", () => {
 
     const r = await enrollFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
-    const token = await authorizeAndMint(env, db, product, r.licenseId, "dev-oidc", NOW);
+    const token = await authorizeAndMint(
+      env,
+      db,
+      product,
+      r.licenseId,
+      "dev-oidc",
+      NOW,
+    );
 
     const res = await handleConfig(
-      mkReq("GET", { authorization: `Bearer ${token}`, "x-pkey-version": "1.2.3" }),
-      env, db, product, NOW,
+      mkReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-version": "1.2.3",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     expect(res.status).toBe(200);
-    const v = await verifyJws<ManagedConfigDoc>(await res.text(), { [TEST_KID]: TEST_PUB });
+    const v = await verifyJws<ManagedConfigDoc>(await res.text(), {
+      [TEST_KID]: TEST_PUB,
+    });
     expect(v!.payload.payload.entitlements.polarisVpn?.value).toBe(true);
-    expect(v!.payload.payload.secrets["proxy.subscriptionUrl"]?.value).toBe("https://vpn.polaris.rest/abc123");
-    expect(v!.payload.payload.secrets["proxy.subscriptionUrl"]?.state).toBe("hidden");
+    expect(v!.payload.payload.secrets["proxy.subscriptionUrl"]?.value).toBe(
+      "https://vpn.polaris.rest/abc123",
+    );
+    expect(v!.payload.payload.secrets["proxy.subscriptionUrl"]?.state).toBe(
+      "hidden",
+    );
   });
 });
 

@@ -18,13 +18,26 @@ export function isPlatformAdmin(env: Env, session: AdminSession): boolean {
 }
 
 /** True if the session may administer the given product (platform OR product admin). */
-export function canAdminProduct(env: Env, session: AdminSession, product: ProductRow): boolean {
+export function canAdminProduct(
+  env: Env,
+  session: AdminSession,
+  product: ProductRow,
+): boolean {
   if (isPlatformAdmin(env, session)) return true;
-  return product.admin_group != null && session.groups.includes(product.admin_group);
+  return (
+    product.admin_group != null && session.groups.includes(product.admin_group)
+  );
 }
 
 /** True if the identity's groups grant ANY admin access at all (used at login). */
-export function hasAnyAdminGrant(env: Env, groups: string[], products: ProductRow[]): boolean {
-  if (env.PLATFORM_ADMIN_GROUP && groups.includes(env.PLATFORM_ADMIN_GROUP)) return true;
-  return products.some((p) => p.admin_group != null && groups.includes(p.admin_group));
+export function hasAnyAdminGrant(
+  env: Env,
+  groups: string[],
+  products: ProductRow[],
+): boolean {
+  if (env.PLATFORM_ADMIN_GROUP && groups.includes(env.PLATFORM_ADMIN_GROUP))
+    return true;
+  return products.some(
+    (p) => p.admin_group != null && groups.includes(p.admin_group),
+  );
 }

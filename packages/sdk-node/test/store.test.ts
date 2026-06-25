@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ManagedConfigDoc } from "@polaris-key/protocol";
-import { deriveDeviceId, FileStore, InMemoryStore, type CacheRecord } from "../src/store.js";
+import {
+  deriveDeviceId,
+  FileStore,
+  InMemoryStore,
+  type CacheRecord,
+} from "../src/store.js";
 
 function sampleDoc(): ManagedConfigDoc {
   return {
@@ -15,11 +20,34 @@ function sampleDoc(): ManagedConfigDoc {
     issuedAt: 1_700_000_000,
     expiresAt: 1_700_003_600,
     graceUntil: 1_702_592_000,
-    profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@example.com", enrolledAt: 1_690_000_000 },
+    profile: {
+      name: "Ada Lovelace",
+      firstName: "Ada",
+      email: "ada@example.com",
+      enrolledAt: 1_690_000_000,
+    },
     payload: {
-      config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: 1_700_000_000 } },
-      secrets: { "proxy.subscriptionUrl": { state: "hidden", value: "keychain:ref", updatedAt: 1_700_000_000 } },
-      entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: 1_700_000_000 } },
+      config: {
+        "run.concurrency": {
+          state: "enforced",
+          value: 4,
+          updatedAt: 1_700_000_000,
+        },
+      },
+      secrets: {
+        "proxy.subscriptionUrl": {
+          state: "hidden",
+          value: "keychain:ref",
+          updatedAt: 1_700_000_000,
+        },
+      },
+      entitlements: {
+        polarisVpn: {
+          state: "enforced",
+          value: true,
+          updatedAt: 1_700_000_000,
+        },
+      },
     },
   };
 }
@@ -55,7 +83,9 @@ describe("deriveDeviceId", () => {
   });
 
   it("differs by product slug for the same raw input (per-product binding)", () => {
-    expect(deriveDeviceId("djdl", "fixed-input")).not.toBe(deriveDeviceId("other", "fixed-input"));
+    expect(deriveDeviceId("djdl", "fixed-input")).not.toBe(
+      deriveDeviceId("other", "fixed-input"),
+    );
   });
 });
 

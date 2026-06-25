@@ -10,7 +10,13 @@ export interface EmptyStateProps {
 }
 
 /** A centered empty/zero-data placeholder with an optional icon + call to action. */
-export function EmptyState({ icon, title, description, action, className }: EmptyStateProps): React.ReactElement {
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  className,
+}: EmptyStateProps): React.ReactElement {
   return (
     <div
       className={cn(
@@ -18,10 +24,14 @@ export function EmptyState({ icon, title, description, action, className }: Empt
         className,
       )}
     >
-      {icon ? <div className="text-muted-foreground [&_svg]:size-8">{icon}</div> : null}
+      {icon ? (
+        <div className="text-muted-foreground [&_svg]:size-8">{icon}</div>
+      ) : null}
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">{title}</p>
-        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       {action ? <div className="pt-1">{action}</div> : null}
     </div>

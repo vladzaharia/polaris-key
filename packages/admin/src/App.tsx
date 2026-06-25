@@ -5,15 +5,14 @@ import { AdminProvider } from "./context.js";
 import { ThemeProvider } from "./components/theme.js";
 import { Toaster } from "./components/ui/index.js";
 import { Shell } from "./components/Shell.js";
-import { navigate, parseRoute, type Route } from "./route.js";
+import { navigate, normalizeView, parseRoute, type Route } from "./route.js";
 import { Spinner, EmptyState } from "./components/ui/index.js";
 import { LogoMark } from "./components/brand/Logo.js";
 import { Dashboard } from "./views/Dashboard.js";
 import { Products } from "./views/Products.js";
+import { ProductOverview } from "./views/ProductOverview.js";
 import { Licenses } from "./views/Licenses.js";
 import { LicenseDetail } from "./views/LicenseDetail.js";
-import { Tiers } from "./views/Tiers.js";
-import { Profiles } from "./views/Profiles.js";
 import { Catalog } from "./views/Catalog.js";
 import { Releases } from "./views/Releases.js";
 import { Oidc } from "./views/Oidc.js";
@@ -39,7 +38,9 @@ export function App(): React.ReactElement {
 function Boot(): React.ReactElement {
   const [me, setMe] = React.useState<Me | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [route, setRoute] = React.useState<Route>(() => parseRoute(window.location.hash));
+  const [route, setRoute] = React.useState<Route>(() =>
+    parseRoute(window.location.hash),
+  );
 
   React.useEffect(() => {
     const onHash = (): void => setRoute(parseRoute(window.location.hash));
@@ -81,14 +82,16 @@ function Boot(): React.ReactElement {
     );
   }
 
-  const activeSlug = route.kind === "product" ? route.slug : me.products[0]?.slug ?? "";
+  const activeSlug =
+    route.kind === "product" ? route.slug : (me.products[0]?.slug ?? "");
 
   return (
     <AdminProvider
       value={{
         me,
         product: activeSlug,
-        setProduct: (slug) => navigate({ kind: "product", slug, view: "licenses" }),
+        setProduct: (slug) =>
+          navigate({ kind: "product", slug, view: "overview" }),
       }}
     >
       <Shell
@@ -96,7 +99,11 @@ function Boot(): React.ReactElement {
         route={route}
         activeSlug={activeSlug}
         onNavigate={navigate}
-        onSignOut={() => void api.logout().finally(() => (window.location.href = "/admin/login"))}
+        onSignOut={() =>
+          void api
+            .logout()
+            .finally(() => (window.location.href = "/admin/login"))
+        }
       >
         <div key={routeKey(route)}>{renderRoute(route, me, activeSlug)}</div>
       </Shell>
@@ -104,7 +111,11 @@ function Boot(): React.ReactElement {
   );
 }
 
-function BootScreen({ children }: { children: React.ReactNode }): React.ReactElement {
+function BootScreen({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
   return (
     <ThemeBackdrop>
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4">
@@ -116,16 +127,27 @@ function BootScreen({ children }: { children: React.ReactNode }): React.ReactEle
 }
 
 /** Apply background tokens even before the shell mounts. */
-function ThemeBackdrop({ children }: { children: React.ReactNode }): React.ReactElement {
-  return <div className="min-h-screen bg-background text-foreground">{children}</div>;
+function ThemeBackdrop({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="min-h-screen bg-background text-foreground">{children}</div>
+  );
 }
 
 function routeKey(route: Route): string {
-  if (route.kind === "product") return `${route.slug}:${route.view}:${route.id ?? ""}`;
+  if (route.kind === "product")
+    return `${route.slug}:${route.view}:${route.id ?? ""}`;
   return route.kind;
 }
 
-function renderRoute(route: Route, me: Me, activeSlug: string): React.ReactElement {
+function renderRoute(
+  route: Route,
+  me: Me,
+  activeSlug: string,
+): React.ReactElement {
   if (route.kind === "dashboard") return <Dashboard />;
   if (route.kind === "products") return <Products />;
 
@@ -139,21 +161,23 @@ function renderRoute(route: Route, me: Me, activeSlug: string): React.ReactEleme
     );
   }
 
-  switch (route.view) {
+  switch (normalizeView(route.view)) {
     case "license":
       return <LicenseDetail slug={activeSlug} id={route.id ?? ""} />;
+    case "overview":
+      return <ProductOverview slug={activeSlug} />;
+    case "setup":
+      return <ProductOverview slug={activeSlug} mode="setup" />;
     case "licenses":
       return <Licenses slug={activeSlug} />;
-    case "tiers":
-      return <Tiers slug={activeSlug} />;
-    case "profiles":
-      return <Profiles slug={activeSlug} />;
-    case "catalog":
+    case "config":
       return <Catalog slug={activeSlug} />;
     case "releases":
       return <Releases slug={activeSlug} />;
-    case "oidc":
+    case "identity":
       return <Oidc slug={activeSlug} />;
+    case "secrets":
+      return <Settings slug={activeSlug} />;
     case "activity":
       return <Activity slug={activeSlug} />;
     case "settings":

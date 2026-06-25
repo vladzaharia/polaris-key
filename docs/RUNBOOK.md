@@ -3,7 +3,8 @@
 How to stand up `key.plrs.im` and operate it. Cloudflare resources (D1, KV, the Worker
 custom domain) are provisioned natively with wrangler — there is no separate
 infrastructure layer. The Worker + admin are deployed by wrangler (CI). One-time external
-setup (GitHub App, OIDC client, DNS, signing keys) is manual.
+setup (GitHub App, OIDC client, DNS) is manual. Product signing keys and product-scoped
+secrets are managed through Polaris itself and stored sealed in D1 under `PLATFORM_KEK`.
 
 ## One-time prerequisites (manual)
 
@@ -15,9 +16,9 @@ setup (GitHub App, OIDC client, DNS, signing keys) is manual.
 3. **PocketID OIDC client** — register the admin client with redirect URI
    `https://key.plrs.im/admin/callback`; per product, register the loopback CLI callback +
    `https://key.plrs.im/<product>/auth/callback`. Ensure the `groups` claim is mapped.
-4. **Signing keypairs** — per product, generate an Ed25519 keypair (see
-   `docs/DJDL-MIGRATION.md` §2); the private PEM is a Worker secret, the public base64url
-   goes in `products/<product>/product.json#signingPub`.
+4. **Product manifests** — each product should expose a `.pkey/` directory or an equivalent
+   imported manifest. Polaris mints the product Ed25519 signing key during registration and
+   returns the public trust key for SDK pinning.
 
 ## Infrastructure bootstrap (wrangler)
 
@@ -53,11 +54,14 @@ wrangler secret put ADMIN_SESSION_SECRET --env prod
 wrangler secret put GITHUB_APP_ID --env prod
 wrangler secret put GITHUB_APP_PRIVATE_KEY --env prod
 wrangler secret put PLATFORM_ADMIN_GROUP --env prod
+wrangler secret put PLATFORM_KEK --env prod
 ```
 
-Per product (names referenced from `product.json`): `SIGNING_KEY__<SLUG>`,
-`OIDC_CLIENT_SECRET__<SLUG>`, `EDGE_MINT__<SLUG>__<ID>`. Record names (not values) in
-`docs/secrets.lock.md`.
+Per-product secrets are no longer Worker secrets. The product manifest names required
+secrets, and an admin sets their values through the Polaris admin UI/API. Values are sealed
+into `product_secrets`; the admin UI can show configured/missing state but never reads the
+plaintext back. Product signing keys are sealed in `product_keys`; SDKs pin the returned
+`kid -> publicKey` trust set or read the product JWKS.
 
 ## Deploy
 
@@ -71,8 +75,10 @@ cd packages/worker && wrangler deploy --env prod
 
 ## Register a product
 
-See `products/README.md` — generate + apply the seed SQL (or use the admin portal), then
-set the product's secrets.
+Use the admin portal or platform CLI to link a product repo containing `.pkey/`, or import
+the manifest directly. The registration flow validates the manifest, mints the sealed
+product signing key, shows the public trust key, and lists missing per-product secrets to
+set in the admin UI.
 
 ## CI gates
 

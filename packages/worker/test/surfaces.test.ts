@@ -16,19 +16,28 @@ import { loadProduct } from "../src/product.js";
 import { generateEd25519 } from "../src/keyvault.js";
 import { handleEnroll } from "../src/licensing.js";
 import { handleJwks } from "../src/jwks.js";
+import { handleDiscovery } from "../src/discovery.js";
 import { handleMintToken } from "../src/edgeMint.js";
 
 const ES_PEM =
   "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgav85fotyJ04AYsKF\nDojZziUJg9TuJamPiszlECztPLuhRANCAATgaZHNpIiLDSEQHY4H4BE5HnA9L8hR\n11WcM/ABvqCnO5CWZyHKWoEnKnKnmQwVibF2w5YwimX7Z1hIqJPHGCTB\n-----END PRIVATE KEY-----";
 
 function jwtPart(part: string): Record<string, unknown> {
-  return JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as Record<string, unknown>;
+  return JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as Record<
+    string,
+    unknown
+  >;
 }
 
 /** Generate an RSA-2048 RS256 key in-test; export the PKCS#8 private PEM + a verify key. */
 async function generateRs256(): Promise<{ pem: string; publicKey: CryptoKey }> {
   const pair = (await crypto.subtle.generateKey(
-    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
     true,
     ["sign", "verify"],
   )) as CryptoKeyPair;
@@ -51,10 +60,129 @@ describe("worker surfaces", () => {
     const product = (await loadProduct(env, db, "djdl"))!;
     const res = handleJwks(product);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { keys: Array<{ kid: string; x: string; crv: string }> };
+    const body = (await res.json()) as {
+      keys: Array<{ kid: string; x: string; crv: string }>;
+    };
     expect(body.keys[0]?.kid).toBe(TEST_KID);
     expect(body.keys[0]?.x).toBe(TEST_PUB);
     expect(body.keys[0]?.crv).toBe("Ed25519");
+  });
+
+  it("product discovery exposes auth/config/release/signing basics", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      "UPDATE products SET release_source = ? WHERE slug = ?",
+      "github",
+      "djdl",
+    );
+    await db.run(
+      `INSERT INTO oidc_config
+         (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?,?,?,?,?,?)`,
+      "djdl",
+      "https://id.example",
+      "client-123",
+      "OIDC_SECRET",
+      JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
+      "{}",
+    );
+    await db.run(
+      `INSERT INTO release_config
+         (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
+          manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      "djdl",
+      "acme",
+      "djdl",
+      42,
+      "release.yml",
+      "main",
+      JSON.stringify([
+        { name: "nightly", regex: "v\\d+\\.\\d+\\.\\d+-nightly\\.\\d+" },
+      ]),
+      "djdl",
+      null,
+      "SPARKLEPUB",
+      "pkey:summary",
+    );
+    const product = (await loadProduct(env, db, "djdl"))!;
+
+    const res = await handleDiscovery(
+      new Request(
+        "https://key.plrs.im/djdl/.well-known/polaris.json",
+      ) as unknown as Request,
+      db,
+      product,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toContain("max-age=300");
+    const body = (await res.json()) as {
+      product: string;
+      name: string;
+      endpoints: { config: string; jwks: string };
+      trust: {
+        pinnedKeys: Record<string, string>;
+        signingKid: string;
+        signingPub: string;
+      };
+      modules: {
+        auth: {
+          tokenUrl: string;
+          oidc: { issuer: string; clientId: string } | null;
+        };
+        config: { schemaVersion: number; schemaUrl: string };
+        release: {
+          enabled: boolean;
+          source: string;
+          channels: string[];
+          repository: { owner: string; name: string } | null;
+        };
+        signing: {
+          jwksUrl: string;
+          keys: Array<{ kid: string; publicKey: string }>;
+        };
+      };
+    };
+
+    expect(body.product).toBe("djdl");
+    expect(body.name).toBe("djdl");
+    expect(body.endpoints.config).toBe("https://key.plrs.im/djdl/config");
+    expect(body.endpoints.jwks).toBe(
+      "https://key.plrs.im/djdl/.well-known/jwks.json",
+    );
+    expect(body.trust).toMatchObject({
+      signingKid: TEST_KID,
+      signingPub: TEST_PUB,
+      pinnedKeys: { [TEST_KID]: TEST_PUB },
+    });
+    expect(body.modules.auth.tokenUrl).toBe("https://key.plrs.im/djdl/token");
+    expect(body.modules.auth.oidc).toMatchObject({
+      issuer: "https://id.example",
+      clientId: "client-123",
+    });
+    expect(body.modules.config).toMatchObject({
+      schemaVersion: 1,
+      schemaUrl: "https://key.plrs.im/djdl/schema",
+    });
+    expect(body.modules.release).toMatchObject({
+      enabled: true,
+      source: "github",
+      repository: { owner: "acme", name: "djdl" },
+    });
+    expect(body.modules.release.channels).toEqual([
+      "stable",
+      "beta",
+      "nightly",
+    ]);
+    expect(body.modules.signing.jwksUrl).toBe(
+      "https://key.plrs.im/djdl/.well-known/jwks.json",
+    );
+    expect(body.modules.signing.keys[0]).toMatchObject({
+      kid: TEST_KID,
+      publicKey: TEST_PUB,
+    });
   });
 
   it("edge-mint signs an ES256 token for a licensed machine (key from the KEK store)", async () => {
@@ -67,19 +195,37 @@ describe("worker surfaces", () => {
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const enrollRes = await handleEnroll(
-      mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-      env, db, product, NOW,
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     const { token } = (await enrollRes.json()) as { token: string };
 
     await db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
-      "djdl", "applemusic", "ES256", "applemusic_devkey", "KID123", JSON.stringify({ iss: "TEAMID123" }), 3600, null, null,
+      "djdl",
+      "applemusic",
+      "ES256",
+      "applemusic_devkey",
+      "KID123",
+      JSON.stringify({ iss: "TEAMID123" }),
+      3600,
+      null,
+      null,
     );
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
-      env, db, product, "applemusic", NOW,
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { token: string; expiresAt: number };
@@ -102,8 +248,14 @@ describe("worker surfaces", () => {
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const enrollRes = await handleEnroll(
-      mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-      env, db, product, NOW,
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     const { token } = (await enrollRes.json()) as { token: string };
 
@@ -111,14 +263,30 @@ describe("worker surfaces", () => {
     // `audience` column ("music.apple.com") must win over the template's "evil.example".
     await db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
-      "djdl", "applemusic", "ES256", "applemusic_devkey", "KID123",
-      JSON.stringify({ iss: "TEAMID123", aud: "evil.example", iat: 1, exp: 9_999_999_999, nbf: 2 }),
-      3600, "music.apple.com", null,
+      "djdl",
+      "applemusic",
+      "ES256",
+      "applemusic_devkey",
+      "KID123",
+      JSON.stringify({
+        iss: "TEAMID123",
+        aud: "evil.example",
+        iat: 1,
+        exp: 9_999_999_999,
+        nbf: 2,
+      }),
+      3600,
+      "music.apple.com",
+      null,
     );
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
-      env, db, product, "applemusic", NOW,
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { token: string; expiresAt: number };
@@ -143,19 +311,37 @@ describe("worker surfaces", () => {
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const enrollRes = await handleEnroll(
-      mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-      env, db, product, NOW,
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     const { token } = (await enrollRes.json()) as { token: string };
 
     await db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
-      "djdl", "rsa", "RS256", "rs256_key", "RKID1", JSON.stringify({ iss: "issuer-x" }), 600, "aud-rs", null,
+      "djdl",
+      "rsa",
+      "RS256",
+      "rs256_key",
+      "RKID1",
+      JSON.stringify({ iss: "issuer-x" }),
+      600,
+      "aud-rs",
+      null,
     );
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
-      env, db, product, "rsa", NOW,
+      env,
+      db,
+      product,
+      "rsa",
+      NOW,
     );
     expect(res.status).toBe(200);
     const { token: jwt } = (await res.json()) as { token: string };
@@ -186,24 +372,44 @@ describe("worker surfaces", () => {
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
     const enrollRes = await handleEnroll(
-      mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-      env, db, product, NOW,
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     const { token } = (await enrollRes.json()) as { token: string };
 
     await db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
-      "djdl", "eddsa", "EdDSA", "ed25519_key", "EDKID1", JSON.stringify({ sub: "user-7" }), 900, "aud-ed", null,
+      "djdl",
+      "eddsa",
+      "EdDSA",
+      "ed25519_key",
+      "EDKID1",
+      JSON.stringify({ sub: "user-7" }),
+      900,
+      "aud-ed",
+      null,
     );
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
-      env, db, product, "eddsa", NOW,
+      env,
+      db,
+      product,
+      "eddsa",
+      NOW,
     );
     expect(res.status).toBe(200);
     const { token: jws } = (await res.json()) as { token: string };
     expect(jwtPart(jws.split(".")[0] as string).alg).toBe("EdDSA");
-    const verified = await verifyJws<Record<string, unknown>>(jws, { EDKID1: publicRawB64url });
+    const verified = await verifyJws<Record<string, unknown>>(jws, {
+      EDKID1: publicRawB64url,
+    });
     expect(verified).not.toBeNull();
     expect(verified!.kid).toBe("EDKID1");
     expect(verified!.payload.sub).toBe("user-7");
@@ -217,7 +423,14 @@ describe("worker surfaces", () => {
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const product = (await loadProduct(env, db, "djdl"))!;
-    const res = await handleMintToken(mkReq("POST", {}), env, db, product, "applemusic", NOW);
+    const res = await handleMintToken(
+      mkReq("POST", {}),
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
+    );
     expect(res.status).toBe(401);
   });
 });

@@ -97,7 +97,8 @@ const config = {
         "pk-sm": "0 1px 2px 0 hsl(var(--pk-shadow) / 0.20)",
         "pk-md": "0 4px 12px -2px hsl(var(--pk-shadow) / 0.30)",
         "pk-lg": "0 12px 32px -8px hsl(var(--pk-shadow) / 0.45)",
-        "pk-glow": "0 0 0 1px hsl(var(--pk-primary) / 0.35), 0 8px 24px -6px hsl(var(--pk-primary) / 0.35)",
+        "pk-glow":
+          "0 0 0 1px hsl(var(--pk-primary) / 0.35), 0 8px 24px -6px hsl(var(--pk-primary) / 0.35)",
       },
       keyframes: {
         "pk-in": {

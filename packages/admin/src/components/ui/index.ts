@@ -17,7 +17,14 @@ export {
   SelectSeparator,
 } from "./Select.js";
 export { Badge, badgeVariants, type BadgeProps } from "./Badge.js";
-export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./Card.js";
+export {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "./Card.js";
 export { Skeleton } from "./Skeleton.js";
 export { Spinner } from "./Spinner.js";
 export { EmptyState, type EmptyStateProps } from "./EmptyState.js";

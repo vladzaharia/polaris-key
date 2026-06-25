@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 
@@ -22,13 +28,21 @@ vi.mock("../src/api.js", () => {
   return { api };
 });
 
-import { api, type LicenseDetail as LicenseDetailDto, type LicenseSummary, type ProductCatalog } from "../src/api.js";
+import {
+  api,
+  type LicenseDetail as LicenseDetailDto,
+  type LicenseSummary,
+  type ProductCatalog,
+} from "../src/api.js";
 import { AdminProvider, resetCache } from "../src/context.js";
 import { Toaster } from "../src/components/ui/index.js";
 import { Licenses } from "../src/views/Licenses.js";
 import { LicenseDetail } from "../src/views/LicenseDetail.js";
 
-const mockApi = api as unknown as Record<keyof typeof api, ReturnType<typeof vi.fn>>;
+const mockApi = api as unknown as Record<
+  keyof typeof api,
+  ReturnType<typeof vi.fn>
+>;
 
 const ME = {
   sub: "u1",
@@ -41,7 +55,9 @@ const ME = {
 
 function withProviders(node: ReactElement) {
   return render(
-    <AdminProvider value={{ me: ME, product: "djdl", setProduct: () => undefined }}>
+    <AdminProvider
+      value={{ me: ME, product: "djdl", setProduct: () => undefined }}
+    >
       <Toaster>{node}</Toaster>
     </AdminProvider>,
   );
@@ -69,16 +85,47 @@ const DETAIL: LicenseDetailDto = {
   ...SUMMARY,
   maxOfflineDays: 14,
   overrides: {
-    config: { "feature.timeout": { state: "default", value: 30, updatedAt: 1_700_000_000 } },
-    secrets: { "api.token": { state: "enforced", configured: true, updatedAt: 1_700_000_000 } },
-    entitlements: { "flag.pro": { state: "hidden", value: true, updatedAt: 1_700_000_000 } },
+    config: {
+      "feature.timeout": {
+        state: "default",
+        value: 30,
+        updatedAt: 1_700_000_000,
+      },
+    },
+    secrets: {
+      "api.token": {
+        state: "enforced",
+        configured: true,
+        updatedAt: 1_700_000_000,
+      },
+    },
+    entitlements: {
+      "flag.pro": { state: "hidden", value: true, updatedAt: 1_700_000_000 },
+    },
   },
   keys: [
-    { hash: "abcdef0123456789abcdef", status: "active", label: "laptop", createdAt: 1_700_000_000, createdBy: "ada@x.io" },
-    { hash: "deadbeef0000111122223333", status: "revoked", createdAt: 1_699_000_000, createdBy: "ada@x.io" },
+    {
+      hash: "abcdef0123456789abcdef",
+      status: "active",
+      label: "laptop",
+      createdAt: 1_700_000_000,
+      createdBy: "ada@x.io",
+    },
+    {
+      hash: "deadbeef0000111122223333",
+      status: "revoked",
+      createdAt: 1_699_000_000,
+      createdBy: "ada@x.io",
+    },
   ],
   machines: [
-    { machineId: "dev_1", status: "active", firstSeen: 1_699_000_000, lastSeen: 1_700_000_000, ua: "Mozilla/5.0" },
+    {
+      machineId: "dev_1",
+      status: "active",
+      firstSeen: 1_699_000_000,
+      lastSeen: 1_700_000_000,
+      ua: "Mozilla/5.0",
+    },
   ],
 };
 
@@ -118,21 +165,45 @@ beforeEach(() => {
   mockApi.licenses.mockResolvedValue({ licenses: [SUMMARY] });
   mockApi.license.mockResolvedValue(DETAIL);
   mockApi.schema.mockResolvedValue(CATALOG);
-  mockApi.createLicense.mockResolvedValue({ licenseId: "lic_2", key: "PK-NEWKEY-ONESHOT", license: SUMMARY });
+  mockApi.createLicense.mockResolvedValue({
+    licenseId: "lic_2",
+    key: "PK-NEWKEY-ONESHOT",
+    license: SUMMARY,
+  });
   mockApi.patchLicense.mockResolvedValue({ ok: true, id: "lic_1" });
-  mockApi.setLicenseEnabled.mockResolvedValue({ ok: true, id: "lic_1", status: "disabled" });
+  mockApi.setLicenseEnabled.mockResolvedValue({
+    ok: true,
+    id: "lic_1",
+    status: "disabled",
+  });
   mockApi.putLicenseOverrides.mockResolvedValue({ ok: true, id: "lic_1" });
-  mockApi.mintKey.mockResolvedValue({ key: "PK-MINTED-ONESHOT", hash: "newhash", record: DETAIL.keys[0]! });
-  mockApi.revokeKey.mockResolvedValue({ ok: true, hash: "abcdef", status: "revoked" });
-  mockApi.deauthorizeMachine.mockResolvedValue({ ok: true, machineId: "dev_1" });
+  mockApi.mintKey.mockResolvedValue({
+    key: "PK-MINTED-ONESHOT",
+    hash: "newhash",
+    record: DETAIL.keys[0]!,
+  });
+  mockApi.revokeKey.mockResolvedValue({
+    ok: true,
+    hash: "abcdef",
+    status: "revoked",
+  });
+  mockApi.deauthorizeMachine.mockResolvedValue({
+    ok: true,
+    machineId: "dev_1",
+  });
   // jsdom lacks these Radix-needed APIs.
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
-  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  };
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { scrollIntoView: () => void }
+  ).scrollIntoView = () => undefined;
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
+    class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
 });
 afterEach(cleanup);
 
@@ -169,16 +240,23 @@ describe("Licenses list", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText(/Name/), "Grace Hopper");
     await user.type(within(dialog).getByLabelText(/Email/), "grace@x.io");
-    await user.click(within(dialog).getByRole("button", { name: "Create license" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create license" }),
+    );
 
     // The one-time key is shown in a copyable panel that warns it is shown only once.
     const panel = await within(dialog).findByRole("status");
     expect(within(panel).getByText("PK-NEWKEY-ONESHOT")).toBeTruthy();
     expect(within(panel).getByText("License key minted")).toBeTruthy();
     expect(within(panel).getByText(/shown only once/i)).toBeTruthy();
-    expect(mockApi.createLicense).toHaveBeenCalledWith("djdl", { name: "Grace Hopper", email: "grace@x.io" });
+    expect(mockApi.createLicense).toHaveBeenCalledWith("djdl", {
+      name: "Grace Hopper",
+      email: "grace@x.io",
+    });
     // There is a copy button with an accessible name.
-    expect(within(panel).getByRole("button", { name: "Copy key" })).toBeTruthy();
+    expect(
+      within(panel).getByRole("button", { name: "Copy key" }),
+    ).toBeTruthy();
   });
 });
 
@@ -202,7 +280,13 @@ describe("License detail", () => {
     await user.click(screen.getByRole("switch", { name: "Disable license" }));
     const confirm = await screen.findByRole("alertdialog");
     await user.click(within(confirm).getByRole("button", { name: "Disable" }));
-    await waitFor(() => expect(mockApi.setLicenseEnabled).toHaveBeenCalledWith("djdl", "lic_1", false));
+    await waitFor(() =>
+      expect(mockApi.setLicenseEnabled).toHaveBeenCalledWith(
+        "djdl",
+        "lic_1",
+        false,
+      ),
+    );
   });
 
   it("mints a key and reveals it once", async () => {
@@ -220,9 +304,15 @@ describe("License detail", () => {
     await user.click(screen.getByRole("tab", { name: /Keys/ }));
     await user.click(screen.getByRole("button", { name: "Revoke" }));
     const confirm = await screen.findByRole("alertdialog");
-    await user.click(within(confirm).getByRole("button", { name: "Revoke key" }));
+    await user.click(
+      within(confirm).getByRole("button", { name: "Revoke key" }),
+    );
     await waitFor(() =>
-      expect(mockApi.revokeKey).toHaveBeenCalledWith("djdl", "lic_1", "abcdef0123456789abcdef"),
+      expect(mockApi.revokeKey).toHaveBeenCalledWith(
+        "djdl",
+        "lic_1",
+        "abcdef0123456789abcdef",
+      ),
     );
   });
 
@@ -231,8 +321,16 @@ describe("License detail", () => {
     await user.click(screen.getByRole("tab", { name: /Devices/ }));
     await user.click(screen.getByRole("button", { name: "Deauthorize" }));
     const confirm = await screen.findByRole("alertdialog");
-    await user.click(within(confirm).getByRole("button", { name: "Deauthorize" }));
-    await waitFor(() => expect(mockApi.deauthorizeMachine).toHaveBeenCalledWith("djdl", "lic_1", "dev_1"));
+    await user.click(
+      within(confirm).getByRole("button", { name: "Deauthorize" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.deauthorizeMachine).toHaveBeenCalledWith(
+        "djdl",
+        "lic_1",
+        "dev_1",
+      ),
+    );
   });
 
   it("surfaces enforced/hidden override state and submits a batch via putLicenseOverrides", async () => {
@@ -252,7 +350,9 @@ describe("License detail", () => {
     const timeout = screen.getByLabelText("Timeout");
     await user.clear(timeout);
     await user.type(timeout, "60");
-    await waitFor(() => expect((save as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() =>
+      expect((save as HTMLButtonElement).disabled).toBe(false),
+    );
     await user.click(save);
 
     await waitFor(() => expect(mockApi.putLicenseOverrides).toHaveBeenCalled());

@@ -1,5 +1,10 @@
 import * as React from "react";
-import { AlertTriangle, FileCog, RefreshCw, ShieldQuestion } from "lucide-react";
+import {
+  AlertTriangle,
+  FileCog,
+  RefreshCw,
+  ShieldQuestion,
+} from "lucide-react";
 import { api } from "../api.js";
 import { invalidate, useResource } from "../context.js";
 import { useToast } from "../components/ui/index.js";
@@ -29,7 +34,9 @@ import {
  */
 export function Oidc({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
-  const { data, loading, error } = useResource(`product:${slug}`, () => api.product(slug));
+  const { data, loading, error } = useResource(`product:${slug}`, () =>
+    api.product(slug),
+  );
   const [resyncing, setResyncing] = React.useState(false);
 
   const onResync = React.useCallback(async () => {
@@ -37,9 +44,15 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
     try {
       await api.resyncProduct(slug);
       invalidate(`product:${slug}`);
-      toast.success("Re-sync complete", "Identity config was re-applied from the linked repo.");
+      toast.success(
+        "Re-sync complete",
+        "Identity config was re-applied from the linked repo.",
+      );
     } catch (e) {
-      toast.error("Re-sync failed", e instanceof Error ? e.message : "Could not re-sync from the repo.");
+      toast.error(
+        "Re-sync failed",
+        e instanceof Error ? e.message : "Could not re-sync from the repo.",
+      );
     } finally {
       setResyncing(false);
     }
@@ -52,8 +65,9 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
           OIDC &amp; provisioning
         </h2>
         <p className="text-sm text-muted-foreground">
-          How users sign in to <span className="font-medium text-foreground">{slug}</span> and how licenses are
-          provisioned on first login.
+          How users sign in to{" "}
+          <span className="font-medium text-foreground">{slug}</span> and how
+          licenses are provisioned on first login.
         </p>
       </header>
 
@@ -78,10 +92,17 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
               <CardTitle>Identity config is authored in your repo</CardTitle>
             </div>
             <CardDescription>
-              The OIDC issuer, client ID, redirect URIs, the group → tier map, and provisioning hooks for{" "}
-              <span className="font-medium text-foreground">{data?.product.name ?? slug}</span> live in its{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">.pkey/product</code> manifest. Edit
-              them there, commit, then re-sync to apply the change to the platform.
+              The OIDC issuer, client ID, redirect URIs, the group → tier map,
+              and provisioning hooks for{" "}
+              <span className="font-medium text-foreground">
+                {data?.product.name ?? slug}
+              </span>{" "}
+              live in its{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                .pkey/product
+              </code>{" "}
+              manifest. Edit them there, commit, then re-sync to apply the
+              change to the platform.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -91,9 +112,11 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
             >
               <ShieldQuestion aria-hidden className="mt-0.5 size-4 shrink-0" />
               <p>
-                The admin API does not expose OIDC settings for in-place editing. Re-syncing re-reads{" "}
-                <code className="font-mono text-xs">.pkey/</code> and re-applies the manifest (config schema,
-                product metadata, OIDC, tiers, and provisioning) without touching licenses.
+                The admin API does not expose OIDC settings for in-place
+                editing. Re-syncing re-reads{" "}
+                <code className="font-mono text-xs">.pkey/</code> and re-applies
+                the manifest (config schema, product metadata, OIDC, tiers, and
+                provisioning) without touching licenses.
               </p>
             </div>
             <Button onClick={() => void onResync()} loading={resyncing}>

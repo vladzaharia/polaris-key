@@ -56,7 +56,10 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
     return (
       <section className="space-y-6">
         <Header slug={slug} />
-        <EmptyState icon={<Package aria-hidden />} title="No product details available" />
+        <EmptyState
+          icon={<Package aria-hidden />}
+          title="No product details available"
+        />
       </section>
     );
   }
@@ -76,7 +79,8 @@ function Header({ slug }: { slug: string }): React.ReactElement {
       <div className="space-y-1">
         <h2 className="text-2xl font-semibold tracking-tight">Releases</h2>
         <p className="text-sm text-muted-foreground">
-          Release distribution &amp; minters for <span className="font-mono">{slug}</span>.
+          Release distribution &amp; minters for{" "}
+          <span className="font-mono">{slug}</span>.
         </p>
       </div>
       <ResyncButton slug={slug} />
@@ -95,12 +99,17 @@ function ManifestNote(): React.ReactElement {
       <CardContent className="flex gap-3 p-4">
         <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
         <div className="space-y-1 text-sm">
-          <p className="font-medium">Release config is managed from the repo manifest.</p>
+          <p className="font-medium">
+            Release config is managed from the repo manifest.
+          </p>
           <p className="text-muted-foreground">
-            GitHub coordinates (owner / repo / binary name / channel workflow / Sparkle key) and
-            edge-mint recipes live in the product’s <span className="font-mono">.pkey/release</span>{" "}
-            file. Edit them there, then use <span className="font-medium">Resync from repo</span>{" "}
-            above to re-apply. These values are not editable directly from the admin panel.
+            GitHub coordinates (owner / repo / binary name / channel workflow /
+            Sparkle key) and edge-mint recipes live in the product’s{" "}
+            <span className="font-mono">.pkey/release</span> file. Edit them
+            there, then use{" "}
+            <span className="font-medium">Resync from repo</span> above to
+            re-apply. These values are not editable directly from the admin
+            panel.
           </p>
         </div>
       </CardContent>
@@ -112,7 +121,11 @@ function ManifestNote(): React.ReactElement {
  * The release-adjacent product metadata the admin API DOES expose: signing key id, the
  * compatibility version window enforced on update checks, and the per-product defaults.
  */
-function DistributionCard({ product }: { product: ProductDetail }): React.ReactElement {
+function DistributionCard({
+  product,
+}: {
+  product: ProductDetail;
+}): React.ReactElement {
   return (
     <Card>
       <CardHeader>
@@ -140,9 +153,13 @@ function DistributionCard({ product }: { product: ProductDetail }): React.ReactE
               <Badge variant="outline">max {product.compatMax}</Badge>
             </span>
           </Row>
-          <Row term="Default max offline days">{String(product.defaultMaxOfflineDays)}</Row>
+          <Row term="Default max offline days">
+            {String(product.defaultMaxOfflineDays)}
+          </Row>
           <Row term="Default device limit">
-            {product.defaultMachineLimit === 0 ? "unlimited" : String(product.defaultMachineLimit)}
+            {product.defaultMachineLimit === 0
+              ? "unlimited"
+              : String(product.defaultMachineLimit)}
           </Row>
           <Row term="Admin group" mono>
             {product.adminGroup ?? "—"}
@@ -165,8 +182,12 @@ function Row({
 }): React.ReactElement {
   return (
     <div className="flex flex-col gap-1">
-      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{term}</dt>
-      <dd className={mono ? "break-words font-mono text-sm" : "text-sm"}>{children}</dd>
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+        {term}
+      </dt>
+      <dd className={mono ? "break-words font-mono text-sm" : "text-sm"}>
+        {children}
+      </dd>
     </div>
   );
 }

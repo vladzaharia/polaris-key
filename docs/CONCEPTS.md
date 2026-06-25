@@ -31,7 +31,7 @@ reconcile. Consistent names are a feature: they make the system learnable across
   - **enforced** — the server value wins and the client cannot override it (shown read-only).
   - **hidden** — `enforced` **and** withheld from user-facing enumeration (still applied
     internally).
-  > The legacy states `unmanaged` / `managed` / `hidden` map to `default` / `enforced` / `hidden`.
+    > The legacy states `unmanaged` / `managed` / `hidden` map to `default` / `enforced` / `hidden`.
 - **scope** — where a catalog key is meaningful (the `UiHints.scopes` field): one or more of
   `profile`, `license`, `device`. (Renamed from the old `UiHints.tiers`.)
 - **manifest** — the `.pkey/` files in a product's repo that describe it: `schema` (the config

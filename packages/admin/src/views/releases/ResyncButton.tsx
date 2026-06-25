@@ -19,13 +19,19 @@ export function ResyncButton({ slug }: { slug: string }): React.ReactElement {
     setBusy(true);
     try {
       await api.resyncProduct(slug);
-      toast.success("Resynced from repo", "Release config and catalog were re-applied from `.pkey/`.");
+      toast.success(
+        "Resynced from repo",
+        "Release config and catalog were re-applied from `.pkey/`.",
+      );
       // Refresh anything derived from the product row + its catalog.
       invalidate(`product:${slug}`);
       invalidate(`schema:${slug}`);
       setOpen(false);
     } catch (err) {
-      toast.error("Resync failed", err instanceof Error ? err.message : "Request failed.");
+      toast.error(
+        "Resync failed",
+        err instanceof Error ? err.message : "Request failed.",
+      );
     } finally {
       setBusy(false);
     }

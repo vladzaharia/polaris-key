@@ -38,7 +38,8 @@ export class Catalog {
 
   categories(): string[] {
     const seen: string[] = [];
-    for (const e of this.entries) if (!seen.includes(e.category)) seen.push(e.category);
+    for (const e of this.entries)
+      if (!seen.includes(e.category)) seen.push(e.category);
     return seen;
   }
 
@@ -63,7 +64,10 @@ export class Catalog {
     const errors = (fn.errors ?? []).map(
       (e) => `${entry.key}${e.instancePath ?? ""} ${e.message ?? "is invalid"}`,
     );
-    return { ok: false, errors: errors.length ? errors : [`${entry.key} is invalid`] };
+    return {
+      ok: false,
+      errors: errors.length ? errors : [`${entry.key} is invalid`],
+    };
   }
 
   /** Validate a value for a dotted key. An unknown key is rejected — admins assign

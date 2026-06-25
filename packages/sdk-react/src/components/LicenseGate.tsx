@@ -4,8 +4,18 @@
 // via theme tokens + copy AND overridable via render-prop slots, so a product can keep the
 // behavior while replacing any panel. The headless `useLicenseGate` powers it.
 
-import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
-import { useLicenseGate, type GateScreen, type UseLicenseGate } from "../react/hooks.js";
+import {
+  useEffect,
+  useId,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import {
+  useLicenseGate,
+  type GateScreen,
+  type UseLicenseGate,
+} from "../react/hooks.js";
 import { PolarisLogin } from "./PolarisLogin.js";
 import type { PolarisTheme } from "./theme.js";
 
@@ -85,14 +95,26 @@ function describeGateError(error: UseLicenseGate["state"]["error"]): string {
   }
 }
 
-function blockTitleBody(theme: PolarisTheme, status: string): { title: string; body: string } {
+function blockTitleBody(
+  theme: PolarisTheme,
+  status: string,
+): { title: string; body: string } {
   switch (status) {
     case "version-too-new":
-      return { title: theme.copy.versionTooNewTitle, body: theme.copy.versionTooNewBody };
+      return {
+        title: theme.copy.versionTooNewTitle,
+        body: theme.copy.versionTooNewBody,
+      };
     case "channel-not-entitled":
-      return { title: theme.copy.channelNotEntitledTitle, body: theme.copy.channelNotEntitledBody };
+      return {
+        title: theme.copy.channelNotEntitledTitle,
+        body: theme.copy.channelNotEntitledBody,
+      };
     default:
-      return { title: theme.copy.versionTooOldTitle, body: theme.copy.versionTooOldBody };
+      return {
+        title: theme.copy.versionTooOldTitle,
+        body: theme.copy.versionTooOldBody,
+      };
   }
 }
 
@@ -133,12 +155,21 @@ function MessageScreen(props: {
         aria-describedby={hasBody ? bodyId : undefined}
         tabIndex={props.transient ? undefined : -1}
       >
-        {theme.logo ? <div style={{ marginBottom: "12px" }}>{theme.logo}</div> : null}
+        {theme.logo ? (
+          <div style={{ marginBottom: "12px" }}>{theme.logo}</div>
+        ) : null}
         <h2 id={titleId} style={{ margin: "0 0 8px", fontSize: "20px" }}>
           {props.title}
         </h2>
         {hasBody ? (
-          <p id={bodyId} style={{ margin: 0, color: "var(--pk-text-muted)", fontSize: "14px" }}>
+          <p
+            id={bodyId}
+            style={{
+              margin: 0,
+              color: "var(--pk-text-muted)",
+              fontSize: "14px",
+            }}
+          >
             {props.body}
           </p>
         ) : null}
@@ -203,7 +234,12 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
         slots.loading(ctx)
       ) : (
         // Loading is transient + non-actionable → polite `role="status"`, no focus steal.
-        <MessageScreen title={theme.copy.loadingLabel} body="" ctx={ctx} transient />
+        <MessageScreen
+          title={theme.copy.loadingLabel}
+          body=""
+          ctx={ctx}
+          transient
+        />
       );
       break;
     case "grace": // allowGrace === false → block like a soft-expired screen.
@@ -228,7 +264,11 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       content = slots.revoked ? (
         slots.revoked(ctx)
       ) : (
-        <MessageScreen title={theme.copy.revokedTitle} body={theme.copy.revokedBody} ctx={ctx} />
+        <MessageScreen
+          title={theme.copy.revokedTitle}
+          body={theme.copy.revokedBody}
+          ctx={ctx}
+        />
       );
       break;
     case "expired":
@@ -240,7 +280,11 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
           body={theme.copy.expiredBody}
           ctx={ctx}
           // The dialog manages focus → don't let the embedded login card steal it.
-          extra={<div style={{ marginTop: "16px" }}><PolarisLogin autoFocus={false} /></div>}
+          extra={
+            <div style={{ marginTop: "16px" }}>
+              <PolarisLogin autoFocus={false} />
+            </div>
+          }
         />
       );
       break;
@@ -252,7 +296,11 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       ) : (
         <MessageScreen
           title={title}
-          body={range?.min || range?.max ? `${body} (allowed: ${range?.min ?? "*"} – ${range?.max ?? "*"})` : body}
+          body={
+            range?.min || range?.max
+              ? `${body} (allowed: ${range?.min ?? "*"} – ${range?.max ?? "*"})`
+              : body
+          }
           ctx={ctx}
           showRetry
         />
@@ -277,7 +325,11 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
   // The root carries `aria-live="polite"` so a state transition (e.g. loading → revoked,
   // or an error appearing) is announced to assistive tech without stealing focus.
   return (
-    <div className={props.className} data-polaris-gate={screen} aria-live="polite">
+    <div
+      className={props.className}
+      data-polaris-gate={screen}
+      aria-live="polite"
+    >
       {content}
     </div>
   );

@@ -1,14 +1,25 @@
-import type { ConfigEntry, ConfigKind, ManagementState, ProductCatalog } from "../../api.js";
+import type {
+  ConfigEntry,
+  ConfigKind,
+  ManagementState,
+  ProductCatalog,
+} from "../../api.js";
 
 /** Badge variant per config kind, mirroring the SchemaForm convention. */
-export const KIND_VARIANT: Record<ConfigKind, "default" | "warning" | "primary"> = {
+export const KIND_VARIANT: Record<
+  ConfigKind,
+  "default" | "warning" | "primary"
+> = {
   config: "default",
   secret: "warning",
   flag: "primary",
 };
 
 /** Badge variant per management state, mirroring the SchemaForm convention. */
-export const STATE_VARIANT: Record<ManagementState, "default" | "primary" | "warning"> = {
+export const STATE_VARIANT: Record<
+  ManagementState,
+  "default" | "primary" | "warning"
+> = {
   default: "default",
   enforced: "primary",
   hidden: "warning",
@@ -28,8 +39,10 @@ export function schemaSummary(schema: Record<string, unknown>): string {
   const bounds: string[] = [];
   if (typeof schema.minimum === "number") bounds.push(`≥ ${schema.minimum}`);
   if (typeof schema.maximum === "number") bounds.push(`≤ ${schema.maximum}`);
-  if (typeof schema.minLength === "number") bounds.push(`min len ${schema.minLength}`);
-  if (typeof schema.maxLength === "number") bounds.push(`max len ${schema.maxLength}`);
+  if (typeof schema.minLength === "number")
+    bounds.push(`min len ${schema.minLength}`);
+  if (typeof schema.maxLength === "number")
+    bounds.push(`max len ${schema.maxLength}`);
   if (typeof schema.pattern === "string") bounds.push(`/${schema.pattern}/`);
   if (bounds.length) parts.push(`(${bounds.join(", ")})`);
   return parts.join(" ");
@@ -100,13 +113,22 @@ export function parseCatalogDraft(text: string): ParseResult {
   try {
     raw = JSON.parse(text);
   } catch (err) {
-    return { ok: false, error: `Invalid JSON: ${err instanceof Error ? err.message : String(err)}` };
+    return {
+      ok: false,
+      error: `Invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { ok: false, error: "Catalog must be an object with `schemaVersion` and `entries`." };
+    return {
+      ok: false,
+      error: "Catalog must be an object with `schemaVersion` and `entries`.",
+    };
   }
   const obj = raw as Record<string, unknown>;
-  if (typeof obj.schemaVersion !== "number" || !Number.isFinite(obj.schemaVersion)) {
+  if (
+    typeof obj.schemaVersion !== "number" ||
+    !Number.isFinite(obj.schemaVersion)
+  ) {
     return { ok: false, error: "`schemaVersion` must be a number." };
   }
   if (!Array.isArray(obj.entries)) {
@@ -127,10 +149,20 @@ export function parseCatalogDraft(text: string): ParseResult {
       return { ok: false, error: `Duplicate key "${entry.key}".` };
     }
     seen.add(entry.key);
-    if (typeof entry.kind !== "string" || !KINDS.includes(entry.kind as ConfigKind)) {
-      return { ok: false, error: `${at}.kind must be one of ${KINDS.join(", ")}.` };
+    if (
+      typeof entry.kind !== "string" ||
+      !KINDS.includes(entry.kind as ConfigKind)
+    ) {
+      return {
+        ok: false,
+        error: `${at}.kind must be one of ${KINDS.join(", ")}.`,
+      };
     }
-    if (typeof entry.schema !== "object" || entry.schema === null || Array.isArray(entry.schema)) {
+    if (
+      typeof entry.schema !== "object" ||
+      entry.schema === null ||
+      Array.isArray(entry.schema)
+    ) {
       return { ok: false, error: `${at}.schema must be a JSON-Schema object.` };
     }
   }

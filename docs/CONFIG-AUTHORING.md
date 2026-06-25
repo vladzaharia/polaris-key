@@ -12,20 +12,24 @@ This doc is the source of truth for the `.pkey/` files and the `ConfigEntry` sha
 ## The `.pkey/` directory
 
 A `.pkey/` directory holds up to **three independent files**, each in **JSON or YAML**
-(detection is "try JSON first, else YAML"). The base name (no extension) selects the role:
+(detection is "try JSON first, else YAML"). The base name (no extension) selects the role.
+The files are the **manifest baseline**: they describe intended product defaults. Runtime
+admin changes such as secrets, license/device overrides, temporary module toggles, and
+operator policy overrides live separately in Polaris and are preserved across resync.
 
-| File | Base name | Maps to | What it carries |
-|------|-----------|---------|-----------------|
-| **schema** | `schema.{json,yaml,yml}` | `product_schema` row | the config catalog: `{ schemaVersion, entries[] }` (**required**) |
-| **product** | `product.{json,yaml,yml}` | `products` + `oidc_config` + `tiers` + `provisioning_config` rows | product metadata, OIDC, tiers, provisioning hooks (**required**) |
-| **release** | `release.{json,yaml,yml}` | `release_config` + `edge_mint_config` rows | GitHub release coordinates + edge-mint signers (optional) |
+| File        | Base name                 | Maps to                                                                             | What it carries                                                                                                     |
+| ----------- | ------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                   |
+| **product** | `product.{json,yaml,yml}` | `products` + module baseline + `oidc_config` + `tiers` + `provisioning_config` rows | product metadata, enabled modules, OIDC, tiers, provisioning hooks (**required**)                                   |
+| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `edge_mint_config` rows                          | release provider coordinates + channel/install/appcast/edge-mint settings (required only when releases are enabled) |
 
-In this repo the same data lives split for clarity as `products/djdl/catalog.json` (the
-schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When a
-product hosts its own `.pkey/`, `packages/worker/src/release/manifest.ts#parseManifest`
-parses the three files, aggregates **all** validation errors, and returns a `ParsedManifest`
-ready for D1 insertion (the schema is compiled through `@polaris-key/catalog` to reject a
-malformed JSON-Schema fragment before anything is written).
+In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
+(the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
+a product hosts its own `.pkey/`, `packages/worker/src/release/manifest.ts#parseManifest`
+parses the files, aggregates **all** validation errors, and returns a `ParsedManifest` ready
+for D1 insertion. The schema is compiled through `@polaris-key/catalog` before anything is
+written so malformed JSON-Schema fragments fail during import/resync, not during a client
+request.
 
 ## The catalog: `ConfigEntry`
 
@@ -33,20 +37,20 @@ The schema file is a `ProductCatalog`: a `schemaVersion` (bumped on incompatible
 changes; it matches the signed doc's `schemaVersion`) and an `entries` array. Each entry is a
 `ConfigEntry` (`packages/shared-catalog/src/types.ts`):
 
-| Field | Meaning |
-|-------|---------|
-| `key` | Dotted identifier, e.g. `run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`. |
-| `kind` | `config` (plaintext client setting) · `secret` (redacted, delivered to the OS keyring) · `flag` (an entitlement). |
-| `category`, `label`, `description` | Grouping + human copy for settings UIs. |
-| `schema` | A Draft-07 JSON-Schema fragment Ajv validates the value against. |
-| `default` | The schema-level default value (the client's last-resort fallback). |
-| `managementDefault` | **CONFIG only.** The management state a freshly-minted key gets if the admin doesn't override it: `default` · `enforced` · `hidden`. |
-| `secret` | `true` on `secret` kinds (redacted in admin UIs). |
-| `userGrant` / `grantLabel` | A `flag` shown to the user as an included capability ("Included with your license"). |
-| `ui` | `UiHints` — `widget` (`password`/`select`/`textarea`/`switch`/`stepper`), `placeholder`, `unit`, `scopes` (admin scopes `profile`/`license`/`device`), etc. **Presentation only; never affects validation.** |
-| `dependsOn` | `{ key, equals }` — presentation gating (e.g. show `proxy.select` only when `proxy.enabled === true`). Does not gate value validation. |
-| `accessor` | Dotted path into the client's config object (for `config`/`secret`). |
-| `appliesTo`, `examples`, `deprecated`, `since` | Optional metadata. |
+| Field                                          | Meaning                                                                                                                                                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `key`                                          | Dotted identifier, e.g. `run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`.                                                                                                                            |
+| `kind`                                         | `config` (plaintext client setting) · `secret` (redacted, delivered to the OS keyring) · `flag` (an entitlement).                                                                                            |
+| `category`, `label`, `description`             | Grouping + human copy for settings UIs.                                                                                                                                                                      |
+| `schema`                                       | A Draft-07 JSON-Schema fragment Ajv validates the value against.                                                                                                                                             |
+| `default`                                      | The schema-level default value (the client's last-resort fallback).                                                                                                                                          |
+| `managementDefault`                            | **CONFIG only.** The management state a freshly-minted key gets if the admin doesn't override it: `default` · `enforced` · `hidden`.                                                                         |
+| `secret`                                       | `true` on `secret` kinds (redacted in admin UIs).                                                                                                                                                            |
+| `userGrant` / `grantLabel`                     | A `flag` shown to the user as an included capability ("Included with your license").                                                                                                                         |
+| `ui`                                           | `UiHints` — `widget` (`password`/`select`/`textarea`/`switch`/`stepper`), `placeholder`, `unit`, `scopes` (admin scopes `profile`/`license`/`device`), etc. **Presentation only; never affects validation.** |
+| `dependsOn`                                    | `{ key, equals }` — presentation gating (e.g. show `proxy.select` only when `proxy.enabled === true`). Does not gate value validation.                                                                       |
+| `accessor`                                     | Dotted path into the client's config object (for `config`/`secret`).                                                                                                                                         |
+| `appliesTo`, `examples`, `deprecated`, `since` | Optional metadata.                                                                                                                                                                                           |
 
 ### djdl examples
 
@@ -79,11 +83,11 @@ fixed precedence:
 enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
 ```
 
-| State | Server doc | Client behavior |
-|-------|-----------|-----------------|
-| **`default`** | carries a suggested value | the user/local override wins, then an env var, then the remote value, then the SDK `fallback`. **Overridable.** |
-| **`enforced`** | value marked enforced | the **remote value always wins**; local + env overrides are ignored. Shown **read-only** in settings UIs (`listUserConfig` marks it `enforced: true`). |
-| **`hidden`** | value marked hidden | enforced **and** withheld from `listUserConfig`/enumeration — still applied internally by `getConfig`. |
+| State          | Server doc                | Client behavior                                                                                                                                        |
+| -------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`default`**  | carries a suggested value | the user/local override wins, then an env var, then the remote value, then the SDK `fallback`. **Overridable.**                                        |
+| **`enforced`** | value marked enforced     | the **remote value always wins**; local + env overrides are ignored. Shown **read-only** in settings UIs (`listUserConfig` marks it `enforced: true`). |
+| **`hidden`**   | value marked hidden       | enforced **and** withheld from `listUserConfig`/enumeration — still applied internally by `getConfig`.                                                 |
 
 The env override for a key is `PKEY_CONFIG_` + the key with dots → `__`
 (`run.concurrency` → `PKEY_CONFIG_run__concurrency`); the value is JSON-parsed when it
@@ -95,37 +99,43 @@ parses, else taken as a raw string. (See each SDK README for the per-language AP
 
 ## Registering + re-syncing a product
 
-There are three ways the catalog reaches D1; all share the same validated shape.
+There are three ways the catalog reaches D1; repo-link and direct import are the normal
+paths and must share the same validated shape.
 
 1. **Repo-link (preferred).** The product hosts a `.pkey/` directory. The admin links the
    repo; the Worker fetches + `parseManifest`s the three files and registers the product.
    Re-linking (or a webhook on push) re-parses and updates the rows.
-2. **Manual create.** Paste the same JSON/YAML into the admin "create product" form (handy
-   before a repo exists). Internally this runs the same `parseManifest`.
-3. **Seed SQL (bootstrap / this monorepo).** Generate the D1 seed from the data files and
-   apply it:
+2. **Manifest import.** Paste or upload the same JSON/YAML manifest files into the admin
+   product setup flow (handy before a repo exists). Internally this runs the same
+   `parseManifest` path as repo-link.
+3. **Seed SQL (bootstrap / this monorepo only).** Generate the D1 seed from the fixture data
+   files and apply it:
 
    ```sh
    pnpm --filter @polaris-key/products gen-seed products/djdl > products/djdl/seed.sql
    wrangler d1 execute polaris_key_prod --remote --file products/djdl/seed.sql
    ```
 
-   `products/gen-seed.ts` compiles the catalog (failing on a bad schema fragment) before
-   emitting `INSERT`s for `products`, `product_schema`, `oidc_config`, `tiers`,
-   `provisioning_config`, `edge_mint_config`, and `release_config`.
+   This path is for local/bootstrap fixtures. Normal product registration should use the
+   admin portal or platform CLI so Polaris can mint the sealed product signing key, return
+   the public trust key, and list missing product secrets.
 
 ### Admin override vs re-sync
 
-Admins set **management state + values** (per tier/license/device) in the admin SPA — those
-overrides live in D1 and are **not** overwritten by a re-sync. A re-sync only updates the
-**catalog shape** (entries, schemas, defaults) from `.pkey/`. So the flow is:
+Admins set **management state + values** (per profile/tier/license/device) and operational
+runtime overrides in the admin SPA. Those values live in D1 and are **not** overwritten by a
+re-sync. A re-sync updates the manifest baseline from `.pkey/`: product metadata, module
+defaults, catalog shape, OIDC baseline, release baseline, provisioning, and edge-mint
+recipes. So the flow is:
 
 1. Edit `.pkey/schema` in the product repo (add a key, tighten a schema, change a
    `managementDefault`); bump `schemaVersion` only on an incompatible shape change.
 2. Re-link / push → the Worker re-parses and updates `product_schema`; SDKs pick up the new
    catalog at `/<product>/schema` and the next signed `/config`.
 3. Existing admin value/state overrides persist; new keys take their `managementDefault`
-   until an admin overrides them.
+   until an admin overrides them. The admin UI should label whether a value came from the
+   manifest baseline, an admin override, a generated signing key, a configured secret, or a
+   provider-discovered runtime value.
 
 When you author a typed mirror for a product that wants compile-time config types, regenerate
 it from the catalog with `tools/gen-mirrors.ts` (and `--check` in CI) — see

@@ -6,16 +6,32 @@
 import { ErrorCode } from "../../http.js";
 
 /** JSON response with the admin defaults (no-store, charset). */
-export function adminJson(body: unknown, status = 200, extra?: Record<string, string>): Response {
+export function adminJson(
+  body: unknown,
+  status = 200,
+  extra?: Record<string, string>,
+): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...(extra ?? {}) },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      ...(extra ?? {}),
+    },
   });
 }
 
 /** A flat error JSON response. */
-export function err(status: number, code: string, message?: string, extra?: Record<string, unknown>): Response {
-  return adminJson({ error: code, ...(message ? { message } : {}), ...(extra ?? {}) }, status);
+export function err(
+  status: number,
+  code: string,
+  message?: string,
+  extra?: Record<string, unknown>,
+): Response {
+  return adminJson(
+    { error: code, ...(message ? { message } : {}), ...(extra ?? {}) },
+    status,
+  );
 }
 
 export function unauthorized(): Response {

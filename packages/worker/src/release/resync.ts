@@ -21,7 +21,11 @@ import {
 import { deactivateSchemas, nextSchemaVersion } from "../admin/repo.js";
 import { getReleaseConfig } from "./index.js";
 import { parseManifest } from "./manifest.js";
-import { discoverInstallation, type FetchImpl, getInstallationToken } from "./githubApp.js";
+import {
+  discoverInstallation,
+  type FetchImpl,
+  getInstallationToken,
+} from "./githubApp.js";
 import { fetchRepoFile } from "./github.js";
 
 export type ResyncResult =
@@ -61,30 +65,47 @@ export async function resyncRepo(
 ): Promise<ResyncResult> {
   const product = await getProduct(db, slug);
   if (!product) return { ok: false, error: "unknown product" };
-  if (product.release_source !== "github") return { ok: false, error: "product is not linked to a repo" };
+  if (product.release_source !== "github")
+    return { ok: false, error: "product is not linked to a repo" };
 
   const cfg = await getReleaseConfig(db, slug);
-  if (!cfg || !cfg.gh_owner || !cfg.gh_repo) return { ok: false, error: "product has no linked repo coordinates" };
+  if (!cfg || !cfg.gh_owner || !cfg.gh_repo)
+    return { ok: false, error: "product has no linked repo coordinates" };
   const owner = cfg.gh_owner;
   const repo = cfg.gh_repo;
 
   let token: string;
   try {
     const installId =
-      cfg.gh_installation_id ?? (await discoverInstallation(env, owner, repo, now, fetchImpl));
+      cfg.gh_installation_id ??
+      (await discoverInstallation(env, owner, repo, now, fetchImpl));
     token = await getInstallationToken(env, repo, installId, now, fetchImpl);
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "github access failed" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "github access failed",
+    };
   }
 
   const files: Record<string, string> = {};
   for (const name of ["schema", "product", "release"] as const) {
-    const text = await readPkeyFile(token, owner, repo, PKEY_FILES[name], fetchImpl);
+    const text = await readPkeyFile(
+      token,
+      owner,
+      repo,
+      PKEY_FILES[name],
+      fetchImpl,
+    );
     if (text !== undefined) files[name] = text;
   }
 
   const result = parseManifest(files);
-  if (!result.ok) return { ok: false, error: "manifest validation failed", errors: result.errors };
+  if (!result.ok)
+    return {
+      ok: false,
+      error: "manifest validation failed",
+      errors: result.errors,
+    };
   const manifest = result.manifest;
 
   const updated: string[] = [];
@@ -120,7 +141,10 @@ export async function resyncRepo(
   // ── oidc + tiers: replace the rows (delete-then-insert via a single batch) ───
   const stmts: DbStatement[] = [];
   if (manifest.oidc) {
-    stmts.push({ sql: "DELETE FROM oidc_config WHERE product = ?", params: [slug] });
+    stmts.push({
+      sql: "DELETE FROM oidc_config WHERE product = ?",
+      params: [slug],
+    });
     stmts.push(
       stmtInsertOidcConfig({
         product: slug,

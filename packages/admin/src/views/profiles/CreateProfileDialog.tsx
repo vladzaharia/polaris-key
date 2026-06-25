@@ -73,7 +73,8 @@ export function CreateProfileDialog({
         <DialogHeader>
           <DialogTitle>New profile</DialogTitle>
           <DialogDescription>
-            A profile is a named managed payload. Configure its values after it’s created.
+            A profile is a named managed payload. Configure its values after
+            it’s created.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -83,7 +84,12 @@ export function CreateProfileDialog({
             submit();
           }}
         >
-          <Field label="Id" required error={idError} help="Stable, immutable identifier.">
+          <Field
+            label="Id"
+            required
+            error={idError}
+            help="Stable, immutable identifier."
+          >
             <Input
               value={id}
               onChange={(e) => setId(e.target.value)}
@@ -94,9 +100,16 @@ export function CreateProfileDialog({
             />
           </Field>
           <Field label="Name" help="Human-friendly name shown in the console.">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Default profile" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Default profile"
+            />
           </Field>
-          <Field label="Description" help="Optional notes about what this profile is for.">
+          <Field
+            label="Description"
+            help="Optional notes about what this profile is for."
+          >
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -105,7 +118,12 @@ export function CreateProfileDialog({
             />
           </Field>
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" loading={saving} disabled={!canSubmit}>

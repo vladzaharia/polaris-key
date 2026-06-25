@@ -8,7 +8,12 @@
 // enroll / deauthorize / report) so the Node side can implement each method with a
 // near-1:1 delegation. Export it so that Node side can `import type { PolarisBridge }`.
 
-import type { AllowedRange, BlockReason, JSONValue, ManagedConfigDoc } from "@polaris-key/protocol";
+import type {
+  AllowedRange,
+  BlockReason,
+  JSONValue,
+  ManagedConfigDoc,
+} from "@polaris-key/protocol";
 
 /** The serialized gate the bridge reports — the renderer can't run the Node gate itself,
  *  so the privileged process sends the doc + the sync bookkeeping and the adapter derives

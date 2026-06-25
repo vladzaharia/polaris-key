@@ -5,7 +5,13 @@
 // this module compiles + ships without yargs installed; the consumer supplies the `Argv`.
 
 import type { Argv, ArgumentsCamelCase, CommandModule } from "yargs";
-import { activate, deactivate, getConfig, status, type ClientFactory } from "./commands.js";
+import {
+  activate,
+  deactivate,
+  getConfig,
+  status,
+  type ClientFactory,
+} from "./commands.js";
 
 /** Shared options for the yargs adapter (see the commander adapter for the analog). */
 export interface YargsAdapterOptions {
@@ -62,12 +68,14 @@ export function polarisCommandModule(
         .command<CommonArgs & { key: string }>({
           command: "activate <key>",
           describe: "Enroll this device with a license key",
-          handler: async (argv) => emit(await activate(await buildClient(argv), argv.key)),
+          handler: async (argv) =>
+            emit(await activate(await buildClient(argv), argv.key)),
         })
         .command<CommonArgs>({
           command: "deactivate",
           describe: "Deauthorize this device and wipe local credentials",
-          handler: async (argv) => emit(await deactivate(await buildClient(argv))),
+          handler: async (argv) =>
+            emit(await deactivate(await buildClient(argv))),
         })
         .command<CommonArgs>({
           command: "status",
@@ -77,7 +85,8 @@ export function polarisCommandModule(
         .command<CommonArgs & { key: string }>({
           command: "config <key>",
           describe: "Resolve the effective value of a config key",
-          handler: async (argv) => emit(getConfig(await buildClient(argv), argv.key)),
+          handler: async (argv) =>
+            emit(getConfig(await buildClient(argv), argv.key)),
         })
         .demandCommand(1),
     handler: () => {
@@ -92,5 +101,7 @@ export function registerPolarisCommands<T>(
   factory: ClientFactory,
   options: YargsAdapterOptions,
 ): Argv<T> {
-  return yargs.command(polarisCommandModule(factory, options) as CommandModule<T, CommonArgs>);
+  return yargs.command(
+    polarisCommandModule(factory, options) as CommandModule<T, CommonArgs>,
+  );
 }

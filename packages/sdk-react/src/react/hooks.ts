@@ -92,7 +92,12 @@ export function usePolarisKey(): UsePolarisKey {
 }
 
 /** Just the license gate (status + grace/version metadata) and `usable`. */
-export function useLicense(): { gate: LicenseState; status: LicenseStatus; usable: boolean; loading: boolean } {
+export function useLicense(): {
+  gate: LicenseState;
+  status: LicenseStatus;
+  usable: boolean;
+  loading: boolean;
+} {
   const { adapter } = useCtx();
   const state = useAdapterState(adapter);
   return {

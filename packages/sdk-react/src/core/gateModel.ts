@@ -5,7 +5,12 @@
 //
 // Times are epoch SECONDS (matching the signed doc + the JOSE world the Worker signs in).
 
-import type { AllowedRange, BlockReason, LicenseStatus, ManagedConfigDoc } from "@polaris-key/protocol";
+import type {
+  AllowedRange,
+  BlockReason,
+  LicenseStatus,
+  ManagedConfigDoc,
+} from "@polaris-key/protocol";
 
 /** The renderable gate state derived from the cached doc + the last sync outcome. */
 export interface LicenseState {
@@ -40,16 +45,28 @@ export interface GateInput {
 export function licenseState(input: GateInput): LicenseState {
   const { doc, now } = input;
   if (input.blocked) {
-    return { status: input.blocked.reason, allowedRange: input.blocked.allowedRange };
+    return {
+      status: input.blocked.reason,
+      allowedRange: input.blocked.allowedRange,
+    };
   }
   if (!input.hasToken) return { status: "needs-enroll" };
   if (input.lastSyncUnauthorized) return { status: "revoked" };
   if (!doc) return { status: "needs-enroll" };
-  if (now > doc.graceUntil) return { status: "expired", graceUntil: doc.graceUntil };
+  if (now > doc.graceUntil)
+    return { status: "expired", graceUntil: doc.graceUntil };
   if (now > doc.expiresAt) {
-    return { status: "grace", graceUntil: doc.graceUntil, lastVerifiedAt: input.lastVerifiedAt };
+    return {
+      status: "grace",
+      graceUntil: doc.graceUntil,
+      lastVerifiedAt: input.lastVerifiedAt,
+    };
   }
-  return { status: "ok", graceUntil: doc.graceUntil, lastVerifiedAt: input.lastVerifiedAt };
+  return {
+    status: "ok",
+    graceUntil: doc.graceUntil,
+    lastVerifiedAt: input.lastVerifiedAt,
+  };
 }
 
 /** True when the gate permits running (ok or grace) — children render through. */

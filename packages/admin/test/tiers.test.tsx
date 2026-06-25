@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProfileSummary, TierSummary } from "../src/api.js";
 import { resetCache } from "../src/context.js";
@@ -73,13 +79,18 @@ beforeEach(() => {
   mockApi.tiers.mockResolvedValue({ tiers: [PRO, FREE] });
   mockApi.profiles.mockResolvedValue({ profiles: PROFILES });
   // jsdom lacks these Radix-needed APIs.
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
-  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  };
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { scrollIntoView: () => void }
+  ).scrollIntoView = () => undefined;
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
+    class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
 });
 
 afterEach(cleanup);
@@ -125,12 +136,18 @@ describe("Tiers view", () => {
     await userEvent.type(within(dialog).getByLabelText("Label"), "Team");
     // Select the "stable" channel checkbox.
     await userEvent.click(within(dialog).getByLabelText("stable"));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create tier" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create tier" }),
+    );
 
     await waitFor(() => expect(mockApi.createTier).toHaveBeenCalledTimes(1));
     const [slug, body] = mockApi.createTier.mock.calls[0]!;
     expect(slug).toBe("djdl");
-    expect(body).toMatchObject({ id: "team", label: "Team", channels: ["stable"] });
+    expect(body).toMatchObject({
+      id: "team",
+      label: "Team",
+      channels: ["stable"],
+    });
   });
 
   it("blocks create when the id is already taken", async () => {
@@ -141,7 +158,9 @@ describe("Tiers view", () => {
 
     await userEvent.type(within(dialog).getByLabelText(/^Id/), "pro");
     expect(within(dialog).getByText(/already exists/)).toBeTruthy();
-    const createBtn = within(dialog).getByRole("button", { name: "Create tier" }) as HTMLButtonElement;
+    const createBtn = within(dialog).getByRole("button", {
+      name: "Create tier",
+    }) as HTMLButtonElement;
     expect(createBtn.disabled).toBe(true);
     expect(mockApi.createTier).not.toHaveBeenCalled();
   });
@@ -155,10 +174,14 @@ describe("Tiers view", () => {
     const dialog = await screen.findByRole("dialog");
 
     // Pro starts with stable+beta selected; untick beta and set a max version.
-    expect(within(dialog).getByLabelText("beta").getAttribute("aria-checked")).toBe("true");
+    expect(
+      within(dialog).getByLabelText("beta").getAttribute("aria-checked"),
+    ).toBe("true");
     await userEvent.click(within(dialog).getByLabelText("beta"));
     await userEvent.type(within(dialog).getByLabelText("Max version"), "2.0.0");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
 
     await waitFor(() => expect(mockApi.patchTier).toHaveBeenCalledTimes(1));
     const [slug, id, body] = mockApi.patchTier.mock.calls[0]!;
@@ -175,10 +198,16 @@ describe("Tiers view", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Delete free" }));
     const confirmDialog = await screen.findByRole("alertdialog");
-    expect(within(confirmDialog).getByText(/Delete tier “free”\?/)).toBeTruthy();
+    expect(
+      within(confirmDialog).getByText(/Delete tier “free”\?/),
+    ).toBeTruthy();
     expect(mockApi.deleteTier).not.toHaveBeenCalled();
 
-    await userEvent.click(within(confirmDialog).getByRole("button", { name: "Delete tier" }));
-    await waitFor(() => expect(mockApi.deleteTier).toHaveBeenCalledWith("djdl", "free"));
+    await userEvent.click(
+      within(confirmDialog).getByRole("button", { name: "Delete tier" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.deleteTier).toHaveBeenCalledWith("djdl", "free"),
+    );
   });
 });

@@ -29,15 +29,21 @@ const base = {
 /** A stub fetch whose /enroll status is configurable; /config returns one signed doc with a
  *  single `default` config key (so override layering is observable). */
 function stubFetch(enrollStatus = 200): typeof fetch {
-  return (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  return (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
     const u = new URL(typeof input === "string" ? input : input.toString());
     const device = new Headers(init?.headers).get("x-pkey-device") ?? "d";
     if (u.pathname.endsWith("/enroll")) {
       if (enrollStatus === 200) {
-        return new Response(JSON.stringify({ token: "pkeyt_ok", schemaVersion: 1 }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ token: "pkeyt_ok", schemaVersion: 1 }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
       }
       if (enrollStatus === 403) {
         return new Response(JSON.stringify({ limit: 3, machineCount: 3 }), {
@@ -47,8 +53,10 @@ function stubFetch(enrollStatus = 200): typeof fetch {
       }
       return new Response("", { status: enrollStatus });
     }
-    if (u.pathname.endsWith("/config/report")) return new Response("{}", { status: 200 });
-    if (u.pathname.endsWith("/deauthorize")) return new Response("{}", { status: 200 });
+    if (u.pathname.endsWith("/config/report"))
+      return new Response("{}", { status: 200 });
+    if (u.pathname.endsWith("/deauthorize"))
+      return new Response("{}", { status: 200 });
     if (u.pathname.endsWith("/config")) {
       const now = Math.floor(Date.now() / 1000);
       const doc: ManagedConfigDoc = {
@@ -60,21 +68,34 @@ function stubFetch(enrollStatus = 200): typeof fetch {
         issuedAt: now,
         expiresAt: now + 3600,
         graceUntil: now + 30 * 86400,
-        profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@example.com", enrolledAt: now },
+        profile: {
+          name: "Ada Lovelace",
+          firstName: "Ada",
+          email: "ada@example.com",
+          enrolledAt: now,
+        },
         payload: {
-          config: { "run.mode": { state: "default", value: "fast", updatedAt: now } },
+          config: {
+            "run.mode": { state: "default", value: "fast", updatedAt: now },
+          },
           secrets: {},
           entitlements: {},
         },
       };
       const jws = await signJws(doc, TEST_PEM, TEST_KID);
-      return new Response(jws, { status: 200, headers: { "content-type": "application/jwt" } });
+      return new Response(jws, {
+        status: 200,
+        headers: { "content-type": "application/jwt" },
+      });
     }
     return new Response("", { status: 404 });
   }) as typeof fetch;
 }
 
-function makeClient(fetchImpl: typeof fetch, localOverrides?: Record<string, string>) {
+function makeClient(
+  fetchImpl: typeof fetch,
+  localOverrides?: Record<string, string>,
+) {
   return PolarisKeyClient.create({
     ...base,
     store: new InMemoryStore("djdl"),
@@ -132,7 +153,11 @@ describe("cli/commands core", () => {
     await activate(remote, "pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     const r1 = getConfig(remote, "run.mode");
     expect(r1.ok).toBe(true);
-    expect(r1.data).toMatchObject({ key: "run.mode", value: "fast", source: "remote-default" });
+    expect(r1.data).toMatchObject({
+      key: "run.mode",
+      value: "fast",
+      source: "remote-default",
+    });
 
     // local override wins over a `default` remote value
     const overridden = await makeClient(stubFetch(200), { "run.mode": "slow" });
@@ -181,13 +206,18 @@ describe("cli/commander adapter smoke", () => {
     await program.parseAsync(["status"], { from: "user" });
 
     // The factory received the program's resolved flags...
-    expect(seen.factoryOpts).toMatchObject({ productSlug: "djdl", version: "1.2.3" });
+    expect(seen.factoryOpts).toMatchObject({
+      productSlug: "djdl",
+      version: "1.2.3",
+    });
     // ...and the status command printed the core's output (gate = needs-enroll, unactivated).
     expect(lines.join("\n")).toContain("needs-enroll");
     expect(seen.client).toBeInstanceOf(PolarisKeyClient);
 
     // Sanity: a config subcommand was registered too.
     const names = program.commands.map((c) => c.name());
-    expect(names).toEqual(expect.arrayContaining(["activate", "deactivate", "status", "config"]));
+    expect(names).toEqual(
+      expect.arrayContaining(["activate", "deactivate", "status", "config"]),
+    );
   });
 });

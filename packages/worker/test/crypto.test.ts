@@ -66,7 +66,9 @@ describe("sha256Hex", () => {
     const h = await sha256Hex("hello");
     expect(h).toMatch(/^[0-9a-f]{64}$/);
     // Known SHA-256("hello").
-    expect(h).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    expect(h).toBe(
+      "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    );
   });
 
   it("is deterministic and input-sensitive", async () => {

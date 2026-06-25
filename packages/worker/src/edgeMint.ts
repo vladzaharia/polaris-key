@@ -36,7 +36,10 @@ function b64url(bytes: Uint8Array): string {
 }
 const b64urlStr = (s: string): string => b64url(new TextEncoder().encode(s));
 function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+  return b.buffer.slice(
+    b.byteOffset,
+    b.byteOffset + b.byteLength,
+  ) as ArrayBuffer;
 }
 /** Strip PEM armor + whitespace and decode the base64 body to raw DER bytes. */
 function pemToDer(pem: string): Uint8Array {
@@ -72,7 +75,10 @@ function rsaToPkcs8(pem: string): ArrayBuffer {
   const der = pemToDer(pem);
   if (/BEGIN PRIVATE KEY/.test(pem)) return toAB(der);
   // PKCS#8 = SEQUENCE { version 0, AlgorithmIdentifier rsaEncryption NULL, OCTET STRING pkcs1 }
-  const rsaOid = [0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00];
+  const rsaOid = [
+    0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
+    0x01, 0x05, 0x00,
+  ];
   const version = [0x02, 0x01, 0x00];
   const octetHeader = derLen(0x04, der.length);
   const inner = [...version, ...rsaOid, ...octetHeader, ...der];
@@ -81,9 +87,16 @@ function rsaToPkcs8(pem: string): ArrayBuffer {
 }
 
 /** Sign an ES256 (ECDSA P-256) JWT — WebCrypto returns the raw r||s that JWS ES256 wants. */
-async function signEs256(payload: Record<string, unknown>, pem: string, kid?: string): Promise<string> {
+async function signEs256(
+  payload: Record<string, unknown>,
+  pem: string,
+  kid?: string,
+): Promise<string> {
   const header = { alg: "ES256", typ: "JWT", ...(kid ? { kid } : {}) };
-  const signingInput = b64urlStr(JSON.stringify(header)) + "." + b64urlStr(JSON.stringify(payload));
+  const signingInput =
+    b64urlStr(JSON.stringify(header)) +
+    "." +
+    b64urlStr(JSON.stringify(payload));
   const key = await crypto.subtle.importKey(
     "pkcs8",
     toAB(pemToDer(pem)),
@@ -100,9 +113,16 @@ async function signEs256(payload: Record<string, unknown>, pem: string, kid?: st
 }
 
 /** Sign an RS256 (RSASSA-PKCS1-v1_5 / SHA-256) JWT. Accepts PKCS#1 or PKCS#8 PEM. */
-async function signRs256(payload: Record<string, unknown>, pem: string, kid?: string): Promise<string> {
+async function signRs256(
+  payload: Record<string, unknown>,
+  pem: string,
+  kid?: string,
+): Promise<string> {
   const header = { alg: "RS256", typ: "JWT", ...(kid ? { kid } : {}) };
-  const signingInput = b64urlStr(JSON.stringify(header)) + "." + b64urlStr(JSON.stringify(payload));
+  const signingInput =
+    b64urlStr(JSON.stringify(header)) +
+    "." +
+    b64urlStr(JSON.stringify(payload));
   const key = await crypto.subtle.importKey(
     "pkcs8",
     rsaToPkcs8(pem),
@@ -118,8 +138,16 @@ async function signRs256(payload: Record<string, unknown>, pem: string, kid?: st
   return signingInput + "." + b64url(new Uint8Array(sig));
 }
 
-export async function getEdgeMintConfig(db: Db, product: string, id: string): Promise<EdgeMintRow | null> {
-  return db.first<EdgeMintRow>("SELECT * FROM edge_mint_config WHERE product = ? AND id = ?", product, id);
+export async function getEdgeMintConfig(
+  db: Db,
+  product: string,
+  id: string,
+): Promise<EdgeMintRow | null> {
+  return db.first<EdgeMintRow>(
+    "SELECT * FROM edge_mint_config WHERE product = ? AND id = ?",
+    product,
+    id,
+  );
 }
 
 /**
@@ -145,13 +173,24 @@ export async function handleMintToken(
   mintId: string,
   now: number,
 ): Promise<Response> {
-  if (!(await rateLimitOk(env, product.slug, { bucket: "mint", id: clientIp(req), limit: 60, windowSec: 60 }, now))) {
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "mint", id: clientIp(req), limit: 60, windowSec: 60 },
+      now,
+    ))
+  ) {
     return errorResponse(429, "rate_limited", "too many mint requests");
   }
   // Confused-deputy guard: only a licensed machine may mint.
   const token = bearer(req);
   if (!token) return errorResponse(401, "unauthorized");
-  const rec = await getTokenRecord(env, product.slug, await hashKey(token, env.KEY_HASH_PEPPER));
+  const rec = await getTokenRecord(
+    env,
+    product.slug,
+    await hashKey(token, env.KEY_HASH_PEPPER),
+  );
   if (!rec) return errorResponse(401, "unauthorized");
 
   const cfg = await getEdgeMintConfig(db, product.slug, mintId);
@@ -161,7 +200,12 @@ export async function handleMintToken(
   }
   // Key material is KEK-custodied: `signing_key_secret` is now a product_secrets NAME, not a
   // worker secret. Missing/unopenable ⇒ misconfigured (fail closed — never an unsigned token).
-  const pem = await openProductSecret(db, env, product.slug, cfg.signing_key_secret);
+  const pem = await openProductSecret(
+    db,
+    env,
+    product.slug,
+    cfg.signing_key_secret,
+  );
   if (!pem) return errorResponse(500, "misconfigured", "missing mint key");
 
   const template = cfg.claims_template_json
@@ -191,16 +235,27 @@ export async function handleMintToken(
     default:
       return errorResponse(500, "misconfigured", `unsupported alg ${cfg.alg}`);
   }
-  return new Response(JSON.stringify({ token: minted, expiresAt: claims.exp }), {
-    status: 200,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
-  });
+  return new Response(
+    JSON.stringify({ token: minted, expiresAt: claims.exp }),
+    {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "cache-control": "no-store",
+      },
+    },
+  );
 }
 
 /** GET /<product>/mint/<id>/auth — serve the recipe's HTML auth page (e.g. MusicKit JS). */
-export async function handleMintAuth(db: Db, product: Product, mintId: string): Promise<Response> {
+export async function handleMintAuth(
+  db: Db,
+  product: Product,
+  mintId: string,
+): Promise<Response> {
   const cfg = await getEdgeMintConfig(db, product.slug, mintId);
-  if (!cfg || !cfg.auth_page_template) return errorResponse(404, "not_found", "no auth page");
+  if (!cfg || !cfg.auth_page_template)
+    return errorResponse(404, "not_found", "no auth page");
   return new Response(cfg.auth_page_template, {
     status: 200,
     headers: { "content-type": "text/html; charset=utf-8" },

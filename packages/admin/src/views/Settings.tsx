@@ -1,6 +1,11 @@
 import * as React from "react";
 import { AlertTriangle, KeyRound, RotateCw, Trash2 } from "lucide-react";
-import { ApiError, api, type ProductDetail, type UpdateProductBody } from "../api.js";
+import {
+  ApiError,
+  api,
+  type ProductDetail,
+  type UpdateProductBody,
+} from "../api.js";
 import { useAdmin } from "../context.js";
 import { invalidate, useResource } from "../context.js";
 import { hashFor } from "../route.js";
@@ -28,16 +33,22 @@ import {
  * cached product so the form reflects the server.
  */
 export function Settings({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(`product:${slug}`, () => api.product(slug));
+  const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
+    api.product(slug),
+  );
 
   return (
     <section aria-labelledby="settings-title" className="space-y-6">
       <header className="space-y-1">
-        <h2 id="settings-title" className="text-xl font-semibold tracking-tight">
+        <h2
+          id="settings-title"
+          className="text-xl font-semibold tracking-tight"
+        >
           Settings
         </h2>
         <p className="text-sm text-muted-foreground">
-          Registry settings for <span className="font-medium text-foreground">{slug}</span>.
+          Registry settings for{" "}
+          <span className="font-medium text-foreground">{slug}</span>.
         </p>
       </header>
 
@@ -68,7 +79,13 @@ export function Settings({ slug }: { slug: string }): React.ReactElement {
 
 // ── general ───────────────────────────────────────────────────────────────────
 
-function GeneralCard({ slug, product }: { slug: string; product: ProductDetail }): React.ReactElement {
+function GeneralCard({
+  slug,
+  product,
+}: {
+  slug: string;
+  product: ProductDetail;
+}): React.ReactElement {
   const toast = useToast();
   const [form, setForm] = React.useState({
     name: product.name,
@@ -79,7 +96,9 @@ function GeneralCard({ slug, product }: { slug: string; product: ProductDetail }
     adminGroup: product.adminGroup ?? "",
   });
   const [saving, setSaving] = React.useState(false);
-  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
+    {},
+  );
 
   // Re-seed when the underlying product changes (e.g. after a re-sync invalidate).
   React.useEffect(() => {
@@ -101,8 +120,9 @@ function GeneralCard({ slug, product }: { slug: string; product: ProductDetail }
     form.defaultMachineLimit !== String(product.defaultMachineLimit) ||
     form.adminGroup !== (product.adminGroup ?? "");
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+  const set =
+    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -110,8 +130,10 @@ function GeneralCard({ slug, product }: { slug: string; product: ProductDetail }
     const machines = Number(form.defaultMachineLimit);
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = "Name is required.";
-    if (!Number.isFinite(offline) || offline < 0) errs.defaultMaxOfflineDays = "Must be a non-negative number.";
-    if (!Number.isFinite(machines) || machines < 0) errs.defaultMachineLimit = "Must be a non-negative number.";
+    if (!Number.isFinite(offline) || offline < 0)
+      errs.defaultMaxOfflineDays = "Must be a non-negative number.";
+    if (!Number.isFinite(machines) || machines < 0)
+      errs.defaultMachineLimit = "Must be a non-negative number.";
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -130,9 +152,14 @@ function GeneralCard({ slug, product }: { slug: string; product: ProductDetail }
       toast.success("Settings saved");
     } catch (err) {
       if (err instanceof ApiError && err.fields?.length) {
-        setFieldErrors(Object.fromEntries(err.fields.map((f) => [f, "Invalid value."])));
+        setFieldErrors(
+          Object.fromEntries(err.fields.map((f) => [f, "Invalid value."])),
+        );
       }
-      toast.error("Couldn’t save settings", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Couldn’t save settings",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setSaving(false);
     }
@@ -141,51 +168,88 @@ function GeneralCard({ slug, product }: { slug: string; product: ProductDetail }
   return (
     <Card>
       <form onSubmit={onSubmit} noValidate>
-      <CardHeader>
-        <CardTitle>General</CardTitle>
-        <CardDescription>Display name, compatibility window, and per-license defaults.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name" error={fieldErrors.name} className="sm:col-span-2">
-          <Input value={form.name} onChange={set("name")} autoComplete="off" />
-        </Field>
-        <Field label="Compat min" help="Lowest client version this product supports.">
-          <Input value={form.compatMin} onChange={set("compatMin")} placeholder="0.0.0" autoComplete="off" />
-        </Field>
-        <Field label="Compat max" help="Highest supported version (blank for none).">
-          <Input value={form.compatMax} onChange={set("compatMax")} placeholder="latest" autoComplete="off" />
-        </Field>
-        <Field label="Default max offline days" error={fieldErrors.defaultMaxOfflineDays}>
-          <Input
-            type="number"
-            min={0}
-            inputMode="numeric"
-            value={form.defaultMaxOfflineDays}
-            onChange={set("defaultMaxOfflineDays")}
-          />
-        </Field>
-        <Field label="Default device limit" error={fieldErrors.defaultMachineLimit}>
-          <Input
-            type="number"
-            min={0}
-            inputMode="numeric"
-            value={form.defaultMachineLimit}
-            onChange={set("defaultMachineLimit")}
-          />
-        </Field>
-        <Field
-          label="Admin group"
-          help="OIDC group whose members may administer this product. Blank to leave unset."
-          className="sm:col-span-2"
-        >
-          <Input value={form.adminGroup} onChange={set("adminGroup")} placeholder="e.g. djdl-admins" autoComplete="off" />
-        </Field>
-      </CardContent>
-      <CardFooter>
-        <Button type="submit" loading={saving} disabled={!dirty}>
-          Save changes
-        </Button>
-      </CardFooter>
+        <CardHeader>
+          <CardTitle>General</CardTitle>
+          <CardDescription>
+            Display name, compatibility window, and per-license defaults.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Name"
+            error={fieldErrors.name}
+            className="sm:col-span-2"
+          >
+            <Input
+              value={form.name}
+              onChange={set("name")}
+              autoComplete="off"
+            />
+          </Field>
+          <Field
+            label="Compat min"
+            help="Lowest client version this product supports."
+          >
+            <Input
+              value={form.compatMin}
+              onChange={set("compatMin")}
+              placeholder="0.0.0"
+              autoComplete="off"
+            />
+          </Field>
+          <Field
+            label="Compat max"
+            help="Highest supported version (blank for none)."
+          >
+            <Input
+              value={form.compatMax}
+              onChange={set("compatMax")}
+              placeholder="latest"
+              autoComplete="off"
+            />
+          </Field>
+          <Field
+            label="Default max offline days"
+            error={fieldErrors.defaultMaxOfflineDays}
+          >
+            <Input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={form.defaultMaxOfflineDays}
+              onChange={set("defaultMaxOfflineDays")}
+            />
+          </Field>
+          <Field
+            label="Default device limit"
+            error={fieldErrors.defaultMachineLimit}
+          >
+            <Input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={form.defaultMachineLimit}
+              onChange={set("defaultMachineLimit")}
+            />
+          </Field>
+          <Field
+            label="Admin group"
+            help="OIDC group whose members may administer this product. Blank to leave unset."
+            className="sm:col-span-2"
+          >
+            <Input
+              value={form.adminGroup}
+              onChange={set("adminGroup")}
+              placeholder="e.g. djdl-admins"
+              autoComplete="off"
+            />
+          </Field>
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" loading={saving} disabled={!dirty}>
+            Save changes
+          </Button>
+        </CardFooter>
       </form>
     </Card>
   );
@@ -198,7 +262,9 @@ function SecretCard({ slug }: { slug: string }): React.ReactElement {
   const [name, setName] = React.useState("");
   const [value, setValue] = React.useState("");
   const [saving, setSaving] = React.useState(false);
-  const [errors, setErrors] = React.useState<{ name?: string; value?: string }>({});
+  const [errors, setErrors] = React.useState<{ name?: string; value?: string }>(
+    {},
+  );
 
   const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -210,11 +276,17 @@ function SecretCard({ slug }: { slug: string }): React.ReactElement {
     setSaving(true);
     try {
       await api.putProductSecret(slug, name.trim(), value);
-      toast.success("Secret saved", `“${name.trim()}” was stored. Its value is never shown again.`);
+      toast.success(
+        "Secret saved",
+        `“${name.trim()}” was stored. Its value is never shown again.`,
+      );
       setName("");
       setValue("");
     } catch (err) {
-      toast.error("Couldn’t save secret", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Couldn’t save secret",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setSaving(false);
     }
@@ -223,38 +295,38 @@ function SecretCard({ slug }: { slug: string }): React.ReactElement {
   return (
     <Card>
       <form onSubmit={onSubmit} noValidate>
-      <CardHeader>
-        <CardTitle>Product secrets</CardTitle>
-        <CardDescription>
-          Set a write-only secret (e.g. an OIDC client secret or a minter key). Values are stored encrypted and
-          never read back.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2">
-        <Field label="Secret name" error={errors.name}>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. oidc_client_secret"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </Field>
-        <Field label="Value" error={errors.value}>
-          <Input
-            type="password"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            autoComplete="new-password"
-            spellCheck={false}
-          />
-        </Field>
-      </CardContent>
-      <CardFooter>
-        <Button type="submit" variant="secondary" loading={saving}>
-          Set secret
-        </Button>
-      </CardFooter>
+        <CardHeader>
+          <CardTitle>Product secrets</CardTitle>
+          <CardDescription>
+            Set a write-only secret (e.g. an OIDC client secret or a minter
+            key). Values are stored encrypted and never read back.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Field label="Secret name" error={errors.name}>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. oidc_client_secret"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </Field>
+          <Field label="Value" error={errors.value}>
+            <Input
+              type="password"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              autoComplete="new-password"
+              spellCheck={false}
+            />
+          </Field>
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" variant="secondary" loading={saving}>
+            Set secret
+          </Button>
+        </CardFooter>
       </form>
     </Card>
   );
@@ -262,11 +334,20 @@ function SecretCard({ slug }: { slug: string }): React.ReactElement {
 
 // ── signing key ─────────────────────────────────────────────────────────────────
 
-function KeyCard({ slug, product }: { slug: string; product: ProductDetail }): React.ReactElement {
+function KeyCard({
+  slug,
+  product,
+}: {
+  slug: string;
+  product: ProductDetail;
+}): React.ReactElement {
   const toast = useToast();
   const [confirm, setConfirm] = React.useState(false);
   const [rotating, setRotating] = React.useState(false);
-  const [rotated, setRotated] = React.useState<{ kid: string; publicKey: string } | null>(null);
+  const [rotated, setRotated] = React.useState<{
+    kid: string;
+    publicKey: string;
+  } | null>(null);
 
   const onRotate = async (): Promise<void> => {
     setRotating(true);
@@ -277,7 +358,10 @@ function KeyCard({ slug, product }: { slug: string; product: ProductDetail }): R
       toast.success("Signing key rotated", `New key ${res.kid} is now active.`);
       setConfirm(false);
     } catch (err) {
-      toast.error("Couldn’t rotate the key", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Couldn’t rotate the key",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setRotating(false);
     }
@@ -291,23 +375,34 @@ function KeyCard({ slug, product }: { slug: string; product: ProductDetail }): R
           Signing key
         </CardTitle>
         <CardDescription>
-          The Ed25519 keypair this product signs config with. Rotating mints a new key and publishes it to the
-          JWKS; old signatures stay verifiable until clients refresh.
+          The Ed25519 keypair this product signs config with. Rotating mints a
+          new key and publishes it to the JWKS; old signatures stay verifiable
+          until clients refresh.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <dl className="text-sm">
-          <dt className="text-xs uppercase tracking-wider text-muted-foreground">Active key id</dt>
+          <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+            Active key id
+          </dt>
           <dd className="font-mono">{product.signingKid}</dd>
         </dl>
         {rotated ? (
-          <div role="status" aria-live="polite" className="space-y-2 rounded-md border border-success/40 bg-success/10 p-3">
+          <div
+            role="status"
+            aria-live="polite"
+            className="space-y-2 rounded-md border border-success/40 bg-success/10 p-3"
+          >
             <p className="text-sm font-medium text-foreground">
               New key minted: <span className="font-mono">{rotated.kid}</span>
             </p>
             <div>
-              <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">Public key</p>
-              <pre className="overflow-x-auto rounded bg-muted p-2 font-mono text-xs">{rotated.publicKey}</pre>
+              <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">
+                Public key
+              </p>
+              <pre className="overflow-x-auto rounded bg-muted p-2 font-mono text-xs">
+                {rotated.publicKey}
+              </pre>
             </div>
           </div>
         ) : null}
@@ -334,7 +429,13 @@ function KeyCard({ slug, product }: { slug: string; product: ProductDetail }): R
 
 // ── danger zone ─────────────────────────────────────────────────────────────────
 
-function DangerCard({ slug, product }: { slug: string; product: ProductDetail }): React.ReactElement {
+function DangerCard({
+  slug,
+  product,
+}: {
+  slug: string;
+  product: ProductDetail;
+}): React.ReactElement {
   const toast = useToast();
   const { me } = useAdmin();
   const [confirm, setConfirm] = React.useState(false);
@@ -345,12 +446,20 @@ function DangerCard({ slug, product }: { slug: string; product: ProductDetail })
     try {
       await api.deleteProduct(slug);
       invalidate(`product:${slug}`);
-      toast.success("Product deleted", `“${product.name}” was removed from the registry.`);
+      toast.success(
+        "Product deleted",
+        `“${product.name}” was removed from the registry.`,
+      );
       // Leave the now-defunct product route; head to the next product or the dashboard.
       const next = me.products.find((prod) => prod.slug !== slug);
-      window.location.hash = next ? hashFor({ kind: "product", slug: next.slug, view: "licenses" }) : hashFor({ kind: "dashboard" });
+      window.location.hash = next
+        ? hashFor({ kind: "product", slug: next.slug, view: "licenses" })
+        : hashFor({ kind: "dashboard" });
     } catch (err) {
-      toast.error("Couldn’t delete the product", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Couldn’t delete the product",
+        err instanceof Error ? err.message : undefined,
+      );
       setDeleting(false);
     }
   };
@@ -360,7 +469,8 @@ function DangerCard({ slug, product }: { slug: string; product: ProductDetail })
       <CardHeader>
         <CardTitle className="text-destructive">Danger zone</CardTitle>
         <CardDescription>
-          Deleting a product removes its registry row, licenses, keys, and config. This cannot be undone.
+          Deleting a product removes its registry row, licenses, keys, and
+          config. This cannot be undone.
         </CardDescription>
       </CardHeader>
       <CardFooter>

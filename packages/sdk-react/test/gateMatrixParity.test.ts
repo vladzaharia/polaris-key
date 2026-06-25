@@ -13,7 +13,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { AllowedRange, BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
+import type {
+  AllowedRange,
+  BlockReason,
+  ManagedConfigDoc,
+} from "@polaris-key/protocol";
 import { isUsable, licenseState } from "../src/core/gateModel.js";
 
 interface LicenseInputs {
@@ -33,7 +37,12 @@ interface ExpectDecision {
 }
 interface MatrixRow {
   name: string;
-  gate: { version: string; channel?: string; compatMin: string; compatMax: string };
+  gate: {
+    version: string;
+    channel?: string;
+    compatMin: string;
+    compatMax: string;
+  };
   license: LicenseInputs;
   expect: ExpectDecision;
 }
@@ -44,11 +53,28 @@ interface Matrix {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const matrix = JSON.parse(
-  readFileSync(join(here, "..", "..", "..", "conformance", "corpus", "v1", "gate-matrix.json"), "utf8"),
+  readFileSync(
+    join(
+      here,
+      "..",
+      "..",
+      "..",
+      "conformance",
+      "corpus",
+      "v1",
+      "gate-matrix.json",
+    ),
+    "utf8",
+  ),
 ) as Matrix;
 
 function buildDoc(l: LicenseInputs): ManagedConfigDoc | null {
-  if (l.issuedAt === undefined || l.expiresAt === undefined || l.graceUntil === undefined) return null;
+  if (
+    l.issuedAt === undefined ||
+    l.expiresAt === undefined ||
+    l.graceUntil === undefined
+  )
+    return null;
   return {
     schemaVersion: 1,
     aud: "djdl",
@@ -87,9 +113,14 @@ describe(`gate-matrix v${matrix.gateMatrixVersion} (React)`, () => {
       expect(state.status, row.name).toBe(row.expect.status);
       expect(isUsable(state.status), `${row.name} usable`).toBe(row.expect.ok);
       if (row.expect.allowedRange !== undefined) {
-        expect(state.allowedRange, `${row.name} allowedRange`).toEqual(row.expect.allowedRange);
+        expect(state.allowedRange, `${row.name} allowedRange`).toEqual(
+          row.expect.allowedRange,
+        );
       } else {
-        expect(state.allowedRange, `${row.name} no allowedRange`).toBeUndefined();
+        expect(
+          state.allowedRange,
+          `${row.name} no allowedRange`,
+        ).toBeUndefined();
       }
     });
   }

@@ -131,7 +131,7 @@ compact JWS  = signingInput "." base64url(signature)
 ```
 
 The verifying key is selected by the header `kid` from a caller-supplied trust set (NEVER
-from the document); `alg == "EdDSA"` and a String `kid` are asserted *before* any signature
+from the document); `alg == "EdDSA"` and a String `kid` are asserted _before_ any signature
 math (a `none`/HMAC downgrade is rejected). Public keys are RAW 32 bytes
 (`Curve25519.Signing.PublicKey(rawRepresentation:)`) — no SPKI prefix. The signature is
 checked over the ASCII bytes of the original `encHeader.encPayload` substrings; the payload

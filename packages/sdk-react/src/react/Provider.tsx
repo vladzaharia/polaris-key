@@ -10,7 +10,11 @@ import { browserAdapter } from "../browser/browserAdapter.js";
 import { desktopAdapter } from "../desktop/desktopAdapter.js";
 import { resolveBridge, type PolarisBridge } from "../desktop/bridge.js";
 import type { PolarisAdapter, PolarisMode } from "../core/index.js";
-import { mergeTheme, themeVars, type PartialTheme } from "../components/theme.js";
+import {
+  mergeTheme,
+  themeVars,
+  type PartialTheme,
+} from "../components/theme.js";
 import { PolarisContext } from "./context.js";
 
 export interface PolarisKeyProviderProps {
@@ -37,12 +41,17 @@ export interface PolarisKeyProviderProps {
 }
 
 /** Resolve the concrete mode from the requested mode + bridge availability. */
-function resolveMode(requested: "browser" | "desktop" | "auto", bridge?: PolarisBridge): PolarisMode {
+function resolveMode(
+  requested: "browser" | "desktop" | "auto",
+  bridge?: PolarisBridge,
+): PolarisMode {
   if (requested === "browser" || requested === "desktop") return requested;
   return resolveBridge(bridge) ? "desktop" : "browser";
 }
 
-export function PolarisKeyProvider(props: PolarisKeyProviderProps): JSX.Element {
+export function PolarisKeyProvider(
+  props: PolarisKeyProviderProps,
+): JSX.Element {
   const {
     productSlug,
     baseUrl,
@@ -65,15 +74,35 @@ export function PolarisKeyProvider(props: PolarisKeyProviderProps): JSX.Element 
     if (resolved === "desktop") {
       return desktopAdapter({ bridge, now, localOverrides });
     }
-    return browserAdapter({ productSlug, baseUrl, fetchImpl, navigate, now, localOverrides });
+    return browserAdapter({
+      productSlug,
+      baseUrl,
+      fetchImpl,
+      navigate,
+      now,
+      localOverrides,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [injected, mode, bridge, productSlug, baseUrl, fetchImpl, navigate, now, localOverrides]);
+  }, [
+    injected,
+    mode,
+    bridge,
+    productSlug,
+    baseUrl,
+    fetchImpl,
+    navigate,
+    now,
+    localOverrides,
+  ]);
 
   // Dispose the adapter when it (or the provider) goes away.
   useEffect(() => () => adapter.dispose(), [adapter]);
 
   const value = useMemo(() => ({ adapter, theme }), [adapter, theme]);
-  const style = useMemo(() => themeVars(theme) as Record<string, string>, [theme]);
+  const style = useMemo(
+    () => themeVars(theme) as Record<string, string>,
+    [theme],
+  );
 
   return (
     <PolarisContext.Provider value={value}>

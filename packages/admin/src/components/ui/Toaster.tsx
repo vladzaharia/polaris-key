@@ -31,11 +31,18 @@ const ToastCtx = React.createContext<ToastContextValue | null>(null);
  * from anywhere to enqueue a toast. Backed by Radix's `Toast.Provider` so toasts are
  * announced to assistive tech and auto-dismiss.
  */
-export function Toaster({ children }: { children: React.ReactNode }): React.ReactElement {
+export function Toaster({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
   const [toasts, setToasts] = React.useState<ToastMessage[]>([]);
   const seq = React.useRef(0);
 
-  const remove = React.useCallback((id: number) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
+  const remove = React.useCallback(
+    (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id)),
+    [],
+  );
   const toast = React.useCallback((t: Omit<ToastMessage, "id">) => {
     const id = ++seq.current;
     setToasts((prev) => [...prev, { ...t, id }]);
@@ -43,8 +50,10 @@ export function Toaster({ children }: { children: React.ReactNode }): React.Reac
   const value = React.useMemo<ToastContextValue>(
     () => ({
       toast,
-      success: (title, description) => toast({ title, description, variant: "success" }),
-      error: (title, description) => toast({ title, description, variant: "destructive" }),
+      success: (title, description) =>
+        toast({ title, description, variant: "success" }),
+      error: (title, description) =>
+        toast({ title, description, variant: "destructive" }),
     }),
     [toast],
   );
@@ -64,7 +73,9 @@ export function Toaster({ children }: { children: React.ReactNode }): React.Reac
           >
             <div className="grid gap-1">
               <ToastTitle>{t.title}</ToastTitle>
-              {t.description ? <ToastDescription>{t.description}</ToastDescription> : null}
+              {t.description ? (
+                <ToastDescription>{t.description}</ToastDescription>
+              ) : null}
             </div>
             <ToastClose />
           </Toast>

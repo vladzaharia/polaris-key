@@ -1,20 +1,41 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, mkReq as mkLicReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  makeEnv,
+  mkReq as mkLicReq,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  seedProductSecret,
+} from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/admin/index.js";
 import { handleAdminLogin } from "../src/admin/auth.js";
-import { ADMIN_COOKIE, CSRF_HEADER, issueSession, verifySession, type SessionIdentity } from "../src/admin/session.js";
-import { getActiveProductKey, getProductSecret, listAudit } from "../src/repo.js";
+import {
+  ADMIN_COOKIE,
+  CSRF_HEADER,
+  issueSession,
+  verifySession,
+  type SessionIdentity,
+} from "../src/admin/session.js";
+import {
+  getActiveProductKey,
+  getProductSecret,
+  listAudit,
+} from "../src/repo.js";
 import { loadProduct } from "../src/product.js";
 import { handleConfig, handleEnroll } from "../src/licensing.js";
 import { handleMintToken } from "../src/edgeMint.js";
 import { buildDoc, signDoc } from "../src/configDoc.js";
 import { open } from "../src/keyvault.js";
 import { verifyJws } from "@polaris-key/jws";
-import type { ManagedConfigDoc, ManagedPayload, DocProfile } from "@polaris-key/protocol";
+import type {
+  ManagedConfigDoc,
+  ManagedPayload,
+  DocProfile,
+} from "@polaris-key/protocol";
 import { getTokenRecord } from "../src/kv.js";
 import { hashKey } from "../src/crypto.js";
 
@@ -52,7 +73,10 @@ function mkReq(
     init.body = JSON.stringify(opts.body);
     headers["content-type"] = "application/json";
   }
-  return new Request(`https://key.plrs.im/admin${path}`, init) as unknown as Request;
+  return new Request(
+    `https://key.plrs.im/admin${path}`,
+    init,
+  ) as unknown as Request;
 }
 
 const dispatch = (req: Request, env: Env, db: Db, path: string) =>
@@ -71,11 +95,23 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const { cookie } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
     });
-    const res = await dispatch(mkReq("GET", "/api/me", { cookie }), env, db, "/api/me");
+    const res = await dispatch(
+      mkReq("GET", "/api/me", { cookie }),
+      env,
+      db,
+      "/api/me",
+    );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { sub: string; platformAdmin: boolean; csrf: string };
+    const body = (await res.json()) as {
+      sub: string;
+      platformAdmin: boolean;
+      csrf: string;
+    };
     expect(body.sub).toBe("u1");
     expect(body.platformAdmin).toBe(true);
     expect(typeof body.csrf).toBe("string");
@@ -85,27 +121,171 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
     // A non-platform admin (no groups) cannot create a product.
-    const weak = await sessionCookie(env, { sub: "u2", name: "Bob", email: "b@x.io", groups: [] });
+    const weak = await sessionCookie(env, {
+      sub: "u2",
+      name: "Bob",
+      email: "b@x.io",
+      groups: [],
+    });
     const denied = await dispatch(
-      mkReq("POST", "/api/products", { cookie: weak.cookie, csrf: weak.csrf, body: { slug: "acme", name: "Acme" } }),
-      env, db, "/api/products",
+      mkReq("POST", "/api/products", {
+        cookie: weak.cookie,
+        csrf: weak.csrf,
+        body: { slug: "acme", name: "Acme" },
+      }),
+      env,
+      db,
+      "/api/products",
     );
     expect(denied.status).toBe(403);
 
     // A platform admin can.
-    const strong = await sessionCookie(env, { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] });
+    const strong = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
     const created = await dispatch(
-      mkReq("POST", "/api/products", { cookie: strong.cookie, csrf: strong.csrf, body: { slug: "acme", name: "Acme" } }),
-      env, db, "/api/products",
+      mkReq("POST", "/api/products", {
+        cookie: strong.cookie,
+        csrf: strong.csrf,
+        body: { slug: "acme", name: "Acme" },
+      }),
+      env,
+      db,
+      "/api/products",
     );
     expect(created.status).toBe(201);
-    const body = (await created.json()) as { ok: boolean; product: { slug: string } };
+    const body = (await created.json()) as {
+      ok: boolean;
+      product: { slug: string };
+    };
     expect(body.product.slug).toBe("acme");
 
     // It now shows up in the list.
-    const list = await dispatch(mkReq("GET", "/api/products", { cookie: strong.cookie }), env, db, "/api/products");
+    const list = await dispatch(
+      mkReq("GET", "/api/products", { cookie: strong.cookie }),
+      env,
+      db,
+      "/api/products",
+    );
     const listed = (await list.json()) as { products: { slug: string }[] };
     expect(listed.products.map((p) => p.slug)).toContain("acme");
+  });
+
+  it("product projection includes release source and public signing key details", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      "UPDATE products SET release_source = ? WHERE slug = ?",
+      "github",
+      "djdl",
+    );
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+
+    const res = await dispatch(
+      mkReq("GET", "/api/products/djdl", { cookie }),
+      env,
+      db,
+      "/api/products/djdl",
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      product: {
+        releaseSource: string;
+        signingKid: string;
+        signingPublicKey: string | null;
+        signingKey: { kid: string; alg: string; publicKey: string } | null;
+      };
+    };
+    expect(body.product.releaseSource).toBe("github");
+    expect(body.product.signingKid).toBe("pkey-test-prod-2026");
+    expect(body.product.signingPublicKey).toBeTruthy();
+    expect(body.product.signingKey).toMatchObject({
+      kid: "pkey-test-prod-2026",
+      alg: "Ed25519",
+      publicKey: body.product.signingPublicKey,
+    });
+  });
+
+  it("product projection tolerates a missing public key row", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run("DELETE FROM product_keys WHERE product = ?", "djdl");
+    await db.run(
+      "UPDATE products SET signing_pub = NULL WHERE slug = ?",
+      "djdl",
+    );
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+
+    const res = await dispatch(
+      mkReq("GET", "/api/products", { cookie }),
+      env,
+      db,
+      "/api/products",
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      products: Array<{
+        slug: string;
+        signingPublicKey: string | null;
+        signingKey: unknown;
+      }>;
+    };
+    const djdl = body.products.find((p) => p.slug === "djdl");
+    expect(djdl).toBeDefined();
+    expect(djdl!.signingPublicKey).toBeNull();
+    expect(djdl!.signingKey).toBeNull();
+  });
+
+  it("product deletion removes sealed keys and secrets", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedProductSecret(db, "djdl", "OIDC_SECRET", "secret-value");
+    expect(
+      await db.first("SELECT * FROM product_keys WHERE product = ?", "djdl"),
+    ).not.toBeNull();
+    expect(
+      await db.first("SELECT * FROM product_secrets WHERE product = ?", "djdl"),
+    ).not.toBeNull();
+
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const res = await dispatch(
+      mkReq("DELETE", "/api/products/djdl", { cookie, csrf }),
+      env,
+      db,
+      "/api/products/djdl",
+    );
+    expect(res.status).toBe(200);
+
+    expect(
+      await db.first("SELECT * FROM products WHERE slug = ?", "djdl"),
+    ).toBeNull();
+    expect(
+      await db.first("SELECT * FROM product_keys WHERE product = ?", "djdl"),
+    ).toBeNull();
+    expect(
+      await db.first("SELECT * FROM product_secrets WHERE product = ?", "djdl"),
+    ).toBeNull();
   });
 
   it("creates a license and mints a key returned exactly once", async () => {
@@ -113,12 +293,21 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
 
     const created = await dispatch(
-      mkReq("POST", "/api/products/djdl/licenses", { cookie, csrf, body: { name: "Grace", email: "g@x.io" } }),
-      env, db, "/api/products/djdl/licenses",
+      mkReq("POST", "/api/products/djdl/licenses", {
+        cookie,
+        csrf,
+        body: { name: "Grace", email: "g@x.io" },
+      }),
+      env,
+      db,
+      "/api/products/djdl/licenses",
     );
     expect(created.status).toBe(201);
     const body = (await created.json()) as { licenseId: string; key: string };
@@ -127,7 +316,9 @@ describe("admin api", () => {
     // GET the license detail — the raw key is NOT echoed back.
     const detailRes = await dispatch(
       mkReq("GET", `/api/products/djdl/licenses/${body.licenseId}`, { cookie }),
-      env, db, `/api/products/djdl/licenses/${body.licenseId}`,
+      env,
+      db,
+      `/api/products/djdl/licenses/${body.licenseId}`,
     );
     const detail = (await detailRes.json()) as { keys: { hash: string }[] };
     expect(detail.keys.length).toBe(1);
@@ -139,11 +330,19 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const { cookie } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
     const res = await dispatch(
-      mkReq("POST", "/api/products/djdl/licenses", { cookie, body: { name: "X" } }),
-      env, db, "/api/products/djdl/licenses",
+      mkReq("POST", "/api/products/djdl/licenses", {
+        cookie,
+        body: { name: "X" },
+      }),
+      env,
+      db,
+      "/api/products/djdl/licenses",
     );
     expect(res.status).toBe(403);
   });
@@ -153,40 +352,87 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
 
     // A malformed catalog (bad schema fragment) is rejected.
     const bad = await dispatch(
       mkReq("PUT", "/api/products/djdl/schema", {
-        cookie, csrf,
-        body: { catalog: { schemaVersion: 2, entries: [{ key: "x", kind: "config", category: "c", label: "X", description: "", schema: { type: "not-a-type" } }] } },
+        cookie,
+        csrf,
+        body: {
+          catalog: {
+            schemaVersion: 2,
+            entries: [
+              {
+                key: "x",
+                kind: "config",
+                category: "c",
+                label: "X",
+                description: "",
+                schema: { type: "not-a-type" },
+              },
+            ],
+          },
+        },
       }),
-      env, db, "/api/products/djdl/schema",
+      env,
+      db,
+      "/api/products/djdl/schema",
     );
     expect(bad.status).toBe(422);
 
     // A well-formed catalog publishes.
     const good = await dispatch(
       mkReq("PUT", "/api/products/djdl/schema", {
-        cookie, csrf,
-        body: { catalog: { schemaVersion: 2, entries: [{ key: "run.concurrency", kind: "config", category: "run", label: "Concurrency", description: "", schema: { type: "integer", minimum: 1 } }] } },
+        cookie,
+        csrf,
+        body: {
+          catalog: {
+            schemaVersion: 2,
+            entries: [
+              {
+                key: "run.concurrency",
+                kind: "config",
+                category: "run",
+                label: "Concurrency",
+                description: "",
+                schema: { type: "integer", minimum: 1 },
+              },
+            ],
+          },
+        },
       }),
-      env, db, "/api/products/djdl/schema",
+      env,
+      db,
+      "/api/products/djdl/schema",
     );
     expect(good.status).toBe(200);
 
     // And an override against it is catalog-validated (bad value ⇒ 422).
     const lic = await dispatch(
-      mkReq("POST", "/api/products/djdl/licenses", { cookie, csrf, body: { name: "Z", email: "z@x.io" } }),
-      env, db, "/api/products/djdl/licenses",
+      mkReq("POST", "/api/products/djdl/licenses", {
+        cookie,
+        csrf,
+        body: { name: "Z", email: "z@x.io" },
+      }),
+      env,
+      db,
+      "/api/products/djdl/licenses",
     );
     const { licenseId } = (await lic.json()) as { licenseId: string };
     const badOverride = await dispatch(
       mkReq("PUT", `/api/products/djdl/licenses/${licenseId}/overrides`, {
-        cookie, csrf, body: { updates: [{ key: "run.concurrency", value: 0 }] },
+        cookie,
+        csrf,
+        body: { updates: [{ key: "run.concurrency", value: 0 }] },
       }),
-      env, db, `/api/products/djdl/licenses/${licenseId}/overrides`,
+      env,
+      db,
+      `/api/products/djdl/licenses/${licenseId}/overrides`,
     );
     expect(badOverride.status).toBe(422);
   });
@@ -197,22 +443,37 @@ describe("admin api", () => {
     // acme is admin-gated to a group the session lacks.
     await seedProduct(db, "djdl");
     await seedProduct(db, "acme");
-    await db.run("UPDATE products SET admin_group = ? WHERE slug = ?", DJDL_ADMIN_GROUP, "djdl");
-    await db.run("UPDATE products SET admin_group = ? WHERE slug = ?", "acme-admins", "acme");
+    await db.run(
+      "UPDATE products SET admin_group = ? WHERE slug = ?",
+      DJDL_ADMIN_GROUP,
+      "djdl",
+    );
+    await db.run(
+      "UPDATE products SET admin_group = ? WHERE slug = ?",
+      "acme-admins",
+      "acme",
+    );
 
     // A djdl-only admin (NOT platform) can read djdl but not acme.
     const { cookie } = await sessionCookie(env, {
-      sub: "u3", name: "Cy", email: "c@x.io", groups: [DJDL_ADMIN_GROUP],
+      sub: "u3",
+      name: "Cy",
+      email: "c@x.io",
+      groups: [DJDL_ADMIN_GROUP],
     });
     const okHere = await dispatch(
       mkReq("GET", "/api/products/djdl/licenses", { cookie }),
-      env, db, "/api/products/djdl/licenses",
+      env,
+      db,
+      "/api/products/djdl/licenses",
     );
     expect(okHere.status).toBe(200);
 
     const deniedThere = await dispatch(
       mkReq("GET", "/api/products/acme/licenses", { cookie }),
-      env, db, "/api/products/acme/licenses",
+      env,
+      db,
+      "/api/products/acme/licenses",
     );
     expect(deniedThere.status).toBe(403);
   });
@@ -227,8 +488,14 @@ describe("admin api", () => {
 
     // Enroll a device so a token record lands in KV.
     const enrollRes = await handleEnroll(
-      mkLicReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-      env, db, product, NOW,
+      mkLicReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     const { token } = (await enrollRes.json()) as { token: string };
     const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
@@ -236,11 +503,19 @@ describe("admin api", () => {
 
     // Disable the license via the admin API.
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
     const disabled = await dispatch(
-      mkReq("POST", `/api/products/djdl/licenses/${licenseId}/disable`, { cookie, csrf }),
-      env, db, `/api/products/djdl/licenses/${licenseId}/disable`,
+      mkReq("POST", `/api/products/djdl/licenses/${licenseId}/disable`, {
+        cookie,
+        csrf,
+      }),
+      env,
+      db,
+      `/api/products/djdl/licenses/${licenseId}/disable`,
     );
     expect(disabled.status).toBe(200);
 
@@ -253,16 +528,29 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), ["djdl", "acme"]);
     await seedProduct(db, "djdl");
     await seedProduct(db, "acme");
-    await db.run("UPDATE products SET admin_group = ? WHERE slug = ?", DJDL_ADMIN_GROUP, "djdl");
-    await db.run("UPDATE products SET admin_group = ? WHERE slug = ?", "acme-admins", "acme");
+    await db.run(
+      "UPDATE products SET admin_group = ? WHERE slug = ?",
+      DJDL_ADMIN_GROUP,
+      "djdl",
+    );
+    await db.run(
+      "UPDATE products SET admin_group = ? WHERE slug = ?",
+      "acme-admins",
+      "acme",
+    );
 
     // A djdl-only admin (NOT platform) reaches for product acme.
     const { cookie } = await sessionCookie(env, {
-      sub: "u3", name: "Cy", email: "c@x.io", groups: [DJDL_ADMIN_GROUP],
+      sub: "u3",
+      name: "Cy",
+      email: "c@x.io",
+      groups: [DJDL_ADMIN_GROUP],
     });
     const denied = await dispatch(
       mkReq("GET", "/api/products/acme/licenses", { cookie }),
-      env, db, "/api/products/acme/licenses",
+      env,
+      db,
+      "/api/products/acme/licenses",
     );
     expect(denied.status).toBe(403);
 
@@ -279,11 +567,20 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
     });
     await dispatch(
-      mkReq("POST", "/api/products/djdl/licenses", { cookie, csrf, body: { name: "Grace", email: "g@x.io" } }),
-      env, db, "/api/products/djdl/licenses",
+      mkReq("POST", "/api/products/djdl/licenses", {
+        cookie,
+        csrf,
+        body: { name: "Grace", email: "g@x.io" },
+      }),
+      env,
+      db,
+      "/api/products/djdl/licenses",
     );
     const rows = await listAudit(db, "djdl", {});
     expect(rows.length).toBeGreaterThan(0);
@@ -297,7 +594,11 @@ describe("admin api", () => {
     // Remove the secret — the worker must NOT fall back to a guessable signing key.
     delete (env as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
     await expect(
-      issueSession(env, { sub: "u1", name: "Ada", email: "a@x.io", groups: [] }, NOW),
+      issueSession(
+        env,
+        { sub: "u1", name: "Ada", email: "a@x.io", groups: [] },
+        NOW,
+      ),
     ).rejects.toThrow("ADMIN_SESSION_SECRET is required");
     // Verification of any token must also throw (so no request can authenticate).
     await expect(verifySession(env, "forged.token", NOW)).rejects.toThrow(
@@ -309,21 +610,41 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
 
     const schema = {
       schemaVersion: 1,
       entries: [
-        { key: "run.concurrency", kind: "config", category: "run", label: "Concurrency", description: "", schema: { type: "integer", minimum: 1 } },
+        {
+          key: "run.concurrency",
+          kind: "config",
+          category: "run",
+          label: "Concurrency",
+          description: "",
+          schema: { type: "integer", minimum: 1 },
+        },
       ],
     };
     const created = await dispatch(
-      mkReq("POST", "/api/products", { cookie, csrf, body: { slug: "manualco", name: "Manual Co", schema } }),
-      env, db, "/api/products",
+      mkReq("POST", "/api/products", {
+        cookie,
+        csrf,
+        body: { slug: "manualco", name: "Manual Co", schema },
+      }),
+      env,
+      db,
+      "/api/products",
     );
     expect(created.status).toBe(201);
-    const body = (await created.json()) as { ok: boolean; slug: string; kid: string };
+    const body = (await created.json()) as {
+      ok: boolean;
+      slug: string;
+      kid: string;
+    };
     expect(body.slug).toBe("manualco");
     expect(typeof body.kid).toBe("string");
 
@@ -335,19 +656,38 @@ describe("admin api", () => {
     // The schema it uploaded is the active catalog.
     const schemaRes = await dispatch(
       mkReq("GET", "/api/products/manualco/schema", { cookie }),
-      env, db, "/api/products/manualco/schema",
+      env,
+      db,
+      "/api/products/manualco/schema",
     );
-    expect((await schemaRes.text())).toContain("run.concurrency");
+    expect(await schemaRes.text()).toContain("run.concurrency");
 
     // /config signs: a doc signed under the product key verifies against its published pub.
-    const profile: DocProfile = { name: "Ada", firstName: "Ada", email: "a@x.io", enrolledAt: NOW };
-    const payload: ManagedPayload = { config: {}, secrets: {}, entitlements: {} };
+    const profile: DocProfile = {
+      name: "Ada",
+      firstName: "Ada",
+      email: "a@x.io",
+      enrolledAt: NOW,
+    };
+    const payload: ManagedPayload = {
+      config: {},
+      secrets: {},
+      entitlements: {},
+    };
     const doc = buildDoc({
-      schemaVersion: product!.schemaVersion, aud: "manualco", licenseId: "lic_1", deviceId: "dev-1",
-      now: NOW, maxOfflineDays: 30, profile, payload,
+      schemaVersion: product!.schemaVersion,
+      aud: "manualco",
+      licenseId: "lic_1",
+      deviceId: "dev-1",
+      now: NOW,
+      maxOfflineDays: 30,
+      profile,
+      payload,
     });
     const jws = await signDoc(doc, product!.signingKeyPem, product!.signingKid);
-    const verified = await verifyJws<ManagedConfigDoc>(jws, { [product!.signingKid]: product!.signingPub! });
+    const verified = await verifyJws<ManagedConfigDoc>(jws, {
+      [product!.signingKid]: product!.signingPub!,
+    });
     expect(verified).not.toBeNull();
     expect(verified!.payload.aud).toBe("manualco");
   });
@@ -361,19 +701,29 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
 
     const created = await dispatch(
-      mkReq("POST", "/api/products", { cookie, csrf, body: { slug: "atomicco", name: "Atomic Co" } }),
-      env, db, "/api/products",
+      mkReq("POST", "/api/products", {
+        cookie,
+        csrf,
+        body: { slug: "atomicco", name: "Atomic Co" },
+      }),
+      env,
+      db,
+      "/api/products",
     );
     expect(created.status).toBe(201);
     const { kid } = (await created.json()) as { kid: string };
 
     // 1) The products row exists.
     const productRow = await db.first<{ slug: string; signing_pub: string }>(
-      "SELECT * FROM products WHERE slug = ?", "atomicco",
+      "SELECT * FROM products WHERE slug = ?",
+      "atomicco",
     );
     expect(productRow).not.toBeNull();
 
@@ -391,17 +741,31 @@ describe("admin api", () => {
     expect(product.signingKeyPem).toContain("BEGIN PRIVATE KEY");
     const { key } = await seedLicenseWithKey(db, "atomicco");
     const enrollRes = await handleEnroll(
-      mkLicReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-      env, db, product, NOW,
+      mkLicReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     expect(enrollRes.status).toBe(200);
     const { token } = (await enrollRes.json()) as { token: string };
     const cfgRes = await handleConfig(
-      mkLicReq("GET", { authorization: `Bearer ${token}`, "x-pkey-version": "1.0.0" }),
-      env, db, product, NOW,
+      mkLicReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-version": "1.0.0",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     expect(cfgRes.status).toBe(200);
-    const verified = await verifyJws<ManagedConfigDoc>(await cfgRes.text(), { [product.signingKid]: product.signingPub! });
+    const verified = await verifyJws<ManagedConfigDoc>(await cfgRes.text(), {
+      [product.signingKid]: product.signingPub!,
+    });
     expect(verified).not.toBeNull();
     expect(verified!.payload.aud).toBe("atomicco");
   });
@@ -411,12 +775,21 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
 
     const res = await dispatch(
-      mkReq("PUT", "/api/products/djdl/secrets/OIDC_SECRET", { cookie, csrf, body: { value: "super-secret-value" } }),
-      env, db, "/api/products/djdl/secrets/OIDC_SECRET",
+      mkReq("PUT", "/api/products/djdl/secrets/OIDC_SECRET", {
+        cookie,
+        csrf,
+        body: { value: "super-secret-value" },
+      }),
+      env,
+      db,
+      "/api/products/djdl/secrets/OIDC_SECRET",
     );
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -436,16 +809,25 @@ describe("admin api", () => {
     await seedProduct(db, "djdl");
     const before = await getActiveProductKey(db, "djdl");
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
 
     const res = await dispatch(
       mkReq("POST", "/api/products/djdl/keys/rotate", { cookie, csrf }),
-      env, db, "/api/products/djdl/keys/rotate",
+      env,
+      db,
+      "/api/products/djdl/keys/rotate",
     );
     expect(res.status).toBe(200);
     const text = await res.text();
-    const body = JSON.parse(text) as { ok: boolean; kid: string; publicKey: string };
+    const body = JSON.parse(text) as {
+      ok: boolean;
+      kid: string;
+      publicKey: string;
+    };
     expect(body.kid).not.toBe(before!.kid);
     // The response never leaks private key material.
     expect(text).not.toContain("BEGIN PRIVATE KEY");
@@ -454,7 +836,9 @@ describe("admin api", () => {
     const after = await getActiveProductKey(db, "djdl");
     expect(after!.kid).toBe(body.kid);
     const old = await db.first<{ status: string }>(
-      "SELECT * FROM product_keys WHERE product = ? AND kid = ?", "djdl", before!.kid,
+      "SELECT * FROM product_keys WHERE product = ? AND kid = ?",
+      "djdl",
+      before!.kid,
     );
     expect(old?.status).toBe("retired");
     // loadProduct now signs under the rotated key.
@@ -466,11 +850,20 @@ describe("admin api", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);
     const { cookie, csrf } = await sessionCookie(env, {
-      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
     });
     await dispatch(
-      mkReq("POST", "/api/products", { cookie, csrf, body: { slug: "manualco", name: "Manual Co" } }),
-      env, db, "/api/products",
+      mkReq("POST", "/api/products", {
+        cookie,
+        csrf,
+        body: { slug: "manualco", name: "Manual Co" },
+      }),
+      env,
+      db,
+      "/api/products",
     );
     const product = (await loadProduct(env, db, "manualco"))!;
     expect(product).not.toBeNull();
@@ -479,19 +872,32 @@ describe("admin api", () => {
     // attempt to mint — there is no edge_mint_config recipe, so the route 404s.
     const { key } = await seedLicenseWithKey(db, "manualco");
     const enrollRes = await handleEnroll(
-      mkLicReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
-      env, db, product, NOW,
+      mkLicReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
     );
     const { token } = (await enrollRes.json()) as { token: string };
 
     const mintRes = await handleMintToken(
       mkLicReq("POST", { authorization: `Bearer ${token}` }),
-      env, db, product, "applemusic", NOW,
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
     );
     expect(mintRes.status).toBe(404);
 
     // And it has no release_config row either.
-    const rel = await db.first("SELECT * FROM release_config WHERE product = ?", "manualco");
+    const rel = await db.first(
+      "SELECT * FROM release_config WHERE product = ?",
+      "manualco",
+    );
     expect(rel).toBeNull();
   });
 

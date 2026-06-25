@@ -64,7 +64,13 @@ export function DataTable<T>({
     if (!query.trim()) return rows;
     const q = query.trim().toLowerCase();
     const accessors = columns.filter((c) => c.accessor).map((c) => c.accessor!);
-    return rows.filter((row) => accessors.some((acc) => String(acc(row) ?? "").toLowerCase().includes(q)));
+    return rows.filter((row) =>
+      accessors.some((acc) =>
+        String(acc(row) ?? "")
+          .toLowerCase()
+          .includes(q),
+      ),
+    );
   }, [rows, columns, query]);
 
   const sorted = React.useMemo(() => {
@@ -78,7 +84,11 @@ export function DataTable<T>({
 
   const toggleSort = (id: string): void =>
     setSort((prev) =>
-      prev?.id !== id ? { id, dir: "asc" } : prev.dir === "asc" ? { id, dir: "desc" } : null,
+      prev?.id !== id
+        ? { id, dir: "asc" }
+        : prev.dir === "asc"
+          ? { id, dir: "desc" }
+          : null,
     );
 
   return (
@@ -107,8 +117,17 @@ export function DataTable<T>({
                   <th
                     key={col.id}
                     scope="col"
-                    aria-sort={isSorted ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
-                    className={cn("h-10 px-3 text-left align-middle font-medium text-muted-foreground", col.headerClassName)}
+                    aria-sort={
+                      isSorted
+                        ? sort.dir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : undefined
+                    }
+                    className={cn(
+                      "h-10 px-3 text-left align-middle font-medium text-muted-foreground",
+                      col.headerClassName,
+                    )}
                   >
                     {canSort ? (
                       <button
@@ -138,7 +157,10 @@ export function DataTable<T>({
           <tbody>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <tr key={`sk-${i}`} className="border-b border-border last:border-0">
+                <tr
+                  key={`sk-${i}`}
+                  className="border-b border-border last:border-0"
+                >
                   {columns.map((col) => (
                     <td key={col.id} className="px-3 py-3">
                       <Skeleton className="h-4 w-24" />
@@ -149,7 +171,12 @@ export function DataTable<T>({
             ) : sorted.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="p-0">
-                  {empty ?? <EmptyState title="No results" className="rounded-none border-0" />}
+                  {empty ?? (
+                    <EmptyState
+                      title="No results"
+                      className="rounded-none border-0"
+                    />
+                  )}
                 </td>
               </tr>
             ) : (
@@ -163,7 +190,10 @@ export function DataTable<T>({
                   )}
                 >
                   {columns.map((col) => (
-                    <td key={col.id} className={cn("px-3 py-2.5 align-middle", col.className)}>
+                    <td
+                      key={col.id}
+                      className={cn("px-3 py-2.5 align-middle", col.className)}
+                    >
                       {col.cell(row)}
                     </td>
                   ))}
@@ -213,19 +243,24 @@ export function useKeysetPagination<T>(
   const fetchRef = React.useRef(fetchPage);
   fetchRef.current = fetchPage;
 
-  const load = React.useCallback((next: KeysetCursor | null, append: boolean) => {
-    setLoading(true);
-    setError(null);
-    fetchRef
-      .current(next)
-      .then((page) => {
-        setItems((prev) => (append ? [...prev, ...page.items] : page.items));
-        setCursor(page.nextCursor);
-        setHasMore(page.nextCursor != null);
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Request failed."))
-      .finally(() => setLoading(false));
-  }, []);
+  const load = React.useCallback(
+    (next: KeysetCursor | null, append: boolean) => {
+      setLoading(true);
+      setError(null);
+      fetchRef
+        .current(next)
+        .then((page) => {
+          setItems((prev) => (append ? [...prev, ...page.items] : page.items));
+          setCursor(page.nextCursor);
+          setHasMore(page.nextCursor != null);
+        })
+        .catch((e: unknown) =>
+          setError(e instanceof Error ? e.message : "Request failed."),
+        )
+        .finally(() => setLoading(false));
+    },
+    [],
+  );
 
   const reset = React.useCallback(() => {
     setItems([]);

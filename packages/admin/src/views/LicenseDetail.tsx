@@ -16,7 +16,13 @@ import {
   TabsTrigger,
   useToast,
 } from "../components/ui/index.js";
-import { ChannelList, formatDate, formatStamp, LicenseStatusBadge, MetaItem } from "./licenses/shared.js";
+import {
+  ChannelList,
+  formatDate,
+  formatStamp,
+  LicenseStatusBadge,
+  MetaItem,
+} from "./licenses/shared.js";
 import { EditMetadataDialog } from "./licenses/EditMetadataDialog.js";
 import { PolicySection } from "./licenses/PolicySection.js";
 import { KeysSection } from "./licenses/KeysSection.js";
@@ -29,11 +35,24 @@ import { OverridesEditor } from "./licenses/OverridesEditor.js";
  * status + enable/disable toggle + metadata edit; the body is tabbed into policy, keys, devices,
  * and overrides. Every mutation toasts and invalidates the license cache key so the view refreshes.
  */
-export function LicenseDetail({ slug, id }: { slug: string; id: string }): React.ReactElement {
+export function LicenseDetail({
+  slug,
+  id,
+}: {
+  slug: string;
+  id: string;
+}): React.ReactElement {
   const toast = useToast();
   const licenseKey = `license:${slug}:${id}`;
-  const { data: license, loading, error, reload } = useResource(licenseKey, () => api.license(slug, id));
-  const { data: catalog } = useResource(`schema:${slug}`, () => api.schema(slug));
+  const {
+    data: license,
+    loading,
+    error,
+    reload,
+  } = useResource(licenseKey, () => api.license(slug, id));
+  const { data: catalog } = useResource(`schema:${slug}`, () =>
+    api.schema(slug),
+  );
 
   const [editOpen, setEditOpen] = React.useState(false);
   const [confirmEnable, setConfirmEnable] = React.useState(false);
@@ -56,7 +75,10 @@ export function LicenseDetail({ slug, id }: { slug: string; id: string }): React
       refresh();
       setConfirmEnable(false);
     } catch (err) {
-      toast.error("Could not change status", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Could not change status",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setToggling(false);
     }
@@ -67,10 +89,16 @@ export function LicenseDetail({ slug, id }: { slug: string; id: string }): React
     setSavingOverrides(true);
     try {
       await api.putLicenseOverrides(slug, id, updates);
-      toast.success("Overrides saved", `${updates.length} change${updates.length === 1 ? "" : "s"} applied.`);
+      toast.success(
+        "Overrides saved",
+        `${updates.length} change${updates.length === 1 ? "" : "s"} applied.`,
+      );
       refresh();
     } catch (err) {
-      toast.error("Could not save overrides", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Could not save overrides",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setSavingOverrides(false);
     }
@@ -116,18 +144,28 @@ export function LicenseDetail({ slug, id }: { slug: string; id: string }): React
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold tracking-tight">{license.name || "Unnamed license"}</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {license.name || "Unnamed license"}
+            </h2>
             <LicenseStatusBadge status={license.status} />
-            <Badge variant={license.identityProvider === "oidc" ? "primary" : "default"}>
+            <Badge
+              variant={
+                license.identityProvider === "oidc" ? "primary" : "default"
+              }
+            >
               {license.identityProvider}
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">{license.email}</p>
-          <p className="font-mono text-xs text-muted-foreground">{license.id}</p>
+          <p className="font-mono text-xs text-muted-foreground">
+            {license.id}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">{isActive ? "Enabled" : "Disabled"}</span>
+            <span className="text-muted-foreground">
+              {isActive ? "Enabled" : "Disabled"}
+            </span>
             <Switch
               checked={isActive}
               disabled={toggling}
@@ -143,11 +181,15 @@ export function LicenseDetail({ slug, id }: { slug: string; id: string }): React
       </header>
 
       <dl className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-card p-5 sm:grid-cols-3 lg:grid-cols-4">
-        <MetaItem label="Tier">{license.tier ? <Badge variant="outline">{license.tier}</Badge> : "—"}</MetaItem>
+        <MetaItem label="Tier">
+          {license.tier ? <Badge variant="outline">{license.tier}</Badge> : "—"}
+        </MetaItem>
         <MetaItem label="Profile">{license.profile || "—"}</MetaItem>
         <MetaItem label="Enrolled">{formatStamp(license.enrolledAt)}</MetaItem>
         <MetaItem label="Expires">{formatDate(license.expiresAt)}</MetaItem>
-        <MetaItem label="Max offline days">{license.maxOfflineDays ?? "—"}</MetaItem>
+        <MetaItem label="Max offline days">
+          {license.maxOfflineDays ?? "—"}
+        </MetaItem>
         <MetaItem label="Active keys">
           <span className="tabular-nums">
             {license.activeKeyCount} / {license.keyCount}
@@ -165,7 +207,9 @@ export function LicenseDetail({ slug, id }: { slug: string; id: string }): React
         <TabsList>
           <TabsTrigger value="policy">Policy</TabsTrigger>
           <TabsTrigger value="keys">Keys ({license.keys.length})</TabsTrigger>
-          <TabsTrigger value="devices">Devices ({license.machines.length})</TabsTrigger>
+          <TabsTrigger value="devices">
+            Devices ({license.machines.length})
+          </TabsTrigger>
           <TabsTrigger value="overrides">Overrides</TabsTrigger>
         </TabsList>
 
@@ -174,11 +218,21 @@ export function LicenseDetail({ slug, id }: { slug: string; id: string }): React
         </TabsContent>
 
         <TabsContent value="keys">
-          <KeysSection slug={slug} id={id} keys={license.keys} onChanged={refresh} />
+          <KeysSection
+            slug={slug}
+            id={id}
+            keys={license.keys}
+            onChanged={refresh}
+          />
         </TabsContent>
 
         <TabsContent value="devices">
-          <DevicesSection slug={slug} id={id} devices={license.machines} onChanged={refresh} />
+          <DevicesSection
+            slug={slug}
+            id={id}
+            devices={license.machines}
+            onChanged={refresh}
+          />
         </TabsContent>
 
         <TabsContent value="overrides">
@@ -195,7 +249,13 @@ export function LicenseDetail({ slug, id }: { slug: string; id: string }): React
         </TabsContent>
       </Tabs>
 
-      <EditMetadataDialog slug={slug} license={license} open={editOpen} onOpenChange={setEditOpen} onSaved={refresh} />
+      <EditMetadataDialog
+        slug={slug}
+        license={license}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={refresh}
+      />
 
       <ConfirmDialog
         open={confirmEnable}

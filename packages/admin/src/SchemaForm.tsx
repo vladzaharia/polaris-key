@@ -40,7 +40,10 @@ function coerce(schema: Record<string, unknown>, raw: string): unknown {
 }
 
 /** Local validation mirroring the Draft-07 subset the catalog uses. */
-export function validate(schema: Record<string, unknown>, value: unknown): string | null {
+export function validate(
+  schema: Record<string, unknown>,
+  value: unknown,
+): string | null {
   const type = schema.type as string | undefined;
   if (value === undefined || value === "") {
     return null; // empty ⇒ "no override"
@@ -49,16 +52,25 @@ export function validate(schema: Record<string, unknown>, value: unknown): strin
     const n = Number(value);
     if (Number.isNaN(n)) return "must be a number";
     if (type === "integer" && !Number.isInteger(n)) return "must be an integer";
-    if (typeof schema.minimum === "number" && n < schema.minimum) return `must be ≥ ${schema.minimum}`;
-    if (typeof schema.maximum === "number" && n > schema.maximum) return `must be ≤ ${schema.maximum}`;
+    if (typeof schema.minimum === "number" && n < schema.minimum)
+      return `must be ≥ ${schema.minimum}`;
+    if (typeof schema.maximum === "number" && n > schema.maximum)
+      return `must be ≤ ${schema.maximum}`;
   }
   if (type === "string") {
     const s = String(value);
-    if (typeof schema.minLength === "number" && s.length < schema.minLength) return `min length ${schema.minLength}`;
-    if (typeof schema.maxLength === "number" && s.length > schema.maxLength) return `max length ${schema.maxLength}`;
-    if (typeof schema.pattern === "string" && !new RegExp(schema.pattern).test(s)) return "does not match pattern";
+    if (typeof schema.minLength === "number" && s.length < schema.minLength)
+      return `min length ${schema.minLength}`;
+    if (typeof schema.maxLength === "number" && s.length > schema.maxLength)
+      return `max length ${schema.maxLength}`;
+    if (
+      typeof schema.pattern === "string" &&
+      !new RegExp(schema.pattern).test(s)
+    )
+      return "does not match pattern";
   }
-  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return "not an allowed value";
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value))
+    return "not an allowed value";
   return null;
 }
 
@@ -94,12 +106,18 @@ export function SchemaField({
         aria-label={entry.label}
         checked={value === true}
         disabled={disabled}
-        onCheckedChange={(checked) => onChange({ value: checked === true, valid: true })}
+        onCheckedChange={(checked) =>
+          onChange({ value: checked === true, valid: true })
+        }
       />
     );
   } else if (Array.isArray(schema.enum)) {
     control = (
-      <Select value={value == null ? "" : String(value)} disabled={disabled} onValueChange={(v) => emit(v)}>
+      <Select
+        value={value == null ? "" : String(value)}
+        disabled={disabled}
+        onValueChange={(v) => emit(v)}
+      >
         <SelectTrigger aria-label={entry.label}>
           <SelectValue placeholder="—" />
         </SelectTrigger>
@@ -142,7 +160,11 @@ export function SchemaField({
       label={entry.label}
       help={entry.description || undefined}
       error={error ?? undefined}
-      labelAside={<Badge variant={KIND_VARIANT[entry.kind] ?? "default"}>{entry.kind}</Badge>}
+      labelAside={
+        <Badge variant={KIND_VARIANT[entry.kind] ?? "default"}>
+          {entry.kind}
+        </Badge>
+      }
     >
       {control}
     </Field>
@@ -155,7 +177,10 @@ const STATES: { value: ManagementState; label: string }[] = [
   { value: "hidden", label: "Hidden (enforced + withheld)" },
 ];
 
-const STATE_VARIANT: Record<ManagementState, "default" | "primary" | "warning"> = {
+const STATE_VARIANT: Record<
+  ManagementState,
+  "default" | "primary" | "warning"
+> = {
   default: "default",
   enforced: "primary",
   hidden: "warning",
@@ -197,7 +222,10 @@ export function ManagedField({
       <SchemaField entry={entry} value={value} onChange={onValueChange} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Field label="Management state" className="min-w-48 flex-1">
-          <Select value={state} onValueChange={(v) => onStateChange(v as ManagementState)}>
+          <Select
+            value={state}
+            onValueChange={(v) => onStateChange(v as ManagementState)}
+          >
             <SelectTrigger aria-label={`Management state for ${entry.label}`}>
               <SelectValue />
             </SelectTrigger>
@@ -212,7 +240,11 @@ export function ManagedField({
         </Field>
         <div className="flex flex-col items-end gap-1 self-end pb-1">
           <Badge variant={STATE_VARIANT[state]}>{state}</Badge>
-          {stamp ? <span className="text-xs text-muted-foreground">Updated {stamp}</span> : null}
+          {stamp ? (
+            <span className="text-xs text-muted-foreground">
+              Updated {stamp}
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

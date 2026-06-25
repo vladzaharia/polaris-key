@@ -15,7 +15,11 @@
 
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import { handleAdminLogin, handleAdminCallback, type IdTokenVerifier } from "./auth.js";
+import {
+  handleAdminLogin,
+  handleAdminCallback,
+  type IdTokenVerifier,
+} from "./auth.js";
 import { handleAdminApi } from "./api.js";
 
 export { handleAdminApi } from "./api.js";
@@ -32,7 +36,13 @@ export { ADMIN_COOKIE, CSRF_HEADER } from "./session.js";
 function spaShell(): Response {
   return new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key — Admin</title></head><body><div id="root"></div><script type="module" src="/admin/assets/main.js"></script></body></html>`,
-    { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } },
+    {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    },
   );
 }
 
@@ -50,10 +60,12 @@ export async function handleAdmin(
 ): Promise<Response> {
   const now = opts.now ?? Math.floor(Date.now() / 1000);
   const verifier = opts.verifier;
-  const clean = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+  const clean =
+    path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
   if (clean === "/login") return handleAdminLogin(req, env);
-  if (clean === "/callback") return handleAdminCallback(req, env, db, now, verifier);
+  if (clean === "/callback")
+    return handleAdminCallback(req, env, db, now, verifier);
   if (clean === "/api" || clean.startsWith("/api/")) {
     return handleAdminApi(req, env, db, clean, now);
   }

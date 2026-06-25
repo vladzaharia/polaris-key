@@ -70,7 +70,8 @@ export function SecretDialog({
         <DialogHeader>
           <DialogTitle>Set a secret for “{product.slug}”</DialogTitle>
           <DialogDescription>
-            Secret values are write-only — they are stored encrypted and never read back.
+            Secret values are write-only — they are stored encrypted and never
+            read back.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -80,7 +81,11 @@ export function SecretDialog({
             void submit();
           }}
         >
-          <Field label="Secret name" required help="e.g. GITHUB_APP_PRIVATE_KEY.">
+          <Field
+            label="Secret name"
+            required
+            help="e.g. GITHUB_APP_PRIVATE_KEY."
+          >
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -89,7 +94,11 @@ export function SecretDialog({
               spellCheck={false}
             />
           </Field>
-          <Field label="Secret value" required help="Written once; the value is not echoed back.">
+          <Field
+            label="Secret value"
+            required
+            help="Written once; the value is not echoed back."
+          >
             <Input
               type="password"
               value={value}
@@ -106,7 +115,12 @@ export function SecretDialog({
           ) : null}
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={busy}
+            >
               Cancel
             </Button>
             <Button type="submit" loading={busy}>

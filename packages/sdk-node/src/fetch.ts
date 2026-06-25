@@ -29,7 +29,9 @@ export interface FetchOptions {
   signal?: AbortSignal;
 }
 
-export async function fetchManagedConfig(opts: FetchOptions): Promise<FetchResult> {
+export async function fetchManagedConfig(
+  opts: FetchOptions,
+): Promise<FetchResult> {
   const f = opts.fetchImpl ?? fetch;
   const headers: Record<string, string> = {
     authorization: `Bearer ${opts.token}`,
@@ -53,21 +55,36 @@ export async function fetchManagedConfig(opts: FetchOptions): Promise<FetchResul
     case 401:
       return { kind: "unauthorized" };
     case 429: {
-      const body = (await res.json().catch(() => ({}))) as { limit?: number; machineCount?: number };
-      return { kind: "device-cap", limit: body.limit, machineCount: body.machineCount };
+      const body = (await res.json().catch(() => ({}))) as {
+        limit?: number;
+        machineCount?: number;
+      };
+      return {
+        kind: "device-cap",
+        limit: body.limit,
+        machineCount: body.machineCount,
+      };
     }
     case 403: {
       const body = (await res.json().catch(() => ({}))) as {
         reason?: BlockReason;
         allowedRange?: AllowedRange;
       };
-      return { kind: "blocked", reason: body.reason ?? "version-too-old", allowedRange: body.allowedRange };
+      return {
+        kind: "blocked",
+        reason: body.reason ?? "version-too-old",
+        allowedRange: body.allowedRange,
+      };
     }
     case 200: {
       const jws = await res.text();
       return { kind: "ok", jws, etag: res.headers.get("etag") };
     }
     default:
-      return { kind: "error", status: res.status, message: await res.text().catch(() => "") };
+      return {
+        kind: "error",
+        status: res.status,
+        message: await res.text().catch(() => ""),
+      };
   }
 }

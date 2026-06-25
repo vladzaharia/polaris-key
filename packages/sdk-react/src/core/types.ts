@@ -2,7 +2,12 @@
 // and desktop adapters — this is what makes the hooks return the same shapes regardless
 // of transport (mode-parity). The adapters differ only in HOW they fill a `PolarisState`.
 
-import type { DocProfile, JSONValue, LicenseStatus, ManagedEntry } from "@polaris-key/protocol";
+import type {
+  DocProfile,
+  JSONValue,
+  LicenseStatus,
+  ManagedEntry,
+} from "@polaris-key/protocol";
 import type { LicenseState } from "./gateModel.js";
 
 export type { LicenseState } from "./gateModel.js";
@@ -30,7 +35,12 @@ export type PolarisErrorCode =
  *  server-locked; `local` is a client `localOverrides` win; `remote-default` is the doc's
  *  `default` value untouched by any override; `fallback` means the key was absent entirely.
  *  (Environment-variable layering is a node/python/swift concern and never appears here.) */
-export type ConfigSource = "enforced" | "hidden" | "local" | "remote-default" | "fallback";
+export type ConfigSource =
+  | "enforced"
+  | "hidden"
+  | "local"
+  | "remote-default"
+  | "fallback";
 
 /** One user-facing config row for a settings UI: `hidden` keys are excluded entirely, and
  *  `enforced` flags whether the row should render read-only (server value wins). */

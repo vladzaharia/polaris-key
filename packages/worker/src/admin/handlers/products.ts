@@ -35,19 +35,30 @@ import { resyncRepo } from "../../release/resync.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
-import { adminJson, err, forbidden, notFound, readBody } from "../lib/respond.js";
+import {
+  adminJson,
+  err,
+  forbidden,
+  notFound,
+  readBody,
+} from "../lib/respond.js";
 import { productView } from "../lib/shape.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
  *  an error message. Reuses the catalog compiler so manual schema is validated like a publish. */
-function compileSchema(input: unknown): { ok: true; catalog: Catalog } | { ok: false; message: string } {
+function compileSchema(
+  input: unknown,
+): { ok: true; catalog: Catalog } | { ok: false; message: string } {
   let parsed: unknown = input;
   if (typeof input === "string") {
     try {
       parsed = JSON.parse(input);
     } catch {
       // Not JSON — fall back to YAML, mirroring the manifest parser's per-file detection.
-      return { ok: false, message: "schema must be valid JSON (YAML supported via link-repo)" };
+      return {
+        ok: false,
+        message: "schema must be valid JSON (YAML supported via link-repo)",
+      };
     }
   }
   try {
@@ -55,7 +66,10 @@ function compileSchema(input: unknown): { ok: true; catalog: Catalog } | { ok: f
     catalog.compileAll();
     return { ok: true, catalog };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : "invalid catalog" };
+    return {
+      ok: false,
+      message: e instanceof Error ? e.message : "invalid catalog",
+    };
   }
 }
 
@@ -70,21 +84,55 @@ export async function handleProducts(
   segments: string[],
   now: number,
 ): Promise<Response> {
-  if (!isPlatformAdmin(env, session)) return forbidden("platform admin required");
+  if (!isPlatformAdmin(env, session))
+    return forbidden("platform admin required");
 
   // /api/products/link-repo — special-cased before treating the segment as a slug.
   if (segments.length === 1 && segments[0] === "link-repo") {
-    if (req.method !== "POST") return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (req.method !== "POST")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
     const body = await readBody(req);
     const repoUrl = String(body.repoUrl ?? "").trim();
-    if (!repoUrl) return err(422, ErrorCode.BadRequest, "repoUrl is required", { fields: ["repoUrl"] });
+    if (!repoUrl)
+      return err(422, ErrorCode.BadRequest, "repoUrl is required", {
+        fields: ["repoUrl"],
+      });
     const result = await linkRepo(env, db, repoUrl, now);
     if (!result.ok) {
-      return err(422, ErrorCode.BadRequest, result.error, result.errors ? { errors: result.errors } : undefined);
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        result.error,
+        result.errors ? { errors: result.errors } : undefined,
+      );
     }
-    await audit(db, result.slug, session, now, "product.link", { kind: "product", id: result.slug }, `Linked repo for product ${result.slug}`);
+    await audit(
+      db,
+      result.slug,
+      session,
+      now,
+      "product.link",
+      { kind: "product", id: result.slug },
+      `Linked repo for product ${result.slug}`,
+    );
     return adminJson(
-      { ok: true, slug: result.slug, kid: result.kid, install: result.install, remainingSecrets: result.remainingSecrets },
+      {
+        ok: true,
+        slug: result.slug,
+        kid: result.kid,
+        publicKey: result.publicKey,
+        trustKey: result.publicKey,
+        trustKeys: result.trustKeys,
+        signing: {
+          kid: result.kid,
+          alg: "Ed25519",
+          publicKey: result.publicKey,
+          jwksUrl: `/${result.slug}/.well-known/jwks.json`,
+          trustKeys: result.trustKeys,
+        },
+        install: result.install,
+        remainingSecrets: result.remainingSecrets,
+      },
       201,
     );
   }
@@ -93,7 +141,9 @@ export async function handleProducts(
   if (segments.length === 0) {
     if (req.method === "GET") {
       const rows = await listProducts(db);
-      return adminJson({ products: rows.map(productView) });
+      return adminJson({
+        products: await Promise.all(rows.map((row) => productView(db, row))),
+      });
     }
     if (req.method === "POST") return manualCreate(req, env, db, session, now);
     return err(405, ErrorCode.BadRequest, "method not allowed");
@@ -103,7 +153,8 @@ export async function handleProducts(
   const slug = segments[0]!;
   const row = await getProduct(db, slug);
   if (!row) return notFound();
-  if (req.method === "GET") return adminJson({ product: productView(row) });
+  if (req.method === "GET")
+    return adminJson({ product: await productView(db, row) });
   if (req.method === "PATCH") {
     const body = await readBody(req);
     await updateProduct(
@@ -111,22 +162,45 @@ export async function handleProducts(
       slug,
       {
         name: typeof body.name === "string" ? body.name : undefined,
-        compat_min: typeof body.compatMin === "string" ? body.compatMin : undefined,
-        compat_max: typeof body.compatMax === "string" ? body.compatMax : undefined,
+        compat_min:
+          typeof body.compatMin === "string" ? body.compatMin : undefined,
+        compat_max:
+          typeof body.compatMax === "string" ? body.compatMax : undefined,
         default_max_offline_days:
-          typeof body.defaultMaxOfflineDays === "number" ? body.defaultMaxOfflineDays : undefined,
+          typeof body.defaultMaxOfflineDays === "number"
+            ? body.defaultMaxOfflineDays
+            : undefined,
         default_machine_limit:
-          typeof body.defaultMachineLimit === "number" ? body.defaultMachineLimit : undefined,
-        admin_group: typeof body.adminGroup === "string" ? body.adminGroup : undefined,
+          typeof body.defaultMachineLimit === "number"
+            ? body.defaultMachineLimit
+            : undefined,
+        admin_group:
+          typeof body.adminGroup === "string" ? body.adminGroup : undefined,
       },
       now,
     );
-    await audit(db, slug, session, now, "product.update", { kind: "product", id: slug }, `Updated product ${slug}`);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "product.update",
+      { kind: "product", id: slug },
+      `Updated product ${slug}`,
+    );
     return adminJson({ ok: true, slug });
   }
   if (req.method === "DELETE") {
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "product.delete",
+      { kind: "product", id: slug },
+      `Deleted product ${slug}`,
+    );
     await deleteProduct(db, slug);
-    await audit(db, slug, session, now, "product.delete", { kind: "product", id: slug }, `Deleted product ${slug}`);
     return adminJson({ ok: true, slug });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");
@@ -146,8 +220,12 @@ async function manualCreate(
 ): Promise<Response> {
   const body = await readBody(req);
   const slug = String(body.slug ?? "").trim();
-  if (!/^[a-z0-9-]+$/.test(slug)) return err(422, ErrorCode.BadRequest, "invalid slug", { fields: ["slug"] });
-  if (await getProduct(db, slug)) return err(409, ErrorCode.BadRequest, "product exists", { fields: ["slug"] });
+  if (!/^[a-z0-9-]+$/.test(slug))
+    return err(422, ErrorCode.BadRequest, "invalid slug", { fields: ["slug"] });
+  if (await getProduct(db, slug))
+    return err(409, ErrorCode.BadRequest, "product exists", {
+      fields: ["slug"],
+    });
 
   // A schema is now required so the product gets a real, usable catalog. If none is supplied,
   // seed the empty catalog (still mints a signing key).
@@ -155,12 +233,17 @@ async function manualCreate(
   let catalogObj: unknown = { schemaVersion: 1, entries: [] };
   if (supplied !== undefined) {
     const compiled = compileSchema(supplied);
-    if (!compiled.ok) return err(422, ErrorCode.BadRequest, "invalid schema", { fields: [compiled.message] });
+    if (!compiled.ok)
+      return err(422, ErrorCode.BadRequest, "invalid schema", {
+        fields: [compiled.message],
+      });
     catalogObj = { schemaVersion: 1, entries: compiled.catalog.entries };
   }
 
   // Mint + seal the per-product Ed25519 signing key under the platform KEK.
-  const kid = String(body.signingKid ?? `${slug}-${new Date(now * 1000).getUTCFullYear()}`);
+  const kid = String(
+    body.signingKid ?? `${slug}-${new Date(now * 1000).getUTCFullYear()}`,
+  );
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
   const encPrivate = await seal(env, privatePkcs8Pem);
 
@@ -201,9 +284,35 @@ async function manualCreate(
       created_at: now,
     }),
   ]);
-  await audit(db, slug, session, now, "product.create", { kind: "product", id: slug }, `Created product ${slug}`);
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    "product.create",
+    { kind: "product", id: slug },
+    `Created product ${slug}`,
+  );
   const created = await getProduct(db, slug);
-  return adminJson({ ok: true, slug, kid, product: created ? productView(created) : null }, 201);
+  return adminJson(
+    {
+      ok: true,
+      slug,
+      kid,
+      publicKey: publicRawB64url,
+      trustKey: publicRawB64url,
+      trustKeys: { [kid]: publicRawB64url },
+      signing: {
+        kid,
+        alg: "Ed25519",
+        publicKey: publicRawB64url,
+        jwksUrl: `/${slug}/.well-known/jwks.json`,
+        trustKeys: { [kid]: publicRawB64url },
+      },
+      product: created ? await productView(db, created) : null,
+    },
+    201,
+  );
 }
 
 /**
@@ -223,9 +332,12 @@ export async function handleProductScopedResource(
   id: string | undefined,
   now: number,
 ): Promise<Response> {
-  if (resource === "secrets") return handleSecrets(req, env, db, session, slug, id, now);
-  if (resource === "keys") return handleKeys(req, env, db, session, slug, id, now);
-  if (resource === "release") return handleRelease(req, env, db, session, slug, id, now);
+  if (resource === "secrets")
+    return handleSecrets(req, env, db, session, slug, id, now);
+  if (resource === "keys")
+    return handleKeys(req, env, db, session, slug, id, now);
+  if (resource === "release")
+    return handleRelease(req, env, db, session, slug, id, now);
   return notFound();
 }
 
@@ -240,15 +352,32 @@ async function handleSecrets(
   now: number,
 ): Promise<Response> {
   if (!name) return notFound();
-  if (req.method !== "PUT") return err(405, ErrorCode.BadRequest, "method not allowed");
+  if (req.method !== "PUT")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
   const body = await readBody(req);
   const value = body.value;
   if (typeof value !== "string" || value.length === 0) {
-    return err(422, ErrorCode.BadRequest, "value is required", { fields: ["value"] });
+    return err(422, ErrorCode.BadRequest, "value is required", {
+      fields: ["value"],
+    });
   }
   const enc = await seal(env, value);
-  await upsertProductSecret(db, { product: slug, name, enc_value_json: enc, created_at: now, modified_at: now });
-  await audit(db, slug, session, now, "secret.set", { kind: "secret", id: name }, `Set secret ${name}`);
+  await upsertProductSecret(db, {
+    product: slug,
+    name,
+    enc_value_json: enc,
+    created_at: now,
+    modified_at: now,
+  });
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    "secret.set",
+    { kind: "secret", id: name },
+    `Set secret ${name}`,
+  );
   // NEVER echo the value back — only the name.
   return adminJson({ ok: true, name });
 }
@@ -264,7 +393,8 @@ async function handleKeys(
   now: number,
 ): Promise<Response> {
   if (action !== "rotate") return notFound();
-  if (req.method !== "POST") return err(405, ErrorCode.BadRequest, "method not allowed");
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
 
   const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}-${(now % 100000).toString(36)}`;
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
@@ -281,7 +411,15 @@ async function handleKeys(
     created_at: now,
     rotated_at: null,
   });
-  await audit(db, slug, session, now, "key.rotate", { kind: "key", id: kid }, `Rotated signing key to ${kid}`);
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    "key.rotate",
+    { kind: "key", id: kid },
+    `Rotated signing key to ${kid}`,
+  );
   // Respond with the new kid + PUBLIC key only — the private key never leaves the KEK store.
   return adminJson({ ok: true, kid, publicKey: publicRawB64url });
 }
@@ -297,11 +435,25 @@ async function handleRelease(
   now: number,
 ): Promise<Response> {
   if (action !== "resync") return notFound();
-  if (req.method !== "POST") return err(405, ErrorCode.BadRequest, "method not allowed");
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
   const result = await resyncRepo(env, db, slug, now);
   if (!result.ok) {
-    return err(422, ErrorCode.BadRequest, result.error, result.errors ? { errors: result.errors } : undefined);
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      result.error,
+      result.errors ? { errors: result.errors } : undefined,
+    );
   }
-  await audit(db, slug, session, now, "release.resync", { kind: "product", id: slug }, `Resynced ${slug} from its linked repo`);
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    "release.resync",
+    { kind: "product", id: slug },
+    `Resynced ${slug} from its linked repo`,
+  );
   return adminJson({ ok: true, slug, updated: result.updated });
 }

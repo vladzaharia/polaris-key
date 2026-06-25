@@ -13,17 +13,29 @@ function Mode(): JSX.Element {
 describe("PolarisKeyProvider — mode resolution", () => {
   it("mode='browser' constructs a browser adapter", async () => {
     const { container } = render(
-      <PolarisKeyProvider productSlug="acme" mode="browser" fetchImpl={makeFakeFetch(makeDoc())} now={() => NOW_SEC}>
+      <PolarisKeyProvider
+        productSlug="acme"
+        mode="browser"
+        fetchImpl={makeFakeFetch(makeDoc())}
+        now={() => NOW_SEC}
+      >
         <Mode />
       </PolarisKeyProvider>,
     );
-    await waitFor(() => expect(within(container).getByTestId("mode").textContent).toBe("browser"));
+    await waitFor(() =>
+      expect(within(container).getByTestId("mode").textContent).toBe("browser"),
+    );
   });
 
   it("mode='desktop' with an explicit bridge constructs a desktop adapter", async () => {
     const bridge = makeFakeBridge({ hasToken: false, doc: null });
     const { container } = render(
-      <PolarisKeyProvider productSlug="acme" mode="desktop" bridge={bridge} now={() => NOW_SEC}>
+      <PolarisKeyProvider
+        productSlug="acme"
+        mode="desktop"
+        bridge={bridge}
+        now={() => NOW_SEC}
+      >
         <Mode />
       </PolarisKeyProvider>,
     );
@@ -33,7 +45,12 @@ describe("PolarisKeyProvider — mode resolution", () => {
   it("mode='auto' picks desktop when a bridge prop is present", async () => {
     const bridge = makeFakeBridge({ hasToken: false, doc: null });
     const { container } = render(
-      <PolarisKeyProvider productSlug="acme" mode="auto" bridge={bridge} now={() => NOW_SEC}>
+      <PolarisKeyProvider
+        productSlug="acme"
+        mode="auto"
+        bridge={bridge}
+        now={() => NOW_SEC}
+      >
         <Mode />
       </PolarisKeyProvider>,
     );
@@ -42,17 +59,26 @@ describe("PolarisKeyProvider — mode resolution", () => {
 
   it("mode='auto' falls back to browser with no bridge", async () => {
     const { container } = render(
-      <PolarisKeyProvider productSlug="acme" mode="auto" fetchImpl={makeFakeFetch(null)} now={() => NOW_SEC}>
+      <PolarisKeyProvider
+        productSlug="acme"
+        mode="auto"
+        fetchImpl={makeFakeFetch(null)}
+        now={() => NOW_SEC}
+      >
         <Mode />
       </PolarisKeyProvider>,
     );
-    await waitFor(() => expect(within(container).getByTestId("mode").textContent).toBe("browser"));
+    await waitFor(() =>
+      expect(within(container).getByTestId("mode").textContent).toBe("browser"),
+    );
   });
 
   it("an injected adapter bypasses mode resolution entirely", async () => {
     const bridge = makeFakeBridge({ hasToken: true, doc: makeDoc() });
     // Inject a desktop adapter even though mode='browser' is requested.
-    const adapter = (await import("../src/desktop/desktopAdapter.js")).desktopAdapter({ bridge, now: () => NOW_SEC });
+    const adapter = (
+      await import("../src/desktop/desktopAdapter.js")
+    ).desktopAdapter({ bridge, now: () => NOW_SEC });
     const { container } = render(
       <PolarisKeyProvider productSlug="acme" mode="browser" adapter={adapter}>
         <Mode />
@@ -65,7 +91,9 @@ describe("PolarisKeyProvider — mode resolution", () => {
   it("disposes the adapter on unmount", async () => {
     const bridge = makeFakeBridge({ hasToken: true, doc: makeDoc() });
     let disposed = false;
-    const adapter = (await import("../src/desktop/desktopAdapter.js")).desktopAdapter({ bridge, now: () => NOW_SEC });
+    const adapter = (
+      await import("../src/desktop/desktopAdapter.js")
+    ).desktopAdapter({ bridge, now: () => NOW_SEC });
     const realDispose = adapter.dispose.bind(adapter);
     adapter.dispose = () => {
       disposed = true;

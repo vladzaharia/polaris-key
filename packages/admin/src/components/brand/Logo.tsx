@@ -6,7 +6,13 @@ import { cn } from "../../lib/cn.js";
  * bit — "polaris" (the guiding star) fused with "key" (the credential). Drawn with
  * `currentColor` so it inherits text color; the inner star core uses the brand accent.
  */
-export function LogoMark({ className, title = "Polaris Key" }: { className?: string; title?: string }): React.ReactElement {
+export function LogoMark({
+  className,
+  title = "Polaris Key",
+}: {
+  className?: string;
+  title?: string;
+}): React.ReactElement {
   return (
     <svg
       viewBox="0 0 32 32"
@@ -28,7 +34,12 @@ export function LogoMark({ className, title = "Polaris Key" }: { className?: str
       />
       {/* Key ring + bit at the lower ray. */}
       <circle cx="16" cy="25" r="4.2" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M16 27.6v2.9M16 29h2.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M16 27.6v2.9M16 29h2.2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
       <circle cx="16" cy="25" r="1.4" fill="currentColor" />
     </svg>
   );
@@ -45,11 +56,20 @@ export function Logo({
   markClassName?: string;
 }): React.ReactElement {
   return (
-    <span className={cn("inline-flex items-center gap-2 text-foreground", className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 text-foreground",
+        className,
+      )}
+    >
       <LogoMark className={markClassName} />
       <span className="flex items-baseline gap-1.5 font-semibold tracking-tight">
         Polaris&nbsp;Key
-        {subtitle ? <span className="text-xs font-normal uppercase tracking-wider text-muted-foreground">{subtitle}</span> : null}
+        {subtitle ? (
+          <span className="text-xs font-normal uppercase tracking-wider text-muted-foreground">
+            {subtitle}
+          </span>
+        ) : null}
       </span>
     </span>
   );

@@ -17,7 +17,12 @@ import {
   useToast,
   type ColumnDef,
 } from "../../components/ui/index.js";
-import { CopyButton, formatStamp, KeyStatusBadge, OneTimeKeyPanel } from "./shared.js";
+import {
+  CopyButton,
+  formatStamp,
+  KeyStatusBadge,
+  OneTimeKeyPanel,
+} from "./shared.js";
 
 /**
  * The license keys table: lists each issued key (by its hash, never the secret), supports minting
@@ -49,7 +54,10 @@ export function KeysSection({
       onChanged();
       setRevoking(null);
     } catch (err) {
-      toast.error("Could not revoke key", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Could not revoke key",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setBusy(false);
     }
@@ -66,11 +74,29 @@ export function KeysSection({
         </div>
       ),
     },
-    { id: "label", header: "Label", cell: (r) => r.label || <span className="text-muted-foreground">—</span> },
-    { id: "status", header: "Status", cell: (r) => <KeyStatusBadge status={r.status} /> },
-    { id: "createdAt", header: "Created", accessor: (r) => r.createdAt, sortable: true, cell: (r) => formatStamp(r.createdAt) },
+    {
+      id: "label",
+      header: "Label",
+      cell: (r) => r.label || <span className="text-muted-foreground">—</span>,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (r) => <KeyStatusBadge status={r.status} />,
+    },
+    {
+      id: "createdAt",
+      header: "Created",
+      accessor: (r) => r.createdAt,
+      sortable: true,
+      cell: (r) => formatStamp(r.createdAt),
+    },
     { id: "createdBy", header: "By", cell: (r) => r.createdBy || "—" },
-    { id: "lastUsedAt", header: "Last used", cell: (r) => formatStamp(r.lastUsedAt) },
+    {
+      id: "lastUsedAt",
+      header: "Last used",
+      cell: (r) => formatStamp(r.lastUsedAt),
+    },
     {
       id: "actions",
       header: "",
@@ -107,7 +133,13 @@ export function KeysSection({
         }
       />
 
-      <MintKeyDialog slug={slug} id={id} open={mintOpen} onOpenChange={setMintOpen} onMinted={onChanged} />
+      <MintKeyDialog
+        slug={slug}
+        id={id}
+        open={mintOpen}
+        onOpenChange={setMintOpen}
+        onMinted={onChanged}
+      />
 
       <ConfirmDialog
         open={revoking != null}
@@ -157,7 +189,10 @@ function MintKeyDialog({
       toast.success("Key minted");
       onMinted();
     } catch (err) {
-      toast.error("Could not mint key", err instanceof Error ? err.message : undefined);
+      toast.error(
+        "Could not mint key",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setBusy(false);
     }
@@ -169,7 +204,9 @@ function MintKeyDialog({
         <DialogHeader>
           <DialogTitle>Mint license key</DialogTitle>
           <DialogDescription>
-            {minted ? "Copy the key now — it is shown only once." : "Issue a new key for this license."}
+            {minted
+              ? "Copy the key now — it is shown only once."
+              : "Issue a new key for this license."}
           </DialogDescription>
         </DialogHeader>
         {minted ? (
@@ -181,11 +218,24 @@ function MintKeyDialog({
           </div>
         ) : (
           <form onSubmit={mint} className="space-y-4">
-            <Field label="Label" help="Optional. A note to identify this key (e.g. “studio laptop”).">
-              <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="studio laptop" autoFocus />
+            <Field
+              label="Label"
+              help="Optional. A note to identify this key (e.g. “studio laptop”)."
+            >
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="studio laptop"
+                autoFocus
+              />
             </Field>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={busy}
+              >
                 Cancel
               </Button>
               <Button type="submit" loading={busy}>

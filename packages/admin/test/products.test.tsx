@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductDetail } from "../src/api.js";
 import { resetCache } from "../src/context.js";
@@ -73,8 +79,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockApi.products.mockResolvedValue({ products: [MANUAL, GITHUB] });
   // jsdom lacks these Radix-needed APIs.
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
+  (
+    Element.prototype as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false;
+  (
+    Element.prototype as unknown as { scrollIntoView: () => void }
+  ).scrollIntoView = () => undefined;
 });
 
 afterEach(cleanup);
@@ -103,7 +113,12 @@ describe("Products view", () => {
   });
 
   it("creates a manual product via createManualProduct and shows the returned kid", async () => {
-    mockApi.createManualProduct.mockResolvedValue({ ok: true, slug: "newp", kid: "manual:42", product: null });
+    mockApi.createManualProduct.mockResolvedValue({
+      ok: true,
+      slug: "newp",
+      kid: "manual:42",
+      product: null,
+    });
     renderProducts();
     await screen.findByText("djdl");
 
@@ -112,10 +127,16 @@ describe("Products view", () => {
 
     // The Manual tab is the default; fill the required slug and submit.
     await userEvent.type(within(dialog).getByLabelText(/Slug/), "newp");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create product" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create product" }),
+    );
 
-    await waitFor(() => expect(mockApi.createManualProduct).toHaveBeenCalledTimes(1));
-    expect(mockApi.createManualProduct.mock.calls[0]![0]).toMatchObject({ slug: "newp" });
+    await waitFor(() =>
+      expect(mockApi.createManualProduct).toHaveBeenCalledTimes(1),
+    );
+    expect(mockApi.createManualProduct.mock.calls[0]![0]).toMatchObject({
+      slug: "newp",
+    });
     // The success panel surfaces the returned kid.
     expect(await screen.findByText("manual:42")).toBeTruthy();
   });
@@ -134,27 +155,45 @@ describe("Products view", () => {
     const dialog = await screen.findByRole("dialog");
 
     // Switch to the GitHub tab.
-    await userEvent.click(within(dialog).getByRole("tab", { name: /From GitHub/ }));
-    await userEvent.type(within(dialog).getByLabelText(/Repository URL/), "https://github.com/acme/linked");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Link repository" }));
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: /From GitHub/ }),
+    );
+    await userEvent.type(
+      within(dialog).getByLabelText(/Repository URL/),
+      "https://github.com/acme/linked",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Link repository" }),
+    );
 
     await waitFor(() => expect(mockApi.linkRepo).toHaveBeenCalledTimes(1));
-    expect(mockApi.linkRepo).toHaveBeenCalledWith("https://github.com/acme/linked");
+    expect(mockApi.linkRepo).toHaveBeenCalledWith(
+      "https://github.com/acme/linked",
+    );
     expect(await screen.findByText("GITHUB_APP_PRIVATE_KEY")).toBeTruthy();
     expect(screen.getByText("WEBHOOK_SECRET")).toBeTruthy();
   });
 
   it("surfaces an aggregated manifest error from link-repo", async () => {
-    const err = Object.assign(new Error("manifest invalid"), { fields: ["name missing", "bad schema"] });
+    const err = Object.assign(new Error("manifest invalid"), {
+      fields: ["name missing", "bad schema"],
+    });
     mockApi.linkRepo.mockRejectedValue(err);
     renderProducts();
     await screen.findByText("djdl");
 
     await userEvent.click(screen.getByRole("button", { name: /New product/ }));
     const dialog = await screen.findByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("tab", { name: /From GitHub/ }));
-    await userEvent.type(within(dialog).getByLabelText(/Repository URL/), "https://github.com/acme/bad");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Link repository" }));
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: /From GitHub/ }),
+    );
+    await userEvent.type(
+      within(dialog).getByLabelText(/Repository URL/),
+      "https://github.com/acme/bad",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Link repository" }),
+    );
 
     expect(await screen.findByText(/manifest invalid/)).toBeTruthy();
     expect(screen.getByText(/name missing/)).toBeTruthy();
@@ -165,30 +204,50 @@ describe("Products view", () => {
     renderProducts();
     await screen.findByText("djdl");
 
-    await userEvent.click(screen.getByRole("button", { name: "Actions for djdl" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: /Delete/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for djdl" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Delete/ }),
+    );
 
     // A confirm dialog gates the destructive call.
     const confirmDialog = await screen.findByRole("alertdialog");
     expect(within(confirmDialog).getByText(/Delete “djdl”\?/)).toBeTruthy();
     expect(mockApi.deleteProduct).not.toHaveBeenCalled();
 
-    await userEvent.click(within(confirmDialog).getByRole("button", { name: "Delete product" }));
-    await waitFor(() => expect(mockApi.deleteProduct).toHaveBeenCalledWith("djdl"));
+    await userEvent.click(
+      within(confirmDialog).getByRole("button", { name: "Delete product" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.deleteProduct).toHaveBeenCalledWith("djdl"),
+    );
   });
 
   it("rotates the signing key and shows the new public key", async () => {
-    mockApi.rotateProductKey.mockResolvedValue({ ok: true, kid: "manual:2", publicKey: "PUBKEY-XYZ" });
+    mockApi.rotateProductKey.mockResolvedValue({
+      ok: true,
+      kid: "manual:2",
+      publicKey: "PUBKEY-XYZ",
+    });
     renderProducts();
     await screen.findByText("djdl");
 
-    await userEvent.click(screen.getByRole("button", { name: "Actions for djdl" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: /Rotate signing key/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for djdl" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Rotate signing key/ }),
+    );
 
     const confirmDialog = await screen.findByRole("alertdialog");
-    await userEvent.click(within(confirmDialog).getByRole("button", { name: "Rotate key" }));
+    await userEvent.click(
+      within(confirmDialog).getByRole("button", { name: "Rotate key" }),
+    );
 
-    await waitFor(() => expect(mockApi.rotateProductKey).toHaveBeenCalledWith("djdl"));
+    await waitFor(() =>
+      expect(mockApi.rotateProductKey).toHaveBeenCalledWith("djdl"),
+    );
     expect(await screen.findByText("PUBKEY-XYZ")).toBeTruthy();
   });
 
@@ -197,15 +256,30 @@ describe("Products view", () => {
     renderProducts();
     await screen.findByText("djdl");
 
-    await userEvent.click(screen.getByRole("button", { name: "Actions for djdl" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: /Set secret/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for djdl" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Set secret/ }),
+    );
 
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText(/Secret name/), "TOKEN");
-    await userEvent.type(within(dialog).getByLabelText(/Secret value/), "s3cr3t");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Set secret" }));
+    await userEvent.type(
+      within(dialog).getByLabelText(/Secret value/),
+      "s3cr3t",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Set secret" }),
+    );
 
-    await waitFor(() => expect(mockApi.putProductSecret).toHaveBeenCalledWith("djdl", "TOKEN", "s3cr3t"));
+    await waitFor(() =>
+      expect(mockApi.putProductSecret).toHaveBeenCalledWith(
+        "djdl",
+        "TOKEN",
+        "s3cr3t",
+      ),
+    );
   });
 
   it("offers resync only for GitHub-sourced products", async () => {
@@ -213,13 +287,21 @@ describe("Products view", () => {
     await screen.findByText("djdl");
 
     // GitHub-sourced "acme" exposes resync...
-    await userEvent.click(screen.getByRole("button", { name: "Actions for acme" }));
-    expect(await screen.findByRole("menuitem", { name: /Resync from GitHub/ })).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for acme" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: /Resync from GitHub/ }),
+    ).toBeTruthy();
     await userEvent.keyboard("{Escape}");
 
     // ...the manual "djdl" does not.
-    await userEvent.click(screen.getByRole("button", { name: "Actions for djdl" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for djdl" }),
+    );
     await screen.findByRole("menuitem", { name: /Rotate signing key/ });
-    expect(screen.queryByRole("menuitem", { name: /Resync from GitHub/ })).toBeNull();
+    expect(
+      screen.queryByRole("menuitem", { name: /Resync from GitHub/ }),
+    ).toBeNull();
   });
 });

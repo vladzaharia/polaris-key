@@ -68,7 +68,11 @@ export function Field({
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} role="alert" className="text-xs font-medium text-destructive">
+        <p
+          id={errorId}
+          role="alert"
+          className="text-xs font-medium text-destructive"
+        >
           {error}
         </p>
       ) : null}

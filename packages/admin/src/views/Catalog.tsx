@@ -30,7 +30,9 @@ import { PublishDialog } from "./catalog/PublishDialog.js";
  * licenses. Read-heavy; the only mutation is publishing a new `schemaVersion`.
  */
 export function Catalog({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(`schema:${slug}`, () => api.schema(slug));
+  const { data, loading, error, reload } = useResource(`schema:${slug}`, () =>
+    api.schema(slug),
+  );
   const [publishOpen, setPublishOpen] = React.useState(false);
 
   if (loading && !data) return <CatalogSkeleton />;
@@ -71,7 +73,11 @@ export function Catalog({ slug }: { slug: string }): React.ReactElement {
 
   return (
     <section className="space-y-6">
-      <Header version={data.schemaVersion} count={total} onPublish={() => setPublishOpen(true)} />
+      <Header
+        version={data.schemaVersion}
+        count={total}
+        onPublish={() => setPublishOpen(true)}
+      />
 
       {total === 0 ? (
         <EmptyState
@@ -82,12 +88,21 @@ export function Catalog({ slug }: { slug: string }): React.ReactElement {
       ) : (
         <div className="space-y-8">
           {groups.map((group) => (
-            <CategorySection key={group.category} category={group.category} entries={group.entries} />
+            <CategorySection
+              key={group.category}
+              category={group.category}
+              entries={group.entries}
+            />
           ))}
         </div>
       )}
 
-      <PublishDialog slug={slug} catalog={data} open={publishOpen} onOpenChange={setPublishOpen} />
+      <PublishDialog
+        slug={slug}
+        catalog={data}
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+      />
     </section>
   );
 }
@@ -161,7 +176,9 @@ function EntryCard({ entry }: { entry: ConfigEntry }): React.ReactElement {
                 <Lock className="size-3.5 text-warning" aria-label="secret" />
               ) : null}
             </CardTitle>
-            <CardDescription className="font-mono text-xs">{entry.key}</CardDescription>
+            <CardDescription className="font-mono text-xs">
+              {entry.key}
+            </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant={KIND_VARIANT[entry.kind]}>{entry.kind}</Badge>
@@ -170,13 +187,17 @@ function EntryCard({ entry }: { entry: ConfigEntry }): React.ReactElement {
                 {entry.managementDefault}
               </Badge>
             ) : null}
-            {entry.userGrant ? <Badge variant="outline">user-grant</Badge> : null}
+            {entry.userGrant ? (
+              <Badge variant="outline">user-grant</Badge>
+            ) : null}
           </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         {entry.description ? (
-          <p className="mb-3 text-sm text-muted-foreground">{entry.description}</p>
+          <p className="mb-3 text-sm text-muted-foreground">
+            {entry.description}
+          </p>
         ) : null}
         <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <Detail term="Schema" value={schemaSummary(entry.schema)} mono />
@@ -185,13 +206,21 @@ function EntryCard({ entry }: { entry: ConfigEntry }): React.ReactElement {
             value={isSecret ? "— (write-only)" : formatValue(entry.default)}
             mono
           />
-          {entry.ui?.widget ? <Detail term="Widget" value={entry.ui.widget} /> : null}
-          {entry.ui?.help ? <Detail term="UI help" value={entry.ui.help} /> : null}
+          {entry.ui?.widget ? (
+            <Detail term="Widget" value={entry.ui.widget} />
+          ) : null}
+          {entry.ui?.help ? (
+            <Detail term="UI help" value={entry.ui.help} />
+          ) : null}
           {entry.ui?.placeholder ? (
             <Detail term="Placeholder" value={entry.ui.placeholder} />
           ) : null}
-          {entry.ui?.advanced ? <Detail term="Visibility" value="advanced" /> : null}
-          {entry.accessor ? <Detail term="Accessor" value={entry.accessor} mono /> : null}
+          {entry.ui?.advanced ? (
+            <Detail term="Visibility" value="advanced" />
+          ) : null}
+          {entry.accessor ? (
+            <Detail term="Accessor" value={entry.accessor} mono />
+          ) : null}
         </dl>
       </CardContent>
     </Card>
@@ -209,8 +238,12 @@ function Detail({
 }): React.ReactElement {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{term}</dt>
-      <dd className={mono ? "break-words font-mono text-xs" : "break-words"}>{value}</dd>
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+        {term}
+      </dt>
+      <dd className={mono ? "break-words font-mono text-xs" : "break-words"}>
+        {value}
+      </dd>
     </div>
   );
 }

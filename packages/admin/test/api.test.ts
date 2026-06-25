@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api, setCsrf, setLoginRedirectForTests } from "../src/api.js";
+import {
+  ApiError,
+  api,
+  setCsrf,
+  setLoginRedirectForTests,
+} from "../src/api.js";
 
 // The api module is the same-origin client for /admin/api/*. These exercise the transport:
 // CSRF echo on mutations, Content-Type only with a body, 401 → login redirect, and the typed
@@ -13,12 +18,19 @@ interface Call {
 let calls: Call[] = [];
 
 /** Stub fetch with a per-call responder; records every call for assertions. */
-function stubFetch(responder: (url: string, init: RequestInit) => Response): void {
+function stubFetch(
+  responder: (url: string, init: RequestInit) => Response,
+): void {
   calls = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
       calls.push({ url, init });
       return responder(url, init);
     }),
@@ -26,7 +38,10 @@ function stubFetch(responder: (url: string, init: RequestInit) => Response): voi
 }
 
 function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 }
 
 beforeEach(() => {
@@ -60,7 +75,10 @@ describe("api — request shaping", () => {
     expect(init.method).toBe("POST");
     expect(headers.get("X-PKey-CSRF")).toBe("tok-123");
     expect(headers.get("Content-Type")).toBe("application/json");
-    expect(JSON.parse(init.body as string)).toEqual({ name: "Ada", email: "a@x.io" });
+    expect(JSON.parse(init.body as string)).toEqual({
+      name: "Ada",
+      email: "a@x.io",
+    });
   });
 
   it("a mutation with no body still echoes CSRF but omits Content-Type", async () => {
@@ -75,7 +93,9 @@ describe("api — request shaping", () => {
   it("URL-encodes path parameters", async () => {
     stubFetch(() => json({}));
     await api.license("djdl", "lic/with space");
-    expect(calls[0]!.url).toBe("/admin/api/products/djdl/licenses/lic%2Fwith%20space");
+    expect(calls[0]!.url).toBe(
+      "/admin/api/products/djdl/licenses/lic%2Fwith%20space",
+    );
   });
 
   it("builds the activity query string with limit (and cursor when given)", async () => {
@@ -106,7 +126,12 @@ describe("api — error handling", () => {
   });
 
   it("a non-ok JSON error surfaces fields + code + message", async () => {
-    stubFetch(() => json({ error: "validation", message: "bad input", fields: ["email"] }, 422));
+    stubFetch(() =>
+      json(
+        { error: "validation", message: "bad input", fields: ["email"] },
+        422,
+      ),
+    );
     try {
       await api.createLicense("djdl", { name: "x", email: "bad" });
       throw new Error("should have thrown");

@@ -20,7 +20,10 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 
 function toArrayBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+  return b.buffer.slice(
+    b.byteOffset,
+    b.byteOffset + b.byteLength,
+  ) as ArrayBuffer;
 }
 
 function b64urlEncode(bytes: Uint8Array): string {
@@ -55,12 +58,17 @@ async function importKek(env: Env): Promise<CryptoKey> {
   }
   let keyBytes = b64Decode(raw);
   if (keyBytes.length !== 32) {
-    keyBytes = new Uint8Array(await crypto.subtle.digest("SHA-256", toArrayBuffer(keyBytes)));
+    keyBytes = new Uint8Array(
+      await crypto.subtle.digest("SHA-256", toArrayBuffer(keyBytes)),
+    );
   }
-  return crypto.subtle.importKey("raw", toArrayBuffer(keyBytes), { name: "AES-GCM" }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
+  return crypto.subtle.importKey(
+    "raw",
+    toArrayBuffer(keyBytes),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
+  );
 }
 
 /** Envelope-encrypt `plaintext` under the platform KEK. Returns `JSON.stringify(Sealed)`.
@@ -74,7 +82,11 @@ export async function seal(env: Env, plaintext: string): Promise<string> {
     key,
     toArrayBuffer(enc.encode(plaintext)),
   );
-  const sealed: Sealed = { v: 1, iv: b64urlEncode(iv), ct: b64urlEncode(new Uint8Array(ct)) };
+  const sealed: Sealed = {
+    v: 1,
+    iv: b64urlEncode(iv),
+    ct: b64urlEncode(new Uint8Array(ct)),
+  };
   return JSON.stringify(sealed);
 }
 
@@ -88,7 +100,11 @@ export async function open(env: Env, sealedJson: string): Promise<string> {
   } catch {
     throw new Error("sealed value is not valid JSON");
   }
-  if (sealed.v !== 1 || typeof sealed.iv !== "string" || typeof sealed.ct !== "string") {
+  if (
+    sealed.v !== 1 ||
+    typeof sealed.iv !== "string" ||
+    typeof sealed.ct !== "string"
+  ) {
     throw new Error("sealed value has an unexpected shape");
   }
   // A bad auth tag (tampered ct) makes subtle.decrypt reject — we propagate the throw so a
@@ -121,8 +137,14 @@ export async function generateEd25519(): Promise<{
     "sign",
     "verify",
   ])) as CryptoKeyPair;
-  const pkcs8 = (await crypto.subtle.exportKey("pkcs8", pair.privateKey)) as ArrayBuffer;
-  const rawPub = (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer;
+  const pkcs8 = (await crypto.subtle.exportKey(
+    "pkcs8",
+    pair.privateKey,
+  )) as ArrayBuffer;
+  const rawPub = (await crypto.subtle.exportKey(
+    "raw",
+    pair.publicKey,
+  )) as ArrayBuffer;
   return {
     privatePkcs8Pem: pkcs8ToPem(pkcs8),
     publicRawB64url: b64urlEncode(new Uint8Array(rawPub)),

@@ -30,7 +30,13 @@ export interface ConfigEntry {
   managementDefault?: ManagementState;
   userGrant?: boolean;
   grantLabel?: string;
-  ui?: { widget?: string; help?: string; placeholder?: string; order?: number; advanced?: boolean };
+  ui?: {
+    widget?: string;
+    help?: string;
+    placeholder?: string;
+    order?: number;
+    advanced?: boolean;
+  };
   accessor?: string;
 }
 
@@ -56,10 +62,92 @@ export interface Me {
 }
 
 // ── products (platform registry) ──────────────────────────────────────────────
+export type ProductReleaseSource = "manual" | "github" | (string & {});
+
+export interface ProductSigningBundle {
+  kid?: string;
+  alg?: string;
+  publicKey?: string;
+  publicKeyPem?: string;
+  jwksUrl?: string;
+  jwks?: unknown;
+  trustKey?: string;
+  trustKeys?: Record<string, string>;
+}
+
+export interface ProductModuleSummary {
+  id?: string;
+  key?: string;
+  name?: string;
+  label?: string;
+  description?: string;
+  status?: string;
+  configured?: boolean;
+  enabled?: boolean;
+  required?: boolean;
+  missing?: string[];
+  missingSecrets?: string[];
+}
+
+export interface ProductSetupAction {
+  id?: string;
+  label?: string;
+  title?: string;
+  description?: string;
+  href?: string;
+  route?: string;
+  status?: string;
+}
+
+export interface ProductSetupState {
+  status?: string;
+  complete?: boolean;
+  healthy?: boolean;
+  missing?: string[];
+  warnings?: string[];
+  requiredSecrets?: string[];
+  modules?:
+    | ProductModuleSummary[]
+    | Record<string, ProductModuleSummary | boolean | string>;
+  nextActions?: ProductSetupAction[] | string[];
+}
+
+export interface ProductOnboarding {
+  baseUrl?: string;
+  configUrl?: string;
+  enrollUrl?: string;
+  jwksUrl?: string;
+  docsUrl?: string;
+  sdkSnippets?:
+    | Record<string, string>
+    | { label?: string; language?: string; code?: string }[];
+  modules?:
+    | ProductModuleSummary[]
+    | Record<string, ProductModuleSummary | boolean | string>;
+  setup?: ProductSetupState;
+  nextActions?: ProductSetupAction[] | string[];
+}
+
 export interface ProductDetail {
   slug: string;
   name: string;
   signingKid: string;
+  releaseSource?: ProductReleaseSource;
+  signing?: ProductSigningBundle;
+  keyBundle?: ProductSigningBundle;
+  publicKeyBundle?: ProductSigningBundle;
+  publicKey?: string;
+  signingPub?: string;
+  signingPublicKey?: string;
+  trustKey?: string;
+  trustKeys?: Record<string, string>;
+  jwksUrl?: string;
+  jwks?: unknown;
+  modules?:
+    | ProductModuleSummary[]
+    | Record<string, ProductModuleSummary | boolean | string>;
+  setup?: ProductSetupState;
+  onboarding?: ProductOnboarding;
   compatMin: string;
   compatMax: string;
   defaultMaxOfflineDays: number;
@@ -85,6 +173,14 @@ export interface CreateManualProductResult {
   ok: true;
   slug: string;
   kid: string;
+  publicKey?: string;
+  trustKey?: string;
+  trustKeys?: Record<string, string>;
+  signing?: ProductSigningBundle;
+  keyBundle?: ProductSigningBundle;
+  publicKeyBundle?: ProductSigningBundle;
+  setup?: ProductSetupState;
+  onboarding?: ProductOnboarding;
   product: ProductDetail | null;
 }
 
@@ -92,6 +188,15 @@ export interface LinkRepoResult {
   ok: true;
   slug: string;
   kid: string;
+  publicKey?: string;
+  trustKey?: string;
+  trustKeys?: Record<string, string>;
+  signing?: ProductSigningBundle;
+  keyBundle?: ProductSigningBundle;
+  publicKeyBundle?: ProductSigningBundle;
+  product?: ProductDetail | null;
+  setup?: ProductSetupState;
+  onboarding?: ProductOnboarding;
   install?: unknown;
   remainingSecrets?: string[];
 }
@@ -109,6 +214,9 @@ export interface RotateKeyResult {
   ok: true;
   kid: string;
   publicKey: string;
+  trustKey?: string;
+  trustKeys?: Record<string, string>;
+  signing?: ProductSigningBundle;
 }
 
 export interface ResyncResult {
@@ -311,7 +419,11 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set(CSRF_HEADER, csrf);
     if (init.body) headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(path, { ...init, headers, credentials: "same-origin" });
+  const res = await fetch(path, {
+    ...init,
+    headers,
+    credentials: "same-origin",
+  });
   if (res.status === 401) {
     redirectToLogin();
     throw new ApiError(401);
@@ -321,7 +433,11 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     let code: string | undefined;
     let message: string | undefined;
     try {
-      const body = (await res.json()) as { error?: string; message?: string; fields?: string[] };
+      const body = (await res.json()) as {
+        error?: string;
+        message?: string;
+        fields?: string[];
+      };
       fields = body.fields;
       code = body.error;
       message = body.message;
@@ -350,34 +466,58 @@ export const api = {
   products: () => call<{ products: ProductDetail[] }>("/admin/api/products"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
   createManualProduct: (body: CreateManualProductBody) =>
-    call<CreateManualProductResult>("/admin/api/products", { method: "POST", body: JSON.stringify(body) }),
+    call<CreateManualProductResult>("/admin/api/products", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   linkRepo: (repoUrl: string) =>
-    call<LinkRepoResult>("/admin/api/products/link-repo", { method: "POST", body: JSON.stringify({ repoUrl }) }),
+    call<LinkRepoResult>("/admin/api/products/link-repo", {
+      method: "POST",
+      body: JSON.stringify({ repoUrl }),
+    }),
   updateProduct: (slug: string, body: UpdateProductBody) =>
-    call<{ ok: true; slug: string }>(p(slug), { method: "PATCH", body: JSON.stringify(body) }),
-  deleteProduct: (slug: string) => call<{ ok: true; slug: string }>(p(slug), { method: "DELETE" }),
+    call<{ ok: true; slug: string }>(p(slug), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteProduct: (slug: string) =>
+    call<{ ok: true; slug: string }>(p(slug), { method: "DELETE" }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
   putProductSecret: (slug: string, name: string, value: string) =>
-    call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, { method: "PUT", body: JSON.stringify({ value }) }),
+    call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    }),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
 
   // ── schema / catalog ──────────────────────────────────────────────────────────
   schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/schema`),
   publishSchema: (slug: string, catalog: ProductCatalog) =>
-    call<{ ok: true; schemaVersion: number }>(`${p(slug)}/schema`, { method: "PUT", body: JSON.stringify({ catalog }) }),
+    call<{ ok: true; schemaVersion: number }>(`${p(slug)}/schema`, {
+      method: "PUT",
+      body: JSON.stringify({ catalog }),
+    }),
 
   // ── licenses ────────────────────────────────────────────────────────────────
-  licenses: (slug: string) => call<{ licenses: LicenseSummary[] }>(`${p(slug)}/licenses`),
-  license: (slug: string, id: string) => call<LicenseDetail>(`${p(slug)}/licenses/${enc(id)}`),
+  licenses: (slug: string) =>
+    call<{ licenses: LicenseSummary[] }>(`${p(slug)}/licenses`),
+  license: (slug: string, id: string) =>
+    call<LicenseDetail>(`${p(slug)}/licenses/${enc(id)}`),
   createLicense: (slug: string, body: CreateLicenseBody) =>
-    call<{ licenseId: string; key: string; license: LicenseSummary }>(`${p(slug)}/licenses`, {
-      method: "POST",
+    call<{ licenseId: string; key: string; license: LicenseSummary }>(
+      `${p(slug)}/licenses`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    ),
+  patchLicense: (slug: string, id: string, body: PatchLicenseBody) =>
+    call<{ ok: true; id: string }>(`${p(slug)}/licenses/${enc(id)}`, {
+      method: "PATCH",
       body: JSON.stringify(body),
     }),
-  patchLicense: (slug: string, id: string, body: PatchLicenseBody) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/licenses/${enc(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
   setLicenseEnabled: (slug: string, id: string, enabled: boolean) =>
     call<{ ok: true; id: string; status: LicenseStatus }>(
       `${p(slug)}/licenses/${enc(id)}/${enabled ? "enable" : "disable"}`,
@@ -393,10 +533,13 @@ export const api = {
   licenseKeys: (slug: string, id: string) =>
     call<{ keys: KeyDto[] }>(`${p(slug)}/licenses/${enc(id)}/keys`),
   mintKey: (slug: string, id: string, label?: string) =>
-    call<{ key: string; hash: string; record: KeyDto }>(`${p(slug)}/licenses/${enc(id)}/keys`, {
-      method: "POST",
-      body: JSON.stringify({ label }),
-    }),
+    call<{ key: string; hash: string; record: KeyDto }>(
+      `${p(slug)}/licenses/${enc(id)}/keys`,
+      {
+        method: "POST",
+        body: JSON.stringify({ label }),
+      },
+    ),
   revokeKey: (slug: string, id: string, keyHash: string) =>
     call<{ ok: true; hash: string; status: KeyStatus }>(
       `${p(slug)}/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`,
@@ -407,28 +550,52 @@ export const api = {
   licenseMachines: (slug: string, id: string) =>
     call<{ machines: MachineDto[] }>(`${p(slug)}/licenses/${enc(id)}/machines`),
   deauthorizeMachine: (slug: string, id: string, machineId: string) =>
-    call<{ ok: true; machineId: string }>(`${p(slug)}/licenses/${enc(id)}/machines/${enc(machineId)}`, {
-      method: "DELETE",
-    }),
+    call<{ ok: true; machineId: string }>(
+      `${p(slug)}/licenses/${enc(id)}/machines/${enc(machineId)}`,
+      {
+        method: "DELETE",
+      },
+    ),
 
   // ── profiles ────────────────────────────────────────────────────────────────
-  profiles: (slug: string) => call<{ profiles: ProfileSummary[] }>(`${p(slug)}/profiles`),
-  profile: (slug: string, id: string) => call<ProfileDetail>(`${p(slug)}/profiles/${enc(id)}`),
-  createProfile: (slug: string, body: { id?: string; name?: string; description?: string }) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/profiles`, { method: "POST", body: JSON.stringify(body) }),
+  profiles: (slug: string) =>
+    call<{ profiles: ProfileSummary[] }>(`${p(slug)}/profiles`),
+  profile: (slug: string, id: string) =>
+    call<ProfileDetail>(`${p(slug)}/profiles/${enc(id)}`),
+  createProfile: (
+    slug: string,
+    body: { id?: string; name?: string; description?: string },
+  ) =>
+    call<{ ok: true; id: string }>(`${p(slug)}/profiles`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   putProfilePayload: (slug: string, id: string, updates: OverrideUpdate[]) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/profiles/${enc(id)}`, { method: "PUT", body: JSON.stringify({ updates }) }),
+    call<{ ok: true; id: string }>(`${p(slug)}/profiles/${enc(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ updates }),
+    }),
   deleteProfile: (slug: string, id: string) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/profiles/${enc(id)}`, { method: "DELETE" }),
+    call<{ ok: true; id: string }>(`${p(slug)}/profiles/${enc(id)}`, {
+      method: "DELETE",
+    }),
 
   // ── tiers ─────────────────────────────────────────────────────────────────────
   tiers: (slug: string) => call<{ tiers: TierSummary[] }>(`${p(slug)}/tiers`),
   createTier: (slug: string, body: TierBody) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/tiers`, { method: "POST", body: JSON.stringify(body) }),
+    call<{ ok: true; id: string }>(`${p(slug)}/tiers`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   patchTier: (slug: string, id: string, body: TierBody) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
+    call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   deleteTier: (slug: string, id: string) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, { method: "DELETE" }),
+    call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, {
+      method: "DELETE",
+    }),
 
   // ── activity (keyset) ─────────────────────────────────────────────────────────
   activity: (slug: string, cursor?: ActivityCursor | null, limit = 50) => {

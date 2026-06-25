@@ -11,10 +11,17 @@ export const ErrorCode = {
   Forbidden: "forbidden",
 } as const;
 
-export function json(body: unknown, init?: { status?: number; headers?: Record<string, string> }): Response {
+export function json(
+  body: unknown,
+  init?: { status?: number; headers?: Record<string, string> },
+): Response {
   return new Response(JSON.stringify(body), {
     status: init?.status ?? 200,
-    headers: { "content-type": "application/json", "cache-control": "no-store", ...(init?.headers ?? {}) },
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      ...(init?.headers ?? {}),
+    },
   });
 }
 
@@ -24,7 +31,10 @@ export function errorResponse(
   message?: string,
   extra?: Record<string, unknown>,
 ): Response {
-  return json({ error: code, ...(message ? { message } : {}), ...(extra ?? {}) }, { status });
+  return json(
+    { error: code, ...(message ? { message } : {}), ...(extra ?? {}) },
+    { status },
+  );
 }
 
 export function notFound(): Response {

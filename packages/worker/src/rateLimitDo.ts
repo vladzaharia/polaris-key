@@ -27,12 +27,14 @@ export class RateLimitDO implements DurableObject {
   ) {}
 
   async fetch(request: Request): Promise<Response> {
-    const { bucket, id, limit, windowSec, now } = (await request.json()) as CheckRequest;
+    const { bucket, id, limit, windowSec, now } =
+      (await request.json()) as CheckRequest;
     const window = Math.floor(now / windowSec);
     const key = `${bucket}:${id}`;
 
     const stored = await this.state.storage.get<Counter>(key);
-    const counter: Counter = stored && stored.window === window ? stored : { window, count: 0 };
+    const counter: Counter =
+      stored && stored.window === window ? stored : { window, count: 0 };
 
     let ok: boolean;
     if (counter.count >= limit) {
@@ -42,6 +44,8 @@ export class RateLimitDO implements DurableObject {
       await this.state.storage.put(key, counter);
       ok = true;
     }
-    return new Response(JSON.stringify({ ok }), { headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify({ ok }), {
+      headers: { "content-type": "application/json" },
+    });
   }
 }

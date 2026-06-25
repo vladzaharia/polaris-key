@@ -9,7 +9,9 @@ interface ParsedSemver {
 }
 
 export function parseSemver(v: string): ParsedSemver | null {
-  const m = v.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-.]+))?(?:\+[0-9A-Za-z-.]+)?$/);
+  const m = v.match(
+    /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-.]+))?(?:\+[0-9A-Za-z-.]+)?$/,
+  );
   if (!m) return null;
   return {
     major: Number(m[1]),
@@ -46,7 +48,9 @@ export function compareSemver(a: string, b: string): -1 | 0 | 1 {
   return 0;
 }
 
-export function channelForVersion(version: string): "stable" | "staging" | "pr" | "dev" {
+export function channelForVersion(
+  version: string,
+): "stable" | "staging" | "pr" | "dev" {
   if (version.startsWith("0.0.0-dev")) return "dev";
   if (version.startsWith("0.0.0-staging")) return "staging";
   if (/^0\.0\.0-pr\d+/.test(version)) return "pr";

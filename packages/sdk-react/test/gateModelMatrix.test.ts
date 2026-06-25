@@ -37,34 +37,69 @@ describe("licenseState precedence", () => {
   });
 
   it("missing credential beats a hard 401 (no token ⇒ needs-enroll, not revoked)", () => {
-    const s = licenseState({ hasToken: false, doc: doc(), now: 1500, lastSyncUnauthorized: true });
+    const s = licenseState({
+      hasToken: false,
+      doc: doc(),
+      now: 1500,
+      lastSyncUnauthorized: true,
+    });
     expect(s.status).toBe("needs-enroll");
   });
 
   it("a hard 401 beats doc presence (token + doc + 401 ⇒ revoked)", () => {
-    const s = licenseState({ hasToken: true, doc: doc(), now: 1500, lastSyncUnauthorized: true });
+    const s = licenseState({
+      hasToken: true,
+      doc: doc(),
+      now: 1500,
+      lastSyncUnauthorized: true,
+    });
     expect(s.status).toBe("revoked");
   });
 
   it("token present but no doc ⇒ needs-enroll (not error)", () => {
-    expect(licenseState({ hasToken: true, doc: null, now: 1500 }).status).toBe("needs-enroll");
+    expect(licenseState({ hasToken: true, doc: null, now: 1500 }).status).toBe(
+      "needs-enroll",
+    );
   });
 });
 
 describe("licenseState metadata carried per branch", () => {
   it("ok carries graceUntil + lastVerifiedAt and no allowedRange", () => {
-    const s = licenseState({ hasToken: true, doc: doc(), now: 1500, lastVerifiedAt: 1500 });
-    expect(s).toMatchObject({ status: "ok", graceUntil: 1000 + 30 * 86400, lastVerifiedAt: 1500 });
+    const s = licenseState({
+      hasToken: true,
+      doc: doc(),
+      now: 1500,
+      lastVerifiedAt: 1500,
+    });
+    expect(s).toMatchObject({
+      status: "ok",
+      graceUntil: 1000 + 30 * 86400,
+      lastVerifiedAt: 1500,
+    });
     expect(s.allowedRange).toBeUndefined();
   });
 
   it("grace carries graceUntil + lastVerifiedAt", () => {
-    const s = licenseState({ hasToken: true, doc: doc(), now: 1000 + 3601, lastVerifiedAt: 4600 });
-    expect(s).toMatchObject({ status: "grace", graceUntil: 1000 + 30 * 86400, lastVerifiedAt: 4600 });
+    const s = licenseState({
+      hasToken: true,
+      doc: doc(),
+      now: 1000 + 3601,
+      lastVerifiedAt: 4600,
+    });
+    expect(s).toMatchObject({
+      status: "grace",
+      graceUntil: 1000 + 30 * 86400,
+      lastVerifiedAt: 4600,
+    });
   });
 
   it("expired carries graceUntil but drops lastVerifiedAt", () => {
-    const s = licenseState({ hasToken: true, doc: doc(), now: 1000 + 31 * 86400, lastVerifiedAt: 999 });
+    const s = licenseState({
+      hasToken: true,
+      doc: doc(),
+      now: 1000 + 31 * 86400,
+      lastVerifiedAt: 999,
+    });
     expect(s.status).toBe("expired");
     expect(s.graceUntil).toBe(1000 + 30 * 86400);
     expect(s.lastVerifiedAt).toBeUndefined();
@@ -72,7 +107,12 @@ describe("licenseState metadata carried per branch", () => {
 
   it("a block surfaces the reason + the allowedRange verbatim", () => {
     const range = { min: "2.0.0", max: "3.0.0" };
-    const s = licenseState({ hasToken: true, doc: doc(), now: 1500, blocked: { reason: "version-too-new", allowedRange: range } });
+    const s = licenseState({
+      hasToken: true,
+      doc: doc(),
+      now: 1500,
+      blocked: { reason: "version-too-new", allowedRange: range },
+    });
     expect(s.status).toBe("version-too-new");
     expect(s.allowedRange).toEqual(range);
   });
@@ -85,19 +125,29 @@ describe("licenseState metadata carried per branch", () => {
 
 describe("licenseState boundary conditions", () => {
   it("exactly at expiresAt is still ok (strict > comparison)", () => {
-    expect(licenseState({ hasToken: true, doc: doc(), now: 1000 + 3600 }).status).toBe("ok");
+    expect(
+      licenseState({ hasToken: true, doc: doc(), now: 1000 + 3600 }).status,
+    ).toBe("ok");
   });
 
   it("one second past expiresAt is grace", () => {
-    expect(licenseState({ hasToken: true, doc: doc(), now: 1000 + 3601 }).status).toBe("grace");
+    expect(
+      licenseState({ hasToken: true, doc: doc(), now: 1000 + 3601 }).status,
+    ).toBe("grace");
   });
 
   it("exactly at graceUntil is still grace", () => {
-    expect(licenseState({ hasToken: true, doc: doc(), now: 1000 + 30 * 86400 }).status).toBe("grace");
+    expect(
+      licenseState({ hasToken: true, doc: doc(), now: 1000 + 30 * 86400 })
+        .status,
+    ).toBe("grace");
   });
 
   it("one second past graceUntil is expired", () => {
-    expect(licenseState({ hasToken: true, doc: doc(), now: 1000 + 30 * 86400 + 1 }).status).toBe("expired");
+    expect(
+      licenseState({ hasToken: true, doc: doc(), now: 1000 + 30 * 86400 + 1 })
+        .status,
+    ).toBe("expired");
   });
 });
 
@@ -121,9 +171,18 @@ describe("isUsable over the full status set", () => {
 });
 
 describe("all three block reasons propagate", () => {
-  for (const reason of ["version-too-old", "version-too-new", "channel-not-entitled"] as const) {
+  for (const reason of [
+    "version-too-old",
+    "version-too-new",
+    "channel-not-entitled",
+  ] as const) {
     it(`reason ${reason} maps straight through to status`, () => {
-      const input: GateInput = { hasToken: true, doc: doc(), now: 1500, blocked: { reason } };
+      const input: GateInput = {
+        hasToken: true,
+        doc: doc(),
+        now: 1500,
+        blocked: { reason },
+      };
       expect(licenseState(input).status).toBe(reason);
     });
   }
