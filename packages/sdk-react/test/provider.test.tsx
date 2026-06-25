@@ -39,7 +39,9 @@ describe("PolarisKeyProvider — mode resolution", () => {
         <Mode />
       </PolarisKeyProvider>,
     );
-    expect(within(container).getByTestId("mode").textContent).toBe("desktop");
+    await waitFor(() =>
+      expect(within(container).getByTestId("mode").textContent).toBe("desktop"),
+    );
   });
 
   it("mode='auto' picks desktop when a bridge prop is present", async () => {
@@ -54,7 +56,9 @@ describe("PolarisKeyProvider — mode resolution", () => {
         <Mode />
       </PolarisKeyProvider>,
     );
-    expect(within(container).getByTestId("mode").textContent).toBe("desktop");
+    await waitFor(() =>
+      expect(within(container).getByTestId("mode").textContent).toBe("desktop"),
+    );
   });
 
   it("mode='auto' falls back to browser with no bridge", async () => {
@@ -84,7 +88,9 @@ describe("PolarisKeyProvider — mode resolution", () => {
         <Mode />
       </PolarisKeyProvider>,
     );
-    expect(within(container).getByTestId("mode").textContent).toBe("desktop");
+    await waitFor(() =>
+      expect(within(container).getByTestId("mode").textContent).toBe("desktop"),
+    );
     adapter.dispose();
   });
 

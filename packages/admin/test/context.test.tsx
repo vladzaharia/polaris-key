@@ -95,7 +95,7 @@ describe("invalidate — prefix refetch", () => {
     await waitFor(() => expect(b).toHaveBeenCalledTimes(1));
     act(() => invalidate("tiers:"));
     hb.rerender();
-    await new Promise((r) => setTimeout(r, 10));
+    await waitFor(() => expect(a).toHaveBeenCalledTimes(2));
     // The licenses key was not under "tiers:" so it must not refetch.
     expect(b).toHaveBeenCalledTimes(1);
   });
@@ -117,9 +117,16 @@ describe("useAdmin", () => {
   });
 
   it("throws when used outside an AdminProvider", () => {
-    expect(() => renderHook(() => useAdmin())).toThrowError(
-      /useAdmin used outside AdminProvider/,
-    );
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    try {
+      expect(() => renderHook(() => useAdmin())).toThrowError(
+        /useAdmin used outside AdminProvider/,
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
 
