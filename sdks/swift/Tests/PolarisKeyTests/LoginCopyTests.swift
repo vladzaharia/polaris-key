@@ -1,0 +1,92 @@
+// Copy-mapping tests for the drop-in login/gate UI. SwiftUI view rendering can't be
+// unit-tested headlessly, so the gate-state → copy mapping is factored into the pure
+// `PolarisKeyCopy.message(for:allowedRange:)` (see PolarisKeyTheme.swift). These tests pin
+// that mapping: every terminal status resolves to the branded title/subtitle/symbol, the
+// "usable" states render no message card, and the version-block allowed-range suffix formats
+// the way VoiceOver will read it.
+
+#if canImport(SwiftUI)
+import XCTest
+
+@testable import PolarisKey
+@testable import PolarisKeyUI
+
+final class LoginCopyTests: XCTestCase {
+    func testUsableAndEnrollStatesHaveNoMessageCard() {
+        let copy = PolarisKeyCopy()
+        XCTAssertNil(copy.message(for: .ok))
+        XCTAssertNil(copy.message(for: .grace))
+        XCTAssertNil(copy.message(for: .needsEnroll))
+    }
+
+    func testRevokedMapping() {
+        let copy = PolarisKeyCopy()
+        let m = copy.message(for: .revoked)
+        XCTAssertEqual(m?.title, copy.revokedTitle)
+        XCTAssertEqual(m?.subtitle, copy.revokedSubtitle)
+        XCTAssertEqual(m?.symbol, "xmark.seal.fill")
+    }
+
+    func testExpiredMapping() {
+        let copy = PolarisKeyCopy()
+        let m = copy.message(for: .expired)
+        XCTAssertEqual(m?.title, copy.expiredTitle)
+        XCTAssertEqual(m?.subtitle, copy.expiredSubtitle)
+        XCTAssertEqual(m?.symbol, "clock.badge.exclamationmark")
+    }
+
+    func testVersionBlockTitlesMapPerStatus() {
+        let copy = PolarisKeyCopy()
+        XCTAssertEqual(copy.message(for: .versionTooOld)?.title, copy.versionTooOldTitle)
+        XCTAssertEqual(copy.message(for: .versionTooNew)?.title, copy.versionTooNewTitle)
+        XCTAssertEqual(
+            copy.message(for: .channelNotEntitled)?.title, copy.channelNotEntitledTitle)
+        // All version blocks share one warning glyph.
+        XCTAssertEqual(copy.message(for: .versionTooOld)?.symbol, "exclamationmark.triangle.fill")
+    }
+
+    func testVersionBlockSubtitleAppendsAllowedRange() {
+        let copy = PolarisKeyCopy()
+        let m = copy.message(
+            for: .versionTooOld, allowedRange: AllowedRange(min: "1.2.0", max: "3.0.0"))
+        XCTAssertEqual(
+            m?.subtitle, copy.versionBlockSubtitle + " (allowed: min 1.2.0, max 3.0.0)")
+    }
+
+    func testVersionBlockSubtitleWithOnlyMin() {
+        let copy = PolarisKeyCopy()
+        let m = copy.message(for: .versionTooNew, allowedRange: AllowedRange(min: "2.0.0"))
+        XCTAssertEqual(m?.subtitle, copy.versionBlockSubtitle + " (allowed: min 2.0.0)")
+    }
+
+    func testVersionBlockSubtitleUnchangedWhenRangeEmpty() {
+        let copy = PolarisKeyCopy()
+        // Nil range, and a present-but-empty range, both leave the base copy untouched.
+        XCTAssertEqual(copy.message(for: .versionTooOld)?.subtitle, copy.versionBlockSubtitle)
+        let empty = copy.message(for: .versionTooOld, allowedRange: AllowedRange())
+        XCTAssertEqual(empty?.subtitle, copy.versionBlockSubtitle)
+    }
+
+    func testProductNameThreadsIntoWelcomeTitle() {
+        let copy = PolarisKeyCopy(productName: "DJDL")
+        XCTAssertEqual(copy.welcomeTitle, "Welcome to DJDL")
+        // An explicit override wins over the product-name default.
+        let custom = PolarisKeyCopy(productName: "DJDL", welcomeTitle: "Hello there")
+        XCTAssertEqual(custom.welcomeTitle, "Hello there")
+    }
+
+    func testChromeCopyHasSensibleDefaults() {
+        // The previously-hardcoded divider/retry/reconnect strings are now branded copy.
+        let copy = PolarisKeyCopy()
+        XCTAssertEqual(copy.orDividerLabel, "or")
+        XCTAssertEqual(copy.retryButton, "Retry")
+        XCTAssertEqual(copy.reconnectButton, "Reconnect")
+        XCTAssertFalse(copy.graceSubtitle.isEmpty)
+    }
+
+    func testDefaultThemeUsesBrandIndigoAccent() {
+        // The default theme adopts the Polaris brand indigo rather than the system accent.
+        XCTAssertEqual(PolarisKeyTheme().accent, PolarisKeyTheme.brandAccent)
+    }
+}
+#endif

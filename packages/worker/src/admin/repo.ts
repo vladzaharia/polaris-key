@@ -88,7 +88,9 @@ export async function patchLicense(
   db: Db,
   product: string,
   id: string,
-  fields: Partial<Pick<LicenseRow, "name" | "email" | "expires_at" | "max_offline_days" | "tier_id" | "profile_id" | "overrides_json">>,
+  fields: Partial<Pick<LicenseRow,
+    | "name" | "email" | "expires_at" | "max_offline_days" | "tier_id" | "profile_id" | "overrides_json"
+    | "channels_json" | "min_version" | "max_version">>,
   modifiedBy: string | null,
   now: number,
 ): Promise<void> {
@@ -161,15 +163,19 @@ export async function listTiers(db: Db, product: string): Promise<TierRow[]> {
 
 export async function upsertTier(db: Db, row: TierRow): Promise<void> {
   await db.run(
-    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit,
+       channels_json, min_version, max_version, modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, id) DO UPDATE SET
        label = excluded.label, profile_id = excluded.profile_id,
        policy_expiry_days = excluded.policy_expiry_days,
        policy_machine_limit = excluded.policy_machine_limit,
+       channels_json = excluded.channels_json, min_version = excluded.min_version,
+       max_version = excluded.max_version,
        modified_by = excluded.modified_by, modified_at = excluded.modified_at`,
     row.product, row.id, row.label, row.profile_id, row.policy_expiry_days,
-    row.policy_machine_limit, row.modified_by, row.modified_at,
+    row.policy_machine_limit, row.channels_json, row.min_version, row.max_version,
+    row.modified_by, row.modified_at,
   );
 }
 

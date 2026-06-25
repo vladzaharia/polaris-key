@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { desktopAdapter, DesktopAdapter } from "../src/desktop/desktopAdapter.js";
 import { resolveBridge } from "../src/desktop/bridge.js";
 import type { BridgeEnroll, BridgeOidcPoll, BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
-import { makeDoc, makeFakeBridge, NOW_SEC } from "./fixtures.js";
+import { entry, makeConfigDoc, makeDoc, makeFakeBridge, NOW_SEC } from "./fixtures.js";
 
 // The desktop adapter is a thin renderer-side proxy over a PolarisBridge. These drive it
 // directly with a fake bridge so the proxying, the push channel, and the error mapping are
@@ -193,7 +193,7 @@ describe("DesktopAdapter — stateChanged push channel", () => {
     await ready(adapter);
     expect(adapter.snapshot().config["theme.mode"]).toBe("dark");
     // Push a new doc with a different config value.
-    const doc2 = makeDoc({ payload: { config: { "theme.mode": { state: "managed", value: "light" } }, secrets: {}, entitlements: {} } });
+    const doc2 = makeDoc({ payload: { config: { "theme.mode": { state: "enforced", value: "light", updatedAt: 950 } }, secrets: {}, entitlements: {} } });
     bridge.push({ hasToken: true, doc: doc2, lastVerifiedAt: NOW_SEC * 1000 });
     expect(adapter.snapshot().config["theme.mode"]).toBe("light");
     adapter.dispose();
@@ -218,6 +218,52 @@ describe("DesktopAdapter — stateChanged push channel", () => {
     const before = adapter.snapshot();
     bridge.push({ hasToken: false, doc: null });
     expect(adapter.snapshot()).toBe(before);
+  });
+});
+
+describe("DesktopAdapter — v2 config read APIs", () => {
+  const doc = makeConfigDoc({
+    enforcedKey: entry("enforced", "srv"),
+    hiddenKey: entry("hidden", "srv-hidden"),
+    defaultKey: entry("default", "remote"),
+  });
+
+  function adapterWith(localOverrides: Record<string, unknown>) {
+    return desktopAdapter({
+      bridge: makeFakeBridge({ hasToken: true, doc, lastVerifiedAt: NOW_SEC * 1000 }),
+      now: () => NOW_SEC,
+      localOverrides: localOverrides as Record<string, never>,
+    });
+  }
+
+  it("getConfig honors enforced-beats-local and default<-local precedence", async () => {
+    const adapter = adapterWith({ enforcedKey: "mine", defaultKey: "mine", onlyLocal: "z" });
+    await ready(adapter);
+    expect(adapter.getConfig("enforcedKey", "fb")).toBe("srv"); // locked
+    expect(adapter.getConfig("defaultKey", "fb")).toBe("mine"); // local wins
+    expect(adapter.getConfig("onlyLocal", "fb")).toBe("z"); // override-only
+    expect(adapter.getConfig("absent", "fb")).toBe("fb"); // fallback
+    adapter.dispose();
+  });
+
+  it("listUserConfig excludes hidden and flags enforced rows", async () => {
+    const adapter = adapterWith({ defaultKey: "local" });
+    await ready(adapter);
+    const byKey = Object.fromEntries(adapter.listUserConfig().map((r) => [r.key, r]));
+    expect(byKey.hiddenKey).toBeUndefined();
+    expect(byKey.enforcedKey?.enforced).toBe(true);
+    expect(byKey.defaultKey).toEqual({ key: "defaultKey", value: "local", enforced: false });
+    adapter.dispose();
+  });
+
+  it("getConfigSource reports provenance", async () => {
+    const adapter = adapterWith({ defaultKey: "local" });
+    await ready(adapter);
+    expect(adapter.getConfigSource("enforcedKey")).toBe("enforced");
+    expect(adapter.getConfigSource("hiddenKey")).toBe("hidden");
+    expect(adapter.getConfigSource("defaultKey")).toBe("local");
+    expect(adapter.getConfigSource("absent")).toBe("fallback");
+    adapter.dispose();
   });
 });
 

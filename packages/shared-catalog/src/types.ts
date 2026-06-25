@@ -6,8 +6,10 @@
 
 export type ConfigKind = "config" | "secret" | "flag";
 
-/** Per-key MDM-style management state — applies to `config` keys only. */
-export type ManagementState = "unmanaged" | "managed" | "hidden";
+/** Per-key MDM-style management state — applies to `config` keys only.
+ *  `default` (overridable by user/env) | `enforced` (server wins, read-only) |
+ *  `hidden` (enforced + withheld from user-facing enumeration). */
+export type ManagementState = "default" | "enforced" | "hidden";
 
 /** rjsf/SwiftUI rendering hints — never affect validation, only presentation. */
 export interface UiHints {
@@ -16,7 +18,7 @@ export interface UiHints {
   placeholder?: string;
   order?: number;
   /** Admin scopes where the value is meaningful (omitted ⇒ all). */
-  tiers?: ("profile" | "license" | "machine")[];
+  scopes?: ("profile" | "license" | "device")[];
   advanced?: boolean;
   unit?: string;
   optionLabels?: Record<string, string>;

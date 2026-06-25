@@ -16,7 +16,7 @@
     {
       "id": "legacy-djdl-baseline",
       "description": "Original djdl cross-platform vector (no aud/iss) — proves the encoding is unchanged.",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6ImRqZGwtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJsaWNlbnNlSWQiOiJhYmMxMjNkZWY0NTYiLCJkZXZpY2VJZCI6ImRldmljZS1maXh0dXJlLTAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiQWRhIExvdmVsYWNlIiwiZmlyc3ROYW1lIjoiQWRhIiwiZW1haWwiOiJhZGFAZXhhbXBsZS5jb20iLCJlbnJvbGxlZEF0IjoxNjkwMDAwMDAwfSwicGF5bG9hZCI6eyJjb25maWciOnsicnVuLmNvbmN1cnJlbmN5Ijp7InN0YXRlIjoibWFuYWdlZCIsInZhbHVlIjo0fX0sInNlY3JldHMiOnsicHJveHkuc3Vic2NyaXB0aW9uVXJsIjp7InN0YXRlIjoiaGlkZGVuIiwidmFsdWUiOiJodHRwczovL3Zwbi5leGFtcGxlLmNvbS9zdWIvYWJjIn19LCJlbnRpdGxlbWVudHMiOnsicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6dHJ1ZX19fX0.LhfMI8D6AdUg-_FaYodnmSZwonYQ1KDBzeZjtO-eYQmbDrFO2Y9Mnuji2jnLHuBhec5RBckN7f8g_9fevg5_BA",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6ImRqZGwtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJsaWNlbnNlSWQiOiJhYmMxMjNkZWY0NTYiLCJkZXZpY2VJZCI6ImRldmljZS1maXh0dXJlLTAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiQWRhIExvdmVsYWNlIiwiZmlyc3ROYW1lIjoiQWRhIiwiZW1haWwiOiJhZGFAZXhhbXBsZS5jb20iLCJlbnJvbGxlZEF0IjoxNjkwMDAwMDAwfSwicGF5bG9hZCI6eyJjb25maWciOnsicnVuLmNvbmN1cnJlbmN5Ijp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6NCwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX0sInNlY3JldHMiOnsicHJveHkuc3Vic2NyaXB0aW9uVXJsIjp7InN0YXRlIjoiaGlkZGVuIiwidmFsdWUiOiJodHRwczovL3Zwbi5leGFtcGxlLmNvbS9zdWIvYWJjIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX0sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX19fQ.1tSJF3vbUcJu815Csnq_EpxrMSDH1qi8JcpOzE9yNjqdOEiEYZdhPXUzdDU5CKUx_kb_oD1jzexQbaAlSXqPDQ",
       "trust": {
         "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
       },
@@ -39,20 +39,23 @@
           "payload": {
             "config": {
               "run.concurrency": {
-                "state": "managed",
-                "value": 4
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 1699990000
               }
             },
             "secrets": {
               "proxy.subscriptionUrl": {
                 "state": "hidden",
-                "value": "https://vpn.example.com/sub/abc"
+                "value": "https://vpn.example.com/sub/abc",
+                "updatedAt": 1699990000
               }
             },
             "entitlements": {
               "polarisVpn": {
-                "state": "managed",
-                "value": true
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 1699990000
               }
             }
           }
@@ -62,7 +65,7 @@
     {
       "id": "valid-stable",
       "description": "A valid Polaris v1 managed-config document (with aud/iss).",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fX0.Np87RITCYN6A4cTiet3V8Evj0J4_qZVfaQskam49Xk59h_AbJArsz3W9qzeT3lx9Nf0Eb8DbxkJPEYwLJGxaCg",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
@@ -87,26 +90,30 @@
           "payload": {
             "config": {
               "run.concurrency": {
-                "state": "managed",
-                "value": 4
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 1699990000
               }
             },
             "secrets": {},
             "entitlements": {
               "polarisVpn": {
-                "state": "managed",
-                "value": true
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 1699990000
               },
               "channels": {
-                "state": "managed",
+                "state": "enforced",
                 "value": [
                   "stable",
                   "staging"
-                ]
+                ],
+                "updatedAt": 1699990000
               },
               "app.minVersion": {
-                "state": "managed",
-                "value": "1.0.0"
+                "state": "enforced",
+                "value": "1.0.0",
+                "updatedAt": 1699990000
               }
             }
           }
@@ -116,7 +123,7 @@
     {
       "id": "tampered-payload",
       "description": "Payload mutated after signing — signature must fail.",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6OTk5fX0sInNlY3JldHMiOnt9LCJlbnRpdGxlbWVudHMiOnt9fX0.Np87RITCYN6A4cTiet3V8Evj0J4_qZVfaQskam49Xk59h_AbJArsz3W9qzeT3lx9Nf0Eb8DbxkJPEYwLJGxaCg",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjk5OSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX0sInNlY3JldHMiOnt9LCJlbnRpdGxlbWVudHMiOnt9fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
@@ -127,7 +134,7 @@
     {
       "id": "wrong-kid",
       "description": "Valid signature, but the kid is absent from the trust set.",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fX0.Np87RITCYN6A4cTiet3V8Evj0J4_qZVfaQskam49Xk59h_AbJArsz3W9qzeT3lx9Nf0Eb8DbxkJPEYwLJGxaCg",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
       "trust": {
         "some-other-kid": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
       },
@@ -138,7 +145,7 @@
     {
       "id": "wrong-alg-none",
       "description": "Header alg=none — rejected as an algorithm downgrade.",
-      "jws": "eyJhbGciOiJub25lIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fX0.",
+      "jws": "eyJhbGciOiJub25lIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.",
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
@@ -160,7 +167,7 @@
     {
       "id": "valid-second-key-multi-trust",
       "description": "A doc signed by djdl-test-2026, verified against a trust set holding BOTH test keys — selection is by kid.",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6ImRqZGwtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfc2Vjb25kX2tleSIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDM2MDAsImdyYWNlVW50aWwiOjE3MDI1OTIwMDAsInByb2ZpbGUiOnsibmFtZSI6IkdyYWNlIEhvcHBlciIsImZpcnN0TmFtZSI6IkdyYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOjR9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoibWFuYWdlZCIsInZhbHVlIjp0cnVlfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOiIxLjAuMCJ9fX19.qjbWPFHRmBfeHAn_cuDFM9GXYgBRrZyOOEZ2cOhrUvyrdSZTkerJHtKXX2xaO1nJ9odtBz03d4wdrFEBlrI3Aw",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6ImRqZGwtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfc2Vjb25kX2tleSIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDM2MDAsImdyYWNlVW50aWwiOjE3MDI1OTIwMDAsInByb2ZpbGUiOnsibmFtZSI6IkdyYWNlIEhvcHBlciIsImZpcnN0TmFtZSI6IkdyYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.BPdbWbCxsQI_2KNSgr6OFm6VP9KbMLyQ00z1AWvz9nYXeR4bINn-aeWQ6KrElh_hOeQzxu3S3TkQ3Hlne3RoAA",
       "trust": {
         "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U",
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
@@ -186,26 +193,30 @@
           "payload": {
             "config": {
               "run.concurrency": {
-                "state": "managed",
-                "value": 4
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 1699990000
               }
             },
             "secrets": {},
             "entitlements": {
               "polarisVpn": {
-                "state": "managed",
-                "value": true
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 1699990000
               },
               "channels": {
-                "state": "managed",
+                "state": "enforced",
                 "value": [
                   "stable",
                   "staging"
-                ]
+                ],
+                "updatedAt": 1699990000
               },
               "app.minVersion": {
-                "state": "managed",
-                "value": "1.0.0"
+                "state": "enforced",
+                "value": "1.0.0",
+                "updatedAt": 1699990000
               }
             }
           }
@@ -215,7 +226,7 @@
     {
       "id": "valid-forward-compat-extra-fields",
       "description": "A doc carrying unknown top-level fields still verifies and round-trips byte-for-byte (forward-compat).",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fSwiZnV0dXJlRmVhdHVyZSI6eyJ0aWVyIjoiZ29sZCIsInNlYXRzIjo1fSwidW5rbm93blRvcExldmVsIjoiaWdub3JlZC1ieS1vbGQtY2xpZW50cyJ9.-w45d1spkKhQMPv_J16PSfNJnXQ_dSl_7c8NGyvu-bf6AyEvHUzZyXBjvI9qrUctEoaqIvrjGL6Bzu2uzFuyBQ",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fSwiZnV0dXJlRmVhdHVyZSI6eyJ0aWVyIjoiZ29sZCIsInNlYXRzIjo1fSwidW5rbm93blRvcExldmVsIjoiaWdub3JlZC1ieS1vbGQtY2xpZW50cyJ9.Mm8yJQchCHD4Zb7fwsHcL_OrEalaCV6ScG4VvDfptmVXKZQn8v3DLy_7d0nK4bJS-m0sYTETUFVGXNVRYZeLDg",
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
@@ -240,26 +251,30 @@
           "payload": {
             "config": {
               "run.concurrency": {
-                "state": "managed",
-                "value": 4
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 1699990000
               }
             },
             "secrets": {},
             "entitlements": {
               "polarisVpn": {
-                "state": "managed",
-                "value": true
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 1699990000
               },
               "channels": {
-                "state": "managed",
+                "state": "enforced",
                 "value": [
                   "stable",
                   "staging"
-                ]
+                ],
+                "updatedAt": 1699990000
               },
               "app.minVersion": {
-                "state": "managed",
-                "value": "1.0.0"
+                "state": "enforced",
+                "value": "1.0.0",
+                "updatedAt": 1699990000
               }
             }
           },
@@ -274,7 +289,7 @@
     {
       "id": "right-kid-wrong-key",
       "description": "Signature from pkey-test-prod-2026 verified against a trust mapping that kid to djdl-test-2026's pubkey — must fail.",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fX0.Np87RITCYN6A4cTiet3V8Evj0J4_qZVfaQskam49Xk59h_AbJArsz3W9qzeT3lx9Nf0Eb8DbxkJPEYwLJGxaCg",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
       "trust": {
         "pkey-test-prod-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
       },
@@ -296,7 +311,7 @@
     {
       "id": "malformed-four-parts",
       "description": "A 4-segment JWS (extra trailing part) — structurally invalid, must fail.",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6NH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOnRydWV9LCJjaGFubmVscyI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl19LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6IjEuMC4wIn19fX0.Np87RITCYN6A4cTiet3V8Evj0J4_qZVfaQskam49Xk59h_AbJArsz3W9qzeT3lx9Nf0Eb8DbxkJPEYwLJGxaCg.extra",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw.extra",
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
@@ -307,7 +322,7 @@
     {
       "id": "valid-unicode-profile-name",
       "description": "A doc whose profile.name contains emoji + CJK + diacritics — verifies and round-trips the exact UTF-8.",
-      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfdW5pY29kZSIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDM2MDAsImdyYWNlVW50aWwiOjE3MDI1OTIwMDAsInByb2ZpbGUiOnsibmFtZSI6IkFkYSBMb3ZlbGFjZSDwn5K7IOKAlCDljJfkuqwg4oCUIMOFbmdzdHLDtm0iLCJmaXJzdE5hbWUiOiJBZGEiLCJlbWFpbCI6ImFkYUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOjR9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoibWFuYWdlZCIsInZhbHVlIjp0cnVlfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJtYW5hZ2VkIiwidmFsdWUiOiIxLjAuMCJ9fX19.Fb-jWJcx1EUJhKOQvT3YiAS9ywYdN-CegoSMBdrQDaWTtlSfW9V_3GvI_TILwSAWh-Mz19bSooWe0nAt4s-eCw",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfdW5pY29kZSIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDM2MDAsImdyYWNlVW50aWwiOjE3MDI1OTIwMDAsInByb2ZpbGUiOnsibmFtZSI6IkFkYSBMb3ZlbGFjZSDwn5K7IOKAlCDljJfkuqwg4oCUIMOFbmdzdHLDtm0iLCJmaXJzdE5hbWUiOiJBZGEiLCJlbWFpbCI6ImFkYUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.FQnagSym5NZ-LVzrGTM5WejF6_BXIgUVM8uP6qK-rhkxoblXSv2Hud9-DK8dfwvqn29n9IjPTX5QRG0v58nkDA",
       "trust": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
@@ -332,26 +347,298 @@
           "payload": {
             "config": {
               "run.concurrency": {
-                "state": "managed",
-                "value": 4
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 1699990000
               }
             },
             "secrets": {},
             "entitlements": {
               "polarisVpn": {
-                "state": "managed",
-                "value": true
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 1699990000
               },
               "channels": {
-                "state": "managed",
+                "state": "enforced",
                 "value": [
                   "stable",
                   "staging"
-                ]
+                ],
+                "updatedAt": 1699990000
               },
               "app.minVersion": {
-                "state": "managed",
-                "value": "1.0.0"
+                "state": "enforced",
+                "value": "1.0.0",
+                "updatedAt": 1699990000
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-v2-management-states",
+      "description": "A v2 doc with enforced + hidden + default ManagedEntry shapes (each carrying updatedAt) — verifies and round-trips the exact entry shapes.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfdjJfc3RhdGVzIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MTExMX0sInVpLnRoZW1lIjp7InN0YXRlIjoiZGVmYXVsdCIsInZhbHVlIjoiZGFyayIsInVwZGF0ZWRBdCI6MTY5OTk5MjIyMn19LCJzZWNyZXRzIjp7InByb3h5LnN1YnNjcmlwdGlvblVybCI6eyJzdGF0ZSI6ImhpZGRlbiIsInZhbHVlIjoiaHR0cHM6Ly92cG4uZXhhbXBsZS5jb20vc3ViL3h5eiIsInVwZGF0ZWRBdCI6MTY5OTk5MzMzM319LCJlbnRpdGxlbWVudHMiOnsicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5NDQ0NH19fX0.PHxnaQ8wqbvB3EelKaDJkkXm6APdy0K4EZcoUvs4ixAKzAGj1xfPD4uXIbPRRTQ1YW6mBDIQGREa51OpsmdLAA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "pkey-test-prod-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_v2_states",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 1700000000,
+          "expiresAt": 1700003600,
+          "graceUntil": 1702592000,
+          "profile": {
+            "name": "Grace Hopper",
+            "firstName": "Grace",
+            "email": "grace@example.com",
+            "enrolledAt": 1690000000
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 1699991111
+              },
+              "ui.theme": {
+                "state": "default",
+                "value": "dark",
+                "updatedAt": 1699992222
+              }
+            },
+            "secrets": {
+              "proxy.subscriptionUrl": {
+                "state": "hidden",
+                "value": "https://vpn.example.com/sub/xyz",
+                "updatedAt": 1699993333
+              }
+            },
+            "entitlements": {
+              "polarisVpn": {
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 1699994444
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-updated-at-roundtrip",
+      "description": "Per-entry updatedAt (epoch seconds) round-trips exactly through sign + verify — clients change-detect on it.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfdXBkYXRlZF9hdCIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDM2MDAsImdyYWNlVW50aWwiOjE3MDI1OTIwMDAsInByb2ZpbGUiOnsibmFtZSI6IkdyYWNlIEhvcHBlciIsImZpcnN0TmFtZSI6IkdyYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo4LCJ1cGRhdGVkQXQiOjE3MDAxMjM0NTZ9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZGVmYXVsdCIsInZhbHVlIjpmYWxzZSwidXBkYXRlZEF0IjoxNzAwNjU0MzIxfX19fQ.gl6U93op1sAVQ-JXCNtjIKaScYnrye_tDYTfC-u1TXRYVOPYs7SWR1U0uWcdO30AzWgkqIvJVGsxQdUZqBDjDQ",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "pkey-test-prod-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_updated_at",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 1700000000,
+          "expiresAt": 1700003600,
+          "graceUntil": 1702592000,
+          "profile": {
+            "name": "Grace Hopper",
+            "firstName": "Grace",
+            "email": "grace@example.com",
+            "enrolledAt": 1690000000
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "enforced",
+                "value": 8,
+                "updatedAt": 1700123456
+              }
+            },
+            "secrets": {},
+            "entitlements": {
+              "polarisVpn": {
+                "state": "default",
+                "value": false,
+                "updatedAt": 1700654321
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "wrong-alg-es256",
+      "description": "Header alg=ES256 against an Ed25519 trust set — rejected as algorithm confusion.",
+      "jws": "eyJhbGciOiJFUzI1NiIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "wrong-alg-hs256",
+      "description": "Header alg=HS256 (symmetric) against an Ed25519 trust set — rejected, no key-confusion.",
+      "jws": "eyJhbGciOiJIUzI1NiIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "empty-trust-set",
+      "description": "A valid token verified with an empty trust set ({}) — no key can match, must be null.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {},
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "foreign-kid-only",
+      "description": "Valid token whose kid is absent from a non-empty (foreign-keyed) trust set — null.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "fleet-key-eu-2027": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "valid-large-integer-timestamps",
+      "description": "Timestamps at/near 2^53-1 (Number.MAX_SAFE_INTEGER) round-trip losslessly across JS/Python/Swift — no precision loss.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfYmlnX2ludF90cyIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0Ijo5MDA3MTk5MjU0NzQwOTg5LCJleHBpcmVzQXQiOjkwMDcxOTkyNTQ3NDA5OTAsImdyYWNlVW50aWwiOjkwMDcxOTkyNTQ3NDA5OTEsInByb2ZpbGUiOnsibmFtZSI6IkdyYWNlIEhvcHBlciIsImZpcnN0TmFtZSI6IkdyYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjkwMDcxOTkyNTQ3NDA5ODh9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjkwMDcxOTkyNTQ3NDA5OTF9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0Ijo5MDA3MTk5MjU0NzQwOTkwfX19fQ.uwQSGe41D9EekUQKjWibaMyDL4qFi4Qgu2I2kWChm3X-1BvGDOJmkYqfVdpxFwwLZXfbRWkDtaFvletnmlFzAw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "pkey-test-prod-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_big_int_ts",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 9007199254740989,
+          "expiresAt": 9007199254740990,
+          "graceUntil": 9007199254740991,
+          "profile": {
+            "name": "Grace Hopper",
+            "firstName": "Grace",
+            "email": "grace@example.com",
+            "enrolledAt": 9007199254740988
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 9007199254740991
+              }
+            },
+            "secrets": {},
+            "entitlements": {
+              "polarisVpn": {
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 9007199254740990
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "base64url-payload-padding",
+      "description": "Payload segment carries a `=` base64url padding char — alters the signing input, must be rejected.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0=.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "base64url-payload-trailing-data",
+      "description": "Trailing data appended to the payload segment — signing input differs, signature must fail.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0AAAA.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "valid-nul-byte-in-string",
+      "description": "A NUL (U+0000) byte embedded in a JSON string value round-trips byte-for-byte — UTF-8 stays stable through control chars.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfbnVsX2J5dGUiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJwcm9maWxlIjp7Im5hbWUiOiJiZWZvcmVcdTAwMDBhZnRlciIsImZpcnN0TmFtZSI6IkdyXHUwMDAwYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.7O5oeucBLjh3iGk7IlpRBSVlGmASd2ErIfUou918rZcW8v7gOYfqyu8KVh8QJ3eU3ESLeqmt662ZKZdvBIPKDA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "pkey-test-prod-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_nul_byte",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 1700000000,
+          "expiresAt": 1700003600,
+          "graceUntil": 1702592000,
+          "profile": {
+            "name": "before\u0000after",
+            "firstName": "Gr\u0000ace",
+            "email": "grace@example.com",
+            "enrolledAt": 1690000000
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 1699990000
+              }
+            },
+            "secrets": {},
+            "entitlements": {
+              "polarisVpn": {
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 1699990000
+              },
+              "channels": {
+                "state": "enforced",
+                "value": [
+                  "stable",
+                  "staging"
+                ],
+                "updatedAt": 1699990000
+              },
+              "app.minVersion": {
+                "state": "enforced",
+                "value": "1.0.0",
+                "updatedAt": 1699990000
               }
             }
           }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rateLimitOk } from "../src/rateLimit.js";
+import { clientIp, rateLimitOk } from "../src/rateLimit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, mkReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
@@ -16,6 +16,15 @@ describe("rateLimitOk", () => {
     expect(await rateLimitOk(env, "djdl", rl, NOW)).toBe(false);
   });
 
+  it("is atomic under a concurrent burst (never exceeds the limit)", async () => {
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const rl = { bucket: "x", id: "ip", limit: 3, windowSec: 60 };
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => rateLimitOk(env, "djdl", rl, NOW)),
+    );
+    expect(results.filter((ok) => ok).length).toBe(3);
+  });
+
   it("uses a fresh counter in the next window", async () => {
     const env = makeEnv(new KvMock(), ["djdl"]);
     const rl = { bucket: "x", id: "ip", limit: 1, windowSec: 60 };
@@ -30,6 +39,18 @@ describe("rateLimitOk", () => {
     expect(await rateLimitOk(env, "djdl", rl, NOW)).toBe(true);
     expect(await rateLimitOk(env, "acme", rl, NOW)).toBe(true);
     expect(await rateLimitOk(env, "djdl", rl, NOW)).toBe(false);
+  });
+});
+
+describe("clientIp", () => {
+  it("uses cf-connecting-ip and ignores the spoofable x-forwarded-for", () => {
+    expect(clientIp(mkReq("POST", { "cf-connecting-ip": "203.0.113.7" }))).toBe("203.0.113.7");
+    // x-forwarded-for alone must NOT set the limit key (it is client-controlled).
+    expect(clientIp(mkReq("POST", { "x-forwarded-for": "1.2.3.4" }))).toBe("unknown");
+    // even with both, the trusted edge header wins.
+    expect(
+      clientIp(mkReq("POST", { "cf-connecting-ip": "203.0.113.7", "x-forwarded-for": "1.2.3.4" })),
+    ).toBe("203.0.113.7");
   });
 });
 

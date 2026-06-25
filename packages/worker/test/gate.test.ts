@@ -8,8 +8,8 @@ import {
   parseSemver,
 } from "../src/gate.js";
 
-// Convenience: a managed entitlement entry.
-const ent = (value: ManagedEntry["value"]): ManagedEntry => ({ state: "managed", value });
+// Convenience: an enforced entitlement entry.
+const ent = (value: ManagedEntry["value"]): ManagedEntry => ({ state: "enforced", value, updatedAt: 1_700_000_000 });
 
 describe("parseSemver", () => {
   it("parses MAJOR.MINOR.PATCH", () => {

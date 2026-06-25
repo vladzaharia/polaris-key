@@ -8,6 +8,7 @@ import {
   HEADER_CHANNEL,
   HEADER_VERSION,
   type DocProfile,
+  type ManagedEntry,
   type ManagedPayload,
 } from "@polaris-key/protocol";
 import { HEADER_DEVICE } from "@polaris-key/protocol";
@@ -16,8 +17,9 @@ import type { Db } from "./db/types.js";
 import type { Product } from "./product.js";
 import { bearer, errorResponse, ErrorCode, json, methodNotAllowed } from "./http.js";
 import { hashKey, mintToken } from "./crypto.js";
-import { checkBuildGate } from "./gate.js";
-import { buildDoc, computeETag, signDoc } from "./configDoc.js";
+import { checkBuildGate, tighterMin, tighterMax } from "./gate.js";
+import { Catalog } from "@polaris-key/catalog";
+import { buildDoc, computeETag, signDoc, validatePayload } from "./configDoc.js";
 import { mergePayloads } from "./merge.js";
 import {
   getKey,
@@ -25,6 +27,7 @@ import {
   getMachine,
   getProfile,
   getTier,
+  getActiveSchema,
   countActiveMachines,
   touchKey,
   upsertMachine,
@@ -32,6 +35,7 @@ import {
   setMachineReported,
   type LicenseRow,
   type MachineRow,
+  type TierRow,
 } from "./repo.js";
 import {
   deleteTokenRecord,
@@ -50,6 +54,39 @@ function docProfile(license: LicenseRow): DocProfile {
   };
 }
 
+/** Parse a JSON string-array column, ignoring null/invalid. */
+function parseChannelsJson(json: string | null): string[] {
+  if (!json) return [];
+  try {
+    const v = JSON.parse(json);
+    return Array.isArray(v) ? (v.filter((c) => typeof c === "string") as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Inject the admin upgrade-channel + version-window policy (from the tier and license rows)
+ * as ENFORCED entitlements, so the existing gate (gate.ts checkBuildGate) governs them with
+ * no gate-logic changes. Admin policy wins: channels = union of tier+license arrays; min/max
+ * = the tighter of the two. `updatedAt` is the license's modified_at.
+ */
+function injectAdminPolicy(payload: ManagedPayload, tier: TierRow | null, license: LicenseRow): void {
+  const updatedAt = license.modified_at;
+  const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({ state: "enforced", value, updatedAt });
+
+  const channels = [
+    ...new Set([...parseChannelsJson(tier?.channels_json ?? null), ...parseChannelsJson(license.channels_json)]),
+  ];
+  if (channels.length > 0) payload.entitlements["channels"] = enforced(channels);
+
+  const minVersion = tighterMin(tier?.min_version ?? undefined, license.min_version ?? undefined);
+  if (minVersion) payload.entitlements["app.minVersion"] = enforced(minVersion);
+
+  const maxVersion = tighterMax(tier?.max_version ?? undefined, license.max_version ?? undefined);
+  if (maxVersion) payload.entitlements["app.maxVersion"] = enforced(maxVersion);
+}
+
 /** Effective managed payload: tier(profile) -> license(profile) -> license overrides -> machine. */
 async function resolveEffective(
   db: Db,
@@ -57,9 +94,10 @@ async function resolveEffective(
   license: LicenseRow,
   machine?: MachineRow | null,
 ): Promise<ManagedPayload> {
+  let tier: TierRow | null = null;
   let tierProfileJson: string | null = null;
   if (license.tier_id) {
-    const tier = await getTier(db, product, license.tier_id);
+    tier = await getTier(db, product, license.tier_id);
     if (tier?.profile_id) {
       const p = await getProfile(db, product, tier.profile_id);
       tierProfileJson = p?.payload_json ?? null;
@@ -70,7 +108,9 @@ async function resolveEffective(
     const p = await getProfile(db, product, license.profile_id);
     licProfileJson = p?.payload_json ?? null;
   }
-  return mergePayloads(tierProfileJson, licProfileJson, license.overrides_json, machine?.overrides_json ?? null);
+  const payload = mergePayloads(tierProfileJson, licProfileJson, license.overrides_json, machine?.overrides_json ?? null);
+  injectAdminPolicy(payload, tier, license);
+  return payload;
 }
 
 function resolveMachineLimit(payload: ManagedPayload, fallback: number): number {
@@ -208,7 +248,19 @@ export async function handleConfig(
   const machine = await getMachine(db, product.slug, rec.machineId);
   if (!machine || machine.status !== "authorized") return errorResponse(401, ErrorCode.Unauthorized);
 
-  const payload = await resolveEffective(db, product.slug, license, machine);
+  let payload = await resolveEffective(db, product.slug, license, machine);
+
+  // Defense-in-depth: re-validate the merged config/secret keys against the active catalog
+  // and drop anything unknown or invalid before signing (a stale/misconfigured override must
+  // never reach the client). Entitlements pass through — the gate below governs them.
+  const schemaRow = await getActiveSchema(db, product.slug);
+  if (schemaRow) {
+    try {
+      payload = validatePayload(payload, new Catalog(JSON.parse(schemaRow.catalog_json)));
+    } catch {
+      // An unparseable catalog is non-fatal here — fall back to the unfiltered payload.
+    }
+  }
 
   const version = req.headers.get(HEADER_VERSION) ?? "0.0.0";
   const channel = req.headers.get(HEADER_CHANNEL) ?? undefined;

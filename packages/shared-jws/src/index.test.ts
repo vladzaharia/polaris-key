@@ -242,4 +242,18 @@ describe("verifyJws structural failures", () => {
     // Right kid, but a 4-byte key — import throws internally and verify returns null.
     expect(await verifyJws(valid, { [DJDL_TEST_KID]: "AAAA" })).toBeNull();
   });
+
+  it("rejects an otherwise-valid JWS whose payload exceeds the 64 KiB cap (parse-DoS guard)", async () => {
+    // A genuinely signed JWS (correct Ed25519 over a real key) but with a giant payload:
+    // it must fail CLOSED on size BEFORE JSON.parse, never on the signature.
+    const huge = { schemaVersion: 1, blob: "A".repeat(70 * 1024) };
+    const jws = await signJws(huge, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect(await verifyJws(jws, TRUST)).toBeNull();
+
+    // Control: a small, signature-valid doc under the cap still verifies, proving the
+    // rejection above is the size guard and not a broken-signature artifact.
+    const small = { schemaVersion: 1, blob: "A".repeat(1024) };
+    const okJws = await signJws(small, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect((await verifyJws(okJws, TRUST))?.payload).toEqual(small);
+  });
 });

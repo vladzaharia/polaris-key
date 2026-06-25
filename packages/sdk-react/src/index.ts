@@ -23,8 +23,10 @@ export {
 // ── Components ───────────────────────────────────────────────────────────────
 export { LicenseGate, type LicenseGateProps, type LicenseGateSlots } from "./components/LicenseGate.js";
 export { PolarisLogin, type PolarisLoginProps } from "./components/PolarisLogin.js";
+export { PolarisLogout, type PolarisLogoutProps } from "./components/PolarisLogout.js";
 export {
   defaultTheme,
+  highContrastTheme,
   mergeTheme,
   themeVars,
   type PolarisTheme,
@@ -55,6 +57,10 @@ export {
   flattenEntries,
   readConfig,
   readEntitled,
+  resolveConfig,
+  resolveConfigValue,
+  configSource,
+  listUserConfig,
   PolarisError,
   initialState,
   type LicenseState,
@@ -66,6 +72,8 @@ export {
   type PolarisErrorCode,
   type PolarisState,
   type OidcSignInHandle,
+  type ConfigSource,
+  type UserConfigEntry,
 } from "./core/index.js";
 
 export type {

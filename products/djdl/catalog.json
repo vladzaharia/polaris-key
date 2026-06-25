@@ -15,7 +15,7 @@
         "minItems": 1
       },
       "default": ["soulseek", "bandcamp", "soundcloud", "youtube", "spotify", "appleMusic"],
-      "managementDefault": "unmanaged"
+      "managementDefault": "default"
     },
     {
       "key": "quality.floor",
@@ -26,7 +26,7 @@
       "accessor": "quality.floor",
       "schema": { "type": "string", "enum": ["flac", "mp3-320", "any"] },
       "default": "any",
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "select" }
     },
     {
@@ -38,7 +38,7 @@
       "accessor": "quality.losslessOnly",
       "schema": { "type": "boolean" },
       "default": false,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "switch" }
     },
     {
@@ -50,7 +50,7 @@
       "accessor": "quality.bestQuality",
       "schema": { "type": "boolean" },
       "default": true,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "switch" }
     },
     {
@@ -62,7 +62,7 @@
       "accessor": "quality.upgrade.enabled",
       "schema": { "type": "boolean" },
       "default": false,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "switch" }
     },
     {
@@ -74,7 +74,7 @@
       "accessor": "run.searchCount",
       "schema": { "type": "integer", "minimum": 1, "maximum": 50 },
       "default": 5,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "stepper" }
     },
     {
@@ -86,7 +86,7 @@
       "accessor": "run.concurrency",
       "schema": { "type": "integer", "minimum": 1, "maximum": 8 },
       "default": 3,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "stepper" }
     },
     {
@@ -98,7 +98,7 @@
       "accessor": "run.toleranceSec",
       "schema": { "type": "number", "minimum": 0, "maximum": 120 },
       "default": 15,
-      "managementDefault": "unmanaged"
+      "managementDefault": "default"
     },
     {
       "key": "run.searchTimeoutSec",
@@ -109,7 +109,7 @@
       "accessor": "run.searchTimeoutSec",
       "schema": { "type": "integer", "minimum": 1, "maximum": 300 },
       "default": 30,
-      "managementDefault": "unmanaged"
+      "managementDefault": "default"
     },
     {
       "key": "run.cooloffHours",
@@ -120,7 +120,7 @@
       "accessor": "run.cooloffHours",
       "schema": { "type": "number", "minimum": 0, "maximum": 8760 },
       "default": 24,
-      "managementDefault": "unmanaged"
+      "managementDefault": "default"
     },
     {
       "key": "ui.theme",
@@ -131,7 +131,7 @@
       "accessor": "ui.theme",
       "schema": { "type": "string", "enum": ["dark", "light"] },
       "default": "dark",
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "select" }
     },
     {
@@ -142,7 +142,7 @@
       "description": "Default output location. A managed value must be an absolute path.",
       "accessor": "outputDir",
       "schema": { "type": "string", "minLength": 1, "maxLength": 1024 },
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "placeholder": "~/Music/DjayImport" }
     },
     {
@@ -154,7 +154,7 @@
       "accessor": "identity.enabled",
       "schema": { "type": "boolean" },
       "default": false,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "switch" }
     },
     {
@@ -166,7 +166,7 @@
       "accessor": "identity.strict",
       "schema": { "type": "boolean" },
       "default": false,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "dependsOn": { "key": "identity.enabled", "equals": true },
       "ui": { "widget": "switch" }
     },
@@ -179,7 +179,7 @@
       "accessor": "proxy.enabled",
       "schema": { "type": "boolean" },
       "default": false,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "dependsOn": { "key": "polarisVpn", "equals": true },
       "ui": { "widget": "switch" }
     },
@@ -192,7 +192,7 @@
       "accessor": "proxy.select",
       "schema": { "type": "string", "minLength": 1, "maxLength": 128 },
       "default": "auto",
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "dependsOn": { "key": "proxy.enabled", "equals": true }
     },
     {
@@ -204,7 +204,7 @@
       "accessor": "proxy.refreshHours",
       "schema": { "type": "number", "minimum": 0, "maximum": 8760 },
       "default": 24,
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "dependsOn": { "key": "proxy.enabled", "equals": true }
     },
     {
@@ -229,7 +229,7 @@
       "description": "Improves SoundCloud bitrate when present.",
       "accessor": "soundcloud.oauth",
       "schema": { "type": "string", "minLength": 1, "maxLength": 4096 },
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "password" }
     },
     {
@@ -241,7 +241,7 @@
       "description": "Custom Spotify app client id (optional).",
       "accessor": "spotify.clientId",
       "schema": { "type": "string", "minLength": 1, "maxLength": 256 },
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "password" }
     },
     {
@@ -253,7 +253,7 @@
       "description": "OAuth refresh token for the Spotify Web API.",
       "accessor": "spotify.refreshToken",
       "schema": { "type": "string", "minLength": 1, "maxLength": 4096 },
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "password" }
     },
     {
@@ -265,7 +265,7 @@
       "description": "Enables AcoustID fingerprint verification.",
       "accessor": "identity.acoustidKey",
       "schema": { "type": "string", "minLength": 1, "maxLength": 256 },
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "password" },
       "dependsOn": { "key": "identity.strict", "equals": true }
     },
@@ -278,7 +278,7 @@
       "description": "MusicKit Music User Token for the official Apple Music API.",
       "accessor": "appleMusic.userToken",
       "schema": { "type": "string", "minLength": 1, "maxLength": 4096 },
-      "managementDefault": "unmanaged",
+      "managementDefault": "default",
       "ui": { "widget": "password" }
     },
     {
@@ -332,7 +332,7 @@
       "label": "Machine limit",
       "description": "Maximum concurrently-authorized machines. Absent => default cap; 0 => unlimited.",
       "schema": { "type": "integer", "minimum": 0, "maximum": 100 },
-      "ui": { "widget": "stepper", "tiers": ["profile", "license"], "unit": "devices" }
+      "ui": { "widget": "stepper", "scopes": ["profile", "license"], "unit": "devices" }
     }
   ]
 }

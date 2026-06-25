@@ -145,4 +145,134 @@ final class GateMatrixTests: XCTestCase {
                 c.jws,
                 options: VerifyDocOptions(trust: c.trust, expectedAud: "djdl", deviceId: "nope")))
     }
+
+    // ── Cross-SDK gate-matrix parity (shared conformance/corpus/v1/gate-matrix.json) ──
+    // Drives the SAME fixture the Node/React/Python suites run through the Swift gate, so
+    // the four matrices can't silently diverge. Each row's build-gate half is reduced to a
+    // `BlockInfo` via the port below (mirroring the Worker's `checkBuildGate`, rebuilt from
+    // `Semver.*`), then fed with the license half into `licenseState`; the resulting
+    // status / ok / reason / allowedRange must match the fixture exactly.
+    private struct GateMatrix: Decodable {
+        let gateMatrixVersion: Int
+        let rows: [Row]
+    }
+    private struct Row: Decodable {
+        let name: String
+        let gate: GateInputs
+        let license: LicenseInputs
+        let expect: ExpectDecision
+    }
+    private struct GateInputs: Decodable {
+        let version: String
+        let channel: String?
+        let compatMin: String
+        let compatMax: String
+        let entitlements: [String: ManagedEntry]
+    }
+    private struct LicenseInputs: Decodable {
+        let hasToken: Bool
+        let now: Int
+        let issuedAt: Int?
+        let expiresAt: Int?
+        let graceUntil: Int?
+        let lastSyncUnauthorized: Bool?
+        let lastVerifiedAt: Int?
+    }
+    private struct ExpectDecision: Decodable {
+        let status: String
+        let ok: Bool
+        let reason: BlockReason?
+        let allowedRange: AllowedRange?
+    }
+
+    private func loadMatrix() throws -> GateMatrix {
+        guard let url = Bundle.module.url(forResource: "gate-matrix", withExtension: "json") else {
+            throw NSError(domain: "gate-matrix", code: 1)
+        }
+        return try JSONDecoder().decode(GateMatrix.self, from: Data(contentsOf: url))
+    }
+
+    private func strEnt(_ e: ManagedEntry?) -> String? { e?.value.stringValue }
+    private func arrEnt(_ e: ManagedEntry?) -> [String]? {
+        e?.value.arrayValue?.compactMap { $0.stringValue }
+    }
+    private func tighterMin(_ a: String?, _ b: String?) -> String? {
+        guard let a else { return b }
+        guard let b else { return a }
+        return Semver.compare(a, b) >= 0 ? a : b
+    }
+    private func tighterMax(_ a: String?, _ b: String?) -> String? {
+        guard let a else { return b }
+        guard let b else { return a }
+        return Semver.compare(a, b) <= 0 ? a : b
+    }
+    private func normalizeChannel(_ header: String) -> Channel {
+        if header == "staging" { return .staging }
+        if header == "pr" || header.hasPrefix("pr") { return .pr }
+        if header == "dev" { return .dev }
+        return .stable
+    }
+
+    /// Port of the Worker's `checkBuildGate` over `Semver.*` — the surface every SDK keeps
+    /// in lockstep, with the fixture as the oracle.
+    private func checkBuildGate(_ g: GateInputs) -> BlockInfo? {
+        if Semver.isDevBuild(g.version) { return nil }
+        let minV = tighterMin(g.compatMin, strEnt(g.entitlements["app.minVersion"]))
+        let maxV = tighterMax(g.compatMax, strEnt(g.entitlements["app.maxVersion"]))
+        let range = AllowedRange(min: minV, max: maxV)
+        if let minV, Semver.compare(g.version, minV) < 0 {
+            return BlockInfo(reason: .versionTooOld, allowedRange: range)
+        }
+        if let maxV, Semver.compare(g.version, maxV) > 0 {
+            return BlockInfo(reason: .versionTooNew, allowedRange: range)
+        }
+        let channel = normalizeChannel(g.channel ?? Semver.channelForVersion(g.version).rawValue)
+        if channel != .stable && channel != .dev {
+            let granted = arrEnt(g.entitlements["channels"]) ?? ["stable"]
+            if !granted.contains(channel.rawValue) {
+                return BlockInfo(reason: .channelNotEntitled)
+            }
+        }
+        return nil
+    }
+
+    private func buildDoc(_ l: LicenseInputs) -> ManagedConfigDoc? {
+        guard let issuedAt = l.issuedAt, let expiresAt = l.expiresAt, let graceUntil = l.graceUntil
+        else { return nil }
+        return ManagedConfigDoc(
+            schemaVersion: 1, aud: "djdl", iss: POLARIS_ISSUER,
+            licenseId: "lic_matrix", deviceId: "dev_matrix",
+            issuedAt: issuedAt, expiresAt: expiresAt, graceUntil: graceUntil,
+            profile: DocProfile(name: "M", firstName: "M", email: "m@x.y", enrolledAt: 0),
+            payload: ManagedPayload())
+    }
+
+    func testGateMatrixHasRows() throws {
+        XCTAssertGreaterThan(try loadMatrix().rows.count, 0)
+    }
+
+    func testGateMatrixParityAcrossEveryRow() throws {
+        for row in try loadMatrix().rows {
+            let blocked = checkBuildGate(row.gate)
+            let state = licenseState(
+                GateInput(
+                    hasToken: row.license.hasToken,
+                    doc: buildDoc(row.license),
+                    now: row.license.now,
+                    lastSyncUnauthorized: row.license.lastSyncUnauthorized ?? false,
+                    blocked: blocked,
+                    lastVerifiedAt: row.license.lastVerifiedAt))
+
+            XCTAssertEqual(state.status.rawValue, row.expect.status, row.name)
+            XCTAssertEqual(isUsable(state.status), row.expect.ok, "\(row.name) usable")
+            if let reason = row.expect.reason {
+                XCTAssertEqual(blocked?.reason, reason, "\(row.name) reason")
+            }
+            if let range = row.expect.allowedRange {
+                XCTAssertEqual(state.allowedRange, range, "\(row.name) allowedRange")
+            } else {
+                XCTAssertNil(state.allowedRange, "\(row.name) no allowedRange")
+            }
+        }
+    }
 }

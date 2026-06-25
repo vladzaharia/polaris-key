@@ -9,16 +9,18 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "dryrun": "wrangler deploy --dry-run",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
-    "jose": "^5.9.6"
+    "jose": "^5.9.6",
+    "yaml": "^2.6.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251001.0",
+    "@polaris-key/node": "workspace:*",
     "@types/better-sqlite3": "^7.6.11",
     "better-sqlite3": "^11.8.0",
     "wrangler": "^4.40.0"

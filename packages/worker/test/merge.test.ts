@@ -4,7 +4,11 @@ import { emptyPayload, mergePayloads } from "../src/merge.js";
 
 const layer = (p: Partial<ManagedPayload>): string =>
   JSON.stringify({ config: p.config ?? {}, secrets: p.secrets ?? {}, entitlements: p.entitlements ?? {} });
-const ent = (value: ManagedEntry["value"], state: ManagedEntry["state"] = "managed"): ManagedEntry => ({ state, value });
+const ent = (
+  value: ManagedEntry["value"],
+  state: ManagedEntry["state"] = "enforced",
+  updatedAt = 1_700_000_000,
+): ManagedEntry => ({ state, value, updatedAt });
 
 describe("emptyPayload", () => {
   it("is a fresh, empty triple each call", () => {
@@ -41,10 +45,21 @@ describe("mergePayloads", () => {
 
   it("the last layer fully overrides an earlier entry for the same key", () => {
     const out = mergePayloads(
-      layer({ entitlements: { vpn: ent(false, "managed") } }),
-      layer({ entitlements: { vpn: ent(true, "hidden") } }),
+      layer({ entitlements: { vpn: ent(false, "enforced", 100) } }),
+      layer({ entitlements: { vpn: ent(true, "hidden", 200) } }),
     );
-    expect(out.entitlements.vpn).toEqual(ent(true, "hidden"));
+    // Value + state come from the highest-precedence layer; updatedAt = max across layers.
+    expect(out.entitlements.vpn).toEqual(ent(true, "hidden", 200));
+  });
+
+  it("carries state from the highest-precedence layer but updatedAt = max across layers", () => {
+    // The earlier (lower-precedence) layer has the NEWER updatedAt; it must win for updatedAt
+    // even though value + state come from the later (higher-precedence) layer.
+    const out = mergePayloads(
+      layer({ config: { a: ent(1, "default", 900) } }),
+      layer({ config: { a: ent(2, "enforced", 500) } }),
+    );
+    expect(out.config.a).toEqual(ent(2, "enforced", 900));
   });
 
   it("tolerates malformed JSON layers (skips them as empty)", () => {

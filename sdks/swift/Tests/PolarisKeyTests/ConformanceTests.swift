@@ -4,6 +4,7 @@
 // against the SAME corpus/v1/cases.json. That's how the SDKs prove byte-identical
 // verification: one signer, four runners.
 
+import CryptoKit
 import Foundation
 import XCTest
 
@@ -136,5 +137,54 @@ final class ConformanceTests: XCTestCase {
                 options: VerifyDocOptions(
                     trust: valid.trust, expectedAud: "djdl", deviceId: doc.deviceId,
                     lastAcceptedIssuedAt: doc.issuedAt - 1)))
+    }
+
+    // ── P1.7: payload byte-size cap ──────────────────────────────────────────────
+    /// Sign a JWS in-test with a fresh key so the signature is valid, then prove the size cap
+    /// (not the signature) is what rejects an over-cap payload: an exactly-at-cap blob still
+    /// verifies, a 1-byte-over blob does not.
+    private func signJws(kid: String, payloadJSON: Data, key: Curve25519.Signing.PrivateKey)
+        -> String
+    {
+        let header = Data(#"{"alg":"EdDSA","kid":"\#(kid)"}"#.utf8)
+        let signingInput = Base64URL.encode(header) + "." + Base64URL.encode(payloadJSON)
+        let sig = try! key.signature(for: Data(signingInput.utf8))
+        return signingInput + "." + Base64URL.encode(sig)
+    }
+
+    func testPayloadSizeCapRejectsOversizedButAcceptsAtCap() throws {
+        let key = Curve25519.Signing.PrivateKey()
+        let kid = "test-cap-key"
+        let trust = [kid: Base64URL.encode(key.publicKey.rawRepresentation)]
+
+        // A valid doc whose `licenseId` is padded so the serialized payload lands at an exact
+        // byte length. We build at cap, then one byte over.
+        func payload(padLen: Int) -> Data {
+            let pad = String(repeating: "x", count: padLen)
+            let json = """
+                {"schemaVersion":1,"licenseId":"\(pad)","deviceId":"d","issuedAt":1,\
+                "expiresAt":2,"graceUntil":3,"profile":{"name":"n","firstName":"f",\
+                "email":"e","enrolledAt":0},"payload":{"config":{},"secrets":{},\
+                "entitlements":{}}}
+                """
+            return Data(json.utf8)
+        }
+
+        // Find a pad that puts us exactly AT the cap.
+        let base = payload(padLen: 0).count
+        let atCapPad = JWSVerifier.maxPayloadBytes - base
+        let atCap = payload(padLen: atCapPad)
+        XCTAssertEqual(atCap.count, JWSVerifier.maxPayloadBytes)
+        let overCap = payload(padLen: atCapPad + 1)
+        XCTAssertEqual(overCap.count, JWSVerifier.maxPayloadBytes + 1)
+
+        // At cap: valid signature + within cap ⇒ verifies.
+        XCTAssertNotNil(
+            JWSVerifier.verify(signJws(kid: kid, payloadJSON: atCap, key: key), trust: trust),
+            "payload at the cap must verify")
+        // Over cap: valid signature but rejected by the size guard.
+        XCTAssertNil(
+            JWSVerifier.verify(signJws(kid: kid, payloadJSON: overCap, key: key), trust: trust),
+            "payload over the cap must be rejected before decode")
     }
 }

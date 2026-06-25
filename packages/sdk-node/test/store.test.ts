@@ -17,9 +17,9 @@ function sampleDoc(): ManagedConfigDoc {
     graceUntil: 1_702_592_000,
     profile: { name: "Ada Lovelace", firstName: "Ada", email: "ada@example.com", enrolledAt: 1_690_000_000 },
     payload: {
-      config: { "run.concurrency": { state: "managed", value: 4 } },
-      secrets: { "proxy.subscriptionUrl": { state: "hidden", value: "keychain:ref" } },
-      entitlements: { polarisVpn: { state: "managed", value: true } },
+      config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: 1_700_000_000 } },
+      secrets: { "proxy.subscriptionUrl": { state: "hidden", value: "keychain:ref", updatedAt: 1_700_000_000 } },
+      entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: 1_700_000_000 } },
     },
   };
 }

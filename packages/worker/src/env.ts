@@ -10,8 +10,12 @@ export interface Env {
   DB: D1Database;
   HOT: KVNamespace;
   HUB: DurableObjectNamespace;
+  RL: DurableObjectNamespace;
 
   // platform-wide secrets / vars (optional so tests can omit them)
+  // The single platform KEK (base64 of 32 random bytes) under which per-product signing keys
+  // + secrets are envelope-encrypted in D1. See src/keyvault.ts.
+  PLATFORM_KEK?: string;
   KEY_HASH_PEPPER?: string;
   ADMIN_SESSION_SECRET?: string;
   GITHUB_APP_ID?: string;

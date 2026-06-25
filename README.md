@@ -25,7 +25,7 @@ conformance/         the cross-language golden corpus (one signer, runners per l
 tools/               sign-corpus.ts · gen-mirrors.ts
 products/            per-product data (catalog.json + product.json) + gen-seed
 infra/               Terraform (Cloudflare D1/KV/custom domains)
-docs/                RUNBOOK.md · DJDL-MIGRATION.md
+docs/                RUNBOOK.md · ADOPTER-GUIDE.md
 ```
 
 ## The frozen wire contract
@@ -70,7 +70,7 @@ pnpm gen:corpus -- --check   # conformance drift gate (CI)
 ( cd sdks/swift && swift test )                    # Swift SDK
 ```
 
-Operations: `docs/RUNBOOK.md`. Migrating djdl: `docs/DJDL-MIGRATION.md`.
+Operations: `docs/RUNBOOK.md`. Onboarding a product: `docs/ADOPTER-GUIDE.md`.
 
 ## Tests
 

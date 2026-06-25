@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, mkReq as mkLicReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/admin/index.js";
-import { ADMIN_COOKIE, CSRF_HEADER, issueSession, type SessionIdentity } from "../src/admin/session.js";
-import { listAudit } from "../src/repo.js";
+import { handleAdminLogin } from "../src/admin/auth.js";
+import { ADMIN_COOKIE, CSRF_HEADER, issueSession, verifySession, type SessionIdentity } from "../src/admin/session.js";
+import { getActiveProductKey, getProductSecret, listAudit } from "../src/repo.js";
+import { loadProduct } from "../src/product.js";
+import { handleConfig, handleEnroll } from "../src/licensing.js";
+import { handleMintToken } from "../src/edgeMint.js";
+import { buildDoc, signDoc } from "../src/configDoc.js";
+import { open } from "../src/keyvault.js";
+import { verifyJws } from "@polaris-key/jws";
+import type { ManagedConfigDoc, ManagedPayload, DocProfile } from "@polaris-key/protocol";
+import { getTokenRecord } from "../src/kv.js";
+import { hashKey } from "../src/crypto.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -207,6 +217,63 @@ describe("admin api", () => {
     expect(deniedThere.status).toBe(403);
   });
 
+  it("disabling a license purges its devices' hot-path bearer tokens immediately", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = adminEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const { licenseId, key } = await seedLicenseWithKey(db, "djdl");
+
+    // Enroll a device so a token record lands in KV.
+    const enrollRes = await handleEnroll(
+      mkLicReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
+      env, db, product, NOW,
+    );
+    const { token } = (await enrollRes.json()) as { token: string };
+    const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+    expect(await getTokenRecord(env, "djdl", tokenHash)).not.toBeNull();
+
+    // Disable the license via the admin API.
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+    });
+    const disabled = await dispatch(
+      mkReq("POST", `/api/products/djdl/licenses/${licenseId}/disable`, { cookie, csrf }),
+      env, db, `/api/products/djdl/licenses/${licenseId}/disable`,
+    );
+    expect(disabled.status).toBe(200);
+
+    // The bearer token no longer authenticates — its KV record is gone.
+    expect(await getTokenRecord(env, "djdl", tokenHash)).toBeNull();
+  });
+
+  it("audits an authenticated cross-product access denial (403 + access.denied row)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl", "acme"]);
+    await seedProduct(db, "djdl");
+    await seedProduct(db, "acme");
+    await db.run("UPDATE products SET admin_group = ? WHERE slug = ?", DJDL_ADMIN_GROUP, "djdl");
+    await db.run("UPDATE products SET admin_group = ? WHERE slug = ?", "acme-admins", "acme");
+
+    // A djdl-only admin (NOT platform) reaches for product acme.
+    const { cookie } = await sessionCookie(env, {
+      sub: "u3", name: "Cy", email: "c@x.io", groups: [DJDL_ADMIN_GROUP],
+    });
+    const denied = await dispatch(
+      mkReq("GET", "/api/products/acme/licenses", { cookie }),
+      env, db, "/api/products/acme/licenses",
+    );
+    expect(denied.status).toBe(403);
+
+    // An access.denied audit row, attributed to the verified actor, lands on the target product.
+    const rows = await listAudit(db, "acme", {});
+    const row = rows.find((r) => r.action === "access.denied");
+    expect(row).toBeDefined();
+    expect(row?.actor_sub).toBe("u3");
+    expect(row?.target_id).toBe("acme");
+  });
+
   it("writes an audit row on every mutation", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
@@ -223,5 +290,232 @@ describe("admin api", () => {
     expect(rows[0]?.action).toBe("license.create");
     // Actor is the verified session subject, never a request field.
     expect(rows[0]?.actor_sub).toBe("u1");
+  });
+
+  it("fails closed: with NO ADMIN_SESSION_SECRET, issuing/verifying a session throws (D1)", async () => {
+    const env = adminEnv(new KvMock(), []);
+    // Remove the secret — the worker must NOT fall back to a guessable signing key.
+    delete (env as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
+    await expect(
+      issueSession(env, { sub: "u1", name: "Ada", email: "a@x.io", groups: [] }, NOW),
+    ).rejects.toThrow("ADMIN_SESSION_SECRET is required");
+    // Verification of any token must also throw (so no request can authenticate).
+    await expect(verifySession(env, "forged.token", NOW)).rejects.toThrow(
+      "ADMIN_SESSION_SECRET is required",
+    );
+  });
+
+  it("manual create with an uploaded schema yields a usable product (loadProduct + /config sign)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+    });
+
+    const schema = {
+      schemaVersion: 1,
+      entries: [
+        { key: "run.concurrency", kind: "config", category: "run", label: "Concurrency", description: "", schema: { type: "integer", minimum: 1 } },
+      ],
+    };
+    const created = await dispatch(
+      mkReq("POST", "/api/products", { cookie, csrf, body: { slug: "manualco", name: "Manual Co", schema } }),
+      env, db, "/api/products",
+    );
+    expect(created.status).toBe(201);
+    const body = (await created.json()) as { ok: boolean; slug: string; kid: string };
+    expect(body.slug).toBe("manualco");
+    expect(typeof body.kid).toBe("string");
+
+    // The product loads with a real, KEK-sealed signing key.
+    const product = await loadProduct(env, db, "manualco");
+    expect(product).not.toBeNull();
+    expect(product!.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+
+    // The schema it uploaded is the active catalog.
+    const schemaRes = await dispatch(
+      mkReq("GET", "/api/products/manualco/schema", { cookie }),
+      env, db, "/api/products/manualco/schema",
+    );
+    expect((await schemaRes.text())).toContain("run.concurrency");
+
+    // /config signs: a doc signed under the product key verifies against its published pub.
+    const profile: DocProfile = { name: "Ada", firstName: "Ada", email: "a@x.io", enrolledAt: NOW };
+    const payload: ManagedPayload = { config: {}, secrets: {}, entitlements: {} };
+    const doc = buildDoc({
+      schemaVersion: product!.schemaVersion, aud: "manualco", licenseId: "lic_1", deviceId: "dev-1",
+      now: NOW, maxOfflineDays: 30, profile, payload,
+    });
+    const jws = await signDoc(doc, product!.signingKeyPem, product!.signingKid);
+    const verified = await verifyJws<ManagedConfigDoc>(jws, { [product!.signingKid]: product!.signingPub! });
+    expect(verified).not.toBeNull();
+    expect(verified!.payload.aud).toBe("manualco");
+  });
+
+  // ── P4 regression: manual-create atomicity ────────────────────────────────────
+  // A manual product is minted in ONE batch: the `products` row AND an active `product_keys`
+  // row must BOTH exist, so a product can never be half-created (a row with no usable signing
+  // key). We assert both rows directly, then prove the pair is usable end-to-end (loadProduct
+  // opens the sealed key + /config signs a verifiable doc).
+  it("manual create atomically yields BOTH a products row AND an active product_keys row", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+    });
+
+    const created = await dispatch(
+      mkReq("POST", "/api/products", { cookie, csrf, body: { slug: "atomicco", name: "Atomic Co" } }),
+      env, db, "/api/products",
+    );
+    expect(created.status).toBe(201);
+    const { kid } = (await created.json()) as { kid: string };
+
+    // 1) The products row exists.
+    const productRow = await db.first<{ slug: string; signing_pub: string }>(
+      "SELECT * FROM products WHERE slug = ?", "atomicco",
+    );
+    expect(productRow).not.toBeNull();
+
+    // 2) An ACTIVE product_keys row exists for the SAME kid, with sealed private material.
+    const keyRow = await getActiveProductKey(db, "atomicco");
+    expect(keyRow).not.toBeNull();
+    expect(keyRow!.kid).toBe(kid);
+    expect(keyRow!.status).toBe("active");
+    expect(keyRow!.public_b64url).toBe(productRow!.signing_pub);
+    // Sealed at rest — the private key is never stored in plaintext.
+    expect(keyRow!.enc_private_json).not.toContain("BEGIN PRIVATE KEY");
+
+    // 3) The pair is usable: loadProduct opens the sealed key + /config signs a verifiable doc.
+    const product = (await loadProduct(env, db, "atomicco"))!;
+    expect(product.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+    const { key } = await seedLicenseWithKey(db, "atomicco");
+    const enrollRes = await handleEnroll(
+      mkLicReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
+      env, db, product, NOW,
+    );
+    expect(enrollRes.status).toBe(200);
+    const { token } = (await enrollRes.json()) as { token: string };
+    const cfgRes = await handleConfig(
+      mkLicReq("GET", { authorization: `Bearer ${token}`, "x-pkey-version": "1.0.0" }),
+      env, db, product, NOW,
+    );
+    expect(cfgRes.status).toBe(200);
+    const verified = await verifyJws<ManagedConfigDoc>(await cfgRes.text(), { [product.signingKid]: product.signingPub! });
+    expect(verified).not.toBeNull();
+    expect(verified!.payload.aud).toBe("atomicco");
+  });
+
+  it("PUT secrets stores write-only (sealed, name echoed but never the value)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+    });
+
+    const res = await dispatch(
+      mkReq("PUT", "/api/products/djdl/secrets/OIDC_SECRET", { cookie, csrf, body: { value: "super-secret-value" } }),
+      env, db, "/api/products/djdl/secrets/OIDC_SECRET",
+    );
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("OIDC_SECRET");
+    expect(body).not.toContain("super-secret-value");
+
+    // Stored sealed; opening under the KEK recovers it (write-only from the API's POV).
+    const row = await getProductSecret(db, "djdl", "OIDC_SECRET");
+    expect(row).not.toBeNull();
+    expect(row!.enc_value_json).not.toContain("super-secret-value");
+    expect(await open(env, row!.enc_value_json)).toBe("super-secret-value");
+  });
+
+  it("keys/rotate retires the old key and activates a new kid (private never returned)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const before = await getActiveProductKey(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+    });
+
+    const res = await dispatch(
+      mkReq("POST", "/api/products/djdl/keys/rotate", { cookie, csrf }),
+      env, db, "/api/products/djdl/keys/rotate",
+    );
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    const body = JSON.parse(text) as { ok: boolean; kid: string; publicKey: string };
+    expect(body.kid).not.toBe(before!.kid);
+    // The response never leaks private key material.
+    expect(text).not.toContain("BEGIN PRIVATE KEY");
+
+    // The active key is the new one; the old one is retired.
+    const after = await getActiveProductKey(db, "djdl");
+    expect(after!.kid).toBe(body.kid);
+    const old = await db.first<{ status: string }>(
+      "SELECT * FROM product_keys WHERE product = ? AND kid = ?", "djdl", before!.kid,
+    );
+    expect(old?.status).toBe("retired");
+    // loadProduct now signs under the rotated key.
+    const product = await loadProduct(env, db, "djdl");
+    expect(product!.signingKid).toBe(body.kid);
+  });
+
+  it("a manual product has NO release/mint capability (mint route 404s)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+    });
+    await dispatch(
+      mkReq("POST", "/api/products", { cookie, csrf, body: { slug: "manualco", name: "Manual Co" } }),
+      env, db, "/api/products",
+    );
+    const product = (await loadProduct(env, db, "manualco"))!;
+    expect(product).not.toBeNull();
+
+    // Enroll a device so we hold a valid bearer (passes the confused-deputy guard) and then
+    // attempt to mint — there is no edge_mint_config recipe, so the route 404s.
+    const { key } = await seedLicenseWithKey(db, "manualco");
+    const enrollRes = await handleEnroll(
+      mkLicReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
+      env, db, product, NOW,
+    );
+    const { token } = (await enrollRes.json()) as { token: string };
+
+    const mintRes = await handleMintToken(
+      mkLicReq("POST", { authorization: `Bearer ${token}` }),
+      env, db, product, "applemusic", NOW,
+    );
+    expect(mintRes.status).toBe(404);
+
+    // And it has no release_config row either.
+    const rel = await db.first("SELECT * FROM release_config WHERE product = ?", "manualco");
+    expect(rel).toBeNull();
+  });
+
+  it("rate-limits repeated admin logins → eventually 429 (D5)", async () => {
+    const env = adminEnv(new KvMock(), []);
+    // Configure the IdP so login would otherwise 302; the limiter must bite first.
+    env.ADMIN_OIDC_ISSUER = "https://id.example";
+    env.ADMIN_OIDC_CLIENT_ID = "admin-client";
+    const ip = "203.0.113.7";
+    const req = () =>
+      new Request("https://key.plrs.im/admin/login", {
+        headers: { "cf-connecting-ip": ip },
+      }) as unknown as Request;
+
+    // Limit is 20/60s → the first 20 succeed (302), the 21st is throttled (429).
+    let throttled = false;
+    for (let i = 0; i < 25; i++) {
+      const res = await handleAdminLogin(req(), env);
+      if (res.status === 429) {
+        throttled = true;
+        break;
+      }
+      expect(res.status).toBe(302);
+    }
+    expect(throttled).toBe(true);
   });
 });

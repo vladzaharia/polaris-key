@@ -4,7 +4,7 @@
 // via theme tokens + copy AND overridable via render-prop slots, so a product can keep the
 // behavior while replacing any panel. The headless `useLicenseGate` powers it.
 
-import { type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { useLicenseGate, type GateScreen, type UseLicenseGate } from "../react/hooks.js";
 import { PolarisLogin } from "./PolarisLogin.js";
 import type { PolarisTheme } from "./theme.js";
@@ -62,7 +62,28 @@ const retryBtn: CSSProperties = {
   background: "transparent",
   color: "var(--pk-text)",
   fontSize: "14px",
+  outlineColor: "var(--pk-ring)",
+  outlineOffset: "2px",
 };
+
+/** Surface a clearer, remediation-oriented message for the error screen, keyed off the
+ *  adapter's stable `PolarisError.code` when present (falls back to the raw message). */
+function describeGateError(error: UseLicenseGate["state"]["error"]): string {
+  if (!error) return "Unable to verify your license.";
+  switch (error.code) {
+    case "network":
+      return "We couldn't reach the licensing service. Check your connection and try again.";
+    case "bridge-missing":
+      return "The licensing service isn't available in this app. Please reinstall or contact support.";
+    case "refresh-failed":
+      return "We couldn't refresh your license. Try again in a moment.";
+    case "sign-in-failed":
+      // The adapter already humanizes machine-limit / unauthorized into this message.
+      return error.message || "Sign-in failed. Please try again.";
+    default:
+      return error.message || "Unable to verify your license.";
+  }
+}
 
 function blockTitleBody(theme: PolarisTheme, status: string): { title: string; body: string } {
   switch (status) {
@@ -81,17 +102,55 @@ function MessageScreen(props: {
   ctx: UseLicenseGate;
   showRetry?: boolean;
   extra?: ReactNode;
+  /** `true` for transient/non-actionable screens (loading): render `role="status"`
+   *  (polite, non-interrupting) instead of the blocking `alertdialog`. */
+  transient?: boolean;
 }): JSX.Element {
   const { theme } = props.ctx;
+  const titleId = useId();
+  const bodyId = useId();
+  const retryRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Focus management (WCAG 2.4.3): move focus into the gate on mount so keyboard/SR users
+  // land on the actionable control (retry) or, failing that, the dialog itself.
+  useEffect(() => {
+    if (props.transient) return;
+    const target = retryRef.current ?? dialogRef.current;
+    target?.focus();
+  }, [props.transient]);
+
+  const hasBody = props.body.length > 0;
   return (
     <div style={fullWindow}>
-      <div style={messageCard}>
+      <div
+        ref={dialogRef}
+        style={messageCard}
+        role={props.transient ? "status" : "alertdialog"}
+        aria-modal={props.transient ? undefined : true}
+        aria-live={props.transient ? "polite" : undefined}
+        aria-labelledby={titleId}
+        aria-describedby={hasBody ? bodyId : undefined}
+        tabIndex={props.transient ? undefined : -1}
+      >
         {theme.logo ? <div style={{ marginBottom: "12px" }}>{theme.logo}</div> : null}
-        <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{props.title}</h2>
-        <p style={{ margin: 0, color: "var(--pk-text-muted)", fontSize: "14px" }}>{props.body}</p>
+        <h2 id={titleId} style={{ margin: "0 0 8px", fontSize: "20px" }}>
+          {props.title}
+        </h2>
+        {hasBody ? (
+          <p id={bodyId} style={{ margin: 0, color: "var(--pk-text-muted)", fontSize: "14px" }}>
+            {props.body}
+          </p>
+        ) : null}
         {props.extra}
         {props.showRetry ? (
-          <button type="button" style={retryBtn} onClick={() => void props.ctx.retry()}>
+          <button
+            ref={retryRef}
+            type="button"
+            style={retryBtn}
+            aria-label={theme.copy.retryLabel}
+            onClick={() => void props.ctx.retry()}
+          >
             {theme.copy.retryLabel}
           </button>
         ) : null}
@@ -116,6 +175,9 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
           <>{slots.grace(ctx)}</>
         ) : (
           <div
+            role="status"
+            aria-live="polite"
+            aria-label={theme.copy.graceTitle}
             style={{
               padding: "8px 16px",
               background: "var(--pk-surface)",
@@ -140,7 +202,8 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       content = slots.loading ? (
         slots.loading(ctx)
       ) : (
-        <MessageScreen title={theme.copy.loadingLabel} body="" ctx={ctx} />
+        // Loading is transient + non-actionable → polite `role="status"`, no focus steal.
+        <MessageScreen title={theme.copy.loadingLabel} body="" ctx={ctx} transient />
       );
       break;
     case "grace": // allowGrace === false → block like a soft-expired screen.
@@ -148,7 +211,15 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       content = slots.login ? (
         slots.login(ctx)
       ) : (
-        <div style={fullWindow} data-polaris-gate="login">
+        // The login card owns its own focus (auto-focuses the OIDC button) and is the
+        // accessible-named dialog here.
+        <div
+          style={fullWindow}
+          data-polaris-gate="login"
+          role="alertdialog"
+          aria-modal
+          aria-label={theme.copy.signInTitle}
+        >
           <PolarisLogin />
         </div>
       );
@@ -168,7 +239,8 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
           title={theme.copy.expiredTitle}
           body={theme.copy.expiredBody}
           ctx={ctx}
-          extra={<div style={{ marginTop: "16px" }}><PolarisLogin /></div>}
+          // The dialog manages focus → don't let the embedded login card steal it.
+          extra={<div style={{ marginTop: "16px" }}><PolarisLogin autoFocus={false} /></div>}
         />
       );
       break;
@@ -194,7 +266,7 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       ) : (
         <MessageScreen
           title="Something went wrong"
-          body={ctx.state.error?.message ?? "Unable to verify your license."}
+          body={describeGateError(ctx.state.error)}
           ctx={ctx}
           showRetry
         />
@@ -202,8 +274,10 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       break;
   }
 
+  // The root carries `aria-live="polite"` so a state transition (e.g. loading → revoked,
+  // or an error appearing) is announced to assistive tech without stealing focus.
   return (
-    <div className={props.className} data-polaris-gate={screen}>
+    <div className={props.className} data-polaris-gate={screen} aria-live="polite">
       {content}
     </div>
   );

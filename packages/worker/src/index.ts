@@ -21,6 +21,7 @@ import {
 } from "./licensing.js";
 
 export { HubDO } from "./hub.js";
+export { RateLimitDO } from "./rateLimitDo.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "jwks",

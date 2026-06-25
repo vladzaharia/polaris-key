@@ -8,10 +8,12 @@ Mirrors ``client.ts``.
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import httpx
 
@@ -39,7 +41,7 @@ from .license import (
     is_usable,
     license_state,
 )
-from .models import DocProfile
+from .models import DocProfile, ManagedEntry
 from .store import CacheRecord, FileStore, Store
 from .verify import TrustSet, verify_doc
 
@@ -83,6 +85,9 @@ class PolarisKeyClient:
         store: Optional[Store] = None,
         config_dir: Optional[str] = None,
         client: Optional[httpx.Client] = None,
+        local_overrides: Optional[dict] = None,
+        env_prefix: str = "PKEY_CONFIG_",
+        env: Optional[Mapping[str, str]] = None,
     ) -> None:
         self.product = product_slug
         self._base_url = (base_url or DEFAULT_BASE).rstrip("/")
@@ -95,6 +100,12 @@ class PolarisKeyClient:
         # An injected transport/client (tests) or a lazily-created default.
         self._client = client
         self._owns_client = client is None
+
+        # Layered-config inputs: local overrides win over env over remote-default,
+        # but an ``enforced``/``hidden`` remote entry always wins over both.
+        self._local_overrides: Dict[str, Any] = dict(local_overrides or {})
+        self._env_prefix = env_prefix
+        self._env: Mapping[str, str] = os.environ if env is None else env
 
         self._token: Optional[str] = None
         self._device_id = ""
@@ -147,11 +158,69 @@ class PolarisKeyClient:
         return is_usable(self.status(now).status)
 
     def get_config(self, key: str, fallback: Any = None) -> Any:
+        """Resolve a config key through the layered precedence.
+
+        For an ``enforced``/``hidden`` remote entry, the remote value wins. Otherwise
+        ``local_overrides`` > env (``env_prefix + key`` with ``.`` -> ``__``) > remote
+        ``value`` > ``fallback``.
+        """
+        value, _source = self._resolve_config(key, fallback)
+        return value
+
+    def _config_entry(self, key: str) -> Optional[ManagedEntry]:
         doc = self._cache.doc if self._cache else None
         if not doc:
-            return fallback
-        e = doc.payload.config.get(key)
-        return e.value if e is not None else fallback
+            return None
+        return doc.payload.config.get(key)
+
+    def _env_value(self, key: str) -> Any:
+        """Read ``env[env_prefix + key.replace('.','__')]``; JSON-parse if it parses."""
+        env_key = self._env_prefix + key.replace(".", "__")
+        if env_key not in self._env:
+            return _UNSET
+        raw = self._env[env_key]
+        try:
+            return json.loads(raw)
+        except (ValueError, TypeError):
+            return raw
+
+    def _resolve_config(self, key: str, fallback: Any = None) -> Tuple[Any, str]:
+        """Return ``(value, source)`` per the layered-config precedence."""
+        entry = self._config_entry(key)
+        if entry is not None and entry.state in ("enforced", "hidden"):
+            return entry.value, ("hidden" if entry.state == "hidden" else "enforced")
+        if key in self._local_overrides:
+            return self._local_overrides[key], "local"
+        env_val = self._env_value(key)
+        if env_val is not _UNSET:
+            return env_val, "env"
+        if entry is not None:
+            return entry.value, "remote-default"
+        return fallback, "fallback"
+
+    def get_config_source(self, key: str) -> str:
+        """One of ``enforced|hidden|local|env|remote-default|fallback``."""
+        _value, source = self._resolve_config(key)
+        return source
+
+    def list_user_config(self) -> List[Dict[str, Any]]:
+        """User-facing config: every key except ``hidden`` ones, resolved per layering.
+
+        Each item is ``{key, value, enforced}`` where ``enforced`` reflects whether the
+        remote entry locks the value (an ``enforced`` state).
+        """
+        doc = self._cache.doc if self._cache else None
+        if not doc:
+            return []
+        out: List[Dict[str, Any]] = []
+        for key, entry in doc.payload.config.items():
+            if entry.state == "hidden":
+                continue
+            value, _source = self._resolve_config(key)
+            out.append(
+                {"key": key, "value": value, "enforced": entry.state == "enforced"}
+            )
+        return out
 
     def get_secret(self, key: str) -> Optional[str]:
         doc = self._cache.doc if self._cache else None
@@ -317,10 +386,14 @@ class PolarisKeyClient:
                     ),
                 )
             return
+        # ``CacheRecord`` is replaced (not mutated) so a frozen record never raises
+        # FrozenInstanceError; ``_UNSET`` fields keep their current value.
+        changes: Dict[str, Any] = {}
         if blocked is not _UNSET:
-            self._cache.blocked = blocked
+            changes["blocked"] = blocked
         if last_sync_unauthorized is not _UNSET:
-            self._cache.lastSyncUnauthorized = last_sync_unauthorized
+            changes["lastSyncUnauthorized"] = last_sync_unauthorized
+        self._cache = dataclasses.replace(self._cache, **changes)
         self._store.write_cache(self._cache)
 
     def _report_snapshot_body(self) -> Dict[str, Dict[str, Any]]:

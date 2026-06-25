@@ -12,9 +12,20 @@ export {
   type PolarisErrorCode,
   type PolarisState,
   type OidcSignInHandle,
+  type ConfigSource,
+  type UserConfigEntry,
 } from "./types.js";
 export { createStore, type Store } from "./store.js";
-export { projectState, flattenEntries, readConfig, readEntitled } from "./adapter.js";
+export {
+  projectState,
+  flattenEntries,
+  readConfig,
+  readEntitled,
+  resolveConfig,
+  resolveConfigValue,
+  configSource,
+  listUserConfig,
+} from "./adapter.js";
 export type {
   ManagedConfigDoc,
   ManagedPayload,

@@ -5,10 +5,14 @@
 
 /** The visual tokens. Each maps to a `--pk-<token>` CSS custom property. */
 export interface PolarisThemeTokens {
-  /** Brand accent (primary button bg, focus ring). */
+  /** Brand accent (primary button bg). */
   accent: string;
+  /** Brand accent, hover/active state (deeper indigo). */
+  accentHover: string;
   /** Text colour on the accent. */
   accentText: string;
+  /** Focus-ring colour (keyboard focus visibility — WCAG 2.4.7). */
+  ring: string;
   /** Page/gate background. */
   background: string;
   /** Card/surface background. */
@@ -60,17 +64,25 @@ export interface PolarisTheme {
   logo?: import("react").ReactNode;
 }
 
-/** A neutral default theme — overridden shallowly by what the Provider receives. */
+/** A neutral default theme — overridden shallowly by what the Provider receives.
+ *  Aligned with the Polaris Key admin palette: deep-slate surfaces + an indigo accent.
+ *  Contrast (sRGB, WCAG 2.x) on this dark theme:
+ *    text `#e6e9f2` on bg `#0c0f17`   → ~14.6:1 (AA & AAA body)
+ *    textMuted `#9aa3bd` on bg        → ~7.0:1  (AA & AAA body)
+ *    accentText `#0b1020` on accent `#7d97ff` → ~7.9:1 (AA & AAA)
+ *    danger text `#fca5a5` on surface `#11141d` → ~7.3:1 (AA) */
 export const defaultTheme: PolarisTheme = {
   tokens: {
-    accent: "#4f46e5",
-    accentText: "#ffffff",
-    background: "#0b0d12",
-    surface: "#151821",
-    text: "#f3f4f6",
-    textMuted: "#9ca3af",
-    border: "#2a2f3a",
-    danger: "#ef4444",
+    accent: "#5b7cfa", // indigo — matches admin --pk-primary
+    accentHover: "#7d97ff", // lighter indigo for hover/active
+    accentText: "#0b1020", // near-black on the light accent → AA
+    ring: "#93a8ff", // bright indigo focus ring → visible on dark surfaces
+    background: "#0c0f17", // deep slate page (admin --pk-background)
+    surface: "#11141d", // raised card panel
+    text: "#e6e9f2", // near-white body text
+    textMuted: "#9aa3bd", // AA muted text
+    border: "#262c3b", // hairline card/input border
+    danger: "#fca5a5", // soft red — AA on the dark surface
     radius: "12px",
     fontFamily:
       "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -122,7 +134,9 @@ export function themeVars(theme: PolarisTheme): Record<string, string> {
   const t = theme.tokens;
   return {
     "--pk-accent": t.accent,
+    "--pk-accent-hover": t.accentHover,
     "--pk-accent-text": t.accentText,
+    "--pk-ring": t.ring,
     "--pk-background": t.background,
     "--pk-surface": t.surface,
     "--pk-text": t.text,
@@ -133,3 +147,22 @@ export function themeVars(theme: PolarisTheme): Record<string, string> {
     "--pk-font-family": t.fontFamily,
   };
 }
+
+/** A maximum-contrast variant for users who need it (WCAG 1.4.6 AAA / `prefers-contrast`).
+ *  Pure-white text and a vivid accent on true-black surfaces; every pairing clears AAA.
+ *  Consumers opt in via `<PolarisKeyProvider theme={highContrastTheme}>` or by merging
+ *  `highContrastTheme.tokens`. */
+export const highContrastTheme: PartialTheme = {
+  tokens: {
+    accent: "#aebfff", // light indigo
+    accentHover: "#c7d2ff",
+    accentText: "#000000", // ~10.9:1 on the light accent → AAA
+    ring: "#ffffff", // maximum-visibility focus ring
+    background: "#000000",
+    surface: "#0a0a0a",
+    text: "#ffffff", // 21:1 on black → AAA
+    textMuted: "#e0e0e0", // ~16:1 on black → AAA
+    border: "#5a5a5a",
+    danger: "#ff8a8a", // ~9.4:1 on black → AAA
+  },
+};

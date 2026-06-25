@@ -5,13 +5,23 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { TrustSet } from "@polaris-key/jws";
-import type { DocProfile, JSONValue, ManagedConfigDoc } from "@polaris-key/protocol";
+import type { DocProfile, JSONValue } from "@polaris-key/protocol";
 import { channelForVersion } from "./semver.js";
 import { isUsable, licenseState, type LicenseState } from "./gate.js";
 import { verifyDoc } from "./verify.js";
 import { fetchManagedConfig } from "./fetch.js";
 import { deauthorize, enrollWithKey, reacquireToken, reportSnapshot, type EnrollResult } from "./endpoints.js";
 import { FileStore, type CacheRecord, type Store } from "./store.js";
+import {
+  listUserEntries,
+  resolveSource,
+  resolveValue,
+  type ConfigSource,
+  type ResolveContext,
+  type UserConfigEntry,
+} from "./config.js";
+
+const DEFAULT_ENV_PREFIX = "PKEY_CONFIG_";
 
 export interface PolarisKeyOptions {
   productSlug: string;
@@ -23,7 +33,18 @@ export interface PolarisKeyOptions {
   store?: Store;
   configDir?: string;
   fetchImpl?: typeof fetch;
+  /** User/local config overrides — beat a remote `default` value, but NOT an `enforced`/
+   *  `hidden` one (the server stays authoritative for those). */
+  localOverrides?: Record<string, JSONValue>;
+  /** Env-var prefix for config overrides (default `"PKEY_CONFIG_"`). A key's env var is
+   *  `${envPrefix}${key.replaceAll(".", "__")}` (e.g. `run.concurrency` →
+   *  `PKEY_CONFIG_run__concurrency`). */
+  envPrefix?: string;
+  /** Environment table to read overrides from (default `process.env`). */
+  env?: Record<string, string | undefined>;
 }
+
+export type { ConfigSource, UserConfigEntry };
 
 export interface RefreshResult {
   applied: boolean;
@@ -47,6 +68,9 @@ export class PolarisKeyClient {
   private readonly trust: TrustSet;
   private readonly store: Store;
   private readonly fetchImpl?: typeof fetch;
+  private readonly localOverrides: Record<string, JSONValue>;
+  private readonly envPrefix: string;
+  private readonly env: Record<string, string | undefined>;
 
   private token: string | null = null;
   private deviceId = "";
@@ -60,6 +84,19 @@ export class PolarisKeyClient {
     this.trust = opts.trust.pinnedKeys;
     this.store = opts.store ?? new FileStore(opts.productSlug, opts.configDir ?? defaultConfigDir());
     this.fetchImpl = opts.fetchImpl;
+    this.localOverrides = opts.localOverrides ?? {};
+    this.envPrefix = opts.envPrefix ?? DEFAULT_ENV_PREFIX;
+    this.env = opts.env ?? process.env;
+  }
+
+  /** The current remote config map (or undefined when no doc is cached). */
+  private resolveContext(): ResolveContext {
+    return {
+      remote: this.cache?.doc?.payload.config,
+      localOverrides: this.localOverrides,
+      env: this.env,
+      envPrefix: this.envPrefix,
+    };
   }
 
   static async create(opts: PolarisKeyOptions): Promise<PolarisKeyClient> {
@@ -91,30 +128,54 @@ export class PolarisKeyClient {
     return isUsable(this.status(now).status);
   }
 
+  /**
+   * Resolve the effective value for a config key, honoring management state + override
+   * layers (precedence: `enforced`|`hidden` remote > local override > env > remote default
+   * > `fallback`). Note: an `enforced`/`hidden` key is LOCKED — attempting to override it
+   * via `localOverrides` or an env var has no effect; the remote value still wins.
+   */
   getConfig<T = JSONValue>(key: string, fallback: T): T {
-    const e = this.cache?.doc.payload.config[key];
-    return e ? (e.value as unknown as T) : fallback;
+    const v = resolveValue(this.resolveContext(), key);
+    return v === undefined ? fallback : (v as unknown as T);
+  }
+
+  /** Where `getConfig(key)` would source its value from (for diagnostics/settings UIs). */
+  getConfigSource(key: string): ConfigSource {
+    return resolveSource(this.resolveContext(), key);
+  }
+
+  /** The catalog config entries for a settings UI: every remote entry MINUS `hidden`
+   *  ones, each marked `{ key, value, enforced }`. (`hidden` keys are still applied by
+   *  `getConfig`; they are merely withheld from this enumeration.) */
+  listUserConfig(): UserConfigEntry[] {
+    return listUserEntries(this.cache?.doc?.payload.config);
   }
 
   getSecret(key: string): string | null {
-    const e = this.cache?.doc.payload.secrets[key];
+    const doc = this.cache?.doc;
+    if (!doc) return null;
+    const e = doc.payload.secrets[key];
     return e && typeof e.value === "string" ? e.value : null;
   }
 
   isEntitled(name: string): boolean {
-    const e = this.cache?.doc.payload.entitlements[name];
+    const doc = this.cache?.doc;
+    if (!doc) return false;
+    const e = doc.payload.entitlements[name];
     return Boolean(e && e.value === true);
   }
 
   getEntitlements(): Record<string, JSONValue> {
     const out: Record<string, JSONValue> = {};
-    const ents = this.cache?.doc.payload.entitlements ?? {};
-    for (const [k, v] of Object.entries(ents)) out[k] = v.value;
+    const doc = this.cache?.doc;
+    if (!doc) return out;
+    for (const [k, v] of Object.entries(doc.payload.entitlements)) out[k] = v.value;
     return out;
   }
 
   getProfile(): DocProfile | null {
-    return this.cache?.doc.profile ?? null;
+    const doc = this.cache?.doc;
+    return doc ? doc.profile : null;
   }
 
   // ── Enrollment ──────────────────────────────────────────────────────────────
@@ -225,10 +286,11 @@ export class PolarisKeyClient {
 
   private async patchCache(patch: Partial<CacheRecord>): Promise<void> {
     if (!this.cache) {
-      // No doc yet: remember only the bookkeeping (status() tolerates a doc-less cache).
+      // No doc yet: remember only the bookkeeping in a type-honest doc-less record
+      // (status() + the getters all tolerate a doc-less cache).
       if (patch.blocked || patch.lastSyncUnauthorized) {
         this.cache = {
-          doc: null as unknown as ManagedConfigDoc,
+          doc: null,
           lastAcceptedIssuedAt: 0,
           ...patch,
         };

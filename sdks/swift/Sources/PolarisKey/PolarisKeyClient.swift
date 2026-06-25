@@ -24,6 +24,11 @@ public struct PolarisKeyOptions: Sendable {
     public let trust: PolarisTrust
     public let store: Store
     public let session: URLSession
+    /// Caller-supplied per-key overrides — the highest-priority source for `default`-state
+    /// keys (never able to beat `enforced`/`hidden`).
+    public let localOverrides: [String: JSONValue]?
+    /// Env var prefix for config overrides. A key `a.b` reads `PKEY_CONFIG_a__b` (dots → `__`).
+    public let envPrefix: String
 
     public init(
         productSlug: String,
@@ -32,7 +37,9 @@ public struct PolarisKeyOptions: Sendable {
         channel: String? = nil,
         trust: PolarisTrust,
         store: Store? = nil,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        localOverrides: [String: JSONValue]? = nil,
+        envPrefix: String = "PKEY_CONFIG_"
     ) {
         self.productSlug = productSlug
         self.baseUrl = baseUrl.replacingOccurrences(
@@ -42,6 +49,8 @@ public struct PolarisKeyOptions: Sendable {
         self.trust = trust
         self.store = store ?? KeychainStore(productSlug: productSlug)
         self.session = session
+        self.localOverrides = localOverrides
+        self.envPrefix = envPrefix
     }
 }
 
@@ -69,6 +78,8 @@ public actor PolarisKeyClient {
     private let trust: TrustSet
     private let store: Store
     private let session: URLSession
+    private let localOverrides: [String: JSONValue]
+    private let envPrefix: String
 
     private var token: String?
     private var deviceId = ""
@@ -82,6 +93,8 @@ public actor PolarisKeyClient {
         self.trust = options.trust.pinnedKeys
         self.store = options.store
         self.session = options.session
+        self.localOverrides = options.localOverrides ?? [:]
+        self.envPrefix = options.envPrefix
     }
 
     /// Construct + `init()` (load token/device/cache with no network) in one step.
@@ -119,9 +132,56 @@ public actor PolarisKeyClient {
         isUsable(status(now: now).status)
     }
 
-    /// Read a managed config value, or `fallback` when absent.
+    /// Read the effective config value for `key`, honoring layered overrides + management
+    /// state (wire v2):
+    ///   - `enforced`/`hidden` ⇒ the remote value always wins (no override can replace it).
+    ///   - otherwise           ⇒ localOverrides[key] ?? env ?? remote value ?? `fallback`.
+    /// Env reads `environment[envPrefix + key (dots→"__")]`, parsed as JSON if it parses,
+    /// else taken as the raw string.
     public func config(_ key: String, default fallback: JSONValue) -> JSONValue {
-        cache?.doc?.payload.config[key]?.value ?? fallback
+        let entry = cache?.doc?.payload.config[key]
+        if let entry, entry.state == .enforced || entry.state == .hidden {
+            return entry.value
+        }
+        if let local = localOverrides[key] { return local }
+        if let env = envValue(for: key) { return env }
+        if let entry { return entry.value }
+        return fallback
+    }
+
+    /// Resolve which layer supplies a key's effective config value.
+    public func configSource(_ key: String) -> ConfigSource {
+        let entry = cache?.doc?.payload.config[key]
+        if entry?.state == .enforced { return .enforced }
+        if entry?.state == .hidden { return .hidden }
+        if localOverrides[key] != nil { return .local }
+        if envValue(for: key) != nil { return .env }
+        if entry != nil { return .remoteDefault }
+        return .fallback
+    }
+
+    /// The user-visible config (every entry except `hidden` ones), each carrying its value
+    /// and whether it is `enforced` (i.e. the user cannot override it).
+    public func listUserConfig() -> [UserConfigEntry] {
+        guard let config = cache?.doc?.payload.config else { return [] }
+        return config.compactMap { key, entry in
+            guard entry.state != .hidden else { return nil }
+            return UserConfigEntry(
+                key: key, value: entry.value, enforced: entry.state == .enforced)
+        }
+    }
+
+    /// Read + decode the env override for `key`, or nil if unset. The raw string is parsed
+    /// as JSON (so `"4"`→int, `"true"`→bool, `"[1,2]"`→array); on parse failure it is kept
+    /// as a plain string.
+    private func envValue(for key: String) -> JSONValue? {
+        let name = envPrefix + key.replacingOccurrences(of: ".", with: "__")
+        guard let raw = ProcessInfo.processInfo.environment[name] else { return nil }
+        if let data = raw.data(using: .utf8),
+            let parsed = try? JSONDecoder().decode(JSONValue.self, from: data) {
+            return parsed
+        }
+        return .string(raw)
     }
 
     /// Read a managed secret value (string only), or nil.
@@ -276,4 +336,34 @@ public actor PolarisKeyClient {
 private struct SnapshotBody: Encodable {
     let config: [String: JSONValue]
     let entitlements: [String: JSONValue]
+}
+
+/// Which layer supplied a key's effective config value (see `configSource(_:)`).
+public enum ConfigSource: String, Sendable, Equatable {
+    /// Remote `enforced` entry — server value wins, no override possible.
+    case enforced
+    /// Remote `hidden` entry — server value wins and the key is hidden from users.
+    case hidden
+    /// A caller-supplied `localOverrides` value.
+    case local
+    /// An environment-variable override.
+    case env
+    /// A remote `default`-state value (no local/env override present).
+    case remoteDefault
+    /// No remote entry and no override — the caller's `default:` fallback.
+    case fallback
+}
+
+/// One user-visible config row from `listUserConfig()`.
+public struct UserConfigEntry: Sendable, Equatable {
+    public let key: String
+    public let value: JSONValue
+    /// True iff the entry is `enforced` (the user cannot override it).
+    public let enforced: Bool
+
+    public init(key: String, value: JSONValue, enforced: Bool) {
+        self.key = key
+        self.value = value
+        self.enforced = enforced
+    }
 }

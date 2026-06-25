@@ -24,7 +24,7 @@ export function renderTs(catalog: ProductCatalog): string {
 export const CATALOG_VERSION = ${catalog.schemaVersion};
 
 export type ConfigKind = "config" | "secret" | "flag";
-export type ManagementState = "unmanaged" | "managed" | "hidden";
+export type ManagementState = "default" | "enforced" | "hidden";
 export type JsonSchema = Record<string, unknown>;
 
 export interface ConfigEntry {
@@ -170,14 +170,18 @@ export function renderSwift(catalog: ProductCatalog): string {
       const ui = (e.ui ?? {}) as Record<string, unknown>;
       const dep = e.dependsOn ? swiftStr(e.dependsOn.key) : "nil";
       const depEquals = e.dependsOn ? swiftDependsOnEquals(e.dependsOn.equals) : "nil";
-      const mgmt = e.managementDefault ? `.${e.managementDefault}` : "nil";
+      // `default` is a Swift reserved word — the enum case is escaped with backticks, so the
+      // member access must be escaped too: `.`default`` (not `.default`).
+      const mgmt = e.managementDefault
+        ? `.${e.managementDefault === "default" ? "`default`" : e.managementDefault}`
+        : "nil";
       const grantLabel = e.grantLabel ? swiftStr(e.grantLabel) : "nil";
       return (
         `    ConfigSchemaEntry(key: ${swiftStr(e.key)}, kind: .${e.kind}, ` +
         `category: ${swiftStr(e.category)}, label: ${swiftStr(e.label)}, ` +
         `description: ${swiftStr(e.description)}, widget: ${swiftOptStr(ui.widget as string | undefined)}, ` +
         `help: ${swiftOptStr(ui.help as string | undefined)}, placeholder: ${swiftOptStr(ui.placeholder as string | undefined)}, ` +
-        `order: ${swiftOptInt(ui.order as number | undefined)}, tiers: ${swiftStringArray(ui.tiers as string[] | undefined)}, ` +
+        `order: ${swiftOptInt(ui.order as number | undefined)}, scopes: ${swiftStringArray(ui.scopes as string[] | undefined)}, ` +
         `advanced: ${ui.advanced ? "true" : "false"}, unit: ${swiftOptStr(ui.unit as string | undefined)}, ` +
         `optionLabels: ${swiftStringDict(ui.optionLabels as Record<string, string> | undefined)}, adminSection: ${swiftOptStr(ui.adminSection as string | undefined)}, ` +
         `isSecret: ${e.kind === "secret" ? "true" : "false"}, ` +
@@ -193,7 +197,7 @@ export function renderSwift(catalog: ProductCatalog): string {
 import Foundation
 
 enum ConfigKind: String { case config, secret, flag }
-enum ManagementState: String { case unmanaged, managed, hidden }
+enum ManagementState: String { case \`default\`, enforced, hidden }
 
 struct ConfigSchemaEntry: Identifiable, Sendable {
     let key: String
@@ -205,7 +209,7 @@ struct ConfigSchemaEntry: Identifiable, Sendable {
     let help: String?
     let placeholder: String?
     let order: Int?
-    let tiers: [String]
+    let scopes: [String]
     let advanced: Bool
     let unit: String?
     let optionLabels: [String: String]

@@ -21,13 +21,13 @@ classifiers = [
 dependencies = [
   "cryptography>=41",
   "httpx>=0.24",
-  "platformdirs>=3",
 ]
 
 [project.optional-dependencies]
 keyring = ["keyring>=24"]
 click = ["click>=8"]
 typer = ["typer>=0.9"]
+dev = ["pytest>=7", "click>=8", "typer>=0.9"]
 
 [project.scripts]
 polaris-key = "polaris_key.cli:main"

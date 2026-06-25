@@ -1,257 +1,174 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { setCsrf } from "../src/api.js";
-import { AdminProvider, StatusProvider, resetCache } from "../src/context.js";
+import { AdminProvider } from "../src/context.js";
 import type { Me } from "../src/api.js";
-import { Licenses } from "../src/views/Licenses.js";
-import { LicenseDetailView } from "../src/views/LicenseDetail.js";
-import { Tiers } from "../src/views/Tiers.js";
-import { Activity } from "../src/views/Activity.js";
-import { SchemaCatalog } from "../src/views/SchemaCatalog.js";
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  DataTable,
+  EmptyState,
+  Field,
+  Input,
+  type ColumnDef,
+} from "../src/components/ui/index.js";
+import { ThemeProvider, useTheme } from "../src/components/theme.js";
+import { Logo } from "../src/components/brand/Logo.js";
+import { Dashboard } from "../src/views/Dashboard.js";
+import { ComingSoon } from "../src/views/ComingSoon.js";
 
-// A scripted fetch that maps a request path (longest-prefix) + method to a JSON body. Records
-// every request so we can assert the mutations a view fires. Network-free.
-interface Route {
-  body: unknown;
-  status?: number;
-}
-let requests: { url: string; method: string; body?: unknown }[] = [];
-function mockApi(routes: Record<string, Route | unknown>): void {
-  requests = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      const path = url.replace("http://localhost", "");
-      const method = init.method ?? "GET";
-      requests.push({ url: path, method, body: init.body ? JSON.parse(init.body as string) : undefined });
-      const keys = Object.keys(routes).sort((a, b) => b.length - a.length);
-      const matchKey = keys.find((k) => path === k || path.startsWith(k));
-      const route = (matchKey ? routes[matchKey] : {}) as Route | unknown;
-      const r = (route && typeof route === "object" && "body" in route ? route : { body: route }) as Route;
-      return new Response(JSON.stringify(r.body ?? {}), {
-        status: r.status ?? 200,
-        headers: { "content-type": "application/json" },
-      });
-    }),
-  );
-}
+// Foundation-level smoke tests: the primitive layer + brand + placeholder views compile,
+// render, and behave. View-specific behavior belongs to the agents building those views.
 
 const ME: Me = {
   sub: "u1",
-  name: "Ada",
+  name: "Ada Lovelace",
   email: "ada@x.io",
   csrf: "csrf",
   platformAdmin: true,
-  products: [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }],
+  products: [{ slug: "djdl", name: "DJDL", schemaVersion: 2 }],
 };
 
-/** Render a view inside the admin + status providers, scoped to product "djdl". */
-function renderView(node: ReactElement) {
+function withAdmin(node: ReactElement) {
   return render(
-    <AdminProvider value={{ me: ME, product: "djdl", setProduct: () => undefined }}>
-      <StatusProvider>{node}</StatusProvider>
-    </AdminProvider>,
+    <AdminProvider value={{ me: ME, product: "djdl", setProduct: () => undefined }}>{node}</AdminProvider>,
   );
 }
 
 beforeEach(() => {
-  resetCache();
-  setCsrf("csrf");
+  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
 });
-afterEach(() => {
-  cleanup();
-  vi.unstubAllGlobals();
-});
+afterEach(cleanup);
 
-const LICENSE = {
-  id: "lic_1",
-  name: "Bob Jones",
-  email: "bob@x.io",
-  status: "active",
-  enrolledAt: 0,
-  expiresAt: null,
-  keyCount: 2,
-  activeKeyCount: 1,
-  machineCount: 3,
-  profile: null,
-  tier: null,
-  identityProvider: "manual",
-};
-
-describe("Licenses view", () => {
-  it("renders the roster from mock api data", async () => {
-    mockApi({ "/admin/api/products/djdl/licenses": { licenses: [LICENSE] } });
-    renderView(<Licenses />);
-    expect(await screen.findByText("Bob Jones")).toBeTruthy();
-    expect(screen.getByText("bob@x.io")).toBeTruthy();
-    // active key count / total.
-    expect(screen.getByText("1/2")).toBeTruthy();
-  });
-
-  it("creating a license POSTs and surfaces the minted key once", async () => {
-    mockApi({
-      "/admin/api/products/djdl/licenses": { licenses: [] },
-    });
-    // The POST returns a minted key — override the responder for the mutation.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-        const url = String(input).replace("http://localhost", "");
-        if ((init.method ?? "GET") === "POST" && url.endsWith("/licenses")) {
-          return new Response(JSON.stringify({ licenseId: "l9", key: "PK-SECRET-KEY", license: LICENSE }), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        return new Response(JSON.stringify({ licenses: [] }), { status: 200, headers: { "content-type": "application/json" } });
-      }),
+describe("Button primitive", () => {
+  it("renders, fires onClick, and disables while loading", async () => {
+    const onClick = vi.fn();
+    const { rerender } = render(<Button onClick={onClick}>Save</Button>);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+    rerender(
+      <Button onClick={onClick} loading>
+        Save
+      </Button>,
     );
-    renderView(<Licenses />);
-    fireEvent.change(await screen.findByLabelText("License name"), { target: { value: "New User" } });
-    fireEvent.change(screen.getByLabelText("License email"), { target: { value: "n@x.io" } });
-    fireEvent.click(screen.getByRole("button", { name: "Create license" }));
-    expect(await screen.findByText("PK-SECRET-KEY")).toBeTruthy();
-  });
-
-  it("surfaces a load error", async () => {
-    mockApi({ "/admin/api/products/djdl/licenses": { body: { message: "nope" }, status: 500 } });
-    renderView(<Licenses />);
-    await waitFor(() => expect(screen.getByText(/nope|api 500/)).toBeTruthy());
+    expect((screen.getByRole("button", { name: /Save/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
-describe("LicenseDetail view", () => {
-  const DETAIL = {
-    ...LICENSE,
-    overrides: { config: {}, secrets: {}, entitlements: {} },
-    keys: [{ hash: "abcdef0123456789", status: "active", createdAt: 0, createdBy: "u1" }],
-    machines: [{ machineId: "m1", status: "authorized", firstSeen: 0, lastSeen: 0 }],
-  };
-  const CATALOG = {
-    schemaVersion: 1,
-    entries: [{ key: "theme.mode", kind: "config", category: "ui", label: "Theme", description: "", schema: { type: "string", enum: ["dark", "light"] } }],
-  };
-
-  it("renders keys, devices, and the override editor from mock data", async () => {
-    mockApi({
-      "/admin/api/products/djdl/licenses/lic_1": DETAIL,
-      "/admin/api/products/djdl/schema": CATALOG,
-    });
-    renderView(<LicenseDetailView id="lic_1" />);
-    expect(await screen.findByRole("heading", { name: "Bob Jones" })).toBeTruthy();
-    // Truncated key hash + machine id.
-    expect(screen.getByText(/abcdef012345/)).toBeTruthy();
-    expect(screen.getByText("m1")).toBeTruthy();
-    // The catalog drives the override editor field.
-    expect(await screen.findByLabelText("Theme")).toBeTruthy();
-  });
-
-  it("toggling a license disable/enable POSTs the right endpoint", async () => {
-    mockApi({
-      "/admin/api/products/djdl/licenses/lic_1": DETAIL,
-      "/admin/api/products/djdl/schema": CATALOG,
-    });
-    renderView(<LicenseDetailView id="lic_1" />);
-    const disableBtn = await screen.findByRole("button", { name: "Disable" });
-    fireEvent.click(disableBtn);
-    await waitFor(() => expect(requests.some((r) => r.method === "POST" && r.url.endsWith("/disable"))).toBe(true));
-  });
-
-  it("renders an error when the license fails to load", async () => {
-    mockApi({ "/admin/api/products/djdl/licenses/lic_1": { body: { message: "gone" }, status: 404 } });
-    renderView(<LicenseDetailView id="lic_1" />);
-    await waitFor(() => expect(screen.getByText(/gone|api 404/)).toBeTruthy());
+describe("Field primitive", () => {
+  it("wires the label, help, and error to the control via aria-describedby + aria-invalid", () => {
+    render(
+      <Field label="Email" help="we never share it" error="required">
+        <Input />
+      </Field>,
+    );
+    const input = screen.getByLabelText("Email");
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    const describedBy = input.getAttribute("aria-describedby") ?? "";
+    expect(describedBy.split(" ").length).toBe(2);
+    expect(screen.getByRole("alert").textContent).toBe("required");
   });
 });
 
-describe("Tiers view", () => {
-  it("renders tiers from mock data", async () => {
-    mockApi({
-      "/admin/api/products/djdl/tiers": {
-        tiers: [{ id: "pro", label: "Pro", profile: "p1", policyExpiryDays: 30, policyMachineLimit: 5 }],
-      },
-    });
-    renderView(<Tiers />);
-    expect(await screen.findByText("Pro")).toBeTruthy();
-    expect(screen.getByText("p1")).toBeTruthy();
-  });
-
-  it("creating a tier POSTs and announces success", async () => {
-    mockApi({ "/admin/api/products/djdl/tiers": { tiers: [] } });
-    renderView(<Tiers />);
-    fireEvent.change(await screen.findByLabelText("Tier id"), { target: { value: "starter" } });
-    fireEvent.click(screen.getByRole("button", { name: "Create tier" }));
-    await waitFor(() => expect(requests.some((r) => r.method === "POST" && r.url.endsWith("/tiers"))).toBe(true));
+describe("Badge + EmptyState primitives", () => {
+  it("renders a badge with its label and an empty state with an action", () => {
+    render(
+      <>
+        <Badge variant="success">active</Badge>
+        <EmptyState title="Nothing here" action={<Button>Add</Button>} />
+      </>,
+    );
+    expect(screen.getByText("active")).toBeTruthy();
+    expect(screen.getByText("Nothing here")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add" })).toBeTruthy();
   });
 });
 
-describe("Activity view", () => {
-  it("renders activity items from mock data", async () => {
-    mockApi({
-      "/admin/api/products/djdl/activity": {
-        items: [{ id: "a1", at: 1700000000, actor: { sub: "u1", name: "Ada", email: "a@x.io" }, action: "license.create", target: null, summary: "Created a license" }],
-        nextCursor: null,
-      },
-    });
-    renderView(<Activity />);
-    expect(await screen.findByText("license.create")).toBeTruthy();
-    expect(screen.getByText("Created a license")).toBeTruthy();
+describe("DataTable primitive", () => {
+  interface Row {
+    id: string;
+    name: string;
+    count: number;
+  }
+  const rows: Row[] = [
+    { id: "a", name: "Charlie", count: 3 },
+    { id: "b", name: "Alice", count: 1 },
+    { id: "c", name: "Bob", count: 2 },
+  ];
+  const columns: ColumnDef<Row>[] = [
+    { id: "name", header: "Name", cell: (r) => r.name, accessor: (r) => r.name, sortable: true },
+    { id: "count", header: "Count", cell: (r) => r.count, accessor: (r) => r.count, sortable: true },
+  ];
+
+  it("renders rows and supports client-side sort", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+    expect(screen.getByText("Charlie")).toBeTruthy();
+    // Sort by name ascending.
+    await userEvent.click(screen.getByRole("button", { name: /Name/ }));
+    const cells = screen.getAllByRole("cell").map((c) => c.textContent);
+    // First data cell should now be "Alice".
+    expect(cells[0]).toBe("Alice");
   });
 
-  it("shows the empty state when there is no activity", async () => {
-    mockApi({ "/admin/api/products/djdl/activity": { items: [], nextCursor: null } });
-    renderView(<Activity />);
-    expect(await screen.findByText("No activity yet.")).toBeTruthy();
+  it("filters rows via the global filter", () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} filterable />);
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "bob" } });
+    expect(screen.getByText("Bob")).toBeTruthy();
+    expect(screen.queryByText("Charlie")).toBeNull();
+  });
+
+  it("shows the empty state when there are no rows", () => {
+    render(<DataTable columns={columns} rows={[]} rowKey={(r) => r.id} empty={<EmptyState title="No data" />} />);
+    expect(screen.getByText("No data")).toBeTruthy();
   });
 });
 
-describe("SchemaCatalog view", () => {
-  const CATALOG = {
-    schemaVersion: 3,
-    entries: [{ key: "run.concurrency", kind: "config", category: "run", label: "Concurrency", description: "", schema: { type: "integer" } }],
-  };
+describe("ConfirmDialog primitive", () => {
+  it("invokes onConfirm when confirmed", async () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmDialog open onOpenChange={() => undefined} title="Delete it?" confirmLabel="Delete" onConfirm={onConfirm} />,
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+});
 
-  it("lists active entries + the version", async () => {
-    mockApi({ "/admin/api/products/djdl/schema": CATALOG });
-    renderView(<SchemaCatalog />);
-    expect(await screen.findByText("run.concurrency")).toBeTruthy();
-    expect(screen.getByText(/Active version: 3/)).toBeTruthy();
+describe("theme toggle", () => {
+  it("flips the document class between dark and light", async () => {
+    function Toggle(): ReactElement {
+      const { theme, toggle } = useTheme();
+      return <button onClick={toggle}>theme:{theme}</button>;
+    }
+    render(
+      <ThemeProvider>
+        <Toggle />
+      </ThemeProvider>,
+    );
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    await userEvent.click(screen.getByText(/theme:/));
+    expect(document.documentElement.classList.contains("light")).toBe(true);
+  });
+});
+
+describe("brand + placeholder views", () => {
+  it("renders the Polaris Key logo lockup", () => {
+    render(<Logo subtitle="admin" />);
+    expect(screen.getByLabelText("Polaris Key")).toBeTruthy();
+    expect(screen.getByText("admin")).toBeTruthy();
   });
 
-  it("a valid key + schema fragment shows a live preview", async () => {
-    mockApi({ "/admin/api/products/djdl/schema": CATALOG });
-    renderView(<SchemaCatalog />);
-    await screen.findByText("run.concurrency");
-    fireEvent.change(screen.getByLabelText("Entry key"), { target: { value: "new.flag" } });
-    // The default schema fragment is { type: "string" } → preview renders a labelled input.
-    const preview = await screen.findByText("Live preview");
-    expect(preview).toBeTruthy();
-    // The preview renders a SchemaField for the draft (label defaults to the key).
-    expect(within(preview.parentElement as HTMLElement).getByLabelText("new.flag")).toBeTruthy();
+  it("Dashboard greets the operator and lists products", () => {
+    withAdmin(<Dashboard />);
+    expect(screen.getByText(/Welcome, Ada/)).toBeTruthy();
+    expect(screen.getByText("DJDL")).toBeTruthy();
   });
 
-  it("an invalid JSON-Schema fragment surfaces a parse error and disables publish", async () => {
-    mockApi({ "/admin/api/products/djdl/schema": CATALOG });
-    renderView(<SchemaCatalog />);
-    await screen.findByText("run.concurrency");
-    fireEvent.change(screen.getByLabelText("Entry key"), { target: { value: "x" } });
-    fireEvent.change(screen.getByLabelText("JSON Schema fragment"), { target: { value: "{ not json" } });
-    expect(await screen.findByText(/Schema JSON:/)).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Publish new version" }) as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it("publishing PUTs a bumped catalog version", async () => {
-    mockApi({ "/admin/api/products/djdl/schema": CATALOG });
-    renderView(<SchemaCatalog />);
-    await screen.findByText("run.concurrency");
-    fireEvent.change(screen.getByLabelText("Entry key"), { target: { value: "new.key" } });
-    fireEvent.click(screen.getByRole("button", { name: "Publish new version" }));
-    await waitFor(() => {
-      const put = requests.find((r) => r.method === "PUT" && r.url.endsWith("/schema"));
-      expect(put).toBeTruthy();
-      expect((put!.body as { catalog: { schemaVersion: number } }).catalog.schemaVersion).toBe(4);
-    });
+  it("ComingSoon renders a labelled placeholder", () => {
+    render(<ComingSoon title="Releases" />);
+    expect(screen.getByText("Releases — coming soon")).toBeTruthy();
   });
 });

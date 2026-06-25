@@ -9,11 +9,13 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:all": "turbo run test && (cd sdks/python && .venv/bin/python -m pytest -q) && (cd sdks/swift && swift test)",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "dev": "turbo run dev --no-cache --continue",
     "gen:corpus": "tsx tools/sign-corpus.ts",
     "gen:mirrors": "tsx tools/gen-mirrors.ts",
+    "prepare": "husky",
     "conformance": "turbo run test --filter=@polaris-key/conformance-node",
     "changeset": "changeset",
     "version-packages": "changeset version",
@@ -22,11 +24,16 @@
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3", "esbuild", "workerd"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild",
+      "workerd"
+    ]
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
     "@types/node": "^22.14.0",
+    "husky": "^9.1.7",
     "prettier": "^3.5.0",
     "tsup": "^8.4.0",
     "tsx": "^4.19.0",

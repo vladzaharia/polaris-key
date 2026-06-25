@@ -1,17 +1,23 @@
 import Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SqliteDb } from "../src/db/sqlite.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const SCHEMA = readFileSync(join(here, "..", "migrations", "0001_init.sql"), "utf8");
+const MIGRATIONS_DIR = join(here, "..", "migrations");
 
-/** A fresh in-memory database with the schema applied. */
+// Every migration, in filename order — so 0001_init and all later migrations reach the test DB.
+const MIGRATIONS = readdirSync(MIGRATIONS_DIR)
+  .filter((f) => f.endsWith(".sql"))
+  .sort()
+  .map((f) => readFileSync(join(MIGRATIONS_DIR, f), "utf8"));
+
+/** A fresh in-memory database with every migration applied (in filename order). */
 export function makeTestDb(): SqliteDb {
   const sqlite = new Database(":memory:");
   // better-sqlite3's multi-statement DDL runner (bound to dodge a false-positive lint).
   const runScript = sqlite.exec.bind(sqlite);
-  runScript(SCHEMA);
+  for (const sql of MIGRATIONS) runScript(sql);
   return new SqliteDb(sqlite);
 }

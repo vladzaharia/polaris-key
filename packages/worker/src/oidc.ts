@@ -8,9 +8,9 @@
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
-import { type Env, secret } from "./env.js";
+import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import type { Product } from "./product.js";
+import { openProductSecret, type Product } from "./product.js";
 import { errorResponse, json } from "./http.js";
 import { hashKey, mintToken, randomId } from "./crypto.js";
 import { putTokenRecord } from "./kv.js";
@@ -91,13 +91,32 @@ function flowKey(product: string, state: string): string {
   return `p:${product}:flow:${state}`;
 }
 
+/**
+ * Whether the computed `redirectUri` is permitted by the product's `redirect_uris_json`
+ * allowlist. When the column is unset we cannot enforce, so we allow (the IdP still
+ * enforces its own registered-redirect check); when it IS set, the computed URI MUST be a
+ * member — otherwise an attacker-chosen host/path could exfiltrate the authorization code.
+ */
+function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
+  if (!oidc.redirect_uris_json) return true;
+  let allowed: unknown;
+  try {
+    allowed = JSON.parse(oidc.redirect_uris_json);
+  } catch {
+    return false;
+  }
+  return Array.isArray(allowed) && allowed.includes(redirectUri);
+}
+
 // ── identity mapping + provisioning ──────────────────────────────────────────
-/** Apply provisioning hooks (verified claim -> entitlement + secret) into a payload. */
+/** Apply provisioning hooks (verified claim -> entitlement + secret) into a payload.
+ *  `now` (epoch seconds) is stamped as `updatedAt` on every entry written. */
 export async function applyProvisioning(
   db: Db,
   product: string,
   identity: OidcIdentity,
   payload: ManagedPayload,
+  now: number,
 ): Promise<void> {
   const hooks = await getProvisioning(db, product);
   for (const h of hooks) {
@@ -105,7 +124,7 @@ export async function applyProvisioning(
     if (claimVal === undefined || claimVal === null || claimVal === false) continue;
     if (h.entitlement_key) {
       const value = h.entitlement_value_json ? (JSON.parse(h.entitlement_value_json) as ManagedEntry["value"]) : true;
-      payload.entitlements[h.entitlement_key] = { state: "managed", value };
+      payload.entitlements[h.entitlement_key] = { state: "enforced", value, updatedAt: now };
     }
     if (h.secret_key && h.secret_url_template) {
       const url = h.secret_url_template.replace("{claim}", encodeURIComponent(String(claimVal)));
@@ -118,7 +137,7 @@ export async function applyProvisioning(
           continue;
         }
       }
-      payload.secrets[h.secret_key] = { state: "hidden", value: url };
+      payload.secrets[h.secret_key] = { state: "hidden", value: url, updatedAt: now };
     }
   }
 }
@@ -157,7 +176,7 @@ export async function enrollFromIdentity(
   }
 
   const overrides: ManagedPayload = { config: {}, secrets: {}, entitlements: {} };
-  await applyProvisioning(db, product.slug, identity, overrides);
+  await applyProvisioning(db, product.slug, identity, overrides, now);
 
   const licenseId = randomId("lic");
   await insertLicense(db, {
@@ -174,6 +193,9 @@ export async function enrollFromIdentity(
     expires_at: expiresAt,
     max_offline_days: null,
     overrides_json: JSON.stringify(overrides),
+    channels_json: null,
+    min_version: null,
+    max_version: null,
     modified_by: "oidc",
     modified_at: now,
   });
@@ -222,6 +244,9 @@ export async function handleAuthStart(req: Request, env: Env, db: Db, product: P
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
   const redirectUri = `${new URL(req.url).origin}/${product.slug}/auth/callback`;
+  if (!redirectUriAllowed(oidc, redirectUri)) {
+    return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
+  }
   const flow: FlowRecord = { verifier, nonce, redirectUri };
   await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), { expirationTtl: FLOW_TTL_SECONDS });
 
@@ -263,7 +288,23 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
   const flow = JSON.parse(raw) as FlowRecord;
   const oidc = await getOidcConfig(db, product.slug);
   if (!oidc?.issuer || !oidc.client_id) return errorResponse(500, "misconfigured", "no oidc config");
-  const clientSecret = oidc.client_secret_secret ? secret(env, oidc.client_secret_secret) : undefined;
+  // Defense in depth: the stored flow's redirect_uri must still be allow-listed.
+  if (!redirectUriAllowed(oidc, flow.redirectUri)) {
+    await env.HOT.delete(flowKey(product.slug, state));
+    return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
+  }
+  // The OIDC client secret is KEK-custodied in product_secrets (sealed), keyed by the name
+  // the config declares in `client_secret_secret`. A null column ⇒ a public client (omit
+  // client_secret). But if the config DECLARES a secret name and it's missing/unsealable, we
+  // MUST fail closed — never silently downgrade a confidential client to a public one.
+  let clientSecret: string | undefined;
+  if (oidc.client_secret_secret) {
+    clientSecret = await openProductSecret(db, env, product.slug, oidc.client_secret_secret);
+    if (!clientSecret) {
+      await env.HOT.delete(flowKey(product.slug, state));
+      return errorResponse(500, "misconfigured", "oidc client secret unavailable");
+    }
+  }
 
   const tokenRes = await fetch(`${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`, {
     method: "POST",
@@ -278,8 +319,9 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
     }),
   });
   if (!tokenRes.ok) {
-    flow.error = "token-exchange-failed";
-    await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), { expirationTtl: FLOW_TTL_SECONDS });
+    // Delete the flow rather than recording a reason — pollers must not be able to
+    // enumerate IdP failure modes (D8). The poll surface returns a generic error.
+    await env.HOT.delete(flowKey(product.slug, state));
     return errorResponse(502, "oidc_error", "token exchange failed");
   }
   const tokens = (await tokenRes.json()) as { id_token?: string };
@@ -294,19 +336,21 @@ export async function handleAuthCallback(req: Request, env: Env, db: Db, product
       algorithms: ALLOWED_ID_TOKEN_ALGS,
     });
     claims = verified.payload as Record<string, unknown>;
-    if (flow.nonce && claims.nonce !== flow.nonce) throw new Error("nonce mismatch");
+    // Reject unconditionally on a missing or mismatched nonce — a token with no nonce must
+    // never satisfy the binding to this flow (replay / token-injection defense).
+    if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce) throw new Error("nonce mismatch");
   } catch {
-    flow.error = "id-token-invalid";
-    await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), { expirationTtl: FLOW_TTL_SECONDS });
+    await env.HOT.delete(flowKey(product.slug, state));
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
   const result = await enrollFromIdentity(db, product, mapClaims(claims), now);
   if ("error" in result) {
-    flow.error = result.error;
-  } else {
-    flow.licenseId = result.licenseId;
+    // Failed enrollment: drop the flow so the poller gets a generic error, not the reason.
+    await env.HOT.delete(flowKey(product.slug, state));
+    return errorResponse(403, "forbidden", "not entitled");
   }
+  flow.licenseId = result.licenseId;
   await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), { expirationTtl: FLOW_TTL_SECONDS });
   return new Response(
     "<!doctype html><meta charset=utf-8><title>Signed in</title><body style=\"font-family:system-ui;padding:3rem;text-align:center\"><h1>You're signed in</h1><p>You can close this tab and return to the app.</p>",
@@ -323,7 +367,8 @@ export async function handleAuthPoll(req: Request, env: Env, db: Db, product: Pr
   const raw = await env.HOT.get(flowKey(product.slug, state));
   if (!raw) return json({ status: "timeout" });
   const flow = JSON.parse(raw) as FlowRecord;
-  if (flow.error) return json({ status: "error", reason: flow.error });
+  // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
+  if (flow.error) return json({ status: "error" });
   if (!flow.licenseId) return json({ status: "pending" });
 
   const token = await authorizeAndMint(env, db, product, flow.licenseId, machine, now);

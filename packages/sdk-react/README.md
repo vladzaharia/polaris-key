@@ -43,6 +43,23 @@ export function App() {
 otherwise it renders the screen for the current status (loading / login / revoked / expired /
 version-block / error). Every screen is overridable per `slots` render-prop.
 
+## Components
+
+- **`<PolarisKeyProvider>`** — the context root: owns the adapter, the gate state, and the
+  `--pk-*` theme variables. Everything else must render inside it.
+- **`<LicenseGate>`** — the drop-in status gate above. Shows your children only when usable.
+- **`<PolarisLogin>`** — the drop-in sign-in card: an OIDC button plus (desktop only) a typed
+  license-key entry. Embedded by `<LicenseGate>`'s login screen; usable standalone too.
+- **Sign-out** is an *action*, not a separate component — call `signOut` from
+  `usePolarisKey()` (or `usePolarisAuth()`) and wire it to your own button:
+
+  ```tsx
+  function SignOutButton() {
+    const { signOut } = usePolarisKey();
+    return <button onClick={() => signOut()}>Sign out</button>;
+  }
+  ```
+
 ## Hooks
 
 | Hook | Returns |
@@ -63,6 +80,21 @@ version-block / error). Every screen is overridable per `slots` render-prop.
 // Force desktop mode with an explicit bridge (otherwise window.polarisKey):
 <PolarisKeyProvider productSlug="acme" mode="desktop" bridge={myBridge} />
 ```
+
+## Layered config
+
+`useManagedConfig().get(key, fallback)` (and the bound `getConfig` action) resolve a config
+value through the **same precedence** as every Polaris Key SDK:
+
+```
+enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
+```
+
+`enforced`/`hidden` values are locked to the server and cannot be overridden; `hidden` keys
+are additionally withheld from the user-facing list (`listUserConfig`) but still applied. In
+**desktop** mode, env/local overrides resolve in the privileged process (the `@polaris-key/node`
+client, honoring `PKEY_CONFIG_*`); in **browser** mode the value comes straight from the
+signed remote doc.
 
 ### Desktop bridge contract
 

@@ -74,16 +74,13 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 /**
- * The HMAC key for session signing. Prefer an explicit `ADMIN_SESSION_SECRET`; otherwise
- * derive deterministically from another high-entropy secret already present so we don't
- * introduce a hard dependency (rotating either rotates sessions — acceptable, short TTL).
+ * The HMAC key for session signing. Uses ONLY `ADMIN_SESSION_SECRET` and fails closed when
+ * it is absent/empty — never sign or verify a session with a guessable fallback key, since
+ * that would let anyone forge an admin cookie. A missing secret is a deployment error.
  */
 async function sessionKey(env: Env): Promise<CryptoKey> {
-  const material =
-    env.ADMIN_SESSION_SECRET ??
-    env.KEY_HASH_PEPPER ??
-    env.GITHUB_APP_PRIVATE_KEY ??
-    "pkey-admin-session-fallback";
+  const material = env.ADMIN_SESSION_SECRET;
+  if (!material) throw new Error("ADMIN_SESSION_SECRET is required");
   return crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(material),

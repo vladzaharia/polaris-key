@@ -1,206 +1,228 @@
-import React, { useState } from "react";
-import { api, type ConfigEntry, type LicenseDetail as LicenseDetailDto, type OverrideUpdate, type ProductCatalog } from "../api.js";
-import { invalidate, useAdmin, useResource, useStatus } from "../context.js";
-import { navigate } from "../route.js";
-import { SchemaField, type FieldResult } from "../SchemaForm.js";
+import * as React from "react";
+import { ArrowLeft, Pencil } from "lucide-react";
+import { api, type OverrideUpdate } from "../api.js";
+import { invalidate, useResource } from "../context.js";
+import { hashFor } from "../route.js";
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  Skeleton,
+  Switch,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  useToast,
+} from "../components/ui/index.js";
+import { ChannelList, formatDate, formatStamp, LicenseStatusBadge, MetaItem } from "./licenses/shared.js";
+import { EditMetadataDialog } from "./licenses/EditMetadataDialog.js";
+import { PolicySection } from "./licenses/PolicySection.js";
+import { KeysSection } from "./licenses/KeysSection.js";
+import { DevicesSection } from "./licenses/DevicesSection.js";
+import { OverridesEditor } from "./licenses/OverridesEditor.js";
 
-/** A license detail: keys, machines, and a schema-driven override editor. */
-export function LicenseDetailView({ id }: { id: string }): React.ReactElement {
-  const { product } = useAdmin();
-  const lic = useResource<LicenseDetailDto>(`license:${product}:${id}`, () => api.license(product, id));
-  const cat = useResource<ProductCatalog>(`schema:${product}`, () => api.schema(product));
-  const { announce } = useStatus();
+/**
+ * The license detail view. Loads the license (with embedded keys, devices, and redacted override
+ * payload) plus the product catalog (for the override editor's schema). The header owns the
+ * status + enable/disable toggle + metadata edit; the body is tabbed into policy, keys, devices,
+ * and overrides. Every mutation toasts and invalidates the license cache key so the view refreshes.
+ */
+export function LicenseDetail({ slug, id }: { slug: string; id: string }): React.ReactElement {
+  const toast = useToast();
+  const licenseKey = `license:${slug}:${id}`;
+  const { data: license, loading, error, reload } = useResource(licenseKey, () => api.license(slug, id));
+  const { data: catalog } = useResource(`schema:${slug}`, () => api.schema(slug));
 
-  if (lic.error) return <p className="note note-error">{lic.error}</p>;
-  if (!lic.data) return <p className="muted">Loading…</p>;
-  const license = lic.data;
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [confirmEnable, setConfirmEnable] = React.useState(false);
+  const [toggling, setToggling] = React.useState(false);
+  const [savingOverrides, setSavingOverrides] = React.useState(false);
 
-  async function toggle(): Promise<void> {
+  const refresh = React.useCallback(() => {
+    invalidate(licenseKey);
+    invalidate(`licenses:${slug}`);
+    reload();
+  }, [licenseKey, slug, reload]);
+
+  const toggleEnabled = async (): Promise<void> => {
+    if (!license) return;
+    const enable = license.status !== "active";
+    setToggling(true);
     try {
-      await api.setLicenseEnabled(product, id, license.status !== "active");
-      invalidate(`license:${product}:${id}`);
-      invalidate(`licenses:${product}`);
-      lic.reload();
-      announce("Updated license status.", "ok");
-    } catch (e) {
-      announce(e instanceof Error ? e.message : "Failed.", "error");
+      await api.setLicenseEnabled(slug, id, enable);
+      toast.success(enable ? "License enabled" : "License disabled");
+      refresh();
+      setConfirmEnable(false);
+    } catch (err) {
+      toast.error("Could not change status", err instanceof Error ? err.message : undefined);
+    } finally {
+      setToggling(false);
     }
+  };
+
+  const submitOverrides = async (updates: OverrideUpdate[]): Promise<void> => {
+    if (updates.length === 0) return;
+    setSavingOverrides(true);
+    try {
+      await api.putLicenseOverrides(slug, id, updates);
+      toast.success("Overrides saved", `${updates.length} change${updates.length === 1 ? "" : "s"} applied.`);
+      refresh();
+    } catch (err) {
+      toast.error("Could not save overrides", err instanceof Error ? err.message : undefined);
+    } finally {
+      setSavingOverrides(false);
+    }
+  };
+
+  const backHref = hashFor({ kind: "product", slug, view: "licenses" });
+
+  if (error) {
+    return (
+      <section className="space-y-6">
+        <BackLink href={backHref} />
+        <EmptyState
+          title="Could not load license"
+          description={error}
+          action={
+            <Button variant="outline" onClick={reload}>
+              Retry
+            </Button>
+          }
+        />
+      </section>
+    );
   }
 
-  async function mint(): Promise<void> {
-    try {
-      const res = await api.mintKey(product, id);
-      announce(`New key (shown once): ${res.key}`, "ok");
-      invalidate(`license:${product}:${id}`);
-      lic.reload();
-    } catch (e) {
-      announce(e instanceof Error ? e.message : "Failed.", "error");
-    }
+  if (loading && !license) {
+    return (
+      <section className="space-y-6">
+        <BackLink href={backHref} />
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-32 w-full" />
+      </section>
+    );
   }
+
+  if (!license) return <BackLink href={backHref} />;
+
+  const isActive = license.status === "active";
 
   return (
-    <section>
-      <p className="crumbs">
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate({ kind: "product", slug: product, view: "licenses" }); }}>
-          ← Licenses
-        </a>
-      </p>
-      <h1 tabIndex={-1}>{license.name || license.id}</h1>
-      <p className="muted">
-        {license.email} · <span className={`pill pill-${license.status}`}>{license.status}</span>
-      </p>
-      <div className="row-actions">
-        <button onClick={toggle}>{license.status === "active" ? "Disable" : "Enable"}</button>
-        <button onClick={mint}>Mint key</button>
-      </div>
+    <section className="space-y-6">
+      <BackLink href={backHref} />
 
-      <h2>Keys</h2>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Hash</th>
-            <th>Status</th>
-            <th>Label</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {license.keys.map((k) => (
-            <tr key={k.hash}>
-              <td>
-                <code>{k.hash.slice(0, 12)}…</code>
-              </td>
-              <td>{k.status}</td>
-              <td>{k.label ?? "—"}</td>
-              <td>
-                {k.status === "active" ? (
-                  <button
-                    onClick={async () => {
-                      await api.revokeKey(product, id, k.hash);
-                      invalidate(`license:${product}:${id}`);
-                      lic.reload();
-                    }}
-                  >
-                    Revoke
-                  </button>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-semibold tracking-tight">{license.name || "Unnamed license"}</h2>
+            <LicenseStatusBadge status={license.status} />
+            <Badge variant={license.identityProvider === "oidc" ? "primary" : "default"}>
+              {license.identityProvider}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">{license.email}</p>
+          <p className="font-mono text-xs text-muted-foreground">{license.id}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">{isActive ? "Enabled" : "Disabled"}</span>
+            <Switch
+              checked={isActive}
+              disabled={toggling}
+              onCheckedChange={() => setConfirmEnable(true)}
+              aria-label={isActive ? "Disable license" : "Enable license"}
+            />
+          </label>
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Pencil aria-hidden />
+            Edit
+          </Button>
+        </div>
+      </header>
 
-      <h2>Devices</h2>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Machine</th>
-            <th>Status</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {license.machines.map((m) => (
-            <tr key={m.machineId}>
-              <td>
-                <code>{m.machineId}</code>
-              </td>
-              <td>{m.status}</td>
-              <td>
-                {m.status === "authorized" ? (
-                  <button
-                    onClick={async () => {
-                      await api.deauthorizeMachine(product, id, m.machineId);
-                      invalidate(`license:${product}:${id}`);
-                      lic.reload();
-                    }}
-                  >
-                    Deauthorize
-                  </button>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <dl className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-card p-5 sm:grid-cols-3 lg:grid-cols-4">
+        <MetaItem label="Tier">{license.tier ? <Badge variant="outline">{license.tier}</Badge> : "—"}</MetaItem>
+        <MetaItem label="Profile">{license.profile || "—"}</MetaItem>
+        <MetaItem label="Enrolled">{formatStamp(license.enrolledAt)}</MetaItem>
+        <MetaItem label="Expires">{formatDate(license.expiresAt)}</MetaItem>
+        <MetaItem label="Max offline days">{license.maxOfflineDays ?? "—"}</MetaItem>
+        <MetaItem label="Active keys">
+          <span className="tabular-nums">
+            {license.activeKeyCount} / {license.keyCount}
+          </span>
+        </MetaItem>
+        <MetaItem label="Devices">
+          <span className="tabular-nums">{license.machineCount}</span>
+        </MetaItem>
+        <MetaItem label="Channels">
+          <ChannelList channels={license.channels} />
+        </MetaItem>
+      </dl>
 
-      <h2>Overrides</h2>
-      {cat.data ? (
-        <OverrideEditor
-          entries={cat.data.entries}
-          current={license.overrides}
-          onSave={async (updates) => {
-            await api.setLicenseOverrides(product, id, updates);
-            invalidate(`license:${product}:${id}`);
-            lic.reload();
-            announce("Overrides saved.", "ok");
-          }}
-        />
-      ) : (
-        <p className="muted">Loading catalog…</p>
-      )}
+      <Tabs defaultValue="policy">
+        <TabsList>
+          <TabsTrigger value="policy">Policy</TabsTrigger>
+          <TabsTrigger value="keys">Keys ({license.keys.length})</TabsTrigger>
+          <TabsTrigger value="devices">Devices ({license.machines.length})</TabsTrigger>
+          <TabsTrigger value="overrides">Overrides</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="policy">
+          <PolicySection slug={slug} license={license} onSaved={refresh} />
+        </TabsContent>
+
+        <TabsContent value="keys">
+          <KeysSection slug={slug} id={id} keys={license.keys} onChanged={refresh} />
+        </TabsContent>
+
+        <TabsContent value="devices">
+          <DevicesSection slug={slug} id={id} devices={license.machines} onChanged={refresh} />
+        </TabsContent>
+
+        <TabsContent value="overrides">
+          {catalog ? (
+            <OverridesEditor
+              catalog={catalog}
+              payload={license.overrides}
+              saving={savingOverrides}
+              onSubmit={submitOverrides}
+            />
+          ) : (
+            <Skeleton className="h-40 w-full" />
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <EditMetadataDialog slug={slug} license={license} open={editOpen} onOpenChange={setEditOpen} onSaved={refresh} />
+
+      <ConfirmDialog
+        open={confirmEnable}
+        onOpenChange={(o) => !o && setConfirmEnable(false)}
+        title={isActive ? "Disable this license?" : "Enable this license?"}
+        description={
+          isActive
+            ? "Devices will lose access at their next check-in until the license is re-enabled."
+            : "Devices on this license will regain access at their next check-in."
+        }
+        confirmLabel={isActive ? "Disable" : "Enable"}
+        confirmVariant={isActive ? "destructive" : "primary"}
+        loading={toggling}
+        onConfirm={toggleEnabled}
+      />
     </section>
   );
 }
 
-/** A schema-driven batch editor over the three managed buckets. */
-export function OverrideEditor({
-  entries,
-  current,
-  onSave,
-}: {
-  entries: ConfigEntry[];
-  current: LicenseDetailDto["overrides"];
-  onSave: (updates: OverrideUpdate[]) => Promise<void>;
-}): React.ReactElement {
-  const initial: Record<string, unknown> = {};
-  for (const e of entries) {
-    const bucket = e.kind === "secret" ? current.secrets : e.kind === "flag" ? current.entitlements : current.config;
-    const v = bucket[e.key] as { value?: unknown } | undefined;
-    initial[e.key] = v && "value" in v ? v.value : undefined;
-  }
-  const [draft, setDraft] = useState<Record<string, FieldResult>>({});
-  const [error, setError] = useState<string | null>(null);
-
-  function setField(key: string, result: FieldResult): void {
-    setDraft((d) => ({ ...d, [key]: result }));
-  }
-
-  async function save(ev: React.FormEvent): Promise<void> {
-    ev.preventDefault();
-    const updates: OverrideUpdate[] = [];
-    for (const [key, result] of Object.entries(draft)) {
-      if (!result.valid) {
-        setError(`Invalid value for ${key}.`);
-        return;
-      }
-      updates.push({ key, value: result.value, state: result.value === undefined ? "unmanaged" : "managed" });
-    }
-    setError(null);
-    await onSave(updates);
-    setDraft({});
-  }
-
+function BackLink({ href }: { href: string }): React.ReactElement {
   return (
-    <form onSubmit={save}>
-      {error ? (
-        <p className="note note-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <div className="form-grid">
-        {entries.map((e) => (
-          <SchemaField
-            key={e.key}
-            entry={e}
-            value={e.key in draft ? draft[e.key]!.value : initial[e.key]}
-            onChange={(r) => setField(e.key, r)}
-          />
-        ))}
-      </div>
-      <button type="submit" disabled={Object.keys(draft).length === 0}>
-        Save overrides
-      </button>
-    </form>
+    <a
+      href={href}
+      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+    >
+      <ArrowLeft className="size-4" aria-hidden />
+      Back to licenses
+    </a>
   );
 }

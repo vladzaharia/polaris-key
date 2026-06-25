@@ -28,6 +28,14 @@ export type TrustSet = Record<string, string>;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
+/**
+ * Hard cap on the decoded payload size before we hand it to `JSON.parse`. A multi-megabyte
+ * payload would otherwise let an attacker drive a JSON-parse memory/CPU DoS on the verifier.
+ * 64 KiB comfortably exceeds any legitimate Polaris Key config doc. (Per-SDK caps in the
+ * node/python/swift mirrors are handled separately; this only guards the TS shared core.)
+ */
+const MAX_DOC_BYTES = 65536;
+
 function base64UrlEncode(bytes: Uint8Array): string {
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
@@ -134,7 +142,10 @@ export async function verifyJws<T = unknown>(
   let payload: T;
   try {
     header = JSON.parse(dec.decode(base64UrlDecode(encHeader)));
-    payload = JSON.parse(dec.decode(base64UrlDecode(encPayload))) as T;
+    const payloadBytes = base64UrlDecode(encPayload);
+    // Fail CLOSED on an oversized payload before parsing — blocks a JSON-parse memory DoS.
+    if (payloadBytes.byteLength > MAX_DOC_BYTES) return null;
+    payload = JSON.parse(dec.decode(payloadBytes)) as T;
   } catch {
     return null;
   }

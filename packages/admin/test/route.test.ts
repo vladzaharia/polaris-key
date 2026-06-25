@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { hashFor, parseRoute, tabOf, type Route } from "../src/route.js";
+import { hashFor, parseRoute, tabOf, TABS, type Route } from "../src/route.js";
 
 // Hash routing is the only navigation layer (no router dep). These pin the parse/serialize
 // round-trip + the precedence rules so deep links and the product switcher stay in sync.
 
 describe("parseRoute", () => {
-  it("empty hash defaults to the products registry", () => {
-    expect(parseRoute("")).toEqual({ kind: "products" });
+  it("empty hash defaults to the dashboard", () => {
+    expect(parseRoute("")).toEqual({ kind: "dashboard" });
+    expect(parseRoute("#/")).toEqual({ kind: "dashboard" });
   });
 
   it("#/products parses to the products registry", () => {
@@ -18,8 +19,8 @@ describe("parseRoute", () => {
   });
 
   it("each known tab parses through", () => {
-    for (const view of ["licenses", "tiers", "catalog", "activity"] as const) {
-      expect(parseRoute(`#/p/djdl/${view}`)).toEqual({ kind: "product", slug: "djdl", view });
+    for (const { tab } of TABS) {
+      expect(parseRoute(`#/p/djdl/${tab}`)).toEqual({ kind: "product", slug: "djdl", view: tab });
     }
   });
 
@@ -45,13 +46,14 @@ describe("parseRoute", () => {
     });
   });
 
-  it("a garbage hash falls back to products", () => {
-    expect(parseRoute("#nonsense")).toEqual({ kind: "products" });
+  it("a garbage hash falls back to the dashboard", () => {
+    expect(parseRoute("#nonsense")).toEqual({ kind: "dashboard" });
   });
 });
 
 describe("hashFor", () => {
-  it("serializes the products route", () => {
+  it("serializes the dashboard + products routes", () => {
+    expect(hashFor({ kind: "dashboard" })).toBe("#/");
     expect(hashFor({ kind: "products" })).toBe("#/products");
   });
 
@@ -74,9 +76,11 @@ describe("hashFor", () => {
 
 describe("parseRoute ∘ hashFor round-trip", () => {
   const routes: Route[] = [
+    { kind: "dashboard" },
     { kind: "products" },
     { kind: "product", slug: "djdl", view: "licenses" },
     { kind: "product", slug: "acme", view: "activity" },
+    { kind: "product", slug: "djdl", view: "settings" },
     { kind: "product", slug: "djdl", view: "license", id: "lic_99" },
   ];
   for (const route of routes) {
@@ -87,7 +91,8 @@ describe("parseRoute ∘ hashFor round-trip", () => {
 });
 
 describe("tabOf", () => {
-  it("products has no tab", () => {
+  it("dashboard + products have no tab", () => {
+    expect(tabOf({ kind: "dashboard" })).toBeNull();
     expect(tabOf({ kind: "products" })).toBeNull();
   });
 

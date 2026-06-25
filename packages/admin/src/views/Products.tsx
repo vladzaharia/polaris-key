@@ -1,75 +1,302 @@
-import React, { useState } from "react";
-import { api, type ProductDetail } from "../api.js";
-import { invalidate, useResource, useStatus } from "../context.js";
+import * as React from "react";
+import {
+  AlertTriangle,
+  Boxes,
+  Github,
+  KeyRound,
+  Lock,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Wrench,
+} from "lucide-react";
+import { api, type ProductDetail, type RotateKeyResult } from "../api.js";
+import { useResource } from "../context.js";
 import { navigate } from "../route.js";
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  EmptyState,
+  type ColumnDef,
+  useToast,
+} from "../components/ui/index.js";
+import { CreateProductDialog } from "./products/CreateProductDialog.js";
+import { EditProductDialog } from "./products/EditProductDialog.js";
+import { RotateKeyResultDialog } from "./products/RotateKeyResultDialog.js";
+import { SecretDialog } from "./products/SecretDialog.js";
+import { errorMessage, formatDate, releaseSourceOf } from "./products/util.js";
 
-/** Platform-admin product registry: list + create (only platform admins reach this). */
+type DialogKind = "edit" | "secret" | null;
+type ConfirmKind = "delete" | "rotate" | "resync" | null;
+
+/**
+ * Platform product-registry view. Lists every registered product, opens the two-tab create
+ * flow (manual / link-repo), and exposes per-product actions: edit, set secret, resync
+ * (GitHub-source only), rotate signing key, and delete. Every mutation toasts + invalidates;
+ * destructive actions go through a `ConfirmDialog`.
+ */
 export function Products(): React.ReactElement {
-  const { data, error, reload } = useResource("products", () => api.products());
-  const { announce } = useStatus();
-  const [slug, setSlug] = useState("");
-  const [name, setName] = useState("");
-  const [created, setCreated] = useState<{ slug: string; signingKeySecret: string } | null>(null);
+  const toast = useToast();
+  const { data, loading, error, reload } = useResource("products", () => api.products());
+  const products = data?.products ?? [];
 
-  async function create(ev: React.FormEvent): Promise<void> {
-    ev.preventDefault();
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [active, setActive] = React.useState<ProductDetail | null>(null);
+  const [dialog, setDialog] = React.useState<DialogKind>(null);
+  const [confirm, setConfirm] = React.useState<ConfirmKind>(null);
+  const [busy, setBusy] = React.useState(false);
+  const [rotated, setRotated] = React.useState<RotateKeyResult | null>(null);
+
+  const open = (kind: Exclude<DialogKind, null>, product: ProductDetail): void => {
+    setActive(product);
+    setDialog(kind);
+  };
+  const openConfirm = (kind: Exclude<ConfirmKind, null>, product: ProductDetail): void => {
+    setActive(product);
+    setConfirm(kind);
+  };
+
+  const runConfirm = async (): Promise<void> => {
+    if (!active || !confirm) return;
+    setBusy(true);
     try {
-      const res = await api.createProduct({ slug, name: name || slug });
-      setCreated({ slug: res.product.slug, signingKeySecret: res.signingKeySecret });
-      setSlug("");
-      setName("");
-      invalidate("products");
-      reload();
-      announce(`Created product ${res.product.slug}`, "ok");
-    } catch (e) {
-      announce(e instanceof Error ? e.message : "Create failed.", "error");
+      if (confirm === "delete") {
+        await api.deleteProduct(active.slug);
+        toast.success("Product deleted", `“${active.slug}” was removed.`);
+        reload();
+      } else if (confirm === "resync") {
+        await api.resyncProduct(active.slug);
+        toast.success("Resync triggered", `“${active.slug}” is syncing from GitHub.`);
+        reload();
+      } else if (confirm === "rotate") {
+        const res = await api.rotateProductKey(active.slug);
+        toast.success("Key rotated", `“${active.slug}” has a new signing key.`);
+        reload();
+        setRotated(res);
+      }
+      setConfirm(null);
+    } catch (err) {
+      toast.error("Action failed", errorMessage(err));
+    } finally {
+      setBusy(false);
     }
-  }
+  };
+
+  const columns: ColumnDef<ProductDetail>[] = [
+    {
+      id: "slug",
+      header: "Slug",
+      accessor: (p) => p.slug,
+      sortable: true,
+      cell: (p) => <span className="font-mono text-sm">{p.slug}</span>,
+    },
+    {
+      id: "name",
+      header: "Name",
+      accessor: (p) => p.name,
+      sortable: true,
+      cell: (p) => <span className="font-medium text-foreground">{p.name}</span>,
+    },
+    {
+      id: "source",
+      header: "Release source",
+      accessor: (p) => releaseSourceOf(p),
+      sortable: true,
+      cell: (p) => {
+        const source = releaseSourceOf(p);
+        return source === "github" ? (
+          <Badge variant="primary">
+            <Github aria-hidden className="size-3" /> GitHub
+          </Badge>
+        ) : (
+          <Badge variant="outline">
+            <Wrench aria-hidden className="size-3" /> Manual
+          </Badge>
+        );
+      },
+    },
+    {
+      id: "createdAt",
+      header: "Created",
+      accessor: (p) => p.createdAt,
+      sortable: true,
+      cell: (p) => <span className="text-muted-foreground">{formatDate(p.createdAt)}</span>,
+    },
+    {
+      id: "modifiedAt",
+      header: "Modified",
+      accessor: (p) => p.modifiedAt,
+      sortable: true,
+      cell: (p) => <span className="text-muted-foreground">{formatDate(p.modifiedAt)}</span>,
+    },
+    {
+      id: "actions",
+      header: <span className="sr-only">Actions</span>,
+      headerClassName: "w-px",
+      className: "w-px text-right",
+      cell: (p) => <RowActions product={p} open={open} openConfirm={openConfirm} />,
+    },
+  ];
 
   return (
-    <section>
-      <h1 tabIndex={-1}>Products</h1>
-      {error ? <p className="note note-error">{error}</p> : null}
-      {created ? (
-        <p className="note note-ok">
-          Created <strong>{created.slug}</strong>. Set its signing key in the Worker secret{" "}
-          <code>{created.signingKeySecret}</code> before clients can verify config.
-        </p>
+    <section className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
+          <p className="text-sm text-muted-foreground">
+            The platform product registry — register products, link release repos, and manage signing keys.
+          </p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus aria-hidden /> New product
+        </Button>
+      </header>
+
+      {error ? (
+        <EmptyState
+          icon={<AlertTriangle aria-hidden />}
+          title="Couldn’t load products"
+          description={error}
+          action={
+            <Button variant="outline" onClick={reload}>
+              <RefreshCw aria-hidden /> Retry
+            </Button>
+          }
+        />
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={products}
+          rowKey={(p) => p.slug}
+          loading={loading && products.length === 0}
+          filterable
+          filterPlaceholder="Filter products…"
+          onRowClick={(p) => navigate({ kind: "product", slug: p.slug, view: "licenses" })}
+          empty={
+            <EmptyState
+              icon={<Boxes aria-hidden />}
+              title="No products yet"
+              description="Register your first product manually or link a GitHub release repository."
+              action={
+                <Button onClick={() => setCreateOpen(true)}>
+                  <Plus aria-hidden /> New product
+                </Button>
+              }
+            />
+          }
+        />
+      )}
+
+      <CreateProductDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      {active ? (
+        <>
+          <EditProductDialog
+            product={active}
+            open={dialog === "edit"}
+            onOpenChange={(o) => setDialog(o ? "edit" : null)}
+          />
+          <SecretDialog
+            product={active}
+            open={dialog === "secret"}
+            onOpenChange={(o) => setDialog(o ? "secret" : null)}
+          />
+        </>
       ) : null}
 
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Slug</th>
-            <th>Name</th>
-            <th>Admin group</th>
-            <th>Machine limit</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {(data?.products ?? []).map((prod: ProductDetail) => (
-            <tr key={prod.slug}>
-              <td>
-                <code>{prod.slug}</code>
-              </td>
-              <td>{prod.name}</td>
-              <td>{prod.adminGroup ?? "—"}</td>
-              <td>{prod.defaultMachineLimit}</td>
-              <td>
-                <button onClick={() => navigate({ kind: "product", slug: prod.slug, view: "licenses" })}>Open</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ConfirmDialog
+        open={confirm === "delete"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+        title={`Delete “${active?.slug ?? ""}”?`}
+        description="This removes the product and all of its licenses, keys, and configuration. This cannot be undone."
+        confirmLabel="Delete product"
+        loading={busy}
+        onConfirm={runConfirm}
+      />
+      <ConfirmDialog
+        open={confirm === "rotate"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+        title={`Rotate the signing key for “${active?.slug ?? ""}”?`}
+        description="A new signing key is minted and used for future releases. Existing releases stay valid under the previous key. You’ll get the new public key to record."
+        confirmLabel="Rotate key"
+        confirmVariant="primary"
+        loading={busy}
+        onConfirm={runConfirm}
+      />
+      <ConfirmDialog
+        open={confirm === "resync"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+        title={`Resync “${active?.slug ?? ""}” from GitHub?`}
+        description="Re-reads the product manifest and releases from the linked repository."
+        confirmLabel="Resync"
+        confirmVariant="primary"
+        loading={busy}
+        onConfirm={runConfirm}
+      />
 
-      <form className="inline-form" onSubmit={create}>
-        <h2>New product</h2>
-        <input aria-label="Product slug" placeholder="slug (a-z0-9-)" value={slug} onChange={(e) => setSlug(e.target.value)} required />
-        <input aria-label="Product name" placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} />
-        <button type="submit">Create product</button>
-      </form>
+      <RotateKeyResultDialog
+        slug={active?.slug ?? ""}
+        result={rotated}
+        onOpenChange={(o) => !o && setRotated(null)}
+      />
     </section>
+  );
+}
+
+/** The per-row action menu. Resync is offered only for GitHub-sourced products. */
+function RowActions({
+  product,
+  open,
+  openConfirm,
+}: {
+  product: ProductDetail;
+  open: (kind: "edit" | "secret", product: ProductDetail) => void;
+  openConfirm: (kind: "delete" | "rotate" | "resync", product: ProductDetail) => void;
+}): React.ReactElement {
+  const isGithub = releaseSourceOf(product) === "github";
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Actions for ${product.slug}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreHorizontal aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuLabel>{product.slug}</DropdownMenuLabel>
+        <DropdownMenuItem onSelect={() => open("edit", product)}>
+          <Pencil aria-hidden /> Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => open("secret", product)}>
+          <Lock aria-hidden /> Set secret
+        </DropdownMenuItem>
+        {isGithub ? (
+          <DropdownMenuItem onSelect={() => openConfirm("resync", product)}>
+            <RefreshCw aria-hidden /> Resync from GitHub
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem onSelect={() => openConfirm("rotate", product)}>
+          <KeyRound aria-hidden /> Rotate signing key
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem destructive onSelect={() => openConfirm("delete", product)}>
+          <Trash2 aria-hidden /> Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

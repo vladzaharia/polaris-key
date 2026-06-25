@@ -16,14 +16,22 @@ import {
 import { join } from "node:path";
 import type { AllowedRange, BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
 
-export interface CacheRecord {
-  doc: ManagedConfigDoc;
+/** Bookkeeping shared by both cache shapes (doc-bearing and doc-less). */
+interface CacheBookkeeping {
   etag?: string;
   lastAcceptedIssuedAt: number;
   lastVerifiedAt?: number;
   lastSyncUnauthorized?: boolean;
   blocked?: { reason: BlockReason; allowedRange?: AllowedRange };
 }
+
+/** The offline cache. A discriminated union on `doc`: a verified doc is present after a
+ *  successful /config, or `doc: null` for the bookkeeping-only record `patchCache` writes
+ *  when the FIRST sync is blocked/unauthorized (so there is no doc yet to apply). The
+ *  null arm makes the doc-less state type-honest — every getter must narrow on `doc`. */
+export type CacheRecord =
+  | (CacheBookkeeping & { doc: ManagedConfigDoc })
+  | (CacheBookkeeping & { doc: null });
 
 export interface Store {
   getToken(): Promise<string | null>;
