@@ -48,30 +48,33 @@ export async function updateProduct(
   );
 }
 
-export async function deleteProduct(db: Db, slug: string): Promise<void> {
-  // Order matters under foreign keys: child rows first, then the product.
-  for (const table of [
-    "audit",
-    "product_sync_state",
-    "machines",
-    "keys_index",
-    "license_profiles",
-    "licenses",
-    "tiers",
-    "profiles",
-    "product_schema",
-    "product_keys",
-    "product_secrets",
-    "oidc_config",
-    "provisioning_config",
-    "edge_mint_config",
-    "release_config",
-    "identity",
-  ]) {
-    const col = table === "products" ? "slug" : "product";
-    await db.run(`DELETE FROM ${table} WHERE ${col} = ?`, slug);
-  }
-  await db.run("DELETE FROM products WHERE slug = ?", slug);
+export async function deleteProduct(
+  db: Db,
+  slug: string,
+  now: number,
+): Promise<void> {
+  await db.batch([
+    {
+      sql: "UPDATE products SET status = 'deleted', deleted_at = ?, modified_at = ? WHERE slug = ?",
+      params: [now, now, slug],
+    },
+    {
+      sql: "UPDATE licenses SET status = 'disabled' WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "UPDATE machines SET status = 'deauthorized' WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "UPDATE keys_index SET status = 'revoked' WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "UPDATE product_keys SET status = 'revoked', rotated_at = ? WHERE product = ?",
+      params: [now, slug],
+    },
+  ]);
 }
 
 // ── Schema (catalog) writes ──────────────────────────────────────────────────
@@ -249,6 +252,19 @@ export async function countLicensesUsingProfile(
     profileId,
     product,
     profileId,
+  );
+  return r?.n ?? 0;
+}
+
+export async function countLicensesUsingTier(
+  db: Db,
+  product: string,
+  tierId: string,
+): Promise<number> {
+  const r = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM licenses WHERE product = ? AND tier_id = ?",
+    product,
+    tierId,
   );
   return r?.n ?? 0;
 }

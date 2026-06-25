@@ -5,7 +5,7 @@ import { matchRoute, type Route } from "./router.js";
 import { loadProduct } from "./product.js";
 import { handleDiscovery } from "./discovery.js";
 import { handleSchema } from "./schema.js";
-import { handleJwks } from "./jwks.js";
+import { handleJwks, handleTrustManifest } from "./jwks.js";
 import { handleMintAuth, handleMintToken } from "./edgeMint.js";
 import { handleSubscribe } from "./subscribe.js";
 import {
@@ -39,6 +39,7 @@ export { RateLimitDO } from "./rateLimitDo.js";
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "discovery",
   "jwks",
+  "trustManifest",
   "schema",
   "enroll",
   "token",
@@ -95,6 +96,8 @@ export default {
           return handleSchema(db, product);
         case "jwks":
           return handleJwks(db, product);
+        case "trustManifest":
+          return handleTrustManifest(req, db, product, now);
         case "configSubscribe":
           return handleSubscribe(req, env, db, product, now);
         case "browserSession":

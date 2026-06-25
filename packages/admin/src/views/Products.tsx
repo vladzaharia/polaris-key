@@ -80,7 +80,7 @@ export function Products(): React.ReactElement {
     try {
       if (confirm === "delete") {
         await api.deleteProduct(active.slug);
-        toast.success("Product deleted", `“${active.slug}” was removed.`);
+        toast.success("Product disabled", `“${active.slug}” was tombstoned.`);
         reload();
       } else if (confirm === "resync") {
         await api.resyncProduct(active.slug);
@@ -91,7 +91,10 @@ export function Products(): React.ReactElement {
         reload();
       } else if (confirm === "rotate") {
         const res = await api.rotateProductKey(active.slug);
-        toast.success("Key rotated", `“${active.slug}” has a new signing key.`);
+        toast.success(
+          "Key prepared",
+          `“${active.slug}” has a staged signing key.`,
+        );
         reload();
         setRotated(res);
       }
@@ -241,18 +244,18 @@ export function Products(): React.ReactElement {
       <ConfirmDialog
         open={confirm === "delete"}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title={`Delete “${active?.slug ?? ""}”?`}
-        description="This removes the product and all of its licenses, keys, and configuration. This cannot be undone."
-        confirmLabel="Delete product"
+        title={`Disable “${active?.slug ?? ""}”?`}
+        description="This tombstones the product, disables its licenses, deauthorizes machines, revokes hot credentials, and preserves audit/runtime history."
+        confirmLabel="Disable product"
         loading={busy}
         onConfirm={runConfirm}
       />
       <ConfirmDialog
         open={confirm === "rotate"}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title={`Rotate the signing key for “${active?.slug ?? ""}”?`}
-        description="A new signing key is minted and used for future releases. Existing releases stay valid under the previous key. You’ll get the new public key to record."
-        confirmLabel="Rotate key"
+        title={`Prepare a signing key for “${active?.slug ?? ""}”?`}
+        description="A new signing key is minted as staged and published for trust refresh before activation. Existing signatures stay under the current active key."
+        confirmLabel="Prepare key"
         confirmVariant="primary"
         loading={busy}
         onConfirm={runConfirm}
@@ -317,7 +320,7 @@ function RowActions({
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem onSelect={() => openConfirm("rotate", product)}>
-          <KeyRound aria-hidden /> Rotate signing key
+          <KeyRound aria-hidden /> Prepare signing key
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

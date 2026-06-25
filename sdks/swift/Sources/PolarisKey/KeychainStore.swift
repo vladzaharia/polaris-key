@@ -17,6 +17,8 @@ public struct CacheRecord: Sendable, Codable, Equatable {
     public var lastVerifiedAt: Int?
     public var lastSyncUnauthorized: Bool?
     public var blocked: BlockInfoRecord?
+    public var trustedKeys: TrustSet?
+    public var lastTrustIssuedAt: Int?
 
     public init(
         doc: ManagedConfigDoc?,
@@ -24,7 +26,9 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         lastAcceptedIssuedAt: Int,
         lastVerifiedAt: Int? = nil,
         lastSyncUnauthorized: Bool? = nil,
-        blocked: BlockInfoRecord? = nil
+        blocked: BlockInfoRecord? = nil,
+        trustedKeys: TrustSet? = nil,
+        lastTrustIssuedAt: Int? = nil
     ) {
         self.doc = doc
         self.etag = etag
@@ -32,6 +36,8 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         self.lastVerifiedAt = lastVerifiedAt
         self.lastSyncUnauthorized = lastSyncUnauthorized
         self.blocked = blocked
+        self.trustedKeys = trustedKeys
+        self.lastTrustIssuedAt = lastTrustIssuedAt
     }
 }
 

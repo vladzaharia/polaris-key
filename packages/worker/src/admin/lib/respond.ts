@@ -29,7 +29,12 @@ export function err(
   extra?: Record<string, unknown>,
 ): Response {
   return adminJson(
-    { error: code, ...(message ? { message } : {}), ...(extra ?? {}) },
+    {
+      error: { code, ...(message ? { message } : {}), ...(extra ?? {}) },
+      code,
+      ...(message ? { message } : {}),
+      ...(extra ?? {}),
+    },
     status,
   );
 }
@@ -51,12 +56,47 @@ export function isMutation(method: string): boolean {
   return method !== "GET" && method !== "HEAD";
 }
 
-/** Parse a JSON request body into an object, tolerating malformed/empty bodies. */
-export async function readBody(req: Request): Promise<Record<string, unknown>> {
-  try {
-    const v = (await req.json()) as unknown;
-    return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
-  } catch {
-    return {};
+export class AdminBodyError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+    readonly extra?: Record<string, unknown>,
+  ) {
+    super(message);
   }
+}
+
+const MAX_ADMIN_BODY_BYTES = 64 * 1024;
+
+/** Parse a JSON request body into an object. Empty bodies remain `{}`; malformed or
+ *  oversized bodies are request errors, not silent empty objects. */
+export async function readBody(req: Request): Promise<Record<string, unknown>> {
+  const len = req.headers.get("content-length");
+  if (len && Number(len) > MAX_ADMIN_BODY_BYTES) {
+    throw new AdminBodyError(413, "body_too_large", "request body too large");
+  }
+  const raw = await req.text();
+  if (raw.length > MAX_ADMIN_BODY_BYTES) {
+    throw new AdminBodyError(413, "body_too_large", "request body too large");
+  }
+  if (raw.trim().length === 0) return {};
+  let v: unknown;
+  try {
+    v = JSON.parse(raw) as unknown;
+  } catch {
+    throw new AdminBodyError(
+      400,
+      "invalid_json",
+      "request body is not valid JSON",
+    );
+  }
+  if (!v || typeof v !== "object" || Array.isArray(v)) {
+    throw new AdminBodyError(
+      400,
+      "invalid_json",
+      "request body must be a JSON object",
+    );
+  }
+  return v as Record<string, unknown>;
 }

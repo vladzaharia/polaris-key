@@ -1,8 +1,8 @@
 """Persistence: per-machine token, stable device id, offline-first config cache.
 
-Mirrors ``store.ts``. The default :class:`FileStore` writes 0600 files (anti-symlink via
-``O_NOFOLLOW``) under ``<configDir>/<product>/``; tests use :class:`InMemoryStore`. The
-cache record round-trips the verified doc plus the sync bookkeeping the gate needs.
+Mirrors ``store.ts``. The default :class:`KeyringStore` stores tokens in the OS keyring
+when the optional ``keyring`` extra is installed and falls back to :class:`FileStore`.
+The cache record round-trips the verified doc plus the sync bookkeeping the gate needs.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from .deviceid import derive_device_id
 from .license import BlockedState
 from .models import AllowedRange, ManagedConfigDoc
 
-__all__ = ["CacheRecord", "Store", "InMemoryStore", "FileStore"]
+__all__ = ["CacheRecord", "Store", "InMemoryStore", "FileStore", "KeyringStore"]
 
 
 @dataclass
@@ -33,6 +33,8 @@ class CacheRecord:
     lastVerifiedAt: Optional[int] = None
     lastSyncUnauthorized: bool = False
     blocked: Optional[BlockedState] = None
+    trustedKeys: Optional[Dict[str, str]] = None
+    lastTrustIssuedAt: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {
@@ -54,6 +56,10 @@ class CacheRecord:
                     if v is not None
                 }
             out["blocked"] = b
+        if self.trustedKeys is not None:
+            out["trustedKeys"] = self.trustedKeys
+        if self.lastTrustIssuedAt is not None:
+            out["lastTrustIssuedAt"] = self.lastTrustIssuedAt
         return out
 
     @staticmethod
@@ -73,6 +79,10 @@ class CacheRecord:
             lastVerifiedAt=d.get("lastVerifiedAt"),
             lastSyncUnauthorized=d.get("lastSyncUnauthorized", False),
             blocked=blocked,
+            trustedKeys=(
+                d.get("trustedKeys") if isinstance(d.get("trustedKeys"), dict) else None
+            ),
+            lastTrustIssuedAt=d.get("lastTrustIssuedAt"),
         )
 
 
@@ -187,3 +197,64 @@ class FileStore:
             os.remove(self._cache_path)
         except OSError:
             pass
+
+
+def _load_keyring() -> Any:
+    try:
+        import keyring  # type: ignore[import-not-found]
+
+        return keyring
+    except Exception:
+        return None
+
+
+class KeyringStore:
+    """OS-keyring token store with FileStore fallback for cache/device id."""
+
+    def __init__(self, product_slug: str, config_dir: str) -> None:
+        self._files = FileStore(product_slug, config_dir)
+        self._service = f"pkey:{product_slug}"
+        self._account = "machine-token"
+
+    def get_token(self) -> Optional[str]:
+        keyring = _load_keyring()
+        if keyring is not None:
+            try:
+                token = keyring.get_password(self._service, self._account)
+                if token:
+                    return token
+            except Exception:
+                pass
+        return self._files.get_token()
+
+    def set_token(self, token: str) -> None:
+        keyring = _load_keyring()
+        if keyring is not None:
+            try:
+                keyring.set_password(self._service, self._account, token)
+                self._files.clear_token()
+                return
+            except Exception:
+                pass
+        self._files.set_token(token)
+
+    def clear_token(self) -> None:
+        keyring = _load_keyring()
+        if keyring is not None:
+            try:
+                keyring.delete_password(self._service, self._account)
+            except Exception:
+                pass
+        self._files.clear_token()
+
+    def get_device_id(self) -> str:
+        return self._files.get_device_id()
+
+    def read_cache(self) -> Optional[CacheRecord]:
+        return self._files.read_cache()
+
+    def write_cache(self, rec: CacheRecord) -> None:
+        self._files.write_cache(rec)
+
+    def clear_cache(self) -> None:
+        self._files.clear_cache()

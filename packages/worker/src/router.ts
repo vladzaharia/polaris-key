@@ -10,6 +10,7 @@ export type Route =
   | { kind: "githubWebhook" }
   | { kind: "discovery"; product: string }
   | { kind: "jwks"; product: string }
+  | { kind: "trustManifest"; product: string }
   | { kind: "schema"; product: string }
   | { kind: "enroll"; product: string }
   | { kind: "token"; product: string }
@@ -66,6 +67,8 @@ export function matchRoute(pathname: string): Route {
       return { kind: "discovery", product };
     case "/.well-known/jwks.json":
       return { kind: "jwks", product };
+    case "/.well-known/polaris-trust.jws":
+      return { kind: "trustManifest", product };
     case "/schema":
       return { kind: "schema", product };
     case "/enroll":

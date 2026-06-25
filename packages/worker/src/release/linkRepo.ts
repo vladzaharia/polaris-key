@@ -178,7 +178,11 @@ async function registerFromManifest(
 
   // Mint + seal the per-product Ed25519 signing key under the platform KEK.
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
-  const encPrivate = await seal(env, privatePkcs8Pem);
+  const encPrivate = await seal(env, privatePkcs8Pem, {
+    product: slug,
+    kind: "signing-key",
+    id: kid,
+  });
 
   // `signing_key_secret` is a legacy column; we keep a derived name for back-compat but the
   // real key now lives sealed in product_keys (opened by loadProduct under the KEK).
@@ -284,6 +288,9 @@ async function registerFromManifest(
       binaryName,
       sparkleEd25519Pub: rel?.sparkleEd25519Pub || null,
       summaryMarker,
+      artifactPolicyJson: rel?.artifactPolicy
+        ? JSON.stringify(rel.artifactPolicy)
+        : null,
     }),
   );
 

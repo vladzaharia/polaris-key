@@ -179,9 +179,9 @@ describe("parseManifest", () => {
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.errors.length).toBeGreaterThanOrEqual(2);
-    expect(res.errors.some((e) => e.startsWith("schema:"))).toBe(true);
+    expect(res.errors.some((e) => e.startsWith("schema"))).toBe(true);
     expect(
-      res.errors.some((e) => e.startsWith("product:") && e.includes("slug")),
+      res.errors.some((e) => e.startsWith("product") && e.includes("slug")),
     ).toBe(true);
   });
 

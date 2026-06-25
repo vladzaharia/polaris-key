@@ -1,8 +1,8 @@
 // Authorization helpers for the admin surface. Two privilege levels:
 //   - PLATFORM admin: a member of `env.PLATFORM_ADMIN_GROUP` — may manage the product
 //     registry itself (create/delete products) and may administer ANY product.
-//   - PRODUCT admin: a member of the product's `admin_group` — may administer that one
-//     product only. Platform admins are always product admins too.
+//   - PRODUCT admin: reserved metadata for a future RBAC pass. In v1, product groups do
+//     not grant write access; only platform admins administer products.
 //
 // All gating reads `groups` from the verified session, never from a request field.
 
@@ -21,23 +21,18 @@ export function isPlatformAdmin(env: Env, session: AdminSession): boolean {
 export function canAdminProduct(
   env: Env,
   session: AdminSession,
-  product: ProductRow,
+  _product: ProductRow,
 ): boolean {
-  if (isPlatformAdmin(env, session)) return true;
-  return (
-    product.admin_group != null && session.groups.includes(product.admin_group)
-  );
+  return isPlatformAdmin(env, session);
 }
 
 /** True if the identity's groups grant ANY admin access at all (used at login). */
 export function hasAnyAdminGrant(
   env: Env,
   groups: string[],
-  products: ProductRow[],
+  _products: ProductRow[],
 ): boolean {
   if (env.PLATFORM_ADMIN_GROUP && groups.includes(env.PLATFORM_ADMIN_GROUP))
     return true;
-  return products.some(
-    (p) => p.admin_group != null && groups.includes(p.admin_group),
-  );
+  return false;
 }

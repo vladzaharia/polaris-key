@@ -33,6 +33,7 @@ export interface PublicSigningKey {
   kid: string;
   alg: string;
   publicKey: string;
+  status: string;
 }
 
 /** Best-effort public signing-key lookup. This never opens private key material and returns
@@ -48,6 +49,7 @@ export async function loadPublicSigningKey(
       kid: keyRow.kid,
       alg: keyRow.alg,
       publicKey: keyRow.public_b64url,
+      status: keyRow.status,
     };
   } catch {
     return null;
@@ -64,6 +66,7 @@ export async function loadPublicSigningKeys(
       kid: row.kid,
       alg: row.alg,
       publicKey: row.public_b64url,
+      status: row.status,
     }));
   } catch {
     return [];
@@ -84,9 +87,17 @@ export async function loadProduct(
   if (!keyRow) return null;
   let pem: string;
   try {
-    pem = await open(env, keyRow.enc_private_json);
+    pem = await open(env, keyRow.enc_private_json, {
+      product: slug,
+      kind: "signing-key",
+      id: keyRow.kid,
+    });
   } catch {
-    return null;
+    try {
+      pem = await open(env, keyRow.enc_private_json);
+    } catch {
+      return null;
+    }
   }
   const schema = await getActiveSchema(db, slug);
   return {
@@ -115,8 +126,16 @@ export async function openProductSecret(
   const row = await getProductSecret(db, product, name);
   if (!row) return undefined;
   try {
-    return await open(env, row.enc_value_json);
+    return await open(env, row.enc_value_json, {
+      product,
+      kind: "product-secret",
+      id: name,
+    });
   } catch {
-    return undefined;
+    try {
+      return await open(env, row.enc_value_json);
+    } catch {
+      return undefined;
+    }
   }
 }

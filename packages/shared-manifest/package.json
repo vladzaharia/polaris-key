@@ -1,10 +1,7 @@
 {
-  "name": "@polaris-key/cli",
+  "name": "@polaris-key/manifest",
   "version": "0.0.0",
   "type": "module",
-  "bin": {
-    "pkey": "./dist/bin/pkey.js"
-  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,13 +14,13 @@
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@polaris-key/manifest": "workspace:*",
+    "@polaris-key/catalog": "workspace:*",
     "yaml": "^2.6.1"
   }
 }

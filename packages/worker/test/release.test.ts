@@ -70,13 +70,15 @@ async function seedReleaseConfig(
     install_template: null as string | null,
     sparkle_ed25519_pub: "PUBKEY==",
     summary_marker: "pkey:summary",
+    artifact_policy_json: null as string | null,
     ...over,
   };
   await db.run(
     `INSERT INTO release_config
        (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
-        manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker,
+        artifact_policy_json)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     row.product,
     row.gh_owner,
     row.gh_repo,
@@ -88,6 +90,7 @@ async function seedReleaseConfig(
     row.install_template,
     row.sparkle_ed25519_pub,
     row.summary_marker,
+    row.artifact_policy_json,
   );
 }
 
@@ -572,9 +575,8 @@ describe("handleRelease", () => {
   });
 
   // ── P4 regression: unsigned-appcast fallback gating ───────────────────────────
-  // A product that configures a Sparkle pubkey EXPECTS signed updates: if the matched DMG
-  // has no sibling `.sig`, the feed must FAIL CLOSED (404) rather than ship an unsigned
-  // appcast. Only a product with NO configured pubkey may fall back to omitting the signature.
+  // A product that expects signed updates fails closed if the matched DMG has no sibling
+  // `.sig`, rather than shipping an unsigned appcast.
   it("404s when sparkle_ed25519_pub is set but the .sig asset is missing (fail closed)", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db); // sparkle_ed25519_pub = "PUBKEY==" by default
@@ -602,9 +604,12 @@ describe("handleRelease", () => {
     expect(res.status).toBe(404);
   });
 
-  it("renders an unsigned appcast (no edSignature) when sparkle_ed25519_pub is NOT configured", async () => {
+  it("renders an unsigned appcast only when artifact policy explicitly opts out", async () => {
     const db = makeTestDb();
-    await seedReleaseConfig(db, { sparkle_ed25519_pub: null }); // genuinely unsigned channel
+    await seedReleaseConfig(db, {
+      sparkle_ed25519_pub: null,
+      artifact_policy_json: JSON.stringify({ requireSparkleSignature: false }),
+    });
     const { env } = envFor();
     // No `.sig` asset, and that's fine: an unsigned-pubkey product may ship without a signature.
     const rel = release({
@@ -700,7 +705,7 @@ describe("release health", () => {
     expect(health.missing).toContain("djdl-arm64.dmg.sig");
   });
 
-  it("treats unsigned appcast mode as a warning instead of a hard failure", async () => {
+  it("requires a Sparkle key by default so appcasts fail closed", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db, { sparkle_ed25519_pub: null });
     const { env } = envFor();
@@ -725,11 +730,14 @@ describe("release health", () => {
       1_700_000_100,
       fetchImpl,
     );
-    expect(health.status).toBe("healthy");
+    expect(health.status).toBe("needs-setup");
     expect(health.checks.find((c) => c.id === "sparkle-key")?.status).toBe(
       "warning",
     );
-    expect(health.checks.some((c) => c.id === "sparkle-signature")).toBe(false);
+    expect(
+      health.checks.find((c) => c.id === "sparkle-signature")?.status,
+    ).toBe("missing");
+    expect(health.missing).toContain("Sparkle public key");
   });
 });
 

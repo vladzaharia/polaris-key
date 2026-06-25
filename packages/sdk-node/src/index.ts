@@ -34,6 +34,7 @@ export {
 } from "./endpoints.js";
 export {
   FileStore,
+  KeyringStore,
   InMemoryStore,
   deriveDeviceId,
   type Store,

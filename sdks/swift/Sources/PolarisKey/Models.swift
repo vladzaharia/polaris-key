@@ -113,6 +113,26 @@ public struct ManagedConfigDoc: Sendable, Codable, Equatable {
     }
 }
 
+public struct TrustManifestKey: Sendable, Codable, Equatable {
+    public let kid: String
+    public let alg: String
+    public let kty: String
+    public let crv: String
+    public let publicKey: String
+    public let status: String
+}
+
+public struct TrustManifestDoc: Sendable, Codable, Equatable {
+    public let schemaVersion: Int
+    public let aud: String
+    public let iss: String
+    public let issuedAt: Int
+    public let expiresAt: Int
+    public let jwksUrl: String
+    public let cacheSeconds: Int
+    public let keys: [TrustManifestKey]
+}
+
 // ── Gate / wire constants (mirror shared-protocol) ───────────────────────────────
 
 /// The `iss` every Polaris Key document carries.
@@ -128,6 +148,10 @@ public let SECONDS_PER_DAY = 86_400
 public let HEADER_DEVICE = "X-PKey-Device"
 public let HEADER_VERSION = "X-PKey-Version"
 public let HEADER_CHANNEL = "X-PKey-Channel"
+public let HEADER_PLATFORM = "X-PKey-Platform"
+public let HEADER_ARCH = "X-PKey-Arch"
+public let HEADER_SDK_NAME = "X-PKey-SDK"
+public let HEADER_SDK_VERSION = "X-PKey-SDK-Version"
 
 /// A 403 block reason returned by `GET /<product>/config`.
 public enum BlockReason: String, Sendable, Codable, Equatable {

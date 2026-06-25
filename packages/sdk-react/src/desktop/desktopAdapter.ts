@@ -218,9 +218,10 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 
   getSecret(key: string): string | null {
-    // The renderer never holds secrets; resolve via the bridge's config map if mirrored.
-    const v = this.store.get().config[key];
-    return typeof v === "string" ? v : null;
+    // The renderer never holds secrets. Privileged hosts should expose a separate bridge
+    // secret API if a renderer truly needs a secret value.
+    void key;
+    return null;
   }
 
   isEntitled(name: string): boolean {

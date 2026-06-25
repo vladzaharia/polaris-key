@@ -135,6 +135,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@polaris-key/manifest':
+        specifier: workspace:*
+        version: link:../shared-manifest
       yaml:
         specifier: ^2.6.1
         version: 2.9.0
@@ -207,6 +210,15 @@ importers:
 
   packages/shared-jws: {}
 
+  packages/shared-manifest:
+    dependencies:
+      '@polaris-key/catalog':
+        specifier: workspace:*
+        version: link:../shared-catalog
+      yaml:
+        specifier: ^2.6.1
+        version: 2.9.0
+
   packages/shared-protocol: {}
 
   packages/worker:
@@ -217,6 +229,9 @@ importers:
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
+      '@polaris-key/manifest':
+        specifier: workspace:*
+        version: link:../shared-manifest
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol

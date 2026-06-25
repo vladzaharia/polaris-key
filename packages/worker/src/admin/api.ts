@@ -34,7 +34,9 @@ import {
   type AdminSession,
 } from "./session.js";
 import {
+  AdminBodyError,
   adminJson,
+  err,
   forbidden,
   isMutation,
   notFound,
@@ -164,10 +166,24 @@ export async function handleAdminApi(
     // /products, /products/link-repo, or /products/<slug>/...
     // `link-repo` is a single-segment action, NOT a slug — handleProducts special-cases it
     // (with its platform-admin gate) before treating the segment as a product slug.
-    if (rest.length <= 1)
-      return handleProducts(req, env, db, session, rest, now);
-    const [slug, ...productRest] = rest;
-    return handleProductScoped(req, env, db, session, slug!, productRest, now);
+    try {
+      if (rest.length <= 1)
+        return await handleProducts(req, env, db, session, rest, now);
+      const [slug, ...productRest] = rest;
+      return await handleProductScoped(
+        req,
+        env,
+        db,
+        session,
+        slug!,
+        productRest,
+        now,
+      );
+    } catch (e) {
+      if (e instanceof AdminBodyError)
+        return err(e.status, e.code, e.message, e.extra);
+      throw e;
+    }
   }
 
   return notFound();

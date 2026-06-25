@@ -139,7 +139,7 @@ describe("@polaris-key/cli", () => {
     await writeFile(
       path.join(cwd, ".pkey/product.json"),
       JSON.stringify({
-        apiVersion: "pkey.dev/v2",
+        apiVersion: "pkey.dev/v1",
         product: { slug: "json-app", name: "JSON App" },
         modules: { licensing: { enabled: true } },
         licensing: { tiers: [] },
@@ -156,7 +156,7 @@ describe("@polaris-key/cli", () => {
       await writeFile(
         path.join(cwd, ".pkey/product.json"),
         JSON.stringify({
-          apiVersion: "pkey.dev/v2",
+          apiVersion: "pkey.dev/v1",
           product: { slug: "json-app", name: "JSON App" },
           modules: { licensing: { enabled: true } },
           licensing: { tiers: [] },

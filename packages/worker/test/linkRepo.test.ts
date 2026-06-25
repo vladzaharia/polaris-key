@@ -310,7 +310,11 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     // The sealed product_keys row decrypts to a PEM that signs a doc verifying under its pub.
     const keyRow = await getActiveProductKey(db, "acme");
     expect(keyRow).not.toBeNull();
-    const pem = await open(env, keyRow!.enc_private_json);
+    const pem = await open(env, keyRow!.enc_private_json, {
+      product: "acme",
+      kind: "signing-key",
+      id: keyRow!.kid,
+    });
     const jws = await signJws({ hello: "world" }, pem, keyRow!.kid);
     const verified = await verifyJws<{ hello: string }>(jws, {
       [keyRow!.kid]: keyRow!.public_b64url,
@@ -342,7 +346,11 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     // The sealed signing key is usable.
     const keyRow = await getActiveProductKey(db, "yamlprod");
     expect(keyRow).not.toBeNull();
-    const pem = await open(env, keyRow!.enc_private_json);
+    const pem = await open(env, keyRow!.enc_private_json, {
+      product: "yamlprod",
+      kind: "signing-key",
+      id: keyRow!.kid,
+    });
     const jws = await signJws({ ok: 1 }, pem, keyRow!.kid);
     expect(
       await verifyJws(jws, { [keyRow!.kid]: keyRow!.public_b64url }),

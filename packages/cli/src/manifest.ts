@@ -1,5 +1,6 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { validateManifestDocuments } from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 
 export type ProductModule =
@@ -114,174 +115,11 @@ export async function loadManifest(cwd: string): Promise<LoadedManifest> {
 export function validateLoadedManifest(
   manifest: LoadedManifest,
 ): ValidationResult {
-  const errors: ValidationMessage[] = [];
-  const warnings: ValidationMessage[] = [];
-  const product = manifest.product;
-  const modules = enabledModules(product);
-  const productNode = asRecord(product.product);
-  const licensing = asRecord(product.licensing);
-  const oidc = asRecord(product.oidc);
-  const secrets = asRecord(product.secrets);
-
-  if (!stringAt(product, "apiVersion"))
-    add(
-      errors,
-      "product",
-      "/apiVersion",
-      "missing_api_version",
-      "Set apiVersion to pkey.dev/v1.",
-    );
-  if (!productNode)
-    add(
-      errors,
-      "product",
-      "/product",
-      "missing_product",
-      "Add a product object.",
-    );
-  if (!stringAt(productNode, "slug"))
-    add(
-      errors,
-      "product",
-      "/product/slug",
-      "missing_slug",
-      "Add product.slug.",
-    );
-  if (!stringAt(productNode, "name"))
-    add(
-      errors,
-      "product",
-      "/product/name",
-      "missing_name",
-      "Add product.name.",
-    );
-  if (
-    productNode &&
-    productNode.adminGroup !== undefined &&
-    !stringAt(productNode, "adminGroup")
-  ) {
-    add(
-      errors,
-      "product",
-      "/product/adminGroup",
-      "invalid_admin_group",
-      "adminGroup must be a non-empty string when present.",
-    );
-  }
-  if (modules.includes("config") && manifest.schema === undefined) {
-    add(
-      errors,
-      "schema",
-      "/",
-      "missing_schema",
-      "Config is enabled, so .pkey/schema.yaml or schema.json is required.",
-    );
-  }
-  if (modules.includes("releases") && manifest.release === undefined) {
-    add(
-      errors,
-      "release",
-      "/",
-      "missing_release",
-      "Releases are enabled, so .pkey/release.yaml or release.json is required.",
-    );
-  }
-  if (modules.includes("oidc") && !modules.includes("licensing")) {
-    add(
-      errors,
-      "product",
-      "/modules/oidc",
-      "oidc_requires_licensing",
-      "OIDC enrollment currently requires the licensing module.",
-    );
-  }
-  if (
-    modules.includes("config") &&
-    !modules.includes("licensing") &&
-    !modules.includes("oidc")
-  ) {
-    add(
-      warnings,
-      "product",
-      "/modules/config",
-      "config_without_activation",
-      "Config is enabled without an activation method.",
-    );
-  }
-  if (
-    modules.includes("licensing") &&
-    licensing?.tiers !== undefined &&
-    !Array.isArray(licensing.tiers)
-  ) {
-    add(
-      errors,
-      "product",
-      "/licensing/tiers",
-      "invalid_tiers",
-      "licensing.tiers must be an array.",
-    );
-  }
-  if (modules.includes("oidc")) {
-    if (!stringAt(oidc, "issuer"))
-      add(
-        errors,
-        "product",
-        "/oidc/issuer",
-        "missing_oidc_issuer",
-        "OIDC is enabled, so oidc.issuer is required.",
-      );
-    if (!stringAt(oidc, "clientId"))
-      add(
-        errors,
-        "product",
-        "/oidc/clientId",
-        "missing_oidc_client_id",
-        "OIDC is enabled, so oidc.clientId is required.",
-      );
-  }
-  if (modules.includes("releases")) {
-    const releaseRoot = asRecord(manifest.release);
-    const release = asRecord(releaseRoot?.release ?? releaseRoot);
-    const provider = asRecord(release?.provider);
-    if (!provider)
-      add(
-        errors,
-        "release",
-        "/release/provider",
-        "missing_release_provider",
-        "Add release.provider.",
-      );
-    if (provider && stringAt(provider, "type") !== "github") {
-      add(
-        errors,
-        "release",
-        "/release/provider/type",
-        "unsupported_release_provider",
-        "Only github is implemented.",
-      );
-    }
-    if (
-      provider &&
-      (!stringAt(provider, "owner") || !stringAt(provider, "repo"))
-    ) {
-      add(
-        errors,
-        "release",
-        "/release/provider",
-        "missing_github_repo",
-        "GitHub releases require provider.owner and provider.repo.",
-      );
-    }
-  }
-
-  const requiredSecrets = collectRequiredSecrets(secrets);
-  return {
-    ok: errors.length === 0,
-    errors,
-    warnings,
-    enabledModules: modules,
-    requiredSecrets,
-  };
+  return validateManifestDocuments({
+    product: manifest.product,
+    schema: manifest.schema,
+    release: manifest.release,
+  });
 }
 
 export async function initManifest(opts: InitOptions): Promise<InitResult> {
@@ -339,7 +177,11 @@ const client = await PolarisKeyClient.create({
   version: "1.0.0"${trust}
 });
 
-const config = await client.getConfig();`;
+await client.refresh();
+
+const enabled = client.isLicensed();
+const value = client.getConfig("your.config.key", "fallback");
+const secret = client.getSecret("your.secret.key");`;
 }
 
 function productYaml(opts: InitOptions): string {

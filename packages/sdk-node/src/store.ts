@@ -1,6 +1,7 @@
 // Persistence: the per-machine token, a stable device id, and the offline-first config
-// cache. The default FileStore writes 0600 files (anti-symlink) under a config dir; tests
-// use InMemoryStore. A keyring backend can be layered later (Phase 7) for secret values.
+// cache. The default KeyringStore keeps the token in the OS keyring when available and
+// falls back to explicit 0600 file storage for headless/CI environments; tests use
+// InMemoryStore.
 
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -19,6 +20,7 @@ import type {
   BlockReason,
   ManagedConfigDoc,
 } from "@polaris-key/protocol";
+import type { TrustSet } from "@polaris-key/jws";
 
 /** Bookkeeping shared by both cache shapes (doc-bearing and doc-less). */
 interface CacheBookkeeping {
@@ -27,6 +29,8 @@ interface CacheBookkeeping {
   lastVerifiedAt?: number;
   lastSyncUnauthorized?: boolean;
   blocked?: { reason: BlockReason; allowedRange?: AllowedRange };
+  trustedKeys?: TrustSet;
+  lastTrustIssuedAt?: number;
 }
 
 /** The offline cache. A discriminated union on `doc`: a verified doc is present after a
@@ -193,5 +197,91 @@ export class FileStore implements Store {
   }
   async clearCache() {
     rmSync(this.cachePath, { force: true });
+  }
+}
+
+type KeyringModule = typeof import("@napi-rs/keyring");
+
+async function loadKeyring(): Promise<KeyringModule | null> {
+  try {
+    return await import("@napi-rs/keyring");
+  } catch {
+    return null;
+  }
+}
+
+/** OS-keyring token store with FileStore fallback for cache/device id and headless hosts. */
+export class KeyringStore implements Store {
+  private readonly files: FileStore;
+  private readonly service: string;
+  private readonly account = "machine-token";
+
+  constructor(productSlug: string, configDir: string) {
+    this.files = new FileStore(productSlug, configDir);
+    this.service = `pkey:${productSlug}`;
+  }
+
+  async getToken() {
+    const keyring = await loadKeyring();
+    if (keyring) {
+      try {
+        return (
+          (await new keyring.AsyncEntry(
+            this.service,
+            this.account,
+          ).getPassword()) ?? null
+        );
+      } catch {
+        // Fall through to explicit file fallback.
+      }
+    }
+    return this.files.getToken();
+  }
+
+  async setToken(token: string) {
+    const keyring = await loadKeyring();
+    if (keyring) {
+      try {
+        await new keyring.AsyncEntry(this.service, this.account).setPassword(
+          token,
+        );
+        await this.files.clearToken();
+        return;
+      } catch {
+        // Fall through to explicit file fallback.
+      }
+    }
+    await this.files.setToken(token);
+  }
+
+  async clearToken() {
+    const keyring = await loadKeyring();
+    if (keyring) {
+      try {
+        await new keyring.AsyncEntry(
+          this.service,
+          this.account,
+        ).deleteCredential();
+      } catch {
+        // Ignore missing/unavailable keyring entries.
+      }
+    }
+    await this.files.clearToken();
+  }
+
+  getDeviceId() {
+    return this.files.getDeviceId();
+  }
+
+  readCache() {
+    return this.files.readCache();
+  }
+
+  writeCache(rec: CacheRecord) {
+    return this.files.writeCache(rec);
+  }
+
+  clearCache() {
+    return this.files.clearCache();
   }
 }

@@ -213,18 +213,18 @@ describe("Products view", () => {
 
     // A confirm dialog gates the destructive call.
     const confirmDialog = await screen.findByRole("alertdialog");
-    expect(within(confirmDialog).getByText(/Delete “djdl”\?/)).toBeTruthy();
+    expect(within(confirmDialog).getByText(/Disable “djdl”\?/)).toBeTruthy();
     expect(mockApi.deleteProduct).not.toHaveBeenCalled();
 
     await userEvent.click(
-      within(confirmDialog).getByRole("button", { name: "Delete product" }),
+      within(confirmDialog).getByRole("button", { name: "Disable product" }),
     );
     await waitFor(() =>
       expect(mockApi.deleteProduct).toHaveBeenCalledWith("djdl"),
     );
   });
 
-  it("rotates the signing key and shows the new public key", async () => {
+  it("prepares the signing key and shows the new public key", async () => {
     mockApi.rotateProductKey.mockResolvedValue({
       ok: true,
       kid: "manual:2",
@@ -237,12 +237,12 @@ describe("Products view", () => {
       screen.getByRole("button", { name: "Actions for djdl" }),
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Rotate signing key/ }),
+      await screen.findByRole("menuitem", { name: /Prepare signing key/ }),
     );
 
     const confirmDialog = await screen.findByRole("alertdialog");
     await userEvent.click(
-      within(confirmDialog).getByRole("button", { name: "Rotate key" }),
+      within(confirmDialog).getByRole("button", { name: "Prepare key" }),
     );
 
     await waitFor(() =>
@@ -299,7 +299,7 @@ describe("Products view", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Actions for djdl" }),
     );
-    await screen.findByRole("menuitem", { name: /Rotate signing key/ });
+    await screen.findByRole("menuitem", { name: /Prepare signing key/ });
     expect(
       screen.queryByRole("menuitem", { name: /Resync from GitHub/ }),
     ).toBeNull();

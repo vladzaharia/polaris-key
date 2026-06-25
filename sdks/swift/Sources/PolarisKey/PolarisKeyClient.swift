@@ -29,6 +29,7 @@ public struct PolarisKeyOptions: Sendable {
     public let localOverrides: [String: JSONValue]?
     /// Env var prefix for config overrides. A key `a.b` reads `PKEY_CONFIG_a__b` (dots → `__`).
     public let envPrefix: String
+    public let trustRefresh: Bool
 
     public init(
         productSlug: String,
@@ -39,7 +40,8 @@ public struct PolarisKeyOptions: Sendable {
         store: Store? = nil,
         session: URLSession = .shared,
         localOverrides: [String: JSONValue]? = nil,
-        envPrefix: String = "PKEY_CONFIG_"
+        envPrefix: String = "PKEY_CONFIG_",
+        trustRefresh: Bool = true
     ) {
         self.productSlug = productSlug
         self.baseUrl = baseUrl.replacingOccurrences(
@@ -51,6 +53,7 @@ public struct PolarisKeyOptions: Sendable {
         self.session = session
         self.localOverrides = localOverrides
         self.envPrefix = envPrefix
+        self.trustRefresh = trustRefresh
     }
 }
 
@@ -75,7 +78,8 @@ public actor PolarisKeyClient {
     private let baseUrl: String
     private let version: String
     private let channel: String
-    private let trust: TrustSet
+    private var trust: TrustSet
+    private let trustRefreshEnabled: Bool
     private let store: Store
     private let session: URLSession
     private let localOverrides: [String: JSONValue]
@@ -91,6 +95,7 @@ public actor PolarisKeyClient {
         self.version = options.version
         self.channel = options.channel
         self.trust = options.trust.pinnedKeys
+        self.trustRefreshEnabled = options.trustRefresh
         self.store = options.store
         self.session = options.session
         self.localOverrides = options.localOverrides ?? [:]
@@ -109,6 +114,9 @@ public actor PolarisKeyClient {
         deviceId = await store.getDeviceId()
         token = await store.getToken()
         cache = await store.readCache()
+        if let trustedKeys = cache?.trustedKeys {
+            trust.merge(trustedKeys) { _, new in new }
+        }
     }
 
     private func nowSec() -> Int { Int(Date().timeIntervalSince1970) }
@@ -244,6 +252,9 @@ public actor PolarisKeyClient {
 
     private func fetchAndApply(allowReacquire: Bool) async -> RefreshResult {
         guard let token else { return RefreshResult(applied: false) }
+        if trustRefreshEnabled {
+            _ = await refreshTrust()
+        }
         let res = await fetchManagedConfig(
             FetchOptions(
                 baseUrl: baseUrl, product: product, token: token, deviceId: deviceId,
@@ -295,7 +306,9 @@ public actor PolarisKeyClient {
                 lastAcceptedIssuedAt: doc.issuedAt,
                 lastVerifiedAt: Int(Date().timeIntervalSince1970 * 1000),
                 lastSyncUnauthorized: false,
-                blocked: nil)
+                blocked: nil,
+                trustedKeys: cache?.trustedKeys,
+                lastTrustIssuedAt: cache?.lastTrustIssuedAt)
             cache = rec
             await store.writeCache(rec)
             return RefreshResult(applied: true)
@@ -303,6 +316,37 @@ public actor PolarisKeyClient {
         case .error:
             return RefreshResult(applied: false)
         }
+    }
+
+    private func refreshTrust() async -> Bool {
+        guard let url = URL(
+            string: "\(baseUrl)/\(product)/.well-known/polaris-trust.jws")
+        else { return false }
+        var req = URLRequest(url: url)
+        req.setValue("application/jose", forHTTPHeaderField: "Accept")
+        guard
+            let (data, response) = try? await session.data(for: req),
+            let http = response as? HTTPURLResponse,
+            http.statusCode == 200,
+            let jws = String(data: data, encoding: .utf8),
+            let verified = JWSVerifier.verifyPayloadData(jws, trust: trust),
+            let doc = try? JSONDecoder().decode(TrustManifestDoc.self, from: verified.payload)
+        else { return false }
+        guard doc.aud == product, doc.iss == "key.plrs.im", doc.expiresAt >= nowSec()
+        else { return false }
+        if let last = cache?.lastTrustIssuedAt, doc.issuedAt <= last { return false }
+        var next: TrustSet = [:]
+        for key in doc.keys
+        where key.alg == "EdDSA" && key.kty == "OKP" && key.crv == "Ed25519" {
+            next[key.kid] = key.publicKey
+        }
+        guard !next.isEmpty else { return false }
+        trust.merge(next) { _, new in new }
+        await patchCache {
+            $0.trustedKeys = trust
+            $0.lastTrustIssuedAt = doc.issuedAt
+        }
+        return true
     }
 
     private func patchCache(_ mutate: (inout CacheRecord) -> Void) async {
@@ -314,7 +358,8 @@ public actor PolarisKeyClient {
             // No doc yet: remember only bookkeeping if it's a block/unauthorized signal.
             var probe = CacheRecord(doc: nil, lastAcceptedIssuedAt: 0)
             mutate(&probe)
-            if probe.blocked != nil || probe.lastSyncUnauthorized == true {
+            if probe.blocked != nil || probe.lastSyncUnauthorized == true
+                || probe.trustedKeys != nil || probe.lastTrustIssuedAt != nil {
                 cache = probe
                 await store.writeCache(probe)
             }

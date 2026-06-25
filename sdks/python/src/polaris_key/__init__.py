@@ -54,7 +54,7 @@ from .models import (
     ManagedEntry,
     ManagedPayload,
 )
-from .store import CacheRecord, FileStore, InMemoryStore, Store
+from .store import CacheRecord, FileStore, InMemoryStore, KeyringStore, Store
 from .deviceid import derive_device_id, raw_machine_id
 from .verify import (
     TrustSet,
@@ -112,6 +112,7 @@ __all__ = [
     "Store",
     "InMemoryStore",
     "FileStore",
+    "KeyringStore",
     "CacheRecord",
     # device id
     "derive_device_id",

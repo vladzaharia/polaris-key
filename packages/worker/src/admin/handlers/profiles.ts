@@ -6,7 +6,12 @@
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import { randomId } from "../../crypto.js";
-import { deleteProfile, listProfiles, upsertProfile } from "../repo.js";
+import {
+  countLicensesUsingProfile,
+  deleteProfile,
+  listProfiles,
+  upsertProfile,
+} from "../repo.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
@@ -116,6 +121,11 @@ export async function handleProfiles(
     return adminJson({ ok: true, id });
   }
   if (req.method === "DELETE") {
+    const refs = await countLicensesUsingProfile(db, slug, id);
+    if (refs > 0)
+      return err(409, ErrorCode.BadRequest, "profile is still referenced", {
+        references: refs,
+      });
     await deleteProfile(db, slug, id);
     await audit(
       db,

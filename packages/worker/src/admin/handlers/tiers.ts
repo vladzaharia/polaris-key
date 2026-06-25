@@ -6,7 +6,13 @@
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import { randomId } from "../../crypto.js";
-import { deleteTier, listTiers, upsertTier } from "../repo.js";
+import {
+  countLicensesUsingTier,
+  deleteTier,
+  listProfiles,
+  listTiers,
+  upsertTier,
+} from "../repo.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
@@ -15,6 +21,17 @@ import { adminJson, err, notFound, readBody } from "../lib/respond.js";
 function parseChannels(raw: unknown): string | null {
   if (!Array.isArray(raw)) return null;
   return JSON.stringify(raw.filter((c) => typeof c === "string") as string[]);
+}
+
+async function profileExists(
+  db: Db,
+  slug: string,
+  profile: unknown,
+): Promise<boolean> {
+  if (profile === null || profile === undefined) return true;
+  if (typeof profile !== "string") return false;
+  const profiles = await listProfiles(db, slug);
+  return profiles.some((p) => p.id === profile);
 }
 
 export async function handleTiers(
@@ -46,6 +63,10 @@ export async function handleTiers(
     if (req.method === "POST") {
       const body = await readBody(req);
       const tierId = String(body.id ?? randomId("tier"));
+      if (!(await profileExists(db, slug, body.profile)))
+        return err(422, ErrorCode.BadRequest, "unknown profile", {
+          fields: ["profile"],
+        });
       await upsertTier(db, {
         product: slug,
         id: tierId,
@@ -86,6 +107,10 @@ export async function handleTiers(
   if (!row) return notFound();
   if (req.method === "PATCH") {
     const body = await readBody(req);
+    if ("profile" in body && !(await profileExists(db, slug, body.profile)))
+      return err(422, ErrorCode.BadRequest, "unknown profile", {
+        fields: ["profile"],
+      });
     await upsertTier(db, {
       ...row,
       label: typeof body.label === "string" ? body.label : row.label,
@@ -128,6 +153,11 @@ export async function handleTiers(
     return adminJson({ ok: true, id });
   }
   if (req.method === "DELETE") {
+    const refs = await countLicensesUsingTier(db, slug, id);
+    if (refs > 0)
+      return err(409, ErrorCode.BadRequest, "tier is still referenced", {
+        references: refs,
+      });
     await deleteTier(db, slug, id);
     await audit(
       db,

@@ -64,6 +64,38 @@ function newestPublished(releases: Release[]): Release | null {
   return releases.find((r) => !r.draft) ?? null;
 }
 
+function artifactPolicy(raw: string | null): {
+  requireDmg: boolean;
+  requireCli: boolean;
+  requireSparkleSignature: boolean;
+} {
+  if (!raw) {
+    return {
+      requireDmg: true,
+      requireCli: false,
+      requireSparkleSignature: true,
+    };
+  }
+  try {
+    const parsed = JSON.parse(raw) as {
+      requireDmg?: unknown;
+      requireCli?: unknown;
+      requireSparkleSignature?: unknown;
+    };
+    return {
+      requireDmg: parsed.requireDmg !== false,
+      requireCli: parsed.requireCli === true,
+      requireSparkleSignature: parsed.requireSparkleSignature !== false,
+    };
+  } catch {
+    return {
+      requireDmg: true,
+      requireCli: false,
+      requireSparkleSignature: true,
+    };
+  }
+}
+
 export async function checkReleaseHealth(
   env: Env,
   db: Db,
@@ -203,6 +235,7 @@ export async function checkReleaseHealth(
   );
 
   const binaryName = cfg.binary_name ?? product;
+  const policy = artifactPolicy(cfg.artifact_policy_json);
   const armDmg = matchAsset(latest.assets, {
     arch: "arm64",
     ext: "dmg",
@@ -229,14 +262,24 @@ export async function checkReleaseHealth(
     check(
       "dmg-x86_64",
       "macOS x86_64 DMG",
-      x64Dmg ? "ok" : "warning",
+      x64Dmg ? "ok" : policy.requireDmg ? "missing" : "warning",
       x64Dmg
         ? `Found ${x64Dmg.name}.`
         : "No x86_64 DMG asset was found; Intel macOS downloads will 404.",
     ),
   );
 
-  if (cfg.sparkle_ed25519_pub && armDmg) {
+  if (!cfg.sparkle_ed25519_pub && policy.requireSparkleSignature) {
+    checks.push(
+      check(
+        "sparkle-signature",
+        "Sparkle signature",
+        "missing",
+        "Artifact policy requires signed Sparkle appcasts, but no public key is configured.",
+        ["Sparkle public key"],
+      ),
+    );
+  } else if (cfg.sparkle_ed25519_pub && armDmg) {
     const sigName = sigAssetName(armDmg.name);
     const sig = latest.assets.find((asset) => asset.name === sigName);
     checks.push(
@@ -258,7 +301,7 @@ export async function checkReleaseHealth(
     check(
       "cli-arm64",
       "CLI arm64 asset",
-      armCli ? "ok" : "warning",
+      armCli ? "ok" : policy.requireCli ? "missing" : "warning",
       armCli
         ? `Found ${armCli.name}.`
         : "No arm64 CLI asset was found; CLI installers may be unavailable.",
@@ -268,7 +311,7 @@ export async function checkReleaseHealth(
     check(
       "cli-x86_64",
       "CLI x86_64 asset",
-      x64Cli ? "ok" : "warning",
+      x64Cli ? "ok" : policy.requireCli ? "missing" : "warning",
       x64Cli
         ? `Found ${x64Cli.name}.`
         : "No x86_64 CLI asset was found; CLI installers may be unavailable.",

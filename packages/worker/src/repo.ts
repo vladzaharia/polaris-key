@@ -18,6 +18,8 @@ export interface ProductRow {
   admin_group: string | null;
   branding_json: string | null;
   release_source: string | null;
+  status?: string;
+  deleted_at?: number | null;
   created_at: number;
   modified_at: number;
 }
@@ -96,6 +98,11 @@ export interface MachineRow {
   overrides_json: string | null;
   reported_json: string | null;
   token_hash: string | null;
+  platform?: string | null;
+  arch?: string | null;
+  app_version?: string | null;
+  sdk_name?: string | null;
+  sdk_version?: string | null;
 }
 
 export interface ProfileRow {
@@ -163,11 +170,16 @@ export async function getProduct(
   db: Db,
   slug: string,
 ): Promise<ProductRow | null> {
-  return db.first<ProductRow>("SELECT * FROM products WHERE slug = ?", slug);
+  return db.first<ProductRow>(
+    "SELECT * FROM products WHERE slug = ? AND COALESCE(status, 'active') != 'deleted'",
+    slug,
+  );
 }
 
 export async function listProducts(db: Db): Promise<ProductRow[]> {
-  return db.all<ProductRow>("SELECT * FROM products ORDER BY slug");
+  return db.all<ProductRow>(
+    "SELECT * FROM products WHERE COALESCE(status, 'active') != 'deleted' ORDER BY slug",
+  );
 }
 
 export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
@@ -209,11 +221,12 @@ export async function listProductsByGithubRepo(
 ): Promise<ProductRow[]> {
   return db.all<ProductRow>(
     `SELECT p.* FROM products p
-       JOIN release_config r ON r.product = p.slug
-      WHERE p.release_source = 'github'
-        AND lower(r.gh_owner) = lower(?)
-        AND lower(r.gh_repo) = lower(?)
-      ORDER BY p.slug`,
+      JOIN release_config r ON r.product = p.slug
+     WHERE p.release_source = 'github'
+       AND lower(r.gh_owner) = lower(?)
+       AND lower(r.gh_repo) = lower(?)
+       AND COALESCE(p.status, 'active') != 'deleted'
+     ORDER BY p.slug`,
     owner,
     repo,
   );
@@ -268,8 +281,8 @@ export async function listVerificationProductKeys(
 ): Promise<ProductKeyRow[]> {
   return db.all<ProductKeyRow>(
     `SELECT * FROM product_keys
-     WHERE product = ? AND status IN ('active', 'retired')
-     ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, created_at DESC`,
+     WHERE product = ? AND status IN ('active', 'staged', 'retired')
+     ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'staged' THEN 1 ELSE 2 END, created_at DESC`,
     product,
   );
 }
@@ -312,6 +325,18 @@ export function stmtRetireProductKeys(
   return {
     sql: "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active'",
     params: [at, product],
+  };
+}
+
+export function stmtSetProductKeyStatus(
+  product: string,
+  kid: string,
+  status: "active" | "staged" | "retired" | "revoked",
+  at: number,
+): DbStatement {
+  return {
+    sql: "UPDATE product_keys SET status = ?, rotated_at = ? WHERE product = ? AND kid = ?",
+    params: [status, at, product, kid],
   };
 }
 
@@ -486,12 +511,13 @@ export interface ReleaseConfigInput {
   binaryName: string;
   sparkleEd25519Pub: string | null;
   summaryMarker: string;
+  artifactPolicyJson?: string | null;
 }
 export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
   return {
     sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
-            manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
-          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?)`,
+            manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json)
+          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?)`,
     params: [
       r.product,
       r.ghOwner,
@@ -502,6 +528,7 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
       r.binaryName,
       r.sparkleEd25519Pub,
       r.summaryMarker,
+      r.artifactPolicyJson ?? null,
     ],
   };
 }
@@ -758,6 +785,18 @@ export async function getMachine(
   );
 }
 
+export async function getMachineByTokenHash(
+  db: Db,
+  product: string,
+  tokenHash: string,
+): Promise<MachineRow | null> {
+  return db.first<MachineRow>(
+    "SELECT * FROM machines WHERE product = ? AND token_hash = ?",
+    product,
+    tokenHash,
+  );
+}
+
 export async function listMachinesByLicense(
   db: Db,
   product: string,
@@ -786,11 +825,13 @@ export async function countActiveMachines(
 export async function upsertMachine(db: Db, row: MachineRow): Promise<void> {
   await db.run(
     `INSERT INTO machines (product, machine_id, license_id, status, first_seen, last_seen, ua, label,
-       overrides_json, reported_json, token_hash)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       overrides_json, reported_json, token_hash, platform, arch, app_version, sdk_name, sdk_version)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, machine_id) DO UPDATE SET
        license_id = excluded.license_id, status = excluded.status, last_seen = excluded.last_seen,
-       ua = excluded.ua, token_hash = excluded.token_hash`,
+       ua = excluded.ua, token_hash = excluded.token_hash, platform = excluded.platform,
+       arch = excluded.arch, app_version = excluded.app_version, sdk_name = excluded.sdk_name,
+       sdk_version = excluded.sdk_version`,
     row.product,
     row.machine_id,
     row.license_id,
@@ -802,6 +843,11 @@ export async function upsertMachine(db: Db, row: MachineRow): Promise<void> {
     row.overrides_json,
     row.reported_json,
     row.token_hash,
+    row.platform ?? null,
+    row.arch ?? null,
+    row.app_version ?? null,
+    row.sdk_name ?? null,
+    row.sdk_version ?? null,
   );
 }
 

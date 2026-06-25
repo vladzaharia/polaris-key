@@ -7,6 +7,7 @@ layer. Mirrors ``fetch.ts``. The result is a small tagged union of dataclasses.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import platform
 from typing import Optional, Union
 
 import httpx
@@ -14,6 +15,10 @@ import httpx
 from .models import (
     HEADER_CHANNEL,
     HEADER_DEVICE,
+    HEADER_ARCH,
+    HEADER_PLATFORM,
+    HEADER_SDK_NAME,
+    HEADER_SDK_VERSION,
     HEADER_VERSION,
     AllowedRange,
     BlockReason,
@@ -96,6 +101,10 @@ def fetch_managed_config(
         HEADER_DEVICE: device_id,
         HEADER_VERSION: version,
         HEADER_CHANNEL: channel,
+        HEADER_PLATFORM: platform.system().lower(),
+        HEADER_ARCH: platform.machine(),
+        HEADER_SDK_NAME: "polaris-key",
+        HEADER_SDK_VERSION: "0.0.0",
     }
     if etag:
         headers["if-none-match"] = etag

@@ -7,11 +7,18 @@ POST-and-classify shape; the result is a small tagged union of dataclasses.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import platform
 from typing import Any, Optional, Union
 
 import httpx
 
-from .models import HEADER_DEVICE
+from .models import (
+    HEADER_ARCH,
+    HEADER_DEVICE,
+    HEADER_PLATFORM,
+    HEADER_SDK_NAME,
+    HEADER_SDK_VERSION,
+)
 
 __all__ = [
     "EnrollOk",
@@ -54,6 +61,15 @@ class EnrollError:
 EnrollResult = Union[EnrollOk, EnrollMachineLimit, EnrollUnauthorized, EnrollError]
 
 
+def _metadata_headers() -> dict:
+    return {
+        HEADER_PLATFORM: platform.system().lower(),
+        HEADER_ARCH: platform.machine(),
+        HEADER_SDK_NAME: "polaris-key",
+        HEADER_SDK_VERSION: "0.0.0",
+    }
+
+
 def _enroll_like(url: str, headers: dict, client: httpx.Client) -> EnrollResult:
     try:
         res = client.post(url, headers=headers)
@@ -75,7 +91,7 @@ def enroll_with_key(
 ) -> EnrollResult:
     return _enroll_like(
         f"{base_url}/{product}/enroll",
-        {"authorization": f"Bearer {key}", HEADER_DEVICE: device_id},
+        {"authorization": f"Bearer {key}", HEADER_DEVICE: device_id, **_metadata_headers()},
         client,
     )
 
@@ -85,7 +101,7 @@ def reacquire_token(
 ) -> EnrollResult:
     return _enroll_like(
         f"{base_url}/{product}/token",
-        {"authorization": f"Bearer {token}", HEADER_DEVICE: device_id},
+        {"authorization": f"Bearer {token}", HEADER_DEVICE: device_id, **_metadata_headers()},
         client,
     )
 
@@ -111,6 +127,7 @@ def report_snapshot(
             headers={
                 "authorization": f"Bearer {token}",
                 "content-type": "application/json",
+                **_metadata_headers(),
             },
             json=snapshot,
         )

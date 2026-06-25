@@ -2,12 +2,17 @@
 // happen in the client (verify.ts); this is purely the HTTP layer.
 
 import {
+  HEADER_ARCH,
   HEADER_CHANNEL,
   HEADER_DEVICE,
+  HEADER_PLATFORM,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
   HEADER_VERSION,
   type AllowedRange,
   type BlockReason,
 } from "@polaris-key/protocol";
+import { arch, platform } from "node:os";
 
 export type FetchResult =
   | { kind: "ok"; jws: string; etag: string | null }
@@ -38,6 +43,10 @@ export async function fetchManagedConfig(
     [HEADER_DEVICE]: opts.deviceId,
     [HEADER_VERSION]: opts.version,
     [HEADER_CHANNEL]: opts.channel,
+    [HEADER_PLATFORM]: platform(),
+    [HEADER_ARCH]: arch(),
+    [HEADER_SDK_NAME]: "@polaris-key/node",
+    [HEADER_SDK_VERSION]: "0.0.0",
   };
   if (opts.etag) headers["if-none-match"] = opts.etag;
   const url = `${opts.baseUrl}/${opts.product}/config`;

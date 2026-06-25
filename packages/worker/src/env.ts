@@ -15,6 +15,7 @@ export interface Env {
   // The single platform KEK (base64 of 32 random bytes) under which per-product signing keys
   // + secrets are envelope-encrypted in D1. See src/keyvault.ts.
   PLATFORM_KEK?: string;
+  PLATFORM_KEK_ID?: string;
   KEY_HASH_PEPPER?: string;
   ADMIN_SESSION_SECRET?: string;
   GITHUB_APP_ID?: string;

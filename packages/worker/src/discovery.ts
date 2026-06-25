@@ -50,6 +50,7 @@ export async function handleDiscovery(
   const signingKid = activeKey?.kid ?? product.signingKid;
   const signingPublicKey = activeKey?.publicKey ?? product.signingPub;
   const jwksUrl = `${base}/.well-known/jwks.json`;
+  const trustManifestUrl = `${base}/.well-known/polaris-trust.jws`;
   const endpoints = {
     enroll: `${base}/enroll`,
     token: `${base}/token`,
@@ -85,6 +86,8 @@ export async function handleDiscovery(
     endpoints,
     trust: {
       jwksUrl,
+      trustManifestUrl,
+      cacheSeconds: 300,
       pinnedKeys: trustKeys,
       signingKid,
       signingPub: signingPublicKey,
@@ -149,6 +152,8 @@ export async function handleDiscovery(
       },
       signing: {
         jwksUrl,
+        trustManifestUrl,
+        cacheSeconds: 300,
         keys: signingPublicKey
           ? verificationKeys.map((key) => ({
               kid: key.kid,
@@ -156,7 +161,8 @@ export async function handleDiscovery(
               kty: "OKP",
               crv: "Ed25519",
               publicKey: key.publicKey,
-              active: key.kid === signingKid,
+              status: key.status,
+              active: key.status === "active",
             }))
           : [],
       },

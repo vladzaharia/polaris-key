@@ -328,28 +328,37 @@ describe("admin api", () => {
       groups: [PLATFORM_GROUP],
     });
     const res = await dispatch(
-      mkReq("DELETE", "/api/products/djdl", { cookie, csrf }),
+      mkReq("DELETE", "/api/products/djdl", {
+        cookie,
+        csrf,
+        body: { confirmSlug: "djdl" },
+      }),
       env,
       db,
       "/api/products/djdl",
     );
     expect(res.status).toBe(200);
 
+    const deleted = await db.first<{ status: string; deleted_at: number }>(
+      "SELECT status, deleted_at FROM products WHERE slug = ?",
+      "djdl",
+    );
+    expect(deleted).toMatchObject({ status: "deleted", deleted_at: NOW });
     expect(
-      await db.first("SELECT * FROM products WHERE slug = ?", "djdl"),
-    ).toBeNull();
-    expect(
-      await db.first("SELECT * FROM product_keys WHERE product = ?", "djdl"),
-    ).toBeNull();
+      await db.first<{ status: string }>(
+        "SELECT status FROM product_keys WHERE product = ?",
+        "djdl",
+      ),
+    ).toMatchObject({ status: "revoked" });
     expect(
       await db.first("SELECT * FROM product_secrets WHERE product = ?", "djdl"),
-    ).toBeNull();
+    ).not.toBeNull();
     expect(
       await db.first(
         "SELECT * FROM product_sync_state WHERE product = ?",
         "djdl",
       ),
-    ).toBeNull();
+    ).not.toBeNull();
   });
 
   it("creates a license and mints a key returned exactly once", async () => {
@@ -501,7 +510,7 @@ describe("admin api", () => {
     expect(badOverride.status).toBe(422);
   });
 
-  it("cannot touch another product the session does not administer", async () => {
+  it("requires platform-admin access even when product admin metadata matches", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl", "acme"]);
     // acme is admin-gated to a group the session lacks.
@@ -518,7 +527,7 @@ describe("admin api", () => {
       "acme",
     );
 
-    // A djdl-only admin (NOT platform) can read djdl but not acme.
+    // Product admin groups are reserved metadata in v1; only platform admins can read.
     const { cookie } = await sessionCookie(env, {
       sub: "u3",
       name: "Cy",
@@ -531,7 +540,7 @@ describe("admin api", () => {
       db,
       "/api/products/djdl/licenses",
     );
-    expect(okHere.status).toBe(200);
+    expect(okHere.status).toBe(403);
 
     const deniedThere = await dispatch(
       mkReq("GET", "/api/products/acme/licenses", { cookie }),
@@ -864,7 +873,13 @@ describe("admin api", () => {
     const row = await getProductSecret(db, "djdl", "OIDC_SECRET");
     expect(row).not.toBeNull();
     expect(row!.enc_value_json).not.toContain("super-secret-value");
-    expect(await open(env, row!.enc_value_json)).toBe("super-secret-value");
+    expect(
+      await open(env, row!.enc_value_json, {
+        product: "djdl",
+        kind: "product-secret",
+        id: "OIDC_SECRET",
+      }),
+    ).toBe("super-secret-value");
   });
 
   it("product detail reports persistent required-secret setup status", async () => {
@@ -937,7 +952,7 @@ describe("admin api", () => {
     ]);
   });
 
-  it("keys/rotate retires the old key and activates a new kid (private never returned)", async () => {
+  it("keys/rotate stages a new key, then break-glass activation retires the old key", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
@@ -961,13 +976,37 @@ describe("admin api", () => {
       ok: boolean;
       kid: string;
       publicKey: string;
+      status: string;
     };
     expect(body.kid).not.toBe(before!.kid);
+    expect(body.status).toBe("staged");
     // The response never leaks private key material.
     expect(text).not.toContain("BEGIN PRIVATE KEY");
 
-    // The active key is the new one; the old one is retired.
-    const after = await getActiveProductKey(db, "djdl");
+    // Rotation only stages the key. The old active key continues signing until activation.
+    let after = await getActiveProductKey(db, "djdl");
+    expect(after!.kid).toBe(before!.kid);
+    let staged = await db.first<{ status: string }>(
+      "SELECT status FROM product_keys WHERE product = ? AND kid = ?",
+      "djdl",
+      body.kid,
+    );
+    expect(staged?.status).toBe("staged");
+
+    const activate = await dispatch(
+      mkReq("POST", "/api/products/djdl/keys/activate", {
+        cookie,
+        csrf,
+        body: { kid: body.kid, breakGlass: true },
+      }),
+      env,
+      db,
+      "/api/products/djdl/keys/activate",
+    );
+    expect(activate.status).toBe(200);
+
+    // The active key is now the staged key; the old one is retired.
+    after = await getActiveProductKey(db, "djdl");
     expect(after!.kid).toBe(body.kid);
     const old = await db.first<{ status: string }>(
       "SELECT * FROM product_keys WHERE product = ? AND kid = ?",
@@ -975,6 +1014,12 @@ describe("admin api", () => {
       before!.kid,
     );
     expect(old?.status).toBe("retired");
+    staged = await db.first<{ status: string }>(
+      "SELECT status FROM product_keys WHERE product = ? AND kid = ?",
+      "djdl",
+      body.kid,
+    );
+    expect(staged?.status).toBe("active");
     // loadProduct now signs under the rotated key.
     const product = await loadProduct(env, db, "djdl");
     expect(product!.signingKid).toBe(body.kid);

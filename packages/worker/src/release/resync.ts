@@ -22,7 +22,14 @@ import {
   stmtInsertProvisioning,
   stmtInsertTier,
 } from "../repo.js";
-import { deactivateSchemas, nextSchemaVersion } from "../admin/repo.js";
+import {
+  countLicensesUsingProfile,
+  countLicensesUsingTier,
+  deactivateSchemas,
+  listProfiles,
+  listTiers,
+  nextSchemaVersion,
+} from "../admin/repo.js";
 import { getReleaseConfig } from "./index.js";
 import { parseManifest } from "./manifest.js";
 import {
@@ -122,6 +129,12 @@ export async function resyncRepo(
       errors: result.errors,
     };
   const manifest = result.manifest;
+  if (manifest.product.slug !== slug) {
+    return {
+      ok: false,
+      error: `manifest slug ${manifest.product.slug} does not match product ${slug}`,
+    };
+  }
 
   const updated: string[] = [];
 
@@ -161,12 +174,13 @@ export async function resyncRepo(
   if (rel) {
     await db.run(
       `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
-         sparkle_ed25519_pub = ?, summary_marker = ? WHERE product = ?`,
+         sparkle_ed25519_pub = ?, summary_marker = ?, artifact_policy_json = ? WHERE product = ?`,
       rel.channelWorkflow || null,
       rel.betaBranch || "main",
       rel.binaryName || repo,
       rel.sparkleEd25519Pub || null,
       rel.summaryMarker || "pkey:summary",
+      rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,
       slug,
     );
     updated.push("release");
@@ -192,6 +206,17 @@ export async function resyncRepo(
   }
   updated.push("oidc");
 
+  const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
+  for (const profile of await listProfiles(db, slug)) {
+    if (!nextProfileIds.has(profile.id)) {
+      const refs = await countLicensesUsingProfile(db, slug, profile.id);
+      if (refs > 0)
+        return {
+          ok: false,
+          error: `cannot remove profile ${profile.id}; ${refs} license(s) still reference it`,
+        };
+    }
+  }
   stmts.push({ sql: "DELETE FROM profiles WHERE product = ?", params: [slug] });
   for (const p of manifest.profiles) {
     stmts.push(
@@ -207,6 +232,17 @@ export async function resyncRepo(
   }
   updated.push("profiles");
 
+  const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
+  for (const tier of await listTiers(db, slug)) {
+    if (!nextTierIds.has(tier.id)) {
+      const refs = await countLicensesUsingTier(db, slug, tier.id);
+      if (refs > 0)
+        return {
+          ok: false,
+          error: `cannot remove tier ${tier.id}; ${refs} license(s) still reference it`,
+        };
+    }
+  }
   stmts.push({ sql: "DELETE FROM tiers WHERE product = ?", params: [slug] });
   for (const t of manifest.tiers) {
     stmts.push(

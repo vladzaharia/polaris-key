@@ -263,6 +263,8 @@ export interface RotateKeyResult {
   ok: true;
   kid: string;
   publicKey: string;
+  status?: "staged" | "active";
+  activateAfter?: number;
   trustKey?: string;
   trustKeys?: Record<string, string>;
   signing?: ProductSigningBundle;
@@ -488,13 +490,20 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     let message: string | undefined;
     try {
       const body = (await res.json()) as {
-        error?: string;
+        error?: string | { code?: string; message?: string; fields?: string[] };
         message?: string;
         fields?: string[];
+        code?: string;
       };
-      fields = body.fields;
-      code = body.error;
-      message = body.message;
+      if (typeof body.error === "object" && body.error) {
+        fields = body.error.fields ?? body.fields;
+        code = body.error.code ?? body.code;
+        message = body.error.message ?? body.message;
+      } else {
+        fields = body.fields;
+        code = body.error ?? body.code;
+        message = body.message;
+      }
     } catch {
       // non-JSON error body
     }
@@ -535,7 +544,10 @@ export const api = {
       body: JSON.stringify(body),
     }),
   deleteProduct: (slug: string) =>
-    call<{ ok: true; slug: string }>(p(slug), { method: "DELETE" }),
+    call<{ ok: true; slug: string }>(p(slug), {
+      method: "DELETE",
+      body: JSON.stringify({ confirmSlug: slug }),
+    }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
   releaseHealth: (slug: string) =>

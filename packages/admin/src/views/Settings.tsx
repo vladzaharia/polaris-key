@@ -399,15 +399,20 @@ function KeyCard({
   const [rotated, setRotated] = React.useState<{
     kid: string;
     publicKey: string;
+    status?: string;
   } | null>(null);
 
   const onRotate = async (): Promise<void> => {
     setRotating(true);
     try {
       const res = await api.rotateProductKey(slug);
-      setRotated({ kid: res.kid, publicKey: res.publicKey });
+      setRotated({
+        kid: res.kid,
+        publicKey: res.publicKey,
+        status: res.status,
+      });
       invalidate(`product:${slug}`);
-      toast.success("Signing key rotated", `New key ${res.kid} is now active.`);
+      toast.success("Signing key prepared", `New key ${res.kid} is staged.`);
       setConfirm(false);
     } catch (err) {
       toast.error(
@@ -427,9 +432,9 @@ function KeyCard({
           Signing key
         </CardTitle>
         <CardDescription>
-          The Ed25519 keypair this product signs config with. Rotating mints a
-          new key and publishes it to the JWKS; old signatures stay verifiable
-          until clients refresh.
+          The Ed25519 keypair this product signs config with. Preparing a key
+          publishes it to discovery first; activation happens after a
+          trust-refresh window.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -446,7 +451,8 @@ function KeyCard({
             className="space-y-2 rounded-md border border-success/40 bg-success/10 p-3"
           >
             <p className="text-sm font-medium text-foreground">
-              New key minted: <span className="font-mono">{rotated.kid}</span>
+              New key {rotated.status ?? "staged"}:{" "}
+              <span className="font-mono">{rotated.kid}</span>
             </p>
             <div>
               <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">
@@ -462,15 +468,15 @@ function KeyCard({
       <CardFooter>
         <Button variant="outline" onClick={() => setConfirm(true)}>
           <RotateCw aria-hidden />
-          Rotate signing key
+          Prepare signing key
         </Button>
       </CardFooter>
       <ConfirmDialog
         open={confirm}
         onOpenChange={setConfirm}
-        title="Rotate the signing key?"
-        description="A new Ed25519 key will be minted and published. This can’t be undone."
-        confirmLabel="Rotate"
+        title="Prepare a signing key?"
+        description="A new Ed25519 key will be minted as staged and published for trust refresh before activation."
+        confirmLabel="Prepare"
         confirmVariant="primary"
         loading={rotating}
         onConfirm={onRotate}
@@ -499,8 +505,8 @@ function DangerCard({
       await api.deleteProduct(slug);
       invalidate(`product:${slug}`);
       toast.success(
-        "Product deleted",
-        `“${product.name}” was removed from the registry.`,
+        "Product disabled",
+        `“${product.name}” was tombstoned in the registry.`,
       );
       // Leave the now-defunct product route; head to the next product or the dashboard.
       const next = me.products.find((prod) => prod.slug !== slug);
@@ -509,7 +515,7 @@ function DangerCard({
         : hashFor({ kind: "dashboard" });
     } catch (err) {
       toast.error(
-        "Couldn’t delete the product",
+        "Couldn’t disable the product",
         err instanceof Error ? err.message : undefined,
       );
       setDeleting(false);
@@ -521,22 +527,22 @@ function DangerCard({
       <CardHeader>
         <CardTitle className="text-destructive">Danger zone</CardTitle>
         <CardDescription>
-          Deleting a product removes its registry row, licenses, keys, and
-          config. This cannot be undone.
+          Disabling a product tombstones it, disables licenses, deauthorizes
+          machines, revokes hot credentials, and preserves audit history.
         </CardDescription>
       </CardHeader>
       <CardFooter>
         <Button variant="destructive" onClick={() => setConfirm(true)}>
           <Trash2 aria-hidden />
-          Delete product
+          Disable product
         </Button>
       </CardFooter>
       <ConfirmDialog
         open={confirm}
         onOpenChange={setConfirm}
-        title={`Delete “${product.name}”?`}
-        description="This permanently removes the product and every license, key, and config under it. This action cannot be undone."
-        confirmLabel="Delete product"
+        title={`Disable “${product.name}”?`}
+        description="This leaves audit/runtime data in place while removing the product from active administration and runtime use."
+        confirmLabel="Disable product"
         loading={deleting}
         onConfirm={onDelete}
       />

@@ -71,11 +71,26 @@ interface ReleaseConfigRow {
   install_template: string | null;
   sparkle_ed25519_pub: string | null;
   summary_marker: string;
+  artifact_policy_json: string | null;
 }
 
 const MOVING_CACHE = "public, max-age=120";
 const PINNED_CACHE = "public, max-age=86400, immutable";
 const APPCAST_CACHE = "public, max-age=300";
+
+function artifactPolicy(raw: string | null): {
+  requireSparkleSignature: boolean;
+} {
+  if (!raw) return { requireSparkleSignature: true };
+  try {
+    const parsed = JSON.parse(raw) as { requireSparkleSignature?: unknown };
+    return {
+      requireSparkleSignature: parsed.requireSparkleSignature !== false,
+    };
+  } catch {
+    return { requireSparkleSignature: true };
+  }
+}
 
 export async function getReleaseConfig(
   db: Db,
@@ -476,14 +491,18 @@ async function handleAppcast(
   });
   if (!dmg) return notFound();
 
-  // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline. A
-  // product that configures a Sparkle public key (`sparkle_ed25519_pub`) expects SIGNED
-  // updates — if its `.sig` is missing we FAIL CLOSED (404) rather than silently ship an
-  // unsigned feed. Only products with no configured pubkey (genuinely unsigned channels)
-  // fall back to omitting `<sparkle:edSignature>`.
+  // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline.
+  // Signed Sparkle appcasts are required by default. An explicit artifact-policy opt-out
+  // is the only way to publish an unsigned feed.
+  const policy = artifactPolicy(cfg.artifact_policy_json);
+  if (policy.requireSparkleSignature && !cfg.sparkle_ed25519_pub) {
+    return notFound();
+  }
   const tok = await token(env, cfg, product.slug, now, fetchImpl);
   const sig = release.assets.find((a) => a.name === sigAssetName(dmg.name));
-  if (!sig && cfg.sparkle_ed25519_pub) return notFound();
+  if (!sig && (cfg.sparkle_ed25519_pub || policy.requireSparkleSignature)) {
+    return notFound();
+  }
   const edSignature = sig
     ? (
         await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)

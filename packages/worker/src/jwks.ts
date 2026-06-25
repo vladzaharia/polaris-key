@@ -1,7 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Product } from "./product.js";
 import type { Db } from "./db/types.js";
+import { signJws } from "@polaris-key/jws";
+import { ISSUER, type TrustManifestDoc } from "@polaris-key/protocol";
 import { loadPublicSigningKeys } from "./product.js";
+
+export const TRUST_CACHE_SECONDS = 300;
 
 /** GET /<product>/.well-known/jwks.json — the product's Ed25519 public key(s), so SDKs
  *  can optionally discover keys (rotation). Clients still pin a trust set by default. */
@@ -22,4 +26,45 @@ export async function handleJwks(db: Db, product: Product): Promise<Response> {
       "cache-control": "public, max-age=300",
     },
   });
+}
+
+export async function handleTrustManifest(
+  req: Request,
+  db: Db,
+  product: Product,
+  now: number,
+): Promise<Response> {
+  const url = new URL(req.url);
+  const base = `${url.origin}/${product.slug}`;
+  const keyRows = await loadPublicSigningKeys(db, product.slug);
+  const doc: TrustManifestDoc = {
+    schemaVersion: 1,
+    aud: product.slug,
+    iss: ISSUER,
+    issuedAt: now,
+    expiresAt: now + TRUST_CACHE_SECONDS,
+    jwksUrl: `${base}/.well-known/jwks.json`,
+    cacheSeconds: TRUST_CACHE_SECONDS,
+    keys: keyRows.map((key) => ({
+      kid: key.kid,
+      alg: "EdDSA",
+      kty: "OKP",
+      crv: "Ed25519",
+      publicKey: key.publicKey,
+      status:
+        key.status === "active" || key.status === "staged"
+          ? key.status
+          : "retired",
+    })),
+  };
+  return new Response(
+    await signJws(doc, product.signingKeyPem, product.signingKid),
+    {
+      status: 200,
+      headers: {
+        "content-type": "application/jose",
+        "cache-control": `public, max-age=${TRUST_CACHE_SECONDS}`,
+      },
+    },
+  );
 }

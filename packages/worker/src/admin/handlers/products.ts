@@ -25,11 +25,17 @@ import {
   stmtInsertProduct,
   stmtInsertProductKey,
   stmtRetireProductKeys,
+  stmtSetProductKeyStatus,
   stmtInsertSchema,
   upsertProductSyncState,
   upsertProductSecret,
 } from "../../repo.js";
-import { deleteProduct, updateProduct } from "../repo.js";
+import { deleteKeyRecord, deleteTokenRecord } from "../../kv.js";
+import {
+  deleteProduct,
+  listMachinesByProduct,
+  updateProduct,
+} from "../repo.js";
 import { generateEd25519, seal } from "../../keyvault.js";
 import { linkRepo } from "../../release/linkRepo.js";
 import { resyncRepo } from "../../release/resync.js";
@@ -193,6 +199,22 @@ export async function handleProducts(
     return adminJson({ ok: true, slug });
   }
   if (req.method === "DELETE") {
+    const body = await readBody(req);
+    if (body.confirmSlug !== slug) {
+      return err(422, ErrorCode.BadRequest, "confirmSlug must match product", {
+        fields: ["confirmSlug"],
+      });
+    }
+    const machines = await listMachinesByProduct(db, slug);
+    for (const machine of machines) {
+      if (machine.token_hash)
+        await deleteTokenRecord(env, slug, machine.token_hash);
+    }
+    const keys = await db.all<{ key_hash: string }>(
+      "SELECT key_hash FROM keys_index WHERE product = ?",
+      slug,
+    );
+    for (const key of keys) await deleteKeyRecord(env, slug, key.key_hash);
     await audit(
       db,
       slug,
@@ -202,7 +224,7 @@ export async function handleProducts(
       { kind: "product", id: slug },
       `Deleted product ${slug}`,
     );
-    await deleteProduct(db, slug);
+    await deleteProduct(db, slug, now);
     return adminJson({ ok: true, slug });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");
@@ -247,7 +269,11 @@ async function manualCreate(
     body.signingKid ?? `${slug}-${new Date(now * 1000).getUTCFullYear()}`,
   );
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
-  const encPrivate = await seal(env, privatePkcs8Pem);
+  const encPrivate = await seal(env, privatePkcs8Pem, {
+    product: slug,
+    kind: "signing-key",
+    id: kid,
+  });
 
   // Atomic: product + signing key + active catalog in ONE batch, so a product can never
   // exist without a usable signing key (matches the link-repo invariant).
@@ -363,7 +389,11 @@ async function handleSecrets(
       fields: ["value"],
     });
   }
-  const enc = await seal(env, value);
+  const enc = await seal(env, value, {
+    product: slug,
+    kind: "product-secret",
+    id: name,
+  });
   await upsertProductSecret(db, {
     product: slug,
     name,
@@ -384,7 +414,9 @@ async function handleSecrets(
   return adminJson({ ok: true, name });
 }
 
-/** POST /api/products/<slug>/keys/rotate — retire the active key, insert a new active one. */
+const TRUST_CACHE_SECONDS = 300;
+
+/** POST /api/products/<slug>/keys/{prepare|activate|retire|revoke}. */
 async function handleKeys(
   req: Request,
   env: Env,
@@ -394,38 +426,124 @@ async function handleKeys(
   action: string | undefined,
   now: number,
 ): Promise<Response> {
-  if (action !== "rotate") return notFound();
+  if (!action) return notFound();
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
-  const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}-${(now % 100000).toString(36)}`;
-  const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
-  const encPrivate = await seal(env, privatePkcs8Pem);
-
-  await db.batch([
-    stmtRetireProductKeys(slug, now),
-    stmtInsertProductKey({
+  if (action === "prepare" || action === "rotate") {
+    const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}-${(now % 100000).toString(36)}`;
+    const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
+    const encPrivate = await seal(env, privatePkcs8Pem, {
       product: slug,
+      kind: "signing-key",
+      id: kid,
+    });
+
+    await db.batch([
+      stmtInsertProductKey({
+        product: slug,
+        kid,
+        alg: "Ed25519",
+        public_b64url: publicRawB64url,
+        enc_private_json: encPrivate,
+        status: "staged",
+        created_at: now,
+        rotated_at: null,
+      }),
+    ]);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "key.prepare",
+      { kind: "key", id: kid },
+      `Prepared signing key ${kid}`,
+    );
+    // Respond with the new kid + PUBLIC key only — the private key never leaves the KEK store.
+    return adminJson({
+      ok: true,
       kid,
-      alg: "Ed25519",
-      public_b64url: publicRawB64url,
-      enc_private_json: encPrivate,
-      status: "active",
-      created_at: now,
-      rotated_at: null,
-    }),
-  ]);
-  await audit(
-    db,
+      publicKey: publicRawB64url,
+      status: "staged",
+      activateAfter: now + TRUST_CACHE_SECONDS,
+    });
+  }
+
+  const body = await readBody(req);
+  const kid = typeof body.kid === "string" ? body.kid : "";
+  if (!kid)
+    return err(422, ErrorCode.BadRequest, "kid is required", {
+      fields: ["kid"],
+    });
+  const row = await db.first<{
+    kid: string;
+    status: string;
+    created_at: number;
+  }>(
+    "SELECT kid, status, created_at FROM product_keys WHERE product = ? AND kid = ?",
     slug,
-    session,
-    now,
-    "key.rotate",
-    { kind: "key", id: kid },
-    `Rotated signing key to ${kid}`,
+    kid,
   );
-  // Respond with the new kid + PUBLIC key only — the private key never leaves the KEK store.
-  return adminJson({ ok: true, kid, publicKey: publicRawB64url });
+  if (!row) return notFound();
+
+  if (action === "activate") {
+    const breakGlass = body.breakGlass === true;
+    if (row.status !== "staged") {
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "only staged keys can be activated",
+      );
+    }
+    if (!breakGlass && now - row.created_at < TRUST_CACHE_SECONDS) {
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "key has not completed trust cache window",
+        {
+          activateAfter: row.created_at + TRUST_CACHE_SECONDS,
+        },
+      );
+    }
+    await db.batch([
+      stmtRetireProductKeys(slug, now),
+      stmtSetProductKeyStatus(slug, kid, "active", now),
+    ]);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      breakGlass ? "key.activate.break_glass" : "key.activate",
+      { kind: "key", id: kid },
+      `Activated signing key ${kid}`,
+    );
+    return adminJson({ ok: true, kid, status: "active" });
+  }
+
+  if (action === "retire" || action === "revoke") {
+    const status = action === "retire" ? "retired" : "revoked";
+    await db.run(
+      "UPDATE product_keys SET status = ?, rotated_at = ? WHERE product = ? AND kid = ?",
+      status,
+      now,
+      slug,
+      kid,
+    );
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      `key.${action}`,
+      { kind: "key", id: kid },
+      `${action === "retire" ? "Retired" : "Revoked"} signing key ${kid}`,
+    );
+    return adminJson({ ok: true, kid, status });
+  }
+
+  return notFound();
 }
 
 /** GET/POST /api/products/<slug>/release/* — release health + linked repo resync. */

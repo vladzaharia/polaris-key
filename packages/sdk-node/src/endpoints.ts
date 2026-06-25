@@ -1,6 +1,25 @@
 // Enrollment + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report).
 
-import { HEADER_DEVICE } from "@polaris-key/protocol";
+import { arch, platform } from "node:os";
+import {
+  HEADER_ARCH,
+  HEADER_DEVICE,
+  HEADER_PLATFORM,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
+} from "@polaris-key/protocol";
+
+const SDK_NAME = "@polaris-key/node";
+const SDK_VERSION = "0.0.0";
+
+function metadataHeaders(): Record<string, string> {
+  return {
+    [HEADER_PLATFORM]: platform(),
+    [HEADER_ARCH]: arch(),
+    [HEADER_SDK_NAME]: SDK_NAME,
+    [HEADER_SDK_VERSION]: SDK_VERSION,
+  };
+}
 
 export type EnrollResult =
   | { kind: "ok"; token: string; schemaVersion: number }
@@ -50,7 +69,11 @@ export async function enrollWithKey(
 ): Promise<EnrollResult> {
   return enrollLike(
     `${opts.baseUrl}/${opts.product}/enroll`,
-    { authorization: `Bearer ${opts.key}`, [HEADER_DEVICE]: opts.deviceId },
+    {
+      authorization: `Bearer ${opts.key}`,
+      [HEADER_DEVICE]: opts.deviceId,
+      ...metadataHeaders(),
+    },
     opts.fetchImpl ?? fetch,
   );
 }
@@ -60,7 +83,11 @@ export async function reacquireToken(
 ): Promise<EnrollResult> {
   return enrollLike(
     `${opts.baseUrl}/${opts.product}/token`,
-    { authorization: `Bearer ${opts.token}`, [HEADER_DEVICE]: opts.deviceId },
+    {
+      authorization: `Bearer ${opts.token}`,
+      [HEADER_DEVICE]: opts.deviceId,
+      ...metadataHeaders(),
+    },
     opts.fetchImpl ?? fetch,
   );
 }
@@ -96,6 +123,7 @@ export async function reportSnapshot(opts: {
       headers: {
         authorization: `Bearer ${opts.token}`,
         "content-type": "application/json",
+        ...metadataHeaders(),
       },
       body: JSON.stringify(opts.snapshot),
     });

@@ -30,10 +30,8 @@ public enum JWSVerifier {
     /// decoding, bounding the parser's work on adversarial input.
     public static let maxPayloadBytes = 65_536
 
-    /// Verify a compact JWS against a trust set. Returns the decoded `kid` + payload, or
-    /// `nil` on ANY failure (malformed, unknown `kid`, wrong `alg`, non-32-byte key, bad
-    /// signature, oversized/undecodable payload). Never throws.
-    public static func verify(_ jws: String, trust: TrustSet) -> VerifiedJws? {
+    /// Verify a compact JWS against a trust set and return the signed payload bytes.
+    public static func verifyPayloadData(_ jws: String, trust: TrustSet) -> (kid: String, payload: Data)? {
         // 1. Structure: exactly three "."-separated segments.
         let parts = jws.split(separator: ".", omittingEmptySubsequences: false)
         guard parts.count == 3 else { return nil }
@@ -78,11 +76,19 @@ public enum JWSVerifier {
         //    decoder, so a giant blob can't drive unbounded parse work.
         guard payloadData.count <= maxPayloadBytes else { return nil }
 
-        // 7. Only after a valid signature, decode the payload into the typed doc.
-        guard let doc = try? JSONDecoder().decode(ManagedConfigDoc.self, from: payloadData)
+        return (kid: kid, payload: payloadData)
+    }
+
+    /// Verify a compact JWS against a trust set. Returns the decoded `kid` + payload, or
+    /// `nil` on ANY failure (malformed, unknown `kid`, wrong `alg`, non-32-byte key, bad
+    /// signature, oversized/undecodable payload). Never throws.
+    public static func verify(_ jws: String, trust: TrustSet) -> VerifiedJws? {
+        guard let verified = verifyPayloadData(jws, trust: trust) else { return nil }
+        // Only after a valid signature, decode the payload into the typed doc.
+        guard let doc = try? JSONDecoder().decode(ManagedConfigDoc.self, from: verified.payload)
         else { return nil }
 
-        return VerifiedJws(kid: kid, payload: doc)
+        return VerifiedJws(kid: verified.kid, payload: doc)
     }
 }
 

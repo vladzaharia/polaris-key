@@ -5,7 +5,9 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { TrustSet } from "@polaris-key/jws";
+import { verifyJws } from "@polaris-key/jws";
 import type { DocProfile, JSONValue } from "@polaris-key/protocol";
+import { ISSUER, type TrustManifestDoc } from "@polaris-key/protocol";
 import { channelForVersion } from "./semver.js";
 import { isUsable, licenseState, type LicenseState } from "./gate.js";
 import { verifyDoc } from "./verify.js";
@@ -17,7 +19,7 @@ import {
   reportSnapshot,
   type EnrollResult,
 } from "./endpoints.js";
-import { FileStore, type CacheRecord, type Store } from "./store.js";
+import { KeyringStore, type CacheRecord, type Store } from "./store.js";
 import {
   listUserEntries,
   resolveSource,
@@ -36,6 +38,8 @@ export interface PolarisKeyOptions {
   channel?: string;
   /** Pinned trust set (kid -> raw Ed25519 pubkey base64url). JWKS discovery is layered later. */
   trust: { pinnedKeys: TrustSet };
+  /** Refresh signed trust manifests before config fetches. Defaults to true. */
+  trustRefresh?: boolean;
   store?: Store;
   configDir?: string;
   fetchImpl?: typeof fetch;
@@ -71,7 +75,8 @@ export class PolarisKeyClient {
   private readonly baseUrl: string;
   private readonly version: string;
   private readonly channel: string;
-  private readonly trust: TrustSet;
+  private trust: TrustSet;
+  private readonly trustRefreshEnabled: boolean;
   private readonly store: Store;
   private readonly fetchImpl?: typeof fetch;
   private readonly localOverrides: Record<string, JSONValue>;
@@ -88,9 +93,10 @@ export class PolarisKeyClient {
     this.version = opts.version;
     this.channel = opts.channel ?? channelForVersion(opts.version);
     this.trust = opts.trust.pinnedKeys;
+    this.trustRefreshEnabled = opts.trustRefresh !== false;
     this.store =
       opts.store ??
-      new FileStore(opts.productSlug, opts.configDir ?? defaultConfigDir());
+      new KeyringStore(opts.productSlug, opts.configDir ?? defaultConfigDir());
     this.fetchImpl = opts.fetchImpl;
     this.localOverrides = opts.localOverrides ?? {};
     this.envPrefix = opts.envPrefix ?? DEFAULT_ENV_PREFIX;
@@ -118,6 +124,9 @@ export class PolarisKeyClient {
     this.deviceId = await this.store.getDeviceId();
     this.token = await this.store.getToken();
     this.cache = await this.store.readCache();
+    if (this.cache?.trustedKeys) {
+      this.trust = { ...this.trust, ...this.cache.trustedKeys };
+    }
   }
 
   // ── Gate / reads ────────────────────────────────────────────────────────────
@@ -237,6 +246,7 @@ export class PolarisKeyClient {
 
   private async fetchAndApply(allowReacquire: boolean): Promise<RefreshResult> {
     if (!this.token) return { applied: false };
+    if (this.trustRefreshEnabled) await this.refreshTrust().catch(() => false);
     const res = await fetchManagedConfig({
       baseUrl: this.baseUrl,
       product: this.product,
@@ -293,6 +303,8 @@ export class PolarisKeyClient {
           etag: res.etag ?? undefined,
           lastAcceptedIssuedAt: doc.issuedAt,
           lastVerifiedAt: Date.now(),
+          trustedKeys: this.cache?.trustedKeys,
+          lastTrustIssuedAt: this.cache?.lastTrustIssuedAt,
           lastSyncUnauthorized: false,
           blocked: undefined,
         };
@@ -304,16 +316,56 @@ export class PolarisKeyClient {
     }
   }
 
+  private async refreshTrust(): Promise<boolean> {
+    const f = this.fetchImpl ?? fetch;
+    const url = `${this.baseUrl}/${this.product}/.well-known/polaris-trust.jws`;
+    const res = await f(url, { headers: { accept: "application/jose" } });
+    if (!res.ok) return false;
+    const jws = await res.text();
+    const verified = await verifyJws<TrustManifestDoc>(jws, this.trust);
+    if (!verified) return false;
+    const doc = verified.payload;
+    const now = nowSec();
+    if (doc.aud !== this.product || doc.iss !== ISSUER) return false;
+    if (doc.expiresAt < now) return false;
+    if (
+      this.cache?.lastTrustIssuedAt !== undefined &&
+      doc.issuedAt <= this.cache.lastTrustIssuedAt
+    ) {
+      return false;
+    }
+    const next: TrustSet = {};
+    for (const key of doc.keys) {
+      if (key.alg === "EdDSA" && key.kty === "OKP" && key.crv === "Ed25519") {
+        next[key.kid] = key.publicKey;
+      }
+    }
+    if (Object.keys(next).length === 0) return false;
+    this.trust = { ...this.trust, ...next };
+    await this.patchCache({
+      trustedKeys: this.trust,
+      lastTrustIssuedAt: doc.issuedAt,
+    });
+    return true;
+  }
+
   private async patchCache(patch: Partial<CacheRecord>): Promise<void> {
     if (!this.cache) {
       // No doc yet: remember only the bookkeeping in a type-honest doc-less record
       // (status() + the getters all tolerate a doc-less cache).
-      if (patch.blocked || patch.lastSyncUnauthorized) {
-        this.cache = {
+      if (
+        patch.blocked ||
+        patch.lastSyncUnauthorized ||
+        patch.trustedKeys ||
+        patch.lastTrustIssuedAt
+      ) {
+        const next: CacheRecord = {
           doc: null,
           lastAcceptedIssuedAt: 0,
           ...patch,
         };
+        this.cache = next;
+        await this.store.writeCache(next);
       }
       return;
     }

@@ -8,6 +8,25 @@ import Foundation
 import FoundationNetworking
 #endif
 
+private func sdkMetadataHeaders() -> [String: String] {
+    [
+        HEADER_PLATFORM: ProcessInfo.processInfo.operatingSystemVersionString,
+        HEADER_ARCH: swiftArch(),
+        HEADER_SDK_NAME: "PolarisKeySwift",
+        HEADER_SDK_VERSION: "0.0.0",
+    ]
+}
+
+private func swiftArch() -> String {
+    #if arch(arm64)
+    return "arm64"
+    #elseif arch(x86_64)
+    return "x86_64"
+    #else
+    return "unknown"
+    #endif
+}
+
 /// The outcome of a `GET /<product>/config` call.
 public enum FetchResult: Sendable {
     case ok(jws: String, etag: String?)
@@ -60,6 +79,9 @@ public func fetchManagedConfig(
     req.setValue(opts.deviceId, forHTTPHeaderField: HEADER_DEVICE)
     req.setValue(opts.version, forHTTPHeaderField: HEADER_VERSION)
     req.setValue(opts.channel, forHTTPHeaderField: HEADER_CHANNEL)
+    for (key, value) in sdkMetadataHeaders() {
+        req.setValue(value, forHTTPHeaderField: key)
+    }
     if let etag = opts.etag {
         req.setValue(etag, forHTTPHeaderField: "If-None-Match")
     }

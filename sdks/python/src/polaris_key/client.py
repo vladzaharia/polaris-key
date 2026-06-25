@@ -42,8 +42,8 @@ from .license import (
     license_state,
 )
 from .models import DocProfile, ManagedEntry
-from .store import CacheRecord, FileStore, Store
-from .verify import TrustSet, verify_doc
+from .store import CacheRecord, KeyringStore, Store
+from .verify import TrustSet, verify_doc, verify_jws
 
 __all__ = ["PolarisKeyClient", "RefreshResult"]
 
@@ -88,13 +88,15 @@ class PolarisKeyClient:
         local_overrides: Optional[dict] = None,
         env_prefix: str = "PKEY_CONFIG_",
         env: Optional[Mapping[str, str]] = None,
+        trust_refresh: bool = True,
     ) -> None:
         self.product = product_slug
         self._base_url = (base_url or DEFAULT_BASE).rstrip("/")
         self._version = version
         self._channel = channel or channel_for_version(version)
         self._trust = trust
-        self._store: Store = store or FileStore(
+        self._trust_refresh = trust_refresh
+        self._store: Store = store or KeyringStore(
             product_slug, config_dir or _default_config_dir()
         )
         # An injected transport/client (tests) or a lazily-created default.
@@ -140,6 +142,8 @@ class PolarisKeyClient:
         self._device_id = self._store.get_device_id()
         self._token = self._store.get_token()
         self._cache = self._store.read_cache()
+        if self._cache and self._cache.trustedKeys:
+            self._trust = {**self._trust, **self._cache.trustedKeys}
 
     # ── Gate / reads ────────────────────────────────────────────────────────────
     def status(self, now: Optional[int] = None) -> LicenseState:
@@ -294,6 +298,11 @@ class PolarisKeyClient:
     def _fetch_and_apply(self, allow_reacquire: bool) -> RefreshResult:
         if not self._token:
             return RefreshResult(applied=False)
+        if self._trust_refresh:
+            try:
+                self._refresh_trust()
+            except Exception:
+                pass
         res = fetch_managed_config(
             base_url=self._base_url,
             product=self.product,
@@ -353,6 +362,8 @@ class PolarisKeyClient:
                 lastVerifiedAt=_now_sec(),
                 lastSyncUnauthorized=False,
                 blocked=None,
+                trustedKeys=self._cache.trustedKeys if self._cache else None,
+                lastTrustIssuedAt=self._cache.lastTrustIssuedAt if self._cache else None,
             )
             self._store.write_cache(self._cache)
             return RefreshResult(applied=True)
@@ -360,11 +371,59 @@ class PolarisKeyClient:
         # FetchError
         return RefreshResult(applied=False)
 
+    def _refresh_trust(self) -> bool:
+        res = self._http.get(
+            f"{self._base_url}/{self.product}/.well-known/polaris-trust.jws",
+            headers={"accept": "application/jose"},
+        )
+        if res.status_code != 200:
+            return False
+        verified = verify_jws(res.text, self._trust)
+        if verified is None:
+            return False
+        doc = verified.payload
+        if doc.get("aud") != self.product or doc.get("iss") != "key.plrs.im":
+            return False
+        if not isinstance(doc.get("issuedAt"), int) or not isinstance(
+            doc.get("expiresAt"), int
+        ):
+            return False
+        if doc["expiresAt"] < _now_sec():
+            return False
+        if self._cache and self._cache.lastTrustIssuedAt is not None:
+            if doc["issuedAt"] <= self._cache.lastTrustIssuedAt:
+                return False
+        keys = doc.get("keys")
+        if not isinstance(keys, list):
+            return False
+        next_keys: Dict[str, str] = {}
+        for item in keys:
+            if not isinstance(item, dict):
+                continue
+            if (
+                item.get("alg") == "EdDSA"
+                and item.get("kty") == "OKP"
+                and item.get("crv") == "Ed25519"
+            ):
+                kid = item.get("kid")
+                public_key = item.get("publicKey")
+                if isinstance(kid, str) and isinstance(public_key, str):
+                    next_keys[kid] = public_key
+        if not next_keys:
+            return False
+        self._trust = {**self._trust, **next_keys}
+        self._patch_cache(
+            trusted_keys=self._trust, last_trust_issued_at=doc["issuedAt"]
+        )
+        return True
+
     def _patch_cache(
         self,
         *,
         blocked: Any = _UNSET,
         last_sync_unauthorized: Any = _UNSET,
+        trusted_keys: Any = _UNSET,
+        last_trust_issued_at: Any = _UNSET,
     ) -> None:
         """Update the bookkeeping fields, tolerating a doc-less cache.
 
@@ -375,7 +434,8 @@ class PolarisKeyClient:
         if self._cache is None:
             sets_block = blocked is not _UNSET and blocked is not None
             sets_unauth = last_sync_unauthorized is True
-            if sets_block or sets_unauth:
+            sets_trust = trusted_keys is not _UNSET or last_trust_issued_at is not _UNSET
+            if sets_block or sets_unauth or sets_trust:
                 self._cache = CacheRecord(
                     doc=None,
                     lastAcceptedIssuedAt=0,
@@ -385,7 +445,14 @@ class PolarisKeyClient:
                         if last_sync_unauthorized is not _UNSET
                         else False
                     ),
+                    trustedKeys=trusted_keys if trusted_keys is not _UNSET else None,
+                    lastTrustIssuedAt=(
+                        last_trust_issued_at
+                        if last_trust_issued_at is not _UNSET
+                        else None
+                    ),
                 )
+                self._store.write_cache(self._cache)
             return
         # ``CacheRecord`` is replaced (not mutated) so a frozen record never raises
         # FrozenInstanceError; ``_UNSET`` fields keep their current value.
@@ -394,6 +461,10 @@ class PolarisKeyClient:
             changes["blocked"] = blocked
         if last_sync_unauthorized is not _UNSET:
             changes["lastSyncUnauthorized"] = last_sync_unauthorized
+        if trusted_keys is not _UNSET:
+            changes["trustedKeys"] = trusted_keys
+        if last_trust_issued_at is not _UNSET:
+            changes["lastTrustIssuedAt"] = last_trust_issued_at
         self._cache = dataclasses.replace(self._cache, **changes)
         self._store.write_cache(self._cache)
 

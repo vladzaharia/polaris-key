@@ -38,10 +38,22 @@ describe("keyvault seal/open", () => {
     await expect(open({} as Env, sealed)).rejects.toThrow();
   });
 
-  it("accepts a non-32-byte KEK by SHA-256'ing it to 32 bytes", async () => {
+  it("rejects a non-32-byte KEK instead of deriving a deployment key", async () => {
     const weird = { PLATFORM_KEK: btoa("short-kek") } as unknown as Env;
-    const sealed = await seal(weird, "value");
-    expect(await open(weird, sealed)).toBe("value");
+    await expect(seal(weird, "value")).rejects.toThrow(
+      "PLATFORM_KEK must decode to exactly 32 bytes",
+    );
+  });
+
+  it("binds v2 envelopes to KEK id and associated data", async () => {
+    const ctx = { product: "djdl", kind: "signing-key", id: "kid-1" } as const;
+    const sealed = await seal(env, "value", ctx);
+    expect(JSON.parse(sealed)).toMatchObject({ v: 2, kekId: "default" });
+    await expect(open(env, sealed)).rejects.toThrow("associated data");
+    await expect(
+      open(env, sealed, { product: "djdl", kind: "signing-key", id: "kid-2" }),
+    ).rejects.toThrow();
+    expect(await open(env, sealed, ctx)).toBe("value");
   });
 });
 

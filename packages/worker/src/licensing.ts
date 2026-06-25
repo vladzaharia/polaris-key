@@ -4,8 +4,15 @@
 // signed doc), report, deauthorize. Product isolation is structural — every repo/KV call
 // is product-scoped, the signing key is the product's, and the doc carries aud = product.
 
-import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol";
-import { HEADER_DEVICE } from "@polaris-key/protocol";
+import {
+  HEADER_ARCH,
+  HEADER_CHANNEL,
+  HEADER_DEVICE,
+  HEADER_PLATFORM,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
+  HEADER_VERSION,
+} from "@polaris-key/protocol";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import type { Product } from "./product.js";
@@ -31,6 +38,7 @@ import {
   touchKey,
   setMachineStatus,
   setMachineReported,
+  upsertMachine,
 } from "./repo.js";
 import { hashKey } from "./crypto.js";
 import { deleteTokenRecord } from "./kv.js";
@@ -42,6 +50,46 @@ import {
   rotateMachineToken,
   validateMachineToken,
 } from "./licenseCore.js";
+
+function machineMetadata(req: Request): {
+  userAgent: string | null;
+  platform: string | null;
+  arch: string | null;
+  appVersion: string | null;
+  sdkName: string | null;
+  sdkVersion: string | null;
+} {
+  return {
+    userAgent: req.headers.get("user-agent"),
+    platform: req.headers.get(HEADER_PLATFORM),
+    arch: req.headers.get(HEADER_ARCH),
+    appVersion: req.headers.get(HEADER_VERSION),
+    sdkName: req.headers.get(HEADER_SDK_NAME),
+    sdkVersion: req.headers.get(HEADER_SDK_VERSION),
+  };
+}
+
+function boundedReport(input: unknown): Record<string, unknown> {
+  const src =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? (input as Record<string, unknown>)
+      : {};
+  const out: Record<string, unknown> = {};
+  for (const key of [
+    "sdk",
+    "sdkVersion",
+    "appVersion",
+    "platform",
+    "arch",
+    "gate",
+    "config",
+    "entitlements",
+    "timestamp",
+  ]) {
+    if (src[key] !== undefined) out[key] = src[key];
+  }
+  return out;
+}
 
 /** POST /<product>/enroll — exchange a license key for a per-machine token. */
 export async function handleEnroll(
@@ -82,7 +130,7 @@ export async function handleEnroll(
     license,
     deviceId,
     now,
-    { userAgent: req.headers.get("user-agent") },
+    machineMetadata(req),
   );
   if ("error" in authorized) {
     if (authorized.error === "unauthorized")
@@ -153,6 +201,17 @@ export async function handleConfig(
   const token = bearer(req);
   const valid = await validateMachineToken(env, db, product, token, now);
   if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+  const meta = machineMetadata(req);
+  await upsertMachine(db, {
+    ...valid.machine,
+    last_seen: now,
+    ua: meta.userAgent ?? valid.machine.ua,
+    platform: meta.platform ?? valid.machine.platform ?? null,
+    arch: meta.arch ?? valid.machine.arch ?? null,
+    app_version: meta.appVersion ?? valid.machine.app_version ?? null,
+    sdk_name: meta.sdkName ?? valid.machine.sdk_name ?? null,
+    sdk_version: meta.sdkVersion ?? valid.machine.sdk_version ?? null,
+  });
 
   let payload = await resolveEffective(
     db,
@@ -233,9 +292,15 @@ export async function handleReport(
   const token = bearer(req);
   const valid = await validateMachineToken(env, db, product, token, now);
   if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+  const len = req.headers.get("content-length");
+  if (len && Number(len) > 16 * 1024)
+    return errorResponse(413, "body_too_large", "report body too large");
+  const rawText = await req.text();
+  if (rawText.length > 16 * 1024)
+    return errorResponse(413, "body_too_large", "report body too large");
   let snapshot: unknown;
   try {
-    snapshot = await req.json();
+    snapshot = rawText.trim() ? (JSON.parse(rawText) as unknown) : {};
   } catch {
     return errorResponse(400, ErrorCode.BadRequest, "invalid body");
   }
@@ -243,7 +308,7 @@ export async function handleReport(
     db,
     product.slug,
     valid.machine.machine_id,
-    JSON.stringify(snapshot ?? {}),
+    JSON.stringify(boundedReport(snapshot)),
     now,
   );
   return json({ ok: true });

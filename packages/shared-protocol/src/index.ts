@@ -82,6 +82,60 @@ export interface ManagedConfigDoc {
   payload: ManagedPayload;
 }
 
+export type SigningKeyStatus = "staged" | "active" | "retired" | "revoked";
+
+export interface TrustManifestKey {
+  kid: string;
+  alg: "EdDSA";
+  kty: "OKP";
+  crv: "Ed25519";
+  publicKey: string;
+  status: Exclude<SigningKeyStatus, "revoked">;
+}
+
+/** Signed by the currently trusted active product key and used by SDKs to refresh their
+ *  verification key set without trusting unsigned JWKS data. */
+export interface TrustManifestDoc {
+  schemaVersion: 1;
+  aud: string;
+  iss: string;
+  issuedAt: number;
+  expiresAt: number;
+  jwksUrl: string;
+  cacheSeconds: number;
+  keys: TrustManifestKey[];
+}
+
+export interface MachineMetadata {
+  label?: string;
+  platform?: string;
+  arch?: string;
+  appVersion?: string;
+  sdkName?: string;
+  sdkVersion?: string;
+}
+
+export type PolarisErrorCode =
+  | "unauthorized"
+  | "machine_limit"
+  | "license_disabled"
+  | "license_expired"
+  | "version_blocked"
+  | "channel_not_allowed"
+  | "rate_limited"
+  | "not_found"
+  | "bad_request"
+  | "forbidden";
+
+export interface PolarisErrorBody {
+  error: {
+    code: PolarisErrorCode | string;
+    message?: string;
+    fields?: string[];
+    [key: string]: unknown;
+  };
+}
+
 /** The terminal gate state a client renders from. */
 export type LicenseStatus =
   | "ok"
@@ -115,3 +169,7 @@ export const SECONDS_PER_DAY = 86_400;
 export const HEADER_DEVICE = "X-PKey-Device";
 export const HEADER_VERSION = "X-PKey-Version";
 export const HEADER_CHANNEL = "X-PKey-Channel";
+export const HEADER_SDK_NAME = "X-PKey-SDK";
+export const HEADER_SDK_VERSION = "X-PKey-SDK-Version";
+export const HEADER_PLATFORM = "X-PKey-Platform";
+export const HEADER_ARCH = "X-PKey-Arch";

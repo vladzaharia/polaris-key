@@ -191,12 +191,16 @@ describe("licensing edge cases", () => {
   it("report stores the device's reported snapshot", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await enroll(env, db, product, key, "dev-1");
+    const snapshot = {
+      appVersion: "1.2.3",
+      platform: "darwin",
+      config: { proxy: "on" },
+      entitlements: { beta: true },
+      gate: { licensed: true },
+      ignoredSecret: "do-not-store",
+    };
     const res = await handleReport(
-      mkReq(
-        "POST",
-        { authorization: `Bearer ${token}` },
-        { version: "1.2.3", proxy: "on" },
-      ),
+      mkReq("POST", { authorization: `Bearer ${token}` }, snapshot),
       env,
       db,
       product,
@@ -205,8 +209,11 @@ describe("licensing edge cases", () => {
     expect(res.status).toBe(200);
     const m = await getMachine(db, "djdl", "dev-1");
     expect(JSON.parse(m!.reported_json!)).toEqual({
-      version: "1.2.3",
-      proxy: "on",
+      appVersion: "1.2.3",
+      platform: "darwin",
+      config: { proxy: "on" },
+      entitlements: { beta: true },
+      gate: { licensed: true },
     });
     expect(m!.last_seen).toBe(NOW + 5);
   });

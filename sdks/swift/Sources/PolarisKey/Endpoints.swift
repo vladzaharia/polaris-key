@@ -16,6 +16,25 @@ public enum EnrollResult: Sendable, Equatable {
 }
 
 public enum Endpoints {
+    private static func metadataHeaders() -> [String: String] {
+        [
+            HEADER_PLATFORM: ProcessInfo.processInfo.operatingSystemVersionString,
+            HEADER_ARCH: swiftArch(),
+            HEADER_SDK_NAME: "PolarisKeySwift",
+            HEADER_SDK_VERSION: "0.0.0",
+        ]
+    }
+
+    private static func swiftArch() -> String {
+        #if arch(arm64)
+        return "arm64"
+        #elseif arch(x86_64)
+        return "x86_64"
+        #else
+        return "unknown"
+        #endif
+    }
+
     /// Exchange a license key for a per-machine token (`POST /<product>/enroll`).
     public static func enrollWithKey(
         baseUrl: String, product: String, key: String, deviceId: String,
@@ -23,7 +42,8 @@ public enum Endpoints {
     ) async -> EnrollResult {
         await enrollLike(
             urlString: "\(baseUrl)/\(product)/enroll",
-            headers: ["Authorization": "Bearer \(key)", HEADER_DEVICE: deviceId],
+            headers: ["Authorization": "Bearer \(key)", HEADER_DEVICE: deviceId]
+                .merging(metadataHeaders()) { current, _ in current },
             session: session)
     }
 
@@ -34,7 +54,8 @@ public enum Endpoints {
     ) async -> EnrollResult {
         await enrollLike(
             urlString: "\(baseUrl)/\(product)/token",
-            headers: ["Authorization": "Bearer \(token)", HEADER_DEVICE: deviceId],
+            headers: ["Authorization": "Bearer \(token)", HEADER_DEVICE: deviceId]
+                .merging(metadataHeaders()) { current, _ in current },
             session: session)
     }
 
@@ -63,6 +84,9 @@ public enum Endpoints {
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (key, value) in metadataHeaders() {
+            req.setValue(value, forHTTPHeaderField: key)
+        }
         req.httpBody = snapshot
         guard let (_, response) = try? await session.data(for: req),
               let http = response as? HTTPURLResponse

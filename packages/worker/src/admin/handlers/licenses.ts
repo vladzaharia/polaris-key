@@ -18,7 +18,13 @@ import {
   listMachinesByLicense,
   setLicenseProfiles,
 } from "../../repo.js";
-import { listLicenses, patchLicense, setLicenseStatus } from "../repo.js";
+import {
+  listLicenses,
+  listProfiles,
+  listTiers,
+  patchLicense,
+  setLicenseStatus,
+} from "../repo.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
@@ -41,6 +47,25 @@ function parseProfiles(body: Record<string, unknown>): string[] {
     return body.profiles.filter((p) => typeof p === "string") as string[];
   }
   return typeof body.profile === "string" && body.profile ? [body.profile] : [];
+}
+
+async function validateRefs(
+  db: Db,
+  slug: string,
+  refs: { tier?: unknown; profiles?: string[] },
+): Promise<string[]> {
+  const fields: string[] = [];
+  if (typeof refs.tier === "string") {
+    const tiers = await listTiers(db, slug);
+    if (!tiers.some((t) => t.id === refs.tier)) fields.push("tier");
+  }
+  if (refs.profiles && refs.profiles.length > 0) {
+    const profiles = new Set((await listProfiles(db, slug)).map((p) => p.id));
+    refs.profiles.forEach((p, i) => {
+      if (!profiles.has(p)) fields.push(`profiles.${i}`);
+    });
+  }
+  return fields;
 }
 
 export async function handleLicenses(
@@ -67,6 +92,14 @@ export async function handleLicenses(
       const body = await readBody(req);
       const licenseId = randomId("lic");
       const profiles = parseProfiles(body);
+      const badRefs = await validateRefs(db, slug, {
+        tier: body.tier,
+        profiles,
+      });
+      if (badRefs.length)
+        return err(422, ErrorCode.BadRequest, "unknown reference", {
+          fields: badRefs,
+        });
       await insertLicense(db, {
         product: slug,
         id: licenseId,
@@ -183,6 +216,14 @@ export async function handleLicenses(
     if (req.method === "PATCH") {
       const body = await readBody(req);
       const profiles = parseProfiles(body);
+      const badRefs = await validateRefs(db, slug, {
+        tier: body.tier,
+        profiles,
+      });
+      if (badRefs.length)
+        return err(422, ErrorCode.BadRequest, "unknown reference", {
+          fields: badRefs,
+        });
       await patchLicense(
         db,
         slug,

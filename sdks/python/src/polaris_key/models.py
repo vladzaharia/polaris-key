@@ -19,6 +19,10 @@ __all__ = [
     "HEADER_DEVICE",
     "HEADER_VERSION",
     "HEADER_CHANNEL",
+    "HEADER_PLATFORM",
+    "HEADER_ARCH",
+    "HEADER_SDK_NAME",
+    "HEADER_SDK_VERSION",
     "JSONValue",
     "ManagementState",
     "LicenseStatus",
@@ -43,6 +47,10 @@ SECONDS_PER_DAY = 86_400
 HEADER_DEVICE = "X-PKey-Device"
 HEADER_VERSION = "X-PKey-Version"
 HEADER_CHANNEL = "X-PKey-Channel"
+HEADER_PLATFORM = "X-PKey-Platform"
+HEADER_ARCH = "X-PKey-Arch"
+HEADER_SDK_NAME = "X-PKey-SDK"
+HEADER_SDK_VERSION = "X-PKey-SDK-Version"
 
 # A JSON-serialisable value — the type every managed entry carries.
 JSONValue = Any

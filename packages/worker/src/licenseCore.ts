@@ -16,6 +16,7 @@ import {
   getActiveSchema,
   getLicense,
   getMachine,
+  getMachineByTokenHash,
   getProfile,
   getTier,
   listLicenseProfiles,
@@ -204,7 +205,14 @@ export async function authorizeMachine(
   license: LicenseRow,
   deviceId: string,
   now: number,
-  opts: { userAgent?: string | null } = {},
+  opts: {
+    userAgent?: string | null;
+    platform?: string | null;
+    arch?: string | null;
+    appVersion?: string | null;
+    sdkName?: string | null;
+    sdkVersion?: string | null;
+  } = {},
 ): Promise<{ token: string; machine: MachineRow } | AuthzError> {
   if (!licenseUsable(license, now)) return { error: "unauthorized" };
 
@@ -245,6 +253,11 @@ export async function authorizeMachine(
     overrides_json: existing?.overrides_json ?? null,
     reported_json: existing?.reported_json ?? null,
     token_hash: tokenHash,
+    platform: opts.platform ?? existing?.platform ?? null,
+    arch: opts.arch ?? existing?.arch ?? null,
+    app_version: opts.appVersion ?? existing?.app_version ?? null,
+    sdk_name: opts.sdkName ?? existing?.sdk_name ?? null,
+    sdk_version: opts.sdkVersion ?? existing?.sdk_version ?? null,
   };
   await upsertMachine(db, machine);
   await putTokenRecord(env, product.slug, tokenHash, {
@@ -265,14 +278,24 @@ export async function validateMachineToken(
 ): Promise<ValidMachineToken | { error: "unauthorized" }> {
   if (!token) return { error: "unauthorized" };
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const rec = await getTokenRecord(env, product.slug, tokenHash);
-  if (!rec || rec.product !== product.slug) return { error: "unauthorized" };
-  if (opts.deviceId && rec.machineId !== opts.deviceId)
+  let rec = await getTokenRecord(env, product.slug, tokenHash);
+  if (rec && rec.product !== product.slug) return { error: "unauthorized" };
+  let machine = rec
+    ? await getMachine(db, product.slug, rec.machineId)
+    : await getMachineByTokenHash(db, product.slug, tokenHash);
+  if (!rec && machine) {
+    rec = {
+      product: product.slug,
+      machineId: machine.machine_id,
+      licenseId: machine.license_id,
+    };
+    await putTokenRecord(env, product.slug, tokenHash, rec);
+  }
+  if (opts.deviceId && rec?.machineId !== opts.deviceId)
     return { error: "unauthorized" };
-
-  const machine = await getMachine(db, product.slug, rec.machineId);
   if (!machine || machine.status !== "authorized")
     return { error: "unauthorized" };
+  if (!rec) return { error: "unauthorized" };
   if (machine.license_id !== rec.licenseId || machine.token_hash !== tokenHash)
     return { error: "unauthorized" };
 
