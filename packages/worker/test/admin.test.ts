@@ -9,7 +9,7 @@ import { handleAdminLogin } from "../src/admin/auth.js";
 import { ADMIN_COOKIE, CSRF_HEADER, issueSession, verifySession, type SessionIdentity } from "../src/admin/session.js";
 import { getActiveProductKey, getProductSecret, listAudit } from "../src/repo.js";
 import { loadProduct } from "../src/product.js";
-import { handleEnroll } from "../src/licensing.js";
+import { handleConfig, handleEnroll } from "../src/licensing.js";
 import { handleMintToken } from "../src/edgeMint.js";
 import { buildDoc, signDoc } from "../src/configDoc.js";
 import { open } from "../src/keyvault.js";
@@ -350,6 +350,60 @@ describe("admin api", () => {
     const verified = await verifyJws<ManagedConfigDoc>(jws, { [product!.signingKid]: product!.signingPub! });
     expect(verified).not.toBeNull();
     expect(verified!.payload.aud).toBe("manualco");
+  });
+
+  // ── P4 regression: manual-create atomicity ────────────────────────────────────
+  // A manual product is minted in ONE batch: the `products` row AND an active `product_keys`
+  // row must BOTH exist, so a product can never be half-created (a row with no usable signing
+  // key). We assert both rows directly, then prove the pair is usable end-to-end (loadProduct
+  // opens the sealed key + /config signs a verifiable doc).
+  it("manual create atomically yields BOTH a products row AND an active product_keys row", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP],
+    });
+
+    const created = await dispatch(
+      mkReq("POST", "/api/products", { cookie, csrf, body: { slug: "atomicco", name: "Atomic Co" } }),
+      env, db, "/api/products",
+    );
+    expect(created.status).toBe(201);
+    const { kid } = (await created.json()) as { kid: string };
+
+    // 1) The products row exists.
+    const productRow = await db.first<{ slug: string; signing_pub: string }>(
+      "SELECT * FROM products WHERE slug = ?", "atomicco",
+    );
+    expect(productRow).not.toBeNull();
+
+    // 2) An ACTIVE product_keys row exists for the SAME kid, with sealed private material.
+    const keyRow = await getActiveProductKey(db, "atomicco");
+    expect(keyRow).not.toBeNull();
+    expect(keyRow!.kid).toBe(kid);
+    expect(keyRow!.status).toBe("active");
+    expect(keyRow!.public_b64url).toBe(productRow!.signing_pub);
+    // Sealed at rest — the private key is never stored in plaintext.
+    expect(keyRow!.enc_private_json).not.toContain("BEGIN PRIVATE KEY");
+
+    // 3) The pair is usable: loadProduct opens the sealed key + /config signs a verifiable doc.
+    const product = (await loadProduct(env, db, "atomicco"))!;
+    expect(product.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+    const { key } = await seedLicenseWithKey(db, "atomicco");
+    const enrollRes = await handleEnroll(
+      mkLicReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
+      env, db, product, NOW,
+    );
+    expect(enrollRes.status).toBe(200);
+    const { token } = (await enrollRes.json()) as { token: string };
+    const cfgRes = await handleConfig(
+      mkLicReq("GET", { authorization: `Bearer ${token}`, "x-pkey-version": "1.0.0" }),
+      env, db, product, NOW,
+    );
+    expect(cfgRes.status).toBe(200);
+    const verified = await verifyJws<ManagedConfigDoc>(await cfgRes.text(), { [product.signingKid]: product.signingPub! });
+    expect(verified).not.toBeNull();
+    expect(verified!.payload.aud).toBe("atomicco");
   });
 
   it("PUT secrets stores write-only (sealed, name echoed but never the value)", async () => {

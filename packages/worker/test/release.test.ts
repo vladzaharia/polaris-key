@@ -410,6 +410,40 @@ describe("handleRelease", () => {
     expect(xml).toContain("/djdl/dmg/1.2.3/djdl-arm64.dmg");
     expect(xml).toContain("<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>");
   });
+
+  // ── P4 regression: unsigned-appcast fallback gating ───────────────────────────
+  // A product that configures a Sparkle pubkey EXPECTS signed updates: if the matched DMG
+  // has no sibling `.sig`, the feed must FAIL CLOSED (404) rather than ship an unsigned
+  // appcast. Only a product with NO configured pubkey may fall back to omitting the signature.
+  it("404s when sparkle_ed25519_pub is set but the .sig asset is missing (fail closed)", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db); // sparkle_ed25519_pub = "PUBKEY==" by default
+    const { env } = envFor();
+    // The DMG exists but its sibling `<dmg>.sig` does NOT.
+    const rel = release({ tag_name: "v1.2.3", assets: [asset("djdl-arm64.dmg", 100, 4096)] });
+    const { fetchImpl } = stubFetch([
+      ["/releases?per_page", () => new Response(JSON.stringify([rel]), { status: 200 })],
+    ]);
+    const res = await handleRelease(req(), env, db, makeProduct(), "appcast", {}, fetchImpl);
+    expect(res.status).toBe(404);
+  });
+
+  it("renders an unsigned appcast (no edSignature) when sparkle_ed25519_pub is NOT configured", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { sparkle_ed25519_pub: null }); // genuinely unsigned channel
+    const { env } = envFor();
+    // No `.sig` asset, and that's fine: an unsigned-pubkey product may ship without a signature.
+    const rel = release({ tag_name: "v1.2.3", assets: [asset("djdl-arm64.dmg", 100, 4096)] });
+    const { fetchImpl } = stubFetch([
+      ["/releases?per_page", () => new Response(JSON.stringify([rel]), { status: 200 })],
+    ]);
+    const res = await handleRelease(req(), env, db, makeProduct(), "appcast", {}, fetchImpl);
+    expect(res.status).toBe(200);
+    const xml = await res.text();
+    expect(xml).not.toContain("sparkle:edSignature");
+    expect(xml).toContain("/djdl/dmg/1.2.3/djdl-arm64.dmg");
+    expect(xml).toContain("<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>");
+  });
 });
 
 function req(url = "https://key.plrs.im/djdl/version"): Request {

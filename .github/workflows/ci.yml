@@ -12,16 +12,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      # Drift gate: the cross-language conformance corpus must be regenerable in place.
-      - run: pnpm gen:corpus -- --check
       - run: pnpm typecheck
       - run: pnpm test
+      # Drift gate: the cross-language conformance corpus must be regenerable in place.
+      - run: pnpm gen:corpus -- --check
+      # TODO(mirror-drift): a `pnpm gen:mirrors -- --check` gate is intentionally omitted.
+      # tools/gen-mirrors.ts supports --check, but it REQUIRES --catalog <path> and
+      # --out-dir <dir> (no defaults) and no product currently emits typed mirrors
+      # (djdl is purely data-driven, reading the catalog at runtime). The root
+      # `gen:mirrors` script has no catalog/out-dir wired in, so a bare invocation
+      # would exit 2 (usage error), not perform a real drift check. Re-enable this
+      # gate once a product opts into generated mirrors and wires up the paths, e.g.:
+      #   pnpm gen:mirrors -- --catalog products/<slug>/catalog.json \
+      #     --out-dir <mirror-dir> --lang ts,python,swift --check
       - run: pnpm --filter @polaris-key/admin build
 
   python:
@@ -36,12 +47,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e "sdks/python[keyring,click,typer]" pytest
-      - run: cd sdks/python && python -m pytest -q
+      - name: Create venv + install (editable, dev extras)
+        working-directory: sdks/python
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -e ".[dev]"
+      - name: pytest
+        working-directory: sdks/python
+        run: .venv/bin/python -m pytest -q
 
   swift:
     name: Swift SDK
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - run: cd sdks/swift && swift build && swift test
+      - run: swift test --package-path sdks/swift

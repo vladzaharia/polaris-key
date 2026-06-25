@@ -14,6 +14,9 @@ importers:
       '@types/node':
         specifier: ^22.14.0
         version: 22.20.0
+      husky:
+        specifier: ^9.1.7
+        version: 9.1.7
       prettier:
         specifier: ^3.5.0
         version: 3.8.4
@@ -221,6 +224,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20251001.0
         version: 4.20260623.1
+      '@polaris-key/node':
+        specifier: workspace:*
+        version: link:../sdk-node
       '@types/better-sqlite3':
         specifier: ^7.6.11
         version: 7.6.13
@@ -2373,6 +2379,11 @@ packages:
 
   human-id@4.2.0:
     resolution: {integrity: sha512-K3GbkIWqyvvlpfhBPlbEvD97TtqBpAYA4kt+cn2lD2x2HuohzZCibcA2nOlnJT6exqvJLggoB5nv2dNf192nEA==}
+    hasBin: true
+
+  husky@9.1.7:
+    resolution: {integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==}
+    engines: {node: '>=18'}
     hasBin: true
 
   iconv-lite@0.6.3:
@@ -5185,6 +5196,8 @@ snapshots:
       - supports-color
 
   human-id@4.2.0: {}
+
+  husky@9.1.7: {}
 
   iconv-lite@0.6.3:
     dependencies:

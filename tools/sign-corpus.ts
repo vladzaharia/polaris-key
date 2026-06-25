@@ -13,7 +13,14 @@ import { fileURLToPath } from "node:url";
 import { signJws, base64UrlEncodeBytes } from "@polaris-key/jws";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUT = join(HERE, "..", "conformance", "corpus", "v1", "cases.json");
+const CORPUS_DIR = join(HERE, "..", "conformance", "corpus", "v1");
+const OUT = join(CORPUS_DIR, "cases.json");
+
+/** The Swift test target bundles its fixtures as copied resources (it can't reach up the
+ *  monorepo at test time). To keep those copies from drifting from the canonical corpus, the
+ *  generator mirrors them here and `--check` guards the mirror exactly like the source. */
+const SWIFT_RESOURCES = join(HERE, "..", "sdks", "swift", "Tests", "PolarisKeyTests", "Resources");
+const GATE_MATRIX = join(CORPUS_DIR, "gate-matrix.json");
 
 /** Committed TEST keypairs. These are NOT production keys — they exist only to sign the
  *  corpus. `djdl-test-2026` is the original djdl cross-platform vector key (so the legacy
@@ -302,7 +309,150 @@ async function build(): Promise<unknown> {
     expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: updatedAtDoc },
   });
 
+  // ── Attack surface (P-hardening) ───────────────────────────────────────────────
+  // The header byte segment of `validJws`, reused below to swap only the protected header.
+  const validHeaderless = validJws.split(".").slice(1).join("."); // encPayload.encSig
+
+  // 15. alg confusion — ES256. The doc was Ed25519-signed; presenting it with an `ES256`
+  //     header against an Ed25519 trust set must be rejected at the `alg` assertion, before
+  //     any signature math (no asymmetric-vs-symmetric / curve confusion).
+  cases.push({
+    id: "wrong-alg-es256",
+    description: "Header alg=ES256 against an Ed25519 trust set — rejected as algorithm confusion.",
+    jws: `${encSeg({ alg: "ES256", kid: "pkey-test-prod-2026" })}.${validHeaderless}`,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "fail" },
+  });
+
+  // 16. alg confusion — HS256. A symmetric MAC alg presented against an Ed25519 (asymmetric)
+  //     trust set: the classic "verify the HMAC using the public key as the secret" downgrade.
+  //     Must be rejected because alg !== EdDSA.
+  cases.push({
+    id: "wrong-alg-hs256",
+    description: "Header alg=HS256 (symmetric) against an Ed25519 trust set — rejected, no key-confusion.",
+    jws: `${encSeg({ alg: "HS256", kid: "pkey-test-prod-2026" })}.${validHeaderless}`,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "fail" },
+  });
+
+  // 17. Empty trust set — a perfectly valid token, but NO trusted keys. `{}` can never
+  //     verify anything → null.
+  cases.push({
+    id: "empty-trust-set",
+    description: "A valid token verified with an empty trust set ({}) — no key can match, must be null.",
+    jws: validJws,
+    trust: {},
+    expect: { verify: "fail" },
+  });
+
+  // 18. Foreign-kid-only — the trust set holds exactly one (real) key, but under a DIFFERENT
+  //     kid than the token's. The token's own kid is absent → null. (Distinct from wrong-kid:
+  //     here the trusted key bytes are genuine, just keyed under an unrelated kid.)
+  cases.push({
+    id: "foreign-kid-only",
+    description: "Valid token whose kid is absent from a non-empty (foreign-keyed) trust set — null.",
+    jws: validJws,
+    trust: { "fleet-key-eu-2027": pub("djdl-test-2026") },
+    expect: { verify: "fail" },
+  });
+
+  // 19. Large integer timestamps near 2^53 — issuedAt/expiresAt/graceUntil + an entry
+  //     updatedAt at Number.MAX_SAFE_INTEGER (9_007_199_254_740_991). These must round-trip
+  //     losslessly through every SDK's JSON number handling (JS double, Python int, Swift
+  //     Int64) — no precision corruption.
+  const MAX_SAFE = 9007199254740991; // 2^53 - 1
+  const bigIntDoc = polarisDoc({
+    licenseId: "lic_big_int_ts",
+    issuedAt: MAX_SAFE - 2,
+    expiresAt: MAX_SAFE - 1,
+    graceUntil: MAX_SAFE,
+    profile: { name: "Grace Hopper", firstName: "Grace", email: "grace@example.com", enrolledAt: MAX_SAFE - 3 },
+    payload: {
+      config: { "run.concurrency": { state: "enforced", value: 4, updatedAt: MAX_SAFE } },
+      secrets: {},
+      entitlements: { polarisVpn: { state: "enforced", value: true, updatedAt: MAX_SAFE - 1 } },
+    },
+  });
+  const bigIntJws = await signJws(bigIntDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  cases.push({
+    id: "valid-large-integer-timestamps",
+    description:
+      "Timestamps at/near 2^53-1 (Number.MAX_SAFE_INTEGER) round-trip losslessly across JS/Python/Swift — no precision loss.",
+    jws: bigIntJws,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: bigIntDoc },
+  });
+
+  // 20. base64url padding variant on the payload segment — the wire uses UNPADDED base64url,
+  //     so the signature is computed over `encHeader "." encPayload` exactly as transmitted.
+  //     Appending a `=` padding char changes those signing-input bytes, so the (unchanged)
+  //     signature no longer matches → null. Verifiers must use the segment verbatim, never
+  //     "helpfully" canonicalise padding away before checking the signature.
+  const [vh, vp, vs] = validJws.split(".") as [string, string, string];
+  cases.push({
+    id: "base64url-payload-padding",
+    description: "Payload segment carries a `=` base64url padding char — alters the signing input, must be rejected.",
+    jws: `${vh}.${vp}=.${vs}`,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "fail" },
+  });
+
+  // 21. Trailing data on the payload segment — extra base64url bytes appended after the signed
+  //     payload change the signing input, so the (unchanged) signature no longer matches → null.
+  cases.push({
+    id: "base64url-payload-trailing-data",
+    description: "Trailing data appended to the payload segment — signing input differs, signature must fail.",
+    jws: `${vh}.${vp}AAAA.${vs}`,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "fail" },
+  });
+
+  // 22. NUL byte inside a JSON string value — a U+0000 embedded in profile.name. JSON encodes
+  //     it as the `\u0000` escape; it must survive sign + verify and round-trip as the exact
+  //     same UTF-8 code point on every platform (UTF-8 stability past control chars).
+  const nulByteDoc = polarisDoc({
+    licenseId: "lic_nul_byte",
+    profile: {
+      name: "before\u0000after",
+      firstName: "Gr\u0000ace",
+      email: "grace@example.com",
+      enrolledAt: 1690000000,
+    },
+  });
+  const nulByteJws = await signJws(nulByteDoc, pem("pkey-test-prod-2026"), "pkey-test-prod-2026");
+  cases.push({
+    id: "valid-nul-byte-in-string",
+    description:
+      "A NUL (U+0000) byte embedded in a JSON string value round-trips byte-for-byte — UTF-8 stays stable through control chars.",
+    jws: nulByteJws,
+    trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: nulByteDoc },
+  });
+
   return { corpusVersion: 1, keys: KEYS, cases };
+}
+
+/** Reconcile one generated/source file against its on-disk copy. In `--check` mode a drift
+ *  is fatal (returns true so the caller can exit 1); otherwise it's written. */
+function reconcile(path: string, content: string, check: boolean): boolean {
+  let current: string | undefined;
+  try {
+    current = readFileSync(path, "utf8");
+  } catch {
+    current = undefined;
+  }
+  if (current === content) {
+    console.log(`up to date: ${path}`);
+    return false;
+  }
+  if (check) {
+    console.error(`stale: ${path} — run \`pnpm gen:corpus\``);
+    return true;
+  }
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, content);
+  console.log(`wrote ${path}`);
+  return false;
 }
 
 async function main(): Promise<void> {
@@ -310,24 +460,24 @@ async function main(): Promise<void> {
   const corpus = await build();
   const content = JSON.stringify(corpus, null, 2) + "\n";
 
-  let current: string | undefined;
+  // The canonical corpus.
+  let stale = reconcile(OUT, content, check);
+
+  // The Swift test bundle mirrors the corpus + the gate-matrix fixture byte-for-byte. The
+  // gate-matrix is a hand-authored fixture (not signed), so it's read from its canonical
+  // location and copied verbatim — `--check` then guards both the source and the mirror.
+  let gateMatrix: string | undefined;
   try {
-    current = readFileSync(OUT, "utf8");
+    gateMatrix = readFileSync(GATE_MATRIX, "utf8");
   } catch {
-    current = undefined;
+    gateMatrix = undefined;
+  }
+  stale = reconcile(join(SWIFT_RESOURCES, "cases.json"), content, check) || stale;
+  if (gateMatrix !== undefined) {
+    stale = reconcile(join(SWIFT_RESOURCES, "gate-matrix.json"), gateMatrix, check) || stale;
   }
 
-  if (current === content) {
-    console.log(`up to date: ${OUT}`);
-    return;
-  }
-  if (check) {
-    console.error(`stale: ${OUT} — run \`pnpm gen:corpus\``);
-    process.exit(1);
-  }
-  mkdirSync(dirname(OUT), { recursive: true });
-  writeFileSync(OUT, content);
-  console.log(`wrote ${OUT}`);
+  if (check && stale) process.exit(1);
 }
 
 await main();

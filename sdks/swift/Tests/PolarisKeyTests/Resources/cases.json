@@ -477,6 +477,173 @@
           }
         }
       }
+    },
+    {
+      "id": "wrong-alg-es256",
+      "description": "Header alg=ES256 against an Ed25519 trust set — rejected as algorithm confusion.",
+      "jws": "eyJhbGciOiJFUzI1NiIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "wrong-alg-hs256",
+      "description": "Header alg=HS256 (symmetric) against an Ed25519 trust set — rejected, no key-confusion.",
+      "jws": "eyJhbGciOiJIUzI1NiIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "empty-trust-set",
+      "description": "A valid token verified with an empty trust set ({}) — no key can match, must be null.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {},
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "foreign-kid-only",
+      "description": "Valid token whose kid is absent from a non-empty (foreign-keyed) trust set — null.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "fleet-key-eu-2027": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "valid-large-integer-timestamps",
+      "description": "Timestamps at/near 2^53-1 (Number.MAX_SAFE_INTEGER) round-trip losslessly across JS/Python/Swift — no precision loss.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfYmlnX2ludF90cyIsImRldmljZUlkIjoiZGV2XzdjMWUyZCIsImlzc3VlZEF0Ijo5MDA3MTk5MjU0NzQwOTg5LCJleHBpcmVzQXQiOjkwMDcxOTkyNTQ3NDA5OTAsImdyYWNlVW50aWwiOjkwMDcxOTkyNTQ3NDA5OTEsInByb2ZpbGUiOnsibmFtZSI6IkdyYWNlIEhvcHBlciIsImZpcnN0TmFtZSI6IkdyYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjkwMDcxOTkyNTQ3NDA5ODh9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjkwMDcxOTkyNTQ3NDA5OTF9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0Ijo5MDA3MTk5MjU0NzQwOTkwfX19fQ.uwQSGe41D9EekUQKjWibaMyDL4qFi4Qgu2I2kWChm3X-1BvGDOJmkYqfVdpxFwwLZXfbRWkDtaFvletnmlFzAw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "pkey-test-prod-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_big_int_ts",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 9007199254740989,
+          "expiresAt": 9007199254740990,
+          "graceUntil": 9007199254740991,
+          "profile": {
+            "name": "Grace Hopper",
+            "firstName": "Grace",
+            "email": "grace@example.com",
+            "enrolledAt": 9007199254740988
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 9007199254740991
+              }
+            },
+            "secrets": {},
+            "entitlements": {
+              "polarisVpn": {
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 9007199254740990
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "base64url-payload-padding",
+      "description": "Payload segment carries a `=` base64url padding char — alters the signing input, must be rejected.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0=.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "base64url-payload-trailing-data",
+      "description": "Trailing data appended to the payload segment — signing input differs, signature must fail.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiZW5yb2xsZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7fSwiZW50aXRsZW1lbnRzIjp7InBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0AAAA.48R4B9R_zhoP5h0pyTX-PeyfxOoIJS12GuE68AI9RsSkcGF85Dk_HxLIQyujsZE6WHgo46oluzO2cnz8Bfz1Cw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "fail"
+      }
+    },
+    {
+      "id": "valid-nul-byte-in-string",
+      "description": "A NUL (U+0000) byte embedded in a JSON string value round-trips byte-for-byte — UTF-8 stays stable through control chars.",
+      "jws": "eyJhbGciOiJFZERTQSIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfbnVsX2J5dGUiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJwcm9maWxlIjp7Im5hbWUiOiJiZWZvcmVcdTAwMDBhZnRlciIsImZpcnN0TmFtZSI6IkdyXHUwMDAwYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImVucm9sbGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.7O5oeucBLjh3iGk7IlpRBSVlGmASd2ErIfUou918rZcW8v7gOYfqyu8KVh8QJ3eU3ESLeqmt662ZKZdvBIPKDA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expect": {
+        "verify": "ok",
+        "kid": "pkey-test-prod-2026",
+        "doc": {
+          "schemaVersion": 1,
+          "aud": "djdl",
+          "iss": "key.plrs.im",
+          "licenseId": "lic_nul_byte",
+          "deviceId": "dev_7c1e2d",
+          "issuedAt": 1700000000,
+          "expiresAt": 1700003600,
+          "graceUntil": 1702592000,
+          "profile": {
+            "name": "before\u0000after",
+            "firstName": "Gr\u0000ace",
+            "email": "grace@example.com",
+            "enrolledAt": 1690000000
+          },
+          "payload": {
+            "config": {
+              "run.concurrency": {
+                "state": "enforced",
+                "value": 4,
+                "updatedAt": 1699990000
+              }
+            },
+            "secrets": {},
+            "entitlements": {
+              "polarisVpn": {
+                "state": "enforced",
+                "value": true,
+                "updatedAt": 1699990000
+              },
+              "channels": {
+                "state": "enforced",
+                "value": [
+                  "stable",
+                  "staging"
+                ],
+                "updatedAt": 1699990000
+              },
+              "app.minVersion": {
+                "state": "enforced",
+                "value": "1.0.0",
+                "updatedAt": 1699990000
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

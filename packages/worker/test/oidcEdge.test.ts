@@ -3,7 +3,7 @@ import { exportJWK, generateKeyPair, importJWK, type KeyLike, SignJWT } from "jo
 import type { ManagedPayload } from "@polaris-key/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";
 import { loadProduct, type Product } from "../src/product.js";
 import {
   applyProvisioning,
@@ -388,5 +388,69 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     // Flow gone ⇒ generic timeout; crucially, no "not-entitled"/IdP reason is exposed.
     expect(body.reason).toBeUndefined();
     expect(await res.text()).not.toContain("not-entitled");
+  });
+
+  // ── P4 regression: confidential-client fail-closed ──────────────────────────
+  // When oidc_config DECLARES a `client_secret_secret` name but no matching product_secrets
+  // row exists (or it can't be unsealed), the callback MUST fail closed with 500
+  // "misconfigured" — it must NEVER silently fall through and exchange the code as a PUBLIC
+  // client (which would let a mis-provisioned confidential client be downgraded).
+  it("fails closed (500 misconfigured) when a declared client secret is missing — no public exchange", async () => {
+    // Declare a secret name, but seed NO product_secrets row for it.
+    await db.run(
+      "UPDATE oidc_config SET client_secret_secret = ? WHERE product = 'djdl'",
+      "OIDC_CLIENT_SECRET",
+    );
+    await seedFlow("c1", "the-nonce");
+
+    // Track whether the token endpoint is ever called — it must NOT be, since we bail before
+    // the exchange. A valid id_token is staged so a (wrongly) public exchange would 200.
+    let tokenExchangeCalled = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+      const u = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (u.includes("/api/oidc/token")) {
+        tokenExchangeCalled = true;
+        const idToken = await signIdToken({ sub: "user-123", groups: ["family"], nonce: "the-nonce" });
+        return new Response(JSON.stringify({ id_token: idToken }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${u}`);
+    });
+
+    const res = await callback("c1");
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("misconfigured");
+    // Proof it did NOT silently downgrade to a public client: the code was never exchanged.
+    expect(tokenExchangeCalled).toBe(false);
+
+    // The flow is consumed on the fail-closed path ⇒ a subsequent poll just times out.
+    const body = (await poll("c1").then((r) => r.json())) as { status: string };
+    expect(body.status).toBe("timeout");
+  });
+
+  it("succeeds for the SAME config once the declared secret is sealed in product_secrets (control)", async () => {
+    // The confidential client is correctly provisioned: declare the name AND seal a value.
+    await db.run(
+      "UPDATE oidc_config SET client_secret_secret = ? WHERE product = 'djdl'",
+      "OIDC_CLIENT_SECRET",
+    );
+    await seedProductSecret(db, "djdl", "OIDC_CLIENT_SECRET", "shhh-confidential");
+    await seedFlow("c2", "the-nonce");
+
+    let sentClientSecret: string | null = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const u = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (u.includes("/api/oidc/token")) {
+        const params = new URLSearchParams(String(init?.body ?? ""));
+        sentClientSecret = params.get("client_secret");
+        const idToken = await signIdToken({ sub: "user-123", groups: ["family"], nonce: "the-nonce" });
+        return new Response(JSON.stringify({ id_token: idToken }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${u}`);
+    });
+
+    const res = await callback("c2");
+    expect(res.status).toBe(200);
+    // The unsealed secret was forwarded to the IdP as a confidential-client credential.
+    expect(sentClientSecret).toBe("shhh-confidential");
   });
 });

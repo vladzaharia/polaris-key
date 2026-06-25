@@ -132,6 +132,8 @@ export async function seedLicenseWithKey(
   slug: string,
   opts: {
     id?: string;
+    config?: Record<string, ManagedEntry>;
+    secrets?: Record<string, ManagedEntry>;
     entitlements?: Record<string, ManagedEntry>;
     expiresAt?: number | null;
     tierId?: string | null;
@@ -141,7 +143,11 @@ export async function seedLicenseWithKey(
   } = {},
 ): Promise<{ licenseId: string; key: string }> {
   const licenseId = opts.id ?? `lic_${slug}_1`;
-  const overrides = { config: {}, secrets: {}, entitlements: opts.entitlements ?? {} };
+  const overrides = {
+    config: opts.config ?? {},
+    secrets: opts.secrets ?? {},
+    entitlements: opts.entitlements ?? {},
+  };
   await insertLicense(db, {
     product: slug,
     id: licenseId,

@@ -26,9 +26,14 @@ let package = Package(
         .testTarget(
             name: "PolarisKeyTests",
             dependencies: ["PolarisKey", "PolarisKeyUI"],
-            // Bundle the SAME cross-language corpus so the Swift verifier is held to
-            // byte-for-byte conformance with the Node/Python/React runners.
-            resources: [.copy("Resources/cases.json")],
+            // Bundle the SAME cross-language corpus + gate-matrix fixture so the Swift
+            // verifier + gate are held to byte-for-byte conformance with the
+            // Node/Python/React runners. Both files are mirrored from
+            // conformance/corpus/v1 by `pnpm gen:corpus` (gated by `--check`).
+            resources: [
+                .copy("Resources/cases.json"),
+                .copy("Resources/gate-matrix.json"),
+            ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
     ]

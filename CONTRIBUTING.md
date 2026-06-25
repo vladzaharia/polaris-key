@@ -62,6 +62,20 @@ Or run the whole cross-language suite in one shot:
 pnpm test:all                    # turbo test + Python pytest + Swift swift test
 ```
 
+## Pre-commit hooks
+
+`pnpm install` runs the `prepare` script, which sets up [husky](https://typicode.github.io/husky/)
+git hooks automatically — no manual step. The committed `.husky/pre-commit` hook runs two
+fast, fail-early guards before every commit:
+
+```sh
+pnpm gen:corpus -- --check       # conformance drift gate
+pnpm typecheck
+```
+
+It is intentionally lightweight (the full five-language matrix runs in CI, not locally). For a
+trivial or docs-only commit you can skip it with `git commit --no-verify`.
+
 ## The contract-first, wave-based development model
 
 Features land in **waves**, each a thin slice through the whole stack so that no language is
