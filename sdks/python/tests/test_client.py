@@ -1,6 +1,6 @@
 """PolarisKeyClient against a mock httpx transport that signs a REAL JWS with the test PEM.
 
-The handler enrolls (key -> token), serves a signed config doc scoped to the product +
+The handler activates (key -> token), serves a signed config doc scoped to the product +
 the client's derived device id, and exercises the 403 version-too-old block path. No
 network is touched — everything routes through ``httpx.MockTransport``.
 """
@@ -13,7 +13,7 @@ from typing import Any, Dict
 import httpx
 import pytest
 
-from polaris_key.client import PolarisKeyClient
+from polaris_key.client import DeviceManagementUnsupportedError, PolarisKeyClient
 from polaris_key.store import InMemoryStore
 from polaris_key.verify import sign_jws
 
@@ -43,7 +43,7 @@ def _make_doc(device_id: str, *, issued: int = 1700000000) -> Dict[str, Any]:
             "name": "Grace Hopper",
             "firstName": "Grace",
             "email": "grace@example.com",
-            "enrolledAt": 1690000000,
+            "activatedAt": 1690000000,
         },
         "payload": {
             "config": {
@@ -95,7 +95,7 @@ def _client(handler, **kw) -> PolarisKeyClient:
 
 def _ok_handler(request: httpx.Request) -> httpx.Response:
     path = request.url.path
-    if path == f"/{PRODUCT}/enroll":
+    if path == f"/{PRODUCT}/activate":
         return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
     if path == f"/{PRODUCT}/config":
         device_id = request.headers["X-PKey-Device"]
@@ -171,12 +171,12 @@ def test_list_user_config_excludes_hidden_and_marks_enforced() -> None:
     c.close()
 
 
-def test_enroll_then_reads_config_secret_entitlement() -> None:
+def test_activation_then_reads_config_secret_entitlement() -> None:
     state = {"reports": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if path == f"/{PRODUCT}/enroll":
+        if path == f"/{PRODUCT}/activate":
             assert request.headers["authorization"] == "Bearer my-license-key"
             assert request.headers["X-PKey-Device"]  # device header present
             return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
@@ -219,7 +219,7 @@ def test_enroll_then_reads_config_secret_entitlement() -> None:
 def test_config_403_version_too_old_blocks() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if path == f"/{PRODUCT}/enroll":
+        if path == f"/{PRODUCT}/activate":
             return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
         if path == f"/{PRODUCT}/config":
             return httpx.Response(
@@ -235,7 +235,7 @@ def test_config_403_version_too_old_blocks() -> None:
 
     c = _client(handler)
     r = c.activate_with_key("my-license-key")
-    assert r.kind == "ok"  # enroll succeeded; the BLOCK is on /config
+    assert r.kind == "ok"  # activate succeeded; the BLOCK is on /config
     st = c.status(now=1700000100)
     assert st.status == "version-too-old"
     assert st.allowedRange is not None and st.allowedRange.min == "2.0.0"
@@ -249,7 +249,7 @@ def test_blocked_with_no_prior_doc_does_not_raise() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if path == f"/{PRODUCT}/enroll":
+        if path == f"/{PRODUCT}/activate":
             return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
         if path == f"/{PRODUCT}/config":
             return httpx.Response(
@@ -271,29 +271,44 @@ def test_blocked_with_no_prior_doc_does_not_raise() -> None:
     c.close()
 
 
-def test_enroll_unauthorized() -> None:
+def test_activation_unauthorized() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == f"/{PRODUCT}/enroll":
+        if request.url.path == f"/{PRODUCT}/activate":
             return httpx.Response(401, text="bad key")
         return httpx.Response(404)
 
     c = _client(handler)
     r = c.activate_with_key("nope")
     assert r.kind == "unauthorized"
-    assert c.status(now=1700000100).status == "needs-enroll"
+    assert c.status(now=1700000100).status == "needs-activation"
     c.close()
 
 
-def test_enroll_device_limit() -> None:
+def test_activation_device_limit() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == f"/{PRODUCT}/enroll":
-            return httpx.Response(403, json={"limit": 3, "machineCount": 3})
+        if request.url.path == f"/{PRODUCT}/activate":
+            return httpx.Response(403, json={"limit": 3, "deviceCount": 3})
         return httpx.Response(404)
 
     c = _client(handler)
     r = c.activate_with_key("k")
-    assert r.kind == "machine-limit"
+    assert r.kind == "device-limit"
     assert getattr(r, "limit", None) == 3
+    assert getattr(r, "deviceCount", None) == 3
+    c.close()
+
+
+def test_device_management_surface_current_only() -> None:
+    c = _client(_ok_handler)
+    current = c.current_device()
+    assert current.id
+    assert current.current is True
+    assert current.status == "needs-activation"
+    with pytest.raises(DeviceManagementUnsupportedError):
+        c.list_devices()
+    with pytest.raises(DeviceManagementUnsupportedError):
+        c.deauthorize_device("other-device")
+    c.deauthorize_device(current.id)
     c.close()
 
 
@@ -303,7 +318,7 @@ def test_config_401_reacquires_token_then_succeeds() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if path == f"/{PRODUCT}/enroll":
+        if path == f"/{PRODUCT}/activate":
             return httpx.Response(200, json={"token": "stale", "schemaVersion": 1})
         if path == f"/{PRODUCT}/token":
             assert request.headers["X-PKey-Device"]
@@ -331,7 +346,7 @@ def test_config_401_reacquires_token_then_succeeds() -> None:
 def test_deactivate_wipes_local_state() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if path == f"/{PRODUCT}/enroll":
+        if path == f"/{PRODUCT}/activate":
             return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
         if path == f"/{PRODUCT}/config":
             device_id = request.headers["X-PKey-Device"]
@@ -345,7 +360,7 @@ def test_deactivate_wipes_local_state() -> None:
     c.activate_with_key("k")
     assert c.is_licensed(now=1700000100) is True
     c.deactivate()
-    assert c.status(now=1700000100).status == "needs-enroll"
+    assert c.status(now=1700000100).status == "needs-activation"
     assert c.get_config("run.concurrency", 0) == 0
     c.close()
 
@@ -355,7 +370,7 @@ def test_wrong_device_doc_rejected() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if path == f"/{PRODUCT}/enroll":
+        if path == f"/{PRODUCT}/activate":
             return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
         if path == f"/{PRODUCT}/config":
             jws = sign_jws(_make_doc("some-other-device"), PRIVATE_PEM, KID)
@@ -366,6 +381,6 @@ def test_wrong_device_doc_rejected() -> None:
 
     c = _client(handler)
     c.activate_with_key("k")
-    # Doc was rejected -> no doc cached -> needs-enroll.
-    assert c.status(now=1700000100).status == "needs-enroll"
+    # Doc was rejected -> no doc cached -> needs-activation.
+    assert c.status(now=1700000100).status == "needs-activation"
     c.close()

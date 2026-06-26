@@ -184,10 +184,6 @@ async function registerFromManifest(
     id: kid,
   });
 
-  // `signing_key_secret` is a legacy column; we keep a derived name for back-compat but the
-  // real key now lives sealed in product_keys (opened by loadProduct under the KEK).
-  const signingKeySecret = `SIGNING_KEY__${slug.toUpperCase().replace(/-/g, "_")}`;
-
   // Defaults: binary name = repo name; summary marker = the parser default.
   const rel = manifest.release;
   const binaryName = rel?.binaryName || gh.repo;
@@ -198,12 +194,11 @@ async function registerFromManifest(
       slug,
       name: manifest.product.name,
       signing_kid: kid,
-      signing_key_secret: signingKeySecret,
       signing_pub: publicRawB64url,
       compat_min: manifest.product.compatMin,
       compat_max: manifest.product.compatMax,
       default_max_offline_days: manifest.product.defaultMaxOfflineDays,
-      default_machine_limit: manifest.product.defaultMachineLimit,
+      default_device_limit: manifest.product.defaultDeviceLimit,
       admin_group: manifest.product.adminGroup,
       branding_json: null,
       release_source: "github",
@@ -263,7 +258,7 @@ async function registerFromManifest(
         label: t.label,
         profileId: t.profileId ?? null,
         policyExpiryDays: t.policyExpiryDays ?? null,
-        policyMachineLimit: t.policyMachineLimit ?? null,
+        policyDeviceLimit: t.policyDeviceLimit ?? null,
         channels: t.channels,
         minVersion: t.minVersion,
         maxVersion: t.maxVersion,
@@ -291,6 +286,8 @@ async function registerFromManifest(
       artifactPolicyJson: rel?.artifactPolicy
         ? JSON.stringify(rel.artifactPolicy)
         : null,
+      metadataAccess: rel?.access.metadata ?? "public",
+      artifactsAccess: rel?.access.artifacts ?? "public",
     }),
   );
 

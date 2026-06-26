@@ -121,7 +121,7 @@ export function matchAsset(
  * the exact-match fast path in installers (e.g. `djdl-arm64`). Channel builds get a
  * `-<channel>` infix on the binary name (e.g. `djdl-staging-arm64`).
  */
-export function conventionalBinaryName(
+function conventionalBinaryName(
   binaryName: string,
   arch: Arch,
   channelSuffix?: string,

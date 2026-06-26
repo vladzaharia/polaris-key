@@ -187,7 +187,9 @@ export function LicenseDetail({
         <MetaItem label="Profiles">
           {license.profiles?.length ? license.profiles.join(" -> ") : "—"}
         </MetaItem>
-        <MetaItem label="Enrolled">{formatStamp(license.enrolledAt)}</MetaItem>
+        <MetaItem label="Activated">
+          {formatStamp(license.activatedAt)}
+        </MetaItem>
         <MetaItem label="Expires">{formatDate(license.expiresAt)}</MetaItem>
         <MetaItem label="Max offline days">
           {license.maxOfflineDays ?? "—"}
@@ -198,7 +200,7 @@ export function LicenseDetail({
           </span>
         </MetaItem>
         <MetaItem label="Devices">
-          <span className="tabular-nums">{license.machineCount}</span>
+          <span className="tabular-nums">{license.deviceCount}</span>
         </MetaItem>
         <MetaItem label="Channels">
           <ChannelList channels={license.channels} />
@@ -210,7 +212,7 @@ export function LicenseDetail({
           <TabsTrigger value="policy">Policy</TabsTrigger>
           <TabsTrigger value="keys">Keys ({license.keys.length})</TabsTrigger>
           <TabsTrigger value="devices">
-            Devices ({license.machines.length})
+            Devices ({license.devices.length})
           </TabsTrigger>
           <TabsTrigger value="overrides">Overrides</TabsTrigger>
         </TabsList>
@@ -232,7 +234,7 @@ export function LicenseDetail({
           <DevicesSection
             slug={slug}
             id={id}
-            devices={license.machines}
+            devices={license.devices}
             onChanged={refresh}
           />
         </TabsContent>

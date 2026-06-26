@@ -10,7 +10,7 @@ import {
   seedProductSecret,
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/product.js";
-import { handleEnroll } from "../src/licensing.js";
+import { handleActivate } from "../src/licensing.js";
 import {
   getEdgeMintConfig,
   handleMintAuth,
@@ -30,13 +30,13 @@ function jwtPart(part: string): Record<string, unknown> {
   >;
 }
 
-async function enroll(
+async function activate(
   env: Env,
   db: SqliteDb,
   product: Product,
 ): Promise<string> {
   const { key } = await seedLicenseWithKey(db, "djdl");
-  const res = await handleEnroll(
+  const res = await handleActivate(
     mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
     env,
     db,
@@ -116,7 +116,7 @@ describe("edge-mint token", () => {
   });
 
   it("mints an ES256 token, server-setting iat/exp from the recipe ttl", async () => {
-    const token = await enroll(env, db, product);
+    const token = await activate(env, db, product);
     await seedRecipe(db);
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
@@ -139,7 +139,7 @@ describe("edge-mint token", () => {
   });
 
   it("does not let the template override the reserved iat/exp claims", async () => {
-    const token = await enroll(env, db, product);
+    const token = await activate(env, db, product);
     // Malicious template tries to pin a far-future exp and a fake iat.
     await seedRecipe(db, {
       claims_template_json: JSON.stringify({
@@ -163,7 +163,7 @@ describe("edge-mint token", () => {
   });
 
   it("404s for an unknown recipe id", async () => {
-    const token = await enroll(env, db, product);
+    const token = await activate(env, db, product);
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
       env,
@@ -176,7 +176,7 @@ describe("edge-mint token", () => {
   });
 
   it("500s when the recipe uses an unsupported alg", async () => {
-    const token = await enroll(env, db, product);
+    const token = await activate(env, db, product);
     await seedRecipe(db, { alg: "HS256" });
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
@@ -190,7 +190,7 @@ describe("edge-mint token", () => {
   });
 
   it("500s when the mint signing key secret is absent", async () => {
-    const token = await enroll(env, db, product);
+    const token = await activate(env, db, product);
     await seedRecipe(db, { signing_key_secret: "EDGE_MINT__DJDL__MISSING" });
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),

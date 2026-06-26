@@ -8,8 +8,8 @@ export interface Env {
   // bindings
   DB: D1Database;
   HOT: KVNamespace;
-  HUB: DurableObjectNamespace;
   RL: DurableObjectNamespace;
+  ASSETS?: Fetcher;
 
   // platform-wide secrets / vars (optional so tests can omit them)
   // The single platform KEK (base64 of 32 random bytes) under which per-product signing keys

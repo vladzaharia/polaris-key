@@ -77,8 +77,8 @@ cd packages/worker && wrangler deploy --env prod
 
 ## Register a product
 
-Use the admin portal or platform CLI to link a product repo containing `.pkey/`. For early
-experiments before a repo exists, create a manual product with a schema document and add
+Use the admin portal to link a product repo containing `.pkey/`. For early experiments
+before a repo exists, create a manual product with a schema document and add
 release/OIDC/provisioning later. Registration validates the catalog/manifest, mints the
 sealed product signing key, shows the public trust key, and lists missing per-product
 secrets to set in the admin UI. After linking, GitHub push webhooks on the repo's default

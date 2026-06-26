@@ -24,7 +24,7 @@ function makeDoc(over: Partial<ManagedConfigDoc> = {}): ManagedConfigDoc {
       name: "Ada Lovelace",
       firstName: "Ada",
       email: "ada@example.com",
-      enrolledAt: 1,
+      activatedAt: 1,
     },
     payload: { config: {}, secrets: {}, entitlements: {} },
     ...over,

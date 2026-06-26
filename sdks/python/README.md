@@ -2,7 +2,7 @@
 
 A product-agnostic Python client for the **Polaris Key** control plane — license
 gating + signed managed-config delivery. It mirrors the Node SDK
-(`@polaris-key/sdk-node`) and verifies the **same** cross-language conformance corpus
+(`@polaris-key/node`) and verifies the **same** cross-language conformance corpus
 byte-for-byte.
 
 The wire crypto is a compact JWS (EdDSA / Ed25519) over a managed-config document; the
@@ -34,10 +34,10 @@ client = PolarisKeyClient.create(
     base_url="https://key.plrs.im",
 )
 
-# Enroll this device with a license key (then pull the first signed config doc).
+# Activate this device with a license key (then pull the first signed config doc).
 result = client.activate_with_key("PKEY-XXXX-XXXX")
 if result.kind == "ok":
-    print("status:", client.status().status)   # ok | grace | expired | revoked | needs-enroll | ...
+    print("status:", client.status().status)   # ok | grace | expired | revoked | needs-activation | ...
 
 # Offline-first gate.
 if client.is_licensed():
@@ -54,14 +54,14 @@ client.deactivate()
 ```
 
 `PolarisKeyClient.create(...)` loads the cached doc with **no network**; `refresh()`
-re-pulls. The default `FileStore` persists the token / device id / config cache as
-`0600` files under `<config-dir>/<product>/`. Inject an `InMemoryStore` (or your own
-`Store`) for tests, and an `httpx.Client` (e.g. with a `MockTransport`) for the
-transport.
+re-pulls. The default `KeyringStore` stores credentials in the OS keyring when available
+and uses `0600` files for device/cache data and headless fallback. Inject an
+`InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client` (e.g. with a
+`MockTransport`) for the transport.
 
 ## Gate statuses
 
-`status().status` is one of: `ok`, `grace`, `expired`, `revoked`, `needs-enroll`,
+`status().status` is one of: `ok`, `grace`, `expired`, `revoked`, `needs-activation`,
 `version-too-old`, `version-too-new`, `channel-not-entitled`. `is_licensed()` is true
 for `ok`/`grace`.
 

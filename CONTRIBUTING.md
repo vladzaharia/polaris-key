@@ -24,7 +24,6 @@ conformance/         the cross-language golden corpus (one signer, runners per l
 tools/               sign-corpus.ts · gen-mirrors.ts
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                CONCEPTS · ADOPTER-GUIDE · RUNBOOK · CONFIG-AUTHORING
-infra/               Terraform (Cloudflare D1/KV/custom domains)
 ```
 
 The JS workspace (`pnpm` + `turbo`) covers `packages/*`, `tools`, `products`, and the Node
@@ -107,7 +106,8 @@ Concretely, to add a config key or a wire-visible capability:
 2. **Catalog** — declare the key in the product catalog (`products/<slug>/catalog.json` or the
    product's `.pkey/schema`). Pick `kind` + `managementDefault`; add `ui`/`dependsOn` hints.
 3. **Regenerate the corpus** — `pnpm gen:corpus` (re-sign vectors). For products that want
-   typed config mirrors, also `pnpm gen:mirrors` (TS/Python/Swift mirrors from the catalog).
+   typed config mirrors, also run `pnpm gen:mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>`
+   (TS/Python/Swift mirrors from the catalog).
 4. **Implement in each SDK** — Node (`packages/sdk-node`), Python (`sdks/python`), Swift
    (`sdks/swift`), React (`packages/sdk-react`), and the Worker. Mirror the existing surface
    and the layered-config precedence (`enforced|hidden > local > env > remote-default >

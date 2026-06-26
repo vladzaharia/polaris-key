@@ -28,13 +28,27 @@ const card: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: "16px",
-  width: "min(360px, 100%)",
+  width: "min(760px, 100%)",
   padding: "28px",
   background: "var(--pk-surface)",
   color: "var(--pk-text)",
   border: "1px solid var(--pk-border)",
   borderRadius: "var(--pk-radius)",
   fontFamily: "var(--pk-font-family)",
+};
+
+const actionGrid: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "16px",
+  alignItems: "stretch",
+};
+
+const actionPanel: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "8px",
+  minWidth: 0,
 };
 
 const primaryBtn: CSSProperties = {
@@ -71,11 +85,11 @@ const secondaryBtn: CSSProperties = {
 
 /** Map a `PolarisError` to a clearer, user-facing message when the adapter handed us a
  *  recognizable code/message; otherwise fall back to the raw message. The desktop adapter
- *  already humanizes machine-limit / unauthorized into `sign-in-failed` errors, so we key
+ *  already humanizes device-limit / unauthorized into `sign-in-failed` errors, so we key
  *  off the message text it produced AND the code, surfacing remediation guidance. */
 function describeAuthError(err: { code?: string; message: string }): string {
   const msg = err.message ?? "";
-  if (/device limit/i.test(msg) || err.code === "machine-limit") {
+  if (/device limit/i.test(msg) || err.code === "device-limit") {
     return "This license has reached its device limit. Sign out on another device, or contact your administrator.";
   }
   if (/not accepted/i.test(msg) || err.code === "unauthorized") {
@@ -142,53 +156,54 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
         </p>
       </div>
 
-      <button
-        type="button"
-        style={primaryBtn}
-        disabled={auth.busy}
-        aria-busy={auth.busy}
-        // Keep an accessible name even while the busy glyph ("…") shows.
-        aria-label={theme.copy.oidcButtonLabel}
-        autoFocus={autoFocus}
-        onClick={() => {
-          void auth.signInWithOidc();
-        }}
-        data-polaris-oidc=""
-      >
-        {auth.busy ? "…" : theme.copy.oidcButtonLabel}
-      </button>
-
-      {showKeyEntry ? (
-        <form
-          onSubmit={onSubmitKey}
-          style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-        >
-          <label
-            htmlFor={keyInputId}
-            style={{ fontSize: "13px", color: "var(--pk-text-muted)" }}
-          >
-            {theme.copy.keyEntryLabel}
-          </label>
-          <input
-            id={keyInputId}
-            style={input}
-            value={key}
-            placeholder={theme.copy.keyEntryPlaceholder}
-            onChange={(e) => setKey(e.target.value)}
-            aria-invalid={errorText ? true : undefined}
-            aria-describedby={errorText ? errorId : undefined}
-            data-polaris-key-input=""
-          />
+      <div style={showKeyEntry ? actionGrid : actionPanel}>
+        <div style={actionPanel}>
           <button
-            type="submit"
-            style={secondaryBtn}
-            disabled={auth.busy || key.trim().length === 0}
+            type="button"
+            style={primaryBtn}
+            disabled={auth.busy}
             aria-busy={auth.busy}
+            // Keep an accessible name even while the busy glyph ("...") shows.
+            aria-label={theme.copy.oidcButtonLabel}
+            autoFocus={autoFocus}
+            onClick={() => {
+              void auth.signInWithOidc();
+            }}
+            data-polaris-oidc=""
           >
-            {theme.copy.keySubmitLabel}
+            {auth.busy ? "..." : theme.copy.oidcButtonLabel}
           </button>
-        </form>
-      ) : null}
+        </div>
+
+        {showKeyEntry ? (
+          <form onSubmit={onSubmitKey} style={actionPanel}>
+            <label
+              htmlFor={keyInputId}
+              style={{ fontSize: "13px", color: "var(--pk-text-muted)" }}
+            >
+              {theme.copy.keyEntryLabel}
+            </label>
+            <input
+              id={keyInputId}
+              style={input}
+              value={key}
+              placeholder={theme.copy.keyEntryPlaceholder}
+              onChange={(e) => setKey(e.target.value)}
+              aria-invalid={errorText ? true : undefined}
+              aria-describedby={errorText ? errorId : undefined}
+              data-polaris-key-input=""
+            />
+            <button
+              type="submit"
+              style={secondaryBtn}
+              disabled={auth.busy || key.trim().length === 0}
+              aria-busy={auth.busy}
+            >
+              {theme.copy.keySubmitLabel}
+            </button>
+          </form>
+        ) : null}
+      </div>
 
       {errorText ? (
         <p

@@ -6,7 +6,7 @@
 import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import {
-  listMachinesByLicense,
+  listDevicesByLicense,
   getActiveSchema,
   listLicenseProfiles,
   getProductSyncState,
@@ -85,31 +85,27 @@ export async function loadCatalog(
   }
 }
 
-/** The list/detail summary projection of a license row (with derived key + machine counts). */
+/** The list/detail summary projection of a license row (with derived key + device counts). */
 export async function licenseSummary(
   db: Db,
   product: string,
   row: LicenseRow,
 ): Promise<Record<string, unknown>> {
   const keyCounts = await countKeysByLicense(db, product, row.id);
-  const machines = await listMachinesByLicense(db, product, row.id);
+  const devices = await listDevicesByLicense(db, product, row.id);
   const profiles = await listLicenseProfiles(db, product, row.id);
   return {
     id: row.id,
     name: row.name ?? "",
     email: row.email ?? "",
     status: row.status,
-    enrolledAt: row.enrolled_at,
+    activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     keyCount: keyCounts.total,
     activeKeyCount: keyCounts.active,
-    machineCount: machines.filter((m) => m.status === "authorized").length,
-    profile: profiles[0]?.profile_id ?? row.profile_id,
-    profiles: profiles.length
-      ? profiles.map((p) => p.profile_id)
-      : row.profile_id
-        ? [row.profile_id]
-        : [],
+    deviceCount: devices.filter((m) => m.status === "authorized").length,
+    profile: profiles[0]?.profile_id ?? null,
+    profiles: profiles.map((p) => p.profile_id),
     tier: row.tier_id,
     channels: row.channels_json
       ? (JSON.parse(row.channels_json) as string[])
@@ -148,13 +144,8 @@ export async function productView(
     name: p.name,
     releaseSource: p.release_source ?? "manual",
     signingKid,
-    signingPublicKey,
-    publicKey: signingPublicKey,
-    trustKey: signingPublicKey,
-    trustKeys: signingPublicKey ? { [signingKid]: signingPublicKey } : {},
     jwksUrl,
     signing,
-    signingKey: signing,
     modules: setup.modules,
     setup,
     onboarding: {
@@ -162,14 +153,14 @@ export async function productView(
       modules: setup.modules,
       baseUrl: `/${p.slug}`,
       configUrl: `/${p.slug}/config`,
-      enrollUrl: `/${p.slug}/enroll`,
+      activateUrl: `/${p.slug}/activate`,
       jwksUrl,
       nextActions: setup.nextActions,
     },
     compatMin: p.compat_min,
     compatMax: p.compat_max,
     defaultMaxOfflineDays: p.default_max_offline_days,
-    defaultMachineLimit: p.default_machine_limit,
+    defaultDeviceLimit: p.default_device_limit,
     adminGroup: p.admin_group,
     createdAt: p.created_at,
     modifiedAt: p.modified_at,

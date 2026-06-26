@@ -1,4 +1,4 @@
-// Emit legacy fixture SQL from product.json + catalog.json.
+// Emit local fixture SQL from product.json + catalog.json.
 //
 // This does NOT mint sealed product_keys or store product secret values, so it is not a
 // live onboarding path. Register real products through the admin/GitHub-link flow.
@@ -14,7 +14,7 @@ interface Tier {
   label: string;
   profileId: string | null;
   policyExpiryDays: number | null;
-  policyMachineLimit: number | null;
+  policyDeviceLimit: number | null;
   channels?: string[];
   minVersion?: string | null;
   maxVersion?: string | null;
@@ -40,12 +40,11 @@ interface ProductDef {
   slug: string;
   name: string;
   signingKid: string;
-  signingKeySecret: string;
   signingPub: string;
   compatMin: string;
   compatMax: string;
   defaultMaxOfflineDays: number;
-  defaultMachineLimit: number;
+  defaultDeviceLimit: number;
   adminGroup: string;
   oidc: {
     issuer: string;
@@ -96,7 +95,7 @@ function main(): void {
   ];
 
   out.push(
-    `INSERT INTO products (slug,name,signing_kid,signing_key_secret,signing_pub,compat_min,compat_max,default_max_offline_days,default_machine_limit,admin_group,branding_json,created_at,modified_at) VALUES (${q(p)},${q(product.name)},${q(product.signingKid)},${q(product.signingKeySecret)},${q(product.signingPub)},${q(product.compatMin)},${q(product.compatMax)},${product.defaultMaxOfflineDays},${product.defaultMachineLimit},${q(product.adminGroup)},NULL,${now},${now});`,
+    `INSERT INTO products (slug,name,signing_kid,signing_pub,compat_min,compat_max,default_max_offline_days,default_device_limit,admin_group,branding_json,created_at,modified_at) VALUES (${q(p)},${q(product.name)},${q(product.signingKid)},${q(product.signingPub)},${q(product.compatMin)},${q(product.compatMax)},${product.defaultMaxOfflineDays},${product.defaultDeviceLimit},${q(product.adminGroup)},NULL,${now},${now});`,
   );
   out.push(
     `INSERT INTO product_schema (product,catalog_version,catalog_json,active,created_at) VALUES (${q(p)},1,${q(catalogRaw)},1,${now});`,
@@ -107,7 +106,7 @@ function main(): void {
   );
   for (const t of product.tiers) {
     out.push(
-      `INSERT INTO tiers (product,id,label,profile_id,policy_expiry_days,policy_machine_limit,channels_json,min_version,max_version,modified_by,modified_at) VALUES (${q(p)},${q(t.id)},${q(t.label)},${t.profileId ? q(t.profileId) : "NULL"},${t.policyExpiryDays ?? "NULL"},${t.policyMachineLimit ?? "NULL"},${t.channels ? j(t.channels) : "NULL"},${t.minVersion ? q(t.minVersion) : "NULL"},${t.maxVersion ? q(t.maxVersion) : "NULL"},NULL,${now});`,
+      `INSERT INTO tiers (product,id,label,profile_id,policy_expiry_days,policy_device_limit,channels_json,min_version,max_version,modified_by,modified_at) VALUES (${q(p)},${q(t.id)},${q(t.label)},${t.profileId ? q(t.profileId) : "NULL"},${t.policyExpiryDays ?? "NULL"},${t.policyDeviceLimit ?? "NULL"},${t.channels ? j(t.channels) : "NULL"},${t.minVersion ? q(t.minVersion) : "NULL"},${t.maxVersion ? q(t.maxVersion) : "NULL"},NULL,${now});`,
     );
   }
   for (const h of product.provisioning) {

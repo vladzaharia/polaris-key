@@ -1,13 +1,12 @@
 /**
  * License keys (`/api/products/<slug>/licenses/<id>/keys`): list, mint (raw key returned
- * ONCE), and revoke. Minting/revoking keeps the KV key-record mirror in sync with D1.
+ * ONCE), and revoke.
  */
 
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import { hashKey, mintLicenseKey } from "../../crypto.js";
-import { putKeyRecord, deleteKeyRecord } from "../../kv.js";
 import {
   insertKey,
   listKeysByLicense,
@@ -58,11 +57,6 @@ export async function handleKeys(
         created_by: session.sub,
         last_used_at: null,
       });
-      await putKeyRecord(env, slug, hash, {
-        product: slug,
-        licenseId,
-        status: "active",
-      });
       await audit(
         db,
         slug,
@@ -97,7 +91,6 @@ export async function handleKeys(
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     await setKeyStatus(db, slug, keyHash, "revoked");
-    await deleteKeyRecord(env, slug, keyHash);
     await audit(
       db,
       slug,

@@ -96,21 +96,22 @@ export const defaultTheme: PolarisTheme = {
     keyEntryPlaceholder: "Paste your key",
     keySubmitLabel: "Activate",
     graceTitle: "Offline grace",
-    graceBody: "Reconnect soon to keep your license valid.",
+    graceBody:
+      "The licensing service is offline. You can keep working until grace ends.",
     expiredTitle: "License expired",
     expiredBody:
-      "Your offline grace period has ended. Sign in again to continue.",
+      "Your license or offline grace period has ended. Sign in or activate a key to continue.",
     revokedTitle: "License revoked",
     revokedBody:
-      "This license is no longer active. Contact your administrator.",
+      "This license is no longer active on this device. Contact your administrator.",
     versionTooOldTitle: "Update required",
     versionTooOldBody:
       "This version is no longer supported. Please update the app.",
     versionTooNewTitle: "Version not allowed",
-    versionTooNewBody: "This version is newer than your license permits.",
+    versionTooNewBody: "This app version is newer than your license permits.",
     channelNotEntitledTitle: "Channel not entitled",
     channelNotEntitledBody:
-      "Your license doesn't include this release channel.",
+      "Your license doesn't include this release channel. Switch channels or contact your administrator.",
     loadingLabel: "Checking your license…",
     retryLabel: "Try again",
     signOutLabel: "Sign out",

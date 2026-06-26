@@ -2,7 +2,7 @@
 
 A product-agnostic native Swift client for **Polaris Key** (licensing + remotely-managed
 config). It implements the frozen Polaris wire crypto natively on **CryptoKit** (Ed25519
-compact JWS) and stores the per-machine token in the **Keychain** — no Node engine, no
+compact JWS) and stores the per-device token in the **Keychain** — no Node engine, no
 network dependency for verification. The same cross-language conformance corpus that pins
 the Node/Python/React SDKs is verified here byte-for-byte (`Tests/.../cases.json`).
 
@@ -92,7 +92,7 @@ is taken as a plain string. Supply `localOverrides` / `envPrefix` via the client
 ## SwiftUI gate
 
 `PolarisKeyLoginView` renders by status: an OIDC sign-in button + license-key entry card
-when enrollment is needed, an offline-grace banner over your content, version-block and
+when activation is needed, an offline-grace banner over your content, version-block and
 expired/revoked screens, and your own UI once usable (ok/grace).
 
 ```swift

@@ -61,9 +61,9 @@ function mockFetch(opts: MockOpts = {}): MockState {
       device: headers.get("x-pkey-device"),
     });
 
-    if (u.pathname.endsWith("/enroll")) {
+    if (u.pathname.endsWith("/activate")) {
       return new Response(
-        JSON.stringify({ token: "pkeyt_enrolled", schemaVersion: 1 }),
+        JSON.stringify({ token: "pkeyt_activated", schemaVersion: 1 }),
         {
           status: 200,
           headers: { "content-type": "application/json" },
@@ -109,7 +109,7 @@ function mockFetch(opts: MockOpts = {}): MockState {
           name: "Ada Lovelace",
           firstName: "Ada",
           email: "ada@example.com",
-          enrolledAt: now,
+          activatedAt: now,
         },
         payload: {
           config: {
@@ -152,14 +152,14 @@ function mockFetch(opts: MockOpts = {}): MockState {
   };
 }
 
-describe("PolarisKeyClient — enrollment + reads", () => {
-  it("enroll → ok; reads config, entitlement, secret, profile", async () => {
+describe("PolarisKeyClient — activation + reads", () => {
+  it("activate → ok; reads config, entitlement, secret, profile", async () => {
     const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore("djdl"),
       fetchImpl: mockFetch().impl,
     });
-    expect(client.status().status).toBe("needs-enroll");
+    expect(client.status().status).toBe("needs-activation");
 
     const r = await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     expect(r.kind).toBe("ok");
@@ -211,7 +211,7 @@ describe("PolarisKeyClient — refresh / persistence", () => {
       m.calls.some(
         (c) =>
           c.path.endsWith("/config/report") &&
-          c.bearer === "Bearer pkeyt_enrolled",
+          c.bearer === "Bearer pkeyt_activated",
       ),
     ).toBe(true);
   });
@@ -227,9 +227,23 @@ describe("PolarisKeyClient — refresh / persistence", () => {
     const firstConfig = m.calls.find((c) => c.path.endsWith("/config"))!;
     expect(firstConfig.ifNoneMatch).toBeNull();
 
-    await client.refresh({ force: true }); // second /config: must carry the etag
+    await client.refresh(); // second /config: must carry the etag
     const configCalls = m.calls.filter((c) => c.path.endsWith("/config"));
     expect(configCalls[configCalls.length - 1]?.ifNoneMatch).toBe('"v1"');
+  });
+
+  it("force refresh bypasses If-None-Match", async () => {
+    const m = mockFetch();
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store: new InMemoryStore("djdl"),
+      fetchImpl: m.impl,
+    });
+    await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
+
+    await client.refresh({ force: true });
+    const configCalls = m.calls.filter((c) => c.path.endsWith("/config"));
+    expect(configCalls[configCalls.length - 1]?.ifNoneMatch).toBeNull();
   });
 
   it("refresh is a no-op without a token", async () => {
@@ -256,7 +270,7 @@ describe("PolarisKeyClient — refresh / persistence", () => {
     expect(client.status().status).toBe("ok");
     expect(m.tokenCount()).toBe(1); // exactly one re-acquire, no retry loop
     const tokenCall = m.calls.find((c) => c.path.endsWith("/token"));
-    expect(tokenCall?.bearer).toBe("Bearer pkeyt_enrolled");
+    expect(tokenCall?.bearer).toBe("Bearer pkeyt_activated");
     expect(tokenCall?.device).toBeTruthy();
   });
 
@@ -270,7 +284,7 @@ describe("PolarisKeyClient — refresh / persistence", () => {
     ): Promise<Response> => {
       const u = new URL(typeof input === "string" ? input : input.toString());
       calls.push(u.pathname);
-      if (u.pathname.endsWith("/enroll")) {
+      if (u.pathname.endsWith("/activate")) {
         return new Response(
           JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }),
           { status: 200 },
@@ -313,7 +327,7 @@ describe("PolarisKeyClient — refresh / persistence", () => {
       }).impl,
     });
     const r = await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
-    expect(r.kind).toBe("ok"); // enroll still succeeded; the block is on /config
+    expect(r.kind).toBe("ok"); // activation still succeeded; the block is on /config
     const s = client.status();
     expect(s.status).toBe("version-too-old");
     expect(s.allowedRange?.min).toBe("2.0.0");
@@ -329,7 +343,7 @@ describe("PolarisKeyClient — refresh / persistence", () => {
     ): Promise<Response> => {
       const u = new URL(typeof input === "string" ? input : input.toString());
       const headers = new Headers(init?.headers);
-      if (u.pathname.endsWith("/enroll")) {
+      if (u.pathname.endsWith("/activate")) {
         return new Response(
           JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }),
           { status: 200 },
@@ -354,7 +368,7 @@ describe("PolarisKeyClient — refresh / persistence", () => {
             name: "Ada",
             firstName: "Ada",
             email: "a@b.c",
-            enrolledAt: now,
+            activatedAt: now,
           },
           payload: {
             config: {
@@ -411,7 +425,7 @@ describe("PolarisKeyClient — offline-first init", () => {
         name: "Ada",
         firstName: "Ada",
         email: "a@b.c",
-        enrolledAt: now,
+        activatedAt: now,
       },
       payload: {
         config: {
@@ -450,7 +464,7 @@ describe("PolarisKeyClient — offline-first init", () => {
 });
 
 describe("PolarisKeyClient — deactivate", () => {
-  it("deactivate POSTs /deauthorize, wipes the store, and resets to needs-enroll", async () => {
+  it("deactivate POSTs /deauthorize, wipes the store, and resets to needs-activation", async () => {
     const store = new InMemoryStore("djdl");
     const m = mockFetch();
     const client = await PolarisKeyClient.create({
@@ -462,7 +476,7 @@ describe("PolarisKeyClient — deactivate", () => {
     expect(client.status().status).toBe("ok");
 
     await client.deactivate();
-    expect(client.status().status).toBe("needs-enroll");
+    expect(client.status().status).toBe("needs-activation");
     expect(await store.getToken()).toBeNull();
     expect(await store.readCache()).toBeNull();
     expect(
@@ -474,17 +488,17 @@ describe("PolarisKeyClient — deactivate", () => {
 
   it("deactivate works offline (deauthorize swallows the error) and still wipes locally", async () => {
     const store = new InMemoryStore("djdl");
-    let enrolled = false;
+    let activated = false;
     const impl = (async (input: string | URL | Request): Promise<Response> => {
       const u = new URL(typeof input === "string" ? input : input.toString());
-      if (u.pathname.endsWith("/enroll")) {
-        enrolled = true;
+      if (u.pathname.endsWith("/activate")) {
+        activated = true;
         return new Response(
           JSON.stringify({ token: "pkeyt_e", schemaVersion: 1 }),
           { status: 200 },
         );
       }
-      if (u.pathname.endsWith("/config") && enrolled) {
+      if (u.pathname.endsWith("/config") && activated) {
         const now = Math.floor(Date.now() / 1000);
         const doc: ManagedConfigDoc = {
           schemaVersion: 1,
@@ -499,7 +513,7 @@ describe("PolarisKeyClient — deactivate", () => {
             name: "A",
             firstName: "A",
             email: "a@b.c",
-            enrolledAt: now,
+            activatedAt: now,
           },
           payload: { config: {}, secrets: {}, entitlements: {} },
         };
@@ -521,8 +535,40 @@ describe("PolarisKeyClient — deactivate", () => {
     });
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     await client.deactivate(); // /deauthorize throws but is swallowed
-    expect(client.status().status).toBe("needs-enroll");
+    expect(client.status().status).toBe("needs-activation");
     expect(await store.getToken()).toBeNull();
+  });
+});
+
+describe("PolarisKeyClient — device management surface", () => {
+  it("reports the current device and only deauthorizes the current device", async () => {
+    const store = new InMemoryStore("djdl");
+    const deviceId = await store.getDeviceId();
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store,
+      fetchImpl: (async () =>
+        new Response("{}", { status: 200 })) as typeof fetch,
+    });
+
+    expect(client.getCurrentDevice()).toMatchObject({
+      id: deviceId,
+      current: true,
+      status: "needs-activation",
+    });
+    await expect(client.listDevices()).resolves.toEqual([
+      expect.objectContaining({
+        id: deviceId,
+        current: true,
+        status: "needs-activation",
+      }),
+    ]);
+    await expect(
+      client.deauthorizeDevice("other-device"),
+    ).rejects.toMatchObject({
+      code: "device-management-unsupported",
+    });
+    await expect(client.deauthorizeDevice(deviceId)).resolves.toBeUndefined();
   });
 });
 

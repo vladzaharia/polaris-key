@@ -6,7 +6,6 @@ import {
   Fingerprint,
   KeyRound,
   LayoutDashboard,
-  ListChecks,
   LogOut,
   Menu,
   Moon,
@@ -18,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import type { Me } from "../api.js";
-import { hashFor, tabOf, TABS, type Route, type Tab } from "../route.js";
+import { tabOf, TABS, type Route, type Tab } from "../route.js";
 import { Logo, LogoMark } from "./brand/Logo.js";
 import { useTheme } from "./theme.js";
 import {
@@ -39,7 +38,6 @@ import {
 
 const TAB_ICONS: Partial<Record<Tab, LucideIcon>> = {
   overview: LayoutDashboard,
-  setup: ListChecks,
   licenses: KeyRound,
   config: SlidersHorizontal,
   identity: Fingerprint,

@@ -7,7 +7,7 @@
 // Worker does, returning a 403 the transport surfaces as `blocked`). So for the build-gated
 // rows we feed the fixture's own block decision (reason + allowedRange) into `licenseState`
 // and assert it reflects it; for the rest we feed the doc window + token/sync inputs and
-// assert the expiry/grace/enroll/revoke transitions land identically to the other SDKs.
+// assert the expiry/grace/activate/revoke transitions land identically to the other SDKs.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -84,7 +84,7 @@ function buildDoc(l: LicenseInputs): ManagedConfigDoc | null {
     issuedAt: l.issuedAt,
     expiresAt: l.expiresAt,
     graceUntil: l.graceUntil,
-    profile: { name: "M", firstName: "M", email: "m@x.y", enrolledAt: 0 },
+    profile: { name: "M", firstName: "M", email: "m@x.y", activatedAt: 0 },
     payload: { config: {}, secrets: {}, entitlements: {} },
   };
 }

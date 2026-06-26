@@ -78,7 +78,7 @@ export function isMovingSelector(sel: ChannelSelector): boolean {
  * unless the author wrote it), cap its source length, and reject anything that fails
  * to compile. Returns `null` for an unsafe/invalid pattern rather than throwing.
  */
-export function compileChannelRegex(source: string): RegExp | null {
+function compileChannelRegex(source: string): RegExp | null {
   if (source.length > MAX_REGEX_SOURCE) return null;
   const anchored = `^(?:${source})$`;
   try {
@@ -166,10 +166,4 @@ export function resolveChannel(
       return newest(releases, (r) => re.test(r.tag_name));
     }
   }
-}
-
-export interface WorkflowRunRef {
-  id: number;
-  head_sha: string;
-  head_branch: string | null;
 }

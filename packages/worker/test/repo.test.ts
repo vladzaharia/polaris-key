@@ -4,27 +4,27 @@ import { NOW, seedProduct } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import {
   appendAudit,
-  countActiveMachines,
+  countActiveDevices,
   getKey,
   getLicense,
   getLicenseBySub,
-  getMachine,
+  getDevice,
   getProfile,
   getTier,
   insertKey,
   insertLicense,
   listAudit,
   listKeysByLicense,
-  listMachinesByLicense,
+  listDevicesByLicense,
   listProducts,
   setKeyStatus,
-  setMachineReported,
-  setMachineStatus,
+  setDeviceReported,
+  setDeviceStatus,
   touchKey,
-  upsertMachine,
+  upsertDevice,
   type AuditRow,
   type LicenseRow,
-  type MachineRow,
+  type DeviceRow,
 } from "../src/repo.js";
 
 const lic = (
@@ -40,8 +40,7 @@ const lic = (
   email: null,
   groups_json: null,
   tier_id: null,
-  profile_id: null,
-  enrolled_at: NOW,
+  activated_at: NOW,
   expires_at: null,
   max_offline_days: null,
   overrides_json: null,
@@ -53,14 +52,15 @@ const lic = (
   ...over,
 });
 
-const machine = (
+const device = (
   slug: string,
   id: string,
   licId: string,
-  over: Partial<MachineRow> = {},
-): MachineRow => ({
+  over: Partial<DeviceRow> = {},
+): DeviceRow => ({
   product: slug,
-  machine_id: id,
+  device_id: id,
+  customer_id: null,
   license_id: licId,
   status: "authorized",
   first_seen: NOW,
@@ -132,37 +132,35 @@ describe("repo CRUD round-trips", () => {
     expect((await getKey(db, "djdl", "h1"))?.status).toBe("revoked");
   });
 
-  it("machines: upsert (insert then update), get, listByLicense", async () => {
+  it("devices: upsert (insert then update), get, listByLicense", async () => {
     await insertLicense(db, lic("djdl", "lic_1"));
-    await upsertMachine(db, machine("djdl", "dev-1", "lic_1", { ua: "first" }));
-    expect((await getMachine(db, "djdl", "dev-1"))?.ua).toBe("first");
+    await upsertDevice(db, device("djdl", "dev-1", "lic_1", { ua: "first" }));
+    expect((await getDevice(db, "djdl", "dev-1"))?.ua).toBe("first");
 
     // Upsert again updates last_seen/ua/status while keeping first_seen via caller.
-    await upsertMachine(
+    await upsertDevice(
       db,
-      machine("djdl", "dev-1", "lic_1", { ua: "second", last_seen: NOW + 9 }),
+      device("djdl", "dev-1", "lic_1", { ua: "second", last_seen: NOW + 9 }),
     );
-    const m = await getMachine(db, "djdl", "dev-1");
+    const m = await getDevice(db, "djdl", "dev-1");
     expect(m?.ua).toBe("second");
     expect(m?.last_seen).toBe(NOW + 9);
-    expect((await listMachinesByLicense(db, "djdl", "lic_1")).length).toBe(1);
+    expect((await listDevicesByLicense(db, "djdl", "lic_1")).length).toBe(1);
   });
 
-  it("machines: setStatus + setReported", async () => {
+  it("devices: setStatus + setReported", async () => {
     await insertLicense(db, lic("djdl", "lic_1"));
-    await upsertMachine(db, machine("djdl", "dev-1", "lic_1"));
-    await setMachineStatus(db, "djdl", "dev-1", "deauthorized");
-    expect((await getMachine(db, "djdl", "dev-1"))?.status).toBe(
-      "deauthorized",
-    );
-    await setMachineReported(
+    await upsertDevice(db, device("djdl", "dev-1", "lic_1"));
+    await setDeviceStatus(db, "djdl", "dev-1", "deauthorized");
+    expect((await getDevice(db, "djdl", "dev-1"))?.status).toBe("deauthorized");
+    await setDeviceReported(
       db,
       "djdl",
       "dev-1",
       JSON.stringify({ v: "1.2.3" }),
       NOW + 1,
     );
-    const m = await getMachine(db, "djdl", "dev-1");
+    const m = await getDevice(db, "djdl", "dev-1");
     expect(m?.reported_json).toBe(JSON.stringify({ v: "1.2.3" }));
     expect(m?.last_seen).toBe(NOW + 1);
   });
@@ -179,7 +177,7 @@ describe("repo CRUD round-trips", () => {
       NOW,
     );
     await db.run(
-      "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)",
+      "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)",
       "djdl",
       "pro",
       "Pro",
@@ -190,11 +188,11 @@ describe("repo CRUD round-trips", () => {
       NOW,
     );
     expect((await getProfile(db, "djdl", "prof_1"))?.name).toBe("Base");
-    expect((await getTier(db, "djdl", "pro"))?.policy_machine_limit).toBe(3);
+    expect((await getTier(db, "djdl", "pro"))?.policy_device_limit).toBe(3);
   });
 });
 
-describe("countActiveMachines", () => {
+describe("countActiveDevices", () => {
   let db: SqliteDb;
   beforeEach(async () => {
     db = makeTestDb();
@@ -202,24 +200,24 @@ describe("countActiveMachines", () => {
     await insertLicense(db, lic("djdl", "lic_1"));
   });
 
-  it("counts only authorized machines for the license", async () => {
-    await upsertMachine(
+  it("counts only authorized devices for the license", async () => {
+    await upsertDevice(
       db,
-      machine("djdl", "dev-1", "lic_1", { status: "authorized" }),
+      device("djdl", "dev-1", "lic_1", { status: "authorized" }),
     );
-    await upsertMachine(
+    await upsertDevice(
       db,
-      machine("djdl", "dev-2", "lic_1", { status: "authorized" }),
+      device("djdl", "dev-2", "lic_1", { status: "authorized" }),
     );
-    await upsertMachine(
+    await upsertDevice(
       db,
-      machine("djdl", "dev-3", "lic_1", { status: "deauthorized" }),
+      device("djdl", "dev-3", "lic_1", { status: "deauthorized" }),
     );
-    expect(await countActiveMachines(db, "djdl", "lic_1")).toBe(2);
+    expect(await countActiveDevices(db, "djdl", "lic_1")).toBe(2);
   });
 
   it("is zero when there are none", async () => {
-    expect(await countActiveMachines(db, "djdl", "lic_1")).toBe(0);
+    expect(await countActiveDevices(db, "djdl", "lic_1")).toBe(0);
   });
 });
 
@@ -323,13 +321,13 @@ describe("product scope isolation", () => {
     expect((await listAudit(db, "acme", {})).map((r) => r.id)).toEqual(["a1"]);
   });
 
-  it("countActiveMachines is product-scoped", async () => {
+  it("countActiveDevices is product-scoped", async () => {
     await insertLicense(db, lic("djdl", "lic_1"));
     await insertLicense(db, lic("acme", "lic_1"));
-    await upsertMachine(db, machine("djdl", "dev-1", "lic_1"));
-    await upsertMachine(db, machine("acme", "dev-1", "lic_1"));
-    await upsertMachine(db, machine("acme", "dev-2", "lic_1"));
-    expect(await countActiveMachines(db, "djdl", "lic_1")).toBe(1);
-    expect(await countActiveMachines(db, "acme", "lic_1")).toBe(2);
+    await upsertDevice(db, device("djdl", "dev-1", "lic_1"));
+    await upsertDevice(db, device("acme", "dev-1", "lic_1"));
+    await upsertDevice(db, device("acme", "dev-2", "lic_1"));
+    expect(await countActiveDevices(db, "djdl", "lic_1")).toBe(1);
+    expect(await countActiveDevices(db, "acme", "lic_1")).toBe(2);
   });
 });

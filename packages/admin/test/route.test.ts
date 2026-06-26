@@ -33,7 +33,7 @@ describe("parseRoute", () => {
   });
 
   it("a license detail carries the id", () => {
-    expect(parseRoute("#/p/djdl/license/lic_42")).toEqual({
+    expect(parseRoute("#/p/djdl/licenses/lic_42")).toEqual({
       kind: "product",
       slug: "djdl",
       view: "license",
@@ -49,26 +49,28 @@ describe("parseRoute", () => {
     });
   });
 
-  it("legacy product views route to the new workspace tabs", () => {
+  it("unknown product views fall back to licenses", () => {
     expect(parseRoute("#/p/djdl/catalog")).toEqual({
       kind: "product",
       slug: "djdl",
-      view: "config",
+      view: "licenses",
     });
     expect(parseRoute("#/p/djdl/oidc")).toEqual({
       kind: "product",
       slug: "djdl",
-      view: "identity",
+      view: "licenses",
     });
   });
 
   it("decodes a URL-encoded slug and id (encoded slashes survive)", () => {
-    expect(parseRoute("#/p/my%20product/license/id%2Fwith%2Fslashes")).toEqual({
-      kind: "product",
-      slug: "my product",
-      view: "license",
-      id: "id/with/slashes",
-    });
+    expect(parseRoute("#/p/my%20product/licenses/id%2Fwith%2Fslashes")).toEqual(
+      {
+        kind: "product",
+        slug: "my product",
+        view: "license",
+        id: "id/with/slashes",
+      },
+    );
   });
 
   it("a garbage hash falls back to the dashboard", () => {
@@ -91,19 +93,13 @@ describe("hashFor", () => {
   it("serializes a license-detail route with its id", () => {
     expect(
       hashFor({ kind: "product", slug: "djdl", view: "license", id: "lic_1" }),
-    ).toBe("#/p/djdl/license/lic_1");
-  });
-
-  it("a license view without an id degrades to the slug root", () => {
-    expect(hashFor({ kind: "product", slug: "djdl", view: "license" })).toBe(
-      "#/p/djdl/license",
-    );
+    ).toBe("#/p/djdl/licenses/lic_1");
   });
 
   it("encodes slugs + ids with special characters", () => {
     expect(
       hashFor({ kind: "product", slug: "a/b", view: "license", id: "c d" }),
-    ).toBe("#/p/a%2Fb/license/c%20d");
+    ).toBe("#/p/a%2Fb/licenses/c%20d");
   });
 });
 
@@ -139,15 +135,6 @@ describe("tabOf", () => {
   it("a tab view maps to itself", () => {
     expect(tabOf({ kind: "product", slug: "djdl", view: "config" })).toBe(
       "config",
-    );
-  });
-
-  it("legacy views map to their workspace tab", () => {
-    expect(tabOf({ kind: "product", slug: "djdl", view: "catalog" })).toBe(
-      "config",
-    );
-    expect(tabOf({ kind: "product", slug: "djdl", view: "oidc" })).toBe(
-      "identity",
     );
   });
 });

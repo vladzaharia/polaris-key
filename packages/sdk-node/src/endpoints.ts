@@ -1,4 +1,4 @@
-// Enrollment + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report).
+// Activation + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report).
 
 import { arch, platform } from "node:os";
 import {
@@ -8,9 +8,7 @@ import {
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
 } from "@polaris-key/protocol";
-
-const SDK_NAME = "@polaris-key/node";
-const SDK_VERSION = "0.0.0";
+import { SDK_NAME, SDK_VERSION } from "./version.js";
 
 function metadataHeaders(): Record<string, string> {
   return {
@@ -21,11 +19,26 @@ function metadataHeaders(): Record<string, string> {
   };
 }
 
-export type EnrollResult =
+export type ActivationResult =
   | { kind: "ok"; token: string; schemaVersion: number }
-  | { kind: "machine-limit"; limit?: number; machineCount?: number }
+  | { kind: "device-limit"; limit?: number; deviceCount?: number }
   | { kind: "unauthorized" }
   | { kind: "error"; message: string };
+
+export interface AccountDevice {
+  id: string;
+  licenseId?: string;
+  label?: string | null;
+  status: string;
+  current: boolean;
+  firstSeen?: number;
+  lastSeen?: number;
+  platform?: string | null;
+  arch?: string | null;
+  appVersion?: string | null;
+  sdkName?: string | null;
+  sdkVersion?: string | null;
+}
 
 interface Base {
   baseUrl: string;
@@ -34,11 +47,11 @@ interface Base {
   fetchImpl?: typeof fetch;
 }
 
-async function enrollLike(
+async function activationLike(
   url: string,
   headers: Record<string, string>,
   f: typeof fetch,
-): Promise<EnrollResult> {
+): Promise<ActivationResult> {
   let res: Response;
   try {
     res = await f(url, { method: "POST", headers });
@@ -52,23 +65,23 @@ async function enrollLike(
   if (res.status === 403) {
     const b = (await res.json().catch(() => ({}))) as {
       limit?: number;
-      machineCount?: number;
+      deviceCount?: number;
     };
     return {
-      kind: "machine-limit",
+      kind: "device-limit",
       limit: b.limit,
-      machineCount: b.machineCount,
+      deviceCount: b.deviceCount,
     };
   }
   if (res.status === 401) return { kind: "unauthorized" };
   return { kind: "error", message: await res.text().catch(() => "") };
 }
 
-export async function enrollWithKey(
+export async function activateWithKey(
   opts: Base & { key: string },
-): Promise<EnrollResult> {
-  return enrollLike(
-    `${opts.baseUrl}/${opts.product}/enroll`,
+): Promise<ActivationResult> {
+  return activationLike(
+    `${opts.baseUrl}/${opts.product}/activate`,
     {
       authorization: `Bearer ${opts.key}`,
       [HEADER_DEVICE]: opts.deviceId,
@@ -78,10 +91,66 @@ export async function enrollWithKey(
   );
 }
 
+export async function listDevices(opts: {
+  baseUrl: string;
+  product: string;
+  token: string;
+  fetchImpl?: typeof fetch;
+}): Promise<AccountDevice[]> {
+  const f = opts.fetchImpl ?? fetch;
+  const res = await f(`${opts.baseUrl}/${opts.product}/devices`, {
+    headers: { authorization: `Bearer ${opts.token}` },
+  });
+  if (!res.ok) throw new Error(`device list failed: ${res.status}`);
+  const body = (await res.json()) as { devices?: AccountDevice[] };
+  return Array.isArray(body.devices) ? body.devices : [];
+}
+
+export async function renameDevice(opts: {
+  baseUrl: string;
+  product: string;
+  token: string;
+  deviceId: string;
+  label: string | null;
+  fetchImpl?: typeof fetch;
+}): Promise<void> {
+  const f = opts.fetchImpl ?? fetch;
+  const res = await f(
+    `${opts.baseUrl}/${opts.product}/devices/${encodeURIComponent(opts.deviceId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        authorization: `Bearer ${opts.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ label: opts.label }),
+    },
+  );
+  if (!res.ok) throw new Error(`device rename failed: ${res.status}`);
+}
+
+export async function deauthorizeDevice(opts: {
+  baseUrl: string;
+  product: string;
+  token: string;
+  deviceId: string;
+  fetchImpl?: typeof fetch;
+}): Promise<void> {
+  const f = opts.fetchImpl ?? fetch;
+  const res = await f(
+    `${opts.baseUrl}/${opts.product}/devices/${encodeURIComponent(opts.deviceId)}`,
+    {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${opts.token}` },
+    },
+  );
+  if (!res.ok) throw new Error(`device deauthorize failed: ${res.status}`);
+}
+
 export async function reacquireToken(
   opts: Base & { token: string },
-): Promise<EnrollResult> {
-  return enrollLike(
+): Promise<ActivationResult> {
+  return activationLike(
     `${opts.baseUrl}/${opts.product}/token`,
     {
       authorization: `Bearer ${opts.token}`,

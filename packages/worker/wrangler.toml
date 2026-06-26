@@ -1,13 +1,12 @@
 name = "polaris-key"
 main = "src/index.ts"
-# 2026-04-07 enables WebCrypto Ed25519 (config-doc JWS signing) and
-# web_socket_auto_reply_to_close for the hibernatable HubDO.
+# 2026-04-07 enables WebCrypto Ed25519 for config-doc JWS signing.
 compatibility_date = "2026-04-07"
 compatibility_flags = ["nodejs_compat"]
 
-[[durable_objects.bindings]]
-name = "HUB"
-class_name = "HubDO"
+[assets]
+directory = "../admin/dist"
+binding = "ASSETS"
 
 [[durable_objects.bindings]]
 name = "RL"
@@ -15,10 +14,6 @@ class_name = "RateLimitDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["HubDO"]
-
-[[migrations]]
-tag = "v2"
 new_classes = ["RateLimitDO"]
 
 # ---------------------------------------------------------------------------

@@ -30,7 +30,7 @@ __all__ = [
 _SEMVER_RE = re.compile(
     r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z\-.]+))?(?:\+[0-9A-Za-z\-.]+)?$"
 )
-_PR_RE = re.compile(r"^0\.0\.0-pr\d+")
+_PR_RE = re.compile(r"^0\.0\.0-pr-?\d+")
 _NUMERIC_RE = re.compile(r"^\d+$")
 
 
@@ -131,18 +131,18 @@ def license_state(
 ) -> LicenseState:
     """Compute the gate status. Order matches ``gate.ts`` exactly.
 
-    blocked(403) -> that reason; no token -> needs-enroll; lastSyncUnauthorized ->
-    revoked; no doc -> needs-enroll; now > graceUntil -> expired; now > expiresAt ->
+    blocked(403) -> that reason; no token -> needs-activation; lastSyncUnauthorized ->
+    revoked; no doc -> needs-activation; now > graceUntil -> expired; now > expiresAt ->
     grace; else ok.
     """
     if blocked is not None:
         return LicenseState(status=blocked.reason, allowedRange=blocked.allowedRange)
     if not has_token:
-        return LicenseState(status="needs-enroll")
+        return LicenseState(status="needs-activation")
     if last_sync_unauthorized:
         return LicenseState(status="revoked")
     if doc is None:
-        return LicenseState(status="needs-enroll")
+        return LicenseState(status="needs-activation")
     if now > doc.graceUntil:
         return LicenseState(status="expired", graceUntil=doc.graceUntil)
     if now > doc.expiresAt:

@@ -13,5 +13,5 @@ export {
   type BridgeState,
   type BridgeOidcBegin,
   type BridgeOidcPoll,
-  type BridgeEnroll,
+  type BridgeActivation,
 } from "./bridge.js";

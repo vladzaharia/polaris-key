@@ -28,6 +28,7 @@ export interface DataTableProps<T> {
   filterPlaceholder?: string;
   empty?: React.ReactNode;
   onRowClick?: (row: T) => void;
+  onRowClickLabel?: (row: T) => string;
   className?: string;
 }
 
@@ -55,6 +56,7 @@ export function DataTable<T>({
   filterPlaceholder = "Filter…",
   empty,
   onRowClick,
+  onRowClickLabel,
   className,
 }: DataTableProps<T>): React.ReactElement {
   const [sort, setSort] = React.useState<SortState>(null);
@@ -180,25 +182,44 @@ export function DataTable<T>({
                 </td>
               </tr>
             ) : (
-              sorted.map((row) => (
-                <tr
-                  key={rowKey(row)}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={cn(
-                    "border-b border-border transition-colors last:border-0 hover:bg-muted/40",
-                    onRowClick && "cursor-pointer",
-                  )}
-                >
-                  {columns.map((col) => (
-                    <td
-                      key={col.id}
-                      className={cn("px-3 py-2.5 align-middle", col.className)}
-                    >
-                      {col.cell(row)}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              sorted.map((row) => {
+                const click = onRowClick ? () => onRowClick(row) : undefined;
+                return (
+                  <tr
+                    key={rowKey(row)}
+                    role={onRowClick ? "button" : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    aria-label={onRowClickLabel?.(row)}
+                    onClick={click}
+                    onKeyDown={
+                      onRowClick
+                        ? (e) => {
+                            if (e.key !== "Enter" && e.key !== " ") return;
+                            e.preventDefault();
+                            onRowClick(row);
+                          }
+                        : undefined
+                    }
+                    className={cn(
+                      "border-b border-border transition-colors last:border-0 hover:bg-muted/40",
+                      onRowClick &&
+                        "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    )}
+                  >
+                    {columns.map((col) => (
+                      <td
+                        key={col.id}
+                        className={cn(
+                          "px-3 py-2.5 align-middle",
+                          col.className,
+                        )}
+                      >
+                        {col.cell(row)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

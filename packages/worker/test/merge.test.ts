@@ -42,13 +42,13 @@ describe("mergePayloads", () => {
     expect(out.entitlements).toEqual({ x: ent(true) });
   });
 
-  it("applies precedence tier -> license -> machine (later wins per key)", () => {
+  it("applies precedence tier -> license -> device (later wins per key)", () => {
     const tier = layer({ config: { theme: ent("light"), region: ent("us") } });
     const license = layer({ config: { theme: ent("dark") } });
-    const machine = layer({ config: { region: ent("eu") } });
-    const out = mergePayloads(tier, license, machine);
+    const device = layer({ config: { region: ent("eu") } });
+    const out = mergePayloads(tier, license, device);
     expect(out.config.theme).toEqual(ent("dark")); // license over tier
-    expect(out.config.region).toEqual(ent("eu")); // machine over tier
+    expect(out.config.region).toEqual(ent("eu")); // device over tier
   });
 
   it("the last layer fully overrides an earlier entry for the same key", () => {

@@ -169,7 +169,7 @@ describe("LicenseGate — render-prop slot overrides", () => {
       expect(within(container).getByTestId("custom-login")).toBeTruthy(),
     );
     expect(within(container).getByTestId("custom-login").textContent).toBe(
-      "needs-enroll",
+      "needs-activation",
     );
     // The default OIDC button is gone (the slot replaced the whole screen).
     expect(container.querySelector("[data-polaris-oidc]")).toBeNull();

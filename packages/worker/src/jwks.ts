@@ -5,7 +5,7 @@ import { signJws } from "@polaris-key/jws";
 import { ISSUER, type TrustManifestDoc } from "@polaris-key/protocol";
 import { loadPublicSigningKeys } from "./product.js";
 
-export const TRUST_CACHE_SECONDS = 300;
+const TRUST_CACHE_SECONDS = 300;
 
 /** GET /<product>/.well-known/jwks.json — the product's Ed25519 public key(s), so SDKs
  *  can optionally discover keys (rotation). Clients still pin a trust set by default. */

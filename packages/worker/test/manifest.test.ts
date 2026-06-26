@@ -21,7 +21,7 @@ const PRODUCT = {
   compatMin: "0.0.0",
   compatMax: "99.0.0",
   defaultMaxOfflineDays: 30,
-  defaultMachineLimit: 5,
+  defaultDeviceLimit: 5,
   adminGroup: "admin",
   oidc: {
     issuer: "https://id.scruffy.spot",
@@ -36,7 +36,7 @@ const PRODUCT = {
       label: "Standard",
       profileId: null,
       policyExpiryDays: null,
-      policyMachineLimit: 5,
+      policyDeviceLimit: 5,
       channels: ["stable", "beta"],
       minVersion: "1.0.0",
       maxVersion: "2.0.0",
@@ -87,7 +87,7 @@ describe("parseManifest", () => {
     const m = res.manifest;
     expect(m.product.slug).toBe("djdl");
     expect(m.product.name).toBe("DJDL");
-    expect(m.product.defaultMachineLimit).toBe(5);
+    expect(m.product.defaultDeviceLimit).toBe(5);
     expect(m.catalog.schemaVersion).toBe(1);
     expect(m.catalog.entries.length).toBe(
       (CATALOG.entries as unknown[]).length,

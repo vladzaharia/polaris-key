@@ -87,7 +87,7 @@ def test_filestore_roundtrip_and_permissions(tmp_path) -> None:
         issuedAt=1700000000,
         expiresAt=1700003600,
         graceUntil=1702592000,
-        profile=DocProfile(name="A", firstName="A", email="a@b.c", enrolledAt=0),
+        profile=DocProfile(name="A", firstName="A", email="a@b.c", activatedAt=0),
         payload=ManagedPayload(
             config={}, secrets={}, entitlements={}
         ),

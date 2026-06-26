@@ -6,8 +6,7 @@
  *   /admin/login      -> path "/login"      -> OIDC redirect
  *   /admin/callback   -> path "/callback"   -> verify + set session cookie
  *   /admin/api/...    -> path "/api/..."    -> handleAdminApi (JSON surface)
- *   /admin or /admin/ -> path "" or "/"     -> the SPA shell (served as a static asset by
- *                                              the parent; this returns a minimal fallback)
+ *   /admin or /admin/ -> path "" or "/"     -> the built admin SPA asset.
  *
  * Auth, group-gating, CSRF, product scoping, catalog validation, secret redaction and
  * auditing all live below this — see ./api.ts. This module is intentionally a thin router.
@@ -22,17 +21,7 @@ import {
 } from "./auth.js";
 import { handleAdminApi } from "./api.js";
 
-export { handleAdminApi } from "./api.js";
-export {
-  handleAdminLogin,
-  handleAdminCallback,
-  joseIdTokenVerifier,
-  type IdTokenVerifier,
-} from "./auth.js";
-export type { AdminSession } from "./session.js";
-export { ADMIN_COOKIE, CSRF_HEADER } from "./session.js";
-
-/** Minimal SPA placeholder; in production the parent serves the built `packages/admin` assets. */
+/** Minimal SPA placeholder for tests/local configurations without an assets binding. */
 function spaShell(): Response {
   return new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key — Admin</title></head><body><div id="root"></div><script type="module" src="/admin/assets/main.js"></script></body></html>`,
@@ -44,6 +33,27 @@ function spaShell(): Response {
       },
     },
   );
+}
+
+async function serveAdminAsset(
+  req: Request,
+  env: Env,
+  cleanPath: string,
+): Promise<Response> {
+  if (!env.ASSETS) return spaShell();
+  const url = new URL(req.url);
+  if (cleanPath === "" || cleanPath === "/" || !cleanPath.includes(".")) {
+    url.pathname = "/index.html";
+  } else {
+    url.pathname = cleanPath;
+  }
+  const res = await env.ASSETS.fetch(new Request(url, req));
+  if (url.pathname === "/index.html") {
+    const headers = new Headers(res.headers);
+    headers.set("cache-control", "no-store");
+    return new Response(res.body, { status: res.status, headers });
+  }
+  return res;
 }
 
 /**
@@ -69,6 +79,6 @@ export async function handleAdmin(
   if (clean === "/api" || clean.startsWith("/api/")) {
     return handleAdminApi(req, env, db, clean, now);
   }
-  // Everything else under /admin is the SPA shell (deep links handled client-side).
-  return spaShell();
+  // Everything else under /admin is the SPA shell/assets (deep links handled client-side).
+  return serveAdminAsset(req, env, clean);
 }

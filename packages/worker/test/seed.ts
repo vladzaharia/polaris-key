@@ -32,20 +32,15 @@ export const TEST_KEK = btoa("\0".repeat(32));
 
 export const NOW = 1_700_000_000;
 
-const secretName = (slug: string): string =>
-  `SIGNING_KEY__${slug.toUpperCase().replace(/-/g, "_")}`;
-
 /** An Env whose KV is the mock, whose PLATFORM_KEK is the test KEK, and whose per-product
- *  signing-key worker secrets are all the test key (kept harmlessly for legacy paths). */
-export function makeEnv(kv: KvMock, slugs: string[]): Env {
+ *  signing keys are sealed in D1 under the test KEK. */
+export function makeEnv(kv: KvMock, _slugs: string[]): Env {
   const env: Record<string, unknown> = {
     HOT: asKv(kv),
     DB: undefined,
-    HUB: undefined,
     RL: makeRlNamespace(),
     PLATFORM_KEK: TEST_KEK,
   };
-  for (const slug of slugs) env[secretName(slug)] = TEST_PEM;
   return env as Env;
 }
 
@@ -58,12 +53,11 @@ export async function seedProduct(
     slug,
     name: slug,
     signing_kid: TEST_KID,
-    signing_key_secret: secretName(slug),
     signing_pub: TEST_PUB,
     compat_min: "0.0.0",
     compat_max: "99.0.0",
     default_max_offline_days: 30,
-    default_machine_limit: 5,
+    default_device_limit: 5,
     admin_group: null,
     branding_json: null,
     release_source: null,
@@ -71,8 +65,12 @@ export async function seedProduct(
     modified_at: NOW,
   });
   // KEK-custody: seal TEST_PEM under the constant TEST_KEK and insert the active product key
-  // that loadProduct now opens (replaces the SIGNING_KEY__<SLUG> worker-secret path).
-  const encPrivate = await seal({ PLATFORM_KEK: TEST_KEK } as Env, TEST_PEM);
+  // that loadProduct opens.
+  const encPrivate = await seal({ PLATFORM_KEK: TEST_KEK } as Env, TEST_PEM, {
+    product: slug,
+    kind: "signing-key",
+    id: TEST_KID,
+  });
   await insertProductKey(db, {
     product: slug,
     kid: TEST_KID,
@@ -101,7 +99,11 @@ export async function seedProductSecret(
   name: string,
   value: string,
 ): Promise<void> {
-  const enc_value_json = await seal({ PLATFORM_KEK: TEST_KEK } as Env, value);
+  const enc_value_json = await seal({ PLATFORM_KEK: TEST_KEK } as Env, value, {
+    product: slug,
+    kind: "product-secret",
+    id: name,
+  });
   await upsertProductSecret(db, {
     product: slug,
     name,
@@ -132,7 +134,7 @@ export async function seedTier(
   } = {},
 ): Promise<void> {
   await db.run(
-    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit,
+    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
        channels_json, min_version, max_version, modified_by, modified_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     slug,
@@ -149,7 +151,7 @@ export async function seedTier(
   );
 }
 
-/** Insert an active license + a fresh key; returns the raw key to enroll with. */
+/** Insert an active license + a fresh key; returns the raw key to activate with. */
 export async function seedLicenseWithKey(
   db: Db,
   slug: string,
@@ -180,8 +182,7 @@ export async function seedLicenseWithKey(
     email: "ada@example.com",
     groups_json: null,
     tier_id: opts.tierId ?? null,
-    profile_id: null,
-    enrolled_at: NOW,
+    activated_at: NOW,
     expires_at: opts.expiresAt ?? null,
     max_offline_days: null,
     overrides_json: JSON.stringify(overrides),

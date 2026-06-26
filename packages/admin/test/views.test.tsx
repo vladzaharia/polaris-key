@@ -23,10 +23,9 @@ import {
 import { ThemeProvider, useTheme } from "../src/components/theme.js";
 import { Logo } from "../src/components/brand/Logo.js";
 import { Dashboard } from "../src/views/Dashboard.js";
-import { ComingSoon } from "../src/views/ComingSoon.js";
 
-// Foundation-level smoke tests: the primitive layer + brand + placeholder views compile,
-// render, and behave. View-specific behavior belongs to the agents building those views.
+// Foundation-level smoke tests: the primitive layer and brand compile, render, and behave.
+// View-specific behavior lives with each view test suite.
 
 const ME: Me = {
   sub: "u1",
@@ -166,6 +165,24 @@ describe("DataTable primitive", () => {
     );
     expect(screen.getByText("No data")).toBeTruthy();
   });
+
+  it("makes clickable rows keyboard reachable", async () => {
+    const onRowClick = vi.fn();
+    render(
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(r) => r.id}
+        onRowClick={onRowClick}
+        onRowClickLabel={(r) => `Open ${r.name}`}
+      />,
+    );
+    const row = screen.getByRole("button", { name: "Open Charlie" });
+    row.focus();
+    expect(document.activeElement).toBe(row);
+    await userEvent.keyboard("{Enter}");
+    expect(onRowClick).toHaveBeenCalledWith(rows[0]);
+  });
 });
 
 describe("ConfirmDialog primitive", () => {
@@ -205,7 +222,7 @@ describe("theme toggle", () => {
   });
 });
 
-describe("brand + placeholder views", () => {
+describe("brand + dashboard views", () => {
   it("renders the Polaris Key logo lockup", () => {
     render(<Logo subtitle="admin" />);
     expect(screen.getByLabelText("Polaris Key")).toBeTruthy();
@@ -216,10 +233,5 @@ describe("brand + placeholder views", () => {
     withAdmin(<Dashboard />);
     expect(screen.getByText(/Welcome, Ada/)).toBeTruthy();
     expect(screen.getByText("DJDL")).toBeTruthy();
-  });
-
-  it("ComingSoon renders a labelled placeholder", () => {
-    render(<ComingSoon title="Releases" />);
-    expect(screen.getByText("Releases — coming soon")).toBeTruthy();
   });
 });

@@ -24,7 +24,7 @@ export interface Product {
   compatMin: string;
   compatMax: string;
   defaultMaxOfflineDays: number;
-  defaultMachineLimit: number;
+  defaultDeviceLimit: number;
   adminGroup: string | null;
   schemaVersion: number;
 }
@@ -85,34 +85,29 @@ export async function loadProduct(
   if (!row) return null;
   const keyRow = await getActiveProductKey(db, slug);
   if (!keyRow) return null;
-  let pem: string;
   try {
-    pem = await open(env, keyRow.enc_private_json, {
+    const pem = await open(env, keyRow.enc_private_json, {
       product: slug,
       kind: "signing-key",
       id: keyRow.kid,
     });
+    const schema = await getActiveSchema(db, slug);
+    return {
+      slug: row.slug,
+      name: row.name,
+      signingKid: keyRow.kid,
+      signingKeyPem: pem,
+      signingPub: keyRow.public_b64url,
+      compatMin: row.compat_min,
+      compatMax: row.compat_max,
+      defaultMaxOfflineDays: row.default_max_offline_days,
+      defaultDeviceLimit: row.default_device_limit,
+      adminGroup: row.admin_group,
+      schemaVersion: schema?.catalog_version ?? 1,
+    };
   } catch {
-    try {
-      pem = await open(env, keyRow.enc_private_json);
-    } catch {
-      return null;
-    }
+    return null;
   }
-  const schema = await getActiveSchema(db, slug);
-  return {
-    slug: row.slug,
-    name: row.name,
-    signingKid: keyRow.kid,
-    signingKeyPem: pem,
-    signingPub: keyRow.public_b64url,
-    compatMin: row.compat_min,
-    compatMax: row.compat_max,
-    defaultMaxOfflineDays: row.default_max_offline_days,
-    defaultMachineLimit: row.default_machine_limit,
-    adminGroup: row.admin_group,
-    schemaVersion: schema?.catalog_version ?? 1,
-  };
 }
 
 /** Open a sealed per-product secret by name. Returns undefined if the row is absent or the
@@ -132,10 +127,6 @@ export async function openProductSecret(
       id: name,
     });
   } catch {
-    try {
-      return await open(env, row.enc_value_json);
-    } catch {
-      return undefined;
-    }
+    return undefined;
   }
 }

@@ -14,10 +14,11 @@ import { loadProduct, type Product } from "../src/product.js";
 import {
   applyProvisioning,
   authorizeAndMint,
-  enrollFromIdentity,
+  activateFromIdentity,
   handleAuthCallback,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
+  handleAuthDeviceVerify,
   handleAuthPoll,
   handleAuthStart,
   type OidcIdentity,
@@ -66,7 +67,7 @@ async function seedOidc(db: SqliteDb): Promise<void> {
     }),
   );
   await db.run(
-    "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)",
+    "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)",
     "djdl",
     "pro",
     "Pro",
@@ -94,7 +95,7 @@ const emptyPayload = (): ManagedPayload => ({
   entitlements: {},
 });
 
-describe("enrollFromIdentity", () => {
+describe("activateFromIdentity", () => {
   let db: SqliteDb;
   let env: Env;
   let product: Product;
@@ -108,8 +109,8 @@ describe("enrollFromIdentity", () => {
   });
 
   it("is idempotent on the OIDC subject", async () => {
-    const r1 = await enrollFromIdentity(db, product, identity(), NOW);
-    const r2 = await enrollFromIdentity(
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    const r2 = await activateFromIdentity(
       db,
       product,
       identity({ name: "Changed Name" }),
@@ -121,7 +122,7 @@ describe("enrollFromIdentity", () => {
   });
 
   it("denies an identity whose groups grant nothing", async () => {
-    const r = await enrollFromIdentity(
+    const r = await activateFromIdentity(
       db,
       product,
       identity({ sub: "x", groups: ["randos"] }),
@@ -131,7 +132,7 @@ describe("enrollFromIdentity", () => {
   });
 
   it("selects the tier from the first matching group + stamps expiry", async () => {
-    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     const lic = await getLicense(db, "djdl", r.licenseId);
     expect(lic?.tier_id).toBe("pro");
@@ -139,7 +140,7 @@ describe("enrollFromIdentity", () => {
   });
 
   it("leaves expiry null when the matched group has no tier", async () => {
-    const r = await enrollFromIdentity(
+    const r = await activateFromIdentity(
       db,
       product,
       identity({ sub: "adminuser", groups: ["admin"] }),
@@ -152,7 +153,7 @@ describe("enrollFromIdentity", () => {
   });
 
   it("bakes provisioning overrides into the new license", async () => {
-    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     const lic = await getLicense(db, "djdl", r.licenseId);
     const ov = JSON.parse(lic!.overrides_json!) as ManagedPayload;
@@ -240,10 +241,10 @@ describe("handleAuthPoll states", () => {
     product = (await loadProduct(env, db, "djdl"))!;
   });
 
-  const poll = (state: string, machine = "dev-1") =>
+  const poll = (state: string, device = "dev-1") =>
     handleAuthPoll(
       new Request(
-        `https://key.plrs.im/djdl/auth/poll?state=${state}&machine=${machine}`,
+        `https://key.plrs.im/djdl/auth/poll?state=${state}&device=${device}`,
       ) as unknown as Request,
       env,
       db,
@@ -266,7 +267,7 @@ describe("handleAuthPoll states", () => {
     expect(((await res.json()) as { status: string }).status).toBe("timeout");
   });
 
-  it("requires state + machine query params", async () => {
+  it("requires state + device query params", async () => {
     const res = await handleAuthPoll(
       new Request(
         "https://key.plrs.im/djdl/auth/poll?state=x",
@@ -301,7 +302,7 @@ describe("handleAuthPoll states", () => {
   });
 
   it("returns ready with a token once the license is set, then consumes the flow", async () => {
-    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     await putFlow("s3", { licenseId: r.licenseId });
     const body = (await (await poll("s3")).json()) as {
@@ -338,7 +339,9 @@ describe("handleAuthPoll states", () => {
     };
     expect(body.deviceCode).toBeTruthy();
     expect(body.userCode).toMatch(/^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$/);
-    expect(body.verificationUri).toContain("https://id.example/authorize?");
+    expect(body.verificationUri).toContain(
+      "https://key.plrs.im/djdl/auth/device/verify?device_code=",
+    );
     expect(body.pollUrl).toBe("https://key.plrs.im/djdl/auth/device/poll");
     expect(body.expiresIn).toBe(600);
     expect(body.interval).toBeGreaterThan(0);
@@ -348,12 +351,18 @@ describe("handleAuthPoll states", () => {
   });
 
   it("polls a JSON device flow and mints through the shared authorizer", async () => {
-    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     await putFlow("oauth-state", { licenseId: r.licenseId });
     await env.HOT.put(
       "p:djdl:device-flow:device-code",
-      JSON.stringify({ state: "oauth-state", machineId: "dev-json" }),
+      JSON.stringify({
+        state: "oauth-state",
+        deviceId: "dev-json",
+        userCode: "ABCD-EFGH",
+        authorizeUrl: "https://id.example/authorize",
+        confirmedAt: NOW,
+      }),
     );
     const res = await handleAuthDevicePoll(
       new Request("https://key.plrs.im/djdl/auth/device/poll", {
@@ -374,11 +383,49 @@ describe("handleAuthPoll states", () => {
     expect(body.token.startsWith("pkeyt_")).toBe(true);
   });
 
+  it("renders and confirms the JSON device verification page", async () => {
+    await env.HOT.put(
+      "p:djdl:device-flow:device-code",
+      JSON.stringify({
+        state: "oauth-state",
+        deviceId: "dev-json",
+        userCode: "ABCD-EFGH",
+        authorizeUrl: "https://id.example/authorize",
+        deviceName: "Studio Mac",
+      }),
+    );
+    const page = await handleAuthDeviceVerify(
+      new Request(
+        "https://key.plrs.im/djdl/auth/device/verify?device_code=device-code",
+      ) as unknown as Request,
+      env,
+      product,
+    );
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain("Studio Mac");
+
+    const confirm = await handleAuthDeviceVerify(
+      new Request(
+        "https://key.plrs.im/djdl/auth/device/verify?device_code=device-code&confirm=1",
+      ) as unknown as Request,
+      env,
+      product,
+    );
+    expect(confirm.status).toBe(302);
+    expect(confirm.headers.get("location")).toBe(
+      "https://id.example/authorize",
+    );
+    const stored = JSON.parse(
+      (await env.HOT.get("p:djdl:device-flow:device-code"))!,
+    ) as { confirmedAt?: number };
+    expect(stored.confirmedAt).toBeTruthy();
+  });
+
   it("rejects JSON device polls from a different device id", async () => {
     await putFlow("oauth-state", {});
     await env.HOT.put(
       "p:djdl:device-flow:device-code",
-      JSON.stringify({ state: "oauth-state", machineId: "dev-json" }),
+      JSON.stringify({ state: "oauth-state", deviceId: "dev-json" }),
     );
     const res = await handleAuthDevicePoll(
       new Request("https://key.plrs.im/djdl/auth/device/poll", {
@@ -406,7 +453,7 @@ describe("authorizeAndMint", () => {
     await seedProduct(db, "djdl");
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
-    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     const token = await authorizeAndMint(
       env,
@@ -530,7 +577,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   const poll = (state: string) =>
     handleAuthPoll(
       new Request(
-        `https://key.plrs.im/djdl/auth/poll?state=${state}&machine=dev-1`,
+        `https://key.plrs.im/djdl/auth/poll?state=${state}&device=dev-1`,
       ) as unknown as Request,
       env,
       db,
@@ -607,7 +654,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   });
 
   it("does NOT leak a failure reason via poll after a failed callback (D8)", async () => {
-    // An entitled-nothing identity: enrollment fails, the flow must be deleted (no reason).
+    // An entitled-nothing identity: activation fails, the flow must be deleted (no reason).
     await seedFlow("n4", "the-nonce");
     installFetchMock(
       await signIdToken({

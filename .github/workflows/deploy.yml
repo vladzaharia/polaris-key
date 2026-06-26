@@ -11,20 +11,60 @@ jobs:
     name: Deploy worker
     runs-on: ubuntu-latest
     if: github.repository == 'vladzaharia/polaris-key'
+    environment: ${{ startsWith(github.ref, 'refs/tags/') && 'production' || 'staging' }}
+    concurrency:
+      group: deploy-${{ startsWith(github.ref, 'refs/tags/') && 'production' || 'staging' }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm --filter @polaris-key/admin build
-      - name: Deploy (staging on main, prod on tag)
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm lint
+      - name: Select target
+        id: target
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           REF: ${{ github.ref }}
         run: |
-          if [[ "$REF" == refs/tags/* ]]; then ENV=prod; else ENV=staging; fi
-          cd packages/worker && npx wrangler deploy --env "$ENV"
+          if [[ "$REF" == refs/tags/* ]]; then
+            TAG="${REF#refs/tags/}"
+            if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo "Production deploy tags must be semver vMAJOR.MINOR.PATCH" >&2
+              exit 1
+            fi
+            echo "env=prod" >> "$GITHUB_OUTPUT"
+            echo "database=polaris_key_prod" >> "$GITHUB_OUTPUT"
+            echo "smoke=https://key.plrs.im/admin" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=staging" >> "$GITHUB_OUTPUT"
+            echo "database=polaris_key_staging" >> "$GITHUB_OUTPUT"
+            echo "smoke=https://key-staging.plrs.im/admin" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Apply D1 migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ENV: ${{ steps.target.outputs.env }}
+          DATABASE: ${{ steps.target.outputs.database }}
+        run: |
+          cd packages/worker
+          npx wrangler d1 migrations apply "$DATABASE" --env "$ENV" --remote
+      - name: Deploy worker + admin assets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ENV: ${{ steps.target.outputs.env }}
+        run: |
+          cd packages/worker
+          npx wrangler deploy --env "$ENV"
+      - name: Smoke check
+        env:
+          SMOKE_URL: ${{ steps.target.outputs.smoke }}
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 "$SMOKE_URL" > /dev/null

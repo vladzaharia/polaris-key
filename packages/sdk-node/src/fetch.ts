@@ -13,12 +13,13 @@ import {
   type BlockReason,
 } from "@polaris-key/protocol";
 import { arch, platform } from "node:os";
+import { SDK_NAME, SDK_VERSION } from "./version.js";
 
 export type FetchResult =
   | { kind: "ok"; jws: string; etag: string | null }
   | { kind: "not-modified" }
   | { kind: "unauthorized" }
-  | { kind: "device-cap"; limit?: number; machineCount?: number }
+  | { kind: "device-cap"; limit?: number; deviceCount?: number }
   | { kind: "blocked"; reason: BlockReason; allowedRange?: AllowedRange }
   | { kind: "error"; status: number; message: string };
 
@@ -45,8 +46,8 @@ export async function fetchManagedConfig(
     [HEADER_CHANNEL]: opts.channel,
     [HEADER_PLATFORM]: platform(),
     [HEADER_ARCH]: arch(),
-    [HEADER_SDK_NAME]: "@polaris-key/node",
-    [HEADER_SDK_VERSION]: "0.0.0",
+    [HEADER_SDK_NAME]: SDK_NAME,
+    [HEADER_SDK_VERSION]: SDK_VERSION,
   };
   if (opts.etag) headers["if-none-match"] = opts.etag;
   const url = `${opts.baseUrl}/${opts.product}/config`;
@@ -66,12 +67,12 @@ export async function fetchManagedConfig(
     case 429: {
       const body = (await res.json().catch(() => ({}))) as {
         limit?: number;
-        machineCount?: number;
+        deviceCount?: number;
       };
       return {
         kind: "device-cap",
         limit: body.limit,
-        machineCount: body.machineCount,
+        deviceCount: body.deviceCount,
       };
     }
     case 403: {

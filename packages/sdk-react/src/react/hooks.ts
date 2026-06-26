@@ -8,6 +8,7 @@ import type { JSONValue, LicenseStatus } from "@polaris-key/protocol";
 import {
   isUsable,
   type ConfigSource,
+  type DeviceInfo,
   type LicenseState,
   type PolarisAdapter,
   type PolarisState,
@@ -55,6 +56,9 @@ export interface UsePolarisKey {
   signInWithOidc: PolarisAdapter["signInWithOidc"];
   submitKey: (key: string) => Promise<void>;
   signOut: () => Promise<void>;
+  currentDevice: () => DeviceInfo | null;
+  listDevices: () => Promise<DeviceInfo[]>;
+  deauthorizeDevice: (deviceId: string) => Promise<void>;
   getConfig: PolarisAdapter["getConfig"];
   /** Config for a settings UI: every key EXCEPT `hidden`, each `{ key, value, enforced }`. */
   listUserConfig: () => UserConfigEntry[];
@@ -81,6 +85,9 @@ export function usePolarisKey(): UsePolarisKey {
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
+      currentDevice: () => adapter.currentDevice(),
+      listDevices: () => adapter.listDevices(),
+      deauthorizeDevice: (deviceId) => adapter.deauthorizeDevice(deviceId),
       getConfig: (key, fallback) => adapter.getConfig(key, fallback),
       listUserConfig: () => adapter.listUserConfig(),
       getConfigSource: (key) => adapter.getConfigSource(key),
@@ -145,7 +152,7 @@ export interface UsePolarisAuth {
   status: LicenseStatus;
   busy: boolean;
   error: PolarisState["error"];
-  /** True when the user must enroll/sign in. */
+  /** True when the user must activate/sign in. */
   needsAuth: boolean;
   signInWithOidc: PolarisAdapter["signInWithOidc"];
   /** Activate with a license key using the active transport. */
@@ -164,7 +171,8 @@ export function usePolarisAuth(): UsePolarisAuth {
       status: state.status,
       busy: state.busy,
       error: state.error,
-      needsAuth: state.status === "needs-enroll" || state.status === "revoked",
+      needsAuth:
+        state.status === "needs-activation" || state.status === "revoked",
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
@@ -198,13 +206,13 @@ export interface UseLicenseGate {
 
 function screenFor(state: PolarisState): GateScreen {
   if (state.phase === "loading") return "loading";
-  if (state.error && state.status === "needs-enroll") return "error";
+  if (state.error && state.status === "needs-activation") return "error";
   switch (state.status) {
     case "ok":
       return "ok";
     case "grace":
       return "grace";
-    case "needs-enroll":
+    case "needs-activation":
       return "login";
     case "revoked":
       return "revoked";

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -25,7 +26,7 @@ vi.mock("../src/api.js", () => {
     putLicenseOverrides: vi.fn(),
     mintKey: vi.fn(),
     revokeKey: vi.fn(),
-    deauthorizeMachine: vi.fn(),
+    deauthorizeDevice: vi.fn(),
   };
   return { api };
 });
@@ -70,11 +71,11 @@ const SUMMARY: LicenseSummary = {
   name: "Ada Lovelace",
   email: "ada@x.io",
   status: "active",
-  enrolledAt: 1_700_000_000,
+  activatedAt: 1_700_000_000,
   expiresAt: null,
   keyCount: 2,
   activeKeyCount: 1,
-  machineCount: 1,
+  deviceCount: 1,
   profile: null,
   tier: "pro",
   channels: ["stable", "beta"],
@@ -120,9 +121,9 @@ const DETAIL: LicenseDetailDto = {
       createdBy: "ada@x.io",
     },
   ],
-  machines: [
+  devices: [
     {
-      machineId: "dev_1",
+      deviceId: "dev_1",
       status: "active",
       firstSeen: 1_699_000_000,
       lastSeen: 1_700_000_000,
@@ -191,9 +192,9 @@ beforeEach(() => {
     hash: "abcdef",
     status: "revoked",
   });
-  mockApi.deauthorizeMachine.mockResolvedValue({
+  mockApi.deauthorizeDevice.mockResolvedValue({
     ok: true,
-    machineId: "dev_1",
+    deviceId: "dev_1",
   });
   // jsdom lacks these Radix-needed APIs.
   (
@@ -244,6 +245,15 @@ describe("Licenses list", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText(/Name/), "Grace Hopper");
     await user.type(within(dialog).getByLabelText(/Email/), "grace@x.io");
+    fireEvent.change(within(dialog).getByLabelText(/Expires/), {
+      target: { value: "2026-12-31" },
+    });
+    await user.type(within(dialog).getByLabelText(/Max offline days/), "21");
+    await user.click(within(dialog).getByLabelText("stable"));
+    await user.type(within(dialog).getByLabelText(/Minimum version/), "1.2.0");
+    await user.type(within(dialog).getByLabelText(/Maximum version/), "2.0.0");
+    expect(within(dialog).getByText("Effective policy summary")).toBeTruthy();
+    expect(within(dialog).getByText("21 days")).toBeTruthy();
     await user.click(
       within(dialog).getByRole("button", { name: "Create license" }),
     );
@@ -256,11 +266,39 @@ describe("Licenses list", () => {
     expect(mockApi.createLicense).toHaveBeenCalledWith("djdl", {
       name: "Grace Hopper",
       email: "grace@x.io",
+      expiresAt: Math.floor(Date.parse("2026-12-31T00:00:00Z") / 1000),
+      maxOfflineDays: 21,
+      channels: ["stable"],
+      minVersion: "1.2.0",
+      maxVersion: "2.0.0",
     });
     // There is a copy button with an accessible name.
     expect(
       within(panel).getByRole("button", { name: "Copy key" }),
     ).toBeTruthy();
+  });
+
+  it("validates license creation before submitting", async () => {
+    const user = userEvent.setup();
+    withProviders(<Licenses slug="djdl" />);
+    await screen.findByText("ada@x.io");
+
+    await user.click(screen.getByRole("button", { name: "Create license" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/Name/), "Grace Hopper");
+    await user.type(within(dialog).getByLabelText(/Email/), "bad-email");
+    await user.type(within(dialog).getByLabelText(/Max offline days/), "-1");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create license" }),
+    );
+
+    expect(
+      await within(dialog).findByText("Enter a valid email address."),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText("Enter a whole number of days, 0 or higher."),
+    ).toBeTruthy();
+    expect(mockApi.createLicense).not.toHaveBeenCalled();
   });
 });
 
@@ -276,6 +314,8 @@ describe("License detail", () => {
     await renderDetail();
     expect(screen.getAllByText("active").length).toBeGreaterThan(0);
     expect(screen.getByText("14")).toBeTruthy(); // max offline days
+    expect(screen.getByText("Effective update policy")).toBeTruthy();
+    expect(screen.getByText("stable, beta")).toBeTruthy();
     expect(mockApi.license).toHaveBeenCalledWith("djdl", "lic_1");
   });
 
@@ -329,7 +369,7 @@ describe("License detail", () => {
       within(confirm).getByRole("button", { name: "Deauthorize" }),
     );
     await waitFor(() =>
-      expect(mockApi.deauthorizeMachine).toHaveBeenCalledWith(
+      expect(mockApi.deauthorizeDevice).toHaveBeenCalledWith(
         "djdl",
         "lic_1",
         "dev_1",

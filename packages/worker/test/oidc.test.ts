@@ -14,7 +14,7 @@ import {
 } from "./seed.js";
 import { loadProduct } from "../src/product.js";
 import {
-  enrollFromIdentity,
+  activateFromIdentity,
   authorizeAndMint,
   type OidcIdentity,
 } from "../src/oidc.js";
@@ -34,7 +34,7 @@ async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
     }),
   );
   await db.run(
-    "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)",
+    "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)",
     "djdl",
     "pro",
     "Pro",
@@ -65,7 +65,7 @@ const identity = (over: Partial<OidcIdentity> = {}): OidcIdentity => ({
   ...over,
 });
 
-describe("OIDC enrollment", () => {
+describe("OIDC activation", () => {
   it("mints a license for an entitled identity and is idempotent", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);
@@ -73,9 +73,9 @@ describe("OIDC enrollment", () => {
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
 
-    const r1 = await enrollFromIdentity(db, product, identity(), NOW);
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
     expect("licenseId" in r1).toBe(true);
-    const r2 = await enrollFromIdentity(db, product, identity(), NOW);
+    const r2 = await activateFromIdentity(db, product, identity(), NOW);
     expect(r2).toEqual(r1);
   });
 
@@ -86,9 +86,9 @@ describe("OIDC enrollment", () => {
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
 
-    const r1 = await enrollFromIdentity(db, product, identity(), NOW);
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r1)) throw new Error("expected license");
-    const r2 = await enrollFromIdentity(
+    const r2 = await activateFromIdentity(
       db,
       product,
       identity({
@@ -127,7 +127,7 @@ describe("OIDC enrollment", () => {
     await seedProduct(db, "djdl");
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
-    const r1 = await enrollFromIdentity(db, product, identity(), NOW);
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r1)) throw new Error("expected license");
     await db.run(
       "UPDATE licenses SET status = ? WHERE product = ? AND id = ?",
@@ -135,7 +135,7 @@ describe("OIDC enrollment", () => {
       "djdl",
       r1.licenseId,
     );
-    const disabled = await enrollFromIdentity(db, product, identity(), NOW);
+    const disabled = await activateFromIdentity(db, product, identity(), NOW);
     expect(disabled).toEqual({ error: "license-unusable" });
 
     await db.run(
@@ -145,28 +145,28 @@ describe("OIDC enrollment", () => {
       "djdl",
       r1.licenseId,
     );
-    const expired = await enrollFromIdentity(db, product, identity(), NOW);
+    const expired = await activateFromIdentity(db, product, identity(), NOW);
     expect(expired).toEqual({ error: "license-unusable" });
   });
 
-  it("enforces OIDC machine limits through the shared authorizer", async () => {
+  it("enforces OIDC device limits through the shared authorizer", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     await seedOidc(db);
     await db.run(
-      "UPDATE tiers SET policy_machine_limit = ? WHERE product = ? AND id = ?",
+      "UPDATE tiers SET policy_device_limit = ? WHERE product = ? AND id = ?",
       1,
       "djdl",
       "pro",
     );
     const product = (await loadProduct(env, db, "djdl"))!;
-    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     await authorizeAndMint(env, db, product, r.licenseId, "dev-1", NOW);
     await expect(
       authorizeAndMint(env, db, product, r.licenseId, "dev-2", NOW),
-    ).rejects.toThrow("machine_limit");
+    ).rejects.toThrow("device_limit");
   });
 
   it("denies an identity whose groups grant nothing", async () => {
@@ -175,7 +175,7 @@ describe("OIDC enrollment", () => {
     await seedProduct(db, "djdl");
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
-    const r = await enrollFromIdentity(
+    const r = await activateFromIdentity(
       db,
       product,
       identity({ sub: "other", groups: ["randos"] }),
@@ -193,7 +193,7 @@ describe("OIDC enrollment", () => {
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
 
-    const r = await enrollFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     const token = await authorizeAndMint(
       env,

@@ -5,7 +5,7 @@
 // filesystem state stays in the privileged process.
 //
 // The shapes deliberately mirror @polaris-key/node's client surface (getState / refresh /
-// enroll / deauthorize / report) so the Node side can implement each method with a
+// activate / deauthorize / report) so the Node side can implement each method with a
 // near-1:1 delegation. Export it so that Node side can `import type { PolarisBridge }`.
 
 import type {
@@ -19,7 +19,7 @@ import type {
  *  so the privileged process sends the doc + the sync bookkeeping and the adapter derives
  *  the same `LicenseState` the Node SDK would (via the shared gateModel). */
 export interface BridgeState {
-  /** Whether a per-machine token is stored. */
+  /** Whether a per-device token is stored. */
   hasToken: boolean;
   /** The cached, verified doc (or null). */
   doc: ManagedConfigDoc | null;
@@ -49,17 +49,17 @@ export type BridgeOidcPoll =
   | { kind: "expired" }
   | { kind: "error"; message: string };
 
-/** The result of submitting a typed key (mirrors @polaris-key/node's EnrollResult). */
-export type BridgeEnroll =
+/** The result of submitting a typed key (mirrors @polaris-key/node's ActivationResult). */
+export type BridgeActivation =
   | { kind: "ok" }
-  | { kind: "machine-limit"; limit?: number; machineCount?: number }
+  | { kind: "device-limit"; limit?: number; deviceCount?: number }
   | { kind: "unauthorized" }
   | { kind: "error"; message: string };
 
 /**
  * The contract the native side implements and the renderer calls. Every method is async
  * (it crosses the IPC boundary). `on("stateChanged", …)` lets the privileged process push
- * hot-reload updates (the Node client's HubDO signal) up to the renderer.
+ * state updates up to the renderer.
  */
 export interface PolarisBridge {
   /** Snapshot the current gate inputs (no network). */
@@ -70,8 +70,8 @@ export interface PolarisBridge {
   beginSignIn(): Promise<BridgeOidcBegin>;
   /** Poll an in-flight OIDC sign-in by its `flowId`. */
   pollSignIn(flowId: string): Promise<BridgeOidcPoll>;
-  /** Enroll with a typed key. */
-  submitKey(key: string): Promise<BridgeEnroll>;
+  /** Activate with a typed key. */
+  submitKey(key: string): Promise<BridgeActivation>;
   /** Deauthorize + wipe local state. */
   signOut(): Promise<void>;
   /** Optionally let the renderer fetch the product config schema/catalog. */

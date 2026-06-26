@@ -1,21 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  act,
-  cleanup,
-  render,
-  renderHook,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import {
   AdminProvider,
-  StatusProvider,
   invalidate,
   resetCache,
   useAdmin,
   useResource,
-  useStatus,
 } from "../src/context.js";
 import type { Me } from "../src/api.js";
 
@@ -127,29 +118,5 @@ describe("useAdmin", () => {
     } finally {
       consoleError.mockRestore();
     }
-  });
-});
-
-describe("useStatus", () => {
-  it("announce updates the live status region", async () => {
-    function Announcer(): JSX.Element {
-      const { announce } = useStatus();
-      return <button onClick={() => announce("Saved!", "ok")}>announce</button>;
-    }
-    render(
-      <StatusProvider>
-        <Announcer />
-      </StatusProvider>,
-    );
-    act(() => screen.getByText("announce").click());
-    const region = await screen.findByRole("status");
-    expect(region.textContent).toBe("Saved!");
-    expect(region.className).toContain("app-status-ok");
-  });
-
-  it("returns a no-op outside a StatusProvider (does not throw)", () => {
-    const { result } = renderHook(() => useStatus());
-    expect(() => result.current.announce("x")).not.toThrow();
-    expect(result.current.message).toBe("");
   });
 });

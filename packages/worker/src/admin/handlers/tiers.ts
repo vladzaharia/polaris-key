@@ -1,5 +1,5 @@
 /**
- * Tiers (`/api/products/<slug>/tiers/...`): named policy bundles (a profile + expiry/machine
+ * Tiers (`/api/products/<slug>/tiers/...`): named policy bundles (a profile + expiry/device
  * limits) a license can be assigned. List/create, patch, and delete.
  */
 
@@ -51,7 +51,7 @@ export async function handleTiers(
           label: t.label,
           profile: t.profile_id,
           policyExpiryDays: t.policy_expiry_days,
-          policyMachineLimit: t.policy_machine_limit,
+          policyDeviceLimit: t.policy_device_limit,
           channels: t.channels_json
             ? (JSON.parse(t.channels_json) as string[])
             : [],
@@ -76,9 +76,9 @@ export async function handleTiers(
           typeof body.policyExpiryDays === "number"
             ? body.policyExpiryDays
             : null,
-        policy_machine_limit:
-          typeof body.policyMachineLimit === "number"
-            ? body.policyMachineLimit
+        policy_device_limit:
+          typeof body.policyDeviceLimit === "number"
+            ? body.policyDeviceLimit
             : null,
         channels_json: parseChannels(body.channels),
         min_version:
@@ -120,10 +120,10 @@ export async function handleTiers(
         typeof body.policyExpiryDays === "number"
           ? body.policyExpiryDays
           : row.policy_expiry_days,
-      policy_machine_limit:
-        typeof body.policyMachineLimit === "number"
-          ? body.policyMachineLimit
-          : row.policy_machine_limit,
+      policy_device_limit:
+        typeof body.policyDeviceLimit === "number"
+          ? body.policyDeviceLimit
+          : row.policy_device_limit,
       channels_json:
         "channels" in body ? parseChannels(body.channels) : row.channels_json,
       min_version:

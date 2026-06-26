@@ -35,7 +35,7 @@ __all__ = [
 ]
 
 # Bumped on any wire-breaking change to the document shape or HTTP contract.
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 # The `iss` every Polaris Key document carries — the control-plane origin host.
 ISSUER = "key.plrs.im"
 # Short signed-token lifetime (seconds).
@@ -61,7 +61,7 @@ LicenseStatus = Literal[
     "grace",
     "expired",
     "revoked",
-    "needs-enroll",
+    "needs-activation",
     "version-too-old",
     "version-too-new",
     "channel-not-entitled",
@@ -134,7 +134,7 @@ class DocProfile:
     name: str
     firstName: str
     email: str
-    enrolledAt: int
+    activatedAt: int
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "DocProfile":
@@ -142,7 +142,7 @@ class DocProfile:
             name=d["name"],
             firstName=d["firstName"],
             email=d["email"],
-            enrolledAt=d["enrolledAt"],
+            activatedAt=d["activatedAt"],
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -150,7 +150,7 @@ class DocProfile:
             "name": self.name,
             "firstName": self.firstName,
             "email": self.email,
-            "enrolledAt": self.enrolledAt,
+            "activatedAt": self.activatedAt,
         }
 
 
@@ -159,11 +159,12 @@ class ManagedConfigDoc:
     """The JWS payload — the whole object the Worker signs and every client verifies.
 
     ``aud`` (product slug) + ``iss`` scope the document to one product/tenant; clients
-    MUST assert ``aud == their configured product``. ``aud``/``iss`` are optional in the
-    type so the legacy djdl baseline vector (which predates them) still round-trips.
+    MUST assert ``aud == their configured product``.
     """
 
     schemaVersion: int
+    aud: str
+    iss: str
     licenseId: str
     deviceId: str
     issuedAt: int
@@ -171,15 +172,13 @@ class ManagedConfigDoc:
     graceUntil: int
     profile: DocProfile
     payload: ManagedPayload
-    aud: Optional[str] = None
-    iss: Optional[str] = None
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "ManagedConfigDoc":
         return ManagedConfigDoc(
             schemaVersion=d["schemaVersion"],
-            aud=d.get("aud"),
-            iss=d.get("iss"),
+            aud=d["aud"],
+            iss=d["iss"],
             licenseId=d["licenseId"],
             deviceId=d["deviceId"],
             issuedAt=d["issuedAt"],
@@ -190,23 +189,18 @@ class ManagedConfigDoc:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        out: Dict[str, Any] = {"schemaVersion": self.schemaVersion}
-        if self.aud is not None:
-            out["aud"] = self.aud
-        if self.iss is not None:
-            out["iss"] = self.iss
-        out.update(
-            {
-                "licenseId": self.licenseId,
-                "deviceId": self.deviceId,
-                "issuedAt": self.issuedAt,
-                "expiresAt": self.expiresAt,
-                "graceUntil": self.graceUntil,
-                "profile": self.profile.to_dict(),
-                "payload": self.payload.to_dict(),
-            }
-        )
-        return out
+        return {
+            "schemaVersion": self.schemaVersion,
+            "aud": self.aud,
+            "iss": self.iss,
+            "licenseId": self.licenseId,
+            "deviceId": self.deviceId,
+            "issuedAt": self.issuedAt,
+            "expiresAt": self.expiresAt,
+            "graceUntil": self.graceUntil,
+            "profile": self.profile.to_dict(),
+            "payload": self.payload.to_dict(),
+        }
 
 
 @dataclass(frozen=True)

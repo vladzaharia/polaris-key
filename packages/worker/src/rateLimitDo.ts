@@ -3,8 +3,7 @@ import type { Env } from "./env.js";
 
 // Atomic fixed-window rate limiter. One Durable Object instance per product
 // (`RL.idFromName(product)`); the DO serializes requests and its storage input-gate makes
-// the read→increment→write race-free — unlike the old non-atomic KV read-then-write, which
-// under-counted under burst. One stored key per (bucket, id) holds `{window, count}` and
+// the read→increment→write race-free. One stored key per (bucket, id) holds `{window, count}` and
 // rolls over when the window advances, so storage stays bounded by the active client set.
 
 interface CheckRequest {

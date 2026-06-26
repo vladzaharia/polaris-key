@@ -14,7 +14,8 @@
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "../product.js";
-import { json, notFound } from "../http.js";
+import { bearer, errorResponse, json, notFound } from "../http.js";
+import { validateDeviceToken } from "../licenseCore.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import {
   type Release,
@@ -72,24 +73,75 @@ interface ReleaseConfigRow {
   sparkle_ed25519_pub: string | null;
   summary_marker: string;
   artifact_policy_json: string | null;
+  metadata_access?: string | null;
+  artifacts_access?: string | null;
 }
 
 const MOVING_CACHE = "public, max-age=120";
 const PINNED_CACHE = "public, max-age=86400, immutable";
 const APPCAST_CACHE = "public, max-age=300";
 
-function artifactPolicy(raw: string | null): {
+type ReleaseAccessMode = "public" | "authenticated" | "licensed";
+
+function readAccessMode(value: unknown): ReleaseAccessMode {
+  if (value === "authenticated") return "authenticated";
+  if (value === "licensed") return "licensed";
+  return "public";
+}
+
+function artifactPolicy(cfg: ReleaseConfigRow): {
   requireSparkleSignature: boolean;
+  access: { metadata: ReleaseAccessMode; artifacts: ReleaseAccessMode };
 } {
-  if (!raw) return { requireSparkleSignature: true };
+  const defaults = {
+    requireSparkleSignature: true,
+    access: { metadata: "public", artifacts: "public" } as const,
+  };
+  const columnAccess = {
+    metadata: readAccessMode(cfg.metadata_access),
+    artifacts: readAccessMode(cfg.artifacts_access),
+  };
+  if (!cfg.artifact_policy_json) {
+    return { ...defaults, access: columnAccess };
+  }
   try {
-    const parsed = JSON.parse(raw) as { requireSparkleSignature?: unknown };
+    const parsed = JSON.parse(cfg.artifact_policy_json) as {
+      requireSparkleSignature?: unknown;
+    };
     return {
       requireSparkleSignature: parsed.requireSparkleSignature !== false,
+      access: columnAccess,
     };
   } catch {
-    return { requireSparkleSignature: true };
+    return { ...defaults, access: columnAccess };
   }
+}
+
+async function enforceReleaseAccess(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  cfg: ReleaseConfigRow,
+  kind: ReleaseKind,
+  now: number,
+): Promise<Response | null> {
+  const policy = artifactPolicy(cfg);
+  const mode =
+    kind === "version" || kind === "changelog" || kind === "install"
+      ? policy.access.metadata
+      : policy.access.artifacts;
+  if (mode === "public") return null;
+
+  const valid = await validateDeviceToken(env, db, product, bearer(req), now);
+  if ("error" in valid) {
+    return errorResponse(
+      401,
+      "download_auth_required",
+      "a valid license is required to download this release artifact",
+    );
+  }
+  return null;
 }
 
 export async function getReleaseConfig(
@@ -131,6 +183,16 @@ export async function handleRelease(
 
   const now = Math.floor(Date.now() / 1000);
   const origin = new URL(req.url).origin;
+  const denied = await enforceReleaseAccess(
+    req,
+    env,
+    db,
+    product,
+    cfg,
+    kind,
+    now,
+  );
+  if (denied) return denied;
 
   try {
     switch (kind) {
@@ -494,7 +556,7 @@ async function handleAppcast(
   // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline.
   // Signed Sparkle appcasts are required by default. An explicit artifact-policy opt-out
   // is the only way to publish an unsigned feed.
-  const policy = artifactPolicy(cfg.artifact_policy_json);
+  const policy = artifactPolicy(cfg);
   if (policy.requireSparkleSignature && !cfg.sparkle_ed25519_pub) {
     return notFound();
   }

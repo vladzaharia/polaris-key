@@ -5,7 +5,7 @@ import {
 } from "../src/desktop/desktopAdapter.js";
 import { resolveBridge } from "../src/desktop/bridge.js";
 import type {
-  BridgeEnroll,
+  BridgeActivation,
   BridgeOidcPoll,
   BridgeState,
   PolarisBridge,
@@ -64,7 +64,7 @@ describe("DesktopAdapter — construction", () => {
     }
   });
 
-  it("a first-load throw lands on a ready, error-bearing needs-enroll state", async () => {
+  it("a first-load throw lands on a ready, error-bearing needs-activation state", async () => {
     const bridge = makeFakeBridge({ hasToken: false, doc: null });
     bridge.getState = vi.fn(async () => {
       throw new Error("ipc down");
@@ -73,7 +73,7 @@ describe("DesktopAdapter — construction", () => {
     await ready(adapter);
     const s = adapter.snapshot();
     expect(s.phase).toBe("ready");
-    expect(s.status).toBe("needs-enroll");
+    expect(s.status).toBe("needs-activation");
     expect(s.error?.code).toBe("network");
     adapter.dispose();
   });
@@ -116,7 +116,7 @@ describe("DesktopAdapter — bridge method proxying", () => {
     await ready(adapter);
     await adapter.signOut();
     expect(signOutSpy).toHaveBeenCalledTimes(1);
-    expect(adapter.snapshot().status).toBe("needs-enroll");
+    expect(adapter.snapshot().status).toBe("needs-activation");
     adapter.dispose();
   });
 
@@ -129,6 +129,29 @@ describe("DesktopAdapter — bridge method proxying", () => {
     await ready(adapter);
     await expect(adapter.signOut()).rejects.toMatchObject({
       code: "sign-out-failed",
+    });
+    adapter.dispose();
+  });
+
+  it("reports the current device and rejects remote device inventory", async () => {
+    const bridge = makeFakeBridge({
+      hasToken: true,
+      doc: makeDoc(),
+      lastVerifiedAt: NOW_SEC * 1000,
+    });
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(adapter);
+    expect(adapter.currentDevice()).toMatchObject({
+      id: "dev-1",
+      current: true,
+      status: "ok",
+      licenseId: "lic-1",
+    });
+    await expect(adapter.listDevices()).rejects.toMatchObject({
+      code: "device-management-unsupported",
+    });
+    await expect(adapter.deauthorizeDevice("other")).rejects.toMatchObject({
+      code: "device-management-unsupported",
     });
     adapter.dispose();
   });
@@ -171,10 +194,10 @@ describe("DesktopAdapter — submitKey", () => {
     adapter.dispose();
   });
 
-  it("a machine-limit result throws a friendly sign-in-failed message", async () => {
+  it("a device-limit result throws a friendly sign-in-failed message", async () => {
     const bridge = makeFakeBridge({ hasToken: false, doc: null });
     bridge.submitKey = vi.fn(
-      async () => ({ kind: "machine-limit", limit: 3 }) as BridgeEnroll,
+      async () => ({ kind: "device-limit", limit: 3 }) as BridgeActivation,
     );
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
@@ -188,7 +211,7 @@ describe("DesktopAdapter — submitKey", () => {
   it("an unauthorized result throws a not-accepted message", async () => {
     const bridge = makeFakeBridge({ hasToken: false, doc: null });
     bridge.submitKey = vi.fn(
-      async () => ({ kind: "unauthorized" }) as BridgeEnroll,
+      async () => ({ kind: "unauthorized" }) as BridgeActivation,
     );
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);

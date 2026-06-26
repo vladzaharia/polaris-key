@@ -118,7 +118,7 @@ def _build_doc(lic: Dict[str, Any]) -> Optional[ManagedConfigDoc]:
         issuedAt=lic["issuedAt"],
         expiresAt=lic["expiresAt"],
         graceUntil=lic["graceUntil"],
-        profile=DocProfile(name="M", firstName="M", email="m@x.y", enrolledAt=0),
+        profile=DocProfile(name="M", firstName="M", email="m@x.y", activatedAt=0),
         payload=ManagedPayload(config={}, secrets={}, entitlements={}),
     )
 

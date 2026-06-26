@@ -24,8 +24,7 @@ import { Settings } from "./views/Settings.js";
 /**
  * Top-level shell. Boots the admin identity + CSRF + the set of products the operator may
  * administer, then renders the responsive app frame. Routing is hash-based so deep links +
- * back/forward work without a router dependency. Per-product views are placeholders other
- * agents fill — every route is reachable today so the app compiles and navigates.
+ * back/forward work without a router dependency.
  */
 export function App(): React.ReactElement {
   return (
@@ -140,8 +139,10 @@ function ThemeBackdrop({
 }
 
 function routeKey(route: Route): string {
-  if (route.kind === "product")
-    return `${route.slug}:${route.view}:${route.id ?? ""}`;
+  if (route.kind === "product") {
+    const id = route.view === "license" ? route.id : "";
+    return `${route.slug}:${route.view}:${id}`;
+  }
   return route.kind;
 }
 
@@ -163,13 +164,23 @@ function renderRoute(
     );
   }
 
-  switch (normalizeView(route.view)) {
-    case "license":
-      return <LicenseDetail slug={activeSlug} id={route.id ?? ""} />;
+  const view = normalizeView(route.view);
+  if (view === "license") {
+    if (route.view !== "license") {
+      return (
+        <EmptyState
+          icon={<AlertTriangle aria-hidden />}
+          title="License not found"
+          description="Choose a license from the Licenses view."
+        />
+      );
+    }
+    return <LicenseDetail slug={activeSlug} id={route.id} />;
+  }
+
+  switch (view) {
     case "overview":
       return <ProductOverview slug={activeSlug} />;
-    case "setup":
-      return <ProductOverview slug={activeSlug} mode="setup" />;
     case "licenses":
       return <Licenses slug={activeSlug} />;
     case "config":

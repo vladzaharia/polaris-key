@@ -1,15 +1,9 @@
 -- Polaris Key v1 hardening.
--- Adds soft-deletion, machine metadata, artifact policy, and signing-key lifecycle helpers
+-- Adds soft-deletion, device metadata, artifact policy, and signing-key lifecycle helpers
 -- without rewriting existing rows.
 
 ALTER TABLE products ADD COLUMN status TEXT NOT NULL DEFAULT 'active';
 ALTER TABLE products ADD COLUMN deleted_at INTEGER;
-
-ALTER TABLE machines ADD COLUMN platform TEXT;
-ALTER TABLE machines ADD COLUMN arch TEXT;
-ALTER TABLE machines ADD COLUMN app_version TEXT;
-ALTER TABLE machines ADD COLUMN sdk_name TEXT;
-ALTER TABLE machines ADD COLUMN sdk_version TEXT;
 
 ALTER TABLE release_config ADD COLUMN artifact_policy_json TEXT;
 

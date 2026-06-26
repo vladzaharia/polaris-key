@@ -35,7 +35,7 @@ export interface ManifestProduct {
   compatMin: string;
   compatMax: string;
   defaultMaxOfflineDays: number;
-  defaultMachineLimit: number;
+  defaultDeviceLimit: number;
   adminGroup: string;
 }
 
@@ -52,7 +52,7 @@ export interface ManifestTier {
   label: string;
   profileId: string | null;
   policyExpiryDays: number | null;
-  policyMachineLimit: number | null;
+  policyDeviceLimit: number | null;
   channels: string[];
   minVersion: string | null;
   maxVersion: string | null;
@@ -83,6 +83,13 @@ export interface ManifestReleaseArtifactPolicy {
   allowAmbiguousAssets: boolean;
 }
 
+export type ManifestReleaseAccess = "public" | "authenticated" | "licensed";
+
+export interface ManifestReleaseAccessPolicy {
+  metadata: ManifestReleaseAccess;
+  artifacts: ManifestReleaseAccess;
+}
+
 export interface ManifestRelease {
   ghOwner: string;
   ghRepo: string;
@@ -92,7 +99,18 @@ export interface ManifestRelease {
   summaryMarker: string;
   sparkleEd25519Pub: string;
   artifactPolicy: ManifestReleaseArtifactPolicy | null;
+  access: ManifestReleaseAccessPolicy;
 }
+
+export type ManifestSecretDelivery = "serverOnly" | "clientScoped" | "edgeMint";
+
+export type ManifestCatalogEntry = ProductCatalog["entries"][number] & {
+  delivery?: ManifestSecretDelivery;
+};
+
+export type ManifestCatalog = Omit<ProductCatalog, "entries"> & {
+  entries: ManifestCatalogEntry[];
+};
 
 export interface ManifestEdgeMint {
   id: string;
@@ -106,7 +124,7 @@ export interface ManifestEdgeMint {
 
 export interface ParsedManifest {
   product: ManifestProduct;
-  catalog: ProductCatalog;
+  catalog: ManifestCatalog;
   oidc?: ManifestOidc;
   profiles: ManifestProfile[];
   tiers: ManifestTier[];
@@ -131,6 +149,16 @@ const ID_RE = /^[A-Za-z0-9._:-]+$/;
 const SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;
 const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"] as const;
+const SECRET_DELIVERY_VALUES = [
+  "serverOnly",
+  "clientScoped",
+  "edgeMint",
+] as const;
+const DEFAULT_RELEASE_ACCESS: ManifestReleaseAccessPolicy = {
+  metadata: "public",
+  artifacts: "public",
+};
 
 export function normalizeModules(raw: unknown): ProductModule[] {
   if (!isRecord(raw)) return ["licensing", "config"];
@@ -205,10 +233,10 @@ export function validateManifestDocuments(
   }
   for (const [key, path] of [
     [
-      productNode.defaultMachineLimit ??
-        productRoot.defaultMachineLimit ??
-        licensing.defaultMachineLimit,
-      "/licensing/defaultMachineLimit",
+      productNode.defaultDeviceLimit ??
+        productRoot.defaultDeviceLimit ??
+        licensing.defaultDeviceLimit,
+      "/licensing/defaultDeviceLimit",
     ],
     [
       productNode.defaultMaxOfflineDays ??
@@ -352,15 +380,15 @@ export function validateManifestDocuments(
       );
     }
     if (
-      record.machineLimit !== undefined &&
-      !nonNegativeInteger(record.machineLimit)
+      record.policyDeviceLimit !== undefined &&
+      !nonNegativeInteger(record.policyDeviceLimit)
     ) {
       add(
         errors,
         "product",
-        `/licensing/tiers/${i}/machineLimit`,
-        "invalid_machine_limit",
-        "machineLimit must be a non-negative integer.",
+        `/licensing/tiers/${i}/policyDeviceLimit`,
+        "invalid_device_limit",
+        "policyDeviceLimit must be a non-negative integer.",
       );
     }
   }
@@ -421,8 +449,10 @@ export function validateManifestDocuments(
     }
   }
 
-  if (modules.includes("releases")) {
-    const relRoot = releaseRoot(manifest.release);
+  const relDoc =
+    releaseRoot(manifest.release) ?? releaseRoot(productRoot.release);
+  if (modules.includes("releases") || relDoc) {
+    const relRoot = relDoc;
     if (!relRoot) {
       add(
         errors,
@@ -452,6 +482,29 @@ export function validateManifestDocuments(
           "missing_github_repo",
           "GitHub releases require owner and repo.",
         );
+      }
+      if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
+        add(
+          errors,
+          "release",
+          "/release/access",
+          "invalid_release_access",
+          "release.access must be an object when present.",
+        );
+      } else {
+        const access = asRecord(relRoot.access);
+        for (const key of ["metadata", "artifacts"] as const) {
+          const value = access[key];
+          if (value !== undefined && !isOneOf(value, RELEASE_ACCESS_VALUES)) {
+            add(
+              errors,
+              "release",
+              `/release/access/${key}`,
+              "invalid_release_access",
+              "release.access values must be public, authenticated, or licensed.",
+            );
+          }
+        }
       }
     }
   }
@@ -506,7 +559,7 @@ export function validateManifestDocuments(
         "Edge mint alg must be ES256, RS256, or EdDSA.",
       );
     }
-    const ref = raw.signingKeySecret ?? raw.signingKeyRef;
+    const ref = raw.signingKeySecret;
     if (typeof ref !== "string" || !SECRET_RE.test(ref)) {
       add(
         errors,
@@ -589,7 +642,7 @@ export function parseManifest(
   const productRoot = docs.product;
   const prod = nestedProductDoc(productRoot);
   const licensing = asRecord(productRoot.licensing);
-  const catalog = normalizeCatalog(docs.schema) as ProductCatalog;
+  const catalog = normalizeCatalog(docs.schema) as ManifestCatalog;
   const releaseDoc =
     releaseRoot(docs.release) ?? releaseRoot(productRoot.release);
   const oidcRoot = asRecord(productRoot.oidc);
@@ -615,10 +668,10 @@ export function parseManifest(
           licensing.defaultMaxOfflineDays ??
           30,
       ),
-      defaultMachineLimit: Number(
-        prod.defaultMachineLimit ??
-          productRoot.defaultMachineLimit ??
-          licensing.defaultMachineLimit ??
+      defaultDeviceLimit: Number(
+        prod.defaultDeviceLimit ??
+          productRoot.defaultDeviceLimit ??
+          licensing.defaultDeviceLimit ??
           5,
       ),
       adminGroup: String(prod.adminGroup ?? productRoot.adminGroup ?? "admin"),
@@ -656,7 +709,30 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     summaryMarker: String(rel.summaryMarker ?? "pkey:summary"),
     sparkleEd25519Pub: String(rel.sparkleEd25519Pub ?? ""),
     artifactPolicy: normalizeArtifactPolicy(rel.artifactPolicy),
+    access: normalizeReleaseAccess(rel.access),
   };
+}
+
+function normalizeReleaseAccess(raw: unknown): ManifestReleaseAccessPolicy {
+  if (!isRecord(raw)) return { ...DEFAULT_RELEASE_ACCESS };
+  return {
+    metadata: normalizeReleaseAccessValue(
+      raw.metadata,
+      DEFAULT_RELEASE_ACCESS.metadata,
+    ),
+    artifacts: normalizeReleaseAccessValue(
+      raw.artifacts,
+      DEFAULT_RELEASE_ACCESS.artifacts,
+    ),
+  };
+}
+
+function normalizeReleaseAccessValue(
+  raw: unknown,
+  fallback: ManifestReleaseAccess,
+): ManifestReleaseAccess {
+  if (!isOneOf(raw, RELEASE_ACCESS_VALUES)) return fallback;
+  return raw;
 }
 
 function normalizeArtifactPolicy(
@@ -706,12 +782,8 @@ function normalizeTier(raw: unknown): ManifestTier | null {
           : typeof raw.maxOfflineDays === "number"
             ? raw.maxOfflineDays
             : null,
-    policyMachineLimit:
-      typeof raw.policyMachineLimit === "number"
-        ? raw.policyMachineLimit
-        : typeof raw.machineLimit === "number"
-          ? raw.machineLimit
-          : null,
+    policyDeviceLimit:
+      typeof raw.policyDeviceLimit === "number" ? raw.policyDeviceLimit : null,
     channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
     minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
     maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
@@ -748,7 +820,7 @@ function normalizeEdgeMint(raw: unknown): ManifestEdgeMint | null {
   return {
     id,
     alg: String(raw.alg ?? ""),
-    signingKeySecret: String(raw.signingKeySecret ?? raw.signingKeyRef ?? ""),
+    signingKeySecret: String(raw.signingKeySecret ?? ""),
     kid: typeof raw.kid === "string" ? raw.kid : undefined,
     claimsTemplate: asRecord(raw.claimsTemplate),
     ttlSeconds: typeof raw.ttlSeconds === "number" ? raw.ttlSeconds : 3600,
@@ -777,7 +849,7 @@ function collectRequiredSecrets(
     [];
   for (const item of edgeMint) {
     if (!isRecord(item)) continue;
-    const ref = item.signingKeySecret ?? item.signingKeyRef;
+    const ref = item.signingKeySecret;
     if (typeof ref === "string" && ref) names.add(ref);
   }
   return [...names].sort();
@@ -834,6 +906,15 @@ function validateCatalogShape(catalog: ProductCatalog): string[] {
     }
     if (!["config", "secret", "flag"].includes(String(entry.kind ?? ""))) {
       issues.push(`entries[${i}].kind must be config, secret, or flag.`);
+    }
+    if (entry.delivery !== undefined) {
+      if (entry.kind !== "secret") {
+        issues.push(`entries[${i}].delivery is only valid for secret entries.`);
+      } else if (!isOneOf(entry.delivery, SECRET_DELIVERY_VALUES)) {
+        issues.push(
+          `entries[${i}].delivery must be serverOnly, clientScoped, or edgeMint.`,
+        );
+      }
     }
     if (typeof entry.key === "string") {
       if (!ID_RE.test(entry.key))
@@ -916,6 +997,13 @@ function nonNegativeInteger(v: unknown): boolean {
 
 function isString(v: unknown): v is string {
   return typeof v === "string";
+}
+
+function isOneOf<const T extends readonly string[]>(
+  value: unknown,
+  allowed: T,
+): value is T[number] {
+  return typeof value === "string" && allowed.includes(value as T[number]);
 }
 
 function notNull<T>(v: T | null): v is T {

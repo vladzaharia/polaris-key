@@ -14,7 +14,7 @@ import {
 } from "./seed.js";
 import { loadProduct } from "../src/product.js";
 import { generateEd25519 } from "../src/keyvault.js";
-import { handleEnroll } from "../src/licensing.js";
+import { handleActivate } from "../src/licensing.js";
 import { handleJwks } from "../src/jwks.js";
 import { handleDiscovery } from "../src/discovery.js";
 import { handleMintToken } from "../src/edgeMint.js";
@@ -203,7 +203,7 @@ describe("worker surfaces", () => {
     });
   });
 
-  it("edge-mint signs an ES256 token for a licensed machine (key from the KEK store)", async () => {
+  it("edge-mint signs an ES256 token for a licensed device (key from the KEK store)", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
@@ -212,7 +212,7 @@ describe("worker surfaces", () => {
     await seedProductSecret(db, "djdl", "applemusic_devkey", ES_PEM);
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
-    const enrollRes = await handleEnroll(
+    const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
         "x-pkey-device": "dev-1",
@@ -222,7 +222,7 @@ describe("worker surfaces", () => {
       product,
       NOW,
     );
-    const { token } = (await enrollRes.json()) as { token: string };
+    const { token } = (await activateRes.json()) as { token: string };
 
     await db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
@@ -265,7 +265,7 @@ describe("worker surfaces", () => {
     await seedProductSecret(db, "djdl", "applemusic_devkey", ES_PEM);
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
-    const enrollRes = await handleEnroll(
+    const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
         "x-pkey-device": "dev-1",
@@ -275,7 +275,7 @@ describe("worker surfaces", () => {
       product,
       NOW,
     );
-    const { token } = (await enrollRes.json()) as { token: string };
+    const { token } = (await activateRes.json()) as { token: string };
 
     // A hostile template tries to pin iat/exp/nbf and forge `aud`. The recipe's trusted
     // `audience` column ("music.apple.com") must win over the template's "evil.example".
@@ -328,7 +328,7 @@ describe("worker surfaces", () => {
     await seedProductSecret(db, "djdl", "rs256_key", pem);
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
-    const enrollRes = await handleEnroll(
+    const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
         "x-pkey-device": "dev-1",
@@ -338,7 +338,7 @@ describe("worker surfaces", () => {
       product,
       NOW,
     );
-    const { token } = (await enrollRes.json()) as { token: string };
+    const { token } = (await activateRes.json()) as { token: string };
 
     await db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
@@ -389,7 +389,7 @@ describe("worker surfaces", () => {
     await seedProductSecret(db, "djdl", "ed25519_key", privatePkcs8Pem);
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
-    const enrollRes = await handleEnroll(
+    const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
         "x-pkey-device": "dev-1",
@@ -399,7 +399,7 @@ describe("worker surfaces", () => {
       product,
       NOW,
     );
-    const { token } = (await enrollRes.json()) as { token: string };
+    const { token } = (await activateRes.json()) as { token: string };
 
     await db.run(
       "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",

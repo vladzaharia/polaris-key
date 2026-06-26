@@ -138,15 +138,15 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
         ),
     },
     {
-      id: "machines",
-      header: "Machine limit",
-      accessor: (t) => t.policyMachineLimit ?? -1,
+      id: "devices",
+      header: "Device limit",
+      accessor: (t) => t.policyDeviceLimit ?? -1,
       sortable: true,
       cell: (t) =>
-        t.policyMachineLimit == null ? (
+        t.policyDeviceLimit == null ? (
           <Muted>default</Muted>
         ) : (
-          t.policyMachineLimit
+          t.policyDeviceLimit
         ),
     },
     {

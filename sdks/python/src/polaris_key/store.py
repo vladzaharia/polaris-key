@@ -1,4 +1,4 @@
-"""Persistence: per-machine token, stable device id, offline-first config cache.
+"""Persistence: per-device token, stable device id, offline-first config cache.
 
 Mirrors ``store.ts``. The default :class:`KeyringStore` stores tokens in the OS keyring
 when the optional ``keyring`` extra is installed and falls back to :class:`FileStore`.
@@ -214,7 +214,7 @@ class KeyringStore:
     def __init__(self, product_slug: str, config_dir: str) -> None:
         self._files = FileStore(product_slug, config_dir)
         self._service = f"pkey:{product_slug}"
-        self._account = "machine-token"
+        self._account = "device-token"
 
     def get_token(self) -> Optional[str]:
         keyring = _load_keyring()

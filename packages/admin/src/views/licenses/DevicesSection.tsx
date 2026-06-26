@@ -1,6 +1,6 @@
 import * as React from "react";
 import { MonitorSmartphone } from "lucide-react";
-import { api, type MachineDto } from "../../api.js";
+import { api, type DeviceDto } from "../../api.js";
 import {
   Button,
   ConfirmDialog,
@@ -9,11 +9,11 @@ import {
   useToast,
   type ColumnDef,
 } from "../../components/ui/index.js";
-import { formatStamp, MachineStatusBadge } from "./shared.js";
+import { DeviceStatusBadge, formatStamp } from "./shared.js";
 
 /**
- * The devices table (the v2 rename of "machines"): one row per device that activated this
- * license, with first/last-seen and user-agent. Deauthorizing a device (behind a confirm) frees
+ * One row per device that activated this license, with first/last-seen and user-agent.
+ * Deauthorizing a device (behind a confirm) frees
  * a seat and forces re-activation. Mutations toast + call `onChanged` to refresh the license.
  */
 export function DevicesSection({
@@ -24,18 +24,18 @@ export function DevicesSection({
 }: {
   slug: string;
   id: string;
-  devices: MachineDto[];
+  devices: DeviceDto[];
   onChanged: () => void;
 }): React.ReactElement {
   const toast = useToast();
-  const [target, setTarget] = React.useState<MachineDto | null>(null);
+  const [target, setTarget] = React.useState<DeviceDto | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   const deauthorize = async (): Promise<void> => {
     if (!target) return;
     setBusy(true);
     try {
-      await api.deauthorizeMachine(slug, id, target.machineId);
+      await api.deauthorizeDevice(slug, id, target.deviceId);
       toast.success("Device deauthorized");
       onChanged();
       setTarget(null);
@@ -49,18 +49,18 @@ export function DevicesSection({
     }
   };
 
-  const columns: ColumnDef<MachineDto>[] = [
+  const columns: ColumnDef<DeviceDto>[] = [
     {
-      id: "machineId",
+      id: "deviceId",
       header: "Device",
       cell: (r) => (
         <div className="flex flex-col">
           <span className="font-medium text-foreground">
-            {r.label || r.machineId}
+            {r.label || r.deviceId}
           </span>
           {r.label ? (
             <span className="font-mono text-xs text-muted-foreground">
-              {r.machineId}
+              {r.deviceId}
             </span>
           ) : null}
         </div>
@@ -69,7 +69,7 @@ export function DevicesSection({
     {
       id: "status",
       header: "Status",
-      cell: (r) => <MachineStatusBadge status={r.status} />,
+      cell: (r) => <DeviceStatusBadge status={r.status} />,
     },
     {
       id: "firstSeen",
@@ -115,7 +115,7 @@ export function DevicesSection({
       <DataTable
         columns={columns}
         rows={devices}
-        rowKey={(r) => r.machineId}
+        rowKey={(r) => r.deviceId}
         empty={
           <EmptyState
             icon={<MonitorSmartphone aria-hidden />}

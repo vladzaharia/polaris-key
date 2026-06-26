@@ -155,7 +155,7 @@ const PRODUCT_JSON = JSON.stringify({
   compatMin: "1.0.0",
   compatMax: "9.0.0",
   defaultMaxOfflineDays: 14,
-  defaultMachineLimit: 3,
+  defaultDeviceLimit: 3,
   adminGroup: "acme-admins",
   oidc: {
     issuer: "https://id.example",
@@ -170,7 +170,7 @@ const PRODUCT_JSON = JSON.stringify({
       label: "Pro",
       profileId: null,
       policyExpiryDays: 365,
-      policyMachineLimit: 5,
+      policyDeviceLimit: 5,
     },
   ],
   provisioning: [],
@@ -203,14 +203,14 @@ name: YAML Product
 compatMin: 1.0.0
 compatMax: 9.0.0
 defaultMaxOfflineDays: 7
-defaultMachineLimit: 2
+defaultDeviceLimit: 2
 adminGroup: yaml-admins
 tiers:
   - id: basic
     label: Basic
     profileId: null
     policyExpiryDays: 30
-    policyMachineLimit: 1
+    policyDeviceLimit: 1
 provisioning: []
 `;
 const SCHEMA_YAML = `schemaVersion: 1

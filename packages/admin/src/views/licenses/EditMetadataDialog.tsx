@@ -41,6 +41,9 @@ export function EditMetadataDialog({
   const [maxOffline, setMaxOffline] = React.useState(
     license.maxOfflineDays == null ? "" : String(license.maxOfflineDays),
   );
+  const [fieldErrors, setFieldErrors] = React.useState<
+    Partial<Record<"name" | "email" | "expires" | "maxOffline", string>>
+  >({});
   const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
@@ -51,12 +54,21 @@ export function EditMetadataDialog({
       setMaxOffline(
         license.maxOfflineDays == null ? "" : String(license.maxOfflineDays),
       );
+      setFieldErrors({});
       setSaving(false);
     }
   }, [open, license]);
 
   const save = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    const nextErrors = validateMetadata({
+      name,
+      email,
+      expires,
+      maxOffline,
+    });
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
     setSaving(true);
     try {
       const body: PatchLicenseBody = {};
@@ -94,41 +106,58 @@ export function EditMetadataDialog({
         <DialogHeader>
           <DialogTitle>Edit license</DialogTitle>
           <DialogDescription>
-            Update the holder details, expiry, and offline grace.
+            Update holder details, license expiry, and device offline grace.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={save} className="space-y-4">
-          <Field label="Name">
+        <form onSubmit={save} className="space-y-4" noValidate>
+          <Field label="Name" error={fieldErrors.name}>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearFieldError(setFieldErrors, "name");
+              }}
               autoFocus
             />
           </Field>
-          <Field label="Email">
+          <Field label="Email" error={fieldErrors.email}>
             <Input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clearFieldError(setFieldErrors, "email");
+              }}
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Expires" help="Blank means no expiry.">
+            <Field
+              label="Expires"
+              help="Blank means no expiry."
+              error={fieldErrors.expires}
+            >
               <Input
                 type="date"
                 value={expires}
-                onChange={(e) => setExpires(e.target.value)}
+                onChange={(e) => {
+                  setExpires(e.target.value);
+                  clearFieldError(setFieldErrors, "expires");
+                }}
               />
             </Field>
             <Field
               label="Max offline days"
               help="How long a device may run without checking in."
+              error={fieldErrors.maxOffline}
             >
               <Input
                 type="number"
                 min={0}
                 value={maxOffline}
-                onChange={(e) => setMaxOffline(e.target.value)}
+                onChange={(e) => {
+                  setMaxOffline(e.target.value);
+                  clearFieldError(setFieldErrors, "maxOffline");
+                }}
                 placeholder="e.g. 14"
               />
             </Field>
@@ -150,4 +179,41 @@ export function EditMetadataDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+type MetadataErrors = Partial<
+  Record<"name" | "email" | "expires" | "maxOffline", string>
+>;
+
+function validateMetadata(input: {
+  name: string;
+  email: string;
+  expires: string;
+  maxOffline: string;
+}): MetadataErrors {
+  const errors: MetadataErrors = {};
+  if (!input.name.trim()) errors.name = "Enter the holder name.";
+  if (!input.email.trim()) errors.email = "Enter the holder email.";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim()))
+    errors.email = "Enter a valid email address.";
+  if (input.expires.trim() && dateInputToEpoch(input.expires) == null)
+    errors.expires = "Use a valid expiry date.";
+  if (input.maxOffline.trim()) {
+    const value = Number(input.maxOffline);
+    if (!Number.isInteger(value) || value < 0)
+      errors.maxOffline = "Enter a whole number of days, 0 or higher.";
+  }
+  return errors;
+}
+
+function clearFieldError(
+  setErrors: React.Dispatch<React.SetStateAction<MetadataErrors>>,
+  field: keyof MetadataErrors,
+): void {
+  setErrors((prev) => {
+    if (!prev[field]) return prev;
+    const next = { ...prev };
+    delete next[field];
+    return next;
+  });
 }

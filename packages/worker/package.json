@@ -6,6 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "dryrun": "wrangler deploy --dry-run",

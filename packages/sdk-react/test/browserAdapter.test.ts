@@ -33,14 +33,14 @@ describe("BrowserAdapter — construction + first load", () => {
     adapter.dispose();
   });
 
-  it("an unauthenticated session lands on needs-enroll", async () => {
+  it("an unauthenticated session lands on needs-activation", async () => {
     const adapter = browserAdapter({
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => NOW_SEC,
     });
     await ready(adapter);
-    expect(adapter.snapshot().status).toBe("needs-enroll");
+    expect(adapter.snapshot().status).toBe("needs-activation");
     adapter.dispose();
   });
 
@@ -69,6 +69,28 @@ describe("BrowserAdapter — construction + first load", () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toBe(
       "https://example.test/acme/session",
     );
+    adapter.dispose();
+  });
+
+  it("reports the current device from the verified session doc", async () => {
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(makeDoc()),
+      now: () => NOW_SEC,
+    });
+    await ready(adapter);
+    expect(adapter.currentDevice()).toMatchObject({
+      id: "dev-1",
+      current: true,
+      status: "ok",
+      licenseId: "lic-1",
+    });
+    await expect(adapter.listDevices()).rejects.toMatchObject({
+      code: "device-management-unsupported",
+    });
+    await expect(adapter.deauthorizeDevice("other")).rejects.toMatchObject({
+      code: "device-management-unsupported",
+    });
     adapter.dispose();
   });
 });
@@ -143,7 +165,7 @@ describe("BrowserAdapter — submitKey", () => {
 });
 
 describe("BrowserAdapter — signOut", () => {
-  it("posts logout (echoing CSRF) and resets to needs-enroll", async () => {
+  it("posts logout (echoing CSRF) and resets to needs-activation", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
       productSlug: "acme",
@@ -153,7 +175,7 @@ describe("BrowserAdapter — signOut", () => {
     await ready(adapter);
     await adapter.signOut();
     const s = adapter.snapshot();
-    expect(s.status).toBe("needs-enroll");
+    expect(s.status).toBe("needs-activation");
     expect(s.profile).toBeNull();
     expect(s.config).toEqual({});
     // The logout POST echoed the CSRF token from the session response.
@@ -194,7 +216,7 @@ describe("BrowserAdapter — signOut", () => {
     });
     await ready(adapter);
     await expect(adapter.signOut()).resolves.toBeUndefined();
-    expect(adapter.snapshot().status).toBe("needs-enroll");
+    expect(adapter.snapshot().status).toBe("needs-activation");
     adapter.dispose();
   });
 
@@ -262,7 +284,7 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
     adapter.dispose();
   });
 
-  it("a 401 with no prior session stays needs-enroll (not revoked)", async () => {
+  it("a 401 with no prior session stays needs-activation (not revoked)", async () => {
     const fetchImpl = (async () =>
       new Response(null, { status: 401 })) as unknown as typeof fetch;
     const adapter = browserAdapter({
@@ -272,7 +294,7 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
     });
     await ready(adapter);
     await adapter.refresh();
-    expect(adapter.snapshot().status).toBe("needs-enroll");
+    expect(adapter.snapshot().status).toBe("needs-activation");
     adapter.dispose();
   });
 
@@ -286,7 +308,7 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
     });
     await ready(adapter);
     expect(adapter.snapshot().error?.code).toBe("network");
-    expect(adapter.snapshot().status).toBe("needs-enroll");
+    expect(adapter.snapshot().status).toBe("needs-activation");
     adapter.dispose();
   });
 

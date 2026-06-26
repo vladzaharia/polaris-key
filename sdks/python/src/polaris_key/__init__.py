@@ -1,21 +1,26 @@
 """polaris-key — a product-agnostic Python client for the Polaris Key control plane.
 
-Mirrors the Node SDK (``@polaris-key/sdk-node``) and verifies the SAME cross-language
+Mirrors the Node SDK (``@polaris-key/node``) and verifies the SAME cross-language
 conformance corpus byte-for-byte. The frozen wire crypto lives in :mod:`verify`; the
 client facade in :mod:`client`.
 """
 
 from __future__ import annotations
 
-from .client import PolarisKeyClient, RefreshResult
+from .client import (
+    DeviceInfo,
+    DeviceManagementUnsupportedError,
+    PolarisKeyClient,
+    RefreshResult,
+)
 from .endpoints import (
-    EnrollError,
-    EnrollMachineLimit,
-    EnrollOk,
-    EnrollResult,
-    EnrollUnauthorized,
+    ActivationDeviceLimit,
+    ActivationError,
+    ActivationOk,
+    ActivationResult,
+    ActivationUnauthorized,
     deauthorize,
-    enroll_with_key,
+    activate_with_key,
     reacquire_token,
     report_snapshot,
 )
@@ -55,7 +60,7 @@ from .models import (
     ManagedPayload,
 )
 from .store import CacheRecord, FileStore, InMemoryStore, KeyringStore, Store
-from .deviceid import derive_device_id, raw_machine_id
+from .deviceid import derive_device_id
 from .verify import (
     TrustSet,
     VerifiedJws,
@@ -64,14 +69,15 @@ from .verify import (
     verify_jws,
     verify_jws_doc,
 )
-
-__version__ = "0.1.0"
+from ._version import __version__
 
 __all__ = [
     "__version__",
     # client
     "PolarisKeyClient",
     "RefreshResult",
+    "DeviceInfo",
+    "DeviceManagementUnsupportedError",
     # verify / crypto
     "verify_jws",
     "verify_jws_doc",
@@ -99,15 +105,15 @@ __all__ = [
     "FetchBlocked",
     "FetchError",
     # endpoints
-    "enroll_with_key",
+    "activate_with_key",
     "reacquire_token",
     "deauthorize",
     "report_snapshot",
-    "EnrollResult",
-    "EnrollOk",
-    "EnrollMachineLimit",
-    "EnrollUnauthorized",
-    "EnrollError",
+    "ActivationResult",
+    "ActivationOk",
+    "ActivationDeviceLimit",
+    "ActivationUnauthorized",
+    "ActivationError",
     # store
     "Store",
     "InMemoryStore",
@@ -116,7 +122,6 @@ __all__ = [
     "CacheRecord",
     # device id
     "derive_device_id",
-    "raw_machine_id",
     # models
     "ManagedConfigDoc",
     "ManagedPayload",

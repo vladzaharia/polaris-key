@@ -35,7 +35,7 @@ describe("LicenseGate screen selection", () => {
     );
   });
 
-  it("renders the login screen when needs-enroll", async () => {
+  it("renders the login screen when needs-activation", async () => {
     const { container } = renderGate({ hasToken: false, doc: null });
     await waitFor(() =>
       expect(

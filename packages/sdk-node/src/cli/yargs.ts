@@ -67,7 +67,7 @@ export function polarisCommandModule(
       yargs
         .command<CommonArgs & { key: string }>({
           command: "activate <key>",
-          describe: "Enroll this device with a license key",
+          describe: "Activate this device with a license key",
           handler: async (argv) =>
             emit(await activate(await buildClient(argv), argv.key)),
         })

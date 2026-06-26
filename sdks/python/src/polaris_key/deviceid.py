@@ -1,9 +1,9 @@
-"""Stable, hashed per-machine device id.
+"""Stable, hashed per-device id.
 
-Mirrors ``store.ts``'s ``rawMachineId`` + ``deriveDeviceId``: read the OS machine id
+Mirrors ``store.ts``'s ``rawDeviceId`` + ``deriveDeviceId``: read the OS identifier
 (macOS ``ioreg`` / Windows registry / Linux ``/etc/machine-id``), then SHA-256 over
 ``pkey-device:<product>:<raw>`` and take the first 32 chars of its base64url digest, so
-the raw machine id never leaves the device.
+the raw OS identifier never leaves the device.
 """
 
 from __future__ import annotations
@@ -17,14 +17,14 @@ from typing import Optional
 
 from .b64url import b64url_encode
 
-__all__ = ["raw_machine_id", "derive_device_id"]
+__all__ = ["derive_device_id"]
 
 _IOREG_UUID_RE = re.compile(r'"IOPlatformUUID"\s*=\s*"([^"]+)"')
 _REG_GUID_RE = re.compile(r"MachineGuid\s+REG_SZ\s+([A-Za-z0-9-]+)")
 
 
-def raw_machine_id() -> Optional[str]:
-    """Best-effort read of the OS machine id. Returns ``None`` if unavailable."""
+def raw_os_device_id() -> Optional[str]:
+    """Best-effort read of the OS device identifier. Returns ``None`` if unavailable."""
     try:
         if sys.platform == "darwin":
             out = subprocess.run(
@@ -77,6 +77,6 @@ def raw_machine_id() -> Optional[str]:
 
 def derive_device_id(product_slug: str, fallback: Optional[str] = None) -> str:
     """Derive a stable, hashed device id (base64url, first 32 chars)."""
-    base = raw_machine_id() or fallback or str(uuid.uuid4())
+    base = raw_os_device_id() or fallback or str(uuid.uuid4())
     digest = hashlib.sha256(f"pkey-device:{product_slug}:{base}".encode("utf-8")).digest()
     return b64url_encode(digest)[:32]

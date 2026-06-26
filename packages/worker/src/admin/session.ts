@@ -175,7 +175,7 @@ export async function verifySession(
 // ---------------------------------------------------------------------------
 
 /** Pull the admin session token out of a Cookie header. */
-export function readSessionCookie(cookieHeader: string | null): string | null {
+function readSessionCookie(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
   for (const part of cookieHeader.split(";")) {
     const [name, ...rest] = part.trim().split("=");

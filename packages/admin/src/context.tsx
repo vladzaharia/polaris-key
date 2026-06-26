@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -34,49 +33,6 @@ export function AdminProvider({
 export function useAdmin(): AdminContextValue {
   const ctx = useContext(AdminCtx);
   if (!ctx) throw new Error("useAdmin used outside AdminProvider");
-  return ctx;
-}
-
-// ── status region (mutation feedback) ────────────────────────────────────────
-interface StatusContextValue {
-  message: string;
-  tone: "message" | "ok" | "error";
-  announce: (message: string, tone?: StatusContextValue["tone"]) => void;
-}
-const StatusCtx = createContext<StatusContextValue | null>(null);
-
-export function StatusProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}): React.ReactElement {
-  const [state, setState] = useState<{
-    message: string;
-    tone: StatusContextValue["tone"];
-  }>({ message: "", tone: "message" });
-  const announce = useCallback(
-    (message: string, tone: StatusContextValue["tone"] = "message") =>
-      setState({ message, tone }),
-    [],
-  );
-  const value = useMemo(() => ({ ...state, announce }), [state, announce]);
-  return (
-    <StatusCtx.Provider value={value}>
-      {children}
-      <div
-        className={`app-status app-status-${state.tone}`}
-        role="status"
-        aria-live="polite"
-      >
-        {state.message}
-      </div>
-    </StatusCtx.Provider>
-  );
-}
-
-export function useStatus(): StatusContextValue {
-  const ctx = useContext(StatusCtx);
-  if (!ctx) return { message: "", tone: "message", announce: () => undefined };
   return ctx;
 }
 

@@ -1,4 +1,4 @@
-// Persistence: the per-machine token, a stable device id, and the offline-first config
+// Persistence: the per-device token, a stable device id, and the offline-first config
 // cache. `Store` is the protocol the client talks to; `InMemoryStore` backs tests, and
 // `KeychainStore` keeps the token in the OS keychain (secret) with the device id + cache
 // in a 0600 file under the config dir. Mirrors sdk-node's store.ts split (secret in the

@@ -1,6 +1,6 @@
-"""Enrollment + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report).
+"""Activation + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report).
 
-Mirrors ``endpoints.ts``. ``enroll_with_key`` and ``reacquire_token`` share the same
+Mirrors ``endpoints.ts``. ``activate_with_key`` and ``reacquire_token`` share the same
 POST-and-classify shape; the result is a small tagged union of dataclasses.
 """
 
@@ -19,14 +19,15 @@ from .models import (
     HEADER_SDK_NAME,
     HEADER_SDK_VERSION,
 )
+from ._version import SDK_NAME, SDK_VERSION
 
 __all__ = [
-    "EnrollOk",
-    "EnrollMachineLimit",
-    "EnrollUnauthorized",
-    "EnrollError",
-    "EnrollResult",
-    "enroll_with_key",
+    "ActivationOk",
+    "ActivationDeviceLimit",
+    "ActivationUnauthorized",
+    "ActivationError",
+    "ActivationResult",
+    "activate_with_key",
     "reacquire_token",
     "deauthorize",
     "report_snapshot",
@@ -34,63 +35,66 @@ __all__ = [
 
 
 @dataclass(frozen=True)
-class EnrollOk:
+class ActivationOk:
     token: str
     schemaVersion: int
     kind: str = "ok"
 
 
 @dataclass(frozen=True)
-class EnrollMachineLimit:
+class ActivationDeviceLimit:
     limit: Optional[int] = None
-    machineCount: Optional[int] = None
-    kind: str = "machine-limit"
+    deviceCount: Optional[int] = None
+    kind: str = "device-limit"
 
 
 @dataclass(frozen=True)
-class EnrollUnauthorized:
+class ActivationUnauthorized:
     kind: str = "unauthorized"
 
 
 @dataclass(frozen=True)
-class EnrollError:
+class ActivationError:
     message: str
     kind: str = "error"
 
 
-EnrollResult = Union[EnrollOk, EnrollMachineLimit, EnrollUnauthorized, EnrollError]
+ActivationResult = Union[ActivationOk, ActivationDeviceLimit, ActivationUnauthorized, ActivationError]
 
 
 def _metadata_headers() -> dict:
     return {
         HEADER_PLATFORM: platform.system().lower(),
         HEADER_ARCH: platform.machine(),
-        HEADER_SDK_NAME: "polaris-key",
-        HEADER_SDK_VERSION: "0.0.0",
+        HEADER_SDK_NAME: SDK_NAME,
+        HEADER_SDK_VERSION: SDK_VERSION,
     }
 
 
-def _enroll_like(url: str, headers: dict, client: httpx.Client) -> EnrollResult:
+def _activation_like(url: str, headers: dict, client: httpx.Client) -> ActivationResult:
     try:
         res = client.post(url, headers=headers)
     except Exception as e:
-        return EnrollError(message=str(e))
+        return ActivationError(message=str(e))
     if res.status_code == 200:
         b = res.json()
-        return EnrollOk(token=b["token"], schemaVersion=b["schemaVersion"])
+        return ActivationOk(token=b["token"], schemaVersion=b["schemaVersion"])
     if res.status_code == 403:
         b = _json_or_empty(res)
-        return EnrollMachineLimit(limit=b.get("limit"), machineCount=b.get("machineCount"))
+        return ActivationDeviceLimit(
+            limit=b.get("limit"),
+            deviceCount=b.get("deviceCount"),
+        )
     if res.status_code == 401:
-        return EnrollUnauthorized()
-    return EnrollError(message=_text_or_empty(res))
+        return ActivationUnauthorized()
+    return ActivationError(message=_text_or_empty(res))
 
 
-def enroll_with_key(
+def activate_with_key(
     *, base_url: str, product: str, key: str, device_id: str, client: httpx.Client
-) -> EnrollResult:
-    return _enroll_like(
-        f"{base_url}/{product}/enroll",
+) -> ActivationResult:
+    return _activation_like(
+        f"{base_url}/{product}/activate",
         {"authorization": f"Bearer {key}", HEADER_DEVICE: device_id, **_metadata_headers()},
         client,
     )
@@ -98,8 +102,8 @@ def enroll_with_key(
 
 def reacquire_token(
     *, base_url: str, product: str, token: str, device_id: str, client: httpx.Client
-) -> EnrollResult:
-    return _enroll_like(
+) -> ActivationResult:
+    return _activation_like(
         f"{base_url}/{product}/token",
         {"authorization": f"Bearer {token}", HEADER_DEVICE: device_id, **_metadata_headers()},
         client,

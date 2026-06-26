@@ -70,7 +70,7 @@ export function KeyStatusBadge({
   );
 }
 
-export function MachineStatusBadge({
+export function DeviceStatusBadge({
   status,
 }: {
   status: string;
@@ -81,8 +81,8 @@ export function MachineStatusBadge({
 }
 
 /** The release channels a license/tier can subscribe to. */
-export const CHANNELS = ["stable", "beta", "staging", "pr"] as const;
-export type Channel = (typeof CHANNELS)[number];
+const CHANNELS = ["stable", "beta", "staging", "pr"] as const;
+type Channel = (typeof CHANNELS)[number];
 
 /**
  * A small checkbox-grid multi-select for release channels. Controlled — emits the next set on

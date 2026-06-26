@@ -1,8 +1,6 @@
--- KEK-based key custody. Per-product signing keys + secrets become envelope-encrypted in
--- D1 under ONE platform KEK (env.PLATFORM_KEK), instead of being Worker secrets resolved by
--- name. The private key never leaves D1 in plaintext; loadProduct opens it per request via
--- AES-256-GCM (see src/keyvault.ts). The legacy products.signing_key_secret column is left
--- in place as a vestige (no longer read) so existing rows / migrations stay valid.
+-- KEK-based key custody. Per-product signing keys + secrets are envelope-encrypted in
+-- D1 under ONE platform KEK (env.PLATFORM_KEK). The private key never leaves D1 in
+-- plaintext; loadProduct opens it per request via AES-256-GCM (see src/keyvault.ts).
 
 -- Sealed Ed25519 signing keys, versioned per product by `kid` (rotation-ready). Exactly one
 -- row per product should be status='active'; loadProduct fails CLOSED if none exists.

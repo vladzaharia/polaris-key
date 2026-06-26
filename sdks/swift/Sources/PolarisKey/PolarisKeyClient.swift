@@ -1,4 +1,4 @@
-// The Polaris Key client: a small, product-agnostic facade over enroll/fetch/verify/cache/
+// The Polaris Key client: a small, product-agnostic facade over activate/fetch/verify/cache/
 // gate. Offline-first — init() applies the cached doc with no network; refresh() re-pulls
 // (with a single /token re-acquire on 401) and re-applies. An `actor` so its mutable token/
 // device/cache state is concurrency-safe under Swift 6 strict concurrency. Mirrors
@@ -71,6 +71,35 @@ public struct RefreshResult: Sendable, Equatable {
         self.blocked = blocked
         self.deviceCap = deviceCap
     }
+}
+
+public struct DeviceInfo: Sendable, Equatable {
+    public let id: String
+    public let current: Bool
+    public let status: LicenseStatus
+    public let licenseId: String?
+    public let profile: DocProfile?
+    public let lastVerifiedAt: Int?
+
+    public init(
+        id: String,
+        current: Bool,
+        status: LicenseStatus,
+        licenseId: String? = nil,
+        profile: DocProfile? = nil,
+        lastVerifiedAt: Int? = nil
+    ) {
+        self.id = id
+        self.current = current
+        self.status = status
+        self.licenseId = licenseId
+        self.profile = profile
+        self.lastVerifiedAt = lastVerifiedAt
+    }
+}
+
+public enum DeviceManagementError: Error, Sendable, Equatable {
+    case unsupported
 }
 
 public actor PolarisKeyClient {
@@ -175,7 +204,9 @@ public actor PolarisKeyClient {
         return config.compactMap { key, entry in
             guard entry.state != .hidden else { return nil }
             return UserConfigEntry(
-                key: key, value: entry.value, enforced: entry.state == .enforced)
+                key: key,
+                value: self.config(key, default: entry.value),
+                enforced: entry.state == .enforced)
         }
     }
 
@@ -210,11 +241,30 @@ public actor PolarisKeyClient {
 
     public func profile() -> DocProfile? { cache?.doc?.profile }
 
-    // ── Enrollment ────────────────────────────────────────────────────────────────
-    /// Exchange a license key for a per-machine token, persist it, then force a refresh.
+    public func currentDevice() -> DeviceInfo {
+        DeviceInfo(
+            id: deviceId,
+            current: true,
+            status: status().status,
+            licenseId: cache?.doc?.licenseId,
+            profile: cache?.doc?.profile,
+            lastVerifiedAt: cache?.lastVerifiedAt)
+    }
+
+    public func listDevices() async throws -> [DeviceInfo] {
+        throw DeviceManagementError.unsupported
+    }
+
+    public func deauthorizeDevice(_ id: String) async throws {
+        guard id == deviceId else { throw DeviceManagementError.unsupported }
+        await deactivate()
+    }
+
+    // ── Activation ────────────────────────────────────────────────────────────────
+    /// Exchange a license key for a per-device token, persist it, then force a refresh.
     @discardableResult
-    public func activate(key: String) async -> EnrollResult {
-        let r = await Endpoints.enrollWithKey(
+    public func activate(key: String) async -> ActivationResult {
+        let r = await Endpoints.activateWithKey(
             baseUrl: baseUrl, product: product, key: key, deviceId: deviceId, session: session)
         if case .ok(let newToken, _) = r {
             token = newToken

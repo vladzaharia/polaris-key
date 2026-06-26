@@ -203,7 +203,7 @@ ${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}\n` : ""}modules
 ${moduleLines.join("\n")}
 
 licensing:
-  defaultMachineLimit: 5
+  defaultDeviceLimit: 5
   defaultMaxOfflineDays: 14
   keyActivation:
     enabled: ${opts.modules.includes("licensing") ? "true" : "false"}
@@ -218,7 +218,7 @@ licensing:
     - id: standard
       label: Standard
       profile: standard-defaults
-      machineLimit: 5
+      deviceLimit: 5
       maxOfflineDays: 14
       channels: ["stable"]${oidc}${secrets}`;
 }

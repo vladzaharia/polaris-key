@@ -349,11 +349,11 @@
       }
     },
     {
-      "key": "machineLimit",
+      "key": "deviceLimit",
       "kind": "flag",
       "category": "Compatibility",
-      "label": "Machine limit",
-      "description": "Maximum concurrently-authorized machines. Absent => default cap; 0 => unlimited.",
+      "label": "Device limit",
+      "description": "Maximum concurrently-authorized devices. Absent => default cap; 0 => unlimited.",
       "schema": { "type": "integer", "minimum": 0, "maximum": 100 },
       "ui": {
         "widget": "stepper",

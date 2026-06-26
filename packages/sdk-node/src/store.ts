@@ -1,4 +1,4 @@
-// Persistence: the per-machine token, a stable device id, and the offline-first config
+// Persistence: the per-device token, a stable device id, and the offline-first config
 // cache. The default KeyringStore keeps the token in the OS keyring when available and
 // falls back to explicit 0600 file storage for headless/CI environments; tests use
 // InMemoryStore.
@@ -51,7 +51,7 @@ export interface Store {
   clearCache(): Promise<void>;
 }
 
-function rawMachineId(): string | null {
+function rawDeviceId(): string | null {
   try {
     if (process.platform === "darwin") {
       const out = execFileSync(
@@ -83,12 +83,12 @@ function rawMachineId(): string | null {
   }
 }
 
-/** Derive a stable, hashed device id so the raw machine id never leaves the device. */
+/** Derive a stable, hashed device id so the raw OS identifier never leaves the device. */
 export function deriveDeviceId(
   productSlug: string,
   fallback?: string | null,
 ): string {
-  const base = rawMachineId() ?? fallback ?? randomUUID();
+  const base = rawDeviceId() ?? fallback ?? randomUUID();
   return createHash("sha256")
     .update(`pkey-device:${productSlug}:${base}`)
     .digest("base64url")
@@ -214,7 +214,7 @@ async function loadKeyring(): Promise<KeyringModule | null> {
 export class KeyringStore implements Store {
   private readonly files: FileStore;
   private readonly service: string;
-  private readonly account = "machine-token";
+  private readonly account = "device-token";
 
   constructor(productSlug: string, configDir: string) {
     this.files = new FileStore(productSlug, configDir);

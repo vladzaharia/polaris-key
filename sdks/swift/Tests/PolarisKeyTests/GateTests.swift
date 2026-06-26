@@ -1,4 +1,4 @@
-// Gate state-machine tests — mirrors sdk-node's gate transitions. The ordering of the
+// Gate transition tests — mirrors sdk-node's gate behavior. The ordering of the
 // checks (blocked → no-token → revoked → no-doc → expired → grace → ok) is load-bearing,
 // so each branch gets a case that could only pass with the right precedence.
 
@@ -13,18 +13,18 @@ final class GateTests: XCTestCase {
             licenseId: "lic_x", deviceId: "dev_x",
             issuedAt: issuedAt, expiresAt: expiresAt, graceUntil: graceUntil,
             profile: DocProfile(
-                name: "T", firstName: "T", email: "t@example.com", enrolledAt: 0),
+                name: "T", firstName: "T", email: "t@example.com", activatedAt: 0),
             payload: ManagedPayload())
     }
 
-    func testNoTokenIsNeedsEnroll() {
+    func testNoTokenIsNeedsActivation() {
         let s = licenseState(GateInput(hasToken: false, doc: nil, now: 1000))
-        XCTAssertEqual(s.status, .needsEnroll)
+        XCTAssertEqual(s.status, .needsActivation)
     }
 
-    func testTokenButNoDocIsNeedsEnroll() {
+    func testTokenButNoDocIsNeedsActivation() {
         let s = licenseState(GateInput(hasToken: true, doc: nil, now: 1000))
-        XCTAssertEqual(s.status, .needsEnroll)
+        XCTAssertEqual(s.status, .needsActivation)
     }
 
     func testUnauthorizedIsRevoked() {
@@ -89,7 +89,7 @@ final class GateTests: XCTestCase {
         XCTAssertTrue(isUsable(.grace))
         XCTAssertFalse(isUsable(.expired))
         XCTAssertFalse(isUsable(.revoked))
-        XCTAssertFalse(isUsable(.needsEnroll))
+        XCTAssertFalse(isUsable(.needsActivation))
         XCTAssertFalse(isUsable(.versionTooOld))
     }
 

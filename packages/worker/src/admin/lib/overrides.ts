@@ -59,7 +59,7 @@ export function applyOverrides(
       }
     }
     bucket[u.key] = {
-      // Default-when-omitted is "enforced" so an admin-set value wins (old "managed" behavior).
+      // Default-when-omitted is "enforced" so an admin-set value wins.
       state: u.state ?? "enforced",
       value: (u.value ?? bucket[u.key]?.value ?? true) as ManagedEntry["value"],
       updatedAt: now,

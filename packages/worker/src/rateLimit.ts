@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Env } from "./env.js";
 
-// Abuse protection on the credential-minting hot paths (enroll/token/mint) and admin login.
+// Abuse protection on the credential-minting hot paths (activate/token/mint) and admin login.
 // Backed by an atomic per-product Durable Object (see rateLimitDo.ts) so concurrent bursts
 // can't slip past a non-atomic counter. Keyed by (product, bucket, id) — product-scoped like
 // everything else.

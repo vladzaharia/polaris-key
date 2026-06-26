@@ -2,12 +2,11 @@
   "slug": "djdl",
   "name": "DJDL",
   "signingKid": "pkey-djdl-prod-2026-06",
-  "signingKeySecret": "SIGNING_KEY__DJDL",
   "signingPub": "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
   "compatMin": "0.0.0",
   "compatMax": "99.0.0",
   "defaultMaxOfflineDays": 30,
-  "defaultMachineLimit": 5,
+  "defaultDeviceLimit": 5,
   "adminGroup": "admin",
   "oidc": {
     "issuer": "https://id.scruffy.spot",
@@ -26,7 +25,7 @@
       "label": "Standard",
       "profileId": null,
       "policyExpiryDays": null,
-      "policyMachineLimit": 5
+      "policyDeviceLimit": 5
     }
   ],
   "provisioning": [

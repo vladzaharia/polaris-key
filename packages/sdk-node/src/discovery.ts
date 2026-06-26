@@ -3,7 +3,7 @@
 // the rest for adopters that want richer onboarding metadata.
 
 export interface ProductDiscoveryEndpoints {
-  enroll?: string;
+  activate?: string;
   token?: string;
   config?: string;
   deauthorize?: string;

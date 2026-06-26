@@ -73,7 +73,7 @@ export function registerPolarisCommands(
 
   program
     .command("activate <key>")
-    .description("Enroll this device with a license key")
+    .description("Activate this device with a license key")
     .action(async function activateAction(this: Command, key: string) {
       emit(await activate(await buildClient(this), key));
     });

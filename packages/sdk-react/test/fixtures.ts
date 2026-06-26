@@ -41,7 +41,7 @@ export function makeDoc(
       name: "Ada Lovelace",
       firstName: "Ada",
       email: "ada@acme.test",
-      enrolledAt: 900,
+      activatedAt: 900,
     },
     payload: {
       config: {
@@ -59,7 +59,7 @@ export function makeDoc(
   };
 }
 
-/** A fake bridge backed by an in-memory `BridgeState`, with a push channel for hot-reload. */
+/** A fake bridge backed by an in-memory `BridgeState`, with a push channel for tests. */
 export function makeFakeBridge(
   initial: BridgeState,
 ): PolarisBridge & { push(s: BridgeState): void } {

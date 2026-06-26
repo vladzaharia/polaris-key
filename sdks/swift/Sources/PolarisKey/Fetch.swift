@@ -12,8 +12,8 @@ private func sdkMetadataHeaders() -> [String: String] {
     [
         HEADER_PLATFORM: ProcessInfo.processInfo.operatingSystemVersionString,
         HEADER_ARCH: swiftArch(),
-        HEADER_SDK_NAME: "PolarisKeySwift",
-        HEADER_SDK_VERSION: "0.0.0",
+        HEADER_SDK_NAME: POLARIS_KEY_SDK_NAME,
+        HEADER_SDK_VERSION: POLARIS_KEY_SDK_VERSION,
     ]
 }
 
@@ -32,7 +32,7 @@ public enum FetchResult: Sendable {
     case ok(jws: String, etag: String?)
     case notModified
     case unauthorized
-    case deviceCap(limit: Int?, machineCount: Int?)
+    case deviceCap(limit: Int?, deviceCount: Int?)
     case blocked(reason: BlockReason, allowedRange: AllowedRange?)
     case error(status: Int, message: String)
 }
@@ -66,7 +66,7 @@ public struct FetchOptions: Sendable {
 }
 
 /// Fetch the managed-config JWS, classifying the response by the documented status codes:
-/// 200(jws+etag) / 304 / 401 / 403{reason,allowedRange} / 429{limit,machineCount}.
+/// 200(jws+etag) / 304 / 401 / 403{reason,allowedRange} / 429{limit,deviceCount}.
 public func fetchManagedConfig(
     _ opts: FetchOptions, session: URLSession = .shared
 ) async -> FetchResult {
@@ -104,7 +104,7 @@ public func fetchManagedConfig(
         return .unauthorized
     case 429:
         let body = (try? JSONDecoder().decode(DeviceCapBody.self, from: data))
-        return .deviceCap(limit: body?.limit, machineCount: body?.machineCount)
+        return .deviceCap(limit: body?.limit, deviceCount: body?.deviceCount)
     case 403:
         let body = (try? JSONDecoder().decode(BlockBody.self, from: data))
         return .blocked(
@@ -120,7 +120,7 @@ public func fetchManagedConfig(
 
 private struct DeviceCapBody: Decodable {
     let limit: Int?
-    let machineCount: Int?
+    let deviceCount: Int?
 }
 
 private struct BlockBody: Decodable {

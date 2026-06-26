@@ -16,27 +16,27 @@ function doc(over: Partial<ManagedConfigDoc> = {}): ManagedConfigDoc {
     issuedAt: ISSUED,
     expiresAt: EXPIRES,
     graceUntil: GRACE,
-    profile: { name: "", firstName: "", email: "", enrolledAt: 0 },
+    profile: { name: "", firstName: "", email: "", activatedAt: 0 },
     payload: { config: {}, secrets: {}, entitlements: {} },
     ...over,
   };
 }
 
-describe("licenseState — enrollment", () => {
-  it("needs-enroll without a token", () => {
+describe("licenseState — activation", () => {
+  it("needs-activation without a token", () => {
     expect(
       licenseState({ hasToken: false, doc: null, now: ISSUED }).status,
-    ).toBe("needs-enroll");
+    ).toBe("needs-activation");
   });
-  it("needs-enroll with a token but no cached doc", () => {
+  it("needs-activation with a token but no cached doc", () => {
     expect(
       licenseState({ hasToken: true, doc: null, now: ISSUED }).status,
-    ).toBe("needs-enroll");
+    ).toBe("needs-activation");
   });
-  it("a leftover doc without a token is still needs-enroll", () => {
+  it("a leftover doc without a token is still needs-activation", () => {
     expect(
       licenseState({ hasToken: false, doc: doc(), now: 1500 }).status,
-    ).toBe("needs-enroll");
+    ).toBe("needs-activation");
   });
 });
 
@@ -139,7 +139,7 @@ describe("licenseState — blocked (403) takes precedence", () => {
     expect(s.allowedRange).toBeUndefined();
   });
 
-  it("a 403 block wins over an otherwise-ok doc AND over needs-enroll", () => {
+  it("a 403 block wins over an otherwise-ok doc AND over needs-activation", () => {
     expect(
       licenseState({
         hasToken: false,
@@ -165,7 +165,7 @@ describe("isUsable", () => {
     expect(isUsable("grace")).toBe(true);
     expect(isUsable("expired")).toBe(false);
     expect(isUsable("revoked")).toBe(false);
-    expect(isUsable("needs-enroll")).toBe(false);
+    expect(isUsable("needs-activation")).toBe(false);
     expect(isUsable("version-too-old")).toBe(false);
     expect(isUsable("version-too-new")).toBe(false);
     expect(isUsable("channel-not-entitled")).toBe(false);

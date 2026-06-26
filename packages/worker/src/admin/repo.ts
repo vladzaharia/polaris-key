@@ -8,7 +8,7 @@ import type { Db } from "../db/types.js";
 import type {
   KeyRow,
   LicenseRow,
-  MachineRow,
+  DeviceRow,
   ProductRow,
   ProfileRow,
   TierRow,
@@ -25,7 +25,7 @@ export async function updateProduct(
       | "compat_min"
       | "compat_max"
       | "default_max_offline_days"
-      | "default_machine_limit"
+      | "default_device_limit"
       | "admin_group"
       | "branding_json"
     >
@@ -63,7 +63,7 @@ export async function deleteProduct(
       params: [slug],
     },
     {
-      sql: "UPDATE machines SET status = 'deauthorized' WHERE product = ?",
+      sql: "UPDATE devices SET status = 'deauthorized' WHERE product = ?",
       params: [slug],
     },
     {
@@ -105,7 +105,7 @@ export async function listLicenses(
   product: string,
 ): Promise<LicenseRow[]> {
   return db.all<LicenseRow>(
-    "SELECT * FROM licenses WHERE product = ? ORDER BY enrolled_at DESC, id DESC",
+    "SELECT * FROM licenses WHERE product = ? ORDER BY activated_at DESC, id DESC",
     product,
   );
 }
@@ -140,7 +140,6 @@ export async function patchLicense(
       | "expires_at"
       | "max_offline_days"
       | "tier_id"
-      | "profile_id"
       | "overrides_json"
       | "channels_json"
       | "min_version"
@@ -166,15 +165,12 @@ export async function patchLicense(
   );
 }
 
-// ── Machines ─────────────────────────────────────────────────────────────────
-export async function listMachinesByProduct(
+// ── Devices ──────────────────────────────────────────────────────────────────
+export async function listDevicesByProduct(
   db: Db,
   product: string,
-): Promise<MachineRow[]> {
-  return db.all<MachineRow>(
-    "SELECT * FROM machines WHERE product = ?",
-    product,
-  );
+): Promise<DeviceRow[]> {
+  return db.all<DeviceRow>("SELECT * FROM devices WHERE product = ?", product);
 }
 
 // ── Keys ─────────────────────────────────────────────────────────────────────
@@ -243,13 +239,9 @@ export async function countLicensesUsingProfile(
   profileId: string,
 ): Promise<number> {
   const r = await db.first<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM (
-       SELECT id FROM licenses WHERE product = ? AND profile_id = ?
-       UNION
-       SELECT license_id AS id FROM license_profiles WHERE product = ? AND profile_id = ?
-     )`,
-    product,
-    profileId,
+    `SELECT COUNT(*) AS n
+       FROM license_profiles
+      WHERE product = ? AND profile_id = ?`,
     product,
     profileId,
   );
@@ -279,13 +271,13 @@ export async function listTiers(db: Db, product: string): Promise<TierRow[]> {
 
 export async function upsertTier(db: Db, row: TierRow): Promise<void> {
   await db.run(
-    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit,
+    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
        channels_json, min_version, max_version, modified_by, modified_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, id) DO UPDATE SET
        label = excluded.label, profile_id = excluded.profile_id,
        policy_expiry_days = excluded.policy_expiry_days,
-       policy_machine_limit = excluded.policy_machine_limit,
+       policy_device_limit = excluded.policy_device_limit,
        channels_json = excluded.channels_json, min_version = excluded.min_version,
        max_version = excluded.max_version,
        modified_by = excluded.modified_by, modified_at = excluded.modified_at`,
@@ -294,7 +286,7 @@ export async function upsertTier(db: Db, row: TierRow): Promise<void> {
     row.label,
     row.profile_id,
     row.policy_expiry_days,
-    row.policy_machine_limit,
+    row.policy_device_limit,
     row.channels_json,
     row.min_version,
     row.max_version,
@@ -309,12 +301,4 @@ export async function deleteTier(
   id: string,
 ): Promise<void> {
   await db.run("DELETE FROM tiers WHERE product = ? AND id = ?", product, id);
-}
-
-// ── Key (revoke by hash, list) — light wrappers used by the admin API ─────────
-export async function listKeysForProduct(
-  db: Db,
-  product: string,
-): Promise<KeyRow[]> {
-  return db.all<KeyRow>("SELECT * FROM keys_index WHERE product = ?", product);
 }

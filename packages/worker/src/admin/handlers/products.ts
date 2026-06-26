@@ -30,12 +30,8 @@ import {
   upsertProductSyncState,
   upsertProductSecret,
 } from "../../repo.js";
-import { deleteKeyRecord, deleteTokenRecord } from "../../kv.js";
-import {
-  deleteProduct,
-  listMachinesByProduct,
-  updateProduct,
-} from "../repo.js";
+import { deleteTokenRecord } from "../../kv.js";
+import { deleteProduct, listDevicesByProduct, updateProduct } from "../repo.js";
 import { generateEd25519, seal } from "../../keyvault.js";
 import { linkRepo } from "../../release/linkRepo.js";
 import { resyncRepo } from "../../release/resync.js";
@@ -81,9 +77,6 @@ function compileSchema(
   }
 }
 
-const signingKeySecretName = (slug: string): string =>
-  `SIGNING_KEY__${slug.toUpperCase().replace(/-/g, "_")}`;
-
 export async function handleProducts(
   req: Request,
   env: Env,
@@ -128,9 +121,6 @@ export async function handleProducts(
         ok: true,
         slug: result.slug,
         kid: result.kid,
-        publicKey: result.publicKey,
-        trustKey: result.publicKey,
-        trustKeys: result.trustKeys,
         signing: {
           kid: result.kid,
           alg: "Ed25519",
@@ -178,9 +168,9 @@ export async function handleProducts(
           typeof body.defaultMaxOfflineDays === "number"
             ? body.defaultMaxOfflineDays
             : undefined,
-        default_machine_limit:
-          typeof body.defaultMachineLimit === "number"
-            ? body.defaultMachineLimit
+        default_device_limit:
+          typeof body.defaultDeviceLimit === "number"
+            ? body.defaultDeviceLimit
             : undefined,
         admin_group:
           typeof body.adminGroup === "string" ? body.adminGroup : undefined,
@@ -205,16 +195,11 @@ export async function handleProducts(
         fields: ["confirmSlug"],
       });
     }
-    const machines = await listMachinesByProduct(db, slug);
-    for (const machine of machines) {
-      if (machine.token_hash)
-        await deleteTokenRecord(env, slug, machine.token_hash);
+    const devices = await listDevicesByProduct(db, slug);
+    for (const device of devices) {
+      if (device.token_hash)
+        await deleteTokenRecord(env, slug, device.token_hash);
     }
-    const keys = await db.all<{ key_hash: string }>(
-      "SELECT key_hash FROM keys_index WHERE product = ?",
-      slug,
-    );
-    for (const key of keys) await deleteKeyRecord(env, slug, key.key_hash);
     await audit(
       db,
       slug,
@@ -282,12 +267,11 @@ async function manualCreate(
       slug,
       name: String(body.name ?? slug),
       signing_kid: kid,
-      signing_key_secret: signingKeySecretName(slug),
       signing_pub: publicRawB64url,
       compat_min: String(body.compatMin ?? "0.0.0"),
       compat_max: String(body.compatMax ?? "99.0.0"),
       default_max_offline_days: Number(body.defaultMaxOfflineDays ?? 30),
-      default_machine_limit: Number(body.defaultMachineLimit ?? 5),
+      default_device_limit: Number(body.defaultDeviceLimit ?? 5),
       admin_group: typeof body.adminGroup === "string" ? body.adminGroup : null,
       branding_json: null,
       release_source: null,
@@ -327,9 +311,6 @@ async function manualCreate(
       ok: true,
       slug,
       kid,
-      publicKey: publicRawB64url,
-      trustKey: publicRawB64url,
-      trustKeys: { [kid]: publicRawB64url },
       signing: {
         kid,
         alg: "Ed25519",

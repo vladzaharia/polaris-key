@@ -26,17 +26,17 @@ const base = {
   trust: { pinnedKeys: { [TEST_KID]: TEST_PUB } },
 } as const;
 
-/** A stub fetch whose /enroll status is configurable; /config returns one signed doc with a
+/** A stub fetch whose /activate status is configurable; /config returns one signed doc with a
  *  single `default` config key (so override layering is observable). */
-function stubFetch(enrollStatus = 200): typeof fetch {
+function stubFetch(activationStatus = 200): typeof fetch {
   return (async (
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
     const u = new URL(typeof input === "string" ? input : input.toString());
     const device = new Headers(init?.headers).get("x-pkey-device") ?? "d";
-    if (u.pathname.endsWith("/enroll")) {
-      if (enrollStatus === 200) {
+    if (u.pathname.endsWith("/activate")) {
+      if (activationStatus === 200) {
         return new Response(
           JSON.stringify({ token: "pkeyt_ok", schemaVersion: 1 }),
           {
@@ -45,13 +45,13 @@ function stubFetch(enrollStatus = 200): typeof fetch {
           },
         );
       }
-      if (enrollStatus === 403) {
-        return new Response(JSON.stringify({ limit: 3, machineCount: 3 }), {
+      if (activationStatus === 403) {
+        return new Response(JSON.stringify({ limit: 3, deviceCount: 3 }), {
           status: 403,
           headers: { "content-type": "application/json" },
         });
       }
-      return new Response("", { status: enrollStatus });
+      return new Response("", { status: activationStatus });
     }
     if (u.pathname.endsWith("/config/report"))
       return new Response("{}", { status: 200 });
@@ -72,7 +72,7 @@ function stubFetch(enrollStatus = 200): typeof fetch {
           name: "Ada Lovelace",
           firstName: "Ada",
           email: "ada@example.com",
-          enrolledAt: now,
+          activatedAt: now,
         },
         payload: {
           config: {
@@ -125,11 +125,11 @@ describe("cli/commands core", () => {
     expect(revoked.message).toContain("invalid or revoked");
   });
 
-  it("status reflects the gate (needs-enroll before, ok after activation)", async () => {
+  it("status reflects the gate (needs-activation before, ok after activation)", async () => {
     const client = await makeClient(stubFetch(200));
     const before = status(client);
     expect(before.ok).toBe(false);
-    expect(before.message).toContain("needs-enroll");
+    expect(before.message).toContain("needs-activation");
 
     await activate(client, "pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
     const after = status(client);
@@ -144,7 +144,7 @@ describe("cli/commands core", () => {
     const r = await deactivate(client);
     expect(r.ok).toBe(true);
     expect(client.isLicensed()).toBe(false);
-    expect(status(client).message).toContain("needs-enroll");
+    expect(status(client).message).toContain("needs-activation");
   });
 
   it("config returns the layered value + provenance (local override beats remote default)", async () => {
@@ -210,8 +210,8 @@ describe("cli/commander adapter smoke", () => {
       productSlug: "djdl",
       version: "1.2.3",
     });
-    // ...and the status command printed the core's output (gate = needs-enroll, unactivated).
-    expect(lines.join("\n")).toContain("needs-enroll");
+    // ...and the status command printed the core's output (gate = needs-activation, unactivated).
+    expect(lines.join("\n")).toContain("needs-activation");
     expect(seen.client).toBeInstanceOf(PolarisKeyClient);
 
     // Sanity: a config subcommand was registered too.

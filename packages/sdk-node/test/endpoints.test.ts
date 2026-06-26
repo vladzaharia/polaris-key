@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   deauthorize,
-  enrollWithKey,
+  activateWithKey,
   reacquireToken,
   reportSnapshot,
 } from "../src/endpoints.js";
@@ -25,12 +25,12 @@ function fakeFetch(responses: Array<{ status: number; body?: unknown }>): {
 
 const base = { baseUrl: "https://k.test", product: "djdl", deviceId: "dev-1" };
 
-describe("enrollWithKey", () => {
-  it("POSTs /enroll with Bearer <key> + device header and returns the minted token", async () => {
+describe("activateWithKey", () => {
+  it("POSTs /activate with Bearer <key> + device header and returns the minted token", async () => {
     const { impl, calls } = fakeFetch([
       { status: 200, body: { token: "pkeyt_minted", schemaVersion: 2 } },
     ]);
-    const res = await enrollWithKey({
+    const res = await activateWithKey({
       ...base,
       key: "pkey_djdl_AAA",
       fetchImpl: impl,
@@ -40,36 +40,37 @@ describe("enrollWithKey", () => {
       token: "pkeyt_minted",
       schemaVersion: 2,
     });
-    expect(calls[0]?.url).toBe("https://k.test/djdl/enroll");
+    expect(calls[0]?.url).toBe("https://k.test/djdl/activate");
     expect((calls[0]?.init as RequestInit).method).toBe("POST");
     const h = new Headers((calls[0]?.init as RequestInit).headers);
     expect(h.get("authorization")).toBe("Bearer pkey_djdl_AAA");
     expect(h.get("x-pkey-device")).toBe("dev-1");
   });
 
-  it("surfaces a 403 machine-limit distinctly with limit + count", async () => {
+  it("surfaces a 403 device-limit distinctly with limit + count", async () => {
     const { impl } = fakeFetch([
-      { status: 403, body: { limit: 3, machineCount: 3 } },
+      { status: 403, body: { limit: 3, deviceCount: 3 } },
     ]);
     expect(
-      await enrollWithKey({ ...base, key: "pkey_x", fetchImpl: impl }),
+      await activateWithKey({ ...base, key: "pkey_x", fetchImpl: impl }),
     ).toEqual({
-      kind: "machine-limit",
+      kind: "device-limit",
       limit: 3,
-      machineCount: 3,
+      deviceCount: 3,
     });
   });
 
   it("maps a 401 to unauthorized (bad/revoked key)", async () => {
     const { impl } = fakeFetch([{ status: 401 }]);
     expect(
-      (await enrollWithKey({ ...base, key: "pkey_bad", fetchImpl: impl })).kind,
+      (await activateWithKey({ ...base, key: "pkey_bad", fetchImpl: impl }))
+        .kind,
     ).toBe("unauthorized");
   });
 
   it("maps other failures to error with the body message", async () => {
     const { impl } = fakeFetch([{ status: 500, body: "boom" }]);
-    const res = await enrollWithKey({
+    const res = await activateWithKey({
       ...base,
       key: "pkey_x",
       fetchImpl: impl,
@@ -82,7 +83,7 @@ describe("enrollWithKey", () => {
       throw new Error("ECONNREFUSED");
     }) as unknown as typeof fetch;
     expect(
-      (await enrollWithKey({ ...base, key: "pkey_x", fetchImpl: impl })).kind,
+      (await activateWithKey({ ...base, key: "pkey_x", fetchImpl: impl })).kind,
     ).toBe("error");
   });
 });
@@ -108,9 +109,9 @@ describe("reacquireToken", () => {
     expect(h.get("authorization")).toBe("Bearer pkeyt_current");
   });
 
-  it("maps 403 to machine-limit", async () => {
+  it("maps 403 to device-limit", async () => {
     const { impl } = fakeFetch([
-      { status: 403, body: { limit: 2, machineCount: 2 } },
+      { status: 403, body: { limit: 2, deviceCount: 2 } },
     ]);
     expect(
       (
@@ -120,7 +121,7 @@ describe("reacquireToken", () => {
           fetchImpl: impl,
         })
       ).kind,
-    ).toBe("machine-limit");
+    ).toBe("device-limit");
   });
 
   it("maps 401 to unauthorized", async () => {

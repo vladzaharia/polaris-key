@@ -62,7 +62,7 @@ export interface Me {
 }
 
 // ── products (platform registry) ──────────────────────────────────────────────
-export type ProductReleaseSource = "manual" | "github" | (string & {});
+type ProductReleaseSource = "manual" | "github" | (string & {});
 
 export interface ProductSigningBundle {
   kid?: string;
@@ -71,7 +71,6 @@ export interface ProductSigningBundle {
   publicKeyPem?: string;
   jwksUrl?: string;
   jwks?: unknown;
-  trustKey?: string;
   trustKeys?: Record<string, string>;
 }
 
@@ -131,13 +130,13 @@ export interface ProductSyncState {
   message?: string | null;
 }
 
-export type ReleaseHealthStatus =
+type ReleaseHealthStatus =
   | "healthy"
   | "needs-setup"
   | "not-configured"
   | "error";
 
-export type ReleaseHealthCheckStatus = "ok" | "missing" | "warning" | "error";
+type ReleaseHealthCheckStatus = "ok" | "missing" | "warning" | "error";
 
 export interface ReleaseHealthCheck {
   id: string;
@@ -164,7 +163,7 @@ export interface ReleaseHealth {
 export interface ProductOnboarding {
   baseUrl?: string;
   configUrl?: string;
-  enrollUrl?: string;
+  activateUrl?: string;
   jwksUrl?: string;
   docsUrl?: string;
   sdkSnippets?:
@@ -182,14 +181,7 @@ export interface ProductDetail {
   name: string;
   signingKid: string;
   releaseSource?: ProductReleaseSource;
-  signing?: ProductSigningBundle;
-  keyBundle?: ProductSigningBundle;
-  publicKeyBundle?: ProductSigningBundle;
-  publicKey?: string;
-  signingPub?: string;
-  signingPublicKey?: string;
-  trustKey?: string;
-  trustKeys?: Record<string, string>;
+  signing?: ProductSigningBundle | null;
   jwksUrl?: string;
   jwks?: unknown;
   modules?:
@@ -200,7 +192,7 @@ export interface ProductDetail {
   compatMin: string;
   compatMax: string;
   defaultMaxOfflineDays: number;
-  defaultMachineLimit: number;
+  defaultDeviceLimit: number;
   adminGroup: string | null;
   createdAt: number;
   modifiedAt: number;
@@ -214,7 +206,7 @@ export interface CreateManualProductBody {
   compatMin?: string;
   compatMax?: string;
   defaultMaxOfflineDays?: number;
-  defaultMachineLimit?: number;
+  defaultDeviceLimit?: number;
   adminGroup?: string;
 }
 
@@ -222,12 +214,7 @@ export interface CreateManualProductResult {
   ok: true;
   slug: string;
   kid: string;
-  publicKey?: string;
-  trustKey?: string;
-  trustKeys?: Record<string, string>;
-  signing?: ProductSigningBundle;
-  keyBundle?: ProductSigningBundle;
-  publicKeyBundle?: ProductSigningBundle;
+  signing?: ProductSigningBundle | null;
   setup?: ProductSetupState;
   onboarding?: ProductOnboarding;
   product: ProductDetail | null;
@@ -237,12 +224,7 @@ export interface LinkRepoResult {
   ok: true;
   slug: string;
   kid: string;
-  publicKey?: string;
-  trustKey?: string;
-  trustKeys?: Record<string, string>;
-  signing?: ProductSigningBundle;
-  keyBundle?: ProductSigningBundle;
-  publicKeyBundle?: ProductSigningBundle;
+  signing?: ProductSigningBundle | null;
   product?: ProductDetail | null;
   setup?: ProductSetupState;
   onboarding?: ProductOnboarding;
@@ -255,7 +237,7 @@ export interface UpdateProductBody {
   compatMin?: string;
   compatMax?: string;
   defaultMaxOfflineDays?: number;
-  defaultMachineLimit?: number;
+  defaultDeviceLimit?: number;
   adminGroup?: string;
 }
 
@@ -265,9 +247,6 @@ export interface RotateKeyResult {
   publicKey: string;
   status?: "staged" | "active";
   activateAfter?: number;
-  trustKey?: string;
-  trustKeys?: Record<string, string>;
-  signing?: ProductSigningBundle;
 }
 
 export interface ResyncResult {
@@ -314,11 +293,11 @@ export interface LicenseSummary {
   name: string;
   email: string;
   status: LicenseStatus;
-  enrolledAt: number;
+  activatedAt: number;
   expiresAt: number | null;
   keyCount: number;
   activeKeyCount: number;
-  machineCount: number;
+  deviceCount: number;
   profile: string | null;
   profiles?: string[];
   tier: string | null;
@@ -340,8 +319,8 @@ export interface KeyDto {
   lastUsedAt?: number;
 }
 
-export interface MachineDto {
-  machineId: string;
+export interface DeviceDto {
+  deviceId: string;
   status: string;
   firstSeen: number;
   lastSeen: number;
@@ -355,7 +334,7 @@ export interface LicenseDetail extends LicenseSummary {
   maxOfflineDays?: number | null;
   overrides: RedactedPayload;
   keys: KeyDto[];
-  machines: MachineDto[];
+  devices: DeviceDto[];
 }
 
 export interface CreateLicenseBody {
@@ -402,7 +381,7 @@ export interface TierSummary {
   label: string;
   profile: string | null;
   policyExpiryDays: number | null;
-  policyMachineLimit: number | null;
+  policyDeviceLimit: number | null;
   channels: string[];
   minVersion: string | null;
   maxVersion: string | null;
@@ -413,7 +392,7 @@ export interface TierBody {
   label?: string;
   profile?: string;
   policyExpiryDays?: number;
-  policyMachineLimit?: number;
+  policyDeviceLimit?: number;
   channels?: string[];
   minVersion?: string | null;
   maxVersion?: string | null;
@@ -438,7 +417,7 @@ export interface ActivityPage {
 }
 
 // ── transport ─────────────────────────────────────────────────────────────────
-export const CSRF_HEADER = "X-PKey-CSRF";
+const CSRF_HEADER = "X-PKey-CSRF";
 
 let csrf = "";
 export function setCsrf(token: string): void {
@@ -614,12 +593,12 @@ export const api = {
       { method: "POST" },
     ),
 
-  // ── license machines ──────────────────────────────────────────────────────────
-  licenseMachines: (slug: string, id: string) =>
-    call<{ machines: MachineDto[] }>(`${p(slug)}/licenses/${enc(id)}/machines`),
-  deauthorizeMachine: (slug: string, id: string, machineId: string) =>
-    call<{ ok: true; machineId: string }>(
-      `${p(slug)}/licenses/${enc(id)}/machines/${enc(machineId)}`,
+  // ── license devices ───────────────────────────────────────────────────────────
+  licenseDevices: (slug: string, id: string) =>
+    call<{ devices: DeviceDto[] }>(`${p(slug)}/licenses/${enc(id)}/devices`),
+  deauthorizeDevice: (slug: string, id: string, deviceId: string) =>
+    call<{ ok: true; deviceId: string }>(
+      `${p(slug)}/licenses/${enc(id)}/devices/${enc(deviceId)}`,
       {
         method: "DELETE",
       },
@@ -675,5 +654,3 @@ export const api = {
     return call<ActivityPage>(`${p(slug)}/activity?${search.toString()}`);
   },
 };
-
-export type Api = typeof api;

@@ -52,11 +52,10 @@ export async function handleDiscovery(
   const jwksUrl = `${base}/.well-known/jwks.json`;
   const trustManifestUrl = `${base}/.well-known/polaris-trust.jws`;
   const endpoints = {
-    enroll: `${base}/enroll`,
+    activate: `${base}/activate`,
     token: `${base}/token`,
     config: `${base}/config`,
     report: `${base}/config/report`,
-    subscribe: `${base}/config/subscribe`,
     session: `${base}/session`,
     sessionLicense: `${base}/session/license`,
     authLogin: `${base}/auth/login`,
@@ -94,7 +93,7 @@ export async function handleDiscovery(
     },
     modules: {
       auth: {
-        enrollUrl: endpoints.enroll,
+        activateUrl: endpoints.activate,
         tokenUrl: endpoints.token,
         oidc:
           oidc?.issuer && oidc.client_id
@@ -119,7 +118,6 @@ export async function handleDiscovery(
       config: {
         documentUrl: endpoints.config,
         reportUrl: endpoints.report,
-        subscribeUrl: endpoints.subscribe,
         schemaUrl: endpoints.schema,
         schemaVersion: product.schemaVersion,
         compat: {

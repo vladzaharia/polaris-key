@@ -33,18 +33,20 @@ describe("matchRoute — product-scoped routes", () => {
     ["/djdl/.well-known/polaris.json", "discovery"],
     ["/djdl/.well-known/jwks.json", "jwks"],
     ["/djdl/schema", "schema"],
-    ["/djdl/enroll", "enroll"],
+    ["/djdl/activate", "activate"],
     ["/djdl/token", "token"],
+    ["/djdl/account", "account"],
+    ["/djdl/devices", "devices"],
     ["/djdl/deauthorize", "deauthorize"],
     ["/djdl/config", "config"],
     ["/djdl/config/report", "configReport"],
-    ["/djdl/config/subscribe", "configSubscribe"],
     ["/djdl/session", "browserSession"],
     ["/djdl/session/license", "browserSessionLicense"],
     ["/djdl/auth/start", "authStart"],
     ["/djdl/auth/login", "authLogin"],
     ["/djdl/auth/logout", "authLogout"],
     ["/djdl/auth/device/start", "authDeviceStart"],
+    ["/djdl/auth/device/verify", "authDeviceVerify"],
     ["/djdl/auth/device/poll", "authDevicePoll"],
     ["/djdl/auth/callback", "authCallback"],
     ["/djdl/auth/poll", "authPoll"],
@@ -122,6 +124,14 @@ describe("matchRoute — mint / cli / dmg / appcast(channel)", () => {
     });
   });
 
+  it("routes a specific device management endpoint", () => {
+    expect(matchRoute("/djdl/devices/dev-1")).toMatchObject({
+      kind: "devices",
+      product: "djdl",
+      deviceId: "dev-1",
+    });
+  });
+
   it("rejects a cli path with an unknown arch", () => {
     expect(matchRoute("/djdl/cli/1.2.3/djdl-sparc").kind).toBe("notFound");
   });
@@ -139,6 +149,7 @@ describe("matchRoute — normalization + notFound", () => {
 
   it("returns notFound for an unknown product sub-path", () => {
     expect(matchRoute("/djdl/unknown-thing").kind).toBe("notFound");
+    expect(matchRoute("/djdl/activation").kind).toBe("notFound");
     expect(matchRoute("/djdl").kind).toBe("notFound"); // product with no rest
   });
 

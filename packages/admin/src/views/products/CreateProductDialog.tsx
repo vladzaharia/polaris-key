@@ -112,7 +112,7 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
   const [compatMin, setCompatMin] = React.useState("");
   const [compatMax, setCompatMax] = React.useState("");
   const [maxOfflineDays, setMaxOfflineDays] = React.useState("");
-  const [machineLimit, setMachineLimit] = React.useState("");
+  const [deviceLimit, setDeviceLimit] = React.useState("");
   const [adminGroup, setAdminGroup] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -143,7 +143,7 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
         compatMin: trimmedOrUndefined(compatMin),
         compatMax: trimmedOrUndefined(compatMax),
         defaultMaxOfflineDays: intOrUndefined(maxOfflineDays),
-        defaultMachineLimit: intOrUndefined(machineLimit),
+        defaultDeviceLimit: intOrUndefined(deviceLimit),
         adminGroup: trimmedOrUndefined(adminGroup),
       });
       invalidate("products");
@@ -243,12 +243,12 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
             placeholder="14"
           />
         </Field>
-        <Field label="Default machine limit">
+        <Field label="Default device limit">
           <Input
             type="number"
             inputMode="numeric"
-            value={machineLimit}
-            onChange={(e) => setMachineLimit(e.target.value)}
+            value={deviceLimit}
+            onChange={(e) => setDeviceLimit(e.target.value)}
             placeholder="3"
           />
         </Field>

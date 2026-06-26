@@ -1,6 +1,6 @@
 // True end-to-end flow over the REAL worker handlers (makeTestDb + KvMock) feeding the
 // REAL Node SDK (@polaris-key/node). Nothing here re-implements server or client logic:
-// the doc is minted by handleEnroll→handleConfig, verified by the SDK's frozen JWS path,
+// the doc is minted by handleActivate→handleConfig, verified by the SDK's frozen JWS path,
 // gated by `licenseState`, and read back through the layered `PolarisKeyClient.getConfig`.
 // This is the cross-package contract test the per-package unit suites can't cover alone.
 
@@ -27,7 +27,7 @@ import {
   TEST_PUB,
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/product.js";
-import { handleConfig, handleEnroll } from "../src/licensing.js";
+import { handleConfig, handleActivate } from "../src/licensing.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
@@ -63,22 +63,22 @@ async function bootstrap(
   return { db, kv, env, product, key, licenseId };
 }
 
-/** Drive enroll (key→token) then /config (token→signed JWS) through the real handlers. */
-async function enrollAndFetch(
+/** Drive activate (key→token) then /config (token→signed JWS) through the real handlers. */
+async function activateAndFetch(
   w: World,
   key: string,
   device: string,
   now = NOW,
 ): Promise<{ jws: string; etag: string }> {
-  const enrollRes = await handleEnroll(
+  const activateRes = await handleActivate(
     mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": device }),
     w.env,
     w.db,
     w.product,
     now,
   );
-  expect(enrollRes.status).toBe(200);
-  const { token } = (await enrollRes.json()) as { token: string };
+  expect(activateRes.status).toBe(200);
+  const { token } = (await activateRes.json()) as { token: string };
 
   const cfgRes = await handleConfig(
     mkReq("GET", {
@@ -123,11 +123,11 @@ async function clientWithCachedDoc(
 }
 
 describe("e2e: worker handlers → JWS → Node SDK gate", () => {
-  it("enroll → config → verifyJws → licenseState reports ok", async () => {
+  it("activate → config → verifyJws → licenseState reports ok", async () => {
     const w = await bootstrap({
       config: { "quality.losslessOnly": enforced(true) },
     });
-    const { jws } = await enrollAndFetch(w, w.key, "dev-1");
+    const { jws } = await activateAndFetch(w, w.key, "dev-1");
 
     // 1) The frozen JWS path verifies under the product's pinned pubkey.
     const v = await verifyJws<ManagedConfigDoc>(jws, TRUST);
@@ -171,7 +171,7 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
 
   it("the SDK's verifyDoc rejects a doc spliced to a different device (anti-replay)", async () => {
     const w = await bootstrap();
-    const { jws } = await enrollAndFetch(w, w.key, "dev-1");
+    const { jws } = await activateAndFetch(w, w.key, "dev-1");
     // Same valid JWS, wrong device binding ⇒ the SDK refuses to apply it.
     const wrongDevice = await verifyDoc(jws, {
       trust: TRUST,
@@ -183,7 +183,7 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
 
   it("offline → online transition: cache a doc, let it expire to grace/expired, then re-fetch to ok", async () => {
     const w = await bootstrap();
-    const { jws } = await enrollAndFetch(w, w.key, "dev-1");
+    const { jws } = await activateAndFetch(w, w.key, "dev-1");
     const doc = await verifyDoc(jws, {
       trust: TRUST,
       expectedAud: "djdl",
@@ -209,7 +209,7 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
 
     // Back online at that later time: a freshly-minted doc re-establishes `ok` with a
     // strictly-newer issuedAt (the SDK's monotonic-issuedAt replay guard accepts it).
-    const { jws: jws2 } = await enrollAndFetch(w, w.key, "dev-1", expired);
+    const { jws: jws2 } = await activateAndFetch(w, w.key, "dev-1", expired);
     const doc2 = await verifyDoc(jws2, {
       trust: TRUST,
       expectedAud: "djdl",
@@ -228,7 +228,7 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
     const w = await bootstrap({
       config: { "quality.losslessOnly": enforced(true) },
     });
-    const { jws } = await enrollAndFetch(w, w.key, "dev-1");
+    const { jws } = await activateAndFetch(w, w.key, "dev-1");
     const doc = await verifyDoc(jws, {
       trust: TRUST,
       expectedAud: "djdl",
@@ -251,7 +251,7 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
         "quality.floor": { state: "default", value: "any", updatedAt: NOW },
       },
     });
-    const { jws: jws2 } = await enrollAndFetch(w2, w2.key, "dev-1");
+    const { jws: jws2 } = await activateAndFetch(w2, w2.key, "dev-1");
     const doc2 = await verifyDoc(jws2, {
       trust: TRUST,
       expectedAud: "djdl",

@@ -140,13 +140,13 @@ export async function resyncRepo(
 
   await db.run(
     `UPDATE products SET name = ?, compat_min = ?, compat_max = ?,
-       default_max_offline_days = ?, default_machine_limit = ?, admin_group = ?,
+       default_max_offline_days = ?, default_device_limit = ?, admin_group = ?,
        modified_at = ? WHERE slug = ?`,
     manifest.product.name,
     manifest.product.compatMin,
     manifest.product.compatMax,
     manifest.product.defaultMaxOfflineDays,
-    manifest.product.defaultMachineLimit,
+    manifest.product.defaultDeviceLimit,
     manifest.product.adminGroup,
     now,
     slug,
@@ -174,13 +174,16 @@ export async function resyncRepo(
   if (rel) {
     await db.run(
       `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
-         sparkle_ed25519_pub = ?, summary_marker = ?, artifact_policy_json = ? WHERE product = ?`,
+         sparkle_ed25519_pub = ?, summary_marker = ?, artifact_policy_json = ?,
+         metadata_access = ?, artifacts_access = ? WHERE product = ?`,
       rel.channelWorkflow || null,
       rel.betaBranch || "main",
       rel.binaryName || repo,
       rel.sparkleEd25519Pub || null,
       rel.summaryMarker || "pkey:summary",
       rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,
+      rel.access.metadata,
+      rel.access.artifacts,
       slug,
     );
     updated.push("release");
@@ -252,7 +255,7 @@ export async function resyncRepo(
         label: t.label,
         profileId: t.profileId ?? null,
         policyExpiryDays: t.policyExpiryDays ?? null,
-        policyMachineLimit: t.policyMachineLimit ?? null,
+        policyDeviceLimit: t.policyDeviceLimit ?? null,
         channels: t.channels,
         minVersion: t.minVersion,
         maxVersion: t.maxVersion,

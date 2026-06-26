@@ -8,23 +8,14 @@
 
 import type { Env } from "./env.js";
 
-/** Legacy sealed value kept readable for already-written rows. */
-export interface SealedV1 {
-  v: 1;
-  iv: string;
-  ct: string;
-}
-
 /** A sealed value: AES-256-GCM under a versioned platform KEK. `aad` is not stored; callers
  *  provide it again on open so ciphertext is bound to product/kind/name metadata. */
-export interface SealedV2 {
+export interface Sealed {
   v: 2;
   kekId: string;
   iv: string;
   ct: string;
 }
-
-export type Sealed = SealedV1 | SealedV2;
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -96,7 +87,7 @@ async function importKek(env: Env): Promise<CryptoKey> {
 export async function seal(
   env: Env,
   plaintext: string,
-  ctx?: SealContext,
+  ctx: SealContext,
 ): Promise<string> {
   const key = await importKek(env);
   const iv = new Uint8Array(12);
@@ -105,23 +96,17 @@ export async function seal(
     {
       name: "AES-GCM",
       iv: toArrayBuffer(iv),
-      ...(ctx ? { additionalData: aad(ctx) } : {}),
+      additionalData: aad(ctx),
     },
     key,
     toArrayBuffer(enc.encode(plaintext)),
   );
-  const sealed: Sealed = ctx
-    ? {
-        v: 2,
-        kekId: env.PLATFORM_KEK_ID || "default",
-        iv: b64urlEncode(iv),
-        ct: b64urlEncode(new Uint8Array(ct)),
-      }
-    : {
-        v: 1,
-        iv: b64urlEncode(iv),
-        ct: b64urlEncode(new Uint8Array(ct)),
-      };
+  const sealed: Sealed = {
+    v: 2,
+    kekId: env.PLATFORM_KEK_ID || "default",
+    iv: b64urlEncode(iv),
+    ct: b64urlEncode(new Uint8Array(ct)),
+  };
   return JSON.stringify(sealed);
 }
 
@@ -130,7 +115,7 @@ export async function seal(
 export async function open(
   env: Env,
   sealedJson: string,
-  ctx?: SealContext,
+  ctx: SealContext,
 ): Promise<string> {
   const key = await importKek(env);
   let sealed: Sealed;
@@ -140,19 +125,16 @@ export async function open(
     throw new Error("sealed value is not valid JSON");
   }
   if (
-    (sealed.v !== 1 && sealed.v !== 2) ||
+    sealed.v !== 2 ||
+    typeof sealed.kekId !== "string" ||
     typeof sealed.iv !== "string" ||
     typeof sealed.ct !== "string"
   ) {
     throw new Error("sealed value has an unexpected shape");
   }
-  if (sealed.v === 2) {
-    if (typeof sealed.kekId !== "string" || !ctx)
-      throw new Error("sealed value requires key id and associated data");
-    const expected = env.PLATFORM_KEK_ID || "default";
-    if (sealed.kekId !== expected) {
-      throw new Error(`sealed value uses unavailable KEK ${sealed.kekId}`);
-    }
+  const expected = env.PLATFORM_KEK_ID || "default";
+  if (sealed.kekId !== expected) {
+    throw new Error(`sealed value uses unavailable KEK ${sealed.kekId}`);
   }
   // A bad auth tag (tampered ct) makes subtle.decrypt reject — we propagate the throw so a
   // wrong/partial plaintext can never escape.
@@ -160,7 +142,7 @@ export async function open(
     {
       name: "AES-GCM",
       iv: toArrayBuffer(b64urlDecode(sealed.iv)),
-      ...(sealed.v === 2 ? { additionalData: aad(ctx as SealContext) } : {}),
+      additionalData: aad(ctx),
     },
     key,
     toArrayBuffer(b64urlDecode(sealed.ct)),

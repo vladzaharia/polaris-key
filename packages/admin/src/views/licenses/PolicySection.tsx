@@ -31,6 +31,7 @@ export function PolicySection({
   const [channels, setChannels] = React.useState<string[]>(license.channels);
   const [minVersion, setMinVersion] = React.useState(license.minVersion ?? "");
   const [maxVersion, setMaxVersion] = React.useState(license.maxVersion ?? "");
+  const [versionError, setVersionError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
   // Re-seed from a fresh license after a save invalidates + reloads.
@@ -38,6 +39,7 @@ export function PolicySection({
     setChannels(license.channels);
     setMinVersion(license.minVersion ?? "");
     setMaxVersion(license.maxVersion ?? "");
+    setVersionError(null);
   }, [license]);
 
   const dirty =
@@ -48,6 +50,10 @@ export function PolicySection({
 
   const save = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    if (compareDottedVersion(minVersion.trim(), maxVersion.trim()) > 0) {
+      setVersionError("Minimum version must be lower than maximum version.");
+      return;
+    }
     setSaving(true);
     try {
       const body: PatchLicenseBody = {
@@ -77,7 +83,7 @@ export function PolicySection({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={save} className="space-y-5">
+        <form onSubmit={save} className="space-y-5" noValidate>
           <Field
             label="Release channels"
             help="Devices on this license may update from the selected channels."
@@ -94,10 +100,14 @@ export function PolicySection({
             <Field
               label="Minimum version"
               help="Lowest version allowed. Leave blank for no floor."
+              error={versionError}
             >
               <Input
                 value={minVersion}
-                onChange={(e) => setMinVersion(e.target.value)}
+                onChange={(e) => {
+                  setMinVersion(e.target.value);
+                  setVersionError(null);
+                }}
                 placeholder="e.g. 1.2.0"
               />
             </Field>
@@ -107,11 +117,19 @@ export function PolicySection({
             >
               <Input
                 value={maxVersion}
-                onChange={(e) => setMaxVersion(e.target.value)}
+                onChange={(e) => {
+                  setMaxVersion(e.target.value);
+                  setVersionError(null);
+                }}
                 placeholder="e.g. 2.0.0"
               />
             </Field>
           </div>
+          <PolicySummary
+            channels={channels}
+            minVersion={minVersion}
+            maxVersion={maxVersion}
+          />
           <div className="flex justify-end">
             <Button type="submit" loading={saving} disabled={!dirty}>
               Save policy
@@ -121,4 +139,51 @@ export function PolicySection({
       </CardContent>
     </Card>
   );
+}
+
+function PolicySummary({
+  channels,
+  minVersion,
+  maxVersion,
+}: {
+  channels: string[];
+  minVersion: string;
+  maxVersion: string;
+}): React.ReactElement {
+  const version =
+    minVersion.trim() || maxVersion.trim()
+      ? `${minVersion.trim() || "any"} to ${maxVersion.trim() || "any"}`
+      : "Product compatibility window";
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+        Effective update policy
+      </p>
+      <p className="mt-2">
+        Channels:{" "}
+        <span className="font-medium">
+          {channels.length ? channels.join(", ") : "default"}
+        </span>
+      </p>
+      <p>
+        Versions: <span className="font-medium">{version}</span>
+      </p>
+    </div>
+  );
+}
+
+function compareDottedVersion(a: string, b: string): number {
+  const parse = (value: string): number[] | null => {
+    if (!value || !/^\d+(?:\.\d+)*$/.test(value)) return null;
+    return value.split(".").map((part) => Number(part));
+  };
+  const left = parse(a);
+  const right = parse(b);
+  if (!left || !right) return 0;
+  const length = Math.max(left.length, right.length);
+  for (let i = 0; i < length; i += 1) {
+    const diff = (left[i] ?? 0) - (right[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
 }

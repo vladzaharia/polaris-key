@@ -1,7 +1,7 @@
 # @polaris-key/node
 
 The full Node/TypeScript client for **Polaris Key** — product-agnostic licensing +
-remotely-managed config. A small facade over enroll → fetch → verify → cache → gate that is
+remotely-managed config. A small facade over activate → fetch → verify → cache → gate that is
 **offline-first**: `create()` applies the cached signed doc with **no network**; `refresh()`
 re-pulls and re-applies. The frozen wire crypto (Ed25519 compact JWS) is verified locally and
 pinned by the same cross-language conformance corpus as the Python, Swift, and React SDKs.
@@ -66,7 +66,7 @@ PolarisKeyClient(opts)` then `await client.init()`.
 | `trust.pinnedKeys` | `{ kid -> rawEd25519PubBase64url }`. The verifying key is chosen by the header `kid` from this set, never from the document. |
 | `baseUrl`          | Control-plane origin (default `https://key.plrs.im`).                                                                        |
 | `channel`          | Override the channel (default derived from `version`).                                                                       |
-| `store`            | A `Store` (default `FileStore`; `InMemoryStore` for tests).                                                                  |
+| `store`            | A `Store` (default `KeyringStore`; `InMemoryStore` for tests).                                                               |
 | `configDir`        | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                                     |
 | `localOverrides`   | User/local config overrides (beat a `default`, never an `enforced`/`hidden`).                                                |
 | `envPrefix`        | Env-var prefix for overrides (default `PKEY_CONFIG_`).                                                                       |
@@ -86,11 +86,11 @@ PolarisKeyClient(opts)` then `await client.init()`.
 | `getEntitlements()`           | `Record<string, JSONValue>` of all entitlement values.                                   |
 | `getProfile()`                | The signed `DocProfile` (name/email), or `null`.                                         |
 
-### Enrollment + refresh (network)
+### Activation + refresh (network)
 
 | Method                 | Effect                                                                                                                                                                                         |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `activateWithKey(key)` | Exchange a `pkey_…` key → device token, persist it, then `refresh({ force })`. Returns an `EnrollResult` (`ok` / device-limit / unauthorized / error).                                         |
+| `activateWithKey(key)` | Exchange a `pkey_…` key → device token, persist it, then `refresh({ force })`. Returns an `ActivationResult` (`ok` / device-limit / unauthorized / error).                                     |
 | `refresh({ force? })`  | Re-pull `/config` (304-aware via ETag; one `/token` re-acquire on 401), verify, re-apply, and best-effort report a usage snapshot. Returns `{ applied, unauthorized?, blocked?, deviceCap? }`. |
 | `deactivate()`         | Best-effort server deauthorize, then wipe the local token + cache.                                                                                                                             |
 

@@ -19,7 +19,7 @@ import pytest
 import polaris_key.deviceid as deviceid
 from polaris_key.cli import core
 from polaris_key.client import PolarisKeyClient
-from polaris_key.deviceid import derive_device_id, raw_machine_id
+from polaris_key.deviceid import derive_device_id, raw_os_device_id
 from polaris_key.fetch import (
     FetchBlocked,
     FetchDeviceCap,
@@ -92,7 +92,7 @@ def test_device_id_macos_branch(monkeypatch) -> None:
         stdout = fake_out
 
     monkeypatch.setattr(deviceid.subprocess, "run", lambda *a, **k: _Res())
-    assert raw_machine_id() == "ABCDEF01-2345-6789-ABCD-EF0123456789"
+    assert raw_os_device_id() == "ABCDEF01-2345-6789-ABCD-EF0123456789"
     # And derive_device_id is a stable 32-char hash over it.
     a = derive_device_id(PRODUCT)
     b = derive_device_id(PRODUCT)
@@ -121,28 +121,28 @@ def test_device_id_windows_branch_via_reg_fallback(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(deviceid.subprocess, "run", lambda *a, **k: _Res())
-    assert raw_machine_id() == "11111111-2222-3333-4444-555555555555"
+    assert raw_os_device_id() == "11111111-2222-3333-4444-555555555555"
 
 
-def test_device_id_linux_branch_reads_machine_id(monkeypatch, tmp_path) -> None:
+def test_device_id_linux_branch_reads_device_id(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(deviceid.sys, "platform", "linux", raising=False)
-    machine_id = tmp_path / "machine-id"
-    machine_id.write_text("deadbeefcafebabe\n")
+    device_id = tmp_path / "linux-device-id"
+    device_id.write_text("deadbeefcafebabe\n")
 
     real_open = open
 
     def _fake_open(path, *args, **kwargs):
         if path == "/etc/machine-id":
-            return real_open(str(machine_id), *args, **kwargs)
+            return real_open(str(device_id), *args, **kwargs)
         raise OSError("not found")
 
     monkeypatch.setattr("builtins.open", _fake_open)
-    assert raw_machine_id() == "deadbeefcafebabe"
+    assert raw_os_device_id() == "deadbeefcafebabe"
 
 
 def test_device_id_falls_back_to_uuid_when_unavailable(monkeypatch) -> None:
-    # No raw machine id available -> a provided fallback seed is used (stable).
-    monkeypatch.setattr(deviceid, "raw_machine_id", lambda: None)
+    # No raw OS device identifier available -> a provided fallback seed is used.
+    monkeypatch.setattr(deviceid, "raw_os_device_id", lambda: None)
     a = derive_device_id(PRODUCT, fallback="seed-1")
     b = derive_device_id(PRODUCT, fallback="seed-1")
     c = derive_device_id(PRODUCT, fallback="seed-2")
@@ -195,9 +195,9 @@ def test_fetch_401_unauthorized() -> None:
 
 
 def test_fetch_429_device_cap_parses_body() -> None:
-    res = _fetch(lambda r: httpx.Response(429, json={"limit": 3, "machineCount": 4}))
+    res = _fetch(lambda r: httpx.Response(429, json={"limit": 3, "deviceCount": 4}))
     assert isinstance(res, FetchDeviceCap)
-    assert res.limit == 3 and res.machineCount == 4
+    assert res.limit == 3 and res.deviceCount == 4
 
 
 def test_fetch_403_blocked_parses_reason_and_range() -> None:
@@ -253,7 +253,7 @@ def _doc(device_id: str, *, issued: int = 1700000000) -> Dict[str, Any]:
             "name": "Grace Hopper",
             "firstName": "Grace",
             "email": "grace@example.com",
-            "enrolledAt": 1690000000,
+            "activatedAt": 1690000000,
         },
         "payload": {"config": {}, "secrets": {}, "entitlements": {}},
     }
@@ -276,7 +276,7 @@ def _cli_client(handler) -> PolarisKeyClient:
 def test_cli_activate_success_then_status_then_deactivate() -> None:
     def handler(r: httpx.Request) -> httpx.Response:
         path = r.url.path
-        if path == f"/{PRODUCT}/enroll":
+        if path == f"/{PRODUCT}/activate":
             return httpx.Response(200, json={"token": "tok", "schemaVersion": 1})
         if path == f"/{PRODUCT}/config":
             return httpx.Response(
@@ -297,14 +297,14 @@ def test_cli_activate_success_then_status_then_deactivate() -> None:
 
     d = core.deactivate(c)
     assert d.code == 0 and any("Deactivated" in line for line in d.lines)
-    # After deactivate the gate is needs-enroll -> status exits non-zero.
+    # After deactivate the gate is needs-activation -> status exits non-zero.
     assert core.status(c).code == 1
     c.close()
 
 
 def test_cli_activate_unauthorized_returns_code_1() -> None:
     def handler(r: httpx.Request) -> httpx.Response:
-        if r.url.path == f"/{PRODUCT}/enroll":
+        if r.url.path == f"/{PRODUCT}/activate":
             return httpx.Response(401, text="bad key")
         return httpx.Response(404)
 
@@ -316,8 +316,8 @@ def test_cli_activate_unauthorized_returns_code_1() -> None:
 
 def test_cli_activate_device_limit_reports_counts() -> None:
     def handler(r: httpx.Request) -> httpx.Response:
-        if r.url.path == f"/{PRODUCT}/enroll":
-            return httpx.Response(403, json={"limit": 3, "machineCount": 3})
+        if r.url.path == f"/{PRODUCT}/activate":
+            return httpx.Response(403, json={"limit": 3, "deviceCount": 3})
         return httpx.Response(404)
 
     c = _cli_client(handler)

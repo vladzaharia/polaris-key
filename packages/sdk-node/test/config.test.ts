@@ -41,7 +41,12 @@ async function clientWith(
     issuedAt: NOW,
     expiresAt: NOW + 3600,
     graceUntil: NOW + 30 * 86400,
-    profile: { name: "Ada", firstName: "Ada", email: "a@b.c", enrolledAt: NOW },
+    profile: {
+      name: "Ada",
+      firstName: "Ada",
+      email: "a@b.c",
+      activatedAt: NOW,
+    },
     payload: { config, secrets: {}, entitlements: {} },
   };
   await store.setToken("pkeyt_cached");
@@ -144,11 +149,16 @@ describe("layered config — default precedence (local > env > remote > fallback
 
 describe("listUserConfig", () => {
   it("excludes hidden entries but getConfig still returns them; marks enforced", async () => {
-    const c = await clientWith({
-      "run.concurrency": entry("default", 4),
-      "quality.floor": entry("enforced", "flac"),
-      "secret.knob": entry("hidden", "locked"),
-    });
+    const c = await clientWith(
+      {
+        "run.concurrency": entry("default", 4),
+        "quality.floor": entry("enforced", "flac"),
+        "secret.knob": entry("hidden", "locked"),
+      },
+      {
+        localOverrides: { "run.concurrency": 9 },
+      },
+    );
     const list = c.listUserConfig();
     const keys = list.map((e) => e.key).sort();
     expect(keys).toEqual(["quality.floor", "run.concurrency"]);
@@ -159,7 +169,7 @@ describe("listUserConfig", () => {
     });
     expect(list.find((e) => e.key === "run.concurrency")).toEqual({
       key: "run.concurrency",
-      value: 4,
+      value: 9,
       enforced: false,
     });
     // hidden is withheld from the list yet still applied.
@@ -171,17 +181,17 @@ describe("listUserConfig", () => {
 describe("D4 — doc-less getters return fallbacks without throwing", () => {
   it("a blocked first sync leaves a doc-less cache; every getter is safe", async () => {
     const store = new InMemoryStore("djdl");
-    let enrolled = false;
+    let activated = false;
     const impl = (async (input: string | URL | Request): Promise<Response> => {
       const u = new URL(typeof input === "string" ? input : input.toString());
-      if (u.pathname.endsWith("/enroll")) {
-        enrolled = true;
+      if (u.pathname.endsWith("/activate")) {
+        activated = true;
         return new Response(
           JSON.stringify({ token: "pkeyt_e", schemaVersion: 2 }),
           { status: 200 },
         );
       }
-      if (u.pathname.endsWith("/config") && enrolled) {
+      if (u.pathname.endsWith("/config") && activated) {
         return new Response(
           JSON.stringify({
             reason: "version-too-old",

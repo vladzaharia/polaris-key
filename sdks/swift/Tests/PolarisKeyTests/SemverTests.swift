@@ -77,6 +77,7 @@ final class SemverTests: XCTestCase {
         XCTAssertEqual(Semver.channelForVersion("0.0.0-dev+abc"), .dev)
         XCTAssertEqual(Semver.channelForVersion("0.0.0-staging.1"), .staging)
         XCTAssertEqual(Semver.channelForVersion("0.0.0-pr42"), .pr)
+        XCTAssertEqual(Semver.channelForVersion("0.0.0-pr-42"), .pr)
         XCTAssertEqual(Semver.channelForVersion("0.0.0-pr1.2"), .pr)
         // A normal prerelease that is not the dev/staging/pr sentinel is still stable.
         XCTAssertEqual(Semver.channelForVersion("1.0.0-rc.1"), .stable)

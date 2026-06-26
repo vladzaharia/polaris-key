@@ -245,7 +245,7 @@ export function Products(): React.ReactElement {
         open={confirm === "delete"}
         onOpenChange={(o) => !o && setConfirm(null)}
         title={`Disable “${active?.slug ?? ""}”?`}
-        description="This tombstones the product, disables its licenses, deauthorizes machines, revokes hot credentials, and preserves audit/runtime history."
+        description="This tombstones the product, disables its licenses, deauthorizes devices, revokes hot credentials, and preserves audit/runtime history."
         confirmLabel="Disable product"
         loading={busy}
         onConfirm={runConfirm}

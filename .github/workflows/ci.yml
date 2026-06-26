@@ -22,9 +22,10 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm lint
       # Drift gate: the cross-language conformance corpus must be regenerable in place.
       - run: pnpm gen:corpus -- --check
-      # TODO(mirror-drift): a `pnpm gen:mirrors -- --check` gate is intentionally omitted.
+      # Mirror drift: a `pnpm gen:mirrors -- --check` gate is intentionally omitted.
       # tools/gen-mirrors.ts supports --check, but it REQUIRES --catalog <path> and
       # --out-dir <dir> (no defaults) and no product currently emits typed mirrors
       # (djdl is purely data-driven, reading the catalog at runtime). The root

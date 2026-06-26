@@ -12,30 +12,30 @@ import type { Product } from "./product.js";
 import { hashKey, mintToken } from "./crypto.js";
 import { mergePayloads } from "./merge.js";
 import {
-  countActiveMachines,
+  countActiveDevices,
   getActiveSchema,
   getLicense,
-  getMachine,
-  getMachineByTokenHash,
+  getDevice,
+  getDeviceByTokenHash,
   getProfile,
   getTier,
   listLicenseProfiles,
-  upsertMachine,
+  upsertDevice,
   type LicenseRow,
-  type MachineRow,
+  type DeviceRow,
   type TierRow,
 } from "./repo.js";
 import { deleteTokenRecord, getTokenRecord, putTokenRecord } from "./kv.js";
 
-export interface ValidMachineToken {
+export interface ValidDeviceToken {
   tokenHash: string;
   license: LicenseRow;
-  machine: MachineRow;
+  device: DeviceRow;
 }
 
 export type AuthzError =
   | { error: "unauthorized" }
-  | { error: "machine_limit"; limit: number; machineCount: number };
+  | { error: "device_limit"; limit: number; deviceCount: number };
 
 function docProfile(license: LicenseRow): DocProfile {
   const name = license.name ?? "";
@@ -43,7 +43,7 @@ function docProfile(license: LicenseRow): DocProfile {
     name,
     firstName: name.split(" ")[0] ?? "",
     email: license.email ?? "",
-    enrolledAt: license.enrolled_at,
+    activatedAt: license.activated_at,
   };
 }
 
@@ -89,8 +89,8 @@ function injectAdminPolicy(
   if (channels.length > 0)
     payload.entitlements["channels"] = enforced(channels);
 
-  if (typeof tier?.policy_machine_limit === "number") {
-    payload.entitlements["machineLimit"] = enforced(tier.policy_machine_limit);
+  if (typeof tier?.policy_device_limit === "number") {
+    payload.entitlements["deviceLimit"] = enforced(tier.policy_device_limit);
   }
 
   const minVersion = tighterMin(
@@ -115,15 +115,12 @@ export function licenseUsable(
   return true;
 }
 
-function resolveMachineLimit(
-  payload: ManagedPayload,
-  fallback: number,
-): number {
-  const e = payload.entitlements["machineLimit"];
+function resolveDeviceLimit(payload: ManagedPayload, fallback: number): number {
+  const e = payload.entitlements["deviceLimit"];
   return e && typeof e.value === "number" ? e.value : fallback;
 }
 
-export async function catalogDefaultPayload(
+async function catalogDefaultPayload(
   db: Db,
   product: string,
   now: number,
@@ -155,7 +152,7 @@ export async function resolveEffective(
   db: Db,
   product: string,
   license: LicenseRow,
-  machine: MachineRow | null | undefined,
+  device: DeviceRow | null | undefined,
   now: number,
   policy: {
     tighterMin: (a?: string, b?: string) => string | undefined;
@@ -181,12 +178,9 @@ export async function resolveEffective(
       const p = await getProfile(db, product, ref.profile_id);
       layers.push(p?.payload_json ?? null);
     }
-  } else if (license.profile_id) {
-    const p = await getProfile(db, product, license.profile_id);
-    layers.push(p?.payload_json ?? null);
   }
 
-  layers.push(license.overrides_json, machine?.overrides_json ?? null);
+  layers.push(license.overrides_json, device?.overrides_json ?? null);
   const payload = mergePayloads(...layers);
   injectAdminPolicy(
     payload,
@@ -198,7 +192,7 @@ export async function resolveEffective(
   return payload;
 }
 
-export async function authorizeMachine(
+export async function authorizeDevice(
   env: Env,
   db: Db,
   product: Product,
@@ -213,10 +207,10 @@ export async function authorizeMachine(
     sdkName?: string | null;
     sdkVersion?: string | null;
   } = {},
-): Promise<{ token: string; machine: MachineRow } | AuthzError> {
+): Promise<{ token: string; device: DeviceRow } | AuthzError> {
   if (!licenseUsable(license, now)) return { error: "unauthorized" };
 
-  const existing = await getMachine(db, product.slug, deviceId);
+  const existing = await getDevice(db, product.slug, deviceId);
   const isNewAuthorization =
     !existing ||
     existing.status !== "authorized" ||
@@ -226,11 +220,11 @@ export async function authorizeMachine(
       tighterMin: (a, b) => (a && b ? (a > b ? a : b) : (a ?? b)),
       tighterMax: (a, b) => (a && b ? (a < b ? a : b) : (a ?? b)),
     });
-    const limit = resolveMachineLimit(eff, product.defaultMachineLimit);
+    const limit = resolveDeviceLimit(eff, product.defaultDeviceLimit);
     if (limit > 0) {
-      const count = await countActiveMachines(db, product.slug, license.id);
+      const count = await countActiveDevices(db, product.slug, license.id);
       if (count >= limit) {
-        return { error: "machine_limit", limit, machineCount: count };
+        return { error: "device_limit", limit, deviceCount: count };
       }
     }
   }
@@ -241,9 +235,10 @@ export async function authorizeMachine(
     await deleteTokenRecord(env, product.slug, existing.token_hash);
   }
 
-  const machine: MachineRow = {
+  const device: DeviceRow = {
     product: product.slug,
-    machine_id: deviceId,
+    device_id: deviceId,
+    customer_id: existing?.customer_id ?? null,
     license_id: license.id,
     status: "authorized",
     first_seen: existing?.first_seen ?? now,
@@ -259,69 +254,69 @@ export async function authorizeMachine(
     sdk_name: opts.sdkName ?? existing?.sdk_name ?? null,
     sdk_version: opts.sdkVersion ?? existing?.sdk_version ?? null,
   };
-  await upsertMachine(db, machine);
+  await upsertDevice(db, device);
   await putTokenRecord(env, product.slug, tokenHash, {
     product: product.slug,
-    machineId: deviceId,
+    deviceId: deviceId,
     licenseId: license.id,
   });
-  return { token, machine };
+  return { token, device };
 }
 
-export async function validateMachineToken(
+export async function validateDeviceToken(
   env: Env,
   db: Db,
   product: Product,
   token: string | null,
   now: number,
   opts: { deviceId?: string | null } = {},
-): Promise<ValidMachineToken | { error: "unauthorized" }> {
+): Promise<ValidDeviceToken | { error: "unauthorized" }> {
   if (!token) return { error: "unauthorized" };
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   let rec = await getTokenRecord(env, product.slug, tokenHash);
   if (rec && rec.product !== product.slug) return { error: "unauthorized" };
-  let machine = rec
-    ? await getMachine(db, product.slug, rec.machineId)
-    : await getMachineByTokenHash(db, product.slug, tokenHash);
-  if (!rec && machine) {
+  let device = rec
+    ? await getDevice(db, product.slug, rec.deviceId)
+    : await getDeviceByTokenHash(db, product.slug, tokenHash);
+  if (!rec && device) {
     rec = {
       product: product.slug,
-      machineId: machine.machine_id,
-      licenseId: machine.license_id,
+      deviceId: device.device_id,
+      licenseId: device.license_id,
     };
     await putTokenRecord(env, product.slug, tokenHash, rec);
   }
-  if (opts.deviceId && rec?.machineId !== opts.deviceId)
+  if (opts.deviceId && rec?.deviceId !== opts.deviceId)
     return { error: "unauthorized" };
-  if (!machine || machine.status !== "authorized")
+  if (!device || device.status !== "authorized")
     return { error: "unauthorized" };
   if (!rec) return { error: "unauthorized" };
-  if (machine.license_id !== rec.licenseId || machine.token_hash !== tokenHash)
+  if (device.license_id !== rec.licenseId || device.token_hash !== tokenHash)
     return { error: "unauthorized" };
 
   const license = await getLicense(db, product.slug, rec.licenseId);
   if (!licenseUsable(license, now)) return { error: "unauthorized" };
-  return { tokenHash, license, machine };
+  return { tokenHash, license, device };
 }
 
-export async function rotateMachineToken(
+export async function rotateDeviceToken(
   env: Env,
   db: Db,
   product: Product,
-  valid: ValidMachineToken,
+  valid: ValidDeviceToken,
   now: number,
 ): Promise<string> {
   const token = mintToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   await deleteTokenRecord(env, product.slug, valid.tokenHash);
-  await upsertMachine(db, {
-    ...valid.machine,
+  await upsertDevice(db, {
+    ...valid.device,
     last_seen: now,
     token_hash: tokenHash,
   });
   await putTokenRecord(env, product.slug, tokenHash, {
     product: product.slug,
-    machineId: valid.machine.machine_id,
+    deviceId: valid.device.device_id,
     licenseId: valid.license.id,
   });
   return token;

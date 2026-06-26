@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from ..client import PolarisKeyClient
-from ..endpoints import EnrollMachineLimit, EnrollOk, EnrollUnauthorized
+from ..endpoints import ActivationDeviceLimit, ActivationOk, ActivationUnauthorized
 
 __all__ = [
     "CommandResult",
@@ -106,17 +106,17 @@ def run_command(
 
 
 def activate(client: PolarisKeyClient, key: str) -> CommandResult:
-    """Enroll this device with a license ``key`` and pull the first config doc."""
+    """Activate this device with a license ``key`` and pull the first config doc."""
     r = client.activate_with_key(key)
-    if isinstance(r, EnrollOk):
+    if isinstance(r, ActivationOk):
         st = client.status()
         return CommandResult(0, [f"Activated. Status: {st.status}"])
-    if isinstance(r, EnrollMachineLimit):
+    if isinstance(r, ActivationDeviceLimit):
         detail = ""
         if r.limit is not None:
-            detail = f" ({r.machineCount}/{r.limit} devices in use)"
+            detail = f" ({r.deviceCount}/{r.limit} devices in use)"
         return CommandResult(1, [f"Activation failed: device limit reached{detail}."])
-    if isinstance(r, EnrollUnauthorized):
+    if isinstance(r, ActivationUnauthorized):
         return CommandResult(1, ["Activation failed: invalid or revoked key."])
     return CommandResult(1, [f"Activation failed: {r.message}"])
 

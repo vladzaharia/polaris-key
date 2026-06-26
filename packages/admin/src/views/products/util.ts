@@ -14,21 +14,10 @@ import type {
 /** The release source of a product, preferably supplied by the backend. */
 export type ReleaseSource = "github" | "manual";
 
-/**
- * Prefer the backend-provided source. Older workers did not return `releaseSource`, so we keep
- * the signing-kid heuristic strictly as a compatibility fallback.
- */
 export function releaseSourceOf(
-  product: Pick<ProductDetail, "signingKid" | "releaseSource">,
+  product: Pick<ProductDetail, "releaseSource">,
 ): ReleaseSource {
-  const explicit = normalizeReleaseSource(product.releaseSource);
-  if (explicit) return explicit;
-  const kid = (product.signingKid ?? "").toLowerCase();
-  return kid.startsWith("gh:") ||
-    kid.startsWith("github:") ||
-    kid.includes("github")
-    ? "github"
-    : "manual";
+  return normalizeReleaseSource(product.releaseSource) ?? "manual";
 }
 
 function normalizeReleaseSource(value: unknown): ReleaseSource | null {
@@ -60,59 +49,28 @@ export interface ResolvedSigningBundle {
   trustKeys: Record<string, string>;
 }
 
-/** Resolve signing/trust-key fields across legacy top-level and newer bundled shapes. */
+/** Resolve the current signing/trust-key bundle. */
 export function signingBundleOf(
   input: ProductKeyCarrier | null | undefined,
 ): ResolvedSigningBundle {
   const product = input?.product ?? null;
-  const bundles = [
-    input?.signing,
-    input?.keyBundle,
-    input?.publicKeyBundle,
-    product?.signing,
-    product?.keyBundle,
-    product?.publicKeyBundle,
-  ].filter(isRecord) as ProductSigningBundle[];
+  const bundles = [input?.signing, product?.signing].filter(
+    isRecord,
+  ) as ProductSigningBundle[];
 
-  const kid =
-    firstString(
-      input?.kid,
-      input?.signingKid,
-      product?.signingKid,
-      ...bundles.map((b) => b.kid),
-    ) ?? null;
+  const kid = firstString(input?.kid, ...bundles.map((b) => b.kid)) ?? null;
   const publicKey =
-    firstString(
-      input?.publicKey,
-      input?.trustKey,
-      input?.signingPub,
-      input?.signingPublicKey,
-      product?.publicKey,
-      product?.trustKey,
-      product?.signingPub,
-      product?.signingPublicKey,
-      ...bundles.flatMap((b) => [b.publicKey, b.trustKey, b.publicKeyPem]),
-    ) ?? null;
-  const trustKeys = mergeTrustKeys(
-    input?.trustKeys,
-    product?.trustKeys,
-    ...bundles.map((b) => b.trustKeys),
-  );
+    firstString(...bundles.flatMap((b) => [b.publicKey, b.publicKeyPem])) ??
+    null;
+  const trustKeys = mergeTrustKeys(...bundles.map((b) => b.trustKeys));
   if (kid && publicKey && !trustKeys[kid]) trustKeys[kid] = publicKey;
 
   return {
     kid,
     alg: firstString(...bundles.map((b) => b.alg)) ?? null,
     publicKey: publicKey ?? (kid ? (trustKeys[kid] ?? null) : null),
-    jwksUrl:
-      firstString(
-        input?.jwksUrl,
-        product?.jwksUrl,
-        ...bundles.map((b) => b.jwksUrl),
-      ) ?? null,
-    jwks:
-      firstDefined(input?.jwks, product?.jwks, ...bundles.map((b) => b.jwks)) ??
-      null,
+    jwksUrl: firstString(...bundles.map((b) => b.jwksUrl)) ?? null,
+    jwks: firstDefined(...bundles.map((b) => b.jwks)) ?? null,
     trustKeys,
   };
 }

@@ -18,7 +18,7 @@ function doc(over: Partial<ManagedConfigDoc> = {}): ManagedConfigDoc {
     issuedAt: 1000,
     expiresAt: 1000 + 3600,
     graceUntil: 1000 + 30 * 86400,
-    profile: { name: "", firstName: "", email: "", enrolledAt: 0 },
+    profile: { name: "", firstName: "", email: "", activatedAt: 0 },
     payload: { config: {}, secrets: {}, entitlements: {} },
     ...over,
   };
@@ -36,14 +36,14 @@ describe("licenseState precedence", () => {
     expect(s.status).toBe("channel-not-entitled");
   });
 
-  it("missing credential beats a hard 401 (no token ⇒ needs-enroll, not revoked)", () => {
+  it("missing credential beats a hard 401 (no token ⇒ needs-activation, not revoked)", () => {
     const s = licenseState({
       hasToken: false,
       doc: doc(),
       now: 1500,
       lastSyncUnauthorized: true,
     });
-    expect(s.status).toBe("needs-enroll");
+    expect(s.status).toBe("needs-activation");
   });
 
   it("a hard 401 beats doc presence (token + doc + 401 ⇒ revoked)", () => {
@@ -56,9 +56,9 @@ describe("licenseState precedence", () => {
     expect(s.status).toBe("revoked");
   });
 
-  it("token present but no doc ⇒ needs-enroll (not error)", () => {
+  it("token present but no doc ⇒ needs-activation (not error)", () => {
     expect(licenseState({ hasToken: true, doc: null, now: 1500 }).status).toBe(
-      "needs-enroll",
+      "needs-activation",
     );
   });
 });
@@ -117,9 +117,9 @@ describe("licenseState metadata carried per branch", () => {
     expect(s.allowedRange).toEqual(range);
   });
 
-  it("needs-enroll carries no grace/range metadata", () => {
+  it("needs-activation carries no grace/range metadata", () => {
     const s = licenseState({ hasToken: false, doc: null, now: 1500 });
-    expect(s).toEqual({ status: "needs-enroll" });
+    expect(s).toEqual({ status: "needs-activation" });
   });
 });
 
@@ -158,7 +158,7 @@ describe("isUsable over the full status set", () => {
     "grace",
     "expired",
     "revoked",
-    "needs-enroll",
+    "needs-activation",
     "version-too-old",
     "version-too-new",
     "channel-not-entitled",

@@ -29,6 +29,7 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "lint": "prettier --check \"src/**/*.{ts,tsx}\" \"test/**/*.{ts,tsx}\"",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -39,7 +40,6 @@
     "react-dom": "^18"
   },
   "devDependencies": {
-    "@polaris-key/node": "workspace:*",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",

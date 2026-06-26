@@ -10,6 +10,7 @@ import type {
 import { licenseState, type GateInput } from "./gateModel.js";
 import {
   type ConfigSource,
+  type DeviceInfo,
   type PolarisMode,
   type PolarisState,
   type UserConfigEntry,
@@ -85,6 +86,8 @@ export function projectState(
     gate,
     status: gate.status,
     profile: doc?.profile ?? null,
+    currentDeviceId: doc?.deviceId ?? null,
+    licenseId: doc?.licenseId ?? null,
     config: resolveConfig(configEntries, localOverrides),
     configEntries,
     localOverrides,
@@ -92,6 +95,20 @@ export function projectState(
     busy: flags.busy ?? false,
     error: flags.error ?? null,
   };
+}
+
+export function currentDeviceFromState(s: PolarisState): DeviceInfo | null {
+  if (!s.currentDeviceId) return null;
+  const out: DeviceInfo = {
+    id: s.currentDeviceId,
+    current: true,
+    status: s.status,
+  };
+  if (s.licenseId) out.licenseId = s.licenseId;
+  if (s.profile) out.profile = s.profile;
+  if (s.gate.lastVerifiedAt !== undefined)
+    out.lastVerifiedAt = s.gate.lastVerifiedAt;
+  return out;
 }
 
 /** Read a config value off a snapshot with a typed fallback, via the v2 precedence. */

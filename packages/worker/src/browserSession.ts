@@ -18,16 +18,16 @@ import {
   getActiveSchema,
   getKey,
   getLicense,
-  setMachineStatus,
+  setDeviceStatus,
   touchKey,
   type LicenseRow,
 } from "./repo.js";
 import { deleteTokenRecord } from "./kv.js";
 import {
-  authorizeMachine,
+  authorizeDevice,
   docProfile,
   resolveEffective,
-  validateMachineToken,
+  validateDeviceToken,
 } from "./licenseCore.js";
 import { buildDoc, validatePayload } from "./configDoc.js";
 import { checkBuildGate, tighterMax, tighterMin } from "./gate.js";
@@ -36,7 +36,7 @@ interface BrowserSessionRecord {
   token: string;
   csrf: string;
   licenseId: string;
-  machineId: string;
+  deviceId: string;
   createdAt: number;
 }
 
@@ -86,26 +86,18 @@ export async function createBrowserSession(
 > {
   const sessionToken = mintToken();
   const sessionHash = await hashKey(sessionToken, env.KEY_HASH_PEPPER);
-  const machineId = `browser:${license.id}`;
-  const auth = await authorizeMachine(
-    env,
-    db,
-    product,
-    license,
-    machineId,
-    now,
-    {
-      userAgent: "browser-session",
-    },
-  );
+  const deviceId = `browser:${license.id}`;
+  const auth = await authorizeDevice(env, db, product, license, deviceId, now, {
+    userAgent: "browser-session",
+  });
   if ("error" in auth) {
-    if (auth.error === "machine_limit") {
+    if (auth.error === "device_limit") {
       return {
         ok: false,
         status: 403,
-        code: ErrorCode.MachineLimit,
+        code: ErrorCode.DeviceLimit,
         message: "device limit reached",
-        extra: { limit: auth.limit, machineCount: auth.machineCount },
+        extra: { limit: auth.limit, deviceCount: auth.deviceCount },
       };
     }
     return {
@@ -120,7 +112,7 @@ export async function createBrowserSession(
     token: auth.token,
     csrf: randomId("csrf"),
     licenseId: license.id,
-    machineId,
+    deviceId,
     createdAt: now,
   };
   await env.HOT.put(
@@ -165,23 +157,16 @@ async function browserDoc(
       };
     }
 > {
-  const valid = await validateMachineToken(
-    env,
-    db,
-    product,
-    record.token,
-    now,
-    {
-      deviceId: record.machineId,
-    },
-  );
+  const valid = await validateDeviceToken(env, db, product, record.token, now, {
+    deviceId: record.deviceId,
+  });
   if ("error" in valid) return { ok: false };
 
   let payload = await resolveEffective(
     db,
     product.slug,
     valid.license,
-    valid.machine,
+    valid.device,
     now,
     { tighterMin, tighterMax },
   );
@@ -220,7 +205,7 @@ async function browserDoc(
       schemaVersion: product.schemaVersion,
       aud: product.slug,
       licenseId: valid.license.id,
-      deviceId: valid.machine.machine_id,
+      deviceId: valid.device.device_id,
       now,
       maxOfflineDays:
         valid.license.max_offline_days ?? product.defaultMaxOfflineDays,
@@ -300,17 +285,17 @@ export async function handleBrowserLogout(
     const csrf = req.headers.get("x-csrf-token");
     if (!csrf || csrf !== session.record.csrf)
       return errorResponse(403, ErrorCode.Forbidden, "csrf mismatch");
-    const machineTokenHash = await hashKey(
+    const deviceTokenHash = await hashKey(
       session.record.token,
       env.KEY_HASH_PEPPER,
     );
-    await setMachineStatus(
+    await setDeviceStatus(
       db,
       product.slug,
-      session.record.machineId,
+      session.record.deviceId,
       "deauthorized",
     );
-    await deleteTokenRecord(env, product.slug, machineTokenHash);
+    await deleteTokenRecord(env, product.slug, deviceTokenHash);
     await env.HOT.delete(sessionKey(product.slug, session.tokenHash));
   }
   return json(

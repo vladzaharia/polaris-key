@@ -1,26 +1,23 @@
 -- Polaris Key — initial multi-tenant schema.
 -- Every table is product-scoped: `product` is column 1 of the primary key / indexes, so
 -- a missing product predicate can never return another tenant's rows. Hot credential
--- lookups (token-hash -> machine, key-hash -> license) live in KV, not here.
+-- lookups (token-hash -> device, key-hash -> license) live in KV, not here.
 -- Times are epoch SECONDS. JSON payloads are stored as TEXT.
 
 PRAGMA foreign_keys = ON;
 
--- The product registry: one row per tenant. Signing key material is a Worker secret,
--- referenced by name here (never the private key itself).
+-- The product registry: one row per tenant. Signing key material lives in product_keys.
 CREATE TABLE IF NOT EXISTS products (
   slug                    TEXT PRIMARY KEY,
   name                    TEXT NOT NULL,
-  -- kid stamped into the JWS header; the private key lives in a Worker secret whose name
-  -- is derived from the slug (e.g. SIGNING_KEY__<SLUG>).
+  -- kid stamped into the JWS header; the private key is sealed in product_keys.
   signing_kid             TEXT NOT NULL,
-  signing_key_secret      TEXT NOT NULL,
   -- Raw 32-byte Ed25519 public key (base64url), exposed at /<product>/.well-known/jwks.json.
   signing_pub             TEXT,
   compat_min              TEXT NOT NULL DEFAULT '0.0.0',
   compat_max              TEXT NOT NULL DEFAULT '99.0.0',
   default_max_offline_days INTEGER NOT NULL DEFAULT 30,
-  default_machine_limit   INTEGER NOT NULL DEFAULT 5,
+  default_device_limit   INTEGER NOT NULL DEFAULT 5,
   admin_group             TEXT,
   branding_json           TEXT,
   created_at              INTEGER NOT NULL,
@@ -50,20 +47,20 @@ CREATE TABLE IF NOT EXISTS profiles (
   PRIMARY KEY (product, id)
 );
 
--- A named plan: a profile bundle + policy (default expiry/machine-limit).
+-- A named plan: a profile bundle + policy (default expiry/device-limit).
 CREATE TABLE IF NOT EXISTS tiers (
   product             TEXT NOT NULL REFERENCES products(slug),
   id                  TEXT NOT NULL,
   label               TEXT NOT NULL,
   profile_id          TEXT,
   policy_expiry_days  INTEGER,
-  policy_machine_limit INTEGER,
+  policy_device_limit INTEGER,
   modified_by         TEXT,
   modified_at         INTEGER NOT NULL,
   PRIMARY KEY (product, id)
 );
 
--- An account: status + identity + tier/profile + per-license overrides.
+-- An account: status + identity + tier + per-license overrides.
 CREATE TABLE IF NOT EXISTS licenses (
   product         TEXT NOT NULL REFERENCES products(slug),
   id              TEXT NOT NULL,
@@ -73,8 +70,7 @@ CREATE TABLE IF NOT EXISTS licenses (
   email           TEXT,
   groups_json     TEXT,
   tier_id         TEXT,
-  profile_id      TEXT,
-  enrolled_at     INTEGER NOT NULL,
+  activated_at     INTEGER NOT NULL,
   expires_at      INTEGER,
   max_offline_days INTEGER,
   overrides_json  TEXT,
@@ -99,22 +95,28 @@ CREATE TABLE IF NOT EXISTS keys_index (
 );
 CREATE INDEX IF NOT EXISTS idx_keys_license ON keys_index(product, license_id);
 
--- Authorized installs. token_hash mirrors the KV token -> machine record.
-CREATE TABLE IF NOT EXISTS machines (
+-- Authorized installs. token_hash mirrors the KV token -> device record.
+CREATE TABLE IF NOT EXISTS devices (
   product       TEXT NOT NULL REFERENCES products(slug),
-  machine_id    TEXT NOT NULL,
+  device_id    TEXT NOT NULL,
+  customer_id   TEXT,
   license_id    TEXT NOT NULL,
   status        TEXT NOT NULL DEFAULT 'authorized',  -- authorized | deauthorized
   first_seen    INTEGER NOT NULL,
   last_seen     INTEGER NOT NULL,
   ua            TEXT,
   label         TEXT,
+  platform      TEXT,
+  arch          TEXT,
+  app_version   TEXT,
+  sdk_name      TEXT,
+  sdk_version   TEXT,
   overrides_json TEXT,
   reported_json TEXT,
   token_hash    TEXT,
-  PRIMARY KEY (product, machine_id)
+  PRIMARY KEY (product, device_id)
 );
-CREATE INDEX IF NOT EXISTS idx_machines_license ON machines(product, license_id);
+CREATE INDEX IF NOT EXISTS idx_devices_license ON devices(product, license_id);
 
 -- Per-product release distribution config (GitHub App + channels + Sparkle).
 CREATE TABLE IF NOT EXISTS release_config (
@@ -158,7 +160,7 @@ CREATE TABLE IF NOT EXISTS edge_mint_config (
   product             TEXT NOT NULL REFERENCES products(slug),
   id                  TEXT NOT NULL,
   alg                 TEXT NOT NULL,
-  signing_key_secret  TEXT NOT NULL,    -- Worker secret name
+  signing_key_secret  TEXT NOT NULL,    -- product_secrets name
   kid                 TEXT,
   claims_template_json TEXT,
   ttl_seconds         INTEGER NOT NULL DEFAULT 3600,

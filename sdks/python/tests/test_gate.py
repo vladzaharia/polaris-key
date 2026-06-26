@@ -25,20 +25,20 @@ def _doc(*, issued: int, expires: int, grace: int) -> ManagedConfigDoc:
         issuedAt=issued,
         expiresAt=expires,
         graceUntil=grace,
-        profile=DocProfile(name="A", firstName="A", email="a@b.c", enrolledAt=0),
+        profile=DocProfile(name="A", firstName="A", email="a@b.c", activatedAt=0),
         payload=ManagedPayload(config={}, secrets={}, entitlements={}),
     )
 
 
-def test_no_token_needs_enroll() -> None:
+def test_no_token_needs_activation() -> None:
     st = license_state(has_token=False, doc=None, now=100)
-    assert st.status == "needs-enroll"
+    assert st.status == "needs-activation"
     assert not is_usable(st.status)
 
 
-def test_token_but_no_doc_needs_enroll() -> None:
+def test_token_but_no_doc_needs_activation() -> None:
     st = license_state(has_token=True, doc=None, now=100)
-    assert st.status == "needs-enroll"
+    assert st.status == "needs-activation"
 
 
 def test_unauthorized_is_revoked() -> None:
@@ -121,6 +121,7 @@ def test_channel_for_version() -> None:
     assert channel_for_version("0.0.0-dev+abc") == "dev"
     assert channel_for_version("0.0.0-staging.1") == "staging"
     assert channel_for_version("0.0.0-pr42.1") == "pr"
+    assert channel_for_version("0.0.0-pr-42.1") == "pr"
 
 
 def test_is_dev_build() -> None:

@@ -9,12 +9,11 @@ export interface ProductRow {
   slug: string;
   name: string;
   signing_kid: string;
-  signing_key_secret: string;
   signing_pub: string | null;
   compat_min: string;
   compat_max: string;
   default_max_offline_days: number;
-  default_machine_limit: number;
+  default_device_limit: number;
   admin_group: string | null;
   branding_json: string | null;
   release_source: string | null;
@@ -55,8 +54,7 @@ export interface LicenseRow {
   email: string | null;
   groups_json: string | null;
   tier_id: string | null;
-  profile_id: string | null;
-  enrolled_at: number;
+  activated_at: number;
   expires_at: number | null;
   max_offline_days: number | null;
   overrides_json: string | null;
@@ -86,9 +84,10 @@ export interface KeyRow {
   last_used_at: number | null;
 }
 
-export interface MachineRow {
+export interface DeviceRow {
   product: string;
-  machine_id: string;
+  device_id: string;
+  customer_id: string | null;
   license_id: string;
   status: string;
   first_seen: number;
@@ -121,7 +120,7 @@ export interface TierRow {
   label: string;
   profile_id: string | null;
   policy_expiry_days: number | null;
-  policy_machine_limit: number | null;
+  policy_device_limit: number | null;
   // Admin upgrade-channel + version-window policy (injected as enforced entitlements).
   channels_json: string | null;
   min_version: string | null;
@@ -184,18 +183,17 @@ export async function listProducts(db: Db): Promise<ProductRow[]> {
 
 export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
   await db.run(
-    `INSERT INTO products (slug, name, signing_kid, signing_key_secret, signing_pub, compat_min, compat_max,
-       default_max_offline_days, default_machine_limit, admin_group, branding_json, release_source, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
+       default_max_offline_days, default_device_limit, admin_group, branding_json, release_source, created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.slug,
     row.name,
     row.signing_kid,
-    row.signing_key_secret,
     row.signing_pub,
     row.compat_min,
     row.compat_max,
     row.default_max_offline_days,
-    row.default_machine_limit,
+    row.default_device_limit,
     row.admin_group,
     row.branding_json,
     row.release_source,
@@ -302,19 +300,6 @@ export async function insertProductKey(
     row.status,
     row.created_at,
     row.rotated_at,
-  );
-}
-
-/** Retire every currently-active key for a product (key rotation: old → retired). */
-export async function retireProductKeys(
-  db: Db,
-  product: string,
-  at: number,
-): Promise<void> {
-  await db.run(
-    "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active'",
-    at,
-    product,
   );
 }
 
@@ -425,7 +410,7 @@ export interface TierInput {
   label: string;
   profileId: string | null;
   policyExpiryDays: number | null;
-  policyMachineLimit: number | null;
+  policyDeviceLimit: number | null;
   channels?: string[] | null;
   minVersion?: string | null;
   maxVersion?: string | null;
@@ -456,7 +441,7 @@ export function stmtInsertProfile(p: ProfileInput): DbStatement {
 }
 export function stmtInsertTier(t: TierInput): DbStatement {
   return {
-    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_machine_limit,
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
              channels_json, min_version, max_version, modified_by, modified_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
     params: [
@@ -465,7 +450,7 @@ export function stmtInsertTier(t: TierInput): DbStatement {
       t.label,
       t.profileId,
       t.policyExpiryDays,
-      t.policyMachineLimit,
+      t.policyDeviceLimit,
       t.channels && t.channels.length > 0 ? JSON.stringify(t.channels) : null,
       t.minVersion ?? null,
       t.maxVersion ?? null,
@@ -512,12 +497,15 @@ export interface ReleaseConfigInput {
   sparkleEd25519Pub: string | null;
   summaryMarker: string;
   artifactPolicyJson?: string | null;
+  metadataAccess?: string;
+  artifactsAccess?: string;
 }
 export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
   return {
     sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
-            manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json)
-          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?)`,
+            manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json,
+            metadata_access, artifacts_access)
+          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?)`,
     params: [
       r.product,
       r.ghOwner,
@@ -529,6 +517,8 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
       r.sparkleEd25519Pub,
       r.summaryMarker,
       r.artifactPolicyJson ?? null,
+      r.metadataAccess ?? "public",
+      r.artifactsAccess ?? "public",
     ],
   };
 }
@@ -563,19 +553,18 @@ export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
 /** Build the `products`-INSERT as a statement (for atomic batch with its child rows). */
 export function stmtInsertProduct(row: ProductRow): DbStatement {
   return {
-    sql: `INSERT INTO products (slug, name, signing_kid, signing_key_secret, signing_pub, compat_min, compat_max,
-            default_max_offline_days, default_machine_limit, admin_group, branding_json, release_source, created_at, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
+            default_max_offline_days, default_device_limit, admin_group, branding_json, release_source, created_at, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.slug,
       row.name,
       row.signing_kid,
-      row.signing_key_secret,
       row.signing_pub,
       row.compat_min,
       row.compat_max,
       row.default_max_offline_days,
-      row.default_machine_limit,
+      row.default_device_limit,
       row.admin_group,
       row.branding_json,
       row.release_source,
@@ -644,10 +633,10 @@ export async function getLicenseBySub(
 
 export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
   await db.run(
-    `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id, profile_id,
-       enrolled_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
+    `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
+       activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
        modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.product,
     row.id,
     row.status,
@@ -656,8 +645,7 @@ export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
     row.email,
     row.groups_json,
     row.tier_id,
-    row.profile_id,
-    row.enrolled_at,
+    row.activated_at,
     row.expires_at,
     row.max_offline_days,
     row.overrides_json,
@@ -692,10 +680,6 @@ export async function setLicenseProfiles(
     {
       sql: "DELETE FROM license_profiles WHERE product = ? AND license_id = ?",
       params: [product, licenseId],
-    },
-    {
-      sql: "UPDATE licenses SET profile_id = ? WHERE product = ? AND id = ?",
-      params: [unique[0] ?? null, product, licenseId],
     },
     ...unique.map((profileId, sortOrder) => ({
       sql: "INSERT INTO license_profiles (product, license_id, profile_id, sort_order) VALUES (?, ?, ?, ?)",
@@ -772,68 +756,70 @@ export async function setKeyStatus(
   );
 }
 
-// ── Machines ─────────────────────────────────────────────────────────────────
-export async function getMachine(
+// ── Devices ──────────────────────────────────────────────────────────────────
+export async function getDevice(
   db: Db,
   product: string,
-  machineId: string,
-): Promise<MachineRow | null> {
-  return db.first<MachineRow>(
-    "SELECT * FROM machines WHERE product = ? AND machine_id = ?",
+  deviceId: string,
+): Promise<DeviceRow | null> {
+  return db.first<DeviceRow>(
+    "SELECT * FROM devices WHERE product = ? AND device_id = ?",
     product,
-    machineId,
+    deviceId,
   );
 }
 
-export async function getMachineByTokenHash(
+export async function getDeviceByTokenHash(
   db: Db,
   product: string,
   tokenHash: string,
-): Promise<MachineRow | null> {
-  return db.first<MachineRow>(
-    "SELECT * FROM machines WHERE product = ? AND token_hash = ?",
+): Promise<DeviceRow | null> {
+  return db.first<DeviceRow>(
+    "SELECT * FROM devices WHERE product = ? AND token_hash = ?",
     product,
     tokenHash,
   );
 }
 
-export async function listMachinesByLicense(
+export async function listDevicesByLicense(
   db: Db,
   product: string,
   licenseId: string,
-): Promise<MachineRow[]> {
-  return db.all<MachineRow>(
-    "SELECT * FROM machines WHERE product = ? AND license_id = ?",
+): Promise<DeviceRow[]> {
+  return db.all<DeviceRow>(
+    "SELECT * FROM devices WHERE product = ? AND license_id = ?",
     product,
     licenseId,
   );
 }
 
-export async function countActiveMachines(
+export async function countActiveDevices(
   db: Db,
   product: string,
   licenseId: string,
 ): Promise<number> {
   const r = await db.first<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM machines WHERE product = ? AND license_id = ? AND status = 'authorized'",
+    "SELECT COUNT(*) AS n FROM devices WHERE product = ? AND license_id = ? AND status = 'authorized'",
     product,
     licenseId,
   );
   return r?.n ?? 0;
 }
 
-export async function upsertMachine(db: Db, row: MachineRow): Promise<void> {
+export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
   await db.run(
-    `INSERT INTO machines (product, machine_id, license_id, status, first_seen, last_seen, ua, label,
+    `INSERT INTO devices (product, device_id, customer_id, license_id, status, first_seen, last_seen, ua, label,
        overrides_json, reported_json, token_hash, platform, arch, app_version, sdk_name, sdk_version)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(product, machine_id) DO UPDATE SET
-       license_id = excluded.license_id, status = excluded.status, last_seen = excluded.last_seen,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(product, device_id) DO UPDATE SET
+       customer_id = excluded.customer_id, license_id = excluded.license_id,
+       status = excluded.status, last_seen = excluded.last_seen,
        ua = excluded.ua, token_hash = excluded.token_hash, platform = excluded.platform,
        arch = excluded.arch, app_version = excluded.app_version, sdk_name = excluded.sdk_name,
        sdk_version = excluded.sdk_version`,
     row.product,
-    row.machine_id,
+    row.device_id,
+    row.customer_id,
     row.license_id,
     row.status,
     row.first_seen,
@@ -851,33 +837,47 @@ export async function upsertMachine(db: Db, row: MachineRow): Promise<void> {
   );
 }
 
-export async function setMachineStatus(
+export async function setDeviceStatus(
   db: Db,
   product: string,
-  machineId: string,
+  deviceId: string,
   status: string,
 ): Promise<void> {
   await db.run(
-    "UPDATE machines SET status = ? WHERE product = ? AND machine_id = ?",
+    "UPDATE devices SET status = ? WHERE product = ? AND device_id = ?",
     status,
     product,
-    machineId,
+    deviceId,
   );
 }
 
-export async function setMachineReported(
+export async function setDeviceLabel(
   db: Db,
   product: string,
-  machineId: string,
+  deviceId: string,
+  label: string | null,
+): Promise<void> {
+  await db.run(
+    "UPDATE devices SET label = ? WHERE product = ? AND device_id = ?",
+    label,
+    product,
+    deviceId,
+  );
+}
+
+export async function setDeviceReported(
+  db: Db,
+  product: string,
+  deviceId: string,
   reportedJson: string,
   at: number,
 ): Promise<void> {
   await db.run(
-    "UPDATE machines SET reported_json = ?, last_seen = ? WHERE product = ? AND machine_id = ?",
+    "UPDATE devices SET reported_json = ?, last_seen = ? WHERE product = ? AND device_id = ?",
     reportedJson,
     at,
     product,
-    machineId,
+    deviceId,
   );
 }
 

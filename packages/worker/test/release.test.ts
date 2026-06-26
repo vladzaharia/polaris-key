@@ -71,14 +71,16 @@ async function seedReleaseConfig(
     sparkle_ed25519_pub: "PUBKEY==",
     summary_marker: "pkey:summary",
     artifact_policy_json: null as string | null,
+    metadata_access: "public",
+    artifacts_access: "public",
     ...over,
   };
   await db.run(
     `INSERT INTO release_config
        (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
         manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker,
-        artifact_policy_json)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        artifact_policy_json, metadata_access, artifacts_access)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     row.product,
     row.gh_owner,
     row.gh_repo,
@@ -91,6 +93,8 @@ async function seedReleaseConfig(
     row.sparkle_ed25519_pub,
     row.summary_marker,
     row.artifact_policy_json,
+    row.metadata_access,
+    row.artifacts_access,
   );
 }
 
@@ -104,7 +108,7 @@ function makeProduct(): Product {
     compatMin: "0.0.0",
     compatMax: "99.0.0",
     defaultMaxOfflineDays: 30,
-    defaultMachineLimit: 5,
+    defaultDeviceLimit: 5,
     adminGroup: null,
     schemaVersion: 1,
   };
@@ -533,6 +537,49 @@ describe("handleRelease", () => {
     );
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("BINARY");
+  });
+
+  it("can gate artifact downloads by entitlement policy while metadata stays public", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      artifacts_access: "licensed",
+    });
+    const { env } = envFor();
+    const { fetchImpl, calls } = stubFetch([
+      [
+        "/releases?per_page",
+        () =>
+          new Response(JSON.stringify([release({ tag_name: "v1.2.3" })]), {
+            status: 200,
+          }),
+      ],
+    ]);
+
+    const version = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "version",
+      { version: "latest" },
+      fetchImpl,
+    );
+    expect(version.status).not.toBe(401);
+
+    const binary = await handleRelease(
+      req(),
+      env,
+      db,
+      makeProduct(),
+      "cli",
+      { version: "1.2.3", arch: "arm64" },
+      fetchImpl,
+    );
+    expect(binary.status).toBe(401);
+    expect(await binary.json()).toMatchObject({
+      error: "download_auth_required",
+    });
+    expect(calls.some((url) => url.includes("/releases/tags"))).toBe(false);
   });
 
   it("generates an appcast reading the sibling .sig asset", async () => {

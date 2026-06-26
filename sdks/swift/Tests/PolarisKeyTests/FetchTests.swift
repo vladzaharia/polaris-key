@@ -96,13 +96,13 @@ final class FetchTests: XCTestCase {
     }
 
     func test429DeviceCapParsesBody() async {
-        respond(429, body: #"{"limit":3,"machineCount":5}"#)
+        respond(429, body: #"{"limit":3,"deviceCount":5}"#)
         let r = await fetchManagedConfig(opts(), session: mockSession())
-        guard case let .deviceCap(limit, machineCount) = r else {
+        guard case let .deviceCap(limit, deviceCount) = r else {
             return XCTFail("expected .deviceCap, got \(r)")
         }
         XCTAssertEqual(limit, 3)
-        XCTAssertEqual(machineCount, 5)
+        XCTAssertEqual(deviceCount, 5)
     }
 
     func test403BlockedParsesReasonAndRange() async {

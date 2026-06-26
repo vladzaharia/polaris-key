@@ -13,7 +13,7 @@ import { type Product, openProductSecret } from "./product.js";
 import { bearer, errorResponse } from "./http.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
 import { signJws } from "@polaris-key/jws";
-import { validateMachineToken } from "./licenseCore.js";
+import { validateDeviceToken } from "./licenseCore.js";
 
 interface EdgeMintRow {
   product: string;
@@ -182,10 +182,10 @@ export async function handleMintToken(
   ) {
     return errorResponse(429, "rate_limited", "too many mint requests");
   }
-  // Confused-deputy guard: only a licensed machine may mint.
+  // Confused-deputy guard: only a licensed device may mint.
   const token = bearer(req);
   if (!token) return errorResponse(401, "unauthorized");
-  const valid = await validateMachineToken(env, db, product, token, now);
+  const valid = await validateDeviceToken(env, db, product, token, now);
   if ("error" in valid) return errorResponse(401, "unauthorized");
 
   const cfg = await getEdgeMintConfig(db, product.slug, mintId);

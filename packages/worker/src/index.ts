@@ -7,11 +7,11 @@ import { handleDiscovery } from "./discovery.js";
 import { handleSchema } from "./schema.js";
 import { handleJwks, handleTrustManifest } from "./jwks.js";
 import { handleMintAuth, handleMintToken } from "./edgeMint.js";
-import { handleSubscribe } from "./subscribe.js";
 import {
   handleAuthCallback,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
+  handleAuthDeviceVerify,
   handleAuthPoll,
   handleAuthStart,
 } from "./oidc.js";
@@ -24,16 +24,17 @@ import { handleRelease } from "./release/index.js";
 import type { Arch } from "./release/assets.js";
 import { handleAdmin } from "./admin/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
-import { errorResponse, notFound } from "./http.js";
+import { notFound } from "./http.js";
 import {
+  handleAccount,
+  handleActivate,
   handleConfig,
   handleDeauthorize,
-  handleEnroll,
+  handleDevices,
   handleReport,
   handleToken,
 } from "./licensing.js";
 
-export { HubDO } from "./hub.js";
 export { RateLimitDO } from "./rateLimitDo.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
@@ -41,18 +42,20 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "jwks",
   "trustManifest",
   "schema",
-  "enroll",
+  "activate",
   "token",
+  "account",
+  "devices",
   "deauthorize",
   "config",
   "configReport",
-  "configSubscribe",
   "browserSession",
   "browserSessionLicense",
   "authStart",
   "authLogin",
   "authLogout",
   "authDeviceStart",
+  "authDeviceVerify",
   "authDevicePoll",
   "authCallback",
   "authPoll",
@@ -65,9 +68,6 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "cli",
   "dmg",
 ]);
-
-const NOT_IMPLEMENTED = (what: string): Response =>
-  errorResponse(501, "not_implemented", `${what} is not implemented yet`);
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -82,10 +82,14 @@ export default {
       switch (route.kind) {
         case "discovery":
           return handleDiscovery(req, db, product);
-        case "enroll":
-          return handleEnroll(req, env, db, product, now);
+        case "activate":
+          return handleActivate(req, env, db, product, now);
         case "token":
           return handleToken(req, env, db, product, now);
+        case "account":
+          return handleAccount(req, env, db, product, now);
+        case "devices":
+          return handleDevices(req, env, db, product, now, route.deviceId);
         case "config":
           return handleConfig(req, env, db, product, now);
         case "configReport":
@@ -98,8 +102,6 @@ export default {
           return handleJwks(db, product);
         case "trustManifest":
           return handleTrustManifest(req, db, product, now);
-        case "configSubscribe":
-          return handleSubscribe(req, env, db, product, now);
         case "browserSession":
           return handleBrowserSession(req, env, db, product, now);
         case "browserSessionLicense":
@@ -116,6 +118,8 @@ export default {
           return handleBrowserLogout(req, env, db, product);
         case "authDeviceStart":
           return handleAuthDeviceStart(req, env, db, product);
+        case "authDeviceVerify":
+          return handleAuthDeviceVerify(req, env, product);
         case "authDevicePoll":
           return handleAuthDevicePoll(req, env, db, product, now);
         case "authCallback":

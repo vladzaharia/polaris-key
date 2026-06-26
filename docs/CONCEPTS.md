@@ -10,11 +10,10 @@ reconcile. Consistent names are a feature: they make the system learnable across
   KV key, signature, and admin route is product-scoped. (Not "app" or "gateway".)
 - **license** — an account that holds entitlements. Created manually by an admin or minted on
   OIDC sign-in. Has a status, optional tier/profile, optional expiry, and per-license overrides.
-- **key** — a `pkey_<product>_…` activation secret a user redeems to enroll a device. Shown to the
+- **key** — a `pkey_<product>_…` activation secret a user redeems to activate a device. Shown to the
   user exactly once; stored only as a (peppered) hash.
 - **device** — an authorized install of the product, bound to a per-device bearer token
-  (`pkeyt_…`). In the data layer the table is still named `machines` for historical reasons;
-  new code, APIs, and UI say **device**.
+  (`pkeyt_…`). The data layer, APIs, SDKs, docs, and UI all use **device**.
 - **tier** — a named plan: an optional profile plus policy (default expiry, device limit, and —
   from the channels work — default upgrade channels and version window). (Not "plan".)
 - **profile** — a reusable managed-payload baseline that a tier or license can attach.
@@ -31,9 +30,8 @@ reconcile. Consistent names are a feature: they make the system learnable across
   - **enforced** — the server value wins and the client cannot override it (shown read-only).
   - **hidden** — `enforced` **and** withheld from user-facing enumeration (still applied
     internally).
-    > The legacy states `unmanaged` / `managed` / `hidden` map to `default` / `enforced` / `hidden`.
 - **scope** — where a catalog key is meaningful (the `UiHints.scopes` field): one or more of
-  `profile`, `license`, `device`. (Renamed from the old `UiHints.tiers`.)
+  `profile`, `license`, `device`.
 - **manifest** — the `.pkey/` files in a product's repo that describe it: `schema` (the config
   catalog), `product` (metadata + OIDC + tiers + provisioning), and `release` (release config +
   minters), each in JSON or YAML.

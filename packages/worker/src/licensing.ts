@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// The licensing hot path: enroll (key -> token), token re-acquire, /config (token ->
+// The licensing hot path: activate (key -> token), token re-acquire, /config (token ->
 // signed doc), report, deauthorize. Product isolation is structural — every repo/KV call
 // is product-scoped, the signing key is the product's, and the doc carries aud = product.
 
@@ -35,23 +35,27 @@ import {
   getKey,
   getLicense,
   getActiveSchema,
+  listDevicesByLicense,
   touchKey,
-  setMachineStatus,
-  setMachineReported,
-  upsertMachine,
+  setDeviceLabel,
+  setDeviceStatus,
+  setDeviceReported,
+  upsertDevice,
+  type DeviceRow,
+  type LicenseRow,
 } from "./repo.js";
 import { hashKey } from "./crypto.js";
 import { deleteTokenRecord } from "./kv.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
 import {
-  authorizeMachine,
+  authorizeDevice,
   docProfile,
   resolveEffective,
-  rotateMachineToken,
-  validateMachineToken,
+  rotateDeviceToken,
+  validateDeviceToken,
 } from "./licenseCore.js";
 
-function machineMetadata(req: Request): {
+function deviceMetadata(req: Request): {
   userAgent: string | null;
   platform: string | null;
   arch: string | null;
@@ -91,8 +95,53 @@ function boundedReport(input: unknown): Record<string, unknown> {
   return out;
 }
 
-/** POST /<product>/enroll — exchange a license key for a per-machine token. */
-export async function handleEnroll(
+function shapeDevice(device: DeviceRow, currentDeviceId?: string) {
+  return {
+    id: device.device_id,
+    licenseId: device.license_id,
+    label: device.label,
+    status: device.status,
+    current: device.device_id === currentDeviceId,
+    firstSeen: device.first_seen,
+    lastSeen: device.last_seen,
+    userAgent: device.ua,
+    platform: device.platform ?? null,
+    arch: device.arch ?? null,
+    appVersion: device.app_version ?? null,
+    sdkName: device.sdk_name ?? null,
+    sdkVersion: device.sdk_version ?? null,
+  };
+}
+
+function shapeLicense(license: LicenseRow) {
+  return {
+    id: license.id,
+    status: license.status,
+    name: license.name,
+    email: license.email,
+    tierId: license.tier_id,
+    activatedAt: license.activated_at,
+    expiresAt: license.expires_at,
+    maxOfflineDays: license.max_offline_days,
+    channels: parseJsonArray(license.channels_json),
+    minVersion: license.min_version,
+    maxVersion: license.max_version,
+  };
+}
+
+function parseJsonArray(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? (parsed.filter((item) => typeof item === "string") as string[])
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function activateWithKey(
   req: Request,
   env: Env,
   db: Db,
@@ -104,11 +153,11 @@ export async function handleEnroll(
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "enroll", id: clientIp(req), limit: 30, windowSec: 60 },
+      { bucket: "activate", id: clientIp(req), limit: 30, windowSec: 60 },
       now,
     ))
   ) {
-    return errorResponse(429, "rate_limited", "too many enrollment attempts");
+    return errorResponse(429, "rate_limited", "too many activation attempts");
   }
   const key = bearer(req);
   if (!key) return errorResponse(401, ErrorCode.Unauthorized);
@@ -123,21 +172,21 @@ export async function handleEnroll(
 
   const license = await getLicense(db, product.slug, keyRow.license_id);
   if (!license) return errorResponse(401, ErrorCode.Unauthorized);
-  const authorized = await authorizeMachine(
+  const authorized = await authorizeDevice(
     env,
     db,
     product,
     license,
     deviceId,
     now,
-    machineMetadata(req),
+    deviceMetadata(req),
   );
   if ("error" in authorized) {
     if (authorized.error === "unauthorized")
       return errorResponse(401, ErrorCode.Unauthorized);
-    return errorResponse(403, ErrorCode.MachineLimit, "device limit reached", {
+    return errorResponse(403, ErrorCode.DeviceLimit, "device limit reached", {
       limit: authorized.limit,
-      machineCount: authorized.machineCount,
+      deviceCount: authorized.deviceCount,
     });
   }
   await touchKey(db, product.slug, keyHash, now);
@@ -145,12 +194,24 @@ export async function handleEnroll(
   return json({
     token: authorized.token,
     schemaVersion: product.schemaVersion,
+    device: shapeDevice(authorized.device, deviceId),
+    license: shapeLicense(license),
   });
 }
 
-/** POST /<product>/token — replace the current token for an already-authorized machine.
- *  The compatibility route name remains, but this is no longer a device-id-only re-mint:
- *  callers must present the current bearer token and the matching device id. */
+/** POST /<product>/activate — exchange a license key for a per-device token. */
+export async function handleActivate(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+): Promise<Response> {
+  return activateWithKey(req, env, db, product, now);
+}
+
+/** POST /<product>/token — replace the current token for an already-authorized device.
+ *  Callers must present the current bearer token and the matching device id. */
 export async function handleToken(
   req: Request,
   env: Env,
@@ -174,20 +235,101 @@ export async function handleToken(
     return errorResponse(400, ErrorCode.BadRequest, "missing device id");
 
   const currentToken = bearer(req);
-  const valid = await validateMachineToken(
-    env,
-    db,
-    product,
-    currentToken,
-    now,
-    {
-      deviceId,
-    },
-  );
+  const valid = await validateDeviceToken(env, db, product, currentToken, now, {
+    deviceId,
+  });
   if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
 
-  const token = await rotateMachineToken(env, db, product, valid, now);
+  const token = await rotateDeviceToken(env, db, product, valid, now);
   return json({ token, schemaVersion: product.schemaVersion });
+}
+
+/** GET /<product>/account — return the current license and friendly device list. */
+export async function handleAccount(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "GET") return methodNotAllowed();
+  const token = bearer(req);
+  const valid = await validateDeviceToken(env, db, product, token, now);
+  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+  const devices = await listDevicesByLicense(
+    db,
+    product.slug,
+    valid.license.id,
+  );
+  return json({
+    product: { slug: product.slug, name: product.name },
+    license: shapeLicense(valid.license),
+    currentDeviceId: valid.device.device_id,
+    devices: devices.map((device) =>
+      shapeDevice(device, valid.device.device_id),
+    ),
+  });
+}
+
+/** GET/PATCH/DELETE /<product>/devices[/<id>] — self-service device management. */
+export async function handleDevices(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+  deviceId?: string,
+): Promise<Response> {
+  const token = bearer(req);
+  const valid = await validateDeviceToken(env, db, product, token, now);
+  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+
+  const devices = await listDevicesByLicense(
+    db,
+    product.slug,
+    valid.license.id,
+  );
+  if (req.method === "GET") {
+    return json({
+      currentDeviceId: valid.device.device_id,
+      devices: devices.map((device) =>
+        shapeDevice(device, valid.device.device_id),
+      ),
+    });
+  }
+
+  if (!deviceId)
+    return errorResponse(400, ErrorCode.BadRequest, "missing device id");
+  const target = devices.find((device) => device.device_id === deviceId);
+  if (!target) return errorResponse(404, ErrorCode.NotFound);
+
+  if (req.method === "PATCH") {
+    let body: Record<string, unknown>;
+    try {
+      body = (await req.json()) as Record<string, unknown>;
+    } catch {
+      return errorResponse(400, ErrorCode.BadRequest, "invalid json");
+    }
+    const label =
+      typeof body.label === "string" && body.label.trim()
+        ? body.label.trim().slice(0, 120)
+        : null;
+    await setDeviceLabel(db, product.slug, deviceId, label);
+    return json({
+      ok: true,
+      device: { ...shapeDevice(target, valid.device.device_id), label },
+    });
+  }
+
+  if (req.method === "DELETE") {
+    await setDeviceStatus(db, product.slug, deviceId, "deauthorized");
+    if (target.token_hash) {
+      await deleteTokenRecord(env, product.slug, target.token_hash);
+    }
+    return json({ ok: true });
+  }
+
+  return methodNotAllowed();
 }
 
 /** GET /<product>/config — return the signed managed-config doc for the bearer token. */
@@ -199,25 +341,25 @@ export async function handleConfig(
   now: number,
 ): Promise<Response> {
   const token = bearer(req);
-  const valid = await validateMachineToken(env, db, product, token, now);
+  const valid = await validateDeviceToken(env, db, product, token, now);
   if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
-  const meta = machineMetadata(req);
-  await upsertMachine(db, {
-    ...valid.machine,
+  const meta = deviceMetadata(req);
+  await upsertDevice(db, {
+    ...valid.device,
     last_seen: now,
-    ua: meta.userAgent ?? valid.machine.ua,
-    platform: meta.platform ?? valid.machine.platform ?? null,
-    arch: meta.arch ?? valid.machine.arch ?? null,
-    app_version: meta.appVersion ?? valid.machine.app_version ?? null,
-    sdk_name: meta.sdkName ?? valid.machine.sdk_name ?? null,
-    sdk_version: meta.sdkVersion ?? valid.machine.sdk_version ?? null,
+    ua: meta.userAgent ?? valid.device.ua,
+    platform: meta.platform ?? valid.device.platform ?? null,
+    arch: meta.arch ?? valid.device.arch ?? null,
+    app_version: meta.appVersion ?? valid.device.app_version ?? null,
+    sdk_name: meta.sdkName ?? valid.device.sdk_name ?? null,
+    sdk_version: meta.sdkVersion ?? valid.device.sdk_version ?? null,
   });
 
   let payload = await resolveEffective(
     db,
     product.slug,
     valid.license,
-    valid.machine,
+    valid.device,
     now,
     { tighterMin, tighterMax },
   );
@@ -233,7 +375,11 @@ export async function handleConfig(
         new Catalog(JSON.parse(schemaRow.catalog_json)),
       );
     } catch {
-      // An unparseable catalog is non-fatal here — fall back to the unfiltered payload.
+      return errorResponse(
+        500,
+        "catalog_unavailable",
+        "active catalog could not validate the config payload",
+      );
     }
   }
 
@@ -259,7 +405,7 @@ export async function handleConfig(
     schemaVersion: product.schemaVersion,
     aud: product.slug,
     licenseId: valid.license.id,
-    deviceId: valid.machine.machine_id,
+    deviceId: valid.device.device_id,
     now,
     maxOfflineDays,
     profile: docProfile(valid.license),
@@ -290,7 +436,7 @@ export async function handleReport(
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   const token = bearer(req);
-  const valid = await validateMachineToken(env, db, product, token, now);
+  const valid = await validateDeviceToken(env, db, product, token, now);
   if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
   const len = req.headers.get("content-length");
   if (len && Number(len) > 16 * 1024)
@@ -304,17 +450,17 @@ export async function handleReport(
   } catch {
     return errorResponse(400, ErrorCode.BadRequest, "invalid body");
   }
-  await setMachineReported(
+  await setDeviceReported(
     db,
     product.slug,
-    valid.machine.machine_id,
+    valid.device.device_id,
     JSON.stringify(boundedReport(snapshot)),
     now,
   );
   return json({ ok: true });
 }
 
-/** POST /<product>/deauthorize — self-deauthorize the bearer token's machine. */
+/** POST /<product>/deauthorize — self-deauthorize the bearer token's device. */
 export async function handleDeauthorize(
   req: Request,
   env: Env,
@@ -325,7 +471,7 @@ export async function handleDeauthorize(
   const token = bearer(req);
   if (!token) return errorResponse(401, ErrorCode.Unauthorized);
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const valid = await validateMachineToken(
+  const valid = await validateDeviceToken(
     env,
     db,
     product,
@@ -333,10 +479,10 @@ export async function handleDeauthorize(
     Math.floor(Date.now() / 1000),
   );
   if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
-  await setMachineStatus(
+  await setDeviceStatus(
     db,
     product.slug,
-    valid.machine.machine_id,
+    valid.device.device_id,
     "deauthorized",
   );
   await deleteTokenRecord(env, product.slug, tokenHash);

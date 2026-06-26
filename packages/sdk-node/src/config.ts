@@ -39,16 +39,13 @@ export interface ResolveContext {
 }
 
 /** `run.concurrency` → `PKEY_CONFIG_run__concurrency` (dots become double underscores). */
-export function envVarName(envPrefix: string, key: string): string {
+function envVarName(envPrefix: string, key: string): string {
   return envPrefix + key.replaceAll(".", "__");
 }
 
 /** Read a key from the environment, JSON-parsing when the value looks like JSON, else
  *  returning the raw string. Returns `undefined` when the var is unset. */
-export function readEnvValue(
-  ctx: ResolveContext,
-  key: string,
-): JSONValue | undefined {
+function readEnvValue(ctx: ResolveContext, key: string): JSONValue | undefined {
   const raw = ctx.env[envVarName(ctx.envPrefix, key)];
   if (raw === undefined) return undefined;
   return looksLikeJson(raw) ? safeJsonParse(raw) : raw;

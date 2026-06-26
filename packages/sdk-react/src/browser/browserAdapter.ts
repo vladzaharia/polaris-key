@@ -12,6 +12,7 @@
 import type { BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
 import {
   configSource,
+  currentDeviceFromState,
   listUserConfig,
   projectState,
   readConfig,
@@ -22,6 +23,7 @@ import {
   PolarisError,
   initialState,
   type ConfigSource,
+  type DeviceInfo,
   type JSONValue,
   type PolarisAdapter,
   type PolarisState,
@@ -135,7 +137,7 @@ export class BrowserAdapter implements PolarisAdapter {
       headers: { accept: "application/json" },
     });
     if (res.status === 401) {
-      // Was authenticated, now isn't → revoked; never authenticated → needs-enroll.
+      // Was authenticated, now isn't → revoked; never authenticated → needs-activation.
       return { authenticated: false, doc: null };
     }
     if (!res.ok) {
@@ -226,7 +228,7 @@ export class BrowserAdapter implements PolarisAdapter {
             message?: string;
           };
           message =
-            body.error === "machine_limit"
+            body.error === "device_limit"
               ? "This license has reached its device limit."
               : (body.message ?? message);
         } catch {
@@ -279,6 +281,29 @@ export class BrowserAdapter implements PolarisAdapter {
       this.store.set((prev) => ({ ...prev, busy: false, error: err }));
       throw err;
     }
+  }
+
+  currentDevice(): DeviceInfo | null {
+    return currentDeviceFromState(this.store.get());
+  }
+
+  async listDevices(): Promise<DeviceInfo[]> {
+    throw new PolarisError(
+      "device-management-unsupported",
+      "Remote device management is not supported by this backend.",
+    );
+  }
+
+  async deauthorizeDevice(deviceId: string): Promise<void> {
+    const current = this.currentDevice();
+    if (current?.id === deviceId) {
+      await this.signOut();
+      return;
+    }
+    throw new PolarisError(
+      "device-management-unsupported",
+      "Remote device deauthorization is not supported by this backend.",
+    );
   }
 
   getConfig<T = JSONValue>(key: string, fallback: T): T {

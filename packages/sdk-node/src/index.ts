@@ -1,7 +1,9 @@
 export {
   PolarisKeyClient,
+  DeviceManagementUnsupportedError,
   type PolarisKeyOptions,
   type RefreshResult,
+  type DeviceInfo,
   type ConfigSource,
   type UserConfigEntry,
 } from "./client.js";
@@ -26,11 +28,11 @@ export {
   type ProductDiscoveryTrust,
 } from "./discovery.js";
 export {
-  enrollWithKey,
+  activateWithKey,
   reacquireToken,
   deauthorize,
   reportSnapshot,
-  type EnrollResult,
+  type ActivationResult,
 } from "./endpoints.js";
 export {
   FileStore,

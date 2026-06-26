@@ -8,7 +8,7 @@ import {
   handleBrowserSession,
   handleBrowserSessionLicense,
 } from "../src/browserSession.js";
-import { getMachine } from "../src/repo.js";
+import { getDevice } from "../src/repo.js";
 
 function req(
   method: string,
@@ -27,7 +27,7 @@ function req(
 }
 
 describe("browser sessions", () => {
-  it("reuses one browser machine and deauthorizes it on logout", async () => {
+  it("reuses one browser device and deauthorizes it on logout", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
@@ -57,14 +57,14 @@ describe("browser sessions", () => {
     expect(second.status).toBe(201);
     expect(secondCookie).toBeTruthy();
 
-    const machineId = `browser:${licenseId}`;
-    const machine = await getMachine(db, "djdl", machineId);
-    expect(machine?.status).toBe("authorized");
-    expect(machine?.token_hash).toBeTruthy();
+    const deviceId = `browser:${licenseId}`;
+    const device = await getDevice(db, "djdl", deviceId);
+    expect(device?.status).toBe("authorized");
+    expect(device?.token_hash).toBeTruthy();
     expect(
       (
         await db.first<{ n: number }>(
-          "SELECT COUNT(*) AS n FROM machines WHERE product = ? AND license_id = ?",
+          "SELECT COUNT(*) AS n FROM devices WHERE product = ? AND license_id = ?",
           "djdl",
           licenseId,
         )
@@ -91,8 +91,8 @@ describe("browser sessions", () => {
       product,
     );
     expect(logout.status).toBe(200);
-    const after = await getMachine(db, "djdl", machineId);
+    const after = await getDevice(db, "djdl", deviceId);
     expect(after?.status).toBe("deauthorized");
-    expect(await env.HOT.get(`p:djdl:token:${machine!.token_hash}`)).toBeNull();
+    expect(await env.HOT.get(`p:djdl:token:${device!.token_hash}`)).toBeNull();
   });
 });

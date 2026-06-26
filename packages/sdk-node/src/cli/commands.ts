@@ -33,7 +33,7 @@ export type ClientFactory = (
   opts: ClientFactoryOptions,
 ) => Promise<PolarisKeyClient>;
 
-/** Enroll this device with a license `key` and pull the first config doc. */
+/** Activate this device with a license `key` and pull the first config doc. */
 export async function activate(
   client: PolarisKeyClient,
   key: string,
@@ -44,10 +44,10 @@ export async function activate(
       const st = client.status();
       return { ok: true, message: `Activated. Status: ${st.status}`, data: st };
     }
-    case "machine-limit": {
+    case "device-limit": {
       const detail =
         r.limit !== undefined
-          ? ` (${r.machineCount ?? "?"}/${r.limit} devices in use)`
+          ? ` (${r.deviceCount ?? "?"}/${r.limit} devices in use)`
           : "";
       return {
         ok: false,

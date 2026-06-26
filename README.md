@@ -3,7 +3,7 @@
 A reusable, multi-product **licensing + remotely-managed-config + release-distribution**
 platform — a single Cloudflare Worker at `key.plrs.im` plus SDKs for **Node, Python, Swift,
 and React**. Any product registers as data (no worker redeploy) and gets licensing, signed
-config delivery, OIDC enrollment, tiers/entitlements, generic provisioning hooks, edge token
+config delivery, OIDC activation, tiers/entitlements, generic provisioning hooks, edge token
 minting, and GitHub-connected release distribution (Sparkle appcasts, binaries, changelogs).
 Extracted and generalized from DJDL's baked-in system; djdl is the first product.
 
@@ -24,7 +24,6 @@ sdks/
 conformance/         the cross-language golden corpus (one signer, runners per language)
 tools/               sign-corpus.ts · gen-mirrors.ts
 products/            per-product data (catalog.json + product.json) + gen-seed
-infra/               Terraform (Cloudflare D1/KV/custom domains)
 docs/                RUNBOOK.md · ADOPTER-GUIDE.md
 ```
 
@@ -49,10 +48,10 @@ verify identically** — that is how five languages agree on the wire.
 
 - **Multi-tenant, product-scoped:** every D1 row, KV key, DO shard, and signature is scoped
   by a product slug; the URL is `key.plrs.im/<product>/…`. Storage is KV (hot-path token/key
-  lookups) + D1 (relational metadata) + a per-(product,license) HubDO for hot-reload.
+  lookups) + D1 (relational metadata, release state, account/device records).
 - **Data-driven schema + tiers:** a product's config/secret/flag catalog and tiers/profiles
-  are data; the effective config is `tier(profile) → license → machine`.
-- **OIDC enrollment + provisioning hooks:** browser sign-in mints/locates a license by
+  are data; the effective config is `tier(profile) → license → device`.
+- **OIDC activation + provisioning hooks:** browser sign-in mints/locates a license by
   subject; verified claims drive entitlements + host-allowlisted secrets.
 - **Edge-mint + releases:** generic per-product token minting (Apple MusicKit) and
   GitHub-App release distribution (channels, Sparkle appcasts, fuzzy asset/changelog

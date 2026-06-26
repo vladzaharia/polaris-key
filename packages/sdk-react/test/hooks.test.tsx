@@ -194,7 +194,7 @@ describe("usePolarisAuth", () => {
     adapter.dispose();
   });
 
-  it("needsAuth is true when needs-enroll", async () => {
+  it("needsAuth is true when needs-activation", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge({ hasToken: false, doc: null }),
       now: () => NOW_SEC,
@@ -202,7 +202,7 @@ describe("usePolarisAuth", () => {
     const { result } = renderHook(() => usePolarisAuth(), {
       wrapper: wrapperFor(adapter),
     });
-    await waitFor(() => expect(result.current.status).toBe("needs-enroll"));
+    await waitFor(() => expect(result.current.status).toBe("needs-activation"));
     expect(result.current.needsAuth).toBe(true);
     adapter.dispose();
   });
@@ -223,7 +223,7 @@ describe("useLicenseGate", () => {
     adapter.dispose();
   });
 
-  it("maps needs-enroll to the 'login' screen", async () => {
+  it("maps needs-activation to the 'login' screen", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge({ hasToken: false, doc: null }),
       now: () => NOW_SEC,

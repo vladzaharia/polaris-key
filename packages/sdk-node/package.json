@@ -21,10 +21,10 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@polaris-key/catalog": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/protocol": "workspace:*"
   },

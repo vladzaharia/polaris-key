@@ -41,9 +41,6 @@ importers:
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../../../packages/shared-jws
-      '@polaris-key/protocol':
-        specifier: workspace:*
-        version: link:../../../packages/shared-protocol
 
   packages/admin:
     dependencies:
@@ -144,9 +141,6 @@ importers:
 
   packages/sdk-node:
     dependencies:
-      '@polaris-key/catalog':
-        specifier: workspace:*
-        version: link:../shared-catalog
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
@@ -177,9 +171,6 @@ importers:
         specifier: workspace:*
         version: link:../shared-protocol
     devDependencies:
-      '@polaris-key/node':
-        specifier: workspace:*
-        version: link:../sdk-node
       '@testing-library/react':
         specifier: ^16.1.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -272,9 +263,6 @@ importers:
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../packages/shared-jws
-      '@polaris-key/protocol':
-        specifier: workspace:*
-        version: link:../packages/shared-protocol
 
 packages:
 

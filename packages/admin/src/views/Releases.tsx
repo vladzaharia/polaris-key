@@ -343,9 +343,9 @@ function DistributionCard({
             {String(product.defaultMaxOfflineDays)}
           </Row>
           <Row term="Default device limit">
-            {product.defaultMachineLimit === 0
+            {product.defaultDeviceLimit === 0
               ? "unlimited"
-              : String(product.defaultMachineLimit)}
+              : String(product.defaultDeviceLimit)}
           </Row>
           <Row term="Admin group" mono>
             {product.adminGroup ?? "—"}

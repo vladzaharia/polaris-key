@@ -21,7 +21,7 @@ const profile: DocProfile = {
   name: "Ada Lovelace",
   firstName: "Ada",
   email: "ada@x.io",
-  enrolledAt: NOW,
+  activatedAt: NOW,
 };
 const payload: ManagedPayload = {
   config: {

@@ -35,7 +35,7 @@ public struct LicenseState: Sendable, Equatable {
 }
 
 public struct GateInput: Sendable {
-    /// Whether a per-machine token is stored.
+    /// Whether a per-device token is stored.
     public let hasToken: Bool
     /// The cached, verified doc (or nil if none yet).
     public let doc: ManagedConfigDoc?
@@ -66,8 +66,8 @@ public struct GateInput: Sendable {
 }
 
 /// Compute the renderable gate state. Order is load-bearing and mirrors gate.ts exactly:
-/// blocked → reason; no token → needs-enroll; lastSyncUnauthorized → revoked; no doc →
-/// needs-enroll; now > graceUntil → expired; now > expiresAt → grace; else ok.
+/// blocked → reason; no token → needs-activation; lastSyncUnauthorized → revoked; no doc →
+/// needs-activation; now > graceUntil → expired; now > expiresAt → grace; else ok.
 public func licenseState(_ input: GateInput) -> LicenseState {
     if let blocked = input.blocked {
         let status: LicenseStatus
@@ -78,9 +78,9 @@ public func licenseState(_ input: GateInput) -> LicenseState {
         }
         return LicenseState(status: status, allowedRange: blocked.allowedRange)
     }
-    if !input.hasToken { return LicenseState(status: .needsEnroll) }
+    if !input.hasToken { return LicenseState(status: .needsActivation) }
     if input.lastSyncUnauthorized { return LicenseState(status: .revoked) }
-    guard let doc = input.doc else { return LicenseState(status: .needsEnroll) }
+    guard let doc = input.doc else { return LicenseState(status: .needsActivation) }
     if input.now > doc.graceUntil {
         return LicenseState(status: .expired, graceUntil: doc.graceUntil)
     }

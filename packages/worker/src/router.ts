@@ -12,18 +12,20 @@ export type Route =
   | { kind: "jwks"; product: string }
   | { kind: "trustManifest"; product: string }
   | { kind: "schema"; product: string }
-  | { kind: "enroll"; product: string }
+  | { kind: "activate"; product: string }
   | { kind: "token"; product: string }
+  | { kind: "account"; product: string }
+  | { kind: "devices"; product: string; deviceId?: string }
   | { kind: "deauthorize"; product: string }
   | { kind: "config"; product: string }
   | { kind: "configReport"; product: string }
-  | { kind: "configSubscribe"; product: string }
   | { kind: "browserSession"; product: string }
   | { kind: "browserSessionLicense"; product: string }
   | { kind: "authStart"; product: string }
   | { kind: "authLogin"; product: string }
   | { kind: "authLogout"; product: string }
   | { kind: "authDeviceStart"; product: string }
+  | { kind: "authDeviceVerify"; product: string }
   | { kind: "authDevicePoll"; product: string }
   | { kind: "authCallback"; product: string }
   | { kind: "authPoll"; product: string }
@@ -71,18 +73,20 @@ export function matchRoute(pathname: string): Route {
       return { kind: "trustManifest", product };
     case "/schema":
       return { kind: "schema", product };
-    case "/enroll":
-      return { kind: "enroll", product };
+    case "/activate":
+      return { kind: "activate", product };
     case "/token":
       return { kind: "token", product };
+    case "/account":
+      return { kind: "account", product };
+    case "/devices":
+      return { kind: "devices", product };
     case "/deauthorize":
       return { kind: "deauthorize", product };
     case "/config":
       return { kind: "config", product };
     case "/config/report":
       return { kind: "configReport", product };
-    case "/config/subscribe":
-      return { kind: "configSubscribe", product };
     case "/session":
       return { kind: "browserSession", product };
     case "/session/license":
@@ -95,6 +99,8 @@ export function matchRoute(pathname: string): Route {
       return { kind: "authLogout", product };
     case "/auth/device/start":
       return { kind: "authDeviceStart", product };
+    case "/auth/device/verify":
+      return { kind: "authDeviceVerify", product };
     case "/auth/device/poll":
       return { kind: "authDevicePoll", product };
     case "/auth/callback":
@@ -134,6 +140,14 @@ export function matchRoute(pathname: string): Route {
   const appcast = rest.match(/^\/([a-z0-9-]+)\/appcast\.xml$/);
   if (appcast && appcast[1])
     return { kind: "appcast", product, channel: appcast[1] };
+
+  const devices = rest.match(/^\/devices\/([^/]+)$/);
+  if (devices && devices[1])
+    return {
+      kind: "devices",
+      product,
+      deviceId: decodeURIComponent(devices[1]),
+    };
 
   return { kind: "notFound" };
 }

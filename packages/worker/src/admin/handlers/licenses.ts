@@ -1,6 +1,6 @@
 /**
  * Licenses (`/api/products/<slug>/licenses/...`): list/create, detail/patch, enable/disable,
- * catalog-validated override batches, and the keys/machines sub-resources. Creating a license
+ * catalog-validated override batches, and the keys/devices sub-resources. Creating a license
  * mints its first key (returned ONCE). Override values validate against the active catalog.
  */
 
@@ -8,14 +8,14 @@ import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import { hashKey, mintLicenseKey, randomId } from "../../crypto.js";
-import { deleteTokenRecord, putKeyRecord } from "../../kv.js";
+import { deleteTokenRecord } from "../../kv.js";
 import {
   getLicense,
   insertLicense,
   insertKey,
   listKeysByLicense,
   listLicenseProfiles,
-  listMachinesByLicense,
+  listDevicesByLicense,
   setLicenseProfiles,
 } from "../../repo.js";
 import {
@@ -32,7 +32,7 @@ import { redactPayload, parsePayload } from "../lib/redact.js";
 import { applyOverrides, type OverrideUpdate } from "../lib/overrides.js";
 import { licenseSummary, loadCatalog } from "../lib/shape.js";
 import { handleKeys } from "./keys.js";
-import { handleMachines } from "./machines.js";
+import { handleAdminDevices } from "./devices.js";
 
 /** Normalize a request-body `channels` field into a JSON string array column value.
  *  An array (even empty) is stored as JSON; anything else (absent/null) clears the column. */
@@ -109,8 +109,7 @@ export async function handleLicenses(
         email: typeof body.email === "string" ? body.email : null,
         groups_json: null,
         tier_id: typeof body.tier === "string" ? body.tier : null,
-        profile_id: profiles[0] ?? null,
-        enrolled_at: now,
+        activated_at: now,
         expires_at: typeof body.expiresAt === "number" ? body.expiresAt : null,
         max_offline_days:
           typeof body.maxOfflineDays === "number" ? body.maxOfflineDays : null,
@@ -142,11 +141,6 @@ export async function handleLicenses(
         created_by: session.sub,
         last_used_at: null,
       });
-      await putKeyRecord(env, slug, keyHash, {
-        product: slug,
-        licenseId,
-        status: "active",
-      });
       await audit(
         db,
         slug,
@@ -177,7 +171,7 @@ export async function handleLicenses(
   if (!sub) {
     if (req.method === "GET") {
       const keys = await listKeysByLicense(db, slug, id);
-      const machines = await listMachinesByLicense(db, slug, id);
+      const devices = await listDevicesByLicense(db, slug, id);
       const profiles = await listLicenseProfiles(db, slug, id);
       const overrides = parsePayload(license.overrides_json);
       return adminJson({
@@ -185,11 +179,7 @@ export async function handleLicenses(
         groups: license.groups_json
           ? (JSON.parse(license.groups_json) as string[])
           : [],
-        profiles: profiles.length
-          ? profiles.map((p) => p.profile_id)
-          : license.profile_id
-            ? [license.profile_id]
-            : [],
+        profiles: profiles.map((p) => p.profile_id),
         maxOfflineDays: license.max_offline_days,
         overrides: redactPayload(overrides, catalog),
         keys: keys.map((k) => ({
@@ -200,8 +190,8 @@ export async function handleLicenses(
           createdBy: k.created_by ?? "",
           lastUsedAt: k.last_used_at ?? undefined,
         })),
-        machines: machines.map((m) => ({
-          machineId: m.machine_id,
+        devices: devices.map((m) => ({
+          deviceId: m.device_id,
           status: m.status,
           firstSeen: m.first_seen,
           lastSeen: m.last_seen,
@@ -290,8 +280,8 @@ export async function handleLicenses(
     if (sub === "disable") {
       // Purge hot-path bearer tokens immediately so disabled credentials stop authenticating
       // right away, instead of waiting for the next licenseUsable() check on a cached token.
-      const machines = await listMachinesByLicense(db, slug, id);
-      for (const m of machines) {
+      const devices = await listDevicesByLicense(db, slug, id);
+      for (const m of devices) {
         if (m.token_hash) await deleteTokenRecord(env, slug, m.token_hash);
       }
     }
@@ -351,9 +341,9 @@ export async function handleLicenses(
     return handleKeys(req, env, db, session, slug, id, subId, action, now);
   }
 
-  // /licenses/<id>/machines ...
-  if (sub === "machines") {
-    return handleMachines(req, env, db, session, slug, id, subId, now);
+  // /licenses/<id>/devices ...
+  if (sub === "devices") {
+    return handleAdminDevices(req, env, db, session, slug, id, subId, now);
   }
 
   return notFound();

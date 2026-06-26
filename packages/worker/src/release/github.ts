@@ -85,15 +85,8 @@ export async function listReleases(
   return (await res.json()) as Release[];
 }
 
-/** Find an asset by exact filename within a resolved release. */
-export function findAsset(release: Release, name: string): ReleaseAsset {
-  const asset = release.assets.find((a) => a.name === name);
-  if (!asset) throw new NotFoundError(`asset not found: ${name}`);
-  return asset;
-}
-
 /** True for GitHub release-asset storage hosts the SSRF guard permits re-fetching. */
-export function isAllowedStorageHost(host: string): boolean {
+function isAllowedStorageHost(host: string): boolean {
   return (
     host === "github.com" ||
     host === "githubusercontent.com" ||

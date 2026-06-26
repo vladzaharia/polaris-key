@@ -17,6 +17,7 @@ export {
   type PolarisErrorCode,
   type PolarisState,
   type OidcSignInHandle,
+  type DeviceInfo,
   type ConfigSource,
   type UserConfigEntry,
 } from "./types.js";
@@ -29,6 +30,7 @@ export {
   resolveConfig,
   resolveConfigValue,
   configSource,
+  currentDeviceFromState,
   listUserConfig,
 } from "./adapter.js";
 export type {

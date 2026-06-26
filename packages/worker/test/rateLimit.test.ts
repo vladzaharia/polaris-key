@@ -10,7 +10,7 @@ import {
   seedProduct,
 } from "./seed.js";
 import { loadProduct } from "../src/product.js";
-import { handleEnroll } from "../src/licensing.js";
+import { handleActivate } from "../src/licensing.js";
 
 describe("rateLimitOk", () => {
   it("allows up to the limit within a window, then blocks", async () => {
@@ -69,16 +69,16 @@ describe("clientIp", () => {
   });
 });
 
-describe("enroll rate limiting", () => {
-  it("429s once the per-IP enroll window limit is exceeded", async () => {
+describe("activate rate limiting", () => {
+  it("429s once the per-IP activate window limit is exceeded", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key } = await seedLicenseWithKey(db, "djdl");
-    // Re-enrolling the same device avoids the machine limit; the 31st trips the rate limit.
+    // Re-activating the same device avoids the device limit; the 31st trips the rate limit.
     for (let i = 0; i < 30; i++) {
-      const res = await handleEnroll(
+      const res = await handleActivate(
         mkReq("POST", {
           authorization: `Bearer ${key}`,
           "x-pkey-device": "dev-1",
@@ -90,7 +90,7 @@ describe("enroll rate limiting", () => {
       );
       expect(res.status).toBe(200);
     }
-    const blocked = await handleEnroll(
+    const blocked = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
         "x-pkey-device": "dev-1",

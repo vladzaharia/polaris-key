@@ -67,7 +67,7 @@ describe("projectState", () => {
     expect(state.config).toEqual({});
     expect(state.entitlements).toEqual({});
     expect(state.profile).toBeNull();
-    expect(state.status).toBe("needs-enroll");
+    expect(state.status).toBe("needs-activation");
   });
 
   it("threads busy + error flags through", () => {
@@ -274,11 +274,11 @@ describe("listUserConfig (settings-UI enumeration)", () => {
 });
 
 describe("initialState", () => {
-  it("seeds a loading, needs-enroll snapshot for the given mode", () => {
+  it("seeds a loading, needs-activation snapshot for the given mode", () => {
     const s = initialState("browser");
     expect(s.phase).toBe("loading");
     expect(s.mode).toBe("browser");
-    expect(s.status).toBe("needs-enroll");
+    expect(s.status).toBe("needs-activation");
     expect(s.busy).toBe(false);
     expect(s.error).toBeNull();
   });

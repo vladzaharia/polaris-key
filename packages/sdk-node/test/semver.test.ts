@@ -89,6 +89,7 @@ describe("channelForVersion", () => {
     expect(channelForVersion("0.0.0-dev+abc")).toBe("dev");
     expect(channelForVersion("0.0.0-staging+abc")).toBe("staging");
     expect(channelForVersion("0.0.0-pr42+abc")).toBe("pr");
+    expect(channelForVersion("0.0.0-pr-42+abc")).toBe("pr");
   });
   it("treats a bare release version as stable", () => {
     expect(channelForVersion("2.0.0")).toBe("stable");

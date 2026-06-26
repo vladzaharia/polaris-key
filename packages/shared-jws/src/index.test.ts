@@ -12,14 +12,16 @@ import {
 const b64u = (o: unknown): string =>
   base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(o)));
 
-// The committed djdl cross-platform vector (fixtures/config-jws.vector.json). Reproducing
-// it here proves the Polaris Key JWS encoding is byte-identical to the original contract.
+// The committed djdl cross-platform vector. Reproducing it here proves the Polaris Key JWS
+// encoding is byte-identical to the current signed contract.
 const DJDL_TEST_KID = "djdl-test-2026";
 const DJDL_TEST_PUB = "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U";
 const DJDL_TEST_PEM =
   "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIIXpeKmxx2+0A+lz89t+5fp5PPjd2vFGhXqwTpWYeL5O\n-----END PRIVATE KEY-----";
 const DJDL_DOC = {
   schemaVersion: 1,
+  aud: "djdl",
+  iss: "key.plrs.im",
   licenseId: "abc123def456",
   deviceId: "device-fixture-01",
   issuedAt: 1700000000,
@@ -29,21 +31,30 @@ const DJDL_DOC = {
     name: "Ada Lovelace",
     firstName: "Ada",
     email: "ada@example.com",
-    enrolledAt: 1690000000,
+    activatedAt: 1690000000,
   },
   payload: {
-    config: { "run.concurrency": { state: "managed", value: 4 } },
+    config: {
+      "run.concurrency": {
+        state: "enforced",
+        value: 4,
+        updatedAt: 1699990000,
+      },
+    },
     secrets: {
       "proxy.subscriptionUrl": {
         state: "hidden",
         value: "https://vpn.example.com/sub/abc",
+        updatedAt: 1699990000,
       },
     },
-    entitlements: { polarisVpn: { state: "managed", value: true } },
+    entitlements: {
+      polarisVpn: { state: "enforced", value: true, updatedAt: 1699990000 },
+    },
   },
 };
 const DJDL_JWS =
-  "eyJhbGciOiJFZERTQSIsImtpZCI6ImRqZGwtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJsaWNlbnNlSWQiOiJhYmMxMjNkZWY0NTYiLCJkZXZpY2VJZCI6ImRldmljZS1maXh0dXJlLTAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiQWRhIExvdmVsYWNlIiwiZmlyc3ROYW1lIjoiQWRhIiwiZW1haWwiOiJhZGFAZXhhbXBsZS5jb20iLCJlbnJvbGxlZEF0IjoxNjkwMDAwMDAwfSwicGF5bG9hZCI6eyJjb25maWciOnsicnVuLmNvbmN1cnJlbmN5Ijp7InN0YXRlIjoibWFuYWdlZCIsInZhbHVlIjo0fX0sInNlY3JldHMiOnsicHJveHkuc3Vic2NyaXB0aW9uVXJsIjp7InN0YXRlIjoiaGlkZGVuIiwidmFsdWUiOiJodHRwczovL3Zwbi5leGFtcGxlLmNvbS9zdWIvYWJjIn19LCJlbnRpdGxlbWVudHMiOnsicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6Im1hbmFnZWQiLCJ2YWx1ZSI6dHJ1ZX19fX0.LhfMI8D6AdUg-_FaYodnmSZwonYQ1KDBzeZjtO-eYQmbDrFO2Y9Mnuji2jnLHuBhec5RBckN7f8g_9fevg5_BA";
+  "eyJhbGciOiJFZERTQSIsImtpZCI6ImRqZGwtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJhYmMxMjNkZWY0NTYiLCJkZXZpY2VJZCI6ImRldmljZS1maXh0dXJlLTAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiQWRhIExvdmVsYWNlIiwiZmlyc3ROYW1lIjoiQWRhIiwiZW1haWwiOiJhZGFAZXhhbXBsZS5jb20iLCJhY3RpdmF0ZWRBdCI6MTY5MDAwMDAwMH0sInBheWxvYWQiOnsiY29uZmlnIjp7InJ1bi5jb25jdXJyZW5jeSI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOjQsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJzZWNyZXRzIjp7InByb3h5LnN1YnNjcmlwdGlvblVybCI6eyJzdGF0ZSI6ImhpZGRlbiIsInZhbHVlIjoiaHR0cHM6Ly92cG4uZXhhbXBsZS5jb20vc3ViL2FiYyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19LCJlbnRpdGxlbWVudHMiOnsicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fX0.6uPFqKrtFQt-AyXTXRnvNpdOqcDajzL6fj4zCR_z7LMIq0tYPtuM5oCAO1UrYnju0jpUOEdxo7tJwhjfUbXYAA";
 
 // Second committed test key (Polaris Key rotation/wrong-kid cases).
 const ROTATE_KID = "pkey-test-rotate-2026";
@@ -83,12 +94,14 @@ describe("verifyJws — frozen contract", () => {
         name: "Grace Hopper",
         firstName: "Grace",
         email: "grace@example.com",
-        enrolledAt: 1690000000,
+        activatedAt: 1690000000,
       },
       payload: {
         config: {},
         secrets: {},
-        entitlements: { polarisVpn: { state: "managed", value: true } },
+        entitlements: {
+          polarisVpn: { state: "enforced", value: true, updatedAt: 1699990000 },
+        },
       },
     };
     const jws = await signJws(doc, ROTATE_PEM, ROTATE_KID);
@@ -103,7 +116,13 @@ describe("verifyJws — frozen contract", () => {
       ...DJDL_DOC,
       payload: {
         ...DJDL_DOC.payload,
-        config: { "run.concurrency": { state: "managed", value: 999 } },
+        config: {
+          "run.concurrency": {
+            state: "enforced",
+            value: 999,
+            updatedAt: 1699990000,
+          },
+        },
       },
     };
     const forged = `${h}.${b64u(tampered)}.${s}`;

@@ -1,4 +1,4 @@
-// The Polaris Key client: a small, product-agnostic facade over enroll/fetch/verify/
+// The Polaris Key client: a small, product-agnostic facade over activate/fetch/verify/
 // cache/gate. Offline-first — init() applies the cached doc with no network; refresh()
 // re-pulls (with a single /token re-acquire on 401) and re-applies.
 
@@ -14,10 +14,13 @@ import { verifyDoc } from "./verify.js";
 import { fetchManagedConfig } from "./fetch.js";
 import {
   deauthorize,
-  enrollWithKey,
+  deauthorizeDevice as deauthorizeRemoteDevice,
+  activateWithKey,
+  listDevices as listRemoteDevices,
   reacquireToken,
+  renameDevice as renameRemoteDevice,
   reportSnapshot,
-  type EnrollResult,
+  type ActivationResult,
 } from "./endpoints.js";
 import { KeyringStore, type CacheRecord, type Store } from "./store.js";
 import {
@@ -61,6 +64,32 @@ export interface RefreshResult {
   unauthorized?: boolean;
   blocked?: boolean;
   deviceCap?: boolean;
+}
+
+export interface DeviceInfo {
+  id: string;
+  current: boolean;
+  status: LicenseState["status"];
+  licenseId?: string;
+  profile?: DocProfile;
+  lastVerifiedAt?: number;
+  label?: string | null;
+  platform?: string | null;
+  arch?: string | null;
+  appVersion?: string | null;
+  sdkName?: string | null;
+  sdkVersion?: string | null;
+}
+
+export class DeviceManagementUnsupportedError extends Error {
+  readonly code = "device-management-unsupported";
+
+  constructor(
+    message = "Remote device management is not supported by this backend.",
+  ) {
+    super(message);
+    this.name = "DeviceManagementUnsupportedError";
+  }
 }
 
 const DEFAULT_BASE = "https://key.plrs.im";
@@ -165,7 +194,10 @@ export class PolarisKeyClient {
    *  ones, each marked `{ key, value, enforced }`. (`hidden` keys are still applied by
    *  `getConfig`; they are merely withheld from this enumeration.) */
   listUserConfig(): UserConfigEntry[] {
-    return listUserEntries(this.cache?.doc?.payload.config);
+    return listUserEntries(this.cache?.doc?.payload.config).map((entry) => ({
+      ...entry,
+      value: this.getConfig(entry.key, entry.value),
+    }));
   }
 
   getSecret(key: string): string | null {
@@ -196,9 +228,83 @@ export class PolarisKeyClient {
     return doc ? doc.profile : null;
   }
 
-  // ── Enrollment ──────────────────────────────────────────────────────────────
-  async activateWithKey(key: string): Promise<EnrollResult> {
-    const r = await enrollWithKey({
+  getCurrentDevice(): DeviceInfo {
+    const doc = this.cache?.doc;
+    const out: DeviceInfo = {
+      id: this.deviceId,
+      current: true,
+      status: this.status().status,
+    };
+    if (doc) {
+      out.licenseId = doc.licenseId;
+      out.profile = doc.profile;
+    }
+    if (this.cache?.lastVerifiedAt !== undefined)
+      out.lastVerifiedAt = this.cache.lastVerifiedAt;
+    return out;
+  }
+
+  async listDevices(): Promise<DeviceInfo[]> {
+    if (!this.token) return [this.getCurrentDevice()];
+    const devices = await listRemoteDevices({
+      baseUrl: this.baseUrl,
+      product: this.product,
+      token: this.token,
+      fetchImpl: this.fetchImpl,
+    });
+    const current = this.getCurrentDevice();
+    return devices.map((device) => ({
+      id: device.id,
+      current: device.current,
+      status: device.current ? current.status : "ok",
+      licenseId: device.licenseId ?? current.licenseId,
+      profile: device.current ? current.profile : undefined,
+      lastVerifiedAt: device.current ? current.lastVerifiedAt : undefined,
+      label: device.label,
+      platform: device.platform,
+      arch: device.arch,
+      appVersion: device.appVersion,
+      sdkName: device.sdkName,
+      sdkVersion: device.sdkVersion,
+    }));
+  }
+
+  async deauthorizeDevice(deviceId: string): Promise<void> {
+    if (deviceId === this.deviceId) {
+      await this.deactivate();
+      return;
+    }
+    if (!this.token)
+      throw new DeviceManagementUnsupportedError(
+        "Activate before managing devices.",
+      );
+    await deauthorizeRemoteDevice({
+      baseUrl: this.baseUrl,
+      product: this.product,
+      token: this.token,
+      deviceId,
+      fetchImpl: this.fetchImpl,
+    });
+  }
+
+  async renameDevice(deviceId: string, label: string | null): Promise<void> {
+    if (!this.token)
+      throw new DeviceManagementUnsupportedError(
+        "Activate before managing devices.",
+      );
+    await renameRemoteDevice({
+      baseUrl: this.baseUrl,
+      product: this.product,
+      token: this.token,
+      deviceId,
+      label,
+      fetchImpl: this.fetchImpl,
+    });
+  }
+
+  // ── Activation ──────────────────────────────────────────────────────────────
+  async activateWithKey(key: string): Promise<ActivationResult> {
+    const r = await activateWithKey({
       baseUrl: this.baseUrl,
       product: this.product,
       key,
@@ -229,9 +335,9 @@ export class PolarisKeyClient {
   }
 
   // ── Refresh ─────────────────────────────────────────────────────────────────
-  async refresh(_opts: { force?: boolean } = {}): Promise<RefreshResult> {
+  async refresh(opts: { force?: boolean } = {}): Promise<RefreshResult> {
     if (!this.token) return { applied: false };
-    const result = await this.fetchAndApply(true);
+    const result = await this.fetchAndApply(true, opts.force === true);
     if (result.applied || !result.unauthorized) {
       await reportSnapshot({
         baseUrl: this.baseUrl,
@@ -244,7 +350,10 @@ export class PolarisKeyClient {
     return result;
   }
 
-  private async fetchAndApply(allowReacquire: boolean): Promise<RefreshResult> {
+  private async fetchAndApply(
+    allowReacquire: boolean,
+    force = false,
+  ): Promise<RefreshResult> {
     if (!this.token) return { applied: false };
     if (this.trustRefreshEnabled) await this.refreshTrust().catch(() => false);
     const res = await fetchManagedConfig({
@@ -254,7 +363,7 @@ export class PolarisKeyClient {
       deviceId: this.deviceId,
       version: this.version,
       channel: this.channel,
-      etag: this.cache?.etag,
+      etag: force ? undefined : this.cache?.etag,
       fetchImpl: this.fetchImpl,
     });
 
@@ -277,7 +386,7 @@ export class PolarisKeyClient {
           if (re.kind === "ok") {
             this.token = re.token;
             await this.store.setToken(re.token);
-            return this.fetchAndApply(false);
+            return this.fetchAndApply(false, force);
           }
         }
         await this.patchCache({ lastSyncUnauthorized: true });

@@ -17,7 +17,7 @@ export interface LicenseState {
 }
 
 export interface GateInput {
-  /** Whether a per-machine token is stored. */
+  /** Whether a per-device token is stored. */
   hasToken: boolean;
   /** The cached, verified doc (or null if none yet). */
   doc: ManagedConfigDoc | null;
@@ -39,9 +39,9 @@ export function licenseState(input: GateInput): LicenseState {
       allowedRange: input.blocked.allowedRange,
     };
   }
-  if (!input.hasToken) return { status: "needs-enroll" };
+  if (!input.hasToken) return { status: "needs-activation" };
   if (input.lastSyncUnauthorized) return { status: "revoked" };
-  if (!doc) return { status: "needs-enroll" };
+  if (!doc) return { status: "needs-activation" };
   if (now > doc.graceUntil)
     return { status: "expired", graceUntil: doc.graceUntil };
   if (now > doc.expiresAt) {

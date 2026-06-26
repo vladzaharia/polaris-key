@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   Boxes,
   CheckCircle2,
   Code2,
@@ -33,10 +34,8 @@ import {
 
 export function ProductOverview({
   slug,
-  mode = "overview",
 }: {
   slug: string;
-  mode?: "overview" | "setup";
 }): React.ReactElement {
   const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
     api.product(slug).then((r) => r.product),
@@ -47,7 +46,7 @@ export function ProductOverview({
   if (error && !data) {
     return (
       <section className="space-y-6">
-        <Header slug={slug} title={mode === "setup" ? "Setup" : "Overview"} />
+        <Header slug={slug} title="Overview" />
         <EmptyState
           icon={<AlertTriangle aria-hidden />}
           title="Could not load product setup"
@@ -65,7 +64,7 @@ export function ProductOverview({
   if (!data) {
     return (
       <section className="space-y-6">
-        <Header slug={slug} title={mode === "setup" ? "Setup" : "Overview"} />
+        <Header slug={slug} title="Overview" />
         <EmptyState
           icon={<PackageOpen aria-hidden />}
           title="No product details available"
@@ -76,11 +75,7 @@ export function ProductOverview({
 
   return (
     <section className="space-y-6">
-      <Header
-        slug={slug}
-        title={mode === "setup" ? "Setup" : "Overview"}
-        product={data}
-      />
+      <Header slug={slug} title="Overview" product={data} />
       <HealthStrip product={data} />
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <SetupCard product={data} />
@@ -191,13 +186,13 @@ function SetupCard({
   product: ProductDetail;
 }): React.ReactElement {
   const setup = setupStateOf(product);
-  const actions = nextActionsOf(product);
+  const checklist = setupChecklistOf(product);
   const rows = [
     ["Product", product.name],
     ["Slug", product.slug],
     ["Admin group", product.adminGroup ?? "not restricted"],
     ["Compatibility", `${product.compatMin} to ${product.compatMax}`],
-    ["Default devices", String(product.defaultMachineLimit)],
+    ["Default devices", String(product.defaultDeviceLimit)],
     ["Offline window", `${product.defaultMaxOfflineDays} days`],
   ];
   return (
@@ -224,39 +219,149 @@ function SetupCard({
         </dl>
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Next actions
+            Guided checklist
           </p>
-          {actions.length ? (
-            <ul className="space-y-2">
-              {actions.slice(0, 5).map((action, index) => (
-                <li
-                  key={action.id ?? index}
-                  className="flex items-start gap-2 text-sm"
-                >
-                  <CheckCircle2
-                    className="mt-0.5 size-4 shrink-0 text-primary"
-                    aria-hidden
-                  />
-                  <span>
-                    {action.label ??
-                      action.title ??
-                      action.description ??
-                      "Review setup"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {setup?.healthy || setup?.complete
-                ? "No setup actions are currently required."
-                : "Set required secrets, verify auth methods, and copy the SDK trust key."}
-            </p>
-          )}
+          <ul className="space-y-2">
+            {checklist.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-col gap-3 rounded-md border border-border p-3 sm:flex-row sm:items-start sm:justify-between"
+              >
+                <div className="flex min-w-0 gap-2">
+                  {item.status === "done" ? (
+                    <CheckCircle2
+                      className="mt-0.5 size-4 shrink-0 text-success"
+                      aria-hidden
+                    />
+                  ) : (
+                    <AlertTriangle
+                      className="mt-0.5 size-4 shrink-0 text-warning"
+                      aria-hidden
+                    />
+                  )}
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+                {item.href ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={item.href}>
+                      {item.actionLabel}
+                      <ArrowRight aria-hidden />
+                    </a>
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </div>
       </CardContent>
     </Card>
   );
+}
+
+interface SetupChecklistItem {
+  id: string;
+  title: string;
+  description: string;
+  status: "done" | "action";
+  href?: string;
+  actionLabel?: string;
+}
+
+function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
+  const setup = setupStateOf(product);
+  const signing = signingBundleOf(product);
+  const missing = [
+    ...(setup?.missing ?? []),
+    ...(setup?.requiredSecrets ?? []),
+    ...(setup?.missingSecrets ?? []),
+  ].filter(Boolean);
+  const warnings = setup?.warnings ?? [];
+  const items: SetupChecklistItem[] = [
+    {
+      id: "trust-key",
+      title: "Trust key readiness",
+      description: signing.publicKey
+        ? "A public key is available for client pinning."
+        : "Prepare or rotate a signing key before SDKs rely on signed config.",
+      status: signing.publicKey ? "done" : "action",
+      href: hashFor({ kind: "product", slug: product.slug, view: "settings" }),
+      actionLabel: signing.publicKey ? "Review key" : "Prepare key",
+    },
+    {
+      id: "secrets",
+      title: "Required secrets",
+      description: missing.length
+        ? `Missing: ${missing.join(", ")}`
+        : "All reported setup requirements are configured.",
+      status: missing.length ? "action" : "done",
+      href: missing.length
+        ? hashFor({ kind: "product", slug: product.slug, view: "settings" })
+        : undefined,
+      actionLabel: "Set secrets",
+    },
+    {
+      id: "license-defaults",
+      title: "License defaults",
+      description: `${product.defaultDeviceLimit} devices, ${product.defaultMaxOfflineDays} offline days by default.`,
+      status: "done",
+      href: hashFor({ kind: "product", slug: product.slug, view: "settings" }),
+      actionLabel: "Edit defaults",
+    },
+    {
+      id: "first-license",
+      title: "Issue a license",
+      description:
+        "Create a test license to verify keys, devices, and policy before rollout.",
+      status: "action",
+      href: hashFor({ kind: "product", slug: product.slug, view: "licenses" }),
+      actionLabel: "Create test license",
+    },
+  ];
+
+  for (const [index, warning] of warnings.entries()) {
+    items.push({
+      id: `warning-${index}`,
+      title: "Review setup warning",
+      description: warning,
+      status: "action",
+      href: hashFor({ kind: "product", slug: product.slug, view: "overview" }),
+      actionLabel: "Review",
+    });
+  }
+
+  for (const [index, action] of nextActionsOf(product).entries()) {
+    const title =
+      action.label ?? action.title ?? action.description ?? "Review setup";
+    const href = setupActionHref(product.slug, action.href ?? action.route);
+    if (items.some((item) => item.title === title)) continue;
+    items.push({
+      id: action.id ?? `next-${index}`,
+      title,
+      description:
+        action.description ?? "Recommended by the product setup state.",
+      status:
+        action.status === "done" || action.status === "complete"
+          ? "done"
+          : "action",
+      href,
+      actionLabel: href ? "Open" : undefined,
+    });
+  }
+
+  return items.slice(0, 7);
+}
+
+function setupActionHref(slug: string, value?: string): string | undefined {
+  if (!value) return undefined;
+  if (value.startsWith("#/") || value.startsWith("http")) return value;
+  const rawView = value.replace(/^\/+/, "");
+  const view = !rawView || rawView === "setup" ? "overview" : rawView;
+  return `#/p/${encodeURIComponent(slug)}/${encodeURIComponent(view || "overview")}`;
 }
 
 function SigningCard({
@@ -323,7 +428,7 @@ function ModulesCard({
     {
       id: "identity",
       label: "Identity",
-      description: "OIDC enrollment when configured",
+      description: "OIDC activation when configured",
       status: "baseline",
       configured: null,
       missing: [],

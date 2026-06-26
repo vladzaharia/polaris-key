@@ -64,7 +64,7 @@ def register_argparse(
 
         return _run
 
-    p_act = subparsers.add_parser("activate", help="Enroll this device with a license key.")
+    p_act = subparsers.add_parser("activate", help="Activate this device with a license key.")
     _add_common(p_act)
     p_act.add_argument("key", help="The license key.")
     p_act.set_defaults(func=lambda args: _activate(factory, args))

@@ -1,4 +1,4 @@
-// Effective managed payload = layered merge of tier(profile) -> license -> machine,
+// Effective managed payload = layered merge of tier(profile) -> license -> device,
 // key-by-key (a later layer's entry wins). Each layer is a stored ManagedPayload JSON.
 
 import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";

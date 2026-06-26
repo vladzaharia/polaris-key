@@ -116,7 +116,7 @@
       "expect": { "status": "revoked", "ok": false }
     },
     {
-      "name": "needs-enroll — no token (no credential stored)",
+      "name": "needs-activation — no token (no credential stored)",
       "gate": {
         "version": "2.0.0",
         "compatMin": "1.0.0",
@@ -124,10 +124,10 @@
         "entitlements": {}
       },
       "license": { "hasToken": false, "now": 1500 },
-      "expect": { "status": "needs-enroll", "ok": false }
+      "expect": { "status": "needs-activation", "ok": false }
     },
     {
-      "name": "needs-enroll — token present but no cached doc yet",
+      "name": "needs-activation — token present but no cached doc yet",
       "gate": {
         "version": "2.0.0",
         "compatMin": "1.0.0",
@@ -135,7 +135,7 @@
         "entitlements": {}
       },
       "license": { "hasToken": true, "now": 1500 },
-      "expect": { "status": "needs-enroll", "ok": false }
+      "expect": { "status": "needs-activation", "ok": false }
     },
     {
       "name": "version-too-old — build below the product compat min",

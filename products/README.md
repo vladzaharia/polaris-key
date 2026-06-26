@@ -10,7 +10,7 @@ add a product.
 
 1. Create the product manifest. Repo-link is preferred because the manifest stays with the
    product source. Manual schema creation is useful before a repo exists.
-2. Register the product through the admin portal or platform CLI. Polaris validates the
+2. Register the product through the admin portal. Polaris validates the
    manifest, discovers the release provider where possible, mints a sealed Ed25519 signing
    key in `product_keys`, and returns the `kid -> publicKey` trust set for SDKs.
 3. Configure the GitHub App webhook so default-branch `.pkey/` changes auto-sync; the admin
@@ -18,8 +18,8 @@ add a product.
 4. Set any required product secrets from the admin UI/API. Manifest secret names are stable
    references; secret values are sealed into `product_secrets` and are never echoed back.
 
-The legacy seed path remains only for local fixture regeneration. It does not mint sealed
-`product_keys` and must not be used for live product onboarding:
+The seed generator is only for local fixture regeneration. It does not mint sealed
+`product_keys`; live product onboarding goes through the admin GitHub-link flow:
 
 ```sh
 pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql

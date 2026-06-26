@@ -12,11 +12,11 @@ import XCTest
 @testable import PolarisKeyUI
 
 final class LoginCopyTests: XCTestCase {
-    func testUsableAndEnrollStatesHaveNoMessageCard() {
+    func testUsableAndActivateStatesHaveNoMessageCard() {
         let copy = PolarisKeyCopy()
         XCTAssertNil(copy.message(for: .ok))
         XCTAssertNil(copy.message(for: .grace))
-        XCTAssertNil(copy.message(for: .needsEnroll))
+        XCTAssertNil(copy.message(for: .needsActivation))
     }
 
     func testRevokedMapping() {

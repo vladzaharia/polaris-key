@@ -22,7 +22,7 @@ export interface LicenseState {
 
 /** The inputs every transport reduces to before computing the gate. */
 export interface GateInput {
-  /** Whether a credential (per-machine token desktop / cookie session browser) exists. */
+  /** Whether a credential (per-device token desktop / cookie session browser) exists. */
   hasToken: boolean;
   /** The cached, verified doc (or null if none yet). */
   doc: ManagedConfigDoc | null;
@@ -50,9 +50,9 @@ export function licenseState(input: GateInput): LicenseState {
       allowedRange: input.blocked.allowedRange,
     };
   }
-  if (!input.hasToken) return { status: "needs-enroll" };
+  if (!input.hasToken) return { status: "needs-activation" };
   if (input.lastSyncUnauthorized) return { status: "revoked" };
-  if (!doc) return { status: "needs-enroll" };
+  if (!doc) return { status: "needs-activation" };
   if (now > doc.graceUntil)
     return { status: "expired", graceUntil: doc.graceUntil };
   if (now > doc.expiresAt) {

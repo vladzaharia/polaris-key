@@ -10,19 +10,17 @@ import type {
 } from "@polaris-key/protocol";
 import type { LicenseState } from "./gateModel.js";
 
-export type { LicenseState } from "./gateModel.js";
-export { licenseState, isUsable } from "./gateModel.js";
-
 /** Which transport an adapter speaks. `auto` resolves at construction time. */
 export type PolarisMode = "browser" | "desktop";
 
 /** The phase of the very first load — distinct from a license `status`. Until the first
- *  snapshot resolves we render a loading screen, not a (misleading) `needs-enroll`. */
+ *  snapshot resolves we render a loading screen, not a (misleading) `needs-activation`. */
 export type PolarisPhase = "loading" | "ready";
 
 /** Stable error codes surfaced by adapter operations. */
 export type PolarisErrorCode =
   | "key-entry-unsupported"
+  | "device-management-unsupported"
   | "sign-in-failed"
   | "sign-out-failed"
   | "refresh-failed"
@@ -49,6 +47,15 @@ export interface UserConfigEntry {
   enforced: boolean;
 }
 
+export interface DeviceInfo {
+  id: string;
+  current: boolean;
+  status: LicenseStatus;
+  licenseId?: string;
+  profile?: DocProfile;
+  lastVerifiedAt?: number;
+}
+
 /** A typed error every adapter throws so callers can branch on `.code` not on strings. */
 export class PolarisError extends Error {
   readonly code: PolarisErrorCode;
@@ -72,6 +79,10 @@ export interface PolarisState {
   status: LicenseStatus;
   /** The signed profile (name/email), once a doc is present. */
   profile: DocProfile | null;
+  /** Device id from the verified doc, once a device-bound doc is present. */
+  currentDeviceId: string | null;
+  /** License id from the verified doc, once present. */
+  licenseId: string | null;
   /** Plaintext config, RESOLVED to effective values (key → value): per-key precedence is
    *  `enforced|hidden` (remote, locked) > `local` override > `remote-default` > fallback.
    *  This is the map every existing hook/getter reads, so it stays effective, not raw. */
@@ -113,10 +124,16 @@ export interface PolarisAdapter {
   /** Begin an OIDC sign-in. Desktop returns a verification handle; browser navigates
    *  the page (and never resolves, since the page unloads). */
   signInWithOidc(): Promise<OidcSignInHandle | void>;
-  /** Enroll with a typed key using the active transport. */
+  /** Activate with a typed key using the active transport. */
   submitKey(key: string): Promise<void>;
   /** Sign out / deauthorize and wipe local state. */
   signOut(): Promise<void>;
+  /** The current device, when the active session has a verified device-bound doc. */
+  currentDevice(): DeviceInfo | null;
+  /** List account/license devices when supported by the backend. */
+  listDevices(): Promise<DeviceInfo[]>;
+  /** Deauthorize a device. Only the current device is supported today. */
+  deauthorizeDevice(deviceId: string): Promise<void>;
   /** Read a single config value with a fallback, honoring v2 state + local overrides:
    *  `enforced`/`hidden` → remote value (locked); else `localOverrides[key] ?? remote ?? fallback`. */
   getConfig<T = JSONValue>(key: string, fallback: T): T;
@@ -142,9 +159,11 @@ export function initialState(
   return {
     phase: "loading",
     mode,
-    gate: { status: "needs-enroll" },
-    status: "needs-enroll",
+    gate: { status: "needs-activation" },
+    status: "needs-activation",
     profile: null,
+    currentDeviceId: null,
+    licenseId: null,
     config: {},
     configEntries: {},
     localOverrides,

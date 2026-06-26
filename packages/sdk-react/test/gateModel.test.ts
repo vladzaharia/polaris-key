@@ -14,21 +14,21 @@ function doc(over: Partial<ManagedConfigDoc> = {}): ManagedConfigDoc {
     issuedAt: 1000,
     expiresAt: 1000 + 3600,
     graceUntil: 1000 + 30 * 86400,
-    profile: { name: "", firstName: "", email: "", enrolledAt: 0 },
+    profile: { name: "", firstName: "", email: "", activatedAt: 0 },
     payload: { config: {}, secrets: {}, entitlements: {} },
     ...over,
   };
 }
 
 describe("licenseState (React port)", () => {
-  it("needs-enroll without a token", () => {
+  it("needs-activation without a token", () => {
     expect(licenseState({ hasToken: false, doc: null, now: 1000 }).status).toBe(
-      "needs-enroll",
+      "needs-activation",
     );
   });
-  it("needs-enroll with a token but no doc", () => {
+  it("needs-activation with a token but no doc", () => {
     expect(licenseState({ hasToken: true, doc: null, now: 1000 }).status).toBe(
-      "needs-enroll",
+      "needs-activation",
     );
   });
   it("revoked on a hard 401", () => {
@@ -72,6 +72,6 @@ describe("licenseState (React port)", () => {
     expect(isUsable("grace")).toBe(true);
     expect(isUsable("expired")).toBe(false);
     expect(isUsable("revoked")).toBe(false);
-    expect(isUsable("needs-enroll")).toBe(false);
+    expect(isUsable("needs-activation")).toBe(false);
   });
 });

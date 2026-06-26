@@ -100,7 +100,7 @@ parses, else taken as a raw string. (See each SDK README for the per-language AP
 ## Registering + re-syncing a product
 
 There are three ways the catalog reaches D1. Repo-link is the normal product setup path;
-manual create is for early experiments; seed SQL is a legacy fixture tool only.
+manual create is for early experiments; seed SQL is a fixture tool only.
 
 1. **Repo-link (preferred).** The product hosts a `.pkey/` directory. The admin links the
    repo; the Worker fetches + `parseManifest`s the three files and registers the product.
@@ -111,7 +111,7 @@ manual create is for early experiments; seed SQL is a legacy fixture tool only.
    JSON/YAML document. Polaris still mints the sealed product signing key, but release,
    OIDC, provisioning, profiles, tiers, and edge-mint rows are configured later in admin or
    by linking a repo.
-3. **Seed SQL (legacy fixture generation only).** Generate fixture SQL from the monorepo's
+3. **Seed SQL (fixture generation only).** Generate fixture SQL from the monorepo's
    `products/<slug>` files:
 
    ```sh
@@ -119,9 +119,9 @@ manual create is for early experiments; seed SQL is a legacy fixture tool only.
    ```
 
    Do not use this for live onboarding: it cannot mint sealed `product_keys` or store
-   product secret values. Normal product registration must use the admin portal or platform
-   CLI so Polaris can mint the sealed signing key, return the public trust key, and list
-   missing product secrets.
+   product secret values. Normal product registration must use the admin portal so Polaris
+   can mint the sealed signing key, return the public trust key, and list missing product
+   secrets.
 
 ### Admin override vs re-sync
 
@@ -141,5 +141,6 @@ recipes. So the flow is:
    provider-discovered runtime value.
 
 When you author a typed mirror for a product that wants compile-time config types, regenerate
-it from the catalog with `tools/gen-mirrors.ts` (and `--check` in CI) — see
-`CONTRIBUTING.md`.
+it from the catalog with
+`pnpm gen:mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (and add `--check`
+in product-specific CI) — see `CONTRIBUTING.md`.

@@ -66,7 +66,7 @@ export {
   type BridgeState,
   type BridgeOidcBegin,
   type BridgeOidcPoll,
-  type BridgeEnroll,
+  type BridgeActivation,
 } from "./desktop/bridge.js";
 
 // ── Core (mode-agnostic types + helpers) ─────────────────────────────────────
@@ -81,6 +81,7 @@ export {
   resolveConfig,
   resolveConfigValue,
   configSource,
+  currentDeviceFromState,
   listUserConfig,
   PolarisError,
   initialState,
@@ -93,6 +94,7 @@ export {
   type PolarisErrorCode,
   type PolarisState,
   type OidcSignInHandle,
+  type DeviceInfo,
   type ConfigSource,
   type UserConfigEntry,
 } from "./core/index.js";

@@ -23,6 +23,7 @@ from .models import (
     AllowedRange,
     BlockReason,
 )
+from ._version import SDK_NAME, SDK_VERSION
 
 __all__ = [
     "FetchOk",
@@ -56,7 +57,7 @@ class FetchUnauthorized:
 @dataclass(frozen=True)
 class FetchDeviceCap:
     limit: Optional[int] = None
-    machineCount: Optional[int] = None
+    deviceCount: Optional[int] = None
     kind: str = "device-cap"
 
 
@@ -103,8 +104,8 @@ def fetch_managed_config(
         HEADER_CHANNEL: channel,
         HEADER_PLATFORM: platform.system().lower(),
         HEADER_ARCH: platform.machine(),
-        HEADER_SDK_NAME: "polaris-key",
-        HEADER_SDK_VERSION: "0.0.0",
+        HEADER_SDK_NAME: SDK_NAME,
+        HEADER_SDK_VERSION: SDK_VERSION,
     }
     if etag:
         headers["if-none-match"] = etag
@@ -122,7 +123,10 @@ def fetch_managed_config(
         return FetchUnauthorized()
     if status == 429:
         body = _json_or_empty(res)
-        return FetchDeviceCap(limit=body.get("limit"), machineCount=body.get("machineCount"))
+        return FetchDeviceCap(
+            limit=body.get("limit"),
+            deviceCount=body.get("deviceCount"),
+        )
     if status == 403:
         body = _json_or_empty(res)
         return FetchBlocked(

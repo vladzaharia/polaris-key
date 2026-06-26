@@ -1,9 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// OIDC enrollment (shared IdP, per-product client + group mapping). A browser sign-in
+// OIDC activation (shared IdP, per-product client + group mapping). A browser sign-in
 // mints/locates a license for the identity; generic provisioning hooks turn verified
 // claims into entitlements + secrets (djdl's Remnawave/VPN is the first instance, as
-// data). The CLI/loopback flow polls for a per-machine token. ID tokens are verified
+// data). The CLI/loopback flow polls for a per-device token. ID tokens are verified
 // against the issuer JWKS via jose (asymmetric algs only).
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -18,7 +18,7 @@ import { openProductSecret, type Product } from "./product.js";
 import { errorResponse, json, methodNotAllowed } from "./http.js";
 import { randomId } from "./crypto.js";
 import { getLicense, getLicenseBySub, getTier, insertLicense } from "./repo.js";
-import { authorizeMachine, licenseUsable } from "./licenseCore.js";
+import { authorizeDevice, licenseUsable } from "./licenseCore.js";
 import { createBrowserSession } from "./browserSession.js";
 
 const FLOW_TTL_SECONDS = 600;
@@ -62,7 +62,11 @@ interface FlowRecord {
 
 interface DeviceFlowRecord {
   state: string;
-  machineId: string;
+  deviceId: string;
+  userCode: string;
+  authorizeUrl: string;
+  deviceName?: string;
+  confirmedAt?: number;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -206,7 +210,7 @@ export async function applyProvisioning(
 
 /** Find or mint a license for an identity. Returns the licenseId, or an error if the
  *  identity's groups don't grant entitlement. Idempotent on the OIDC subject. */
-export async function enrollFromIdentity(
+export async function activateFromIdentity(
   db: Db,
   product: Product,
   identity: OidcIdentity,
@@ -276,8 +280,7 @@ export async function enrollFromIdentity(
     email: identity.email ?? null,
     groups_json: JSON.stringify(identity.groups),
     tier_id: tierId,
-    profile_id: null,
-    enrolled_at: now,
+    activated_at: now,
     expires_at: expiresAt,
     max_offline_days: null,
     overrides_json: JSON.stringify(overrides),
@@ -290,7 +293,7 @@ export async function enrollFromIdentity(
   return { licenseId };
 }
 
-/** Authorize a device for a license and mint a per-machine token. */
+/** Authorize a device for a license and mint a per-device token. */
 export async function authorizeAndMint(
   env: Env,
   db: Db,
@@ -301,7 +304,7 @@ export async function authorizeAndMint(
 ): Promise<string> {
   const row = await getLicense(db, product.slug, licenseId);
   if (!row) throw new Error("license not found");
-  const result = await authorizeMachine(env, db, product, row, deviceId, now);
+  const result = await authorizeDevice(env, db, product, row, deviceId, now);
   if ("error" in result) throw new Error(result.error);
   return result.token;
 }
@@ -389,31 +392,102 @@ export async function handleAuthDeviceStart(
     return errorResponse(400, "bad_request", "invalid json");
   }
   const url = new URL(req.url);
-  const machineId =
+  const deviceId =
     (typeof body.deviceId === "string" && body.deviceId) ||
-    (typeof body.machine === "string" && body.machine) ||
     req.headers.get(HEADER_DEVICE) ||
-    url.searchParams.get("machine");
-  if (!machineId) return errorResponse(400, "bad_request", "missing device id");
+    url.searchParams.get("device");
+  if (!deviceId) return errorResponse(400, "bad_request", "missing device id");
+  const deviceName =
+    typeof body.deviceName === "string" && body.deviceName.trim()
+      ? body.deviceName.trim().slice(0, 120)
+      : undefined;
   const flow = await beginAuthFlow(req, env, db, product);
   if (flow instanceof Response) return flow;
   const deviceCode = b64url(randomBytes(16));
-  const deviceRecord: DeviceFlowRecord = { state: flow.state, machineId };
+  const userCode = deviceUserCode(deviceCode);
+  const deviceRecord: DeviceFlowRecord = {
+    state: flow.state,
+    deviceId,
+    userCode,
+    authorizeUrl: flow.authorizeUrl,
+    deviceName,
+  };
   await env.HOT.put(
     deviceFlowKey(product.slug, deviceCode),
     JSON.stringify(deviceRecord),
     { expirationTtl: FLOW_TTL_SECONDS },
   );
+  const verificationUri = `${new URL(req.url).origin}/${product.slug}/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}`;
   return json({
     status: "pending",
     deviceCode,
-    userCode: deviceUserCode(deviceCode),
-    verificationUri: flow.authorizeUrl,
-    verificationUriComplete: flow.authorizeUrl,
-    authorizationUrl: flow.authorizeUrl,
+    userCode,
+    verificationUri,
+    verificationUriComplete: verificationUri,
     expiresIn: FLOW_TTL_SECONDS,
     interval: 2,
     pollUrl: `${new URL(req.url).origin}/${product.slug}/auth/device/poll`,
+  });
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** GET /<product>/auth/device/verify — user-visible device confirmation. */
+export async function handleAuthDeviceVerify(
+  req: Request,
+  env: Env,
+  product: Product,
+): Promise<Response> {
+  if (req.method !== "GET") return methodNotAllowed();
+  const url = new URL(req.url);
+  const deviceCode = url.searchParams.get("device_code");
+  if (!deviceCode) return errorResponse(400, "bad_request", "missing code");
+  const raw = await env.HOT.get(deviceFlowKey(product.slug, deviceCode));
+  if (!raw) return errorResponse(404, "not_found", "device code expired");
+  const record = JSON.parse(raw) as DeviceFlowRecord;
+
+  if (url.searchParams.get("confirm") === "1") {
+    record.confirmedAt = Math.floor(Date.now() / 1000);
+    await env.HOT.put(
+      deviceFlowKey(product.slug, deviceCode),
+      JSON.stringify(record),
+      { expirationTtl: FLOW_TTL_SECONDS },
+    );
+    return new Response(null, {
+      status: 302,
+      headers: { location: record.authorizeUrl },
+    });
+  }
+
+  const confirmUrl = new URL(url);
+  confirmUrl.searchParams.set("confirm", "1");
+  const deviceLabel = record.deviceName || record.deviceId;
+  const html = `<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Authorize ${escapeHtml(product.name)}</title>
+<body style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #0c0f17; color: #f8fafc;">
+  <main style="max-width: 440px; margin: 12vh auto; padding: 32px;">
+    <p style="color:#9aa4b2; margin:0 0 8px;">Polaris Key</p>
+    <h1 style="font-size: 28px; margin:0 0 16px;">Authorize ${escapeHtml(product.name)}</h1>
+    <p style="line-height:1.5; color:#cbd5e1;">A desktop app is asking to activate this device. Confirm the code and device before signing in.</p>
+    <dl style="display:grid; grid-template-columns: 110px 1fr; gap:10px; margin:24px 0; color:#cbd5e1;">
+      <dt>Code</dt><dd style="margin:0; color:#fff; font-weight:700; letter-spacing:.08em;">${escapeHtml(record.userCode)}</dd>
+      <dt>Device</dt><dd style="margin:0;">${escapeHtml(deviceLabel)}</dd>
+      <dt>Product</dt><dd style="margin:0;">${escapeHtml(product.slug)}</dd>
+    </dl>
+    <a href="${escapeHtml(confirmUrl.toString())}" style="display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border-radius:8px; background:#5b7cfa; color:#fff; text-decoration:none; font-weight:650;">Continue to sign in</a>
+  </main>
+</body>`;
+  return new Response(html, {
+    status: 200,
+    headers: { "content-type": "text/html; charset=utf-8" },
   });
 }
 
@@ -536,9 +610,14 @@ export async function handleAuthCallback(
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
-  const result = await enrollFromIdentity(db, product, mapClaims(claims), now);
+  const result = await activateFromIdentity(
+    db,
+    product,
+    mapClaims(claims),
+    now,
+  );
   if ("error" in result) {
-    // Failed enrollment: drop the flow so the poller gets a generic error, not the reason.
+    // Failed activation: drop the flow so the poller gets a generic error, not the reason.
     await env.HOT.delete(flowKey(product.slug, state));
     return errorResponse(403, "forbidden", "not entitled");
   }
@@ -581,11 +660,11 @@ async function pollAuthFlow(
   db: Db,
   product: Product,
   state: string | null,
-  machine: string | null,
+  deviceId: string | null,
   now: number,
 ): Promise<Response> {
-  if (!state || !machine)
-    return errorResponse(400, "bad_request", "missing state/machine");
+  if (!state || !deviceId)
+    return errorResponse(400, "bad_request", "missing state/device");
   const raw = await env.HOT.get(flowKey(product.slug, state));
   if (!raw) return json({ status: "timeout" });
   const flow = JSON.parse(raw) as FlowRecord;
@@ -600,7 +679,7 @@ async function pollAuthFlow(
       db,
       product,
       flow.licenseId,
-      machine,
+      deviceId,
       now,
     );
   } catch {
@@ -610,7 +689,7 @@ async function pollAuthFlow(
   return json({ status: "ready", token, schemaVersion: product.schemaVersion });
 }
 
-/** GET /<product>/auth/poll?state=&machine= — return a token once the flow completes. */
+/** GET /<product>/auth/poll?state=&device= — return a token once the flow completes. */
 export async function handleAuthPoll(
   req: Request,
   env: Env,
@@ -624,12 +703,12 @@ export async function handleAuthPoll(
     db,
     product,
     url.searchParams.get("state"),
-    url.searchParams.get("machine"),
+    url.searchParams.get("device"),
     now,
   );
 }
 
-/** POST /<product>/auth/device/poll — JSON equivalent of the legacy poll route. */
+/** POST /<product>/auth/device/poll — poll a confirmed device sign-in flow. */
 export async function handleAuthDevicePoll(
   req: Request,
   env: Env,
@@ -650,25 +729,21 @@ export async function handleAuthDevicePoll(
       : typeof body.state === "string"
         ? body.state
         : null;
-  const machine =
-    typeof body.deviceId === "string"
-      ? body.deviceId
-      : typeof body.machine === "string"
-        ? body.machine
-        : null;
-  if (!state || !machine)
+  const deviceId = typeof body.deviceId === "string" ? body.deviceId : null;
+  if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing deviceCode/deviceId");
   const raw = await env.HOT.get(deviceFlowKey(product.slug, state));
   if (!raw) return json({ status: "timeout" });
   const deviceFlow = JSON.parse(raw) as DeviceFlowRecord;
-  if (deviceFlow.machineId !== machine)
+  if (deviceFlow.deviceId !== deviceId)
     return errorResponse(401, "unauthorized", "device mismatch");
+  if (!deviceFlow.confirmedAt) return json({ status: "pending" });
   const res = await pollAuthFlow(
     env,
     db,
     product,
     deviceFlow.state,
-    deviceFlow.machineId,
+    deviceFlow.deviceId,
     now,
   );
   const bodyOut = (await res

@@ -4,10 +4,7 @@
 //
 // Times are epoch SECONDS (the JOSE world the Worker signs in), never millis.
 //
-// `aud`/`iss` are decoded as optional: the frozen corpus's `legacy-djdl-baseline` vector
-// predates product-scoping and omits them, so the verifier must accept their absence and
-// reproduce the payload exactly. Product binding (aud == expected) is enforced separately
-// in `verifyDoc`, not by the decoder.
+// Product binding (`aud == expected`) is enforced in `verifyDoc` after signature checks.
 
 import Foundation
 
@@ -60,24 +57,24 @@ public struct DocProfile: Sendable, Codable, Equatable {
     public let name: String
     public let firstName: String
     public let email: String
-    /// Epoch seconds the key was first enrolled.
-    public let enrolledAt: Int
+    /// Epoch seconds the key was first activated.
+    public let activatedAt: Int
 
-    public init(name: String, firstName: String, email: String, enrolledAt: Int) {
+    public init(name: String, firstName: String, email: String, activatedAt: Int) {
         self.name = name
         self.firstName = firstName
         self.email = email
-        self.enrolledAt = enrolledAt
+        self.activatedAt = activatedAt
     }
 }
 
 /// The JWS payload — the whole object the Worker signs (EdDSA/Ed25519) and clients verify.
 public struct ManagedConfigDoc: Sendable, Codable, Equatable {
     public let schemaVersion: Int
-    /// Product slug — the audience this document is scoped to (absent in legacy vectors).
-    public let aud: String?
-    /// Issuer — always `key.plrs.im` (absent in legacy vectors).
-    public let iss: String?
+    /// Product slug — the audience this document is scoped to.
+    public let aud: String
+    /// Issuer — always `key.plrs.im`.
+    public let iss: String
     public let licenseId: String
     public let deviceId: String
     public let issuedAt: Int
@@ -90,8 +87,8 @@ public struct ManagedConfigDoc: Sendable, Codable, Equatable {
 
     public init(
         schemaVersion: Int,
-        aud: String?,
-        iss: String?,
+        aud: String,
+        iss: String,
         licenseId: String,
         deviceId: String,
         issuedAt: Int,
@@ -153,6 +150,10 @@ public let HEADER_ARCH = "X-PKey-Arch"
 public let HEADER_SDK_NAME = "X-PKey-SDK"
 public let HEADER_SDK_VERSION = "X-PKey-SDK-Version"
 
+/// SDK metadata sent with activation and config requests.
+public let POLARIS_KEY_SDK_NAME = "PolarisKeySwift"
+public let POLARIS_KEY_SDK_VERSION = "0.1.0"
+
 /// A 403 block reason returned by `GET /<product>/config`.
 public enum BlockReason: String, Sendable, Codable, Equatable {
     case versionTooOld = "version-too-old"
@@ -177,7 +178,7 @@ public enum LicenseStatus: String, Sendable, Equatable {
     case grace
     case expired
     case revoked
-    case needsEnroll = "needs-enroll"
+    case needsActivation = "needs-activation"
     case versionTooOld = "version-too-old"
     case versionTooNew = "version-too-new"
     case channelNotEntitled = "channel-not-entitled"

@@ -105,13 +105,13 @@ describe("fetchManagedConfig — status taxonomy", () => {
     });
   });
 
-  it("429 → device-cap with limit + machineCount", async () => {
+  it("429 → device-cap with limit + deviceCount", async () => {
     const { impl } = fakeFetch(
       429,
-      JSON.stringify({ limit: 3, machineCount: 3 }),
+      JSON.stringify({ limit: 3, deviceCount: 3 }),
     );
     const res = await fetchManagedConfig({ ...base, fetchImpl: impl });
-    expect(res).toEqual({ kind: "device-cap", limit: 3, machineCount: 3 });
+    expect(res).toEqual({ kind: "device-cap", limit: 3, deviceCount: 3 });
   });
 
   it("429 with a garbage body still yields device-cap (counts undefined)", async () => {
@@ -120,7 +120,7 @@ describe("fetchManagedConfig — status taxonomy", () => {
     expect(res).toEqual({
       kind: "device-cap",
       limit: undefined,
-      machineCount: undefined,
+      deviceCount: undefined,
     });
   });
 

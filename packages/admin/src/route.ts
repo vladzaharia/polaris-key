@@ -7,7 +7,7 @@
  *   #/p/<slug>/overview                 -> product operational overview
  *   #/p/<slug>/licenses                 -> licenses list for a product
  *   #/p/<slug>/licenses/<id>            -> a license detail
- *   #/p/<slug>/{setup|config|identity|releases|secrets|activity|settings}
+ *   #/p/<slug>/{config|identity|releases|secrets|activity|settings}
  *
  * Every per-product view carries the slug as the first path segment so deep links + the
  * product switcher stay in sync.
@@ -15,7 +15,6 @@
 
 export type Tab =
   | "overview"
-  | "setup"
   | "licenses"
   | "config"
   | "tiers"
@@ -26,14 +25,11 @@ export type Tab =
   | "activity"
   | "settings";
 
-type LegacyView = "catalog" | "oidc";
-
-/** The full set of per-product views (tabs plus the license-detail leaf and legacy aliases). */
-export type View = Tab | LegacyView | "license";
+/** The full set of per-product views (tabs plus the license-detail leaf). */
+export type View = Tab | "license";
 
 export const TABS: { tab: Tab; label: string }[] = [
   { tab: "overview", label: "Overview" },
-  { tab: "setup", label: "Setup" },
   { tab: "licenses", label: "Licenses" },
   { tab: "config", label: "Config" },
   { tab: "tiers", label: "Tiers" },
@@ -46,25 +42,16 @@ export const TABS: { tab: Tab; label: string }[] = [
 ];
 
 const KNOWN_TABS: Tab[] = TABS.map((t) => t.tab);
-const LEGACY_ALIASES: Record<LegacyView, Tab> = {
-  catalog: "config",
-  oidc: "identity",
-};
-
-function isLegacyView(view: string): view is LegacyView {
-  return Object.prototype.hasOwnProperty.call(LEGACY_ALIASES, view);
-}
-
 export function normalizeView(view: View): Tab | "license" {
   if (view === "license") return "license";
-  if (isLegacyView(view)) return LEGACY_ALIASES[view];
   return view;
 }
 
 export type Route =
   | { kind: "dashboard" }
   | { kind: "products" }
-  | { kind: "product"; slug: string; view: View; id?: string };
+  | { kind: "product"; slug: string; view: Tab }
+  | { kind: "product"; slug: string; view: "license"; id: string };
 
 const PRODUCT = /^#\/p\/([^/]+)(?:\/([^/]+))?(?:\/([^/?]+))?/;
 
@@ -76,16 +63,13 @@ export function parseRoute(hash: string): Route {
   if (m && m[1]) {
     const slug = decodeURIComponent(m[1]);
     const view = (m[2] as View | undefined) ?? "overview";
-    if (view === "license" && m[3]) {
+    if (view === "licenses" && m[3]) {
       return {
         kind: "product",
         slug,
         view: "license",
         id: decodeURIComponent(m[3]),
       };
-    }
-    if (isLegacyView(view)) {
-      return { kind: "product", slug, view: LEGACY_ALIASES[view] };
     }
     const tab = (KNOWN_TABS as string[]).includes(view)
       ? (view as Tab)
@@ -106,8 +90,8 @@ export function tabOf(route: Route): Tab | null {
 export function hashFor(route: Route): string {
   if (route.kind === "dashboard") return "#/";
   if (route.kind === "products") return "#/products";
-  if (route.view === "license" && route.id) {
-    return `#/p/${encodeURIComponent(route.slug)}/license/${encodeURIComponent(route.id)}`;
+  if (route.view === "license") {
+    return `#/p/${encodeURIComponent(route.slug)}/licenses/${encodeURIComponent(route.id)}`;
   }
   return `#/p/${encodeURIComponent(route.slug)}/${route.view}`;
 }

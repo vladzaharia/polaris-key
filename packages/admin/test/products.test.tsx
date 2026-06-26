@@ -11,6 +11,7 @@ import type { ProductDetail } from "../src/api.js";
 import { resetCache } from "../src/context.js";
 import { Toaster } from "../src/components/ui/index.js";
 import { Products } from "../src/views/Products.js";
+import { ProductOverview } from "../src/views/ProductOverview.js";
 
 // The Products view is the only unit under test; the `api` module is fully mocked so the
 // component's behavior (rendering + which methods each flow calls) is asserted in isolation.
@@ -19,6 +20,7 @@ vi.mock("../src/api.js", async (importOriginal) => {
   return {
     ...actual,
     api: {
+      product: vi.fn(),
       products: vi.fn(),
       createManualProduct: vi.fn(),
       linkRepo: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock("../src/api.js", async (importOriginal) => {
 import { api } from "../src/api.js";
 
 const mockApi = api as unknown as {
+  product: ReturnType<typeof vi.fn>;
   products: ReturnType<typeof vi.fn>;
   createManualProduct: ReturnType<typeof vi.fn>;
   linkRepo: ReturnType<typeof vi.fn>;
@@ -52,7 +55,7 @@ const MANUAL: ProductDetail = {
   compatMin: "1.0.0",
   compatMax: "2.0.0",
   defaultMaxOfflineDays: 14,
-  defaultMachineLimit: 3,
+  defaultDeviceLimit: 3,
   adminGroup: "pkey-djdl-admins",
   createdAt: 1_700_000_000,
   modifiedAt: 1_700_100_000,
@@ -63,6 +66,7 @@ const GITHUB: ProductDetail = {
   slug: "acme",
   name: "Acme",
   signingKid: "gh:abc123",
+  releaseSource: "github",
   adminGroup: null,
 };
 
@@ -77,6 +81,7 @@ function renderProducts() {
 beforeEach(() => {
   resetCache();
   vi.clearAllMocks();
+  mockApi.product.mockResolvedValue({ product: MANUAL });
   mockApi.products.mockResolvedValue({ products: [MANUAL, GITHUB] });
   // jsdom lacks these Radix-needed APIs.
   (
@@ -110,6 +115,40 @@ describe("Products view", () => {
     renderProducts();
     expect(await screen.findByText("Couldn’t load products")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Retry/ })).toBeTruthy();
+  });
+
+  it("renders setup as an actionable checklist", async () => {
+    mockApi.product.mockResolvedValue({
+      product: {
+        ...MANUAL,
+        setup: {
+          healthy: false,
+          missingSecrets: ["WEBHOOK_SECRET"],
+          warnings: ["GitHub app is not installed"],
+          nextActions: [
+            { id: "releases", label: "Configure releases", route: "releases" },
+          ],
+        },
+      },
+    });
+    render(
+      <Toaster>
+        <ProductOverview slug="djdl" />
+      </Toaster>,
+    );
+
+    expect(await screen.findByText("Guided checklist")).toBeTruthy();
+    expect(screen.getByText("Required secrets")).toBeTruthy();
+    expect(screen.getByText(/WEBHOOK_SECRET/)).toBeTruthy();
+    expect(screen.getByText("Review setup warning")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /Set secrets/ }).getAttribute("href"),
+    ).toBe("#/p/djdl/settings");
+    expect(
+      screen
+        .getByRole("link", { name: /Create test license/ })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/licenses");
   });
 
   it("creates a manual product via createManualProduct and shows the returned kid", async () => {

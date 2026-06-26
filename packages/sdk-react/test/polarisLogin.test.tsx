@@ -82,6 +82,23 @@ describe("PolarisLogin — key card visibility", () => {
     browser.dispose();
   });
 
+  it("places OIDC sign-in and key activation side by side when key entry is available", async () => {
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      now: () => 2000,
+    });
+    const { container } = renderLogin(adapter);
+    const oidc = await waitFor(
+      () => container.querySelector("[data-polaris-oidc]") as HTMLElement,
+    );
+    const form = container.querySelector("form") as HTMLFormElement;
+    const grid = oidc.parentElement?.parentElement as HTMLElement;
+    expect(grid).toBe(form.parentElement);
+    expect(grid.style.display).toBe("grid");
+    expect(grid.style.gridTemplateColumns).toContain("minmax(220px, 1fr)");
+    adapter.dispose();
+  });
+
   it("hideKeyEntry hides the card even on desktop", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge({ hasToken: false, doc: null }),

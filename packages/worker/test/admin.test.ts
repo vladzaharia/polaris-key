@@ -26,7 +26,7 @@ import {
   listAudit,
 } from "../src/repo.js";
 import { loadProduct } from "../src/product.js";
-import { handleConfig, handleEnroll } from "../src/licensing.js";
+import { handleConfig, handleActivate } from "../src/licensing.js";
 import { handleMintToken } from "../src/edgeMint.js";
 import { buildDoc, signDoc } from "../src/configDoc.js";
 import { open } from "../src/keyvault.js";
@@ -217,8 +217,7 @@ describe("admin api", () => {
       product: {
         releaseSource: string;
         signingKid: string;
-        signingPublicKey: string | null;
-        signingKey: { kid: string; alg: string; publicKey: string } | null;
+        signing: { kid: string; alg: string; publicKey: string } | null;
         setup: {
           sync: {
             source: string;
@@ -234,11 +233,10 @@ describe("admin api", () => {
     };
     expect(body.product.releaseSource).toBe("github");
     expect(body.product.signingKid).toBe("pkey-test-prod-2026");
-    expect(body.product.signingPublicKey).toBeTruthy();
-    expect(body.product.signingKey).toMatchObject({
+    expect(body.product.signing).toMatchObject({
       kid: "pkey-test-prod-2026",
       alg: "Ed25519",
-      publicKey: body.product.signingPublicKey,
+      publicKey: expect.any(String),
     });
     expect(body.product.setup.sync).toMatchObject({
       source: "webhook",
@@ -277,14 +275,12 @@ describe("admin api", () => {
     const body = (await res.json()) as {
       products: Array<{
         slug: string;
-        signingPublicKey: string | null;
-        signingKey: unknown;
+        signing?: unknown | null;
       }>;
     };
     const djdl = body.products.find((p) => p.slug === "djdl");
     expect(djdl).toBeDefined();
-    expect(djdl!.signingPublicKey).toBeNull();
-    expect(djdl!.signingKey).toBeNull();
+    expect(djdl!.signing).toBeNull();
   });
 
   it("product deletion removes sealed keys, secrets, and sync state", async () => {
@@ -559,8 +555,8 @@ describe("admin api", () => {
     const product = (await loadProduct(env, db, "djdl"))!;
     const { licenseId, key } = await seedLicenseWithKey(db, "djdl");
 
-    // Enroll a device so a token record lands in KV.
-    const enrollRes = await handleEnroll(
+    // Activate a device so a token record lands in KV.
+    const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
         "x-pkey-device": "dev-1",
@@ -570,7 +566,7 @@ describe("admin api", () => {
       product,
       NOW,
     );
-    const { token } = (await enrollRes.json()) as { token: string };
+    const { token } = (await activateRes.json()) as { token: string };
     const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
     expect(await getTokenRecord(env, "djdl", tokenHash)).not.toBeNull();
 
@@ -740,7 +736,7 @@ describe("admin api", () => {
       name: "Ada",
       firstName: "Ada",
       email: "a@x.io",
-      enrolledAt: NOW,
+      activatedAt: NOW,
     };
     const payload: ManagedPayload = {
       config: {},
@@ -813,7 +809,7 @@ describe("admin api", () => {
     const product = (await loadProduct(env, db, "atomicco"))!;
     expect(product.signingKeyPem).toContain("BEGIN PRIVATE KEY");
     const { key } = await seedLicenseWithKey(db, "atomicco");
-    const enrollRes = await handleEnroll(
+    const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
         "x-pkey-device": "dev-1",
@@ -823,8 +819,8 @@ describe("admin api", () => {
       product,
       NOW,
     );
-    expect(enrollRes.status).toBe(200);
-    const { token } = (await enrollRes.json()) as { token: string };
+    expect(activateRes.status).toBe(200);
+    const { token } = (await activateRes.json()) as { token: string };
     const cfgRes = await handleConfig(
       mkLicReq("GET", {
         authorization: `Bearer ${token}`,
@@ -1047,10 +1043,10 @@ describe("admin api", () => {
     const product = (await loadProduct(env, db, "manualco"))!;
     expect(product).not.toBeNull();
 
-    // Enroll a device so we hold a valid bearer (passes the confused-deputy guard) and then
+    // Activate a device so we hold a valid bearer (passes the confused-deputy guard) and then
     // attempt to mint — there is no edge_mint_config recipe, so the route 404s.
     const { key } = await seedLicenseWithKey(db, "manualco");
-    const enrollRes = await handleEnroll(
+    const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
         "x-pkey-device": "dev-1",
@@ -1060,7 +1056,7 @@ describe("admin api", () => {
       product,
       NOW,
     );
-    const { token } = (await enrollRes.json()) as { token: string };
+    const { token } = (await activateRes.json()) as { token: string };
 
     const mintRes = await handleMintToken(
       mkLicReq("POST", { authorization: `Bearer ${token}` }),

@@ -1,6 +1,6 @@
 /**
  * Interactive admin sign-in (browser, cookie-based) — distinct from the SDK/CLI OIDC
- * enrollment in ../oidc.ts (which mints license tokens). Here we just prove an operator's
+ * activation in ../oidc.ts (which mints license tokens). Here we just prove an operator's
  * identity + groups and drop a signed session cookie.
  *
  * - `GET /admin/login`     -> 302 to the IdP authorize endpoint (PKCE, state in KV).
@@ -101,7 +101,7 @@ function mapClaims(payload: Record<string, unknown>): SessionIdentity {
 }
 
 /** The production verifier: token exchange against the IdP + jose JWKS verification. */
-export const joseIdTokenVerifier: IdTokenVerifier = {
+const joseIdTokenVerifier: IdTokenVerifier = {
   async verify({ code, flow, env }) {
     const issuer = adminIssuer(env);
     const clientId = adminClientId(env);

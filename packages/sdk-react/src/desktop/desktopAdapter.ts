@@ -5,10 +5,11 @@
 //
 // All credential/keyring/loopback-OIDC work lives behind the bridge; this file is pure
 // glue + state projection. `submitKey` IS supported here (unlike browser): desktop apps
-// allow typed-key enrollment as an offline-friendly path.
+// allow typed-key activation as an offline-friendly path.
 
 import {
   configSource,
+  currentDeviceFromState,
   listUserConfig,
   projectState,
   readConfig,
@@ -19,6 +20,7 @@ import {
   PolarisError,
   initialState,
   type ConfigSource,
+  type DeviceInfo,
   type JSONValue,
   type OidcSignInHandle,
   type PolarisAdapter,
@@ -65,7 +67,7 @@ export class DesktopAdapter implements PolarisAdapter {
     this.store = createStore<PolarisState>(
       initialState("desktop", this.localOverrides),
     );
-    // Subscribe to pushed hot-reload signals from the privileged process.
+    // Subscribe to state changes from the privileged process.
     this.offBridge = this.bridge.on("stateChanged", (s) => this.apply(s));
     // Kick off the first load. Errors surface into the snapshot, not as a throw.
     void this.load();
@@ -103,7 +105,7 @@ export class DesktopAdapter implements PolarisAdapter {
     try {
       this.apply(await this.bridge.getState());
     } catch (e) {
-      // First load failed: present a ready, error-bearing, needs-enroll state.
+      // First load failed: present a ready, error-bearing, needs-activation state.
       this.apply(
         { hasToken: false, doc: null },
         { error: new PolarisError("network", (e as Error).message) },
@@ -175,7 +177,7 @@ export class DesktopAdapter implements PolarisAdapter {
       const r = await this.bridge.submitKey(key);
       if (r.kind !== "ok") {
         const msg =
-          r.kind === "machine-limit"
+          r.kind === "device-limit"
             ? "This license has reached its device limit."
             : r.kind === "unauthorized"
               ? "That key was not accepted."
@@ -203,6 +205,29 @@ export class DesktopAdapter implements PolarisAdapter {
       this.store.set((prev) => ({ ...prev, busy: false, error: err }));
       throw err;
     }
+  }
+
+  currentDevice(): DeviceInfo | null {
+    return currentDeviceFromState(this.store.get());
+  }
+
+  async listDevices(): Promise<DeviceInfo[]> {
+    throw new PolarisError(
+      "device-management-unsupported",
+      "Remote device management is not supported by this backend.",
+    );
+  }
+
+  async deauthorizeDevice(deviceId: string): Promise<void> {
+    const current = this.currentDevice();
+    if (current?.id === deviceId) {
+      await this.signOut();
+      return;
+    }
+    throw new PolarisError(
+      "device-management-unsupported",
+      "Remote device deauthorization is not supported by this backend.",
+    );
   }
 
   getConfig<T = JSONValue>(key: string, fallback: T): T {

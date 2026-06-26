@@ -76,7 +76,7 @@ public enum Semver {
     public static func channelForVersion(_ version: String) -> Channel {
         if version.hasPrefix("0.0.0-dev") { return .dev }
         if version.hasPrefix("0.0.0-staging") { return .staging }
-        if version.range(of: #"^0\.0\.0-pr\d+"#, options: .regularExpression) != nil { return .pr }
+        if version.range(of: #"^0\.0\.0-pr-?\d+"#, options: .regularExpression) != nil { return .pr }
         return .stable
     }
 

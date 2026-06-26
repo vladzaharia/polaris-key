@@ -51,7 +51,7 @@ async function renderWith(
     </PolarisKeyProvider>,
   );
   const q = within(container);
-  // Wait for the first async snapshot to resolve out of "loading" (status starts blank/needs-enroll).
+  // Wait for the first async snapshot to resolve out of "loading" (status starts blank/needs-activation).
   await waitFor(() => expect(q.getByTestId("status").textContent).toBe("ok"));
   const ids = [
     "status",

@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional
 import pytest
 
 from polaris_key.cli import core
-from polaris_key.endpoints import EnrollMachineLimit, EnrollOk, EnrollUnauthorized
+from polaris_key.endpoints import ActivationDeviceLimit, ActivationOk, ActivationUnauthorized
 
 
 # ── A minimal fake client ─────────────────────────────────────────────────────────────
@@ -39,14 +39,14 @@ class FakeClient:
     def __init__(
         self,
         *,
-        enroll_result: Any = None,
+        activation_result: Any = None,
         state: Optional[_State] = None,
         licensed: bool = True,
         profile: Optional[_FakeProfile] = None,
         config: Optional[Dict[str, Any]] = None,
         sources: Optional[Dict[str, str]] = None,
     ) -> None:
-        self._enroll_result = enroll_result if enroll_result is not None else EnrollOk(token="t", schemaVersion=1)
+        self._activation_result = activation_result if activation_result is not None else ActivationOk(token="t", schemaVersion=1)
         self._state = state or _State()
         self._licensed = licensed
         self._profile = profile
@@ -57,7 +57,7 @@ class FakeClient:
 
     def activate_with_key(self, key: str) -> Any:
         self.activated_key = key
-        return self._enroll_result
+        return self._activation_result
 
     def deactivate(self) -> None:
         self.deactivated = True
@@ -102,15 +102,15 @@ def test_parse_trust_rejects_bad_pair():
 
 # ── core commands ─────────────────────────────────────────────────────────────────────
 def test_activate_ok():
-    c = FakeClient(enroll_result=EnrollOk(token="t", schemaVersion=1), state=_State(status="ok"))
+    c = FakeClient(activation_result=ActivationOk(token="t", schemaVersion=1), state=_State(status="ok"))
     r = core.activate(c, "KEY-123")
     assert r.code == 0
     assert "Activated" in r.lines[0]
     assert c.activated_key == "KEY-123"
 
 
-def test_activate_machine_limit():
-    c = FakeClient(enroll_result=EnrollMachineLimit(limit=3, machineCount=3))
+def test_activate_device_limit():
+    c = FakeClient(activation_result=ActivationDeviceLimit(limit=3, deviceCount=3))
     r = core.activate(c, "KEY")
     assert r.code == 1
     assert "device limit reached" in r.lines[0]
@@ -118,7 +118,7 @@ def test_activate_machine_limit():
 
 
 def test_activate_unauthorized():
-    c = FakeClient(enroll_result=EnrollUnauthorized())
+    c = FakeClient(activation_result=ActivationUnauthorized())
     r = core.activate(c, "KEY")
     assert r.code == 1
     assert "invalid or revoked" in r.lines[0]
@@ -189,7 +189,7 @@ def test_register_argparse_wires_subcommands():
 
 
 def test_register_argparse_dispatch_activate(capsys):
-    client = FakeClient(enroll_result=EnrollOk(token="t", schemaVersion=1))
+    client = FakeClient(activation_result=ActivationOk(token="t", schemaVersion=1))
     parser = _argparse_app(client)
     args = parser.parse_args(["activate", "--product", "djdl", "KEY-9"])
     code = args.func(args)
@@ -260,7 +260,7 @@ def test_polaris_click_group_activate_exit_code():
 
     from polaris_key.cli.click_cli import polaris_click_group
 
-    client = FakeClient(enroll_result=EnrollUnauthorized())
+    client = FakeClient(activation_result=ActivationUnauthorized())
     group = polaris_click_group(client_factory=_factory_for(client))
     runner = CliRunner()
     result = runner.invoke(group, ["activate", "--product", "djdl", "BADKEY"])

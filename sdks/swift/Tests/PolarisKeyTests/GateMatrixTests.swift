@@ -28,7 +28,7 @@ final class GateMatrixTests: XCTestCase {
             schemaVersion: 1, aud: "djdl", iss: POLARIS_ISSUER,
             licenseId: "lic_m", deviceId: "dev_m",
             issuedAt: issuedAt, expiresAt: expiresAt, graceUntil: graceUntil,
-            profile: DocProfile(name: "M", firstName: "M", email: "m@x.y", enrolledAt: 0),
+            profile: DocProfile(name: "M", firstName: "M", email: "m@x.y", activatedAt: 0),
             payload: ManagedPayload())
     }
 
@@ -61,14 +61,14 @@ final class GateMatrixTests: XCTestCase {
         // No token wins over a lingering unauthorized flag.
         XCTAssertEqual(
             licenseState(GateInput(hasToken: false, doc: nil, now: 1, lastSyncUnauthorized: true)).status,
-            .needsEnroll)
+            .needsActivation)
         // With a token, the unauthorized flag → revoked.
         XCTAssertEqual(
             licenseState(GateInput(hasToken: true, doc: nil, now: 1, lastSyncUnauthorized: true)).status,
             .revoked)
-        // Token, no flag, no doc → needs-enroll.
+        // Token, no flag, no doc → needs-activation.
         XCTAssertEqual(
-            licenseState(GateInput(hasToken: true, doc: nil, now: 1)).status, .needsEnroll)
+            licenseState(GateInput(hasToken: true, doc: nil, now: 1)).status, .needsActivation)
     }
 
     func testExpiryLadderWithExactBoundaries() {
@@ -98,7 +98,7 @@ final class GateMatrixTests: XCTestCase {
     func testIsUsableAcrossEveryStatus() {
         let usable: [LicenseStatus] = [.ok, .grace]
         let notUsable: [LicenseStatus] = [
-            .expired, .revoked, .needsEnroll, .versionTooOld, .versionTooNew, .channelNotEntitled,
+            .expired, .revoked, .needsActivation, .versionTooOld, .versionTooNew, .channelNotEntitled,
         ]
         for s in usable { XCTAssertTrue(isUsable(s), "\(s) should be usable") }
         for s in notUsable { XCTAssertFalse(isUsable(s), "\(s) should NOT be usable") }
@@ -243,7 +243,7 @@ final class GateMatrixTests: XCTestCase {
             schemaVersion: 1, aud: "djdl", iss: POLARIS_ISSUER,
             licenseId: "lic_matrix", deviceId: "dev_matrix",
             issuedAt: issuedAt, expiresAt: expiresAt, graceUntil: graceUntil,
-            profile: DocProfile(name: "M", firstName: "M", email: "m@x.y", enrolledAt: 0),
+            profile: DocProfile(name: "M", firstName: "M", email: "m@x.y", activatedAt: 0),
             payload: ManagedPayload())
     }
 

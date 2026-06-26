@@ -1,6 +1,6 @@
 // A drop-in SwiftUI gate that renders by license status. It observes a `PolarisKeyClient`
 // (the headless API stays there) and shows the right surface for each state: an OIDC sign-in
-// button + license-key entry card when enrollment is needed, an offline-grace banner, a
+// button + license-key entry card when activation is needed, an offline-grace banner, a
 // version-block screen, or — when usable — the product's own UI via a slot closure.
 //
 // Brandable through `PolarisKeyTheme`; extensible through the `content` slot, so a product
@@ -22,7 +22,7 @@ public final class PolarisKeyGateModel: ObservableObject {
 
     private let client: PolarisKeyClient
 
-    public init(client: PolarisKeyClient, initialState: LicenseState = LicenseState(status: .needsEnroll)) {
+    public init(client: PolarisKeyClient, initialState: LicenseState = LicenseState(status: .needsActivation)) {
         self.client = client
         self.state = initialState
     }
@@ -49,7 +49,7 @@ public final class PolarisKeyGateModel: ObservableObject {
         switch result {
         case .ok:
             lastError = nil
-        case .machineLimit:
+        case .deviceLimit:
             lastError = "This license has reached its device limit."
         case .unauthorized:
             lastError = "That license key wasn't accepted."
@@ -96,8 +96,8 @@ public struct PolarisKeyLoginView<Content: View>: View {
                 content()
             case .grace:
                 graceScreen
-            case .needsEnroll:
-                enrollScreen
+            case .needsActivation:
+                activationScreen
             case .revoked, .expired, .versionTooOld, .versionTooNew, .channelNotEntitled:
                 // One shared mapping for every terminal "message" surface — see
                 // `PolarisKeyCopy.message(for:allowedRange:)`.
@@ -112,8 +112,8 @@ public struct PolarisKeyLoginView<Content: View>: View {
         .task { await model.reload() }
     }
 
-    // ── needs-enroll: OIDC button + license-key card ──
-    private var enrollScreen: some View {
+    // ── needs-activation: OIDC button + license-key card ──
+    private var activationScreen: some View {
         cardShell {
             theme.logo()
                 .accessibilityHidden(true)

@@ -99,7 +99,7 @@ function GeneralCard({
     compatMin: product.compatMin,
     compatMax: product.compatMax,
     defaultMaxOfflineDays: String(product.defaultMaxOfflineDays),
-    defaultMachineLimit: String(product.defaultMachineLimit),
+    defaultDeviceLimit: String(product.defaultDeviceLimit),
     adminGroup: product.adminGroup ?? "",
   });
   const [saving, setSaving] = React.useState(false);
@@ -114,7 +114,7 @@ function GeneralCard({
       compatMin: product.compatMin,
       compatMax: product.compatMax,
       defaultMaxOfflineDays: String(product.defaultMaxOfflineDays),
-      defaultMachineLimit: String(product.defaultMachineLimit),
+      defaultDeviceLimit: String(product.defaultDeviceLimit),
       adminGroup: product.adminGroup ?? "",
     });
   }, [product]);
@@ -124,7 +124,7 @@ function GeneralCard({
     form.compatMin !== product.compatMin ||
     form.compatMax !== product.compatMax ||
     form.defaultMaxOfflineDays !== String(product.defaultMaxOfflineDays) ||
-    form.defaultMachineLimit !== String(product.defaultMachineLimit) ||
+    form.defaultDeviceLimit !== String(product.defaultDeviceLimit) ||
     form.adminGroup !== (product.adminGroup ?? "");
 
   const set =
@@ -134,13 +134,13 @@ function GeneralCard({
   const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     const offline = Number(form.defaultMaxOfflineDays);
-    const machines = Number(form.defaultMachineLimit);
+    const devices = Number(form.defaultDeviceLimit);
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = "Name is required.";
     if (!Number.isFinite(offline) || offline < 0)
       errs.defaultMaxOfflineDays = "Must be a non-negative number.";
-    if (!Number.isFinite(machines) || machines < 0)
-      errs.defaultMachineLimit = "Must be a non-negative number.";
+    if (!Number.isFinite(devices) || devices < 0)
+      errs.defaultDeviceLimit = "Must be a non-negative number.";
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -149,7 +149,7 @@ function GeneralCard({
       compatMin: form.compatMin.trim(),
       compatMax: form.compatMax.trim(),
       defaultMaxOfflineDays: offline,
-      defaultMachineLimit: machines,
+      defaultDeviceLimit: devices,
       adminGroup: form.adminGroup.trim(),
     };
     setSaving(true);
@@ -229,14 +229,14 @@ function GeneralCard({
           </Field>
           <Field
             label="Default device limit"
-            error={fieldErrors.defaultMachineLimit}
+            error={fieldErrors.defaultDeviceLimit}
           >
             <Input
               type="number"
               min={0}
               inputMode="numeric"
-              value={form.defaultMachineLimit}
-              onChange={set("defaultMachineLimit")}
+              value={form.defaultDeviceLimit}
+              onChange={set("defaultDeviceLimit")}
             />
           </Field>
           <Field
@@ -528,7 +528,7 @@ function DangerCard({
         <CardTitle className="text-destructive">Danger zone</CardTitle>
         <CardDescription>
           Disabling a product tombstones it, disables licenses, deauthorizes
-          machines, revokes hot credentials, and preserves audit history.
+          devices, revokes hot credentials, and preserves audit history.
         </CardDescription>
       </CardHeader>
       <CardFooter>

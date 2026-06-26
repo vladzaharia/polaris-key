@@ -46,14 +46,30 @@ export interface ManagedPayload {
   entitlements: Record<string, ManagedEntry>;
 }
 
+/** How a catalog secret reaches a runtime. */
+export type SecretDelivery = "serverOnly" | "clientScoped" | "edgeMint";
+
+/** Release visibility used by release metadata/artifact contracts. */
+export type ReleaseAccess = "public" | "authenticated" | "licensed";
+
+export interface ReleaseAccessPolicy {
+  metadata: ReleaseAccess;
+  artifacts: ReleaseAccess;
+}
+
+export const DEFAULT_RELEASE_ACCESS: ReleaseAccessPolicy = {
+  metadata: "public",
+  artifacts: "public",
+};
+
 /** The profile block for the client's offline, tamper-proof greeting (signed, so it
  *  can't be spoofed locally). */
 export interface DocProfile {
   name: string;
   firstName: string;
   email: string;
-  /** Epoch seconds the key was first enrolled. */
-  enrolledAt: number;
+  /** Epoch seconds the key was first activated. */
+  activatedAt: number;
 }
 
 /**
@@ -106,7 +122,7 @@ export interface TrustManifestDoc {
   keys: TrustManifestKey[];
 }
 
-export interface MachineMetadata {
+export interface DeviceMetadata {
   label?: string;
   platform?: string;
   arch?: string;
@@ -117,7 +133,7 @@ export interface MachineMetadata {
 
 export type PolarisErrorCode =
   | "unauthorized"
-  | "machine_limit"
+  | "device_limit"
   | "license_disabled"
   | "license_expired"
   | "version_blocked"
@@ -142,7 +158,7 @@ export type LicenseStatus =
   | "grace"
   | "expired"
   | "revoked"
-  | "needs-enroll"
+  | "needs-activation"
   | "version-too-old"
   | "version-too-new"
   | "channel-not-entitled";

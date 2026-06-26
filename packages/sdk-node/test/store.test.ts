@@ -24,7 +24,7 @@ function sampleDoc(): ManagedConfigDoc {
       name: "Ada Lovelace",
       firstName: "Ada",
       email: "ada@example.com",
-      enrolledAt: 1_690_000_000,
+      activatedAt: 1_690_000_000,
     },
     payload: {
       config: {
@@ -70,10 +70,10 @@ describe("deriveDeviceId", () => {
   });
 
   it("is hashed: the raw input never appears in the output", () => {
-    const raw = "RAW-MACHINE-ID-1234";
+    const raw = "RAW-DEVICE-ID-1234";
     const id = deriveDeviceId("djdl", raw);
     expect(id).not.toContain(raw);
-    expect(id).not.toContain("RAW-MACHINE-ID");
+    expect(id).not.toContain("RAW-DEVICE-ID");
   });
 
   it("produces a fixed-length (32-char) base64url id", () => {

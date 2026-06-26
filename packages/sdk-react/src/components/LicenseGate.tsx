@@ -88,7 +88,7 @@ function describeGateError(error: UseLicenseGate["state"]["error"]): string {
     case "refresh-failed":
       return "We couldn't refresh your license. Try again in a moment.";
     case "sign-in-failed":
-      // The adapter already humanizes machine-limit / unauthorized into this message.
+      // The adapter already humanizes device-limit / unauthorized into this message.
       return error.message || "Sign-in failed. Please try again.";
     default:
       return error.message || "Unable to verify your license.";

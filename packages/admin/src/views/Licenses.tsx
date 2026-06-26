@@ -32,6 +32,9 @@ import {
 } from "../components/ui/index.js";
 import {
   ChannelList,
+  ChannelMultiSelect,
+  dateInputToEpoch,
+  epochToDateInput,
   LicenseStatusBadge,
   OneTimeKeyPanel,
 } from "./licenses/shared.js";
@@ -96,8 +99,8 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
         id: "devices",
         header: "Devices",
         sortable: true,
-        accessor: (r) => r.machineCount,
-        cell: (r) => <span className="tabular-nums">{r.machineCount}</span>,
+        accessor: (r) => r.deviceCount,
+        cell: (r) => <span className="tabular-nums">{r.deviceCount}</span>,
       },
       {
         id: "tier",
@@ -181,6 +184,7 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
           onRowClick={(r) =>
             navigate({ kind: "product", slug, view: "license", id: r.id })
           }
+          onRowClickLabel={(r) => `Open license ${r.name || r.id}`}
         />
       )}
 
@@ -217,9 +221,20 @@ function CreateLicenseDialog({
   const [email, setEmail] = React.useState("");
   const [tier, setTier] = React.useState("__none__");
   const [selectedProfiles, setSelectedProfiles] = React.useState<string[]>([]);
+  const [expires, setExpires] = React.useState("");
+  const [maxOffline, setMaxOffline] = React.useState("");
+  const [channels, setChannels] = React.useState<string[]>([]);
+  const [minVersion, setMinVersion] = React.useState("");
+  const [maxVersion, setMaxVersion] = React.useState("");
+  const [fieldErrors, setFieldErrors] = React.useState<
+    Partial<
+      Record<"name" | "email" | "expires" | "maxOffline" | "versions", string>
+    >
+  >({});
   const [submitting, setSubmitting] = React.useState(false);
   const [mintedKey, setMintedKey] = React.useState<string | null>(null);
   const [createdId, setCreatedId] = React.useState<string | null>(null);
+  const selectedTier = tiers.find((t) => t.id === tier) ?? null;
 
   // Reset transient state whenever the dialog is (re)opened.
   React.useEffect(() => {
@@ -228,6 +243,12 @@ function CreateLicenseDialog({
       setEmail("");
       setTier("__none__");
       setSelectedProfiles([]);
+      setExpires("");
+      setMaxOffline("");
+      setChannels([]);
+      setMinVersion("");
+      setMaxVersion("");
+      setFieldErrors({});
       setMintedKey(null);
       setCreatedId(null);
       setSubmitting(false);
@@ -236,7 +257,16 @@ function CreateLicenseDialog({
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) return;
+    const nextErrors = validateLicenseCreateForm({
+      name,
+      email,
+      expires,
+      maxOffline,
+      minVersion,
+      maxVersion,
+    });
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
     setSubmitting(true);
     try {
       const body: CreateLicenseBody = {
@@ -245,6 +275,12 @@ function CreateLicenseDialog({
       };
       if (tier !== "__none__") body.tier = tier;
       if (selectedProfiles.length > 0) body.profiles = selectedProfiles;
+      const nextExpiry = dateInputToEpoch(expires);
+      if (nextExpiry != null) body.expiresAt = nextExpiry;
+      if (maxOffline.trim()) body.maxOfflineDays = Number(maxOffline);
+      if (channels.length > 0) body.channels = channels;
+      if (minVersion.trim()) body.minVersion = minVersion.trim();
+      if (maxVersion.trim()) body.maxVersion = maxVersion.trim();
       const res = await api.createLicense(slug, body);
       setMintedKey(res.key);
       setCreatedId(res.licenseId);
@@ -262,13 +298,13 @@ function CreateLicenseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Create license</DialogTitle>
           <DialogDescription>
             {mintedKey
               ? "The license is created. Copy its key now — it is shown only once."
-              : "Add a license holder and mint their first key."}
+              : "Add a license holder, policy overrides, and their first key."}
           </DialogDescription>
         </DialogHeader>
 
@@ -297,20 +333,26 @@ function CreateLicenseDialog({
             </DialogFooter>
           </div>
         ) : (
-          <form onSubmit={submit} className="space-y-4">
-            <Field label="Name" required>
+          <form onSubmit={submit} className="space-y-4" noValidate>
+            <Field label="Name" required error={fieldErrors.name}>
               <Input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  clearFieldError(setFieldErrors, "name");
+                }}
                 placeholder="Ada Lovelace"
                 autoFocus
               />
             </Field>
-            <Field label="Email" required>
+            <Field label="Email" required error={fieldErrors.email}>
               <Input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearFieldError(setFieldErrors, "email");
+                }}
                 placeholder="ada@example.com"
               />
             </Field>
@@ -332,6 +374,77 @@ function CreateLicenseDialog({
                 </SelectContent>
               </Select>
             </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Expires"
+                help="Optional. Blank means no license expiry."
+                error={fieldErrors.expires}
+              >
+                <Input
+                  type="date"
+                  value={expires}
+                  onChange={(e) => {
+                    setExpires(e.target.value);
+                    clearFieldError(setFieldErrors, "expires");
+                  }}
+                />
+              </Field>
+              <Field
+                label="Max offline days"
+                help="Optional. Overrides the product default for this license."
+                error={fieldErrors.maxOffline}
+              >
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={maxOffline}
+                  onChange={(e) => {
+                    setMaxOffline(e.target.value);
+                    clearFieldError(setFieldErrors, "maxOffline");
+                  }}
+                  placeholder="e.g. 14"
+                />
+              </Field>
+            </div>
+            <Field
+              label="Release channels"
+              help="Optional. Leave empty to inherit tier or product release defaults."
+            >
+              <div>
+                <ChannelMultiSelect
+                  value={channels}
+                  onChange={setChannels}
+                  idPrefix="create-license-channel"
+                />
+              </div>
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Minimum version"
+                help="Optional floor for app updates."
+                error={fieldErrors.versions}
+              >
+                <Input
+                  value={minVersion}
+                  onChange={(e) => {
+                    setMinVersion(e.target.value);
+                    clearFieldError(setFieldErrors, "versions");
+                  }}
+                  placeholder="e.g. 1.2.0"
+                />
+              </Field>
+              <Field label="Maximum version" help="Optional ceiling.">
+                <Input
+                  value={maxVersion}
+                  onChange={(e) => {
+                    setMaxVersion(e.target.value);
+                    clearFieldError(setFieldErrors, "versions");
+                  }}
+                  placeholder="e.g. 2.0.0"
+                />
+              </Field>
+            </div>
             <Field
               label="Profiles"
               help="Optional. Profiles apply in the order selected here."
@@ -371,6 +484,14 @@ function CreateLicenseDialog({
                 )}
               </div>
             </Field>
+            <PolicySummary
+              expires={expires}
+              maxOffline={maxOffline}
+              channels={channels}
+              minVersion={minVersion}
+              maxVersion={maxVersion}
+              selectedTier={selectedTier}
+            />
             <DialogFooter>
               <Button
                 type="button"
@@ -392,5 +513,143 @@ function CreateLicenseDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+type FieldErrors = Partial<
+  Record<"name" | "email" | "expires" | "maxOffline" | "versions", string>
+>;
+
+function validateLicenseCreateForm(input: {
+  name: string;
+  email: string;
+  expires: string;
+  maxOffline: string;
+  minVersion: string;
+  maxVersion: string;
+}): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!input.name.trim()) errors.name = "Enter the holder name.";
+  if (!input.email.trim()) errors.email = "Enter the holder email.";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim()))
+    errors.email = "Enter a valid email address.";
+  if (input.expires.trim() && dateInputToEpoch(input.expires) == null)
+    errors.expires = "Use a valid expiry date.";
+  if (input.maxOffline.trim()) {
+    const value = Number(input.maxOffline);
+    if (!Number.isInteger(value) || value < 0)
+      errors.maxOffline = "Enter a whole number of days, 0 or higher.";
+  }
+  const min = input.minVersion.trim();
+  const max = input.maxVersion.trim();
+  if (min && max && compareDottedVersion(min, max) > 0)
+    errors.versions = "Minimum version must be lower than maximum version.";
+  return errors;
+}
+
+function clearFieldError(
+  setErrors: React.Dispatch<React.SetStateAction<FieldErrors>>,
+  field: keyof FieldErrors,
+): void {
+  setErrors((prev) => {
+    if (!prev[field]) return prev;
+    const next = { ...prev };
+    delete next[field];
+    return next;
+  });
+}
+
+function compareDottedVersion(a: string, b: string): number {
+  const parse = (value: string): number[] | null => {
+    if (!/^\d+(?:\.\d+)*$/.test(value)) return null;
+    return value.split(".").map((part) => Number(part));
+  };
+  const left = parse(a);
+  const right = parse(b);
+  if (!left || !right) return 0;
+  const length = Math.max(left.length, right.length);
+  for (let i = 0; i < length; i += 1) {
+    const diff = (left[i] ?? 0) - (right[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+function PolicySummary({
+  expires,
+  maxOffline,
+  channels,
+  minVersion,
+  maxVersion,
+  selectedTier,
+}: {
+  expires: string;
+  maxOffline: string;
+  channels: string[];
+  minVersion: string;
+  maxVersion: string;
+  selectedTier: {
+    policyDeviceLimit: number | null;
+    channels: string[];
+  } | null;
+}): React.ReactElement {
+  const expiryEpoch = dateInputToEpoch(expires);
+  const version =
+    minVersion.trim() || maxVersion.trim()
+      ? `${minVersion.trim() || "any"} to ${maxVersion.trim() || "any"}`
+      : "Inherits product compatibility";
+  const tierChannels = selectedTier?.channels ?? [];
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+        Effective policy summary
+      </p>
+      <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+        <SummaryItem
+          label="Expiry"
+          value={expiryEpoch ? epochToDateInput(expiryEpoch) : "No expiry"}
+        />
+        <SummaryItem
+          label="Offline grace"
+          value={
+            maxOffline.trim() ? `${Number(maxOffline)} days` : "Product default"
+          }
+        />
+        <SummaryItem
+          label="Device limit"
+          value={
+            selectedTier?.policyDeviceLimit != null
+              ? `${selectedTier.policyDeviceLimit} devices from tier`
+              : "Product default"
+          }
+        />
+        <SummaryItem
+          label="Channels"
+          value={
+            channels.length
+              ? channels.join(", ")
+              : tierChannels.length
+                ? `${tierChannels.join(", ")} from tier`
+                : "Product default"
+          }
+        />
+        <SummaryItem label="Version range" value={version} />
+      </dl>
+    </div>
+  );
+}
+
+function SummaryItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.ReactElement {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 font-medium text-foreground">{value}</dd>
+    </div>
   );
 }

@@ -130,12 +130,12 @@ public struct PolarisKeyMessageCopy: Sendable, Equatable {
 extension PolarisKeyCopy {
     /// Map a terminal gate status (plus any server-supplied allowed range, for version blocks)
     /// to its rendered title/subtitle/symbol. Returns `nil` for statuses that don't render a
-    /// message card (`.ok`, `.grace`, `.needsEnroll`), which the view routes elsewhere.
+    /// message card (`.ok`, `.grace`, `.needsActivation`), which the view routes elsewhere.
     public func message(for status: LicenseStatus, allowedRange: AllowedRange? = nil)
         -> PolarisKeyMessageCopy?
     {
         switch status {
-        case .ok, .grace, .needsEnroll:
+        case .ok, .grace, .needsActivation:
             return nil
         case .revoked:
             return PolarisKeyMessageCopy(

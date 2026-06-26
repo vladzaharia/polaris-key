@@ -1,5 +1,5 @@
 // Credential minting + hashing. License keys are self-identifying (`pkey_<product>_…`)
-// so the backend/SDK can route by product from the key alone; per-machine tokens are
+// so the backend/SDK can route by product from the key alone; per-device tokens are
 // opaque (`pkeyt_…`) and never shown. Keys are stored only as hashes (optionally peppered
 // so a KV/D1 dump can't confirm guessed keys).
 
@@ -33,7 +33,7 @@ export function mintLicenseKey(product: string): string {
   return `pkey_${product}_${b64url(randomBytes(16))}`;
 }
 
-/** A per-machine bearer token: opaque `pkeyt_<256-bit base64url>`, never shown. */
+/** A per-device bearer token: opaque `pkeyt_<256-bit base64url>`, never shown. */
 export function mintToken(): string {
   return `pkeyt_${b64url(randomBytes(32))}`;
 }

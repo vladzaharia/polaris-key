@@ -53,7 +53,7 @@ export function channelForVersion(
 ): "stable" | "staging" | "pr" | "dev" {
   if (version.startsWith("0.0.0-dev")) return "dev";
   if (version.startsWith("0.0.0-staging")) return "staging";
-  if (/^0\.0\.0-pr\d+/.test(version)) return "pr";
+  if (/^0\.0\.0-pr-?\d+/.test(version)) return "pr";
   return "stable";
 }
 

@@ -18,7 +18,7 @@ final class LayeredConfigTests: XCTestCase {
         ManagedConfigDoc(
             schemaVersion: 1, aud: "djdl", iss: POLARIS_ISSUER,
             licenseId: "lic", deviceId: "dev", issuedAt: 1, expiresAt: 2, graceUntil: 3,
-            profile: DocProfile(name: "n", firstName: "f", email: "e", enrolledAt: 0),
+            profile: DocProfile(name: "n", firstName: "f", email: "e", activatedAt: 0),
             payload: ManagedPayload(
                 config: [
                     "run.concurrency": ManagedEntry(
@@ -119,7 +119,7 @@ final class LayeredConfigTests: XCTestCase {
     }
 
     func testListUserConfigExcludesHiddenAndFlagsEnforced() async {
-        let c = await client()
+        let c = await client(localOverrides: ["ui.theme": .string("light")])
         let rows = await c.listUserConfig()
         let byKey = Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
         XCTAssertNil(byKey["proxy.secret"], "hidden entries must be excluded")
@@ -127,6 +127,30 @@ final class LayeredConfigTests: XCTestCase {
         XCTAssertEqual(byKey["run.concurrency"]?.enforced, true)
         XCTAssertEqual(byKey["run.concurrency"]?.value, .int(4))
         XCTAssertEqual(byKey["ui.theme"]?.enforced, false)
-        XCTAssertEqual(byKey["ui.theme"]?.value, .string("dark"))
+        XCTAssertEqual(byKey["ui.theme"]?.value, .string("light"))
+    }
+
+    func testDeviceManagementSurfaceCurrentOnly() async {
+        let c = await client()
+        let current = await c.currentDevice()
+        XCTAssertEqual(current.id, "dev")
+        XCTAssertEqual(current.current, true)
+        XCTAssertEqual(current.status, .expired)
+
+        do {
+            _ = try await c.listDevices()
+            XCTFail("expected unsupported device listing")
+        } catch DeviceManagementError.unsupported {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            try await c.deauthorizeDevice("other")
+            XCTFail("expected unsupported remote deauthorization")
+        } catch DeviceManagementError.unsupported {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
     }
 }

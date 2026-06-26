@@ -31,7 +31,7 @@ const PRODUCT: ProductDetail = {
   compatMin: "1.0.0",
   compatMax: "2.0.0",
   defaultMaxOfflineDays: 14,
-  defaultMachineLimit: 3,
+  defaultDeviceLimit: 3,
   adminGroup: "djdl-admins",
   setup: {
     sync: {

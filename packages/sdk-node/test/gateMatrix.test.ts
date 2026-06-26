@@ -146,7 +146,7 @@ function buildDoc(l: LicenseInputs): ManagedConfigDoc | null {
     issuedAt: l.issuedAt,
     expiresAt: l.expiresAt,
     graceUntil: l.graceUntil,
-    profile: { name: "M", firstName: "M", email: "m@x.y", enrolledAt: 0 },
+    profile: { name: "M", firstName: "M", email: "m@x.y", activatedAt: 0 },
     payload: { config: {}, secrets: {}, entitlements: {} },
   };
 }

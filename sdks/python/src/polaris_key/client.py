@@ -1,4 +1,4 @@
-"""The Polaris Key client: a small, product-agnostic facade over enroll/fetch/verify/
+"""The Polaris Key client: a small, product-agnostic facade over activate/fetch/verify/
 cache/gate.
 
 Offline-first — ``__init__``/``create`` apply the cached doc with no network;
@@ -18,10 +18,10 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 import httpx
 
 from .endpoints import (
-    EnrollOk,
-    EnrollResult,
+    ActivationOk,
+    ActivationResult,
     deauthorize,
-    enroll_with_key,
+    activate_with_key,
     reacquire_token,
     report_snapshot,
 )
@@ -45,7 +45,12 @@ from .models import DocProfile, ManagedEntry
 from .store import CacheRecord, KeyringStore, Store
 from .verify import TrustSet, verify_doc, verify_jws
 
-__all__ = ["PolarisKeyClient", "RefreshResult"]
+__all__ = [
+    "PolarisKeyClient",
+    "RefreshResult",
+    "DeviceInfo",
+    "DeviceManagementUnsupportedError",
+]
 
 DEFAULT_BASE = "https://key.plrs.im"
 
@@ -55,6 +60,10 @@ _UNSET = object()
 
 def _now_sec() -> int:
     return int(time.time())
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
 
 
 def _default_config_dir() -> str:
@@ -69,6 +78,20 @@ class RefreshResult:
     unauthorized: bool = False
     blocked: bool = False
     deviceCap: bool = False
+
+
+@dataclass(frozen=True)
+class DeviceInfo:
+    id: str
+    current: bool
+    status: str
+    licenseId: Optional[str] = None
+    profile: Optional[DocProfile] = None
+    lastVerifiedAt: Optional[int] = None
+
+
+class DeviceManagementUnsupportedError(RuntimeError):
+    code = "device-management-unsupported"
 
 
 class PolarisKeyClient:
@@ -252,16 +275,40 @@ class PolarisKeyClient:
         doc = self._cache.doc if self._cache else None
         return doc.profile if doc else None
 
-    # ── Enrollment ──────────────────────────────────────────────────────────────
-    def activate_with_key(self, key: str) -> EnrollResult:
-        r = enroll_with_key(
+    def current_device(self) -> DeviceInfo:
+        doc = self._cache.doc if self._cache else None
+        return DeviceInfo(
+            id=self._device_id,
+            current=True,
+            status=self.status().status,
+            licenseId=doc.licenseId if doc else None,
+            profile=doc.profile if doc else None,
+            lastVerifiedAt=self._cache.lastVerifiedAt if self._cache else None,
+        )
+
+    def list_devices(self) -> List[DeviceInfo]:
+        raise DeviceManagementUnsupportedError(
+            "Remote device management is not supported by this backend."
+        )
+
+    def deauthorize_device(self, device_id: str) -> None:
+        if device_id == self._device_id:
+            self.deactivate()
+            return
+        raise DeviceManagementUnsupportedError(
+            "Remote device deauthorization is not supported by this backend."
+        )
+
+    # ── Activation ──────────────────────────────────────────────────────────────
+    def activate_with_key(self, key: str) -> ActivationResult:
+        r = activate_with_key(
             base_url=self._base_url,
             product=self.product,
             key=key,
             device_id=self._device_id,
             client=self._http,
         )
-        if isinstance(r, EnrollOk):
+        if isinstance(r, ActivationOk):
             self._token = r.token
             self._store.set_token(r.token)
             self.refresh(force=True)
@@ -284,7 +331,7 @@ class PolarisKeyClient:
     def refresh(self, force: bool = False) -> RefreshResult:
         if not self._token:
             return RefreshResult(applied=False)
-        result = self._fetch_and_apply(allow_reacquire=True)
+        result = self._fetch_and_apply(allow_reacquire=True, force=force)
         if result.applied or not result.unauthorized:
             report_snapshot(
                 base_url=self._base_url,
@@ -295,7 +342,9 @@ class PolarisKeyClient:
             )
         return result
 
-    def _fetch_and_apply(self, allow_reacquire: bool) -> RefreshResult:
+    def _fetch_and_apply(
+        self, allow_reacquire: bool, force: bool = False
+    ) -> RefreshResult:
         if not self._token:
             return RefreshResult(applied=False)
         if self._trust_refresh:
@@ -310,7 +359,7 @@ class PolarisKeyClient:
             device_id=self._device_id,
             version=self._version,
             channel=self._channel,
-            etag=self._cache.etag if self._cache else None,
+            etag=None if force else (self._cache.etag if self._cache else None),
             client=self._http,
         )
 
@@ -327,10 +376,12 @@ class PolarisKeyClient:
                     device_id=self._device_id,
                     client=self._http,
                 )
-                if isinstance(re, EnrollOk):
+                if isinstance(re, ActivationOk):
                     self._token = re.token
                     self._store.set_token(re.token)
-                    return self._fetch_and_apply(allow_reacquire=False)
+                    return self._fetch_and_apply(
+                        allow_reacquire=False, force=force
+                    )
             self._patch_cache(last_sync_unauthorized=True)
             return RefreshResult(applied=False, unauthorized=True)
 
@@ -359,7 +410,7 @@ class PolarisKeyClient:
                 doc=doc,
                 etag=res.etag,
                 lastAcceptedIssuedAt=doc.issuedAt,
-                lastVerifiedAt=_now_sec(),
+                lastVerifiedAt=_now_ms(),
                 lastSyncUnauthorized=False,
                 blocked=None,
                 trustedKeys=self._cache.trustedKeys if self._cache else None,

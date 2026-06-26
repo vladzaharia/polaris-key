@@ -59,8 +59,6 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return cmdTrust(parsed, stdout);
       case "sdk":
         return cmdSdk(parsed, stdout);
-      case "link":
-        return cmdLink(parsed, stdout);
       default:
         stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
         return 2;
@@ -223,30 +221,6 @@ function cmdSdk(
   return 0;
 }
 
-function cmdLink(
-  parsed: ParsedArgs,
-  stdout: Pick<NodeJS.WriteStream, "write">,
-): number {
-  const baseUrl = flagString(parsed, "base-url");
-  const product = flagString(parsed, "product");
-  const repo = flagString(parsed, "repo");
-  if (!baseUrl || !product || !repo) {
-    throw new Error(
-      "Usage: pkey link --base-url <url> --product <slug> --repo <owner/name>",
-    );
-  }
-  stdout.write(
-    "Linking requires an authenticated admin session/API token in a future CLI release.\n",
-  );
-  stdout.write(
-    `Prepared link request for product ${product} at ${baseUrl} from ${repo}.\n`,
-  );
-  stdout.write(
-    "Use the admin Setup screen to complete repo linking for now.\n",
-  );
-  return 0;
-}
-
 function flagString(parsed: ParsedArgs, name: string): string | undefined {
   const value = parsed.flags[name];
   return typeof value === "string" && value.trim() ? value : undefined;
@@ -271,6 +245,5 @@ Commands:
   pkey doctor [--base-url url --product slug]
   pkey trust --kid kid --public-key key
   pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
-  pkey link --base-url url --product slug --repo owner/name
 `;
 }

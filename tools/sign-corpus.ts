@@ -32,8 +32,8 @@ const SWIFT_RESOURCES = join(
 const GATE_MATRIX = join(CORPUS_DIR, "gate-matrix.json");
 
 /** Committed TEST keypairs. These are NOT production keys — they exist only to sign the
- *  corpus. `djdl-test-2026` is the original djdl cross-platform vector key (so the legacy
- *  baseline reproduces byte-for-byte); `pkey-test-prod-2026` is a Polaris Key test key. */
+ *  corpus. `djdl-test-2026` signs the DJDL baseline; `pkey-test-prod-2026` is a Polaris
+ *  Key test key. */
 interface CorpusKey {
   kid: string;
   publicKeyRaw: string;
@@ -65,9 +65,11 @@ const pub = (kid: string): string => keyOf(kid).publicKeyRaw;
 const encSeg = (o: unknown): string =>
   base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(o)));
 
-/** The original djdl doc (NO aud/iss) — its bytes must reproduce the committed fixture. */
-const LEGACY_DOC = {
+/** The DJDL baseline doc under the product-scoped v2 wire contract. */
+const BASELINE_DOC = {
   schemaVersion: 1,
+  aud: "djdl",
+  iss: "key.plrs.im",
   licenseId: "abc123def456",
   deviceId: "device-fixture-01",
   issuedAt: 1700000000,
@@ -77,7 +79,7 @@ const LEGACY_DOC = {
     name: "Ada Lovelace",
     firstName: "Ada",
     email: "ada@example.com",
-    enrolledAt: 1690000000,
+    activatedAt: 1690000000,
   },
   payload: {
     config: {
@@ -113,7 +115,7 @@ function polarisDoc(
       name: "Grace Hopper",
       firstName: "Grace",
       email: "grace@example.com",
-      enrolledAt: 1690000000,
+      activatedAt: 1690000000,
     },
     payload: {
       config: {
@@ -159,19 +161,19 @@ interface CorpusCase {
 async function build(): Promise<unknown> {
   const cases: CorpusCase[] = [];
 
-  // 1. Legacy djdl baseline — reproduces the original fixture bytes exactly.
-  const legacyJws = await signJws(
-    LEGACY_DOC,
+  // 1. DJDL baseline under the first product-specific test key.
+  const baselineJws = await signJws(
+    BASELINE_DOC,
     pem("djdl-test-2026"),
     "djdl-test-2026",
   );
   cases.push({
-    id: "legacy-djdl-baseline",
+    id: "djdl-baseline",
     description:
-      "Original djdl cross-platform vector (no aud/iss) — proves the encoding is unchanged.",
-    jws: legacyJws,
+      "DJDL cross-platform vector under the scoped v2 wire contract.",
+    jws: baselineJws,
     trust: { "djdl-test-2026": pub("djdl-test-2026") },
-    expect: { verify: "ok", kid: "djdl-test-2026", doc: LEGACY_DOC },
+    expect: { verify: "ok", kid: "djdl-test-2026", doc: BASELINE_DOC },
   });
 
   // 2. Valid Polaris v1 doc under the prod-like test key.
@@ -265,25 +267,24 @@ async function build(): Promise<unknown> {
     expect: { verify: "ok", kid: "djdl-test-2026", doc: secondKeyDoc },
   });
 
-  // 8. Forward-compat: extra/unknown top-level fields must NOT break verification. The
-  //    signature covers the exact bytes (including the unknown keys), so it still verifies
-  //    and the payload round-trips verbatim.
-  const forwardDoc = polarisDoc({
+  // 8. Extensibility: extra/unknown top-level fields must NOT break verification. The
+  //    signature covers the exact bytes, so the payload round-trips verbatim.
+  const extensionDoc = polarisDoc({
     futureFeature: { tier: "gold", seats: 5 },
-    unknownTopLevel: "ignored-by-old-clients",
+    unknownTopLevel: "preserved-extension-field",
   });
-  const forwardJws = await signJws(
-    forwardDoc,
+  const extensionJws = await signJws(
+    extensionDoc,
     pem("pkey-test-prod-2026"),
     "pkey-test-prod-2026",
   );
   cases.push({
-    id: "valid-forward-compat-extra-fields",
+    id: "valid-extension-extra-fields",
     description:
-      "A doc carrying unknown top-level fields still verifies and round-trips byte-for-byte (forward-compat).",
-    jws: forwardJws,
+      "A doc carrying unknown top-level fields still verifies and round-trips byte-for-byte.",
+    jws: extensionJws,
     trust: { "pkey-test-prod-2026": pub("pkey-test-prod-2026") },
-    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: forwardDoc },
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: extensionDoc },
   });
 
   // 9. Right kid, WRONG key bytes — a signature from key A presented under a trust set
@@ -327,7 +328,7 @@ async function build(): Promise<unknown> {
       name: "Ada Lovelace 💻 — 北京 — Ångström",
       firstName: "Ada",
       email: "ada@example.com",
-      enrolledAt: 1690000000,
+      activatedAt: 1690000000,
     },
   });
   const unicodeJws = await signJws(
@@ -481,7 +482,7 @@ async function build(): Promise<unknown> {
       name: "Grace Hopper",
       firstName: "Grace",
       email: "grace@example.com",
-      enrolledAt: MAX_SAFE - 3,
+      activatedAt: MAX_SAFE - 3,
     },
     payload: {
       config: {
@@ -542,7 +543,7 @@ async function build(): Promise<unknown> {
       name: "before\u0000after",
       firstName: "Gr\u0000ace",
       email: "grace@example.com",
-      enrolledAt: 1690000000,
+      activatedAt: 1690000000,
     },
   });
   const nulByteJws = await signJws(

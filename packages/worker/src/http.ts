@@ -4,7 +4,7 @@
 export const ErrorCode = {
   Unauthorized: "unauthorized",
   NotEntitled: "not_entitled",
-  MachineLimit: "machine_limit",
+  DeviceLimit: "device_limit",
   BadRequest: "bad_request",
   NotFound: "not_found",
   ManagedByAdmin: "managed_by_admin",

@@ -25,13 +25,7 @@ import {
  * surfacing a fixed, accessible checklist keeps the editor honest and discoverable. Stable + the
  * "stable + beta" path are the common shapes; the list mirrors the worker's channel vocabulary.
  */
-export const CHANNELS = [
-  "stable",
-  "beta",
-  "alpha",
-  "nightly",
-  "internal",
-] as const;
+const CHANNELS = ["stable", "beta", "alpha", "nightly", "internal"] as const;
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 
@@ -54,8 +48,8 @@ const NONE = "__none__";
 function PolicyFields({
   expiry,
   setExpiry,
-  machines,
-  setMachines,
+  devices,
+  setDevices,
   minVersion,
   setMinVersion,
   maxVersion,
@@ -63,8 +57,8 @@ function PolicyFields({
 }: {
   expiry: string;
   setExpiry: (v: string) => void;
-  machines: string;
-  setMachines: (v: string) => void;
+  devices: string;
+  setDevices: (v: string) => void;
   minVersion: string;
   setMinVersion: (v: string) => void;
   maxVersion: string;
@@ -86,15 +80,15 @@ function PolicyFields({
         />
       </Field>
       <Field
-        label="Machine limit"
+        label="Device limit"
         help="Activations allowed per license. Blank = product default."
       >
         <Input
           type="number"
           min={1}
           inputMode="numeric"
-          value={machines}
-          onChange={(e) => setMachines(e.target.value)}
+          value={devices}
+          onChange={(e) => setDevices(e.target.value)}
           placeholder="default"
         />
       </Field>
@@ -183,7 +177,7 @@ export function CreateTierDialog({
   const [label, setLabel] = React.useState("");
   const [profile, setProfile] = React.useState<string>(NONE);
   const [expiry, setExpiry] = React.useState("");
-  const [machines, setMachines] = React.useState("");
+  const [devices, setDevices] = React.useState("");
   const [minVersion, setMinVersion] = React.useState("");
   const [maxVersion, setMaxVersion] = React.useState("");
   const [channels, setChannels] = React.useState<string[]>([]);
@@ -195,7 +189,7 @@ export function CreateTierDialog({
       setLabel("");
       setProfile(NONE);
       setExpiry("");
-      setMachines("");
+      setDevices("");
       setMinVersion("");
       setMaxVersion("");
       setChannels([]);
@@ -221,8 +215,8 @@ export function CreateTierDialog({
     if (profile !== NONE) body.profile = profile;
     const e = toNumber(expiry);
     if (e !== undefined) body.policyExpiryDays = e;
-    const m = toNumber(machines);
-    if (m !== undefined) body.policyMachineLimit = m;
+    const m = toNumber(devices);
+    if (m !== undefined) body.policyDeviceLimit = m;
     if (channels.length) body.channels = channels;
     if (minVersion.trim()) body.minVersion = minVersion.trim();
     if (maxVersion.trim()) body.maxVersion = maxVersion.trim();
@@ -300,8 +294,8 @@ export function CreateTierDialog({
           <PolicyFields
             expiry={expiry}
             setExpiry={setExpiry}
-            machines={machines}
-            setMachines={setMachines}
+            devices={devices}
+            setDevices={setDevices}
             minVersion={minVersion}
             setMinVersion={setMinVersion}
             maxVersion={maxVersion}
@@ -356,7 +350,7 @@ export function EditTierDialog({
   const [label, setLabel] = React.useState("");
   const [profile, setProfile] = React.useState<string>(NONE);
   const [expiry, setExpiry] = React.useState("");
-  const [machines, setMachines] = React.useState("");
+  const [devices, setDevices] = React.useState("");
   const [minVersion, setMinVersion] = React.useState("");
   const [maxVersion, setMaxVersion] = React.useState("");
   const [channels, setChannels] = React.useState<string[]>([]);
@@ -369,8 +363,8 @@ export function EditTierDialog({
       setExpiry(
         tier.policyExpiryDays == null ? "" : String(tier.policyExpiryDays),
       );
-      setMachines(
-        tier.policyMachineLimit == null ? "" : String(tier.policyMachineLimit),
+      setDevices(
+        tier.policyDeviceLimit == null ? "" : String(tier.policyDeviceLimit),
       );
       setMinVersion(tier.minVersion ?? "");
       setMaxVersion(tier.maxVersion ?? "");
@@ -386,7 +380,7 @@ export function EditTierDialog({
       label: label.trim(),
       profile: profile === NONE ? "" : profile,
       policyExpiryDays: toNumber(expiry),
-      policyMachineLimit: toNumber(machines),
+      policyDeviceLimit: toNumber(devices),
       channels,
       minVersion: minVersion.trim() === "" ? null : minVersion.trim(),
       maxVersion: maxVersion.trim() === "" ? null : maxVersion.trim(),
@@ -444,8 +438,8 @@ export function EditTierDialog({
           <PolicyFields
             expiry={expiry}
             setExpiry={setExpiry}
-            machines={machines}
-            setMachines={setMachines}
+            devices={devices}
+            setDevices={setDevices}
             minVersion={minVersion}
             setMinVersion={setMinVersion}
             maxVersion={maxVersion}

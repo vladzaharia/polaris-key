@@ -99,7 +99,7 @@ export function versionFromTag(tag: string): string {
 }
 
 /** Format an ISO timestamp (or null) to an RFC-1123 pubDate. Falls back to epoch. */
-export function rfc1123(iso: string | null): string {
+function rfc1123(iso: string | null): string {
   const d = iso ? new Date(iso) : new Date(0);
   return d.toUTCString();
 }

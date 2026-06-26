@@ -1,4 +1,4 @@
-// Enrollment + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report),
+// Activation + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report),
 // on URLSession. Mirrors sdk-node's endpoints.ts.
 
 import Foundation
@@ -7,10 +7,10 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// The outcome of an enroll-like call (`/enroll`, `/token`).
-public enum EnrollResult: Sendable, Equatable {
+/// The outcome of an activation-like call (`/activate`, `/token`).
+public enum ActivationResult: Sendable, Equatable {
     case ok(token: String, schemaVersion: Int)
-    case machineLimit(limit: Int?, machineCount: Int?)
+    case deviceLimit(limit: Int?, deviceCount: Int?)
     case unauthorized
     case error(message: String)
 }
@@ -20,8 +20,8 @@ public enum Endpoints {
         [
             HEADER_PLATFORM: ProcessInfo.processInfo.operatingSystemVersionString,
             HEADER_ARCH: swiftArch(),
-            HEADER_SDK_NAME: "PolarisKeySwift",
-            HEADER_SDK_VERSION: "0.0.0",
+            HEADER_SDK_NAME: POLARIS_KEY_SDK_NAME,
+            HEADER_SDK_VERSION: POLARIS_KEY_SDK_VERSION,
         ]
     }
 
@@ -35,24 +35,24 @@ public enum Endpoints {
         #endif
     }
 
-    /// Exchange a license key for a per-machine token (`POST /<product>/enroll`).
-    public static func enrollWithKey(
+    /// Exchange a license key for a per-device token (`POST /<product>/activate`).
+    public static func activateWithKey(
         baseUrl: String, product: String, key: String, deviceId: String,
         session: URLSession = .shared
-    ) async -> EnrollResult {
-        await enrollLike(
-            urlString: "\(baseUrl)/\(product)/enroll",
+    ) async -> ActivationResult {
+        await activationLike(
+            urlString: "\(baseUrl)/\(product)/activate",
             headers: ["Authorization": "Bearer \(key)", HEADER_DEVICE: deviceId]
                 .merging(metadataHeaders()) { current, _ in current },
             session: session)
     }
 
-    /// Re-acquire a token for an already-enrolled device (`POST /<product>/token`).
+    /// Re-acquire a token for an already-activated device (`POST /<product>/token`).
     public static func reacquireToken(
         baseUrl: String, product: String, token: String, deviceId: String,
         session: URLSession = .shared
-    ) async -> EnrollResult {
-        await enrollLike(
+    ) async -> ActivationResult {
+        await activationLike(
             urlString: "\(baseUrl)/\(product)/token",
             headers: ["Authorization": "Bearer \(token)", HEADER_DEVICE: deviceId]
                 .merging(metadataHeaders()) { current, _ in current },
@@ -94,9 +94,9 @@ public enum Endpoints {
         return (200..<300).contains(http.statusCode)
     }
 
-    private static func enrollLike(
+    private static func activationLike(
         urlString: String, headers: [String: String], session: URLSession
-    ) async -> EnrollResult {
+    ) async -> ActivationResult {
         guard let url = URL(string: urlString) else {
             return .error(message: "invalid url")
         }
@@ -116,13 +116,13 @@ public enum Endpoints {
         }
         switch http.statusCode {
         case 200:
-            guard let body = try? JSONDecoder().decode(EnrollOkBody.self, from: data) else {
-                return .error(message: "malformed enroll response")
+            guard let body = try? JSONDecoder().decode(ActivationOkBody.self, from: data) else {
+                return .error(message: "malformed activate response")
             }
             return .ok(token: body.token, schemaVersion: body.schemaVersion)
         case 403:
-            let body = try? JSONDecoder().decode(MachineLimitBody.self, from: data)
-            return .machineLimit(limit: body?.limit, machineCount: body?.machineCount)
+            let body = try? JSONDecoder().decode(DeviceLimitBody.self, from: data)
+            return .deviceLimit(limit: body?.limit, deviceCount: body?.deviceCount)
         case 401:
             return .unauthorized
         default:
@@ -131,12 +131,12 @@ public enum Endpoints {
     }
 }
 
-private struct EnrollOkBody: Decodable {
+private struct ActivationOkBody: Decodable {
     let token: String
     let schemaVersion: Int
 }
 
-private struct MachineLimitBody: Decodable {
+private struct DeviceLimitBody: Decodable {
     let limit: Int?
-    let machineCount: Int?
+    let deviceCount: Int?
 }

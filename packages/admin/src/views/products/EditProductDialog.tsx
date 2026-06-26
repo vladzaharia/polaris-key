@@ -35,8 +35,8 @@ export function EditProductDialog({
   const [maxOfflineDays, setMaxOfflineDays] = React.useState(
     String(product.defaultMaxOfflineDays ?? ""),
   );
-  const [machineLimit, setMachineLimit] = React.useState(
-    String(product.defaultMachineLimit ?? ""),
+  const [deviceLimit, setDeviceLimit] = React.useState(
+    String(product.defaultDeviceLimit ?? ""),
   );
   const [adminGroup, setAdminGroup] = React.useState(product.adminGroup ?? "");
   const [busy, setBusy] = React.useState(false);
@@ -49,7 +49,7 @@ export function EditProductDialog({
       setCompatMin(product.compatMin);
       setCompatMax(product.compatMax);
       setMaxOfflineDays(String(product.defaultMaxOfflineDays ?? ""));
-      setMachineLimit(String(product.defaultMachineLimit ?? ""));
+      setDeviceLimit(String(product.defaultDeviceLimit ?? ""));
       setAdminGroup(product.adminGroup ?? "");
       setFormError(null);
     }
@@ -64,7 +64,7 @@ export function EditProductDialog({
         compatMin: trimmedOrUndefined(compatMin),
         compatMax: trimmedOrUndefined(compatMax),
         defaultMaxOfflineDays: intOrUndefined(maxOfflineDays),
-        defaultMachineLimit: intOrUndefined(machineLimit),
+        defaultDeviceLimit: intOrUndefined(deviceLimit),
         adminGroup: trimmedOrUndefined(adminGroup),
       });
       invalidate("products");
@@ -124,12 +124,12 @@ export function EditProductDialog({
                 onChange={(e) => setMaxOfflineDays(e.target.value)}
               />
             </Field>
-            <Field label="Default machine limit">
+            <Field label="Default device limit">
               <Input
                 type="number"
                 inputMode="numeric"
-                value={machineLimit}
-                onChange={(e) => setMachineLimit(e.target.value)}
+                value={deviceLimit}
+                onChange={(e) => setDeviceLimit(e.target.value)}
               />
             </Field>
           </div>

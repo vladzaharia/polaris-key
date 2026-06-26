@@ -111,7 +111,7 @@ const bridge: PolarisBridge = {
   pollSignIn: (flowId) => /* poll it */,
   submitKey: (key) => /* client.activateWithKey(key) */,
   signOut: () => /* client.deactivate() */,
-  on: (event, cb) => /* subscribe to HubDO hot-reload */,
+  on: (event, cb) => /* subscribe to host-side state changes */,
 };
 // expose via contextBridge as window.polarisKey
 ```

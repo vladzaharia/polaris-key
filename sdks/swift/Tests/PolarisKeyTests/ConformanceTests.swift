@@ -162,9 +162,10 @@ final class ConformanceTests: XCTestCase {
         func payload(padLen: Int) -> Data {
             let pad = String(repeating: "x", count: padLen)
             let json = """
-                {"schemaVersion":1,"licenseId":"\(pad)","deviceId":"d","issuedAt":1,\
+                {"schemaVersion":1,"aud":"djdl","iss":"key.plrs.im","licenseId":"\(pad)",\
+                "deviceId":"d","issuedAt":1,\
                 "expiresAt":2,"graceUntil":3,"profile":{"name":"n","firstName":"f",\
-                "email":"e","enrolledAt":0},"payload":{"config":{},"secrets":{},\
+                "email":"e","activatedAt":0},"payload":{"config":{},"secrets":{},\
                 "entitlements":{}}}
                 """
             return Data(json.utf8)
