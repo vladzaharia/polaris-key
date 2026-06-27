@@ -143,7 +143,7 @@ describe("Products view", () => {
     expect(screen.getByText("Review setup warning")).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /Set secrets/ }).getAttribute("href"),
-    ).toBe("#/p/djdl/settings");
+    ).toBe("#/p/djdl/secrets");
     expect(
       screen
         .getByRole("link", { name: /Create test license/ })
@@ -165,6 +165,13 @@ describe("Products view", () => {
     const dialog = await screen.findByRole("dialog");
 
     // The Manual tab is the default; fill the required slug and submit.
+    expect(within(dialog).getByRole("tab", { name: /Manual/ })).toBeTruthy();
+    expect(
+      within(dialog).getByRole("tab", { name: /From GitHub/ }),
+    ).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "Basics" })).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "Catalog" })).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "Defaults" })).toBeTruthy();
     await userEvent.type(within(dialog).getByLabelText(/Slug/), "newp");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Create product" }),

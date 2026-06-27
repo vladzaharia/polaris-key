@@ -6,9 +6,10 @@ import {
   ConfirmDialog,
   DataTable,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   EmptyState,
@@ -210,26 +211,32 @@ function MintKeyDialog({
           </DialogDescription>
         </DialogHeader>
         {minted ? (
-          <div className="space-y-4">
-            <OneTimeKeyPanel value={minted} />
-            <DialogFooter>
+          <>
+            <DialogBody>
+              <div className="space-y-4">
+                <OneTimeKeyPanel value={minted} />
+              </div>
+            </DialogBody>
+            <DialogActionBar>
               <Button onClick={() => onOpenChange(false)}>Done</Button>
-            </DialogFooter>
-          </div>
+            </DialogActionBar>
+          </>
         ) : (
-          <form onSubmit={mint} className="space-y-4">
-            <Field
-              label="Label"
-              help="Optional. A note to identify this key (e.g. “studio laptop”)."
-            >
-              <Input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="studio laptop"
-                autoFocus
-              />
-            </Field>
-            <DialogFooter>
+          <form onSubmit={mint} className="contents">
+            <DialogBody>
+              <Field
+                label="Label"
+                help="Optional. A note to identify this key (e.g. “studio laptop”)."
+              >
+                <Input
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="studio laptop"
+                  autoFocus
+                />
+              </Field>
+            </DialogBody>
+            <DialogActionBar>
               <Button
                 type="button"
                 variant="outline"
@@ -241,7 +248,7 @@ function MintKeyDialog({
               <Button type="submit" loading={busy}>
                 Mint key
               </Button>
-            </DialogFooter>
+            </DialogActionBar>
           </form>
         )}
       </DialogContent>

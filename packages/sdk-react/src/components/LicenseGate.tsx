@@ -44,17 +44,22 @@ export interface LicenseGateProps {
 const fullWindow: CSSProperties = {
   position: "fixed",
   inset: 0,
+  boxSizing: "border-box",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   padding: "24px",
+  overflow: "auto",
   background: "var(--pk-background)",
   color: "var(--pk-text)",
   fontFamily: "var(--pk-font-family)",
 };
 
 const messageCard: CSSProperties = {
+  boxSizing: "border-box",
   width: "min(420px, 100%)",
+  maxHeight: "calc(100vh - 48px)",
+  overflow: "auto",
   padding: "28px",
   textAlign: "center",
   background: "var(--pk-surface)",

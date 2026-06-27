@@ -12,6 +12,8 @@ import {
   Card,
   CardContent,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -104,7 +106,13 @@ function KeyReminder({
   );
 }
 
-function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
+function ManualTab({
+  onDone,
+  onCancel,
+}: {
+  onDone: () => void;
+  onCancel: () => void;
+}): React.ReactElement {
   const toast = useToast();
   const [slug, setSlug] = React.useState("");
   const [name, setName] = React.useState("");
@@ -116,6 +124,7 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
   const [adminGroup, setAdminGroup] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [activeSection, setActiveSection] = React.useState("basics");
   const [result, setResult] = React.useState<CreateManualProductResult | null>(
     null,
   );
@@ -127,10 +136,12 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
     const se = slugError(slug);
     if (se) {
       setFormError(se);
+      setActiveSection("basics");
       return;
     }
     if (schemaParsed.error) {
       setFormError(schemaParsed.error);
+      setActiveSection("catalog");
       return;
     }
     setBusy(true);
@@ -158,132 +169,172 @@ function ManualTab({ onDone }: { onDone: () => void }): React.ReactElement {
 
   if (result) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-success">
-          <CheckCircle2 aria-hidden className="size-5" />
-          Product “{result.slug}” registered
-        </div>
-        <KeyReminder result={result} />
-        <div className="flex justify-end">
+      <>
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-success">
+              <CheckCircle2 aria-hidden className="size-5" />
+              Product “{result.slug}” registered
+            </div>
+            <KeyReminder result={result} />
+          </div>
+        </DialogBody>
+        <DialogActionBar>
           <Button onClick={onDone}>Done</Button>
-        </div>
-      </div>
+        </DialogActionBar>
+      </>
     );
   }
 
   return (
     <form
-      className="space-y-4"
+      className="contents"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Slug"
-          required
-          error={slugErr ?? undefined}
-          help="Lowercase id, e.g. djdl."
+      <DialogBody>
+        <Tabs value={activeSection} onValueChange={setActiveSection}>
+          <TabsList className="w-full">
+            <TabsTrigger value="basics" className="flex-1">
+              Basics
+            </TabsTrigger>
+            <TabsTrigger value="catalog" className="flex-1">
+              Catalog
+            </TabsTrigger>
+            <TabsTrigger value="defaults" className="flex-1">
+              Defaults
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="basics" className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Slug"
+                required
+                error={slugErr ?? undefined}
+                help="Lowercase id, e.g. djdl."
+              >
+                <Input
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="my-product"
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoFocus
+                />
+              </Field>
+              <Field label="Name">
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="My Product"
+                />
+              </Field>
+            </div>
+            <Field
+              label="Admin group"
+              help="Optional OIDC group that administers this product."
+            >
+              <Input
+                value={adminGroup}
+                onChange={(e) => setAdminGroup(e.target.value)}
+                placeholder="pkey-djdl-admins"
+              />
+            </Field>
+          </TabsContent>
+
+          <TabsContent value="catalog">
+            <Field
+              label="Catalog schema"
+              help="Paste JSON or YAML for the product config catalog. Optional — publish later from Catalog."
+              error={
+                schema !== "" && schemaParsed.error
+                  ? schemaParsed.error
+                  : undefined
+              }
+            >
+              <Textarea
+                value={schema}
+                onChange={(e) => setSchema(e.target.value)}
+                rows={10}
+                placeholder={'{\n  "schemaVersion": 2,\n  "entries": []\n}'}
+                spellCheck={false}
+              />
+            </Field>
+          </TabsContent>
+
+          <TabsContent value="defaults" className="grid gap-4 sm:grid-cols-2">
+            <Field label="Compat min" help="Lowest supported client version.">
+              <Input
+                value={compatMin}
+                onChange={(e) => setCompatMin(e.target.value)}
+                placeholder="1.0.0"
+              />
+            </Field>
+            <Field label="Compat max" help="Highest supported client version.">
+              <Input
+                value={compatMax}
+                onChange={(e) => setCompatMax(e.target.value)}
+                placeholder="2.0.0"
+              />
+            </Field>
+            <Field label="Default max offline days">
+              <Input
+                type="number"
+                inputMode="numeric"
+                value={maxOfflineDays}
+                onChange={(e) => setMaxOfflineDays(e.target.value)}
+                placeholder="14"
+              />
+            </Field>
+            <Field label="Default device limit">
+              <Input
+                type="number"
+                inputMode="numeric"
+                value={deviceLimit}
+                onChange={(e) => setDeviceLimit(e.target.value)}
+                placeholder="3"
+              />
+            </Field>
+          </TabsContent>
+        </Tabs>
+
+        {formError ? (
+          <p
+            role="alert"
+            className="mt-4 whitespace-pre-line text-sm font-medium text-destructive"
+          >
+            {formError}
+          </p>
+        ) : null}
+      </DialogBody>
+
+      <DialogActionBar>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={busy}
         >
-          <Input
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="my-product"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </Field>
-        <Field label="Name">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="My Product"
-          />
-        </Field>
-      </div>
-
-      <Field
-        label="Catalog schema"
-        help="Paste JSON or YAML for the product config catalog. Optional — publish later from Catalog."
-        error={
-          schema !== "" && schemaParsed.error ? schemaParsed.error : undefined
-        }
-      >
-        <Textarea
-          value={schema}
-          onChange={(e) => setSchema(e.target.value)}
-          rows={6}
-          placeholder={'{\n  "schemaVersion": 2,\n  "entries": []\n}'}
-          spellCheck={false}
-        />
-      </Field>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Compat min" help="Lowest supported client version.">
-          <Input
-            value={compatMin}
-            onChange={(e) => setCompatMin(e.target.value)}
-            placeholder="1.0.0"
-          />
-        </Field>
-        <Field label="Compat max" help="Highest supported client version.">
-          <Input
-            value={compatMax}
-            onChange={(e) => setCompatMax(e.target.value)}
-            placeholder="2.0.0"
-          />
-        </Field>
-        <Field label="Default max offline days">
-          <Input
-            type="number"
-            inputMode="numeric"
-            value={maxOfflineDays}
-            onChange={(e) => setMaxOfflineDays(e.target.value)}
-            placeholder="14"
-          />
-        </Field>
-        <Field label="Default device limit">
-          <Input
-            type="number"
-            inputMode="numeric"
-            value={deviceLimit}
-            onChange={(e) => setDeviceLimit(e.target.value)}
-            placeholder="3"
-          />
-        </Field>
-      </div>
-
-      <Field
-        label="Admin group"
-        help="Optional OIDC group that administers this product."
-      >
-        <Input
-          value={adminGroup}
-          onChange={(e) => setAdminGroup(e.target.value)}
-          placeholder="pkey-djdl-admins"
-        />
-      </Field>
-
-      {formError ? (
-        <p
-          role="alert"
-          className="whitespace-pre-line text-sm font-medium text-destructive"
-        >
-          {formError}
-        </p>
-      ) : null}
-
-      <div className="flex justify-end gap-2">
+          Cancel
+        </Button>
         <Button type="submit" loading={busy} disabled={slug.trim() === ""}>
           Create product
         </Button>
-      </div>
+      </DialogActionBar>
     </form>
   );
 }
 
-function GithubTab({ onDone }: { onDone: () => void }): React.ReactElement {
+function GithubTab({
+  onDone,
+  onCancel,
+}: {
+  onDone: () => void;
+  onCancel: () => void;
+}): React.ReactElement {
   const toast = useToast();
   const [repoUrl, setRepoUrl] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -314,103 +365,121 @@ function GithubTab({ onDone }: { onDone: () => void }): React.ReactElement {
   if (result) {
     const remaining = result.remainingSecrets ?? [];
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-success">
-          <CheckCircle2 aria-hidden className="size-5" />
-          Repository linked as “{result.slug}”
-        </div>
-        <Card>
-          <CardContent className="space-y-2 p-4">
-            <ResultRow label="Slug" value={result.slug} />
-            <ResultRow label="Signing kid" value={result.kid} />
-          </CardContent>
-        </Card>
-        <KeyReminder result={result} />
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">
-            Install the GitHub App
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Install (or confirm) the Polaris Key GitHub App on the repository so
-            release publishing and resync can authenticate, then provide the
-            secrets below.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-foreground">
-              Remaining secrets
-            </p>
-            <Badge variant={remaining.length ? "warning" : "success"}>
-              {remaining.length ? `${remaining.length} to set` : "all set"}
-            </Badge>
+      <>
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-success">
+              <CheckCircle2 aria-hidden className="size-5" />
+              Repository linked as “{result.slug}”
+            </div>
+            <Card>
+              <CardContent className="space-y-2 p-4">
+                <ResultRow label="Slug" value={result.slug} />
+                <ResultRow label="Signing kid" value={result.kid} />
+              </CardContent>
+            </Card>
+            <KeyReminder result={result} />
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                Install the GitHub App
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Install (or confirm) the Polaris Key GitHub App on the
+                repository so release publishing and resync can authenticate,
+                then provide the secrets below.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground">
+                  Remaining secrets
+                </p>
+                <Badge variant={remaining.length ? "warning" : "success"}>
+                  {remaining.length ? `${remaining.length} to set` : "all set"}
+                </Badge>
+              </div>
+              {remaining.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No secrets are outstanding.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {remaining.map((secret) => (
+                    <li
+                      key={secret}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <span
+                        aria-hidden
+                        className="size-1.5 rounded-full bg-warning"
+                      />
+                      <code className="font-mono">{secret}</code>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Set each secret from the product&apos;s Settings — values are
+                write-only and never read back.
+              </p>
+            </div>
           </div>
-          {remaining.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No secrets are outstanding.
-            </p>
-          ) : (
-            <ul className="space-y-1">
-              {remaining.map((secret) => (
-                <li key={secret} className="flex items-center gap-2 text-sm">
-                  <span
-                    aria-hidden
-                    className="size-1.5 rounded-full bg-warning"
-                  />
-                  <code className="font-mono">{secret}</code>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Set each secret from the product&apos;s Settings — values are
-            write-only and never read back.
-          </p>
-        </div>
-        <div className="flex justify-end">
+        </DialogBody>
+        <DialogActionBar>
           <Button onClick={onDone}>Done</Button>
-        </div>
-      </div>
+        </DialogActionBar>
+      </>
     );
   }
 
   return (
     <form
-      className="space-y-4"
+      className="contents"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
     >
-      <Field
-        label="Repository URL"
-        required
-        help="The Polaris Key GitHub App reads the product manifest from the repo."
-        error={formError && repoUrl.trim() === "" ? formError : undefined}
-      >
-        <Input
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-          placeholder="https://github.com/acme/my-product"
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </Field>
-
-      {formError && repoUrl.trim() !== "" ? (
-        <p
-          role="alert"
-          className="whitespace-pre-line text-sm font-medium text-destructive"
+      <DialogBody>
+        <Field
+          label="Repository URL"
+          required
+          help="The Polaris Key GitHub App reads the product manifest from the repo."
+          error={formError && repoUrl.trim() === "" ? formError : undefined}
         >
-          {formError}
-        </p>
-      ) : null}
+          <Input
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            placeholder="https://github.com/acme/my-product"
+            autoComplete="off"
+            spellCheck={false}
+            autoFocus
+          />
+        </Field>
 
-      <div className="flex justify-end gap-2">
+        {formError && repoUrl.trim() !== "" ? (
+          <p
+            role="alert"
+            className="mt-4 whitespace-pre-line text-sm font-medium text-destructive"
+          >
+            {formError}
+          </p>
+        ) : null}
+      </DialogBody>
+
+      <DialogActionBar>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={busy}
+        >
+          Cancel
+        </Button>
         <Button type="submit" loading={busy} disabled={repoUrl.trim() === ""}>
           Link repository
         </Button>
-      </div>
+      </DialogActionBar>
     </form>
   );
 }
@@ -429,7 +498,7 @@ export function CreateProductDialog({
 }): React.ReactElement {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>New product</DialogTitle>
           <DialogDescription>
@@ -437,7 +506,7 @@ export function CreateProductDialog({
             App can read.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="manual">
+        <Tabs defaultValue="manual" className="contents">
           <TabsList className="w-full">
             <TabsTrigger value="manual" className="flex-1 gap-2">
               <PlusCircle aria-hidden className="size-4" /> Manual
@@ -446,11 +515,17 @@ export function CreateProductDialog({
               <Github aria-hidden className="size-4" /> From GitHub
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="manual">
-            <ManualTab onDone={() => onOpenChange(false)} />
+          <TabsContent value="manual" className="contents">
+            <ManualTab
+              onDone={() => onOpenChange(false)}
+              onCancel={() => onOpenChange(false)}
+            />
           </TabsContent>
-          <TabsContent value="github">
-            <GithubTab onDone={() => onOpenChange(false)} />
+          <TabsContent value="github" className="contents">
+            <GithubTab
+              onDone={() => onOpenChange(false)}
+              onCancel={() => onOpenChange(false)}
+            />
           </TabsContent>
         </Tabs>
       </DialogContent>

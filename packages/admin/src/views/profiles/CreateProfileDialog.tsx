@@ -2,13 +2,18 @@ import * as React from "react";
 import {
   Button,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
   Input,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Textarea,
 } from "../../components/ui/index.js";
 
@@ -36,12 +41,14 @@ export function CreateProfileDialog({
   const [id, setId] = React.useState("");
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState("identity");
 
   React.useEffect(() => {
     if (open) {
       setId("");
       setName("");
       setDescription("");
+      setActiveTab("identity");
     }
   }, [open]);
 
@@ -57,7 +64,10 @@ export function CreateProfileDialog({
   const canSubmit = trimmedId !== "" && !idError && !saving;
 
   const submit = (): void => {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      setActiveTab("identity");
+      return;
+    }
     const body: CreateProfileBody = { id: trimmedId };
     if (name.trim()) body.name = name.trim();
     if (description.trim()) body.description = description.trim();
@@ -78,46 +88,68 @@ export function CreateProfileDialog({
           </DialogDescription>
         </DialogHeader>
         <form
-          className="grid gap-4"
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault();
             submit();
           }}
         >
-          <Field
-            label="Id"
-            required
-            error={idError}
-            help="Stable, immutable identifier."
-          >
-            <Input
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              placeholder="default"
-              autoFocus
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </Field>
-          <Field label="Name" help="Human-friendly name shown in the console.">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Default profile"
-            />
-          </Field>
-          <Field
-            label="Description"
-            help="Optional notes about what this profile is for."
-          >
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Baseline managed configuration for new licenses."
-              className="font-sans"
-            />
-          </Field>
-          <DialogFooter>
+          <DialogBody>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full">
+                <TabsTrigger value="identity" className="flex-1">
+                  Identity
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="flex-1">
+                  Notes
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="identity" className="space-y-4">
+                <Field
+                  label="Id"
+                  required
+                  error={idError}
+                  help="Stable, immutable identifier."
+                >
+                  <Input
+                    value={id}
+                    onChange={(e) => setId(e.target.value)}
+                    placeholder="default"
+                    autoFocus
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </Field>
+                <Field
+                  label="Name"
+                  help="Human-friendly name shown in the console."
+                >
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Default profile"
+                  />
+                </Field>
+              </TabsContent>
+
+              <TabsContent value="notes">
+                <Field
+                  label="Description"
+                  help="Optional notes about what this profile is for."
+                >
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Baseline managed configuration for new licenses."
+                    className="font-sans"
+                  />
+                </Field>
+              </TabsContent>
+            </Tabs>
+          </DialogBody>
+
+          <DialogActionBar>
             <Button
               type="button"
               variant="outline"
@@ -129,7 +161,7 @@ export function CreateProfileDialog({
             <Button type="submit" loading={saving} disabled={!canSubmit}>
               Create profile
             </Button>
-          </DialogFooter>
+          </DialogActionBar>
         </form>
       </DialogContent>
     </Dialog>

@@ -4,9 +4,10 @@ import type { RotateKeyResult } from "../../api.js";
 import {
   Button,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/index.js";
@@ -38,25 +39,29 @@ export function RotateKeyResultDialog({
             then activate it after clients have had a trust-refresh window.
           </DialogDescription>
         </DialogHeader>
-        {result ? (
-          <div className="space-y-3">
-            <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="text-muted-foreground">Staged kid</span>
-              <span className="font-mono break-all text-right">
-                {result.kid}
-              </span>
+        <DialogBody>
+          {result ? (
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">Staged kid</span>
+                <span className="font-mono break-all text-right">
+                  {result.kid}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-sm text-muted-foreground">
+                  Public key
+                </span>
+                <pre className="max-h-48 overflow-auto rounded-md border border-border bg-muted/40 p-3 text-xs font-mono whitespace-pre-wrap break-all">
+                  {result.publicKey}
+                </pre>
+              </div>
             </div>
-            <div className="space-y-1">
-              <span className="text-sm text-muted-foreground">Public key</span>
-              <pre className="max-h-48 overflow-auto rounded-md border border-border bg-muted/40 p-3 text-xs font-mono whitespace-pre-wrap break-all">
-                {result.publicKey}
-              </pre>
-            </div>
-          </div>
-        ) : null}
-        <DialogFooter>
+          ) : null}
+        </DialogBody>
+        <DialogActionBar>
           <Button onClick={() => onOpenChange(false)}>Done</Button>
-        </DialogFooter>
+        </DialogActionBar>
       </DialogContent>
     </Dialog>
   );

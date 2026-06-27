@@ -134,6 +134,12 @@ describe("Tiers view", () => {
 
     await userEvent.type(within(dialog).getByLabelText(/^Id/), "team");
     await userEvent.type(within(dialog).getByLabelText("Label"), "Team");
+    expect(within(dialog).getByRole("tab", { name: "Basics" })).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "Policy" })).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "Channels" })).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: "Channels" }),
+    );
     // Select the "stable" channel checkbox.
     await userEvent.click(within(dialog).getByLabelText("stable"));
     await userEvent.click(
@@ -174,10 +180,14 @@ describe("Tiers view", () => {
     const dialog = await screen.findByRole("dialog");
 
     // Pro starts with stable+beta selected; untick beta and set a max version.
+    await userEvent.click(
+      within(dialog).getByRole("tab", { name: "Channels" }),
+    );
     expect(
       within(dialog).getByLabelText("beta").getAttribute("aria-checked"),
     ).toBe("true");
     await userEvent.click(within(dialog).getByLabelText("beta"));
+    await userEvent.click(within(dialog).getByRole("tab", { name: "Policy" }));
     await userEvent.type(within(dialog).getByLabelText("Max version"), "2.0.0");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Save changes" }),

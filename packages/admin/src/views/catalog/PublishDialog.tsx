@@ -5,9 +5,10 @@ import { invalidate } from "../../context.js";
 import {
   Button,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
@@ -84,7 +85,7 @@ export function PublishDialog({
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Publish new catalog version</DialogTitle>
           <DialogDescription>
@@ -93,25 +94,27 @@ export function PublishDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Field
-          label="Catalog JSON"
-          help="A ProductCatalog object: { schemaVersion, entries[] }."
-          error={error ?? undefined}
-        >
-          <Textarea
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              setServerError(null);
-            }}
-            spellCheck={false}
-            rows={18}
-            className="min-h-[18rem] resize-y"
-            aria-label="Catalog JSON"
-          />
-        </Field>
+        <DialogBody>
+          <Field
+            label="Catalog JSON"
+            help="A ProductCatalog object: { schemaVersion, entries[] }."
+            error={error ?? undefined}
+          >
+            <Textarea
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                setServerError(null);
+              }}
+              spellCheck={false}
+              rows={18}
+              className="min-h-[18rem] resize-y"
+              aria-label="Catalog JSON"
+            />
+          </Field>
+        </DialogBody>
 
-        <DialogFooter>
+        <DialogActionBar>
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -126,7 +129,7 @@ export function PublishDialog({
           >
             Publish
           </Button>
-        </DialogFooter>
+        </DialogActionBar>
       </DialogContent>
     </Dialog>
   );

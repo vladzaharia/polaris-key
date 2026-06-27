@@ -15,10 +15,17 @@ import { ManagedField } from "../../SchemaForm.js";
 import {
   Badge,
   Button,
+  DialogActionBar,
+  DialogBody,
   EmptyState,
   Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   useToast,
 } from "../../components/ui/index.js";
+import { groupByCategory } from "../catalog/helpers.js";
 
 /**
  * The per-key working state for one managed entry. `secret` entries never carry a value over the
@@ -68,6 +75,12 @@ function seedFromPayload(
 
 const CATEGORY_ORDER = (entry: ConfigEntry): number => entry.ui?.order ?? 0;
 
+interface PayloadTab {
+  value: string;
+  label: string;
+  entries: ConfigEntry[];
+}
+
 /**
  * The managed-payload editor for a single profile. Loads the product catalog (schema) and renders
  * a `ManagedField` per entry, seeded from the profile's redacted payload, then diffs the working
@@ -85,10 +98,37 @@ export function PayloadEditor({
   const schemaRes = useResource<ProductCatalog>(`schema:${slug}`, () =>
     api.schema(slug),
   );
+  const catalogEntries = React.useMemo(
+    () => schemaRes.data?.entries ?? [],
+    [schemaRes.data],
+  );
   const entries = React.useMemo(() => {
-    const list = schemaRes.data?.entries ?? [];
-    return [...list].sort((a, b) => CATEGORY_ORDER(a) - CATEGORY_ORDER(b));
-  }, [schemaRes.data]);
+    return [...catalogEntries].sort(
+      (a, b) => CATEGORY_ORDER(a) - CATEGORY_ORDER(b),
+    );
+  }, [catalogEntries]);
+  const payloadTabs = React.useMemo<PayloadTab[]>(() => {
+    const standard = groupByCategory(
+      catalogEntries.filter((entry) => entry.ui?.advanced !== true),
+    ).map((group, index) => ({
+      value: `category-${index}`,
+      label: group.category,
+      entries: group.entries,
+    }));
+    const advancedEntries = groupByCategory(
+      catalogEntries.filter((entry) => entry.ui?.advanced === true),
+    ).flatMap((group) => group.entries);
+    if (advancedEntries.length === 0) return standard;
+    return [
+      ...standard,
+      {
+        value: "advanced",
+        label: "Advanced",
+        entries: advancedEntries,
+      },
+    ];
+  }, [catalogEntries]);
+  const [activeTab, setActiveTab] = React.useState("");
 
   const seed = React.useMemo(
     () => seedFromPayload(profile.payload, entries),
@@ -99,6 +139,11 @@ export function PayloadEditor({
 
   // Re-seed when the profile or catalog changes (e.g. after a save + invalidate reload).
   React.useEffect(() => setState(seed), [seed]);
+  React.useEffect(() => {
+    if (payloadTabs.length === 0) return;
+    if (payloadTabs.some((tab) => tab.value === activeTab)) return;
+    setActiveTab(payloadTabs[0]!.value);
+  }, [activeTab, payloadTabs]);
 
   const updates = React.useMemo(
     () => diff(seed, state, entries),
@@ -134,68 +179,96 @@ export function PayloadEditor({
 
   if (schemaRes.loading && entries.length === 0) {
     return (
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 w-full" />
-        ))}
-      </div>
+      <DialogBody>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
+        </div>
+      </DialogBody>
     );
   }
 
   if (schemaRes.error) {
     return (
-      <EmptyState
-        icon={<AlertTriangle aria-hidden />}
-        title="Could not load the catalog"
-        description={schemaRes.error}
-        action={
-          <Button variant="outline" onClick={schemaRes.reload}>
-            Retry
-          </Button>
-        }
-      />
+      <DialogBody>
+        <EmptyState
+          icon={<AlertTriangle aria-hidden />}
+          title="Could not load the catalog"
+          description={schemaRes.error}
+          action={
+            <Button variant="outline" onClick={schemaRes.reload}>
+              Retry
+            </Button>
+          }
+        />
+      </DialogBody>
     );
   }
 
   if (entries.length === 0) {
     return (
-      <EmptyState
-        title="No managed keys"
-        description="This product's catalog has no config, secret, or flag entries to manage yet."
-      />
+      <DialogBody>
+        <EmptyState
+          title="No managed keys"
+          description="This product's catalog has no config, secret, or flag entries to manage yet."
+        />
+      </DialogBody>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-4">
-        {entries.map((entry) => {
-          const ks = state[entry.key];
-          if (!ks) return null;
-          return (
-            <div key={entry.key} className="space-y-1">
-              {ks.isSecret && ks.secretConfigured ? (
-                <p className="text-xs text-muted-foreground">
-                  <Badge variant="warning">secret set</Badge> A value is
-                  configured. Type to replace it; leave blank to keep.
-                </p>
-              ) : null}
-              <ManagedField
-                entry={entry}
-                value={ks.value}
-                state={ks.state}
-                updatedAt={ks.updatedAt || undefined}
-                onValueChange={(r) => setKey(entry.key, { value: r.value })}
-                onStateChange={(s) => setKey(entry.key, { state: s })}
-              />
-            </div>
-          );
-        })}
-      </div>
+    <>
+      <DialogBody>
+        <Tabs
+          value={activeTab || payloadTabs[0]?.value}
+          onValueChange={setActiveTab}
+        >
+          <TabsList className="h-auto w-full flex-wrap justify-start">
+            {payloadTabs.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {payloadTabs.map((tab) => (
+            <TabsContent
+              key={tab.value}
+              value={tab.value}
+              className="space-y-4"
+            >
+              {tab.entries.map((entry) => {
+                const ks = state[entry.key];
+                if (!ks) return null;
+                return (
+                  <div key={entry.key} className="space-y-1">
+                    {ks.isSecret && ks.secretConfigured ? (
+                      <p className="text-xs text-muted-foreground">
+                        <Badge variant="warning">secret set</Badge> A value is
+                        configured. Type to replace it; leave blank to keep.
+                      </p>
+                    ) : null}
+                    <ManagedField
+                      entry={entry}
+                      value={ks.value}
+                      state={ks.state}
+                      updatedAt={ks.updatedAt || undefined}
+                      onValueChange={(r) =>
+                        setKey(entry.key, { value: r.value })
+                      }
+                      onStateChange={(s) => setKey(entry.key, { state: s })}
+                    />
+                  </div>
+                );
+              })}
+            </TabsContent>
+          ))}
+        </Tabs>
+      </DialogBody>
 
-      <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+      <DialogActionBar className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span
-          className="mr-auto text-sm text-muted-foreground"
+          className="text-sm text-muted-foreground"
           role="status"
           aria-live="polite"
         >
@@ -203,19 +276,21 @@ export function PayloadEditor({
             ? `${updates.length} unsaved ${updates.length === 1 ? "change" : "changes"}`
             : "All changes saved"}
         </span>
-        <Button variant="outline" disabled={!dirty || saving} onClick={reset}>
-          Reset
-        </Button>
-        <Button
-          loading={saving}
-          disabled={!dirty}
-          onClick={() => void handleSave()}
-        >
-          <Save aria-hidden />
-          Save payload
-        </Button>
-      </div>
-    </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" disabled={!dirty || saving} onClick={reset}>
+            Reset
+          </Button>
+          <Button
+            loading={saving}
+            disabled={!dirty}
+            onClick={() => void handleSave()}
+          >
+            <Save aria-hidden />
+            Save payload
+          </Button>
+        </div>
+      </DialogActionBar>
+    </>
   );
 }
 

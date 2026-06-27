@@ -3,13 +3,18 @@ import { api, type LicenseDetail, type PatchLicenseBody } from "../../api.js";
 import {
   Button,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
   Input,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   useToast,
 } from "../../components/ui/index.js";
 import { dateInputToEpoch, epochToDateInput } from "./shared.js";
@@ -44,6 +49,7 @@ export function EditMetadataDialog({
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<"name" | "email" | "expires" | "maxOffline", string>>
   >({});
+  const [activeTab, setActiveTab] = React.useState("holder");
   const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
@@ -55,6 +61,7 @@ export function EditMetadataDialog({
         license.maxOfflineDays == null ? "" : String(license.maxOfflineDays),
       );
       setFieldErrors({});
+      setActiveTab("holder");
       setSaving(false);
     }
   }, [open, license]);
@@ -68,7 +75,10 @@ export function EditMetadataDialog({
       maxOffline,
     });
     setFieldErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) {
+      setActiveTab(nextErrors.name || nextErrors.email ? "holder" : "policy");
+      return;
+    }
     setSaving(true);
     try {
       const body: PatchLicenseBody = {};
@@ -109,60 +119,76 @@ export function EditMetadataDialog({
             Update holder details, license expiry, and device offline grace.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={save} className="space-y-4" noValidate>
-          <Field label="Name" error={fieldErrors.name}>
-            <Input
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                clearFieldError(setFieldErrors, "name");
-              }}
-              autoFocus
-            />
-          </Field>
-          <Field label="Email" error={fieldErrors.email}>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                clearFieldError(setFieldErrors, "email");
-              }}
-            />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Expires"
-              help="Blank means no expiry."
-              error={fieldErrors.expires}
-            >
-              <Input
-                type="date"
-                value={expires}
-                onChange={(e) => {
-                  setExpires(e.target.value);
-                  clearFieldError(setFieldErrors, "expires");
-                }}
-              />
-            </Field>
-            <Field
-              label="Max offline days"
-              help="How long a device may run without checking in."
-              error={fieldErrors.maxOffline}
-            >
-              <Input
-                type="number"
-                min={0}
-                value={maxOffline}
-                onChange={(e) => {
-                  setMaxOffline(e.target.value);
-                  clearFieldError(setFieldErrors, "maxOffline");
-                }}
-                placeholder="e.g. 14"
-              />
-            </Field>
-          </div>
-          <DialogFooter>
+        <form onSubmit={save} className="contents" noValidate>
+          <DialogBody>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full">
+                <TabsTrigger value="holder" className="flex-1">
+                  Holder
+                </TabsTrigger>
+                <TabsTrigger value="policy" className="flex-1">
+                  Policy
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="holder" className="space-y-4">
+                <Field label="Name" error={fieldErrors.name}>
+                  <Input
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      clearFieldError(setFieldErrors, "name");
+                    }}
+                    autoFocus
+                  />
+                </Field>
+                <Field label="Email" error={fieldErrors.email}>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      clearFieldError(setFieldErrors, "email");
+                    }}
+                  />
+                </Field>
+              </TabsContent>
+
+              <TabsContent value="policy" className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Expires"
+                  help="Blank means no expiry."
+                  error={fieldErrors.expires}
+                >
+                  <Input
+                    type="date"
+                    value={expires}
+                    onChange={(e) => {
+                      setExpires(e.target.value);
+                      clearFieldError(setFieldErrors, "expires");
+                    }}
+                  />
+                </Field>
+                <Field
+                  label="Max offline days"
+                  help="How long a device may run without checking in."
+                  error={fieldErrors.maxOffline}
+                >
+                  <Input
+                    type="number"
+                    min={0}
+                    value={maxOffline}
+                    onChange={(e) => {
+                      setMaxOffline(e.target.value);
+                      clearFieldError(setFieldErrors, "maxOffline");
+                    }}
+                    placeholder="e.g. 14"
+                  />
+                </Field>
+              </TabsContent>
+            </Tabs>
+          </DialogBody>
+          <DialogActionBar>
             <Button
               type="button"
               variant="outline"
@@ -174,7 +200,7 @@ export function EditMetadataDialog({
             <Button type="submit" loading={saving}>
               Save changes
             </Button>
-          </DialogFooter>
+          </DialogActionBar>
         </form>
       </DialogContent>
     </Dialog>

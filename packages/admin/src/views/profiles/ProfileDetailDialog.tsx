@@ -6,6 +6,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -34,7 +35,7 @@ export function ProfileDetailDialog({
   if (!summary) return <Dialog open={open} onOpenChange={onOpenChange} />;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {summary.name || summary.id}
@@ -58,25 +59,29 @@ function Body({ slug, id }: { slug: string; id: string }): React.ReactElement {
 
   if (res.loading && !res.data) {
     return (
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 w-full" />
-        ))}
-      </div>
+      <DialogBody>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
+        </div>
+      </DialogBody>
     );
   }
   if (res.error || !res.data) {
     return (
-      <EmptyState
-        icon={<AlertTriangle aria-hidden />}
-        title="Could not load profile"
-        description={res.error ?? "The profile is unavailable."}
-        action={
-          <Button variant="outline" onClick={res.reload}>
-            Retry
-          </Button>
-        }
-      />
+      <DialogBody>
+        <EmptyState
+          icon={<AlertTriangle aria-hidden />}
+          title="Could not load profile"
+          description={res.error ?? "The profile is unavailable."}
+          action={
+            <Button variant="outline" onClick={res.reload}>
+              Retry
+            </Button>
+          }
+        />
+      </DialogBody>
     );
   }
   return <PayloadEditor slug={slug} profile={res.data} />;

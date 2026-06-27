@@ -154,8 +154,14 @@ describe("Profiles view", () => {
     await userEvent.click(screen.getByRole("button", { name: /New profile/ }));
     const dialog = await screen.findByRole("dialog");
 
-    await userEvent.type(within(dialog).getByLabelText(/^Id/), "trial");
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /^Id/ }),
+      "trial",
+    );
     await userEvent.type(within(dialog).getByLabelText("Name"), "Trial");
+    expect(within(dialog).getByRole("tab", { name: "Identity" })).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "Notes" })).toBeTruthy();
+    await userEvent.click(within(dialog).getByRole("tab", { name: "Notes" }));
     await userEvent.type(
       within(dialog).getByLabelText("Description"),
       "Time-limited",
@@ -183,6 +189,10 @@ describe("Profiles view", () => {
     await userEvent.click(screen.getByRole("button", { name: "Edit default" }));
     const dialog = await screen.findByRole("dialog");
     // The catalog-driven editor loaded the profile + schema and rendered the managed fields.
+    expect(
+      await within(dialog).findByRole("tab", { name: "appearance" }),
+    ).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "flags" })).toBeTruthy();
     await within(dialog).findByLabelText("Theme");
     expect(mockApi.profile).toHaveBeenCalledWith("djdl", "default");
 

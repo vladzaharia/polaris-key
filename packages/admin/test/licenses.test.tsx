@@ -243,8 +243,12 @@ describe("Licenses list", () => {
 
     await user.click(screen.getByRole("button", { name: "Create license" }));
     const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("tab", { name: "Holder" })).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "Policy" })).toBeTruthy();
+    expect(within(dialog).getByRole("tab", { name: "Profiles" })).toBeTruthy();
     await user.type(within(dialog).getByLabelText(/Name/), "Grace Hopper");
     await user.type(within(dialog).getByLabelText(/Email/), "grace@x.io");
+    await user.click(within(dialog).getByRole("tab", { name: "Policy" }));
     fireEvent.change(within(dialog).getByLabelText(/Expires/), {
       target: { value: "2026-12-31" },
     });
@@ -287,6 +291,7 @@ describe("Licenses list", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText(/Name/), "Grace Hopper");
     await user.type(within(dialog).getByLabelText(/Email/), "bad-email");
+    await user.click(within(dialog).getByRole("tab", { name: "Policy" }));
     await user.type(within(dialog).getByLabelText(/Max offline days/), "-1");
     await user.click(
       within(dialog).getByRole("button", { name: "Create license" }),
@@ -295,6 +300,7 @@ describe("Licenses list", () => {
     expect(
       await within(dialog).findByText("Enter a valid email address."),
     ).toBeTruthy();
+    await user.click(within(dialog).getByRole("tab", { name: "Policy" }));
     expect(
       within(dialog).getByText("Enter a whole number of days, 0 or higher."),
     ).toBeTruthy();

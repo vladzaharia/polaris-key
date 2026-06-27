@@ -5,9 +5,10 @@ import {
   Button,
   Checkbox,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
@@ -18,6 +19,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "../../components/ui/index.js";
 
 /**
@@ -181,6 +186,7 @@ export function CreateTierDialog({
   const [minVersion, setMinVersion] = React.useState("");
   const [maxVersion, setMaxVersion] = React.useState("");
   const [channels, setChannels] = React.useState<string[]>([]);
+  const [activeTab, setActiveTab] = React.useState("basics");
 
   // Reset the form each time the dialog (re)opens.
   React.useEffect(() => {
@@ -193,6 +199,7 @@ export function CreateTierDialog({
       setMinVersion("");
       setMaxVersion("");
       setChannels([]);
+      setActiveTab("basics");
     }
   }, [open]);
 
@@ -209,7 +216,10 @@ export function CreateTierDialog({
   const canSubmit = trimmedId !== "" && !idError && !saving;
 
   const submit = (): void => {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      setActiveTab("basics");
+      return;
+    }
     const body: TierBody = { id: trimmedId };
     if (label.trim()) body.label = label.trim();
     if (profile !== NONE) body.profile = profile;
@@ -237,81 +247,108 @@ export function CreateTierDialog({
           </DialogDescription>
         </DialogHeader>
         <form
-          className="grid gap-4"
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault();
             submit();
           }}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Id"
-              required
-              error={idError}
-              help="Stable, immutable identifier."
-            >
-              <Input
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                placeholder="pro"
-                autoFocus
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </Field>
-            <Field
-              label="Label"
-              help="Human-friendly name shown in the console."
-            >
-              <Input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="Pro"
-              />
-            </Field>
-          </div>
+          <DialogBody>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full">
+                <TabsTrigger value="basics" className="flex-1">
+                  Basics
+                </TabsTrigger>
+                <TabsTrigger value="policy" className="flex-1">
+                  Policy
+                </TabsTrigger>
+                <TabsTrigger value="channels" className="flex-1">
+                  Channels
+                </TabsTrigger>
+              </TabsList>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="create-tier-profile">Profile</Label>
-            <Select value={profile} onValueChange={setProfile}>
-              <SelectTrigger id="create-tier-profile" aria-label="Profile">
-                <SelectValue placeholder="No profile" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>No profile</SelectItem>
-                {profiles.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name || p.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              The managed payload applied to licenses on this tier.
-            </p>
-          </div>
+              <TabsContent value="basics" className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Id"
+                    required
+                    error={idError}
+                    help="Stable, immutable identifier."
+                  >
+                    <Input
+                      value={id}
+                      onChange={(e) => setId(e.target.value)}
+                      placeholder="pro"
+                      autoFocus
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </Field>
+                  <Field
+                    label="Label"
+                    help="Human-friendly name shown in the console."
+                  >
+                    <Input
+                      value={label}
+                      onChange={(e) => setLabel(e.target.value)}
+                      placeholder="Pro"
+                    />
+                  </Field>
+                </div>
 
-          <PolicyFields
-            expiry={expiry}
-            setExpiry={setExpiry}
-            devices={devices}
-            setDevices={setDevices}
-            minVersion={minVersion}
-            setMinVersion={setMinVersion}
-            maxVersion={maxVersion}
-            setMaxVersion={setMaxVersion}
-          />
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="create-tier-profile">Profile</Label>
+                  <Select value={profile} onValueChange={setProfile}>
+                    <SelectTrigger
+                      id="create-tier-profile"
+                      aria-label="Profile"
+                    >
+                      <SelectValue placeholder="No profile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>No profile</SelectItem>
+                      {profiles.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name || p.id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    The managed payload applied to licenses on this tier.
+                  </p>
+                </div>
+              </TabsContent>
 
-          <ChannelPicker
-            selected={channels}
-            onToggle={(channel, on) =>
-              setChannels((prev) =>
-                on ? [...prev, channel] : prev.filter((c) => c !== channel),
-              )
-            }
-          />
+              <TabsContent value="policy">
+                <PolicyFields
+                  expiry={expiry}
+                  setExpiry={setExpiry}
+                  devices={devices}
+                  setDevices={setDevices}
+                  minVersion={minVersion}
+                  setMinVersion={setMinVersion}
+                  maxVersion={maxVersion}
+                  setMaxVersion={setMaxVersion}
+                />
+              </TabsContent>
 
-          <DialogFooter>
+              <TabsContent value="channels">
+                <ChannelPicker
+                  selected={channels}
+                  onToggle={(channel, on) =>
+                    setChannels((prev) =>
+                      on
+                        ? [...prev, channel]
+                        : prev.filter((c) => c !== channel),
+                    )
+                  }
+                />
+              </TabsContent>
+            </Tabs>
+          </DialogBody>
+
+          <DialogActionBar>
             <Button
               type="button"
               variant="outline"
@@ -323,7 +360,7 @@ export function CreateTierDialog({
             <Button type="submit" loading={saving} disabled={!canSubmit}>
               Create tier
             </Button>
-          </DialogFooter>
+          </DialogActionBar>
         </form>
       </DialogContent>
     </Dialog>
@@ -354,6 +391,7 @@ export function EditTierDialog({
   const [minVersion, setMinVersion] = React.useState("");
   const [maxVersion, setMaxVersion] = React.useState("");
   const [channels, setChannels] = React.useState<string[]>([]);
+  const [activeTab, setActiveTab] = React.useState("basics");
 
   // Seed the form from the tier whenever the dialog opens for a (new) tier.
   React.useEffect(() => {
@@ -369,6 +407,7 @@ export function EditTierDialog({
       setMinVersion(tier.minVersion ?? "");
       setMaxVersion(tier.maxVersion ?? "");
       setChannels(tier.channels ?? []);
+      setActiveTab("basics");
     }
   }, [open, tier]);
 
@@ -403,59 +442,86 @@ export function EditTierDialog({
           </DialogDescription>
         </DialogHeader>
         <form
-          className="grid gap-4"
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault();
             submit();
           }}
         >
-          <Field label="Label" help="Human-friendly name shown in the console.">
-            <Input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder={tier.id}
-              autoFocus
-            />
-          </Field>
+          <DialogBody>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full">
+                <TabsTrigger value="basics" className="flex-1">
+                  Basics
+                </TabsTrigger>
+                <TabsTrigger value="policy" className="flex-1">
+                  Policy
+                </TabsTrigger>
+                <TabsTrigger value="channels" className="flex-1">
+                  Channels
+                </TabsTrigger>
+              </TabsList>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="edit-tier-profile">Profile</Label>
-            <Select value={profile} onValueChange={setProfile}>
-              <SelectTrigger id="edit-tier-profile" aria-label="Profile">
-                <SelectValue placeholder="No profile" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>No profile</SelectItem>
-                {profiles.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name || p.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <TabsContent value="basics" className="space-y-4">
+                <Field
+                  label="Label"
+                  help="Human-friendly name shown in the console."
+                >
+                  <Input
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                    placeholder={tier.id}
+                    autoFocus
+                  />
+                </Field>
 
-          <PolicyFields
-            expiry={expiry}
-            setExpiry={setExpiry}
-            devices={devices}
-            setDevices={setDevices}
-            minVersion={minVersion}
-            setMinVersion={setMinVersion}
-            maxVersion={maxVersion}
-            setMaxVersion={setMaxVersion}
-          />
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-tier-profile">Profile</Label>
+                  <Select value={profile} onValueChange={setProfile}>
+                    <SelectTrigger id="edit-tier-profile" aria-label="Profile">
+                      <SelectValue placeholder="No profile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>No profile</SelectItem>
+                      {profiles.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name || p.id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TabsContent>
 
-          <ChannelPicker
-            selected={channels}
-            onToggle={(channel, on) =>
-              setChannels((prev) =>
-                on ? [...prev, channel] : prev.filter((c) => c !== channel),
-              )
-            }
-          />
+              <TabsContent value="policy">
+                <PolicyFields
+                  expiry={expiry}
+                  setExpiry={setExpiry}
+                  devices={devices}
+                  setDevices={setDevices}
+                  minVersion={minVersion}
+                  setMinVersion={setMinVersion}
+                  maxVersion={maxVersion}
+                  setMaxVersion={setMaxVersion}
+                />
+              </TabsContent>
 
-          <DialogFooter>
+              <TabsContent value="channels">
+                <ChannelPicker
+                  selected={channels}
+                  onToggle={(channel, on) =>
+                    setChannels((prev) =>
+                      on
+                        ? [...prev, channel]
+                        : prev.filter((c) => c !== channel),
+                    )
+                  }
+                />
+              </TabsContent>
+            </Tabs>
+          </DialogBody>
+
+          <DialogActionBar>
             <Button
               type="button"
               variant="outline"
@@ -467,7 +533,7 @@ export function EditTierDialog({
             <Button type="submit" loading={saving}>
               Save changes
             </Button>
-          </DialogFooter>
+          </DialogActionBar>
         </form>
       </DialogContent>
     </Dialog>

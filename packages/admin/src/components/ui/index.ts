@@ -37,6 +37,8 @@ export {
   DialogContent,
   DialogHeader,
   DialogFooter,
+  DialogBody,
+  DialogActionBar,
   DialogTitle,
   DialogDescription,
 } from "./Dialog.js";

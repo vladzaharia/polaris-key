@@ -34,7 +34,7 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4",
+        "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[calc(100vw-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden",
         "rounded-lg border border-border bg-card p-6 text-card-foreground shadow-pk-lg animate-pk-in",
         className,
       )}
@@ -74,6 +74,36 @@ export function DialogFooter({
     <div
       className={cn(
         "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function DialogBody({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        "pk-scroll -mx-1 min-h-0 flex-1 overflow-y-auto px-1",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function DialogActionBar({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        "-mx-6 -mb-6 mt-1 flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-card/95 px-6 py-4 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}

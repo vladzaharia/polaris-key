@@ -3,6 +3,8 @@ import { api, type ProductDetail } from "../../api.js";
 import {
   Button,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -75,46 +77,54 @@ export function SecretDialog({
           </DialogDescription>
         </DialogHeader>
         <form
-          className="space-y-4"
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
           }}
         >
-          <Field
-            label="Secret name"
-            required
-            help="e.g. GITHUB_APP_PRIVATE_KEY."
-          >
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="SECRET_NAME"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </Field>
-          <Field
-            label="Secret value"
-            required
-            help="Written once; the value is not echoed back."
-          >
-            <Input
-              type="password"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              autoComplete="new-password"
-              spellCheck={false}
-            />
-          </Field>
+          <DialogBody>
+            <div className="space-y-4">
+              <Field
+                label="Secret name"
+                required
+                help="e.g. GITHUB_APP_PRIVATE_KEY."
+              >
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="SECRET_NAME"
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoFocus
+                />
+              </Field>
+              <Field
+                label="Secret value"
+                required
+                help="Written once; the value is not echoed back."
+              >
+                <Input
+                  type="password"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  autoComplete="new-password"
+                  spellCheck={false}
+                />
+              </Field>
 
-          {formError ? (
-            <p role="alert" className="text-sm font-medium text-destructive">
-              {formError}
-            </p>
-          ) : null}
+              {formError ? (
+                <p
+                  role="alert"
+                  className="text-sm font-medium text-destructive"
+                >
+                  {formError}
+                </p>
+              ) : null}
+            </div>
+          </DialogBody>
 
-          <div className="flex justify-end gap-2">
+          <DialogActionBar>
             <Button
               type="button"
               variant="outline"
@@ -126,7 +136,7 @@ export function SecretDialog({
             <Button type="submit" loading={busy}>
               Set secret
             </Button>
-          </div>
+          </DialogActionBar>
         </form>
       </DialogContent>
     </Dialog>

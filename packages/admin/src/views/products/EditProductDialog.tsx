@@ -4,12 +4,18 @@ import { invalidate } from "../../context.js";
 import {
   Button,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   Field,
   Input,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   useToast,
 } from "../../components/ui/index.js";
 import { errorMessage, intOrUndefined, trimmedOrUndefined } from "./util.js";
@@ -41,6 +47,7 @@ export function EditProductDialog({
   const [adminGroup, setAdminGroup] = React.useState(product.adminGroup ?? "");
   const [busy, setBusy] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = React.useState("basics");
 
   // Re-seed when the dialog opens for a (possibly different) product.
   React.useEffect(() => {
@@ -52,6 +59,7 @@ export function EditProductDialog({
       setDeviceLimit(String(product.defaultDeviceLimit ?? ""));
       setAdminGroup(product.adminGroup ?? "");
       setFormError(null);
+      setActiveTab("basics");
     }
   }, [open, product]);
 
@@ -79,7 +87,7 @@ export function EditProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit “{product.slug}”</DialogTitle>
           <DialogDescription>
@@ -88,69 +96,101 @@ export function EditProductDialog({
           </DialogDescription>
         </DialogHeader>
         <form
-          className="space-y-4"
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
           }}
         >
-          <Field label="Name">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={product.slug}
-            />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Compat min">
-              <Input
-                value={compatMin}
-                onChange={(e) => setCompatMin(e.target.value)}
-                placeholder="1.0.0"
-              />
-            </Field>
-            <Field label="Compat max">
-              <Input
-                value={compatMax}
-                onChange={(e) => setCompatMax(e.target.value)}
-                placeholder="2.0.0"
-              />
-            </Field>
-            <Field label="Default max offline days">
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={maxOfflineDays}
-                onChange={(e) => setMaxOfflineDays(e.target.value)}
-              />
-            </Field>
-            <Field label="Default device limit">
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={deviceLimit}
-                onChange={(e) => setDeviceLimit(e.target.value)}
-              />
-            </Field>
-          </div>
-          <Field
-            label="Admin group"
-            help="OIDC group that administers this product."
-          >
-            <Input
-              value={adminGroup}
-              onChange={(e) => setAdminGroup(e.target.value)}
-              placeholder="pkey-admins"
-            />
-          </Field>
+          <DialogBody>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full">
+                <TabsTrigger value="basics" className="flex-1">
+                  Basics
+                </TabsTrigger>
+                <TabsTrigger value="compatibility" className="flex-1">
+                  Compatibility
+                </TabsTrigger>
+                <TabsTrigger value="defaults" className="flex-1">
+                  Defaults
+                </TabsTrigger>
+              </TabsList>
 
-          {formError ? (
-            <p role="alert" className="text-sm font-medium text-destructive">
-              {formError}
-            </p>
-          ) : null}
+              <TabsContent value="basics" className="space-y-4">
+                <Field label="Name">
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={product.slug}
+                    autoFocus
+                  />
+                </Field>
+                <Field
+                  label="Admin group"
+                  help="OIDC group that administers this product."
+                >
+                  <Input
+                    value={adminGroup}
+                    onChange={(e) => setAdminGroup(e.target.value)}
+                    placeholder="pkey-admins"
+                  />
+                </Field>
+              </TabsContent>
 
-          <div className="flex justify-end gap-2">
+              <TabsContent
+                value="compatibility"
+                className="grid gap-4 sm:grid-cols-2"
+              >
+                <Field label="Compat min">
+                  <Input
+                    value={compatMin}
+                    onChange={(e) => setCompatMin(e.target.value)}
+                    placeholder="1.0.0"
+                  />
+                </Field>
+                <Field label="Compat max">
+                  <Input
+                    value={compatMax}
+                    onChange={(e) => setCompatMax(e.target.value)}
+                    placeholder="2.0.0"
+                  />
+                </Field>
+              </TabsContent>
+
+              <TabsContent
+                value="defaults"
+                className="grid gap-4 sm:grid-cols-2"
+              >
+                <Field label="Default max offline days">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={maxOfflineDays}
+                    onChange={(e) => setMaxOfflineDays(e.target.value)}
+                  />
+                </Field>
+                <Field label="Default device limit">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={deviceLimit}
+                    onChange={(e) => setDeviceLimit(e.target.value)}
+                  />
+                </Field>
+              </TabsContent>
+            </Tabs>
+
+            {formError ? (
+              <p
+                role="alert"
+                className="mt-4 text-sm font-medium text-destructive"
+              >
+                {formError}
+              </p>
+            ) : null}
+          </DialogBody>
+
+          <DialogActionBar>
             <Button
               type="button"
               variant="outline"
@@ -162,7 +202,7 @@ export function EditProductDialog({
             <Button type="submit" loading={busy}>
               Save changes
             </Button>
-          </div>
+          </DialogActionBar>
         </form>
       </DialogContent>
     </Dialog>

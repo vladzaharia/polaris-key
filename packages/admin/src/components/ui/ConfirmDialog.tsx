@@ -2,10 +2,11 @@ import * as React from "react";
 import { Button, type ButtonProps } from "./Button.js";
 import {
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "./Dialog.js";
@@ -47,11 +48,13 @@ export function ConfirmDialog({
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description ? (
-            <DialogDescription>{description}</DialogDescription>
-          ) : null}
         </DialogHeader>
-        <DialogFooter>
+        {description ? (
+          <DialogBody>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogBody>
+        ) : null}
+        <DialogActionBar>
           <DialogClose asChild>
             <Button variant="outline" disabled={loading}>
               {cancelLabel}
@@ -64,7 +67,7 @@ export function ConfirmDialog({
           >
             {confirmLabel}
           </Button>
-        </DialogFooter>
+        </DialogActionBar>
       </DialogContent>
     </Dialog>
   );

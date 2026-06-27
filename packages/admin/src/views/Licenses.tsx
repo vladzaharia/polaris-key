@@ -13,9 +13,10 @@ import {
   Button,
   DataTable,
   Dialog,
+  DialogActionBar,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   EmptyState,
@@ -27,6 +28,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   useToast,
   type ColumnDef,
 } from "../components/ui/index.js";
@@ -231,6 +236,7 @@ function CreateLicenseDialog({
       Record<"name" | "email" | "expires" | "maxOffline" | "versions", string>
     >
   >({});
+  const [activeTab, setActiveTab] = React.useState("holder");
   const [submitting, setSubmitting] = React.useState(false);
   const [mintedKey, setMintedKey] = React.useState<string | null>(null);
   const [createdId, setCreatedId] = React.useState<string | null>(null);
@@ -249,6 +255,7 @@ function CreateLicenseDialog({
       setMinVersion("");
       setMaxVersion("");
       setFieldErrors({});
+      setActiveTab("holder");
       setMintedKey(null);
       setCreatedId(null);
       setSubmitting(false);
@@ -266,7 +273,10 @@ function CreateLicenseDialog({
       maxVersion,
     });
     setFieldErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) {
+      setActiveTab(nextErrors.name || nextErrors.email ? "holder" : "policy");
+      return;
+    }
     setSubmitting(true);
     try {
       const body: CreateLicenseBody = {
@@ -298,7 +308,7 @@ function CreateLicenseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Create license</DialogTitle>
           <DialogDescription>
@@ -309,9 +319,13 @@ function CreateLicenseDialog({
         </DialogHeader>
 
         {mintedKey ? (
-          <div className="space-y-4">
-            <OneTimeKeyPanel value={mintedKey} />
-            <DialogFooter>
+          <>
+            <DialogBody>
+              <div className="space-y-4">
+                <OneTimeKeyPanel value={mintedKey} />
+              </div>
+            </DialogBody>
+            <DialogActionBar>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Done
               </Button>
@@ -330,169 +344,197 @@ function CreateLicenseDialog({
                   Open license
                 </Button>
               ) : null}
-            </DialogFooter>
-          </div>
+            </DialogActionBar>
+          </>
         ) : (
-          <form onSubmit={submit} className="space-y-4" noValidate>
-            <Field label="Name" required error={fieldErrors.name}>
-              <Input
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  clearFieldError(setFieldErrors, "name");
-                }}
-                placeholder="Ada Lovelace"
-                autoFocus
-              />
-            </Field>
-            <Field label="Email" required error={fieldErrors.email}>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  clearFieldError(setFieldErrors, "email");
-                }}
-                placeholder="ada@example.com"
-              />
-            </Field>
-            <Field
-              label="Tier"
-              help="Optional. Applies the tier's policy + profile."
-            >
-              <Select value={tier} onValueChange={setTier}>
-                <SelectTrigger aria-label="Tier">
-                  <SelectValue placeholder="No tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No tier</SelectItem>
-                  {tiers.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.label || t.id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label="Expires"
-                help="Optional. Blank means no license expiry."
-                error={fieldErrors.expires}
-              >
-                <Input
-                  type="date"
-                  value={expires}
-                  onChange={(e) => {
-                    setExpires(e.target.value);
-                    clearFieldError(setFieldErrors, "expires");
-                  }}
-                />
-              </Field>
-              <Field
-                label="Max offline days"
-                help="Optional. Overrides the product default for this license."
-                error={fieldErrors.maxOffline}
-              >
-                <Input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={maxOffline}
-                  onChange={(e) => {
-                    setMaxOffline(e.target.value);
-                    clearFieldError(setFieldErrors, "maxOffline");
-                  }}
-                  placeholder="e.g. 14"
-                />
-              </Field>
-            </div>
-            <Field
-              label="Release channels"
-              help="Optional. Leave empty to inherit tier or product release defaults."
-            >
-              <div>
-                <ChannelMultiSelect
-                  value={channels}
-                  onChange={setChannels}
-                  idPrefix="create-license-channel"
-                />
-              </div>
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label="Minimum version"
-                help="Optional floor for app updates."
-                error={fieldErrors.versions}
-              >
-                <Input
-                  value={minVersion}
-                  onChange={(e) => {
-                    setMinVersion(e.target.value);
-                    clearFieldError(setFieldErrors, "versions");
-                  }}
-                  placeholder="e.g. 1.2.0"
-                />
-              </Field>
-              <Field label="Maximum version" help="Optional ceiling.">
-                <Input
-                  value={maxVersion}
-                  onChange={(e) => {
-                    setMaxVersion(e.target.value);
-                    clearFieldError(setFieldErrors, "versions");
-                  }}
-                  placeholder="e.g. 2.0.0"
-                />
-              </Field>
-            </div>
-            <Field
-              label="Profiles"
-              help="Optional. Profiles apply in the order selected here."
-            >
-              <div className="rounded-md border border-border p-3">
-                {profiles.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No profiles are defined.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {profiles.map((profile: ProfileSummary) => {
-                      const checked = selectedProfiles.includes(profile.id);
-                      return (
-                        <label
-                          key={profile.id}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(value) => {
-                              setSelectedProfiles((prev) =>
-                                value
-                                  ? [...prev, profile.id]
-                                  : prev.filter((id) => id !== profile.id),
-                              );
-                            }}
-                          />
-                          <span>{profile.name || profile.id}</span>
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {profile.id}
-                          </span>
-                        </label>
-                      );
-                    })}
+          <form onSubmit={submit} className="contents" noValidate>
+            <DialogBody>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="holder" className="flex-1">
+                    Holder
+                  </TabsTrigger>
+                  <TabsTrigger value="policy" className="flex-1">
+                    Policy
+                  </TabsTrigger>
+                  <TabsTrigger value="profiles" className="flex-1">
+                    Profiles
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="holder" className="space-y-4">
+                  <Field label="Name" required error={fieldErrors.name}>
+                    <Input
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        clearFieldError(setFieldErrors, "name");
+                      }}
+                      placeholder="Ada Lovelace"
+                      autoFocus
+                    />
+                  </Field>
+                  <Field label="Email" required error={fieldErrors.email}>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        clearFieldError(setFieldErrors, "email");
+                      }}
+                      placeholder="ada@example.com"
+                    />
+                  </Field>
+                  <Field
+                    label="Tier"
+                    help="Optional. Applies the tier's policy + profile."
+                  >
+                    <Select value={tier} onValueChange={setTier}>
+                      <SelectTrigger aria-label="Tier">
+                        <SelectValue placeholder="No tier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No tier</SelectItem>
+                        {tiers.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.label || t.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </TabsContent>
+
+                <TabsContent value="policy" className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                      label="Expires"
+                      help="Optional. Blank means no license expiry."
+                      error={fieldErrors.expires}
+                    >
+                      <Input
+                        type="date"
+                        value={expires}
+                        onChange={(e) => {
+                          setExpires(e.target.value);
+                          clearFieldError(setFieldErrors, "expires");
+                        }}
+                      />
+                    </Field>
+                    <Field
+                      label="Max offline days"
+                      help="Optional. Overrides the product default for this license."
+                      error={fieldErrors.maxOffline}
+                    >
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={maxOffline}
+                        onChange={(e) => {
+                          setMaxOffline(e.target.value);
+                          clearFieldError(setFieldErrors, "maxOffline");
+                        }}
+                        placeholder="e.g. 14"
+                      />
+                    </Field>
                   </div>
-                )}
-              </div>
-            </Field>
-            <PolicySummary
-              expires={expires}
-              maxOffline={maxOffline}
-              channels={channels}
-              minVersion={minVersion}
-              maxVersion={maxVersion}
-              selectedTier={selectedTier}
-            />
-            <DialogFooter>
+                  <Field
+                    label="Release channels"
+                    help="Optional. Leave empty to inherit tier or product release defaults."
+                  >
+                    <div>
+                      <ChannelMultiSelect
+                        value={channels}
+                        onChange={setChannels}
+                        idPrefix="create-license-channel"
+                      />
+                    </div>
+                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                      label="Minimum version"
+                      help="Optional floor for app updates."
+                      error={fieldErrors.versions}
+                    >
+                      <Input
+                        value={minVersion}
+                        onChange={(e) => {
+                          setMinVersion(e.target.value);
+                          clearFieldError(setFieldErrors, "versions");
+                        }}
+                        placeholder="e.g. 1.2.0"
+                      />
+                    </Field>
+                    <Field label="Maximum version" help="Optional ceiling.">
+                      <Input
+                        value={maxVersion}
+                        onChange={(e) => {
+                          setMaxVersion(e.target.value);
+                          clearFieldError(setFieldErrors, "versions");
+                        }}
+                        placeholder="e.g. 2.0.0"
+                      />
+                    </Field>
+                  </div>
+                  <PolicySummary
+                    expires={expires}
+                    maxOffline={maxOffline}
+                    channels={channels}
+                    minVersion={minVersion}
+                    maxVersion={maxVersion}
+                    selectedTier={selectedTier}
+                  />
+                </TabsContent>
+
+                <TabsContent value="profiles" className="space-y-4">
+                  <Field
+                    label="Profiles"
+                    help="Optional. Profiles apply in the order selected here."
+                  >
+                    <div className="rounded-md border border-border p-3">
+                      {profiles.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No profiles are defined.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {profiles.map((profile: ProfileSummary) => {
+                            const checked = selectedProfiles.includes(
+                              profile.id,
+                            );
+                            return (
+                              <label
+                                key={profile.id}
+                                className="flex items-center gap-2 text-sm"
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(value) => {
+                                    setSelectedProfiles((prev) =>
+                                      value
+                                        ? [...prev, profile.id]
+                                        : prev.filter(
+                                            (id) => id !== profile.id,
+                                          ),
+                                    );
+                                  }}
+                                />
+                                <span>{profile.name || profile.id}</span>
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  {profile.id}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </Field>
+                </TabsContent>
+              </Tabs>
+            </DialogBody>
+            <DialogActionBar>
               <Button
                 type="button"
                 variant="outline"
@@ -508,7 +550,7 @@ function CreateLicenseDialog({
               >
                 Create license
               </Button>
-            </DialogFooter>
+            </DialogActionBar>
           </form>
         )}
       </DialogContent>
