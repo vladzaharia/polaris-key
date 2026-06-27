@@ -199,6 +199,7 @@ export async function resyncRepo(
     stmts.push(
       stmtInsertOidcConfig({
         product: slug,
+        provider: manifest.oidc.provider,
         issuer: manifest.oidc.issuer,
         clientId: manifest.oidc.clientId,
         clientSecretSecret: manifest.oidc.clientSecretSecret,

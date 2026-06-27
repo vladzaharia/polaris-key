@@ -1,6 +1,6 @@
 /**
- * Same-origin typed client for the `/admin/api/*` surface. The worker
- * (`packages/worker/src/admin/api.ts` + `handlers/*`) is the source of truth for these
+ * Same-origin typed client for the `/manage/api/*` surface. The worker
+ * (`packages/worker/src/manage/api.ts` + `handlers/*`) is the source of truth for these
  * shapes. Auth is the HttpOnly session cookie (sent automatically); every state-changing
  * call echoes the per-session CSRF token in the `X-PKey-CSRF` header or the server rejects
  * it. A 401 means the session lapsed → bounce to the login redirect to re-authenticate.
@@ -84,6 +84,7 @@ export interface ProductModuleSummary {
   configured?: boolean;
   enabled?: boolean;
   required?: boolean;
+  provider?: "platform" | "custom" | string | null;
   missing?: string[];
   missingSecrets?: string[];
 }
@@ -128,6 +129,16 @@ export interface ProductSyncState {
   updated?: string[];
   errors?: string[];
   message?: string | null;
+}
+
+export interface PortalProductSettings {
+  portalEnabled: boolean;
+  oidcEnabled: boolean;
+  magicEnabled: boolean;
+  licenseKeyClaimEnabled: boolean;
+  releasesEnabled: boolean;
+  branding?: unknown;
+  modifiedAt?: number;
 }
 
 type ReleaseHealthStatus =
@@ -187,6 +198,7 @@ export interface ProductDetail {
   modules?:
     | ProductModuleSummary[]
     | Record<string, ProductModuleSummary | boolean | string>;
+  portalSettings?: PortalProductSettings;
   setup?: ProductSetupState;
   onboarding?: ProductOnboarding;
   compatMin: string;
@@ -209,6 +221,18 @@ export interface CreateManualProductBody {
   defaultDeviceLimit?: number;
   adminGroup?: string;
 }
+
+export type UpdatePortalSettingsBody = Partial<
+  Pick<
+    PortalProductSettings,
+    | "portalEnabled"
+    | "oidcEnabled"
+    | "magicEnabled"
+    | "licenseKeyClaimEnabled"
+    | "releasesEnabled"
+    | "branding"
+  >
+>;
 
 export interface CreateManualProductResult {
   ok: true;
@@ -425,14 +449,14 @@ export function setCsrf(token: string): void {
 }
 
 let redirectToLogin = (): void => {
-  window.location.href = "/admin/login";
+  window.location.href = "/manage/login";
 };
 /** Override the 401 redirect (tests pass a spy; call with no arg to restore the default). */
 export function setLoginRedirectForTests(fn?: () => void): void {
   redirectToLogin =
     fn ??
     (() => {
-      window.location.href = "/admin/login";
+      window.location.href = "/manage/login";
     });
 }
 
@@ -497,23 +521,23 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const enc = encodeURIComponent;
 /** Build a per-product API base. */
-const p = (slug: string): string => `/admin/api/products/${enc(slug)}`;
+const p = (slug: string): string => `/manage/api/products/${enc(slug)}`;
 
 export const api = {
   // ── identity ────────────────────────────────────────────────────────────────
-  me: () => call<Me>("/admin/api/me"),
-  logout: () => call<{ ok: true }>("/admin/api/logout", { method: "POST" }),
+  me: () => call<Me>("/manage/api/me"),
+  logout: () => call<{ ok: true }>("/manage/api/logout", { method: "POST" }),
 
   // ── products (platform registry) ──────────────────────────────────────────────
-  products: () => call<{ products: ProductDetail[] }>("/admin/api/products"),
+  products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
   createManualProduct: (body: CreateManualProductBody) =>
-    call<CreateManualProductResult>("/admin/api/products", {
+    call<CreateManualProductResult>("/manage/api/products", {
       method: "POST",
       body: JSON.stringify(body),
     }),
   linkRepo: (repoUrl: string) =>
-    call<LinkRepoResult>("/admin/api/products/link-repo", {
+    call<LinkRepoResult>("/manage/api/products/link-repo", {
       method: "POST",
       body: JSON.stringify({ repoUrl }),
     }),
@@ -531,6 +555,13 @@ export const api = {
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
   releaseHealth: (slug: string) =>
     call<{ health: ReleaseHealth }>(`${p(slug)}/release/health`),
+  portalSettings: (slug: string) =>
+    call<{ settings: PortalProductSettings }>(`${p(slug)}/portal`),
+  updatePortalSettings: (slug: string, body: UpdatePortalSettingsBody) =>
+    call<{ ok: true; settings: PortalProductSettings }>(`${p(slug)}/portal`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   putProductSecret: (slug: string, name: string, value: string) =>
     call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, {
       method: "PUT",

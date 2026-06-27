@@ -21,6 +21,30 @@ export interface ProductDiscoveryTrust {
   [key: string]: unknown;
 }
 
+export interface ProductDiscoveryAuthOidc {
+  enabled: boolean;
+  startUrl?: string;
+  loginUrl?: string;
+  callbackUrl?: string;
+  pollUrl?: string;
+  deviceStartUrl?: string;
+  devicePollUrl?: string;
+  logoutUrl?: string;
+  [key: string]: unknown;
+}
+
+export interface ProductDiscoveryAuth {
+  activateUrl?: string;
+  tokenUrl?: string;
+  oidc?: ProductDiscoveryAuthOidc;
+  [key: string]: unknown;
+}
+
+export interface ProductDiscoveryModules {
+  auth?: ProductDiscoveryAuth;
+  [key: string]: unknown;
+}
+
 export interface ProductDiscoveryDocument {
   schemaVersion?: number;
   product: string;
@@ -28,6 +52,7 @@ export interface ProductDiscoveryDocument {
   baseUrl?: string;
   endpoints?: ProductDiscoveryEndpoints;
   trust?: ProductDiscoveryTrust;
+  modules?: ProductDiscoveryModules;
   sdk?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -146,6 +171,9 @@ function parseDiscovery(
         : {}),
       ...(parsedEndpoints ? { endpoints: parsedEndpoints } : {}),
       ...(parsedTrust ? { trust: parsedTrust } : {}),
+      ...(isRecord(value.modules)
+        ? { modules: value.modules as ProductDiscoveryModules }
+        : {}),
       ...(isRecord(value.sdk) ? { sdk: value.sdk } : {}),
     },
   };

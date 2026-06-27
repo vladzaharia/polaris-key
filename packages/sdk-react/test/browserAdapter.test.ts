@@ -72,6 +72,41 @@ describe("BrowserAdapter — construction + first load", () => {
     adapter.dispose();
   });
 
+  it("reads generic discovery capabilities without exposing provider details", async () => {
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/.well-known/polaris.json")) {
+        return new Response(
+          JSON.stringify({
+            modules: {
+              auth: {
+                activateUrl: "/acme/activate",
+                oidc: { enabled: false },
+              },
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ authenticated: false, doc: null }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl,
+      now: () => NOW_SEC,
+    });
+    await ready(adapter);
+    expect(adapter.snapshot().supportsOidcLogin).toBe(false);
+    expect(adapter.snapshot().supportsKeyEntry).toBe(true);
+    await expect(adapter.signInWithOidc()).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
+    adapter.dispose();
+  });
+
   it("reports the current device from the verified session doc", async () => {
     const adapter = browserAdapter({
       productSlug: "acme",

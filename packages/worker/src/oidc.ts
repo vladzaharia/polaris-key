@@ -1,10 +1,10 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// OIDC activation (shared IdP, per-product client + group mapping). A browser sign-in
+// OIDC activation. Each product has one server-selected OIDC provider (platform default
+// or custom) plus product-scoped group mapping/provisioning. A browser sign-in
 // mints/locates a license for the identity; generic provisioning hooks turn verified
-// claims into entitlements + secrets (djdl's Remnawave/VPN is the first instance, as
-// data). The CLI/loopback flow polls for a per-device token. ID tokens are verified
-// against the issuer JWKS via jose (asymmetric algs only).
+// claims into entitlements + secrets. The CLI/loopback flow polls for a per-device token.
+// ID tokens are verified against the issuer JWKS via jose (asymmetric algs only).
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
@@ -20,17 +20,26 @@ import { randomId } from "./crypto.js";
 import { getLicense, getLicenseBySub, getTier, insertLicense } from "./repo.js";
 import { authorizeDevice, licenseUsable } from "./licenseCore.js";
 import { createBrowserSession } from "./browserSession.js";
+import { platformOidcConfig } from "./platformOidc.js";
 
 const FLOW_TTL_SECONDS = 600;
 const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];
 
 interface OidcConfigRow {
   product: string;
+  provider: string | null;
   issuer: string | null;
   client_id: string | null;
   client_secret_secret: string | null;
   redirect_uris_json: string | null;
   group_role_map_json: string | null;
+}
+
+interface ResolvedOidcConfig {
+  row: OidcConfigRow;
+  issuer: string;
+  clientId: string;
+  clientSecret?: string;
 }
 
 interface ProvisioningRow {
@@ -103,6 +112,57 @@ async function getOidcConfig(
     "SELECT * FROM oidc_config WHERE product = ?",
     product,
   );
+}
+
+async function resolveOidcConfig(
+  env: Env,
+  db: Db,
+  product: Product,
+): Promise<ResolvedOidcConfig | Response> {
+  const row = await getOidcConfig(db, product.slug);
+  if (!row) return errorResponse(404, "disabled", "oidc is disabled");
+  if ((row.provider ?? "platform") === "custom") {
+    if (!row.issuer || !row.client_id) {
+      return errorResponse(500, "misconfigured", "custom oidc config missing");
+    }
+    let clientSecret: string | undefined;
+    if (row.client_secret_secret) {
+      clientSecret = await openProductSecret(
+        db,
+        env,
+        product.slug,
+        row.client_secret_secret,
+      );
+      if (!clientSecret) {
+        return errorResponse(
+          500,
+          "misconfigured",
+          "oidc client secret unavailable",
+        );
+      }
+    }
+    return {
+      row,
+      issuer: row.issuer,
+      clientId: row.client_id,
+      clientSecret,
+    };
+  }
+
+  const platform = platformOidcConfig(env);
+  if (!platform) {
+    return errorResponse(
+      500,
+      "misconfigured",
+      "platform oidc is not configured",
+    );
+  }
+  return {
+    row,
+    issuer: platform.issuer,
+    clientId: platform.clientId,
+    clientSecret: platform.clientSecret,
+  };
 }
 async function getProvisioning(
   db: Db,
@@ -325,14 +385,13 @@ async function beginAuthFlow(
     }
   | Response
 > {
-  const oidc = await getOidcConfig(db, product.slug);
-  if (!oidc?.issuer || !oidc.client_id)
-    return errorResponse(500, "misconfigured", "no oidc config");
+  const oidc = await resolveOidcConfig(env, db, product);
+  if (oidc instanceof Response) return oidc;
   const state = b64url(randomBytes(16));
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
   const redirectUri = `${new URL(req.url).origin}/${product.slug}/auth/callback`;
-  if (!redirectUriAllowed(oidc, redirectUri)) {
+  if (!redirectUriAllowed(oidc.row, redirectUri)) {
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
   const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo };
@@ -342,7 +401,7 @@ async function beginAuthFlow(
 
   const authorize = new URL(`${oidc.issuer.replace(/\/$/, "")}/authorize`);
   authorize.searchParams.set("response_type", "code");
-  authorize.searchParams.set("client_id", oidc.client_id);
+  authorize.searchParams.set("client_id", oidc.clientId);
   authorize.searchParams.set("redirect_uri", redirectUri);
   authorize.searchParams.set("scope", "openid email profile groups");
   authorize.searchParams.set("state", state);
@@ -527,34 +586,15 @@ export async function handleAuthCallback(
   const raw = await env.HOT.get(flowKey(product.slug, state));
   if (!raw) return errorResponse(400, "bad_request", "unknown state");
   const flow = JSON.parse(raw) as FlowRecord;
-  const oidc = await getOidcConfig(db, product.slug);
-  if (!oidc?.issuer || !oidc.client_id)
-    return errorResponse(500, "misconfigured", "no oidc config");
+  const oidc = await resolveOidcConfig(env, db, product);
+  if (oidc instanceof Response) {
+    await env.HOT.delete(flowKey(product.slug, state));
+    return oidc;
+  }
   // Defense in depth: the stored flow's redirect_uri must still be allow-listed.
-  if (!redirectUriAllowed(oidc, flow.redirectUri)) {
+  if (!redirectUriAllowed(oidc.row, flow.redirectUri)) {
     await env.HOT.delete(flowKey(product.slug, state));
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
-  }
-  // The OIDC client secret is KEK-custodied in product_secrets (sealed), keyed by the name
-  // the config declares in `client_secret_secret`. A null column ⇒ a public client (omit
-  // client_secret). But if the config DECLARES a secret name and it's missing/unsealable, we
-  // MUST fail closed — never silently downgrade a confidential client to a public one.
-  let clientSecret: string | undefined;
-  if (oidc.client_secret_secret) {
-    clientSecret = await openProductSecret(
-      db,
-      env,
-      product.slug,
-      oidc.client_secret_secret,
-    );
-    if (!clientSecret) {
-      await env.HOT.delete(flowKey(product.slug, state));
-      return errorResponse(
-        500,
-        "misconfigured",
-        "oidc client secret unavailable",
-      );
-    }
   }
 
   const tokenRes = await fetch(
@@ -566,9 +606,9 @@ export async function handleAuthCallback(
         grant_type: "authorization_code",
         code,
         redirect_uri: flow.redirectUri,
-        client_id: oidc.client_id,
+        client_id: oidc.clientId,
         code_verifier: flow.verifier,
-        ...(clientSecret ? { client_secret: clientSecret } : {}),
+        ...(oidc.clientSecret ? { client_secret: oidc.clientSecret } : {}),
       }),
     },
   );
@@ -597,7 +637,7 @@ export async function handleAuthCallback(
   try {
     const verified = await jwtVerify(tokens.id_token, jwks, {
       issuer: oidc.issuer,
-      audience: oidc.client_id,
+      audience: oidc.clientId,
       algorithms: ALLOWED_ID_TOKEN_ALGS,
     });
     claims = verified.payload as Record<string, unknown>;

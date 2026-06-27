@@ -2,14 +2,20 @@ import * as React from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
+  Globe2,
   KeyRound,
+  Mail,
   RotateCw,
+  ShieldCheck,
   Trash2,
 } from "lucide-react";
 import {
   ApiError,
   api,
+  type PortalProductSettings,
   type ProductDetail,
+  type UpdatePortalSettingsBody,
   type UpdateProductBody,
 } from "../api.js";
 import { useAdmin } from "../context.js";
@@ -29,6 +35,7 @@ import {
   Field,
   Input,
   Skeleton,
+  Switch,
   useToast,
 } from "../components/ui/index.js";
 
@@ -75,6 +82,7 @@ export function Settings({ slug }: { slug: string }): React.ReactElement {
       ) : data ? (
         <div className="space-y-6">
           <GeneralCard slug={slug} product={data.product} />
+          <PortalCard slug={slug} product={data.product} />
           <SecretCard slug={slug} product={data.product} />
           <KeyCard slug={slug} product={data.product} />
           <DangerCard slug={slug} product={data.product} />
@@ -255,6 +263,175 @@ function GeneralCard({
         <CardFooter>
           <Button type="submit" loading={saving} disabled={!dirty}>
             Save changes
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  );
+}
+
+// ── customer portal ───────────────────────────────────────────────────────────
+
+const DEFAULT_PORTAL_SETTINGS: PortalProductSettings = {
+  portalEnabled: true,
+  oidcEnabled: true,
+  magicEnabled: true,
+  licenseKeyClaimEnabled: true,
+  releasesEnabled: true,
+  branding: null,
+  modifiedAt: 0,
+};
+
+type PortalToggleKey = Exclude<keyof UpdatePortalSettingsBody, "branding">;
+
+function PortalCard({
+  slug,
+  product,
+}: {
+  slug: string;
+  product: ProductDetail;
+}): React.ReactElement {
+  const toast = useToast();
+  const settings = product.portalSettings ?? DEFAULT_PORTAL_SETTINGS;
+  const [form, setForm] = React.useState<Required<UpdatePortalSettingsBody>>({
+    portalEnabled: settings.portalEnabled,
+    oidcEnabled: settings.oidcEnabled,
+    magicEnabled: settings.magicEnabled,
+    licenseKeyClaimEnabled: settings.licenseKeyClaimEnabled,
+    releasesEnabled: settings.releasesEnabled,
+    branding: settings.branding ?? null,
+  });
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setForm({
+      portalEnabled: settings.portalEnabled,
+      oidcEnabled: settings.oidcEnabled,
+      magicEnabled: settings.magicEnabled,
+      licenseKeyClaimEnabled: settings.licenseKeyClaimEnabled,
+      releasesEnabled: settings.releasesEnabled,
+      branding: settings.branding ?? null,
+    });
+  }, [settings]);
+
+  const dirty =
+    form.portalEnabled !== settings.portalEnabled ||
+    form.oidcEnabled !== settings.oidcEnabled ||
+    form.magicEnabled !== settings.magicEnabled ||
+    form.licenseKeyClaimEnabled !== settings.licenseKeyClaimEnabled ||
+    form.releasesEnabled !== settings.releasesEnabled;
+
+  const setToggle =
+    (key: PortalToggleKey) =>
+    (checked: boolean): void =>
+      setForm((current) => ({ ...current, [key]: checked }));
+
+  const onSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.updatePortalSettings(slug, {
+        portalEnabled: form.portalEnabled,
+        oidcEnabled: form.oidcEnabled,
+        magicEnabled: form.magicEnabled,
+        licenseKeyClaimEnabled: form.licenseKeyClaimEnabled,
+        releasesEnabled: form.releasesEnabled,
+      });
+      invalidate(`product:${slug}`);
+      toast.success("Portal settings saved");
+    } catch (err) {
+      toast.error(
+        "Couldn’t save portal settings",
+        err instanceof Error ? err.message : undefined,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const rows: Array<{
+    key: PortalToggleKey;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+  }> = [
+    {
+      key: "portalEnabled",
+      label: "Customer portal",
+      description: "Show this product’s licenses to verified customers.",
+      icon: <Globe2 aria-hidden className="size-4 text-primary" />,
+    },
+    {
+      key: "oidcEnabled",
+      label: "OIDC access",
+      description: "Allow portal account linking from the shared OIDC subject.",
+      icon: <ShieldCheck aria-hidden className="size-4 text-primary" />,
+    },
+    {
+      key: "magicEnabled",
+      label: "Email magic links",
+      description: "Allow verified email sign-in to link matching licenses.",
+      icon: <Mail aria-hidden className="size-4 text-primary" />,
+    },
+    {
+      key: "licenseKeyClaimEnabled",
+      label: "License-key claim",
+      description: "Allow customers to add a license by entering a valid key.",
+      icon: <KeyRound aria-hidden className="size-4 text-primary" />,
+    },
+    {
+      key: "releasesEnabled",
+      label: "Release downloads",
+      description: "Expose entitled release artifacts in the customer portal.",
+      icon: <Download aria-hidden className="size-4 text-primary" />,
+    },
+  ];
+
+  return (
+    <Card>
+      <form onSubmit={onSubmit}>
+        <CardHeader>
+          <CardTitle>Customer portal</CardTitle>
+          <CardDescription>
+            Per-product module and access settings for the root customer portal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y divide-border">
+          {rows.map((row) => {
+            const id = `portal-${slug}-${row.key}`;
+            return (
+              <div
+                key={row.key}
+                className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+              >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                    {row.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <label
+                      htmlFor={id}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      {row.label}
+                    </label>
+                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                      {row.description}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id={id}
+                  checked={Boolean(form[row.key])}
+                  onCheckedChange={setToggle(row.key)}
+                />
+              </div>
+            );
+          })}
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" loading={saving} disabled={!dirty}>
+            Save portal settings
           </Button>
         </CardFooter>
       </form>

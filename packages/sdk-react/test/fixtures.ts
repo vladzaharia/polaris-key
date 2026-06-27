@@ -86,7 +86,7 @@ export function makeFakeBridge(
       return { kind: "ok" } as const;
     },
     async signOut() {
-      state = { hasToken: false, doc: null };
+      state = { ...state, hasToken: false, doc: null };
       for (const l of listeners) l(state);
     },
     on(_event, cb) {
@@ -114,6 +114,19 @@ export function makeFakeFetch(doc: ManagedConfigDoc | null): typeof fetch {
         : input instanceof URL
           ? input.href
           : input.url;
+    if (url.includes("/.well-known/polaris.json")) {
+      return new Response(
+        JSON.stringify({
+          modules: {
+            auth: { oidc: { enabled: true }, activateUrl: "/activate" },
+          },
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    }
     if (url.includes("/session/license")) {
       return new Response(JSON.stringify({ ok: true }), {
         status: 201,

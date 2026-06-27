@@ -47,10 +47,11 @@ interface ProductDef {
   defaultDeviceLimit: number;
   adminGroup: string;
   oidc: {
-    issuer: string;
-    clientId: string;
-    clientSecretSecret: string;
-    redirectUris: string[];
+    provider?: "platform" | "custom";
+    issuer?: string;
+    clientId?: string;
+    clientSecretSecret?: string;
+    redirectUris?: string[];
     groupRoleMap: Record<string, unknown>;
   };
   tiers: Tier[];
@@ -101,8 +102,9 @@ function main(): void {
     `INSERT INTO product_schema (product,catalog_version,catalog_json,active,created_at) VALUES (${q(p)},1,${q(catalogRaw)},1,${now});`,
   );
   const o = product.oidc;
+  const oidcProvider = o.provider ?? "platform";
   out.push(
-    `INSERT INTO oidc_config (product,issuer,client_id,client_secret_secret,redirect_uris_json,group_role_map_json) VALUES (${q(p)},${q(o.issuer)},${q(o.clientId)},${q(o.clientSecretSecret)},${j(o.redirectUris)},${j(o.groupRoleMap)});`,
+    `INSERT INTO oidc_config (product,provider,issuer,client_id,client_secret_secret,redirect_uris_json,group_role_map_json) VALUES (${q(p)},${q(oidcProvider)},${q(oidcProvider === "custom" ? (o.issuer ?? "") : "")},${q(oidcProvider === "custom" ? (o.clientId ?? "") : "")},${q(oidcProvider === "custom" ? (o.clientSecretSecret ?? "") : "")},${j(o.redirectUris ?? [])},${j(o.groupRoleMap)});`,
   );
   for (const t of product.tiers) {
     out.push(

@@ -8,7 +8,7 @@
  * different trust domain, never Ed25519-signable by anything but the Worker) carrying
  * the verified `sub`/`name`/`email`, the granting `groups`, an expiry, and a per-session
  * **CSRF token**. Cookie auth is vulnerable to cross-site POSTs, so every state-changing
- * `/admin/api/*` call must echo that CSRF token in the `X-PKey-CSRF` header — a value an
+ * `/manage/api/*` call must echo that CSRF token in the `X-PKey-CSRF` header — a value an
  * attacker page cannot read (it's not in a readable cookie, and the API is same-origin
  * only). `SameSite=Strict` is the primary defense; the header is defense-in-depth
  * (double-submit by way of an unreadable secret).
@@ -184,11 +184,11 @@ function readSessionCookie(cookieHeader: string | null): string | null {
   return null;
 }
 
-/** Build the Set-Cookie value: HttpOnly + Secure + SameSite=Strict, path /admin. */
+/** Build the Set-Cookie value: HttpOnly + Secure + SameSite=Strict, path /manage. */
 export function buildSessionCookie(token: string): string {
   return [
     `${ADMIN_COOKIE}=${token}`,
-    "Path=/admin",
+    "Path=/manage",
     "HttpOnly",
     "Secure",
     "SameSite=Strict",
@@ -200,7 +200,7 @@ export function buildSessionCookie(token: string): string {
 export function buildClearCookie(): string {
   return [
     `${ADMIN_COOKIE}=`,
-    "Path=/admin",
+    "Path=/manage",
     "HttpOnly",
     "Secure",
     "SameSite=Strict",

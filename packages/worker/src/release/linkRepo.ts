@@ -228,6 +228,7 @@ async function registerFromManifest(
     statements.push(
       stmtInsertOidcConfig({
         product: slug,
+        provider: manifest.oidc.provider,
         issuer: manifest.oidc.issuer,
         clientId: manifest.oidc.clientId,
         clientSecretSecret: manifest.oidc.clientSecretSecret,
@@ -331,7 +332,7 @@ async function registerFromManifest(
 /** Collect the distinct secret NAMES a manifest references (OIDC + edge-mint key material). */
 function collectSecretNames(manifest: ParsedManifest): string[] {
   const names = new Set<string>();
-  if (manifest.oidc?.clientSecretSecret)
+  if (manifest.oidc?.provider === "custom" && manifest.oidc.clientSecretSecret)
     names.add(manifest.oidc.clientSecretSecret);
   for (const e of manifest.edgeMint)
     if (e.signingKeySecret) names.add(e.signingKeySecret);

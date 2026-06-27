@@ -96,7 +96,12 @@ export class DesktopAdapter implements PolarisAdapter {
           blocked: s.blocked,
           lastVerifiedAt: s.lastVerifiedAt,
         },
-        { ...flags, localOverrides: this.localOverrides },
+        {
+          ...flags,
+          localOverrides: this.localOverrides,
+          supportsOidcLogin: s.supportsOidcLogin ?? true,
+          supportsKeyEntry: s.supportsKeyEntry ?? true,
+        },
       ),
     );
   }
@@ -129,6 +134,12 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 
   async signInWithOidc(): Promise<OidcSignInHandle | void> {
+    if (!this.store.get().supportsOidcLogin) {
+      throw new PolarisError(
+        "sign-in-failed",
+        "OIDC login is not enabled for this product.",
+      );
+    }
     this.setBusy(true);
     try {
       const begin = await this.bridge.beginSignIn();
@@ -172,6 +183,12 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 
   async submitKey(key: string): Promise<void> {
+    if (!this.store.get().supportsKeyEntry) {
+      throw new PolarisError(
+        "key-entry-unsupported",
+        "Key entry is not enabled for this product.",
+      );
+    }
     this.setBusy(true);
     try {
       const r = await this.bridge.submitKey(key);

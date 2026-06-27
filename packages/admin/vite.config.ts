@@ -1,17 +1,32 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
-// The admin SPA is served by the Worker under `/admin/`, so assets are emitted with that
-// base. Dev proxies the API/auth surface to a local `wrangler dev` on :8787.
+// The customer portal is served at `/`; the operator console is served at `/manage`.
+// Both are emitted from one Vite build and served by the Worker assets binding.
 export default defineConfig({
-  base: "/admin/",
+  base: "/",
   plugins: [react()],
-  build: { outDir: "dist", emptyOutDir: true },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        portal: "index.html",
+        manage: "manage.html",
+      },
+    },
+  },
   server: {
     proxy: {
-      "/admin/api": "http://127.0.0.1:8787",
-      "/admin/login": "http://127.0.0.1:8787",
-      "/admin/callback": "http://127.0.0.1:8787",
+      "/api": "http://127.0.0.1:8787",
+      "/login": "http://127.0.0.1:8787",
+      "/callback": "http://127.0.0.1:8787",
+      "/logout": "http://127.0.0.1:8787",
+      "/magic": "http://127.0.0.1:8787",
+      "/download": "http://127.0.0.1:8787",
+      "/manage/api": "http://127.0.0.1:8787",
+      "/manage/login": "http://127.0.0.1:8787",
+      "/manage/callback": "http://127.0.0.1:8787",
     },
   },
   test: {

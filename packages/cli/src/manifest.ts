@@ -189,11 +189,8 @@ function productYaml(opts: InitOptions): string {
     (module) =>
       `  ${module}:\n    enabled: ${opts.modules.includes(module) ? "true" : "false"}`,
   );
-  const secrets = opts.modules.includes("oidc")
-    ? `\nsecrets:\n  required:\n    - name: oidc_client_secret\n      usedBy: oidc\n`
-    : "\nsecrets:\n  required: []\n";
   const oidc = opts.modules.includes("oidc")
-    ? `\noidc:\n  issuer: "https://id.example.com"\n  clientId: "${opts.slug}"\n  clientSecretRef: oidc_client_secret\n  groupRoleMap: {}\n`
+    ? `\noidc:\n  provider: platform\n  groupRoleMap: {}\n`
     : "";
   return `apiVersion: pkey.dev/v1
 product:
@@ -220,7 +217,11 @@ licensing:
       profile: standard-defaults
       deviceLimit: 5
       maxOfflineDays: 14
-      channels: ["stable"]${oidc}${secrets}`;
+      channels: ["stable"]${oidc}
+
+secrets:
+  required: []
+`;
 }
 
 function schemaYaml(): string {

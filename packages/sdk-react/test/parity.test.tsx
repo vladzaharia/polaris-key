@@ -34,6 +34,7 @@ function Probe(): JSX.Element {
       <span data-testid="vpn">{String(vpn)}</span>
       <span data-testid="beta">{String(beta)}</span>
       <span data-testid="secret">{pk.getSecret("api.token") ?? "null"}</span>
+      <span data-testid="supports-oidc">{String(auth.supportsOidcLogin)}</span>
       <span data-testid="supports-key">{String(auth.supportsKeyEntry)}</span>
     </div>
   );
@@ -61,6 +62,7 @@ async function renderWith(
     "theme-mode",
     "vpn",
     "beta",
+    "supports-oidc",
     "supports-key",
   ];
   const out: Record<string, string> = {};

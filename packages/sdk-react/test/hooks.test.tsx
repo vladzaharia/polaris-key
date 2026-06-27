@@ -177,7 +177,7 @@ describe("useEntitlement", () => {
 });
 
 describe("usePolarisAuth", () => {
-  it("exposes the profile, busy/error, needsAuth, and key-entry support flag", async () => {
+  it("exposes the profile, busy/error, needsAuth, and auth support flags", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(okBridge()),
       now: () => NOW_SEC,
@@ -189,6 +189,7 @@ describe("usePolarisAuth", () => {
       expect(result.current.profile?.email).toBe("ada@acme.test"),
     );
     expect(result.current.needsAuth).toBe(false);
+    expect(result.current.supportsOidcLogin).toBe(true);
     expect(result.current.supportsKeyEntry).toBe(true);
     expect(result.current.status).toBe("ok");
     adapter.dispose();

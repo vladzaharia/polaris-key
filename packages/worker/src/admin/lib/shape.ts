@@ -5,6 +5,7 @@
 
 import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import {
   listDevicesByLicense,
   getActiveSchema,
@@ -15,6 +16,10 @@ import {
   type ProductSyncStateRow,
 } from "../../repo.js";
 import { loadPublicSigningKey } from "../../product.js";
+import {
+  getPortalProductSettings,
+  portalProductSettingsView,
+} from "../../portal/repo.js";
 import { countKeysByLicense } from "../repo.js";
 
 interface RequiredSecretStatus {
@@ -24,6 +29,7 @@ interface RequiredSecretStatus {
 }
 
 interface OidcSetupRow {
+  provider: string | null;
   issuer: string | null;
   client_id: string | null;
   client_secret_secret: string | null;
@@ -121,6 +127,7 @@ export async function licenseSummary(
 
 /** The registry projection of a product row. */
 export async function productView(
+  env: Env,
   db: Db,
   p: ProductRow,
 ): Promise<Record<string, unknown>> {
@@ -138,7 +145,13 @@ export async function productView(
         trustKeys: { [signingKid]: signingPublicKey },
       }
     : null;
-  const setup = await productSetupView(db, p.slug, Boolean(signingPublicKey));
+  const setup = await productSetupView(
+    env,
+    db,
+    p.slug,
+    Boolean(signingPublicKey),
+  );
+  const portalSettings = await getPortalProductSettings(db, p.slug);
   return {
     slug: p.slug,
     name: p.name,
@@ -147,6 +160,7 @@ export async function productView(
     jwksUrl,
     signing,
     modules: setup.modules,
+    portalSettings: portalProductSettingsView(portalSettings),
     setup,
     onboarding: {
       setup,
@@ -168,12 +182,13 @@ export async function productView(
 }
 
 async function productSetupView(
+  env: Env,
   db: Db,
   product: string,
   signingConfigured: boolean,
 ): Promise<Record<string, unknown>> {
   const oidc = await db.first<OidcSetupRow>(
-    "SELECT issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
+    "SELECT provider, issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
     product,
   );
   const edgeMint = await db.all<EdgeMintSetupRow>(
@@ -185,6 +200,7 @@ async function productSetupView(
       FROM release_config WHERE product = ?`,
     product,
   );
+  const portalSettings = await getPortalProductSettings(db, product);
   const syncState = await getProductSyncState(db, product);
   const sync = syncStateView(syncState);
   const configuredSecrets = new Set(
@@ -203,7 +219,9 @@ async function productSetupView(
     sources.add(source);
     secretSources.set(name, sources);
   };
-  requireSecret(oidc?.client_secret_secret, "OIDC client secret");
+  if ((oidc?.provider ?? "platform") === "custom") {
+    requireSecret(oidc?.client_secret_secret, "OIDC client secret");
+  }
   for (const row of edgeMint) {
     requireSecret(row.signing_key_secret, `Edge mint ${row.id}`);
   }
@@ -219,15 +237,33 @@ async function productSetupView(
     .filter((secret) => !secret.configured)
     .map((secret) => secret.name);
 
+  const platformOidcIssuer =
+    typeof env.PLATFORM_OIDC_ISSUER === "string"
+      ? env.PLATFORM_OIDC_ISSUER
+      : typeof env.ADMIN_OIDC_ISSUER === "string"
+        ? env.ADMIN_OIDC_ISSUER
+        : undefined;
+  const platformOidcClientId =
+    typeof env.PLATFORM_OIDC_CLIENT_ID === "string"
+      ? env.PLATFORM_OIDC_CLIENT_ID
+      : typeof env.ADMIN_OIDC_CLIENT_ID === "string"
+        ? env.ADMIN_OIDC_CLIENT_ID
+        : undefined;
+  const oidcProvider = oidc?.provider === "custom" ? "custom" : "platform";
   const oidcMissing = oidc
-    ? [
-        ...(oidc.issuer ? [] : ["issuer"]),
-        ...(oidc.client_id ? [] : ["client id"]),
-        ...(oidc.client_secret_secret &&
-        !configuredSecrets.has(oidc.client_secret_secret)
-          ? [oidc.client_secret_secret]
-          : []),
-      ]
+    ? oidcProvider === "custom"
+      ? [
+          ...(oidc.issuer ? [] : ["issuer"]),
+          ...(oidc.client_id ? [] : ["client id"]),
+          ...(oidc.client_secret_secret &&
+          !configuredSecrets.has(oidc.client_secret_secret)
+            ? [oidc.client_secret_secret]
+            : []),
+        ]
+      : [
+          ...(platformOidcIssuer ? [] : ["PLATFORM_OIDC_ISSUER"]),
+          ...(platformOidcClientId ? [] : ["PLATFORM_OIDC_CLIENT_ID"]),
+        ]
     : [];
   const edgeMissing = edgeMint
     .filter(
@@ -262,13 +298,20 @@ async function productSetupView(
     },
     {
       id: "oidc",
-      label: "OIDC",
+      label: oidc
+        ? oidcProvider === "custom"
+          ? "Custom OIDC"
+          : "Platform OIDC"
+        : "OIDC",
       status: oidc
         ? oidcMissing.length
-          ? "needs-secret"
+          ? oidcProvider === "custom"
+            ? "needs-secret"
+            : "needs-setup"
           : "configured"
         : "not-configured",
       configured: oidc ? oidcMissing.length === 0 : null,
+      provider: oidc ? oidcProvider : null,
       missing: oidcMissing,
     },
     {
@@ -281,6 +324,14 @@ async function productSetupView(
         : "not-configured",
       configured: release ? releaseMissing.length === 0 : null,
       missing: release ? releaseMissing : [],
+    },
+    {
+      id: "portal",
+      label: "Customer portal",
+      status: portalSettings.portal_enabled === 1 ? "enabled" : "disabled",
+      configured: true,
+      enabled: portalSettings.portal_enabled === 1,
+      missing: [],
     },
     {
       id: "manifestSync",

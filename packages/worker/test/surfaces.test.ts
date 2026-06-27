@@ -79,9 +79,10 @@ describe("worker surfaces", () => {
     );
     await db.run(
       `INSERT INTO oidc_config
-         (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
-       VALUES (?,?,?,?,?,?)`,
+         (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?,?,?,?,?,?,?)`,
       "djdl",
+      "custom",
       "https://id.example",
       "client-123",
       "OIDC_SECRET",
@@ -136,8 +137,9 @@ describe("worker surfaces", () => {
         auth: {
           tokenUrl: string;
           oidc: {
-            issuer: string;
-            clientId: string;
+            enabled: boolean;
+            loginUrl: string;
+            callbackUrl: string;
             deviceStartUrl: string;
             devicePollUrl: string;
           } | null;
@@ -175,11 +177,15 @@ describe("worker surfaces", () => {
     });
     expect(body.modules.auth.tokenUrl).toBe("https://key.plrs.im/djdl/token");
     expect(body.modules.auth.oidc).toMatchObject({
-      issuer: "https://id.example",
-      clientId: "client-123",
+      enabled: true,
+      loginUrl: "https://key.plrs.im/djdl/auth/login",
+      callbackUrl: "https://key.plrs.im/djdl/auth/callback",
       deviceStartUrl: "https://key.plrs.im/djdl/auth/device/start",
       devicePollUrl: "https://key.plrs.im/djdl/auth/device/poll",
     });
+    expect(body.modules.auth.oidc).not.toHaveProperty("provider");
+    expect(body.modules.auth.oidc).not.toHaveProperty("issuer");
+    expect(body.modules.auth.oidc).not.toHaveProperty("clientId");
     expect(body.modules.config).toMatchObject({
       schemaVersion: 1,
       schemaUrl: "https://key.plrs.im/djdl/schema",

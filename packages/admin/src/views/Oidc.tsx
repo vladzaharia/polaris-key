@@ -23,7 +23,7 @@ import {
  * OIDC & provisioning.
  *
  * API gap (flagged): the admin surface in `src/api.ts` exposes NO read or write endpoints for a
- * product's OIDC config (issuer / clientId / redirect URIs / group→tier map) or provisioning
+ * product's OIDC provider selection, custom provider fields, group→tier map, or provisioning
  * hooks. Those live exclusively in the product's `.pkey/product` manifest in the linked repo and
  * are applied to the platform by re-syncing the repo (`resyncProduct` → `release.resync`).
  *
@@ -92,8 +92,8 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
               <CardTitle>Identity config is authored in your repo</CardTitle>
             </div>
             <CardDescription>
-              The OIDC issuer, client ID, redirect URIs, the group → tier map,
-              and provisioning hooks for{" "}
+              The OIDC provider, custom provider fields, group → tier map, and
+              provisioning hooks for{" "}
               <span className="font-medium text-foreground">
                 {data?.product.name ?? slug}
               </span>{" "}
@@ -101,8 +101,12 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
                 .pkey/product
               </code>{" "}
-              manifest. Edit them there, commit, then re-sync to apply the
-              change to the platform.
+              manifest. Platform OIDC is the default; use{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                oidc.provider: custom
+              </code>{" "}
+              only when a product needs its own OIDC client. Edit the manifest,
+              commit, then re-sync to apply the change.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -115,8 +119,8 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
                 The admin API does not expose OIDC settings for in-place
                 editing. Re-syncing re-reads{" "}
                 <code className="font-mono text-xs">.pkey/</code> and re-applies
-                the manifest (config schema, product metadata, OIDC, tiers, and
-                provisioning) without touching licenses.
+                the manifest (config schema, product metadata, OIDC provider,
+                tiers, and provisioning) without touching licenses.
               </p>
             </div>
             <Button onClick={() => void onResync()} loading={resyncing}>

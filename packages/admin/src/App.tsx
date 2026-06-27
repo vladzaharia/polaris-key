@@ -103,7 +103,7 @@ function Boot(): React.ReactElement {
         onSignOut={() =>
           void api
             .logout()
-            .finally(() => (window.location.href = "/admin/login"))
+            .finally(() => (window.location.href = "/manage/login"))
         }
       >
         <div key={routeKey(route)}>{renderRoute(route, me, activeSlug)}</div>

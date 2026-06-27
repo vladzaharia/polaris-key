@@ -133,7 +133,8 @@ CREATE TABLE IF NOT EXISTS release_config (
   summary_marker      TEXT NOT NULL DEFAULT 'pkey:summary'
 );
 
--- Per-product OIDC config (shared IdP, per-product client + group mapping).
+-- Per-product OIDC config. Provider is platform by default, or custom for a product-owned
+-- OIDC client; group mapping/provisioning remain product-scoped.
 CREATE TABLE IF NOT EXISTS oidc_config (
   product            TEXT PRIMARY KEY REFERENCES products(slug),
   issuer             TEXT,

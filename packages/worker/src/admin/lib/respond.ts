@@ -4,6 +4,7 @@
  */
 
 import { ErrorCode } from "../../http.js";
+import { appSecurityHeaders } from "../../securityHeaders.js";
 
 /** JSON response with the admin defaults (no-store, charset). */
 export function adminJson(
@@ -13,11 +14,13 @@ export function adminJson(
 ): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      ...(extra ?? {}),
-    },
+    headers: appSecurityHeaders(
+      new Headers({
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+        ...(extra ?? {}),
+      }),
+    ),
   });
 }
 

@@ -63,7 +63,16 @@ interface SessionResponse {
   csrfToken?: string;
 }
 
+interface DiscoveryCapabilities {
+  supportsOidcLogin: boolean;
+  supportsKeyEntry: boolean;
+}
+
 const nowSec = (): number => Math.floor(Date.now() / 1000);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 export class BrowserAdapter implements PolarisAdapter {
   readonly mode = "browser" as const;
@@ -76,6 +85,8 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly localOverrides: Record<string, JSONValue>;
   private csrf: string | null = null;
   private hadSession = false;
+  private supportsOidcLogin = true;
+  private supportsKeyEntry = true;
 
   constructor(opts: BrowserAdapterOptions) {
     this.product = opts.productSlug;
@@ -106,6 +117,29 @@ export class BrowserAdapter implements PolarisAdapter {
     return `${this.base}/${this.product}${path}`;
   }
 
+  private stateFlags(
+    flags: { busy?: boolean; error?: PolarisError | null } = {},
+  ): {
+    busy?: boolean;
+    error?: PolarisError | null;
+    localOverrides: Record<string, JSONValue>;
+    supportsOidcLogin: boolean;
+    supportsKeyEntry: boolean;
+  } {
+    return {
+      ...flags,
+      localOverrides: this.localOverrides,
+      supportsOidcLogin: this.supportsOidcLogin,
+      supportsKeyEntry: this.supportsKeyEntry,
+    };
+  }
+
+  private applyCapabilities(capabilities: DiscoveryCapabilities | null): void {
+    if (!capabilities) return;
+    this.supportsOidcLogin = capabilities.supportsOidcLogin;
+    this.supportsKeyEntry = capabilities.supportsKeyEntry;
+  }
+
   private apply(
     s: SessionResponse,
     flags: { busy?: boolean; error?: PolarisError | null } = {},
@@ -124,9 +158,28 @@ export class BrowserAdapter implements PolarisAdapter {
           blocked: s.blocked,
           lastVerifiedAt: s.doc ? Date.now() : undefined,
         },
-        { ...flags, localOverrides: this.localOverrides },
+        this.stateFlags(flags),
       ),
     );
+  }
+
+  /** Read generic SDK capabilities from discovery without exposing provider details. */
+  private async fetchCapabilities(): Promise<DiscoveryCapabilities> {
+    const res = await this.fetchImpl(this.url("/.well-known/polaris.json"), {
+      method: "GET",
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) throw new PolarisError("network", `discovery ${res.status}`);
+    const body = (await res.json()) as unknown;
+    const modules = isRecord(body) ? body.modules : undefined;
+    const auth = isRecord(modules) ? modules.auth : undefined;
+    const authRecord = isRecord(auth) ? auth : {};
+    const oidc = authRecord.oidc;
+    const supportsOidcLogin =
+      oidc === false ? false : isRecord(oidc) ? oidc.enabled !== false : true;
+    const supportsKeyEntry =
+      "activateUrl" in authRecord ? Boolean(authRecord.activateUrl) : true;
+    return { supportsOidcLogin, supportsKeyEntry };
   }
 
   /** Read the authenticated session/config in one round-trip. */
@@ -147,9 +200,14 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   private async load(): Promise<void> {
+    const sessionRequest = this.fetchSession();
+    const capabilities = this.fetchCapabilities().catch(() => null);
     try {
-      this.apply(await this.fetchSession());
+      const session = await sessionRequest;
+      this.applyCapabilities(await capabilities);
+      this.apply(session);
     } catch (e) {
+      this.applyCapabilities(await capabilities);
       const err =
         e instanceof PolarisError
           ? e
@@ -159,7 +217,7 @@ export class BrowserAdapter implements PolarisAdapter {
           "browser",
           null,
           { hasToken: false, now: this.clock() },
-          { error: err, localOverrides: this.localOverrides },
+          this.stateFlags({ error: err }),
         ),
       );
     }
@@ -180,7 +238,7 @@ export class BrowserAdapter implements PolarisAdapter {
             "browser",
             null,
             { hasToken: true, now: this.clock(), lastSyncUnauthorized: true },
-            { localOverrides: this.localOverrides },
+            this.stateFlags(),
           ),
         );
         return;
@@ -197,6 +255,12 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   async signInWithOidc(): Promise<void> {
+    if (!this.supportsOidcLogin) {
+      throw new PolarisError(
+        "sign-in-failed",
+        "OIDC login is not enabled for this product.",
+      );
+    }
     // Full-page redirect to the Worker's OIDC entrypoint; it round-trips back with a
     // set-cookie. The page unloads, so this Promise intentionally never resolves.
     const ret =
@@ -206,6 +270,12 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   async submitKey(key: string): Promise<void> {
+    if (!this.supportsKeyEntry) {
+      throw new PolarisError(
+        "key-entry-unsupported",
+        "Key entry is not enabled for this product.",
+      );
+    }
     this.setBusy(true);
     try {
       const res = await this.fetchImpl(this.url("/session/license"), {
@@ -270,7 +340,7 @@ export class BrowserAdapter implements PolarisAdapter {
           "browser",
           null,
           { hasToken: false, now: this.clock() },
-          { localOverrides: this.localOverrides },
+          this.stateFlags(),
         ),
       );
     } catch (e) {

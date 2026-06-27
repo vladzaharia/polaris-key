@@ -99,6 +99,10 @@ export interface PolarisState {
   busy: boolean;
   /** The last operation error, if any (cleared on the next successful op). */
   error: PolarisError | null;
+  /** True when this product exposes the generic OIDC login flow. */
+  supportsOidcLogin: boolean;
+  /** True when this product exposes typed license-key activation. */
+  supportsKeyEntry: boolean;
 }
 
 /** A device sign-in handle the desktop adapter returns from `signInWithOidc` so a caller
@@ -170,5 +174,7 @@ export function initialState(
     entitlements: {},
     busy: false,
     error: null,
+    supportsOidcLogin: true,
+    supportsKeyEntry: true,
   };
 }

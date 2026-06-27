@@ -3,9 +3,9 @@
  * activation in ../oidc.ts (which mints license tokens). Here we just prove an operator's
  * identity + groups and drop a signed session cookie.
  *
- * - `GET /admin/login`     -> 302 to the IdP authorize endpoint (PKCE, state in KV).
- * - `GET /admin/callback`  -> exchange the code, verify the ID token, gate on a platform
- *                             OR product admin group, set the session cookie, 302 to /admin/.
+ * - `GET /manage/login`     -> 302 to the IdP authorize endpoint (PKCE, state in KV).
+ * - `GET /manage/callback`  -> exchange the code, verify the ID token, gate on a platform
+ *                             OR product admin group, set the session cookie, 302 to /manage/.
  *
  * The token-exchange + ID-token verification is delegated to an injectable `IdTokenVerifier`
  * so tests can drive the flow without a live IdP (production wires the jose-backed verifier).
@@ -18,6 +18,7 @@ import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { listProducts } from "../repo.js";
 import { clientIp, rateLimitOk } from "../rateLimit.js";
+import { platformOidcConfig } from "../platformOidc.js";
 import { hasAnyAdminGrant } from "./authz.js";
 import {
   buildSessionCookie,
@@ -70,17 +71,6 @@ async function pkce(): Promise<{ verifier: string; challenge: string }> {
   return { verifier, challenge: b64url(new Uint8Array(digest)) };
 }
 
-function adminIssuer(env: Env): string | undefined {
-  return typeof env.ADMIN_OIDC_ISSUER === "string"
-    ? env.ADMIN_OIDC_ISSUER
-    : undefined;
-}
-function adminClientId(env: Env): string | undefined {
-  return typeof env.ADMIN_OIDC_CLIENT_ID === "string"
-    ? env.ADMIN_OIDC_CLIENT_ID
-    : undefined;
-}
-
 function mapClaims(payload: Record<string, unknown>): SessionIdentity {
   const groups = Array.isArray(payload.groups)
     ? (payload.groups.filter((g) => typeof g === "string") as string[])
@@ -103,15 +93,10 @@ function mapClaims(payload: Record<string, unknown>): SessionIdentity {
 /** The production verifier: token exchange against the IdP + jose JWKS verification. */
 const joseIdTokenVerifier: IdTokenVerifier = {
   async verify({ code, flow, env }) {
-    const issuer = adminIssuer(env);
-    const clientId = adminClientId(env);
-    if (!issuer || !clientId) return null;
-    const clientSecret =
-      typeof env.ADMIN_OIDC_CLIENT_SECRET === "string"
-        ? env.ADMIN_OIDC_CLIENT_SECRET
-        : undefined;
+    const cfg = platformOidcConfig(env);
+    if (!cfg) return null;
     const tokenRes = await fetch(
-      `${issuer.replace(/\/$/, "")}/api/oidc/token`,
+      `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
       {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -119,9 +104,9 @@ const joseIdTokenVerifier: IdTokenVerifier = {
           grant_type: "authorization_code",
           code,
           redirect_uri: flow.redirectUri,
-          client_id: clientId,
+          client_id: cfg.clientId,
           code_verifier: flow.verifier,
-          ...(clientSecret ? { client_secret: clientSecret } : {}),
+          ...(cfg.clientSecret ? { client_secret: cfg.clientSecret } : {}),
         }),
       },
     );
@@ -129,12 +114,12 @@ const joseIdTokenVerifier: IdTokenVerifier = {
     const tokens = (await tokenRes.json()) as { id_token?: string };
     if (!tokens.id_token) return null;
     const jwks = createRemoteJWKSet(
-      new URL(`${issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
+      new URL(`${cfg.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
     );
     try {
       const verified = await jwtVerify(tokens.id_token, jwks, {
-        issuer,
-        audience: clientId,
+        issuer: cfg.issuer,
+        audience: cfg.clientId,
         algorithms: ["RS256", "ES256", "EdDSA"],
       });
       const claims = verified.payload as Record<string, unknown>;
@@ -157,7 +142,7 @@ function htmlError(status: number, message: string): Response {
   );
 }
 
-/** GET /admin/login — start PKCE + redirect to the IdP authorize endpoint. */
+/** GET /manage/login — start PKCE + redirect to the IdP authorize endpoint. */
 export async function handleAdminLogin(
   req: Request,
   env: Env,
@@ -173,22 +158,20 @@ export async function handleAdminLogin(
       429,
       "Too many sign-in attempts. Please wait and try again.",
     );
-  const issuer = adminIssuer(env);
-  const clientId = adminClientId(env);
-  if (!issuer || !clientId)
-    return htmlError(500, "Admin sign-in is not configured.");
+  const cfg = platformOidcConfig(env);
+  if (!cfg) return htmlError(500, "Admin sign-in is not configured.");
   const state = b64url(randomBytes(16));
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
-  const redirectUri = `${new URL(req.url).origin}/admin/callback`;
+  const redirectUri = `${new URL(req.url).origin}/manage/callback`;
   const flow: FlowRecord = { verifier, nonce, redirectUri };
   await env.HOT.put(`${ADMIN_FLOW_PREFIX}${state}`, JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
 
-  const authorize = new URL(`${issuer.replace(/\/$/, "")}/authorize`);
+  const authorize = new URL(`${cfg.issuer.replace(/\/$/, "")}/authorize`);
   authorize.searchParams.set("response_type", "code");
-  authorize.searchParams.set("client_id", clientId);
+  authorize.searchParams.set("client_id", cfg.clientId);
   authorize.searchParams.set("redirect_uri", redirectUri);
   authorize.searchParams.set("scope", "openid email profile groups");
   authorize.searchParams.set("state", state);
@@ -201,7 +184,7 @@ export async function handleAdminLogin(
   });
 }
 
-/** GET /admin/callback — verify, gate on an admin group, set the session cookie. */
+/** GET /manage/callback — verify, gate on an admin group, set the session cookie. */
 export async function handleAdminCallback(
   req: Request,
   env: Env,
@@ -244,6 +227,6 @@ export async function handleAdminCallback(
   const { token } = await issueSession(env, identity, now);
   return new Response(null, {
     status: 302,
-    headers: { location: "/admin/", "set-cookie": buildSessionCookie(token) },
+    headers: { location: "/manage/", "set-cookie": buildSessionCookie(token) },
   });
 }

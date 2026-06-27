@@ -8,8 +8,7 @@ import { getProduct } from "./repo.js";
 import { parseManualChannels } from "./release/channels.js";
 
 interface OidcConfigRow {
-  issuer: string | null;
-  client_id: string | null;
+  product: string;
 }
 
 interface ReleaseConfigRow {
@@ -37,7 +36,7 @@ export async function handleDiscovery(
   const base = baseUrl(req, product.slug);
   const row = await getProduct(db, product.slug);
   const oidc = await db.first<OidcConfigRow>(
-    "SELECT issuer, client_id FROM oidc_config WHERE product = ?",
+    "SELECT product FROM oidc_config WHERE product = ?",
     product.slug,
   );
   const release = await db.first<ReleaseConfigRow>(
@@ -95,20 +94,18 @@ export async function handleDiscovery(
       auth: {
         activateUrl: endpoints.activate,
         tokenUrl: endpoints.token,
-        oidc:
-          oidc?.issuer && oidc.client_id
-            ? {
-                issuer: oidc.issuer,
-                clientId: oidc.client_id,
-                startUrl: `${base}/auth/start`,
-                loginUrl: `${base}/auth/login`,
-                callbackUrl: `${base}/auth/callback`,
-                pollUrl: `${base}/auth/poll`,
-                deviceStartUrl: endpoints.authDeviceStart,
-                devicePollUrl: endpoints.authDevicePoll,
-                logoutUrl: `${base}/auth/logout`,
-              }
-            : null,
+        oidc: oidc
+          ? {
+              enabled: true,
+              startUrl: `${base}/auth/start`,
+              loginUrl: `${base}/auth/login`,
+              callbackUrl: `${base}/auth/callback`,
+              pollUrl: `${base}/auth/poll`,
+              deviceStartUrl: endpoints.authDeviceStart,
+              devicePollUrl: endpoints.authDevicePoll,
+              logoutUrl: `${base}/auth/logout`,
+            }
+          : { enabled: false },
       },
       browserSession: {
         sessionUrl: endpoints.session,

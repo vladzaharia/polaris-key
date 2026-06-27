@@ -75,6 +75,8 @@ export function projectState(
     busy?: boolean;
     error?: PolarisState["error"];
     localOverrides?: Record<string, JSONValue>;
+    supportsOidcLogin?: boolean;
+    supportsKeyEntry?: boolean;
   } = {},
 ): PolarisState {
   const gate = licenseState({ ...gateInput, doc });
@@ -94,6 +96,8 @@ export function projectState(
     entitlements: flattenEntries(doc?.payload.entitlements),
     busy: flags.busy ?? false,
     error: flags.error ?? null,
+    supportsOidcLogin: flags.supportsOidcLogin ?? true,
+    supportsKeyEntry: flags.supportsKeyEntry ?? true,
   };
 }
 

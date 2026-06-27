@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { matchRoute, type Route } from "../src/router.js";
 
-describe("matchRoute — platform + admin (matched before product slugs)", () => {
-  it("matches the admin SPA + API + auth routes", () => {
-    expect(matchRoute("/admin").kind).toBe("adminSpa");
-    expect(matchRoute("/admin/settings").kind).toBe("adminSpa");
-    expect(matchRoute("/admin/api").kind).toBe("adminApi");
-    expect(matchRoute("/admin/api/me").kind).toBe("adminApi");
-    expect(matchRoute("/admin/login").kind).toBe("adminLogin");
-    expect(matchRoute("/admin/callback").kind).toBe("adminCallback");
+describe("matchRoute — platform + manage + portal (matched before product slugs)", () => {
+  it("matches the manage SPA + API + auth routes", () => {
+    expect(matchRoute("/manage").kind).toBe("adminSpa");
+    expect(matchRoute("/manage/settings").kind).toBe("adminSpa");
+    expect(matchRoute("/manage/api").kind).toBe("adminApi");
+    expect(matchRoute("/manage/api/me").kind).toBe("adminApi");
+    expect(matchRoute("/manage/login").kind).toBe("adminLogin");
+    expect(matchRoute("/manage/callback").kind).toBe("adminCallback");
   });
 
   it("matches the products platform routes (more specific than adminApi)", () => {
-    expect(matchRoute("/admin/api/products").kind).toBe("products");
-    expect(matchRoute("/admin/api/products/djdl/licenses").kind).toBe(
+    expect(matchRoute("/manage/api/products").kind).toBe("products");
+    expect(matchRoute("/manage/api/products/djdl/licenses").kind).toBe(
       "products",
     );
   });
@@ -22,9 +22,21 @@ describe("matchRoute — platform + admin (matched before product slugs)", () =>
     expect(matchRoute("/webhooks/github").kind).toBe("githubWebhook");
   });
 
-  it("never lets a product slug shadow an admin route", () => {
-    // A product literally named "admin" still resolves to the admin SPA, not a product route.
-    expect(matchRoute("/admin/config").kind).toBe("adminSpa");
+  it("never lets a product slug shadow a manage route", () => {
+    expect(matchRoute("/manage/config").kind).toBe("adminSpa");
+  });
+
+  it("matches root customer portal routes", () => {
+    expect(matchRoute("/").kind).toBe("portalSpa");
+    expect(matchRoute("/index.html").kind).toBe("portalSpa");
+    expect(matchRoute("/assets/portal.js").kind).toBe("portalSpa");
+    expect(matchRoute("/api").kind).toBe("portalApi");
+    expect(matchRoute("/api/me").kind).toBe("portalApi");
+    expect(matchRoute("/login").kind).toBe("portalLogin");
+    expect(matchRoute("/callback").kind).toBe("portalCallback");
+    expect(matchRoute("/logout").kind).toBe("portalLogout");
+    expect(matchRoute("/magic/verify").kind).toBe("portalMagicVerify");
+    expect(matchRoute("/download/pkeyt_abc").kind).toBe("portalDownload");
   });
 });
 
@@ -140,11 +152,11 @@ describe("matchRoute — mint / cli / dmg / appcast(channel)", () => {
 describe("matchRoute — normalization + notFound", () => {
   it("strips a single trailing slash before matching", () => {
     expect(matchRoute("/djdl/config/").kind).toBe("config");
-    expect(matchRoute("/admin/").kind).toBe("adminSpa");
+    expect(matchRoute("/manage/").kind).toBe("adminSpa");
   });
 
-  it("keeps the root path intact", () => {
-    expect(matchRoute("/").kind).toBe("notFound");
+  it("keeps the root path as the portal", () => {
+    expect(matchRoute("/").kind).toBe("portalSpa");
   });
 
   it("returns notFound for an unknown product sub-path", () => {

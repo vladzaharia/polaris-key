@@ -1,93 +1,171 @@
-# Polaris Key — operations runbook
+# Polaris Key operations runbook
 
-How to stand up `key.plrs.im` and operate it. Cloudflare resources (D1, KV, the Worker
-custom domain) are provisioned natively with wrangler — there is no separate
-infrastructure layer. The Worker + admin are deployed by wrangler (CI). One-time external
-setup (GitHub App, OIDC client, DNS) is manual. Product signing keys and product-scoped
-secrets are managed through Polaris itself and stored sealed in D1 under `PLATFORM_KEK`.
+This runbook is for operating an already deployed Polaris Key production service at
+`https://key.plrs.im`.
 
-## One-time prerequisites (manual)
+For first-time production bootstrap, external provider setup, secret loading, CI setup, and
+DJDL onboarding, use [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-1. **DNS / zone** — the `plrs.im` zone must be active in the Cloudflare account. The
-   custom-domain bindings create `key.plrs.im` / `key-staging.plrs.im` / `key-dev.plrs.im`.
-2. **GitHub App** `polaris-key` — permissions Contents:read + Actions:read; configure the
-   webhook URL `https://key.plrs.im/webhooks/github` with content type `application/json`
-   and a shared secret stored as `GITHUB_WEBHOOK_SECRET`; generate a private key (`.pem`),
-   note the App ID; install it on each product's repo (e.g. `vladzaharia/djdl`).
-3. **PocketID OIDC client** — register the admin client with redirect URI
-   `https://key.plrs.im/admin/callback`; per product, register the loopback CLI callback +
-   `https://key.plrs.im/<product>/auth/callback`. Ensure the `groups` claim is mapped.
-4. **Product manifests** — each product should expose a `.pkey/` directory or an equivalent
-   imported manifest. Polaris mints the product Ed25519 signing key during registration and
-   returns the public trust key for SDK pinning.
+## Production shape
 
-## Infrastructure bootstrap (wrangler)
+| Item                 | Value                                          |
+| -------------------- | ---------------------------------------------- |
+| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8` |
+| Worker env           | `prod`                                         |
+| Public origin        | `https://key.plrs.im`                          |
+| Admin                | `https://key.plrs.im/manage`                   |
+| Customer portal      | `https://key.plrs.im`                          |
+| D1 database          | `polaris_key_prod`                             |
+| KV namespace         | `POLARIS_HOT_prod`                             |
+| PocketID issuer      | `https://id.plrs.im`                           |
+| Platform admin group | `admin`                                        |
+| GitHub App           | `polaris-key`                                  |
+| Email sender         | `Polaris Key <noreply@plrs.im>`                |
 
-Each environment (`dev` / `staging` / `prod`) needs a D1 database and a KV namespace,
-created once with wrangler. The custom domain (`key.plrs.im` and its dev/staging peers) is
-bound declaratively by the `[[routes]] custom_domain = true` entries in
-`packages/worker/wrangler.toml` and is created on the first `wrangler deploy`.
+Reserved platform routes:
 
-Create the resources for an environment (example: `prod`) and note the returned ids:
-
-```sh
-cd packages/worker
-wrangler d1 create polaris_key_prod              # -> database_id
-wrangler kv namespace create POLARIS_HOT_prod    # -> id
-```
-
-Paste the returned `database_id` and `id` over the `REPLACE_ME_PROD_*` placeholders in the
-matching `[env.prod]` block of `packages/worker/wrangler.toml` (and likewise for
-`dev`/`staging`). Then apply the D1 schema:
-
-```sh
-wrangler d1 migrations apply polaris_key_prod --remote   # applies every pending migration
-```
-
-## Secrets (Worker)
-
-Platform-wide:
-
-```sh
-cd packages/worker
-wrangler secret put KEY_HASH_PEPPER --env prod
-wrangler secret put ADMIN_SESSION_SECRET --env prod
-wrangler secret put GITHUB_APP_ID --env prod
-wrangler secret put GITHUB_APP_PRIVATE_KEY --env prod
-wrangler secret put GITHUB_WEBHOOK_SECRET --env prod
-wrangler secret put PLATFORM_ADMIN_GROUP --env prod
-wrangler secret put PLATFORM_KEK --env prod
-```
-
-Per-product secrets are no longer Worker secrets. The product manifest names required
-secrets, and an admin sets their values through the Polaris admin UI/API. Values are sealed
-into `product_secrets`; the admin UI can show configured/missing state but never reads the
-plaintext back. Product signing keys are sealed in `product_keys`; SDKs pin the returned
-`kid -> publicKey` trust set or read the product JWKS.
+- `/manage/*` - admin SPA, admin OIDC, and admin JSON API.
+- `/api/*`, `/login`, `/callback`, `/logout`, `/magic/verify`, `/download/*` - customer
+  portal.
+- `/webhooks/github` - signed GitHub App push webhooks.
+- `/<product>/*` - product-scoped licensing, config, OIDC activation, releases, and JWKS.
 
 ## Deploy
 
-CI deploys on push to `main` (staging) and on a `vX.Y.Z` tag (prod) — see
-`.github/workflows/deploy.yml`. Manual:
+Manual deploy:
 
 ```sh
-pnpm build && pnpm --filter @polaris-key/admin build
-cd packages/worker && wrangler deploy --env prod
+pnpm build
+pnpm typecheck
+pnpm test
+pnpm lint
+cd packages/worker
+npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
+npx wrangler deploy --env prod
 ```
 
-## Register a product
+CI deploy:
 
-Use the admin portal to link a product repo containing `.pkey/`. For early experiments
-before a repo exists, create a manual product with a schema document and add
-release/OIDC/provisioning later. Registration validates the catalog/manifest, mints the
-sealed product signing key, shows the public trust key, and lists missing per-product
-secrets to set in the admin UI. After linking, GitHub push webhooks on the repo's default
-branch re-parse `.pkey/` changes automatically; the Releases view also exposes manual
-resync, last sync status, changed paths, manifest errors, and release health checks.
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Only semver-like `v*` tags deploy production. Pushes to `main` run CI but do not deploy.
+
+Smoke checks:
+
+```sh
+curl -fsS https://key.plrs.im/manage >/dev/null
+curl -fsS https://key.plrs.im/api/capabilities | jq .
+```
+
+## Secrets
+
+Required prod Worker secrets:
+
+```text
+KEY_HASH_PEPPER
+ADMIN_SESSION_SECRET
+PORTAL_SESSION_SECRET
+PLATFORM_KEK
+PLATFORM_ADMIN_GROUP=admin
+PLATFORM_OIDC_ISSUER=https://id.plrs.im
+PLATFORM_OIDC_CLIENT_ID
+PLATFORM_OIDC_CLIENT_SECRET
+GITHUB_APP_ID
+GITHUB_APP_PRIVATE_KEY
+GITHUB_WEBHOOK_SECRET
+```
+
+Rotate or set a Worker secret:
+
+```sh
+cd packages/worker
+npx wrangler secret put <NAME> --env prod
+```
+
+`PLATFORM_KEK` protects sealed product signing keys and product secrets in D1. Rotating it
+requires a deliberate re-encryption migration; do not rotate it as a routine secret.
+
+Product secrets are not Worker secrets. Set them through the admin UI/API so they are sealed
+into `product_secrets`; values are write-only and never echoed back.
+
+## Product operations
+
+Register products through the admin portal repo-link flow when a product repo has `.pkey/`
+files. Manual product creation is only for early experiments before release/OIDC/provisioning
+exists.
+
+For DJDL, confirm:
+
+- `.pkey/product` uses `oidc.provider: platform`.
+- Redirect URI is `https://key.plrs.im/djdl/auth/callback`.
+- Admin group is `admin`.
+- Required product secrets are configured:
+  - `EDGE_MINT__DJDL__APPLEMUSIC`
+
+Product validation:
+
+```sh
+curl -fsS https://key.plrs.im/djdl/.well-known/polaris.json | jq .
+curl -fsS https://key.plrs.im/djdl/.well-known/jwks.json | jq .
+curl -fsS https://key.plrs.im/djdl/schema | jq .
+curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
+```
+
+Use the Releases view to inspect GitHub sync status, changed `.pkey/` paths, manifest
+validation errors, and release health. Use manual resync there when a webhook was missed.
 
 ## CI gates
 
-`.github/workflows/ci.yml` runs on every PR: JS/TS build + typecheck + test + the
-**conformance corpus drift gate** (`gen:corpus --check`) + admin build; Python (pytest,
-ubuntu+macOS); and Swift (`swift test`). A red conformance/drift job means a wire-contract
-change wasn't reflected in the corpus — regenerate and commit it.
+`.github/workflows/ci.yml` runs on PRs and `main` pushes:
+
+- JS/TS build, typecheck, tests, lint.
+- Conformance corpus drift check with `pnpm gen:corpus -- --check`.
+- Admin build.
+- Python SDK tests on Ubuntu and macOS.
+- Swift SDK tests on macOS.
+
+A red conformance job means the wire contract changed without regenerating and committing
+the corpus.
+
+## Troubleshooting
+
+Admin login fails before redirect:
+
+- Check `PLATFORM_OIDC_ISSUER`, `PLATFORM_OIDC_CLIENT_ID`, and
+  `PLATFORM_OIDC_CLIENT_SECRET`.
+- Confirm the PocketID platform client allows `https://key.plrs.im/manage/callback`.
+
+Admin login succeeds but access is denied:
+
+- Confirm the ID token includes a string-array `groups` claim.
+- Confirm your PocketID user belongs to `admin`.
+- Confirm `PLATFORM_ADMIN_GROUP=admin`.
+
+Portal magic links are hidden:
+
+- Confirm at least one product has portal and magic links enabled.
+- Confirm prod deployed with the `EMAIL` send binding.
+- Confirm Cloudflare Email Service allows `noreply@plrs.im`.
+
+DJDL OIDC activation fails with `platform oidc is not configured`:
+
+- Check `PLATFORM_OIDC_ISSUER` and `PLATFORM_OIDC_CLIENT_ID`.
+
+Custom-product OIDC activation fails with `oidc client secret unavailable`:
+
+- Set the product secret named by that product's `oidc.clientSecretSecret`.
+
+Repo-link or release sync cannot access GitHub:
+
+- Confirm GitHub App `polaris-key` is installed on the product repo.
+- Confirm Worker secrets `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, and
+  `GITHUB_WEBHOOK_SECRET`.
+- Confirm the app has Contents: read and Actions: read.
+
+Deploy fails on bindings:
+
+- Confirm `REPLACE_ME_PROD_D1_ID` and `REPLACE_ME_PROD_KV_ID` in
+  `packages/worker/wrangler.toml` have been replaced with real Cloudflare IDs.

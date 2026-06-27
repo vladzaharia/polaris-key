@@ -32,6 +32,15 @@ describe("discoverProduct", () => {
         jwksUrl: "https://key.plrs.im/djdl/.well-known/jwks.json",
         pinnedKeys: { "pkey-djdl-prod-2026-06": "pub" },
       },
+      modules: {
+        auth: {
+          activateUrl: "https://key.plrs.im/djdl/activate",
+          oidc: {
+            enabled: true,
+            loginUrl: "https://key.plrs.im/djdl/auth/login",
+          },
+        },
+      },
       sdk: { node: { package: "@polaris-key/node" } },
     });
 
@@ -53,6 +62,8 @@ describe("discoverProduct", () => {
     expect(res.manifest.trust?.pinnedKeys?.["pkey-djdl-prod-2026-06"]).toBe(
       "pub",
     );
+    expect(res.manifest.modules?.auth?.oidc?.enabled).toBe(true);
+    expect(res.manifest.modules?.auth?.oidc).not.toHaveProperty("provider");
   });
 
   it("maps a missing well-known document distinctly", async () => {

@@ -158,6 +158,7 @@ const PRODUCT_JSON = JSON.stringify({
   defaultDeviceLimit: 3,
   adminGroup: "acme-admins",
   oidc: {
+    provider: "custom",
     issuer: "https://id.example",
     clientId: "acme-client",
     clientSecretSecret: "OIDC_SECRET__ACME",
@@ -290,10 +291,11 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(rel?.binary_name).toBe("acme");
 
     // oidc + tiers + edge_mint rows landed.
-    const oidc = await db.first<{ client_id: string }>(
+    const oidc = await db.first<{ provider: string; client_id: string }>(
       "SELECT * FROM oidc_config WHERE product = ?",
       "acme",
     );
+    expect(oidc?.provider).toBe("custom");
     expect(oidc?.client_id).toBe("acme-client");
     const tier = await db.first<{ id: string }>(
       "SELECT * FROM tiers WHERE product = ?",

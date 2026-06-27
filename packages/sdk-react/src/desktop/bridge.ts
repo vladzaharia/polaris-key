@@ -29,6 +29,10 @@ export interface BridgeState {
   blocked?: { reason: BlockReason; allowedRange?: AllowedRange };
   /** Epoch ms of the last successful online verify. */
   lastVerifiedAt?: number;
+  /** Whether the product exposes generic OIDC sign-in. Defaults to true for old bridges. */
+  supportsOidcLogin?: boolean;
+  /** Whether the product exposes typed license-key activation. Defaults to true. */
+  supportsKeyEntry?: boolean;
 }
 
 /** The result of a desktop OIDC begin — a verification URL/code to render while polling. */

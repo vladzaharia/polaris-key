@@ -74,7 +74,7 @@ function mkReq(
     headers["content-type"] = "application/json";
   }
   return new Request(
-    `https://key.plrs.im/admin${path}`,
+    `https://key.plrs.im/manage${path}`,
     init,
   ) as unknown as Request;
 }
@@ -281,6 +281,63 @@ describe("admin api", () => {
     const djdl = body.products.find((p) => p.slug === "djdl");
     expect(djdl).toBeDefined();
     expect(djdl!.signing).toBeNull();
+  });
+
+  it("reads and updates per-product customer portal settings", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+
+    const updated = await dispatch(
+      mkReq("PATCH", "/api/products/djdl/portal", {
+        cookie,
+        csrf,
+        body: {
+          portalEnabled: true,
+          oidcEnabled: false,
+          magicEnabled: true,
+          licenseKeyClaimEnabled: false,
+          releasesEnabled: false,
+        },
+      }),
+      env,
+      db,
+      "/api/products/djdl/portal",
+    );
+    expect(updated.status).toBe(200);
+    const settingsBody = (await updated.json()) as {
+      settings: {
+        portalEnabled: boolean;
+        oidcEnabled: boolean;
+        magicEnabled: boolean;
+        licenseKeyClaimEnabled: boolean;
+        releasesEnabled: boolean;
+      };
+    };
+    expect(settingsBody.settings).toMatchObject({
+      portalEnabled: true,
+      oidcEnabled: false,
+      magicEnabled: true,
+      licenseKeyClaimEnabled: false,
+      releasesEnabled: false,
+    });
+
+    const detail = await dispatch(
+      mkReq("GET", "/api/products/djdl", { cookie }),
+      env,
+      db,
+      "/api/products/djdl",
+    );
+    const body = (await detail.json()) as {
+      product: { portalSettings: typeof settingsBody.settings };
+    };
+    expect(body.product.portalSettings).toMatchObject(settingsBody.settings);
   });
 
   it("product deletion removes sealed keys, secrets, and sync state", async () => {
@@ -884,9 +941,10 @@ describe("admin api", () => {
     await seedProduct(db, "djdl");
     await db.run(
       `INSERT INTO oidc_config
-         (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
-       VALUES (?,?,?,?,?,?)`,
+         (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?,?,?,?,?,?,?)`,
       "djdl",
+      "custom",
       "https://id.example",
       "client-djdl",
       "OIDC_SECRET",
@@ -1083,7 +1141,7 @@ describe("admin api", () => {
     env.ADMIN_OIDC_CLIENT_ID = "admin-client";
     const ip = "203.0.113.7";
     const req = () =>
-      new Request("https://key.plrs.im/admin/login", {
+      new Request("https://key.plrs.im/manage/login", {
         headers: { "cf-connecting-ip": ip },
       }) as unknown as Request;
 

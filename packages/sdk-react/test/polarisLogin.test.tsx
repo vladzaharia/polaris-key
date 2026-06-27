@@ -28,7 +28,7 @@ function renderLogin(
 }
 
 describe("PolarisLogin — OIDC button", () => {
-  it("always renders the OIDC button (both modes)", async () => {
+  it("renders the OIDC button when supported", async () => {
     const browser = browserAdapter({
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
@@ -39,6 +39,23 @@ describe("PolarisLogin — OIDC button", () => {
       expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy(),
     );
     browser.dispose();
+  });
+
+  it("hides OIDC when discovery or the bridge disables it", async () => {
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge({
+        hasToken: false,
+        doc: null,
+        supportsOidcLogin: false,
+      }),
+      now: () => 2000,
+    });
+    const { container } = renderLogin(adapter);
+    await waitFor(() =>
+      expect(container.querySelector("[data-polaris-key-input]")).toBeTruthy(),
+    );
+    expect(container.querySelector("[data-polaris-oidc]")).toBeNull();
+    adapter.dispose();
   });
 
   it("clicking OIDC triggers signInWithOidc on the adapter", async () => {

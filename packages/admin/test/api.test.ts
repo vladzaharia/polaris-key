@@ -6,7 +6,7 @@ import {
   setLoginRedirectForTests,
 } from "../src/api.js";
 
-// The api module is the same-origin client for /admin/api/*. These exercise the transport:
+// The api module is the same-origin client for /manage/api/*. These exercise the transport:
 // CSRF echo on mutations, Content-Type only with a body, 401 → login redirect, and the typed
 // ApiError surface — all against a stubbed fetch so they're network-free.
 
@@ -60,7 +60,7 @@ describe("api — request shaping", () => {
     await api.licenses("djdl");
     const init = calls[0]!.init;
     const headers = init.headers as Headers;
-    expect(calls[0]!.url).toBe("/admin/api/products/djdl/licenses");
+    expect(calls[0]!.url).toBe("/manage/api/products/djdl/licenses");
     expect(headers.get("X-PKey-CSRF")).toBeNull();
     expect(headers.get("Content-Type")).toBeNull();
     expect(init.credentials).toBe("same-origin");
@@ -94,7 +94,7 @@ describe("api — request shaping", () => {
     stubFetch(() => json({}));
     await api.license("djdl", "lic/with space");
     expect(calls[0]!.url).toBe(
-      "/admin/api/products/djdl/licenses/lic%2Fwith%20space",
+      "/manage/api/products/djdl/licenses/lic%2Fwith%20space",
     );
   });
 
@@ -110,9 +110,9 @@ describe("api — request shaping", () => {
   it("setLicenseEnabled hits enable/disable per the flag", async () => {
     stubFetch(() => json({ ok: true, id: "l1", status: "disabled" }));
     await api.setLicenseEnabled("djdl", "l1", false);
-    expect(calls[0]!.url).toBe("/admin/api/products/djdl/licenses/l1/disable");
+    expect(calls[0]!.url).toBe("/manage/api/products/djdl/licenses/l1/disable");
     await api.setLicenseEnabled("djdl", "l1", true);
-    expect(calls[1]!.url).toBe("/admin/api/products/djdl/licenses/l1/enable");
+    expect(calls[1]!.url).toBe("/manage/api/products/djdl/licenses/l1/enable");
   });
 });
 

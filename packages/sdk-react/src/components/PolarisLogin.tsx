@@ -114,7 +114,9 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
   const keyInputId = useId();
   const errorId = useId();
 
+  const showOidcLogin = auth.supportsOidcLogin;
   const showKeyEntry = auth.supportsKeyEntry && !props.hideKeyEntry;
+  const showNoMethods = !showOidcLogin && !showKeyEntry;
   const logo = props.logo ?? theme.logo;
   const autoFocus = props.autoFocus ?? true;
 
@@ -156,24 +158,26 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
         </p>
       </div>
 
-      <div style={showKeyEntry ? actionGrid : actionPanel}>
-        <div style={actionPanel}>
-          <button
-            type="button"
-            style={primaryBtn}
-            disabled={auth.busy}
-            aria-busy={auth.busy}
-            // Keep an accessible name even while the busy glyph ("...") shows.
-            aria-label={theme.copy.oidcButtonLabel}
-            autoFocus={autoFocus}
-            onClick={() => {
-              void auth.signInWithOidc();
-            }}
-            data-polaris-oidc=""
-          >
-            {auth.busy ? "..." : theme.copy.oidcButtonLabel}
-          </button>
-        </div>
+      <div style={showOidcLogin && showKeyEntry ? actionGrid : actionPanel}>
+        {showOidcLogin ? (
+          <div style={actionPanel}>
+            <button
+              type="button"
+              style={primaryBtn}
+              disabled={auth.busy}
+              aria-busy={auth.busy}
+              // Keep an accessible name even while the busy glyph ("...") shows.
+              aria-label={theme.copy.oidcButtonLabel}
+              autoFocus={autoFocus}
+              onClick={() => {
+                void auth.signInWithOidc();
+              }}
+              data-polaris-oidc=""
+            >
+              {auth.busy ? "..." : theme.copy.oidcButtonLabel}
+            </button>
+          </div>
+        ) : null}
 
         {showKeyEntry ? (
           <form onSubmit={onSubmitKey} style={actionPanel}>
@@ -189,6 +193,7 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
               value={key}
               placeholder={theme.copy.keyEntryPlaceholder}
               onChange={(e) => setKey(e.target.value)}
+              autoFocus={!showOidcLogin && autoFocus}
               aria-invalid={errorText ? true : undefined}
               aria-describedby={errorText ? errorId : undefined}
               data-polaris-key-input=""
@@ -202,6 +207,19 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
               {theme.copy.keySubmitLabel}
             </button>
           </form>
+        ) : null}
+
+        {showNoMethods ? (
+          <p
+            style={{
+              margin: 0,
+              color: "var(--pk-text-muted)",
+              fontSize: "14px",
+            }}
+            role="status"
+          >
+            No sign-in methods are available.
+          </p>
         ) : null}
       </div>
 

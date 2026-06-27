@@ -123,6 +123,19 @@ manual create is for early experiments; seed SQL is a fixture tool only.
    can mint the sealed signing key, return the public trust key, and list missing product
    secrets.
 
+### Product OIDC
+
+`oidc.provider` selects the product's single OIDC login provider:
+
+- `platform` is the default. The product uses `PLATFORM_OIDC_ISSUER` and
+  `PLATFORM_OIDC_CLIENT_ID`; the manifest keeps product-scoped redirect allowlists,
+  `groupRoleMap`, and provisioning hooks.
+- `custom` uses the product's own `issuer`, `clientId`, optional `clientSecretSecret`,
+  redirect allowlist, `groupRoleMap`, and provisioning hooks.
+
+SDK discovery only reports whether OIDC is enabled and which generic auth URLs to call. It
+does not expose whether a product uses platform or custom OIDC.
+
 ### Admin override vs re-sync
 
 Admins set **management state + values** (per profile/tier/license/device) and operational

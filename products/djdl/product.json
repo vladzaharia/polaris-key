@@ -9,9 +9,7 @@
   "defaultDeviceLimit": 5,
   "adminGroup": "admin",
   "oidc": {
-    "issuer": "https://id.scruffy.spot",
-    "clientId": "djdl",
-    "clientSecretSecret": "OIDC_CLIENT_SECRET__DJDL",
+    "provider": "platform",
     "redirectUris": ["https://key.plrs.im/djdl/auth/callback"],
     "groupRoleMap": {
       "family": { "role": "user", "tier": "standard" },

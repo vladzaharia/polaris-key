@@ -1,11 +1,19 @@
-// Pure route matching. Platform/admin routes are matched FIRST so a product slug can
-// never shadow them; everything else is `/<product>/...` and carries the product slug.
+// Pure route matching. Platform/manage/root-portal routes are matched FIRST so a product
+// slug can never shadow them; everything else is `/<product>/...` and carries the product
+// slug.
 
 export type Route =
   | { kind: "adminSpa" }
   | { kind: "adminApi" }
   | { kind: "adminLogin" }
   | { kind: "adminCallback" }
+  | { kind: "portalSpa" }
+  | { kind: "portalApi" }
+  | { kind: "portalLogin" }
+  | { kind: "portalCallback" }
+  | { kind: "portalLogout" }
+  | { kind: "portalMagicVerify" }
+  | { kind: "portalDownload"; token: string }
   | { kind: "products" }
   | { kind: "githubWebhook" }
   | { kind: "discovery"; product: string }
@@ -47,16 +55,34 @@ export function matchRoute(pathname: string): Route {
       ? pathname.slice(0, -1)
       : pathname;
 
-  // Platform + admin (matched before product slugs).
-  if (path === "/admin/api/products" || path.startsWith("/admin/api/products/"))
+  // Platform + manage routes (matched before product slugs).
+  if (
+    path === "/manage/api/products" ||
+    path.startsWith("/manage/api/products/")
+  )
     return { kind: "products" };
   if (path === "/webhooks/github") return { kind: "githubWebhook" };
-  if (path === "/admin/login") return { kind: "adminLogin" };
-  if (path === "/admin/callback") return { kind: "adminCallback" };
-  if (path === "/admin/api" || path.startsWith("/admin/api/"))
+  if (path === "/manage/login") return { kind: "adminLogin" };
+  if (path === "/manage/callback") return { kind: "adminCallback" };
+  if (path === "/manage/api" || path.startsWith("/manage/api/"))
     return { kind: "adminApi" };
-  if (path === "/admin" || path.startsWith("/admin/"))
+  if (path === "/manage" || path.startsWith("/manage/"))
     return { kind: "adminSpa" };
+
+  // Root customer portal. These are reserved before product slugs.
+  if (path === "/" || path === "/index.html" || path.startsWith("/assets/"))
+    return { kind: "portalSpa" };
+  if (path === "/login") return { kind: "portalLogin" };
+  if (path === "/callback") return { kind: "portalCallback" };
+  if (path === "/logout") return { kind: "portalLogout" };
+  if (path === "/magic/verify") return { kind: "portalMagicVerify" };
+  if (path === "/api" || path.startsWith("/api/")) return { kind: "portalApi" };
+  const portalDownload = path.match(/^\/download\/([^/]+)$/);
+  if (portalDownload?.[1])
+    return {
+      kind: "portalDownload",
+      token: decodeURIComponent(portalDownload[1]),
+    };
 
   // Product-scoped: /<product>/<rest>
   const m = path.match(/^\/([a-z0-9-]+)\/(.+)$/);

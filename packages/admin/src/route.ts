@@ -1,6 +1,6 @@
 /**
  * Hash routing without a router dependency. Hash routing keeps deep links + back/forward
- * working and lets the static SPA be served under `/admin/` with no server rewrites.
+ * working and lets the static SPA be served under `/manage/` with no server rewrites.
  *
  *   #/                                  -> dashboard
  *   #/products                          -> platform product registry

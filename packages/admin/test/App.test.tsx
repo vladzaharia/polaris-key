@@ -62,7 +62,7 @@ afterEach(() => {
 
 describe("admin SPA shell", () => {
   it("boots, shows the brand, and lands on the dashboard", async () => {
-    mockFetch({ "/admin/api/me": ME });
+    mockFetch({ "/manage/api/me": ME });
     render(<App />);
     // The dashboard greets the signed-in operator.
     expect(await screen.findByText(/Welcome, Ada/)).toBeTruthy();
@@ -71,7 +71,7 @@ describe("admin SPA shell", () => {
   });
 
   it("exposes the account menu with the operator identity", async () => {
-    mockFetch({ "/admin/api/me": ME });
+    mockFetch({ "/manage/api/me": ME });
     render(<App />);
     await screen.findByText(/Welcome, Ada/);
     await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
@@ -82,8 +82,8 @@ describe("admin SPA shell", () => {
 
   it("navigates to a per-product tab via the hash", async () => {
     mockFetch({
-      "/admin/api/me": ME,
-      "/admin/api/products/djdl": {
+      "/manage/api/me": ME,
+      "/manage/api/products/djdl": {
         product: {
           slug: "djdl",
           name: "DJDL",
@@ -118,7 +118,7 @@ describe("admin SPA shell", () => {
   });
 
   it("shows the platform Products view for platform admins", async () => {
-    mockFetch({ "/admin/api/me": ME });
+    mockFetch({ "/manage/api/me": ME });
     window.location.hash = "#/products";
     render(<App />);
     expect(
@@ -127,7 +127,7 @@ describe("admin SPA shell", () => {
   });
 
   it("blocks a product the operator does not administer", async () => {
-    mockFetch({ "/admin/api/me": { ...ME, platformAdmin: false } });
+    mockFetch({ "/manage/api/me": { ...ME, platformAdmin: false } });
     window.location.hash = "#/p/nope/licenses";
     render(<App />);
     expect(await screen.findByText("Not authorized")).toBeTruthy();

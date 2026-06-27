@@ -158,6 +158,8 @@ export interface UsePolarisAuth {
   /** Activate with a license key using the active transport. */
   submitKey: (key: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** True when this product exposes generic OIDC sign-in. */
+  supportsOidcLogin: boolean;
   /** True when typed-key entry is offered. */
   supportsKeyEntry: boolean;
 }
@@ -176,7 +178,8 @@ export function usePolarisAuth(): UsePolarisAuth {
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
-      supportsKeyEntry: true,
+      supportsOidcLogin: state.supportsOidcLogin,
+      supportsKeyEntry: state.supportsKeyEntry,
     }),
     [adapter, state],
   );

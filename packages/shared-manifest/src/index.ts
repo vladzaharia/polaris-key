@@ -40,6 +40,7 @@ export interface ManifestProduct {
 }
 
 export interface ManifestOidc {
+  provider: "platform" | "custom";
   issuer: string;
   clientId: string;
   clientSecretSecret: string;
@@ -150,6 +151,7 @@ const SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;
 const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"] as const;
+const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",
   "clientScoped",
@@ -403,23 +405,35 @@ export function validateManifestDocuments(
         "oidc must be an object.",
       );
     } else {
-      if (!urlAt(oidc, "issuer")) {
+      const provider = oidc.provider ?? "platform";
+      if (!isOneOf(provider, OIDC_PROVIDER_VALUES)) {
         add(
           errors,
           "product",
-          "/oidc/issuer",
-          "invalid_oidc_issuer",
-          "oidc.issuer must be an absolute URL.",
+          "/oidc/provider",
+          "invalid_oidc_provider",
+          "oidc.provider must be platform or custom.",
         );
       }
-      if (!stringAt(oidc, "clientId")) {
-        add(
-          errors,
-          "product",
-          "/oidc/clientId",
-          "missing_oidc_client_id",
-          "OIDC clientId is required.",
-        );
+      if (provider === "custom") {
+        if (!urlAt(oidc, "issuer")) {
+          add(
+            errors,
+            "product",
+            "/oidc/issuer",
+            "invalid_oidc_issuer",
+            "oidc.issuer must be an absolute URL for custom OIDC.",
+          );
+        }
+        if (!stringAt(oidc, "clientId")) {
+          add(
+            errors,
+            "product",
+            "/oidc/clientId",
+            "missing_oidc_client_id",
+            "OIDC clientId is required for custom OIDC.",
+          );
+        }
       }
       const ref = oidc.clientSecretSecret ?? oidc.clientSecretRef;
       if (
@@ -684,7 +698,11 @@ export function parseManifest(
   };
 
   if (productRoot.oidc !== undefined) {
+    const provider = isOneOf(oidcRoot.provider, OIDC_PROVIDER_VALUES)
+      ? oidcRoot.provider
+      : "platform";
     parsed.oidc = {
+      provider,
       issuer: String(oidcRoot.issuer ?? ""),
       clientId: String(oidcRoot.clientId ?? ""),
       clientSecretSecret: String(
@@ -842,7 +860,12 @@ function collectRequiredSecrets(
   }
   const oidc = asRecord(product.oidc);
   const oidcSecret = oidc.clientSecretSecret ?? oidc.clientSecretRef;
-  if (typeof oidcSecret === "string" && oidcSecret) names.add(oidcSecret);
+  const oidcProvider =
+    isOneOf(oidc.provider, OIDC_PROVIDER_VALUES) && oidc.provider === "custom"
+      ? "custom"
+      : "platform";
+  if (oidcProvider === "custom" && typeof oidcSecret === "string" && oidcSecret)
+    names.add(oidcSecret);
   const edgeMint =
     arrayAt(product, "edgeMint") ??
     arrayAt(asRecord(release), "edgeMint") ??

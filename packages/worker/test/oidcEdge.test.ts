@@ -55,8 +55,9 @@ const identity = (over: Partial<OidcIdentity> = {}): OidcIdentity => ({
 
 async function seedOidc(db: SqliteDb): Promise<void> {
   await db.run(
-    "INSERT INTO oidc_config (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json) VALUES (?,?,?,?,?,?)",
+    "INSERT INTO oidc_config (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json) VALUES (?,?,?,?,?,?,?)",
     "djdl",
+    "custom",
     "https://id.example",
     "client-djdl",
     null,
@@ -509,6 +510,60 @@ describe("handleAuthStart redirect-URI allowlist (D7)", () => {
   });
 });
 
+describe("handleAuthStart platform OIDC provider", () => {
+  let db: SqliteDb;
+  let env: Env;
+  let product: Product;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      `INSERT INTO oidc_config
+         (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?,?,?,?,?,?,?)`,
+      "djdl",
+      "platform",
+      null,
+      null,
+      null,
+      JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
+      JSON.stringify({ family: { role: "user", tier: "pro" } }),
+    );
+    product = (await loadProduct(env, db, "djdl"))!;
+  });
+
+  it("uses PLATFORM_OIDC issuer/client for product auth start", async () => {
+    env.PLATFORM_OIDC_ISSUER = "https://platform-id.example";
+    env.PLATFORM_OIDC_CLIENT_ID = "platform-client";
+    const res = await handleAuthStart(
+      new Request("https://key.plrs.im/djdl/auth/start") as unknown as Request,
+      env,
+      db,
+      product,
+    );
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.origin).toBe("https://platform-id.example");
+    expect(location.searchParams.get("client_id")).toBe("platform-client");
+    expect(location.searchParams.get("redirect_uri")).toBe(
+      "https://key.plrs.im/djdl/auth/callback",
+    );
+  });
+
+  it("fails clearly when platform OIDC env is missing", async () => {
+    const res = await handleAuthStart(
+      new Request("https://key.plrs.im/djdl/auth/start") as unknown as Request,
+      env,
+      db,
+      product,
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("platform oidc is not configured");
+  });
+});
+
 // ── D9 + D8: full callback with a signed ID token (nonce + failure enumeration) ──
 describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   let db: SqliteDb;
@@ -651,6 +706,30 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     expect(res.status).toBe(200);
     const body = (await poll("n3").then((r) => r.json())) as { status: string };
     expect(body.status).toBe("ready");
+  });
+
+  it("uses platform OIDC env during callback and still mints a product license", async () => {
+    await db.run(
+      `UPDATE oidc_config
+          SET provider = ?, issuer = NULL, client_id = NULL, client_secret_secret = NULL
+        WHERE product = ?`,
+      "platform",
+      "djdl",
+    );
+    env.PLATFORM_OIDC_ISSUER = ISSUER;
+    env.PLATFORM_OIDC_CLIENT_ID = AUD;
+    await seedFlow("n-platform", "the-nonce");
+    installFetchMock(
+      await signIdToken({
+        sub: "platform-user",
+        groups: ["family"],
+        nonce: "the-nonce",
+      }),
+    );
+    const res = await callback("n-platform");
+    expect(res.status).toBe(200);
+    const lic = await getLicenseBySub(db, "djdl", "platform-user");
+    expect(lic?.product).toBe("djdl");
   });
 
   it("does NOT leak a failure reason via poll after a failed callback (D8)", async () => {

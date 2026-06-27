@@ -18,10 +18,16 @@ export interface Env {
   PLATFORM_KEK_ID?: string;
   KEY_HASH_PEPPER?: string;
   ADMIN_SESSION_SECRET?: string;
+  PORTAL_SESSION_SECRET?: string;
+  PLATFORM_OIDC_ISSUER?: string;
+  PLATFORM_OIDC_CLIENT_ID?: string;
+  PLATFORM_OIDC_CLIENT_SECRET?: string;
+  PORTAL_EMAIL_FROM?: string;
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
   GITHUB_WEBHOOK_SECRET?: string;
   PLATFORM_ADMIN_GROUP?: string;
+  EMAIL?: SendEmail;
 
   // additional platform secrets/vars resolved by name
   [key: string]: unknown;

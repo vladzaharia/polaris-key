@@ -24,6 +24,7 @@ const PRODUCT = {
   defaultDeviceLimit: 5,
   adminGroup: "admin",
   oidc: {
+    provider: "custom",
     issuer: "https://id.scruffy.spot",
     clientId: "djdl",
     clientSecretSecret: "OIDC_CLIENT_SECRET__DJDL",
@@ -93,6 +94,7 @@ describe("parseManifest", () => {
       (CATALOG.entries as unknown[]).length,
     );
     expect(m.oidc?.clientId).toBe("djdl");
+    expect(m.oidc?.provider).toBe("custom");
     expect(m.tiers).toHaveLength(1);
     expect(m.tiers[0]).toMatchObject({
       channels: ["stable", "beta"],

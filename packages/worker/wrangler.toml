@@ -7,6 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 [assets]
 directory = "../admin/dist"
 binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
 
 [[durable_objects.bindings]]
 name = "RL"
@@ -18,7 +20,7 @@ new_classes = ["RateLimitDO"]
 
 # ---------------------------------------------------------------------------
 # Per-environment bindings. The D1 database and KV namespace are created once,
-# per environment, with wrangler (see docs/RUNBOOK.md "Infrastructure bootstrap"):
+# per environment, with wrangler (see docs/DEPLOYMENT.md "Cloudflare resources"):
 #   wrangler d1 create polaris_key_<env>          -> database_id
 #   wrangler kv namespace create POLARIS_HOT_<env> -> id
 # Paste the returned ids over the REPLACE_ME_* placeholders below before deploying;
@@ -29,6 +31,9 @@ new_classes = ["RateLimitDO"]
 [[env.prod.routes]]
 pattern = "key.plrs.im"
 custom_domain = true
+[[env.prod.durable_objects.bindings]]
+name = "RL"
+class_name = "RateLimitDO"
 [[env.prod.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_PROD_KV_ID"
@@ -36,11 +41,17 @@ id = "REPLACE_ME_PROD_KV_ID"
 binding = "DB"
 database_name = "polaris_key_prod"
 database_id = "REPLACE_ME_PROD_D1_ID"
+[[env.prod.send_email]]
+name = "EMAIL"
+allowed_sender_addresses = ["noreply@plrs.im"]
 
 [env.staging]
 [[env.staging.routes]]
 pattern = "key-staging.plrs.im"
 custom_domain = true
+[[env.staging.durable_objects.bindings]]
+name = "RL"
+class_name = "RateLimitDO"
 [[env.staging.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_STAGING_KV_ID"
@@ -53,6 +64,9 @@ database_id = "REPLACE_ME_STAGING_D1_ID"
 [[env.dev.routes]]
 pattern = "key-dev.plrs.im"
 custom_domain = true
+[[env.dev.durable_objects.bindings]]
+name = "RL"
+class_name = "RateLimitDO"
 [[env.dev.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_DEV_KV_ID"
@@ -63,5 +77,11 @@ database_id = "REPLACE_ME_DEV_D1_ID"
 
 # Required secrets (set with `wrangler secret put <NAME> --env <env>`):
 #   KEY_HASH_PEPPER, ADMIN_SESSION_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY,
-#   GITHUB_WEBHOOK_SECRET, PLATFORM_ADMIN_GROUP, PLATFORM_KEK.
+#   GITHUB_WEBHOOK_SECRET, PLATFORM_ADMIN_GROUP, PLATFORM_KEK,
+#   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
+# Optional portal-specific secret:
+#   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
+# Customer portal email:
+#   prod binds Cloudflare Email Service as EMAIL and restricts senders to noreply@plrs.im.
+#   Set PORTAL_EMAIL_FROM if the default sender should not be "Polaris Key <noreply@plrs.im>".
 # Product signing keys and product-scoped secrets are sealed in D1 through the admin API.

@@ -383,21 +383,24 @@ export async function insertSchema(db: Db, row: SchemaRow): Promise<void> {
 
 export interface OidcConfigInput {
   product: string;
-  issuer: string;
-  clientId: string;
-  clientSecretSecret: string;
+  provider?: "platform" | "custom";
+  issuer?: string;
+  clientId?: string;
+  clientSecretSecret?: string;
   redirectUris: string[];
   groupRoleMap: Record<string, unknown>;
 }
 export function stmtInsertOidcConfig(o: OidcConfigInput): DbStatement {
+  const provider = o.provider ?? "platform";
   return {
-    sql: `INSERT INTO oidc_config (product, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
-          VALUES (?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO oidc_config (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
     params: [
       o.product,
-      o.issuer,
-      o.clientId,
-      o.clientSecretSecret,
+      provider,
+      provider === "custom" ? (o.issuer ?? "") : "",
+      provider === "custom" ? (o.clientId ?? "") : "",
+      provider === "custom" ? (o.clientSecretSecret ?? "") : "",
       JSON.stringify(o.redirectUris),
       JSON.stringify(o.groupRoleMap),
     ],

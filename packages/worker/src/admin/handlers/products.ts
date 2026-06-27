@@ -36,6 +36,11 @@ import { generateEd25519, seal } from "../../keyvault.js";
 import { linkRepo } from "../../release/linkRepo.js";
 import { resyncRepo } from "../../release/resync.js";
 import { checkReleaseHealth } from "../../release/health.js";
+import {
+  getPortalProductSettings,
+  portalProductSettingsView,
+  upsertPortalProductSettings,
+} from "../../portal/repo.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
@@ -140,7 +145,9 @@ export async function handleProducts(
     if (req.method === "GET") {
       const rows = await listProducts(db);
       return adminJson({
-        products: await Promise.all(rows.map((row) => productView(db, row))),
+        products: await Promise.all(
+          rows.map((row) => productView(env, db, row)),
+        ),
       });
     }
     if (req.method === "POST") return manualCreate(req, env, db, session, now);
@@ -152,7 +159,7 @@ export async function handleProducts(
   const row = await getProduct(db, slug);
   if (!row) return notFound();
   if (req.method === "GET")
-    return adminJson({ product: await productView(db, row) });
+    return adminJson({ product: await productView(env, db, row) });
   if (req.method === "PATCH") {
     const body = await readBody(req);
     await updateProduct(
@@ -318,16 +325,16 @@ async function manualCreate(
         jwksUrl: `/${slug}/.well-known/jwks.json`,
         trustKeys: { [kid]: publicRawB64url },
       },
-      product: created ? await productView(db, created) : null,
+      product: created ? await productView(env, db, created) : null,
     },
     201,
   );
 }
 
 /**
- * Product-scoped key/secret/release operations: PUT a write-only secret, rotate the signing
- * key, or resync from the linked repo. Called from the dispatcher with the product already
- * authz-checked (product admin OR platform).
+ * Product-scoped key/secret/release/portal operations: PUT a write-only secret, rotate the
+ * signing key, resync from the linked repo, or update customer portal module settings. Called
+ * from the dispatcher with the product already authz-checked (product admin OR platform).
  */
 export async function handleProductScopedResource(
   req: Request,
@@ -337,7 +344,7 @@ export async function handleProductScopedResource(
   slug: string,
   resource: string,
   // The trailing path segment: a secret NAME (secrets/<name>) or an action (keys/<rotate>,
-  // release/<resync>). One position serves all three resources.
+  // release/<resync>). One position serves all resources that need a sub-action.
   id: string | undefined,
   now: number,
 ): Promise<Response> {
@@ -347,7 +354,61 @@ export async function handleProductScopedResource(
     return handleKeys(req, env, db, session, slug, id, now);
   if (resource === "release")
     return handleRelease(req, env, db, session, slug, id, now);
+  if (resource === "portal")
+    return handlePortalSettings(req, db, session, slug, now);
   return notFound();
+}
+
+async function handlePortalSettings(
+  req: Request,
+  db: Db,
+  session: AdminSession,
+  slug: string,
+  now: number,
+): Promise<Response> {
+  if (req.method === "GET") {
+    const settings = await getPortalProductSettings(db, slug);
+    return adminJson({ settings: portalProductSettingsView(settings) });
+  }
+  if (req.method !== "PATCH")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+
+  const body = await readBody(req);
+  const patch: Parameters<typeof upsertPortalProductSettings>[2] = {};
+  const booleans = [
+    "portalEnabled",
+    "oidcEnabled",
+    "magicEnabled",
+    "licenseKeyClaimEnabled",
+    "releasesEnabled",
+  ] as const;
+  const fields: string[] = [];
+  for (const key of booleans) {
+    if (body[key] === undefined) continue;
+    if (typeof body[key] !== "boolean") fields.push(key);
+    else patch[key] = body[key];
+  }
+  if (body.branding !== undefined) patch.branding = body.branding;
+  if (fields.length > 0) {
+    return err(422, ErrorCode.BadRequest, "invalid portal settings", {
+      fields,
+    });
+  }
+
+  const settings = await upsertPortalProductSettings(db, slug, patch, now);
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    "portal.settings.update",
+    { kind: "product", id: slug },
+    `Updated portal settings for ${slug}`,
+  );
+  return adminJson({
+    ok: true,
+    settings: portalProductSettingsView(settings),
+  });
 }
 
 /** PUT /api/products/<slug>/secrets/<name> {value} — write-only: seal + store; echo NAME only. */

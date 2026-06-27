@@ -90,6 +90,28 @@ describe("@polaris-key/cli", () => {
     expect(result.errors.map((e) => e.code)).toContain("missing_release");
   });
 
+  it("initializes OIDC with the platform provider and no product OIDC secret", async () => {
+    const cwd = await tempDir();
+    await initManifest({
+      cwd,
+      slug: "djdl",
+      name: "DJDL",
+      modules: ["licensing", "config", "oidc"],
+    });
+
+    const productYaml = await readFile(
+      path.join(cwd, ".pkey/product.yaml"),
+      "utf8",
+    );
+    expect(productYaml).toContain("provider: platform");
+    expect(productYaml).not.toContain("oidc_client_secret");
+
+    const manifest = await loadManifest(cwd);
+    const result = validateLoadedManifest(manifest);
+    expect(result.ok).toBe(true);
+    expect(result.requiredSecrets).toEqual([]);
+  });
+
   it("runs init and validate through the CLI entrypoint", async () => {
     const cwd = await tempDir();
     const io = capture();

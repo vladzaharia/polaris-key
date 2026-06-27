@@ -23,6 +23,7 @@ import {
 import { handleRelease } from "./release/index.js";
 import type { Arch } from "./release/assets.js";
 import { handleAdmin } from "./admin/index.js";
+import { handlePortal } from "./portal/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { notFound } from "./http.js";
 import {
@@ -162,6 +163,20 @@ export default {
     switch (route.kind) {
       case "githubWebhook":
         return handleGithubWebhook(req, env, db, now);
+      case "portalSpa":
+      case "portalApi":
+      case "portalLogin":
+      case "portalCallback":
+      case "portalLogout":
+      case "portalMagicVerify":
+        return handlePortal(req, env, db, url.pathname);
+      case "portalDownload":
+        return handlePortal(
+          req,
+          env,
+          db,
+          `/download/${encodeURIComponent(route.token)}`,
+        );
       case "adminSpa":
       case "adminApi":
       case "adminLogin":
@@ -171,7 +186,7 @@ export default {
           req,
           env,
           db,
-          url.pathname.slice("/admin".length) || "/",
+          url.pathname.slice("/manage".length) || "/",
         );
       default:
         return notFound();

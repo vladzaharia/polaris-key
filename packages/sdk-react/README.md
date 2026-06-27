@@ -68,7 +68,7 @@ version-block / error). Every screen is overridable per `slots` render-prop.
 | `useLicense()`         | `{ gate, status, usable, loading }`                                                                                      |
 | `useManagedConfig()`   | `{ config, get(key, fallback) }`                                                                                         |
 | `useEntitlement(name)` | `boolean`                                                                                                                |
-| `usePolarisAuth()`     | profile + auth actions + `supportsKeyEntry`                                                                              |
+| `usePolarisAuth()`     | profile + auth actions + `supportsOidcLogin` + `supportsKeyEntry`                                                        |
 | `useLicenseGate()`     | headless gate (`screen`, `state`, `theme`, `retry`) for a fully custom UI                                                |
 
 ## Modes

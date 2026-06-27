@@ -1,6 +1,6 @@
 /**
  * The admin JSON API dispatcher: `handleAdminApi(req, env, db, path, now)` where `path` is
- * everything AFTER `/admin` (e.g. `/api/me`, `/api/products/djdl/licenses`). Two route
+ * everything AFTER `/manage` (e.g. `/api/me`, `/api/products/djdl/licenses`). Two route
  * families:
  *
  *   /api/me                                  — the signed-in identity + CSRF + grants
@@ -83,11 +83,18 @@ async function handleProductScoped(
 
   const [resource, id, sub, subId, action] = rest;
 
-  // New per-product resources: write-only secrets, signing-key rotation, repo resync.
+  // New per-product resources: write-only secrets, signing-key rotation, repo resync,
+  // and customer portal module settings.
   //   PUT  /products/<slug>/secrets/<name>
   //   POST /products/<slug>/keys/rotate
   //   POST /products/<slug>/release/resync
-  if (resource === "secrets" || resource === "keys" || resource === "release") {
+  //   PATCH /products/<slug>/portal
+  if (
+    resource === "secrets" ||
+    resource === "keys" ||
+    resource === "release" ||
+    resource === "portal"
+  ) {
     return handleProductScopedResource(
       req,
       env,
@@ -132,7 +139,7 @@ async function handleProductScoped(
 }
 
 /**
- * Admin API dispatcher. `path` is everything AFTER `/admin` (so it begins with `/api`).
+ * Admin API dispatcher. `path` is everything AFTER `/manage` (so it begins with `/api`).
  * Verifies the session, CSRF-checks mutations, then routes. Returns 401/403 cleanly.
  */
 export async function handleAdminApi(
