@@ -16,7 +16,7 @@ Target account and fixed values:
 | D1 database          | `polaris_key_prod`                             |
 | KV namespace         | `POLARIS_HOT_prod`                             |
 | PocketID issuer      | `https://id.plrs.im`                           |
-| Platform admin group | `admin`                                        |
+| Platform admin group | `admins`                                       |
 | GitHub App           | `polaris-key`                                  |
 | First product        | `djdl` from `vladzaharia/djdl`                 |
 | Portal email sender  | `Polaris Key <noreply@plrs.im>`                |
@@ -82,17 +82,23 @@ https://developers.cloudflare.com/email-service/configuration/send-bindings/.
 
 Use the PocketID instance at `https://id.plrs.im`.
 
-Create or confirm the `admin` group, and add every operator who needs Polaris Key admin
+Create or confirm the `admins` group, and add every operator who needs Polaris Key admin
 access. PocketID ID tokens must include a `groups` claim containing group names as strings.
 
-Create a platform OIDC client for Polaris Key admin and the root customer portal:
+Create a platform OIDC client for Polaris Key admin, the root customer portal, and every
+product that uses platform OIDC (the default):
 
-| Field        | Value                                 |
-| ------------ | ------------------------------------- |
-| Issuer       | `https://id.plrs.im`                  |
-| Redirect URI | `https://key.plrs.im/manage/callback` |
-| Redirect URI | `https://key.plrs.im/callback`        |
-| Scopes       | `openid email profile groups`         |
+| Field        | Value                                    |
+| ------------ | ---------------------------------------- |
+| Issuer       | `https://id.plrs.im`                     |
+| Redirect URI | `https://key.plrs.im/manage/callback`    |
+| Redirect URI | `https://key.plrs.im/callback`           |
+| Redirect URI | `https://key.plrs.im/djdl/auth/callback` |
+| Scopes       | `openid email profile groups`            |
+
+Each additional product using platform OIDC adds its own `/<slug>/auth/callback` to this
+client. Products with `oidc.provider: custom` use a separate client and do not need an
+entry here.
 
 Record the platform client ID and client secret. They become Worker secrets:
 
@@ -101,9 +107,9 @@ PLATFORM_OIDC_CLIENT_ID
 PLATFORM_OIDC_CLIENT_SECRET
 ```
 
-Products use platform OIDC by default. Before linking DJDL, its `.pkey/product` should
-select the platform provider and keep only product-scoped policy such as redirect
-allowlists and group-to-tier mapping:
+Products use platform OIDC by default. DJDL's `.pkey/product` should set the platform
+provider and keep only product-scoped policy (redirect allowlist and group-to-tier
+mapping):
 
 ```json
 {
@@ -113,7 +119,7 @@ allowlists and group-to-tier mapping:
     "groupRoleMap": {
       "family": { "role": "user", "tier": "standard" },
       "friends": { "role": "user", "tier": "standard" },
-      "admin": { "role": "admin" }
+      "admins": { "role": "admin" }
     }
   }
 }
@@ -225,7 +231,7 @@ npx wrangler secret put GITHUB_WEBHOOK_SECRET --env prod
 Use these literal values where applicable:
 
 ```text
-PLATFORM_ADMIN_GROUP=admin
+PLATFORM_ADMIN_GROUP=admins
 PLATFORM_OIDC_ISSUER=https://id.plrs.im
 ```
 
@@ -326,8 +332,8 @@ Sign in through PocketID. If login fails:
 
 - Confirm `PLATFORM_OIDC_ISSUER=https://id.plrs.im`.
 - Confirm the platform client allows `https://key.plrs.im/manage/callback`.
-- Confirm your ID token has `groups` and includes `admin`.
-- Confirm `PLATFORM_ADMIN_GROUP=admin`.
+- Confirm your ID token has `groups` and includes `admins`.
+- Confirm `PLATFORM_ADMIN_GROUP=admins`.
 - Confirm D1 migrations were applied before deploy.
 
 ## 9. Onboard DJDL
@@ -341,7 +347,7 @@ Before linking, confirm the DJDL repo contains `.pkey/schema`, `.pkey/product`, 
 ```text
 provider: platform
 redirectUris: https://key.plrs.im/djdl/auth/callback
-adminGroup: admin
+adminGroup: admins
 ```
 
 Link the repo:
@@ -375,7 +381,7 @@ curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 Expected checks:
 
 - Discovery shows `baseUrl: "https://key.plrs.im"`.
-- Discovery auth OIDC issuer is `https://id.plrs.im`.
+- Discovery shows `modules.auth.oidc.enabled: true`.
 - JWKS contains the active product `kid`.
 - Schema returns DJDL catalog version 1.
 - Appcast responds once release config and release assets are available.
@@ -431,7 +437,7 @@ Validate portal email:
 
 `Your account is not an administrator of any product.`
 
-- Your PocketID token is missing `groups`, or your groups do not include `admin`.
+- Your PocketID token is missing `groups`, or your groups do not include `admins`.
 
 `platform oidc is not configured` for product activation.
 

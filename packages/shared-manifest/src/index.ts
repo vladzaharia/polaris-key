@@ -1,4 +1,4 @@
-import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
+import { type ProductCatalog } from "@polaris-key/catalog";
 import { parse as parseYaml } from "yaml";
 
 export type ProductModule =
@@ -280,17 +280,6 @@ export function validateManifestDocuments(
       } else {
         for (const issue of validateCatalogShape(catalog)) {
           add(errors, "schema", "/entries", "invalid_catalog_shape", issue);
-        }
-        try {
-          new Catalog(catalog).compileAll();
-        } catch (err) {
-          add(
-            errors,
-            "schema",
-            "/entries",
-            "invalid_catalog",
-            err instanceof Error ? err.message : "invalid catalog",
-          );
         }
       }
     }

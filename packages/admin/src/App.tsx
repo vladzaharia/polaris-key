@@ -19,6 +19,7 @@ import { Profiles } from "./views/Profiles.js";
 import { Releases } from "./views/Releases.js";
 import { Oidc } from "./views/Oidc.js";
 import { Activity } from "./views/Activity.js";
+import { Secrets } from "./views/Secrets.js";
 import { Settings } from "./views/Settings.js";
 
 /**
@@ -194,7 +195,7 @@ function renderRoute(
     case "identity":
       return <Oidc slug={activeSlug} />;
     case "secrets":
-      return <Settings slug={activeSlug} />;
+      return <Secrets slug={activeSlug} />;
     case "activity":
       return <Activity slug={activeSlug} />;
     case "settings":

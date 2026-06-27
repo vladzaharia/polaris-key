@@ -300,7 +300,7 @@ function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
         : "All reported setup requirements are configured.",
       status: missing.length ? "action" : "done",
       href: missing.length
-        ? hashFor({ kind: "product", slug: product.slug, view: "settings" })
+        ? hashFor({ kind: "product", slug: product.slug, view: "secrets" })
         : undefined,
       actionLabel: "Set secrets",
     },

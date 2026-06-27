@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   AlertTriangle,
-  CheckCircle2,
   Download,
   Globe2,
   KeyRound,
@@ -22,7 +21,6 @@ import { useAdmin } from "../context.js";
 import { invalidate, useResource } from "../context.js";
 import { hashFor } from "../route.js";
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -48,7 +46,7 @@ import {
  */
 export function Settings({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
-    api.product(slug),
+    api.product(slug).then((r) => r.product),
   );
 
   return (
@@ -81,11 +79,10 @@ export function Settings({ slug }: { slug: string }): React.ReactElement {
         />
       ) : data ? (
         <div className="space-y-6">
-          <GeneralCard slug={slug} product={data.product} />
-          <PortalCard slug={slug} product={data.product} />
-          <SecretCard slug={slug} product={data.product} />
-          <KeyCard slug={slug} product={data.product} />
-          <DangerCard slug={slug} product={data.product} />
+          <GeneralCard slug={slug} product={data} />
+          <PortalCard slug={slug} product={data} />
+          <KeyCard slug={slug} product={data} />
+          <DangerCard slug={slug} product={data} />
         </div>
       ) : null}
     </section>
@@ -432,128 +429,6 @@ function PortalCard({
         <CardFooter>
           <Button type="submit" loading={saving} disabled={!dirty}>
             Save portal settings
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
-  );
-}
-
-// ── secrets ─────────────────────────────────────────────────────────────────────
-
-function SecretCard({
-  slug,
-  product,
-}: {
-  slug: string;
-  product: ProductDetail;
-}): React.ReactElement {
-  const toast = useToast();
-  const [name, setName] = React.useState("");
-  const [value, setValue] = React.useState("");
-  const [saving, setSaving] = React.useState(false);
-  const [errors, setErrors] = React.useState<{ name?: string; value?: string }>(
-    {},
-  );
-
-  const onSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    const errs: { name?: string; value?: string } = {};
-    if (!name.trim()) errs.name = "A secret name is required.";
-    if (!value) errs.value = "A value is required.";
-    setErrors(errs);
-    if (errs.name || errs.value) return;
-    setSaving(true);
-    try {
-      const secretName = name.trim();
-      await api.putProductSecret(slug, secretName, value);
-      invalidate(`product:${slug}`);
-      toast.success(
-        "Secret saved",
-        `“${secretName}” was stored. Its value is never shown again.`,
-      );
-      setName("");
-      setValue("");
-    } catch (err) {
-      toast.error(
-        "Couldn’t save secret",
-        err instanceof Error ? err.message : undefined,
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const requiredSecrets = product.setup?.secrets ?? [];
-  return (
-    <Card>
-      <form onSubmit={onSubmit} noValidate>
-        <CardHeader>
-          <CardTitle>Product secrets</CardTitle>
-          <CardDescription>
-            Set a write-only secret (e.g. an OIDC client secret or a minter
-            key). Values are stored encrypted and never read back.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {requiredSecrets.length ? (
-            <div className="space-y-2 rounded-md border border-border p-3">
-              <p className="text-sm font-medium">Required secrets</p>
-              <div className="space-y-2">
-                {requiredSecrets.map((secret) => (
-                  <div
-                    key={secret.name}
-                    className="flex flex-wrap items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0">
-                      <button
-                        type="button"
-                        className="break-all text-left font-mono text-xs text-primary underline-offset-4 hover:underline"
-                        onClick={() => setName(secret.name)}
-                      >
-                        {secret.name}
-                      </button>
-                      {secret.sources?.length ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {secret.sources.join(", ")}
-                        </p>
-                      ) : null}
-                    </div>
-                    <Badge variant={secret.configured ? "success" : "warning"}>
-                      {secret.configured ? (
-                        <CheckCircle2 aria-hidden className="size-3" />
-                      ) : null}
-                      {secret.configured ? "Configured" : "Missing"}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Secret name" error={errors.name}>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. oidc_client_secret"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </Field>
-            <Field label="Value" error={errors.value}>
-              <Input
-                type="password"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                autoComplete="new-password"
-                spellCheck={false}
-              />
-            </Field>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button type="submit" variant="secondary" loading={saving}>
-            Set secret
           </Button>
         </CardFooter>
       </form>

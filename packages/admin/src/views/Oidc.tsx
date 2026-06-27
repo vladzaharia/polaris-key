@@ -35,7 +35,7 @@ import {
 export function Oidc({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
   const { data, loading, error } = useResource(`product:${slug}`, () =>
-    api.product(slug),
+    api.product(slug).then((r) => r.product),
   );
   const [resyncing, setResyncing] = React.useState(false);
 
@@ -95,7 +95,7 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
               The OIDC provider, custom provider fields, group → tier map, and
               provisioning hooks for{" "}
               <span className="font-medium text-foreground">
-                {data?.product.name ?? slug}
+                {data?.name ?? slug}
               </span>{" "}
               live in its{" "}
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">

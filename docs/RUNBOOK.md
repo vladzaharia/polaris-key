@@ -18,7 +18,7 @@ DJDL onboarding, use [DEPLOYMENT.md](./DEPLOYMENT.md).
 | D1 database          | `polaris_key_prod`                             |
 | KV namespace         | `POLARIS_HOT_prod`                             |
 | PocketID issuer      | `https://id.plrs.im`                           |
-| Platform admin group | `admin`                                        |
+| Platform admin group | `admins`                                       |
 | GitHub App           | `polaris-key`                                  |
 | Email sender         | `Polaris Key <noreply@plrs.im>`                |
 
@@ -141,7 +141,7 @@ Admin login fails before redirect:
 Admin login succeeds but access is denied:
 
 - Confirm the ID token includes a string-array `groups` claim.
-- Confirm your PocketID user belongs to `admin`.
+- Confirm your PocketID user belongs to `admins`.
 - Confirm `PLATFORM_ADMIN_GROUP=admin`.
 
 Portal magic links are hidden:

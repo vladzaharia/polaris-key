@@ -1,20 +1,20 @@
 {
   "slug": "djdl",
   "name": "DJDL",
-  "signingKid": "pkey-djdl-prod-2026-06",
-  "signingPub": "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
+  "signingKid": "djdl-2026",
+  "signingPub": "P0nMyA9QpvpspaIXBjtb6PfXZu4jIiGPlNzkRm28_6E",
   "compatMin": "0.0.0",
   "compatMax": "99.0.0",
   "defaultMaxOfflineDays": 30,
   "defaultDeviceLimit": 5,
-  "adminGroup": "admin",
+  "adminGroup": "admins",
   "oidc": {
     "provider": "platform",
     "redirectUris": ["https://key.plrs.im/djdl/auth/callback"],
     "groupRoleMap": {
       "family": { "role": "user", "tier": "standard" },
       "friends": { "role": "user", "tier": "standard" },
-      "admin": { "role": "admin" }
+      "admins": { "role": "admin" }
     }
   },
   "tiers": [
@@ -44,8 +44,8 @@
       "id": "applemusic",
       "alg": "ES256",
       "signingKeySecret": "EDGE_MINT__DJDL__APPLEMUSIC",
-      "kid": "REPLACE_WITH_APPLE_MUSICKIT_KEY_ID",
-      "claimsTemplate": { "iss": "REPLACE_WITH_APPLE_TEAM_ID" },
+      "kid": "7L3Q6F68Y4",
+      "claimsTemplate": { "iss": "48H7CLBV8Y" },
       "ttlSeconds": 3600
     }
   ],

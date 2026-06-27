@@ -4,6 +4,21 @@ main = "src/index.ts"
 compatibility_date = "2026-04-07"
 compatibility_flags = ["nodejs_compat"]
 
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
 [assets]
 directory = "../admin/dist"
 binding = "ASSETS"
@@ -36,11 +51,11 @@ name = "RL"
 class_name = "RateLimitDO"
 [[env.prod.kv_namespaces]]
 binding = "HOT"
-id = "REPLACE_ME_PROD_KV_ID"
+id = "51b31c97ac2140e5af2402bed1a31e71"
 [[env.prod.d1_databases]]
 binding = "DB"
 database_name = "polaris_key_prod"
-database_id = "REPLACE_ME_PROD_D1_ID"
+database_id = "4bcb24b2-80af-4180-abcc-0e5e99564ed8"
 [[env.prod.send_email]]
 name = "EMAIL"
 allowed_sender_addresses = ["noreply@plrs.im"]
