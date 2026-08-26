@@ -41,6 +41,12 @@ export interface VerifyOptions {
    * cross-protocol replay is closed immediately, before `typ` becomes mandatory.
    */
   typ?: JwsTyp;
+  /**
+   * Wire contract v3 §2: a missing `typ` is REJECTED, not tolerated. v3 verifiers
+   * (client-core) set this; v2 call sites keep the v1-compat tolerance until they and
+   * corpus v1 are retired in P8, at which point this becomes the only behavior.
+   */
+  requireTyp?: boolean;
 }
 
 export interface VerifiedJws<T> {
@@ -306,7 +312,10 @@ export async function verifyJws<T = unknown>(
   // Domain separation. An absent `typ` is tolerated for v1 compatibility, but a header
   // asserting a DIFFERENT type is rejected outright — that closes cross-protocol replay
   // (a trust manifest presented where a config doc is expected) immediately.
-  if (header.typ !== undefined) {
+  if (header.typ === undefined) {
+    // Wire v3 verifiers demand a typ (WIRE-CONTRACT-V3 §2); v2 tolerates absence.
+    if (opts.requireTyp) return null;
+  } else {
     if (typeof header.typ !== "string") return null;
     if (opts.typ !== undefined && header.typ !== opts.typ) return null;
   }

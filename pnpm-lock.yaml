@@ -148,6 +148,19 @@ importers:
         specifier: ^2.6.1
         version: 2.9.0
 
+  packages/client-core:
+    dependencies:
+      '@plrs/jws':
+        specifier: workspace:*
+        version: link:../shared-jws
+      '@plrs/protocol':
+        specifier: workspace:*
+        version: link:../shared-protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^22.14.0
+        version: 22.20.0
+
   packages/sdk-node:
     dependencies:
       '@plrs/jws':

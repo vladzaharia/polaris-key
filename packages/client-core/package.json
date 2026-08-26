@@ -1,0 +1,67 @@
+{
+  "name": "@plrs/client-core",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./verify": {
+      "types": "./dist/verify.d.ts",
+      "default": "./dist/verify.js"
+    },
+    "./trust": {
+      "types": "./dist/trust.d.ts",
+      "default": "./dist/trust.js"
+    },
+    "./gate": {
+      "types": "./dist/gate.d.ts",
+      "default": "./dist/gate.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
+    },
+    "./semver": {
+      "types": "./dist/semver.d.ts",
+      "default": "./dist/semver.js"
+    },
+    "./claims": {
+      "types": "./dist/claims.d.ts",
+      "default": "./dist/claims.js"
+    },
+    "./clock": {
+      "types": "./dist/clock.d.ts",
+      "default": "./dist/clock.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./store": {
+      "types": "./dist/store.d.ts",
+      "default": "./dist/store.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@plrs/jws": "workspace:*",
+    "@plrs/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0"
+  }
+}
