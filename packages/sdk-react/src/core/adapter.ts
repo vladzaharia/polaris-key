@@ -2,11 +2,7 @@
 // `PolarisState`. Centralizing this is what guarantees mode-parity: the browser and
 // desktop adapters disagree on transport, never on how a doc becomes state.
 
-import type {
-  JSONValue,
-  ManagedConfigDoc,
-  ManagedEntry,
-} from "@plrs/protocol";
+import type { JSONValue, ManagedConfigDoc, ManagedEntry } from "@plrs/protocol";
 import { licenseState, type GateInput } from "./gateModel.js";
 import {
   type ConfigSource,

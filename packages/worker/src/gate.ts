@@ -11,11 +11,7 @@
 //   * the declared channel can only ever be TIGHTENED relative to the one the version implies,
 //     so a `0.0.0-pr-42` build cannot present itself as `stable` to skip the entitlement check.
 
-import type {
-  AllowedRange,
-  BlockReason,
-  ManagedEntry,
-} from "@plrs/protocol";
+import type { AllowedRange, BlockReason, ManagedEntry } from "@plrs/protocol";
 
 export type ReleaseChannel = "stable" | "staging" | "pr" | "dev";
 

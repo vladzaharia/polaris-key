@@ -18,61 +18,61 @@ Spec: `docs/superpowers/specs/2026-06-30-polaris-brand-rollout-design.md`.
 
 ## Reference A: Token / utility-class migration map (v3 `--pk-*` → brand v4 semantic)
 
-**CRITICAL SEMANTIC GOTCHA:** In the *old* admin, `bg-accent` / `text-accent-foreground` / `bg-muted` are **neutral hover fills**. In the *brand*, `bg-accent` / `text-accent` are the **colored service accent**. Do NOT map old `bg-accent` → brand `bg-accent`. Map old neutral fills to `bg-surface-raised` / `text-foreground`.
+**CRITICAL SEMANTIC GOTCHA:** In the _old_ admin, `bg-accent` / `text-accent-foreground` / `bg-muted` are **neutral hover fills**. In the _brand_, `bg-accent` / `text-accent` are the **colored service accent**. Do NOT map old `bg-accent` → brand `bg-accent`. Map old neutral fills to `bg-surface-raised` / `text-foreground`.
 
 The brand's `@theme inline` defines `--color-primary` (= accent) and `--color-primary-foreground` (= background), so `bg-primary` / `text-primary` / `text-primary-foreground` are valid brand utilities and need no rename.
 
-| Old class (v3) | New class (brand v4) | Notes |
-|---|---|---|
-| `bg-background` | `bg-background` | unchanged |
-| `bg-card` | `bg-surface` | card surface |
-| `bg-popover` | `bg-surface-raised` | popover/dropdown/select content |
-| `bg-muted` | `bg-surface-raised` | neutral fill (incl. `hover:bg-muted/30` → `hover:bg-surface-raised/60`) |
-| `bg-accent` (neutral) | `bg-surface-raised` | **NOT brand bg-accent** |
-| `bg-secondary` | `bg-surface-raised` | only survives in views; most in deleted Button/Badge |
-| `bg-primary` | `bg-primary` | unchanged (resolves to accent) |
-| `bg-sidebar` | `bg-surface-deep` | Shell only |
-| `bg-sidebar-accent` | `bg-surface-raised` | Shell only |
-| `text-foreground` | `text-foreground` | unchanged |
-| `text-muted-foreground` | `text-muted` | **122 uses — the biggest rename** |
-| `text-card-foreground` | `text-foreground` | |
-| `text-popover-foreground` | `text-foreground` | |
-| `text-accent-foreground` (neutral) | `text-foreground` | **NOT brand text-accent** |
-| `text-secondary-foreground` | `text-foreground` | |
-| `text-sidebar-foreground` | `text-muted` | Shell only |
-| `text-primary` | `text-primary` | unchanged (= accent) |
-| `text-primary-foreground` | `text-primary-foreground` | unchanged (= background) |
-| `text-destructive` | `text-danger` | |
-| `text-success` | `text-success` | unchanged |
-| `text-warning` | `text-warning` | unchanged |
-| `border-border` | `border-border` | unchanged |
-| `border-input` | `border-border` | |
-| `border-primary` | `border-accent` | |
-| `border-destructive` | `border-danger` | |
-| `border-success` / `border-warning` | `border-success` / `border-warning` | unchanged |
-| `border-sidebar-border` | `border-border` | Shell only |
-| `ring-ring` | `ring-ring` | unchanged (= accent) |
-| `ring-offset-background` | `ring-offset-background` | unchanged |
-| `ring-destructive` | `ring-danger` | |
-| `bg-destructive` / `text-destructive-foreground` | `bg-danger` / `text-background` | mostly inside deleted components |
-| `shadow-pk-sm|md|lg` | (drop) / `shadow-[var(--shadow)]` | only in deleted components |
-| `animate-pk-in|overlay-in|spin` | (drop, brand uses `tw-animate-css`) | only in deleted components |
-| `font-sans` / `font-mono` | `font-sans` / `font-mono` | provided by brand `@theme` |
+| Old class (v3)                                   | New class (brand v4)                | Notes                                                                   |
+| ------------------------------------------------ | ----------------------------------- | ----------------------------------------------------------------------- | ----------------------------------- | -------------------------- |
+| `bg-background`                                  | `bg-background`                     | unchanged                                                               |
+| `bg-card`                                        | `bg-surface`                        | card surface                                                            |
+| `bg-popover`                                     | `bg-surface-raised`                 | popover/dropdown/select content                                         |
+| `bg-muted`                                       | `bg-surface-raised`                 | neutral fill (incl. `hover:bg-muted/30` → `hover:bg-surface-raised/60`) |
+| `bg-accent` (neutral)                            | `bg-surface-raised`                 | **NOT brand bg-accent**                                                 |
+| `bg-secondary`                                   | `bg-surface-raised`                 | only survives in views; most in deleted Button/Badge                    |
+| `bg-primary`                                     | `bg-primary`                        | unchanged (resolves to accent)                                          |
+| `bg-sidebar`                                     | `bg-surface-deep`                   | Shell only                                                              |
+| `bg-sidebar-accent`                              | `bg-surface-raised`                 | Shell only                                                              |
+| `text-foreground`                                | `text-foreground`                   | unchanged                                                               |
+| `text-muted-foreground`                          | `text-muted`                        | **122 uses — the biggest rename**                                       |
+| `text-card-foreground`                           | `text-foreground`                   |                                                                         |
+| `text-popover-foreground`                        | `text-foreground`                   |                                                                         |
+| `text-accent-foreground` (neutral)               | `text-foreground`                   | **NOT brand text-accent**                                               |
+| `text-secondary-foreground`                      | `text-foreground`                   |                                                                         |
+| `text-sidebar-foreground`                        | `text-muted`                        | Shell only                                                              |
+| `text-primary`                                   | `text-primary`                      | unchanged (= accent)                                                    |
+| `text-primary-foreground`                        | `text-primary-foreground`           | unchanged (= background)                                                |
+| `text-destructive`                               | `text-danger`                       |                                                                         |
+| `text-success`                                   | `text-success`                      | unchanged                                                               |
+| `text-warning`                                   | `text-warning`                      | unchanged                                                               |
+| `border-border`                                  | `border-border`                     | unchanged                                                               |
+| `border-input`                                   | `border-border`                     |                                                                         |
+| `border-primary`                                 | `border-accent`                     |                                                                         |
+| `border-destructive`                             | `border-danger`                     |                                                                         |
+| `border-success` / `border-warning`              | `border-success` / `border-warning` | unchanged                                                               |
+| `border-sidebar-border`                          | `border-border`                     | Shell only                                                              |
+| `ring-ring`                                      | `ring-ring`                         | unchanged (= accent)                                                    |
+| `ring-offset-background`                         | `ring-offset-background`            | unchanged                                                               |
+| `ring-destructive`                               | `ring-danger`                       |                                                                         |
+| `bg-destructive` / `text-destructive-foreground` | `bg-danger` / `text-background`     | mostly inside deleted components                                        |
+| `shadow-pk-sm                                    | md                                  | lg`                                                                     | (drop) / `shadow-[var(--shadow)]`   | only in deleted components |
+| `animate-pk-in                                   | overlay-in                          | spin`                                                                   | (drop, brand uses `tw-animate-css`) | only in deleted components |
+| `font-sans` / `font-mono`                        | `font-sans` / `font-mono`           | provided by brand `@theme`                                              |
 
 ## Reference B: Component API differences (brand vs old admin)
 
-| Concern | Old admin | Brand | Migration |
-|---|---|---|---|
-| `Button` variants | `primary`(default)/`secondary`/`outline`/`ghost`/`destructive`/`link` | `solid`(default)/`gradient`/`outline`/`ghost`/`link`/`good`/`warning`/`info`/`danger` | `primary`→omit (solid default); `destructive`→`danger`; `secondary`→`outline`; `outline`/`ghost`/`link` unchanged. Sizes `sm`/`md`/`lg`/`icon` unchanged. `loading` + `asChild` exist in both. |
-| `Badge` variants | `default`/`secondary`/`outline`/`success`/`warning`/`destructive` | `solid`/`outline`/`muted`/`danger`/`success`/`warning`/`info` | `default`→`solid`; `secondary`→`muted`; `destructive`→`danger`; rest unchanged. |
-| `Dialog` parts | +`DialogBody`, `DialogActionBar` | no Body/ActionBar | `DialogBody`→`<div className="px-1 py-2">`; `DialogActionBar`→`DialogFooter`. |
-| `DropdownMenuItem` | `destructive` prop | `inset` prop, no `destructive` | replace `destructive` prop with `className="text-danger focus:text-danger"`. |
-| `Field` | auto-clones child, injects `id`/`aria-*` | `{label,description,error,htmlFor}` only | keep an app `Field` wrapper (Task 1.6). |
-| `ConfirmDialog` | app convenience component | none | app wrapper on brand `AlertDialog` (Task 1.7). |
-| Toasts | `<Toaster>{children}</Toaster>` + `useToast().{success,error,toast}` | global `<Toaster/>` + `useToast()`/`toast({tone})` | app `useToast` shim + root `<Toaster/>` (Task 1.5). |
-| `DataTable` | `{columns(ColumnDef),rows,rowKey,filterable}` + `useKeysetPagination` | `{data,columns(DataTableColumn),getRowId}` | app `DataTable` wrapper on brand `Table` primitives; move `useKeysetPagination` to `lib` (Task 1.8). |
-| `Logo`/`LogoMark` | `<Logo subtitle>`, `<LogoMark className>` | `Logo`(no subtitle)/`Mark`(size number) | app `AppLogo` wrapper (Task 1.9). |
-| `EmptyState`/`Spinner`/`Skeleton` | local | brand exports equivalents | import from `/ui` directly. |
+| Concern                           | Old admin                                                             | Brand                                                                                 | Migration                                                                                                                                                                                      |
+| --------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button` variants                 | `primary`(default)/`secondary`/`outline`/`ghost`/`destructive`/`link` | `solid`(default)/`gradient`/`outline`/`ghost`/`link`/`good`/`warning`/`info`/`danger` | `primary`→omit (solid default); `destructive`→`danger`; `secondary`→`outline`; `outline`/`ghost`/`link` unchanged. Sizes `sm`/`md`/`lg`/`icon` unchanged. `loading` + `asChild` exist in both. |
+| `Badge` variants                  | `default`/`secondary`/`outline`/`success`/`warning`/`destructive`     | `solid`/`outline`/`muted`/`danger`/`success`/`warning`/`info`                         | `default`→`solid`; `secondary`→`muted`; `destructive`→`danger`; rest unchanged.                                                                                                                |
+| `Dialog` parts                    | +`DialogBody`, `DialogActionBar`                                      | no Body/ActionBar                                                                     | `DialogBody`→`<div className="px-1 py-2">`; `DialogActionBar`→`DialogFooter`.                                                                                                                  |
+| `DropdownMenuItem`                | `destructive` prop                                                    | `inset` prop, no `destructive`                                                        | replace `destructive` prop with `className="text-danger focus:text-danger"`.                                                                                                                   |
+| `Field`                           | auto-clones child, injects `id`/`aria-*`                              | `{label,description,error,htmlFor}` only                                              | keep an app `Field` wrapper (Task 1.6).                                                                                                                                                        |
+| `ConfirmDialog`                   | app convenience component                                             | none                                                                                  | app wrapper on brand `AlertDialog` (Task 1.7).                                                                                                                                                 |
+| Toasts                            | `<Toaster>{children}</Toaster>` + `useToast().{success,error,toast}`  | global `<Toaster/>` + `useToast()`/`toast({tone})`                                    | app `useToast` shim + root `<Toaster/>` (Task 1.5).                                                                                                                                            |
+| `DataTable`                       | `{columns(ColumnDef),rows,rowKey,filterable}` + `useKeysetPagination` | `{data,columns(DataTableColumn),getRowId}`                                            | app `DataTable` wrapper on brand `Table` primitives; move `useKeysetPagination` to `lib` (Task 1.8).                                                                                           |
+| `Logo`/`LogoMark`                 | `<Logo subtitle>`, `<LogoMark className>`                             | `Logo`(no subtitle)/`Mark`(size number)                                               | app `AppLogo` wrapper (Task 1.9).                                                                                                                                                              |
+| `EmptyState`/`Spinner`/`Skeleton` | local                                                                 | brand exports equivalents                                                             | import from `/ui` directly.                                                                                                                                                                    |
 
 ---
 
@@ -83,17 +83,20 @@ The brand's `@theme inline` defines `--color-primary` (= accent) and `--color-pr
 ### Task 0.1: Add the `@vladzaharia` scope to the root registry config
 
 **Files:**
+
 - Modify: `.npmrc` (repo root)
 
 - [ ] **Step 1: Append the scope line**
 
 Current `.npmrc`:
+
 ```ini
 auto-install-peers = true
 @polaris-key:registry = https://npm.pkg.github.com
 ```
 
 Change to:
+
 ```ini
 auto-install-peers = true
 @polaris-key:registry = https://npm.pkg.github.com
@@ -104,10 +107,12 @@ auto-install-peers = true
 - [ ] **Step 2: Export a token locally and verify auth**
 
 Run:
+
 ```bash
 export GITHUB_PACKAGES_TOKEN=<classic PAT with read:packages>
 npm view @vladzaharia/polaris-brand version --registry=https://npm.pkg.github.com
 ```
+
 Expected: prints `1.0.0` (confirms the token can read the private package).
 
 - [ ] **Step 3: Commit**
@@ -120,6 +125,7 @@ git commit -m "chore: add @vladzaharia GitHub Packages registry"
 ### Task 0.2: Add the brand dependency and bump admin to React 19
 
 **Files:**
+
 - Modify: `packages/admin/package.json`
 
 - [ ] **Step 1: Edit dependencies**
@@ -145,7 +151,7 @@ In `packages/admin/package.json`, set these versions (change `react`/`react-dom`
     "lucide-react": "^0.469.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
@@ -158,10 +164,11 @@ In `packages/admin/package.json`, set these versions (change `react`/`react-dom`
     "tailwindcss": "^4.0.0",
     "typescript": "^5.8.0",
     "vite": "^6.0.0",
-    "vitest": "^3.1.0"
-  }
+    "vitest": "^3.1.0",
+  },
 }
 ```
+
 (The direct Radix deps stay for now; several are still referenced by app code until views are migrated. Remove any that end up unused in Task 1.14.)
 
 > NOTE: the brand's direct Radix deps are `radix-ui` (unified), not the per-package `@radix-ui/*` the admin uses. Both can coexist during migration.
@@ -169,18 +176,22 @@ In `packages/admin/package.json`, set these versions (change `react`/`react-dom`
 - [ ] **Step 2: Install and verify resolution**
 
 Run (from repo root, with `GITHUB_PACKAGES_TOKEN` exported):
+
 ```bash
 pnpm install
 pnpm --filter @polaris-key/admin exec node -e "console.log(require('@vladzaharia/polaris-brand/package.json').version)"
 ```
+
 Expected: `1.0.0`.
 
 - [ ] **Step 3: Verify sdk-react still resolves React 18**
 
 Run:
+
 ```bash
 pnpm --filter @polaris-key/react exec node -e "console.log(require('react/package.json').version)"
 ```
+
 Expected: an `18.x` version (confirms the React 19 bump did not hoist over the SDK). If it prints 19, add a `pnpm.overrides` scoped exception or `react` to sdk-react's own deps pinned to 18 — but do NOT proceed until the SDK tree is 18.
 
 - [ ] **Step 4: Commit**
@@ -193,30 +204,35 @@ git commit -m "chore(admin): add polaris-brand, bump to React 19 + Tailwind v4 d
 ### Task 0.3: Wire the GitHub Packages token into CI
 
 **Files:**
+
 - Modify: the CI workflow(s) under `.github/workflows/` (read them first to find the node-setup + install steps)
 
 - [ ] **Step 1: Read the workflow(s)**
 
 Run:
+
 ```bash
 ls .github/workflows
 ```
+
 Open each workflow that runs `pnpm install`. Identify the `actions/setup-node` step and the install step.
 
 - [ ] **Step 2: Add registry auth to setup-node and export the token for install**
 
 In each relevant job, ensure `setup-node` declares the registry and the install step has the token in env:
+
 ```yaml
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          registry-url: https://npm.pkg.github.com
-          scope: "@vladzaharia"
-      - run: pnpm install --frozen-lockfile
-        env:
-          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
+- uses: actions/setup-node@v4
+  with:
+    node-version-file: .node-version
+    registry-url: https://npm.pkg.github.com
+    scope: "@vladzaharia"
+- run: pnpm install --frozen-lockfile
+  env:
+    GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
+    NODE_AUTH_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
 ```
+
 Add a repo secret `GITHUB_PACKAGES_TOKEN` (classic PAT with `read:packages`, access to the private package) in GitHub repo settings. If the workflow's built-in `GITHUB_TOKEN` has `packages: read` and the package is in the same org/owner, `NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}` may suffice — verify the package is readable by the workflow token before relying on it.
 
 - [ ] **Step 3: Commit**
@@ -235,6 +251,7 @@ git commit -m "ci: authenticate to GitHub Packages for @vladzaharia scope"
 ### Task 1.1: Swap Vite from PostCSS/Tailwind v3 to `@tailwindcss/vite`
 
 **Files:**
+
 - Modify: `packages/admin/vite.config.ts`
 - Delete: `packages/admin/postcss.config.js`
 - Delete: `packages/admin/tailwind.config.ts`
@@ -242,6 +259,7 @@ git commit -m "ci: authenticate to GitHub Packages for @vladzaharia scope"
 - [ ] **Step 1: Add the Tailwind v4 plugin to Vite**
 
 Replace the plugins line in `packages/admin/vite.config.ts`:
+
 ```ts
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
@@ -299,6 +317,7 @@ git commit -m "build(admin): switch to @tailwindcss/vite (Tailwind v4)"
 ### Task 1.2: Replace the stylesheet with the brand's + revert MonoLisa work (D6)
 
 **Files:**
+
 - Create: `packages/admin/src/app.css`
 - Delete: `packages/admin/src/styles.css`
 - Revert (untracked): `packages/admin/src/monolisa.css`, `packages/admin/public/fonts/`
@@ -307,6 +326,7 @@ git commit -m "build(admin): switch to @tailwindcss/vite (Tailwind v4)"
 - [ ] **Step 1: Create the thin app stylesheet**
 
 `packages/admin/src/app.css`:
+
 ```css
 /* App-level styles. The brand package owns tokens, fonts, and Tailwind v4 theme. */
 @import "@vladzaharia/polaris-brand/styles.css";
@@ -337,6 +357,7 @@ rm -f packages/admin/src/monolisa.css
 rm -rf packages/admin/public/fonts
 git checkout -- packages/admin/tailwind.config.ts 2>/dev/null || true   # already deleted in 1.1; ignore
 ```
+
 (The `styles.css`/`tailwind.config.ts` font edits are moot since both files are deleted in 1.1/1.2. Confirm `git status` shows no stray `monolisa.css`/`public/fonts/`.)
 
 - [ ] **Step 4: Commit**
@@ -349,6 +370,7 @@ git commit -m "style(admin): consume brand styles.css; drop local tokens + MonoL
 ### Task 1.3: Add FOUC guard + theme/service attributes + titles to both HTML entries
 
 **Files:**
+
 - Modify: `packages/admin/index.html`, `packages/admin/manage.html`
 
 - [ ] **Step 1: Rewrite `packages/admin/index.html`**
@@ -365,7 +387,8 @@ git commit -m "style(admin): consume brand styles.css; drop local tokens + MonoL
       (() => {
         try {
           const stored = window.localStorage.getItem("polaris-theme");
-          const mode = stored === "light" || stored === "dark" ? stored : "dark";
+          const mode =
+            stored === "light" || stored === "dark" ? stored : "dark";
           document.documentElement.dataset.theme = mode;
           document.documentElement.style.colorScheme = mode;
         } catch {
@@ -394,6 +417,7 @@ git commit -m "feat(admin): brand FOUC guard + data-theme/data-service on both e
 ### Task 1.4: App providers — brand ThemeProvider + ServiceThemeProvider("key")
 
 **Files:**
+
 - Create: `packages/admin/src/components/AppProviders.tsx`
 - Modify: `packages/admin/src/App.tsx`, `packages/admin/src/portal/App.tsx`
 - Delete (after Shell migration, Task 1.10): `packages/admin/src/components/theme.tsx`
@@ -401,6 +425,7 @@ git commit -m "feat(admin): brand FOUC guard + data-theme/data-service on both e
 - [ ] **Step 1: Create AppProviders**
 
 `packages/admin/src/components/AppProviders.tsx`:
+
 ```tsx
 import * as React from "react";
 import {
@@ -429,6 +454,7 @@ export function AppProviders({
 - [ ] **Step 2: Update `App.tsx` root**
 
 In `packages/admin/src/App.tsx`, replace the imports of `ThemeProvider` (from `./components/theme.js`) and `Toaster` (from the local barrel), and change the `App()` body:
+
 ```tsx
 import { AppProviders } from "./components/AppProviders.js";
 // ...remove: import { ThemeProvider } from "./components/theme.js";
@@ -442,11 +468,13 @@ export function App(): React.ReactElement {
   );
 }
 ```
+
 Also update `ThemeBackdrop`/`BootScreen` token classes per Reference A (e.g. `bg-background text-foreground` stays; `text-muted-foreground` → `text-muted`; `text-primary` stays) and swap `LogoMark`/`Spinner`/`EmptyState` imports to the brand/AppLogo (handled in the view-migration task for App.tsx, Task 1.12).
 
 - [ ] **Step 3: Update `portal/App.tsx` root**
 
 In `packages/admin/src/portal/App.tsx`, replace `ThemeProvider` + `Toaster` wrapper:
+
 ```tsx
 import { AppProviders } from "../components/AppProviders.js";
 
@@ -469,16 +497,19 @@ git commit -m "feat(admin): AppProviders wrapping brand Theme + Service(key) pro
 ### Task 1.5: `useToast` compatibility shim + brand Toaster
 
 **Files:**
+
 - Create: `packages/admin/src/lib/toast.ts`
 - Test: `packages/admin/src/lib/toast.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/admin/src/lib/toast.test.ts`:
+
 ```ts
 import { describe, expect, it, vi } from "vitest";
 
-const calls: Array<{ tone?: string; title?: string; description?: string }> = [];
+const calls: Array<{ tone?: string; title?: string; description?: string }> =
+  [];
 vi.mock("@vladzaharia/polaris-brand/ui", () => ({
   toast: (input: { tone?: string; title?: string; description?: string }) => {
     calls.push(input);
@@ -514,6 +545,7 @@ Expected: FAIL (`./toast.js` not found).
 - [ ] **Step 3: Implement the shim**
 
 `packages/admin/src/lib/toast.ts`:
+
 ```ts
 import { toast as brandToast } from "@vladzaharia/polaris-brand/ui";
 
@@ -535,7 +567,11 @@ export interface AdminToast {
 const toneOf = (
   variant?: "default" | "success" | "destructive",
 ): "default" | "success" | "danger" =>
-  variant === "success" ? "success" : variant === "destructive" ? "danger" : "default";
+  variant === "success"
+    ? "success"
+    : variant === "destructive"
+      ? "danger"
+      : "default";
 
 export function useToast(): AdminToast {
   return {
@@ -564,12 +600,14 @@ git commit -m "feat(admin): useToast shim over brand toast store"
 ### Task 1.6: `Field` wrapper (preserve auto-wiring)
 
 **Files:**
+
 - Create: `packages/admin/src/components/Field.tsx`
 - Test: `packages/admin/src/components/Field.test.tsx`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/admin/src/components/Field.test.tsx`:
+
 ```tsx
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -598,6 +636,7 @@ Expected: FAIL (`./Field.js` not found).
 - [ ] **Step 3: Implement (port the old Field, restyled with brand Label + tokens)**
 
 `packages/admin/src/components/Field.tsx`:
+
 ```tsx
 import * as React from "react";
 import { Label } from "@vladzaharia/polaris-brand/ui";
@@ -658,7 +697,11 @@ export function Field({
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} role="alert" className="text-xs font-medium text-danger">
+        <p
+          id={errorId}
+          role="alert"
+          className="text-xs font-medium text-danger"
+        >
           {error}
         </p>
       ) : null}
@@ -670,6 +713,7 @@ export function Field({
 - [ ] **Step 4: Run to pass; commit**
 
 Run: `pnpm --filter @polaris-key/admin exec vitest run src/components/Field.test.tsx` → PASS
+
 ```bash
 git add packages/admin/src/components/Field.tsx packages/admin/src/components/Field.test.tsx
 git commit -m "feat(admin): Field wrapper preserving auto aria wiring on brand Label"
@@ -678,12 +722,14 @@ git commit -m "feat(admin): Field wrapper preserving auto aria wiring on brand L
 ### Task 1.7: `ConfirmDialog` wrapper on brand AlertDialog
 
 **Files:**
+
 - Create: `packages/admin/src/components/ConfirmDialog.tsx`
 - Test: `packages/admin/src/components/ConfirmDialog.test.tsx`
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/admin/src/components/ConfirmDialog.test.tsx`:
+
 ```tsx
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -713,6 +759,7 @@ describe("ConfirmDialog", () => {
 - [ ] **Step 3: Implement**
 
 `packages/admin/src/components/ConfirmDialog.tsx`:
+
 ```tsx
 import * as React from "react";
 import {
@@ -762,7 +809,9 @@ export function ConfirmDialog({
           ) : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>
+            {cancelLabel}
+          </AlertDialogCancel>
           <AlertDialogAction
             variant={confirmVariant}
             loading={loading}
@@ -779,6 +828,7 @@ export function ConfirmDialog({
   );
 }
 ```
+
 > The old `confirmVariant="destructive"` default becomes `"danger"`; call sites passing `confirmVariant="destructive"` must be updated to `"danger"` during their view migration.
 
 - [ ] **Step 4: Run to pass; commit**
@@ -791,6 +841,7 @@ git commit -m "feat(admin): ConfirmDialog wrapper on brand AlertDialog"
 ### Task 1.8: `DataTable` app component + extract `useKeysetPagination`
 
 **Files:**
+
 - Create: `packages/admin/src/components/DataTable.tsx`
 - Create: `packages/admin/src/lib/keyset.ts`
 - Test: `packages/admin/src/components/DataTable.test.tsx`, `packages/admin/src/lib/keyset.test.ts`
@@ -802,19 +853,35 @@ git commit -m "feat(admin): ConfirmDialog wrapper on brand AlertDialog"
 - [ ] **Step 2: Write a failing test for the DataTable wrapper**
 
 `packages/admin/src/components/DataTable.test.tsx`:
+
 ```tsx
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { DataTable, type ColumnDef } from "./DataTable.js";
 
-interface Row { id: string; name: string; }
+interface Row {
+  id: string;
+  name: string;
+}
 const columns: ColumnDef<Row>[] = [
-  { id: "name", header: "Name", cell: (r) => r.name, accessor: (r) => r.name, sortable: true },
+  {
+    id: "name",
+    header: "Name",
+    cell: (r) => r.name,
+    accessor: (r) => r.name,
+    sortable: true,
+  },
 ];
 
 describe("DataTable", () => {
   it("renders rows and an empty state", () => {
-    render(<DataTable columns={columns} rows={[{ id: "1", name: "Ada" }]} rowKey={(r) => r.id} />);
+    render(
+      <DataTable
+        columns={columns}
+        rows={[{ id: "1", name: "Ada" }]}
+        rowKey={(r) => r.id}
+      />,
+    );
     expect(screen.getByText("Ada")).toBeInTheDocument();
   });
 });
@@ -825,6 +892,7 @@ describe("DataTable", () => {
 - [ ] **Step 4: Implement the wrapper on brand Table primitives**
 
 `packages/admin/src/components/DataTable.tsx` — port the old `DataTable` body but render with brand primitives (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell` from `@vladzaharia/polaris-brand/ui`), brand `Input`, `Skeleton`, `EmptyState`. Keep the exact old public API (`ColumnDef`, `DataTableProps` with `columns/rows/rowKey/loading/filterable/filterPlaceholder/empty/onRowClick/onRowClickLabel/className`). Apply Reference A to internal classes (`text-muted-foreground`→`text-muted`, `bg-muted/40`→`bg-surface-raised/60`, `border-border` unchanged, `ring-ring` unchanged). Re-export the keyset hook for import-compatibility:
+
 ```tsx
 export {
   useKeysetPagination,
@@ -844,11 +912,13 @@ git commit -m "feat(admin): DataTable on brand Table primitives; extract keyset 
 ### Task 1.9: `AppLogo` wrapper (brand Logo/Mark, service="key")
 
 **Files:**
+
 - Create: `packages/admin/src/components/AppLogo.tsx`
 
 - [ ] **Step 1: Implement**
 
 `packages/admin/src/components/AppLogo.tsx`:
+
 ```tsx
 import * as React from "react";
 import { Logo, Mark } from "@vladzaharia/polaris-brand/brand";
@@ -862,7 +932,9 @@ export function AppMark({
   size?: number;
   className?: string;
 }): React.ReactElement {
-  return <Mark service="key" size={size} className={cn("leading-none", className)} />;
+  return (
+    <Mark service="key" size={size} className={cn("leading-none", className)} />
+  );
 }
 
 /** Full lockup with an optional muted subtitle (e.g. "admin", "portal"). */
@@ -874,7 +946,12 @@ export function AppLogo({
   className?: string;
 }): React.ReactElement {
   return (
-    <span className={cn("inline-flex items-center gap-2 text-foreground", className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 text-foreground",
+        className,
+      )}
+    >
       <Logo service="key" layout="horizontal" size={132} />
       {subtitle ? (
         <span className="text-xs font-normal uppercase tracking-wider text-muted">
@@ -896,6 +973,7 @@ git commit -m "feat(admin): AppLogo/AppMark wrappers over brand Logo/Mark (servi
 ### Task 1.10: Rewrite `Shell.tsx` on brand primitives
 
 **Files:**
+
 - Modify: `packages/admin/src/components/Shell.tsx`
 - Delete: `packages/admin/src/components/theme.tsx` (after Shell no longer imports it)
 
@@ -916,6 +994,7 @@ git rm packages/admin/src/components/theme.tsx
 - [ ] **Step 4: Typecheck the file compiles against brand; commit**
 
 Run: `pnpm --filter @polaris-key/admin exec tsc --noEmit` (expect only errors in not-yet-migrated views).
+
 ```bash
 git add packages/admin/src/components/Shell.tsx
 git commit -m "feat(admin): rebuild Shell on brand UI + ModeToggle + AppLogo"
@@ -926,6 +1005,7 @@ git commit -m "feat(admin): rebuild Shell on brand UI + ModeToggle + AppLogo"
 Each view task follows the **same recipe**. Do them one file per step-group, running that file's test after.
 
 **Recipe (apply to each file):**
+
 1. Change component imports from `./components/ui/index.js` / `../components/ui/index.js` (and `../../components/ui/index.js`) to `@vladzaharia/polaris-brand/ui`, EXCEPT: `Field` → `../components/Field.js`; `ConfirmDialog` → `../components/ConfirmDialog.js`; `DataTable` + `ColumnDef`/keyset types → `../components/DataTable.js`; `useToast` → `../lib/toast.js`; `Logo`/`LogoMark` → `AppLogo`/`AppMark` from `../components/AppLogo.js`.
 2. Rename `Button` variants (`destructive`→`danger`, `secondary`→`outline`, drop `primary`) and `Badge` variants (`default`→`solid`, `secondary`→`muted`, `destructive`→`danger`).
 3. Replace `DialogBody`→`<div className="px-1 py-2">`, `DialogActionBar`→`DialogFooter` (and import `DialogFooter`).
@@ -938,6 +1018,7 @@ Each view task follows the **same recipe**. Do them one file per step-group, run
 ### Task 1.12: Migrate the two app roots + SchemaForm
 
 **Files (each its own commit):**
+
 - `packages/admin/src/App.tsx` — imports: `{ Spinner, EmptyState }` → `@vladzaharia/polaris-brand/ui`; `LogoMark` → `AppMark`. Classes: `text-muted-foreground`→`text-muted`; `text-primary` stays. Test: `App.test.tsx`, `views.test.tsx`.
 - `packages/admin/src/portal/App.tsx` — imports: `{ Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, Input, Skeleton }` → `/ui`; `{ ConfirmDialog }` → `../components/ConfirmDialog.js`; `{ DataTable, type ColumnDef }` → `../components/DataTable.js`; `{ Field }` → `../components/Field.js`; `{ useToast }` → `../lib/toast.js`; `{ Logo, LogoMark }` → `AppLogo, AppMark`. Variant renames: `Badge variant="default"`→`"solid"`, `variant="warning"`/`"success"`/`"outline"` unchanged; `Button variant="outline"`/`"ghost"` unchanged. Classes per map (`text-muted-foreground`→`text-muted`, `hover:bg-muted/30`→`hover:bg-surface-raised/60`, `bg-muted` in `TopLink` active→`bg-surface-raised`, `border-border` unchanged, `bg-background/90`→`bg-background/90`). `confirmVariant="destructive"`→`"danger"`. Test: `portal.test.tsx`.
 - `packages/admin/src/SchemaForm.tsx` — imports `{ Badge, Checkbox, Field, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue }`: `Field`→`../components/Field.js`, rest→`/ui`. Apply class map. Test: `SchemaForm.test.tsx`.
@@ -962,16 +1043,19 @@ Apply the recipe to each file below, grouped by test. Commit per group after its
 ### Task 1.14: Delete the local component library
 
 **Files:**
+
 - Delete: `packages/admin/src/components/ui/` (all 21 + barrel), `packages/admin/src/components/brand/Logo.tsx` (and empty `components/brand/` dir)
 
 - [ ] **Step 1: Confirm nothing imports the old barrel/Logo**
 
 Run:
+
 ```bash
 grep -rn "components/ui" packages/admin/src || echo "clean"
 grep -rn "components/brand/Logo" packages/admin/src || echo "clean"
 grep -rn "components/theme" packages/admin/src || echo "clean"
 ```
+
 Expected: all print `clean`.
 
 - [ ] **Step 2: Delete**
@@ -984,22 +1068,26 @@ git rm packages/admin/src/components/brand/Logo.tsx
 - [ ] **Step 3: Remove now-unused direct Radix deps**
 
 Check which `@radix-ui/*` deps are still imported by app code:
+
 ```bash
 for p in checkbox dialog dropdown-menu label select slot switch tabs toast tooltip; do
   grep -rqn "@radix-ui/react-$p" packages/admin/src && echo "used: $p" || echo "drop: $p";
 done
 ```
+
 Remove the `drop:` entries from `packages/admin/package.json` dependencies, then `pnpm install`.
 
 - [ ] **Step 4: Full admin green gate**
 
 Run:
+
 ```bash
 pnpm --filter @polaris-key/admin run typecheck
 pnpm --filter @polaris-key/admin run test
 pnpm --filter @polaris-key/admin run build
 pnpm --filter @polaris-key/admin run lint
 ```
+
 Expected: all pass; `dist/` emits `index.html`, `manage.html`, and brand fonts under `dist/assets`.
 
 - [ ] **Step 5: Commit**
@@ -1024,6 +1112,7 @@ git commit -m "refactor(admin): delete hand-built UI library; brand is the sourc
 ### Task 2.1: Add the brand to the worker + a shared brand helper
 
 **Files:**
+
 - Modify: `packages/worker/package.json`
 - Create: `packages/worker/src/brand/index.ts`
 - Test: `packages/worker/src/brand/index.test.ts`
@@ -1031,14 +1120,17 @@ git commit -m "refactor(admin): delete hand-built UI library; brand is the sourc
 - [ ] **Step 1: Add the dependency**
 
 In `packages/worker/package.json` `dependencies`, add:
+
 ```jsonc
     "@vladzaharia/polaris-brand": "1.0.0",
 ```
+
 Run `pnpm install`.
 
 - [ ] **Step 2: Write a failing test for the helper**
 
 `packages/worker/src/brand/index.test.ts`:
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { keyMark, PK } from "./index.js";
@@ -1047,7 +1139,7 @@ describe("worker brand helper", () => {
   it("renders an inline key mark SVG", () => {
     const svg = keyMark(48);
     expect(svg).toContain("<svg");
-    expect(svg).toContain("role=\"img\"");
+    expect(svg).toContain('role="img"');
   });
   it("exposes the key palette", () => {
     expect(PK.accent).toMatch(/^#/);
@@ -1061,6 +1153,7 @@ describe("worker brand helper", () => {
 - [ ] **Step 4: Implement the helper (SSR-safe `/marks` only)**
 
 `packages/worker/src/brand/index.ts`:
+
 ```ts
 import { renderMark } from "@vladzaharia/polaris-brand/marks";
 
@@ -1091,6 +1184,7 @@ git commit -m "feat(worker): brand helper using SSR-safe /marks renderer"
 ### Task 2.2: Rebrand the OIDC device-verify screen
 
 **Files:**
+
 - Modify: `packages/worker/src/oidc.ts` (the `handleAuthDeviceVerify` HTML template, ~lines 530–546)
 
 - [ ] **Step 1: Import the helper**
@@ -1098,8 +1192,9 @@ git commit -m "feat(worker): brand helper using SSR-safe /marks renderer"
 Add near the top of `oidc.ts`: `import { keyMark, PK } from "./brand/index.js";`
 
 - [ ] **Step 2: Replace the HTML string** (keep the existing `confirmUrl`, `deviceLabel`, `record`, `product`, `escapeHtml` logic):
+
 ```ts
-  const html = `<!doctype html>
+const html = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Authorize ${escapeHtml(product.name)}</title>
@@ -1124,6 +1219,7 @@ Add near the top of `oidc.ts`: `import { keyMark, PK } from "./brand/index.js";`
 - [ ] **Step 3: Verify + commit**
 
 Run: `pnpm --filter @polaris-key/worker run typecheck && pnpm --filter @polaris-key/worker exec vitest run` (existing oidc tests must still pass; if a test asserts the old `#5b7cfa`, update it to `PK.accent`).
+
 ```bash
 git add packages/worker/src/oidc.ts
 git commit -m "feat(worker): rebrand OIDC device-verify screen with key mark + palette"
@@ -1132,12 +1228,14 @@ git commit -m "feat(worker): rebrand OIDC device-verify screen with key mark + p
 ### Task 2.3: Branded shared error page
 
 **Files:**
+
 - Create: `packages/worker/src/brand/errorPage.ts`
 - Modify: `packages/worker/src/portal/auth.ts`, `packages/worker/src/admin/auth.ts`
 
 - [ ] **Step 1: Create the shared template**
 
 `packages/worker/src/brand/errorPage.ts`:
+
 ```ts
 import { keyMark, PK } from "./index.js";
 
@@ -1168,6 +1266,7 @@ export function brandErrorHtml(titleText: string, message: string): string {
 - [ ] **Step 2: Use it in both `htmlError()`s** (preserve each file's existing security-header wiring)
 
 `packages/worker/src/portal/auth.ts`:
+
 ```ts
 import { brandErrorHtml } from "../brand/errorPage.js";
 // ...
@@ -1183,7 +1282,9 @@ function htmlError(status: number, message: string): Response {
   });
 }
 ```
+
 `packages/worker/src/admin/auth.ts`:
+
 ```ts
 import { brandErrorHtml } from "../brand/errorPage.js";
 // ...
@@ -1198,6 +1299,7 @@ function htmlError(status: number, message: string): Response {
 - [ ] **Step 3: Verify + commit**
 
 Run: `pnpm --filter @polaris-key/worker run typecheck && vitest run`.
+
 ```bash
 git add packages/worker/src/brand/errorPage.ts packages/worker/src/portal/auth.ts packages/worker/src/admin/auth.ts
 git commit -m "feat(worker): branded shared auth error page"
@@ -1206,19 +1308,46 @@ git commit -m "feat(worker): branded shared auth error page"
 ### Task 2.4: Brand the fallback SPA shells (FOUC guard + attributes)
 
 **Files:**
+
 - Modify: `packages/worker/src/portal/index.ts` (`portalShell()`), `packages/worker/src/admin/index.ts` (`spaShell()`)
 
 - [ ] **Step 1: Add the FOUC guard + attributes to both placeholder shells**
 
 For `portalShell()` set the HTML to (analogous for `spaShell()` with `manage.js` + `Polaris Key — Admin`):
+
 ```html
-<!doctype html><html lang="en" data-theme="dark" data-service="key"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key — Portal</title><script>(()=>{try{var m=localStorage.getItem("polaris-theme");m=m==="light"||m==="dark"?m:"dark";document.documentElement.dataset.theme=m;document.documentElement.style.colorScheme=m}catch(e){document.documentElement.dataset.theme="dark"}})()</script></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>
+<!doctype html>
+<html lang="en" data-theme="dark" data-service="key">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Polaris Key — Portal</title>
+    <script>
+      (() => {
+        try {
+          var m = localStorage.getItem("polaris-theme");
+          m = m === "light" || m === "dark" ? m : "dark";
+          document.documentElement.dataset.theme = m;
+          document.documentElement.style.colorScheme = m;
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/assets/portal.js"></script>
+  </body>
+</html>
 ```
+
 (These placeholders only serve when the ASSETS binding is absent — the real shells are the Phase 1 `index.html`/`manage.html`. Keep them consistent anyway.)
 
 - [ ] **Step 2: Verify + commit**
 
 Run: `pnpm --filter @polaris-key/worker run typecheck && vitest run` (update any shell-string assertions).
+
 ```bash
 git add packages/worker/src/portal/index.ts packages/worker/src/admin/index.ts
 git commit -m "feat(worker): FOUC guard + theme/service attrs on fallback shells"
@@ -1227,11 +1356,13 @@ git commit -m "feat(worker): FOUC guard + theme/service attrs on fallback shells
 ### Task 2.5: Email-safe branding
 
 **Files:**
+
 - Modify: `packages/worker/src/portal/email.ts`
 
 - [ ] **Step 1: Add a shared email frame (inline styles, system font, accent + wordmark; no SVG/webfont)**
 
 In `email.ts`, add:
+
 ```ts
 const EMAIL_ACCENT = "#a879ff";
 const EMAIL_INK = "#14213d";
@@ -1248,20 +1379,25 @@ function emailFrame(bodyHtml: string): string {
 - [ ] **Step 2: Wrap the two templates**
 
 In `sendMagicLink`, set `html` to:
+
 ```ts
     html: emailFrame(
       `<p>Use this link to sign in to Polaris Key:</p><p><a href="${escapeHtml(link)}" style="display:inline-block;background:${EMAIL_ACCENT};color:#0b1020;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;">Sign in</a></p><p>This link expires in 10 minutes.</p>`,
     ),
 ```
+
 In `sendPortalNotice`, set `html` to:
+
 ```ts
     html: emailFrame(`<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`),
 ```
+
 (Leave the `text` fallbacks and subjects unchanged.)
 
 - [ ] **Step 3: Verify + commit**
 
 Run: `pnpm --filter @polaris-key/worker run typecheck && vitest run`.
+
 ```bash
 git add packages/worker/src/portal/email.ts
 git commit -m "feat(worker): email-safe brand frame for magic-link + notice emails"
@@ -1270,12 +1406,14 @@ git commit -m "feat(worker): email-safe brand frame for magic-link + notice emai
 ### Task 2.6: Worker green gate
 
 - [ ] Run:
+
 ```bash
 pnpm --filter @polaris-key/worker run typecheck
 pnpm --filter @polaris-key/worker run test
 pnpm --filter @polaris-key/worker run lint
 pnpm --filter @polaris-key/worker run dryrun
 ```
+
 Expected: all pass (dryrun bundles the brand `/marks` import without error). Commit any test-assertion updates.
 
 ---
@@ -1287,6 +1425,7 @@ Expected: all pass (dryrun bundles the brand `/marks` import without error). Com
 ### Task 3.1: Token-generation script
 
 **Files:**
+
 - Create: `packages/sdk-react/scripts/gen-theme.mjs`
 - Create: `packages/sdk-react/src/theme.generated.ts` (script output, committed)
 - Modify: `packages/sdk-react/package.json` (add brand as **devDependency** + a `gen:theme` script + `prebuild`/`pretypecheck` hook)
@@ -1294,6 +1433,7 @@ Expected: all pass (dryrun bundles the brand `/marks` import without error). Com
 - [ ] **Step 1: Add the devDependency + scripts**
 
 In `packages/sdk-react/package.json`:
+
 ```jsonc
   "scripts": {
     "gen:theme": "node scripts/gen-theme.mjs",
@@ -1313,11 +1453,13 @@ In `packages/sdk-react/package.json`:
     "react-dom": "^18.3.1"
   }
 ```
+
 (peerDependencies stay `react`/`react-dom` `^18`.) Run `pnpm install`.
 
 - [ ] **Step 2: Write the generator**
 
 `packages/sdk-react/scripts/gen-theme.mjs`:
+
 ```js
 import { createRequire } from "node:module";
 import { writeFileSync } from "node:fs";
@@ -1326,8 +1468,7 @@ import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
 const tokens = require("@vladzaharia/polaris-brand/tokens");
-const v = (path) =>
-  path.split(".").reduce((o, k) => o[k], tokens).$value;
+const v = (path) => path.split(".").reduce((o, k) => o[k], tokens).$value;
 
 const out = `// GENERATED by scripts/gen-theme.mjs from @vladzaharia/polaris-brand/tokens. Do not edit.
 export const brandTokens = {
@@ -1355,6 +1496,7 @@ console.log("wrote src/theme.generated.ts");
 - [ ] **Step 3: Generate + commit**
 
 Run: `pnpm --filter @polaris-key/react run gen:theme` (produces `src/theme.generated.ts`).
+
 ```bash
 git add packages/sdk-react/package.json packages/sdk-react/scripts/gen-theme.mjs packages/sdk-react/src/theme.generated.ts pnpm-lock.yaml
 git commit -m "build(sdk-react): generate brand token values from tokens JSON"
@@ -1363,12 +1505,14 @@ git commit -m "build(sdk-react): generate brand token values from tokens JSON"
 ### Task 3.2: Consume the generated tokens in `defaultTheme`
 
 **Files:**
+
 - Modify: `packages/sdk-react/src/components/theme.ts`
 - Test: `packages/sdk-react/test/theme.test.ts`
 
 - [ ] **Step 1: Write a failing test**
 
 `packages/sdk-react/test/theme.test.ts`:
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { defaultTheme } from "../src/components/theme.js";
@@ -1388,6 +1532,7 @@ describe("defaultTheme", () => {
 - [ ] **Step 3: Wire the generated tokens into `defaultTheme.tokens`**
 
 In `packages/sdk-react/src/components/theme.ts`, import the generated bag and spread it (keep the `copy` block + `highContrastTheme` + `mergeTheme`/`themeVars` unchanged; update the contrast comment to note values are brand-derived):
+
 ```ts
 import { brandTokens } from "../theme.generated.js";
 // ...
@@ -1399,11 +1544,13 @@ export const defaultTheme: PolarisTheme = {
   },
 };
 ```
+
 > `brandTokens` provides exactly the `PolarisThemeTokens` keys; the object literal satisfies the interface. Keep `oidcButtonLabel: "Continue with Polaris"` etc.
 
 - [ ] **Step 4: Run to pass; commit**
 
 Run: `pnpm --filter @polaris-key/react exec vitest run test/theme.test.ts` → PASS.
+
 ```bash
 git add packages/sdk-react/src/components/theme.ts packages/sdk-react/test/theme.test.ts
 git commit -m "feat(sdk-react): default theme derived from brand tokens"
@@ -1412,13 +1559,16 @@ git commit -m "feat(sdk-react): default theme derived from brand tokens"
 ### Task 3.3: SDK green gate
 
 - [ ] Run:
+
 ```bash
 pnpm --filter @polaris-key/react run typecheck
 pnpm --filter @polaris-key/react run test
 pnpm --filter @polaris-key/react run build
 pnpm --filter @polaris-key/react run lint
 ```
+
 Expected: all pass; `dist/` includes the generated tokens compiled in; no `@vladzaharia/polaris-brand` in the built runtime import graph (it's dev-only). Verify:
+
 ```bash
 grep -rn "polaris-brand" packages/sdk-react/dist || echo "no runtime brand dep — good"
 ```
@@ -1428,12 +1578,14 @@ grep -rn "polaris-brand" packages/sdk-react/dist || echo "no runtime brand dep �
 # Final: whole-repo gate
 
 - [ ] Run from root:
+
 ```bash
 pnpm gen:corpus 2>/dev/null || true
 pnpm run typecheck
 pnpm run test
 pnpm run build
 ```
+
 Expected: all workspace packages green (turbo runs typecheck across all 12 packages; admin + worker + sdk-react tests pass; admin build emits both SPAs).
 
 - [ ] Manual browser verification (Phase 1 Task 1.15) recorded.

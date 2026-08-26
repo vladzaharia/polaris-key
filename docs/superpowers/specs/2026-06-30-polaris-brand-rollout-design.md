@@ -21,21 +21,22 @@ tokens, or components.
 
 ## 2. Locked Decisions
 
-| # | Decision | Choice |
-|---|----------|--------|
-| D1 | Adoption depth | **Full adoption** — React 19 + Tailwind v4 in admin; consume brand `styles.css` + providers; replace all local UI components + local `Logo` with brand `/ui` + `/brand`. |
-| D2 | Consumption method | **GitHub Packages only** — install published `@vladzaharia/polaris-brand@1.0.0` everywhere; requires `@vladzaharia` registry line + `GITHUB_PACKAGES_TOKEN` (local + CI). No local link, no vendoring. |
-| D3 | Effort scope | **All three phases planned now**, executed phase-by-phase, each green before the next. |
-| D4 | Service accent | **Both SPAs `data-service="key"`.** Managed-product switching is a separate concept from brand service. |
-| D5 | React 19 bump width | **Admin package only.** `sdk-react` keeps its broad peer range (>=18) for customer compatibility. |
-| D6 | Uncommitted MonoLisa work | **Revert it** (`monolisa.css`, `public/fonts/`, `styles.css` + `tailwind.config.ts` font edits). The brand `styles.css` bundles MonoLisa. |
-| D7 | Retire local components | **Delete all 21 hand-built admin UI components + local `Logo`**; do not keep any. |
-| D8 | Managed-product switcher | **Stays app-owned** (rendered with brand `Select`/`DropdownMenu`); not the brand `ProductSwitcher`. |
-| D9 | SDK default theming | **Generate `sdk-react` theme defaults from `@vladzaharia/polaris-brand/tokens`** (W3C JSON) via a build/dev script; no runtime dependency on the brand package. |
+| #   | Decision                  | Choice                                                                                                                                                                                                 |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D1  | Adoption depth            | **Full adoption** — React 19 + Tailwind v4 in admin; consume brand `styles.css` + providers; replace all local UI components + local `Logo` with brand `/ui` + `/brand`.                               |
+| D2  | Consumption method        | **GitHub Packages only** — install published `@vladzaharia/polaris-brand@1.0.0` everywhere; requires `@vladzaharia` registry line + `GITHUB_PACKAGES_TOKEN` (local + CI). No local link, no vendoring. |
+| D3  | Effort scope              | **All three phases planned now**, executed phase-by-phase, each green before the next.                                                                                                                 |
+| D4  | Service accent            | **Both SPAs `data-service="key"`.** Managed-product switching is a separate concept from brand service.                                                                                                |
+| D5  | React 19 bump width       | **Admin package only.** `sdk-react` keeps its broad peer range (>=18) for customer compatibility.                                                                                                      |
+| D6  | Uncommitted MonoLisa work | **Revert it** (`monolisa.css`, `public/fonts/`, `styles.css` + `tailwind.config.ts` font edits). The brand `styles.css` bundles MonoLisa.                                                              |
+| D7  | Retire local components   | **Delete all 21 hand-built admin UI components + local `Logo`**; do not keep any.                                                                                                                      |
+| D8  | Managed-product switcher  | **Stays app-owned** (rendered with brand `Select`/`DropdownMenu`); not the brand `ProductSwitcher`.                                                                                                    |
+| D9  | SDK default theming       | **Generate `sdk-react` theme defaults from `@vladzaharia/polaris-brand/tokens`** (W3C JSON) via a build/dev script; no runtime dependency on the brand package.                                        |
 
 ## 3. Current-State Facts (verified)
 
 **`packages/admin`** — the only frontend package; builds two SPAs from one Vite project:
+
 - Entries: `manage.html` → `src/main.tsx` → operator console; `index.html` → `src/portal/main.tsx` → customer portal.
 - Stack: React `^18.3.1`, **Tailwind `^3.4.17`** (JS `tailwind.config.ts` + `postcss.config.js` + autoprefixer), Vite 6, `@vitejs/plugin-react`.
 - Tokens: `--pk-*` HSL CSS vars in `src/styles.css`, aliased in `tailwind.config.ts` via `hsl(var(--pk-*))`; utilities like `bg-primary`, `text-primary-foreground`, `bg-card`, `bg-popover`, `border-border`.
@@ -45,6 +46,7 @@ tokens, or components.
 - Views: ~13 manage views (`Dashboard`, `Products`, `ProductOverview`, `Licenses`, `LicenseDetail`, `Catalog`, `Tiers`, `Profiles`, `Releases`, `Oidc`, `Activity`, `Secrets`, `Settings`) + subdirs; 5 portal views (`Dashboard`, `Licenses`, `LicenseDetail`, `Downloads`, `Profile`). Hash routing (`src/route.ts`), no router lib.
 
 **`packages/worker`** — Cloudflare Worker renders standalone HTML:
+
 - SPA shells: `src/portal/index.ts`, `src/admin/index.ts` (minimal `<div id="root">` + script).
 - OIDC device-verify screen: `src/oidc.ts` (~530–546), hand-written HTML + inline styles.
 - Auth error pages: `htmlError()` in `src/portal/auth.ts` and `src/admin/auth.ts`.
@@ -56,6 +58,7 @@ tokens, or components.
 **Repo plumbing:** root `.npmrc` already sets `@polaris-key:registry=https://npm.pkg.github.com`; `pnpm-workspace.yaml` = `packages/*`, `tools`, `conformance/runners/node`, `products`. The brand repo lives outside this workspace (`../polaris-brand`).
 
 **Brand package consumable surface:**
+
 - Subpaths: `.`, `/marks`, `/brand`, `/ui`, `/styles.css`, `/tokens`, `/assets/*`. React `>=19` peer.
 - Theme contract: `ThemeProvider` sets `<html data-theme="dark|light">` (localStorage `polaris-theme`, default dark); `ServiceThemeProvider` sets a `[data-service]` wrapper; FOUC guard script belongs in `<head>`.
 - Semantic Tailwind utilities: `bg-surface`, `bg-surface-raised`, `bg-surface-deep`, `text-foreground`, `text-muted`, `text-accent`, `border-border`, `border-soft`, `ring-accent`, `text-success|warning|danger|info`, `font-sans|mono`.
@@ -65,12 +68,14 @@ tokens, or components.
 ## 4. Target Architecture
 
 ### Phase 0 — Package-access gate (prerequisite)
+
 - Add `@vladzaharia:registry=https://npm.pkg.github.com` to root `.npmrc`.
 - Provision `GITHUB_PACKAGES_TOKEN` (classic PAT, `read:packages`) for local installs and wire it into CI as `NODE_AUTH_TOKEN`; document in `CONTRIBUTING.md`.
 - Add `@vladzaharia/polaris-brand@1.0.0` to `packages/admin`; bump admin to React 19 (`react`, `react-dom`, `@types/react`, `@types/react-dom`, testing-library).
 - **Exit:** `pnpm install` resolves the package and React 19 in admin; the rest of the workspace's React 18 tree is undisturbed (explicitly verified).
 
 ### Phase 1 — Admin + customer-portal SPAs (full adoption)
+
 - **Toolchain:** remove `postcss.config.js`, `tailwind.config.ts`, `autoprefixer`, Tailwind v3; add `@tailwindcss/vite` to `vite.config.ts`. No hand-authored Tailwind config.
 - **Styles:** delete admin token layer + reverted `monolisa.css`; each entry imports `@vladzaharia/polaris-brand/styles.css` once; a minimal `app.css` only for admin-specific rules the brand doesn't cover.
 - **Providers:** retire `src/components/theme.tsx` + `pk-admin-theme`; wrap both apps in brand `ThemeProvider` → `ServiceThemeProvider service="key"`; use brand `useTheme`/`ModeToggle`; migrate toasts to brand `useToast`/`Toast`.
@@ -85,6 +90,7 @@ tokens, or components.
 - **Verification:** `tsc` + `vitest` + `prettier` + `vite build` (both entries) green; manual browser walkthrough of manage + portal in dark **and** light.
 
 ### Phase 2 — Worker-rendered HTML + emails
+
 - Lead-owned helper `packages/worker/src/brand/` wrapping `renderLogo("key")`/`renderMark("key")` (from `/marks`) + a shared token palette; imported by all worker surfaces.
 - Shells (`portal/index.ts`, `admin/index.ts`): FOUC guard + `data-theme`/`data-service` + titles.
 - OIDC device-verify (`oidc.ts`): rebrand with inline brand tokens + inline `renderMark("key")` SVG.
@@ -92,6 +98,7 @@ tokens, or components.
 - Emails (`portal/email.ts`): **email-safe** — inline styles, system-font fallback, accent color, raster/wordmark logo (no inline SVG, no webfonts).
 
 ### Phase 3 — sdk-react default-theme alignment
+
 - Build/dev script generates `sdk-react` `components/theme.ts` default token values from `@vladzaharia/polaris-brand/tokens` (dev-dependency only; no runtime brand dependency, no React 19 peer).
 - Existing consumer override API unchanged.
 
@@ -104,13 +111,13 @@ tokens, or components.
 
 ## 6. Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| React 19 hoisting collides with workspace React 18 | Admin-only bump; verify `sdk-react` tree still resolves 18; add peer overrides only if pnpm force-dedupes. |
-| Tailwind v4 utility gaps vs v3 (`pk-glow`, custom animations) | Re-express as brand tokens or a small `@theme` block; drop where superseded. |
-| Email clients strip SVG/webfonts/`<style>` | Email is a deliberately degraded surface: color + wordmark + raster logo only. |
-| GitHub Packages token missing in CI | Phase 0 wires `NODE_AUTH_TOKEN` secret; blocks install otherwise. |
-| DataTable keyset-pagination parity when swapping to brand primitives | Preserve admin's keyset hook; brand primitives render-only. |
+| Risk                                                                 | Mitigation                                                                                                 |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| React 19 hoisting collides with workspace React 18                   | Admin-only bump; verify `sdk-react` tree still resolves 18; add peer overrides only if pnpm force-dedupes. |
+| Tailwind v4 utility gaps vs v3 (`pk-glow`, custom animations)        | Re-express as brand tokens or a small `@theme` block; drop where superseded.                               |
+| Email clients strip SVG/webfonts/`<style>`                           | Email is a deliberately degraded surface: color + wordmark + raster logo only.                             |
+| GitHub Packages token missing in CI                                  | Phase 0 wires `NODE_AUTH_TOKEN` secret; blocks install otherwise.                                          |
+| DataTable keyset-pagination parity when swapping to brand primitives | Preserve admin's keyset hook; brand primitives render-only.                                                |
 
 ## 7. Acceptance Criteria
 

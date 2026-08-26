@@ -11,11 +11,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  signJws,
-  base64UrlEncodeBytes,
-  importSigningKey,
-} from "@plrs/jws";
+import { signJws, base64UrlEncodeBytes, importSigningKey } from "@plrs/jws";
 import { format } from "prettier";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

@@ -106,13 +106,13 @@ Python and Swift runners.
 
 # Second remediation round (open High findings + residual risks)
 
-| Suite | Pre-audit | Round 1 | Round 2 |
-| --- | --- | --- | --- |
-| JS/TS | 952 | 1394 | **1500** |
-| workerd (new lane) | — | — | **9** |
-| Python | 126 | 231 | **239** |
-| Swift | 80 | 120 | **122** |
-| **Total** | **1158** | **1745** | **1870** |
+| Suite              | Pre-audit | Round 1  | Round 2  |
+| ------------------ | --------- | -------- | -------- |
+| JS/TS              | 952       | 1394     | **1500** |
+| workerd (new lane) | —         | —        | **9**    |
+| Python             | 126       | 231      | **239**  |
+| Swift              | 80        | 120      | **122**  |
+| **Total**          | **1158**  | **1745** | **1870** |
 
 `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm gen:corpus -- --check` all exit 0.
 
