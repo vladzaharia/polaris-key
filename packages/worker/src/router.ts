@@ -21,6 +21,7 @@ export type Route =
   | { kind: "trustManifest"; product: string }
   | { kind: "schema"; product: string }
   | { kind: "activate"; product: string }
+  | { kind: "enroll"; product: string }
   | { kind: "token"; product: string }
   | { kind: "account"; product: string }
   | { kind: "devices"; product: string; deviceId?: string }
@@ -101,6 +102,8 @@ export function matchRoute(pathname: string): Route {
       return { kind: "schema", product };
     case "/activate":
       return { kind: "activate", product };
+    case "/enroll":
+      return { kind: "enroll", product };
     case "/token":
       return { kind: "token", product };
     case "/account":

@@ -17,7 +17,17 @@ import type { Db } from "./db/types.js";
 import { openProductSecret, type Product } from "./product.js";
 import { errorResponse, json, methodNotAllowed } from "./http.js";
 import { randomId } from "./crypto.js";
-import { getLicense, getLicenseBySub, getTier, insertLicense } from "./repo.js";
+import {
+  appendAudit,
+  claimEnrolledLicense,
+  getDevice,
+  getLicense,
+  getLicenseBySub,
+  getTier,
+  insertLicense,
+  moveDevices,
+} from "./repo.js";
+import { allowsOidcDefault } from "./fingerprint.js";
 import { authorizeDevice, licenseUsable } from "./licenseCore.js";
 import { createBrowserSession } from "./browserSession.js";
 import { platformOidcConfig } from "./platformOidc.js";
@@ -65,6 +75,9 @@ interface FlowRecord {
   nonce: string;
   redirectUri: string;
   returnTo?: string;
+  /** The device that started a device-code/loopback flow. Carried so sign-in can see which
+   *  license that device is already running on and claim it if it's an auto-issued one. */
+  deviceId?: string;
   licenseId?: string;
   error?: string;
 }
@@ -275,7 +288,12 @@ export async function activateFromIdentity(
   product: Product,
   identity: OidcIdentity,
   now: number,
-): Promise<{ licenseId: string } | { error: string }> {
+  /** The license the caller's device is already using, when it presented one. An anonymous
+   *  enrolled license found here is merged into the identity rather than abandoned. */
+  opts: { enrolledLicenseId?: string | null } = {},
+): Promise<
+  { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
+> {
   const oidc = await getOidcConfig(db, product.slug);
   const map = oidc?.group_role_map_json
     ? (JSON.parse(oidc.group_role_map_json) as Record<
@@ -293,7 +311,17 @@ export async function activateFromIdentity(
       if (m.tier && !tierId) tierId = m.tier;
     }
   }
-  if (!entitled) return { error: "not-entitled" };
+  if (!entitled) {
+    // No mapped group. If the product opts into an OIDC default tier, any authenticated user
+    // lands on the free tier instead of a hard 403; with the policy unset this is byte-for-byte
+    // the previous behaviour.
+    if (allowsOidcDefault(product.autoIssue) && product.autoIssue.tierId) {
+      entitled = true;
+      tierId = product.autoIssue.tierId;
+    } else {
+      return { error: "not-entitled" };
+    }
+  }
 
   let expiresAt: number | null = null;
   if (tierId) {
@@ -309,7 +337,85 @@ export async function activateFromIdentity(
   };
   await applyProvisioning(db, product.slug, identity, overrides, now);
 
+  // The enrolled license this device is currently on, if it is genuinely a claimable
+  // anonymous one. Anything else (an admin or OIDC license) is left alone.
+  const enrolled = opts.enrolledLicenseId
+    ? await getLicense(db, product.slug, opts.enrolledLicenseId)
+    : null;
+  const claimable =
+    enrolled && enrolled.origin === "enroll" && enrolled.sub === null
+      ? enrolled
+      : null;
+
   const existing = await getLicenseBySub(db, product.slug, identity.sub);
+
+  // Case 1 — a claimable enrolled license and no identity license yet: attach the identity to
+  // the SAME row. Devices, overrides, and the client's local state all survive; the user
+  // simply becomes known.
+  if (claimable && !existing) {
+    await claimEnrolledLicense(
+      db,
+      product.slug,
+      claimable.id,
+      {
+        sub: identity.sub,
+        name: identity.name ?? null,
+        email: identity.email ?? null,
+        groupsJson: JSON.stringify(identity.groups),
+        tierId,
+        expiresAt,
+      },
+      now,
+    );
+    await db.run(
+      "UPDATE licenses SET overrides_json = ? WHERE product = ? AND id = ?",
+      JSON.stringify(overrides),
+      product.slug,
+      claimable.id,
+    );
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: identity.sub,
+      actor_name: identity.name ?? null,
+      actor_email: identity.email ?? null,
+      action: "license.merge",
+      target_kind: "license",
+      target_id: claimable.id,
+      parent_id: null,
+      summary: `Claimed the auto-issued license for ${identity.email ?? identity.sub}`,
+    });
+    return { licenseId: claimable.id, merged: "claimed" };
+  }
+
+  // Case 2 — a claimable enrolled license AND an existing identity license: migrate the
+  // devices onto the identity's license and retire the enrolled row, so the user keeps their
+  // machines but ends up on the license that already holds their entitlements.
+  if (claimable && existing && licenseUsable(existing, now)) {
+    await moveDevices(db, product.slug, claimable.id, existing.id);
+    await db.run(
+      `UPDATE licenses SET status = 'disabled', enroll_hwid = NULL, modified_by = 'oidc',
+         modified_at = ? WHERE product = ? AND id = ?`,
+      now,
+      product.slug,
+      claimable.id,
+    );
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: identity.sub,
+      actor_name: identity.name ?? null,
+      actor_email: identity.email ?? null,
+      action: "license.merge",
+      target_kind: "license",
+      target_id: existing.id,
+      parent_id: claimable.id,
+      summary: `Migrated devices from auto-issued license ${claimable.id}`,
+    });
+  }
+
   if (existing) {
     if (!licenseUsable(existing, now)) return { error: "license-unusable" };
     await db.run(
@@ -327,7 +433,10 @@ export async function activateFromIdentity(
       product.slug,
       existing.id,
     );
-    return { licenseId: existing.id };
+    return {
+      licenseId: existing.id,
+      ...(claimable ? { merged: "migrated" as const } : {}),
+    };
   }
 
   const licenseId = randomId("lic");
@@ -376,6 +485,7 @@ async function beginAuthFlow(
   db: Db,
   product: Product,
   returnTo?: string,
+  deviceId?: string,
 ): Promise<
   | {
       ok: true;
@@ -394,7 +504,7 @@ async function beginAuthFlow(
   if (!redirectUriAllowed(oidc.row, redirectUri)) {
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
-  const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo };
+  const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo, deviceId };
   await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
@@ -460,7 +570,7 @@ export async function handleAuthDeviceStart(
     typeof body.deviceName === "string" && body.deviceName.trim()
       ? body.deviceName.trim().slice(0, 120)
       : undefined;
-  const flow = await beginAuthFlow(req, env, db, product);
+  const flow = await beginAuthFlow(req, env, db, product, undefined, deviceId);
   if (flow instanceof Response) return flow;
   const deviceCode = b64url(randomBytes(16));
   const userCode = deviceUserCode(deviceCode);
@@ -650,11 +760,19 @@ export async function handleAuthCallback(
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
+  // A device-code/loopback flow carries the device id that started it. If that device is
+  // already running on an auto-issued license, sign-in claims that license in place rather
+  // than stranding the user's existing devices and local state on an orphan.
+  const enrolledLicenseId = flow.deviceId
+    ? ((await getDevice(db, product.slug, flow.deviceId))?.license_id ?? null)
+    : null;
+
   const result = await activateFromIdentity(
     db,
     product,
     mapClaims(claims),
     now,
+    { enrolledLicenseId },
   );
   if ("error" in result) {
     // Failed activation: drop the flow so the poller gets a generic error, not the reason.
@@ -668,7 +786,14 @@ export async function handleAuthCallback(
       await env.HOT.delete(flowKey(product.slug, state));
       return errorResponse(401, "unauthorized", "license unavailable");
     }
-    const session = await createBrowserSession(env, db, product, license, now);
+    const session = await createBrowserSession(
+      env,
+      db,
+      product,
+      license,
+      now,
+      req,
+    );
     await env.HOT.delete(flowKey(product.slug, state));
     if (!session.ok) {
       return errorResponse(

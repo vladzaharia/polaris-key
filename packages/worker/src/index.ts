@@ -26,6 +26,7 @@ import { handleAdmin } from "./admin/index.js";
 import { handlePortal } from "./portal/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { notFound } from "./http.js";
+import { handleEnroll } from "./enroll.js";
 import {
   handleAccount,
   handleActivate,
@@ -44,6 +45,7 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "trustManifest",
   "schema",
   "activate",
+  "enroll",
   "token",
   "account",
   "devices",
@@ -85,6 +87,8 @@ export default {
           return handleDiscovery(req, db, product);
         case "activate":
           return handleActivate(req, env, db, product, now);
+        case "enroll":
+          return handleEnroll(req, env, db, product, now);
         case "token":
           return handleToken(req, env, db, product, now);
         case "account":
