@@ -4,6 +4,11 @@ on:
   push:
     tags: ["v*"]
 
+# Least privilege. This job holds CLOUDFLARE_API_TOKEN, so it must not also inherit a
+# read-write GITHUB_TOKEN from the repository default.
+permissions:
+  contents: read
+
 # Only the canonical repo deploys (forks/PRs run CI but never deploy).
 jobs:
   deploy-worker:
@@ -16,9 +21,10 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+      # No `version:` here — the action reads `packageManager` from package.json.
+      # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
+      # which is why every CI run in this repo failed at step 2 until 2026-08-26.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22

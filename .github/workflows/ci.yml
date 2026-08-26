@@ -5,15 +5,21 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege. Without this block the workflow inherits the repository default, which is
+# configurable per-org and may be read-write. CI only ever needs to read the checkout.
+permissions:
+  contents: read
+
 jobs:
   js:
     name: JS/TS (build · typecheck · test · conformance)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # No `version:` here — the action reads `packageManager` from package.json.
+      # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
+      # which is why every CI run in this repo failed at step 2 until 2026-08-26.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -60,7 +66,14 @@ jobs:
 
   swift:
     name: Swift SDK
-    runs-on: macos-14
+    # macos-14 ships Swift 5.10, but sdks/swift/Package.swift declares
+    # `swift-tools-version: 6.0` and `swiftLanguageMode(.v6)`, so this job failed with
+    # "package 'swift' is using Swift tools version 6.0.0 but the installed version is
+    # 5.10.0" on every run. macos-15 ships Swift 6.x.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      # Echo the toolchain so a future runner-image bump fails loudly and legibly rather
+      # than looking like a source error.
+      - run: swift --version
       - run: swift test --package-path sdks/swift
