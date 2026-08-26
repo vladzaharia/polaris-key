@@ -19,6 +19,45 @@ reconcile. Consistent names are a feature: they make the system learnable across
 - **profile** — a reusable managed-payload baseline that a tier or license can attach.
 - **entitlement** — a capability flag or value delivered to the client (the `flag` config kind),
   e.g. `polarisVpn`, `channels`, `app.minVersion`.
+- **enrollment** — a keyless activation that auto-issues a license under a product's auto-issue
+  policy. Distinct from **activation**, which redeems a `pkey_…` key.
+- **origin** — how a license came into existence: `admin` (an operator created it), `oidc`
+  (minted on sign-in), or `enroll` (auto-issued, keyless, bound to a machine).
+- **auto-issue policy** — a product's opt-in to issuing licenses without a credential. Names
+  the tier, and a **mode**: `anonymous` (opens `POST /<product>/enroll`), `oidcDefault` (an
+  authenticated user matching no IdP group lands on that tier instead of a 403), or `both`.
+  Off unless a product opts in; a policy naming no tier counts as off.
+- **claim / migrate** — the two merge outcomes when a signed-in identity meets an auto-issued
+  license. _Claim_: the identity is attached to the same row, so devices and local state
+  survive. _Migrate_: the identity already had a license, so the enrolled row's devices move
+  onto it and the enrolled row is retired.
+- **re-licensing** — changing a license's `tier_id`. Running clients pick up the new
+  entitlements on their next config refresh; nothing is pushed. A downgrade below the active
+  device count **grandfathers** existing devices and refuses new activations until the count
+  drops.
+
+## Device identity
+
+- **fingerprint** — the set of per-component hashes a device reports about its hardware. Raw
+  hardware values are hashed on-device and never transmitted.
+- **component** — one hashed hardware signal within a fingerprint: `machineUuid` (the
+  **anchor**), `boardSerial`, `cpuModel`, `primaryMac`, `bootVolumeUuid`, `ramBucket`,
+  `machineModel`. A component that cannot be read is omitted, never substituted.
+- **hwid** — the composite hash over a device's present components, in canonical order; the
+  coarse dedupe key. The server always recomputes it and never trusts the client's copy.
+- **drift** — how many components differ between a device's stored and presented fingerprint.
+  A component that was stored and is now missing or different counts as drift; a _newly_
+  reported one does not, so an SDK upgrade that learns to read more components is free.
+- **fingerprint mode** — per-tier enforcement strength, falling back to the product default:
+  `off` (collect, never enforce) · `lenient` (4) · `normal` (2, the default) · `strict` (0, and
+  a fingerprint becomes mandatory). A matching anchor widens a non-zero tolerance by one.
+- **device facts** — a device's current software snapshot: OS, runtime, hardware summary, and
+  probe results. Overwritten on each report; no history is kept.
+- **probe** — a product-declared check for a companion application, answered by the client as
+  present/absent plus an optional version. There is no full installed-application enumeration.
+
+Note that **profile** is already taken twice — the reusable managed-payload baseline above, and
+`DocProfile` in the signed payload. Do not overload it a third time for device data.
 
 ## Config model
 

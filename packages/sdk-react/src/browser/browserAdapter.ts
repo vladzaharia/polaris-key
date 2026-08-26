@@ -11,6 +11,13 @@
 
 import type { BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
 import {
+  HEADER_PLATFORM,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
+  HEADER_VERSION,
+} from "@polaris-key/protocol";
+import { SDK_NAME, SDK_VERSION } from "../version.js";
+import {
   configSource,
   currentDeviceFromState,
   listUserConfig,
@@ -46,6 +53,9 @@ export interface BrowserAdapterOptions {
   /** Client-supplied local/user overrides for `default`-state config keys. Never override
    *  `enforced`/`hidden` keys (server wins). */
   localOverrides?: Record<string, JSONValue>;
+  /** The host app's version, reported as `X-PKey-Version` so a browser device row carries
+   *  the same app-version metadata a native one does. */
+  version?: string;
 }
 
 /** The JSON shape the Worker's authenticated session endpoint returns. */
@@ -83,6 +93,7 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly clock: () => number;
   private readonly store: Store<PolarisState>;
   private readonly localOverrides: Record<string, JSONValue>;
+  private readonly version?: string;
   private csrf: string | null = null;
   private hadSession = false;
   private supportsOidcLogin = true;
@@ -99,6 +110,7 @@ export class BrowserAdapter implements PolarisAdapter {
       });
     this.clock = opts.now ?? nowSec;
     this.localOverrides = opts.localOverrides ?? {};
+    this.version = opts.version;
     this.store = createStore<PolarisState>(
       initialState("browser", this.localOverrides),
     );
@@ -115,6 +127,24 @@ export class BrowserAdapter implements PolarisAdapter {
 
   private url(path: string): string {
     return `${this.base}/${this.product}${path}`;
+  }
+
+  /**
+   * The same `X-PKey-*` metadata the native SDKs send, so a browser device row is not a blank
+   * entry in the admin panel next to fully described native ones.
+   *
+   * Browsers send NO hardware fingerprint — canvas/WebGL-style fingerprinting is unreliable,
+   * actively degraded by browsers, and privacy-hostile — so these headers plus the User-Agent
+   * the browser adds itself are the entire honest signal available here.
+   */
+  private metadataHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      [HEADER_PLATFORM]: "browser",
+      [HEADER_SDK_NAME]: SDK_NAME,
+      [HEADER_SDK_VERSION]: SDK_VERSION,
+    };
+    if (this.version) headers[HEADER_VERSION] = this.version;
+    return headers;
   }
 
   private stateFlags(
@@ -187,7 +217,7 @@ export class BrowserAdapter implements PolarisAdapter {
     const res = await this.fetchImpl(this.url("/session"), {
       method: "GET",
       credentials: "include",
-      headers: { accept: "application/json" },
+      headers: { accept: "application/json", ...this.metadataHeaders() },
     });
     if (res.status === 401) {
       // Was authenticated, now isn't → revoked; never authenticated → needs-activation.
@@ -284,6 +314,7 @@ export class BrowserAdapter implements PolarisAdapter {
         headers: {
           accept: "application/json",
           "content-type": "application/json",
+          ...this.metadataHeaders(),
         },
         body: JSON.stringify({ key }),
       });

@@ -29,6 +29,7 @@ export {
 } from "./discovery.js";
 export {
   activateWithKey,
+  enroll,
   reacquireToken,
   deauthorize,
   reportSnapshot,
@@ -39,9 +40,16 @@ export {
   KeyringStore,
   InMemoryStore,
   deriveDeviceId,
+  deviceIdFromRaw,
   type Store,
   type CacheRecord,
 } from "./store.js";
+export {
+  collectFingerprint,
+  hashComponents,
+  rawComponents,
+} from "./fingerprint.js";
+export { collectFacts, runProbes, type ProbeDeclaration } from "./facts.js";
 export {
   parseSemver,
   compareSemver,
@@ -57,5 +65,9 @@ export type {
   BlockReason,
   AllowedRange,
   JSONValue,
+  DeviceFacts,
+  DeviceProbeResult,
+  FingerprintComponent,
+  HardwareFingerprint,
 } from "@polaris-key/protocol";
 export type { TrustSet } from "@polaris-key/jws";

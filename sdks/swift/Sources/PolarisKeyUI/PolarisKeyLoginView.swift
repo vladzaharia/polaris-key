@@ -53,6 +53,15 @@ public final class PolarisKeyGateModel: ObservableObject {
             lastError = "This license has reached its device limit."
         case .unauthorized:
             lastError = "That license key wasn't accepted."
+        case .fingerprintRequired:
+            lastError =
+                "This license tier requires a hardware fingerprint, which couldn't be read on this Mac."
+        case .hardwareMismatch(_, let changed):
+            let detail = (changed?.isEmpty == false) ? " (\(changed!.joined(separator: ", ")))" : ""
+            lastError =
+                "This Mac's hardware changed\(detail). The previous authorization was released — activate again to re-bind."
+        case .enrollDisabled:
+            lastError = "This product doesn't offer keyless enrollment."
         case .error(let message):
             lastError = message.isEmpty ? "Activation failed." : message
         }

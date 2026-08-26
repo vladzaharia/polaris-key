@@ -48,12 +48,41 @@ export interface ManifestOidc {
   groupRoleMap: Record<string, unknown>;
 }
 
+/** A product-declared companion-application probe the client answers present/absent. */
+export interface ManifestProbe {
+  id: string;
+  label: string;
+  macos?: string;
+  windows?: string;
+  linux?: string;
+}
+
+/** Per-product hardware-fingerprint policy (migrations/0010_fingerprint.sql). */
+export interface ManifestFingerprint {
+  /** Per-product opt-out. When false, clients are told not to collect hardware components. */
+  enabled: boolean;
+  /** Default enforcement strength; a tier's own policy overrides it. */
+  defaultMode: "off" | "lenient" | "normal" | "strict";
+  probes: ManifestProbe[];
+}
+
+/** Per-product auto-issue ("always free") policy (migrations/0011_auto_issue.sql). */
+export interface ManifestAutoIssue {
+  enabled: boolean;
+  /** The tier an auto-issued license lands on. Required when enabled. */
+  tierId: string | null;
+  mode: "anonymous" | "oidcDefault" | "both";
+  rateLimitPerHour: number;
+}
+
 export interface ManifestTier {
   id: string;
   label: string;
   profileId: string | null;
   policyExpiryDays: number | null;
   policyDeviceLimit: number | null;
+  /** Fingerprint enforcement for this tier; null inherits the product default. */
+  policyFingerprint: "off" | "lenient" | "normal" | "strict" | null;
   channels: string[];
   minVersion: string | null;
   maxVersion: string | null;
@@ -130,6 +159,8 @@ export interface ParsedManifest {
   profiles: ManifestProfile[];
   tiers: ManifestTier[];
   provisioning: ManifestProvisioning[];
+  fingerprint?: ManifestFingerprint;
+  autoIssue?: ManifestAutoIssue;
   release?: ManifestRelease;
   edgeMint: ManifestEdgeMint[];
 }
@@ -152,6 +183,8 @@ const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"] as const;
 const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
+const FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"] as const;
+const AUTO_ISSUE_MODE_VALUES = ["anonymous", "oidcDefault", "both"] as const;
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",
   "clientScoped",
@@ -702,6 +735,12 @@ export function parseManifest(
     };
   }
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
+  if (productRoot.fingerprint !== undefined) {
+    parsed.fingerprint = normalizeFingerprint(productRoot.fingerprint);
+  }
+  if (productRoot.autoIssue !== undefined) {
+    parsed.autoIssue = normalizeAutoIssue(productRoot.autoIssue);
+  }
   return { ok: true, manifest: parsed };
 }
 
@@ -791,9 +830,60 @@ function normalizeTier(raw: unknown): ManifestTier | null {
             : null,
     policyDeviceLimit:
       typeof raw.policyDeviceLimit === "number" ? raw.policyDeviceLimit : null,
+    policyFingerprint: isOneOf(raw.policyFingerprint, FINGERPRINT_MODE_VALUES)
+      ? raw.policyFingerprint
+      : null,
     channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
     minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
     maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
+  };
+}
+
+function normalizeProbe(raw: unknown): ManifestProbe | null {
+  if (!isRecord(raw) || typeof raw.id !== "string" || raw.id.length === 0) {
+    return null;
+  }
+  const probe: ManifestProbe = {
+    id: raw.id,
+    label: typeof raw.label === "string" ? raw.label : raw.id,
+  };
+  if (typeof raw.macos === "string") probe.macos = raw.macos;
+  if (typeof raw.windows === "string") probe.windows = raw.windows;
+  if (typeof raw.linux === "string") probe.linux = raw.linux;
+  return probe;
+}
+
+function normalizeFingerprint(raw: unknown): ManifestFingerprint {
+  const record = isRecord(raw) ? raw : {};
+  return {
+    // Fingerprinting is ON unless a product explicitly opts out.
+    enabled: record.enabled === false ? false : true,
+    defaultMode: isOneOf(record.defaultMode, FINGERPRINT_MODE_VALUES)
+      ? record.defaultMode
+      : "normal",
+    probes: (arrayAt(record, "probes") ?? [])
+      .map(normalizeProbe)
+      .filter(notNull),
+  };
+}
+
+function normalizeAutoIssue(raw: unknown): ManifestAutoIssue {
+  const record = isRecord(raw) ? raw : {};
+  const tierId =
+    typeof record.tierId === "string" && record.tierId ? record.tierId : null;
+  return {
+    // A policy with no tier can't issue anything coherent, so it counts as disabled rather
+    // than quietly minting tier-less licenses.
+    enabled: record.enabled === true && tierId !== null,
+    tierId,
+    mode: isOneOf(record.mode, AUTO_ISSUE_MODE_VALUES)
+      ? record.mode
+      : "anonymous",
+    rateLimitPerHour:
+      typeof record.rateLimitPerHour === "number" &&
+      record.rateLimitPerHour >= 0
+        ? Math.trunc(record.rateLimitPerHour)
+        : 10,
   };
 }
 

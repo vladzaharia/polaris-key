@@ -60,6 +60,17 @@ export async function sha256Hex(input: string): Promise<string> {
   return hex(await sha256(input));
 }
 
+/** SHA-256 → base64url, optionally truncated. This is the digest shape the device id
+ *  (`pkey-device:…`) and the fingerprint component/hwid hashes (`pkey-hw:…`) both use, so the
+ *  Worker and every SDK derive identical values from identical inputs. */
+export async function sha256B64url(
+  input: string,
+  length?: number,
+): Promise<string> {
+  const digest = b64url(new Uint8Array(await sha256(input)));
+  return length === undefined ? digest : digest.slice(0, length);
+}
+
 /** Hash a credential for storage. With a pepper, an offline KV dump can't confirm guesses. */
 export async function hashKey(value: string, pepper?: string): Promise<string> {
   if (!pepper) return sha256Hex(value);

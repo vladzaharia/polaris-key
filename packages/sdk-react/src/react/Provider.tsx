@@ -33,6 +33,13 @@ export interface PolarisKeyProviderProps {
   localOverrides?: Record<string, JSONValue>;
   /** Inject a pre-built adapter (tests) — bypasses mode resolution entirely. */
   adapter?: PolarisAdapter;
+  /** The host app's version, reported so a browser device row carries app-version metadata.
+   *  Ignored when an `adapter` is injected. */
+  version?: string;
+  /** Poll for managed-config changes on this interval (seconds). OFF by default — enabling it
+   *  would silently add network traffic to every already-shipped integration. Set it to make a
+   *  remote tier change land without a reload. */
+  refreshIntervalSeconds?: number;
   /** Test seams forwarded to the constructed adapter. */
   fetchImpl?: typeof fetch;
   navigate?: (url: string) => void;
@@ -60,6 +67,8 @@ export function PolarisKeyProvider(
     theme: themeProp,
     localOverrides,
     adapter: injected,
+    version,
+    refreshIntervalSeconds,
     fetchImpl,
     navigate,
     now,
@@ -81,6 +90,7 @@ export function PolarisKeyProvider(
       navigate,
       now,
       localOverrides,
+      version,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -93,10 +103,22 @@ export function PolarisKeyProvider(
     navigate,
     now,
     localOverrides,
+    version,
   ]);
 
   // Dispose the adapter when it (or the provider) goes away.
   useEffect(() => () => adapter.dispose(), [adapter]);
+
+  // Optional refresh loop. The adapter's own store already notifies subscribers when state
+  // changes, so there's no separate onChange here — a tier change simply re-renders whatever
+  // reads `useEntitlement`/`useManagedConfig`.
+  useEffect(() => {
+    if (!refreshIntervalSeconds || refreshIntervalSeconds <= 0) return;
+    const id = setInterval(() => {
+      void adapter.refresh().catch(() => undefined);
+    }, refreshIntervalSeconds * 1000);
+    return () => clearInterval(id);
+  }, [adapter, refreshIntervalSeconds]);
 
   const value = useMemo(() => ({ adapter, theme }), [adapter, theme]);
   const style = useMemo(

@@ -89,11 +89,13 @@ async function handleProductScoped(
   //   POST /products/<slug>/keys/rotate
   //   POST /products/<slug>/release/resync
   //   PATCH /products/<slug>/portal
+  //   GET|PATCH /products/<slug>/policy   ·   POST /products/<slug>/policy/revert
   if (
     resource === "secrets" ||
     resource === "keys" ||
     resource === "release" ||
-    resource === "portal"
+    resource === "portal" ||
+    resource === "policy"
   ) {
     return handleProductScopedResource(
       req,

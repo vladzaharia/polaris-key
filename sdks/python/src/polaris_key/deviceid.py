@@ -17,7 +17,7 @@ from typing import Optional
 
 from .b64url import b64url_encode
 
-__all__ = ["derive_device_id"]
+__all__ = ["derive_device_id", "device_id_from_raw"]
 
 _IOREG_UUID_RE = re.compile(r'"IOPlatformUUID"\s*=\s*"([^"]+)"')
 _REG_GUID_RE = re.compile(r"MachineGuid\s+REG_SZ\s+([A-Za-z0-9-]+)")
@@ -75,8 +75,13 @@ def raw_os_device_id() -> Optional[str]:
         return None
 
 
+def device_id_from_raw(product_slug: str, raw: str) -> str:
+    """The device-id formula itself, split out from the hardware read so it can be pinned by
+    ``conformance/corpus/v1/fingerprint.json``. Node, Python, and Swift must agree exactly."""
+    digest = hashlib.sha256(f"pkey-device:{product_slug}:{raw}".encode("utf-8")).digest()
+    return b64url_encode(digest)[:32]
+
+
 def derive_device_id(product_slug: str, fallback: Optional[str] = None) -> str:
     """Derive a stable, hashed device id (base64url, first 32 chars)."""
-    base = raw_os_device_id() or fallback or str(uuid.uuid4())
-    digest = hashlib.sha256(f"pkey-device:{product_slug}:{base}".encode("utf-8")).digest()
-    return b64url_encode(digest)[:32]
+    return device_id_from_raw(product_slug, raw_os_device_id() or fallback or str(uuid.uuid4()))

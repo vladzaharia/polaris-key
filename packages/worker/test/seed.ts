@@ -131,24 +131,61 @@ export async function seedTier(
     channels?: string[];
     minVersion?: string | null;
     maxVersion?: string | null;
+    deviceLimit?: number | null;
+    fingerprint?: string | null;
   } = {},
 ): Promise<void> {
   await db.run(
     `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
-       channels_json, min_version, max_version, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       channels_json, min_version, max_version, policy_fingerprint, modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     slug,
     id,
     id,
     null,
     null,
-    null,
+    opts.deviceLimit ?? null,
     opts.channels ? JSON.stringify(opts.channels) : null,
     opts.minVersion ?? null,
     opts.maxVersion ?? null,
+    opts.fingerprint ?? null,
     null,
     NOW,
   );
+}
+
+/** Overwrite a product's fingerprint policy (per-product opt-out / default mode / probes). */
+export async function setProductFingerprintPolicy(
+  db: Db,
+  slug: string,
+  policy: unknown,
+): Promise<void> {
+  await db.run(
+    "UPDATE products SET fingerprint_policy_json = ? WHERE slug = ?",
+    policy === null ? null : JSON.stringify(policy),
+    slug,
+  );
+}
+
+/** Mint an additional key for an EXISTING license; returns the raw key. Distinct from
+ *  seedLicenseWithKey, which creates a new license row. */
+export async function seedKeyForLicense(
+  db: Db,
+  slug: string,
+  licenseId: string,
+): Promise<string> {
+  const key = mintLicenseKey(slug);
+  await insertKey(db, {
+    product: slug,
+    key_hash: await hashKey(key),
+    license_id: licenseId,
+    status: "active",
+    label: null,
+    created_at: NOW,
+    created_by: null,
+    last_used_at: null,
+  });
+  return key;
 }
 
 /** Insert an active license + a fresh key; returns the raw key to activate with. */

@@ -14,6 +14,12 @@ import {
   listVerificationProductKeys,
 } from "./repo.js";
 import { open } from "./keyvault.js";
+import {
+  parseAutoIssue,
+  parseFingerprintPolicy,
+  type AutoIssuePolicy,
+  type FingerprintPolicy,
+} from "./fingerprint.js";
 
 export interface Product {
   slug: string;
@@ -27,6 +33,8 @@ export interface Product {
   defaultDeviceLimit: number;
   adminGroup: string | null;
   schemaVersion: number;
+  fingerprintPolicy: FingerprintPolicy;
+  autoIssue: AutoIssuePolicy;
 }
 
 export interface PublicSigningKey {
@@ -104,6 +112,8 @@ export async function loadProduct(
       defaultDeviceLimit: row.default_device_limit,
       adminGroup: row.admin_group,
       schemaVersion: schema?.catalog_version ?? 1,
+      fingerprintPolicy: parseFingerprintPolicy(row.fingerprint_policy_json),
+      autoIssue: parseAutoIssue(row.auto_issue_json),
     };
   } catch {
     return null;

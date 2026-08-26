@@ -1,0 +1,168 @@
+{
+  "fingerprintVersion": 1,
+  "componentOrder": [
+    "machineUuid",
+    "boardSerial",
+    "cpuModel",
+    "primaryMac",
+    "bootVolumeUuid",
+    "ramBucket",
+    "machineModel"
+  ],
+  "componentHashLength": 22,
+  "hwidLength": 32,
+  "deviceIds": [
+    {
+      "id": "macos-platform-uuid",
+      "product": "djdl",
+      "raw": "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+      "expected": "L7__1wpb_6MfkEu83MVYu0Wj2G2j2vSE"
+    },
+    {
+      "id": "linux-machine-id",
+      "product": "djdl",
+      "raw": "b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c",
+      "expected": "cphxfoeUjWyxr15r6pftSP5wrfEfHU5x"
+    },
+    {
+      "id": "other-product-same-hardware",
+      "product": "other",
+      "raw": "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+      "expected": "zgMzlX1LGqHFSGiC8DHvlktKE5IoUTij"
+    },
+    {
+      "id": "unicode-raw",
+      "product": "djdl",
+      "raw": "ünïcödé-uuid-λ",
+      "expected": "TjxdrWoy2tDO9BBTVNZwcTYySki-pc2U"
+    }
+  ],
+  "vectors": [
+    {
+      "id": "macos-full",
+      "description": "All seven components present on macOS.",
+      "product": "djdl",
+      "raw": {
+        "machineUuid": "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+        "boardSerial": "C02XK1ABCDEF",
+        "cpuModel": "Apple M3 Pro:12",
+        "primaryMac": "a4:83:e7:1b:2c:3d",
+        "bootVolumeUuid": "8F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0",
+        "ramBucket": "32",
+        "machineModel": "MacBookPro18,3"
+      },
+      "components": {
+        "machineUuid": "F5JxFny7wzPv0ueDpKEu-K",
+        "boardSerial": "aMclAzZxj1Zy0wWwcz6mvC",
+        "cpuModel": "KGtsztPjVFBmn2oIVczpe1",
+        "primaryMac": "BWJoIajMspnKIKf3yeq3Nb",
+        "bootVolumeUuid": "pRtRdiRLf7GN2UZSEXXXEw",
+        "ramBucket": "cIdwTct_oMV1WK65Y_ocIk",
+        "machineModel": "c9Mxc6sw3u_d3a4-RQYO1y"
+      },
+      "hwid": "BgNwYHns5OhGglcJmzuJGHxyMwGpwrYk"
+    },
+    {
+      "id": "windows-full",
+      "description": "All seven components present on Windows; same shape, different values.",
+      "product": "djdl",
+      "raw": {
+        "machineUuid": "9f8e7d6c-5b4a-3928-1706-f5e4d3c2b1a0",
+        "boardSerial": "/8YHTG2/CN1234567890/",
+        "cpuModel": "AMD Ryzen 9 7950X:16",
+        "primaryMac": "00:1a:2b:3c:4d:5e",
+        "bootVolumeUuid": "3C4D5E6F",
+        "ramBucket": "64",
+        "machineModel": "XPS 15 9530"
+      },
+      "components": {
+        "machineUuid": "UNLZKFs1AzKqyHQbf7u__X",
+        "boardSerial": "xUdU22tJ5YgmWkxBFI0jKR",
+        "cpuModel": "Oi_adqR6jNAC3C96k12bHL",
+        "primaryMac": "nkLSksp8nWeo_u88N-eZak",
+        "bootVolumeUuid": "TdtzM-ioe6NIbg_QnR0U_X",
+        "ramBucket": "1wj-0cz16GJuFFANGaPaT4",
+        "machineModel": "qDordLTRT2pa6s3OurHwnb"
+      },
+      "hwid": "oWBD43bUPNUZiDNwuZJlEmL8-OPQ6mm5"
+    },
+    {
+      "id": "linux-partial",
+      "description": "Fail-soft: a host that could only read three components still produces a fingerprint.",
+      "product": "djdl",
+      "raw": {
+        "machineUuid": "b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c",
+        "cpuModel": "Intel(R) Core(TM) i7-12700H:20",
+        "ramBucket": "16"
+      },
+      "components": {
+        "machineUuid": "AotCu7j3hvwNmPMhl0pp8d",
+        "cpuModel": "S3-AU1cEx4hseDUEDVYSLv",
+        "ramBucket": "XKivjOBwTrBnIhG_2xq-uL"
+      },
+      "hwid": "g9L1btGZtkBwvVg6-0sFmSUg9bJQGumz"
+    },
+    {
+      "id": "reversed-input-order",
+      "description": "Identical components declared in reverse order must yield the macos-full hwid.",
+      "product": "djdl",
+      "raw": {
+        "machineModel": "MacBookPro18,3",
+        "ramBucket": "32",
+        "bootVolumeUuid": "8F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0",
+        "primaryMac": "a4:83:e7:1b:2c:3d",
+        "cpuModel": "Apple M3 Pro:12",
+        "boardSerial": "C02XK1ABCDEF",
+        "machineUuid": "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6"
+      },
+      "components": {
+        "machineUuid": "F5JxFny7wzPv0ueDpKEu-K",
+        "boardSerial": "aMclAzZxj1Zy0wWwcz6mvC",
+        "cpuModel": "KGtsztPjVFBmn2oIVczpe1",
+        "primaryMac": "BWJoIajMspnKIKf3yeq3Nb",
+        "bootVolumeUuid": "pRtRdiRLf7GN2UZSEXXXEw",
+        "ramBucket": "cIdwTct_oMV1WK65Y_ocIk",
+        "machineModel": "c9Mxc6sw3u_d3a4-RQYO1y"
+      },
+      "hwid": "BgNwYHns5OhGglcJmzuJGHxyMwGpwrYk"
+    },
+    {
+      "id": "unicode-model",
+      "description": "Non-ASCII raw values must hash over UTF-8 bytes identically in every language.",
+      "product": "djdl",
+      "raw": {
+        "machineUuid": "ünïcödé-uuid-λ",
+        "machineModel": "Ordinateur — Modèle 日本"
+      },
+      "components": {
+        "machineUuid": "2Rrr5ijftsA2hroVxLbNsa",
+        "machineModel": "OOG-5YtmWPD3N607RPaise"
+      },
+      "hwid": "ZmoCKfpGj6MSsR8Gd42yXmVVzyL2HYIb"
+    },
+    {
+      "id": "other-product",
+      "description": "Domain separation: the same hardware under a different product slug must differ.",
+      "product": "other",
+      "raw": {
+        "machineUuid": "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+        "boardSerial": "C02XK1ABCDEF",
+        "cpuModel": "Apple M3 Pro:12",
+        "primaryMac": "a4:83:e7:1b:2c:3d",
+        "bootVolumeUuid": "8F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0",
+        "ramBucket": "32",
+        "machineModel": "MacBookPro18,3"
+      },
+      "components": {
+        "machineUuid": "vn7DbQPu0MjvNEjzgiAuP0",
+        "boardSerial": "R-2o9I60nKY1n0X9XCb58H",
+        "cpuModel": "6cc443a6bG4pVUvaZE3Awy",
+        "primaryMac": "RNsSpPJ_pVtTNbUMXwDNO3",
+        "bootVolumeUuid": "y1J1sMa5OpyoAFPCzOiRi0",
+        "ramBucket": "YTCjnXdgQM3oZ91L_Vz25W",
+        "machineModel": "nwQCiiDm6wbzkD07ALyiKt"
+      },
+      "hwid": "aU8uApFqCMlZ4DMHHVUndwkZe4b5r3Ap"
+    }
+  ]
+}

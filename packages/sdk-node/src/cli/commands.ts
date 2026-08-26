@@ -7,6 +7,7 @@
 import type { TrustSet } from "@polaris-key/jws";
 import type { JSONValue } from "@polaris-key/protocol";
 import type { PolarisKeyClient } from "../client.js";
+import type { ActivationResult } from "../endpoints.js";
 
 /** A command's outcome: a success flag, a human-readable line, and optional structured
  *  data (e.g. the resolved gate status or a config value) for callers that want JSON. */
@@ -33,37 +34,66 @@ export type ClientFactory = (
   opts: ClientFactoryOptions,
 ) => Promise<PolarisKeyClient>;
 
+/** Render a non-ok activation outcome. Shared by `activate` and `enroll` so the two can't
+ *  drift into describing the same server response differently. */
+function describeFailure(
+  r: Exclude<ActivationResult, { kind: "ok" }>,
+  verb: string,
+): CommandResult {
+  const fail = (message: string): CommandResult => ({
+    ok: false,
+    message: `${verb} failed: ${message}`,
+    data: r,
+  });
+  switch (r.kind) {
+    case "device-limit": {
+      const detail =
+        r.limit !== undefined
+          ? ` (${r.deviceCount ?? "?"}/${r.limit} devices in use)`
+          : "";
+      return fail(`device limit reached${detail}.`);
+    }
+    case "unauthorized":
+      return fail("invalid or revoked credential.");
+    case "fingerprint-required":
+      return fail(
+        "a hardware fingerprint is required but could not be collected on this host.",
+      );
+    case "hardware-mismatch": {
+      const changed = r.changed?.length ? ` (${r.changed.join(", ")})` : "";
+      return fail(
+        `this machine's hardware changed${changed}. ` +
+          "The previous authorization was released — run the command again to re-bind.",
+      );
+    }
+    case "enroll-disabled":
+      return fail("this product does not offer keyless enrollment.");
+    case "error":
+      return fail(r.message || "unknown error.");
+  }
+}
+
 /** Activate this device with a license `key` and pull the first config doc. */
 export async function activate(
   client: PolarisKeyClient,
   key: string,
 ): Promise<CommandResult> {
   const r = await client.activateWithKey(key);
-  switch (r.kind) {
-    case "ok": {
-      const st = client.status();
-      return { ok: true, message: `Activated. Status: ${st.status}`, data: st };
-    }
-    case "device-limit": {
-      const detail =
-        r.limit !== undefined
-          ? ` (${r.deviceCount ?? "?"}/${r.limit} devices in use)`
-          : "";
-      return {
-        ok: false,
-        message: `Activation failed: device limit reached${detail}.`,
-        data: r,
-      };
-    }
-    case "unauthorized":
-      return {
-        ok: false,
-        message: "Activation failed: invalid or revoked key.",
-        data: r,
-      };
-    case "error":
-      return { ok: false, message: `Activation failed: ${r.message}`, data: r };
+  if (r.kind === "ok") {
+    const st = client.status();
+    return { ok: true, message: `Activated. Status: ${st.status}`, data: st };
   }
+  return describeFailure(r, "Activation");
+}
+
+/** Obtain a license with no key and no sign-in, when the product offers a free tier. */
+export async function enroll(client: PolarisKeyClient): Promise<CommandResult> {
+  const r = await client.enroll();
+  if (r.kind === "ok") {
+    const st = client.status();
+    return { ok: true, message: `Enrolled. Status: ${st.status}`, data: st };
+  }
+  return describeFailure(r, "Enrollment");
 }
 
 /** Deauthorize this device and wipe the local token + cache. */

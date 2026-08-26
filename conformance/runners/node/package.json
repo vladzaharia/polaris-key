@@ -8,6 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@polaris-key/jws": "workspace:*"
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/node": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
   }
 }

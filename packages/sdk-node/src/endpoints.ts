@@ -7,6 +7,7 @@ import {
   HEADER_PLATFORM,
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
+  type HardwareFingerprint,
 } from "@polaris-key/protocol";
 import { SDK_NAME, SDK_VERSION } from "./version.js";
 
@@ -23,6 +24,13 @@ export type ActivationResult =
   | { kind: "ok"; token: string; schemaVersion: number }
   | { kind: "device-limit"; limit?: number; deviceCount?: number }
   | { kind: "unauthorized" }
+  /** The tier requires a fingerprint this host could not produce. */
+  | { kind: "fingerprint-required" }
+  /** The product does not offer keyless enrollment. */
+  | { kind: "enroll-disabled" }
+  /** Hardware drifted past the tier's tolerance; the binding was retired. Retrying
+   *  activation re-binds the new hardware and consumes a seat. */
+  | { kind: "hardware-mismatch"; drift?: number; changed?: string[] }
   | { kind: "error"; message: string };
 
 export interface AccountDevice {
@@ -51,10 +59,20 @@ async function activationLike(
   url: string,
   headers: Record<string, string>,
   f: typeof fetch,
+  fingerprint?: HardwareFingerprint | null,
 ): Promise<ActivationResult> {
   let res: Response;
   try {
-    res = await f(url, { method: "POST", headers });
+    // The body is omitted entirely when there is no fingerprint, so this call stays
+    // byte-identical to the pre-fingerprint contract against an older Worker.
+    const init: RequestInit = fingerprint
+      ? {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json" },
+          body: JSON.stringify({ fingerprint }),
+        }
+      : { method: "POST", headers };
+    res = await f(url, init);
   } catch (e) {
     return { kind: "error", message: (e as Error).message };
   }
@@ -62,11 +80,21 @@ async function activationLike(
     const b = (await res.json()) as { token: string; schemaVersion: number };
     return { kind: "ok", token: b.token, schemaVersion: b.schemaVersion };
   }
+  if (res.status === 409) {
+    const b = (await res.json().catch(() => ({}))) as {
+      drift?: number;
+      changed?: string[];
+    };
+    return { kind: "hardware-mismatch", drift: b.drift, changed: b.changed };
+  }
   if (res.status === 403) {
     const b = (await res.json().catch(() => ({}))) as {
+      error?: string;
       limit?: number;
       deviceCount?: number;
     };
+    if (b.error === "fingerprint_required")
+      return { kind: "fingerprint-required" };
     return {
       kind: "device-limit",
       limit: b.limit,
@@ -74,11 +102,29 @@ async function activationLike(
     };
   }
   if (res.status === 401) return { kind: "unauthorized" };
+  if (res.status === 404) return { kind: "enroll-disabled" };
   return { kind: "error", message: await res.text().catch(() => "") };
 }
 
+/**
+ * `POST /<product>/enroll` — obtain a license with no key and no sign-in.
+ *
+ * Returns the same `ActivationResult` shape `activateWithKey` does, so callers need no new
+ * branching. A product that hasn't opted in answers 404, surfaced as `enroll-disabled`.
+ */
+export async function enroll(
+  opts: Base & { fingerprint?: HardwareFingerprint | null },
+): Promise<ActivationResult> {
+  return activationLike(
+    `${opts.baseUrl}/${opts.product}/enroll`,
+    { [HEADER_DEVICE]: opts.deviceId, ...metadataHeaders() },
+    opts.fetchImpl ?? fetch,
+    opts.fingerprint,
+  );
+}
+
 export async function activateWithKey(
-  opts: Base & { key: string },
+  opts: Base & { key: string; fingerprint?: HardwareFingerprint | null },
 ): Promise<ActivationResult> {
   return activationLike(
     `${opts.baseUrl}/${opts.product}/activate`,
@@ -88,6 +134,7 @@ export async function activateWithKey(
       ...metadataHeaders(),
     },
     opts.fetchImpl ?? fetch,
+    opts.fingerprint,
   );
 }
 

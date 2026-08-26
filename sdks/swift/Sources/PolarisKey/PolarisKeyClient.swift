@@ -30,6 +30,15 @@ public struct PolarisKeyOptions: Sendable {
     /// Env var prefix for config overrides. A key `a.b` reads `PKEY_CONFIG_a__b` (dots → `__`).
     public let envPrefix: String
     public let trustRefresh: Bool
+    /// Collect a hardware fingerprint at activation. Defaults to true; set false to opt out
+    /// entirely (the server then records this device as `unverified`).
+    public let fingerprint: Bool
+    /// Product-declared companion-app probes answered in the report snapshot.
+    public let probes: [ProbeDeclaration]
+    /// Poll `/config` on this interval (seconds). OFF by default — enabling it would silently
+    /// add network traffic and wakeups to every already-shipped integration. Set it to make a
+    /// remote tier change land without a restart. Call `stopRefreshLoop()` to end it.
+    public let refreshIntervalSeconds: Double?
 
     public init(
         productSlug: String,
@@ -41,7 +50,10 @@ public struct PolarisKeyOptions: Sendable {
         session: URLSession = .shared,
         localOverrides: [String: JSONValue]? = nil,
         envPrefix: String = "PKEY_CONFIG_",
-        trustRefresh: Bool = true
+        trustRefresh: Bool = true,
+        fingerprint: Bool = true,
+        probes: [ProbeDeclaration] = [],
+        refreshIntervalSeconds: Double? = nil
     ) {
         self.productSlug = productSlug
         self.baseUrl = baseUrl.replacingOccurrences(
@@ -54,6 +66,9 @@ public struct PolarisKeyOptions: Sendable {
         self.localOverrides = localOverrides
         self.envPrefix = envPrefix
         self.trustRefresh = trustRefresh
+        self.fingerprint = fingerprint
+        self.probes = probes
+        self.refreshIntervalSeconds = refreshIntervalSeconds
     }
 }
 
@@ -109,6 +124,11 @@ public actor PolarisKeyClient {
     private let channel: String
     private var trust: TrustSet
     private let trustRefreshEnabled: Bool
+    private let fingerprintEnabled: Bool
+    private let probes: [ProbeDeclaration]
+    private let refreshIntervalSeconds: Double?
+    private var refreshTask: Task<Void, Never>?
+    private var onChange: (@Sendable (LicenseState) -> Void)?
     private let store: Store
     private let session: URLSession
     private let localOverrides: [String: JSONValue]
@@ -125,6 +145,9 @@ public actor PolarisKeyClient {
         self.channel = options.channel
         self.trust = options.trust.pinnedKeys
         self.trustRefreshEnabled = options.trustRefresh
+        self.fingerprintEnabled = options.fingerprint
+        self.probes = options.probes
+        self.refreshIntervalSeconds = options.refreshIntervalSeconds
         self.store = options.store
         self.session = options.session
         self.localOverrides = options.localOverrides ?? [:]
@@ -263,15 +286,36 @@ public actor PolarisKeyClient {
     // ── Activation ────────────────────────────────────────────────────────────────
     /// Exchange a license key for a per-device token, persist it, then force a refresh.
     @discardableResult
-    public func activate(key: String) async -> ActivationResult {
-        let r = await Endpoints.activateWithKey(
-            baseUrl: baseUrl, product: product, key: key, deviceId: deviceId, session: session)
+    /// Obtain a license with no key and no sign-in, when the product offers a free tier.
+    public func enroll() async -> ActivationResult {
+        let r = await Endpoints.enroll(
+            baseUrl: baseUrl, product: product, deviceId: deviceId,
+            fingerprint: currentFingerprint(), session: session)
         if case .ok(let newToken, _) = r {
             token = newToken
             await store.setToken(newToken)
             _ = await refresh()
         }
         return r
+    }
+
+    public func activate(key: String) async -> ActivationResult {
+        let r = await Endpoints.activateWithKey(
+            baseUrl: baseUrl, product: product, key: key, deviceId: deviceId,
+            fingerprint: currentFingerprint(), session: session)
+        if case .ok(let newToken, _) = r {
+            token = newToken
+            await store.setToken(newToken)
+            _ = await refresh()
+        }
+        return r
+    }
+
+    /// This machine's hashed hardware components, or nil when collection is disabled or
+    /// nothing could be read. Raw hardware values never leave the device.
+    private func currentFingerprint() -> HardwareFingerprint? {
+        guard fingerprintEnabled else { return nil }
+        return Fingerprint.collect(productSlug: product)
     }
 
     /// Best-effort server-side deauthorize, then wipe all local state.
@@ -288,9 +332,40 @@ public actor PolarisKeyClient {
 
     // ── Refresh ─────────────────────────────────────────────────────────────────
     @discardableResult
+    /// Start polling `/config`, invoking `onChange` when the managed config actually changes.
+    ///
+    /// `computeETag()` deliberately excludes issuedAt/expiresAt/graceUntil, so the tag is
+    /// stable across a pure re-sign and differs iff the CONTENT changed. That makes it the
+    /// change signal — no payload diffing, no new wire field.
+    public func startRefreshLoop(
+        onChange: (@Sendable (LicenseState) -> Void)? = nil
+    ) {
+        guard let seconds = refreshIntervalSeconds, seconds > 0, refreshTask == nil else {
+            return
+        }
+        self.onChange = onChange
+        refreshTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                if Task.isCancelled { return }
+                _ = await self?.refresh()
+            }
+        }
+    }
+
+    /// Stop the refresh loop. Safe to call more than once.
+    public func stopRefreshLoop() {
+        refreshTask?.cancel()
+        refreshTask = nil
+    }
+
     public func refresh() async -> RefreshResult {
         guard let token else { return RefreshResult(applied: false) }
+        let beforeEtag = cache?.etag
         let result = await fetchAndApply(allowReacquire: true)
+        if let onChange, result.applied, let etag = cache?.etag, etag != beforeEtag {
+            onChange(status())
+        }
         if result.applied || !result.unauthorized {
             let snap = reportSnapshotBody()
             _ = await Endpoints.reportSnapshot(

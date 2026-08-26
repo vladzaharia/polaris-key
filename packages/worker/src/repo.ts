@@ -19,6 +19,13 @@ export interface ProductRow {
   release_source: string | null;
   status?: string;
   deleted_at?: number | null;
+  // Fingerprint policy (migrations/0010_fingerprint.sql). `source` decides whether a manifest
+  // resync may rewrite `fingerprint_policy_json` or must leave an operator's live edit alone.
+  fingerprint_policy_json?: string | null;
+  fingerprint_policy_source?: string;
+  // Auto-issue policy (migrations/0011_auto_issue.sql), same ownership rules.
+  auto_issue_json?: string | null;
+  auto_issue_source?: string;
   created_at: number;
   modified_at: number;
 }
@@ -62,6 +69,10 @@ export interface LicenseRow {
   channels_json: string | null;
   min_version: string | null;
   max_version: string | null;
+  // How this license came into existence: admin | oidc | enroll (0011_auto_issue.sql).
+  origin?: string;
+  /** The hwid an enrolled license is bound to; NULL for every other origin. */
+  enroll_hwid?: string | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -125,8 +136,45 @@ export interface TierRow {
   channels_json: string | null;
   min_version: string | null;
   max_version: string | null;
+  // Fingerprint enforcement strength for this tier; null inherits the product default.
+  policy_fingerprint?: string | null;
   modified_by: string | null;
   modified_at: number;
+}
+
+// Current hardware fingerprint per device (migrations/0010_fingerprint.sql). One row per
+// device — drift is recorded in `audit`, not kept as history here.
+export interface FingerprintRow {
+  product: string;
+  device_id: string;
+  hwid: string;
+  components_json: string;
+  anchor_hash: string | null;
+  status: string;
+  first_seen: number;
+  last_seen: number;
+  last_drift_at: number | null;
+  last_drift_count: number | null;
+}
+
+// Current software snapshot per device (migrations/0010_fingerprint.sql).
+export interface DeviceFactsRow {
+  product: string;
+  device_id: string;
+  os_name: string | null;
+  os_version: string | null;
+  os_build: string | null;
+  kernel: string | null;
+  cpu_model: string | null;
+  cpu_cores: number | null;
+  ram_mb: number | null;
+  machine_model: string | null;
+  locale: string | null;
+  timezone: string | null;
+  runtime_name: string | null;
+  runtime_version: string | null;
+  probes_json: string | null;
+  updated_at: number;
 }
 
 export interface SchemaRow {
@@ -414,6 +462,7 @@ export interface TierInput {
   profileId: string | null;
   policyExpiryDays: number | null;
   policyDeviceLimit: number | null;
+  policyFingerprint?: string | null;
   channels?: string[] | null;
   minVersion?: string | null;
   maxVersion?: string | null;
@@ -445,8 +494,8 @@ export function stmtInsertProfile(p: ProfileInput): DbStatement {
 export function stmtInsertTier(t: TierInput): DbStatement {
   return {
     sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
-             channels_json, min_version, max_version, modified_by, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+             channels_json, min_version, max_version, policy_fingerprint, modified_by, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
     params: [
       t.product,
       t.id,
@@ -457,6 +506,7 @@ export function stmtInsertTier(t: TierInput): DbStatement {
       t.channels && t.channels.length > 0 ? JSON.stringify(t.channels) : null,
       t.minVersion ?? null,
       t.maxVersion ?? null,
+      t.policyFingerprint ?? null,
       t.modifiedAt,
     ],
   };
@@ -638,8 +688,8 @@ export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
   await db.run(
     `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
        activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
-       modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       origin, enroll_hwid, modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.product,
     row.id,
     row.status,
@@ -655,8 +705,72 @@ export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
     row.channels_json,
     row.min_version,
     row.max_version,
+    row.origin ?? "admin",
+    row.enroll_hwid ?? null,
     row.modified_by,
     row.modified_at,
+  );
+}
+
+/** Resolve the auto-issued license bound to a machine. Backed by the partial unique index
+ *  `idx_licenses_enroll_hwid`, which is what actually guarantees one per machine. */
+export async function getLicenseByEnrollHwid(
+  db: Db,
+  product: string,
+  hwid: string,
+): Promise<LicenseRow | null> {
+  if (!hwid) return null;
+  return db.first<LicenseRow>(
+    "SELECT * FROM licenses WHERE product = ? AND enroll_hwid = ?",
+    product,
+    hwid,
+  );
+}
+
+/** Attach an identity to an enrolled license, converting it in place to an OIDC license.
+ *  Clearing `enroll_hwid` frees the unique index so the machine can enroll again later. */
+export async function claimEnrolledLicense(
+  db: Db,
+  product: string,
+  licenseId: string,
+  identity: {
+    sub: string;
+    name: string | null;
+    email: string | null;
+    groupsJson: string | null;
+    tierId: string | null;
+    expiresAt: number | null;
+  },
+  at: number,
+): Promise<void> {
+  await db.run(
+    `UPDATE licenses SET sub = ?, name = ?, email = ?, groups_json = ?, tier_id = ?,
+       expires_at = ?, origin = 'oidc', enroll_hwid = NULL, modified_by = 'oidc',
+       modified_at = ? WHERE product = ? AND id = ?`,
+    identity.sub,
+    identity.name,
+    identity.email,
+    identity.groupsJson,
+    identity.tierId,
+    identity.expiresAt,
+    at,
+    product,
+    licenseId,
+  );
+}
+
+/** Re-point every device of one license at another — the migrate arm of the merge table. */
+export async function moveDevices(
+  db: Db,
+  product: string,
+  fromLicenseId: string,
+  toLicenseId: string,
+): Promise<void> {
+  await db.run(
+    "UPDATE devices SET license_id = ? WHERE product = ? AND license_id = ?",
+    toLicenseId,
+    product,
+    fromLicenseId,
   );
 }
 
@@ -851,6 +965,233 @@ export async function setDeviceStatus(
     status,
     product,
     deviceId,
+  );
+  // Retention is device lifetime. A deauthorized device keeps its `devices` row (so seat
+  // history and labels survive) but loses its fingerprint and software snapshot. Every
+  // deauthorize path — self-service, /deauthorize, admin, portal — routes through here, so
+  // none of them can forget to purge, and no scheduled job is needed.
+  if (status === "deauthorized") await purgeDeviceData(db, product, deviceId);
+}
+
+/** Drop a device's fingerprint and software snapshot. Safe to call when neither exists. */
+export async function purgeDeviceData(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<void> {
+  await db.batch([
+    {
+      sql: "DELETE FROM device_fingerprints WHERE product = ? AND device_id = ?",
+      params: [product, deviceId],
+    },
+    {
+      sql: "DELETE FROM device_facts WHERE product = ? AND device_id = ?",
+      params: [product, deviceId],
+    },
+  ]);
+}
+
+/**
+ * Write a product's fingerprint policy.
+ *
+ * `source` is what makes "configured in the manifest AND editable by an operator" coherent
+ * rather than a live edit that silently evaporates on the next push: a manifest resync passes
+ * `"manifest"` and the UPDATE is skipped whenever an admin has already claimed the row, while
+ * an admin write passes `"admin"` and always wins.
+ */
+export async function setFingerprintPolicy(
+  db: Db,
+  product: string,
+  policyJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): Promise<void> {
+  if (source === "manifest") {
+    await db.run(
+      `UPDATE products SET fingerprint_policy_json = ?, modified_at = ?
+         WHERE slug = ? AND COALESCE(fingerprint_policy_source, 'manifest') = 'manifest'`,
+      policyJson,
+      at,
+      product,
+    );
+    return;
+  }
+  await db.run(
+    `UPDATE products SET fingerprint_policy_json = ?, fingerprint_policy_source = 'admin',
+       modified_at = ? WHERE slug = ?`,
+    policyJson,
+    at,
+    product,
+  );
+}
+
+/** Hand a product's fingerprint policy back to manifest control (the "revert" action). */
+export async function revertFingerprintPolicyToManifest(
+  db: Db,
+  product: string,
+  at: number,
+): Promise<void> {
+  await db.run(
+    `UPDATE products SET fingerprint_policy_source = 'manifest', modified_at = ?
+       WHERE slug = ?`,
+    at,
+    product,
+  );
+}
+
+/** Write a product's auto-issue policy under the same manifest-vs-admin ownership rule as
+ *  the fingerprint policy: a resync only writes while the row is still manifest-owned. */
+export async function setAutoIssuePolicy(
+  db: Db,
+  product: string,
+  policyJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): Promise<void> {
+  if (source === "manifest") {
+    await db.run(
+      `UPDATE products SET auto_issue_json = ?, modified_at = ?
+         WHERE slug = ? AND COALESCE(auto_issue_source, 'manifest') = 'manifest'`,
+      policyJson,
+      at,
+      product,
+    );
+    return;
+  }
+  await db.run(
+    `UPDATE products SET auto_issue_json = ?, auto_issue_source = 'admin',
+       modified_at = ? WHERE slug = ?`,
+    policyJson,
+    at,
+    product,
+  );
+}
+
+/** Hand a product's auto-issue policy back to manifest control. */
+export async function revertAutoIssueToManifest(
+  db: Db,
+  product: string,
+  at: number,
+): Promise<void> {
+  await db.run(
+    `UPDATE products SET auto_issue_source = 'manifest', modified_at = ? WHERE slug = ?`,
+    at,
+    product,
+  );
+}
+
+// ── Fingerprints / device facts ──────────────────────────────────────────────
+export async function getFingerprint(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<FingerprintRow | null> {
+  return db.first<FingerprintRow>(
+    "SELECT * FROM device_fingerprints WHERE product = ? AND device_id = ?",
+    product,
+    deviceId,
+  );
+}
+
+/** Resolve a device from its composite hwid. Unverified devices are stored with an empty
+ *  hwid, so an empty query must never match them all — it resolves to nothing. */
+export async function findFingerprintByHwid(
+  db: Db,
+  product: string,
+  hwid: string,
+): Promise<FingerprintRow | null> {
+  if (!hwid) return null;
+  return db.first<FingerprintRow>(
+    "SELECT * FROM device_fingerprints WHERE product = ? AND hwid = ?",
+    product,
+    hwid,
+  );
+}
+
+export async function upsertFingerprint(
+  db: Db,
+  row: FingerprintRow,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO device_fingerprints (product, device_id, hwid, components_json, anchor_hash,
+       status, first_seen, last_seen, last_drift_at, last_drift_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(product, device_id) DO UPDATE SET
+       hwid = excluded.hwid, components_json = excluded.components_json,
+       anchor_hash = excluded.anchor_hash, status = excluded.status,
+       last_seen = excluded.last_seen, last_drift_at = excluded.last_drift_at,
+       last_drift_count = excluded.last_drift_count`,
+    row.product,
+    row.device_id,
+    row.hwid,
+    row.components_json,
+    row.anchor_hash,
+    row.status,
+    row.first_seen,
+    row.last_seen,
+    row.last_drift_at,
+    row.last_drift_count,
+  );
+}
+
+/** Clear a device's binding so its next check-in re-binds cleanly (the admin escape hatch). */
+export async function clearFingerprint(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<void> {
+  await db.run(
+    "DELETE FROM device_fingerprints WHERE product = ? AND device_id = ?",
+    product,
+    deviceId,
+  );
+}
+
+export async function getDeviceFacts(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<DeviceFactsRow | null> {
+  return db.first<DeviceFactsRow>(
+    "SELECT * FROM device_facts WHERE product = ? AND device_id = ?",
+    product,
+    deviceId,
+  );
+}
+
+export async function upsertDeviceFacts(
+  db: Db,
+  row: DeviceFactsRow,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO device_facts (product, device_id, os_name, os_version, os_build, kernel,
+       cpu_model, cpu_cores, ram_mb, machine_model, locale, timezone, runtime_name,
+       runtime_version, probes_json, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(product, device_id) DO UPDATE SET
+       os_name = excluded.os_name, os_version = excluded.os_version,
+       os_build = excluded.os_build, kernel = excluded.kernel,
+       cpu_model = excluded.cpu_model, cpu_cores = excluded.cpu_cores,
+       ram_mb = excluded.ram_mb, machine_model = excluded.machine_model,
+       locale = excluded.locale, timezone = excluded.timezone,
+       runtime_name = excluded.runtime_name, runtime_version = excluded.runtime_version,
+       probes_json = excluded.probes_json, updated_at = excluded.updated_at`,
+    row.product,
+    row.device_id,
+    row.os_name,
+    row.os_version,
+    row.os_build,
+    row.kernel,
+    row.cpu_model,
+    row.cpu_cores,
+    row.ram_mb,
+    row.machine_model,
+    row.locale,
+    row.timezone,
+    row.runtime_name,
+    row.runtime_version,
+    row.probes_json,
+    row.updated_at,
   );
 }
 

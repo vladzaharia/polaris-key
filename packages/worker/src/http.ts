@@ -9,6 +9,9 @@ export const ErrorCode = {
   NotFound: "not_found",
   ManagedByAdmin: "managed_by_admin",
   Forbidden: "forbidden",
+  HardwareMismatch: "hardware_mismatch",
+  FingerprintRequired: "fingerprint_required",
+  EnrollDisabled: "enroll_disabled",
 } as const;
 
 export function json(

@@ -10,7 +10,7 @@ import FoundationNetworking
 
 private func sdkMetadataHeaders() -> [String: String] {
     [
-        HEADER_PLATFORM: ProcessInfo.processInfo.operatingSystemVersionString,
+        HEADER_PLATFORM: PlatformFamily.current,
         HEADER_ARCH: swiftArch(),
         HEADER_SDK_NAME: POLARIS_KEY_SDK_NAME,
         HEADER_SDK_VERSION: POLARIS_KEY_SDK_VERSION,

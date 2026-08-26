@@ -33,6 +33,7 @@ let package = Package(
             resources: [
                 .copy("Resources/cases.json"),
                 .copy("Resources/gate-matrix.json"),
+                .copy("Resources/fingerprint.json"),
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

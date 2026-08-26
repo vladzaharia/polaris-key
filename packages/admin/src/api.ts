@@ -343,6 +343,34 @@ export interface KeyDto {
   lastUsedAt?: number;
 }
 
+/** A device's hardware binding. Digests are truncated server-side — never full values. */
+export interface DeviceFingerprintDto {
+  status: "verified" | "unverified";
+  hwid: string | null;
+  components: Record<string, string>;
+  componentCount: number;
+  firstSeen: number;
+  lastSeen: number;
+  lastDriftAt?: number;
+  lastDriftCount?: number;
+}
+
+/** A device's current software snapshot. */
+export interface DeviceFactsDto {
+  os: { name?: string; version?: string; build?: string; kernel?: string };
+  hardware: {
+    cpuModel?: string;
+    cpuCores?: number;
+    ramMb?: number;
+    machineModel?: string;
+  };
+  runtime: { name?: string; version?: string };
+  locale?: string;
+  timezone?: string;
+  probes?: Record<string, { present: boolean; version?: string }>;
+  updatedAt: number;
+}
+
 export interface DeviceDto {
   deviceId: string;
   status: string;
@@ -350,7 +378,36 @@ export interface DeviceDto {
   lastSeen: number;
   ua?: string;
   label?: string;
+  platform?: string;
+  arch?: string;
+  appVersion?: string;
+  sdkName?: string;
+  sdkVersion?: string;
   reported?: unknown;
+  fingerprint?: DeviceFingerprintDto | null;
+  facts?: DeviceFactsDto | null;
+}
+
+export type FingerprintMode = "off" | "lenient" | "normal" | "strict";
+
+export interface FingerprintProbeDto {
+  id: string;
+  label: string;
+  macos?: string;
+  windows?: string;
+  linux?: string;
+}
+
+export interface FingerprintPolicyDto {
+  enabled: boolean;
+  defaultMode: FingerprintMode;
+  probes: FingerprintProbeDto[];
+}
+
+export interface FingerprintPolicyResponse {
+  policy: FingerprintPolicyDto;
+  /** `manifest` means a resync still owns it; `admin` means an operator has taken it over. */
+  source: "manifest" | "admin";
 }
 
 export interface LicenseDetail extends LicenseSummary {
@@ -592,7 +649,13 @@ export const api = {
       },
     ),
   patchLicense: (slug: string, id: string, body: PatchLicenseBody) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/licenses/${enc(id)}`, {
+    call<{
+      ok: true;
+      id: string;
+      /** Present when a tier change lands below the active device count. Existing devices
+       *  are grandfathered; new activations are refused until the count drops. */
+      overLimit?: { deviceCount: number; deviceLimit: number };
+    }>(`${p(slug)}/licenses/${enc(id)}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
@@ -634,6 +697,29 @@ export const api = {
         method: "DELETE",
       },
     ),
+  /** Clear a device's hardware binding WITHOUT deauthorizing it — the support escape hatch
+   *  for a false-positive drift lockout, so the user keeps their seat. */
+  resetDeviceFingerprint: (slug: string, id: string, deviceId: string) =>
+    call<{ ok: true; deviceId: string }>(
+      `${p(slug)}/licenses/${enc(id)}/devices/${enc(deviceId)}/fingerprint/reset`,
+      { method: "POST" },
+    ),
+
+  // ── fingerprint policy ──────────────────────────────────────────────────────
+  fingerprintPolicy: (slug: string) =>
+    call<FingerprintPolicyResponse>(`${p(slug)}/policy`),
+  updateFingerprintPolicy: (
+    slug: string,
+    patch: Partial<FingerprintPolicyDto>,
+  ) =>
+    call<FingerprintPolicyResponse>(`${p(slug)}/policy`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  revertFingerprintPolicy: (slug: string) =>
+    call<FingerprintPolicyResponse>(`${p(slug)}/policy/revert`, {
+      method: "POST",
+    }),
 
   // ── profiles ────────────────────────────────────────────────────────────────
   profiles: (slug: string) =>

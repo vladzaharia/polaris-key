@@ -97,6 +97,55 @@ parses, else taken as a raw string. (See each SDK README for the per-language AP
 > `hidden`, auto-provisioned). `flag` keys are not "managed config" in this sense — they are
 > entitlements read via `isEntitled`/`getEntitlements`.
 
+## Device policy: fingerprinting + auto-issued licenses
+
+Both blocks live in `.pkey/product` and are applied on link/resync. Either can also be changed
+live from the admin panel; a live edit takes ownership of that block so a later resync cannot
+silently revert it (`fingerprint_policy_source` / `auto_issue_source`). "Revert to manifest"
+hands ownership back.
+
+```jsonc
+{
+  "fingerprint": {
+    // On by default. Set false to collect no hardware components at all.
+    "enabled": true,
+    // Drift tolerance a tier inherits unless it sets its own `policyFingerprint`:
+    //   off (never enforce) · lenient (4) · normal (2, default) · strict (0, and required)
+    "defaultMode": "normal",
+    // Companion apps this product cares about. Clients answer only these — there is no
+    // installed-application enumeration. Omit a platform to skip the probe there rather
+    // than reporting a misleading "not installed".
+    "probes": [
+      {
+        "id": "rekordbox",
+        "label": "rekordbox",
+        "macos": "/Applications/rekordbox 7.app",
+        "windows": "C:\\Program Files\\Pioneer\\rekordbox 7\\rekordbox.exe",
+      },
+    ],
+  },
+
+  "autoIssue": {
+    // Off unless you opt in. A policy naming no tier counts as off.
+    "enabled": true,
+    "tierId": "free",
+    // anonymous  → opens POST /<product>/enroll (keyless, one license per machine)
+    // oidcDefault→ an authenticated user matching no IdP group lands on this tier
+    // both       → both paths
+    "mode": "both",
+    "rateLimitPerHour": 10,
+  },
+}
+```
+
+A tier can tighten fingerprint enforcement for itself:
+
+```jsonc
+{ "tiers": [{ "id": "pro", "label": "Pro", "policyFingerprint": "strict" }] }
+```
+
+See `docs/PRIVACY.md` for exactly what a fingerprint contains and how long it is kept.
+
 ## Registering + re-syncing a product
 
 There are three ways the catalog reaches D1. Repo-link is the normal product setup path;

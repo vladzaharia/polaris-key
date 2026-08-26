@@ -6,8 +6,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { TrustSet } from "@polaris-key/jws";
 import { verifyJws } from "@polaris-key/jws";
-import type { DocProfile, JSONValue } from "@polaris-key/protocol";
+import type {
+  DeviceFacts,
+  DocProfile,
+  HardwareFingerprint,
+  JSONValue,
+} from "@polaris-key/protocol";
 import { ISSUER, type TrustManifestDoc } from "@polaris-key/protocol";
+import { collectFingerprint } from "./fingerprint.js";
+import { collectFacts, type ProbeDeclaration } from "./facts.js";
 import { channelForVersion } from "./semver.js";
 import { isUsable, licenseState, type LicenseState } from "./gate.js";
 import { verifyDoc } from "./verify.js";
@@ -16,6 +23,7 @@ import {
   deauthorize,
   deauthorizeDevice as deauthorizeRemoteDevice,
   activateWithKey,
+  enroll,
   listDevices as listRemoteDevices,
   reacquireToken,
   renameDevice as renameRemoteDevice,
@@ -55,6 +63,17 @@ export interface PolarisKeyOptions {
   envPrefix?: string;
   /** Environment table to read overrides from (default `process.env`). */
   env?: Record<string, string | undefined>;
+  /** Collect a hardware fingerprint at activation. Defaults to true; set false to opt out
+   *  entirely (the server then records this device as `unverified`). */
+  fingerprint?: boolean;
+  /** Product-declared companion-app probes answered in the report snapshot. */
+  probes?: ProbeDeclaration[];
+  /** Poll `/config` on this interval (seconds). OFF by default — enabling it would silently
+   *  add network traffic and background wakeups to every already-shipped integration. Set it
+   *  to make a remote tier change land without a restart. Call `close()` to stop the timer. */
+  refreshIntervalSeconds?: number;
+  /** Fired after a refresh that actually changed the managed config. */
+  onChange?: (state: LicenseState) => void;
 }
 
 export type { ConfigSource, UserConfigEntry };
@@ -111,6 +130,11 @@ export class PolarisKeyClient {
   private readonly localOverrides: Record<string, JSONValue>;
   private readonly envPrefix: string;
   private readonly env: Record<string, string | undefined>;
+  private readonly fingerprintEnabled: boolean;
+  private readonly probes: ProbeDeclaration[];
+  private readonly refreshIntervalSeconds?: number;
+  private readonly onChange?: (state: LicenseState) => void;
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   private token: string | null = null;
   private deviceId = "";
@@ -130,6 +154,10 @@ export class PolarisKeyClient {
     this.localOverrides = opts.localOverrides ?? {};
     this.envPrefix = opts.envPrefix ?? DEFAULT_ENV_PREFIX;
     this.env = opts.env ?? process.env;
+    this.fingerprintEnabled = opts.fingerprint !== false;
+    this.probes = opts.probes ?? [];
+    this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
+    this.onChange = opts.onChange;
   }
 
   /** The current remote config map (or undefined when no doc is cached). */
@@ -156,6 +184,24 @@ export class PolarisKeyClient {
     if (this.cache?.trustedKeys) {
       this.trust = { ...this.trust, ...this.cache.trustedKeys };
     }
+    this.startTimer();
+  }
+
+  private startTimer(): void {
+    const seconds = this.refreshIntervalSeconds;
+    if (!seconds || seconds <= 0 || this.timer) return;
+    this.timer = setInterval(() => {
+      void this.refresh().catch(() => undefined);
+    }, seconds * 1000);
+    // Don't hold a CLI or short-lived process open just to poll.
+    this.timer.unref?.();
+  }
+
+  /** Stop the refresh timer. Safe to call more than once. */
+  close(): void {
+    if (this.timer === null) return;
+    clearInterval(this.timer);
+    this.timer = null;
   }
 
   // ── Gate / reads ────────────────────────────────────────────────────────────
@@ -303,6 +349,36 @@ export class PolarisKeyClient {
   }
 
   // ── Activation ──────────────────────────────────────────────────────────────
+  /** This machine's hashed hardware components, or null when collection is disabled or
+   *  nothing could be read. Raw hardware values never leave the device. */
+  private fingerprint(): HardwareFingerprint | null {
+    if (!this.fingerprintEnabled) return null;
+    try {
+      return collectFingerprint(this.product);
+    } catch {
+      // Fingerprinting is best-effort: a host that refuses every probe still activates,
+      // and the server records it as unverified.
+      return null;
+    }
+  }
+
+  /** Obtain a license with no key and no sign-in, when the product offers a free tier. */
+  async enroll(): Promise<ActivationResult> {
+    const r = await enroll({
+      baseUrl: this.baseUrl,
+      product: this.product,
+      deviceId: this.deviceId,
+      fetchImpl: this.fetchImpl,
+      fingerprint: this.fingerprint(),
+    });
+    if (r.kind === "ok") {
+      this.token = r.token;
+      await this.store.setToken(r.token);
+      await this.refresh({ force: true });
+    }
+    return r;
+  }
+
   async activateWithKey(key: string): Promise<ActivationResult> {
     const r = await activateWithKey({
       baseUrl: this.baseUrl,
@@ -310,6 +386,7 @@ export class PolarisKeyClient {
       key,
       deviceId: this.deviceId,
       fetchImpl: this.fetchImpl,
+      fingerprint: this.fingerprint(),
     });
     if (r.kind === "ok") {
       this.token = r.token;
@@ -337,7 +414,19 @@ export class PolarisKeyClient {
   // ── Refresh ─────────────────────────────────────────────────────────────────
   async refresh(opts: { force?: boolean } = {}): Promise<RefreshResult> {
     if (!this.token) return { applied: false };
+    // computeETag() deliberately excludes issuedAt/expiresAt/graceUntil, so the tag is stable
+    // across a pure re-sign and differs if and only if the CONTENT changed. That makes it the
+    // change signal — no payload diffing, no new wire field.
+    const beforeEtag = this.cache?.etag;
     const result = await this.fetchAndApply(true, opts.force === true);
+    if (
+      this.onChange &&
+      result.applied &&
+      this.cache?.etag !== undefined &&
+      this.cache.etag !== beforeEtag
+    ) {
+      this.onChange(this.status());
+    }
     if (result.applied || !result.unauthorized) {
       await reportSnapshot({
         baseUrl: this.baseUrl,
@@ -485,7 +574,7 @@ export class PolarisKeyClient {
   private reportSnapshotBody(): {
     config: Record<string, JSONValue>;
     entitlements: Record<string, JSONValue>;
-  } {
+  } & Partial<DeviceFacts> {
     const doc = this.cache?.doc;
     const config: Record<string, JSONValue> = {};
     const entitlements: Record<string, JSONValue> = {};
@@ -495,6 +584,14 @@ export class PolarisKeyClient {
       for (const [k, v] of Object.entries(doc.payload.entitlements))
         entitlements[k] = v.value;
     }
-    return { config, entitlements };
+    // Software facts ride alongside the config/entitlement snapshot on the SAME report call —
+    // no extra round trip, and the Worker's allowlist keeps the payload bounded.
+    let facts: DeviceFacts | Record<string, never> = {};
+    try {
+      facts = collectFacts({ probes: this.probes });
+    } catch {
+      // Facts are diagnostic; failing to gather them must never break a refresh.
+    }
+    return { ...facts, config, entitlements };
   }
 }

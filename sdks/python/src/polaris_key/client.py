@@ -11,9 +11,10 @@ from __future__ import annotations
 import dataclasses
 import json
 import os
+import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import httpx
 
@@ -22,6 +23,7 @@ from .endpoints import (
     ActivationResult,
     deauthorize,
     activate_with_key,
+    enroll,
     reacquire_token,
     report_snapshot,
 )
@@ -41,6 +43,8 @@ from .license import (
     is_usable,
     license_state,
 )
+from .facts import ProbeDeclaration, collect_facts
+from .fingerprint import collect_fingerprint
 from .models import DocProfile, ManagedEntry
 from .store import CacheRecord, KeyringStore, Store
 from .verify import TrustSet, verify_doc, verify_jws
@@ -112,6 +116,10 @@ class PolarisKeyClient:
         env_prefix: str = "PKEY_CONFIG_",
         env: Optional[Mapping[str, str]] = None,
         trust_refresh: bool = True,
+        fingerprint: bool = True,
+        probes: Optional[List[ProbeDeclaration]] = None,
+        refresh_interval_seconds: Optional[float] = None,
+        on_change: Optional[Callable[[LicenseState], None]] = None,
     ) -> None:
         self.product = product_slug
         self._base_url = (base_url or DEFAULT_BASE).rstrip("/")
@@ -119,6 +127,12 @@ class PolarisKeyClient:
         self._channel = channel or channel_for_version(version)
         self._trust = trust
         self._trust_refresh = trust_refresh
+        self._fingerprint_enabled = fingerprint
+        self._probes: List[ProbeDeclaration] = list(probes or [])
+        self._refresh_interval = refresh_interval_seconds
+        self._on_change = on_change
+        self._timer_stop = threading.Event()
+        self._timer: Optional[threading.Thread] = None
         self._store: Store = store or KeyringStore(
             product_slug, config_dir or _default_config_dir()
         )
@@ -149,6 +163,12 @@ class PolarisKeyClient:
         return self._client
 
     def close(self) -> None:
+        """Stop the refresh thread and release the HTTP client. Safe to call more than once."""
+        self._timer_stop.set()
+        timer = self._timer
+        if timer is not None:
+            timer.join(timeout=1.0)
+            self._timer = None
         if self._owns_client and self._client is not None:
             self._client.close()
             self._client = None
@@ -167,6 +187,31 @@ class PolarisKeyClient:
         self._cache = self._store.read_cache()
         if self._cache and self._cache.trustedKeys:
             self._trust = {**self._trust, **self._cache.trustedKeys}
+        self._start_timer()
+
+    def _start_timer(self) -> None:
+        """Start the optional refresh loop.
+
+        OFF unless ``refresh_interval_seconds`` is set — enabling it by default would add
+        network traffic and wakeups to every already-shipped integration. The thread is a
+        daemon so it can never hold a CLI open.
+        """
+        interval = self._refresh_interval
+        if not interval or interval <= 0 or self._timer is not None:
+            return
+
+        def loop() -> None:
+            while not self._timer_stop.wait(interval):
+                try:
+                    self.refresh()
+                except Exception:
+                    # A transient network failure must not kill the loop.
+                    pass
+
+        self._timer = threading.Thread(
+            target=loop, name="polaris-key-refresh", daemon=True
+        )
+        self._timer.start()
 
     # ── Gate / reads ────────────────────────────────────────────────────────────
     def status(self, now: Optional[int] = None) -> LicenseState:
@@ -300,6 +345,33 @@ class PolarisKeyClient:
         )
 
     # ── Activation ──────────────────────────────────────────────────────────────
+    def _fingerprint(self) -> Optional[dict]:
+        """This machine's hashed hardware components, or None when collection is disabled or
+        nothing could be read. Raw hardware values never leave the device."""
+        if not self._fingerprint_enabled:
+            return None
+        try:
+            return collect_fingerprint(self.product)
+        except Exception:
+            # Fingerprinting is best-effort: a host that refuses every probe still
+            # activates, and the server records it as unverified.
+            return None
+
+    def enroll(self) -> ActivationResult:
+        """Obtain a license with no key and no sign-in, when the product offers a free tier."""
+        r = enroll(
+            base_url=self._base_url,
+            product=self.product,
+            device_id=self._device_id,
+            client=self._http,
+            fingerprint=self._fingerprint(),
+        )
+        if isinstance(r, ActivationOk):
+            self._token = r.token
+            self._store.set_token(r.token)
+            self.refresh(force=True)
+        return r
+
     def activate_with_key(self, key: str) -> ActivationResult:
         r = activate_with_key(
             base_url=self._base_url,
@@ -307,6 +379,7 @@ class PolarisKeyClient:
             key=key,
             device_id=self._device_id,
             client=self._http,
+            fingerprint=self._fingerprint(),
         )
         if isinstance(r, ActivationOk):
             self._token = r.token
@@ -331,7 +404,19 @@ class PolarisKeyClient:
     def refresh(self, force: bool = False) -> RefreshResult:
         if not self._token:
             return RefreshResult(applied=False)
+        # compute_etag() deliberately excludes issuedAt/expiresAt/graceUntil, so the tag is
+        # stable across a pure re-sign and differs iff the CONTENT changed. That makes it the
+        # change signal — no payload diffing, no new wire field.
+        before_etag = self._cache.etag if self._cache else None
         result = self._fetch_and_apply(allow_reacquire=True, force=force)
+        if (
+            self._on_change is not None
+            and result.applied
+            and self._cache is not None
+            and self._cache.etag is not None
+            and self._cache.etag != before_etag
+        ):
+            self._on_change(self.status())
         if result.applied or not result.unauthorized:
             report_snapshot(
                 base_url=self._base_url,
@@ -519,7 +604,7 @@ class PolarisKeyClient:
         self._cache = dataclasses.replace(self._cache, **changes)
         self._store.write_cache(self._cache)
 
-    def _report_snapshot_body(self) -> Dict[str, Dict[str, Any]]:
+    def _report_snapshot_body(self) -> Dict[str, Any]:
         doc = self._cache.doc if self._cache else None
         config: Dict[str, Any] = {}
         entitlements: Dict[str, Any] = {}
@@ -528,4 +613,12 @@ class PolarisKeyClient:
                 config[k] = v.value
             for k, v in doc.payload.entitlements.items():
                 entitlements[k] = v.value
-        return {"config": config, "entitlements": entitlements}
+        # Software facts ride alongside the config/entitlement snapshot on the SAME report
+        # call — no extra round trip, and the Worker's allowlist keeps the payload bounded.
+        facts: Dict[str, Any] = {}
+        try:
+            facts = collect_facts(self._probes)
+        except Exception:
+            # Facts are diagnostic; failing to gather them must never break a refresh.
+            facts = {}
+        return {**facts, "config": config, "entitlements": entitlements}

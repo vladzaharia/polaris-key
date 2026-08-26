@@ -10,6 +10,9 @@ import { ErrorCode } from "../../http.js";
 import { hashKey, mintLicenseKey, randomId } from "../../crypto.js";
 import { deleteTokenRecord } from "../../kv.js";
 import {
+  countActiveDevices,
+  getDeviceFacts,
+  getFingerprint,
   getLicense,
   insertLicense,
   insertKey,
@@ -25,6 +28,7 @@ import {
   patchLicense,
   setLicenseStatus,
 } from "../repo.js";
+import { shapeFacts, shapeFingerprint } from "../lib/deviceShape.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
@@ -190,17 +194,28 @@ export async function handleLicenses(
           createdBy: k.created_by ?? "",
           lastUsedAt: k.last_used_at ?? undefined,
         })),
-        devices: devices.map((m) => ({
-          deviceId: m.device_id,
-          status: m.status,
-          firstSeen: m.first_seen,
-          lastSeen: m.last_seen,
-          ua: m.ua ?? undefined,
-          label: m.label ?? undefined,
-          reported: m.reported_json
-            ? (JSON.parse(m.reported_json) as unknown)
-            : undefined,
-        })),
+        devices: await Promise.all(
+          devices.map(async (m) => ({
+            deviceId: m.device_id,
+            status: m.status,
+            firstSeen: m.first_seen,
+            lastSeen: m.last_seen,
+            ua: m.ua ?? undefined,
+            label: m.label ?? undefined,
+            platform: m.platform ?? undefined,
+            arch: m.arch ?? undefined,
+            appVersion: m.app_version ?? undefined,
+            sdkName: m.sdk_name ?? undefined,
+            sdkVersion: m.sdk_version ?? undefined,
+            reported: m.reported_json
+              ? (JSON.parse(m.reported_json) as unknown)
+              : undefined,
+            fingerprint: shapeFingerprint(
+              await getFingerprint(db, slug, m.device_id),
+            ),
+            facts: shapeFacts(await getDeviceFacts(db, slug, m.device_id)),
+          })),
+        ),
       });
     }
     if (req.method === "PATCH") {
@@ -257,6 +272,24 @@ export async function handleLicenses(
       );
       if ("profiles" in body || "profile" in body)
         await setLicenseProfiles(db, slug, id, profiles);
+
+      // A tier change IS the remote re-licensing action, so it gets its own audit entry
+      // recording old → new rather than being buried in a generic "Updated license".
+      const changedTier =
+        "tier" in body && (body.tier ?? null) !== license.tier_id;
+      if (changedTier) {
+        await audit(
+          db,
+          slug,
+          session,
+          now,
+          "license.tier.change",
+          { kind: "license", id },
+          `Changed tier for ${id}: ${license.tier_id ?? "none"} → ${
+            (body.tier as string | null) ?? "none"
+          }`,
+        );
+      }
       await audit(
         db,
         slug,
@@ -266,7 +299,28 @@ export async function handleLicenses(
         { kind: "license", id },
         `Updated license ${id}`,
       );
-      return adminJson({ ok: true, id });
+
+      // Downgrading below the active device count doesn't evict anyone: authorizeDevice only
+      // checks the limit on a NEW authorization, so existing devices are grandfathered and
+      // new ones are refused until the count drops. Report both numbers so the UI can say so
+      // rather than leaving the operator to discover it.
+      let overLimit: { deviceCount: number; deviceLimit: number } | undefined;
+      if (changedTier) {
+        const nextTierId = (body.tier as string | null) ?? null;
+        const nextTier = nextTierId
+          ? await listTiers(db, slug).then((ts) =>
+              ts.find((t) => t.id === nextTierId),
+            )
+          : undefined;
+        const limit = nextTier?.policy_device_limit;
+        if (typeof limit === "number" && limit > 0) {
+          const deviceCount = await countActiveDevices(db, slug, id);
+          if (deviceCount > limit) {
+            overLimit = { deviceCount, deviceLimit: limit };
+          }
+        }
+      }
+      return adminJson({ ok: true, id, ...(overLimit ? { overLimit } : {}) });
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");
   }
@@ -341,9 +395,19 @@ export async function handleLicenses(
     return handleKeys(req, env, db, session, slug, id, subId, action, now);
   }
 
-  // /licenses/<id>/devices ...
+  // /licenses/<id>/devices[/<deviceId>[/fingerprint/reset]]
   if (sub === "devices") {
-    return handleAdminDevices(req, env, db, session, slug, id, subId, now);
+    return handleAdminDevices(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      id,
+      subId,
+      now,
+      action,
+    );
   }
 
   return notFound();

@@ -12,13 +12,20 @@ public enum ActivationResult: Sendable, Equatable {
     case ok(token: String, schemaVersion: Int)
     case deviceLimit(limit: Int?, deviceCount: Int?)
     case unauthorized
+    /// The tier requires a hardware fingerprint this host could not produce.
+    case fingerprintRequired
+    /// Hardware drifted past the tier's tolerance; the binding was retired. Retrying
+    /// activation re-binds the new hardware and consumes a seat.
+    case hardwareMismatch(drift: Int?, changed: [String]?)
+    /// The product does not offer keyless enrollment.
+    case enrollDisabled
     case error(message: String)
 }
 
 public enum Endpoints {
     private static func metadataHeaders() -> [String: String] {
         [
-            HEADER_PLATFORM: ProcessInfo.processInfo.operatingSystemVersionString,
+            HEADER_PLATFORM: PlatformFamily.current,
             HEADER_ARCH: swiftArch(),
             HEADER_SDK_NAME: POLARIS_KEY_SDK_NAME,
             HEADER_SDK_VERSION: POLARIS_KEY_SDK_VERSION,
@@ -38,13 +45,32 @@ public enum Endpoints {
     /// Exchange a license key for a per-device token (`POST /<product>/activate`).
     public static func activateWithKey(
         baseUrl: String, product: String, key: String, deviceId: String,
+        fingerprint: HardwareFingerprint? = nil,
         session: URLSession = .shared
     ) async -> ActivationResult {
         await activationLike(
             urlString: "\(baseUrl)/\(product)/activate",
             headers: ["Authorization": "Bearer \(key)", HEADER_DEVICE: deviceId]
                 .merging(metadataHeaders()) { current, _ in current },
-            session: session)
+            session: session,
+            fingerprint: fingerprint)
+    }
+
+    /// Obtain a license with no key and no sign-in (`POST /<product>/enroll`).
+    ///
+    /// Returns the same `ActivationResult` `activateWithKey` does, so callers need no new
+    /// branching. A product that hasn't opted in answers 404 → `.enrollDisabled`.
+    public static func enroll(
+        baseUrl: String, product: String, deviceId: String,
+        fingerprint: HardwareFingerprint? = nil,
+        session: URLSession = .shared
+    ) async -> ActivationResult {
+        await activationLike(
+            urlString: "\(baseUrl)/\(product)/enroll",
+            headers: [HEADER_DEVICE: deviceId]
+                .merging(metadataHeaders()) { current, _ in current },
+            session: session,
+            fingerprint: fingerprint)
     }
 
     /// Re-acquire a token for an already-activated device (`POST /<product>/token`).
@@ -95,7 +121,8 @@ public enum Endpoints {
     }
 
     private static func activationLike(
-        urlString: String, headers: [String: String], session: URLSession
+        urlString: String, headers: [String: String], session: URLSession,
+        fingerprint: HardwareFingerprint? = nil
     ) async -> ActivationResult {
         guard let url = URL(string: urlString) else {
             return .error(message: "invalid url")
@@ -103,6 +130,13 @@ public enum Endpoints {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
+        // No body at all when there is no fingerprint, so the call stays byte-identical to
+        // the pre-fingerprint contract against an older Worker.
+        if let fingerprint,
+           let body = try? JSONEncoder().encode(FingerprintBody(fingerprint: fingerprint)) {
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = body
+        }
 
         let data: Data
         let response: URLResponse
@@ -120,11 +154,17 @@ public enum Endpoints {
                 return .error(message: "malformed activate response")
             }
             return .ok(token: body.token, schemaVersion: body.schemaVersion)
+        case 409:
+            let body = try? JSONDecoder().decode(HardwareMismatchBody.self, from: data)
+            return .hardwareMismatch(drift: body?.drift, changed: body?.changed)
         case 403:
             let body = try? JSONDecoder().decode(DeviceLimitBody.self, from: data)
+            if body?.error == "fingerprint_required" { return .fingerprintRequired }
             return .deviceLimit(limit: body?.limit, deviceCount: body?.deviceCount)
         case 401:
             return .unauthorized
+        case 404:
+            return .enrollDisabled
         default:
             return .error(message: String(decoding: data, as: UTF8.self))
         }
@@ -137,6 +177,26 @@ private struct ActivationOkBody: Decodable {
 }
 
 private struct DeviceLimitBody: Decodable {
+    let error: String?
     let limit: Int?
     let deviceCount: Int?
+}
+
+private struct HardwareMismatchBody: Decodable {
+    let drift: Int?
+    let changed: [String]?
+}
+
+/// `{ "fingerprint": { "components": {...}, "hwid": "..." } }`
+private struct FingerprintBody: Encodable {
+    struct Payload: Encodable {
+        let components: [String: String]
+        let hwid: String
+    }
+    let fingerprint: Payload
+
+    init(fingerprint: HardwareFingerprint) {
+        self.fingerprint = Payload(
+            components: fingerprint.components, hwid: fingerprint.hwid)
+    }
 }

@@ -23,6 +23,7 @@ import {
   type LicenseRow,
 } from "./repo.js";
 import { deleteTokenRecord } from "./kv.js";
+import { deviceMetadata } from "./licensing.js";
 import {
   authorizeDevice,
   docProfile,
@@ -74,6 +75,10 @@ export async function createBrowserSession(
   product: Product,
   license: LicenseRow,
   now: number,
+  /** The originating request, so the browser device records the same platform/version
+   *  metadata a native device does. Browsers send no hardware fingerprint by design — the
+   *  headers are all the honest signal there is. */
+  req?: Request,
 ): Promise<
   | { ok: true; cookie: string; record: BrowserSessionRecord }
   | {
@@ -87,8 +92,14 @@ export async function createBrowserSession(
   const sessionToken = mintToken();
   const sessionHash = await hashKey(sessionToken, env.KEY_HASH_PEPPER);
   const deviceId = `browser:${license.id}`;
+  const meta = req ? deviceMetadata(req) : null;
   const auth = await authorizeDevice(env, db, product, license, deviceId, now, {
-    userAgent: "browser-session",
+    userAgent: meta?.userAgent ?? "browser-session",
+    platform: meta?.platform ?? null,
+    arch: meta?.arch ?? null,
+    appVersion: meta?.appVersion ?? null,
+    sdkName: meta?.sdkName ?? null,
+    sdkVersion: meta?.sdkVersion ?? null,
   });
   if ("error" in auth) {
     if (auth.error === "device_limit") {
@@ -258,7 +269,14 @@ export async function handleBrowserSessionLicense(
     return errorResponse(401, ErrorCode.Unauthorized);
   const license = await getLicense(db, product.slug, keyRow.license_id);
   if (!license) return errorResponse(401, ErrorCode.Unauthorized);
-  const session = await createBrowserSession(env, db, product, license, now);
+  const session = await createBrowserSession(
+    env,
+    db,
+    product,
+    license,
+    now,
+    req,
+  );
   if (!session.ok)
     return errorResponse(
       session.status,

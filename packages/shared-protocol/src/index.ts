@@ -131,6 +131,92 @@ export interface DeviceMetadata {
   sdkVersion?: string;
 }
 
+/** One hashed hardware signal in a device fingerprint. `machineUuid` is the ANCHOR: when it
+ *  matches, drift tolerance widens by one — the same shape as Windows activation treating the
+ *  NIC as a privileged component. */
+export type FingerprintComponent =
+  | "machineUuid"
+  | "boardSerial"
+  | "cpuModel"
+  | "primaryMac"
+  | "bootVolumeUuid"
+  | "ramBucket"
+  | "machineModel";
+
+/** Canonical component order — the `hwid` digest is built from this order, so every SDK must
+ *  iterate it rather than a language-native map ordering. */
+export const FINGERPRINT_COMPONENTS = [
+  "machineUuid",
+  "boardSerial",
+  "cpuModel",
+  "primaryMac",
+  "bootVolumeUuid",
+  "ramBucket",
+  "machineModel",
+] as const satisfies readonly FingerprintComponent[];
+
+/** The component whose match widens the drift tolerance by one. */
+export const FINGERPRINT_ANCHOR: FingerprintComponent = "machineUuid";
+
+/** Domain-separation prefix for per-component hashes, parallel to the device id's
+ *  `pkey-device:`. Raw hardware values are hashed ON DEVICE and never transmitted; the server
+ *  only ever compares opaque digests. */
+export const FINGERPRINT_HASH_PREFIX = "pkey-hw";
+
+/** base64url chars kept from each per-component digest. */
+export const FINGERPRINT_COMPONENT_LENGTH = 22;
+
+/** base64url chars kept from the composite digest. */
+export const FINGERPRINT_HWID_LENGTH = 32;
+
+/** A device's hardware identity. Components the device could not read are OMITTED — never
+ *  substituted with a placeholder, so a partial read degrades match precision instead of
+ *  silently colliding with every other partial reader. */
+export interface HardwareFingerprint {
+  components: Partial<Record<FingerprintComponent, string>>;
+  /** Composite hash over the present components — the coarse dedupe key. Because it covers
+   *  only what was read, losing a component changes it; component-wise matching is the
+   *  authority and this is the fast path. */
+  hwid: string;
+}
+
+/** Per-tier enforcement strength. `strict` additionally REQUIRES a fingerprint. */
+export type FingerprintMode = "off" | "lenient" | "normal" | "strict";
+
+/** Drift tolerance per mode, before the anchor bonus. `off` never enforces. */
+export const FINGERPRINT_TOLERANCE: Record<FingerprintMode, number> = {
+  off: Number.POSITIVE_INFINITY,
+  lenient: 4,
+  normal: 2,
+  strict: 0,
+};
+
+/** A product-declared companion-application check, answered by the client. */
+export interface DeviceProbeResult {
+  present: boolean;
+  version?: string;
+}
+
+/** The device's current software snapshot, reported through `POST /<product>/config/report`.
+ *  Deliberately narrow: no full installed-app enumeration, only product-declared probes. */
+export interface DeviceFacts {
+  os: { name: string; version?: string; build?: string; kernel?: string };
+  hardware?: {
+    cpuModel?: string;
+    cpuCores?: number;
+    ramMb?: number;
+    machineModel?: string;
+  };
+  runtime?: { name: string; version: string };
+  locale?: string;
+  timezone?: string;
+  probes?: Record<string, DeviceProbeResult>;
+}
+
+/** Upper bound on probe results accepted in one report, so `probes` can't become an
+ *  unbounded inventory smuggled past the report's size cap. */
+export const MAX_DEVICE_PROBES = 32;
+
 export type PolarisErrorCode =
   | "unauthorized"
   | "device_limit"
@@ -141,7 +227,10 @@ export type PolarisErrorCode =
   | "rate_limited"
   | "not_found"
   | "bad_request"
-  | "forbidden";
+  | "forbidden"
+  | "hardware_mismatch"
+  | "fingerprint_required"
+  | "enroll_disabled";
 
 export interface PolarisErrorBody {
   error: {

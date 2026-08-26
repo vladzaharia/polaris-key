@@ -12,6 +12,8 @@ import {
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
   HEADER_VERSION,
+  MAX_DEVICE_PROBES,
+  type DeviceProbeResult,
 } from "@polaris-key/protocol";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
@@ -41,9 +43,12 @@ import {
   setDeviceStatus,
   setDeviceReported,
   upsertDevice,
+  upsertDeviceFacts,
+  type DeviceFactsRow,
   type DeviceRow,
   type LicenseRow,
 } from "./repo.js";
+import { parseFingerprint } from "./fingerprint.js";
 import { hashKey } from "./crypto.js";
 import { deleteTokenRecord } from "./kv.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
@@ -53,9 +58,11 @@ import {
   resolveEffective,
   rotateDeviceToken,
   validateDeviceToken,
+  type AuthzError,
 } from "./licenseCore.js";
+import type { PresentedFingerprint } from "./fingerprint.js";
 
-function deviceMetadata(req: Request): {
+export function deviceMetadata(req: Request): {
   userAgent: string | null;
   platform: string | null;
   arch: string | null;
@@ -73,29 +80,168 @@ function deviceMetadata(req: Request): {
   };
 }
 
+// The report allowlist. Anything not named here is DROPPED SILENTLY, so a new client field
+// that isn't added here vanishes without an error anywhere — add the key here and a test in
+// licensingReport.test.ts together. The first six keys are the software-facts additions; the
+// rest are the original v1 set and must stay.
+const REPORT_KEYS = [
+  "os",
+  "hardware",
+  "runtime",
+  "locale",
+  "timezone",
+  "probes",
+  "sdk",
+  "sdkVersion",
+  "appVersion",
+  "platform",
+  "arch",
+  "gate",
+  "config",
+  "entitlements",
+  "timestamp",
+] as const;
+
+/** Largest activation body we will read. A fingerprint is a handful of short digests; this is
+ *  generous for that and far below the report cap. */
+const MAX_ACTIVATE_BODY = 4 * 1024;
+
+/**
+ * Read the optional activation body's fingerprint.
+ *
+ * `/activate` carried no body before fingerprinting, so an absent, empty, oversized, or
+ * unparseable body means "no fingerprint" and never an error — otherwise every already-shipped
+ * client would start failing the moment this deployed. Whether a missing fingerprint is
+ * actually acceptable is the tier's decision, enforced in `authorizeDevice`.
+ */
+export async function readFingerprint(
+  req: Request,
+): Promise<PresentedFingerprint | null> {
+  const declared = req.headers.get("content-length");
+  if (declared && Number(declared) > MAX_ACTIVATE_BODY) return null;
+  let raw: string;
+  try {
+    raw = await req.text();
+  } catch {
+    return null;
+  }
+  if (!raw.trim() || raw.length > MAX_ACTIVATE_BODY) return null;
+  try {
+    const body = JSON.parse(raw) as Record<string, unknown>;
+    return parseFingerprint(body.fingerprint);
+  } catch {
+    return null;
+  }
+}
+
+/** Map an `authorizeDevice` failure to its HTTP response. Shared by /activate and /enroll so
+ *  both surfaces report identical codes for identical causes. */
+export function authorizationError(err: AuthzError): Response {
+  switch (err.error) {
+    case "unauthorized":
+      return errorResponse(401, ErrorCode.Unauthorized);
+    case "device_limit":
+      return errorResponse(403, ErrorCode.DeviceLimit, "device limit reached", {
+        limit: err.limit,
+        deviceCount: err.deviceCount,
+      });
+    case "fingerprint_required":
+      return errorResponse(
+        403,
+        ErrorCode.FingerprintRequired,
+        "this tier requires a hardware fingerprint",
+      );
+    case "hardware_mismatch":
+      // 409, not 403: the caller can resolve this by retrying activation, which re-binds the
+      // new hardware. A flat 403 would read as "never going to work".
+      return errorResponse(
+        409,
+        ErrorCode.HardwareMismatch,
+        "hardware changed; re-activation required",
+        { drift: err.drift, changed: err.changed },
+      );
+  }
+}
+
 function boundedReport(input: unknown): Record<string, unknown> {
   const src =
     input && typeof input === "object" && !Array.isArray(input)
       ? (input as Record<string, unknown>)
       : {};
   const out: Record<string, unknown> = {};
-  for (const key of [
-    "sdk",
-    "sdkVersion",
-    "appVersion",
-    "platform",
-    "arch",
-    "gate",
-    "config",
-    "entitlements",
-    "timestamp",
-  ]) {
+  for (const key of REPORT_KEYS) {
     if (src[key] !== undefined) out[key] = src[key];
+  }
+  // `probes` is the one open-ended map a client controls, so it gets its own bound on top of
+  // the body-size cap: a truncated inventory must not be able to ride in under 16 KiB.
+  const probes = out.probes;
+  if (probes !== undefined) {
+    out.probes = boundedProbes(probes);
   }
   return out;
 }
 
-function shapeDevice(device: DeviceRow, currentDeviceId?: string) {
+function boundedProbes(input: unknown): Record<string, DeviceProbeResult> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const out: Record<string, DeviceProbeResult> = {};
+  for (const [id, raw] of Object.entries(input as Record<string, unknown>)) {
+    if (Object.keys(out).length >= MAX_DEVICE_PROBES) break;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const entry = raw as Record<string, unknown>;
+    if (typeof entry.present !== "boolean") continue;
+    out[id.slice(0, 64)] = {
+      present: entry.present,
+      ...(typeof entry.version === "string"
+        ? { version: entry.version.slice(0, 64) }
+        : {}),
+    };
+  }
+  return out;
+}
+
+/** Project the allowlisted report into the flat `device_facts` row shape. */
+function factsFromReport(
+  product: string,
+  deviceId: string,
+  report: Record<string, unknown>,
+  now: number,
+): DeviceFactsRow {
+  const obj = (value: unknown): Record<string, unknown> =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  const str = (value: unknown): string | null =>
+    typeof value === "string" ? value.slice(0, 128) : null;
+  const int = (value: unknown): number | null =>
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.trunc(value)
+      : null;
+
+  const os = obj(report.os);
+  const hardware = obj(report.hardware);
+  const runtime = obj(report.runtime);
+  return {
+    product,
+    device_id: deviceId,
+    os_name: str(os.name),
+    os_version: str(os.version),
+    os_build: str(os.build),
+    kernel: str(os.kernel),
+    cpu_model: str(hardware.cpuModel),
+    cpu_cores: int(hardware.cpuCores),
+    ram_mb: int(hardware.ramMb),
+    machine_model: str(hardware.machineModel),
+    locale: str(report.locale),
+    timezone: str(report.timezone),
+    runtime_name: str(runtime.name),
+    runtime_version: str(runtime.version),
+    probes_json:
+      report.probes === undefined ? null : JSON.stringify(report.probes),
+    updated_at: now,
+  };
+}
+
+export function shapeDevice(device: DeviceRow, currentDeviceId?: string) {
   return {
     id: device.device_id,
     licenseId: device.license_id,
@@ -113,7 +259,7 @@ function shapeDevice(device: DeviceRow, currentDeviceId?: string) {
   };
 }
 
-function shapeLicense(license: LicenseRow) {
+export function shapeLicense(license: LicenseRow) {
   return {
     id: license.id,
     status: license.status,
@@ -179,16 +325,9 @@ async function activateWithKey(
     license,
     deviceId,
     now,
-    deviceMetadata(req),
+    { ...deviceMetadata(req), fingerprint: await readFingerprint(req) },
   );
-  if ("error" in authorized) {
-    if (authorized.error === "unauthorized")
-      return errorResponse(401, ErrorCode.Unauthorized);
-    return errorResponse(403, ErrorCode.DeviceLimit, "device limit reached", {
-      limit: authorized.limit,
-      deviceCount: authorized.deviceCount,
-    });
-  }
+  if ("error" in authorized) return authorizationError(authorized);
   await touchKey(db, product.slug, keyHash, now);
 
   return json({
@@ -450,12 +589,17 @@ export async function handleReport(
   } catch {
     return errorResponse(400, ErrorCode.BadRequest, "invalid body");
   }
+  const report = boundedReport(snapshot);
   await setDeviceReported(
     db,
     product.slug,
     valid.device.device_id,
-    JSON.stringify(boundedReport(snapshot)),
+    JSON.stringify(report),
     now,
+  );
+  await upsertDeviceFacts(
+    db,
+    factsFromReport(product.slug, valid.device.device_id, report, now),
   );
   return json({ ok: true });
 }

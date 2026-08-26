@@ -16,6 +16,8 @@ import {
   getActiveSchema,
   getProduct,
   insertSchema,
+  setAutoIssuePolicy,
+  setFingerprintPolicy,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
   stmtInsertProfile,
@@ -153,6 +155,31 @@ export async function resyncRepo(
   );
   updated.push("product");
 
+  // The fingerprint policy is manifest-owned only until an operator edits it live; after
+  // that `setFingerprintPolicy` skips the write, so a push can't clobber their change.
+  if (manifest.fingerprint) {
+    await setFingerprintPolicy(
+      db,
+      slug,
+      JSON.stringify(manifest.fingerprint),
+      "manifest",
+      now,
+    );
+    updated.push("fingerprint");
+  }
+
+  // Same ownership rule for the auto-issue policy: manifest-owned until an operator claims it.
+  if (manifest.autoIssue) {
+    await setAutoIssuePolicy(
+      db,
+      slug,
+      JSON.stringify(manifest.autoIssue),
+      "manifest",
+      now,
+    );
+    updated.push("autoIssue");
+  }
+
   // ── schema: publish a new active version only when the catalog changed ──────
   const nextCatalogJson = JSON.stringify(manifest.catalog);
   const activeSchema = await getActiveSchema(db, slug);
@@ -257,6 +284,7 @@ export async function resyncRepo(
         profileId: t.profileId ?? null,
         policyExpiryDays: t.policyExpiryDays ?? null,
         policyDeviceLimit: t.policyDeviceLimit ?? null,
+        policyFingerprint: t.policyFingerprint ?? null,
         channels: t.channels,
         minVersion: t.minVersion,
         maxVersion: t.maxVersion,

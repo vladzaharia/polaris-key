@@ -7,6 +7,7 @@
 //   pnpm gen:corpus            # write conformance/corpus/v1/cases.json
 //   pnpm gen:corpus -- --check # CI drift guard (exit 1 if stale)
 
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +17,7 @@ import { format } from "prettier";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORPUS_DIR = join(HERE, "..", "conformance", "corpus", "v1");
 const OUT = join(CORPUS_DIR, "cases.json");
+const FINGERPRINT_OUT = join(CORPUS_DIR, "fingerprint.json");
 
 /** The Swift test target bundles its fixtures as copied resources (it can't reach up the
  *  monorepo at test time). To keep those copies from drifting from the canonical corpus, the
@@ -563,6 +565,200 @@ async function build(): Promise<unknown> {
   return { corpusVersion: 1, keys: KEYS, cases };
 }
 
+// ── Fingerprint + device-id vectors ──────────────────────────────────────────
+// Until now the device-id derivation was the ONE cross-language behaviour with no golden
+// vector: three hand-written implementations (Node, Python, Swift) agreed only by code
+// review. Hardware fingerprinting multiplies that surface, so both formulas are pinned here.
+//
+// The digests below are computed from first principles with node:crypto rather than by
+// importing the Worker's helper. A golden corpus that shares code with the implementation it
+// checks cannot catch a bug in that shared code.
+
+const FINGERPRINT_COMPONENT_ORDER = [
+  "machineUuid",
+  "boardSerial",
+  "cpuModel",
+  "primaryMac",
+  "bootVolumeUuid",
+  "ramBucket",
+  "machineModel",
+] as const;
+
+type FingerprintComponentName = (typeof FINGERPRINT_COMPONENT_ORDER)[number];
+
+function sha256B64url(input: string, length: number): string {
+  return createHash("sha256")
+    .update(input, "utf8")
+    .digest("base64url")
+    .slice(0, length);
+}
+
+function componentHash(
+  product: string,
+  component: FingerprintComponentName,
+  raw: string,
+): string {
+  return sha256B64url(`pkey-hw:${product}:${component}:${raw}`, 22);
+}
+
+function hwidOf(
+  components: Partial<Record<FingerprintComponentName, string>>,
+): string {
+  const parts: string[] = [];
+  for (const component of FINGERPRINT_COMPONENT_ORDER) {
+    const value = components[component];
+    if (value !== undefined) parts.push(`${component}=${value}`);
+  }
+  return sha256B64url(parts.join("\n"), 32);
+}
+
+interface FingerprintVector {
+  id: string;
+  description: string;
+  product: string;
+  raw: Partial<Record<FingerprintComponentName, string>>;
+  components: Partial<Record<FingerprintComponentName, string>>;
+  hwid: string;
+}
+
+function fingerprintVector(
+  id: string,
+  description: string,
+  product: string,
+  raw: Partial<Record<FingerprintComponentName, string>>,
+): FingerprintVector {
+  const components: Partial<Record<FingerprintComponentName, string>> = {};
+  // Iterate the CANONICAL order, not the raw map's insertion order — that is exactly the
+  // property the `reversed-input-order` vector below exists to pin.
+  for (const component of FINGERPRINT_COMPONENT_ORDER) {
+    const value = raw[component];
+    if (value !== undefined)
+      components[component] = componentHash(product, component, value);
+  }
+  return {
+    id,
+    description,
+    product,
+    raw,
+    components,
+    hwid: hwidOf(components),
+  };
+}
+
+const MAC_RAW: Record<FingerprintComponentName, string> = {
+  machineUuid: "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+  boardSerial: "C02XK1ABCDEF",
+  cpuModel: "Apple M3 Pro:12",
+  primaryMac: "a4:83:e7:1b:2c:3d",
+  bootVolumeUuid: "8F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0",
+  ramBucket: "32",
+  machineModel: "MacBookPro18,3",
+};
+
+function buildFingerprintCorpus(): unknown {
+  const vectors: FingerprintVector[] = [
+    fingerprintVector(
+      "macos-full",
+      "All seven components present on macOS.",
+      "djdl",
+      MAC_RAW,
+    ),
+    fingerprintVector(
+      "windows-full",
+      "All seven components present on Windows; same shape, different values.",
+      "djdl",
+      {
+        machineUuid: "9f8e7d6c-5b4a-3928-1706-f5e4d3c2b1a0",
+        boardSerial: "/8YHTG2/CN1234567890/",
+        cpuModel: "AMD Ryzen 9 7950X:16",
+        primaryMac: "00:1a:2b:3c:4d:5e",
+        bootVolumeUuid: "3C4D5E6F",
+        ramBucket: "64",
+        machineModel: "XPS 15 9530",
+      },
+    ),
+    fingerprintVector(
+      "linux-partial",
+      "Fail-soft: a host that could only read three components still produces a fingerprint.",
+      "djdl",
+      {
+        machineUuid: "b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c",
+        cpuModel: "Intel(R) Core(TM) i7-12700H:20",
+        ramBucket: "16",
+      },
+    ),
+    fingerprintVector(
+      "reversed-input-order",
+      "Identical components declared in reverse order must yield the macos-full hwid.",
+      "djdl",
+      Object.fromEntries(
+        [...FINGERPRINT_COMPONENT_ORDER].reverse().map((c) => [c, MAC_RAW[c]]),
+      ) as Record<FingerprintComponentName, string>,
+    ),
+    fingerprintVector(
+      "unicode-model",
+      "Non-ASCII raw values must hash over UTF-8 bytes identically in every language.",
+      "djdl",
+      {
+        machineUuid: "ünïcödé-uuid-λ",
+        machineModel: "Ordinateur — Modèle 日本",
+      },
+    ),
+    fingerprintVector(
+      "other-product",
+      "Domain separation: the same hardware under a different product slug must differ.",
+      "other",
+      MAC_RAW,
+    ),
+  ];
+
+  // The pre-existing `pkey-device:` formula, pinned for the first time.
+  const deviceIds = [
+    {
+      id: "macos-platform-uuid",
+      product: "djdl",
+      raw: "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+      expected: sha256B64url(
+        "pkey-device:djdl:564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+        32,
+      ),
+    },
+    {
+      id: "linux-machine-id",
+      product: "djdl",
+      raw: "b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c",
+      expected: sha256B64url(
+        "pkey-device:djdl:b7f3a1c95d2e4f6a8b0c1d2e3f4a5b6c",
+        32,
+      ),
+    },
+    {
+      id: "other-product-same-hardware",
+      product: "other",
+      raw: "564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+      expected: sha256B64url(
+        "pkey-device:other:564D3E2F-1A4B-4C8D-9E0F-A1B2C3D4E5F6",
+        32,
+      ),
+    },
+    {
+      id: "unicode-raw",
+      product: "djdl",
+      raw: "ünïcödé-uuid-λ",
+      expected: sha256B64url("pkey-device:djdl:ünïcödé-uuid-λ", 32),
+    },
+  ];
+
+  return {
+    fingerprintVersion: 1,
+    componentOrder: FINGERPRINT_COMPONENT_ORDER,
+    componentHashLength: 22,
+    hwidLength: 32,
+    deviceIds,
+    vectors,
+  };
+}
+
 /** Reconcile one generated/source file against its on-disk copy. In `--check` mode a drift
  *  is fatal (returns true so the caller can exit 1); otherwise it's written. */
 function reconcile(path: string, content: string, check: boolean): boolean {
@@ -593,6 +789,16 @@ async function main(): Promise<void> {
 
   // The canonical corpus.
   let stale = reconcile(OUT, content, check);
+
+  // The fingerprint + device-id vectors. Unsigned (they pin hash formulas, not signatures),
+  // but guarded by the same drift gate and mirrored into the Swift bundle alongside the rest.
+  const fingerprint = await format(JSON.stringify(buildFingerprintCorpus()), {
+    parser: "json",
+  });
+  stale = reconcile(FINGERPRINT_OUT, fingerprint, check) || stale;
+  stale =
+    reconcile(join(SWIFT_RESOURCES, "fingerprint.json"), fingerprint, check) ||
+    stale;
 
   // The Swift test bundle mirrors the corpus + the gate-matrix fixture byte-for-byte. The
   // gate-matrix is a hand-authored fixture (not signed), so it's read from its canonical

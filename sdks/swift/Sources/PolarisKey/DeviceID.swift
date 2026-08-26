@@ -17,10 +17,14 @@ public enum DeviceID {
     /// Derive a stable, hashed device id for a product. `fallback` overrides the platform
     /// OS-id lookup (used by tests); otherwise the raw id comes from the platform.
     public static func derive(productSlug: String, fallback: String? = nil) -> String {
-        let base = fallback ?? rawDeviceId() ?? UUID().uuidString
-        let digest = SHA256.hash(data: Data("pkey-device:\(productSlug):\(base)".utf8))
-        let b64url = Base64URL.encode(Data(digest))
-        return String(b64url.prefix(32))
+        fromRaw(productSlug: productSlug, raw: fallback ?? rawDeviceId() ?? UUID().uuidString)
+    }
+
+    /// The device-id formula itself, split out from the hardware read so it can be pinned by
+    /// `conformance/corpus/v1/fingerprint.json`. Node, Python, and Swift must agree exactly.
+    public static func fromRaw(productSlug: String, raw: String) -> String {
+        let digest = SHA256.hash(data: Data("pkey-device:\(productSlug):\(raw)".utf8))
+        return String(Base64URL.encode(Data(digest)).prefix(32))
     }
 
     /// The raw, per-device identifier — never returned to callers directly.

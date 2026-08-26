@@ -25,9 +25,13 @@ __all__ = [
     "ActivationOk",
     "ActivationDeviceLimit",
     "ActivationUnauthorized",
+    "ActivationFingerprintRequired",
+    "ActivationHardwareMismatch",
+    "ActivationEnrollDisabled",
     "ActivationError",
     "ActivationResult",
     "activate_with_key",
+    "enroll",
     "reacquire_token",
     "deauthorize",
     "report_snapshot",
@@ -54,12 +58,44 @@ class ActivationUnauthorized:
 
 
 @dataclass(frozen=True)
+class ActivationFingerprintRequired:
+    """The tier requires a hardware fingerprint this host could not produce."""
+
+    kind: str = "fingerprint-required"
+
+
+@dataclass(frozen=True)
+class ActivationEnrollDisabled:
+    """The product does not offer keyless enrollment."""
+
+    kind: str = "enroll-disabled"
+
+
+@dataclass(frozen=True)
+class ActivationHardwareMismatch:
+    """Hardware drifted past the tier's tolerance; the binding was retired. Retrying
+    activation re-binds the new hardware and consumes a seat."""
+
+    drift: Optional[int] = None
+    changed: Optional[list] = None
+    kind: str = "hardware-mismatch"
+
+
+@dataclass(frozen=True)
 class ActivationError:
     message: str
     kind: str = "error"
 
 
-ActivationResult = Union[ActivationOk, ActivationDeviceLimit, ActivationUnauthorized, ActivationError]
+ActivationResult = Union[
+    ActivationOk,
+    ActivationDeviceLimit,
+    ActivationUnauthorized,
+    ActivationFingerprintRequired,
+    ActivationHardwareMismatch,
+    ActivationEnrollDisabled,
+    ActivationError,
+]
 
 
 def _metadata_headers() -> dict:
@@ -71,32 +107,77 @@ def _metadata_headers() -> dict:
     }
 
 
-def _activation_like(url: str, headers: dict, client: httpx.Client) -> ActivationResult:
+def _activation_like(
+    url: str,
+    headers: dict,
+    client: httpx.Client,
+    fingerprint: Optional[dict] = None,
+) -> ActivationResult:
     try:
-        res = client.post(url, headers=headers)
+        if fingerprint:
+            res = client.post(url, headers=headers, json={"fingerprint": fingerprint})
+        else:
+            # No body at all when there is no fingerprint, so the call stays byte-identical
+            # to the pre-fingerprint contract against an older Worker.
+            res = client.post(url, headers=headers)
     except Exception as e:
         return ActivationError(message=str(e))
     if res.status_code == 200:
         b = res.json()
         return ActivationOk(token=b["token"], schemaVersion=b["schemaVersion"])
+    if res.status_code == 409:
+        b = _json_or_empty(res)
+        return ActivationHardwareMismatch(drift=b.get("drift"), changed=b.get("changed"))
     if res.status_code == 403:
         b = _json_or_empty(res)
+        if b.get("error") == "fingerprint_required":
+            return ActivationFingerprintRequired()
         return ActivationDeviceLimit(
             limit=b.get("limit"),
             deviceCount=b.get("deviceCount"),
         )
     if res.status_code == 401:
         return ActivationUnauthorized()
+    if res.status_code == 404:
+        return ActivationEnrollDisabled()
     return ActivationError(message=_text_or_empty(res))
 
 
 def activate_with_key(
-    *, base_url: str, product: str, key: str, device_id: str, client: httpx.Client
+    *,
+    base_url: str,
+    product: str,
+    key: str,
+    device_id: str,
+    client: httpx.Client,
+    fingerprint: Optional[dict] = None,
 ) -> ActivationResult:
     return _activation_like(
         f"{base_url}/{product}/activate",
         {"authorization": f"Bearer {key}", HEADER_DEVICE: device_id, **_metadata_headers()},
         client,
+        fingerprint,
+    )
+
+
+def enroll(
+    *,
+    base_url: str,
+    product: str,
+    device_id: str,
+    client: httpx.Client,
+    fingerprint: Optional[dict] = None,
+) -> ActivationResult:
+    """``POST /<product>/enroll`` — obtain a license with no key and no sign-in.
+
+    Returns the same tagged union ``activate_with_key`` does, so callers need no new
+    branching. A product that hasn't opted in answers 404 → ``ActivationEnrollDisabled``.
+    """
+    return _activation_like(
+        f"{base_url}/{product}/enroll",
+        {HEADER_DEVICE: device_id, **_metadata_headers()},
+        client,
+        fingerprint,
     )
 
 

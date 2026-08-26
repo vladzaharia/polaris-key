@@ -16,7 +16,14 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from ..client import PolarisKeyClient
-from ..endpoints import ActivationDeviceLimit, ActivationOk, ActivationUnauthorized
+from ..endpoints import (
+    ActivationDeviceLimit,
+    ActivationEnrollDisabled,
+    ActivationFingerprintRequired,
+    ActivationHardwareMismatch,
+    ActivationOk,
+    ActivationUnauthorized,
+)
 
 __all__ = [
     "CommandResult",
@@ -105,20 +112,68 @@ def run_command(
         client.close()
 
 
+def _describe_activation_failure(r: object, verb: str) -> CommandResult:
+    """Render a non-ok activation outcome.
+
+    Shared by ``activate`` and ``enroll`` so the two can't drift into describing the same
+    server response differently. Mirrors describeFailure() in the Node CLI.
+    """
+    if isinstance(r, ActivationDeviceLimit):
+        detail = ""
+        if r.limit is not None:
+            detail = f" ({r.deviceCount}/{r.limit} devices in use)"
+        return CommandResult(1, [f"{verb} failed: device limit reached{detail}."])
+    if isinstance(r, ActivationUnauthorized):
+        return CommandResult(1, [f"{verb} failed: invalid or revoked credential."])
+    if isinstance(r, ActivationFingerprintRequired):
+        return CommandResult(
+            1,
+            [
+                f"{verb} failed: a hardware fingerprint is required but could not be "
+                "collected on this host."
+            ],
+        )
+    if isinstance(r, ActivationHardwareMismatch):
+        changed = f" ({', '.join(r.changed)})" if r.changed else ""
+        return CommandResult(
+            1,
+            [
+                f"{verb} failed: this machine's hardware changed{changed}. "
+                "The previous authorization was released — run the command again to re-bind."
+            ],
+        )
+    if isinstance(r, ActivationEnrollDisabled):
+        return CommandResult(
+            1, [f"{verb} failed: this product does not offer keyless enrollment."]
+        )
+    message = getattr(r, "message", "") or "unknown error."
+    return CommandResult(1, [f"{verb} failed: {message}"])
+
+
 def activate(client: PolarisKeyClient, key: str) -> CommandResult:
     """Activate this device with a license ``key`` and pull the first config doc."""
     r = client.activate_with_key(key)
     if isinstance(r, ActivationOk):
         st = client.status()
         return CommandResult(0, [f"Activated. Status: {st.status}"])
-    if isinstance(r, ActivationDeviceLimit):
-        detail = ""
-        if r.limit is not None:
-            detail = f" ({r.deviceCount}/{r.limit} devices in use)"
-        return CommandResult(1, [f"Activation failed: device limit reached{detail}."])
-    if isinstance(r, ActivationUnauthorized):
-        return CommandResult(1, ["Activation failed: invalid or revoked key."])
-    return CommandResult(1, [f"Activation failed: {r.message}"])
+    return _describe_activation_failure(r, "Activation")
+
+
+def enroll(client: PolarisKeyClient) -> CommandResult:
+    """Obtain a license with no key and no sign-in, when the product offers a free tier."""
+    r = client.enroll()
+    if isinstance(r, ActivationOk):
+        st = client.status()
+        return CommandResult(0, [f"Enrolled. Status: {st.status}"])
+    if isinstance(r, ActivationEnrollDisabled):
+        return CommandResult(
+            1,
+            [
+                "This product does not offer keyless enrollment — "
+                "activate with a license key instead."
+            ],
+        )
+    return _describe_activation_failure(r, "Enrollment")
 
 
 def deactivate(client: PolarisKeyClient) -> CommandResult:

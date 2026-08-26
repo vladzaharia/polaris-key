@@ -21,6 +21,8 @@ import type { Db, DbStatement } from "../db/types.js";
 import { generateEd25519, seal } from "../keyvault.js";
 import {
   getProduct,
+  setAutoIssuePolicy,
+  setFingerprintPolicy,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
   stmtInsertProduct,
@@ -260,6 +262,7 @@ async function registerFromManifest(
         profileId: t.profileId ?? null,
         policyExpiryDays: t.policyExpiryDays ?? null,
         policyDeviceLimit: t.policyDeviceLimit ?? null,
+        policyFingerprint: t.policyFingerprint ?? null,
         channels: t.channels,
         minVersion: t.minVersion,
         maxVersion: t.maxVersion,
@@ -308,6 +311,27 @@ async function registerFromManifest(
   }
 
   await db.batch(statements);
+
+  // Applied after the batch because the product row must exist first. A freshly linked
+  // product is always manifest-owned, so this is unconditional here (unlike resync).
+  if (manifest.fingerprint) {
+    await setFingerprintPolicy(
+      db,
+      slug,
+      JSON.stringify(manifest.fingerprint),
+      "manifest",
+      now,
+    );
+  }
+  if (manifest.autoIssue) {
+    await setAutoIssuePolicy(
+      db,
+      slug,
+      JSON.stringify(manifest.autoIssue),
+      "manifest",
+      now,
+    );
+  }
 
   // Secrets the manifest references by NAME (OIDC client secret, edge-mint key material) but
   // that an operator must still supply out-of-band via PUT /secrets. Names only — never values.

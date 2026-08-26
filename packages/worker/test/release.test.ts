@@ -4,6 +4,10 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import type { Product } from "../src/product.js";
+import {
+  DEFAULT_AUTO_ISSUE,
+  DEFAULT_FINGERPRINT_POLICY,
+} from "../src/fingerprint.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/release/githubApp.js";
 import {
@@ -111,6 +115,8 @@ function makeProduct(): Product {
     defaultDeviceLimit: 5,
     adminGroup: null,
     schemaVersion: 1,
+    fingerprintPolicy: DEFAULT_FINGERPRINT_POLICY,
+    autoIssue: DEFAULT_AUTO_ISSUE,
   };
 }
 

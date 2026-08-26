@@ -41,6 +41,12 @@ importers:
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../../../packages/shared-jws
+      '@polaris-key/node':
+        specifier: workspace:*
+        version: link:../../../packages/sdk-node
+      '@polaris-key/protocol':
+        specifier: workspace:*
+        version: link:../../../packages/shared-protocol
 
   packages/admin:
     dependencies:

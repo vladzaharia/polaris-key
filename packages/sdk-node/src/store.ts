@@ -83,16 +83,24 @@ function rawDeviceId(): string | null {
   }
 }
 
+/** The device-id formula itself, split out from the hardware read so it can be pinned by
+ *  conformance/corpus/v1/fingerprint.json. Node, Python, and Swift must agree here exactly. */
+export function deviceIdFromRaw(productSlug: string, raw: string): string {
+  return createHash("sha256")
+    .update(`pkey-device:${productSlug}:${raw}`, "utf8")
+    .digest("base64url")
+    .slice(0, 32);
+}
+
 /** Derive a stable, hashed device id so the raw OS identifier never leaves the device. */
 export function deriveDeviceId(
   productSlug: string,
   fallback?: string | null,
 ): string {
-  const base = rawDeviceId() ?? fallback ?? randomUUID();
-  return createHash("sha256")
-    .update(`pkey-device:${productSlug}:${base}`)
-    .digest("base64url")
-    .slice(0, 32);
+  return deviceIdFromRaw(
+    productSlug,
+    rawDeviceId() ?? fallback ?? randomUUID(),
+  );
 }
 
 /** In-memory store for tests. */
