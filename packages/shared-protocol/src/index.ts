@@ -59,5 +59,14 @@ export type {
 } from "./trust.js";
 
 // ── Legacy v2 surface (worker + SDKs until P1/P4/P5; deleted in P8) ──────────────────
-export { ISSUER, HEADER_DEVICE, HEADER_VERSION, HEADER_CHANNEL, HEADER_SDK_NAME, HEADER_SDK_VERSION, HEADER_PLATFORM, HEADER_ARCH } from "./legacy.js";
+export {
+  ISSUER,
+  HEADER_DEVICE,
+  HEADER_VERSION,
+  HEADER_CHANNEL,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
+  HEADER_PLATFORM,
+  HEADER_ARCH,
+} from "./legacy.js";
 export type { ManagedPayload, ManagedConfigDoc } from "./legacy.js";

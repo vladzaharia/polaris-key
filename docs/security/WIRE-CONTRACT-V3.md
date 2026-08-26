@@ -25,23 +25,23 @@ Exception: the `plrs-bundle+jws` payload cap is **262 144 bytes** (it wraps up t
 
 Four document types, domain-separated by `typ` (unknown or missing `typ` is rejected — the v2 tolerance window is over): **[C]**
 
-| `typ` | Artifact |
-|---|---|
-| `plrs-license+jws` | License document |
-| `plrs-config+jws` | Config document |
-| `plrs-trust+jws` | Trust manifest |
-| `plrs-bundle+jws` | Offline activation bundle |
+| `typ`              | Artifact                  |
+| ------------------ | ------------------------- |
+| `plrs-license+jws` | License document          |
+| `plrs-config+jws`  | Config document           |
+| `plrs-trust+jws`   | Trust manifest            |
+| `plrs-bundle+jws`  | Offline activation bundle |
 
 Shared claims on license and config documents (**the envelope**):
 
 ```jsonc
 {
-  "iss": "plrs.im",            // ISSUER — host-neutral (D-09); NOT the serving hostname
+  "iss": "plrs.im", // ISSUER — host-neutral (D-09); NOT the serving hostname
   "aud": "<product-slug>",
   "deviceId": "<32-char base64url device id>",
-  "issuedAt": 1756252800,       // unix seconds
-  "expiresAt": 1756256400,      // issuedAt + DOC_EXPIRY_SECONDS (3600) on the online path
-  "graceUntil": 1758844800      // issuedAt + maxOfflineDays*86400, see §3.3
+  "issuedAt": 1756252800, // unix seconds
+  "expiresAt": 1756256400, // issuedAt + DOC_EXPIRY_SECONDS (3600) on the online path
+  "graceUntil": 1758844800, // issuedAt + maxOfflineDays*86400, see §3.3
 }
 ```
 
@@ -54,12 +54,16 @@ Envelope plus:
 ```jsonc
 {
   "licenseId": "…",
-  "profile": { /* DocProfile — optional signed greeting/holder block */ },
-  "entitlements": { /* JSONValue map */ }
+  "profile": {
+    /* DocProfile — optional signed greeting/holder block */
+  },
+  "entitlements": {
+    /* JSONValue map */
+  },
 }
 ```
 
-`entitlements` is the **only** carrier of grant data (D-20): admin/tier policy is injected here as enforced entitlements — `license.tier`, `license.tierLabel`, `channels` (string array), `app.minVersion`, `app.maxVersion`, `deviceLimit` — alongside catalog-declared `flag` entries. License *state* (`ok`/`grace`/…) is **never** carried in the document; it is derived by the client gate (§5).
+`entitlements` is the **only** carrier of grant data (D-20): admin/tier policy is injected here as enforced entitlements — `license.tier`, `license.tierLabel`, `channels` (string array), `app.minVersion`, `app.maxVersion`, `deviceLimit` — alongside catalog-declared `flag` entries. License _state_ (`ok`/`grace`/…) is **never** carried in the document; it is derived by the client gate (§5).
 
 ### 2.2 Config document (`plrs-config+jws`)
 
@@ -84,7 +88,7 @@ Unchanged from v2 in shape and semantics (`schemaVersion`, `aud`, `issuedAt`, `e
 Two validation profiles per document, selected by `checkFreshness`: **[C]**
 
 - **Network path** (`checkFreshness: true`): reject if `now > expiresAt + CLOCK_SKEW_SECONDS` or `issuedAt > now + CLOCK_SKEW_SECONDS`. A stale or future-dated document must never enter the cache.
-- **Reload path** (`checkFreshness: false`): the document is *expected* to be past `expiresAt` (that is what offline operation is); only `graceUntil` bounds it, enforced by the gate against `effectiveNow` (§4.2). Used for cache reload **and bundle import** (§7).
+- **Reload path** (`checkFreshness: false`): the document is _expected_ to be past `expiresAt` (that is what offline operation is); only `graceUntil` bounds it, enforced by the gate against `effectiveNow` (§4.2). Used for cache reload **and bundle import** (§7).
 
 Always enforced on both paths, both document types **[C]**: `typ` matches expectation · `iss === "plrs.im"` · `aud` equals the expected product · `deviceId` equals the local device id · `graceUntil ≥ expiresAt` · `graceUntil ≤ issuedAt + MAX_GRACE_SECONDS` (a hostile signer cannot grant a century of grace) · anti-replay: a document with `issuedAt` lower than the currently-accepted document's `issuedAt` for the same type is rejected (per-type floors).
 
@@ -96,21 +100,25 @@ Always enforced on both paths, both document types **[C]**: `typ` matches expect
 
 ### 4.1 Cache record v3
 
-`CACHE_VERSION = 3`. One Core-owned record per product; **signed artifacts only**, plus two unsigned hints that can only *tighten* the gate:
+`CACHE_VERSION = 3`. One Core-owned record per product; **signed artifacts only**, plus two unsigned hints that can only _tighten_ the gate:
 
 ```jsonc
 {
   "v": 3,
   "trustJws": "<plrs-trust+jws>",
-  "docs":  { "license": "<jws>", "config": "<jws>" },       // per-service slices; absent = service unused
+  "docs": { "license": "<jws>", "config": "<jws>" }, // per-service slices; absent = service unused
   "etags": { "license": "…", "config": "…" },
   "importedBundle": { "bundleId": "…", "importedAt": 1756252800 },
   "lastSyncUnauthorized": false,
-  "blocked": { "reason": "version-too-old", "allowedRange": { "min": "2.0.0" } }
+  "blocked": {
+    "reason": "version-too-old",
+    "allowedRange": { "min": "2.0.0" },
+  },
 }
 ```
 
 Rules (all **[C]** via reload-path corpus cases):
+
 - Every load re-verifies everything: `trustJws` against **pins only** → build effective trust → each entry of `docs` against the effective set with `checkFreshness: false`. Any verification failure ⇒ that artifact is treated as absent (fail closed); a failed license doc ⇒ `needs-activation`, never a partial state.
 - `v !== 3` ⇒ the record is **discarded, never migrated** (one network round-trip on upgrade; air-gapped installs re-import their bundle).
 - Decoded state, bare keys, or plaintext counters must never be persisted.
@@ -155,17 +163,18 @@ Air-gapped activation (D-12) — classic request-code flow:
 ```jsonc
 // payload (≤ 262 144 bytes)
 {
-  "bundleId": "…",                       // ULID; audit anchor
+  "bundleId": "…", // ULID; audit anchor
   "aud": "<product-slug>",
-  "deviceId": "<the requesting device's id>",   // operator copies it from the app's offline screen
+  "deviceId": "<the requesting device's id>", // operator copies it from the app's offline screen
   "issuedAt": 1756252800,
-  "expiresAt": 1758844800,               // import window for the bundle itself
-  "docs": { "license": "<plrs-license+jws>", "config": "<plrs-config+jws>" },  // config optional
-  "trust": "<plrs-trust+jws>"
+  "expiresAt": 1758844800, // import window for the bundle itself
+  "docs": { "license": "<plrs-license+jws>", "config": "<plrs-config+jws>" }, // config optional
+  "trust": "<plrs-trust+jws>",
 }
 ```
 
 `importBundle` validation order (**all-or-nothing**; any failure imports nothing) **[C]** via `bundleCases`:
+
 1. Verify the bundle JWS against **pinned keys only**; `typ` must be `plrs-bundle+jws`; payload cap 262 144.
 2. `aud` equals the product; `deviceId` equals the local device id; `issuedAt ≤ now + skew`; `now ≤ expiresAt + skew` (the bundle import window uses network-path freshness — a stale bundle is refused).
 3. Verify `trust` against pins (reload profile); build the effective set.
@@ -176,17 +185,17 @@ State semantics: `importedBundle` present with a verified license doc ⇒ gate `
 
 ## 8. Identifier registry (rebrand, D-10)
 
-| Concern | v2 | v3 |
-|---|---|---|
-| ISSUER (`iss`) | `key.plrs.im` | `plrs.im` |
-| Device token prefix | `pkeyt_` | `plrst_` |
-| Client headers | `X-PKey-*` | `X-Polaris-*` |
-| JWS `typ` values | `pkey-config+jws`, `pkey-trust+jws` | `plrs-license+jws`, `plrs-config+jws`, `plrs-trust+jws`, `plrs-bundle+jws` |
-| Manifest dir | `.pkey/` | `.polaris/` preferred, `.pkey/` read as fallback |
-| Session domain tags | `pkey.admin.v1\|`, `pkey.portal.v1\|` | `plrs.admin.v1\|`, `plrs.portal.v1\|` |
-| Session cookies | `__Host-pkey_admin`, `__Host-pkey_portal`, `pkey_<p>_session` | `__Host-plrs_admin`, `__Host-plrs_portal`, `plrs_<p>_session` |
-| Keychain service (Swift) | `pkey:<product>` | `plrs:<product>` |
-| Serving host | `key.plrs.im` | `key.plrs.im` (unchanged — hosts are not wire identity) |
+| Concern                  | v2                                                            | v3                                                                         |
+| ------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| ISSUER (`iss`)           | `key.plrs.im`                                                 | `plrs.im`                                                                  |
+| Device token prefix      | `pkeyt_`                                                      | `plrst_`                                                                   |
+| Client headers           | `X-PKey-*`                                                    | `X-Polaris-*`                                                              |
+| JWS `typ` values         | `pkey-config+jws`, `pkey-trust+jws`                           | `plrs-license+jws`, `plrs-config+jws`, `plrs-trust+jws`, `plrs-bundle+jws` |
+| Manifest dir             | `.pkey/`                                                      | `.polaris/` preferred, `.pkey/` read as fallback                           |
+| Session domain tags      | `pkey.admin.v1\|`, `pkey.portal.v1\|`                         | `plrs.admin.v1\|`, `plrs.portal.v1\|`                                      |
+| Session cookies          | `__Host-pkey_admin`, `__Host-pkey_portal`, `pkey_<p>_session` | `__Host-plrs_admin`, `__Host-plrs_portal`, `plrs_<p>_session`              |
+| Keychain service (Swift) | `pkey:<product>`                                              | `plrs:<product>`                                                           |
+| Serving host             | `key.plrs.im`                                                 | `key.plrs.im` (unchanged — hosts are not wire identity)                    |
 
 ## 9. Rollout & versioning
 

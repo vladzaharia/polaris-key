@@ -4,7 +4,11 @@
  *  per-license channel entitlement + version window on feeds and artifacts — the
  *  per-product opt-in that closes the R3 "stable-only license fetches the beta appcast"
  *  gap without breaking public/anonymous update checking for products that want it. */
-export type ReleaseAccess = "public" | "authenticated" | "licensed" | "entitled";
+export type ReleaseAccess =
+  | "public"
+  | "authenticated"
+  | "licensed"
+  | "entitled";
 
 export interface ReleaseAccessPolicy {
   metadata: ReleaseAccess;

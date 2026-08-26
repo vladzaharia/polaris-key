@@ -13,32 +13,32 @@ Polaris Key becomes **Polaris**: a suite of per-product opt-in services — **Li
 
 Locked decisions. Sources: **[P]** = prior brainstorm session (answers recovered from transcript), **[S]** = this session's question rounds, **[L]** = Lead synthesis approved in section review.
 
-| # | Decision | Choice |
-|---|---|---|
-| D-01 [P] | Decoupling depth | Full Core substrate extraction: product registry, Device principal (registration/tokens/list/fingerprints), trust & signing, discovery, rate limiting, errors, audit |
-| D-02 [P] | Topology | One Cloudflare Worker; `src/core/` + `src/services/<slug>/`; service registry; lint-enforced boundaries. Split-ready, not split |
-| D-03 [P+L] | Naming | Suite = **Polaris**; substrate = **Core** (not opt-in). License keeps brand `key`; Identity is brand `id`. Packages `@polaris/*` |
-| D-04 [S] | Service slugs | `license`, `config`, `release`, `update`, `identity` (singular; used for routes, dirs, sub-clients, `data-service`) |
-| D-05 [P] | Release vs Update | Release = truth (sync, channels, artifacts, changelog, install). Update = feed (appcast, `/version`, eligibility). `update → release` is the only sanctioned cross-service dependency |
-| D-06 [P] | Auth principal | Core owns Device: keyless `POST /<p>/devices/register` governed by per-product registration policy (`open` \| `requires-identity` \| `requires-license`) |
-| D-07 [P] | Route shape | Service-namespaced product routes + Core non-service paths (`/.well-known/*`, `/devices/*`) + conventional aliases for external tooling |
-| D-08 [S] | Wire shape | **Per-service signed documents** over a shared envelope; Core owns verify/cache/trust/clock-floor; signed offline bundle for air-gap |
-| D-09 [S] | ISSUER | `plrs.im` (host-neutral). Host stays `key.plrs.im` [P] |
-| D-10 [P] | Identifier rebrand | `pkey_`→`plrs_`, `pkeyt_`→`plrst_`, `X-PKey-*`→`X-Polaris-*`, `.pkey/`→`.polaris/` |
-| D-11 [P] | SDK shape | One package per language; Core + service sub-clients (`client.license`, `client.config`, …); subpath exports for tree-shaking (Node/React) |
-| D-12 [S] | Offline depth | All three: offline-tolerant grace; air-gapped activation (out-of-band signed bundles); local-only build profile. Consciously unlocks the old "offline activation OUT" exclusion |
-| D-13 [S] | Update gating | Per-product **`entitled`** feed access mode (opt-in) enforcing tier channels + version windows on feeds/artifacts; default stays `public` (closes R3 gap by policy, not by force) |
-| D-14 [P] | Identity scope | Carve the boundary now (move OIDC, browser session, portal into `services/identity/`); build centralized identity later |
-| D-15 [S] | Console UX | Unified suite console: per-service sections, nav filtered by the product's enabled services |
-| D-16 [S] | Deployment | Modular monolith, split-ready (restates D-02) |
-| D-17 [P] | Console theming | Per-section `data-service` accent + new `core` accent; amends brand-spec locked decision D4 (`data-service="key"` everywhere) |
-| D-18 [P] | Sequencing | This workstream proceeds independently; brand rollout and docs workstreams rebase onto the result afterward. Security audit already landed on `main` |
-| D-19 [L] | edgeMint | Folds into **Config** as a secret-delivery capability (`delivery: edgeMint`); routes at `/<p>/config/mint/*` |
-| D-20 [L] | Entitlements | Ride the **license** document (grants of the license/tier). Build gate enforced on `/license/document` responses |
-| D-21 [L] | Capabilities | Fail-closed when discovery succeeds (honest `enabled` flags); on discovery failure fall back to the app's configured expectations, never all-true |
-| D-22 [L] | Air-gap grace | `MAX_GRACE_SECONDS` stays 365 d; air-gapped installs re-issue bundles on ≤ annual cadence. Perpetual document kind deferred |
-| D-23 [L] | Deferred renames | Repo rename and any domain moves deferred; `@polaris` org verification is a P0 external gate |
-| D-24 [L] | Sparkle | Continues as the update mechanism; Swift `PolarisUpdate` target pins Sparkle ≥ 2.6.4 (CVE-2025-0509 floor) |
+| #          | Decision           | Choice                                                                                                                                                                                |
+| ---------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-01 [P]   | Decoupling depth   | Full Core substrate extraction: product registry, Device principal (registration/tokens/list/fingerprints), trust & signing, discovery, rate limiting, errors, audit                  |
+| D-02 [P]   | Topology           | One Cloudflare Worker; `src/core/` + `src/services/<slug>/`; service registry; lint-enforced boundaries. Split-ready, not split                                                       |
+| D-03 [P+L] | Naming             | Suite = **Polaris**; substrate = **Core** (not opt-in). License keeps brand `key`; Identity is brand `id`. Packages `@polaris/*`                                                      |
+| D-04 [S]   | Service slugs      | `license`, `config`, `release`, `update`, `identity` (singular; used for routes, dirs, sub-clients, `data-service`)                                                                   |
+| D-05 [P]   | Release vs Update  | Release = truth (sync, channels, artifacts, changelog, install). Update = feed (appcast, `/version`, eligibility). `update → release` is the only sanctioned cross-service dependency |
+| D-06 [P]   | Auth principal     | Core owns Device: keyless `POST /<p>/devices/register` governed by per-product registration policy (`open` \| `requires-identity` \| `requires-license`)                              |
+| D-07 [P]   | Route shape        | Service-namespaced product routes + Core non-service paths (`/.well-known/*`, `/devices/*`) + conventional aliases for external tooling                                               |
+| D-08 [S]   | Wire shape         | **Per-service signed documents** over a shared envelope; Core owns verify/cache/trust/clock-floor; signed offline bundle for air-gap                                                  |
+| D-09 [S]   | ISSUER             | `plrs.im` (host-neutral). Host stays `key.plrs.im` [P]                                                                                                                                |
+| D-10 [P]   | Identifier rebrand | `pkey_`→`plrs_`, `pkeyt_`→`plrst_`, `X-PKey-*`→`X-Polaris-*`, `.pkey/`→`.polaris/`                                                                                                    |
+| D-11 [P]   | SDK shape          | One package per language; Core + service sub-clients (`client.license`, `client.config`, …); subpath exports for tree-shaking (Node/React)                                            |
+| D-12 [S]   | Offline depth      | All three: offline-tolerant grace; air-gapped activation (out-of-band signed bundles); local-only build profile. Consciously unlocks the old "offline activation OUT" exclusion       |
+| D-13 [S]   | Update gating      | Per-product **`entitled`** feed access mode (opt-in) enforcing tier channels + version windows on feeds/artifacts; default stays `public` (closes R3 gap by policy, not by force)     |
+| D-14 [P]   | Identity scope     | Carve the boundary now (move OIDC, browser session, portal into `services/identity/`); build centralized identity later                                                               |
+| D-15 [S]   | Console UX         | Unified suite console: per-service sections, nav filtered by the product's enabled services                                                                                           |
+| D-16 [S]   | Deployment         | Modular monolith, split-ready (restates D-02)                                                                                                                                         |
+| D-17 [P]   | Console theming    | Per-section `data-service` accent + new `core` accent; amends brand-spec locked decision D4 (`data-service="key"` everywhere)                                                         |
+| D-18 [P]   | Sequencing         | This workstream proceeds independently; brand rollout and docs workstreams rebase onto the result afterward. Security audit already landed on `main`                                  |
+| D-19 [L]   | edgeMint           | Folds into **Config** as a secret-delivery capability (`delivery: edgeMint`); routes at `/<p>/config/mint/*`                                                                          |
+| D-20 [L]   | Entitlements       | Ride the **license** document (grants of the license/tier). Build gate enforced on `/license/document` responses                                                                      |
+| D-21 [L]   | Capabilities       | Fail-closed when discovery succeeds (honest `enabled` flags); on discovery failure fall back to the app's configured expectations, never all-true                                     |
+| D-22 [L]   | Air-gap grace      | `MAX_GRACE_SECONDS` stays 365 d; air-gapped installs re-issue bundles on ≤ annual cadence. Perpetual document kind deferred                                                           |
+| D-23 [L]   | Deferred renames   | Repo rename and any domain moves deferred; `@polaris` org verification is a P0 external gate                                                                                          |
+| D-24 [L]   | Sparkle            | Continues as the update mechanism; Swift `PolarisUpdate` target pins Sparkle ≥ 2.6.4 (CVE-2025-0509 floor)                                                                            |
 
 Out of scope (YAGNI, explicit): centralized identity capability; non-GitHub release providers (the seam is designed, not built); Sparkle delta updates; per-service Workers; Sparkle key lifecycle tooling; perpetual/no-expiry license documents.
 
@@ -48,14 +48,14 @@ Out of scope (YAGNI, explicit): centralized identity capability; non-GitHub rele
 
 ### 2.1 Taxonomy
 
-| Unit | Kind | Owns |
-|---|---|---|
-| **core** | substrate, always on | product registry; Device principal (registration, `plrst_` tokens, list/rename/deauthorize, fingerprints, facts/telemetry); trust & signing (per-product Ed25519 keys, JWKS, trust manifest, **trust refresh scheduling**); discovery; rate limiting; error taxonomy; audit; manifest ingest dispatch |
-| **license** | service | licensing & activation: activate/enroll/token/deauthorize, license document, licenses/keys, tiers (plans), fingerprint & auto-issue policy |
-| **config** | service | settings distribution: catalog (schema), config document (config + secrets), profiles, edge-mint secret delivery |
-| **release** | service | release distribution: GitHub App sync, channel resolution, artifacts (dl), changelog, install script, release truth store |
-| **update** | service | update distribution: appcast rendering, `/version`, eligibility, `entitled` access mode. Hard-depends on release |
-| **identity** | service | product OIDC, browser sessions, customer portal (carved now; centralized identity later) |
+| Unit         | Kind                 | Owns                                                                                                                                                                                                                                                                                                  |
+| ------------ | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **core**     | substrate, always on | product registry; Device principal (registration, `plrst_` tokens, list/rename/deauthorize, fingerprints, facts/telemetry); trust & signing (per-product Ed25519 keys, JWKS, trust manifest, **trust refresh scheduling**); discovery; rate limiting; error taxonomy; audit; manifest ingest dispatch |
+| **license**  | service              | licensing & activation: activate/enroll/token/deauthorize, license document, licenses/keys, tiers (plans), fingerprint & auto-issue policy                                                                                                                                                            |
+| **config**   | service              | settings distribution: catalog (schema), config document (config + secrets), profiles, edge-mint secret delivery                                                                                                                                                                                      |
+| **release**  | service              | release distribution: GitHub App sync, channel resolution, artifacts (dl), changelog, install script, release truth store                                                                                                                                                                             |
+| **update**   | service              | update distribution: appcast rendering, `/version`, eligibility, `entitled` access mode. Hard-depends on release                                                                                                                                                                                      |
+| **identity** | service              | product OIDC, browser sessions, customer portal (carved now; centralized identity later)                                                                                                                                                                                                              |
 
 Old module vocabulary maps: `licensing→license`, `config→config`, `releases→release+update`, `oidc→identity`, `edgeMint→config` capability.
 
@@ -88,12 +88,12 @@ Every service document carries: `iss: "plrs.im"` · `aud: <product-slug>` · `de
 
 ### 3.2 Documents
 
-| Document | `typ` | Payload (beyond envelope) | Endpoint |
-|---|---|---|---|
-| License | `plrs-license+jws` | `licenseId`, `profile`, **`entitlements`** (incl. `channels`, `app.minVersion`/`maxVersion`, `deviceLimit`, catalog flags); license *state* stays gate-derived, not carried | `GET /<p>/license/document` |
-| Config | `plrs-config+jws` | `config`, `secrets`, catalog `schemaVersion` | `GET /<p>/config/document` |
-| Trust manifest | `plrs-trust+jws` | key set (semantics unchanged: pins-terminal, replace-not-merge, revoked-key positive prune) | `GET /<p>/.well-known/polaris-trust.jws` |
-| Offline bundle | `plrs-bundle+jws` | `{ bundleId, deviceId, docs: { license?: <jws>, config?: <jws> }, trust: <jws> }` | minted out-of-band (§7.2) |
+| Document       | `typ`              | Payload (beyond envelope)                                                                                                                                                   | Endpoint                                 |
+| -------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| License        | `plrs-license+jws` | `licenseId`, `profile`, **`entitlements`** (incl. `channels`, `app.minVersion`/`maxVersion`, `deviceLimit`, catalog flags); license _state_ stays gate-derived, not carried | `GET /<p>/license/document`              |
+| Config         | `plrs-config+jws`  | `config`, `secrets`, catalog `schemaVersion`                                                                                                                                | `GET /<p>/config/document`               |
+| Trust manifest | `plrs-trust+jws`   | key set (semantics unchanged: pins-terminal, replace-not-merge, revoked-key positive prune)                                                                                 | `GET /<p>/.well-known/polaris-trust.jws` |
+| Offline bundle | `plrs-bundle+jws`  | `{ bundleId, deviceId, docs: { license?: <jws>, config?: <jws> }, trust: <jws> }`                                                                                           | minted out-of-band (§7.2)                |
 
 Per-doc `ETag`/304 with the v2 half-life re-fetch rule (`REFRESH_MARGIN_SECONDS`) applied per document. 401 → one `POST /<p>/license/token` re-acquire, then retry (unchanged). Build-gate enforcement (channels/version windows) returns 403 + `allowedRange` on **`/license/document`** (and identity's `/session`); the config document enforces device auth only.
 
@@ -114,14 +114,14 @@ Per-doc `ETag`/304 with the v2 half-life re-fetch rule (`REFRESH_MARGIN_SECONDS`
 
 ### 4.1 Product-scoped routes (public wire)
 
-| Area | Canonical routes | Notes |
-|---|---|---|
-| core | `/<p>/.well-known/{polaris.json, jwks.json, polaris-trust.jws}` · `/<p>/devices/register` · `/<p>/devices[/:id]` (GET/PATCH/DELETE, self-only) · `POST /<p>/devices/report` | `devices/report` relocates `/config/report` (it was license anti-fraud telemetry under a config path) |
-| license | `POST /<p>/license/{activate,enroll,token,deauthorize}` · `GET /<p>/license/document` | today's `/activate` etc., renamespaced |
-| config | `GET /<p>/config/document` · `GET /<p>/config/schema` · `/<p>/config/mint/:id/{token,auth}` | schema = the public catalog; mint = edge-mint relocated |
-| release | `GET /<p>/release/{changelog,install.sh}` · `GET /<p>/release/dl/:version/:binary-:arch[.dmg]` | dl unifies today's `/cli/*` and `/dmg/*` |
-| update | `GET /<p>/update/appcast.xml` · `GET /<p>/update/:channel/appcast.xml` · `GET /<p>/update/version` | appcast gains per-arch support (`?arch=` + dual enclosures); wiring release notes fixes the CDATA `]]>` neutralization (R6-13/R9-08) in the same change |
-| identity | `/<p>/identity/auth/{start,callback,poll,logout}` · `/<p>/identity/auth/device/{start,verify,poll}` · `GET /<p>/identity/session` · `POST /<p>/identity/session/license` | `/auth/login` alias of `/auth/start` is dropped (redundant) |
+| Area     | Canonical routes                                                                                                                                                            | Notes                                                                                                                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| core     | `/<p>/.well-known/{polaris.json, jwks.json, polaris-trust.jws}` · `/<p>/devices/register` · `/<p>/devices[/:id]` (GET/PATCH/DELETE, self-only) · `POST /<p>/devices/report` | `devices/report` relocates `/config/report` (it was license anti-fraud telemetry under a config path)                                                   |
+| license  | `POST /<p>/license/{activate,enroll,token,deauthorize}` · `GET /<p>/license/document`                                                                                       | today's `/activate` etc., renamespaced                                                                                                                  |
+| config   | `GET /<p>/config/document` · `GET /<p>/config/schema` · `/<p>/config/mint/:id/{token,auth}`                                                                                 | schema = the public catalog; mint = edge-mint relocated                                                                                                 |
+| release  | `GET /<p>/release/{changelog,install.sh}` · `GET /<p>/release/dl/:version/:binary-:arch[.dmg]`                                                                              | dl unifies today's `/cli/*` and `/dmg/*`                                                                                                                |
+| update   | `GET /<p>/update/appcast.xml` · `GET /<p>/update/:channel/appcast.xml` · `GET /<p>/update/version`                                                                          | appcast gains per-arch support (`?arch=` + dual enclosures); wiring release notes fixes the CDATA `]]>` neutralization (R6-13/R9-08) in the same change |
+| identity | `/<p>/identity/auth/{start,callback,poll,logout}` · `/<p>/identity/auth/device/{start,verify,poll}` · `GET /<p>/identity/session` · `POST /<p>/identity/session/license`    | `/auth/login` alias of `/auth/start` is dropped (redundant)                                                                                             |
 
 **Conventional aliases (stable, tooling-facing):** `/<p>/appcast.xml` and `/<p>/<channel>/appcast.xml` (shipped `SUFeedURL` values) → update; `/<p>/install.sh` (published curl-pipe URLs) → release; `/<p>/version` → update. Aliases are permanent, documented, and excluded from future deprecations.
 
@@ -161,13 +161,13 @@ packages/worker/src/
 
 ### 5.2 Data ownership (logical; no physical table moves)
 
-| Owner | Tables |
-|---|---|
-| core | `products` (+ new `services_json`/`services_source`), `product_keys`, `product_secrets`, `devices`, `device_fingerprints`, `device_facts`, `audit`, `product_sync_state`, `schema_index_assertion` |
-| license | `licenses`, `keys_index`, `tiers`, `license_profiles` |
-| config | `product_schema`, `profiles`, `edge_mint_config` |
-| release | `release_config`, `release_metadata`, `release_artifacts`, `release_channels`, `release_health`, `release_download_tokens` |
-| identity | `oidc_config`, `provisioning_config`, `portal_accounts`, `portal_account_emails`, `portal_account_identities`, `portal_license_links`, `portal_product_settings`, `portal_audit` |
+| Owner    | Tables                                                                                                                                                                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| core     | `products` (+ new `services_json`/`services_source`), `product_keys`, `product_secrets`, `devices`, `device_fingerprints`, `device_facts`, `audit`, `product_sync_state`, `schema_index_assertion` |
+| license  | `licenses`, `keys_index`, `tiers`, `license_profiles`                                                                                                                                              |
+| config   | `product_schema`, `profiles`, `edge_mint_config`                                                                                                                                                   |
+| release  | `release_config`, `release_metadata`, `release_artifacts`, `release_channels`, `release_health`, `release_download_tokens`                                                                         |
+| identity | `oidc_config`, `provisioning_config`, `portal_accounts`, `portal_account_emails`, `portal_account_identities`, `portal_license_links`, `portal_product_settings`, `portal_audit`                   |
 
 Cross-domain reads are confined to declared seams (the eleven coupling points inventoried during research); lint on query call sites keeps new ones from accruing silently. Tiers remain license-owned even though they reference config profiles and carry update policy — license owns plans; other services consume entitlements from the license document.
 
@@ -224,27 +224,27 @@ Per-app integration mode with **no network code paths active**: Swift by not lin
 
 ## 9. Rebrand sweep & external gates
 
-| Item | New value | Gate |
-|---|---|---|
-| npm scope | `@polaris/*` (jws, protocol→client-core split, catalog, manifest, node, react, cli, worker, admin, tools, products) | **External:** `polaris` GitHub org + Packages scope + `.npmrc`/token. Verify at P0; if unavailable, fallback decision returns to Vlad (e.g. `@plrs/*`) |
-| PyPI dist / import | target `polaris` / `polaris` | **External:** PyPI name availability — verify at P0; fallback `polaris-sdk` or keep `polaris-key` (Vlad decides) |
-| Swift package | `Polaris` | — |
-| CLI bin | `pkey` → `plrs` (manifest authoring); SDK-embedded CLIs unchanged in shape | — |
-| Manifest dir | `.pkey/` → `.polaris/` (webhook, resync, CLI, docs, djdl repo) | djdl repo updated at re-seed |
-| Wire identifiers | `plrs_`/`plrst_`/`X-Polaris-*`/`iss plrs.im` | corpus v2 |
-| Brand registry | add `config`/`release`/`update`/`core` service entries | **External:** `polaris-brand` repo edit |
-| Host / repo name | `key.plrs.im` stays; repo rename deferred | D-23 |
+| Item               | New value                                                                                                           | Gate                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| npm scope          | `@polaris/*` (jws, protocol→client-core split, catalog, manifest, node, react, cli, worker, admin, tools, products) | **External:** `polaris` GitHub org + Packages scope + `.npmrc`/token. Verify at P0; if unavailable, fallback decision returns to Vlad (e.g. `@plrs/*`) |
+| PyPI dist / import | target `polaris` / `polaris`                                                                                        | **External:** PyPI name availability — verify at P0; fallback `polaris-sdk` or keep `polaris-key` (Vlad decides)                                       |
+| Swift package      | `Polaris`                                                                                                           | —                                                                                                                                                      |
+| CLI bin            | `pkey` → `plrs` (manifest authoring); SDK-embedded CLIs unchanged in shape                                          | —                                                                                                                                                      |
+| Manifest dir       | `.pkey/` → `.polaris/` (webhook, resync, CLI, docs, djdl repo)                                                      | djdl repo updated at re-seed                                                                                                                           |
+| Wire identifiers   | `plrs_`/`plrst_`/`X-Polaris-*`/`iss plrs.im`                                                                        | corpus v2                                                                                                                                              |
+| Brand registry     | add `config`/`release`/`update`/`core` service entries                                                              | **External:** `polaris-brand` repo edit                                                                                                                |
+| Host / repo name   | `key.plrs.im` stays; repo rename deferred                                                                           | D-23                                                                                                                                                   |
 
 ## 10. Phasing, orchestration, risks
 
 **Phases** (each green — build + all four language test suites + corpus drift gate — before the next):
 
-- **P0 Contracts** *(Lead-authored)*: WIRE-CONTRACT-V3 doc; protocol/client-core package skeletons; corpus v2 generator + vectors; `services_json` migration + manifest `enabledModules` persistence; service registry skeleton; external-gate verification (`@polaris` org, PyPI name).
+- **P0 Contracts** _(Lead-authored)_: WIRE-CONTRACT-V3 doc; protocol/client-core package skeletons; corpus v2 generator + vectors; `services_json` migration + manifest `enabledModules` persistence; service registry skeleton; external-gate verification (`@polaris` org, PyPI name).
 - **P1 Worker core & services**: core extraction; service dirs + registry mounts + enablement gating; route table + aliases; split documents; `/devices/register`; wire identifier rebrand server-side; djdl re-seed.
 - **P2 Release/Update**: module split; truth-store ingestion via resync; `entitled` mode; per-arch appcast; release-notes wiring + CDATA fix; R6-12 fix.
 - **P3 Identity carve**: oidc/browserSession/portal relocate behind the identity descriptor; `/identity/*` routes; alias removals.
 - **P4 JS core + Node**: `@polaris/client-core`; Node sub-client re-shape; store v3; CLI; conformance runner re-attribution.
-- **P5 SDK fan-out** *(parallel: React, Python, Swift)*: per-language splits, parity fixes, prebuilt UIs (ConfigPanel/UpdatePrompt/DeviceManager), `PolarisUpdate` + Sparkle wiring.
+- **P5 SDK fan-out** _(parallel: React, Python, Swift)_: per-language splits, parity fixes, prebuilt UIs (ConfigPanel/UpdatePrompt/DeviceManager), `PolarisUpdate` + Sparkle wiring.
 - **P6 Offline**: bundle mint (console + `plrs` CLI) + `importBundle()` across SDKs + local-only profiles + corpus bundle cases.
 - **P7 Console**: suite shell, service sections, accents, Settings dissolution, portal repointing.
 - **P8 Finalization**: rebrand sweep completion (`.polaris/`, `plrs`), docs updates, risk-register closeout, exit criteria.
@@ -253,14 +253,14 @@ Per-app integration mode with **no network code paths active**: Swift by not lin
 
 **Top risks**
 
-| Risk | Mitigation |
-|---|---|
-| 4-language corpus lockstep during a wire break | Corpus-first (P0); `gen:corpus --check` remains the CI drift gate; per-language suites all green per phase |
-| Clock-floor regression while re-orchestrating refresh | Core-owned trust schedule (§3.3); dedicated multi-doc `clockFloorCases` in corpus v2 |
-| Bundle import as new attack surface | Pins-only bundle verification, verify-everything-before-write, no partial imports, corpus bundle vectors |
-| Truth-store arming of R6-12 | Fix is a blocking requirement of P2, not a follow-up |
-| `@polaris` org / PyPI name unavailable | P0 external verification; fallback decision escalates to Vlad before any publish-name is baked into code |
-| Appcast changes breaking live Sparkle clients | djdl is the only adopter and is re-seeded; aliases keep shipped `SUFeedURL`s working |
-| Four "modules" surfaces drifting back | All become projections of `services_json`; lint forbids new presence-inference |
+| Risk                                                  | Mitigation                                                                                                 |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 4-language corpus lockstep during a wire break        | Corpus-first (P0); `gen:corpus --check` remains the CI drift gate; per-language suites all green per phase |
+| Clock-floor regression while re-orchestrating refresh | Core-owned trust schedule (§3.3); dedicated multi-doc `clockFloorCases` in corpus v2                       |
+| Bundle import as new attack surface                   | Pins-only bundle verification, verify-everything-before-write, no partial imports, corpus bundle vectors   |
+| Truth-store arming of R6-12                           | Fix is a blocking requirement of P2, not a follow-up                                                       |
+| `@polaris` org / PyPI name unavailable                | P0 external verification; fallback decision escalates to Vlad before any publish-name is baked into code   |
+| Appcast changes breaking live Sparkle clients         | djdl is the only adopter and is re-seeded; aliases keep shipped `SUFeedURL`s working                       |
+| Four "modules" surfaces drifting back                 | All become projections of `services_json`; lint forbids new presence-inference                             |
 
 **Verification model:** existing behavior pins stay authoritative — wire-contract regression suites (per language), gate matrix, fingerprint corpus, React parity/a11y harnesses, worker e2e — all re-baselined intentionally per phase, never deleted to go green. Tests run on Node 22 (better-sqlite3 constraint).

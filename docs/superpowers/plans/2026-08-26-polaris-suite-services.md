@@ -33,56 +33,56 @@
 
 Product-scoped (public wire). `<p>` = product slug. Aliases are permanent (D-07).
 
-| Old | New (canonical) | Notes |
-|---|---|---|
-| `GET /<p>/.well-known/polaris.json` | same | core; registry-assembled fragments (§P1.T6) |
-| `GET /<p>/.well-known/jwks.json` | same | core |
-| `GET /<p>/.well-known/polaris-trust.jws` | same | core |
-| — | `POST /<p>/devices/register` | **new**, core; registration policy (§P1.T5) |
-| `GET/PATCH/DELETE /<p>/devices[/:id]` | same | core (moves out of licensing.ts) |
-| `POST /<p>/config/report` | `POST /<p>/devices/report` | core telemetry; old path removed |
-| `POST /<p>/activate` | `POST /<p>/license/activate` | |
-| `POST /<p>/enroll` | `POST /<p>/license/enroll` | |
-| `POST /<p>/token` | `POST /<p>/license/token` | |
-| `POST /<p>/deauthorize` | `POST /<p>/license/deauthorize` | |
-| `GET /<p>/config` | `GET /<p>/license/document` **and** `GET /<p>/config/document` | split documents (§P1.T4) |
-| `GET /<p>/account` | *(removed)* | superseded by `/devices` + license document |
-| `GET /<p>/schema` | `GET /<p>/config/schema` | |
-| `GET/POST /<p>/mint/:id/token` | `GET/POST /<p>/config/mint/:id/token` | D-19 |
-| `GET /<p>/mint/:id/auth` | `GET /<p>/config/mint/:id/auth` | D-19 |
-| `GET /<p>/session` | `GET /<p>/identity/session` | |
-| `POST /<p>/session/license` | `POST /<p>/identity/session/license` | |
-| `GET /<p>/auth/start` | `GET /<p>/identity/auth/start` | |
-| `GET /<p>/auth/login` | *(removed)* | redundant alias of start |
-| `POST /<p>/auth/logout` | `POST /<p>/identity/auth/logout` | |
-| `GET /<p>/auth/callback` | `GET /<p>/identity/auth/callback` | |
-| `GET /<p>/auth/poll` | `GET /<p>/identity/auth/poll` | |
-| `POST /<p>/auth/device/start` | `POST /<p>/identity/auth/device/start` | |
-| `GET+POST /<p>/auth/device/verify` | `GET+POST /<p>/identity/auth/device/verify` | |
-| `POST /<p>/auth/device/poll` | `POST /<p>/identity/auth/device/poll` | |
-| `GET /<p>/version` | `GET /<p>/update/version` + **alias** `/<p>/version` | |
-| `GET /<p>/changelog` | `GET /<p>/release/changelog` | |
-| `GET /<p>/install.sh` | `GET /<p>/release/install.sh` + **alias** `/<p>/install.sh` | |
-| `GET /<p>/cli/:v/:bin-:arch` | `GET /<p>/release/dl/:v/:bin-:arch` | `?checksum=sha256` kept |
-| `GET /<p>/dmg/:v/:bin-:arch.dmg` | `GET /<p>/release/dl/:v/:bin-:arch.dmg` | |
-| `GET /<p>/appcast.xml` | `GET /<p>/update/appcast.xml` + **alias** `/<p>/appcast.xml` | gains `?arch=arm64|x86_64` |
-| `GET /<p>/:channel/appcast.xml` | `GET /<p>/update/:channel/appcast.xml` + **alias** | |
+| Old                                      | New (canonical)                                                | Notes                                       |
+| ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------- | ------- |
+| `GET /<p>/.well-known/polaris.json`      | same                                                           | core; registry-assembled fragments (§P1.T6) |
+| `GET /<p>/.well-known/jwks.json`         | same                                                           | core                                        |
+| `GET /<p>/.well-known/polaris-trust.jws` | same                                                           | core                                        |
+| —                                        | `POST /<p>/devices/register`                                   | **new**, core; registration policy (§P1.T5) |
+| `GET/PATCH/DELETE /<p>/devices[/:id]`    | same                                                           | core (moves out of licensing.ts)            |
+| `POST /<p>/config/report`                | `POST /<p>/devices/report`                                     | core telemetry; old path removed            |
+| `POST /<p>/activate`                     | `POST /<p>/license/activate`                                   |                                             |
+| `POST /<p>/enroll`                       | `POST /<p>/license/enroll`                                     |                                             |
+| `POST /<p>/token`                        | `POST /<p>/license/token`                                      |                                             |
+| `POST /<p>/deauthorize`                  | `POST /<p>/license/deauthorize`                                |                                             |
+| `GET /<p>/config`                        | `GET /<p>/license/document` **and** `GET /<p>/config/document` | split documents (§P1.T4)                    |
+| `GET /<p>/account`                       | _(removed)_                                                    | superseded by `/devices` + license document |
+| `GET /<p>/schema`                        | `GET /<p>/config/schema`                                       |                                             |
+| `GET/POST /<p>/mint/:id/token`           | `GET/POST /<p>/config/mint/:id/token`                          | D-19                                        |
+| `GET /<p>/mint/:id/auth`                 | `GET /<p>/config/mint/:id/auth`                                | D-19                                        |
+| `GET /<p>/session`                       | `GET /<p>/identity/session`                                    |                                             |
+| `POST /<p>/session/license`              | `POST /<p>/identity/session/license`                           |                                             |
+| `GET /<p>/auth/start`                    | `GET /<p>/identity/auth/start`                                 |                                             |
+| `GET /<p>/auth/login`                    | _(removed)_                                                    | redundant alias of start                    |
+| `POST /<p>/auth/logout`                  | `POST /<p>/identity/auth/logout`                               |                                             |
+| `GET /<p>/auth/callback`                 | `GET /<p>/identity/auth/callback`                              |                                             |
+| `GET /<p>/auth/poll`                     | `GET /<p>/identity/auth/poll`                                  |                                             |
+| `POST /<p>/auth/device/start`            | `POST /<p>/identity/auth/device/start`                         |                                             |
+| `GET+POST /<p>/auth/device/verify`       | `GET+POST /<p>/identity/auth/device/verify`                    |                                             |
+| `POST /<p>/auth/device/poll`             | `POST /<p>/identity/auth/device/poll`                          |                                             |
+| `GET /<p>/version`                       | `GET /<p>/update/version` + **alias** `/<p>/version`           |                                             |
+| `GET /<p>/changelog`                     | `GET /<p>/release/changelog`                                   |                                             |
+| `GET /<p>/install.sh`                    | `GET /<p>/release/install.sh` + **alias** `/<p>/install.sh`    |                                             |
+| `GET /<p>/cli/:v/:bin-:arch`             | `GET /<p>/release/dl/:v/:bin-:arch`                            | `?checksum=sha256` kept                     |
+| `GET /<p>/dmg/:v/:bin-:arch.dmg`         | `GET /<p>/release/dl/:v/:bin-:arch.dmg`                        |                                             |
+| `GET /<p>/appcast.xml`                   | `GET /<p>/update/appcast.xml` + **alias** `/<p>/appcast.xml`   | gains `?arch=arm64                          | x86_64` |
+| `GET /<p>/:channel/appcast.xml`          | `GET /<p>/update/:channel/appcast.xml` + **alias**             |                                             |
 
 Platform/portal: `/manage/*`, `/webhooks/github`, root portal routes unchanged. Admin API regroups under `/manage/api/products/<slug>/…`:
 
-| Old admin resource | New |
-|---|---|
-| `licenses[/…]` | `license/licenses[/…]` |
-| `tiers[/…]` | `license/tiers[/…]` |
-| `policy`, `policy/revert` | `license/policy`, `license/policy/revert` |
-| `schema` | `config/catalog` |
-| `profiles[/…]` | `config/profiles[/…]` |
-| `release/health`, `release/resync` | same (already service-shaped) + `release/releases` (truth store, P2) |
-| `portal` | `identity/portal` |
-| — | `update/settings` (access modes incl. `entitled`, compat window relocated) **new** |
-| — | `services` (GET/PATCH), `services/revert` **new** (§P1.T7) |
-| `keys/*` (signing), `secrets/*`, `activity`, product CRUD, `kek` | unchanged (core/platform) |
-| — | `POST bundles` **new** (P6: offline bundle mint) |
+| Old admin resource                                               | New                                                                                |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `licenses[/…]`                                                   | `license/licenses[/…]`                                                             |
+| `tiers[/…]`                                                      | `license/tiers[/…]`                                                                |
+| `policy`, `policy/revert`                                        | `license/policy`, `license/policy/revert`                                          |
+| `schema`                                                         | `config/catalog`                                                                   |
+| `profiles[/…]`                                                   | `config/profiles[/…]`                                                              |
+| `release/health`, `release/resync`                               | same (already service-shaped) + `release/releases` (truth store, P2)               |
+| `portal`                                                         | `identity/portal`                                                                  |
+| —                                                                | `update/settings` (access modes incl. `entitled`, compat window relocated) **new** |
+| —                                                                | `services` (GET/PATCH), `services/revert` **new** (§P1.T7)                         |
+| `keys/*` (signing), `secrets/*`, `activity`, product CRUD, `kek` | unchanged (core/platform)                                                          |
+| —                                                                | `POST bundles` **new** (P6: offline bundle mint)                                   |
 
 The admin dispatcher's 5-segment destructure cap (`admin/api.ts:113`) is removed — the new core router owns full-path dispatch (§P1.T2).
 
@@ -106,22 +106,22 @@ Logical ownership is spec §5.2 verbatim. Release truth store (`release_metadata
 
 ### R3. Package & naming map
 
-| Old | New | Phase |
-|---|---|---|
-| `@polaris-key/jws` | `@plrs/jws` | P0 sweep |
-| `@polaris-key/protocol` | `@plrs/protocol` (service-scoped modules + subpaths) | P0 |
-| `@polaris-key/catalog` | `@plrs/catalog` | P0 sweep |
-| `@polaris-key/manifest` | `@plrs/manifest` | P0 sweep |
-| — | `@plrs/client-core` (new, `packages/client-core`) | P0 skeleton, P4 complete |
-| `@polaris-key/node` | `@plrs/node` | P0 sweep (rename), P4 (re-shape) |
-| `@polaris-key/react` | `@plrs/react` | P0 sweep (rename), P5 (re-shape) |
-| `@polaris-key/cli` (bin `pkey`) | `@plrs/cli` (bin `plrs`) | P0 sweep (scope), P8 (bin) |
-| `@polaris-key/{worker,admin,tools,products,conformance-node}` | `@plrs/…` | P0 sweep |
-| `sdks/python` dist `polaris-key`, import `polaris_key` | dist `polaris-suite`, import `polaris`, script `polaris` | P5 |
-| Swift package `PolarisKey` | `Polaris` (targets `PolarisCore/PolarisLicense/PolarisConfig/PolarisUpdate/PolarisUI`, umbrella `Polaris`) | P5 |
-| `pkey_`/`pkeyt_` prefixes, `X-PKey-*`, `iss key.plrs.im` | `plrs_`/`plrst_`, `X-Polaris-*`, `iss plrs.im` | P0 (protocol) / P1 (worker) / P4–P5 (SDKs) |
-| `.pkey/` manifest dir | `.polaris/` preferred, `.pkey/` dual-read | P1 (dual-read), P8 (docs) |
-| Session tags `pkey.admin.v1\|` / `pkey.portal.v1\|`, cookies `__Host-pkey_*` | `plrs.admin.v1\|` / `plrs.portal.v1\|`, `__Host-plrs_*` | P1 |
+| Old                                                                          | New                                                                                                        | Phase                                      |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `@polaris-key/jws`                                                           | `@plrs/jws`                                                                                                | P0 sweep                                   |
+| `@polaris-key/protocol`                                                      | `@plrs/protocol` (service-scoped modules + subpaths)                                                       | P0                                         |
+| `@polaris-key/catalog`                                                       | `@plrs/catalog`                                                                                            | P0 sweep                                   |
+| `@polaris-key/manifest`                                                      | `@plrs/manifest`                                                                                           | P0 sweep                                   |
+| —                                                                            | `@plrs/client-core` (new, `packages/client-core`)                                                          | P0 skeleton, P4 complete                   |
+| `@polaris-key/node`                                                          | `@plrs/node`                                                                                               | P0 sweep (rename), P4 (re-shape)           |
+| `@polaris-key/react`                                                         | `@plrs/react`                                                                                              | P0 sweep (rename), P5 (re-shape)           |
+| `@polaris-key/cli` (bin `pkey`)                                              | `@plrs/cli` (bin `plrs`)                                                                                   | P0 sweep (scope), P8 (bin)                 |
+| `@polaris-key/{worker,admin,tools,products,conformance-node}`                | `@plrs/…`                                                                                                  | P0 sweep                                   |
+| `sdks/python` dist `polaris-key`, import `polaris_key`                       | dist `polaris-suite`, import `polaris`, script `polaris`                                                   | P5                                         |
+| Swift package `PolarisKey`                                                   | `Polaris` (targets `PolarisCore/PolarisLicense/PolarisConfig/PolarisUpdate/PolarisUI`, umbrella `Polaris`) | P5                                         |
+| `pkey_`/`pkeyt_` prefixes, `X-PKey-*`, `iss key.plrs.im`                     | `plrs_`/`plrst_`, `X-Polaris-*`, `iss plrs.im`                                                             | P0 (protocol) / P1 (worker) / P4–P5 (SDKs) |
+| `.pkey/` manifest dir                                                        | `.polaris/` preferred, `.pkey/` dual-read                                                                  | P1 (dual-read), P8 (docs)                  |
+| Session tags `pkey.admin.v1\|` / `pkey.portal.v1\|`, cookies `__Host-pkey_*` | `plrs.admin.v1\|` / `plrs.portal.v1\|`, `__Host-plrs_*`                                                    | P1                                         |
 
 ### R4. Wire contract v3 — normative shapes (authored fully in P0.T3's doc; summarized here for type consistency)
 
@@ -129,29 +129,52 @@ Logical ownership is spec §5.2 verbatim. Release truth store (`release_metadata
 // @plrs/protocol/core
 export const PROTOCOL_VERSION = 3;
 export const ISSUER = "plrs.im";
-export type JwsTyp = "plrs-license+jws" | "plrs-config+jws" | "plrs-trust+jws" | "plrs-bundle+jws";
-export interface DocClaims {           // shared envelope (spec §3.1)
-  iss: string; aud: string; deviceId: string;
-  issuedAt: number; expiresAt: number; graceUntil: number;
+export type JwsTyp =
+  | "plrs-license+jws"
+  | "plrs-config+jws"
+  | "plrs-trust+jws"
+  | "plrs-bundle+jws";
+export interface DocClaims {
+  // shared envelope (spec §3.1)
+  iss: string;
+  aud: string;
+  deviceId: string;
+  issuedAt: number;
+  expiresAt: number;
+  graceUntil: number;
 }
-export const HEADER_DEVICE = "X-Polaris-Device";      // + Version/Channel/SDK/SDK-Version/Platform/Arch
+export const HEADER_DEVICE = "X-Polaris-Device"; // + Version/Channel/SDK/SDK-Version/Platform/Arch
 // @plrs/protocol/license
 export interface LicenseDoc extends DocClaims {
-  licenseId: string; profile?: DocProfile;
-  entitlements: Record<string, JSONValue>;            // channels, app.minVersion/maxVersion, deviceLimit, flags
+  licenseId: string;
+  profile?: DocProfile;
+  entitlements: Record<string, JSONValue>; // channels, app.minVersion/maxVersion, deviceLimit, flags
 }
-export type LicenseStatus = "ok" | "grace" | "expired" | "revoked" | "needs-activation"
-  | "version-too-old" | "version-too-new" | "channel-not-entitled" | "not-applicable";
+export type LicenseStatus =
+  | "ok"
+  | "grace"
+  | "expired"
+  | "revoked"
+  | "needs-activation"
+  | "version-too-old"
+  | "version-too-new"
+  | "channel-not-entitled"
+  | "not-applicable";
 // @plrs/protocol/config
 export interface ConfigDoc extends DocClaims {
   schemaVersion: number;
-  config: Record<string, ManagedEntry>; secrets: Record<string, ManagedEntry>;
+  config: Record<string, ManagedEntry>;
+  secrets: Record<string, ManagedEntry>;
 }
 // @plrs/protocol/core (bundle)
 export interface BundleDoc {
-  bundleId: string; aud: string; deviceId: string; issuedAt: number; expiresAt: number;
-  docs: { license?: string; config?: string };        // inner compact JWSs
-  trust: string;                                      // trust-manifest compact JWS
+  bundleId: string;
+  aud: string;
+  deviceId: string;
+  issuedAt: number;
+  expiresAt: number;
+  docs: { license?: string; config?: string }; // inner compact JWSs
+  trust: string; // trust-manifest compact JWS
 }
 ```
 
@@ -159,15 +182,20 @@ export interface BundleDoc {
 // @plrs/client-core gate (spec §3.3)
 export type ActivationSource = "token" | "bundle";
 export interface GateInput {
-  licenseServiceEnabled: boolean;                     // false ⇒ status "not-applicable", isUsable true
-  activation: ActivationSource | null;                // replaces hasToken
-  doc: LicenseDoc | null; now: number; highWaterMark?: number;
-  lastSyncUnauthorized?: boolean; blocked?: BlockedState | null; lastVerifiedAt?: number | null;
+  licenseServiceEnabled: boolean; // false ⇒ status "not-applicable", isUsable true
+  activation: ActivationSource | null; // replaces hasToken
+  doc: LicenseDoc | null;
+  now: number;
+  highWaterMark?: number;
+  lastSyncUnauthorized?: boolean;
+  blocked?: BlockedState | null;
+  lastVerifiedAt?: number | null;
 }
 // cache v3 (core-owned, per-service slices; signed artifacts only + tighten-only hints)
 export const CACHE_VERSION = 3;
 export interface CacheRecordV3 {
-  v: 3; trustJws?: string;
+  v: 3;
+  trustJws?: string;
   docs?: { license?: string; config?: string };
   etags?: { license?: string; config?: string };
   importedBundle?: { bundleId: string; importedAt: number };
@@ -252,13 +280,29 @@ POST /manage/api/products/<slug>/bundles   {deviceId, graceDays≤365, includeCo
 - [ ] `core/services.ts`:
 
 ```ts
-export type ServiceSlug = "license" | "config" | "release" | "update" | "identity";
-export const SERVICE_SLUGS: readonly ServiceSlug[] = ["license","config","release","update","identity"];
+export type ServiceSlug =
+  | "license"
+  | "config"
+  | "release"
+  | "update"
+  | "identity";
+export const SERVICE_SLUGS: readonly ServiceSlug[] = [
+  "license",
+  "config",
+  "release",
+  "update",
+  "identity",
+];
 export type ServicesMap = Record<ServiceSlug, { enabled: boolean }>;
-export const DEFAULT_SERVICES: ServicesMap = { license:{enabled:true}, config:{enabled:true},
-  release:{enabled:false}, update:{enabled:false}, identity:{enabled:false} };
-export function parseServices(json: string | null): ServicesMap;   // strict; unknown keys rejected; null ⇒ DEFAULT
-export function validateServices(s: ServicesMap): string[];        // "update requires release", …
+export const DEFAULT_SERVICES: ServicesMap = {
+  license: { enabled: true },
+  config: { enabled: true },
+  release: { enabled: false },
+  update: { enabled: false },
+  identity: { enabled: false },
+};
+export function parseServices(json: string | null): ServicesMap; // strict; unknown keys rejected; null ⇒ DEFAULT
+export function validateServices(s: ServicesMap): string[]; // "update requires release", …
 ```
 
 - [ ] Manifest: map old module names (`licensing→license`, `releases→release`+`update` when a release block exists, `oidc→identity`, `edgeMint` folds into config) and accept new names directly; `parseManifest` returns `services: ServicesMap`; validation errors per spec §2.2 (upgrade `config_without_activation` to error when registration policy is `requires-license`; new `update_requires_release`). Manifest gains `devices.registration` (`open|requires-identity|requires-license`, default derived per spec §2.3).
@@ -273,17 +317,34 @@ export function validateServices(s: ServicesMap): string[];        // "update re
 
 ```ts
 import type { ServiceSlug, ServicesMap } from "./services";
-export interface ServiceContext { req: Request; env: Env; product: Product; rest: string[]; }
+export interface ServiceContext {
+  req: Request;
+  env: Env;
+  product: Product;
+  rest: string[];
+}
 export interface ServiceDescriptor {
   slug: ServiceSlug;
-  handle(ctx: ServiceContext): Promise<Response | null>;          // null = no route match within service
-  discoveryFragment(product: Product, env: Env): Promise<Record<string, unknown>>;
-  adminHandle?(ctx: ServiceContext & { session: AdminSession }): Promise<Response | null>;
-  manifestIngest?(parsed: ParsedManifest, product: string): D1PreparedStatement[];
+  handle(ctx: ServiceContext): Promise<Response | null>; // null = no route match within service
+  discoveryFragment(
+    product: Product,
+    env: Env,
+  ): Promise<Record<string, unknown>>;
+  adminHandle?(
+    ctx: ServiceContext & { session: AdminSession },
+  ): Promise<Response | null>;
+  manifestIngest?(
+    parsed: ParsedManifest,
+    product: string,
+  ): D1PreparedStatement[];
 }
-export function dispatchService(registry: Map<ServiceSlug, ServiceDescriptor>,
-  slug: ServiceSlug, services: ServicesMap, ctx: ServiceContext): Promise<Response>;
-  // disabled ⇒ 404 {"error":{"code":"not_found"}} (hide-don't-reveal); enabled ⇒ descriptor.handle, 404 on null
+export function dispatchService(
+  registry: Map<ServiceSlug, ServiceDescriptor>,
+  slug: ServiceSlug,
+  services: ServicesMap,
+  ctx: ServiceContext,
+): Promise<Response>;
+// disabled ⇒ 404 {"error":{"code":"not_found"}} (hide-don't-reveal); enabled ⇒ descriptor.handle, 404 on null
 ```
 
 - [ ] Lint zones: `services/<x>/**` may import `core/**`, own dir, `@plrs/*` shared packages; sole cross-service exception `services/update → services/release`. Registry test: disabled service 404s; enabled dispatches; unknown slug 404s. Run → PASS. Commit: `Add the service registry and boundary lint`.
@@ -390,6 +451,7 @@ export function dispatchService(registry: Map<ServiceSlug, ServiceDescriptor>,
 ### Task 4.2: Node SDK re-shape
 
 **Files:** Rewrite `packages/sdk-node/src/` → `core/{context,trust,cache,token,sync,telemetry}.ts`, `license/{client,endpoints}.ts`, `config/{client,fetch}.ts`, `devices/client.ts`, `release/client.ts` (version/changelog), `update/client.ts` (appcast URL + version check), `local/index.ts` (transportless mode), `client.ts` (`PolarisClient` facade + `onLicenseAcquired` event → `core.sync()`), `cli/*` (per-service commands); `package.json` subpath exports (`./core ./license ./config ./devices ./release ./update ./local ./cli`); store v3; `plrst_`/`X-Polaris-*`; per-service option bags over `CoreOptions` (pins in core).
+
 - Decomposition follows the research seam map §6.3 (CoreContext/TrustManager/CacheManager/TokenManager/modules); `refresh()` semantics: core `sync()` = trust → enabled-doc fetches (parallel) → verify → cache patch → floor → report; 401 single re-acquire preserved; activation event replaces the hard call.
 
 - [ ] Tests: port the full sdk-node suite to the new shape (offline init, 401-once, ETag/304, deactivate-offline, R2/R4 attack suites against cache v3); new: config-only product flow (register→config doc, gate `not-applicable`); `getSyncState()` exposes `{activation, doc, lastSyncUnauthorized, blocked, lastVerifiedAt, highWaterMark}` (the bridge contract gap). Worker e2e re-run. Green gate. Commit per module wave.
@@ -449,9 +511,11 @@ export function dispatchService(registry: Map<ServiceSlug, ServiceDescriptor>,
 ## P8 — Finalization
 
 ### Task 8.1: Rebrand completion
+
 **Files:** `packages/cli` bin `pkey`→`plrs` (keep `pkey` as a deprecation shim printing the rename? No — pre-launch: rename outright); `.polaris/` becomes the documented dir (dual-read stays); `plrs init` scaffolds `.polaris/`; delete protocol barrel's legacy v2 names + `conformance/corpus/v1` + old gate copies; docs sweep (`README`, `docs/CONCEPTS.md`, `docs/ADOPTER-GUIDE.md` — Sparkle section documents `PolarisUpdate` + entitled mode, `docs/CONFIG-AUTHORING.md`, `products/README.md`, `CONTRIBUTING.md` matrix).
 
 ### Task 8.2: Exit gates
+
 - [ ] Full green gate; `gen:corpus -- --check`; grep-gates: zero `@polaris-key/`, zero `X-PKey-`, zero `pkeyt_`, zero `key.plrs.im` as ISSUER (host references in wrangler/docs stay), zero imports of deleted legacy modules; risk-register closeout appended to the spec; memory + `docs/security/2026-08-26-security-audit.md` residual-risk note updated (clock-floor text was already stale — correct it).
 - [ ] Final commit: `Complete the Polaris suite re-organization`.
 
@@ -459,14 +523,14 @@ export function dispatchService(registry: Map<ServiceSlug, ServiceDescriptor>,
 
 ## Verification map (spec §→ tasks)
 
-| Spec section | Tasks |
-|---|---|
-| §2 service model / enablement | 0.7, 0.8, 1.6, 1.7 |
-| §3 wire v3 (docs, gate, floor, cache) | 0.3–0.6, 1.3–1.5, 4.1–4.2 |
-| §4 API surface / aliases / admin regroup | 1.2–1.7, 2.1, 3.1, R1 |
-| §5 topology / data / truth store / R6-12 | 1.1, 0.8 (lint), 2.2, R2 |
-| §6 SDKs | 0.5, 4.1–4.2, 5.R/5.P/5.S |
-| §7 offline | 6.1–6.3, corpus bundleCases (0.6) |
-| §8 console/portal | 7.1–7.2 |
-| §9 rebrand/external gates | 0.2, 1.6, 5.P/5.S, 8.1; org creation = user-side prerequisite before first publish |
-| §10 phasing/risks | this plan's DAG + phase exit gates |
+| Spec section                             | Tasks                                                                              |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| §2 service model / enablement            | 0.7, 0.8, 1.6, 1.7                                                                 |
+| §3 wire v3 (docs, gate, floor, cache)    | 0.3–0.6, 1.3–1.5, 4.1–4.2                                                          |
+| §4 API surface / aliases / admin regroup | 1.2–1.7, 2.1, 3.1, R1                                                              |
+| §5 topology / data / truth store / R6-12 | 1.1, 0.8 (lint), 2.2, R2                                                           |
+| §6 SDKs                                  | 0.5, 4.1–4.2, 5.R/5.P/5.S                                                          |
+| §7 offline                               | 6.1–6.3, corpus bundleCases (0.6)                                                  |
+| §8 console/portal                        | 7.1–7.2                                                                            |
+| §9 rebrand/external gates                | 0.2, 1.6, 5.P/5.S, 8.1; org creation = user-side prerequisite before first publish |
+| §10 phasing/risks                        | this plan's DAG + phase exit gates                                                 |

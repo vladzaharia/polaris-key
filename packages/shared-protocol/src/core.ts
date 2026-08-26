@@ -86,7 +86,10 @@ export const MAX_BUNDLE_BYTES = 262_144;
 /** Per-product device registration policy (WIRE-CONTRACT-V3 §6). Default is derived:
  *  `requires-license` if the license service is enabled, else `requires-identity` if the
  *  identity service is enabled, else `open`. */
-export type RegistrationPolicy = "open" | "requires-identity" | "requires-license";
+export type RegistrationPolicy =
+  | "open"
+  | "requires-identity"
+  | "requires-license";
 
 export interface DeviceMetadata {
   label?: string;

@@ -33,9 +33,17 @@ describe("@plrs/protocol layout", () => {
   });
 
   it("release access gains the entitled mode with public defaults intact", () => {
-    const modes: barrel.ReleaseAccess[] = ["public", "authenticated", "licensed", "entitled"];
+    const modes: barrel.ReleaseAccess[] = [
+      "public",
+      "authenticated",
+      "licensed",
+      "entitled",
+    ];
     expect(modes).toHaveLength(4);
-    expect(DEFAULT_RELEASE_ACCESS).toEqual({ metadata: "public", artifacts: "public" });
+    expect(DEFAULT_RELEASE_ACCESS).toEqual({
+      metadata: "public",
+      artifacts: "public",
+    });
   });
 
   it("the gate vocabulary includes not-applicable", () => {
