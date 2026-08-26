@@ -2,7 +2,7 @@
 // each transport read it: a fake `PolarisBridge` (desktop) and a fake `fetch` returning the
 // browser session shape. The same doc → identical hook outputs is the parity guarantee.
 
-import type { ManagedConfigDoc, ManagedEntry } from "@polaris-key/protocol";
+import type { ManagedConfigDoc, ManagedEntry } from "@plrs/protocol";
 import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
 
 /** A fixed "now" (seconds) every adapter is pinned to so the gate is deterministic. */

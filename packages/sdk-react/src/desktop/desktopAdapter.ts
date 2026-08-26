@@ -1,5 +1,5 @@
 // The desktop adapter: a renderer-side `PolarisAdapter` that proxies every operation to a
-// `PolarisBridge` (the privileged Electron/Tauri process owning @polaris-key/node). It
+// `PolarisBridge` (the privileged Electron/Tauri process owning @plrs/node). It
 // derives the gate locally from the bridge's `BridgeState` using the SHARED gateModel, so
 // a desktop snapshot is byte-identical in shape to a browser snapshot (mode-parity).
 //

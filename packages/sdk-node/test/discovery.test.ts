@@ -41,7 +41,7 @@ describe("discoverProduct", () => {
           },
         },
       },
-      sdk: { node: { package: "@polaris-key/node" } },
+      sdk: { node: { package: "@plrs/node" } },
     });
 
     const res = await discoverProduct({

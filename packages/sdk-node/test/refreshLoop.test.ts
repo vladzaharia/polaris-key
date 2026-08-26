@@ -3,8 +3,8 @@
 // differing tag means the CONTENT changed, not merely that the doc was re-signed.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { signJws } from "@polaris-key/jws";
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
+import { signJws } from "@plrs/jws";
+import type { ManagedConfigDoc } from "@plrs/protocol";
 import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/store.js";
 import type { LicenseState } from "../src/gate.js";

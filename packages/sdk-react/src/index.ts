@@ -1,4 +1,4 @@
-// @polaris-key/react — one hook API over two transports (browser cookie-session OIDC and
+// @plrs/react — one hook API over two transports (browser cookie-session OIDC and
 // desktop Electron/Tauri bridge) plus a brandable drop-in <LicenseGate>/<PolarisLogin>.
 // Subpath entries (./core, ./browser, ./desktop) exist for tree-shaking + targeted imports;
 // this barrel re-exports the full surface for the common case.
@@ -108,4 +108,4 @@ export type {
   BlockReason,
   AllowedRange,
   JSONValue,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";

@@ -82,5 +82,5 @@ export type {
   DeviceProbeResult,
   FingerprintComponent,
   HardwareFingerprint,
-} from "@polaris-key/protocol";
-export type { TrustSet } from "@polaris-key/jws";
+} from "@plrs/protocol";
+export type { TrustSet } from "@plrs/jws";

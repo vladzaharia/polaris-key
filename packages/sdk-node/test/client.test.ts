@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { signJws } from "@polaris-key/jws";
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
+import { signJws } from "@plrs/jws";
+import type { ManagedConfigDoc } from "@plrs/protocol";
 import { PolarisKeyClient } from "../src/client.js";
 import {
   CACHE_VERSION,

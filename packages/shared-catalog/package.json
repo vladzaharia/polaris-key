@@ -1,5 +1,5 @@
 {
-  "name": "@polaris-key/catalog",
+  "name": "@plrs/catalog",
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",

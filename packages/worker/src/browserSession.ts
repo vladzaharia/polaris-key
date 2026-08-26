@@ -1,8 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
-import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol";
-import { Catalog } from "@polaris-key/catalog";
+import type { ManagedConfigDoc } from "@plrs/protocol";
+import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol";
+import { Catalog } from "@plrs/catalog";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import type { Product } from "./product.js";

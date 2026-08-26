@@ -3,11 +3,11 @@
 // This does NOT mint sealed product_keys or store product secret values, so it is not a
 // live onboarding path. Register real products through the admin/GitHub-link flow.
 //
-//   pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
+//   pnpm --filter @plrs/products gen-seed djdl > products/djdl/seed.sql
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
+import { Catalog, type ProductCatalog } from "@plrs/catalog";
 
 interface Tier {
   id: string;

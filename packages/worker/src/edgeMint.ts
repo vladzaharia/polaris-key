@@ -13,7 +13,7 @@ import { type Product, openProductSecret } from "./product.js";
 import { bearer, errorResponse } from "./http.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
 import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
-import { signJws } from "@polaris-key/jws";
+import { signJws } from "@plrs/jws";
 import { validateDeviceToken } from "./licenseCore.js";
 
 interface EdgeMintRow {
@@ -239,7 +239,7 @@ export async function handleMintToken(
       minted = await signRs256(claims, pem, kid);
       break;
     case "EdDSA":
-      // @polaris-key/jws emits a compact JWS with header {alg:"EdDSA", kid}.
+      // @plrs/jws emits a compact JWS with header {alg:"EdDSA", kid}.
       minted = await signJws(claims, pem, kid ?? "");
       break;
     default:

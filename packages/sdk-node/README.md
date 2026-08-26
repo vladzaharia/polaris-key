@@ -1,4 +1,4 @@
-# @polaris-key/node
+# @plrs/node
 
 The full Node/TypeScript client for **Polaris Key** — product-agnostic licensing +
 remotely-managed config. A small facade over activate → fetch → verify → cache → gate that is
@@ -9,7 +9,7 @@ pinned by the same cross-language conformance corpus as the Python, Swift, and R
 ## Install
 
 ```sh
-pnpm add @polaris-key/node
+pnpm add @plrs/node
 ```
 
 Node 22+. The OS keyring is an **optional** dependency (`@napi-rs/keyring`); without it the
@@ -18,7 +18,7 @@ token falls back to a `0600` file under the config dir.
 ## Quick start — gate a feature + read layered config
 
 ```ts
-import { PolarisKeyClient } from "@polaris-key/node";
+import { PolarisKeyClient } from "@plrs/node";
 
 // Offline-first: create() loads token + cached doc with no network call.
 const client = await PolarisKeyClient.create({
@@ -127,14 +127,14 @@ JSON-looking values fall back to the raw string.
 
 ## CLI hooks
 
-`@polaris-key/node/cli` exposes a framework-agnostic command **core** (`activate` /
+`@plrs/node/cli` exposes a framework-agnostic command **core** (`activate` /
 `deactivate` / `status`, each taking a `PolarisKeyClient` and returning a result with an exit
 code + output lines) plus thin **commander** and **yargs** adapters that wrap the same core,
 so the two front ends never diverge. Register the commands onto your own program:
 
 ```ts
 import { Command } from "commander";
-import { registerPolarisCommands } from "@polaris-key/node/cli";
+import { registerPolarisCommands } from "@plrs/node/cli";
 
 const program = new Command();
 // Adds `activate <key>`, `deactivate`, and `status` subcommands. Trust keys are passed as
@@ -158,7 +158,7 @@ which this SDK and the worker verify identically. See the root `README.md` and
 ## Develop
 
 ```sh
-pnpm --filter @polaris-key/node typecheck
-pnpm --filter @polaris-key/node test
-pnpm --filter @polaris-key/node build
+pnpm --filter @plrs/node typecheck
+pnpm --filter @plrs/node test
+pnpm --filter @plrs/node build
 ```

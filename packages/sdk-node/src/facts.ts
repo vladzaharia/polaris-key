@@ -8,7 +8,7 @@
 import { execFileSync } from "node:child_process";
 import { accessSync, readFileSync } from "node:fs";
 import { arch, cpus, platform, release, totalmem, type } from "node:os";
-import type { DeviceFacts, DeviceProbeResult } from "@polaris-key/protocol";
+import type { DeviceFacts, DeviceProbeResult } from "@plrs/protocol";
 
 /** A product-declared companion-application check, delivered in the product's policy. */
 export interface ProbeDeclaration {

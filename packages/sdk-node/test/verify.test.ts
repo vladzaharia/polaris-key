@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { signJws, type TrustSet } from "@polaris-key/jws";
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
+import { signJws, type TrustSet } from "@plrs/jws";
+import type { ManagedConfigDoc } from "@plrs/protocol";
 import { verifyDoc } from "../src/verify.js";
 import { CLOCK_SKEW_SECONDS, MAX_GRACE_SECONDS } from "../src/claims.js";
 

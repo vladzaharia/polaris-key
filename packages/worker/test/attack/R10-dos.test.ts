@@ -27,7 +27,7 @@ import { loadProduct, type Product } from "../../src/product.js";
 import type { Env } from "../../src/env.js";
 import type { Db } from "../../src/db/types.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
 import { handleActivate, handleConfig } from "../../src/licensing.js";
 import { handleSchema as handleAdminSchema } from "../../src/admin/handlers/schema.js";
 import { handleRelease } from "../../src/release/index.js";
@@ -141,7 +141,7 @@ async function activate(
 // R10-01 — Ajv codegen on the /config hot path ⇒ guaranteed 500 on workerd
 // ═════════════════════════════════════════════════════════════════════════════
 
-// FIXED (R10-01): `@polaris-key/catalog` interprets schema fragments instead of compiling
+// FIXED (R10-01): `@plrs/catalog` interprets schema fragments instead of compiling
 // them, so nothing on this path constructs a function from a string. These five assertions
 // are the originals INVERTED — each now pins the fixed behaviour it used to disprove. The
 // `withoutCodegen` harness is retained deliberately: it is what makes these Node tests

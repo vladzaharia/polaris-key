@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
+import type { ManagedConfigDoc } from "@plrs/protocol";
 import { isUsable, licenseState } from "../src/gate.js";
 
 const ISSUED = 1000;

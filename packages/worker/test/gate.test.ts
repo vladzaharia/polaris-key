@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ManagedEntry } from "@polaris-key/protocol";
+import type { ManagedEntry } from "@plrs/protocol";
 import {
   channelForVersion,
   checkBuildGate,

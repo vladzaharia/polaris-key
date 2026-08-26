@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
+import type { ManagedConfigDoc } from "@plrs/protocol";
 import { isUsable, licenseState } from "../src/core/gateModel.js";
 
 // The React SDK ports the Node gate verbatim; these transitions mirror sdk-node/test/gate.test.ts

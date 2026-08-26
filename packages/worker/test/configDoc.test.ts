@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { verifyJws } from "@polaris-key/jws";
-import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
+import { verifyJws } from "@plrs/jws";
+import { Catalog, type ProductCatalog } from "@plrs/catalog";
 import {
   DOC_EXPIRY_SECONDS,
   ISSUER,
@@ -8,7 +8,7 @@ import {
   type DocProfile,
   type ManagedConfigDoc,
   type ManagedPayload,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import {
   buildDoc,
   computeETag,

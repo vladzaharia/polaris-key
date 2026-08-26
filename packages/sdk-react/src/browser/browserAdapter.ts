@@ -9,13 +9,13 @@
 // desktop bridge produces and runs the SAME shared gateModel, so a browser snapshot is
 // shape-identical to a desktop one.
 
-import type { BlockReason, ManagedConfigDoc } from "@polaris-key/protocol";
+import type { BlockReason, ManagedConfigDoc } from "@plrs/protocol";
 import {
   HEADER_PLATFORM,
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
   HEADER_VERSION,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import {
   configSource,

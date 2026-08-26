@@ -6,7 +6,7 @@ import {
   type KeyLike,
   SignJWT,
 } from "jose";
-import type { ManagedPayload } from "@polaris-key/protocol";
+import type { ManagedPayload } from "@plrs/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";

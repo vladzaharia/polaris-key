@@ -1,4 +1,4 @@
-// base64url <-> bytes — mirrors @polaris-key/jws's `base64UrlDecode`/`base64UrlEncode`
+// base64url <-> bytes — mirrors @plrs/jws's `base64UrlDecode`/`base64UrlEncode`
 // exactly so the Swift verifier is byte-stable against the cross-language corpus.
 //
 // Decode maps the URL-safe alphabet (`-_`) back to (`+/`), right-pads with "=" to a
@@ -26,7 +26,7 @@ public enum Base64URL {
     /// Decode a base64url string (URL-safe alphabet, padding optional). Returns nil on
     /// any character / structure error — verification treats that as a hard failure.
     ///
-    /// Lenient about the standard alphabet, matching `@polaris-key/jws`'s `base64UrlDecode`,
+    /// Lenient about the standard alphabet, matching `@plrs/jws`'s `base64UrlDecode`,
     /// which is still used for trust-set key material. JWS segments MUST use
     /// `decodeStrict(_:)` instead.
     public static func decode(_ s: String) -> Data? {

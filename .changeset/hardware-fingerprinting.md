@@ -1,6 +1,6 @@
 ---
-"@polaris-key/protocol": minor
-"@polaris-key/node": minor
+"@plrs/protocol": minor
+"@plrs/node": minor
 ---
 
 Add hardware and software fingerprinting.

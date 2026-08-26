@@ -18,7 +18,7 @@
  * gates the per-product key/secret/release operations.
  */
 
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";

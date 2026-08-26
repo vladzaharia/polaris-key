@@ -4,8 +4,8 @@
 // these, so the behavior lives in exactly one place and is testable with no console /
 // process side-effects. Mirrors sdks/python/src/polaris_key/cli/core.py.
 
-import type { TrustSet } from "@polaris-key/jws";
-import type { JSONValue } from "@polaris-key/protocol";
+import type { TrustSet } from "@plrs/jws";
+import type { JSONValue } from "@plrs/protocol";
 import type { PolarisKeyClient } from "../client.js";
 import type { ActivationResult } from "../endpoints.js";
 

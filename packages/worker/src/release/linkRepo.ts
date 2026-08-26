@@ -16,7 +16,7 @@
  * with a stubbed fetch (no network).
  */
 
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
 import { type Env, secret } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { generateEd25519, seal } from "../keyvault.js";

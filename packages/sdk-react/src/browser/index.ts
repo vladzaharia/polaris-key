@@ -1,4 +1,4 @@
-// @polaris-key/react/browser — the cookie-session OIDC transport (online-only).
+// @plrs/react/browser — the cookie-session OIDC transport (online-only).
 
 export {
   BrowserAdapter,

@@ -1,5 +1,5 @@
 // The Polaris Key wire crypto: compact JWS (EdDSA / Ed25519) verification, natively on
-// CryptoKit. This is a byte-for-byte re-implementation of @polaris-key/jws's `verifyJws` —
+// CryptoKit. This is a byte-for-byte re-implementation of @plrs/jws's `verifyJws` —
 // the cross-language conformance corpus pins them identical. See
 // docs/security/WIRE-CONTRACT-V2.md §2 for the normative ordering this file implements.
 //

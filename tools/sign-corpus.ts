@@ -15,7 +15,7 @@ import {
   signJws,
   base64UrlEncodeBytes,
   importSigningKey,
-} from "@polaris-key/jws";
+} from "@plrs/jws";
 import { format } from "prettier";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

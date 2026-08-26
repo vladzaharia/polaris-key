@@ -46,7 +46,7 @@ The engine's managed-config client uses `key.plrs.im/djdl`:
 
 The macOS app keeps **delegating licensing to the embedded engine** (it is not retrofitted
 to the Swift SDK now). Optionally, the engine's `remoteConfig` client can later be replaced
-by `@polaris-key/node` — a post-cutover follow-up; the wire contract is identical.
+by `@plrs/node` — a post-cutover follow-up; the wire contract is identical.
 
 ## 4. Cut over
 

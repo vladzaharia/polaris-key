@@ -1,4 +1,4 @@
-// @polaris-key/jws — the FROZEN Polaris Key wire crypto: compact JWS (EdDSA / Ed25519)
+// @plrs/jws — the FROZEN Polaris Key wire crypto: compact JWS (EdDSA / Ed25519)
 // encode + verify, implemented on WebCrypto so the SAME code runs in workerd (the Worker
 // signer) and Node 22 (SDKs/tools). The cross-language conformance corpus pins this
 // byte-for-byte; the Swift/Python SDKs re-implement the identical construction natively.

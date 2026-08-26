@@ -4,7 +4,7 @@
  * rejected here, not at request time), bumps the version, and flips active.
  */
 
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../http.js";
 import { getActiveSchema, insertSchema } from "../../repo.js";

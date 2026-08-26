@@ -11,13 +11,13 @@ Extracted and generalized from DJDL's baked-in system; djdl is the first product
 
 ```
 packages/
-  shared-protocol/   @polaris-key/protocol   — wire types (ManagedConfigDoc, aud/iss, …)
-  shared-jws/        @polaris-key/jws         — frozen EdDSA compact-JWS encode/verify
-  shared-catalog/    @polaris-key/catalog     — data-driven config catalog + Ajv validation
-  worker/            @polaris-key/worker      — the Cloudflare Worker (multi-tenant)
-  admin/             @polaris-key/admin       — the admin SPA (React + Vite)
-  sdk-node/          @polaris-key/node        — full client + CLI adapters
-  sdk-react/         @polaris-key/react       — browser-OIDC + desktop-over-node + login UI
+  shared-protocol/   @plrs/protocol   — wire types (ManagedConfigDoc, aud/iss, …)
+  shared-jws/        @plrs/jws         — frozen EdDSA compact-JWS encode/verify
+  shared-catalog/    @plrs/catalog     — data-driven config catalog + Ajv validation
+  worker/            @plrs/worker      — the Cloudflare Worker (multi-tenant)
+  admin/             @plrs/admin       — the admin SPA (React + Vite)
+  sdk-node/          @plrs/node        — full client + CLI adapters
+  sdk-react/         @plrs/react       — browser-OIDC + desktop-over-node + login UI
 sdks/
   python/            polaris-key (PyPI)       — full client + CLI adapters
   swift/             PolarisKey (SwiftPM)     — native CryptoKit + SwiftUI login

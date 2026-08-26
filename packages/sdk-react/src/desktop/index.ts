@@ -1,4 +1,4 @@
-// @polaris-key/react/desktop — the Electron/Tauri transport. Import the `PolarisBridge`
+// @plrs/react/desktop — the Electron/Tauri transport. Import the `PolarisBridge`
 // type on the Node/preload side to implement the IPC contract.
 
 export {

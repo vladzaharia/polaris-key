@@ -1,11 +1,11 @@
 // JWS verification + claim validation. Cryptographic verification is the frozen
-// @polaris-key/jws path (caps, strict base64url, duplicate-key rejection, verify-before-parse);
+// @plrs/jws path (caps, strict base64url, duplicate-key rejection, verify-before-parse);
 // on top of it we assert the full wire-contract-v2 §3 claim set, so a document that is
 // expired, foreign, far-future, unknown-schema, or wearing the wrong `typ` never becomes a
 // document at all.
 
-import { verifyJws, type TrustSet } from "@polaris-key/jws";
-import { ISSUER, type ManagedConfigDoc } from "@polaris-key/protocol";
+import { verifyJws, type TrustSet } from "@plrs/jws";
+import { ISSUER, type ManagedConfigDoc } from "@plrs/protocol";
 import { CLOCK_SKEW_SECONDS, MAX_GRACE_SECONDS } from "./claims.js";
 
 /**

@@ -1,5 +1,5 @@
 {
-  "name": "@polaris-key/jws",
+  "name": "@plrs/jws",
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",

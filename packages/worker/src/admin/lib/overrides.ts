@@ -4,8 +4,8 @@
  * whole batch). Shared by license overrides and profile payload edits.
  */
 
-import type { Catalog } from "@polaris-key/catalog";
-import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
+import type { Catalog } from "@plrs/catalog";
+import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
 import type { Env } from "../../env.js";
 import { isManagedSecretKey, sealManagedValue } from "./managedSecrets.js";
 

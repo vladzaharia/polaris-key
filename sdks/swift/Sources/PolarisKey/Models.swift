@@ -1,4 +1,4 @@
-// The Polaris Key wire types — Codable mirrors of @polaris-key/protocol's ManagedConfigDoc
+// The Polaris Key wire types — Codable mirrors of @plrs/protocol's ManagedConfigDoc
 // tree. These shapes are the source of truth every SDK + the Worker share; field drift
 // silently breaks cross-platform verification, so they track `shared-protocol/src/index.ts`.
 //

@@ -1,4 +1,4 @@
-// @polaris-key/react/core — the mode-agnostic surface (no React, no DOM transport
+// @plrs/react/core — the mode-agnostic surface (no React, no DOM transport
 // specifics). Useful for tests, custom adapters, or non-React consumers that still want
 // the shared gate + state model.
 
@@ -42,4 +42,4 @@ export type {
   BlockReason,
   AllowedRange,
   JSONValue,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";

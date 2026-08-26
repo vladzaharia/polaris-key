@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { signJws, verifyJws } from "@polaris-key/jws";
+import { signJws, verifyJws } from "@plrs/jws";
 import type { Env } from "../src/env.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import {
@@ -23,7 +23,7 @@ import {
   openManagedValue,
   sealManagedValue,
 } from "../src/admin/lib/managedSecrets.js";
-import type { ManagedPayload } from "@polaris-key/protocol";
+import type { ManagedPayload } from "@plrs/protocol";
 import { handleAdmin } from "../src/admin/index.js";
 import {
   ADMIN_COOKIE,

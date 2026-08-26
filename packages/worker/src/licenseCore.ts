@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
 import {
   FINGERPRINT_ANCHOR,
   type DocProfile,
@@ -8,7 +8,7 @@ import {
   type FingerprintMode,
   type ManagedEntry,
   type ManagedPayload,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import type { Product } from "./product.js";

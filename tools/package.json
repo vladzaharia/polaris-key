@@ -1,5 +1,5 @@
 {
-  "name": "@polaris-key/tools",
+  "name": "@plrs/tools",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@polaris-key/catalog": "workspace:*",
-    "@polaris-key/jws": "workspace:*"
+    "@plrs/catalog": "workspace:*",
+    "@plrs/jws": "workspace:*"
   }
 }

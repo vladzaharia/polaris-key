@@ -10,7 +10,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { FingerprintComponent } from "@polaris-key/protocol";
+import type { FingerprintComponent } from "@plrs/protocol";
 import { computeComponentHash, computeHwid } from "../src/fingerprint.js";
 
 interface Vector {

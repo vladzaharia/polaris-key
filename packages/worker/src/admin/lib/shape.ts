@@ -3,7 +3,7 @@
  * the active-catalog loader used for value validation + redaction.
  */
 
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
 import {

@@ -1,4 +1,4 @@
-// A port of @polaris-key/node's gate.ts `licenseState` — the React SDK computes the
+// A port of @plrs/node's gate.ts `licenseState` — the React SDK computes the
 // renderable gate state itself so it has no runtime dependency on the Node SDK (which
 // is Node-only) and so both adapters share one identical derivation. Browser and desktop
 // transports both feed a `GateInput` here, guaranteeing mode-parity on `status`.
@@ -10,7 +10,7 @@ import type {
   BlockReason,
   LicenseStatus,
   ManagedConfigDoc,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 
 /** The renderable gate state derived from the cached doc + the last sync outcome. */
 export interface LicenseState {

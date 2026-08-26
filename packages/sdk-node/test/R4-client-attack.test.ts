@@ -16,8 +16,8 @@ import { generateKeyPairSync, type KeyObject } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { signJws } from "@polaris-key/jws";
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
+import { signJws } from "@plrs/jws";
+import type { ManagedConfigDoc } from "@plrs/protocol";
 import { InsecureBaseUrlError, PolarisKeyClient } from "../src/client.js";
 import { CACHE_VERSION, FileStore, type CacheRecord } from "../src/store.js";
 

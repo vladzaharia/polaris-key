@@ -1,12 +1,12 @@
 // True end-to-end flow over the REAL worker handlers (makeTestDb + KvMock) feeding the
-// REAL Node SDK (@polaris-key/node). Nothing here re-implements server or client logic:
+// REAL Node SDK (@plrs/node). Nothing here re-implements server or client logic:
 // the doc is minted by handleActivate→handleConfig, verified by the SDK's frozen JWS path,
 // gated by `licenseState`, and read back through the layered `PolarisKeyClient.getConfig`.
 // This is the cross-package contract test the per-package unit suites can't cover alone.
 
 import { describe, expect, it } from "vitest";
-import { verifyJws } from "@polaris-key/jws";
-import type { ManagedConfigDoc, ManagedEntry } from "@polaris-key/protocol";
+import { verifyJws } from "@plrs/jws";
+import type { ManagedConfigDoc, ManagedEntry } from "@plrs/protocol";
 import {
   licenseState,
   isUsable,
@@ -14,7 +14,7 @@ import {
   CACHE_VERSION,
   InMemoryStore,
   PolarisKeyClient,
-} from "@polaris-key/node";
+} from "@plrs/node";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {

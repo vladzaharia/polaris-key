@@ -1,4 +1,4 @@
-// R2 RED TEAM — adversarial tests against the FROZEN wire contract (@polaris-key/jws).
+// R2 RED TEAM — adversarial tests against the FROZEN wire contract (@plrs/jws).
 // These tests document CURRENT behaviour. Several of them assert the *insecure* /
 // divergent behaviour on purpose, so that a future fix flips them red and forces a
 // deliberate wire-contract decision. Nothing here modifies src/index.ts.

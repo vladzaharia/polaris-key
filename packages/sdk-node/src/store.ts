@@ -15,7 +15,7 @@ import {
   writeSync,
 } from "node:fs";
 import { join } from "node:path";
-import type { AllowedRange, BlockReason } from "@polaris-key/protocol";
+import type { AllowedRange, BlockReason } from "@plrs/protocol";
 
 /** On-disk cache format version. A record carrying any other value is DISCARDED, never
  *  migrated (wire contract v2 §7.3) — one network round trip is the correct price for not

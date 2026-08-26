@@ -8,7 +8,7 @@ import {
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
   type HardwareFingerprint,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { SDK_NAME, SDK_VERSION } from "./version.js";
 
 function metadataHeaders(): Record<string, string> {

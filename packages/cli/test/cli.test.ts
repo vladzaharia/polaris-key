@@ -49,7 +49,7 @@ function capture(): {
   };
 }
 
-describe("@polaris-key/cli", () => {
+describe("@plrs/cli", () => {
   it("initializes and validates a config/licensing manifest", async () => {
     const cwd = await tempDir();
     await initManifest({

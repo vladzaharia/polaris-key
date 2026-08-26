@@ -1,7 +1,7 @@
 // Effective managed payload = layered merge of tier(profile) -> license -> device,
 // key-by-key (a later layer's entry wins). Each layer is a stored ManagedPayload JSON.
 
-import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
+import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
 
 export function emptyPayload(): ManagedPayload {
   return { config: {}, secrets: {}, entitlements: {} };

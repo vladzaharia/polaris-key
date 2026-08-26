@@ -1,8 +1,8 @@
 ---
-"@polaris-key/protocol": minor
-"@polaris-key/manifest": minor
-"@polaris-key/node": minor
-"@polaris-key/react": minor
+"@plrs/protocol": minor
+"@plrs/manifest": minor
+"@plrs/node": minor
+"@plrs/react": minor
 ---
 
 Add auto-issued free licenses and remote re-licensing.

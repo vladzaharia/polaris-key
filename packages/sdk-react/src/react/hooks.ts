@@ -4,7 +4,7 @@
 // hook returns everything a custom gate UI needs without rendering anything.
 
 import { useCallback, useContext, useMemo, useSyncExternalStore } from "react";
-import type { JSONValue, LicenseStatus } from "@polaris-key/protocol";
+import type { JSONValue, LicenseStatus } from "@plrs/protocol";
 import {
   isUsable,
   type ConfigSource,

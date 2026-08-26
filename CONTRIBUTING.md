@@ -10,13 +10,13 @@ before naming anything.
 
 ```
 packages/
-  shared-protocol/   @polaris-key/protocol   wire types (ManagedConfigDoc, aud/iss, …)
-  shared-jws/        @polaris-key/jws         frozen EdDSA compact-JWS encode/verify
-  shared-catalog/    @polaris-key/catalog     data-driven config catalog + Ajv validation
-  worker/            @polaris-key/worker      the Cloudflare Worker (multi-tenant)
-  admin/             @polaris-key/admin       the admin SPA (React + Vite)
-  sdk-node/          @polaris-key/node        full client + CLI adapters
-  sdk-react/         @polaris-key/react       browser-OIDC + desktop-over-node + login UI
+  shared-protocol/   @plrs/protocol   wire types (ManagedConfigDoc, aud/iss, …)
+  shared-jws/        @plrs/jws         frozen EdDSA compact-JWS encode/verify
+  shared-catalog/    @plrs/catalog     data-driven config catalog + Ajv validation
+  worker/            @plrs/worker      the Cloudflare Worker (multi-tenant)
+  admin/             @plrs/admin       the admin SPA (React + Vite)
+  sdk-node/          @plrs/node        full client + CLI adapters
+  sdk-react/         @plrs/react       browser-OIDC + desktop-over-node + login UI
 sdks/
   python/            polaris-key (PyPI)       full client + CLI adapters
   swift/             PolarisKey (SwiftPM)     native CryptoKit + SwiftUI login
@@ -47,7 +47,7 @@ pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
-pnpm --filter @polaris-key/admin build
+pnpm --filter @plrs/admin build
 
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
@@ -135,7 +135,7 @@ JS SDKs are released with **Changesets**; Python (PyPI) and Swift (git tag) rele
 their own tags.
 
 1. Add a changeset describing user-facing changes: `pnpm changeset` (pick the affected
-   `@polaris-key/*` packages + a semver bump; writes a markdown file under `.changeset/`).
+   `@plrs/*` packages + a semver bump; writes a markdown file under `.changeset/`).
 2. On merge to `main`, `.github/workflows/release.yml` opens/maintains a **"Version
    Packages"** PR (`pnpm version-packages` bumps versions + writes changelogs).
 3. Merging that PR runs `pnpm changeset publish` to publish the JS SDKs to the registry.

@@ -27,7 +27,7 @@ In this repo the same data lives split for fixture clarity as `products/djdl/cat
 (the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
 a product hosts its own `.pkey/`, `packages/worker/src/release/manifest.ts#parseManifest`
 parses the files, aggregates **all** validation errors, and returns a `ParsedManifest` ready
-for D1 insertion. The schema is compiled through `@polaris-key/catalog` before anything is
+for D1 insertion. The schema is compiled through `@plrs/catalog` before anything is
 written so malformed JSON-Schema fragments fail during import/resync, not during a client
 request.
 
@@ -164,7 +164,7 @@ manual create is for early experiments; seed SQL is a fixture tool only.
    `products/<slug>` files:
 
    ```sh
-   pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
+   pnpm --filter @plrs/products gen-seed djdl > products/djdl/seed.sql
    ```
 
    Do not use this for live onboarding: it cannot mint sealed `product_keys` or store

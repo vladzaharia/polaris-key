@@ -2,7 +2,7 @@
 
 A product-agnostic Python client for the **Polaris Key** control plane — license
 gating + signed managed-config delivery. It mirrors the Node SDK
-(`@polaris-key/node`) and verifies the **same** cross-language conformance corpus
+(`@plrs/node`) and verifies the **same** cross-language conformance corpus
 byte-for-byte.
 
 The wire crypto is a compact JWS (EdDSA / Ed25519) over a managed-config document; the

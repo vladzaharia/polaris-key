@@ -1,8 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Product } from "./product.js";
 import type { Db } from "./db/types.js";
-import { signJws } from "@polaris-key/jws";
-import { ISSUER, type TrustManifestDoc } from "@polaris-key/protocol";
+import { signJws } from "@plrs/jws";
+import { ISSUER, type TrustManifestDoc } from "@plrs/protocol";
 import { loadPublicSigningKeys } from "./product.js";
 
 const TRUST_CACHE_SECONDS = 300;

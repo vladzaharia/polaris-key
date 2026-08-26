@@ -9,11 +9,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
-import { verifyJws } from "@polaris-key/jws";
+import { verifyJws } from "@plrs/jws";
 import {
   FINGERPRINT_COMPONENT_LENGTH,
   type ManagedConfigDoc,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {

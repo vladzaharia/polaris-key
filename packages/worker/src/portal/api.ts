@@ -1,5 +1,5 @@
-import { Catalog } from "@polaris-key/catalog";
-import type { ConfigEntry } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
+import type { ConfigEntry } from "@plrs/catalog";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { ErrorCode } from "../http.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LicenseStatus, ManagedConfigDoc } from "@polaris-key/protocol";
+import type { LicenseStatus, ManagedConfigDoc } from "@plrs/protocol";
 import { isUsable, licenseState } from "../src/core/gateModel.js";
 import type { GateInput } from "../src/core/gateModel.js";
 

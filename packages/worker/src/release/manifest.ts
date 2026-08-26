@@ -17,4 +17,4 @@ export {
   type ManifestTier,
   type ParsedManifest,
   type ParseManifestResult,
-} from "@polaris-key/manifest";
+} from "@plrs/manifest";

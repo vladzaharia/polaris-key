@@ -5,8 +5,8 @@
 //
 // Four sections, four layers of the wire contract:
 //
-//   cases            raw compact-JWS verification            → @polaris-key/jws  verifyJws
-//   docCases         §3 claim validation                     → @polaris-key/node verifyDoc
+//   cases            raw compact-JWS verification            → @plrs/jws  verifyJws
+//   docCases         §3 claim validation                     → @plrs/node verifyDoc
 //   trustCases       §1 trust-set merge / prune / revocation  → verifyTrustManifest
 //   clockFloorCases  §4.3 monotonic clock floor               → the cache-reload path + gate
 
@@ -14,13 +14,13 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
-import { verifyJws, type TrustSet } from "@polaris-key/jws";
+import { verifyJws, type TrustSet } from "@plrs/jws";
 import {
   licenseState,
   mergeTrust,
   verifyDoc,
   verifyTrustManifest,
-} from "@polaris-key/node";
+} from "@plrs/node";
 
 type Typ = "pkey-config+jws" | "pkey-trust+jws";
 

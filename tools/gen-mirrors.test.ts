@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { ProductCatalog } from "@polaris-key/catalog";
+import type { ProductCatalog } from "@plrs/catalog";
 import { renderTs, renderPython, renderSwift } from "./gen-mirrors.js";
 
 const CATALOG: ProductCatalog = {

@@ -18,8 +18,8 @@ import {
   type KeyLike,
   SignJWT,
 } from "jose";
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
-import { verifyJws } from "@polaris-key/jws";
+import type { ManagedConfigDoc } from "@plrs/protocol";
+import { verifyJws } from "@plrs/jws";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {

@@ -22,7 +22,7 @@ The seed generator is only for local fixture regeneration. It does not mint seal
 `product_keys`; live product onboarding goes through the admin GitHub-link flow:
 
 ```sh
-pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
+pnpm --filter @plrs/products gen-seed djdl > products/djdl/seed.sql
 ```
 
 Do not create per-product Worker signing secrets. Product signing keys are sealed in D1, and

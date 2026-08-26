@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ManagedEntry } from "@polaris-key/protocol";
+import type { ManagedEntry } from "@plrs/protocol";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import {

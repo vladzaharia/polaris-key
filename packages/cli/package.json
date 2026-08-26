@@ -1,5 +1,5 @@
 {
-  "name": "@polaris-key/cli",
+  "name": "@plrs/cli",
   "version": "0.0.0",
   "type": "module",
   "bin": {
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@polaris-key/manifest": "workspace:*",
+    "@plrs/manifest": "workspace:*",
     "yaml": "^2.6.1"
   }
 }

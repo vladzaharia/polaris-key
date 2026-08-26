@@ -1,4 +1,4 @@
-// R2 RED TEAM — attacks on client-side key custody + document acceptance in @polaris-key/node.
+// R2 RED TEAM — attacks on client-side key custody + document acceptance in @plrs/node.
 //
 // These began life as PoCs asserting the CURRENT (vulnerable) behaviour. They have now been
 // INVERTED: every test asserts that the attack FAILS, so each one is the regression test for
@@ -14,8 +14,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { signJws, base64UrlEncodeBytes } from "@polaris-key/jws";
-import type { ManagedConfigDoc, TrustManifestDoc } from "@polaris-key/protocol";
+import { signJws, base64UrlEncodeBytes } from "@plrs/jws";
+import type { ManagedConfigDoc, TrustManifestDoc } from "@plrs/protocol";
 import { PolarisKeyClient } from "../src/client.js";
 import { verifyDoc } from "../src/verify.js";
 import { mergeTrust, verifyTrustManifest } from "../src/trust.js";

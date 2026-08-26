@@ -11,7 +11,7 @@ import {
   HEADER_DEVICE,
   type ManagedEntry,
   type ManagedPayload,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { secret, type Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { openProductSecret, type Product } from "./product.js";

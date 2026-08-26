@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
+import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
 import { emptyPayload, mergePayloads } from "../src/merge.js";
 
 const layer = (p: Partial<ManagedPayload>): string =>

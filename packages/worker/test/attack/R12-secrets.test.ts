@@ -44,7 +44,7 @@ import { handleMagicStart } from "../../src/portal/auth.js";
 import { upsertPortalProductSettings } from "../../src/portal/repo.js";
 import { insertSchema, upsertDevice } from "../../src/repo.js";
 import { deactivateSchemas } from "../../src/admin/repo.js";
-import { verifyJws, signJws } from "@polaris-key/jws";
+import { verifyJws, signJws } from "@plrs/jws";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..", "..", "..", "..");

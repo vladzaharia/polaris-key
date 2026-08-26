@@ -1,6 +1,6 @@
 """The FROZEN Polaris Key wire crypto: compact JWS (EdDSA / Ed25519) verify + sign.
 
-Native re-implementation of ``@polaris-key/jws`` (packages/shared-jws/src/index.ts) at
+Native re-implementation of ``@plrs/jws`` (packages/shared-jws/src/index.ts) at
 **wire contract v2** (docs/security/WIRE-CONTRACT-V2.md). The cross-language conformance
 corpus pins this byte-for-byte, so the construction is exact::
 

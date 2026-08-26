@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { verifyJws } from "@polaris-key/jws";
+import { verifyJws } from "@plrs/jws";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {

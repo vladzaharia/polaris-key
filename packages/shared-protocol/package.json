@@ -1,5 +1,5 @@
 {
-  "name": "@polaris-key/protocol",
+  "name": "@plrs/protocol",
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",

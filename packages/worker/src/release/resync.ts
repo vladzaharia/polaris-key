@@ -10,7 +10,7 @@
  * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here.
  */
 
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
 import type { Env } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import {

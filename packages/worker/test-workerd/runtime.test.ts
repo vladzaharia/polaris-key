@@ -9,13 +9,13 @@
 
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { Catalog } from "@polaris-key/catalog";
-import { signJws, verifyJws } from "@polaris-key/jws";
+import { Catalog } from "@plrs/catalog";
+import { signJws, verifyJws } from "@plrs/jws";
 import type {
   ManagedConfigDoc,
   ManagedEntry,
   ManagedPayload,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import djdlCatalog from "../../../products/djdl/catalog.json";
 import { D1Db } from "../src/db/d1.js";
 import { validatePayload } from "../src/configDoc.js";

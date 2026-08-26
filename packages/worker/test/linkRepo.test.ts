@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { signJws, verifyJws } from "@polaris-key/jws";
+import { signJws, verifyJws } from "@plrs/jws";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";

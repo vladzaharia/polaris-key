@@ -6,7 +6,7 @@ import type {
   JSONValue,
   ManagedConfigDoc,
   ManagedEntry,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { licenseState, type GateInput } from "./gateModel.js";
 import {
   type ConfigSource,

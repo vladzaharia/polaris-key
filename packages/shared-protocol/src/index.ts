@@ -1,6 +1,6 @@
-// @polaris-key/protocol — the Polaris Key wire contract types ONLY (no runtime, no
+// @plrs/protocol — the Polaris Key wire contract types ONLY (no runtime, no
 // crypto). These shapes are the source of truth every SDK + the Worker mirror. The
-// managed-config document is the JWS payload (see @polaris-key/jws for the encoding);
+// managed-config document is the JWS payload (see @plrs/jws for the encoding);
 // any field drift here silently breaks cross-platform verification, so treat changes as
 // wire-breaking and bump PROTOCOL_VERSION + regenerate the conformance corpus.
 //

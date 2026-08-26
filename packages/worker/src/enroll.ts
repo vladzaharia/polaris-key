@@ -34,7 +34,7 @@ import {
   shapeLicense,
 } from "./licensing.js";
 import { authorizeDevice, tierExpiresAt } from "./licenseCore.js";
-import { HEADER_DEVICE } from "@polaris-key/protocol";
+import { HEADER_DEVICE } from "@plrs/protocol";
 
 /**
  * Locate or mint the free license for this machine.

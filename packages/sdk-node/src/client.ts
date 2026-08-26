@@ -10,7 +10,7 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { TrustSet } from "@polaris-key/jws";
+import type { TrustSet } from "@plrs/jws";
 import type {
   DeviceFacts,
   DocProfile,
@@ -18,7 +18,7 @@ import type {
   JSONValue,
   ManagedConfigDoc,
   TrustManifestDoc,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { collectFingerprint } from "./fingerprint.js";
 import { collectFacts, type ProbeDeclaration } from "./facts.js";
 import { channelForVersion } from "./semver.js";

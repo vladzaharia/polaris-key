@@ -9,8 +9,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
-import type { FingerprintComponent } from "@polaris-key/protocol";
-import { deviceIdFromRaw, hashComponents } from "@polaris-key/node";
+import type { FingerprintComponent } from "@plrs/protocol";
+import { deviceIdFromRaw, hashComponents } from "@plrs/node";
 
 interface Vector {
   id: string;

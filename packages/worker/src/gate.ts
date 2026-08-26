@@ -15,7 +15,7 @@ import type {
   AllowedRange,
   BlockReason,
   ManagedEntry,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 
 export type ReleaseChannel = "stable" | "staging" | "pr" | "dev";
 

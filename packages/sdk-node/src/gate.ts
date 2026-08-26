@@ -7,7 +7,7 @@ import type {
   BlockReason,
   LicenseStatus,
   ManagedConfigDoc,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 
 export interface LicenseState {
   status: LicenseStatus;

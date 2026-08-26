@@ -11,7 +11,7 @@ import {
   HEADER_VERSION,
   type AllowedRange,
   type BlockReason,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { arch, platform } from "node:os";
 import { SDK_NAME, SDK_VERSION } from "./version.js";
 

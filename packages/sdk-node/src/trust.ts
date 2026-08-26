@@ -8,8 +8,8 @@
 // compact JWS, never bare `kid → key` JSON, so a file write can neither add a kid nor swap
 // the bytes behind one (R2-01 / R2-02 / R4-02).
 
-import { verifyJws, type TrustSet } from "@polaris-key/jws";
-import { ISSUER, type TrustManifestDoc } from "@polaris-key/protocol";
+import { verifyJws, type TrustSet } from "@plrs/jws";
+import { ISSUER, type TrustManifestDoc } from "@plrs/protocol";
 import { CLOCK_SKEW_SECONDS } from "./claims.js";
 
 /** Trust-manifest schema versions this SDK understands. Unknown ⇒ fail closed. */

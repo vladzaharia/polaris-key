@@ -50,7 +50,7 @@ import {
 import { extractSummary } from "../../src/release/changelog.js";
 import { renderAppcast } from "../../src/release/appcast.js";
 import { applyOverrides } from "../../src/admin/lib/overrides.js";
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@plrs/catalog";
 import { handlePortalApi, handlePortalDownload } from "../../src/portal/api.js";
 import { handlePortalLogin } from "../../src/portal/auth.js";
 import { getOrCreateAccountByEmail } from "../../src/portal/repo.js";

@@ -1,9 +1,9 @@
 // Build, sign, and ETag the managed-config document. The signing uses the FROZEN
-// @polaris-key/jws encoding (the conformance corpus pins it); the per-product `kid` + key
+// @plrs/jws encoding (the conformance corpus pins it); the per-product `kid` + key
 // scope each doc to one tenant, and `aud`/`iss` bind it to the product as defense-in-depth.
 
-import { signJws, sha256Base64Url } from "@polaris-key/jws";
-import type { Catalog } from "@polaris-key/catalog";
+import { signJws, sha256Base64Url } from "@plrs/jws";
+import type { Catalog } from "@plrs/catalog";
 import {
   DOC_EXPIRY_SECONDS,
   ISSUER,
@@ -12,7 +12,7 @@ import {
   type ManagedConfigDoc,
   type ManagedEntry,
   type ManagedPayload,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 
 export interface BuildDocInput {
   schemaVersion: number;

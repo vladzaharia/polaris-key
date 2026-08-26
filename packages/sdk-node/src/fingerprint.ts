@@ -18,7 +18,7 @@ import {
   FINGERPRINT_HWID_LENGTH,
   type FingerprintComponent,
   type HardwareFingerprint,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 
 type RawComponents = Partial<Record<FingerprintComponent, string>>;
 

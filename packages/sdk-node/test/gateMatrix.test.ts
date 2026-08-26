@@ -18,7 +18,7 @@ import type {
   BlockReason,
   ManagedConfigDoc,
   ManagedEntry,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { channelForVersion, compareSemver, isDevBuild } from "../src/semver.js";
 import { isUsable, licenseState } from "../src/gate.js";
 

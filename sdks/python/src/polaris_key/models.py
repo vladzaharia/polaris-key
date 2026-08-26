@@ -1,6 +1,6 @@
 """The Polaris Key wire contract types — pure data, no crypto, no I/O.
 
-Mirrors ``@polaris-key/protocol`` (packages/shared-protocol/src/index.ts). Times are
+Mirrors ``@plrs/protocol`` (packages/shared-protocol/src/index.ts). Times are
 epoch SECONDS (ints), never millis. The dataclasses are frozen so a verified document
 can't be mutated in place. ``from_dict``/``to_dict`` round-trip the exact JSON shape the
 Worker signs — drift here silently breaks cross-platform verification.

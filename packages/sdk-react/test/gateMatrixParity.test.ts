@@ -17,7 +17,7 @@ import type {
   AllowedRange,
   BlockReason,
   ManagedConfigDoc,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { isUsable, licenseState } from "../src/core/gateModel.js";
 
 interface LicenseInputs {

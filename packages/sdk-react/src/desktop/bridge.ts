@@ -1,10 +1,10 @@
 // The desktop IPC contract. In an Electron/Tauri app the main/native process owns the
-// real @polaris-key/node client (token + keyring + loopback OIDC) and exposes THIS object
+// real @plrs/node client (token + keyring + loopback OIDC) and exposes THIS object
 // to the renderer (default: `window.polarisKey`, via a contextBridge preload). The React
 // desktop adapter is a thin renderer-side proxy over these methods — all credential and
 // filesystem state stays in the privileged process.
 //
-// The shapes deliberately mirror @polaris-key/node's client surface (getState / refresh /
+// The shapes deliberately mirror @plrs/node's client surface (getState / refresh /
 // activate / deauthorize / report) so the Node side can implement each method with a
 // near-1:1 delegation. Export it so that Node side can `import type { PolarisBridge }`.
 
@@ -13,7 +13,7 @@ import type {
   BlockReason,
   JSONValue,
   ManagedConfigDoc,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 
 /** The serialized gate the bridge reports — the renderer can't run the Node gate itself,
  *  so the privileged process sends the doc + the sync bookkeeping and the adapter derives
@@ -53,7 +53,7 @@ export type BridgeOidcPoll =
   | { kind: "expired" }
   | { kind: "error"; message: string };
 
-/** The result of submitting a typed key (mirrors @polaris-key/node's ActivationResult). */
+/** The result of submitting a typed key (mirrors @plrs/node's ActivationResult). */
 export type BridgeActivation =
   | { kind: "ok" }
   | { kind: "device-limit"; limit?: number; deviceCount?: number }

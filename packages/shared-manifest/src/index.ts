@@ -1,4 +1,4 @@
-import { type ProductCatalog } from "@polaris-key/catalog";
+import { type ProductCatalog } from "@plrs/catalog";
 import { parse as parseYaml } from "yaml";
 
 export type ProductModule =

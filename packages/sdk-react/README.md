@@ -1,8 +1,8 @@
-# @polaris-key/react
+# @plrs/react
 
 One React hook API over **two transports**, plus a brandable drop-in login gate.
 
-- **Desktop** (Electron/Tauri): wraps [`@polaris-key/node`](../sdk-node) through an injected
+- **Desktop** (Electron/Tauri): wraps [`@plrs/node`](../sdk-node) through an injected
   `PolarisBridge` (default `window.polarisKey`). The privileged process owns the token,
   keyring, and loopback-OIDC; the renderer is a thin proxy.
 - **Browser**: cookie-session OIDC against `key.plrs.im` over `fetch(..., { credentials:
@@ -14,7 +14,7 @@ so a component renders identically in either mode (mode-parity).
 ## Install
 
 ```sh
-pnpm add @polaris-key/react react react-dom
+pnpm add @plrs/react react react-dom
 ```
 
 React 18+ is a peer dependency.
@@ -22,7 +22,7 @@ React 18+ is a peer dependency.
 ## Quick start
 
 ```tsx
-import { PolarisKeyProvider, LicenseGate } from "@polaris-key/react";
+import { PolarisKeyProvider, LicenseGate } from "@plrs/react";
 
 export function App() {
   return (
@@ -92,17 +92,17 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 
 `enforced`/`hidden` values are locked to the server and cannot be overridden; `hidden` keys
 are additionally withheld from the user-facing list (`listUserConfig`) but still applied. In
-**desktop** mode, env/local overrides resolve in the privileged process (the `@polaris-key/node`
+**desktop** mode, env/local overrides resolve in the privileged process (the `@plrs/node`
 client, honoring `PKEY_CONFIG_*`); in **browser** mode the value comes straight from the
 signed remote doc.
 
 ### Desktop bridge contract
 
-Implement `PolarisBridge` (from `@polaris-key/react/desktop`) in your Electron/Tauri preload,
-delegating each method to `@polaris-key/node`:
+Implement `PolarisBridge` (from `@plrs/react/desktop`) in your Electron/Tauri preload,
+delegating each method to `@plrs/node`:
 
 ```ts
-import type { PolarisBridge } from "@polaris-key/react/desktop";
+import type { PolarisBridge } from "@plrs/react/desktop";
 
 const bridge: PolarisBridge = {
   getState: () => /* client.status() + cached doc */,
@@ -124,15 +124,15 @@ wrapper element. You can also override any `--pk-*` var from your own stylesheet
 
 ## Subpath exports
 
-- `@polaris-key/react` — everything
-- `@polaris-key/react/core` — mode-agnostic types + gate model (no React)
-- `@polaris-key/react/browser` — the browser adapter
-- `@polaris-key/react/desktop` — the desktop adapter + `PolarisBridge` IPC contract
+- `@plrs/react` — everything
+- `@plrs/react/core` — mode-agnostic types + gate model (no React)
+- `@plrs/react/browser` — the browser adapter
+- `@plrs/react/desktop` — the desktop adapter + `PolarisBridge` IPC contract
 
 ## Develop
 
 ```sh
-pnpm --filter @polaris-key/react typecheck
-pnpm --filter @polaris-key/react test
-pnpm --filter @polaris-key/react build
+pnpm --filter @plrs/react typecheck
+pnpm --filter @plrs/react test
+pnpm --filter @plrs/react build
 ```

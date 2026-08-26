@@ -1,6 +1,6 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { validateManifestDocuments } from "@polaris-key/manifest";
+import { validateManifestDocuments } from "@plrs/manifest";
 import { parse as parseYaml } from "yaml";
 
 export type ProductModule =
@@ -169,7 +169,7 @@ export function sdkSnippet(opts: {
     opts.kid && opts.publicKey
       ? `,\n  trust: { pinnedKeys: ${JSON.stringify({ [opts.kid]: opts.publicKey })} }`
       : "";
-  return `import { PolarisKeyClient } from "@polaris-key/node";
+  return `import { PolarisKeyClient } from "@plrs/node";
 
 const client = await PolarisKeyClient.create({
   productSlug: "${opts.product}",

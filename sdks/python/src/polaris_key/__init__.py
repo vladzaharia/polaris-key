@@ -1,6 +1,6 @@
 """polaris-key — a product-agnostic Python client for the Polaris Key control plane.
 
-Mirrors the Node SDK (``@polaris-key/node``) and verifies the SAME cross-language
+Mirrors the Node SDK (``@plrs/node``) and verifies the SAME cross-language
 conformance corpus byte-for-byte. The frozen wire crypto lives in :mod:`verify`; the
 client facade in :mod:`client`.
 """

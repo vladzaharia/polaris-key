@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { verifyJws } from "@polaris-key/jws";
-import type { ManagedConfigDoc } from "@polaris-key/protocol";
+import { verifyJws } from "@plrs/jws";
+import type { ManagedConfigDoc } from "@plrs/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {

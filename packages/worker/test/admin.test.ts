@@ -30,12 +30,12 @@ import { handleConfig, handleActivate } from "../src/licensing.js";
 import { handleMintToken } from "../src/edgeMint.js";
 import { buildDoc, signDoc } from "../src/configDoc.js";
 import { open } from "../src/keyvault.js";
-import { verifyJws } from "@polaris-key/jws";
+import { verifyJws } from "@plrs/jws";
 import type {
   ManagedConfigDoc,
   ManagedPayload,
   DocProfile,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import { getTokenRecord } from "../src/kv.js";
 import { hashKey } from "../src/crypto.js";
 

@@ -7,7 +7,7 @@ import type {
   JSONValue,
   LicenseStatus,
   ManagedEntry,
-} from "@polaris-key/protocol";
+} from "@plrs/protocol";
 import type { LicenseState } from "./gateModel.js";
 
 /** Which transport an adapter speaks. `auto` resolves at construction time. */

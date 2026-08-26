@@ -7,7 +7,7 @@
 // `enforced`/`hidden` always win (the value is locked to the server); a `default` (or an
 // absent entry) can be overridden locally or via an env var. See docs/CONCEPTS.md.
 
-import type { JSONValue, ManagedEntry } from "@polaris-key/protocol";
+import type { JSONValue, ManagedEntry } from "@plrs/protocol";
 
 /** Where a resolved config value came from, for diagnostics + settings UIs. */
 export type ConfigSource =
