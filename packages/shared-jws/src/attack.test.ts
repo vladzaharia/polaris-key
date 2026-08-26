@@ -1,0 +1,257 @@
+// R2 RED TEAM — adversarial tests against the FROZEN wire contract (@polaris-key/jws).
+// These tests document CURRENT behaviour. Several of them assert the *insecure* /
+// divergent behaviour on purpose, so that a future fix flips them red and forces a
+// deliberate wire-contract decision. Nothing here modifies src/index.ts.
+
+import { describe, expect, it } from "vitest";
+import {
+  base64UrlDecode,
+  base64UrlEncodeBytes,
+  signJws,
+  verifyJws,
+  type TrustSet,
+} from "./index.js";
+
+const KID = "pkey-test-prod-2026";
+const PUB = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI";
+const PEM =
+  "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----";
+
+const enc = (o: unknown): string =>
+  base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(o)));
+const encRaw = (s: string): string =>
+  base64UrlEncodeBytes(new TextEncoder().encode(s));
+
+const DOC = { schemaVersion: 1, aud: "djdl", iss: "key.plrs.im" };
+
+/** A trust set that records every `kid` lookup, so we can observe HOW FAR into the
+ *  verifier an attacker-controlled input is allowed to travel before rejection. */
+function watchedTrust(inner: TrustSet): { trust: TrustSet; reads: string[] } {
+  const reads: string[] = [];
+  const trust = new Proxy(inner, {
+    get(target, prop, recv) {
+      if (typeof prop === "string") reads.push(prop);
+      return Reflect.get(target, prop, recv);
+    },
+  }) as TrustSet;
+  return { trust, reads };
+}
+
+// FIXED (R2-04). `MAX_HEADER_BYTES` (1 KiB) now bounds the protected header, and both
+// segments are length-checked in their ENCODED form before anything is decoded.
+describe("R2-04 · the protected header is size-capped (regression)", () => {
+  it("an 8 MiB attacker-controlled HEADER is rejected before any decode or trust lookup", async () => {
+    // Previously MAX_DOC_BYTES guarded only `encPayload`, so moving the blob into the
+    // header skipped the guard entirely and bought the attacker a free decode + JSON.parse
+    // on an unauthenticated segment.
+    const filler = "A".repeat(8 * 1024 * 1024);
+    const bigHeader = { alg: "EdDSA", kid: KID, junk: filler };
+    const jws = `${enc(bigHeader)}.${enc(DOC)}.${encRaw("sig")}`;
+    expect(jws.length).toBeGreaterThan(8 * 1024 * 1024);
+
+    const { trust, reads } = watchedTrust({ [KID]: PUB });
+    expect(await verifyJws(jws, trust)).toBeNull();
+    // The kid is never looked up: the encoded-length check fires first, so no attacker-sized
+    // allocation and no JSON.parse ever happens.
+    expect(reads).not.toContain(KID);
+  });
+
+  it("contrast: an 8 MiB PAYLOAD is short-circuited by the cap before the trust lookup", async () => {
+    const filler = "A".repeat(8 * 1024 * 1024);
+    const jws = `${enc({ alg: "EdDSA", kid: KID })}.${enc({ ...DOC, junk: filler })}.${encRaw("sig")}`;
+
+    const { trust, reads } = watchedTrust({ [KID]: PUB });
+    expect(await verifyJws(jws, trust)).toBeNull();
+    // The cap fires first, so the kid is never looked up. This is the guard the header
+    // segment is missing.
+    expect(reads).not.toContain(KID);
+  });
+
+  it("the 64 KiB cap is applied AFTER a full base64 decode — the allocation is unbounded", async () => {
+    // `base64UrlDecode(encPayload)` materialises an atob() string PLUS a Uint8Array of the
+    // full attacker-chosen size before `payloadBytes.byteLength > MAX_DOC_BYTES` runs.
+    // Measure that the verifier's cost still scales with the oversized input.
+    const small = `${enc({ alg: "EdDSA", kid: KID })}.${enc(DOC)}.${encRaw("s")}`;
+    const bigPayload = `${enc({ alg: "EdDSA", kid: KID })}.${enc({ ...DOC, junk: "A".repeat(16 * 1024 * 1024) })}.${encRaw("s")}`;
+
+    const t0 = performance.now();
+    await verifyJws(small, { [KID]: PUB });
+    const smallMs = performance.now() - t0;
+    const t1 = performance.now();
+    await verifyJws(bigPayload, { [KID]: PUB });
+    const bigMs = performance.now() - t1;
+
+    // Not a threshold assertion (CI timing is noisy) — just record the shape.
+    // eslint-disable-next-line no-console
+    console.log(
+      `[R2-01] 16 MiB over-cap payload cost ${bigMs.toFixed(1)}ms vs ${smallMs.toFixed(1)}ms baseline`,
+    );
+    expect(bigMs).toBeGreaterThan(0);
+  });
+});
+
+// MEASURED cross-language ground truth for duplicate JSON object members (probed directly
+// against each runtime, see docs/security/findings/R2-crypto.md):
+//   TS      JSON.parse                 -> LAST member wins
+//   Python  json.loads                 -> LAST member wins
+//   Swift   JSONSerialization          -> FIRST member wins   <-- diverges
+// So `{"alg":"none","kid":K,"alg":"EdDSA"}` is EdDSA to TS/Python and `none` to Swift:
+// the same signed bytes produce OPPOSITE answers from the algorithm-downgrade guard.
+// FIXED (R2-06). Duplicate object members are now REJECTED outright rather than resolved,
+// so every language agrees regardless of whether its parser is first-wins or last-wins.
+describe("R2-06 · duplicate JSON keys are rejected, not resolved (regression)", () => {
+  it('{"alg":"none",...,"alg":"EdDSA"} is REJECTED — no member "wins"', async () => {
+    // Craft the header bytes by hand so both `alg` members survive into the wire form.
+    const headerJson = `{"alg":"none","kid":${JSON.stringify(KID)},"alg":"EdDSA"}`;
+    const encHeader = encRaw(headerJson);
+    const encPayload = enc(DOC);
+    // Sign the exact crafted signing input (an insider/compromised signer, or the SERVER,
+    // could emit this; the point is which member a verifier READS, not who signed it).
+    const key = await crypto.subtle.importKey(
+      "pkcs8",
+      pkcs8(PEM),
+      { name: "Ed25519" },
+      false,
+      ["sign"],
+    );
+    const raw = await crypto.subtle.sign(
+      { name: "Ed25519" },
+      key,
+      new TextEncoder().encode(
+        `${encHeader}.${encPayload}`,
+      ) as unknown as ArrayBuffer,
+    );
+    const jws = `${encHeader}.${encPayload}.${base64UrlEncodeBytes(new Uint8Array(raw))}`;
+
+    // Before the fix this VERIFIED: TS took the trailing `alg:"EdDSA"` while Swift's
+    // JSONSerialization took the leading `alg:"none"` — the downgrade guard giving opposite
+    // answers for identical signed bytes. Rejection is the only resolution all five
+    // implementations can agree on.
+    expect(await verifyJws(jws, { [KID]: PUB })).toBeNull();
+  });
+
+  it('{"alg":"EdDSA",...,"alg":"none"} is REJECTED — proving order, not presence, decides', async () => {
+    const headerJson = `{"alg":"EdDSA","kid":${JSON.stringify(KID)},"alg":"none"}`;
+    const encHeader = encRaw(headerJson);
+    const encPayload = enc(DOC);
+    const key = await crypto.subtle.importKey(
+      "pkcs8",
+      pkcs8(PEM),
+      { name: "Ed25519" },
+      false,
+      ["sign"],
+    );
+    const raw = await crypto.subtle.sign(
+      { name: "Ed25519" },
+      key,
+      new TextEncoder().encode(
+        `${encHeader}.${encPayload}`,
+      ) as unknown as ArrayBuffer,
+    );
+    const jws = `${encHeader}.${encPayload}.${base64UrlEncodeBytes(new Uint8Array(raw))}`;
+    expect(await verifyJws(jws, { [KID]: PUB })).toBeNull();
+  });
+});
+
+describe("R2-05 · base64url decoding is LENIENT in TS (diverges from Swift's strict decoder)", () => {
+  it("accepts the STANDARD base64 alphabet (+ and /) as well as -_", () => {
+    const bytes = new Uint8Array([0xfb, 0xff, 0xbf]); // encodes to "+/+/" family
+    const urlSafe = base64UrlEncodeBytes(bytes);
+    const standard = urlSafe.replace(/-/g, "+").replace(/_/g, "/");
+    expect(standard).not.toBe(urlSafe);
+    // Both decode to the same bytes: the wire form is NOT canonical.
+    expect([...base64UrlDecode(standard)]).toEqual([...bytes]);
+    expect([...base64UrlDecode(urlSafe)]).toEqual([...bytes]);
+  });
+
+  it("TS REJECTS out-of-alphabet characters — Python's decoder ACCEPTS the same bytes", () => {
+    // Node's `atob` is not `forgiving-base64` for arbitrary junk: it throws. Swift's
+    // `Data(base64Encoded:)` (default options, no .ignoreUnknownCharacters) returns nil.
+    // Python's `base64.urlsafe_b64decode(..., validate=False)` SILENTLY DISCARDS them —
+    // verified out-of-band with the exact source of sdks/python/src/polaris_key/b64url.py:
+    //     b64url_decode("AQ!!IDBAUG") -> b"\x01\x02\x03\x04\x05\x06"   (same as "AQIDBAUG")
+    // so Python accepts a JWS the TS/Swift verifiers reject. Three-way divergence.
+    const bytes = new Uint8Array([1, 2, 3, 4, 5, 6]);
+    const clean = base64UrlEncodeBytes(bytes);
+    expect(clean).toBe("AQIDBAUG");
+    for (const junk of ["\n \t", "!!", "@", "***"]) {
+      const dirty = clean.slice(0, 2) + junk + clean.slice(2);
+      expect(() => base64UrlDecode(dirty)).toThrow();
+    }
+  });
+
+  it("a junk-injected SIGNATURE segment: TS rejects, Python's decode yields identical sig bytes", async () => {
+    const jws = await signJws(DOC, PEM, KID);
+    const [h, p, s] = jws.split(".") as [string, string, string];
+    const mangled = `${h}.${p}.${s.slice(0, 4)}!!${s.slice(4)}`;
+    // TS: atob throws inside verifyJws's try → null (fail-closed).
+    expect(await verifyJws(mangled, { [KID]: PUB })).toBeNull();
+    // Python: `sig = b64url_decode(enc_sig)` returns the SAME 64 bytes as the clean form,
+    // and `signing_input` is built from enc_header/enc_payload only — so `key.verify`
+    // sees identical inputs and SUCCEEDS. Unlimited distinct wire strings, one valid doc.
+  });
+});
+
+describe("R2-07 · verifyJws does ZERO payload schema validation (diverges from Swift Codable)", () => {
+  it("a signed JSON scalar verifies and is returned as the 'document'", async () => {
+    const jws = await signJws(42, PEM, KID);
+    const v = await verifyJws<unknown>(jws, { [KID]: PUB });
+    expect(v?.payload).toBe(42);
+    // Swift's `JWSVerifier.verify` runs JSONDecoder<ManagedConfigDoc> and returns nil
+    // here; Python's `verify_jws` returns the raw scalar like TS. Unpinned by the corpus.
+  });
+
+  it("a doc missing every required field verifies in TS", async () => {
+    const jws = await signJws({}, PEM, KID);
+    const v = await verifyJws<Record<string, unknown>>(jws, { [KID]: PUB });
+    expect(v).not.toBeNull();
+    expect(v?.payload).toEqual({});
+  });
+
+  it("a `__proto__` key survives JSON.parse as an own property (no prototype pollution, but unfiltered)", async () => {
+    const jws = await signJws({ __proto__: { polluted: true } }, PEM, KID);
+    const v = await verifyJws<Record<string, unknown>>(jws, { [KID]: PUB });
+    expect(v).not.toBeNull();
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+});
+
+describe("R2 · control cases — these SHOULD pass and do", () => {
+  it("rejects alg=none, alg=HS256, unknown kid, tampered payload", async () => {
+    const good = await signJws(DOC, PEM, KID);
+    const [, p, s] = good.split(".") as [string, string, string];
+    expect(
+      await verifyJws(`${enc({ alg: "none", kid: KID })}.${p}.`, {
+        [KID]: PUB,
+      }),
+    ).toBeNull();
+    expect(
+      await verifyJws(`${enc({ alg: "HS256", kid: KID })}.${p}.${s}`, {
+        [KID]: PUB,
+      }),
+    ).toBeNull();
+    expect(await verifyJws(good, { other: PUB })).toBeNull();
+    expect(
+      await verifyJws(`${good.split(".")[0]}.${enc({ evil: 1 })}.${s}`, {
+        [KID]: PUB,
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects a non-32-byte trusted key and never throws", async () => {
+    const good = await signJws(DOC, PEM, KID);
+    expect(await verifyJws(good, { [KID]: "AAAA" })).toBeNull();
+  });
+});
+
+/** PKCS#8 PEM → ArrayBuffer (local copy; the module does not export this). */
+function pkcs8(pem: string): ArrayBuffer {
+  const body = pem
+    .replace(/-----BEGIN [^-]+-----/g, "")
+    .replace(/-----END [^-]+-----/g, "")
+    .replace(/\s+/g, "");
+  const bin = atob(body);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}

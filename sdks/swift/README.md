@@ -34,7 +34,9 @@ targets: [
 ```swift
 import PolarisKey
 
-let client = await PolarisKeyClient.create(options: .init(
+// `create` throws when the credential store itself is unavailable (locked keychain,
+// unwritable config dir) — that used to be swallowed, silently re-activating every launch.
+let client = try await PolarisKeyClient.create(options: .init(
     productSlug: "djdl",
     version: "1.4.2",
     trust: PolarisTrust(pinnedKeys: [
@@ -53,15 +55,17 @@ if client.isLicensed() {
 let result = await client.activate(key: userEnteredKey)
 
 // Re-pull managed config online (single /token re-acquire on 401), then re-apply.
+// `force: true` drops the conditional request, so the server must return a fresh document.
 await client.refresh()
 
-// Wipe local state + best-effort server deauthorize.
-await client.deactivate()
+// Wipe local state + best-effort server deauthorize. Throws if the local wipe failed —
+// the caller needs to know the credential is still on the machine.
+try await client.deactivate()
 ```
 
 The client mirrors the Node SDK's surface: `start()`/`activate(key:)`/`deactivate()`/
-`refresh()`/`status()`/`isLicensed()`/`config(_:default:)`/`secret(_:)`/`isEntitled(_:)`/
-`entitlements()`/`profile()`.
+`refresh(force:)`/`status()`/`isLicensed()`/`config(_:default:)`/`secret(_:)`/
+`isEntitled(_:)`/`entitlements()`/`profile()`.
 
 ### Layered config
 
@@ -85,9 +89,22 @@ is taken as a plain string. Supply `localOverrides` / `envPrefix` via the client
 ### Stores
 
 - `KeychainStore` (default) — token in the OS keychain (service `pkey:<product>`), device
-  id + offline cache as 0600 files under `~/.config/<product>/`.
+  id + offline cache as 0600 files under `~/.config/<product>/`. Files are created at 0600
+  by `open(2)` (never chmod'd afterwards) and both the read and write paths refuse to follow
+  a symlink.
 - `InMemoryStore` — for tests.
-- `Store` is a protocol; supply your own to back the token/cache differently.
+- `Store` is a protocol; supply your own to back the token/cache differently. Its mutating
+  methods `throw`, so a failed keychain write or an unwritable config dir surfaces as a
+  typed `StoreError` instead of vanishing.
+
+### What the cache holds
+
+Only **signed artifacts**: the compact JWS of the managed-config doc and of the trust
+manifest, plus two fail-closed hints (`blocked`, `lastSyncUnauthorized`). Both JWS are
+re-verified on load — the manifest against the **pinned** keys only — and every counter
+(`lastAcceptedIssuedAt`, the monotonic clock floor, `lastVerifiedAt`) is derived from that
+re-verified content. A `v1` cache record is discarded, not migrated. See
+`docs/security/WIRE-CONTRACT-V2.md` §4.
 
 ## SwiftUI gate
 
@@ -124,7 +141,7 @@ on `PolarisKeyClient`; the view is a thin renderer over it.
 Compact JWS, **EdDSA / Ed25519**:
 
 ```
-header       = {"alg":"EdDSA","kid":<kid>}            (key order fixed)
+header       = {"alg":"EdDSA","typ":<typ>,"kid":<kid>}  (key order fixed; typ is v2+)
 signingInput = base64url(utf8(JSON(header))) "." base64url(utf8(JSON(payload)))
 signature    = Ed25519 over the ASCII bytes of signingInput
 compact JWS  = signingInput "." base64url(signature)
@@ -136,6 +153,14 @@ math (a `none`/HMAC downgrade is rejected). Public keys are RAW 32 bytes
 (`Curve25519.Signing.PublicKey(rawRepresentation:)`) — no SPKI prefix. The signature is
 checked over the ASCII bytes of the original `encHeader.encPayload` substrings; the payload
 is never re-serialised, so verification is byte-stable across Node, Python, React, and Swift.
+
+Wire contract v2 additionally requires, in this order: the **encoded** segments are bounded
+before any decode (1 KiB header, 64 KiB payload), base64url is **strict** (`-_` only — no
+`+/`, no `=`, no whitespace), **duplicate JSON keys are rejected** rather than resolved
+(`JSONSerialization` is no longer used anywhere in the verify path), `typ` is asserted
+against the call site's expected document type, and the payload is parsed **only after** the
+signature verifies. `verifyDoc` then checks `schemaVersion`, `aud`, `iss`, `deviceId`,
+monotonic `issuedAt`, and the whole signed validity window with a 300s clock skew.
 
 ## Develop
 

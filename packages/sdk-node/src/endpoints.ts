@@ -53,6 +53,9 @@ interface Base {
   product: string;
   deviceId: string;
   fetchImpl?: typeof fetch;
+  /** Deadline for the request. Node's `fetch` has NO default timeout, so without one a
+   *  slowloris on any endpoint stalls the caller indefinitely (R4-08). */
+  signal?: AbortSignal;
 }
 
 async function activationLike(
@@ -60,6 +63,7 @@ async function activationLike(
   headers: Record<string, string>,
   f: typeof fetch,
   fingerprint?: HardwareFingerprint | null,
+  signal?: AbortSignal,
 ): Promise<ActivationResult> {
   let res: Response;
   try {
@@ -70,8 +74,9 @@ async function activationLike(
           method: "POST",
           headers: { ...headers, "content-type": "application/json" },
           body: JSON.stringify({ fingerprint }),
+          signal,
         }
-      : { method: "POST", headers };
+      : { method: "POST", headers, signal };
     res = await f(url, init);
   } catch (e) {
     return { kind: "error", message: (e as Error).message };
@@ -120,6 +125,7 @@ export async function enroll(
     { [HEADER_DEVICE]: opts.deviceId, ...metadataHeaders() },
     opts.fetchImpl ?? fetch,
     opts.fingerprint,
+    opts.signal,
   );
 }
 
@@ -135,6 +141,7 @@ export async function activateWithKey(
     },
     opts.fetchImpl ?? fetch,
     opts.fingerprint,
+    opts.signal,
   );
 }
 
@@ -143,10 +150,12 @@ export async function listDevices(opts: {
   product: string;
   token: string;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }): Promise<AccountDevice[]> {
   const f = opts.fetchImpl ?? fetch;
   const res = await f(`${opts.baseUrl}/${opts.product}/devices`, {
     headers: { authorization: `Bearer ${opts.token}` },
+    signal: opts.signal,
   });
   if (!res.ok) throw new Error(`device list failed: ${res.status}`);
   const body = (await res.json()) as { devices?: AccountDevice[] };
@@ -160,6 +169,7 @@ export async function renameDevice(opts: {
   deviceId: string;
   label: string | null;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }): Promise<void> {
   const f = opts.fetchImpl ?? fetch;
   const res = await f(
@@ -171,6 +181,7 @@ export async function renameDevice(opts: {
         "content-type": "application/json",
       },
       body: JSON.stringify({ label: opts.label }),
+      signal: opts.signal,
     },
   );
   if (!res.ok) throw new Error(`device rename failed: ${res.status}`);
@@ -182,6 +193,7 @@ export async function deauthorizeDevice(opts: {
   token: string;
   deviceId: string;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }): Promise<void> {
   const f = opts.fetchImpl ?? fetch;
   const res = await f(
@@ -189,6 +201,7 @@ export async function deauthorizeDevice(opts: {
     {
       method: "DELETE",
       headers: { authorization: `Bearer ${opts.token}` },
+      signal: opts.signal,
     },
   );
   if (!res.ok) throw new Error(`device deauthorize failed: ${res.status}`);
@@ -205,6 +218,8 @@ export async function reacquireToken(
       ...metadataHeaders(),
     },
     opts.fetchImpl ?? fetch,
+    null,
+    opts.signal,
   );
 }
 
@@ -213,12 +228,14 @@ export async function deauthorize(opts: {
   product: string;
   token: string;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }): Promise<void> {
   const f = opts.fetchImpl ?? fetch;
   try {
     await f(`${opts.baseUrl}/${opts.product}/deauthorize`, {
       method: "POST",
       headers: { authorization: `Bearer ${opts.token}` },
+      signal: opts.signal,
     });
   } catch {
     // best-effort; the local wipe is what matters
@@ -231,6 +248,7 @@ export async function reportSnapshot(opts: {
   token: string;
   snapshot: unknown;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }): Promise<boolean> {
   const f = opts.fetchImpl ?? fetch;
   try {
@@ -242,6 +260,7 @@ export async function reportSnapshot(opts: {
         ...metadataHeaders(),
       },
       body: JSON.stringify(opts.snapshot),
+      signal: opts.signal,
     });
     return res.ok;
   } catch {

@@ -8,8 +8,27 @@
 import Foundation
 
 public enum Base64URL {
+    /// The unpadded base64url alphabet. Nothing else is a valid JWS segment.
+    private static let alphabet = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+
+    /// Strict base64url decode for WIRE segments (header / payload / signature): the `-_`
+    /// alphabet only — no `+`/`/`, no `=` padding, no whitespace, no other byte.
+    ///
+    /// `Data(base64Encoded:)` already rejects junk, but it happily accepts the STANDARD
+    /// alphabet (`+/`) and explicit padding once we have re-padded, which made the same
+    /// mangled token decode differently across SDKs (audit finding R2-05). Wire contract v2
+    /// §2.3 requires every language to reject rather than tolerate. Returns nil, never throws.
+    public static func decodeStrict(_ s: String) -> Data? {
+        for ch in s where !alphabet.contains(ch) { return nil }
+        return decode(s)
+    }
+
     /// Decode a base64url string (URL-safe alphabet, padding optional). Returns nil on
     /// any character / structure error — verification treats that as a hard failure.
+    ///
+    /// Lenient about the standard alphabet, matching `@polaris-key/jws`'s `base64UrlDecode`,
+    /// which is still used for trust-set key material. JWS segments MUST use
+    /// `decodeStrict(_:)` instead.
     public static func decode(_ s: String) -> Data? {
         var b64 = s.replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")

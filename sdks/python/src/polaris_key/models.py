@@ -55,6 +55,39 @@ HEADER_SDK_VERSION = "X-PKey-SDK-Version"
 # A JSON-serialisable value — the type every managed entry carries.
 JSONValue = Any
 
+
+# ── Wire-shape validation (audit finding R4-13) ─────────────────────────────────────
+# ``from_dict`` used to require only that a key be *present*, so a signed-but-malformed
+# document with ``"issuedAt": "5"`` decoded cleanly and then raised
+# ``TypeError: '<=' not supported between instances of 'str' and 'int'`` out of
+# ``verify_doc`` -> ``refresh()``, uncaught. Node coerces via JS ``<=``; Swift's
+# ``JSONDecoder`` rejects at decode. Python now rejects at decode too: these raise
+# ``ValueError``, which the ``except Exception`` in ``verify_jws_doc`` turns into "no
+# document". Never a crash, never a coerced comparison.
+
+
+def _req_int(d: Dict[str, Any], key: str) -> int:
+    v = d[key]
+    # bool is a subclass of int — `True` is not a timestamp.
+    if not isinstance(v, int) or isinstance(v, bool):
+        raise ValueError(f"{key} must be an integer, got {type(v).__name__}")
+    return v
+
+
+def _req_str(d: Dict[str, Any], key: str) -> str:
+    v = d[key]
+    if not isinstance(v, str):
+        raise ValueError(f"{key} must be a string, got {type(v).__name__}")
+    return v
+
+
+def _req_dict(d: Dict[str, Any], key: str) -> Dict[str, Any]:
+    v = d[key]
+    if not isinstance(v, dict):
+        raise ValueError(f"{key} must be an object, got {type(v).__name__}")
+    return v
+
+
 ManagementState = Literal["default", "enforced", "hidden"]
 LicenseStatus = Literal[
     "ok",
@@ -85,10 +118,15 @@ class ManagedEntry:
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "ManagedEntry":
+        if not isinstance(d, dict):
+            raise ValueError("managed entry must be an object")
+        updated_at = d.get("updatedAt", 0)
+        if not isinstance(updated_at, int) or isinstance(updated_at, bool):
+            raise ValueError("updatedAt must be an integer")
         return ManagedEntry(
-            state=d["state"],
+            state=_req_str(d, "state"),  # type: ignore[arg-type]
             value=d.get("value"),
-            updated_at=d.get("updatedAt", 0),
+            updated_at=updated_at,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -109,8 +147,13 @@ class ManagedPayload:
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "ManagedPayload":
+        if not isinstance(d, dict):
+            raise ValueError("payload must be an object")
+
         def section(name: str) -> Dict[str, ManagedEntry]:
             raw = d.get(name) or {}
+            if not isinstance(raw, dict):
+                raise ValueError(f"payload.{name} must be an object")
             return {k: ManagedEntry.from_dict(v) for k, v in raw.items()}
 
         return ManagedPayload(
@@ -138,11 +181,13 @@ class DocProfile:
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "DocProfile":
+        if not isinstance(d, dict):
+            raise ValueError("profile must be an object")
         return DocProfile(
-            name=d["name"],
-            firstName=d["firstName"],
-            email=d["email"],
-            activatedAt=d["activatedAt"],
+            name=_req_str(d, "name"),
+            firstName=_req_str(d, "firstName"),
+            email=_req_str(d, "email"),
+            activatedAt=_req_int(d, "activatedAt"),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -175,17 +220,19 @@ class ManagedConfigDoc:
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "ManagedConfigDoc":
+        if not isinstance(d, dict):
+            raise ValueError("document must be an object")
         return ManagedConfigDoc(
-            schemaVersion=d["schemaVersion"],
-            aud=d["aud"],
-            iss=d["iss"],
-            licenseId=d["licenseId"],
-            deviceId=d["deviceId"],
-            issuedAt=d["issuedAt"],
-            expiresAt=d["expiresAt"],
-            graceUntil=d["graceUntil"],
-            profile=DocProfile.from_dict(d["profile"]),
-            payload=ManagedPayload.from_dict(d["payload"]),
+            schemaVersion=_req_int(d, "schemaVersion"),
+            aud=_req_str(d, "aud"),
+            iss=_req_str(d, "iss"),
+            licenseId=_req_str(d, "licenseId"),
+            deviceId=_req_str(d, "deviceId"),
+            issuedAt=_req_int(d, "issuedAt"),
+            expiresAt=_req_int(d, "expiresAt"),
+            graceUntil=_req_int(d, "graceUntil"),
+            profile=DocProfile.from_dict(_req_dict(d, "profile")),
+            payload=ManagedPayload.from_dict(_req_dict(d, "payload")),
         )
 
     def to_dict(self) -> Dict[str, Any]:

@@ -3,12 +3,29 @@ cache/gate.
 
 Offline-first — ``__init__``/``create`` apply the cached doc with no network;
 ``refresh()`` re-pulls (with a single ``/token`` re-acquire on 401) and re-applies.
-Mirrors ``client.ts``.
+Mirrors ``client.ts`` at wire contract v2 (docs/security/WIRE-CONTRACT-V2.md).
+
+TRUST MODEL (§1). Three tiers in strictly decreasing authority:
+
+* **pinned** — ``trust=`` compiled into the host application. Terminal: a pinned ``kid``
+  can never be overridden, and is never pruned.
+* **manifest** — keys learned from a ``polaris-trust.jws`` that verified against the
+  pinned set. Replaced wholesale on every refresh, so absence is revocation.
+* *(nothing else — the cache is no longer a key source.)*
+
+The v1 merge was ``{**pinned, **cache}``, i.e. cache wins, so one write to
+``managed.json`` substituted the key bytes behind a kid the application had explicitly
+pinned in source (R2-01/R4-02, CRITICAL). Every downstream defence reasoning "the kid
+must be one I pinned" still passed. The merge is now ``{**manifest, **pinned}`` and the
+cache holds only the signed manifest, re-verified against the pins on every load.
+
+DERIVED STATE (§4). ``lastAcceptedIssuedAt``, ``lastTrustIssuedAt``, ``lastVerifiedAt``
+and the monotonic clock floor are **recomputed from re-verified content** on every load.
+None of them is read from disk, so none of them can be poisoned there.
 """
 
 from __future__ import annotations
 
-import dataclasses
 import json
 import os
 import threading
@@ -45,9 +62,10 @@ from .license import (
 )
 from .facts import ProbeDeclaration, collect_facts
 from .fingerprint import collect_fingerprint
-from .models import DocProfile, ManagedEntry
+from .models import DocProfile, ManagedConfigDoc, ManagedEntry
 from .store import CacheRecord, KeyringStore, Store
-from .verify import TrustSet, verify_doc, verify_jws
+from .trust import merge_trust, verify_trust_manifest
+from .verify import TrustSet, verify_doc
 
 __all__ = [
     "PolarisKeyClient",
@@ -57,6 +75,14 @@ __all__ = [
 ]
 
 DEFAULT_BASE = "https://key.plrs.im"
+
+# How close to `expiresAt` a cached document may drift before a 304 must be escalated to
+# a full re-request (§5) — half of DOC_EXPIRY_SECONDS, matching
+# `packages/sdk-node/src/claims.ts`. The content-only ETag is deliberately blind to the
+# time fields, so a stable config 304s forever and a CONTINUOUSLY ONLINE client silently
+# ages into `grace` and then `expired` (R2-11). A 304 means "content unchanged, freshness
+# renewed": when the signed window is more than half gone, ask for a fresh signature.
+REFRESH_MARGIN_SECONDS = 1800
 
 # Sentinel distinguishing "leave unchanged" from "clear to None" in patch_cache.
 _UNSET = object()
@@ -125,7 +151,13 @@ class PolarisKeyClient:
         self._base_url = (base_url or DEFAULT_BASE).rstrip("/")
         self._version = version
         self._channel = channel or channel_for_version(version)
-        self._trust = trust
+        # `_pinned` is the host application's root of trust and is NEVER mutated.
+        # `_manifest_keys` is replaced wholesale by each verified manifest (§1.2.4:
+        # pruning is mandatory — absence is revocation). `_trust` is the resolved set,
+        # with the pins terminal.
+        self._pinned: TrustSet = dict(trust)
+        self._manifest_keys: Dict[str, str] = {}
+        self._trust: TrustSet = dict(trust)
         self._trust_refresh = trust_refresh
         self._fingerprint_enabled = fingerprint
         self._probes: List[ProbeDeclaration] = list(probes or [])
@@ -149,6 +181,14 @@ class PolarisKeyClient:
         self._token: Optional[str] = None
         self._device_id = ""
         self._cache: Optional[CacheRecord] = None
+        # ── Derived security state (§4). Recomputed from re-verified signed artifacts
+        #    on every load; never read from disk. ──────────────────────────────────
+        self._doc: Optional[ManagedConfigDoc] = None
+        self._last_accepted_issued_at: Optional[int] = None
+        self._last_trust_issued_at: Optional[int] = None
+        self._last_verified_at: Optional[int] = None
+        # The greatest `issuedAt` ever verified — the monotonic time floor (§4.3).
+        self._high_water_mark = 0
 
     @classmethod
     def create(cls, **opts: Any) -> "PolarisKeyClient":
@@ -185,9 +225,83 @@ class PolarisKeyClient:
         self._device_id = self._store.get_device_id()
         self._token = self._store.get_token()
         self._cache = self._store.read_cache()
-        if self._cache and self._cache.trustedKeys:
-            self._trust = {**self._trust, **self._cache.trustedKeys}
+        self._load_cached_artifacts()
         self._start_timer()
+
+    def _load_cached_artifacts(self) -> None:
+        """Re-verify the cached JWS artifacts and DERIVE all state from them (§4.2).
+
+        1. Re-verify ``trustJws`` against the **pinned** keys only. On failure discard
+           it and fall back to the pins alone — never to whatever the file claimed.
+        2. Build the trust set per §1.
+        3. Re-verify ``configJws`` against that trust set, with the full §3 claim checks.
+        4. Derive ``lastAcceptedIssuedAt`` / ``lastTrustIssuedAt`` / the clock floor from
+           the verified content.
+        5. Any failure => treat as no cache => ``needs-activation``. Fail closed, never
+           fall back to a partially-trusted state.
+        """
+        self._manifest_keys = {}
+        self._trust = dict(self._pinned)
+        self._doc = None
+        self._last_accepted_issued_at = None
+        self._last_trust_issued_at = None
+        self._last_verified_at = None
+        self._high_water_mark = 0
+
+        rec = self._cache
+        if rec is None:
+            return
+        now = _now_sec()
+
+        # Freshness is NOT asserted on reload: a manifest is only minutes-fresh by design,
+        # and refusing a stale one would strand every offline client that has rotated keys.
+        # Its signature, `typ`, `aud`/`iss` binding and pinned-substitution guard all apply.
+        if rec.trustJws and not self._apply_trust_manifest(
+            rec.trustJws, now=now, persist=False, check_freshness=False
+        ):
+            # Drop it in memory too, so a later _patch_cache can't write it back.
+            rec.trustJws = None
+
+        if rec.configJws:
+            doc = verify_doc(
+                rec.configJws,
+                self._trust,
+                expected_aud=self.product,
+                device_id=self._device_id,
+                now=now,
+                # §3.1 correction 2 — a cached doc is EXPECTED to be past its short
+                # `expiresAt`; that is what offline operation is. Its signed outer bound
+                # here is `graceUntil`, enforced by the gate against the monotonic floor.
+                # Asserting freshness on reload would delete offline grace outright.
+                check_freshness=False,
+            )
+            if doc is None:
+                rec.configJws = None
+                rec.etag = None
+            else:
+                self._accept_doc(doc)
+                # Derived, not stored: offline, the server's own statement of when this
+                # document was minted is the only trustworthy "last verified" signal.
+                self._last_verified_at = doc.issuedAt * 1000
+
+    def _accept_doc(self, doc: ManagedConfigDoc) -> None:
+        """Install a freshly verified document and re-derive the counters it anchors."""
+        self._doc = doc
+        self._last_accepted_issued_at = doc.issuedAt
+        # The monotonic floor only ever rises (§4.3) — a rolled-back system clock is inert.
+        if doc.issuedAt > self._high_water_mark:
+            self._high_water_mark = doc.issuedAt
+
+    def _effective_now(self, now: Optional[int] = None) -> int:
+        """``max(systemClock, highWaterMark)`` — the §4.3 monotonic time floor.
+
+        The greatest ``issuedAt`` we have ever verified is a signed statement that time
+        had at least reached that point. Taking the max makes clock rollback (R4-04)
+        inert without requiring a trusted local clock, and costs nothing when the clock
+        is honest.
+        """
+        wall = _now_sec() if now is None else now
+        return wall if wall > self._high_water_mark else self._high_water_mark
 
     def _start_timer(self) -> None:
         """Start the optional refresh loop.
@@ -215,15 +329,15 @@ class PolarisKeyClient:
 
     # ── Gate / reads ────────────────────────────────────────────────────────────
     def status(self, now: Optional[int] = None) -> LicenseState:
-        now = _now_sec() if now is None else now
         cache = self._cache
         return license_state(
             has_token=self._token is not None,
-            doc=cache.doc if cache else None,
-            now=now,
+            doc=self._doc,
+            now=_now_sec() if now is None else now,
+            high_water_mark=self._high_water_mark,
             last_sync_unauthorized=cache.lastSyncUnauthorized if cache else False,
             blocked=cache.blocked if cache else None,
-            last_verified_at=cache.lastVerifiedAt if cache else None,
+            last_verified_at=self._last_verified_at,
         )
 
     def is_licensed(self, now: Optional[int] = None) -> bool:
@@ -240,7 +354,7 @@ class PolarisKeyClient:
         return value
 
     def _config_entry(self, key: str) -> Optional[ManagedEntry]:
-        doc = self._cache.doc if self._cache else None
+        doc = self._doc
         if not doc:
             return None
         return doc.payload.config.get(key)
@@ -281,7 +395,7 @@ class PolarisKeyClient:
         Each item is ``{key, value, enforced}`` where ``enforced`` reflects whether the
         remote entry locks the value (an ``enforced`` state).
         """
-        doc = self._cache.doc if self._cache else None
+        doc = self._doc
         if not doc:
             return []
         out: List[Dict[str, Any]] = []
@@ -295,7 +409,7 @@ class PolarisKeyClient:
         return out
 
     def get_secret(self, key: str) -> Optional[str]:
-        doc = self._cache.doc if self._cache else None
+        doc = self._doc
         if not doc:
             return None
         e = doc.payload.secrets.get(key)
@@ -304,31 +418,31 @@ class PolarisKeyClient:
         return None
 
     def is_entitled(self, name: str) -> bool:
-        doc = self._cache.doc if self._cache else None
+        doc = self._doc
         if not doc:
             return False
         e = doc.payload.entitlements.get(name)
         return bool(e is not None and e.value is True)
 
     def get_entitlements(self) -> Dict[str, Any]:
-        doc = self._cache.doc if self._cache else None
+        doc = self._doc
         if not doc:
             return {}
         return {k: v.value for k, v in doc.payload.entitlements.items()}
 
     def get_profile(self) -> Optional[DocProfile]:
-        doc = self._cache.doc if self._cache else None
+        doc = self._doc
         return doc.profile if doc else None
 
     def current_device(self) -> DeviceInfo:
-        doc = self._cache.doc if self._cache else None
+        doc = self._doc
         return DeviceInfo(
             id=self._device_id,
             current=True,
             status=self.status().status,
             licenseId=doc.licenseId if doc else None,
             profile=doc.profile if doc else None,
-            lastVerifiedAt=self._cache.lastVerifiedAt if self._cache else None,
+            lastVerifiedAt=self._last_verified_at,
         )
 
     def list_devices(self) -> List[DeviceInfo]:
@@ -399,6 +513,15 @@ class PolarisKeyClient:
         self._cache = None
         self._store.clear_token()
         self._store.clear_cache()
+        # Drop every derived artifact too: keys learned from a manifest, the doc, and the
+        # counters anchored to it. Only the compiled-in pins survive a deactivation.
+        self._manifest_keys = {}
+        self._trust = dict(self._pinned)
+        self._doc = None
+        self._last_accepted_issued_at = None
+        self._last_trust_issued_at = None
+        self._last_verified_at = None
+        self._high_water_mark = 0
 
     # ── Refresh ─────────────────────────────────────────────────────────────────
     def refresh(self, force: bool = False) -> RefreshResult:
@@ -449,6 +572,17 @@ class PolarisKeyClient:
         )
 
         if isinstance(res, FetchNotModified):
+            # A 304 is a successful, authenticated verification: clear the fail-closed
+            # hints. But the ETag covers CONTENT only, so a stable config would 304 until
+            # the signed window ran out — §5 forbids letting a continuously online client
+            # drift into `grace`. Escalate to a full re-request once the doc is past its
+            # half-life (or missing entirely), exactly once, so this cannot loop.
+            if not force and self._needs_fresh_signature():
+                return self._fetch_and_apply(
+                    allow_reacquire=allow_reacquire, force=True
+                )
+            # A 304 IS a successful authenticated verification.
+            self._last_verified_at = _now_ms()
             self._patch_cache(blocked=None, last_sync_unauthorized=False)
             return RefreshResult(applied=False)
 
@@ -485,27 +619,32 @@ class PolarisKeyClient:
                 self._trust,
                 expected_aud=self.product,
                 device_id=self._device_id,
-                last_accepted_issued_at=(
-                    self._cache.lastAcceptedIssuedAt if self._cache else None
-                ),
+                # Derived from the doc we last verified — never from an on-disk counter.
+                last_accepted_issued_at=self._last_accepted_issued_at,
             )
             if doc is None:
                 return RefreshResult(applied=False)
-            self._cache = CacheRecord(
-                doc=doc,
+            self._accept_doc(doc)
+            self._last_verified_at = _now_ms()
+            # Persist the SIGNED ARTIFACT, not the decoded document. Everything the gate
+            # later reads is re-derived from this string by re-verifying it (§4.1).
+            self._patch_cache(
+                config_jws=res.jws,
                 etag=res.etag,
-                lastAcceptedIssuedAt=doc.issuedAt,
-                lastVerifiedAt=_now_ms(),
-                lastSyncUnauthorized=False,
                 blocked=None,
-                trustedKeys=self._cache.trustedKeys if self._cache else None,
-                lastTrustIssuedAt=self._cache.lastTrustIssuedAt if self._cache else None,
+                last_sync_unauthorized=False,
             )
-            self._store.write_cache(self._cache)
             return RefreshResult(applied=True)
 
         # FetchError
         return RefreshResult(applied=False)
+
+    def _needs_fresh_signature(self, now: Optional[int] = None) -> bool:
+        """True when a 304 must be escalated to a full re-request (§5 / R2-11)."""
+        if self._doc is None:
+            return True
+        wall = _now_sec() if now is None else now
+        return wall > self._doc.expiresAt - REFRESH_MARGIN_SECONDS
 
     def _refresh_trust(self) -> bool:
         res = self._http.get(
@@ -514,98 +653,80 @@ class PolarisKeyClient:
         )
         if res.status_code != 200:
             return False
-        verified = verify_jws(res.text, self._trust)
-        if verified is None:
-            return False
-        doc = verified.payload
-        if doc.get("aud") != self.product or doc.get("iss") != "key.plrs.im":
-            return False
-        if not isinstance(doc.get("issuedAt"), int) or not isinstance(
-            doc.get("expiresAt"), int
-        ):
-            return False
-        if doc["expiresAt"] < _now_sec():
-            return False
-        if self._cache and self._cache.lastTrustIssuedAt is not None:
-            if doc["issuedAt"] <= self._cache.lastTrustIssuedAt:
-                return False
-        keys = doc.get("keys")
-        if not isinstance(keys, list):
-            return False
-        next_keys: Dict[str, str] = {}
-        for item in keys:
-            if not isinstance(item, dict):
-                continue
-            if (
-                item.get("alg") == "EdDSA"
-                and item.get("kty") == "OKP"
-                and item.get("crv") == "Ed25519"
-            ):
-                kid = item.get("kid")
-                public_key = item.get("publicKey")
-                if isinstance(kid, str) and isinstance(public_key, str):
-                    next_keys[kid] = public_key
-        if not next_keys:
-            return False
-        self._trust = {**self._trust, **next_keys}
-        self._patch_cache(
-            trusted_keys=self._trust, last_trust_issued_at=doc["issuedAt"]
+        return self._apply_trust_manifest(res.text, now=_now_sec(), persist=True)
+
+    def _apply_trust_manifest(
+        self, jws: str, *, now: int, persist: bool, check_freshness: bool = True
+    ) -> bool:
+        """Verify a trust manifest and REPLACE the learned key set with its contents.
+
+        The rules live in :mod:`polaris_key.trust` so this SDK and the Node one can be
+        driven by the same ``trustCases`` corpus section. Returns ``True`` when the
+        manifest was accepted and installed; on ``False`` the previous trust set is left
+        exactly as it was.
+        """
+        result = verify_trust_manifest(
+            jws,
+            pinned=self._pinned,
+            expected_aud=self.product,
+            last_trust_issued_at=self._last_trust_issued_at,
+            now=now,
+            check_freshness=check_freshness,
         )
+        if result.doc is None:
+            return False
+        # §1.2 rule 4 — PRUNE. The trust set becomes exactly `pinned ∪ {manifest keys
+        # whose status != revoked}`; a kid absent from the new manifest and not pinned is
+        # dropped. Absence is revocation. The v1 code merged and never removed, so a
+        # compromised kid stayed trusted forever, on disk, across restarts (R2-02).
+        self._manifest_keys = result.discovered
+        self._trust = merge_trust(self._pinned, result.discovered)
+        self._last_trust_issued_at = result.doc["issuedAt"]
+        if persist:
+            self._patch_cache(trust_jws=jws)
         return True
 
     def _patch_cache(
         self,
         *,
+        config_jws: Any = _UNSET,
+        trust_jws: Any = _UNSET,
+        etag: Any = _UNSET,
         blocked: Any = _UNSET,
         last_sync_unauthorized: Any = _UNSET,
-        trusted_keys: Any = _UNSET,
-        last_trust_issued_at: Any = _UNSET,
     ) -> None:
-        """Update the bookkeeping fields, tolerating a doc-less cache.
+        """Update the cache record, creating it only when there is something to keep.
 
-        Mirrors ``patchCache``: when there's no cache yet, only persist the
-        bookkeeping when something meaningful (a block or a 401) is being set; the gate
-        tolerates a ``doc``-less cache. ``_UNSET`` means "leave that field unchanged".
+        ``_UNSET`` means "leave that field unchanged". When there is no record yet, a
+        no-op patch (e.g. clearing already-clear fail-closed hints) must not create an
+        empty file — the gate tolerates an absent cache.
         """
         if self._cache is None:
-            sets_block = blocked is not _UNSET and blocked is not None
-            sets_unauth = last_sync_unauthorized is True
-            sets_trust = trusted_keys is not _UNSET or last_trust_issued_at is not _UNSET
-            if sets_block or sets_unauth or sets_trust:
-                self._cache = CacheRecord(
-                    doc=None,
-                    lastAcceptedIssuedAt=0,
-                    blocked=blocked if blocked is not _UNSET else None,
-                    lastSyncUnauthorized=(
-                        last_sync_unauthorized
-                        if last_sync_unauthorized is not _UNSET
-                        else False
-                    ),
-                    trustedKeys=trusted_keys if trusted_keys is not _UNSET else None,
-                    lastTrustIssuedAt=(
-                        last_trust_issued_at
-                        if last_trust_issued_at is not _UNSET
-                        else None
-                    ),
-                )
-                self._store.write_cache(self._cache)
-            return
-        # ``CacheRecord`` is replaced (not mutated) so a frozen record never raises
-        # FrozenInstanceError; ``_UNSET`` fields keep their current value.
-        changes: Dict[str, Any] = {}
+            meaningful = (
+                (config_jws is not _UNSET and config_jws is not None)
+                or (trust_jws is not _UNSET and trust_jws is not None)
+                or (blocked is not _UNSET and blocked is not None)
+                or last_sync_unauthorized is True
+            )
+            if not meaningful:
+                return
+            self._cache = CacheRecord()
+
+        rec = self._cache
+        if config_jws is not _UNSET:
+            rec.configJws = config_jws
+        if trust_jws is not _UNSET:
+            rec.trustJws = trust_jws
+        if etag is not _UNSET:
+            rec.etag = etag
         if blocked is not _UNSET:
-            changes["blocked"] = blocked
+            rec.blocked = blocked
         if last_sync_unauthorized is not _UNSET:
-            changes["lastSyncUnauthorized"] = last_sync_unauthorized
-        if trusted_keys is not _UNSET:
-            changes["trustedKeys"] = trusted_keys
-        if last_trust_issued_at is not _UNSET:
-            changes["lastTrustIssuedAt"] = last_trust_issued_at
-        self._cache = dataclasses.replace(self._cache, **changes)
-        self._store.write_cache(self._cache)
+            rec.lastSyncUnauthorized = last_sync_unauthorized
+        self._store.write_cache(rec)
 
     def _report_snapshot_body(self) -> Dict[str, Any]:
-        doc = self._cache.doc if self._cache else None
+        doc = self._doc
         config: Dict[str, Any] = {}
         entitlements: Dict[str, Any] = {}
         if doc:

@@ -105,24 +105,82 @@ core, so they never diverge. Trust keys are passed as repeatable `--trust kid=ra
 pairs so the CLI stays product-agnostic:
 
 ```sh
-polaris-key activate PKEY-XXXX-XXXX --product djdl --version 1.0.0 \
+# Preferred: the key never touches argv (see "Supplying the license key" below).
+POLARIS_KEY_ACTIVATION_KEY=PKEY-XXXX-XXXX polaris-key activate \
+  --product djdl --version 1.0.0 \
   --trust pkey-prod-2026=kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI
 polaris-key status --product djdl --trust pkey-prod-2026=...
 polaris-key deactivate --product djdl --trust pkey-prod-2026=...
 # equivalently: python -m polaris_key ...
 ```
 
+### Supplying the license key
+
+A key passed as `polaris-key activate PKEY-XXXX` is written verbatim to your shell
+history, is visible to every user on the machine via `ps auxww` while the command runs,
+and is readable from `/proc/<pid>/cmdline` on Linux. The CLI therefore resolves the key
+from a **non-argv** source first:
+
+| Order | Source |
+| --- | --- |
+| 1 | `--key-file <path>` |
+| 2 | `--key-stdin` (one line from stdin) |
+| 3 | `$POLARIS_KEY_ACTIVATION_KEY` |
+| 4 | the positional argument — still supported for scripting, but it prints a warning |
+| 5 | an interactive prompt, when stdin is a TTY |
+
+```sh
+printf '%s' "$KEY" | polaris-key activate --key-stdin --product djdl
+polaris-key activate --key-file ~/.config/djdl/license.key --product djdl
+polaris-key activate --product djdl        # prompts when run interactively
+```
+
+### `--version`
+
+`--version` defaults to the **installed package version**, not to a `0.0.0-dev`
+sentinel. The control plane's build gate short-circuits on a dev version, so defaulting
+to one meant the CLI's out-of-the-box invocation requested a document that skipped
+version *and* channel enforcement. Pass your application's real version when you mount
+these commands into your own CLI.
+
 To mount the commands onto your own program, import the adapter you use: the click adapter
 exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter exposes an
 `app` (`polaris_key.cli.typer_cli.app`); both are thin wrappers over `core`.
 
+## Trust, caching, and the offline gate
+
+The SDK follows [wire contract v2](../../docs/security/WIRE-CONTRACT-V2.md):
+
+- **Pinned keys are terminal.** The `trust=` map you compile into your application is the
+  only root. Keys learned from a signed trust manifest are merged *under* it, and a
+  manifest that presents a pinned `kid` with different key bytes is rejected whole.
+- **`key.status` is honoured.** `revoked` keys are refused and removed; a `kid` absent
+  from the newest manifest is dropped (absence is revocation).
+- **The cache stores only signed artifacts** — the compact JWS of the config document and
+  of the trust manifest. The trust set, the anti-replay counters, `lastVerifiedAt` and the
+  monotonic clock floor are all *derived* by re-verifying those two strings against your
+  pins on every load. Nothing security-relevant is read from disk unverified, and a
+  pre-v2 cache record is discarded rather than migrated.
+- **Claim checks** cover `typ`, `aud`, `iss`, `deviceId`, monotonic `issuedAt`,
+  `expiresAt` and a bounded `graceUntil`, with a 300-second clock skew. An expired
+  document is rejected at verification, not merely reported by the gate.
+- **A `304` renews freshness.** The content-only ETag is blind to the validity window, so
+  once a cached document is past its half-life the client escalates a `304` to a full
+  re-request. A continuously online client cannot drift into `grace`.
+
 ## Low-level verification
 
 ```python
-from polaris_key import verify_jws
+from polaris_key import verify_jws, TYP_CONFIG
 
 v = verify_jws(jws, {"kid": "rawBase64urlPubKey"})   # -> VerifiedJws(kid, payload) | None
+v = verify_jws(jws, trust, typ=TYP_CONFIG)           # assert the document type too
 ```
+
+`verify_jws` never raises and never parses an unverified payload: the encoded segments
+are size-capped before decoding, base64url decoding is strict (the `-_` alphabet only —
+no `+/`, no `=`, no whitespace), duplicate JSON keys are rejected rather than resolved,
+and the payload is decoded only after the Ed25519 signature checks out.
 
 ## Development
 

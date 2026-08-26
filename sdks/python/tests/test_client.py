@@ -8,6 +8,7 @@ network is touched — everything routes through ``httpx.MockTransport``.
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Dict
 
 import httpx
@@ -28,8 +29,13 @@ PRIVATE_PEM = (
 TRUST = {KID: PUBKEY_RAW}
 TOKEN = "tok_test_123"
 
+# Wire contract v2 §3 rejects an EXPIRED document at verify time, not merely at the gate,
+# so every signed fixture must sit inside its own validity window. `NOW` is captured once
+# per session and every assertion is expressed relative to it.
+NOW = int(time.time())
 
-def _make_doc(device_id: str, *, issued: int = 1700000000) -> Dict[str, Any]:
+
+def _make_doc(device_id: str, *, issued: int = NOW) -> Dict[str, Any]:
     return {
         "schemaVersion": 1,
         "aud": PRODUCT,
@@ -43,7 +49,7 @@ def _make_doc(device_id: str, *, issued: int = 1700000000) -> Dict[str, Any]:
             "name": "Grace Hopper",
             "firstName": "Grace",
             "email": "grace@example.com",
-            "activatedAt": 1690000000,
+            "activatedAt": NOW - 10_000_000,
         },
         "payload": {
             "config": {
@@ -201,8 +207,8 @@ def test_activation_then_reads_config_secret_entitlement() -> None:
     r = c.activate_with_key("my-license-key")
     assert r.kind == "ok"
 
-    assert c.is_licensed(now=1700000100) is True
-    assert c.status(now=1700000100).status == "ok"
+    assert c.is_licensed(now=NOW + 100) is True
+    assert c.status(now=NOW + 100).status == "ok"
     assert c.get_config("run.concurrency", 1) == 4
     assert c.get_config("missing", "fallback") == "fallback"
     assert c.get_secret("proxy.subscriptionUrl") == "https://vpn.example.com/sub/abc"
@@ -236,10 +242,10 @@ def test_config_403_version_too_old_blocks() -> None:
     c = _client(handler)
     r = c.activate_with_key("my-license-key")
     assert r.kind == "ok"  # activate succeeded; the BLOCK is on /config
-    st = c.status(now=1700000100)
+    st = c.status(now=NOW + 100)
     assert st.status == "version-too-old"
     assert st.allowedRange is not None and st.allowedRange.min == "2.0.0"
-    assert c.is_licensed(now=1700000100) is False
+    assert c.is_licensed(now=NOW + 100) is False
     c.close()
 
 
@@ -263,11 +269,11 @@ def test_blocked_with_no_prior_doc_does_not_raise() -> None:
     # First activate -> 403 creates a doc-less blocked cache.
     r = c.activate_with_key("my-license-key")
     assert r.kind == "ok"
-    assert c.status(now=1700000100).status == "version-too-old"
+    assert c.status(now=NOW + 100).status == "version-too-old"
     # A SECOND refresh patches the existing doc-less cache (the previously-crashing path).
     res = c.refresh(force=True)
     assert res.blocked is True
-    assert c.status(now=1700000100).status == "version-too-old"
+    assert c.status(now=NOW + 100).status == "version-too-old"
     c.close()
 
 
@@ -280,7 +286,7 @@ def test_activation_unauthorized() -> None:
     c = _client(handler)
     r = c.activate_with_key("nope")
     assert r.kind == "unauthorized"
-    assert c.status(now=1700000100).status == "needs-activation"
+    assert c.status(now=NOW + 100).status == "needs-activation"
     c.close()
 
 
@@ -339,7 +345,7 @@ def test_config_401_reacquires_token_then_succeeds() -> None:
     r = c.activate_with_key("k")
     assert r.kind == "ok"
     assert state["config_calls"] == 2  # stale -> 401, fresh -> 200
-    assert c.status(now=1700000100).status == "ok"
+    assert c.status(now=NOW + 100).status == "ok"
     c.close()
 
 
@@ -358,9 +364,9 @@ def test_deactivate_wipes_local_state() -> None:
 
     c = _client(handler)
     c.activate_with_key("k")
-    assert c.is_licensed(now=1700000100) is True
+    assert c.is_licensed(now=NOW + 100) is True
     c.deactivate()
-    assert c.status(now=1700000100).status == "needs-activation"
+    assert c.status(now=NOW + 100).status == "needs-activation"
     assert c.get_config("run.concurrency", 0) == 0
     c.close()
 
@@ -382,5 +388,5 @@ def test_wrong_device_doc_rejected() -> None:
     c = _client(handler)
     c.activate_with_key("k")
     # Doc was rejected -> no doc cached -> needs-activation.
-    assert c.status(now=1700000100).status == "needs-activation"
+    assert c.status(now=NOW + 100).status == "needs-activation"
     c.close()

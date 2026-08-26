@@ -12,9 +12,12 @@ inject their own pinned trust keys / base URL when mounting the hooks into their
 
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, IO, Iterable, List, Mapping, Optional, Tuple
 
+from .._version import __version__ as PACKAGE_VERSION
 from ..client import PolarisKeyClient
 from ..endpoints import (
     ActivationDeviceLimit,
@@ -29,7 +32,10 @@ __all__ = [
     "CommandResult",
     "ClientOptions",
     "ClientFactory",
+    "DEFAULT_VERSION",
+    "KEY_ENV_VAR",
     "parse_trust",
+    "resolve_activation_key",
     "build_client",
     "default_client_factory",
     "run_command",
@@ -38,6 +44,19 @@ __all__ = [
     "status",
     "config",
 ]
+
+# The version reported to the control plane when the host application doesn't say.
+#
+# This used to be the literal ``"0.0.0-dev"``. The Worker's build gate SHORT-CIRCUITS on a
+# dev version — ``isDevBuild`` returns before either the version window or the channel
+# entitlement is evaluated (``packages/worker/src/gate.ts:69-71,126-127``) — so a
+# vendor-shipped tool's DEFAULT invocation asked for a document that skipped version AND
+# channel enforcement entirely (audit finding R4-07). The installed package version is a
+# truthful answer and gates normally.
+DEFAULT_VERSION = PACKAGE_VERSION
+
+# The documented, non-argv way to hand a licence key to the CLI.
+KEY_ENV_VAR = "POLARIS_KEY_ACTIVATION_KEY"
 
 
 @dataclass
@@ -57,7 +76,7 @@ class ClientOptions:
     """The common options every front end collects to build a client."""
 
     product: str
-    version: str = "0.0.0-dev"
+    version: str = DEFAULT_VERSION
     trust: Dict[str, str] = field(default_factory=dict)
     base_url: Optional[str] = None
     config_dir: Optional[str] = None
@@ -82,6 +101,75 @@ def parse_trust(pairs: Optional[Iterable[str]]) -> Dict[str, str]:
         kid, raw = p.split("=", 1)
         trust[kid] = raw
     return trust
+
+
+def resolve_activation_key(
+    positional: Optional[str] = None,
+    *,
+    key_file: Optional[str] = None,
+    key_stdin: bool = False,
+    env: Optional[Mapping[str, str]] = None,
+    stdin: Optional[IO[str]] = None,
+    warn: Optional[Callable[[str], None]] = None,
+) -> str:
+    """Resolve the licence key from a NON-ARGV source by default (R12-13 / R4-16).
+
+    A key passed as ``polaris-key activate PKEY-XXXX`` is written verbatim to
+    ``~/.zsh_history``, is visible to every user on the box via ``ps auxww`` for the
+    duration of the call, and is readable from ``/proc/<pid>/cmdline`` on Linux. The
+    positional form still works — scripts depend on it — but it is no longer the
+    documented path, and using it prints a warning.
+
+    Resolution order (first hit wins):
+
+    1. ``--key-file <path>`` — read and stripped.
+    2. ``--key-stdin`` — one line from stdin.
+    3. ``$POLARIS_KEY_ACTIVATION_KEY``.
+    4. The positional argument, with a warning.
+    5. An interactive prompt, when stdin is a TTY.
+
+    Raises :class:`ValueError` when no source yielded a key.
+    """
+    environ = os.environ if env is None else env
+    stream = sys.stdin if stdin is None else stdin
+    emit = warn if warn is not None else (lambda m: print(m, file=sys.stderr))
+
+    if key_file:
+        with open(key_file, "r", encoding="utf-8") as f:
+            key = f.read().strip()
+        if not key:
+            raise ValueError(f"--key-file {key_file} is empty")
+        return key
+
+    if key_stdin:
+        key = (stream.readline() or "").strip()
+        if not key:
+            raise ValueError("--key-stdin was given but stdin held no key")
+        return key
+
+    env_key = (environ.get(KEY_ENV_VAR) or "").strip()
+    if env_key:
+        return env_key
+
+    if positional and positional.strip():
+        emit(
+            "warning: passing the license key as a command-line argument exposes it to "
+            "your shell history and to `ps`. Prefer --key-stdin, --key-file, or "
+            f"${KEY_ENV_VAR}."
+        )
+        return positional.strip()
+
+    if getattr(stream, "isatty", lambda: False)():
+        import getpass
+
+        key = getpass.getpass("License key: ").strip()
+        if key:
+            return key
+
+    raise ValueError(
+        "no license key supplied — use --key-stdin, --key-file <path>, "
+        f"${KEY_ENV_VAR}, or run interactively"
+    )
 
 
 def build_client(opts: ClientOptions) -> PolarisKeyClient:

@@ -19,7 +19,11 @@ from . import core
 
 def _add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--product", required=True, help="Product slug (the doc audience).")
-    p.add_argument("--version", default="0.0.0-dev", help="This client's version.")
+    p.add_argument(
+        "--version",
+        default=core.DEFAULT_VERSION,
+        help=f"This client's version (default: {core.DEFAULT_VERSION}).",
+    )
     p.add_argument("--base-url", default=None, help="Override the control-plane base URL.")
     p.add_argument("--config-dir", default=None, help="Override the config dir.")
     p.add_argument(
@@ -66,7 +70,7 @@ def register_argparse(
 
     p_act = subparsers.add_parser("activate", help="Activate this device with a license key.")
     _add_common(p_act)
-    p_act.add_argument("key", help="The license key.")
+    _add_key_source(p_act)
     p_act.set_defaults(func=lambda args: _activate(factory, args))
 
     p_de = subparsers.add_parser("deactivate", help="Deauthorize + wipe local credentials.")
@@ -86,8 +90,32 @@ def register_argparse(
     return subparsers
 
 
+def _add_key_source(p: argparse.ArgumentParser) -> None:
+    """Register the licence-key inputs, non-argv first (R12-13 / R4-16).
+
+    The positional stays for scripting compatibility but is now OPTIONAL and warns; the
+    documented path is ``--key-stdin`` / ``--key-file`` / ``$POLARIS_KEY_ACTIVATION_KEY``.
+    """
+    p.add_argument(
+        "key",
+        nargs="?",
+        default=None,
+        help="The license key (DISCOURAGED: argv is visible in shell history and `ps`).",
+    )
+    p.add_argument("--key-file", default=None, help="Read the license key from a file.")
+    p.add_argument(
+        "--key-stdin", action="store_true", help="Read the license key from stdin."
+    )
+
+
 def _activate(factory: core.ClientFactory, args: argparse.Namespace) -> int:
-    result = core.run_command(factory, _options(args), lambda c: core.activate(c, args.key))
+    try:
+        key = core.resolve_activation_key(
+            args.key, key_file=args.key_file, key_stdin=args.key_stdin
+        )
+    except (ValueError, OSError) as e:
+        raise SystemExit(str(e))
+    result = core.run_command(factory, _options(args), lambda c: core.activate(c, key))
     result.emit()
     return result.code
 

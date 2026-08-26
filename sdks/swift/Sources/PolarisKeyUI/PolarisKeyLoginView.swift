@@ -71,7 +71,14 @@ public final class PolarisKeyGateModel: ObservableObject {
     public func deactivate() async {
         isWorking = true
         defer { isWorking = false }
-        await client.deactivate()
+        do {
+            try await client.deactivate()
+            lastError = nil
+        } catch {
+            // The local wipe failing means the credential is STILL on this machine — the
+            // user has to know, rather than seeing a sign-out that silently did nothing.
+            lastError = "Sign-out couldn't clear the stored license: \(error)"
+        }
         await reload()
     }
 }

@@ -22,6 +22,10 @@ public enum ActivationResult: Sendable, Equatable {
     case error(message: String)
 }
 
+/// Default deadline for every SDK request. `URLSession` has no useful default here, so a
+/// stalled control plane would hang activation forever (audit finding R4-08).
+public let DEFAULT_REQUEST_TIMEOUT: Double = 15
+
 public enum Endpoints {
     private static func metadataHeaders() -> [String: String] {
         [
@@ -46,13 +50,15 @@ public enum Endpoints {
     public static func activateWithKey(
         baseUrl: String, product: String, key: String, deviceId: String,
         fingerprint: HardwareFingerprint? = nil,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        timeout: Double = DEFAULT_REQUEST_TIMEOUT
     ) async -> ActivationResult {
         await activationLike(
             urlString: "\(baseUrl)/\(product)/activate",
             headers: ["Authorization": "Bearer \(key)", HEADER_DEVICE: deviceId]
                 .merging(metadataHeaders()) { current, _ in current },
             session: session,
+            timeout: timeout,
             fingerprint: fingerprint)
     }
 
@@ -63,36 +69,42 @@ public enum Endpoints {
     public static func enroll(
         baseUrl: String, product: String, deviceId: String,
         fingerprint: HardwareFingerprint? = nil,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        timeout: Double = DEFAULT_REQUEST_TIMEOUT
     ) async -> ActivationResult {
         await activationLike(
             urlString: "\(baseUrl)/\(product)/enroll",
             headers: [HEADER_DEVICE: deviceId]
                 .merging(metadataHeaders()) { current, _ in current },
             session: session,
+            timeout: timeout,
             fingerprint: fingerprint)
     }
 
     /// Re-acquire a token for an already-activated device (`POST /<product>/token`).
     public static func reacquireToken(
         baseUrl: String, product: String, token: String, deviceId: String,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        timeout: Double = DEFAULT_REQUEST_TIMEOUT
     ) async -> ActivationResult {
         await activationLike(
             urlString: "\(baseUrl)/\(product)/token",
             headers: ["Authorization": "Bearer \(token)", HEADER_DEVICE: deviceId]
                 .merging(metadataHeaders()) { current, _ in current },
-            session: session)
+            session: session,
+            timeout: timeout)
     }
 
     /// Best-effort server-side deauthorize (`POST /<product>/deauthorize`). The local wipe
     /// is what actually matters, so failures are swallowed.
     public static func deauthorize(
         baseUrl: String, product: String, token: String,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        timeout: Double = DEFAULT_REQUEST_TIMEOUT
     ) async {
         guard let url = URL(string: "\(baseUrl)/\(product)/deauthorize") else { return }
         var req = URLRequest(url: url)
+        req.timeoutInterval = timeout
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         _ = try? await session.data(for: req)
@@ -103,10 +115,12 @@ public enum Endpoints {
     @discardableResult
     public static func reportSnapshot(
         baseUrl: String, product: String, token: String, snapshot: Data,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        timeout: Double = DEFAULT_REQUEST_TIMEOUT
     ) async -> Bool {
         guard let url = URL(string: "\(baseUrl)/\(product)/config/report") else { return false }
         var req = URLRequest(url: url)
+        req.timeoutInterval = timeout
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -122,12 +136,14 @@ public enum Endpoints {
 
     private static func activationLike(
         urlString: String, headers: [String: String], session: URLSession,
+        timeout: Double = DEFAULT_REQUEST_TIMEOUT,
         fingerprint: HardwareFingerprint? = nil
     ) async -> ActivationResult {
         guard let url = URL(string: urlString) else {
             return .error(message: "invalid url")
         }
         var req = URLRequest(url: url)
+        req.timeoutInterval = timeout
         req.httpMethod = "POST"
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
         // No body at all when there is no fingerprint, so the call stays byte-identical to

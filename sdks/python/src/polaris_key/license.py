@@ -120,11 +120,27 @@ class LicenseState:
     allowedRange: Optional[AllowedRange] = None
 
 
+def _has_valid_window(doc: ManagedConfigDoc) -> bool:
+    """True when the doc's time window is comparable to an int.
+
+    Defence in depth for R4-13: ``license_state`` is the client's hottest read path and
+    a ``TypeError`` escaping it turns every gate check into a crash. Documents now reach
+    here only after ``ManagedConfigDoc.from_dict`` type-checks them, but a caller
+    constructing one by hand (or a future store format) must degrade to "no document",
+    never raise.
+    """
+    return all(
+        isinstance(v, int) and not isinstance(v, bool)
+        for v in (doc.expiresAt, doc.graceUntil)
+    )
+
+
 def license_state(
     *,
     has_token: bool,
     doc: Optional[ManagedConfigDoc],
     now: int,
+    high_water_mark: int = 0,
     last_sync_unauthorized: bool = False,
     blocked: Optional[BlockedState] = None,
     last_verified_at: Optional[int] = None,
@@ -134,14 +150,20 @@ def license_state(
     blocked(403) -> that reason; no token -> needs-activation; lastSyncUnauthorized ->
     revoked; no doc -> needs-activation; now > graceUntil -> expired; now > expiresAt ->
     grace; else ok.
+
+    ``high_water_mark`` is the greatest ``issuedAt`` ever verified. The gate evaluates at
+    ``max(now, high_water_mark)`` (wire contract v2 §4.3), so winding the system clock
+    back below the newest signed timestamp we have already seen buys nothing — clock
+    rollback (R4-04) is inert without needing a trusted local clock.
     """
+    now = max(now, high_water_mark)
     if blocked is not None:
         return LicenseState(status=blocked.reason, allowedRange=blocked.allowedRange)
     if not has_token:
         return LicenseState(status="needs-activation")
     if last_sync_unauthorized:
         return LicenseState(status="revoked")
-    if doc is None:
+    if doc is None or not _has_valid_window(doc):
         return LicenseState(status="needs-activation")
     if now > doc.graceUntil:
         return LicenseState(status="expired", graceUntil=doc.graceUntil)

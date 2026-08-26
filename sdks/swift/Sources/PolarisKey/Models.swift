@@ -141,6 +141,35 @@ public let DOC_EXPIRY_SECONDS = 3600
 /// Seconds per day, for the offline-grace computation.
 public let SECONDS_PER_DAY = 86_400
 
+/// Tolerance applied to every time claim, identical in all five implementations (wire
+/// contract v2 §3). Without it a device an hour fast flips a freshly-signed document
+/// straight to `grace` (audit finding R2-08).
+public let CLOCK_SKEW_SECONDS = 300
+
+/// Upper bound on a document's signed offline-grace window, `graceUntil - issuedAt`. Bounds
+/// a hostile control plane and a tampered cache alike; a year comfortably exceeds any real
+/// `maxOfflineDays` (the product default is 30 days). Normative — identical in every
+/// implementation (`packages/sdk-node/src/claims.ts`).
+public let MAX_GRACE_SECONDS = 365 * SECONDS_PER_DAY
+
+/// TRUST MANIFEST wire versions this SDK understands. An unknown version fails CLOSED — a
+/// newer manifest shape may carry key attributes whose enforcement this build lacks.
+///
+/// Deliberately NOT applied to `ManagedConfigDoc.schemaVersion` (§3.1 correction 1): that
+/// field is the per-product CATALOG version, which increments every time an operator edits a
+/// catalog, so allow-listing it would reject every product that ever republished its schema.
+/// The doc's version gets a shape check only — which, in Swift, is what `Codable` already
+/// enforces by requiring an `Int`.
+public let SUPPORTED_TRUST_SCHEMA_VERSIONS: Set<Int> = [1]
+
+/// How long before `expiresAt` a `304` must be escalated to a full re-fetch, so a
+/// continuously ONLINE client can never drift into `grace` on a stable ETag (§5, R2-11).
+public let REFRESH_MARGIN_SECONDS = DOC_EXPIRY_SECONDS / 2
+
+/// On-disk cache format version. A `v1` record is DISCARDED, never migrated (§7.3): it holds
+/// unsigned state that security decisions used to read.
+public let CACHE_RECORD_VERSION = 2
+
 /// Client→Worker request headers.
 public let HEADER_DEVICE = "X-PKey-Device"
 public let HEADER_VERSION = "X-PKey-Version"

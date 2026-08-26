@@ -11,7 +11,11 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { signJws, base64UrlEncodeBytes } from "@polaris-key/jws";
+import {
+  signJws,
+  base64UrlEncodeBytes,
+  importSigningKey,
+} from "@polaris-key/jws";
 import { format } from "prettier";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -152,12 +156,59 @@ interface VerifyExpect {
   doc?: unknown;
 }
 
+/** Document-type domain separator, wire contract v2 §2.4. */
+type Typ = "pkey-config+jws" | "pkey-trust+jws";
+
 interface CorpusCase {
   id: string;
   description: string;
   jws: string;
   trust: Record<string, string>;
+  /**
+   * The `typ` the CALL SITE expects, i.e. what the runner must pass to its verifier. Absent
+   * means "no type requirement" — the v1 shape, and how every pre-existing case is driven.
+   */
+  typ?: Typ;
   expect: VerifyExpect;
+}
+
+/**
+ * Sign EXACT JSON text rather than an object, so a case can carry bytes `JSON.stringify`
+ * cannot produce — duplicate object keys, above all. The duplicate-key cases must be
+ * correctly signed or they would fail at the signature check and prove nothing about the
+ * duplicate-key rule, which runs only on authenticated bytes (§2.1 step 13).
+ */
+async function signRawSegments(
+  headerText: string,
+  payloadText: string,
+  kid: string,
+): Promise<string> {
+  const utf8 = new TextEncoder();
+  const signingInput = `${base64UrlEncodeBytes(utf8.encode(headerText))}.${base64UrlEncodeBytes(utf8.encode(payloadText))}`;
+  const key = await importSigningKey(pem(kid));
+  const sig = await crypto.subtle.sign(
+    { name: "Ed25519" },
+    key,
+    utf8.encode(signingInput),
+  );
+  return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(sig))}`;
+}
+
+/** Grow `base` with a filler field until its JSON is EXACTLY `target` UTF-8 bytes. */
+function docOfExactBytes(
+  target: number,
+  base: Record<string, unknown>,
+): Record<string, unknown> {
+  const size = (o: unknown): number =>
+    new TextEncoder().encode(JSON.stringify(o)).length;
+  const empty = size({ ...base, pad: "" });
+  if (empty > target)
+    throw new Error(`cannot pad to ${target}: base is already ${empty}`);
+  // `pad` holds ASCII, so one added character is exactly one added JSON byte.
+  const doc = { ...base, pad: "A".repeat(target - empty) };
+  if (size(doc) !== target)
+    throw new Error(`padding did not converge: ${size(doc)} != ${target}`);
+  return doc;
 }
 
 async function build(): Promise<unknown> {
@@ -562,7 +613,566 @@ async function build(): Promise<unknown> {
     expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: nulByteDoc },
   });
 
-  return { corpusVersion: 1, keys: KEYS, cases };
+  // ══ Wire contract v2 §6 — the divergences the v1 corpus covered NONE of (R2-16) ═══════
+  const TRUST = { "pkey-test-prod-2026": pub("pkey-test-prod-2026") };
+
+  // 23. NON-ASCII PAYLOAD — the signer vector. R2-07: Python's `json.dumps` omitted
+  //     `ensure_ascii=False`, so it escaped every non-ASCII code point to `\uXXXX` and
+  //     produced DIFFERENT signed bytes than Node for the same payload. The v1 corpus was
+  //     ASCII-only, so CI could not see it. `jws` below pins the correct construction —
+  //     raw UTF-8, never `\uXXXX` — so any signer that re-serialises this `doc` must
+  //     reproduce this exact string byte-for-byte.
+  const nonAsciiDoc = polarisDoc({
+    licenseId: "lic_ünïcödé",
+    profile: {
+      // Latin-1 supplement, combining diacritic, CJK, RTL, and an astral-plane emoji
+      // (a surrogate pair in UTF-16, four bytes in UTF-8).
+      name: "Ångström 💻 — 北京 — العربية — é",
+      firstName: "Åsa",
+      email: "ada@exämple.com",
+      activatedAt: 1690000000,
+    },
+    payload: {
+      config: {
+        "ui.gruß": { state: "enforced", value: "größe", updatedAt: 1699990000 },
+      },
+      secrets: {},
+      entitlements: {
+        日本語: { state: "enforced", value: true, updatedAt: 1699990000 },
+      },
+    },
+  });
+  cases.push({
+    id: "valid-non-ascii-payload",
+    description:
+      "Non-ASCII throughout keys AND values. Signers MUST emit raw UTF-8, never \\uXXXX escapes (§2.5) — this vector pins the canonical signed bytes so a re-serialising signer that escapes is caught (R2-07).",
+    jws: await signJws(
+      nonAsciiDoc,
+      pem("pkey-test-prod-2026"),
+      "pkey-test-prod-2026",
+    ),
+    trust: TRUST,
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: nonAsciiDoc },
+  });
+
+  // 24. Oversized protected header — R2-04. The header was base64-decoded and JSON-parsed
+  //     with no bound at all, before any signature or trust check, so moving the blob into
+  //     the header bypassed the payload cap entirely. The PoC used 8 MiB; the boundary is
+  //     the same code path at a size that can live in a committed fixture.
+  cases.push({
+    id: "header-oversized",
+    description:
+      "Protected header past MAX_HEADER_BYTES (1024). Must be rejected on the ENCODED length, before any decode/parse (§2.1 step 2).",
+    jws: `${encSeg({ alg: "EdDSA", kid: "pkey-test-prod-2026", junk: "J".repeat(2048) })}.${validHeaderless}`,
+    trust: TRUST,
+    expect: { verify: "fail" },
+  });
+
+  // 25/26. The payload cap boundary, from both sides. MAX_DOC_BYTES = 65536 decoded;
+  //        MAX_PAYLOAD_B64 = ceil(65536 × 4/3) + 4 = 87386 encoded.
+  const atCapDoc = docOfExactBytes(65536, polarisDoc({ licenseId: "lic_cap" }));
+  cases.push({
+    id: "payload-at-cap",
+    description:
+      "A payload of EXACTLY MAX_DOC_BYTES (65536) decoded bytes — at the cap is still valid and must verify.",
+    jws: await signJws(
+      atCapDoc,
+      pem("pkey-test-prod-2026"),
+      "pkey-test-prod-2026",
+    ),
+    trust: TRUST,
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: atCapDoc },
+  });
+  cases.push({
+    id: "payload-over-cap",
+    description:
+      "An encoded payload one character past MAX_PAYLOAD_B64 (87386) — rejected on length before it is ever decoded, so the allocation never happens (§2.1 step 3).",
+    jws: `${encSeg({ alg: "EdDSA", kid: "pkey-test-prod-2026" })}.${"A".repeat(87387)}.${vs}`,
+    trust: TRUST,
+    expect: { verify: "fail" },
+  });
+
+  // 27/28. Duplicate JSON members — R2-06. TS and Python resolved last-wins, Swift's
+  //        JSONSerialization first-wins, so `{"alg":"none",…,"alg":"EdDSA"}` gave OPPOSITE
+  //        answers per language at the algorithm-downgrade guard. Any silent resolution is a
+  //        differential; the only safe answer is rejection (§2.2). Both are correctly SIGNED
+  //        so the failure can only be the duplicate-key rule.
+  cases.push({
+    id: "duplicate-key-header-alg",
+    description:
+      "Protected header declaring `alg` twice (none, then EdDSA). Last-wins reads EdDSA, first-wins reads none — every implementation MUST instead reject (§2.2).",
+    jws: await signRawSegments(
+      '{"alg":"none","kid":"pkey-test-prod-2026","alg":"EdDSA"}',
+      JSON.stringify(validDoc),
+      "pkey-test-prod-2026",
+    ),
+    trust: TRUST,
+    expect: { verify: "fail" },
+  });
+  cases.push({
+    id: "duplicate-key-payload",
+    description:
+      "Payload declaring `licenseId` twice. Checked only after the signature verifies, so this pins the post-verification parse (§2.1 step 13) — reject, never last/first-wins.",
+    jws: await signRawSegments(
+      '{"alg":"EdDSA","kid":"pkey-test-prod-2026"}',
+      '{"schemaVersion":1,"aud":"djdl","iss":"key.plrs.im","licenseId":"lic_a","deviceId":"dev_7c1e2d","licenseId":"lic_b"}',
+      "pkey-test-prod-2026",
+    ),
+    trust: TRUST,
+    expect: { verify: "fail" },
+  });
+
+  // 29–31. Out-of-alphabet bytes in the SIGNATURE segment — R2-05. Python's
+  //        `urlsafe_b64decode(validate=False)` silently DISCARDS them, so these three verify
+  //        in Python and are rejected by Node and Swift. Lengths are chosen so Python's
+  //        len()-based re-padding stays consistent, which is what made them accepted.
+  for (const [suffix, id, label] of [
+    ["***", "sig-out-of-alphabet-stars", "`***`"],
+    ["\n \t", "sig-out-of-alphabet-whitespace", "whitespace (`\\n \\t`)"],
+    ["====", "sig-out-of-alphabet-padding", "explicit base64 padding (`====`)"],
+  ] as const) {
+    cases.push({
+      id,
+      description: `Signature segment carrying ${label}. Strict base64url means the \`-_\` alphabet only — no whitespace, no \`=\`, no out-of-alphabet bytes; reject rather than discard (§2.3).`,
+      jws: `${vh}.${vp}.${vs}${suffix}`,
+      trust: TRUST,
+      expect: { verify: "fail" },
+    });
+  }
+
+  // 32–34. Domain separation — R2-10 / §2.4. One product key signs BOTH config documents and
+  //        trust manifests, so without a `typ` a manifest can be replayed where a config doc
+  //        is expected (v1 rejected it only by accident, via a swallowed TypeError).
+  cases.push({
+    id: "typ-missing",
+    description:
+      "No `typ` in the header, verified at a call site expecting `pkey-config+jws`. ACCEPTED during the rollout window: §7.2 requires verifiers to tolerate an absent `typ` for one release so the Worker can ship first. §6's `reject` row lands at rollout step 4, when `typ` becomes mandatory.",
+    jws: validJws,
+    trust: TRUST,
+    typ: "pkey-config+jws",
+    expect: { verify: "ok", kid: "pkey-test-prod-2026", doc: validDoc },
+  });
+  cases.push({
+    id: "typ-wrong",
+    description:
+      "Header asserts `typ: pkey-trust+jws` at a call site expecting `pkey-config+jws` — a header claiming the WRONG type is rejected immediately, rollout window or not (§2.4).",
+    jws: await signJws(
+      validDoc,
+      pem("pkey-test-prod-2026"),
+      "pkey-test-prod-2026",
+      "pkey-trust+jws",
+    ),
+    trust: TRUST,
+    typ: "pkey-config+jws",
+    expect: { verify: "fail" },
+  });
+  const trustManifestDoc = {
+    schemaVersion: 1,
+    aud: "djdl",
+    iss: "key.plrs.im",
+    issuedAt: 1700000000,
+    expiresAt: 1700000300,
+    jwksUrl: "https://key.plrs.im/djdl/.well-known/jwks.json",
+    cacheSeconds: 300,
+    keys: [
+      {
+        kid: "pkey-test-prod-2026",
+        alg: "EdDSA",
+        kty: "OKP",
+        crv: "Ed25519",
+        publicKey: pub("pkey-test-prod-2026"),
+        status: "active",
+      },
+    ],
+  };
+  cases.push({
+    id: "trust-manifest-as-config",
+    description:
+      "A genuine, correctly-signed TRUST MANIFEST presented where a config document is expected — cross-protocol replay, rejected by the `typ` domain separator rather than incidentally (§2.4).",
+    jws: await signJws(
+      trustManifestDoc,
+      pem("pkey-test-prod-2026"),
+      "pkey-test-prod-2026",
+      "pkey-trust+jws",
+    ),
+    trust: TRUST,
+    typ: "pkey-config+jws",
+    expect: { verify: "fail" },
+  });
+
+  return {
+    corpusVersion: 1,
+    keys: KEYS,
+    cases,
+    docCases: await buildDocCases(),
+    trustCases: await buildTrustCases(),
+  };
+}
+
+// ── verifyDoc-level vectors (wire contract v2 §3) ────────────────────────────
+// The `cases` array above stops at raw JWS verification. These drive the CLAIM checks — the
+// layer R2-08 found was checking `aud`, `deviceId` and monotonic `issuedAt` and nothing else.
+// Every runner feeds these through its own `verifyDoc` equivalent.
+
+const CLOCK_SKEW = 300;
+const DOC_NOW = 1700001000; // inside the baseline doc's window (1700000000 → 1700003600)
+
+interface DocCase {
+  id: string;
+  description: string;
+  jws: string;
+  trust: Record<string, string>;
+  expectedAud: string;
+  expectedIss: string;
+  deviceId: string;
+  /** Epoch seconds the verifier must evaluate the clock claims at. */
+  now: number;
+  lastAcceptedIssuedAt?: number;
+  /** False = the cache-reload path, where the outer bound is `graceUntil`, not `expiresAt`. */
+  checkFreshness?: boolean;
+  expect: { accept: boolean };
+}
+
+async function buildDocCases(): Promise<DocCase[]> {
+  const kid = "pkey-test-prod-2026";
+  const trust = { [kid]: pub(kid) };
+  const sign = (over: Record<string, unknown>): Promise<string> =>
+    signJws(polarisDoc(over), pem(kid), kid, "pkey-config+jws");
+  const common = {
+    trust,
+    expectedAud: "djdl",
+    expectedIss: "key.plrs.im",
+    deviceId: "dev_7c1e2d",
+    now: DOC_NOW,
+  };
+
+  return [
+    {
+      ...common,
+      id: "doc-valid-control",
+      description:
+        "The control: a well-formed, correctly-bound, in-window document is accepted.",
+      jws: await sign({}),
+      expect: { accept: true },
+    },
+    {
+      ...common,
+      id: "doc-expired",
+      description:
+        "Evaluated past `expiresAt + CLOCK_SKEW`. An expired document must be refused AT VERIFY — not merely reported `grace`/`expired` by the gate afterwards, which is what v1 did while still handing out its entitlements and secrets (§3, R2-08).",
+      jws: await sign({}),
+      now: 1700003600 + CLOCK_SKEW + 1,
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: "doc-expired-within-skew",
+      description:
+        "The same document one second INSIDE the skew window is still accepted — CLOCK_SKEW is 300s in every implementation.",
+      jws: await sign({}),
+      now: 1700003600 + CLOCK_SKEW - 1,
+      expect: { accept: true },
+    },
+    {
+      ...common,
+      id: "doc-expired-reload-path",
+      description:
+        "The expired document again, on the CACHE-RELOAD path. A cached doc is expected to be past its short `expiresAt` — that is what offline operation is — so the freshness bound is not applied there; its signed outer bound is `graceUntil`, enforced by the gate (§4.2/§4.3).",
+      jws: await sign({}),
+      now: 1700003600 + CLOCK_SKEW + 1,
+      checkFreshness: false,
+      expect: { accept: true },
+    },
+    {
+      ...common,
+      id: "iss-mismatch",
+      description:
+        "A foreign `iss`. Documented as 'always ISSUER' since v1 and enforced for trust manifests, but never checked for config documents (§3, R2-08).",
+      jws: await sign({ iss: "https://evil.example" }),
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: "issued-far-future",
+      description:
+        "`issuedAt` ten years ahead. v1 had no `nbf`/`iat` sanity check at all, so a far-future document was accepted and gated `ok` — and it also pinned the anti-replay floor out of reach (§3, R4-03).",
+      jws: await sign({
+        issuedAt: 2000000000,
+        expiresAt: 2000003600,
+        graceUntil: 2002592000,
+      }),
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: "issued-future-within-skew",
+      description:
+        "`issuedAt` CLOCK_SKEW seconds ahead of the verifier's clock is tolerated: a client whose clock is slightly behind must not reject a freshly-signed document.",
+      jws: await sign({}),
+      now: 1700000000 - CLOCK_SKEW,
+      expect: { accept: true },
+    },
+    {
+      ...common,
+      id: "grace-before-expiry",
+      description:
+        "`graceUntil` earlier than `expiresAt` is incoherent — the offline window cannot close before the document does (§3).",
+      jws: await sign({ graceUntil: 1700003599 }),
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: "grace-unbounded",
+      description:
+        "`graceUntil` a century past `issuedAt`. Bounds a hostile control plane and a tampered cache alike; v1 accepted it without complaint (§3).",
+      jws: await sign({ graceUntil: 1700000000 + 100 * 365 * 86400 }),
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: "doc-replayed-below-floor",
+      description:
+        "`issuedAt` at the anti-replay floor. Equal is not strictly newer, so a re-presented document is refused.",
+      jws: await sign({}),
+      lastAcceptedIssuedAt: 1700000000,
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: "doc-aud-mismatch",
+      description:
+        "A document scoped to another product. Enforced on the network path in v1 — and, critically, now on the cache-reload path too (R4-01).",
+      jws: await sign({ aud: "other-product" }),
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: "doc-device-mismatch",
+      description:
+        "A document bound to another device — a doc lifted from a colleague's machine (R4-01).",
+      jws: await sign({ deviceId: "dev_someone_else" }),
+      expect: { accept: false },
+    },
+  ];
+}
+
+// ── Trust-set vectors (wire contract v2 §1) ──────────────────────────────────
+// Pure data for the merge/prune/revocation rules. `before` is the set already learned from an
+// earlier manifest; a runner that MERGES instead of REPLACING fails `trust-prune-on-absence`,
+// and one that spreads the cache after the pins fails `trust-pinned-substitution`.
+
+interface TrustCase {
+  id: string;
+  description: string;
+  /** Compiled into the host application. Terminal — never overridden. */
+  pinned: Record<string, string>;
+  /** Keys already discovered from an earlier manifest, which this one REPLACES. */
+  before: Record<string, string>;
+  manifestJws: string;
+  now: number;
+  expect: {
+    /** Whether the manifest is accepted at all. */
+    accepted: boolean;
+    /** The effective trust set afterwards: `pinned ∪ non-revoked manifest keys`, or the
+     *  unchanged `pinned ∪ before` when the manifest is rejected. */
+    trust: Record<string, string>;
+  };
+}
+
+/** A syntactically valid Ed25519 public key that belongs to nobody — the "attacker" bytes in
+ *  the substitution case. Deterministic so `--check` is stable. */
+const FOREIGN_PUB = base64UrlEncodeBytes(
+  new Uint8Array(Array.from({ length: 32 }, (_, i) => (i * 7 + 13) & 0xff)),
+);
+
+async function buildTrustCases(): Promise<TrustCase[]> {
+  const PIN = "pkey-test-prod-2026";
+  const ROTATED = "djdl-test-2026";
+  const pinned = { [PIN]: pub(PIN) };
+  const now = 1700000100;
+  const key = (
+    kid: string,
+    publicKey: string,
+    status: string,
+  ): Record<string, unknown> => ({
+    kid,
+    alg: "EdDSA",
+    kty: "OKP",
+    crv: "Ed25519",
+    publicKey,
+    status,
+  });
+  const manifest = (keys: Record<string, unknown>[]): Promise<string> =>
+    signJws(
+      {
+        schemaVersion: 1,
+        aud: "djdl",
+        iss: "key.plrs.im",
+        issuedAt: 1700000000,
+        expiresAt: 1700000300,
+        jwksUrl: "https://key.plrs.im/djdl/.well-known/jwks.json",
+        cacheSeconds: 300,
+        keys,
+      },
+      pem(PIN),
+      PIN,
+      "pkey-trust+jws",
+    );
+
+  return [
+    {
+      id: "trust-learn-rotated-key",
+      description:
+        "The control: a manifest signed by the pinned key publishes a second key, which joins the trust set alongside the pin.",
+      pinned,
+      before: {},
+      manifestJws: await manifest([
+        key(PIN, pub(PIN), "active"),
+        key(ROTATED, pub(ROTATED), "staged"),
+      ]),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+      },
+    },
+    {
+      id: "key-status-revoked",
+      description:
+        'A key published with `status:"revoked"` — the positive revocation signal the server emits for 2× cacheSeconds — MUST NOT enter the trust set. v1 never read `status` at all (§1.2, R2-02).',
+      pinned,
+      before: { [ROTATED]: pub(ROTATED) },
+      manifestJws: await manifest([
+        key(PIN, pub(PIN), "active"),
+        key(ROTATED, pub(ROTATED), "revoked"),
+      ]),
+      now,
+      expect: { accepted: true, trust: { [PIN]: pub(PIN) } },
+    },
+    {
+      id: "key-status-retired-and-staged-are-trusted",
+      description:
+        "`retired` and `staged` DO verify, deliberately: in-flight documents signed before a rotation must still validate, and a key must be trusted before it signs or rotation can never land (§1.2).",
+      pinned,
+      before: {},
+      manifestJws: await manifest([
+        key(PIN, pub(PIN), "retired"),
+        key(ROTATED, pub(ROTATED), "staged"),
+      ]),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+      },
+    },
+    {
+      id: "trust-prune-on-absence",
+      description:
+        "A key present in `before` but ABSENT from the new manifest is DROPPED: the trust set becomes exactly `pinned ∪ manifest keys`, never the union with what was already held. Merging instead of replacing is R2-02 — revocation by omission had no effect on a provisioned client (§1.2 rule 4).",
+      pinned,
+      before: { [ROTATED]: pub(ROTATED) },
+      manifestJws: await manifest([key(PIN, pub(PIN), "active")]),
+      now,
+      expect: { accepted: true, trust: { [PIN]: pub(PIN) } },
+    },
+    {
+      id: "trust-pinned-substitution",
+      description:
+        "A correctly-signed manifest presenting a PINNED kid with DIFFERENT key bytes. This is a substitution attempt, not an update: the WHOLE manifest is rejected and the previous trust set is kept — not merged with the substitution quietly dropped (§1.1 rule 1, R2-01).",
+      pinned,
+      before: { [ROTATED]: pub(ROTATED) },
+      manifestJws: await manifest([key(PIN, FOREIGN_PUB, "active")]),
+      now,
+      expect: {
+        accepted: false,
+        trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+      },
+    },
+    {
+      id: "trust-pinned-kid-same-bytes",
+      description:
+        "Re-publishing a pinned kid with the SAME bytes is an ordinary manifest, not a substitution — it must be accepted.",
+      pinned,
+      before: {},
+      manifestJws: await manifest([key(PIN, pub(PIN), "active")]),
+      now,
+      expect: { accepted: true, trust: { [PIN]: pub(PIN) } },
+    },
+    {
+      id: "trust-prune-to-pins-only",
+      description:
+        "A manifest that revokes everything leaves exactly the pins. Pinned keys are NEVER pruned — pinning is the host application's deliberate escape hatch for a total control-plane compromise (§1.2 rule 5).",
+      pinned,
+      before: { [ROTATED]: pub(ROTATED) },
+      manifestJws: await manifest([key(ROTATED, pub(ROTATED), "revoked")]),
+      now,
+      expect: { accepted: true, trust: { [PIN]: pub(PIN) } },
+    },
+    {
+      id: "trust-expired-manifest",
+      description:
+        "A manifest evaluated past `expiresAt + CLOCK_SKEW` is refused on the network path, and the previous trust set is kept.",
+      pinned,
+      before: { [ROTATED]: pub(ROTATED) },
+      manifestJws: await manifest([key(PIN, pub(PIN), "active")]),
+      now: 1700000300 + CLOCK_SKEW + 1,
+      expect: {
+        accepted: false,
+        trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+      },
+    },
+    {
+      id: "trust-aud-mismatch",
+      description:
+        "A manifest scoped to another product is refused — the same cross-tenant binding config documents get.",
+      pinned,
+      before: {},
+      manifestJws: await signJws(
+        {
+          schemaVersion: 1,
+          aud: "other-product",
+          iss: "key.plrs.im",
+          issuedAt: 1700000000,
+          expiresAt: 1700000300,
+          jwksUrl: "https://key.plrs.im/other-product/.well-known/jwks.json",
+          cacheSeconds: 300,
+          keys: [key(ROTATED, pub(ROTATED), "active")],
+        },
+        pem(PIN),
+        PIN,
+        "pkey-trust+jws",
+      ),
+      now,
+      expect: { accepted: false, trust: { [PIN]: pub(PIN) } },
+    },
+    {
+      id: "trust-signed-by-non-pinned-key",
+      description:
+        "A manifest signed by a DISCOVERED key rather than a pinned one. Manifests verify against the PINNED set only, so a rotated — or planted — key can never sign the manifest that mints the next key. That is what stops R2-01's poisoning from self-perpetuating (§4.2).",
+      pinned,
+      before: { [ROTATED]: pub(ROTATED) },
+      manifestJws: await signJws(
+        {
+          schemaVersion: 1,
+          aud: "djdl",
+          iss: "key.plrs.im",
+          issuedAt: 1700000000,
+          expiresAt: 1700000300,
+          jwksUrl: "https://key.plrs.im/djdl/.well-known/jwks.json",
+          cacheSeconds: 300,
+          keys: [key("minted-by-rotated-key", FOREIGN_PUB, "active")],
+        },
+        pem(ROTATED),
+        ROTATED,
+        "pkey-trust+jws",
+      ),
+      now,
+      expect: {
+        accepted: false,
+        trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+      },
+    },
+  ];
 }
 
 // ── Fingerprint + device-id vectors ──────────────────────────────────────────

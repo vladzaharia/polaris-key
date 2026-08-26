@@ -59,9 +59,26 @@ from .models import (
     ManagedEntry,
     ManagedPayload,
 )
-from .store import CacheRecord, FileStore, InMemoryStore, KeyringStore, Store
+from .store import (
+    CACHE_FORMAT_VERSION,
+    SYMLINK_GUARD,
+    CacheRecord,
+    FileStore,
+    InMemoryStore,
+    KeyringStore,
+    Store,
+)
 from .deviceid import derive_device_id
+from .trust import (
+    TrustManifestResult,
+    merge_trust,
+    verify_trust_manifest,
+)
 from .verify import (
+    CLOCK_SKEW_SECONDS,
+    MAX_GRACE_SECONDS,
+    TYP_CONFIG,
+    TYP_TRUST,
     TrustSet,
     VerifiedJws,
     sign_jws,
@@ -85,6 +102,14 @@ __all__ = [
     "sign_jws",
     "TrustSet",
     "VerifiedJws",
+    "TYP_CONFIG",
+    "TYP_TRUST",
+    "CLOCK_SKEW_SECONDS",
+    "MAX_GRACE_SECONDS",
+    # trust set (§1)
+    "merge_trust",
+    "verify_trust_manifest",
+    "TrustManifestResult",
     # license / gate
     "license_state",
     "is_usable",
@@ -120,6 +145,8 @@ __all__ = [
     "FileStore",
     "KeyringStore",
     "CacheRecord",
+    "CACHE_FORMAT_VERSION",
+    "SYMLINK_GUARD",
     # device id
     "derive_device_id",
     # models

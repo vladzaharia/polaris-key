@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ManagedConfigDoc } from "@polaris-key/protocol";
 import {
+  CACHE_VERSION,
   deriveDeviceId,
   FileStore,
   InMemoryStore,
@@ -53,13 +54,19 @@ function sampleDoc(): ManagedConfigDoc {
 }
 
 function sampleCache(): CacheRecord {
+  // v2 (wire contract §4.1): the cache holds SIGNED ARTIFACTS only. `doc`, `trustedKeys` and
+  // the three unsigned counters are gone — every one of them is derived from a re-verified
+  // signature at load time now.
   return {
-    doc: sampleDoc(),
+    v: CACHE_VERSION,
+    configJws: `${b64url(JSON.stringify({ alg: "EdDSA", typ: "pkey-config+jws", kid: "k" }))}.${b64url(JSON.stringify(sampleDoc()))}.sig`,
     etag: '"etag-1"',
-    lastAcceptedIssuedAt: 1_700_000_000,
-    lastVerifiedAt: 1_700_000_005_000,
     lastSyncUnauthorized: false,
   };
+}
+
+function b64url(s: string): string {
+  return Buffer.from(s, "utf8").toString("base64url");
 }
 
 describe("deriveDeviceId", () => {

@@ -45,20 +45,31 @@ def polaris_typer_app(
 
     @app.command()
     def activate(
-        key: str,
+        # Optional positional + non-argv sources. argv is visible in shell history and
+        # `ps` (R12-13 / R4-16), so the documented path is --key-stdin / --key-file /
+        # $POLARIS_KEY_ACTIVATION_KEY.
+        key: Optional[str] = typer.Argument(None, help="The license key (DISCOURAGED)."),
         product: str = typer.Option(..., help="Product slug (the doc audience)."),
-        version: str = typer.Option("0.0.0-dev", help="This client's version."),
+        version: str = typer.Option(core.DEFAULT_VERSION, help="This client's version."),
         base_url: Optional[str] = typer.Option(None, help="Override the base URL."),
         config_dir: Optional[str] = typer.Option(None, help="Override the config dir."),
         trust: List[str] = typer.Option([], help="Trusted key kid=rawBase64url (repeatable)."),
+        key_file: Optional[str] = typer.Option(None, help="Read the key from a file."),
+        key_stdin: bool = typer.Option(False, help="Read the key from stdin."),
     ) -> None:
         opts = _options(product, version, base_url, config_dir, trust)
-        _emit(core.run_command(factory, opts, lambda c: core.activate(c, key)))
+        try:
+            resolved = core.resolve_activation_key(
+                key, key_file=key_file, key_stdin=key_stdin
+            )
+        except (ValueError, OSError) as e:
+            raise typer.BadParameter(str(e))
+        _emit(core.run_command(factory, opts, lambda c: core.activate(c, resolved)))
 
     @app.command()
     def deactivate(
         product: str = typer.Option(..., help="Product slug."),
-        version: str = typer.Option("0.0.0-dev"),
+        version: str = typer.Option(core.DEFAULT_VERSION),
         base_url: Optional[str] = typer.Option(None),
         config_dir: Optional[str] = typer.Option(None),
         trust: List[str] = typer.Option([]),
@@ -69,7 +80,7 @@ def polaris_typer_app(
     @app.command()
     def status(
         product: str = typer.Option(..., help="Product slug."),
-        version: str = typer.Option("0.0.0-dev"),
+        version: str = typer.Option(core.DEFAULT_VERSION),
         base_url: Optional[str] = typer.Option(None),
         config_dir: Optional[str] = typer.Option(None),
         trust: List[str] = typer.Option([]),
@@ -81,7 +92,7 @@ def polaris_typer_app(
     def config(
         key: str,
         product: str = typer.Option(..., help="Product slug."),
-        version: str = typer.Option("0.0.0-dev"),
+        version: str = typer.Option(core.DEFAULT_VERSION),
         base_url: Optional[str] = typer.Option(None),
         config_dir: Optional[str] = typer.Option(None),
         trust: List[str] = typer.Option([]),

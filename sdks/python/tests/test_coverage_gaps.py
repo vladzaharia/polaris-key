@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import stat
+import time
 from typing import Any, Dict
 
 import httpx
@@ -234,12 +235,14 @@ def test_fetch_network_exception_is_error_status_zero() -> None:
 
 
 # ── CLI core: activate / deactivate / status ─────────────────────────────────────
-# CLI `core.status` uses real wall-clock time (no `now` injection), so the doc's window
-# must stay valid far into the future for the assertions to be time-independent.
-_FAR_FUTURE = 4_102_444_800  # 2100-01-01
+# CLI `core.status` uses real wall-clock time (no `now` injection). Under wire contract
+# v2 the doc's window is also checked at VERIFY time (§3: `expiresAt > now - skew`, and
+# `graceUntil <= issuedAt + MAX_GRACE_SECONDS`), so the fixture is anchored to the real
+# clock rather than parked in the year 2100.
+_NOW = int(time.time())
 
 
-def _doc(device_id: str, *, issued: int = 1700000000) -> Dict[str, Any]:
+def _doc(device_id: str, *, issued: int = _NOW) -> Dict[str, Any]:
     return {
         "schemaVersion": 1,
         "aud": PRODUCT,
@@ -247,13 +250,13 @@ def _doc(device_id: str, *, issued: int = 1700000000) -> Dict[str, Any]:
         "licenseId": "lic_cli",
         "deviceId": device_id,
         "issuedAt": issued,
-        "expiresAt": _FAR_FUTURE,
-        "graceUntil": _FAR_FUTURE,
+        "expiresAt": issued + 3600,
+        "graceUntil": issued + 30 * 86_400,
         "profile": {
             "name": "Grace Hopper",
             "firstName": "Grace",
             "email": "grace@example.com",
-            "activatedAt": 1690000000,
+            "activatedAt": issued - 10_000_000,
         },
         "payload": {"config": {}, "secrets": {}, "entitlements": {}},
     }

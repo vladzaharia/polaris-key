@@ -45,6 +45,9 @@ public struct FetchOptions: Sendable {
     public let version: String
     public let channel: String
     public let etag: String?
+    /// Request deadline in seconds. `URLSession`'s own default is far too generous for a
+    /// licence check, so a hung control plane would stall the caller indefinitely (R4-08).
+    public let timeoutSeconds: Double
 
     public init(
         baseUrl: String,
@@ -53,7 +56,8 @@ public struct FetchOptions: Sendable {
         deviceId: String,
         version: String,
         channel: String,
-        etag: String? = nil
+        etag: String? = nil,
+        timeoutSeconds: Double = 15
     ) {
         self.baseUrl = baseUrl
         self.product = product
@@ -62,6 +66,7 @@ public struct FetchOptions: Sendable {
         self.version = version
         self.channel = channel
         self.etag = etag
+        self.timeoutSeconds = timeoutSeconds
     }
 }
 
@@ -75,6 +80,7 @@ public func fetchManagedConfig(
     }
     var req = URLRequest(url: url)
     req.httpMethod = "GET"
+    req.timeoutInterval = opts.timeoutSeconds
     req.setValue("Bearer \(opts.token)", forHTTPHeaderField: "Authorization")
     req.setValue(opts.deviceId, forHTTPHeaderField: HEADER_DEVICE)
     req.setValue(opts.version, forHTTPHeaderField: HEADER_VERSION)

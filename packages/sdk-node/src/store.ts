@@ -15,31 +15,39 @@ import {
   writeSync,
 } from "node:fs";
 import { join } from "node:path";
-import type {
-  AllowedRange,
-  BlockReason,
-  ManagedConfigDoc,
-} from "@polaris-key/protocol";
-import type { TrustSet } from "@polaris-key/jws";
+import type { AllowedRange, BlockReason } from "@polaris-key/protocol";
 
-/** Bookkeeping shared by both cache shapes (doc-bearing and doc-less). */
-interface CacheBookkeeping {
+/** On-disk cache format version. A record carrying any other value is DISCARDED, never
+ *  migrated (wire contract v2 §7.3) — one network round trip is the correct price for not
+ *  carrying poisoned state forward. */
+export const CACHE_VERSION = 2;
+
+/**
+ * The offline cache — wire contract v2 §4.1.
+ *
+ * It stores SIGNED ARTIFACTS ONLY: the compact JWS of the managed-config document and of the
+ * trust manifest, both re-verified against the PINNED keys on every load. The v1 record
+ * persisted the *decoded* doc, a bare `trustedKeys` map, and three unsigned counters
+ * (`lastAcceptedIssuedAt`, `lastTrustIssuedAt`, `lastVerifiedAt`) that security decisions
+ * read directly — so one write to a plain JSON file was enough to substitute the key bytes
+ * behind a pinned kid (R2-01/R4-02), pin forged state against a live server (R4-03), or
+ * invent a licence outright with no signature anywhere (R2-03/R4-01). All three counters are
+ * now DERIVED from re-verified content and are never read from disk.
+ *
+ * `blocked` and `lastSyncUnauthorized` remain unsigned deliberately: they only ever make the
+ * gate STRICTER, so clearing them gains an attacker nothing that deleting the file would not.
+ */
+export interface CacheRecord {
+  v: typeof CACHE_VERSION;
+  /** The compact JWS of the managed-config document, verbatim. */
+  configJws?: string;
+  /** The compact JWS of the trust manifest, verbatim. */
+  trustJws?: string;
+  /** Non-security hint: the conditional-request validator. */
   etag?: string;
-  lastAcceptedIssuedAt: number;
-  lastVerifiedAt?: number;
   lastSyncUnauthorized?: boolean;
   blocked?: { reason: BlockReason; allowedRange?: AllowedRange };
-  trustedKeys?: TrustSet;
-  lastTrustIssuedAt?: number;
 }
-
-/** The offline cache. A discriminated union on `doc`: a verified doc is present after a
- *  successful /config, or `doc: null` for the bookkeeping-only record `patchCache` writes
- *  when the FIRST sync is blocked/unauthorized (so there is no doc yet to apply). The
- *  null arm makes the doc-less state type-honest — every getter must narrow on `doc`. */
-export type CacheRecord =
-  | (CacheBookkeeping & { doc: ManagedConfigDoc })
-  | (CacheBookkeeping & { doc: null });
 
 export interface Store {
   getToken(): Promise<string | null>;

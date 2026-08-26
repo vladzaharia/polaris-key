@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { signJws } from "@polaris-key/jws";
 import type { ManagedConfigDoc, ManagedEntry } from "@polaris-key/protocol";
 import { PolarisKeyClient, type PolarisKeyOptions } from "../src/client.js";
-import { InMemoryStore, type CacheRecord } from "../src/store.js";
+import {
+  CACHE_VERSION,
+  InMemoryStore,
+  type CacheRecord,
+} from "../src/store.js";
 
 const TEST_KID = "pkey-test-prod-2026";
 const TEST_PUB = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI";
@@ -50,13 +54,12 @@ async function clientWith(
     payload: { config, secrets: {}, entitlements: {} },
   };
   await store.setToken("pkeyt_cached");
-  // Sign so writeCache round-trips a real doc shape; the cache itself is what we read.
-  await signJws(doc, TEST_PEM, TEST_KID);
+  // The cache stores the SIGNED artifact and nothing else — init() re-verifies it against the
+  // pinned key and derives the doc from that, so an unsigned fixture would simply not load.
   const rec: CacheRecord = {
-    doc,
+    v: CACHE_VERSION,
+    configJws: await signJws(doc, TEST_PEM, TEST_KID, "pkey-config+jws"),
     etag: '"v1"',
-    lastAcceptedIssuedAt: NOW,
-    lastVerifiedAt: NOW * 1000,
   };
   await store.writeCache(rec);
   const exploding = (async () => {

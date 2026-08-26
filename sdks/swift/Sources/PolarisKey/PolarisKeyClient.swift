@@ -1,8 +1,15 @@
 // The Polaris Key client: a small, product-agnostic facade over activate/fetch/verify/cache/
-// gate. Offline-first — init() applies the cached doc with no network; refresh() re-pulls
-// (with a single /token re-acquire on 401) and re-applies. An `actor` so its mutable token/
-// device/cache state is concurrency-safe under Swift 6 strict concurrency. Mirrors
+// gate. Offline-first — start() re-verifies the cached artifacts with no network; refresh()
+// re-pulls (with a single /token re-acquire on 401) and re-applies. An `actor` so its mutable
+// token/device/cache state is concurrency-safe under Swift 6 strict concurrency. Mirrors
 // sdk-node's client.ts.
+//
+// Wire contract v2 (docs/security/WIRE-CONTRACT-V2.md) governs three things here:
+//   §1  the trust set is PINNED ∪ MANIFEST with pins TERMINAL, pruned on every manifest, and
+//       the cache is no longer a key source at all;
+//   §3  every claim in a document is checked, not just `aud`/`deviceId`;
+//   §4  only SIGNED artifacts are persisted, and every counter is DERIVED by re-verifying
+//       them on load — there is no unsigned field left on disk for a gate to read.
 
 import Foundation
 
@@ -10,7 +17,8 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// Pinned trust set (kid -> raw Ed25519 pubkey base64url). JWKS discovery is layered later.
+/// Pinned trust set (kid -> raw Ed25519 pubkey base64url). The root of trust: a pinned kid
+/// can never be overridden, by a manifest or by anything on disk.
 public struct PolarisTrust: Sendable {
     public let pinnedKeys: TrustSet
     public init(pinnedKeys: TrustSet) { self.pinnedKeys = pinnedKeys }
@@ -39,6 +47,10 @@ public struct PolarisKeyOptions: Sendable {
     /// add network traffic and wakeups to every already-shipped integration. Set it to make a
     /// remote tier change land without a restart. Call `stopRefreshLoop()` to end it.
     public let refreshIntervalSeconds: Double?
+    /// Deadline for every request this SDK makes. `URLSession` alone has no useful default
+    /// here, so a slowloris on `/.well-known/polaris-trust.jws` could stall a refresh
+    /// indefinitely (audit finding R4-08).
+    public let requestTimeoutSeconds: Double
 
     public init(
         productSlug: String,
@@ -53,7 +65,8 @@ public struct PolarisKeyOptions: Sendable {
         trustRefresh: Bool = true,
         fingerprint: Bool = true,
         probes: [ProbeDeclaration] = [],
-        refreshIntervalSeconds: Double? = nil
+        refreshIntervalSeconds: Double? = nil,
+        requestTimeoutSeconds: Double = 15
     ) {
         self.productSlug = productSlug
         self.baseUrl = baseUrl.replacingOccurrences(
@@ -69,6 +82,7 @@ public struct PolarisKeyOptions: Sendable {
         self.fingerprint = fingerprint
         self.probes = probes
         self.refreshIntervalSeconds = refreshIntervalSeconds
+        self.requestTimeoutSeconds = requestTimeoutSeconds
     }
 }
 
@@ -122,11 +136,17 @@ public actor PolarisKeyClient {
     private let baseUrl: String
     private let version: String
     private let channel: String
-    private var trust: TrustSet
+    /// Tier 1 (§1.1): compiled into the host application. TERMINAL — no manifest and nothing
+    /// on disk may override a pinned kid.
+    private let pinnedKeys: TrustSet
+    /// Tier 2: keys learned from a verified trust manifest. Replaced WHOLESALE on every
+    /// accepted manifest, so a kid the server stops publishing is dropped (§1.2.4).
+    private var manifestKeys: TrustSet = [:]
     private let trustRefreshEnabled: Bool
     private let fingerprintEnabled: Bool
     private let probes: [ProbeDeclaration]
     private let refreshIntervalSeconds: Double?
+    private let requestTimeout: Double
     private var refreshTask: Task<Void, Never>?
     private var onChange: (@Sendable (LicenseState) -> Void)?
     private let store: Store
@@ -138,40 +158,145 @@ public actor PolarisKeyClient {
     private var deviceId = ""
     private var cache: CacheRecord?
 
+    // ── Derived security state (§4.2). NEVER read from disk; recomputed by re-verifying
+    //    the stored JWS, so there is no unsigned field left to poison.
+    private var doc: ManagedConfigDoc?
+    private var lastAcceptedIssuedAt: Int?
+    private var lastTrustIssuedAt: Int?
+    /// Epoch MILLISECONDS of the last successful verification.
+    private var lastVerifiedAt: Int?
+    /// §4.3 monotonic floor: the greatest `issuedAt` ever verified. `effectiveNow` is
+    /// `max(systemClock, highWaterMark)`, which makes a clock rollback inert without
+    /// requiring a trusted local clock. Internal so the derivation itself is testable.
+    private(set) var highWaterMark = 0
+    private var lastStoreError: StoreError?
+
+    /// The effective trust set: manifest keys UNION pinned keys, PINS LAST so a pinned kid
+    /// always resolves to the pinned bytes (§1.1.2 — the reverse order was R2-01).
+    private var trust: TrustSet { mergeTrust(pinnedKeys, manifestKeys) }
+
     public init(options: PolarisKeyOptions) {
         self.product = options.productSlug
         self.baseUrl = options.baseUrl
         self.version = options.version
         self.channel = options.channel
-        self.trust = options.trust.pinnedKeys
+        self.pinnedKeys = options.trust.pinnedKeys
         self.trustRefreshEnabled = options.trustRefresh
         self.fingerprintEnabled = options.fingerprint
         self.probes = options.probes
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
+        self.requestTimeout = options.requestTimeoutSeconds
         self.store = options.store
         self.session = options.session
         self.localOverrides = options.localOverrides ?? [:]
         self.envPrefix = options.envPrefix
     }
 
-    /// Construct + `init()` (load token/device/cache with no network) in one step.
-    public static func create(options: PolarisKeyOptions) async -> PolarisKeyClient {
+    /// Construct + `start()` (load token/device/cache with no network) in one step.
+    ///
+    /// Throws when the credential store itself is unavailable — a locked keychain or an
+    /// unwritable config dir used to be swallowed, silently re-activating on every launch
+    /// and minting a new device id (and burning a seat) each time (R4-12).
+    public static func create(options: PolarisKeyOptions) async throws -> PolarisKeyClient {
         let c = PolarisKeyClient(options: options)
-        await c.start()
+        try await c.start()
         return c
     }
 
-    /// Load token + device id + cached doc (no network).
-    public func start() async {
-        deviceId = await store.getDeviceId()
-        token = await store.getToken()
-        cache = await store.readCache()
-        if let trustedKeys = cache?.trustedKeys {
-            trust.merge(trustedKeys) { _, new in new }
-        }
+    /// Load token + device id + cached artifacts, re-verifying everything (no network).
+    public func start() async throws {
+        deviceId = try await store.getDeviceId()
+        token = try await store.getToken()
+        loadCache(await store.readCache())
     }
 
+    /// The last persistence failure, for a host application that wants to surface it.
+    public func storeFailure() -> StoreError? { lastStoreError }
+
     private func nowSec() -> Int { Int(Date().timeIntervalSince1970) }
+
+    /// `max(systemClock, highWaterMark)` (§4.3). Every gate read and every claim check on the
+    /// network path uses this, so winding the clock back cannot widen a window.
+    private func effectiveNow(_ override: Int? = nil) -> Int {
+        max(override ?? nowSec(), highWaterMark)
+    }
+
+    // ── Cache load (§4.2) ───────────────────────────────────────────────────────
+    /// Re-verify the persisted artifacts and DERIVE all security state from them.
+    ///
+    /// 1. the trust manifest is re-verified against the PINNED keys only — never against
+    ///    whatever the file claimed, which is what made cache poisoning self-perpetuating;
+    /// 2. the trust set is rebuilt per §1;
+    /// 3. the config doc is re-verified against that set — every claim but freshness, which
+    ///    on the reload path is the gate's job (§3.1 correction 2);
+    /// 4. `lastAcceptedIssuedAt` / `lastTrustIssuedAt` / `lastVerifiedAt` / `highWaterMark`
+    ///    are computed from the verified content;
+    /// 5. any failure ⇒ that artifact is treated as absent. Fail closed; only the
+    ///    fail-CLOSED hints (`blocked`, `lastSyncUnauthorized`) survive unverified, because
+    ///    they can only ever make the gate stricter.
+    private func loadCache(_ record: CacheRecord?) {
+        manifestKeys = [:]
+        doc = nil
+        lastAcceptedIssuedAt = nil
+        lastTrustIssuedAt = nil
+        lastVerifiedAt = nil
+        highWaterMark = 0
+
+        // A v1 record is DISCARDED, not migrated (§7.3) — one network round trip is the
+        // correct price for not carrying poisoned state forward.
+        guard let record, record.v == CACHE_RECORD_VERSION else {
+            cache = nil
+            return
+        }
+
+        var next = CacheRecord(
+            lastSyncUnauthorized: record.lastSyncUnauthorized, blocked: record.blocked)
+
+        // Freshness is not re-checked here: a manifest expires in `cacheSeconds` (minutes),
+        // so enforcing it on load would drop every discovered key on any restart.
+        if let trustJws = record.trustJws,
+            applyTrustManifest(trustJws, checkFreshness: false) {
+            next.trustJws = trustJws
+        }
+
+        if let configJws = record.configJws, let verified = verifyCachedDoc(configJws) {
+            doc = verified
+            lastAcceptedIssuedAt = verified.issuedAt
+            highWaterMark = max(highWaterMark, verified.issuedAt)
+            // Derived, not stored: the doc was demonstrably signed at `issuedAt`, and that is
+            // the only verification time we can prove offline. Guarded because `issuedAt`
+            // comes off the wire and Swift traps on overflow.
+            lastVerifiedAt = verified.issuedAt < Int.max / 1000 ? verified.issuedAt * 1000 : nil
+            next.configJws = configJws
+            next.etag = record.etag
+        }
+
+        cache = next
+    }
+
+    /// Re-verify a CACHED doc. Every §3 claim is checked exactly as on the network path,
+    /// with two reload-specific differences:
+    ///
+    /// - freshness is NOT enforced (`checkFreshness: false`) — a cached document is expected
+    ///   to be past its short `expiresAt`, and deciding what that means is the gate's job
+    ///   (`grace` / `expired`), not the verifier's; and
+    /// - the time claims are evaluated at `max(systemClock, doc.issuedAt)`, so a rolled-back
+    ///   clock cannot widen a window (§4.3) and an honestly-wrong clock cannot silently
+    ///   delete a licence the user paid for.
+    private func verifyCachedDoc(_ jws: String) -> ManagedConfigDoc? {
+        // Signature-verified peek (never an unauthenticated parse) to learn `issuedAt`.
+        guard let peek = JWSVerifier.verify(jws, trust: trust, typ: .config) else { return nil }
+        // Evaluating at the doc's own `issuedAt` is what makes a wrong clock survivable, so
+        // bound how far forward one artifact may drag the floor: a cached doc may sit ahead
+        // of a badly-set clock, but not decades ahead of it.
+        guard peek.payload.issuedAt <= saturatingAdd(nowSec(), MAX_GRACE_SECONDS)
+        else { return nil }
+        return verifyDoc(
+            jws,
+            options: VerifyDocOptions(
+                trust: trust, expectedAud: product, deviceId: deviceId,
+                now: max(nowSec(), peek.payload.issuedAt), checkFreshness: false))
+    }
 
     // ── Gate / reads ────────────────────────────────────────────────────────────
     public func status(now: Int? = nil) -> LicenseState {
@@ -181,11 +306,11 @@ public actor PolarisKeyClient {
         return licenseState(
             GateInput(
                 hasToken: token != nil,
-                doc: cache?.doc,
-                now: now ?? nowSec(),
+                doc: doc,
+                now: effectiveNow(now),
                 lastSyncUnauthorized: cache?.lastSyncUnauthorized ?? false,
                 blocked: blockInfo,
-                lastVerifiedAt: cache?.lastVerifiedAt))
+                lastVerifiedAt: lastVerifiedAt))
     }
 
     public func isLicensed(now: Int? = nil) -> Bool {
@@ -199,7 +324,7 @@ public actor PolarisKeyClient {
     /// Env reads `environment[envPrefix + key (dots→"__")]`, parsed as JSON if it parses,
     /// else taken as the raw string.
     public func config(_ key: String, default fallback: JSONValue) -> JSONValue {
-        let entry = cache?.doc?.payload.config[key]
+        let entry = doc?.payload.config[key]
         if let entry, entry.state == .enforced || entry.state == .hidden {
             return entry.value
         }
@@ -211,7 +336,7 @@ public actor PolarisKeyClient {
 
     /// Resolve which layer supplies a key's effective config value.
     public func configSource(_ key: String) -> ConfigSource {
-        let entry = cache?.doc?.payload.config[key]
+        let entry = doc?.payload.config[key]
         if entry?.state == .enforced { return .enforced }
         if entry?.state == .hidden { return .hidden }
         if localOverrides[key] != nil { return .local }
@@ -223,7 +348,7 @@ public actor PolarisKeyClient {
     /// The user-visible config (every entry except `hidden` ones), each carrying its value
     /// and whether it is `enforced` (i.e. the user cannot override it).
     public func listUserConfig() -> [UserConfigEntry] {
-        guard let config = cache?.doc?.payload.config else { return [] }
+        guard let config = doc?.payload.config else { return [] }
         return config.compactMap { key, entry in
             guard entry.state != .hidden else { return nil }
             return UserConfigEntry(
@@ -248,30 +373,30 @@ public actor PolarisKeyClient {
 
     /// Read a managed secret value (string only), or nil.
     public func secret(_ key: String) -> String? {
-        cache?.doc?.payload.secrets[key]?.value.stringValue
+        doc?.payload.secrets[key]?.value.stringValue
     }
 
     /// True iff the named entitlement is present and `value == true`.
     public func isEntitled(_ name: String) -> Bool {
-        cache?.doc?.payload.entitlements[name]?.value.boolValue == true
+        doc?.payload.entitlements[name]?.value.boolValue == true
     }
 
     public func entitlements() -> [String: JSONValue] {
         var out: [String: JSONValue] = [:]
-        for (k, v) in cache?.doc?.payload.entitlements ?? [:] { out[k] = v.value }
+        for (k, v) in doc?.payload.entitlements ?? [:] { out[k] = v.value }
         return out
     }
 
-    public func profile() -> DocProfile? { cache?.doc?.profile }
+    public func profile() -> DocProfile? { doc?.profile }
 
     public func currentDevice() -> DeviceInfo {
         DeviceInfo(
             id: deviceId,
             current: true,
             status: status().status,
-            licenseId: cache?.doc?.licenseId,
-            profile: cache?.doc?.profile,
-            lastVerifiedAt: cache?.lastVerifiedAt)
+            licenseId: doc?.licenseId,
+            profile: doc?.profile,
+            lastVerifiedAt: lastVerifiedAt)
     }
 
     public func listDevices() async throws -> [DeviceInfo] {
@@ -280,35 +405,46 @@ public actor PolarisKeyClient {
 
     public func deauthorizeDevice(_ id: String) async throws {
         guard id == deviceId else { throw DeviceManagementError.unsupported }
-        await deactivate()
+        try await deactivate()
     }
 
     // ── Activation ────────────────────────────────────────────────────────────────
-    /// Exchange a license key for a per-device token, persist it, then force a refresh.
-    @discardableResult
     /// Obtain a license with no key and no sign-in, when the product offers a free tier.
+    @discardableResult
     public func enroll() async -> ActivationResult {
         let r = await Endpoints.enroll(
             baseUrl: baseUrl, product: product, deviceId: deviceId,
-            fingerprint: currentFingerprint(), session: session)
-        if case .ok(let newToken, _) = r {
-            token = newToken
-            await store.setToken(newToken)
-            _ = await refresh()
-        }
-        return r
+            fingerprint: currentFingerprint(), session: session, timeout: requestTimeout)
+        return await persistActivation(r)
     }
 
+    /// Exchange a license key for a per-device token, persist it, then force a refresh.
+    @discardableResult
     public func activate(key: String) async -> ActivationResult {
         let r = await Endpoints.activateWithKey(
             baseUrl: baseUrl, product: product, key: key, deviceId: deviceId,
-            fingerprint: currentFingerprint(), session: session)
-        if case .ok(let newToken, _) = r {
-            token = newToken
-            await store.setToken(newToken)
-            _ = await refresh()
+            fingerprint: currentFingerprint(), session: session, timeout: requestTimeout)
+        return await persistActivation(r)
+    }
+
+    /// Persist a freshly issued token, then force a full refresh.
+    ///
+    /// A failed token write is reported, not swallowed: it used to return `.ok` having
+    /// stored nothing, so the app looked activated until the next launch (R4-12). The
+    /// refresh is FORCED so a stale ETag cannot 304 away the very first document (R4).
+    private func persistActivation(_ result: ActivationResult) async -> ActivationResult {
+        guard case .ok(let newToken, _) = result else { return result }
+        do {
+            try await store.setToken(newToken)
+        } catch let error as StoreError {
+            lastStoreError = error
+            return .error(message: "could not persist the device token: \(error)")
+        } catch {
+            return .error(message: "could not persist the device token: \(error)")
         }
-        return r
+        token = newToken
+        _ = await refresh(force: true)
+        return result
     }
 
     /// This machine's hashed hardware components, or nil when collection is disabled or
@@ -318,20 +454,29 @@ public actor PolarisKeyClient {
         return Fingerprint.collect(productSlug: product)
     }
 
-    /// Best-effort server-side deauthorize, then wipe all local state.
-    public func deactivate() async {
+    /// Best-effort server-side deauthorize, then wipe all local state. Throws if the local
+    /// wipe could not be completed — the caller needs to know the credential is still there.
+    public func deactivate() async throws {
         if let token {
             await Endpoints.deauthorize(
-                baseUrl: baseUrl, product: product, token: token, session: session)
+                baseUrl: baseUrl, product: product, token: token, session: session,
+                timeout: requestTimeout)
         }
         token = nil
         cache = nil
-        await store.clearToken()
-        await store.clearCache()
+        doc = nil
+        manifestKeys = [:]
+        lastAcceptedIssuedAt = nil
+        lastTrustIssuedAt = nil
+        lastVerifiedAt = nil
+
+        var failure: Error?
+        do { try await store.clearToken() } catch { failure = error }
+        do { try await store.clearCache() } catch { failure = failure ?? error }
+        if let failure { throw failure }
     }
 
     // ── Refresh ─────────────────────────────────────────────────────────────────
-    @discardableResult
     /// Start polling `/config`, invoking `onChange` when the managed config actually changes.
     ///
     /// `computeETag()` deliberately excludes issuedAt/expiresAt/graceUntil, so the tag is
@@ -359,10 +504,14 @@ public actor PolarisKeyClient {
         refreshTask = nil
     }
 
-    public func refresh() async -> RefreshResult {
+    /// Re-pull `/config` and re-apply. `force` drops the conditional request, so the server
+    /// must return a full, freshly signed document — required after activation and whenever
+    /// the cached document is approaching its signed expiry.
+    @discardableResult
+    public func refresh(force: Bool = false) async -> RefreshResult {
         guard let token else { return RefreshResult(applied: false) }
         let beforeEtag = cache?.etag
-        let result = await fetchAndApply(allowReacquire: true)
+        let result = await fetchAndApply(allowReacquire: true, force: force)
         if let onChange, result.applied, let etag = cache?.etag, etag != beforeEtag {
             onChange(status())
         }
@@ -370,27 +519,42 @@ public actor PolarisKeyClient {
             let snap = reportSnapshotBody()
             _ = await Endpoints.reportSnapshot(
                 baseUrl: baseUrl, product: product, token: token, snapshot: snap,
-                session: session)
+                session: session, timeout: requestTimeout)
         }
         return result
     }
 
-    private func fetchAndApply(allowReacquire: Bool) async -> RefreshResult {
+    /// `refreshTrustFirst` is cleared on the recursive calls below (401 re-acquire, 304
+    /// escalation) so one `refresh()` never fetches the trust manifest twice.
+    private func fetchAndApply(
+        allowReacquire: Bool, force: Bool = false, refreshTrustFirst: Bool = true
+    ) async -> RefreshResult {
         guard let token else { return RefreshResult(applied: false) }
-        if trustRefreshEnabled {
+        if trustRefreshEnabled, refreshTrustFirst {
             _ = await refreshTrust()
         }
         let res = await fetchManagedConfig(
             FetchOptions(
                 baseUrl: baseUrl, product: product, token: token, deviceId: deviceId,
-                version: version, channel: channel, etag: cache?.etag),
+                version: version, channel: channel, etag: force ? nil : cache?.etag,
+                timeoutSeconds: requestTimeout),
             session: session)
 
         switch res {
         case .notModified:
+            // A 304 IS a successful authenticated verification: it renews freshness (§5).
+            lastVerifiedAt = Int(Date().timeIntervalSince1970 * 1000)
             await patchCache { c in
                 c.blocked = nil
                 c.lastSyncUnauthorized = false
+            }
+            // …but the SIGNED window it renews is not the ETag's. Once the cached document is
+            // inside its refresh margin, escalate to an unconditional fetch so a continuously
+            // ONLINE client can never drift into `grace` on a stable config (R2-11).
+            if !force, let doc,
+                effectiveNow() > saturatingAdd(doc.expiresAt, -REFRESH_MARGIN_SECONDS) {
+                return await fetchAndApply(
+                    allowReacquire: allowReacquire, force: true, refreshTrustFirst: false)
             }
             return RefreshResult(applied: false)
 
@@ -398,11 +562,16 @@ public actor PolarisKeyClient {
             if allowReacquire {
                 let re = await Endpoints.reacquireToken(
                     baseUrl: baseUrl, product: product, token: token, deviceId: deviceId,
-                    session: session)
+                    session: session, timeout: requestTimeout)
                 if case .ok(let newToken, _) = re {
-                    self.token = newToken
-                    await store.setToken(newToken)
-                    return await fetchAndApply(allowReacquire: false)
+                    do {
+                        try await store.setToken(newToken)
+                        self.token = newToken
+                    } catch let error as StoreError {
+                        lastStoreError = error
+                    } catch {}
+                    return await fetchAndApply(
+                        allowReacquire: false, force: force, refreshTrustFirst: false)
                 }
             }
             await patchCache { $0.lastSyncUnauthorized = true }
@@ -419,23 +588,24 @@ public actor PolarisKeyClient {
 
         case .ok(let jws, let etag):
             guard
-                let doc = verifyDoc(
+                let verified = verifyDoc(
                     jws,
                     options: VerifyDocOptions(
                         trust: trust, expectedAud: product, deviceId: deviceId,
-                        lastAcceptedIssuedAt: cache?.lastAcceptedIssuedAt))
+                        lastAcceptedIssuedAt: lastAcceptedIssuedAt, now: effectiveNow()))
             else { return RefreshResult(applied: false) }
-            let rec = CacheRecord(
-                doc: doc,
-                etag: etag,
-                lastAcceptedIssuedAt: doc.issuedAt,
-                lastVerifiedAt: Int(Date().timeIntervalSince1970 * 1000),
-                lastSyncUnauthorized: false,
-                blocked: nil,
-                trustedKeys: cache?.trustedKeys,
-                lastTrustIssuedAt: cache?.lastTrustIssuedAt)
-            cache = rec
-            await store.writeCache(rec)
+            doc = verified
+            lastAcceptedIssuedAt = verified.issuedAt
+            highWaterMark = max(highWaterMark, verified.issuedAt)
+            lastVerifiedAt = Int(Date().timeIntervalSince1970 * 1000)
+            // Persist the SIGNED artifact, verbatim — never the decoded doc, and never any
+            // derived counter (§4.1).
+            await patchCache { c in
+                c.configJws = jws
+                c.etag = etag
+                c.lastSyncUnauthorized = false
+                c.blocked = nil
+            }
             return RefreshResult(applied: true)
 
         case .error:
@@ -443,68 +613,88 @@ public actor PolarisKeyClient {
         }
     }
 
+    /// Fetch, verify, and install the trust manifest. Returns whether the trust set changed.
     private func refreshTrust() async -> Bool {
         guard let url = URL(
             string: "\(baseUrl)/\(product)/.well-known/polaris-trust.jws")
         else { return false }
         var req = URLRequest(url: url)
+        req.timeoutInterval = requestTimeout
         req.setValue("application/jose", forHTTPHeaderField: "Accept")
         guard
             let (data, response) = try? await session.data(for: req),
             let http = response as? HTTPURLResponse,
             http.statusCode == 200,
+            data.count <= JWSVerifier.maxHeaderB64 + JWSVerifier.maxPayloadB64 + 128,
             let jws = String(data: data, encoding: .utf8),
-            let verified = JWSVerifier.verifyPayloadData(jws, trust: trust),
-            let doc = try? JSONDecoder().decode(TrustManifestDoc.self, from: verified.payload)
+            applyTrustManifest(jws)  // network path: freshness enforced
         else { return false }
-        guard doc.aud == product, doc.iss == "key.plrs.im", doc.expiresAt >= nowSec()
-        else { return false }
-        if let last = cache?.lastTrustIssuedAt, doc.issuedAt <= last { return false }
-        var next: TrustSet = [:]
-        for key in doc.keys
-        where key.alg == "EdDSA" && key.kty == "OKP" && key.crv == "Ed25519" {
-            next[key.kid] = key.publicKey
-        }
-        guard !next.isEmpty else { return false }
-        trust.merge(next) { _, new in new }
-        await patchCache {
-            $0.trustedKeys = trust
-            $0.lastTrustIssuedAt = doc.issuedAt
-        }
+        // Persist the SIGNED manifest, never the bare keys it carries (§1.1.3).
+        await patchCache { $0.trustJws = jws }
+        return true
+    }
+
+    /// Verify a manifest against the PINNED keys and install what it publishes (§1).
+    ///
+    /// Returns false — keeping the PREVIOUS trust set intact — when the manifest is refused,
+    /// stale, or attempts to substitute a pinned kid. Verification is against pins ONLY, on
+    /// the network path as well as on reload: a discovered key must never be able to sign the
+    /// manifest that extends its own authority.
+    private func applyTrustManifest(_ jws: String, checkFreshness: Bool = true) -> Bool {
+        let result = verifyTrustManifest(
+            jws,
+            options: VerifyTrustManifestOptions(
+                pinned: pinnedKeys, expectedAud: product, now: nowSec(),
+                checkFreshness: checkFreshness))
+        guard let manifest = result.doc else { return false }
+        // Anti-replay: a manifest older than the one we already applied is not an update.
+        if let last = lastTrustIssuedAt, manifest.issuedAt <= last { return false }
+        // PRUNE (§1.2.4): the discovered set is REPLACED, so a kid the server stops
+        // publishing is dropped. Absence is revocation — that is what restores the server's
+        // ability to revoke at all.
+        manifestKeys = result.discovered
+        lastTrustIssuedAt = manifest.issuedAt
         return true
     }
 
     private func patchCache(_ mutate: (inout CacheRecord) -> Void) async {
-        if var existing = cache {
-            mutate(&existing)
-            cache = existing
-            await store.writeCache(existing)
-        } else {
-            // No doc yet: remember only bookkeeping if it's a block/unauthorized signal.
-            var probe = CacheRecord(doc: nil, lastAcceptedIssuedAt: 0)
-            mutate(&probe)
-            if probe.blocked != nil || probe.lastSyncUnauthorized == true
-                || probe.trustedKeys != nil || probe.lastTrustIssuedAt != nil {
-                cache = probe
-                await store.writeCache(probe)
-            }
-        }
+        var next = cache ?? CacheRecord()
+        mutate(&next)
+        cache = next
+        do {
+            try await store.writeCache(next)
+        } catch let error as StoreError {
+            lastStoreError = error
+        } catch {}
     }
 
-    /// The non-secret snapshot (config + entitlement effective values) the admin panel reads.
+    /// The non-secret snapshot (software facts + config/entitlement effective values) the
+    /// admin panel reads. Facts ride on the SAME report call as the config snapshot — no
+    /// extra round trip — exactly as sdk-node and the Python SDK send them.
     private func reportSnapshotBody() -> Data {
         var config: [String: JSONValue] = [:]
         var ents: [String: JSONValue] = [:]
-        if let doc = cache?.doc {
+        if let doc {
             for (k, v) in doc.payload.config { config[k] = v.value }
             for (k, v) in doc.payload.entitlements { ents[k] = v.value }
         }
-        let body = SnapshotBody(config: config, entitlements: ents)
+        let facts = Facts.collect(probes: probes)
+        let body = SnapshotBody(
+            os: facts.os, hardware: facts.hardware, runtime: facts.runtime,
+            locale: facts.locale, timezone: facts.timezone, probes: facts.probes,
+            config: config, entitlements: ents)
         return (try? JSONEncoder().encode(body)) ?? Data("{}".utf8)
     }
 }
 
+/// `{...facts, config, entitlements}` — the flat shape the Worker's report allowlist reads.
 private struct SnapshotBody: Encodable {
+    let os: DeviceFacts.OS
+    let hardware: DeviceFacts.Hardware
+    let runtime: DeviceFacts.Runtime
+    let locale: String?
+    let timezone: String?
+    let probes: [String: ProbeResult]?
     let config: [String: JSONValue]
     let entitlements: [String: JSONValue]
 }

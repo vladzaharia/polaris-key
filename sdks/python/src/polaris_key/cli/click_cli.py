@@ -15,7 +15,9 @@ from . import core
 
 _common = [
     click.option("--product", required=True, help="Product slug (the doc audience)."),
-    click.option("--version", default="0.0.0-dev", help="This client's version."),
+    click.option(
+        "--version", default=core.DEFAULT_VERSION, help="This client's version."
+    ),
     click.option("--base-url", default=None, help="Override the control-plane base URL."),
     click.option("--config-dir", default=None, help="Override the config dir."),
     click.option(
@@ -65,10 +67,24 @@ def polaris_click_group(
 
     @group.command()
     @_with_common
-    @click.argument("key")
-    def activate(product, version, base_url, config_dir, trust, key):  # noqa: ANN001
+    # Optional positional + non-argv sources. argv is visible in shell history and `ps`
+    # (R12-13 / R4-16), so the documented path is --key-stdin / --key-file / the env var.
+    @click.argument("key", required=False, default=None)
+    @click.option("--key-file", default=None, help="Read the license key from a file.")
+    @click.option(
+        "--key-stdin", is_flag=True, help="Read the license key from stdin."
+    )
+    def activate(  # noqa: ANN001
+        product, version, base_url, config_dir, trust, key, key_file, key_stdin
+    ):
         opts = _options(product, version, base_url, config_dir, trust)
-        _emit(core.run_command(factory, opts, lambda c: core.activate(c, key)))
+        try:
+            resolved = core.resolve_activation_key(
+                key, key_file=key_file, key_stdin=key_stdin
+            )
+        except (ValueError, OSError) as e:
+            raise click.UsageError(str(e))
+        _emit(core.run_command(factory, opts, lambda c: core.activate(c, resolved)))
 
     @group.command()
     @_with_common

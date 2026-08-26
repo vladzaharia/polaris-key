@@ -29,10 +29,20 @@ export interface GateInput {
   blocked?: { reason: BlockReason; allowedRange?: AllowedRange };
   /** Epoch ms of the last successful online verify. */
   lastVerifiedAt?: number;
+  /**
+   * Monotonic time floor (epoch seconds): the greatest `issuedAt` this client has ever
+   * VERIFIED, recomputed at load from the cached JWS — never read from an unsigned field.
+   * The gate evaluates at `max(now, highWaterMark)`, which makes clock rollback inert
+   * without requiring a trusted local clock (wire contract v2 §4.3, finding R4-04).
+   */
+  highWaterMark?: number;
 }
 
 export function licenseState(input: GateInput): LicenseState {
-  const { doc, now } = input;
+  const { doc } = input;
+  // §4.3 — winding the system clock back below the newest signed `issuedAt` we have already
+  // verified buys nothing: the gate never sees a time earlier than that floor.
+  const now = Math.max(input.now, input.highWaterMark ?? 0);
   if (input.blocked) {
     return {
       status: input.blocked.reason,

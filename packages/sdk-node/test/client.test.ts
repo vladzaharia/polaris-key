@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { signJws } from "@polaris-key/jws";
 import type { ManagedConfigDoc } from "@polaris-key/protocol";
 import { PolarisKeyClient } from "../src/client.js";
-import { InMemoryStore, type CacheRecord } from "../src/store.js";
+import {
+  CACHE_VERSION,
+  InMemoryStore,
+  type CacheRecord,
+} from "../src/store.js";
 
 const TEST_KID = "pkey-test-prod-2026";
 const TEST_PUB = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI";
@@ -201,10 +205,18 @@ describe("PolarisKeyClient — refresh / persistence", () => {
     await client.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
 
     const cache = await store.readCache();
-    expect(cache?.doc?.payload.config["quality.floor"]?.value).toBe("flac");
+    // v2: the SIGNED artifact is what lands on disk — not the decoded doc, and not the
+    // unsigned counters that used to sit beside it.
+    expect(cache?.v).toBe(CACHE_VERSION);
+    expect(cache?.configJws?.split(".")).toHaveLength(3);
     expect(cache?.etag).toBe('"v1"');
-    expect(cache?.lastAcceptedIssuedAt).toBe(cache?.doc?.issuedAt);
-    expect(typeof cache?.lastVerifiedAt).toBe("number");
+    expect(cache).not.toHaveProperty("doc");
+    expect(cache).not.toHaveProperty("lastAcceptedIssuedAt");
+    expect(cache).not.toHaveProperty("lastVerifiedAt");
+    expect(cache).not.toHaveProperty("trustedKeys");
+    // …and the derived state still round-trips through the public surface.
+    expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(typeof client.getCurrentDevice().lastVerifiedAt).toBe("number");
     // A report was posted after applying.
     expect(m.reportCount()).toBeGreaterThanOrEqual(1);
     expect(
@@ -439,10 +451,9 @@ describe("PolarisKeyClient — offline-first init", () => {
     };
     await store.setToken("pkeyt_cached");
     const rec: CacheRecord = {
-      doc,
+      v: CACHE_VERSION,
+      configJws: await signJws(doc, TEST_PEM, TEST_KID, "pkey-config+jws"),
       etag: '"v1"',
-      lastAcceptedIssuedAt: now,
-      lastVerifiedAt: now * 1000,
     };
     await store.writeCache(rec);
 

@@ -126,24 +126,28 @@ final class GateMatrixTests: XCTestCase {
                 c.jws,
                 options: VerifyDocOptions(
                     trust: c.trust, expectedAud: "djdl", deviceId: doc.deviceId,
-                    lastAcceptedIssuedAt: doc.issuedAt - 1)))
+                    lastAcceptedIssuedAt: doc.issuedAt - 1, now: doc.issuedAt)))
         // Replay (issuedAt == last accepted) is rejected.
         XCTAssertNil(
             verifyDoc(
                 c.jws,
                 options: VerifyDocOptions(
                     trust: c.trust, expectedAud: "djdl", deviceId: doc.deviceId,
-                    lastAcceptedIssuedAt: doc.issuedAt)))
+                    lastAcceptedIssuedAt: doc.issuedAt, now: doc.issuedAt)))
         // Wrong audience rejected.
         XCTAssertNil(
             verifyDoc(
                 c.jws,
-                options: VerifyDocOptions(trust: c.trust, expectedAud: "other", deviceId: doc.deviceId)))
+                options: VerifyDocOptions(
+                    trust: c.trust, expectedAud: "other", deviceId: doc.deviceId,
+                    now: doc.issuedAt)))
         // Wrong device rejected.
         XCTAssertNil(
             verifyDoc(
                 c.jws,
-                options: VerifyDocOptions(trust: c.trust, expectedAud: "djdl", deviceId: "nope")))
+                options: VerifyDocOptions(
+                    trust: c.trust, expectedAud: "djdl", deviceId: "nope",
+                    now: doc.issuedAt)))
     }
 
     // ── Cross-SDK gate-matrix parity (shared conformance/corpus/v1/gate-matrix.json) ──
