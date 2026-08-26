@@ -57,3 +57,50 @@ by `@polaris-key/node` — a post-cutover follow-up; the wire contract is identi
    new kid; anti-replay/device-bind pass; Sparkle update downloads + verifies; OIDC loopback
    mints a license + token; the admin portal shows the device.
 3. Roll forward by fixing the product manifest or release tag and re-running setup health.
+
+## 5. Optional: free tier and live re-licensing
+
+**Auto-issued licenses.** Declare an `autoIssue` block in `.pkey/product` (see
+`docs/CONFIG-AUTHORING.md`) and the client can obtain a license with no key and no sign-in:
+
+```ts
+const client = await PolarisKeyClient.create({
+  productSlug: "djdl",
+  version,
+  trust,
+});
+if (!client.isLicensed()) {
+  const r = await client.enroll(); // 404 → { kind: "enroll-disabled" }
+}
+```
+
+One license per machine, deduplicated on the hardware fingerprint. Signing in later _claims_
+that license in place, so the user's devices and local state survive.
+
+**Live re-licensing.** Changing a license's tier in the admin panel changes what running
+clients are entitled to on their next config refresh — nothing is pushed. Nothing polls by
+default, so opt in where you want an upgrade to land without a restart:
+
+```ts
+const client = await PolarisKeyClient.create({
+  productSlug: "djdl",
+  version,
+  trust,
+  refreshIntervalSeconds: 900,
+  onChange: (state) => applyEntitlements(client.getEntitlements(), state),
+});
+// …
+client.close(); // stops the timer
+```
+
+`onChange` fires only when the managed config actually changed — it keys off the document
+ETag, which is stable across a pure re-sign. The current plan is readable as the
+`license.tier` / `license.tierLabel` entitlements.
+
+Python takes `refresh_interval_seconds=` / `on_change=` and has `close()`; Swift takes
+`refreshIntervalSeconds:` and `startRefreshLoop(onChange:)` / `stopRefreshLoop()`; the React
+provider takes `refreshIntervalSeconds`.
+
+**Downgrades grandfather.** Moving a license to a tier with fewer seats never evicts a device:
+existing devices keep working and new activations are refused until the count drops below the
+new limit. The admin API reports `overLimit` so the UI can say so at the moment of the change.

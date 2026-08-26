@@ -50,6 +50,10 @@ export function LicenseDetail({
     error,
     reload,
   } = useResource(licenseKey, () => api.license(slug, id));
+  // Tiers drive the re-licensing selector in the edit dialog.
+  const { data: tierData } = useResource(`tiers:${slug}`, () =>
+    api.tiers(slug),
+  );
   const { data: catalog } = useResource(`schema:${slug}`, () =>
     api.schema(slug),
   );
@@ -256,6 +260,10 @@ export function LicenseDetail({
       <EditMetadataDialog
         slug={slug}
         license={license}
+        tiers={tierData?.tiers}
+        deviceCount={
+          license.devices.filter((d) => d.status === "authorized").length
+        }
         open={editOpen}
         onOpenChange={setEditOpen}
         onSaved={refresh}

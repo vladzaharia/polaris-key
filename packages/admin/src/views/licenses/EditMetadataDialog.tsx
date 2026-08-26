@@ -1,5 +1,10 @@
 import * as React from "react";
-import { api, type LicenseDetail, type PatchLicenseBody } from "../../api.js";
+import {
+  api,
+  type LicenseDetail,
+  type PatchLicenseBody,
+  type TierSummary,
+} from "../../api.js";
 import {
   Button,
   Dialog,
@@ -11,6 +16,11 @@ import {
   DialogTitle,
   Field,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tabs,
   TabsContent,
   TabsList,
@@ -18,6 +28,9 @@ import {
   useToast,
 } from "../../components/ui/index.js";
 import { dateInputToEpoch, epochToDateInput } from "./shared.js";
+
+/** Radix Select has no empty-string item value, so "no tier" needs a sentinel. */
+const NO_TIER = "__none__";
 
 /**
  * Edit a license's core metadata (name / email / expiry / max offline days) via `patch`. Only
@@ -27,12 +40,19 @@ import { dateInputToEpoch, epochToDateInput } from "./shared.js";
 export function EditMetadataDialog({
   slug,
   license,
+  tiers,
+  deviceCount,
   open,
   onOpenChange,
   onSaved,
 }: {
   slug: string;
   license: LicenseDetail;
+  /** Tiers this license can be moved to. Changing tier IS the remote re-licensing action:
+   *  running clients pick the new entitlements up on their next config refresh. */
+  tiers?: TierSummary[];
+  /** Active devices, used to warn before a downgrade that lands below the new tier's limit. */
+  deviceCount?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
@@ -49,6 +69,7 @@ export function EditMetadataDialog({
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<"name" | "email" | "expires" | "maxOffline", string>>
   >({});
+  const [tier, setTier] = React.useState(license.tier ?? "");
   const [activeTab, setActiveTab] = React.useState("holder");
   const [saving, setSaving] = React.useState(false);
 
@@ -60,11 +81,27 @@ export function EditMetadataDialog({
       setMaxOffline(
         license.maxOfflineDays == null ? "" : String(license.maxOfflineDays),
       );
+      setTier(license.tier ?? "");
       setFieldErrors({});
       setActiveTab("holder");
       setSaving(false);
     }
   }, [open, license]);
+
+  const nextTierId = tier || null;
+  const tierChanged = nextTierId !== (license.tier ?? null);
+  const nextTier = tiers?.find((t) => t.id === nextTierId);
+  // Grandfathering is the server's behaviour, not a warning we can act on — say so plainly
+  // instead of letting the operator discover it by watching activations fail later.
+  const downgradeWarning =
+    tierChanged &&
+    nextTier?.policyDeviceLimit != null &&
+    nextTier.policyDeviceLimit > 0 &&
+    deviceCount != null &&
+    deviceCount > nextTier.policyDeviceLimit
+      ? `${deviceCount} devices are active but ${nextTier.label} allows ${nextTier.policyDeviceLimit}. ` +
+        "Existing devices keep working; new activations are refused until the count drops."
+      : null;
 
   const save = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -91,13 +128,28 @@ export function EditMetadataDialog({
         maxOffline.trim() === "" ? undefined : Number(maxOffline);
       if (nextOffline !== undefined && nextOffline !== license.maxOfflineDays)
         body.maxOfflineDays = nextOffline;
+      if (tierChanged) body.tier = nextTierId;
 
       if (Object.keys(body).length === 0) {
         onOpenChange(false);
         return;
       }
-      await api.patchLicense(slug, license.id, body);
-      toast.success("License updated");
+      const result = await api.patchLicense(slug, license.id, body);
+      if (result.overLimit) {
+        toast.success(
+          "License updated",
+          `${result.overLimit.deviceCount} devices are active but the new tier allows ` +
+            `${result.overLimit.deviceLimit}. Existing devices keep working; new ` +
+            "activations are refused until the count drops.",
+        );
+      } else if (tierChanged) {
+        toast.success(
+          "License updated",
+          "Running clients pick up the new entitlements on their next config refresh.",
+        );
+      } else {
+        toast.success("License updated");
+      }
       onSaved();
       onOpenChange(false);
     } catch (err) {
@@ -155,6 +207,35 @@ export function EditMetadataDialog({
               </TabsContent>
 
               <TabsContent value="policy" className="grid gap-4 sm:grid-cols-2">
+                {tiers && tiers.length > 0 ? (
+                  <Field
+                    label="Tier"
+                    help="Changing this re-licenses running clients on their next refresh."
+                    className="sm:col-span-2"
+                  >
+                    <Select
+                      value={tier || NO_TIER}
+                      onValueChange={(v) => setTier(v === NO_TIER ? "" : v)}
+                    >
+                      <SelectTrigger aria-label="Tier">
+                        <SelectValue placeholder="No tier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_TIER}>No tier</SelectItem>
+                        {tiers.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.label || t.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                ) : null}
+                {downgradeWarning ? (
+                  <p className="sm:col-span-2 text-xs text-muted-foreground">
+                    {downgradeWarning}
+                  </p>
+                ) : null}
                 <Field
                   label="Expires"
                   help="Blank means no expiry."
