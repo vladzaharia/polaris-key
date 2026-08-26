@@ -1,6 +1,11 @@
 # Wire contract v2 — trust, verification, and cache integrity
 
-> **Status:** normative spec, authored by the audit Lead. Five independent implementations
+> **SUPERSEDED (2026-08-26):** the normative contract is now
+> [`WIRE-CONTRACT-V3.md`](./WIRE-CONTRACT-V3.md) (Polaris suite: per-service signed documents,
+> device principal, offline bundles, identifier rebrand). This document remains the historical
+> record of the pre-suite contract; its §6 divergence findings seed v3 §10.
+
+> **Status (historical):** normative spec, authored by the audit Lead. Five independent implementations
 > consume this (TS shared core, Node SDK, Python SDK, Swift SDK, Worker signer). Implementations
 > MUST NOT diverge from it, and the conformance corpus is the arbiter — if this document and the
 > corpus disagree, that is a bug in one of them, not a licence to improvise.
