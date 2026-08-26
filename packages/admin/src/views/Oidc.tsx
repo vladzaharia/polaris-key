@@ -8,6 +8,7 @@ import {
 import { api } from "../api.js";
 import { invalidate, useResource } from "../context.js";
 import { useToast } from "../components/ui/index.js";
+import { releaseSourceOf } from "./products/util.js";
 import {
   Button,
   Card,
@@ -38,6 +39,10 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
     api.product(slug).then((r) => r.product),
   );
   const [resyncing, setResyncing] = React.useState(false);
+  // `release/resync.ts` refuses ("product is not linked to a repo" -> 422) for anything whose
+  // `release_source` is not `github`, so for a manually-created product this button could only
+  // ever fail. `Products.tsx` gates its equivalent menu item the same way.
+  const linked = data != null && releaseSourceOf(data) === "github";
 
   const onResync = React.useCallback(async () => {
     setResyncing(true);
@@ -123,7 +128,16 @@ export function Oidc({ slug }: { slug: string }): React.ReactElement {
                 tiers, and provisioning) without touching licenses.
               </p>
             </div>
-            <Button onClick={() => void onResync()} loading={resyncing}>
+            <Button
+              onClick={() => void onResync()}
+              loading={resyncing}
+              disabled={!linked}
+              title={
+                linked
+                  ? undefined
+                  : "This product is not linked to a GitHub repo."
+              }
+            >
               <RefreshCw aria-hidden />
               Re-sync from linked repo
             </Button>

@@ -779,3 +779,350 @@ npx vitest run test/attack/R9-injection.test.ts     # 32/32
 Full worker suite after adding the PoCs: 622/624 (the 2 failures are in
 `test/attack/R11-data.test.ts`, another lane's file — unrelated to this one; no source files were
 modified by R9).
+
+---
+
+# Remediation — R9-01 / R9-02 (manifest ingest + OIDC sink)
+
+Landed on branch `lewd-owl`. Scope of this pass: `packages/shared-manifest/src/**`,
+`packages/worker/src/oidc.ts`, `packages/worker/src/release/manifest.ts`. It also carries the
+fix for **R7-02** (uncapped `.pkey/` YAML parse), because the parser it names lives in
+`shared-manifest`.
+
+**Verification:** `pnpm --filter @polaris-key/worker test` → **735 passed / 0 failed** (39 files);
+`pnpm --filter @polaris-key/manifest test` → **31 passed / 0 failed**;
+`pnpm --filter @polaris-key/cli test` → **6 passed**; `typecheck` clean on all three; prettier
+clean. `@polaris-key/manifest` must be rebuilt (`pnpm --filter @polaris-key/manifest build`)
+before the worker suite sees manifest changes — the worker resolves it to `dist/`.
+
+## R9-01 — OIDC `client_secret` exfiltration + SSRF — **Partially fixed** (SSRF closed; exfil closed only with an opt-in allowlist)
+
+Two layers, plus one opt-in control. Read the third bullet before calling this closed.
+
+1. **Ingest** (`shared-manifest/src/index.ts:1656` `issuerUrlProblem`). `isUrl()` — "is an
+   absolute `http(s)` URL" — is no longer the issuer's validation. A custom `oidc.issuer` must
+   now be `https:`, must carry no credentials, no query and no fragment (the sink builds
+   `${issuer}/api/oidc/token` by **string concatenation**, so a query would swallow the path it
+   is meant to prefix), and must not be a reserved address literal. The address check
+   (`:1709` v4 / `:1725` v6, with a full IPv6 expander at `:1745`) covers `0.0.0.0/8`,
+   `10/8`, `100.64/10`, `127/8`, `169.254/16`, `172.16/12`, `192.0.0/24`, `192.168/16`,
+   `198.18/15`, `224/4`+, `::`, `::1`, `fc00::/7`, `fe80::/10`, `ff00::/8`, and the
+   IPv4-mapped/compatible forms (`::ffff:169.254.169.254`, `::ffff:a9fe:a9fe`). It runs on
+   `URL.hostname`, so the parser's own normalizations — `2130706433`, `0x7f.1`, `127.1` all
+   become `127.0.0.1` — are covered for free rather than needing their own patterns.
+2. **Sink** (`worker/src/oidc.ts:206`, `:254`). `resolveOidcConfig` re-applies the _same_
+   predicate to what is actually in D1, **before** `openProductSecret` unseals anything. This is
+   the layer that matters operationally: the R9-01 PoC never went through `parseManifest` — it
+   `INSERT`ed straight into `oidc_config`, which is exactly the shape of every row written
+   before this landed. With the guard, a link-local issuer produces a 500 and **zero** outbound
+   requests, and the client secret is never decrypted. The platform (env-supplied) issuer gets
+   the same check; it is operator-owned, so that is hygiene rather than a boundary.
+3. **Opt-in allowlist** (`worker/src/oidc.ts:172` `issuerHostAllowed`, var
+   `OIDC_ISSUER_ALLOWLIST`, comma/whitespace-separated hosts). **This is the only thing that
+   closes the exfiltration half**, and it is off by default.
+
+### What is NOT fixed, and why
+
+A character-class guard cannot distinguish `https://id.example` from
+`https://exfil.attacker.example`: both are well-formed public https URLs. A repo writer who
+picks a domain they own **still** receives a `POST` containing the product's OIDC
+`client_secret` on any anonymous hit of `/<product>/auth/callback`. That PoC is deliberately
+left green and renamed `NOT FIXED: a public https attacker host still validates and still
+receives the client_secret`.
+
+**Why the allowlist defaults to unenforced.** Enforcing an empty allowlist at the sink would
+take _every already-configured custom-OIDC product_ offline on the deploy that ships this code,
+with no operator action and no warning — `resolveOidcConfig` cannot tell a config written
+yesterday from one written by the attacker's push five minutes ago. The brief's own rule ("fail
+closed when unset, for **new** configs only") needs that distinction, and the only place it
+exists is the ingest paths — `release/linkRepo.ts` (first write) and `release/resync.ts`
+(re-apply) — both outside this pass's scope and both owned by another engineer this round.
+
+**Follow-up to close it (recommended, ~20 lines):** in `linkRepo.ts`, refuse a manifest that
+declares `provider: custom` with an issuer host that is not in `OIDC_ISSUER_ALLOWLIST` **when
+the product row does not yet exist**; in `resync.ts`, refuse a _change_ of `oidc_config.issuer`
+whose new host is not allowlisted, while leaving an unchanged issuer alone. That is fail-closed
+for everything new and fail-open only for the exact rows that already work today. `djdl` is
+unaffected either way — `products/djdl/product.json` declares `provider: "platform"` and has no
+issuer at all, so it never reaches the custom branch.
+
+**Also still open (unchanged by this pass):** the guard bounds address _literals_, not DNS. A
+hostname whose A record answers `169.254.169.254` is still resolved at fetch time — classic DNS
+rebinding. The allowlist is the answer to that too.
+
+**Tests:** `R9-01` × 6 in `packages/worker/test/attack/R9-injection.test.ts` (rejection matrix,
+loopback carve-out, the `NOT FIXED` residual, the pre-existing-row sink check, the allowlist
+both ways, and the retained proof that `redirect_uris` does not constrain the issuer), plus 4
+cases in `packages/shared-manifest/src/index.test.ts`.
+
+### The one deliberate exception: loopback
+
+`localhost`, `127.0.0.1` and `[::1]` are accepted, under `http:` **or** `https:`, as a
+development carve-out — `wrangler dev` against a local IdP is a real workflow, and the
+operator-set `PLATFORM_OIDC_ISSUER` runs through the same predicate. They are matched as three
+exact literals, not as `127.0.0.0/8`: `https://127.0.0.2` is rejected. Blocking https-loopback
+while permitting http-loopback would protect nothing, so the exception is scheme-independent.
+In the Workers runtime a loopback fetch cannot reach anything anyway; operators who still want
+it gone should set `OIDC_ISSUER_ALLOWLIST`.
+
+## R9-02 — Unauthenticated open redirect to the manifest-controlled issuer — **Fixed** (same fix, as predicted)
+
+Confirmed rather than assumed: `handleAuthStart` builds its 302 from
+`resolveOidcConfig().issuer`, so the sink guard that stops the token POST also stops the
+redirect. An anonymous request against a reserved-address issuer now gets a 500 with **no**
+`Location` header at all, and with an allowlist set the public-host variant goes the same way.
+Both are asserted (`R9-02` × 2). The residual is identical to R9-01's: without an allowlist, a
+public https host chosen by a repo writer is still a valid 302 target.
+
+## R7-02 — Uncapped, quadratic `.pkey/` YAML parse — **Fixed**
+
+`parseDocument` (`shared-manifest/src/index.ts:1373`) now does three things before and after
+the parse:
+
+1. **Byte cap first** (`MAX_MANIFEST_BYTES = 64 KB`, `:260`; `overByteCap`, `:1417`). Nothing
+   expensive happens before the size check — the short-circuit compares `raw.length` (UTF-16
+   code units, never greater than the UTF-8 byte length) and only encodes when that passes, so
+   a hostile 1.67 MB document is refused in O(1). The cap is in _bytes_, not characters: a
+   document of 60 000 CJK characters is 180 KB and is refused, which a `.length` check would
+   have let through.
+2. **`{ uniqueKeys: false, maxAliasCount: 100 }`.** `maxAliasCount` is pinned rather than
+   inherited so an upstream default change cannot silently widen it (billion-laughs coverage is
+   asserted). Dropping `uniqueKeys` is safe here: nothing downstream depends on duplicate-key
+   _rejection_ — every field is read by explicit key lookup after the parse, and last-wins is
+   deterministic.
+3. **Depth cap** (`MAX_MANIFEST_DEPTH = 32`, `exceedsDepth` at `:1426`, iterative, never
+   recursive — the input is hostile). Deep nesting survives the YAML parser and only detonates
+   later, in the recursive consumers: `JSON.stringify` of a profile `payload` or an edge-mint
+   `claimsTemplate` at persist time. Applied to the JSON branch too.
+
+**Measured** on this repo's `yaml@2.9.0`, same flat-map shape as the original finding:
+
+```
+bytes=  65548  keys= 3704   uniqueKeys:true=   85ms   uniqueKeys:false=  24ms
+bytes=1668892  keys=88422   uniqueKeys:true=43919ms   uniqueKeys:false= 371ms   <- now REJECTED unparsed
+```
+
+Worst case per document drops from **43.9 s to 24 ms** (~1800×): the cap does most of it, the
+option does the rest. A three-file resync is bounded at ~72 ms of parse.
+
+**Reported, not fixed (out of scope):** the same cap belongs on
+**`packages/worker/src/admin/handlers/products.ts:79`** — `compileSchema()` does
+`JSON.parse` → `parseYaml(input)` on an operator-pasted or imported schema string with **no
+size, option, or depth bound**, i.e. the exact `parseDocument` defect this pass just fixed, in a
+second copy. That file is owned by another engineer this round. The fix is three lines: import
+`MAX_MANIFEST_BYTES` from `@polaris-key/manifest` (already re-exported through
+`worker/src/release/manifest.ts`), reject over-cap input, and pass
+`{ uniqueKeys: false, maxAliasCount: 100 }`. Note the admin path is authenticated, so this is
+lower severity than R7-02 proper — but `linkRepo`/`resync` reach it with repo bytes.
+
+**Also unfixed and outside this pass:** `release/github.ts` `fetchRepoFile()` still has no
+`Content-Length` check, so the oversized body is fetched and decoded before `parseDocument`
+refuses it. The cap should also be applied at the fetch, not only at the parse.
+
+## Manifest charset audit — **Fixed** (the "audit the rest of the surface" ask)
+
+`binaryName` (R6-01) was not the only manifest string reaching a URL, an identifier, or a JOSE
+header. Everything below is now **rejected, never coerced** — a failing manifest is not applied
+at all. New helpers: `constrained` / `boundedText` / `constrainedList`; `releaseString` is now a
+thin wrapper over `constrained`.
+
+| Field                                                                          | Was                       | Now                                                                    | Why it matters                         |
+| ------------------------------------------------------------------------------ | ------------------------- | ---------------------------------------------------------------------- | -------------------------------------- |
+| `product.slug`                                                                 | `^[a-z0-9-]+$`, unbounded | `{1,64}`                                                               | KV key + URL path segment              |
+| `product.name`                                                                 | any string                | ≤200, no control chars                                                 | keeps `\n` out of logs/UI              |
+| `product.adminGroup`                                                           | **unvalidated**           | `GROUP_NAME_RE`                                                        | decides who administers the product    |
+| `profiles[].id`, `tiers[].id`, catalog `entry.key`, `provisioning[].secretKey` | `ID_RE` unbounded         | `ID_RE` `{1,64}`                                                       | identifiers, table keys                |
+| profile `name`/`description`, tier `label`                                     | any string                | ≤200 / ≤2000                                                           | free text, bounded                     |
+| `tiers[].channels[]`                                                           | **unvalidated**           | `CHANNEL_RE`                                                           | reaches release URL path segments      |
+| `tiers[].minVersion`/`maxVersion`                                              | **unvalidated**           | `SEMVER_RE`                                                            | version comparison inputs              |
+| `oidc.clientId`                                                                | any string                | `CLIENT_ID_RE`                                                         | authorize query, token body, `aud`     |
+| `oidc.groupRoleMap` keys                                                       | **unvalidated**           | `GROUP_NAME_RE`                                                        | map role/tier grants                   |
+| `oidc.redirectUris[]`                                                          | `isUrl`, unbounded count  | ≤20, ≤2048 each, no credentials (loopback still legal for native apps) | handed to the IdP                      |
+| `provisioning[].claim`                                                         | non-empty string          | `CLAIM_NAME_RE` **+ prototype-name denylist**                          | see below                              |
+| `provisioning[].entitlementKey`                                                | **unvalidated**           | `ID_RE` + denylist                                                     | becomes a payload key                  |
+| `provisioning[].secretUrlTemplate`                                             | **unvalidated**           | https (or loopback), no credentials, **no `{claim}` in the host**      | shipped to clients as a "secret"       |
+| `provisioning[].allowedHosts[]`                                                | **unvalidated**           | `HOST_RE`, non-empty                                                   | the sink's own allowlist               |
+| `edgeMint[].id`                                                                | non-empty string          | `ID_RE`                                                                | URL path segment `/<p>/mint/<id>/auth` |
+| `edgeMint[].kid` / `audience`                                                  | **unvalidated**           | `KID_RE` / ≤200                                                        | JWS header / `aud`                     |
+| `release.artifactPolicy.channels[]`/`architectures[]`                          | **unvalidated**           | `CHANNEL_RE`                                                           | asset matching, path segments          |
+| `fingerprint.probes[].id`/`label`/targets                                      | **entirely unvalidated**  | `ID_RE` / ≤200 / ≤512                                                  | shipped to every client                |
+| `autoIssue.tierId`                                                             | **unvalidated**           | `ID_RE`                                                                | tier that keyless licenses land on     |
+| `secrets.required[]` names                                                     | **unvalidated**           | `SECRET_RE`                                                            | sealed-secret lookups                  |
+
+**The one that is more than hygiene** — `provisioning[].claim` is used as `claims[name]` on a
+JSON-parsed object, so a claim named `constructor` (or `toString`, `valueOf`, …) resolves to an
+_inherited_ function on **every** identity: the hook would fire unconditionally, for everyone,
+regardless of what the IdP asserted. A character class cannot catch these — they are ordinary
+identifiers — so `RESERVED_PROPERTY_NAMES` (`shared-manifest/src/index.ts:219`) names all 13 and
+rejects them on `claim`, `entitlementKey` and `secretKey`. `__proto__` was already excluded by
+the leading-alphanumeric anchor; `constructor` was not.
+
+Second-most interesting: `secretUrlTemplate` had **no** validation, and its runtime allowlist
+(`oidc.ts`, `allowed_hosts_json`) is _also_ repo-controlled — so
+`secretUrlTemplate: "javascript:alert(1)"` with `allowedHosts: [""]` passed the sink's
+`new URL(url).host` check (empty host matches empty string) and shipped a `javascript:` URL to
+the client as a secret value. Both halves are now constrained at ingest.
+
+**Observed, not fixed (SDK-side, out of scope):** `fingerprint.probes[].macos|windows|linux` is
+a filesystem path that `sdks/python/src/polaris_key/facts.py:52` answers with
+`os.path.exists(target)`. Any repo writer can therefore ask every client of that product
+"does `/Users/<user>/Documents/<x>` exist?" and read the answer back through the device's
+reported probe map — a per-file existence oracle on end-user machines. Charset-constraining the
+target would break legitimate absolute paths, so this pass only bounds length and control
+characters. The real fix is on the client: restrict probe targets to a fixed set of application
+directories, or drop path probes for bundle-id / package-name lookups.
+
+---
+
+# Remediation — R9-01 ingest gate + `fetchRepoFile` body cap
+
+Second remediation pass, branch `lewd-owl`. Scope: `packages/worker/src/release/linkRepo.ts`,
+`release/resync.ts`, `release/github.ts` — the two files the previous pass named as "outside
+this pass's scope", plus the fetch-side cap it flagged as unfixed.
+
+**Verification:** `pnpm --filter @polaris-key/worker test` → **745 passed / 0 failed** (39
+files, was 736 passed + 1 stale failure); `@polaris-key/manifest` 31 passed; `@polaris-key/cli`
+6 passed; `tsc --noEmit` clean; prettier clean.
+
+## R9-01 — the residual is closed at ingest — **Fixed for anything new or changed**
+
+The previous pass left a green PoC named
+`NOT FIXED: a public https attacker host still validates and still receives the client_secret`,
+and specified the follow-up. That follow-up has landed, as specified.
+
+`manifestIssuerRefusal(env, issuer)` (`release/linkRepo.ts:113`) reads the same
+`OIDC_ISSUER_ALLOWLIST` var the sink reads and matches on the same key (`URL.host`,
+lower-cased) — so a value accepted at ingest cannot be one the sink then refuses at runtime.
+Unlike the sink's copy it **fails closed**: an unset or empty allowlist admits nothing.
+
+It is applied at the only two writers of `oidc_config` (verified by grep — there are no
+others):
+
+| Path                            | Rule                                                                                                                                     |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `linkRepo.ts:277` (first write) | any `provider: "custom"` manifest is refused unless the issuer host is allowlisted. A first write has no already-working row to protect. |
+| `resync.ts:167` (re-apply)      | only a **new or changed** issuer is gated: `(stored ?? "") !== manifest.issuer`. An unchanged issuer is re-applied untouched.            |
+
+Three properties are worth stating explicitly, because each of them is a decision:
+
+1. **The resync gate runs before the first write.** Everything after it in `resyncRepo` is a
+   sequence of un-batched `db.run`s (`products`, fingerprint, auto-issue, schema,
+   `release_config`) followed by one `db.batch`. Gating late would have left a refused push
+   half-applied. Placed where it is, a refused push applies **nothing** — which also
+   incidentally denies the `admin_group` half of R6-05 to any push that also tries to move
+   the IdP (asserted).
+2. **Only the change is gated, not the value.** An issuer already in D1 keeps working even
+   with the allowlist withdrawn. The attack is the _change_; taking every running
+   custom-OIDC product offline on the deploy that ships this code is its own outage, and it
+   is the reason the sink could not be the place this landed.
+3. **No loopback carve-out at ingest.** `isSafeIssuerUrl`'s three-literal `wrangler dev`
+   exception is about address _shape_; the allowlist is about operator intent. An operator
+   running against a local IdP sets `OIDC_ISSUER_ALLOWLIST=localhost:8788`, which the sink
+   needs anyway the moment any allowlist exists.
+
+### `djdl` is unaffected — verified, not assumed
+
+`products/djdl/product.json` declares `oidc.provider: "platform"` and no issuer, so
+`stmtInsertOidcConfig` stores `issuer = ""` and the gate is never reached. The PoC
+`a provider:"platform" product (djdl's real manifest) links and resyncs with no allowlist`
+reads that exact file off disk, links it and resyncs it through `linkRepo`/`resyncRepo` with
+`OIDC_ISSUER_ALLOWLIST` **unset**, and asserts both succeed and that the stored issuer is `""`.
+Conversely, a push that tries to move a `platform` product to a custom issuer is a change from
+`""` and is gated like any other.
+
+### What is still open
+
+- **Rows already in D1 remain fail-open at the sink** when no allowlist is set. That is the
+  deliberate half of the design, and it is now the _only_ half: no repo can add to that set.
+  The PoC that proves it is retained and renamed
+  `RESIDUAL: a row ALREADY in D1 still receives the client_secret when no allowlist is set`.
+  An operator who wants it closed sets `OIDC_ISSUER_ALLOWLIST`, which closes ingest and sink
+  together.
+- **DNS is still not bounded.** The guard covers address literals; a host whose A record
+  answers `169.254.169.254` still resolves at fetch time. The allowlist is the answer, and it
+  is now mandatory for anything new.
+- **`OIDC_ISSUER_ALLOWLIST` is undeclared.** It is read through `secret(env, …)`, so it works
+  as a plain var, but it appears in neither `env.ts` nor the runbook. Operator documentation is
+  a follow-up (both files are outside this pass's scope).
+
+**Tests:** `R9-01` × 9 — the four retained from the previous pass, plus
+`FIXED: a public https attacker host still parses, but linkRepo refuses to persist it`
+(the inverted `NOT FIXED` PoC, including the allowlisted-host control),
+`resyncRepo refuses a CHANGED issuer, and applies nothing else from that push`,
+`resyncRepo leaves an UNCHANGED stored issuer alone, even with the allowlist withdrawn`, and
+the `djdl` carve-out above. `R6-07`'s "a webhook push rewrites OIDC issuer/clientId, tiers, and
+admin_group" is split into the now-refused case and the still-unfixed
+`once the host is allowlisted` case, so R6-05 does not silently look fixed.
+
+## R9-16 — `fetchRepoFile()` had no `Content-Length` check — **Fixed**
+
+R7-02's cap landed at the _parser_. `fetchRepoFile` (`release/github.ts:271`) still buffered
+the whole Contents-API envelope and base64-decoded it first, so a repo writer could make an
+unauthenticated-webhook-triggered resync materialise an arbitrarily large body inside a 128 MB
+isolate before `parseDocument` refused it.
+
+The body now goes through the module's existing `readCapped` helper (generalised with a `what`
+label, previously used only for sidecar assets): `Content-Length` is consulted first as a cheap
+rejection, and the streamed byte accounting cancels the stream the moment the cap is passed, so
+**a missing or lying header cannot defeat it**.
+
+`MAX_REPO_FILE_BYTES = MAX_MANIFEST_BYTES * 2` (128 KiB). The cap is on the _response body_,
+not the manifest: a legal 64 KiB manifest arrives base64-encoded (×4/3, `\n` every 60 cols)
+inside a JSON envelope carrying ~1 KB of metadata, i.e. ~88 KiB. Anything between the two caps
+is refused a moment later by the parser, with a better message. A PoC asserts the headroom
+arithmetic directly rather than trusting it.
+
+Related: `linkRepo`'s `.pkey/` read loop is now wrapped in the same `try`/`catch` `resyncRepo`
+already had, so an over-cap or otherwise failing fetch is a structured `{ok:false}` for the
+admin API instead of an unhandled throw.
+
+**Tests:** `R9-16` × 3 (declared over-cap short-circuit, missing-header streamed enforcement
+with an early cancel, full-size legal manifest round-trip).
+
+## R9-15 — stale source assertion repaired
+
+`the installation-token cache key no longer comes from the caller's scope argument` asserted
+that `linkRepo.ts` still contained the literal `getInstallationToken(env, repo, installId, …)`.
+That call site has since been changed to pass a structured `{owner, repo}` scope, leaving the
+suite at 736 passed / 1 failed. The assertion is inverted: it now pins that the bare-repo-name
+form is **gone** and the structured scope is present.
+
+## Reported, not fixed — `admin/handlers/products.ts:79` (R7-02, second copy)
+
+`compileSchema()` does `JSON.parse` → `parseYaml(input)` on an operator-pasted or imported
+schema string with **no size, option or depth bound** — the same defect `parseDocument` was
+just fixed for, in a second copy, reachable from `POST /api/products` and `PUT
+/api/products/<slug>/schema` rather than from the webhook. The file is held by another engineer
+this round; the exact patch is:
+
+```diff
+--- a/packages/worker/src/admin/handlers/products.ts
++++ b/packages/worker/src/admin/handlers/products.ts
+@@ -52,6 +52,7 @@
+ import { linkRepo } from "../../release/linkRepo.js";
++import { MAX_MANIFEST_BYTES } from "../../release/manifest.js";
+ import { resyncRepo } from "../../release/resync.js";
+@@ -83,6 +84,10 @@ function compileSchema(
+   let parsed: unknown = input;
+   if (typeof input === "string") {
++    // R7-02, second copy. `.length` is UTF-16 code units and is never greater than the UTF-8
++    // byte length, so the first term is an O(1) prefilter and the encode is bounded by it.
++    if (input.length > MAX_MANIFEST_BYTES || new TextEncoder().encode(input).byteLength > MAX_MANIFEST_BYTES)
++      return { ok: false, message: `schema must be at most ${MAX_MANIFEST_BYTES} bytes` };
+     try {
+       parsed = JSON.parse(input);
+     } catch {
+       try {
+-        parsed = parseYaml(input);
++        parsed = parseYaml(input, { uniqueKeys: false, maxAliasCount: 100 });
+       } catch {
+         return { ok: false, message: "schema must be valid JSON or YAML" };
+       }
+```
+
+Severity is below R7-02 proper — this path is platform-admin authenticated — but note that
+`linkRepo`/`resyncRepo` reach `Catalog.compileAll()` with repo bytes through their own
+(now-capped) path, so the asymmetry is worth removing. Residual after this patch: the depth cap
+`parseDocument` also applies is not reproduced here, because `exceedsDepth` is not exported
+from `@polaris-key/manifest`; the 64 KiB byte cap bounds nesting to something survivable but
+does not eliminate deep-recursion risk in `Catalog.compileAll()`.

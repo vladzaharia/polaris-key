@@ -159,14 +159,15 @@ function Sidebar({
           active={route.kind === "dashboard"}
           onClick={() => go({ kind: "dashboard" })}
         />
-        {me.platformAdmin ? (
-          <NavItem
-            icon={Boxes}
-            label="Products"
-            active={route.kind === "products"}
-            onClick={() => go({ kind: "products" })}
-          />
-        ) : null}
+        {/* Ungated: `me.platformAdmin` is true for every session that can reach this Shell
+            (admin/auth.ts gates login on the same predicate admin/authz.ts gates products on),
+            so the conditional only ever pretended there was a tier that sees less. */}
+        <NavItem
+          icon={Boxes}
+          label="Products"
+          active={route.kind === "products"}
+          onClick={() => go({ kind: "products" })}
+        />
 
         <div className="my-2 px-1">
           <p className="px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

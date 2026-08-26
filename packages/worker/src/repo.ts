@@ -232,6 +232,21 @@ export async function listProducts(db: Db): Promise<ProductRow[]> {
   );
 }
 
+/**
+ * Every registered slug, INCLUDING soft-deleted products.
+ *
+ * `listProducts` hides `status = 'deleted'`, which is right for every serving path and wrong for
+ * retention: a soft-deleted product keeps its `audit` rows, its `portal_audit` rows and its
+ * download tokens, and those are precisely the rows most in need of pruning. Deletion is a
+ * status flip, so the slug is still the only key that scopes the sweep.
+ */
+export async function listAllProductSlugs(db: Db): Promise<string[]> {
+  const rows = await db.all<{ slug: string }>(
+    "SELECT slug FROM products ORDER BY slug",
+  );
+  return rows.map((r) => r.slug);
+}
+
 export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
   await db.run(
     `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
@@ -1004,26 +1019,37 @@ export async function countActiveDevices(
  * released, which is what `releaseDormantSeats` does.
  */
 /**
- * Free the seat ordinals of devices on this licence that have stopped checking in.
+ * Free the seat ordinals of devices that have stopped checking in. Returns how many were freed.
  *
  * The row itself is left alone — same `status`, same `token_hash`, same data — so a device
  * that comes back simply re-claims a seat on its next activation. Only the *capacity* is
  * returned to the customer.
+ *
+ * Two callers, one statement. `claimDeviceSeat` passes `licenseId` and reclaims just in time,
+ * for the one licence about to be counted. The `scheduled()` sweep omits it and reclaims a whole
+ * product at once, which is what makes the capacity come back for customers who are NOT
+ * currently activating — under the just-in-time path alone, a 2-seat licence whose only two
+ * devices went dark stays visibly "full" in the portal and the admin console until someone tries
+ * to activate a third. Both are `UPDATE ... WHERE seat_no IS NOT NULL`, so both are idempotent
+ * and a second run frees nothing.
  */
-async function releaseDormantSeats(
+export async function releaseDormantSeats(
   db: Db,
   product: string,
-  licenseId: string,
   now: number,
-): Promise<void> {
-  await db.run(
-    `UPDATE devices SET seat_no = NULL
-      WHERE product = ? AND license_id = ? AND status = 'authorized'
-        AND seat_no IS NOT NULL AND last_seen <= ?`,
-    product,
-    licenseId,
-    seatActiveSince(now),
-  );
+  licenseId?: string,
+): Promise<number> {
+  const base = `UPDATE devices SET seat_no = NULL
+      WHERE product = ? AND status = 'authorized'
+        AND seat_no IS NOT NULL AND last_seen <= ?`;
+  return licenseId === undefined
+    ? db.runChanges(base, product, seatActiveSince(now))
+    : db.runChanges(
+        `${base} AND license_id = ?`,
+        product,
+        seatActiveSince(now),
+        licenseId,
+      );
 }
 
 export async function claimDeviceSeat(
@@ -1034,7 +1060,7 @@ export async function claimDeviceSeat(
   limit: number,
   now: number,
 ): Promise<boolean> {
-  await releaseDormantSeats(db, product, licenseId, now);
+  await releaseDormantSeats(db, product, now, licenseId);
   const held = await db.first<{ seat_no: number | null }>(
     `SELECT seat_no FROM devices
       WHERE product = ? AND device_id = ? AND license_id = ? AND status = 'authorized'`,
@@ -1459,6 +1485,35 @@ export async function appendAudit(db: Db, row: AuditRow): Promise<void> {
     row.target_id,
     row.parent_id,
     row.summary,
+  );
+}
+
+/**
+ * Delete one product's `audit` rows older than `cutoff`. Returns how many were removed.
+ *
+ * R11-09: nothing has ever deleted from this table. Bounded by `limit` and driven from the
+ * `scheduled()` sweep, which calls it repeatedly until a pass removes fewer rows than it asked
+ * for — so an old, huge backlog drains over several nights instead of one statement trying to
+ * delete millions of rows inside a single D1 invocation.
+ *
+ * `idx_audit_time(product, at DESC, id DESC)` serves the inner SELECT. The `product` predicate
+ * is mandatory, as everywhere else in this file: retention on a shared table must never be able
+ * to reach past the tenant it was asked about.
+ */
+export async function pruneAudit(
+  db: Db,
+  product: string,
+  cutoff: number,
+  limit: number,
+): Promise<number> {
+  return db.runChanges(
+    `DELETE FROM audit
+      WHERE rowid IN (
+        SELECT rowid FROM audit WHERE product = ? AND at < ? LIMIT ?
+      )`,
+    product,
+    cutoff,
+    limit,
   );
 }
 

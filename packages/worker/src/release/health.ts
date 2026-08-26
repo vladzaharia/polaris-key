@@ -163,9 +163,14 @@ export async function checkReleaseHealth(
 
   let releases: Release[];
   try {
+    // Pass the structured {owner, repo} scope, NOT the product slug. A bare string is the
+    // legacy shape: `normalizeScope` cannot recover repo coordinates from it, so it falls
+    // back to a permission-minimised but **installation-wide** token. On an org-wide App
+    // install that is a token valid for every repo in the org — exactly what R5-03 set out
+    // to remove. The slug happening to equal the repo name is a coincidence, not a contract.
     const token = await getInstallationToken(
       env,
-      product,
+      { owner: cfg.gh_owner, repo: cfg.gh_repo },
       cfg.gh_installation_id,
       now,
       fetchImpl,

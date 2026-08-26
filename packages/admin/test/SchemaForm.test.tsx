@@ -68,6 +68,69 @@ describe("validate — the Draft-07 subset", () => {
   });
 });
 
+describe("validate — `pattern` is matched in linear time (R10 residual 4)", () => {
+  // `schema.pattern` is operator-supplied and can arrive from a linked repo via a
+  // webhook-triggered resync with no review. Under `new RegExp` this exact input took ~54 s
+  // and froze the operator's tab; the linear matcher must answer immediately.
+  it("answers the catastrophic-backtracking case immediately", () => {
+    const started = Date.now();
+    expect(
+      validate({ type: "string", pattern: "(x+x+)+y" }, "x".repeat(41)),
+    ).toMatch(/does not match pattern/);
+    expect(Date.now() - started).toBeLessThan(250);
+  });
+
+  it("still agrees with the host RegExp on ordinary patterns", () => {
+    for (const [pattern, value] of [
+      ["^[a-z]+$", "abc"],
+      ["^\\d{3}-\\d{4}$", "555-1234"],
+      ["^(a|b)*c$", "ababc"],
+      ["[A-Z]", "xYz"],
+    ] as const) {
+      expect(validate({ type: "string", pattern }, value)).toBeNull();
+      expect(new RegExp(pattern, "u").test(value)).toBe(true);
+    }
+    for (const [pattern, value] of [
+      ["^[a-z]+$", "ABC"],
+      ["^\\d{3}-\\d{4}$", "5551234"],
+      ["^(a|b)*c$", "abd"],
+    ] as const) {
+      expect(validate({ type: "string", pattern }, value)).toMatch(
+        /does not match pattern/,
+      );
+      expect(new RegExp(pattern, "u").test(value)).toBe(false);
+    }
+  });
+
+  it("fails closed on a pattern the matcher refuses, never falling back to RegExp", () => {
+    // Backreferences need backtracking, so the linear engine rejects them at compile time.
+    // The worker treats such a fragment as rejected and drops every value under it, so the
+    // console must not present the value as acceptable.
+    expect(validate({ type: "string", pattern: "(a)\\1" }, "aa")).toMatch(
+      /unsupported pattern/,
+    );
+    // Same for an oversized source (MAX_PATTERN_SOURCE = 300).
+    expect(
+      validate({ type: "string", pattern: "a".repeat(301) }, "aaa"),
+    ).toMatch(/unsupported pattern/);
+  });
+
+  it("rejects an input past the matcher's input cap instead of hanging", () => {
+    // MAX_PATTERN_INPUT = 4096; `test` returns false beyond it, which is fail-closed and is
+    // exactly what the worker does.
+    expect(
+      validate({ type: "string", pattern: "^a*$" }, "a".repeat(4097)),
+    ).toMatch(/does not match pattern/);
+  });
+
+  it("is memoised: repeated validation of one pattern compiles once", () => {
+    const schema = { type: "string", pattern: "^[a-z]{1,40}$" };
+    const started = Date.now();
+    for (let i = 0; i < 2000; i++) validate(schema, "abcdef");
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+});
+
 describe("SchemaField — control per schema/kind", () => {
   it("boolean renders a checkbox role and emits a boolean", () => {
     const onChange = vi.fn();

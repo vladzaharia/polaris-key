@@ -930,3 +930,164 @@ do it unilaterally — flagged rather than improvised.
   sets the precedent for how to surface it (`store.token_backend`).
 - The **server-side** half of R4-07 — `isDevBuild` short-circuiting the build gate on a
   client-asserted string — belongs to the Worker lane.
+
+## Remediation (dual-KEK)
+
+Closes **R2-09** — and with it residual risk #3 and the operational-resilience review's §2
+(graded **F**: `kekId` advertised a rotation capability that did not exist, and the one env var
+that appeared to enable it, `PLATFORM_KEK_ID`, was a silent platform-wide outage). Applied on
+branch `lewd-owl` by the lane owning `keyvault.ts`, `env.ts`, `admin/handlers/products.ts`,
+`migrations/**` and `docs/RUNBOOK.md`. Built to `docs/security/arch/operational-resilience.md`
+§2; the three deviations from that spec are listed at the end.
+
+### 1. The keyring — `keyvault.ts`
+
+`importKek` (one key, one kid) is replaced by `resolveKeyring` + `loadKeyring` (N keys, one
+active kid, memoised per isolate under a fingerprint of the literal secret material, so a
+secret change is picked up by the next isolate with no restart hook).
+
+```text
+PLATFORM_KEK_KEYS   = {"k1":"<base64 of 32 bytes>","k2":"<base64 of 32 bytes>"}   # openable
+PLATFORM_KEK_ACTIVE = "k2"                                                        # sealed under
+```
+
+`seal` writes `kekId: active` and never uses a secondary. `open`'s acceptance rule changes from
+"the blob's kid **equals** the single configured kid" (`keyvault.ts:135-138`) to "the blob's kid
+is **present in** the ring" — the whole fix. Everything else about the fail-closed posture is
+unchanged, including the error string, so the pre-existing tests still assert the same thing.
+
+Fails closed, with no fallback to the other shape, on: no configuration at all; malformed
+`PLATFORM_KEK_KEYS` JSON; a non-object or empty map; a non-string or non-32-byte entry; an
+active kid absent from the map; a blob whose kid the ring does not hold; a wrong AAD; a bad auth
+tag. A half-parsed ring must never silently degrade into "seal everything under the legacy key",
+so `PLATFORM_KEK` is not consulted at all once `PLATFORM_KEK_KEYS` is set.
+
+**Backwards compatibility is structural, not best-effort.** With `PLATFORM_KEK_KEYS` absent the
+ring is synthesised as `{ active: PLATFORM_KEK_ID ?? "default", keys: { <that kid>: PLATFORM_KEK } }`
+— a one-entry ring that is byte-for-byte the old behaviour. Every existing blob carries
+`kekId: "default"`, so deploying this against today's production secret set is a **no-op**: same
+kid written, same kid accepted. That property is what makes it safe to land before it is needed,
+which matters because there is no staging environment to try it on. `Sealed.v` stays **2** and
+the AAD stays `pkey:v2:<product>:<kind>:<id>` with **no** `kekId` in it — had the AAD included
+the kid, a re-seal would change its own binding and would have needed a `v: 3` plus a second
+migration to escape the first one.
+
+### 2. The re-seal sweep — `admin/handlers/products.ts`
+
+AES-GCM is not expressible in SQLite, so the re-encryption pass cannot be a `.sql` migration. It
+is an operator-invoked admin endpoint, platform-admin gated, CSRF-checked and rate-limited by
+the existing dispatcher:
+
+```text
+GET  /manage/api/products/kek   → { active, kids, counts: {keys,secrets}, remaining, unopenable }
+POST /manage/api/products/kek   { limit? }   (default 50, max 200)
+                                → { resealed, skipped, failed, failures[], counts, remaining, unopenable }
+```
+
+Per row: `open` under whichever ring kid the blob names → `seal` under the active kid → **verify
+the new envelope re-opens to the same bytes** → `UPDATE … WHERE <id> AND <blob> = <old blob>`.
+The AAD is reconstructed from the row's own `(product, kind, id)`, so a re-seal cannot weaken or
+move the slot binding — a blob still cannot be lifted between products, kinds or ids.
+
+- **Idempotent** — the filter is "kid ≠ active", so a re-run is free.
+- **Resumable / bounded** — `limit` caps one call; the operator loops until `remaining` is 0.
+- **CAS** — the update is conditioned on the old ciphertext, so a racing `key.rotate` or
+  `secret.set` wins and the row is picked up next pass instead of being clobbered with a stale
+  plaintext (counted as `skipped`).
+- **Never destructive** — a row that will not open is reported in `failures` with its table,
+  product and id, and is not written. `resealed: 0, failed: n` is the "stuck" signal.
+- **Observable** — `remaining` (not yet re-sealed) is deliberately distinct from `unopenable`
+  (kid not in the ring at all: those products are dark _right now_). `remaining === 0` is the
+  documented gate for deleting the old KEK; without it the operator is guessing.
+- **Audited** — one `kek.reseal` row per product touched, in that tenant's own audit log.
+
+The kid is read from the blob itself via `json_extract(<col>, '$.kekId')`, not from a
+denormalised column, so it cannot disagree with the ciphertext it describes and no writer has to
+maintain it. The `CASE WHEN json_valid(<col>)` guard around it is load-bearing and was verified
+against the actual engine: an unguarded `json_extract` over a column holding **one** malformed
+row raises `malformed JSON` for the **whole statement**, so a single corrupt blob would blind
+the sweep to every other row.
+
+**Three classes of sealed value, not two.** `product_keys` and `product_secrets` are whole
+envelope columns. R12-02's catalog-declared managed secrets are envelopes **nested inside**
+`profiles.payload_json` and `licenses.overrides_json`, so they get a second pass that parses the
+payload, re-seals each sealed leaf under AAD `…:product-secret:managed:<key>` (unchanged, per
+`admin/lib/managedSecrets.ts`), and CASes the whole column. Omitting them would have made step 8
+of the runbook a silent data loss, because `openManagedValue` swallows a failed open and returns
+`null` — the symptom would be a config document delivered with a missing secret, not an error.
+Their "still needs work" filter is occurrence arithmetic in SQL over the JSON-escaped
+`\"kekId\":\"` marker (an already-migrated row must not occupy the `LIMIT` and starve the rows
+that do need work); the end-to-end test writes those rows through the real `sealManagedValue`,
+so a change in how the payload is encoded fails the test rather than silently skipping rows.
+This is also the Worker-side backfill mechanism R11-data.md §REPORTED asked for — for the
+re-seal half. It does **not** seal legacy _plaintext_ managed values; that remains R12-02's lazy
+migration on the next admin write.
+
+### 3. Documentation
+
+`docs/RUNBOOK.md` gains the keyring variable table (including `PLATFORM_KEK_ID`, which
+previously appeared in **no** documentation — the review's finding #1), the nine-step rotation
+procedure with its rollback boundary, the `wrangler secret bulk`-not-two-`secret put` warning,
+the `wrangler rollback` un-rotation hazard, KEK-compromise containment, and a troubleshooting
+entry for the platform-wide-404 signature. The old text — "Rotating it requires a deliberate
+re-encryption migration; do not rotate it as a routine secret", which described a migration that
+did not exist — is replaced.
+
+### Tests
+
+`packages/worker/test/keyvault.test.ts`, 8 → 23 (all 8 originals unchanged and passing, which is
+the backwards-compatibility proof):
+
+| Case                                                     | Assertion                                                             |
+| -------------------------------------------------------- | --------------------------------------------------------------------- |
+| legacy `PLATFORM_KEK` ≡ one-entry ring                   | blobs cross both ways; `describeKeyring` reports `default`            |
+| `PLATFORM_KEK_ID` honoured — and its trap                | renaming the kid orphans a `default` blob                             |
+| seal under primary only                                  | ring `{default,k2}` active `k2` ⇒ every new blob is `k2`              |
+| **open under secondary**                                 | a `default` blob opens under an active-`k2` ring                      |
+| unknown `kekId` fails closed                             | `unavailable KEK k2`; right kid + wrong bytes still rejects           |
+| missing keyring fails closed                             | `seal`/`open`/`describeKeyring` all reject                            |
+| 7 malformed rings fail closed                            | no fallback, even with a valid `PLATFORM_KEK` present                 |
+| AAD preserved across a re-seal                           | wrong product / kind / id all still reject                            |
+| full simulated rotation (add → promote → sweep → retire) | product loads + secrets open at **every** step; `remaining` 4 → 3 → 0 |
+| sweep is bounded, resumable, idempotent                  | `limit:1` ⇒ 1; re-run ⇒ `resealed: 0`                                 |
+| unopenable + corrupt rows                                | counted, reported, **not** written; other rows still re-sealed        |
+| CAS: racing admin write                                  | `skipped: 1`, competitor's value survives                             |
+| managed secrets in `profiles` / `licenses`               | re-sealed with the rest; still open after the old KEK is retired      |
+| unusable ring                                            | `503` naming the variable, not a silent 404                           |
+| authz                                                    | non-admin 403, missing CSRF 403, `DELETE` 405, bad `limit` 422        |
+
+`packages/worker/test/keyvault.test.ts` 23/23 and `test/admin.test.ts` 22/22 green on Node 22.
+`npx tsc --noEmit` clean and `prettier --check` clean for every file this lane touched. The full
+worker suite was 736/737 at hand-off, the single failure being a source-text assertion in the
+release lane's in-flight `linkRepo.ts` refactor (`R9-10`), untouched by and unrelated to this
+change.
+
+### Deviations from the §2 spec, and why
+
+1. **No `kek_id` column, and therefore no migration.** §2.6 proposed
+   `ALTER TABLE … ADD COLUMN kek_id`. Maintaining it would mean changing `repo.ts` writers
+   (outside this lane), and a denormalised copy can drift from the blob; an expression index over
+   `json_extract` was also rejected after testing, because it makes any future write of a
+   non-JSON value to that column fail at INSERT. Reading the kid from the envelope is
+   drift-proof and needs no schema change. Both tables are small enough that the scan is free.
+   **No migration was added at all** — nothing about the schema needed to change.
+2. **Route is `/manage/api/products/kek`, not `/manage/api/platform/kek/{status,reseal}`.** A
+   new `/api/platform` family requires editing `admin/api.ts`, outside this lane. `kek` is a
+   reserved one-segment action on the existing platform-admin-gated `/api/products` family, the
+   same mechanism `link-repo` already uses (and with the same caveat: a product slug `kek` would
+   be shadowed). `GET` = status, `POST` = sweep.
+3. **`kek.reseal` is audited per product, not as a platform row.** The audit table is
+   product-scoped (`audit.product REFERENCES products(slug)`); §6.4's platform-events table does
+   not exist yet. One row per tenant touched is strictly more visible to whoever is looking at
+   that product.
+
+### Not fixed (out of lane)
+
+- `wrangler.toml:93-96`'s required-secrets comment still lists only `PLATFORM_KEK`; it should
+  name `PLATFORM_KEK_KEYS` / `PLATFORM_KEK_ACTIVE` too. `DEPLOYMENT.md` likewise.
+- The admin SPA has no UI for the keyring; rotation is curl-only.
+- No `kek.open.failed` telemetry (§6.3): a blob whose kid is missing is still only visible by
+  polling `GET …/kek` for `unopenable > 0`. There is no logging anywhere in the worker to hang
+  it on.
+- Re-keying does not undo a leak: R2-02 (client-side revocation) still governs whether a signing
+  key compromised via a leaked KEK can actually be retired from the installed base.

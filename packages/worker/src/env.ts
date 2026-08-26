@@ -12,10 +12,38 @@ export interface Env {
   ASSETS?: Fetcher;
 
   // platform-wide secrets / vars (optional so tests can omit them)
-  // The single platform KEK (base64 of 32 random bytes) under which per-product signing keys
-  // + secrets are envelope-encrypted in D1. See src/keyvault.ts.
+  //
+  // ── The platform KEK keyring ────────────────────────────────────────────────────────────
+  // Per-product signing keys + secrets are envelope-encrypted in D1 under a KEK: one ACTIVE
+  // kid for new seals, plus any secondary kids `open` still accepts. Two accepted shapes —
+  // see src/keyvault.ts and docs/RUNBOOK.md § "Rotating PLATFORM_KEK".
+  //
+  //   keyring (rotation-capable, preferred):
+  //     PLATFORM_KEK_KEYS   = {"k1":"<base64 of 32 bytes>","k2":"<base64 of 32 bytes>"}
+  //     PLATFORM_KEK_ACTIVE = "k2"
+  //
+  //   legacy single key (exactly equivalent to a one-entry ring; still fully supported):
+  //     PLATFORM_KEK    = "<base64 of 32 bytes>"
+  //     PLATFORM_KEK_ID = "default"   ← OPTIONAL, and DANGEROUS to change on its own
+  //
+  /** Legacy single platform KEK: base64 of 32 random bytes. Ignored when PLATFORM_KEK_KEYS
+   *  is set. */
   PLATFORM_KEK?: string;
+  /** The kid stamped into blobs sealed under the legacy `PLATFORM_KEK`. Defaults to
+   *  `"default"`, which is the kid every pre-keyring blob carries.
+   *
+   *  DO NOT set this to rotate a KEK: it renames the kid `seal` writes AND the only kid the
+   *  legacy shape can open, so every existing blob becomes unopenable and every product route
+   *  404s. To rotate, move to `PLATFORM_KEK_KEYS`/`PLATFORM_KEK_ACTIVE` — that is the shape
+   *  that has a read window. */
   PLATFORM_KEK_ID?: string;
+  /** The KEK keyring: a JSON object of kid -> base64 of 32 bytes. EVERY kid listed here can be
+   *  opened; only `PLATFORM_KEK_ACTIVE` is sealed under. Write both in ONE `wrangler secret
+   *  bulk` call — two `secret put`s deploy two versions, and the intermediate one fails closed
+   *  platform-wide. */
+  PLATFORM_KEK_KEYS?: string;
+  /** The kid within `PLATFORM_KEK_KEYS` that new seals use. Must be a key of that map. */
+  PLATFORM_KEK_ACTIVE?: string;
   KEY_HASH_PEPPER?: string;
   ADMIN_SESSION_SECRET?: string;
   PORTAL_SESSION_SECRET?: string;
@@ -27,6 +55,24 @@ export interface Env {
   GITHUB_APP_PRIVATE_KEY?: string;
   GITHUB_WEBHOOK_SECRET?: string;
   PLATFORM_ADMIN_GROUP?: string;
+  /**
+   * Comma/whitespace-separated `host[:port]` allowlist of the identity providers a **repo
+   * `.pkey/` manifest** may name as `oidc.issuer` (R9-01).
+   *
+   * This one FAILS CLOSED: with it unset, no manifest may introduce or change a custom
+   * issuer at all — `linkRepo` and `resyncRepo` refuse the push. That is deliberate. The
+   * issuer is the base of the token exchange carrying the product's OIDC `client_secret`,
+   * and it arrives from a file any repo *writer* can push. Shape validation cannot help,
+   * because nothing distinguishes `https://id.example` from `https://exfil.attacker.example`
+   * except an operator's knowledge.
+   *
+   * Issuers ALREADY stored in D1 keep working whether or not this is set — only a new or
+   * changed value is gated, so shipping this does not take a running product offline.
+   * Products using `provider: "platform"` (e.g. `djdl`) store no issuer and never reach it.
+   *
+   * Set with: `wrangler secret put OIDC_ISSUER_ALLOWLIST --env prod`
+   */
+  OIDC_ISSUER_ALLOWLIST?: string;
   EMAIL?: SendEmail;
 
   // additional platform secrets/vars resolved by name

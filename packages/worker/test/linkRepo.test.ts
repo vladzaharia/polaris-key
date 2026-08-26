@@ -53,6 +53,12 @@ function envFor(): Env {
   const env = makeEnv(new KvMock(), []);
   env.GITHUB_APP_ID = "12345";
   env.GITHUB_APP_PRIVATE_KEY = TEST_RSA_PKCS8;
+  // R9-01: a repo-supplied `oidc.issuer` is now fail-closed at ingest — `linkRepo` refuses a
+  // `provider: custom` manifest whose issuer host an operator has not allowlisted, and
+  // `resyncRepo` refuses a *change* to one. `PRODUCT_JSON` below declares a custom IdP, so the
+  // happy-path fixtures need the operator half of that control. The refusals themselves are
+  // PoC'd in test/attack/R9-injection.test.ts.
+  env.OIDC_ISSUER_ALLOWLIST = "id.example";
   return env;
 }
 

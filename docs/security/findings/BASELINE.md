@@ -101,3 +101,34 @@ view.
 Conformance corpus grew from 22 raw cases to 34, plus two new sections — `docCases` (12, claim
 validation) and `trustCases` (10, trust merge/prune) — all executed identically by the Node,
 Python and Swift runners.
+
+---
+
+# Second remediation round (open High findings + residual risks)
+
+| Suite | Pre-audit | Round 1 | Round 2 |
+| --- | --- | --- | --- |
+| JS/TS | 952 | 1394 | **1500** |
+| workerd (new lane) | — | — | **9** |
+| Python | 126 | 231 | **239** |
+| Swift | 80 | 120 | **122** |
+| **Total** | **1158** | **1745** | **1870** |
+
+`pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm gen:corpus -- --check` all exit 0.
+
+Closed this round: R9-01 (OIDC issuer SSRF — address literals at the validator, fail-closed
+`OIDC_ISSUER_ALLOWLIST` at both ingest paths), R9-02, R7-02 (quadratic YAML, both copies),
+R5-03 (GitHub App tokens down-scoped to one repo; cache key derived internally so a caller
+cannot widen it), R12-03 (installation token sealed in KV), R10-05 (release surface cached and
+rate-limited), R10-15, R12-07 (Python **and Swift** READMEs pinned a committed corpus test key),
+R4-04 (clock floor now raised from the trust manifest), R5-04 (dual-KEK keyring + re-seal sweep +
+runbook), residual 2 (`scheduled()` handler, retention, `DELETE /api/me`), residual 4 (last
+uncapped `new RegExp`), residual 5 (real-workerd CI lane), residual 6 (portal FK cascade),
+R11-04 (deploy-time index assertion).
+
+The workerd lane is the structural fix. Every other suite runs under Node, which permits the
+runtime codegen workerd forbids — the blind spot that let the worst release blocker through
+while 396 green tests said nothing. It boots genuine workerd against the worker's own
+`wrangler.toml` and includes a **canary** asserting that `Function(src)` still throws, so if the
+runtime ever relaxes that restriction the canary fails first rather than the suite quietly
+ceasing to prove anything.

@@ -42,6 +42,7 @@ import {
 } from "./githubApp.js";
 import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
+import { manifestIssuerRefusal } from "./linkRepo.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
@@ -101,7 +102,15 @@ export async function resyncRepo(
     const installId =
       cfg.gh_installation_id ??
       (await discoverInstallation(env, owner, repo, now, fetchImpl));
-    token = await getInstallationToken(env, repo, installId, now, fetchImpl);
+    // Structured scope, not a bare repo name — the string form is the legacy path and
+    // yields an installation-wide token plus a second cache entry (R5-03).
+    token = await getInstallationToken(
+      env,
+      { owner, repo },
+      installId,
+      now,
+      fetchImpl,
+    );
   } catch (err) {
     return {
       ok: false,
@@ -142,6 +151,32 @@ export async function resyncRepo(
       ok: false,
       error: `manifest slug ${manifest.product.slug} does not match product ${slug}`,
     };
+  }
+
+  // R9-01, at ingest. `oidc_config` is the one manifest-owned row with no admin-ownership
+  // flag: this function DELETEs and re-INSERTs it unconditionally, so a `.pkey/product` push
+  // can repoint the IdP that receives this product's OIDC `client_secret`. Only a NEW or
+  // CHANGED issuer is gated — an issuer already stored in D1 is re-applied untouched, because
+  // flipping the security posture of a running product on the deploy that ships this code is
+  // its own outage, and the attack is the *change*, not the status quo. `provider: "platform"`
+  // products (e.g. `djdl`) store no issuer and never reach the gate; a push that TRIES to move
+  // such a product to a custom issuer is a change from `""` and is gated like any other.
+  //
+  // Deliberately BEFORE the first write: everything below this point is a sequence of
+  // un-batched `db.run`s, so refusing later would leave half a manifest applied.
+  const nextOidc =
+    manifest.oidc?.provider === "custom" ? manifest.oidc : undefined;
+  if (nextOidc) {
+    const stored = await db.first<{ issuer: string | null }>(
+      "SELECT issuer FROM oidc_config WHERE product = ?",
+      slug,
+    );
+    // Raw string comparison, not host comparison: any edit to the value — a new host, a new
+    // path, a new port — is a change, and a change is what gets gated.
+    if ((stored?.issuer ?? "") !== nextOidc.issuer) {
+      const refusal = manifestIssuerRefusal(env, nextOidc.issuer);
+      if (refusal) return { ok: false, error: refusal };
+    }
   }
 
   const updated: string[] = [];

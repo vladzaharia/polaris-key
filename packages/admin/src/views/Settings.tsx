@@ -39,7 +39,7 @@ import {
 
 /**
  * Product settings. Edits the platform-registry row via the endpoints `api.ts` exposes:
- * `updateProduct` (name / compat window / defaults / admin group), `rotateProductKey` (with a
+ * `updateProduct` (name / compat window / defaults), `rotateProductKey` (with a
  * confirm, surfacing the new kid + public key), `putProductSecret` (write-only secret), and the
  * destructive `deleteProduct` (ConfirmDialog gated). Every mutation toasts + invalidates the
  * cached product so the form reflects the server.

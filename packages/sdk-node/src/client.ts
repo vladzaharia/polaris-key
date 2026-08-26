@@ -205,6 +205,17 @@ export class PolarisKeyClient {
   private doc: ManagedConfigDoc | null = null;
   private trustDoc: TrustManifestDoc | null = null;
   private lastVerifiedAt?: number;
+  /**
+   * §4.3 monotonic time floor: `max` over the `issuedAt` of every signed artifact this client
+   * has re-verified — the config document AND the trust manifest.
+   *
+   * Both sources are load-bearing. The document alone is inert (R4-04): with one cached
+   * document the mark equals `doc.issuedAt`, which is below that same document's `graceUntil`
+   * by construction, so it can never push `effectiveNow` past the end of grace and a clock
+   * rollback still extends offline operation indefinitely. The manifest is the second,
+   * independently-advancing signed clock — `trustRefresh` is on by default, so it moves even
+   * while a content-stable config document sits behind an unchanged ETag.
+   */
   private highWaterMark = 0;
 
   constructor(opts: PolarisKeyOptions) {
@@ -231,6 +242,15 @@ export class PolarisKeyClient {
   /** The effective trust set: manifest keys first, pins spread LAST so they are terminal. */
   private get trust(): TrustSet {
     return mergeTrust(this.pinnedTrust, this.discoveredTrust);
+  }
+
+  /**
+   * Raise the §4.3 clock floor to `issuedAt`. Monotonic by construction — it only ever rises,
+   * and only from content whose signature has just been checked against the pins, so there is
+   * no unsigned field an attacker could edit to move it either way.
+   */
+  private raiseFloor(issuedAt: number): void {
+    if (issuedAt > this.highWaterMark) this.highWaterMark = issuedAt;
   }
 
   /** A fresh deadline for one request. */
@@ -302,6 +322,10 @@ export class PolarisKeyClient {
       if (manifest.doc) {
         this.trustDoc = manifest.doc;
         this.discoveredTrust = manifest.discovered;
+        // A stale manifest's `issuedAt` is still a signed LOWER BOUND on real time — that is
+        // independent of whether it is still fresh enough to publish keys, so the floor rises
+        // here even though freshness was not asserted above.
+        this.raiseFloor(manifest.doc.issuedAt);
       } else {
         this.cache = { ...this.cache, trustJws: undefined };
       }
@@ -319,7 +343,7 @@ export class PolarisKeyClient {
       });
       if (doc) {
         this.doc = doc;
-        this.highWaterMark = doc.issuedAt;
+        this.raiseFloor(doc.issuedAt);
         // Derived, not stored: the server's own statement of when this doc was minted is the
         // only trustworthy "last verified" signal available offline.
         this.lastVerifiedAt = doc.issuedAt * 1000;
@@ -669,7 +693,7 @@ export class PolarisKeyClient {
         });
         if (!doc) return { applied: false };
         this.doc = doc;
-        this.highWaterMark = Math.max(this.highWaterMark, doc.issuedAt);
+        this.raiseFloor(doc.issuedAt);
         this.lastVerifiedAt = Date.now();
         // Persist the SIGNED artifact, verbatim — never the decoded document (§4.1).
         this.cache = {
@@ -713,6 +737,10 @@ export class PolarisKeyClient {
     });
     if (!manifest.doc) return false;
     this.trustDoc = manifest.doc;
+    // §4.3 — the manifest is the floor's second source, and the one that actually advances:
+    // `trustRefresh` is on by default, so this runs on every refresh even when the config
+    // document is unchanged.
+    this.raiseFloor(manifest.doc.issuedAt);
     // REPLACE, don't merge: the trust set becomes exactly `pinned ∪ non-revoked manifest
     // keys`, so a kid the server stopped publishing is dropped here and on disk (§1.2).
     this.discoveredTrust = manifest.discovered;

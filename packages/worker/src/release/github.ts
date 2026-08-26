@@ -11,6 +11,7 @@
  */
 
 import type { FetchImpl } from "./githubApp.js";
+import { MAX_MANIFEST_BYTES } from "./manifest.js";
 
 const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "polaris-key-release";
@@ -36,6 +37,57 @@ export interface Release {
 
 /** Thrown internally; callers map this to a 404 response. */
 export class NotFoundError extends Error {}
+
+/**
+ * Thrown when GitHub itself is refusing us for quota reasons (R10-05).
+ *
+ * Every other auth/visibility failure is deliberately flattened to `NotFoundError` so this
+ * gateway never reveals whether a repo is private. Quota exhaustion is different: it is a
+ * *platform* condition, it affects every product on that installation at once, and mapping it
+ * to 404 is what turned "we are rate limited" into "this product has no releases" —
+ * indistinguishable, from the outside, from a pulled release. Callers map this to 503 so an
+ * operator (and a well-behaved auto-updater) can tell exhaustion from absence.
+ */
+export class UpstreamRateLimitedError extends Error {
+  constructor(
+    message: string,
+    /** Seconds to wait, when GitHub told us; undefined when it did not. */
+    readonly retryAfterSeconds?: number,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Recognise GitHub's two quota signals: a 429, or a 403 whose `x-ratelimit-remaining` is 0
+ * (primary limit) or which carries a `retry-after` (secondary limit). A bare 403 with neither
+ * is a permissions/visibility answer and stays a `NotFoundError`.
+ */
+function rateLimitSignal(res: Response): UpstreamRateLimitedError | null {
+  const header = res.headers.get("Retry-After");
+  // `Number(null)` and `Number("")` are both 0, which would make an ABSENT header look like
+  // "retry immediately" and turn every plain 403 (private repo) into a quota signal.
+  const retryAfter = header === null ? Number.NaN : Number(header);
+  const seconds =
+    Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : undefined;
+  if (res.status === 429)
+    return new UpstreamRateLimitedError("github rate limited: 429", seconds);
+  if (res.status === 403) {
+    if (
+      res.headers.get("X-RateLimit-Remaining") === "0" ||
+      seconds !== undefined
+    ) {
+      return new UpstreamRateLimitedError("github rate limited: 403", seconds);
+    }
+  }
+  return null;
+}
+
+/** Throw `UpstreamRateLimitedError` if `res` is a GitHub quota refusal; otherwise return. */
+function throwIfRateLimited(res: Response): void {
+  const signal = rateLimitSignal(res);
+  if (signal) throw signal;
+}
 
 function apiHeaders(token: string, accept: string): HeadersInit {
   return {
@@ -65,6 +117,7 @@ export async function resolveRelease(
   const res = await fetchImpl(url, {
     headers: apiHeaders(token, "application/vnd.github+json"),
   });
+  throwIfRateLimited(res);
   if (!res.ok) throw new NotFoundError(`release lookup failed: ${res.status}`);
   return (await res.json()) as Release;
 }
@@ -81,6 +134,7 @@ export async function listReleases(
   const res = await fetchImpl(url, {
     headers: apiHeaders(token, "application/vnd.github+json"),
   });
+  throwIfRateLimited(res);
   if (!res.ok) throw new NotFoundError(`releases list failed: ${res.status}`);
   return (await res.json()) as Release[];
 }
@@ -154,6 +208,7 @@ export async function streamAsset(
     upstream = await fetchImpl(loc, { headers: storageHeaders }); // signed URL — no Authorization
   }
 
+  throwIfRateLimited(upstream);
   if (
     upstream.status === 401 ||
     upstream.status === 403 ||
@@ -188,12 +243,30 @@ export async function streamAsset(
 }
 
 /**
+ * Response-body budget for one `.pkey/` file read (R7-02, at the fetch rather than the parse).
+ *
+ * `parseDocument` caps the DECODED manifest at `MAX_MANIFEST_BYTES` (64 KiB) — but it only
+ * gets to say so after this function has already pulled the whole body into the isolate and
+ * base64-decoded it, which is the wrong end of a 128 MB memory budget to be discovering that a
+ * repo writer committed a 200 MB `.pkey/product.yaml`. The Contents API answers with the file
+ * base64-encoded (×4/3, plus a `\n` every 60 columns) inside a JSON envelope carrying ~1 KB of
+ * metadata, so a legal 64 KiB manifest arrives as ~88 KiB. 2× the manifest cap clears that with
+ * room to spare while still bounding the read, and anything between the two caps is refused a
+ * moment later by the parser with a much better error message.
+ */
+export const MAX_REPO_FILE_BYTES = MAX_MANIFEST_BYTES * 2;
+
+/**
  * Read a file from a repo via the GitHub Contents API. Returns the decoded UTF-8 text, or
  * `null` on 404 (file/ref absent). `ref` pins a branch/tag/sha; omitted ⇒ default branch.
  * Any other non-OK status maps to a `NotFoundError` so callers stay information-leak-free.
  *
  * The Contents API returns a JSON object whose `content` is base64 (with embedded newlines)
  * when `Accept: application/vnd.github+json`; we decode it here so callers get plain text.
+ *
+ * The body is read through `readCapped`, so `Content-Length` is consulted before a byte is
+ * read AND the stream is cancelled the moment `MAX_REPO_FILE_BYTES` is passed — an absent or
+ * lying header must not be able to defeat the cap.
  */
 export async function fetchRepoFile(
   token: string,
@@ -213,7 +286,13 @@ export async function fetchRepoFile(
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new NotFoundError(`repo file fetch failed: ${res.status}`);
-  const body = (await res.json()) as { content?: string; encoding?: string };
+  const raw = await readCapped(res, MAX_REPO_FILE_BYTES, "repo file");
+  let body: { content?: string; encoding?: string };
+  try {
+    body = JSON.parse(raw) as { content?: string; encoding?: string };
+  } catch {
+    throw new NotFoundError("repo file: unparseable response");
+  }
   if (typeof body.content !== "string")
     throw new NotFoundError("repo file: unexpected shape");
   if (body.encoding && body.encoding !== "base64") {
@@ -247,19 +326,80 @@ async function fetchAsset(
       throw new NotFoundError(`asset redirect host not allowed: ${host}`);
     res = await fetchImpl(loc);
   }
+  throwIfRateLimited(res);
   if (!res.ok) throw new NotFoundError(`asset fetch failed: ${res.status}`);
   return res;
 }
 
-/** Fetch a small text asset (e.g. a `.sig` sidecar) and return its decoded body. */
+/**
+ * Cap for the sidecar assets read as text (R10-15). A Sparkle EdDSA signature is ~100 bytes
+ * and a `shasum`-style `.sha256` line is ~90; 4 KiB is generous for both. A release asset may
+ * be 2 GB, and `res.text()` on one of those materialises it as a UTF-16 JS string inside a
+ * 128 MB isolate — an OOM that takes co-tenant requests with it, reachable by an
+ * unauthenticated `GET /<p>/appcast.xml`.
+ */
+export const MAX_TEXT_ASSET_BYTES = 4096;
+
+/**
+ * Read at most `maxBytes` of a response body as UTF-8, cancelling the stream the moment the
+ * cap is passed. The declared `Content-Length` is checked first (cheap rejection), but the
+ * streamed accounting is what actually enforces the cap — an absent or lying `Content-Length`
+ * must not be able to bypass it.
+ *
+ * Shared by the sidecar-asset reads (R10-15) and the `.pkey/` manifest reads (R7-02); `what`
+ * only names the thing in the error text.
+ */
+async function readCapped(
+  res: Response,
+  maxBytes: number,
+  what = "asset",
+): Promise<string> {
+  const declared = Number(res.headers.get("Content-Length") ?? "");
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new NotFoundError(`${what} too large: ${declared} bytes`);
+  }
+  const body = res.body;
+  if (!body) return "";
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        throw new NotFoundError(`${what} too large: >${maxBytes} bytes`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    buf.set(c, off);
+    off += c.byteLength;
+  }
+  return new TextDecoder().decode(buf);
+}
+
+/**
+ * Fetch a small text asset (e.g. a `.sig` sidecar) and return its decoded body, bounded by
+ * `maxBytes` (R10-15). Over-large sidecars are refused, not truncated: a truncated signature
+ * or digest would be a silently wrong value, and callers fail closed on the throw.
+ */
 export async function fetchTextAsset(
   token: string,
   owner: string,
   repo: string,
   assetId: number,
   fetchImpl: FetchImpl = fetch,
+  maxBytes: number = MAX_TEXT_ASSET_BYTES,
 ): Promise<string> {
-  return (await fetchAsset(token, owner, repo, assetId, fetchImpl)).text();
+  const res = await fetchAsset(token, owner, repo, assetId, fetchImpl);
+  return readCapped(res, maxBytes);
 }
 
 /**

@@ -233,9 +233,12 @@ function ManualTab({
                 />
               </Field>
             </div>
+            {/* Metadata only, exactly as in EditProductDialog. This is the first product form
+                a new operator ever sees, so a field claiming to delegate administration here
+                seeds the misconception at the moment of creation. */}
             <Field
-              label="Admin group"
-              help="Optional OIDC group that administers this product."
+              label="Admin group (metadata only)"
+              help="Optional label recorded on the product. Grants no access — the console authorizes on PLATFORM_ADMIN_GROUP alone."
             >
               <Input
                 value={adminGroup}

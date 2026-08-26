@@ -28,6 +28,7 @@ import { handleGithubWebhook } from "./githubWebhook.js";
 import { notFound } from "./http.js";
 import { secureResponse } from "./securityHeaders.js";
 import { handleEnroll } from "./enroll.js";
+import { handleScheduled } from "./scheduled.js";
 import {
   handleAccount,
   handleActivate,
@@ -83,6 +84,26 @@ export default {
     // `oidc.ts` pages (device-authorization + "you're signed in"), which set no headers of
     // their own.
     return secureResponse(await dispatch(req, env));
+  },
+
+  /**
+   * R11-09 / R12-10: for the whole life of this worker there was no `scheduled()` export, so
+   * `audit`, `portal_audit` and `release_download_tokens` had no deleter, dormant device seats
+   * were reclaimed only as a side effect of somebody else's activation, and the indexes the
+   * security invariants rest on were checked by no running code. The schedule lives in
+   * `wrangler.toml`'s `[triggers]` block; the work lives in `scheduled.ts`.
+   *
+   * `await`ed rather than handed to `ctx.waitUntil`: both keep the isolate alive for the sweep,
+   * but only the awaited promise's rejection is the handler's own outcome, so a failed step (see
+   * `handleScheduled`, which rethrows one aggregate) is recorded as a failed cron invocation
+   * instead of arriving as a detached unhandled rejection.
+   */
+  async scheduled(
+    _event: ScheduledController,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    await handleScheduled(env);
   },
 } satisfies ExportedHandler<Env>;
 

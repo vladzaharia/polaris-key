@@ -562,6 +562,114 @@ describe("R4-04: clock rollback / grace extension", () => {
     expect(client.status(realNow).lastVerifiedAt).toBe(realNow * 1000);
     client.close();
   });
+
+  // FIXED (R4-04, second half) — §4.3 as CORRECTED. The floor above is derived from the
+  // config document alone, and that is inert against the attack it was written for: with one
+  // cached document `highWaterMark === doc.issuedAt`, which is below that same document's
+  // `graceUntil` by construction, so the floor can never reach the end of grace. The trust
+  // manifest is the second, independently-advancing signed clock, and `trustRefresh` is on
+  // by default — so a client that verified a manifest yesterday cannot claim it is last year.
+  it("cannot extend an aged-out document's grace by winding the clock back, because the cached trust manifest anchors time independently", async () => {
+    const realNow = Math.floor(Date.now() / 1000);
+    const issued = realNow - 400 * DAY; // grace ended 370 days ago
+    const doc = await signJws(
+      makeDoc({
+        issuedAt: issued,
+        expiresAt: issued + HOUR,
+        graceUntil: issued + 30 * DAY,
+        payload: {
+          config: {},
+          secrets: {},
+          entitlements: {
+            pro: { state: "enforced", value: true, updatedAt: 0 },
+          },
+        },
+      }),
+      VENDOR_PEM,
+      VENDOR_KID,
+    );
+    const manifestAt = async (issuedAt: number): Promise<string> =>
+      signJws(
+        {
+          schemaVersion: 1,
+          aud: PRODUCT,
+          iss: "key.plrs.im",
+          issuedAt,
+          expiresAt: issuedAt + 300,
+          jwksUrl: "https://k.test/djdl/.well-known/jwks.json",
+          cacheSeconds: 300,
+          keys: [
+            {
+              kid: VENDOR_KID,
+              kty: "OKP",
+              crv: "Ed25519",
+              alg: "EdDSA",
+              publicKey: VENDOR_PUB,
+              status: "active",
+            },
+          ],
+        },
+        VENDOR_PEM,
+        VENDOR_KID,
+        "pkey-trust+jws",
+      );
+
+    // (a) Document only — the floor cannot exceed `doc.issuedAt`, so the rollback works.
+    const docOnlyDir = tempConfigDir();
+    plantCache(
+      docOnlyDir,
+      { v: CACHE_VERSION, configJws: doc } satisfies CacheRecord,
+      "device-under-attack",
+    );
+    const docOnly = clientOn(docOnlyDir);
+    await docOnly.init();
+    expect(docOnly.status(realNow).status).toBe("expired");
+    expect(docOnly.status(issued + 60).status).toBe("ok"); // ← the residual defect
+    docOnly.close();
+
+    // (b) The same rollback with a manifest the client verified YESTERDAY in the cache. The
+    //     manifest is long past its 300-second `expiresAt`, which is exactly what a cached
+    //     manifest looks like — it still loads (§4.2), and its `issuedAt` still anchors time.
+    const anchoredDir = tempConfigDir();
+    plantCache(
+      anchoredDir,
+      {
+        v: CACHE_VERSION,
+        configJws: doc,
+        trustJws: await manifestAt(realNow - DAY),
+      } satisfies CacheRecord,
+      "device-under-attack",
+    );
+    const anchored = clientOn(anchoredDir);
+    await anchored.init();
+    expect(anchored.status(issued + 60).status).toBe("expired");
+    expect(anchored.isLicensed(issued + 60)).toBe(false);
+    expect(anchored.isEntitled("pro")).toBe(true); // the doc still parsed; the GATE refuses
+    // An honest clock is unaffected — the floor is a minimum, never a substitute.
+    expect(anchored.status(realNow).status).toBe("expired");
+    anchored.close();
+
+    // (c) The network path raises it too: `trustRefresh` is on by default, so a manifest
+    //     fetched now anchors the gate even though /config is unreachable.
+    const onlineDir = tempConfigDir();
+    plantCache(
+      onlineDir,
+      { v: CACHE_VERSION, configJws: doc } satisfies CacheRecord,
+      "device-under-attack",
+    );
+    const freshManifest = await manifestAt(realNow);
+    const fetchImpl = (async (input: string | URL | Request) => {
+      if (String(input).endsWith("polaris-trust.jws"))
+        return new Response(freshManifest, { status: 200 });
+      return new Response("", { status: 503 });
+    }) as unknown as typeof fetch;
+    const online = clientOn(onlineDir, { fetchImpl, trustRefresh: true });
+    await online.init();
+    expect(online.status(issued + 60).status).toBe("ok"); // before the refresh
+    await online.refresh();
+    expect(online.status(issued + 60).status).toBe("expired"); // after it
+    online.close();
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════

@@ -42,6 +42,33 @@ jobs:
       #     --out-dir <mirror-dir> --lang ts,python,swift --check
       - run: pnpm --filter @polaris-key/admin build
 
+  # The `js` job above runs every suite under `environment: "node"`. Node permits the runtime
+  # code generation workerd forbids, so it is structurally incapable of catching the class of
+  # defect that produced this repo's worst release blocker: Ajv's `compile()` ran inside the
+  # request handler, and `GET /<product>/config` would have 500'd for every device on every
+  # poll while hundreds of green Node tests said nothing (docs/security/findings/R10-dos.md
+  # §R10-01, reproduced on real workerd in VERIFY-R10-01.md).
+  #
+  # This job boots the genuine workerd binary. It is its own job, not a step in `js`, so that
+  # "the code does not work in the runtime it ships to" is legible at a glance instead of
+  # being buried in a 700-test log.
+  workerd:
+    name: Worker smoke (real workerd)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The worker imports the workspace packages from their built `dist`, and wrangler.toml's
+      # assets binding points at `packages/admin/dist`, so both must exist before workerd boots.
+      - run: pnpm build
+      - run: pnpm --filter @polaris-key/worker typecheck:workerd
+      - run: pnpm --filter @polaris-key/worker test:workerd
+
   python:
     name: Python SDK
     runs-on: ${{ matrix.os }}

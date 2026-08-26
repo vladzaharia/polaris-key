@@ -39,8 +39,10 @@ import PolarisKey
 let client = try await PolarisKeyClient.create(options: .init(
     productSlug: "djdl",
     version: "1.4.2",
+    // kid -> raw Ed25519 public key (base64url). PLACEHOLDERS — substitute YOUR product's
+    // real values; see "Where the trust set comes from" below.
     trust: PolarisTrust(pinnedKeys: [
-        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+        "<your-signing-key-id>": "<your-product-signing-key-b64url>"
     ])
 ))
 
@@ -66,6 +68,22 @@ try await client.deactivate()
 The client mirrors the Node SDK's surface: `start()`/`activate(key:)`/`deactivate()`/
 `refresh(force:)`/`status()`/`isLicensed()`/`config(_:default:)`/`secret(_:)`/
 `isEntitled(_:)`/`entitlements()`/`profile()`.
+
+### Where the trust set comes from
+
+> [!WARNING]
+> Every `kid`/public key shown in this repository's docs, tests and
+> `conformance/corpus/v1/cases.json` is a **placeholder or a test fixture whose private
+> half is committed**. Pinning one means anyone can forge a document your client accepts:
+> the verifying key is selected by the header `kid` from whatever map you supply.
+
+Your product's real trust set is minted server-side when the product is registered, and is
+never checked into a client repo. Get it from either the **onboarding bundle** the admin
+portal returns when it mints the product's signing key (`kid -> publicKey`), or
+`GET https://key.plrs.im/<product>/.well-known/jwks.json` over TLS, once — then compile the
+values into your application. Pins are terminal, so treat updating them as a release, not a
+runtime fetch; routine key rotation is handled by the signed trust manifest at
+`/<product>/.well-known/polaris-trust.jws`, which is verified against your pins.
 
 ### Layered config
 

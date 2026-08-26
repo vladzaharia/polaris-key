@@ -26,6 +26,7 @@ import {
   Skeleton,
 } from "../components/ui/index.js";
 import { ResyncButton } from "./releases/ResyncButton.js";
+import { releaseSourceOf } from "./products/util.js";
 
 /**
  * Releases view: manifest-driven release/distribution status. Release config is still edited
@@ -44,7 +45,7 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
   if (error && !data) {
     return (
       <section className="space-y-6">
-        <Header slug={slug} />
+        <Header slug={slug} product={null} />
         <EmptyState
           icon={<AlertTriangle aria-hidden />}
           title="Couldn’t load the product"
@@ -62,7 +63,7 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
   if (!data) {
     return (
       <section className="space-y-6">
-        <Header slug={slug} />
+        <Header slug={slug} product={null} />
         <EmptyState
           icon={<Package aria-hidden />}
           title="No product details available"
@@ -73,7 +74,7 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
 
   return (
     <section className="space-y-6">
-      <Header slug={slug} />
+      <Header slug={slug} product={data} />
       <ManifestNote />
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <ReleaseHealthCard
@@ -89,7 +90,13 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
   );
 }
 
-function Header({ slug }: { slug: string }): React.ReactElement {
+function Header({
+  slug,
+  product,
+}: {
+  slug: string;
+  product: ProductDetail | null;
+}): React.ReactElement {
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div className="space-y-1">
@@ -99,7 +106,14 @@ function Header({ slug }: { slug: string }): React.ReactElement {
           <span className="font-mono">{slug}</span>.
         </p>
       </div>
-      <ResyncButton slug={slug} />
+      {/* Resync only exists for repo-linked products (`release/resync.ts` 422s otherwise),
+          and there is nothing to resync before the product row has loaded. */}
+      {product ? (
+        <ResyncButton
+          slug={slug}
+          linked={releaseSourceOf(product) === "github"}
+        />
+      ) : null}
     </header>
   );
 }

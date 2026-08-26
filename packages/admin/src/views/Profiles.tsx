@@ -57,7 +57,10 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
       setDeleting(null);
       refresh();
     } catch (err) {
-      toast.error("Could not delete profile", describeError(err));
+      toast.error(
+        "Could not delete profile",
+        describeError(err, PROFILE_IN_USE),
+      );
     } finally {
       setBusy(false);
     }
@@ -210,11 +213,15 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
         onOpenChange={(open) => !open && setEditing(null)}
       />
 
+      {/* `countLicensesUsingProfile` sums `license_profiles` AND `tiers.profile_id`, and a
+          non-zero count makes the server 409. So the two referrer classes the old copy said
+          would "fall back to their own settings" are precisely the two that BLOCK the delete
+          — the dialog promised exactly the case the server rejects. */}
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
         title={`Delete profile “${deleting?.id ?? ""}”?`}
-        description="Tiers and licenses referencing this profile will fall back to their own settings. This cannot be undone."
+        description="Only an unreferenced profile can be deleted: while any tier or license still points at it the server refuses. Detach those first. This cannot be undone."
         confirmLabel="Delete profile"
         loading={busy}
         onConfirm={() => void handleDelete()}
@@ -223,11 +230,23 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
   );
 }
 
-function describeError(err: unknown): string {
+/**
+ * `ApiError` carries only status/code/fields, never the server's message, so 409 has to be
+ * interpreted per call site. The profiles endpoint uses it for three unrelated things: a
+ * duplicate id, "no active catalog", and "profile is still referenced" on delete.
+ */
+function describeError(
+  err: unknown,
+  conflict = "That id is already in use.",
+): string {
   if (err instanceof ApiError) {
-    if (err.status === 409) return "That id is already in use.";
+    if (err.status === 409) return conflict;
     if (err.fields?.length) return `Check: ${err.fields.join(", ")}.`;
     return err.message || `Request failed (${err.status}).`;
   }
   return err instanceof Error ? err.message : "Request failed.";
 }
+
+/** The only 409 a DELETE can produce (`countLicensesUsingProfile` > 0). */
+const PROFILE_IN_USE =
+  "Tiers or licenses still reference this profile. Detach them first.";

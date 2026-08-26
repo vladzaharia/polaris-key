@@ -1016,3 +1016,295 @@ Recommended, for a maintainer to decide on rather than for this change to impose
   `GET /<product>/config` returns 200 with a three-part JWS.
 - Either way it should gate `deploy.yml`, which currently triggers only on `push: tags: ["v*"]`
   and has never run.
+
+---
+
+# Remediation — release lane (R5-03, R12-03, R10-05, R10-15)
+
+A second remediation pass, scoped to the release engine's GitHub credential handling and the
+public delivery surface. Files touched: `release/githubApp.ts`, `release/github.ts`,
+`release/index.ts`, `kv.ts`, `rateLimit.ts` (one bucket registration).
+
+## R5-03 — installation tokens minted un-scoped, cache scope inconsistent
+
+**Order mattered.** The mint fix alone would have been defeated by the cache: `installId` is
+identical for every product on an org-wide installation, and the only other component of the
+key was a caller-supplied string. So the key derivation was fixed first.
+
+**Cache key (`kv.ts` `ghInstallationTokenKey`, `githubApp.ts` `installationTokenSlot`).** The
+key is now `gh:install:<id>:token:<owner>/<repo>`, derived **inside** `getInstallationToken`
+from `(installId, requested down-scope)`. The caller's second argument no longer reaches the
+key at all, so it is correct regardless of what callers pass. `pk()` is not used: an
+installation token has no product dimension, and the `gh:` prefix keeps it out of the `p:`
+namespace where a real slug could collide with it.
+
+**The mint.** `POST /app/installations/{id}/access_tokens` now carries
+`{"repositories": ["<repo>"], "permissions": {…}}`. GitHub enforces both server-side.
+Permissions verified against actual usage:
+
+| Endpoint used                                                             | Permission            |
+| ------------------------------------------------------------------------- | --------------------- |
+| `/releases`, `/releases/latest`, `/releases/tags/*`, `/releases/assets/*` | `contents: read`      |
+| `/contents/*` (the `.pkey/` manifests)                                    | `contents: read`      |
+| — (mandatory for every App)                                               | `metadata: read`      |
+| `/actions/workflows/{wf}/runs` (`channelTagsFor`)                         | `actions: read`       |
+| `/pulls/{n}` (`pr-<n>` selectors)                                         | `pull_requests: read` |
+
+Nothing on this path writes, so nothing asks for write. The last two are requested **only**
+when the product has a `channel_workflow`, because GitHub 422s a request for a permission the
+App was never granted.
+
+**Fallback ladder** (availability; a 422 here takes the whole release surface down):
+
+1. requested repo + requested permissions;
+2. same repo, base permissions — for an App never granted actions/pull_requests;
+3. installation-wide but still read-only — **only** for the legacy bare-string caller form.
+
+A caller that passes structured coordinates (`{owner, repo}`) never falls back to step 3: a
+422 there is a hard failure, so a correctly-wired caller can never be silently widened.
+
+## R12-03 — installation token cached in KV as plaintext
+
+The cached record is `seal()`ed under the platform KEK before `HOT.put`, with the AAD bound to
+`(installId, down-scope)` — a blob sealed for one repo scope cannot be opened as another's.
+On read, a blob that will not open (rotated KEK, tampered ciphertext, a pre-fix plaintext
+record) is treated as a cache **miss** and re-minted, never as a usable token. If sealing is
+impossible (no usable KEK) the token is served but **not cached** — an extra round trip is the
+right price; persisting a plaintext credential is not.
+
+`keyvault.ts` was **not** modified: `SealContext.kind` already admits `"product-secret"`, so
+the existing `seal`/`open` were sufficient. `kv.ts`'s header comment was updated, as the
+finding asked.
+
+## R10-05 — unauthenticated GitHub-subrequest amplifier
+
+Three layers, all in `release/index.ts` unless noted.
+
+**1. Cloudflare Cache API** in front of the metadata reads (`appcast`, `channelAppcast`,
+`version`, `changelog`), and only when the product's effective access mode for that surface is
+`public`, so a cache hit can never bypass `enforceReleaseAccess`. The key is **synthesised**
+(`/__pkey-release-cache?p=&k=&v=&c=`), not `req.url`: keying on the real URL would let
+`?cachebust=N` mint unbounded entries that all miss, turning the cache into the amplifier it is
+meant to stop. `caches.default` is absent outside workerd, so the lookup degrades to "no cache"
+rather than throwing.
+
+`cli`/`dmg` are deliberately **not** cached — they stream artifact bodies up to 2 GB with Range
+and If-None-Match passed through end-to-end.
+
+**2. Per-IP rate limit** on cache **misses** only (a hit issues no GitHub subrequest and no
+limiter round-trip, so serving it is the most available thing we can do). Two buckets, both
+registered `"open"` in `rateLimit.ts`'s `FAIL_MODE` — matching the control-plane lane's
+convention that read surfaces fail open, since a limiter outage must not become a
+software-distribution outage:
+
+- `release` — 30/min/IP for metadata, matching `/activate`.
+- `releaseArtifact` — 120/min/IP for `cli`/`dmg`. Deliberately loose: the legitimate shape is
+  bursty (a NAT'd office on release day, parallel Range requests for a resume), and GitHub's
+  storage host — not our API quota — absorbs the bytes.
+
+**3. 503, not 404, on upstream quota exhaustion** (`github.ts`). A new
+`UpstreamRateLimitedError` is thrown for GitHub's two quota signals (429; or 403 with
+`x-ratelimit-remaining: 0` or a `retry-after`) and mapped to `503 upstream_rate_limited` with
+`Retry-After`. A _bare_ 403 — private repo, no access — still maps to `NotFoundError`/404, so
+"private" and "absent" stay indistinguishable. This is what makes exhaustion diagnosable
+instead of looking like a withdrawn release.
+
+## R10-15 — unbounded `.sig` read
+
+`fetchTextAsset` now takes `maxBytes` (default `MAX_TEXT_ASSET_BYTES = 4096`; a Sparkle EdDSA
+signature is ~100 bytes and a `shasum` line ~90). The declared `Content-Length` is rejected
+first, then the body is read through a **capped stream** that cancels the moment the running
+total passes the cap — an absent or lying `Content-Length` cannot bypass it. Over-large
+sidecars are refused rather than truncated: a truncated signature or digest would be a silently
+wrong value, and callers already fail closed on the throw.
+
+## Test status
+
+| Finding                                      | Fixed? | Test                                                                                                                      |
+| -------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------- |
+| R5-03 mint is un-scoped                      | yes    | `R5-isolation.test.ts` → `R5-03 GitHub installation tokens are down-scoped to one repo` (7 tests)                         |
+| R5-03 cache key derived from caller argument | yes    | same block + `R9-injection.test.ts` → `the installation-token cache key no longer comes from the caller's scope argument` |
+| R12-03 token cached in plaintext             | yes    | `R12-secrets.test.ts` → `R12-03 GitHub installation token is sealed in KV` (3 tests, original inverted)                   |
+| R10-05 no cache in front of GitHub           | yes    | `R10-dos.test.ts` → `R10-05 public release surface no longer amplifies into GitHub` (10 tests)                            |
+| R10-05 no rate limit                         | yes    | same block (per-IP 429, artifact lane, fail-open, cache-hit-not-metered)                                                  |
+| R10-05 403 → 404 hides exhaustion            | yes    | same block (`503 upstream_rate_limited`; bare 403 still 404s)                                                             |
+| R10-15 uncapped `.sig` read                  | yes    | `R10-dos.test.ts` → `R10-15 sidecar text assets are size-capped` (4 tests)                                                |
+
+`pnpm --filter @polaris-key/worker test` → **736 passed / 39 files**. Typecheck and prettier
+clean on every file touched.
+
+## Reported, not fixed (owned by other lanes)
+
+1. **The caller inconsistency itself is still there.** `getInstallationToken`'s scope argument
+   is the **GitHub repo name** at `release/linkRepo.ts:125` and `release/resync.ts:104`, and
+   the **product slug** at `release/health.ts:166`. Those three files are outside this lane, so
+   the key derivation was made caller-argument-independent instead — but the argument should be
+   a typed `{owner, repo}` at all four call sites. Two consequences remain, both benign:
+   - `health.ts` passes a slug. When slug ≠ repo name the scoped mint 422s and falls back to a
+     permission-minimised **installation-wide** token (step 3 above). This is the one caller
+     this lane could not fully down-scope. Fixing it is one line in `health.ts`:
+     `getInstallationToken(env, { owner: cfg.gh_owner, repo: cfg.gh_repo }, …)`.
+   - `linkRepo`/`resync` pass a bare repo name, so their descriptor is `?/<repo>` where
+     `index.ts`'s is `<owner>/<repo>`. Both are correctly scoped; they simply occupy two cache
+     entries and mint twice per 55 minutes for the same repo. Cosmetic, not a correctness or
+     isolation issue.
+2. **`rateLimit.ts` was edited from this lane** (two `FAIL_MODE` registrations — `release` and
+   `releaseArtifact`). Unknown buckets fail **closed**, so registering them was mandatory: an
+   unregistered `release` bucket would have turned a DO blip into the exact 100% delivery
+   outage this finding describes. No other line of that file changed.
+3. **`R10-17` (GitHub-controlled sleep) is untouched and now slightly more reachable.** The
+   token-mint fallback ladder can issue up to three POSTs, each with its own capped
+   rate-limit retry, so the worst-case in-request stall on the mint path rises from ~5.25 s to
+   ~15.75 s. Still bounded, still only on the error path, and only on a cache miss — but it is
+   the one place this lane made R10-17 worse rather than better.
+4. **The 5,000/hr quota is per _installation_, and the fix is per _IP_.** A distributed source
+   can still exhaust it. The Cache API is what actually bounds steady-state consumption; the
+   rate limit bounds a single client. A genuinely resilient answer needs an
+   installation-level circuit breaker (stop calling GitHub, serve stale) — out of scope here,
+   and worth a finding of its own if the operator cares about that threat model.
+
+---
+
+## Remediation (SPA + workerd lane)
+
+Closes the two residuals the previous remediation left open: the last uncapped `pattern`
+compile (its item 3) and the missing workerd test lane (its closing recommendation). Scope was
+`packages/admin/**`, the worker's test configuration, and `ci.yml`. No file under
+`packages/worker/src/**` was modified.
+
+### Residual 4 — `SchemaForm.tsx` was the last uncapped `new RegExp` in the repo
+
+`packages/admin/src/SchemaForm.tsx:66-70` did `new RegExp(schema.pattern).test(s)` with no
+length cap and no timeout, on every keystroke and every render. `schema.pattern` is
+operator-supplied and does not have to pass through review to get there: `release/resync.ts`
+applies a catalog straight out of `.pkey/` in a linked repo on a webhook trigger
+(VERIFY-R10-01 §5a). The measured cost of the eight-character `(x+x+)+y` against a
+41-character input is ~54 s of single-threaded work; the SPA has no worker thread and no
+abort, so that is a frozen operator tab.
+
+Fixed by **reusing** `compileLinearPattern` from `@polaris-key/catalog` — the Thompson/Pike
+NFA the worker already validates with — rather than adding a second, differently-shaped cap in
+the console. `@polaris-key/catalog` is now a dependency of `@polaris-key/admin`
+(`workspace:*`); it is dependency-free and browser-safe, and adds ~7 kB to the `manage` bundle
+(177.5 kB, 44.8 kB gzipped). Three properties follow from reuse rather than from new code:
+
+- **Same verdict.** The console and the server run the same matcher over the same source, so a
+  value the form accepts is a value `validatePayload` will not prune.
+- **Same failure mode.** A pattern the engine refuses (backreference, lookaround, oversized
+  source) now shows `unsupported pattern — the server rejects any value` instead of silently
+  passing. That mirrors `Catalog#validateEntryValue`, which marks an uninterpretable fragment
+  rejected and fails every value under it. It never falls back to `RegExp`.
+- **Same input ceiling.** `test()` returns `false` past `MAX_PATTERN_INPUT` (4096), which is
+  fail-closed on both sides.
+
+Compilation is memoised by pattern source (bounded at 256 entries) because `validate` runs per
+keystroke.
+
+### Residual 5 — a real-workerd lane, wired into CI as its own job
+
+`packages/worker/vitest.config.ts` sets `environment: "node"`, which permits the runtime
+codegen workerd forbids. That is not a coverage gap, it is a category error: no number of Node
+tests can observe R10-01, and 396 of them did not.
+
+Added `packages/worker/vitest.workers.config.ts` — `@cloudflare/vitest-pool-workers` driving
+genuine workerd, reading the worker's own `wrangler.toml` so bindings, compat flags and the
+module graph are the ones that ship. Tests live in `packages/worker/test-workerd/`, which the
+Node lane's `include` does not match, so neither config needs an `exclude`. **9 tests, ~1 s**,
+covering only what differs between the two runtimes:
+
+| What it proves                                                                                                      | Why Node cannot                                                                    |
+| ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Request-phase `Function(src)` / `eval` throw `EvalError`                                                            | Node permits both                                                                  |
+| The exact Ajv-shaped `Function("data", src)` throws                                                                 | the literal construction that caused R10-01                                        |
+| Real djdl catalog: `validateKeyValue`, `compileAll`, `validatePayload` over all 16 defaulted keys                   | these are what threw in-request                                                    |
+| `(x+x+)+y` answered in bounded time (R10-09)                                                                        | no fallback to the host `RegExp` in the isolate                                    |
+| WebCrypto Ed25519 sign + verify (`@polaris-key/jws`)                                                                | Node has had Ed25519 for years                                                     |
+| `POST /activate` then `GET /djdl/config` over `SELF.fetch` → 200 `application/jwt`, verifiable JWS, defaults intact | real D1 (migrated), real KV, real Durable Object rate limiter, real `src/index.ts` |
+
+The first three are the canary: if workerd ever stopped refusing codegen, the catalog
+assertions would stop being evidence, and those tests fail first and say so.
+
+CI gets a separate `workerd` job (`.github/workflows/ci.yml`), not a step inside `js`, so
+"this does not work in the runtime it ships to" is legible instead of buried in a 700-test
+log. It runs `pnpm build` (the worker imports workspace `dist`, and the assets binding needs
+`packages/admin/dist`), then `typecheck:workerd`, then `test:workerd`.
+
+**Known gap, stated rather than hidden.** `@cloudflare/vitest-pool-workers` supports
+vitest 3.2.x only up to `0.12.21`, which pins workerd `1.20260310.1`. `wrangler.toml` asks for
+`compatibility_date = 2026-04-07`, so miniflare warns and falls back to `2026-03-10` on every
+run. Two things bound it: VERIFY-R10-01 §E3 showed request-phase codegen throws at **every**
+compat date from 2024-01-01 to 2026-04-07, so the canary does not depend on the date; and the
+lane asserts WebCrypto Ed25519 — the one feature `wrangler.toml` names as its reason for
+2026-04-07 — directly, so a regression fails loudly rather than passing silently. Closing it
+requires moving the workspace to vitest 4.
+
+### Stale SPA affordances (the phantom per-product admin model, and neighbours)
+
+`admin/authz.ts` has one privilege level, and `admin/auth.ts` gates session issuance on
+`hasAnyAdminGrant`, which is the _same predicate_ as `isPlatformAdmin` — so `platformAdmin` is
+`true` for every session that can render the console, and `handleMe` returns every product or
+none. The control-plane lane's cleanup reached `Settings.tsx`, `ProductOverview.tsx`,
+`Releases.tsx` and `portal/App.tsx`; five files kept the removed model alive.
+
+| Site                                                                             | Was                                                        | Now                                                                                                                          |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `views/products/EditProductDialog.tsx`, `views/products/CreateProductDialog.tsx` | "Admin group" / "OIDC group that administers this product" | "Admin group (metadata only)" + "Grants no access…", matching the read-only wording already adopted in `ProductOverview.tsx` |
+| `views/Dashboard.tsx`                                                            | `"Platform administrator" : "Product administrator"`       | one persona                                                                                                                  |
+| `views/Dashboard.tsx`                                                            | a two-valued `Role` stat tile                              | `Access · All products`                                                                                                      |
+| `views/Dashboard.tsx`                                                            | "Ask a platform admin to grant access"                     | removed — no endpoint, table or UI can issue such a grant                                                                    |
+| `components/Shell.tsx`, `views/Dashboard.tsx`                                    | three affordances gated on `me.platformAdmin`              | ungated; the predicate was a constant                                                                                        |
+| `App.tsx`                                                                        | "Not authorized — you do not administer X"                 | "Unknown product" — the only reachable cause                                                                                 |
+| `views/Settings.tsx`                                                             | docstring still advertising an admin-group field           | corrected                                                                                                                    |
+
+Three tests were regression coverage **for** the removed feature (`dashboard.test.tsx` rendered
+`platformAdmin: false` and asserted a "Product administrator" label; `App.test.tsx` asserted
+"Not authorized"). They now assert the opposite.
+
+**Other UI promising behaviour the server refuses**, found in the same sweep and fixed:
+
+- `views/Tiers.tsx` — the delete dialog said "licenses already assigned to this tier keep their
+  settings, but the tier can no longer be assigned", describing a soft-retire that does not
+  exist: `handlers/tiers.ts` 409s outright while `countLicensesUsingTier > 0`. Its 409 was also
+  reported as "that id is already in use", which is the _create_ conflict, not the delete one.
+- `views/Profiles.tsx` — same defect. `countLicensesUsingProfile` sums `license_profiles` **and**
+  `tiers.profile_id`, so the two referrer classes the copy said would "fall back to their own
+  settings" are exactly the two that block the delete.
+- `views/Releases.tsx`, `views/Oidc.tsx` — the resync buttons were ungated. `release/resync.ts`
+  returns "product is not linked to a repo" (422) for any product whose `release_source` is not
+  `github`, so for every manually-created product these could only fail. Now disabled with a
+  reason, matching the gate `Products.tsx` already applied to its menu item.
+
+### Test status
+
+| Item                                          | Done? | Test                                                                         |
+| --------------------------------------------- | ----- | ---------------------------------------------------------------------------- |
+| Residual 4 — uncapped `new RegExp` in the SPA | yes   | `validate — pattern is matched in linear time (R10 residual 4)` (5 tests)    |
+| Residual 5 — workerd lane                     | yes   | `packages/worker/test-workerd/runtime.test.ts` (9 tests) + CI job `workerd`  |
+| Phantom per-product admin in the SPA          | yes   | `dashboard.test.tsx` (2, inverted), `App.test.tsx` (1, inverted)             |
+| Tier / profile delete copy inverted           | yes   | covered by existing `tiers.test.tsx` / `profiles.test.tsx` render assertions |
+| Ungated resync for unlinked products          | yes   | `disables resync for a product that is not linked to a repo`                 |
+
+`pnpm --filter @polaris-key/admin test` → **141 passed / 17 files** (was 134).
+`pnpm --filter @polaris-key/worker test:workerd` → **9 passed / 1 file** (new lane).
+`pnpm --filter @polaris-key/worker test` → **735 passed / 39 files**, unaffected by this lane.
+Typecheck (`admin`, `test-workerd`) and prettier clean on every file touched; `ci.yml` parses.
+
+### Reported, not fixed
+
+1. **`RotateKeyResultDialog.tsx:38-39` instructs an action the console cannot perform.** It
+   tells the operator to "activate [the staged key] after clients have had a trust-refresh
+   window", and `Settings.tsx:471-474` and `Products.tsx:257` repeat it. The server supports
+   `POST …/keys/{activate,retire,revoke}`, but `packages/admin/src/api.ts` exposes only
+   `rotateProductKey`. A staged key can therefore be created from the UI and never activated
+   from it. This is a missing feature, not stale copy — it needs three client methods and an
+   affordance, which is a design decision, not a remediation.
+2. **`api.ts` does not carry the server's error message.** `ApiError` keeps only
+   `status`/`code`/`fields`, so every call site has to guess what a 409 meant. This lane made
+   the two delete paths pass an explicit conflict message; the general fix is to thread the
+   response body's message into `ApiError`.
+3. **`api.ts:2-3` cites `packages/worker/src/manage/api.ts`** as the source of truth. That path
+   does not exist; it is `packages/worker/src/admin/api.ts`.
+4. **`Products.tsx:330` labels a tombstone as `Delete`** while its own confirm dialog says
+   "Disable product". `admin/repo.ts:63-98` confirms tombstone semantics, so the dialog is
+   right and the menu label is wrong.
+5. The workerd lane's compat-date fallback, above — needs vitest 4 across the workspace.

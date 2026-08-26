@@ -80,6 +80,15 @@ const FAIL_MODE: Record<string, FailMode> = {
   adminAccessDenied: "open",
   portalDeviceDisconnect: "open",
   portalDownloadToken: "open",
+
+  // ── public read surfaces — fail open ───────────────────────────────────────
+  // The release surface (R10-05) is a *delivery* path: appcasts, version checks and binary
+  // downloads. The limiter there guards a cost budget (GitHub's 5,000 req/hr installation
+  // quota), not a secret, so a limiter outage must not become a software-distribution
+  // outage — which is exactly the failure the finding is about. Two buckets because
+  // metadata reads and multi-hundred-MB artifact streams have different legitimate rates.
+  release: "open",
+  releaseArtifact: "open",
 };
 
 function failModeFor(bucket: string): FailMode {

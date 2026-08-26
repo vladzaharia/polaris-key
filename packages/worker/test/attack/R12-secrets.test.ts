@@ -35,7 +35,11 @@ import {
   openManagedValue,
 } from "../../src/admin/lib/managedSecrets.js";
 import { hashKey, mintLicenseKey, randomId } from "../../src/crypto.js";
-import { getInstallationToken } from "../../src/release/githubApp.js";
+import {
+  getInstallationToken,
+  installationTokenSlot,
+} from "../../src/release/githubApp.js";
+import { open } from "../../src/keyvault.js";
 import { handleMagicStart } from "../../src/portal/auth.js";
 import { upsertPortalProductSettings } from "../../src/portal/repo.js";
 import { insertSchema, upsertDevice } from "../../src/repo.js";
@@ -402,42 +406,124 @@ describe("R12-02 managed secret values are SEALED at rest in D1", () => {
 // ───────────────────────────────────────────────────────────────────────────────
 // R12-03 — a live GitHub App installation token is cached in KV in PLAINTEXT.
 // ───────────────────────────────────────────────────────────────────────────────
-describe("R12-03 GitHub installation token cached unencrypted in KV", () => {
-  it("CONFIRMED: the raw bearer token is readable from a KV dump", async () => {
+
+/** An env with a working GitHub App keypair, so `getInstallationToken` really signs a JWT. */
+async function ghAppEnv(kv: KvMock): Promise<Env> {
+  const env = adminEnv(kv, ["acme"]);
+  env.GITHUB_APP_ID = "123456";
+  const pair = (await crypto.subtle.generateKey(
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
+    true,
+    ["sign", "verify"],
+  )) as CryptoKeyPair;
+  const pkcs8 = (await crypto.subtle.exportKey(
+    "pkcs8",
+    pair.privateKey,
+  )) as ArrayBuffer;
+  let bin = "";
+  for (const b of new Uint8Array(pkcs8)) bin += String.fromCharCode(b);
+  const b64 = btoa(bin);
+  env.GITHUB_APP_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----\n${(b64.match(/.{1,64}/g) ?? [b64]).join("\n")}\n-----END PRIVATE KEY-----`;
+  return env;
+}
+
+const mintsToken = async (): Promise<Response> =>
+  new Response(JSON.stringify({ token: "ghs_LIVE_INSTALLATION_TOKEN" }), {
+    status: 201,
+    headers: { "content-type": "application/json" },
+  }) as unknown as Response;
+
+// FIXED (R12-03). The cached record is sealed under the platform KEK before it is written,
+// so the one directly-usable credential in KV is now ciphertext like everything else. The
+// original assertion — `kv.get(…)` containing `ghs_LIVE_INSTALLATION_TOKEN` — is inverted
+// below, and strengthened to sweep the WHOLE namespace rather than one key, so a future
+// change that writes the token somewhere else in KV also trips it.
+describe("R12-03 GitHub installation token is sealed in KV", () => {
+  it("FIXED: a full KV dump contains no readable bearer token", async () => {
     const kv = new KvMock();
-    const env = adminEnv(kv, ["acme"]);
-    env.GITHUB_APP_ID = "123456";
-    const pair = (await crypto.subtle.generateKey(
-      {
-        name: "RSASSA-PKCS1-v1_5",
-        modulusLength: 2048,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: "SHA-256",
-      },
-      true,
-      ["sign", "verify"],
-    )) as CryptoKeyPair;
-    const pkcs8 = (await crypto.subtle.exportKey(
-      "pkcs8",
-      pair.privateKey,
-    )) as ArrayBuffer;
-    let bin = "";
-    for (const b of new Uint8Array(pkcs8)) bin += String.fromCharCode(b);
-    const b64 = btoa(bin);
-    env.GITHUB_APP_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----\n${(b64.match(/.{1,64}/g) ?? [b64]).join("\n")}\n-----END PRIVATE KEY-----`;
+    const env = await ghAppEnv(kv);
 
-    const fetchImpl = async (): Promise<Response> =>
-      new Response(JSON.stringify({ token: "ghs_LIVE_INSTALLATION_TOKEN" }), {
-        status: 201,
-        headers: { "content-type": "application/json" },
-      }) as unknown as Response;
-
-    const token = await getInstallationToken(env, "acme", 42, NOW, fetchImpl);
+    const token = await getInstallationToken(
+      env,
+      { owner: "acme", repo: "widget" },
+      42,
+      NOW,
+      mintsToken,
+    );
     expect(token).toBe("ghs_LIVE_INSTALLATION_TOKEN");
 
     // Dump KV, exactly as a leaked Cloudflare API token with KV:read would.
-    const dumped = await asKv(kv).get("p:acme:gh-token:42");
-    expect(dumped).toContain("ghs_LIVE_INSTALLATION_TOKEN");
+    const keys = kv.keys();
+    expect(keys.length).toBe(1);
+    for (const k of keys) {
+      expect(await asKv(kv).get(k)).not.toContain(
+        "ghs_LIVE_INSTALLATION_TOKEN",
+      );
+    }
+  });
+
+  it("FIXED: what IS stored is a v2 AES-GCM envelope that only the KEK opens", async () => {
+    const kv = new KvMock();
+    const env = await ghAppEnv(kv);
+    const { key, ctx } = installationTokenSlot(42, {
+      owner: "acme",
+      repo: "widget",
+    });
+
+    await getInstallationToken(
+      env,
+      { owner: "acme", repo: "widget" },
+      42,
+      NOW,
+      mintsToken,
+    );
+
+    const stored = (await asKv(kv).get(key)) as string;
+    const envelope = JSON.parse(stored) as Record<string, unknown>;
+    expect(envelope.v).toBe(2);
+    expect(typeof envelope.iv).toBe("string");
+    expect(typeof envelope.ct).toBe("string");
+    expect(Object.keys(envelope)).not.toContain("token");
+
+    // Round-trips only under the same AAD — i.e. the same installation AND the same scope.
+    const opened = JSON.parse(await open(env, stored, ctx)) as {
+      token: string;
+      granted: string;
+    };
+    expect(opened.token).toBe("ghs_LIVE_INSTALLATION_TOKEN");
+    expect(opened.granted).toBe("acme/widget");
+    await expect(
+      open(
+        env,
+        stored,
+        installationTokenSlot(42, { owner: "acme", repo: "other" }).ctx,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("FIXED: with no usable KEK the token is served but NEVER persisted", async () => {
+    const kv = new KvMock();
+    const env = await ghAppEnv(kv);
+    // A deployment mid-rotation / missing its KEK. Sealing is impossible; the old code would
+    // have written plaintext anyway.
+    delete (env as Record<string, unknown>).PLATFORM_KEK;
+    delete (env as Record<string, unknown>).PLATFORM_KEK_KEYS;
+    delete (env as Record<string, unknown>).PLATFORM_KEK_ACTIVE;
+
+    const token = await getInstallationToken(
+      env,
+      { owner: "acme", repo: "widget" },
+      42,
+      NOW,
+      mintsToken,
+    );
+    expect(token).toBe("ghs_LIVE_INSTALLATION_TOKEN");
+    expect(kv.keys()).toEqual([]);
   });
 });
 
@@ -586,19 +672,12 @@ describe("R12-06 device User-Agent is collected, stored and re-served", () => {
 // R12-07 — the Python README pins a COMMITTED test keypair as a production trust anchor.
 // ───────────────────────────────────────────────────────────────────────────────
 describe("R12-07 committed corpus key published as a prod trust anchor", () => {
-  it("CONFIRMED: a doc forged with the committed private key verifies against the README's TRUST map", async () => {
-    const readme = readFileSync(
-      join(REPO, "sdks", "python", "README.md"),
-      "utf8",
-    );
-    // The README renames the corpus TEST kid to a prod-looking one and pairs it with
-    // the real production origin.
-    expect(readme).toContain(
-      'TRUST = {"pkey-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"}',
-    );
-    expect(readme).toContain('base_url="https://key.plrs.im"');
-
-    // The matching PRIVATE key is committed in the conformance corpus.
+  // FIXED (R12-07) — the SDK READMEs now pin unmistakable placeholders and point readers at
+  // the onboarding bundle / jwks.json for the real values. The forgery below still works
+  // against the corpus key, of course — that is what a test key is for; what changed is that
+  // no published example tells an adopter to trust it. This test is now the regression
+  // guard: no README may contain a corpus PUBLIC key, under any kid.
+  it("FIXED: no SDK README publishes a corpus public key as a trust anchor", async () => {
     const corpus = JSON.parse(
       readFileSync(
         join(REPO, "conformance", "corpus", "v1", "cases.json"),
@@ -607,13 +686,37 @@ describe("R12-07 committed corpus key published as a prod trust anchor", () => {
     ) as {
       keys: { kid: string; publicKeyRaw: string; privateKeyPkcs8Pem: string }[];
     };
-    const testKey = corpus.keys.find((k) => k.kid === "pkey-test-prod-2026")!;
-    expect(testKey.publicKeyRaw).toBe(
-      "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
-    );
+    const readmes = [
+      join(REPO, "sdks", "python", "README.md"),
+      join(REPO, "sdks", "swift", "README.md"),
+      join(REPO, "packages", "sdk-node", "README.md"),
+      join(REPO, "packages", "sdk-react", "README.md"),
+      join(REPO, "README.md"),
+    ];
+    for (const path of readmes) {
+      const text = readFileSync(path, "utf8");
+      for (const key of corpus.keys) {
+        expect(
+          text,
+          `${path} must not pin ${key.kid}'s public key`,
+        ).not.toContain(key.publicKeyRaw);
+      }
+    }
 
-    // ATTACK: sign an arbitrary payload with the committed private key under the
-    // README's kid. verifyJws selects the key by attacker-controlled `kid`.
+    // The Python quickstart — the one R12-07 was filed against — pins a placeholder that
+    // cannot be mistaken for a key, right beside the production origin it used to endorse.
+    const python = readFileSync(
+      join(REPO, "sdks", "python", "README.md"),
+      "utf8",
+    );
+    expect(python).toContain('base_url="https://key.plrs.im"');
+    expect(python).toContain("<your-product-signing-key-b64url>");
+    expect(python).not.toContain("pkey-prod-2026");
+
+    // …and the attack it enabled is unchanged in nature: `verifyJws` selects by the
+    // attacker-controlled `kid`, so ANY published keypair is a forgery oracle. That is
+    // precisely why no real trust set may ever be sourced from this repo.
+    const testKey = corpus.keys.find((k) => k.kid === "pkey-test-prod-2026")!;
     const forged = await signJws(
       { evil: true, entitlements: { premium: true } },
       testKey.privateKeyPkcs8Pem,
@@ -624,7 +727,6 @@ describe("R12-07 committed corpus key published as a prod trust anchor", () => {
     });
     expect(verified).not.toBeNull();
     expect(verified!.kid).toBe("pkey-prod-2026");
-    expect((verified!.payload as { evil: boolean }).evil).toBe(true);
   });
 });
 

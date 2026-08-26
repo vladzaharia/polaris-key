@@ -410,6 +410,68 @@ final class TrustAndCacheTests: XCTestCase {
         XCTAssertEqual(rolledBack.status, .ok)
     }
 
+    /// §4.3 as CORRECTED — the floor needs a SECOND source or it is inert.
+    ///
+    /// Derived from the config document alone, `highWaterMark == doc.issuedAt`, which is below
+    /// that same document's `graceUntil` by construction — so the floor can never reach the
+    /// end of grace and winding the clock back still extends offline operation indefinitely
+    /// (the residual half of R4-04). The trust manifest is signed, cached separately, and
+    /// refreshed by default, so it advances even while the document does not.
+    func testTrustManifestAnchorsTheClockFloorIndependently() async throws {
+        let t = nowSec()
+        let issued = t - 400 * SECONDS_PER_DAY  // grace ended 370 days ago
+        let rolledBack = issued + 60  // `date -u …`, back inside the document's window
+        let doc = vendor.sign(Fixtures.doc(issuedAt: issued))
+        // A manifest verified YESTERDAY, long past its own `expiresAt` — exactly what a
+        // cached manifest looks like. It must still load (freshness is a network-path rule)
+        // AND still anchor time.
+        let cachedManifest = vendor.sign(
+            Fixtures.manifest(
+                issuedAt: t - SECONDS_PER_DAY, expiresAt: t - SECONDS_PER_DAY + 300,
+                keys: [Fixtures.manifestKey(kid: pinnedKid, publicKey: vendor.publicKeyB64)]),
+            typ: JwsTyp.trust.rawValue)
+
+        // (a) Document only: the rollback still works. This is the defect, pinned.
+        let docOnly = try await PolarisKeyClient.create(
+            options: options(
+                store: await seededStore(CacheRecord(configJws: doc)), trustRefresh: false))
+        let docOnlyFloor = await docOnly.highWaterMark
+        XCTAssertEqual(docOnlyFloor, issued)
+        let docOnlyStatus = await docOnly.status(now: rolledBack).status
+        XCTAssertEqual(docOnlyStatus, .ok)
+
+        // (b) With the cached manifest the floor clears `graceUntil`, so the gate refuses.
+        let anchored = try await PolarisKeyClient.create(
+            options: options(
+                store: await seededStore(
+                    CacheRecord(configJws: doc, trustJws: cachedManifest)),
+                trustRefresh: false))
+        let anchoredFloor = await anchored.highWaterMark
+        XCTAssertEqual(anchoredFloor, t - SECONDS_PER_DAY)
+        let anchoredStatus = await anchored.status(now: rolledBack).status
+        XCTAssertEqual(anchoredStatus, .expired, "a rolled-back clock must not re-open grace")
+        let licensed = await anchored.isLicensed(now: rolledBack)
+        XCTAssertFalse(licensed)
+
+        // (c) The network path raises it too, even with /config unreachable.
+        routeTrust(
+            vendor.sign(
+                Fixtures.manifest(
+                    issuedAt: t,
+                    keys: [Fixtures.manifestKey(kid: pinnedKid, publicKey: vendor.publicKeyB64)]),
+                typ: JwsTyp.trust.rawValue))
+        StubServer.route("/djdl/config") { _ in StubServer.Reply(status: 503) }
+        let online = try await PolarisKeyClient.create(
+            options: options(store: await seededStore(CacheRecord(configJws: doc))))
+        let beforeRefresh = await online.status(now: rolledBack).status
+        XCTAssertEqual(beforeRefresh, .ok)
+        _ = await online.refresh()
+        let onlineFloor = await online.highWaterMark
+        XCTAssertEqual(onlineFloor, t)
+        let afterRefresh = await online.status(now: rolledBack).status
+        XCTAssertEqual(afterRefresh, .expired)
+    }
+
     // ── §5 a 304 renews freshness (R2-11) ─────────────────────────────────────────
     /// A continuously ONLINE client must never drift into `grace` because its content ETag
     /// is stable. Once the cached document is inside the refresh margin, a 304 is escalated

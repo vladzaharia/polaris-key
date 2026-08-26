@@ -244,36 +244,47 @@ so clearing them gains an attacker nothing they could not achieve by deleting th
 
 ### 4.3 Monotonic time floor
 
-The gate MUST use `effectiveNow = max(systemClock, highWaterMark)`, where `highWaterMark` is
-derived from re-verified signed content and never read from an unsigned field. This gives
-clock-rollback resistance without requiring a trusted local clock, and costs nothing when the
-clock is honest.
+The gate MUST use `effectiveNow = max(systemClock, highWaterMark)`, where
 
-> **⚠ CORRECTION — as first drafted this clause was inert, and it is NOT yet fixed in code.**
->
-> The draft derived `highWaterMark` from `configJws` alone. The Python engineer showed that is a
-> no-op: with one cached document `highWaterMark === doc.issuedAt` by construction, and
-> `graceUntil = issuedAt + maxOfflineDays × 86400` is _always_ greater. The floor therefore can
-> never push `effectiveNow` past `graceUntil`, so rolling the clock back still extends grace
-> indefinitely — precisely the attack (R4-04) the clause exists to stop. It does still prevent
-> replaying an _older_ document, so it is not worthless; it simply does not do the job it was
-> written for.
->
-> **Correct design:** raise the mark from the **trust manifest's** `issuedAt` as well. The
-> manifest is signed, skew-bounded, cached separately, and — unlike the polling timer —
-> `trustRefresh` is **on by default**, so it advances independently of the config document. A
-> client that verified a manifest yesterday cannot then credibly claim it is last month:
->
-> ```
-> highWaterMark = max(verifiedConfigDoc.issuedAt, verifiedTrustManifest.issuedAt)
-> ```
->
-> **Status: specified, not implemented.** The Python engineer implemented it, then reverted to
-> stay in lockstep with Node rather than let one of five implementations diverge on a shared
-> contract — the right call. Landing it means re-opening all four SDKs plus the corpus, so it is
-> recorded here as the top follow-up rather than half-applied. Until it lands, treat
-> clock-rollback protection as **absent**, not merely weak, and do not claim it in user-facing
-> documentation.
+```
+highWaterMark = max(verifiedConfigDoc.issuedAt, verifiedTrustManifest.issuedAt)
+```
+
+taken over the artifacts that actually re-verified on this load. This gives clock-rollback
+resistance without requiring a trusted local clock, and costs nothing when the clock is
+honest: the floor is a **minimum**, never a substitute, so an honest clock ahead of both
+timestamps is used unchanged.
+
+**Normative rules:**
+
+1. Every source MUST be re-verified signed content. A refused artifact contributes nothing —
+   otherwise planting a file with a far-future `issuedAt` would become a way to force a client
+   to `expired`.
+2. The mark MUST NOT be read from, or persisted to, any unsigned field (§4.1).
+3. **Both** sources are required. Derived from `configJws` alone the clause is _inert_: with
+   one cached document `highWaterMark === doc.issuedAt` by construction, and
+   `graceUntil = issuedAt + maxOfflineDays × 86400` is always greater, so the floor can never
+   push `effectiveNow` past `graceUntil` and a clock rollback still extends grace indefinitely
+   — precisely the attack (R4-04) the clause exists to stop. It does block replay of an
+   _older_ document, which is why the single-source form was not worthless, merely ineffective
+   against the threat it was written for.
+4. The trust manifest supplies the second, independently-advancing signed clock. It is signed
+   by a **pinned** key, skew-bounded on the network path, cached separately, and — unlike the
+   polling timer — `trustRefresh` is **on by default**, so it advances even while a
+   content-stable config document sits behind an unchanged ETag. A client that verified a
+   manifest yesterday cannot then credibly claim it is last month.
+5. A **cached** manifest is loaded with `checkFreshness: false` (§4.2), and it still raises the
+   floor. Its `issuedAt` is a signed lower bound on real time regardless of whether its
+   minutes-long `expiresAt` has passed; these are unrelated questions. Implementations MUST NOT
+   re-introduce freshness checking on that path to justify the floor — doing so would drop every
+   rotated key on restart.
+
+**Status: implemented** in the Node, Python and Swift SDKs (`shared-jws` is unaffected — it
+verifies signatures and knows nothing about the gate). Cross-language enforcement is the
+corpus's `clockFloorCases` section, which replays the cache-reload path as pure data and
+asserts `highWaterMark`, `effectiveNow` and the resulting gate status in all three runners;
+`floor-config-doc-alone-does-not-stop-rollback` pins the single-source form as insufficient so
+the regression cannot re-appear silently. `trust-expired-manifest-reload-path` pins rule 5.
 
 ---
 

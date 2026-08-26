@@ -806,6 +806,7 @@ async function build(): Promise<unknown> {
     cases,
     docCases: await buildDocCases(),
     trustCases: await buildTrustCases(),
+    clockFloorCases: await buildClockFloorCases(),
   };
 }
 
@@ -970,12 +971,21 @@ interface TrustCase {
   before: Record<string, string>;
   manifestJws: string;
   now: number;
+  /**
+   * Absent ⇒ the NETWORK path (freshness enforced). `false` ⇒ the CACHE-RELOAD path, where a
+   * manifest is EXPECTED to be past its minutes-long `expiresAt` — re-checking it there would
+   * drop every rotated key on restart (§4.2).
+   */
+  checkFreshness?: boolean;
   expect: {
     /** Whether the manifest is accepted at all. */
     accepted: boolean;
     /** The effective trust set afterwards: `pinned ∪ non-revoked manifest keys`, or the
      *  unchanged `pinned ∪ before` when the manifest is rejected. */
     trust: Record<string, string>;
+    /** The accepted manifest's `issuedAt`. This is the value §4.3 folds into the monotonic
+     *  clock floor, so a runner that silently drops the manifest doc still fails here. */
+    issuedAt?: number;
   };
 }
 
@@ -984,6 +994,9 @@ interface TrustCase {
 const FOREIGN_PUB = base64UrlEncodeBytes(
   new Uint8Array(Array.from({ length: 32 }, (_, i) => (i * 7 + 13) & 0xff)),
 );
+
+/** Every manifest below is stamped with this `issuedAt`; §4.3 folds it into the clock floor. */
+const MANIFEST_ISSUED_AT = 1700000000;
 
 async function buildTrustCases(): Promise<TrustCase[]> {
   const PIN = "pkey-test-prod-2026";
@@ -1034,6 +1047,7 @@ async function buildTrustCases(): Promise<TrustCase[]> {
       expect: {
         accepted: true,
         trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+        issuedAt: MANIFEST_ISSUED_AT,
       },
     },
     {
@@ -1047,7 +1061,11 @@ async function buildTrustCases(): Promise<TrustCase[]> {
         key(ROTATED, pub(ROTATED), "revoked"),
       ]),
       now,
-      expect: { accepted: true, trust: { [PIN]: pub(PIN) } },
+      expect: {
+        accepted: true,
+        trust: { [PIN]: pub(PIN) },
+        issuedAt: MANIFEST_ISSUED_AT,
+      },
     },
     {
       id: "key-status-retired-and-staged-are-trusted",
@@ -1063,6 +1081,7 @@ async function buildTrustCases(): Promise<TrustCase[]> {
       expect: {
         accepted: true,
         trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+        issuedAt: MANIFEST_ISSUED_AT,
       },
     },
     {
@@ -1073,7 +1092,11 @@ async function buildTrustCases(): Promise<TrustCase[]> {
       before: { [ROTATED]: pub(ROTATED) },
       manifestJws: await manifest([key(PIN, pub(PIN), "active")]),
       now,
-      expect: { accepted: true, trust: { [PIN]: pub(PIN) } },
+      expect: {
+        accepted: true,
+        trust: { [PIN]: pub(PIN) },
+        issuedAt: MANIFEST_ISSUED_AT,
+      },
     },
     {
       id: "trust-pinned-substitution",
@@ -1096,7 +1119,11 @@ async function buildTrustCases(): Promise<TrustCase[]> {
       before: {},
       manifestJws: await manifest([key(PIN, pub(PIN), "active")]),
       now,
-      expect: { accepted: true, trust: { [PIN]: pub(PIN) } },
+      expect: {
+        accepted: true,
+        trust: { [PIN]: pub(PIN) },
+        issuedAt: MANIFEST_ISSUED_AT,
+      },
     },
     {
       id: "trust-prune-to-pins-only",
@@ -1106,7 +1133,11 @@ async function buildTrustCases(): Promise<TrustCase[]> {
       before: { [ROTATED]: pub(ROTATED) },
       manifestJws: await manifest([key(ROTATED, pub(ROTATED), "revoked")]),
       now,
-      expect: { accepted: true, trust: { [PIN]: pub(PIN) } },
+      expect: {
+        accepted: true,
+        trust: { [PIN]: pub(PIN) },
+        issuedAt: MANIFEST_ISSUED_AT,
+      },
     },
     {
       id: "trust-expired-manifest",
@@ -1119,6 +1150,24 @@ async function buildTrustCases(): Promise<TrustCase[]> {
       expect: {
         accepted: false,
         trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+      },
+    },
+    {
+      id: "trust-expired-manifest-reload-path",
+      description:
+        "The SAME long-expired manifest on the CACHE-RELOAD path. A manifest's `expiresAt` is `issuedAt + cacheSeconds` — minutes — so a client that re-checked it on load would drop every rotated key on every restart and lose the ability to verify offline. Freshness is a network-path rule only (§4.2), the mirror of `doc-expired-reload-path`. Its `issuedAt` is still a signed lower bound on real time and still raises the §4.3 clock floor.",
+      pinned,
+      before: {},
+      manifestJws: await manifest([
+        key(PIN, pub(PIN), "active"),
+        key(ROTATED, pub(ROTATED), "staged"),
+      ]),
+      now: 1700000300 + CLOCK_SKEW + 1,
+      checkFreshness: false,
+      expect: {
+        accepted: true,
+        trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+        issuedAt: MANIFEST_ISSUED_AT,
       },
     },
     {
@@ -1170,6 +1219,205 @@ async function buildTrustCases(): Promise<TrustCase[]> {
       expect: {
         accepted: false,
         trust: { [PIN]: pub(PIN), [ROTATED]: pub(ROTATED) },
+      },
+    },
+  ];
+}
+
+// ── Monotonic clock-floor vectors (wire contract v2 §4.3) ────────────────────
+// The rule these pin:
+//
+//     highWaterMark = max(verifiedConfigDoc.issuedAt, verifiedTrustManifest.issuedAt)
+//     effectiveNow  = max(systemClock, highWaterMark)
+//
+// Deriving the mark from the config document ALONE is inert (R4-04): with one cached
+// document `highWaterMark === doc.issuedAt` by construction, and `graceUntil` is by
+// construction greater, so the floor can never push `effectiveNow` past `graceUntil` and
+// rolling the clock back still extends offline grace indefinitely. The trust manifest is the
+// second, independently-advancing signed clock — `trustRefresh` is on by default, so it moves
+// even while a config document sits unchanged behind a stable ETag.
+//
+// Each case is the cache-RELOAD path replayed as pure data. Every runner performs exactly:
+//
+//   1. trust := pinned
+//   2. if trustJws: verifyTrustManifest(trustJws, pinned, aud, now=systemClock,
+//                                       checkFreshness=FALSE)
+//        accepted ⇒ trust := mergeTrust(pinned, discovered);
+//                   floor := max(floor, manifest.issuedAt)
+//   3. if configJws: verifyDoc(configJws, trust, aud, deviceId, now=systemClock,
+//                              checkFreshness=FALSE)
+//        accepted ⇒ doc := it; floor := max(floor, doc.issuedAt)
+//   4. effectiveNow := max(systemClock, floor)
+//   5. status := licenseState({ hasToken: TRUE, doc, now: effectiveNow })
+//
+// and asserts all three of `highWaterMark`, `effectiveNow` and `status`.
+
+interface ClockFloorCase {
+  id: string;
+  description: string;
+  /** Compiled into the host application. The manifest verifies against these only. */
+  pinned: Record<string, string>;
+  /** The cached `trustJws`, when the case has one. Loaded with freshness OFF. */
+  trustJws?: string;
+  /** The cached `configJws`, when the case has one. Loaded with freshness OFF. */
+  configJws?: string;
+  expectedAud: string;
+  deviceId: string;
+  /** What the device's own clock claims — the value an attacker controls. */
+  systemClock: number;
+  expect: {
+    /** `max` over the `issuedAt` of every artifact that actually re-verified. */
+    highWaterMark: number;
+    /** `max(systemClock, highWaterMark)`. */
+    effectiveNow: number;
+    /** The gate status at `effectiveNow`, with a token and no block/401 hints. */
+    status: string;
+  };
+}
+
+async function buildClockFloorCases(): Promise<ClockFloorCase[]> {
+  const PIN = "pkey-test-prod-2026";
+  const ROTATED = "djdl-test-2026";
+  const pinned = { [PIN]: pub(PIN) };
+  const DAY = 86400;
+  /** The cached document's `issuedAt`. Its signed window is `expiresAt = +1h`,
+   *  `graceUntil = +30d` (1700003600 / 1702592000 — see `polarisDoc`). */
+  const DOC_ISSUED = 1700000000;
+  /** A manifest refreshed 399 days later — "I verified a manifest yesterday". */
+  const MANIFEST_LATER = DOC_ISSUED + 399 * DAY;
+  /** A manifest older than the document, so it cannot be what raises the floor. */
+  const MANIFEST_EARLIER = DOC_ISSUED - 3600;
+  /** `sudo date`: wound back inside the document's one-hour window. */
+  const ROLLED_BACK = DOC_ISSUED + 60;
+  /** An honest clock, long past the whole signed grace window. */
+  const HONEST_LATE = DOC_ISSUED + 400 * DAY;
+
+  const key = (
+    kid: string,
+    publicKey: string,
+    status: string,
+  ): Record<string, unknown> => ({
+    kid,
+    alg: "EdDSA",
+    kty: "OKP",
+    crv: "Ed25519",
+    publicKey,
+    status,
+  });
+  const manifest = (
+    issuedAt: number,
+    keys: Record<string, unknown>[],
+    signWith = PIN,
+  ): Promise<string> =>
+    signJws(
+      {
+        schemaVersion: 1,
+        aud: "djdl",
+        iss: "key.plrs.im",
+        issuedAt,
+        expiresAt: issuedAt + 300,
+        jwksUrl: "https://key.plrs.im/djdl/.well-known/jwks.json",
+        cacheSeconds: 300,
+        keys,
+      },
+      pem(signWith),
+      signWith,
+      "pkey-trust+jws",
+    );
+  const doc = (signWith = PIN): Promise<string> =>
+    signJws(polarisDoc(), pem(signWith), signWith, "pkey-config+jws");
+  const common = { pinned, expectedAud: "djdl", deviceId: "dev_7c1e2d" };
+
+  return [
+    {
+      ...common,
+      id: "floor-config-doc-alone-does-not-stop-rollback",
+      description:
+        "The residual R4-04 defect, pinned so it cannot come back by accident: with the config document as the ONLY floor source, `highWaterMark === doc.issuedAt`, which is below `graceUntil` by construction. A clock wound back inside the document's window still reads `ok`. This case is why the mark must have a second source.",
+      configJws: await doc(),
+      systemClock: ROLLED_BACK,
+      expect: {
+        highWaterMark: DOC_ISSUED,
+        effectiveNow: ROLLED_BACK,
+        status: "ok",
+      },
+    },
+    {
+      ...common,
+      id: "floor-trust-manifest-defeats-rollback",
+      description:
+        "The fix. The same wound-back clock and the same document, plus a trust manifest the client verified 399 days later. `highWaterMark = max(doc.issuedAt, manifest.issuedAt)` is now past `graceUntil`, so the gate reads `expired` — a client that verified a manifest yesterday cannot claim it is last year (§4.3).",
+      configJws: await doc(),
+      trustJws: await manifest(MANIFEST_LATER, [key(PIN, pub(PIN), "active")]),
+      systemClock: ROLLED_BACK,
+      expect: {
+        highWaterMark: MANIFEST_LATER,
+        effectiveNow: MANIFEST_LATER,
+        status: "expired",
+      },
+    },
+    {
+      ...common,
+      id: "floor-stale-cached-manifest-still-yields-its-keys",
+      description:
+        "Raising the floor from a cached manifest must NOT re-introduce freshness checking on that path. This manifest expired long ago and publishes the rotated key the cached document is signed with: it must still load (§4.2), or the document cannot verify at all and every restart after a key rotation strands the client. Its `issuedAt` predates the document's, so the document is what sets the mark.",
+      configJws: await doc(ROTATED),
+      trustJws: await manifest(MANIFEST_EARLIER, [
+        key(PIN, pub(PIN), "active"),
+        key(ROTATED, pub(ROTATED), "staged"),
+      ]),
+      systemClock: ROLLED_BACK,
+      expect: {
+        highWaterMark: DOC_ISSUED,
+        effectiveNow: ROLLED_BACK,
+        status: "ok",
+      },
+    },
+    {
+      ...common,
+      id: "floor-honest-clock-is-never-lowered",
+      description:
+        "The floor is a MINIMUM, never a substitute. With an honest clock long past the whole signed grace window, `effectiveNow` is the system clock and the gate reads `expired` — the floor costs nothing when the clock is truthful.",
+      configJws: await doc(),
+      trustJws: await manifest(MANIFEST_EARLIER, [
+        key(PIN, pub(PIN), "active"),
+      ]),
+      systemClock: HONEST_LATE,
+      expect: {
+        highWaterMark: DOC_ISSUED,
+        effectiveNow: HONEST_LATE,
+        status: "expired",
+      },
+    },
+    {
+      ...common,
+      id: "floor-rejected-manifest-does-not-raise-it",
+      description:
+        "Only RE-VERIFIED content moves the mark. This manifest carries a far later `issuedAt` but is signed by a discovered key rather than a pinned one, so it is refused outright — and a refused artifact must contribute nothing, or planting a file would become a way to force every client to `expired`.",
+      configJws: await doc(),
+      trustJws: await manifest(
+        MANIFEST_LATER,
+        [key(ROTATED, pub(ROTATED), "active")],
+        ROTATED,
+      ),
+      systemClock: ROLLED_BACK,
+      expect: {
+        highWaterMark: DOC_ISSUED,
+        effectiveNow: ROLLED_BACK,
+        status: "ok",
+      },
+    },
+    {
+      ...common,
+      id: "floor-manifest-without-a-document",
+      description:
+        "A manifest alone still anchors time. There is no config document, so the gate is `needs-activation` either way — but the mark it establishes survives, which is what stops a wound-back clock from later re-admitting a document that has already aged out.",
+      trustJws: await manifest(MANIFEST_LATER, [key(PIN, pub(PIN), "active")]),
+      systemClock: ROLLED_BACK,
+      expect: {
+        highWaterMark: MANIFEST_LATER,
+        effectiveNow: MANIFEST_LATER,
+        status: "needs-activation",
       },
     },
   ];

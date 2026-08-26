@@ -35,11 +35,13 @@ import {
   purgeExpiredDownloadTokens,
   syncAccountLicenseLinks,
   createPortalDownloadToken,
+  deletePortalAccount,
   type PortalArtifactRow,
   type PortalLicenseRow,
 } from "./repo.js";
 import {
   PORTAL_CSRF_HEADER,
+  buildPortalClearCookie,
   portalSessionFromRequest,
   type PortalSession,
 } from "./session.js";
@@ -317,6 +319,65 @@ async function handleMe(
       email: account.primary_email ?? session.email,
     },
     csrf: session.csrf,
+  });
+}
+
+/**
+ * `DELETE /api/me` — the account holder erases their own portal account.
+ *
+ * R11-09: there was no delete endpoint of any kind, so `portal_accounts.primary_email` and
+ * `portal_account_emails.email` were unerasable through the API — right-to-erasure existed only
+ * as an operator with D1 shell access. The awkward part is structural and is called out in the
+ * finding: `portal_account_emails.email` is the row's PRIMARY KEY, so there is no way to record
+ * "this address was erased" that does not re-store the address. `deletePortalAccount` therefore
+ * deletes the row outright, which is the honest reading of erasure rather than a compromise.
+ *
+ * Three gates, all already in place upstream, all load-bearing here:
+ *
+ * - AUTHENTICATED. `handlePortalApi` resolves the session before dispatch and this handler only
+ *   ever erases `session.accountId` — there is no id in the path or the body, so there is no
+ *   parameter to tamper with and no way to aim it at somebody else's account.
+ * - CSRF. `DELETE` is a mutation, so the `X-PKey-Portal-CSRF` check in `handlePortalApi` runs
+ *   before this is reached. Without it a cross-site `fetch` with `SameSite=Lax`... would in fact
+ *   be blocked by the cookie — but Lax is a defence against a class of navigation, not a
+ *   substitute for a token, and account deletion is the one action with no undo.
+ * - RATE LIMITED. Charged against this account's own budget, which for a destructive
+ *   self-service action is about bounding retries and accidental double-submits.
+ *
+ * The notice email is sent BEFORE the delete, because afterwards there is no address to send it
+ * to — the address is exactly what was erased. The session cookie is cleared on the way out; the
+ * signed cookie would in any case stop validating on the next request, since `requireSession`
+ * re-reads `portal_accounts` and the row is gone.
+ */
+async function handleMeDelete(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  now: number,
+): Promise<Response> {
+  const account = await getPortalAccount(db, session.accountId);
+  if (!account) return unauthorized();
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalAccountDelete",
+    now,
+    5,
+  );
+  if (limited) return limited;
+  await sendPortalNotice(
+    env,
+    account.primary_email ?? session.email,
+    "Your Polaris Key account has been deleted",
+    "Your Polaris Key portal account, its email addresses and its license links have been " +
+      "erased at your request. Licenses issued to you by a product remain that product's " +
+      "records; contact the product's support to have those erased.",
+  );
+  await deletePortalAccount(db, session.accountId, now);
+  return portalJson({ ok: true, deleted: session.accountId }, 200, {
+    "set-cookie": buildPortalClearCookie(),
   });
 }
 
@@ -641,6 +702,16 @@ export async function handlePortalApi(
   if (isMutation(req.method)) {
     const presented = req.headers.get(PORTAL_CSRF_HEADER);
     if (!presented || presented !== session.csrf) return forbidden("csrf");
+  }
+  // Erasure is dispatched BEFORE the per-request link sweep: re-deriving license links for an
+  // account that is about to be deleted is pure waste, and it is the one request where a
+  // failure in that sweep must not be able to block the account holder from deleting.
+  if (
+    segments.length === 1 &&
+    segments[0] === "me" &&
+    req.method === "DELETE"
+  ) {
+    return handleMeDelete(req, env, db, session, now);
   }
   await syncAccountLicenseLinks(db, session.accountId, now);
 

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { compileLinearPattern, type LinearPattern } from "@polaris-key/catalog";
 import type { ConfigEntry, ManagementState } from "./api.js";
 import {
   Badge,
@@ -17,7 +18,7 @@ import {
  * right primitive (boolean → checkbox, enum → select, number → number input, string → text /
  * password) and validates locally against the fragment. This is a deliberately small subset
  * of Draft-07 (type / enum / minimum / maximum / minLength / maxLength / pattern) — the same
- * fragments the worker's Ajv validates server-side, so a value valid here is valid there.
+ * fragments the worker validates server-side, so a value valid here is valid there.
  *
  * `ManagedField` wraps a `SchemaField` with the v2 management-state controls (default /
  * enforced / hidden) and an `updatedAt` stamp, mirroring the managed-payload wire shape.
@@ -37,6 +38,42 @@ function coerce(schema: Record<string, unknown>, raw: string): unknown {
   }
   if (type === "boolean") return raw === "true";
   return raw;
+}
+
+/**
+ * Compiled `pattern` matchers, memoised by source.
+ *
+ * NOT `new RegExp(schema.pattern)`. A catalog `pattern` is operator-supplied: it arrives from
+ * an admin publish, or — with no review step at all — from `.pkey/` in a linked GitHub repo,
+ * applied by a webhook-triggered resync (`release/resync.ts`, VERIFY-R10-01 §5a). V8
+ * backtracks, so the eight-character `(x+x+)+y` takes ~54 s on a 41-character input; measured
+ * in this audit. The console has no worker thread and no timeout, so that is a frozen browser
+ * tab for the operator, on a value they typed themselves.
+ *
+ * `@polaris-key/catalog` ships the Thompson/Pike NFA the worker already validates with
+ * (`shared-catalog/src/regex.ts`: input, source, quantifier and instruction budgets, semantics
+ * pinned by differential comparison against the host `RegExp`). Reusing it — rather than
+ * adding a second, differently-shaped cap here — is what keeps the console's verdict AND its
+ * cost model identical to the server's.
+ */
+const PATTERN_CACHE = new Map<string, LinearPattern | null>();
+/** `validate` runs per keystroke and per render; bound the memo so a long session can't grow
+ *  it without limit. Catalogs are small, so eviction is a formality. */
+const PATTERN_CACHE_MAX = 256;
+
+/** `null` ⇒ the matcher refused this pattern; fail closed, never fall back to `RegExp`. */
+function matcherFor(source: string): LinearPattern | null {
+  const hit = PATTERN_CACHE.get(source);
+  if (hit !== undefined) return hit;
+  let compiled: LinearPattern | null = null;
+  try {
+    compiled = compileLinearPattern(source);
+  } catch {
+    compiled = null;
+  }
+  if (PATTERN_CACHE.size >= PATTERN_CACHE_MAX) PATTERN_CACHE.clear();
+  PATTERN_CACHE.set(source, compiled);
+  return compiled;
 }
 
 /** Local validation mirroring the Draft-07 subset the catalog uses. */
@@ -63,11 +100,15 @@ export function validate(
       return `min length ${schema.minLength}`;
     if (typeof schema.maxLength === "number" && s.length > schema.maxLength)
       return `max length ${schema.maxLength}`;
-    if (
-      typeof schema.pattern === "string" &&
-      !new RegExp(schema.pattern).test(s)
-    )
-      return "does not match pattern";
+    if (typeof schema.pattern === "string") {
+      const matcher = matcherFor(schema.pattern);
+      // The worker marks a fragment it cannot interpret as rejected and refuses every value
+      // under it (`Catalog#validateEntryValue`). Say so here rather than letting the operator
+      // submit something the server will drop.
+      if (!matcher) return "unsupported pattern — the server rejects any value";
+      // `test` also returns false past MAX_PATTERN_INPUT, which is the server's behaviour too.
+      if (!matcher.test(s)) return "does not match pattern";
+    }
   }
   if (Array.isArray(schema.enum) && !schema.enum.includes(value))
     return "not an allowed value";

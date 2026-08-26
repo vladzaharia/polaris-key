@@ -25,7 +25,9 @@ Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`.
 ```python
 from polaris_key import PolarisKeyClient
 
-TRUST = {"pkey-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"}  # kid -> raw Ed25519 pubkey (base64url)
+# kid -> raw Ed25519 public key (base64url). PLACEHOLDERS — substitute YOUR product's
+# real values; see "Where the trust set comes from" below.
+TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 
 client = PolarisKeyClient.create(
     product_slug="djdl",
@@ -58,6 +60,28 @@ re-pulls. The default `KeyringStore` stores credentials in the OS keyring when a
 and uses `0600` files for device/cache data and headless fallback. Inject an
 `InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client` (e.g. with a
 `MockTransport`) for the transport.
+
+### Where the trust set comes from
+
+> [!WARNING]
+> Every `kid`/public key shown in this repository's docs, tests and
+> `conformance/corpus/v1/cases.json` is a **placeholder or a test fixture whose private
+> half is committed**. Pinning one means anyone can forge a document your client accepts:
+> the verifying key is selected by the header `kid` from whatever map you supply.
+
+Your product's real trust set is minted server-side when the product is registered, and is
+never checked into a client repo. Get it from either:
+
+- the **onboarding bundle** the admin portal returns when it mints the product's signing
+  key (`kid -> publicKey`), or
+- `GET https://key.plrs.im/<product>/.well-known/jwks.json`, over TLS, once — then compile
+  the values into your application.
+
+Pins are terminal by design (see
+[Trust, caching, and the offline gate](#trust-caching-and-the-offline-gate)), so treat
+updating them as a release, not a runtime fetch. Key rotation is handled for you by the
+signed trust manifest at `/<product>/.well-known/polaris-trust.jws`, which is verified
+against your pins.
 
 ## Gate statuses
 
@@ -105,12 +129,14 @@ core, so they never diverge. Trust keys are passed as repeatable `--trust kid=ra
 pairs so the CLI stays product-agnostic:
 
 ```sh
+# `--trust` takes YOUR product's real kid=publicKey pair — see "Where the trust set comes
+# from" above. The values below are placeholders, not keys.
 # Preferred: the key never touches argv (see "Supplying the license key" below).
 POLARIS_KEY_ACTIVATION_KEY=PKEY-XXXX-XXXX polaris-key activate \
   --product djdl --version 1.0.0 \
-  --trust pkey-prod-2026=kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI
-polaris-key status --product djdl --trust pkey-prod-2026=...
-polaris-key deactivate --product djdl --trust pkey-prod-2026=...
+  --trust '<your-signing-key-id>=<your-product-signing-key-b64url>'
+polaris-key status --product djdl --trust '<your-signing-key-id>=...'
+polaris-key deactivate --product djdl --trust '<your-signing-key-id>=...'
 # equivalently: python -m polaris_key ...
 ```
 
@@ -121,13 +147,13 @@ history, is visible to every user on the machine via `ps auxww` while the comman
 and is readable from `/proc/<pid>/cmdline` on Linux. The CLI therefore resolves the key
 from a **non-argv** source first:
 
-| Order | Source |
-| --- | --- |
-| 1 | `--key-file <path>` |
-| 2 | `--key-stdin` (one line from stdin) |
-| 3 | `$POLARIS_KEY_ACTIVATION_KEY` |
-| 4 | the positional argument — still supported for scripting, but it prints a warning |
-| 5 | an interactive prompt, when stdin is a TTY |
+| Order | Source                                                                           |
+| ----- | -------------------------------------------------------------------------------- |
+| 1     | `--key-file <path>`                                                              |
+| 2     | `--key-stdin` (one line from stdin)                                              |
+| 3     | `$POLARIS_KEY_ACTIVATION_KEY`                                                    |
+| 4     | the positional argument — still supported for scripting, but it prints a warning |
+| 5     | an interactive prompt, when stdin is a TTY                                       |
 
 ```sh
 printf '%s' "$KEY" | polaris-key activate --key-stdin --product djdl
@@ -140,7 +166,7 @@ polaris-key activate --product djdl        # prompts when run interactively
 `--version` defaults to the **installed package version**, not to a `0.0.0-dev`
 sentinel. The control plane's build gate short-circuits on a dev version, so defaulting
 to one meant the CLI's out-of-the-box invocation requested a document that skipped
-version *and* channel enforcement. Pass your application's real version when you mount
+version _and_ channel enforcement. Pass your application's real version when you mount
 these commands into your own CLI.
 
 To mount the commands onto your own program, import the adapter you use: the click adapter
@@ -152,13 +178,13 @@ exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter ex
 The SDK follows [wire contract v2](../../docs/security/WIRE-CONTRACT-V2.md):
 
 - **Pinned keys are terminal.** The `trust=` map you compile into your application is the
-  only root. Keys learned from a signed trust manifest are merged *under* it, and a
+  only root. Keys learned from a signed trust manifest are merged _under_ it, and a
   manifest that presents a pinned `kid` with different key bytes is rejected whole.
 - **`key.status` is honoured.** `revoked` keys are refused and removed; a `kid` absent
   from the newest manifest is dropped (absence is revocation).
 - **The cache stores only signed artifacts** — the compact JWS of the config document and
   of the trust manifest. The trust set, the anti-replay counters, `lastVerifiedAt` and the
-  monotonic clock floor are all *derived* by re-verifying those two strings against your
+  monotonic clock floor are all _derived_ by re-verifying those two strings against your
   pins on every load. Nothing security-relevant is read from disk unverified, and a
   pre-v2 cache record is discarded rather than migrated.
 - **Claim checks** cover `typ`, `aud`, `iss`, `deviceId`, monotonic `issuedAt`,

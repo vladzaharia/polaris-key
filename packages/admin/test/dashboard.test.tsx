@@ -67,10 +67,27 @@ describe("Dashboard view", () => {
     expect(screen.queryAllByRole("listitem").length).toBe(0);
   });
 
-  it("labels a non-platform operator as a product administrator", () => {
-    render(withAdmin(makeMe({ platformAdmin: false })));
-    expect(screen.getByText(/Product administrator/)).toBeTruthy();
-    // No platform-only registry link.
-    expect(screen.queryByRole("link", { name: "Manage registry" })).toBeNull();
+  // There is exactly one privilege level. `admin/auth.ts` gates session issuance on
+  // `hasAnyAdminGrant`, which `admin/authz.ts` defines as the SAME predicate as
+  // `isPlatformAdmin`, so `platformAdmin: false` is unreachable for any live session and
+  // `handleMe` returns either every product or none. The previous version of this test
+  // rendered `platformAdmin: false` and asserted a "Product administrator" label — i.e. it
+  // was regression coverage FOR the per-product admin tier the control plane removed.
+  it("states the single platform-wide privilege level, not a role hierarchy", () => {
+    render(withAdmin(makeMe()));
+    expect(screen.getByText(/Platform administrator/)).toBeTruthy();
+    expect(screen.queryByText(/Product administrator/)).toBeNull();
+    // No two-valued "Role" tile; access is unconditional and so is the registry link.
+    expect(screen.queryByText("Role")).toBeNull();
+    expect(screen.getByText("All products")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Manage registry" })).toBeTruthy();
+  });
+
+  it("never offers a per-product grant workflow in the empty state", () => {
+    render(withAdmin(makeMe({ products: [] })));
+    // No endpoint, table or UI exists by which a platform admin could "grant access" to one
+    // product, so the empty state must not tell the operator to go and ask for one.
+    expect(screen.queryByText(/grant access/i)).toBeNull();
+    expect(screen.getByRole("link", { name: "Open registry" })).toBeTruthy();
   });
 });

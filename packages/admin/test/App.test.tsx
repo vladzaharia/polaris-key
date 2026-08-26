@@ -126,10 +126,14 @@ describe("admin SPA shell", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("blocks a product the operator does not administer", async () => {
-    mockFetch({ "/manage/api/me": { ...ME, platformAdmin: false } });
+  it("reports an unknown slug as unknown, not as an authorization failure", async () => {
+    // `handleMe` returns every product or none — there is no per-product grant that could be
+    // missing — so a slug outside `me.products` simply does not exist. The old copy ("You do
+    // not administer …") implied an ACL the operator could go and have fixed.
+    mockFetch({ "/manage/api/me": ME });
     window.location.hash = "#/p/nope/licenses";
     render(<App />);
-    expect(await screen.findByText("Not authorized")).toBeTruthy();
+    expect(await screen.findByText("Unknown product")).toBeTruthy();
+    expect(screen.queryByText("Not authorized")).toBeNull();
   });
 });

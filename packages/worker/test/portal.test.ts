@@ -486,3 +486,257 @@ describe("customer portal", () => {
     expect(redirect.status).toBe(404);
   });
 });
+
+describe("portal account erasure (DELETE /api/me)", () => {
+  // R11-09: there was no delete endpoint at all, so `portal_accounts.primary_email` and
+  // `portal_account_emails.email` — the latter a PRIMARY KEY, with nowhere to record a
+  // tombstone that does not re-store the address — were unerasable through the API.
+  it("erases the account, its emails, its identities and its license links", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    const { licenseId } = await seedLicenseWithKey(db, "djdl");
+    const session = await portalSession(env, db);
+    await db.run(
+      `INSERT INTO portal_account_identities (provider, subject, account_id, email, created_at, last_seen_at)
+       VALUES ('oidc', 'sub-1', ?, 'ada@example.com', ?, ?)`,
+      session.accountId,
+      NOW,
+      NOW,
+    );
+    // The license link is real: the seeded license carries ada@example.com.
+    const before = await handlePortalApi(
+      req("GET", "/api/licenses", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/licenses",
+      NOW,
+    );
+    expect(
+      ((await before.json()) as { licenses: unknown[] }).licenses,
+    ).toHaveLength(1);
+    expect(licenseId).toBeTruthy();
+
+    const res = await handlePortalApi(
+      req("DELETE", "/api/me", {
+        cookie: session.cookie,
+        csrf: session.csrf,
+      }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, deleted: session.accountId });
+    // The session cookie is cleared on the way out.
+    expect(res.headers.get("set-cookie")).toMatch(/Max-Age=0/);
+
+    for (const [table, column] of [
+      ["portal_accounts", "id"],
+      ["portal_account_emails", "account_id"],
+      ["portal_account_identities", "account_id"],
+      ["portal_license_links", "account_id"],
+    ] as const) {
+      const row = await db.first<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM ${table} WHERE ${column} = ?`,
+        session.accountId,
+      );
+      expect(`${table}=${row?.n}`).toBe(`${table}=0`);
+    }
+    // The address itself is gone from the database, not merely unlinked.
+    const email = await db.first(
+      "SELECT email FROM portal_account_emails WHERE email = 'ada@example.com'",
+    );
+    expect(email).toBeNull();
+  });
+
+  it("leaves the product's own license record alone — it is the tenant's data, not the account's", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    const { licenseId } = await seedLicenseWithKey(db, "djdl");
+    const session = await portalSession(env, db);
+
+    await handlePortalApi(
+      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+
+    const license = await db.first<{ email: string | null }>(
+      "SELECT email FROM licenses WHERE product = 'djdl' AND id = ?",
+      licenseId,
+    );
+    expect(license?.email).toBe("ada@example.com");
+  });
+
+  it("keeps a non-identifying erasure receipt and drops the account's activity log", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    const session = await portalSession(env, db);
+    await db.run(
+      `INSERT INTO portal_audit (id, account_id, at, action, product, target_kind, target_id, summary)
+       VALUES ('paud_old', ?, ?, 'portal.license.claim', 'djdl', 'license', 'lic-1', 'Claimed license with a license key')`,
+      session.accountId,
+      NOW,
+    );
+
+    await handlePortalApi(
+      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+
+    const rows = await db.all<{
+      action: string;
+      account_id: string;
+      summary: string;
+      product: string | null;
+    }>("SELECT action, account_id, summary, product FROM portal_audit");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.action).toBe("portal.account.delete");
+    // The surrogate id survives; it no longer resolves to a person, and no email, name or
+    // product travels with it.
+    expect(rows[0]!.account_id).toBe(session.accountId);
+    expect(rows[0]!.product).toBeNull();
+    expect(rows[0]!.summary).not.toMatch(/@/);
+  });
+
+  it("notifies the account holder BEFORE the address is erased", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    const sent: Array<{ to: string; subject: string }> = [];
+    env.EMAIL = {
+      send: async (message: { to: string; subject: string }) => {
+        sent.push(message);
+      },
+    } as unknown as Env["EMAIL"];
+    const session = await portalSession(env, db);
+
+    await handlePortalApi(
+      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.to).toBe("ada@example.com");
+    expect(sent[0]!.subject).toMatch(/deleted/i);
+  });
+
+  it("requires a session", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    const res = await handlePortalApi(
+      req("DELETE", "/api/me"),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("requires the CSRF header — a bare authenticated DELETE is refused", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    const session = await portalSession(env, db);
+
+    const res = await handlePortalApi(
+      req("DELETE", "/api/me", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ message: "csrf" });
+    const account = await db.first(
+      "SELECT id FROM portal_accounts WHERE id = ?",
+      session.accountId,
+    );
+    expect(account).toBeTruthy();
+  });
+
+  it("a wrong CSRF token is refused too, and the account survives", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    const session = await portalSession(env, db);
+
+    const res = await handlePortalApi(
+      req("DELETE", "/api/me", {
+        cookie: session.cookie,
+        csrf: "not-the-token",
+      }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+
+    expect(res.status).toBe(403);
+    expect(
+      await db.first(
+        "SELECT id FROM portal_accounts WHERE id = ?",
+        session.accountId,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("the session stops working the moment the account is gone", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    const session = await portalSession(env, db);
+    await handlePortalApi(
+      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+
+    // Same still-unexpired cookie, and a second delete: `requireSession` re-reads the account.
+    const res = await handlePortalApi(
+      req("GET", "/api/me", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+    expect(res.status).toBe(401);
+    const again = await handlePortalApi(
+      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+    expect(again.status).toBe(401);
+  });
+
+  it("GET /api/me is unaffected", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    const session = await portalSession(env, db);
+    const res = await handlePortalApi(
+      req("GET", "/api/me", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      account: { email: "ada@example.com" },
+    });
+  });
+});

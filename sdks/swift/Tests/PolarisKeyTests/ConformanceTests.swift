@@ -4,11 +4,12 @@
 // corpus/v1/cases.json. That's how the SDKs prove byte-identical verification: one signer,
 // four runners.
 //
-// Three sections, three layers of the wire contract:
+// Four sections, four layers of the wire contract:
 //
-//   cases       raw compact-JWS verification            → JWSVerifier.verify
-//   docCases    §3 claim validation                     → verifyDoc
-//   trustCases  §1 trust-set merge / prune / revocation → verifyTrustManifest + mergeTrust
+//   cases            raw compact-JWS verification           → JWSVerifier.verify
+//   docCases         §3 claim validation                    → verifyDoc
+//   trustCases       §1 trust-set merge / prune / revocation → verifyTrustManifest + mergeTrust
+//   clockFloorCases  §4.3 monotonic clock floor              → the reload path + licenseState
 
 import CryptoKit
 import Foundation
@@ -22,6 +23,7 @@ private struct Corpus: Decodable {
     let cases: [CorpusCase]
     let docCases: [CorpusDocCase]
     let trustCases: [CorpusTrustCase]
+    let clockFloorCases: [CorpusClockFloorCase]
 }
 
 private struct CorpusKey: Decodable {
@@ -67,12 +69,35 @@ private struct CorpusTrustCase: Decodable {
     let before: [String: String]
     let manifestJws: String
     let now: Int
+    /// Absent ⇒ the NETWORK path (freshness enforced); `false` ⇒ the cache-reload path.
+    let checkFreshness: Bool?
     let expect: TrustExpect
 }
 
 private struct TrustExpect: Decodable {
     let accepted: Bool
     let trust: [String: String]
+    /// The accepted manifest's `issuedAt` — the value §4.3 folds into the clock floor.
+    let issuedAt: Int?
+}
+
+/// §4.3 — the cache-RELOAD path replayed as pure data, ending at a gate decision.
+private struct CorpusClockFloorCase: Decodable {
+    let id: String
+    let description: String
+    let pinned: [String: String]
+    let trustJws: String?
+    let configJws: String?
+    let expectedAud: String
+    let deviceId: String
+    let systemClock: Int
+    let expect: ClockFloorExpect
+}
+
+private struct ClockFloorExpect: Decodable {
+    let highWaterMark: Int
+    let effectiveNow: Int
+    let status: String
 }
 
 private struct Expect: Decodable {
@@ -96,6 +121,7 @@ final class ConformanceTests: XCTestCase {
         XCTAssertGreaterThan(corpus.cases.count, 0)
         XCTAssertGreaterThan(corpus.docCases.count, 0)
         XCTAssertGreaterThan(corpus.trustCases.count, 0)
+        XCTAssertGreaterThan(corpus.clockFloorCases.count, 0)
         XCTAssertGreaterThanOrEqual(corpus.corpusVersion, 1)
     }
 
@@ -123,7 +149,8 @@ final class ConformanceTests: XCTestCase {
             let result = verifyTrustManifest(
                 c.manifestJws,
                 options: VerifyTrustManifestOptions(
-                    pinned: c.pinned, expectedAud: "djdl", now: c.now))
+                    pinned: c.pinned, expectedAud: "djdl", now: c.now,
+                    checkFreshness: c.checkFreshness ?? true))
             XCTAssertEqual(
                 result.doc != nil, c.expect.accepted,
                 "\(c.id) acceptance — \(c.description)")
@@ -131,6 +158,56 @@ final class ConformanceTests: XCTestCase {
             XCTAssertEqual(
                 mergeTrust(c.pinned, discovered), c.expect.trust,
                 "\(c.id) resulting trust set")
+            if let issuedAt = c.expect.issuedAt {
+                XCTAssertEqual(result.doc?.issuedAt, issuedAt, "\(c.id) issuedAt")
+            }
+        }
+    }
+
+    /// §4.3 — the monotonic clock floor. Each case replays the cache-RELOAD path as pure
+    /// data: re-verify the cached manifest (freshness OFF), re-verify the cached document
+    /// against the resulting trust set (freshness OFF), take the floor as the max of the
+    /// `issuedAt` of whatever actually verified, then gate at `max(systemClock, floor)`.
+    ///
+    /// Deriving the floor from the document ALONE is inert (R4-04) — that is what
+    /// `floor-config-doc-alone-does-not-stop-rollback` pins, and why the manifest must be
+    /// the second source.
+    func testAllCorpusClockFloorCases() throws {
+        for c in try loadCorpus().clockFloorCases {
+            var trust = c.pinned
+            var highWaterMark = 0
+
+            if let trustJws = c.trustJws {
+                let manifest = verifyTrustManifest(
+                    trustJws,
+                    options: VerifyTrustManifestOptions(
+                        pinned: c.pinned, expectedAud: c.expectedAud, now: c.systemClock,
+                        checkFreshness: false))
+                if let doc = manifest.doc {
+                    trust = mergeTrust(c.pinned, manifest.discovered)
+                    highWaterMark = max(highWaterMark, doc.issuedAt)
+                }
+            }
+
+            var doc: ManagedConfigDoc?
+            if let configJws = c.configJws {
+                doc = verifyDoc(
+                    configJws,
+                    options: VerifyDocOptions(
+                        trust: trust, expectedAud: c.expectedAud, deviceId: c.deviceId,
+                        now: c.systemClock, checkFreshness: false))
+                if let doc { highWaterMark = max(highWaterMark, doc.issuedAt) }
+            }
+
+            XCTAssertEqual(highWaterMark, c.expect.highWaterMark, "\(c.id) highWaterMark")
+            XCTAssertEqual(
+                max(c.systemClock, highWaterMark), c.expect.effectiveNow,
+                "\(c.id) effectiveNow")
+            let state = licenseState(
+                GateInput(
+                    hasToken: true, doc: doc, now: max(c.systemClock, highWaterMark)))
+            XCTAssertEqual(
+                state.status.rawValue, c.expect.status, "\(c.id) — \(c.description)")
         }
     }
 

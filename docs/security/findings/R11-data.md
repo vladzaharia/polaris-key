@@ -958,3 +958,196 @@ retention job becomes expressible.
 11. **Adjusted another lane's fixture**: `test/attack/R6-release.test.ts:1042` seeded an
     "incident lockdown" tier with `policy_device_limit = 0`, which under `limit > 0` meant
     UNLIMITED — the opposite of the test's intent — and is now refused by the DB. Changed to `1`.
+
+---
+
+# Remediation, round 2 — the residuals
+
+Applied on branch `lewd-owl` by the remediation lane owning `src/index.ts`, `src/scheduled.ts`,
+`src/repo.ts`, `src/portal/repo.ts`, `src/portal/api.ts`, `migrations/0017+` and `wrangler.toml`.
+This round closes four of the items the first round left in **REPORTED, not fixed** above:
+(5) no `scheduled()` handler, (5) no `DELETE /api/me`, (7) foreign keys with no `ON DELETE`, and
+(4) replay-idempotency — the last one via the deploy-time index assertion R11-04 recommended in
+place of the five-table rebuild it rejected.
+
+Full worker suite: **736 passed / 736** (`pnpm --filter @polaris-key/worker test`, Node 22).
+`npx tsc --noEmit` clean; `npx prettier --check src test migrations` clean.
+
+## New migrations
+
+| File                         | Contents                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `0017_portal_fk_cascade.sql` | Rebuilds the four portal tables with `ON DELETE CASCADE`; adds `idx_portal_audit_product_at`           |
+| `0018_index_assertion.sql`   | Single-row `schema_index_assertion` whose `CHECK` aborts the migration when a required index is absent |
+
+## Residual 2 — `scheduled()` (FIXED)
+
+`src/index.ts` now exports `scheduled()` alongside `fetch`, and `wrangler.toml` carries
+`[triggers] crons = ["17 3 * * *"]` — daily, 03:17 UTC. `triggers` is an **inheritable** wrangler
+key (verified against wrangler's own config parser: `triggers: inheritable(...)`), so the single
+top-level block covers `prod`, `staging` and `dev` without a per-environment copy. The odd minute
+is deliberate: `0 3 * * *` puts the job in the same second as every other cron on the platform.
+
+`src/scheduled.ts` is the handler. Four jobs, all product-scoped, all idempotent:
+
+| Step                    | Statement                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| `audit:<product>`       | `repo.pruneAudit` — `at < now - AUDIT_RETENTION_SECONDS`, via `idx_audit_time`          |
+| `portalAudit:<product>` | `portal/repo.prunePortalAudit`, plus one `product IS NULL` pass for platform-level rows |
+| `downloadTokens:<slug>` | `portal/repo.purgeDownloadTokensForProduct` — expired **and** spent                     |
+| `seats:<product>`       | `repo.releaseDormantSeats` — now exported, product-wide                                 |
+
+- **Retention is `AUDIT_RETENTION_SECONDS = 180 * 24 * 60 * 60`**, a named constant with the
+  reasoning attached: under ~90 days the log stops covering the quarter-late discovery of the
+  incidents it exists to serve, and `audit` rows carry `actor_email`/`actor_name`, so indefinite
+  retention is the unbounded personal-data store R11-09 describes. Six months is two quarters of
+  forensics with a stated bound. Not per-product config — a per-tenant deletion promise needs its
+  own admin surface, audit trail and migration.
+- **Product-scoped.** Every delete names one product. `portal_audit.product` is nullable, so the
+  `product IS NULL` pass is a required arm, not an edge case; `idx_portal_audit_product_at` (0017)
+  serves both (SQLite indexes NULLs).
+- **Bounded.** `PRUNE_BATCH_ROWS = 500`, `PRUNE_MAX_BATCHES = 20`. `drain()` stops as soon as a
+  pass comes back short, so a years-long backlog drains over consecutive nights and the steady
+  state costs one statement. D1 gives the worker no statement timeout to rely on.
+- **Fault-isolated.** Every job runs through `step()`, which catches and records. One poisoned
+  product cannot cost every later product its retention pass. Failures are re-thrown by
+  `handleScheduled` as a single aggregate naming every failed step, so the invocation is recorded
+  as errored. It is `await`ed rather than `ctx.waitUntil`-ed precisely so the rejection is the
+  handler's own outcome. No `console.*` — R12 asserts as a codebase-wide property that nothing
+  under `packages/worker/src` writes to the runtime log, so the thrown aggregate is the whole
+  diagnostic surface and is written to be read cold.
+- **Soft-deleted products are included** (`repo.listAllProductSlugs`, deliberately _not_
+  `listProducts`): their rows are the ones most in need of pruning.
+
+`releaseDormantSeats` was private and licence-scoped. It is now exported with `licenseId`
+optional; `claimDeviceSeat` still passes it for the just-in-time reclaim, the sweep omits it. This
+matters beyond tidiness — under the just-in-time path alone, a 2-seat licence whose only two
+devices went dark reads as **full** in the portal and the admin console until somebody tries to
+activate a third.
+
+Tests: `test/scheduled.test.ts` (18) — retention boundary at exactly 180 days, cross-tenant
+non-reachability, idempotency of a duplicate cron delivery, multi-batch drain, soft-deleted
+products, expired-vs-spent-vs-live tokens, seat reclamation leaving `status`/rows untouched, and a
+fault-injecting `Db` proving one failed step does not abort the rest.
+
+## Residual — `DELETE /api/me` (FIXED)
+
+`portal/api.ts handleMeDelete` + `portal/repo.ts deletePortalAccount`. Authenticated (the handler
+only ever erases `session.accountId` — there is no id in the path or body to tamper with),
+CSRF-checked by the existing mutation gate in `handlePortalApi`, and rate-limited on the account's
+own budget. It is dispatched **before** the per-request `syncAccountLicenseLinks` sweep: re-deriving
+links for an account about to be deleted is waste, and a failure there must not be able to block
+the account holder from deleting.
+
+**No schema change was needed for the delete itself.** R11-09 calls `portal_account_emails.email`
+being the PRIMARY KEY "structurally awkward", and it is — there is nowhere to record _"this address
+was erased"_ that does not re-store the address. But that makes deleting the row the _correct_
+reading of erasure rather than a compromise: a tombstone keyed on the address would retain exactly
+the datum the person asked to have removed. Re-keying on a surrogate id, as the original fix
+direction suggested, would have bought a tombstone nobody should want.
+
+What is erased: `portal_accounts` (`primary_email`, `display_name`), `portal_account_emails`,
+`portal_account_identities`, `portal_license_links`, and the account's `portal_audit` history.
+What survives, deliberately: the product's own `licenses` row — a portal account is a _view_ onto
+licences that already existed, and deleting it must unlink, not destroy a tenant's customer record
+(per-product erasure is `deleteProduct`'s PII scrub) — and one terminal `portal.account.delete`
+audit row carrying the opaque `acct_…` surrogate, no email, no name, no product. The account it
+pointed at is gone, so the id resolves to nobody; what remains is a dated receipt that an erasure
+happened, which is the one record an erasure must not delete.
+
+The notice email is sent **before** the delete, because afterwards there is no address to send it
+to. The session cookie is cleared on the way out, and the session stops validating regardless
+(`requireSession` re-reads `portal_accounts`).
+
+Tests: 9 in `test/portal.test.ts` — full erasure, the license row surviving untouched, the audit
+receipt carrying no PII, the pre-delete notice, 401 without a session, 403 with a missing _and_ a
+wrong CSRF token (account intact in both), and the cookie going dead immediately after.
+
+## Residual 6 — foreign keys (PARTIALLY FIXED, deliberately)
+
+`0017_portal_fk_cascade.sql` rebuilds `portal_account_emails`, `portal_account_identities`,
+`portal_license_links` and `portal_product_settings` so their foreign keys declare
+`ON DELETE CASCADE`. Those are the four where it genuinely reduces risk: the three children of
+`portal_accounts` are the reason `DELETE /api/me` exists and the ones whose orphans would be _PII_,
+and the fourth carries the same `products(slug)` edge as `portal_license_links`. All four are
+small, have no triggers, no incoming foreign keys and at most one index each.
+
+**Each rebuild is `create / re-assert / copy / drop / rename`, and every crash point converges.**
+D1 runs a migration file with no wrapping transaction, so R11-04's half-applied schema applies to
+rebuilds too. Dying before the drop is handled by `IF NOT EXISTS` + `INSERT OR IGNORE`. Dying
+_between_ the drop and the rename is the sharp one — the original is gone, `_v2` holds the only
+copy, and a naive replay dies on `SELECT … FROM <original>` with `no such table` and stays stuck
+forever. The `CREATE TABLE IF NOT EXISTS <original>` before each copy closes it: the replay
+recreates the original empty, copies zero rows into a `_v2` that already holds them all, drops the
+shell and renames. Verified exhaustively: crashing after each of the 24 statements and replaying
+twice yields byte-identical data and schema at all 24 points. (`0016_drop_dead_pii.sql` still has
+the open window; it is one statement group and was left alone.)
+
+**NOT rebuilt, and this is the recommendation, not an omission.** `licenses`, `devices`,
+`keys_index`, `product_keys`, `products`, `tiers`, `audit`, `license_profiles` and `release_*` keep
+their `ON DELETE`-less foreign keys. A `DROP TABLE` takes a table's triggers with it, so rebuilding
+any of the first six means reconstructing the sixteen `RAISE(ABORT)` triggers 0015 hangs off them,
+on D1, with no transaction; `licenses` alone carries five indexes including two partial-unique
+security invariants. A rebuild that half-lands leaves a populated table with **no constraints**,
+which is strictly worse than the missing `ON DELETE` it was fixing. They also do not need it:
+nothing in `src/` hard-deletes a product — `deleteProduct` is a status flip plus a PII scrub — so
+the parent row those keys point at is never actually removed.
+
+`portal_license_links` also still has **no** FK to `licenses(product, id)`. Adding one would abort
+the whole migration on any deployment already holding a link to a deleted license, because
+`INSERT OR IGNORE` skips uniqueness/NOT NULL/CHECK violations but **not** foreign-key ones, and the
+listing JOIN already hides such rows. Reported, not fixed. `ON UPDATE` is declared nowhere,
+including on the rebuilt tables: a product slug and a portal account id are immutable primary keys,
+so there is no update to cascade.
+
+## R11-04 — the deploy-time index assertion (FIXED as recommended)
+
+Replay-idempotency of the seven `duplicate column name` migrations remains unreachable in pure
+SQL and is still not attempted. What R11-04 recommended instead now exists, in two halves that a
+test pins to the same 17-name list so they cannot drift:
+
+1. **Migration-time.** `0018_index_assertion.sql` counts the required indexes in `sqlite_master`
+   and writes the result into `schema_index_assertion`, whose
+   `CONSTRAINT required_indexes_are_missing CHECK (found = expected)` aborts the INSERT — and
+   therefore `wrangler d1 migrations apply`, and therefore the deploy, which runs migrations
+   _before_ `wrangler deploy` — on a short count. Idempotent (DELETE then INSERT). The header
+   carries the diagnostic query to run when it fires.
+2. **Runtime.** `scheduled.ts assertRequiredIndexes()` re-checks the identical list on every cron
+   tick and throws naming every absentee. This catches what a migration-time check structurally
+   cannot: an index dropped by hand after deploy.
+
+Every name is an invariant whose absence is _silent_ — `idx_licenses_enroll_hwid`
+(one-free-licence-per-machine), `idx_devices_seat` (the UNIQUE arbiter behind `claimDeviceSeat`),
+`idx_product_keys_one_active`, `idx_release_download_tokens_hash`. Nothing errors when one is
+missing; the constraint simply stops being enforced.
+
+**Known limit, stated plainly:** `wrangler d1 migrations apply` records 0018 in `d1_migrations`, so
+the SQL half runs **once per database** — on the deploy that introduces it, and on any database
+built from scratch. That is the case R11-04 is about (a historical stranding is caught the first
+time 0018 runs; a fresh apply that dies mid-file aborts the whole run anyway). Continuous
+per-deploy coverage would need one extra CI step,
+`npx wrangler d1 execute "$DATABASE" --env "$ENV" --remote --file migrations/0018_index_assertion.sql`,
+in `.github/workflows/deploy.yml` between "Apply D1 migrations" and "Deploy worker" — that file is
+outside this lane and currently being edited by another, so it is reported rather than taken.
+
+## Adversarial tests inverted in place
+
+- `R11-01 "NOT ONE foreign key … declares ON DELETE / ON UPDATE"` → now asserts the four portal
+  tables **do** cascade while every other table still does not, plus a new test proving a
+  `DELETE FROM portal_accounts` cascades to emails, identities and links.
+- `R11-05 "every product-scoped table has product as PK column 1"` → `schema_index_assertion` added
+  to `globalByDesign`; it is a single-row assertion about the schema and holds no tenant data.
+- `R11-08 "migrations are additive only"` → `0017_portal_fk_cascade.sql` joins
+  `0016_drop_dead_pii.sql` as an allowed rebuild. It changes no column and no name, only the
+  foreign-key clause, so old code reads and writes the tables exactly as before.
+
+## Still REPORTED, not fixed
+
+1. **Per-deploy index assertion in `deploy.yml`** — see the known limit above.
+2. **FKs on the product-scoped tables**, and `portal_license_links → licenses`. Rationale above.
+3. **`0016_drop_dead_pii.sql`'s drop/rename window** is still open; 0017's pattern would close it.
+4. **A per-subject erase endpoint.** `DELETE /api/me` erases a _portal account_. Erasing one
+   person from one product's `licenses` still has no API; `deleteProduct` erases all of them.
+5. **Retention is a compile-time constant.** No admin surface, no per-product override, and no
+   audit record of the retention policy itself.
+6. Items 1–4 and 6–11 of the first round's REPORTED list that this round did not touch.

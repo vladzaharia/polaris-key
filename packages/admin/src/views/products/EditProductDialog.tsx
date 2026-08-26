@@ -21,9 +21,9 @@ import {
 import { errorMessage, intOrUndefined, trimmedOrUndefined } from "./util.js";
 
 /**
- * Edit a product's mutable registry fields (name, compat range, default policy, admin group)
- * via `updateProduct`. The slug + signing key are immutable here. On success we toast and
- * invalidate so the list + any detail re-fetch.
+ * Edit a product's mutable registry fields (name, compat range, default policy, and the
+ * non-authorizing admin-group label) via `updateProduct`. The slug + signing key are immutable
+ * here. On success we toast and invalidate so the list + any detail re-fetch.
  */
 export function EditProductDialog({
   product,
@@ -125,9 +125,15 @@ export function EditProductDialog({
                     autoFocus
                   />
                 </Field>
+                {/* Manifest metadata only — it authorizes nothing. `admin/authz.ts` grants on
+                    PLATFORM_ADMIN_GROUP alone and `canAdminProduct` takes no product argument;
+                    per-product admin was removed. The old help text ("OIDC group that
+                    administers this product") told the operator this field delegated
+                    administration, and the server would cheerfully store the value and change
+                    no access whatsoever. Matches the read-only wording in ProductOverview. */}
                 <Field
-                  label="Admin group"
-                  help="OIDC group that administers this product."
+                  label="Admin group (metadata only)"
+                  help="Recorded on the product for reference. Grants no access — the console authorizes on PLATFORM_ADMIN_GROUP alone."
                 >
                   <Input
                     value={adminGroup}

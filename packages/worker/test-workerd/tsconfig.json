@@ -1,0 +1,18 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "lib": ["ES2023"],
+    // `node` is deliberately absent: nothing in this lane may reach for a Node built-in,
+    // because there is no Node here. `@cloudflare/vitest-pool-workers` supplies the ambient
+    // `cloudflare:test` module.
+    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-pool-workers"]
+  },
+  // Just this directory (plus whatever it imports). `src` and `test` are already covered by
+  // the package's own `tsc --noEmit`; duplicating them here would only make this lane fail
+  // for reasons that have nothing to do with it.
+  "include": ["."]
+}

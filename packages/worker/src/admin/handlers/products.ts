@@ -6,6 +6,10 @@
  *                                             a per-product Ed25519 signing key (sealed under
  *                                             the platform KEK). NO release/minter rows.
  *   - `POST /api/products/link-repo`        — GITHUB-forward create: read a repo's `.pkey/`.
+ *   - `GET  /api/products/kek`              — platform KEK keyring status: which kid is active
+ *                                             and how many sealed rows sit under each kid.
+ *   - `POST /api/products/kek`              — re-seal a bounded batch of rows under the active
+ *                                             KEK (the rotation sweep; idempotent + resumable).
  *   - `PUT  /api/products/<slug>/secrets/<name>` — write-only sealed secret (never echoed).
  *   - `POST /api/products/<slug>/keys/rotate`    — retire the active key, mint a new active one.
  *   - `POST /api/products/<slug>/release/resync`  — re-fetch `.pkey/` and re-apply.
@@ -38,8 +42,15 @@ import {
 } from "../../repo.js";
 import { deleteTokenRecord } from "../../kv.js";
 import { deleteProduct, listDevicesByProduct, updateProduct } from "../repo.js";
-import { generateEd25519, seal } from "../../keyvault.js";
+import {
+  describeKeyring,
+  generateEd25519,
+  open,
+  seal,
+  type Sealed,
+} from "../../keyvault.js";
 import { linkRepo } from "../../release/linkRepo.js";
+import { MAX_MANIFEST_BYTES } from "../../release/manifest.js";
 import { resyncRepo } from "../../release/resync.js";
 import { checkReleaseHealth } from "../../release/health.js";
 import {
@@ -72,11 +83,26 @@ function compileSchema(
 ): { ok: true; catalog: Catalog } | { ok: false; message: string } {
   let parsed: unknown = input;
   if (typeof input === "string") {
+    // R7-02, second copy. The webhook-reachable parser in `release/manifest.ts` was capped
+    // after a 1.67 MB manifest was measured at 37.7 s (`yaml`'s uniqueKeys check is
+    // quadratic) — but this admin-reachable copy was left uncapped, so the same defect was
+    // still live one route over. `.length` counts UTF-16 units and is never greater than the
+    // UTF-8 byte length, so it is a sound O(1) prefilter before the encode.
+    if (
+      input.length > MAX_MANIFEST_BYTES ||
+      new TextEncoder().encode(input).byteLength > MAX_MANIFEST_BYTES
+    ) {
+      return {
+        ok: false,
+        message: `schema must be at most ${MAX_MANIFEST_BYTES} bytes`,
+      };
+    }
     try {
       parsed = JSON.parse(input);
     } catch {
       try {
-        parsed = parseYaml(input);
+        // `uniqueKeys: false` is the 34x win; `maxAliasCount` bounds alias expansion.
+        parsed = parseYaml(input, { uniqueKeys: false, maxAliasCount: 100 });
       } catch {
         return { ok: false, message: "schema must be valid JSON or YAML" };
       }
@@ -104,6 +130,11 @@ export async function handleProducts(
 ): Promise<Response> {
   if (!isPlatformAdmin(env, session))
     return forbidden("platform admin required");
+
+  // /api/products/kek — the platform KEK keyring. Like `link-repo` below, this is a reserved
+  // one-segment ACTION, not a product slug, and is matched before the slug lookup.
+  if (segments.length === 1 && segments[0] === "kek")
+    return handleKekKeyring(req, env, db, session, now);
 
   // /api/products/link-repo — special-cased before treating the segment as a slug.
   if (segments.length === 1 && segments[0] === "link-repo") {
@@ -354,6 +385,432 @@ async function manualCreate(
     },
     201,
   );
+}
+
+// ── platform KEK keyring + re-seal sweep (R2-09) ───────────────────────────────────────────
+//
+// A KEK rotation cannot be a `.sql` migration — SQLite cannot do AES-GCM — so the re-encryption
+// pass lives here, as an operator-invoked, bounded, idempotent, resumable sweep. See
+// docs/RUNBOOK.md § "Rotating PLATFORM_KEK" for the full procedure this backs.
+
+/**
+ * SQL for the kid recorded INSIDE a sealed envelope. Read straight from the blob rather than
+ * from a denormalised `kek_id` column, so it can never disagree with the ciphertext it
+ * describes and no writer has to remember to maintain it.
+ *
+ * The `json_valid` guard is load-bearing: a bare `json_extract` over a column containing ONE
+ * malformed row raises "malformed JSON" for the whole statement, so a single unreadable blob
+ * would otherwise blind the sweep to every other row. Guarded, it reads as NULL — counted and
+ * reported instead of fatal.
+ */
+function kekIdOf(column: string): string {
+  return `CASE WHEN json_valid(${column}) THEN json_extract(${column}, '$.kekId') END`;
+}
+
+/** The bucket a row whose envelope will not parse as JSON at all is reported under. */
+const UNREADABLE_KEK = "(unreadable)";
+
+/** Every table holding sealed values, with the AAD `kind` its rows are bound under. The AAD
+ *  (`pkey:v2:<product>:<kind>:<id>`) is reconstructed identically on open and re-seal, so a
+ *  rotation never weakens the slot binding. */
+const SEALED_TABLES = [
+  {
+    table: "product_keys",
+    idColumn: "kid",
+    blobColumn: "enc_private_json",
+    kind: "signing-key",
+    label: "keys",
+  },
+  {
+    table: "product_secrets",
+    idColumn: "name",
+    blobColumn: "enc_value_json",
+    kind: "product-secret",
+    label: "secrets",
+  },
+] as const;
+
+/**
+ * R12-02's catalog-declared managed secrets are ALSO sealed under the platform KEK, but they
+ * live as envelopes NESTED inside a JSON payload column rather than as a column of their own —
+ * so they need their own pass, or retiring an old KEK would silently break them.
+ * (`openManagedValue` swallows a failed open and returns `null`, so the damage would surface as
+ * a config document with a missing secret, not as an error.)
+ *
+ * Both tables are keyed `(product, id)` and store `JSON.stringify(ManagedPayload)` with sealed
+ * values under `config` / `secrets`. The AAD is `…:product-secret:managed:<key>`, exactly as
+ * `admin/lib/managedSecrets.ts` writes it.
+ */
+const MANAGED_PAYLOAD_TABLES = [
+  { table: "profiles", column: "payload_json" },
+  { table: "licenses", column: "overrides_json" },
+] as const;
+
+/** How `"kekId":"` looks once the envelope has been JSON-encoded INTO the payload column. */
+const NESTED_KEK_MARK = '\\"kekId\\":\\"';
+
+const RESEAL_DEFAULT_LIMIT = 50;
+const RESEAL_MAX_LIMIT = 200;
+
+type KekCounts = Record<string, Record<string, number>>;
+
+/** The kid inside a sealed envelope string, or null if the value is not one. */
+function envelopeKekId(value: unknown): string | null {
+  if (typeof value !== "string" || !value.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<Sealed>;
+    return parsed.v === 2 &&
+      typeof parsed.ct === "string" &&
+      typeof parsed.kekId === "string"
+      ? parsed.kekId
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+interface ManagedLeaf {
+  bucket: "config" | "secrets";
+  key: string;
+  kekId: string;
+  value: string;
+}
+
+type ManagedBuckets = Record<
+  string,
+  Record<string, { value?: unknown } | null> | undefined
+>;
+
+/** Every sealed envelope inside one managed payload column, with the parsed payload to write
+ *  back into. */
+function managedLeaves(json: string | null): {
+  payload: ManagedBuckets | null;
+  leaves: ManagedLeaf[];
+} {
+  if (!json) return { payload: null, leaves: [] };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return { payload: null, leaves: [] };
+  }
+  if (typeof parsed !== "object" || parsed === null)
+    return { payload: null, leaves: [] };
+  const payload = parsed as ManagedBuckets;
+  const leaves: ManagedLeaf[] = [];
+  for (const bucket of ["config", "secrets"] as const) {
+    const entries = payload[bucket];
+    if (typeof entries !== "object" || entries === null) continue;
+    for (const [key, entry] of Object.entries(entries)) {
+      const kekId = envelopeKekId(entry?.value);
+      if (kekId)
+        leaves.push({ bucket, key, kekId, value: entry!.value as string });
+    }
+  }
+  return { payload, leaves };
+}
+
+/** SQL selecting rows whose payload holds at least one envelope under a kid OTHER than the
+ *  active one. Decided in SQL by occurrence arithmetic — counting `"kekId":"` against
+ *  `"kekId":"<active>"` — so an already-migrated row can never occupy the LIMIT and starve the
+ *  rows that still need work. Bind with `managedNeedsWorkParams`. */
+function managedNeedsWork(column: string): string {
+  return `(length(${column}) - length(replace(${column}, ?, ''))) / length(?)
+        > (length(${column}) - length(replace(${column}, ?, ''))) / length(?)`;
+}
+
+function managedNeedsWorkParams(
+  active: string,
+): [string, string, string, string] {
+  const activeMark = `${NESTED_KEK_MARK}${active}\\"`;
+  return [NESTED_KEK_MARK, NESTED_KEK_MARK, activeMark, activeMark];
+}
+
+/** `{ keys: {k1:3,k2:12}, secrets: {k1:1}, managed: {k1:2} }` — sealed values per kid: whole
+ *  rows for the two envelope columns, individual leaves for the managed payloads. */
+async function kekCounts(db: Db): Promise<KekCounts> {
+  const counts: KekCounts = {};
+  for (const t of SEALED_TABLES) {
+    const rows = await db.all<{ kek_id: string | null; n: number }>(
+      `SELECT ${kekIdOf(t.blobColumn)} AS kek_id, COUNT(*) AS n
+         FROM ${t.table} GROUP BY 1`,
+    );
+    const perKid: Record<string, number> = {};
+    for (const row of rows)
+      perKid[row.kek_id ?? UNREADABLE_KEK] = Number(row.n);
+    counts[t.label] = perKid;
+  }
+  // Only rows that actually carry an envelope are parsed; the rest never leave SQLite.
+  const managed: Record<string, number> = {};
+  for (const t of MANAGED_PAYLOAD_TABLES) {
+    const rows = await db.all<{ blob: string }>(
+      `SELECT ${t.column} AS blob FROM ${t.table} WHERE ${t.column} LIKE '%kekId%'`,
+    );
+    for (const row of rows) {
+      for (const leaf of managedLeaves(row.blob).leaves)
+        managed[leaf.kekId] = (managed[leaf.kekId] ?? 0) + 1;
+    }
+  }
+  counts.managed = managed;
+  return counts;
+}
+
+/**
+ * Two different numbers an operator must not conflate:
+ *
+ *  - `remaining`  — rows not yet re-sealed under the active kid. Reaching 0 is the gate for
+ *                   retiring the old KEK; without it a rotation ends in a guess.
+ *  - `unopenable` — rows whose kid is not in the ring AT ALL. These are already dark: their
+ *                   product's routes are 404ing right now. Non-zero means a key was dropped
+ *                   from `PLATFORM_KEK_KEYS` too early — put it back.
+ */
+function progressOf(
+  counts: KekCounts,
+  active: string,
+  kids: string[],
+): { remaining: number; unopenable: number } {
+  let remaining = 0;
+  let unopenable = 0;
+  for (const perKid of Object.values(counts)) {
+    for (const [kid, n] of Object.entries(perKid)) {
+      if (kid === active) continue;
+      remaining += n;
+      if (!kids.includes(kid)) unopenable += n;
+    }
+  }
+  return { remaining, unopenable };
+}
+
+interface ResealFailure {
+  table: string;
+  product: string;
+  id: string;
+  message: string;
+}
+
+/**
+ * Re-seal up to `limit` rows under `active`. Four properties make this safe to run at any time,
+ * including repeatedly and concurrently with normal admin traffic:
+ *
+ *  1. **Idempotent** — the `IS NOT <active>` filter means an already-rotated row is never touched.
+ *  2. **Compare-and-swap** — the update is conditioned on the OLD ciphertext, so a racing admin
+ *     write (a key rotation, a `secret.set`) wins and the row is picked up on the next pass
+ *     rather than being clobbered with a stale plaintext.
+ *  3. **Bounded** — `limit` keeps one call inside the Worker CPU and D1 per-request budgets.
+ *  4. **Verified** — the new envelope must re-open to the same bytes BEFORE it replaces the old
+ *     one; a row that cannot be opened at all is reported, never silently skipped or destroyed.
+ */
+async function resealSweep(
+  env: Env,
+  db: Db,
+  active: string,
+  limit: number,
+): Promise<{
+  resealed: number;
+  skipped: number;
+  failures: ResealFailure[];
+  perProduct: Map<string, number>;
+}> {
+  let budget = limit;
+  let resealed = 0;
+  let skipped = 0;
+  const failures: ResealFailure[] = [];
+  const perProduct = new Map<string, number>();
+
+  for (const t of SEALED_TABLES) {
+    if (budget <= 0) break;
+    const rows = await db.all<{ product: string; id: string; blob: string }>(
+      `SELECT product, ${t.idColumn} AS id, ${t.blobColumn} AS blob
+         FROM ${t.table}
+        WHERE ${kekIdOf(t.blobColumn)} IS NOT ?
+        ORDER BY product, ${t.idColumn}
+        LIMIT ?`,
+      active,
+      budget,
+    );
+    for (const row of rows) {
+      budget--;
+      const ctx = {
+        product: row.product,
+        kind: t.kind,
+        id: row.id,
+      } as const;
+      let next: string;
+      try {
+        const plaintext = await open(env, row.blob, ctx);
+        next = await seal(env, plaintext, ctx);
+        if ((await open(env, next, ctx)) !== plaintext)
+          throw new Error("re-sealed value did not round-trip");
+      } catch (e) {
+        failures.push({
+          table: t.table,
+          product: row.product,
+          id: row.id,
+          message: e instanceof Error ? e.message : "re-seal failed",
+        });
+        continue;
+      }
+      const changed = await db.runChanges(
+        `UPDATE ${t.table} SET ${t.blobColumn} = ?
+          WHERE product = ? AND ${t.idColumn} = ? AND ${t.blobColumn} = ?`,
+        next,
+        row.product,
+        row.id,
+        row.blob,
+      );
+      if (changed > 0) {
+        resealed++;
+        perProduct.set(row.product, (perProduct.get(row.product) ?? 0) + 1);
+      } else {
+        skipped++;
+      }
+    }
+  }
+
+  // Pass 2: envelopes nested inside managed payloads. Budget is spent per ROW here (a row can
+  // carry several sealed keys); `resealed` still counts individual values.
+  for (const t of MANAGED_PAYLOAD_TABLES) {
+    if (budget <= 0) break;
+    const rows = await db.all<{ product: string; id: string; blob: string }>(
+      `SELECT product, id, ${t.column} AS blob
+         FROM ${t.table}
+        WHERE ${managedNeedsWork(t.column)}
+        ORDER BY product, id
+        LIMIT ?`,
+      ...managedNeedsWorkParams(active),
+      budget,
+    );
+    for (const row of rows) {
+      budget--;
+      const { payload, leaves } = managedLeaves(row.blob);
+      let rewritten = 0;
+      for (const leaf of leaves) {
+        if (leaf.kekId === active) continue;
+        const ctx = {
+          product: row.product,
+          kind: "product-secret" as const,
+          id: `managed:${leaf.key}`,
+        };
+        try {
+          const plaintext = await open(env, leaf.value, ctx);
+          const next = await seal(env, plaintext, ctx);
+          if ((await open(env, next, ctx)) !== plaintext)
+            throw new Error("re-sealed value did not round-trip");
+          payload![leaf.bucket]![leaf.key]!.value = next;
+          rewritten++;
+        } catch (e) {
+          failures.push({
+            table: t.table,
+            product: row.product,
+            id: `${row.id}:${leaf.bucket}.${leaf.key}`,
+            message: e instanceof Error ? e.message : "re-seal failed",
+          });
+        }
+      }
+      if (rewritten === 0) continue;
+      const changed = await db.runChanges(
+        `UPDATE ${t.table} SET ${t.column} = ?
+          WHERE product = ? AND id = ? AND ${t.column} = ?`,
+        JSON.stringify(payload),
+        row.product,
+        row.id,
+        row.blob,
+      );
+      if (changed > 0) {
+        resealed += rewritten;
+        perProduct.set(
+          row.product,
+          (perProduct.get(row.product) ?? 0) + rewritten,
+        );
+      } else {
+        skipped += rewritten;
+      }
+    }
+  }
+  return { resealed, skipped, failures, perProduct };
+}
+
+/** `GET|POST /api/products/kek` — keyring status, and the re-seal sweep. Platform-admin gated
+ *  by the caller; the POST is CSRF-checked by the dispatcher like every other mutation. */
+async function handleKekKeyring(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: AdminSession,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "GET" && req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+
+  let active: string;
+  let kids: string[];
+  try {
+    ({ active, kids } = await describeKeyring(env));
+  } catch (e) {
+    // The keyring is the one piece of configuration whose failure mode is otherwise INVISIBLE:
+    // `loadProduct` swallows the `open()` throw and every product route 404s. Report it
+    // verbatim here so an operator mid-rotation sees "the ring did not parse", not a 500.
+    return err(
+      503,
+      ErrorCode.BadRequest,
+      `platform KEK keyring is unusable: ${e instanceof Error ? e.message : "unknown error"}`,
+    );
+  }
+
+  if (req.method === "GET") {
+    const counts = await kekCounts(db);
+    return adminJson({
+      ok: true,
+      active,
+      kids,
+      counts,
+      ...progressOf(counts, active, kids),
+    });
+  }
+
+  const body = await readBody(req);
+  const limit =
+    body.limit === undefined
+      ? RESEAL_DEFAULT_LIMIT
+      : typeof body.limit === "number" && Number.isInteger(body.limit)
+        ? body.limit
+        : NaN;
+  if (!(limit >= 1 && limit <= RESEAL_MAX_LIMIT)) {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      `limit must be an integer between 1 and ${RESEAL_MAX_LIMIT}`,
+      { fields: ["limit"] },
+    );
+  }
+
+  const sweep = await resealSweep(env, db, active, limit);
+  // One audit row per product actually touched. The audit table is product-scoped, so a sweep
+  // that spans tenants leaves a trail in each tenant's own log rather than one platform row
+  // nobody looking at a product would ever see.
+  for (const [product, count] of sweep.perProduct) {
+    await audit(
+      db,
+      product,
+      session,
+      now,
+      "kek.reseal",
+      { kind: "kek", id: active },
+      `Re-sealed ${count} value(s) for ${product} under KEK ${active}`,
+    );
+  }
+  const counts = await kekCounts(db);
+  return adminJson({
+    ok: true,
+    active,
+    kids,
+    resealed: sweep.resealed,
+    skipped: sweep.skipped,
+    failed: sweep.failures.length,
+    failures: sweep.failures,
+    counts,
+    ...progressOf(counts, active, kids),
+  });
 }
 
 /**

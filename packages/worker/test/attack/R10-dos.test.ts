@@ -40,7 +40,12 @@ import {
   resolveChannel,
   type ChannelSelector,
 } from "../../src/release/channels.js";
-import type { Release, ReleaseAsset } from "../../src/release/github.js";
+import {
+  fetchTextAsset,
+  MAX_TEXT_ASSET_BYTES,
+  type Release,
+  type ReleaseAsset,
+} from "../../src/release/github.js";
 import type { FetchImpl } from "../../src/release/githubApp.js";
 import type { AdminSession } from "../../src/admin/session.js";
 import { getDevice, upsertDevice } from "../../src/repo.js";
@@ -1197,5 +1202,505 @@ describe("R10-09 KV token records: no expirationTtl, revived after revocation", 
     const result = await validateDeviceToken(env, db, product, token, NOW);
     expect(result).toEqual({ error: "unauthorized" });
     expect(await getTokenRecord(env, "djdl", tokenHash)).toBeNull();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// R10-05 — unauthenticated GitHub-subrequest amplifier on the public release surface
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The original finding: `/appcast.xml`, `/version`, `/changelog`, `/cli/…`, `/dmg/…` are
+// public, unrate-limited and use no Cache API, so EVERY request issues GitHub subrequests
+// against a 5,000/hour installation quota. ~1 req/s exhausts it in ~20 minutes, after which
+// `github.ts` maps GitHub's 403 to `NotFoundError` and every download and auto-update on the
+// platform 404s for that product — a security-update delivery outage from one laptop, with
+// no credentials.
+//
+// FIXED with three layers, tested below:
+//   1. the Cloudflare Cache API in front of the metadata reads, keyed canonically so the
+//      query string cannot be used to bust it;
+//   2. a per-IP rate limit on cache MISSES, failing OPEN (a limiter outage must not become a
+//      distribution outage — the `release` bucket's registered fail mode);
+//   3. GitHub quota exhaustion now surfaces as 503, not 404, so it is distinguishable from
+//      a withdrawn release.
+
+/** A minimal Cache API, matching workerd's `caches.default` closely enough to exercise it. */
+class CacheMock {
+  readonly store = new Map<string, Response>();
+  async match(req: Request): Promise<Response | undefined> {
+    const hit = this.store.get(req.url);
+    return hit ? (hit.clone() as unknown as Response) : undefined;
+  }
+  async put(req: Request, res: Response): Promise<void> {
+    this.store.set(req.url, res);
+  }
+}
+
+/** Run `fn` with a Cache API bound to `globalThis`, as workerd provides it. */
+async function withEdgeCache<T>(
+  fn: (cache: CacheMock) => Promise<T>,
+): Promise<T> {
+  const cache = new CacheMock();
+  const g = globalThis as { caches?: unknown };
+  const prior = g.caches;
+  g.caches = { default: cache };
+  try {
+    return await fn(cache);
+  } finally {
+    if (prior === undefined) delete g.caches;
+    else g.caches = prior;
+  }
+}
+
+/**
+ * A release fetch stub with a call log, so GitHub subrequests can be counted. Unlike
+ * `stubReleaseFetch` it answers the LIST endpoint with an array, which is what the moving
+ * (`latest`) selectors this section exercises actually parse.
+ */
+function countingReleaseFetch(rel: Release): {
+  fetchImpl: FetchImpl;
+  calls: string[];
+} {
+  const calls: string[] = [];
+  const fetchImpl: FetchImpl = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes("/access_tokens"))
+      return new Response(JSON.stringify({ token: "ghs_x" }), {
+        status: 200,
+      }) as unknown as Response;
+    if (url.includes("/releases?"))
+      return new Response(JSON.stringify([rel]), {
+        status: 200,
+      }) as unknown as Response;
+    if (url.includes("/releases"))
+      return new Response(JSON.stringify(rel), {
+        status: 200,
+      }) as unknown as Response;
+    return new Response("nope", { status: 404 }) as unknown as Response;
+  };
+  return { calls, fetchImpl };
+}
+
+describe("R10-05 public release surface no longer amplifies into GitHub", () => {
+  it("FIXED: N identical /version requests cost ONE round of GitHub subrequests", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const rel = releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]);
+    const { fetchImpl, calls } = countingReleaseFetch(rel);
+
+    await withEdgeCache(async () => {
+      const first = await handleRelease(
+        mkReq("GET", {}),
+        env,
+        db,
+        makeReleaseProduct(),
+        "version",
+        {},
+        fetchImpl,
+      );
+      expect(first.status).toBe(200);
+      const afterFirst = calls.length;
+      expect(afterFirst).toBeGreaterThan(0);
+
+      // The attack: hammer the same public URL. Every one of these used to be 1-3 GitHub
+      // subrequests against the hourly quota.
+      for (let i = 0; i < 25; i++) {
+        const res = await handleRelease(
+          mkReq("GET", {}),
+          env,
+          db,
+          makeReleaseProduct(),
+          "version",
+          {},
+          fetchImpl,
+        );
+        expect(res.status).toBe(200);
+      }
+      expect(calls.length).toBe(afterFirst);
+    });
+  });
+
+  it("CONTRAST: with no Cache API bound, every request still reaches GitHub", async () => {
+    // Pins that the previous test measures the CACHE and not some other memoisation, and
+    // documents the pre-fix behaviour exactly.
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const { fetchImpl, calls } = countingReleaseFetch(
+      releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]),
+    );
+    for (let i = 0; i < 5; i++) {
+      await handleRelease(
+        mkReq("GET", {}),
+        env,
+        db,
+        makeReleaseProduct(),
+        "version",
+        {},
+        fetchImpl,
+      );
+    }
+    expect(calls.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("FIXED: the cache key is canonical, so a query string cannot bust it", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const { fetchImpl } = countingReleaseFetch(
+      releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]),
+    );
+
+    await withEdgeCache(async (cache) => {
+      for (let i = 0; i < 10; i++) {
+        // `?cachebust=<i>` — the classic way to walk straight through a URL-keyed cache.
+        const req = new Request(
+          `https://key.plrs.im/djdl/version?cachebust=${i}`,
+        ) as unknown as Request;
+        await handleRelease(
+          req,
+          env,
+          db,
+          makeReleaseProduct(),
+          "version",
+          {},
+          fetchImpl,
+        );
+      }
+      // One entry, not ten: the key is synthesised from (product, kind, selector) only.
+      expect(cache.store.size).toBe(1);
+      expect([...cache.store.keys()][0]).toContain("/__pkey-release-cache");
+    });
+  });
+
+  it("FIXED: distinct selectors are cached separately (the cache is correct, not just small)", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const { fetchImpl } = countingReleaseFetch(
+      releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]),
+    );
+    await withEdgeCache(async (cache) => {
+      for (const version of ["1.2.3", "1.2.4", undefined]) {
+        await handleRelease(
+          mkReq("GET", {}),
+          env,
+          db,
+          makeReleaseProduct(),
+          "version",
+          version ? { version } : {},
+          fetchImpl,
+        );
+      }
+      expect(cache.store.size).toBe(3);
+    });
+  });
+
+  it("FIXED: cache MISSES are rate-limited per IP (the 31st in a minute is a 429)", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const { fetchImpl } = countingReleaseFetch(
+      releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]),
+    );
+    const statuses: number[] = [];
+    // Distinct pinned selectors, i.e. the shape that always misses the cache — enumerating
+    // versions is exactly how an attacker would defeat a cache-only fix.
+    for (let i = 0; i < 32; i++) {
+      const res = await handleRelease(
+        mkReq("GET", {}),
+        env,
+        db,
+        makeReleaseProduct(),
+        "version",
+        { version: `1.2.${i}` },
+        fetchImpl,
+      );
+      statuses.push(res.status);
+    }
+    expect(statuses.slice(0, 30).every((s) => s === 200)).toBe(true);
+    expect(statuses[30]).toBe(429);
+    expect(statuses[31]).toBe(429);
+  });
+
+  it("FIXED: artifact streams get their own, deliberately looser budget", async () => {
+    // `cli`/`dmg` are NOT cached (they stream bodies up to 2 GB) and their legitimate shape is
+    // bursty — a NAT'd office on release day, parallel Range requests for a resume. Sharing
+    // the 30/min metadata budget would 429 real downloads, i.e. re-create the outage.
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const { fetchImpl } = countingReleaseFetch(
+      releaseWith([asset("djdl-x86_64", 9)]),
+    );
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      const res = await handleRelease(
+        mkReq("GET", {}),
+        env,
+        db,
+        makeReleaseProduct(),
+        "cli",
+        { version: `1.2.${i}`, arch: "x86_64" },
+        fetchImpl,
+      );
+      statuses.push(res.status);
+    }
+    // Well past the 30/min metadata budget, and none of them 429.
+    expect(statuses.filter((s) => s === 429)).toEqual([]);
+  });
+
+  it("FIXED: a cache HIT is never metered, so a limited IP still gets served from cache", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const { fetchImpl } = countingReleaseFetch(
+      releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]),
+    );
+    await withEdgeCache(async () => {
+      const ok = async (): Promise<number> =>
+        (
+          await handleRelease(
+            mkReq("GET", {}),
+            env,
+            db,
+            makeReleaseProduct(),
+            "version",
+            {},
+            fetchImpl,
+          )
+        ).status;
+      // Prime `latest` into the cache, then burn the whole budget on misses…
+      expect(await ok()).toBe(200);
+      for (let i = 0; i < 40; i++) {
+        await handleRelease(
+          mkReq("GET", {}),
+          env,
+          db,
+          makeReleaseProduct(),
+          "version",
+          { version: `9.9.${i}` },
+          fetchImpl,
+        );
+      }
+      // …the already-cached `latest` still serves. Availability is the point of this lane.
+      expect(await ok()).toBe(200);
+    });
+  });
+
+  it("FIXED: the limiter fails OPEN — a DO outage must not become a distribution outage", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    env.RL = brokenRl("reject");
+    const { fetchImpl } = countingReleaseFetch(
+      releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]),
+    );
+    const res = await handleRelease(
+      mkReq("GET", {}),
+      env,
+      db,
+      makeReleaseProduct(),
+      "version",
+      {},
+      fetchImpl,
+    );
+    // Contrast with the credential buckets in R10-03, which deliberately fail CLOSED.
+    expect(res.status).toBe(200);
+  });
+
+  it("FIXED: GitHub quota exhaustion is a 503, not the old indistinguishable 404", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const exhausted: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens"))
+        return new Response(JSON.stringify({ token: "ghs_x" }), {
+          status: 200,
+        }) as unknown as Response;
+      // Primary rate limit: 403 + X-RateLimit-Remaining: 0.
+      return new Response("rate limit exceeded", {
+        status: 403,
+        headers: { "x-ratelimit-remaining": "0", "retry-after": "60" },
+      }) as unknown as Response;
+    };
+
+    const res = await handleRelease(
+      mkReq("GET", {}),
+      env,
+      db,
+      makeReleaseProduct(),
+      "version",
+      {},
+      exhausted,
+    );
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("60");
+    expect((await res.json()) as unknown).toMatchObject({
+      error: "upstream_rate_limited",
+    });
+  });
+
+  it("a plain 403 (private repo / no access) still 404s — quota is the only 503", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const forbidden: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens"))
+        return new Response(JSON.stringify({ token: "ghs_x" }), {
+          status: 200,
+        }) as unknown as Response;
+      return new Response("forbidden", { status: 403 }) as unknown as Response;
+    };
+    const res = await handleRelease(
+      mkReq("GET", {}),
+      env,
+      db,
+      makeReleaseProduct(),
+      "version",
+      {},
+      forbidden,
+    );
+    // Still information-leak-free: "private" and "absent" remain indistinguishable.
+    expect(res.status).toBe(404);
+  });
+
+  it("a 503 is never cached (a transient upstream failure must not stick)", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const exhausted: FetchImpl = async (input) =>
+      String(input).includes("/access_tokens")
+        ? (new Response(JSON.stringify({ token: "ghs_x" }), {
+            status: 200,
+          }) as unknown as Response)
+        : (new Response("rate limit exceeded", {
+            status: 403,
+            headers: { "x-ratelimit-remaining": "0" },
+          }) as unknown as Response);
+
+    await withEdgeCache(async (cache) => {
+      const res = await handleRelease(
+        mkReq("GET", {}),
+        env,
+        db,
+        makeReleaseProduct(),
+        "version",
+        {},
+        exhausted,
+      );
+      expect(res.status).toBe(503);
+      expect(cache.store.size).toBe(0);
+    });
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// R10-15 — unbounded `.sig` asset read inlined into the appcast XML
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// FIXED. `fetchTextAsset` now checks the declared `Content-Length` AND accounts for the bytes
+// it actually streams, cancelling past the cap — so an absent or lying `Content-Length` cannot
+// bypass it. A Sparkle EdDSA signature is ~100 bytes; the cap is 4 KiB.
+
+/** A body of `chunks` × 1 KiB that records how many chunks the reader actually pulled. */
+function countingStream(chunks: number): {
+  body: ReadableStream<Uint8Array>;
+  pulled: () => number;
+} {
+  let pulls = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (pulls >= chunks) {
+        controller.close();
+        return;
+      }
+      pulls++;
+      controller.enqueue(new Uint8Array(1024).fill(65));
+    },
+  });
+  return { body, pulled: () => pulls };
+}
+
+describe("R10-15 sidecar text assets are size-capped", () => {
+  it("FIXED: a declared Content-Length over the cap is refused before any body is read", async () => {
+    const fetchImpl: FetchImpl = async () =>
+      new Response("A", {
+        status: 200,
+        headers: { "content-length": String(200 * 1024 * 1024) },
+      }) as unknown as Response;
+    await expect(
+      fetchTextAsset("tok", "acme", "djdl", 1, fetchImpl),
+    ).rejects.toThrow(/asset too large/);
+  });
+
+  it("FIXED: an ABSENT Content-Length cannot bypass the cap — the stream is accounted", async () => {
+    const { body, pulled } = countingStream(200);
+    const fetchImpl: FetchImpl = async () =>
+      new Response(body, { status: 200 }) as unknown as Response;
+
+    await expect(
+      fetchTextAsset("tok", "acme", "djdl", 1, fetchImpl),
+    ).rejects.toThrow(/asset too large/);
+    // Bailed out just past the 4 KiB cap (plus the stream's own read-ahead) instead of
+    // buffering the whole 200 KiB — which at real sidecar sizes is the 200 MB OOM.
+    expect(pulled()).toBeLessThanOrEqual(MAX_TEXT_ASSET_BYTES / 1024 + 4);
+    expect(pulled()).toBeLessThan(200);
+  });
+
+  it("a real signature (~100 bytes) is unaffected", async () => {
+    const sig = "dGhpcyBpcyBhIHNwYXJrbGUgZWQyNTUxOSBzaWduYXR1cmU=";
+    const fetchImpl: FetchImpl = async () =>
+      new Response(sig, { status: 200 }) as unknown as Response;
+    expect(await fetchTextAsset("tok", "acme", "djdl", 1, fetchImpl)).toBe(sig);
+  });
+
+  it("FIXED (e2e): an oversized .sig makes the appcast fail closed instead of OOMing", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    const rel = releaseWith([
+      asset("djdl-1.2.3-arm64.dmg", 7),
+      asset("djdl-1.2.3-arm64.dmg.sig", 8),
+    ]);
+    const fetchImpl: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens"))
+        return new Response(JSON.stringify({ token: "ghs_x" }), {
+          status: 200,
+        }) as unknown as Response;
+      if (url.includes("/releases/assets/8")) {
+        // The hostile sidecar: 200 MB, declared.
+        return new Response("A", {
+          status: 200,
+          headers: { "content-length": String(200 * 1024 * 1024) },
+        }) as unknown as Response;
+      }
+      if (url.includes("/releases?"))
+        return new Response(JSON.stringify([rel]), {
+          status: 200,
+        }) as unknown as Response;
+      if (url.includes("/releases"))
+        return new Response(JSON.stringify(rel), {
+          status: 200,
+        }) as unknown as Response;
+      return new Response("nope", { status: 404 }) as unknown as Response;
+    };
+
+    const res = await handleRelease(
+      mkReq("GET", {}),
+      env,
+      db,
+      makeReleaseProduct(),
+      "appcast",
+      {},
+      fetchImpl,
+    );
+    // 404, not a 500 and not an isolate OOM: the feed refuses to ship an unverifiable item.
+    expect(res.status).toBe(404);
   });
 });

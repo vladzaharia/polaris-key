@@ -12,7 +12,7 @@ import {
   type ManagedEntry,
   type ManagedPayload,
 } from "@polaris-key/protocol";
-import type { Env } from "./env.js";
+import { secret, type Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { openProductSecret, type Product } from "./product.js";
 import { errorResponse, json, methodNotAllowed } from "./http.js";
@@ -37,6 +37,7 @@ import {
 } from "./licenseCore.js";
 import { createBrowserSession } from "./browserSession.js";
 import { platformOidcConfig } from "./platformOidc.js";
+import { isSafeIssuerUrl } from "./release/manifest.js";
 
 const FLOW_TTL_SECONDS = 600;
 const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];
@@ -150,6 +151,39 @@ async function getOidcConfig(
   );
 }
 
+/**
+ * Operator allowlist of hosts a **repo-owned** (`provider: custom`) OIDC issuer may name, read
+ * from the `OIDC_ISSUER_ALLOWLIST` var as a comma/whitespace-separated host list.
+ *
+ * This is the control that closes the *rest* of R9-01. `isSafeIssuerUrl` stops a manifest from
+ * naming a private/loopback/link-local address or plain http, but it cannot stop
+ * `https://exfil.attacker.example` — a public https host is indistinguishable from a real IdP
+ * at the character level, and that host still receives a POST containing the product's OIDC
+ * `client_secret`. Only an operator-curated host list distinguishes them.
+ *
+ * **Unset means not enforced.** That is a deliberate, documented fail-open: enforcing an empty
+ * allowlist would take every already-configured custom-OIDC product offline on the deploy that
+ * ships this code, with no operator action and no warning. The follow-up that makes it fail
+ * closed *for new configs only* has to live at the ingest paths (`release/linkRepo.ts`,
+ * `release/resync.ts`), which can tell a first write from a re-sync; see
+ * `docs/security/findings/R9-injection.md`. The platform issuer is exempt: it is a Worker
+ * secret, not a repo-supplied value.
+ */
+function issuerHostAllowed(env: Env, issuer: string): boolean {
+  const raw = secret(env, "OIDC_ISSUER_ALLOWLIST");
+  if (!raw) return true;
+  const hosts = raw
+    .split(/[\s,]+/)
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean);
+  if (!hosts.length) return true;
+  try {
+    return hosts.includes(new URL(issuer).host.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 async function resolveOidcConfig(
   env: Env,
   db: Db,
@@ -160,6 +194,28 @@ async function resolveOidcConfig(
   if ((row.provider ?? "platform") === "custom") {
     if (!row.issuer || !row.client_id) {
       return errorResponse(500, "misconfigured", "custom oidc config missing");
+    }
+    // R9-01/R9-02, at the sink. `oidc_config.issuer` is written from a linked repo's
+    // `.pkey/product` manifest, and it is the base of the token POST that carries this
+    // product's client secret, of the JWKS fetch that decides which keys may sign an ID
+    // token, and of the anonymous 302 out of `/<product>/auth/start`. The manifest validator
+    // now refuses a non-https or private/loopback/link-local/reserved issuer — this repeats
+    // that check against what is actually in D1, so a row written before the validator gained
+    // it (or by any writer that skips `parseManifest`) still cannot aim those requests.
+    // Deliberately BEFORE `openProductSecret`: an unusable config must not unseal the secret.
+    if (!isSafeIssuerUrl(row.issuer)) {
+      return errorResponse(
+        500,
+        "misconfigured",
+        "custom oidc issuer is not permitted",
+      );
+    }
+    if (!issuerHostAllowed(env, row.issuer)) {
+      return errorResponse(
+        500,
+        "misconfigured",
+        "custom oidc issuer is not permitted",
+      );
     }
     let clientSecret: string | undefined;
     if (row.client_secret_secret) {
@@ -191,6 +247,15 @@ async function resolveOidcConfig(
       500,
       "misconfigured",
       "platform oidc is not configured",
+    );
+  }
+  // The platform issuer is operator-owned (a Worker secret), not repo-owned, so this is not
+  // the R9-01 boundary — but the same request shapes hang off it, so it gets the same rule.
+  if (!isSafeIssuerUrl(platform.issuer)) {
+    return errorResponse(
+      500,
+      "misconfigured",
+      "platform oidc issuer is not permitted",
     );
   }
   return {

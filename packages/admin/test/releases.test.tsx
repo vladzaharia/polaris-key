@@ -33,6 +33,9 @@ const PRODUCT: ProductDetail = {
   defaultMaxOfflineDays: 14,
   defaultDeviceLimit: 3,
   adminGroup: "djdl-admins",
+  // Resync is a repo-linked-only action, so the fixture has to say which kind of product
+  // this is; `releaseSourceOf` defaults an absent value to "manual".
+  releaseSource: "github",
   setup: {
     sync: {
       source: "webhook",
@@ -126,6 +129,23 @@ describe("Releases view", () => {
     );
 
     await waitFor(() => expect(resyncProduct).toHaveBeenCalledWith("djdl"));
+  });
+
+  it("disables resync for a product that is not linked to a repo", async () => {
+    // `release/resync.ts` returns "product is not linked to a repo" (422) for any product
+    // whose `release_source` is not `github`, so an enabled button here is an affordance the
+    // server is guaranteed to refuse.
+    product.mockResolvedValue({
+      product: { ...PRODUCT, releaseSource: "manual" },
+    });
+    render(<Releases slug="djdl" />);
+    await screen.findByText("DJDL");
+
+    const button = screen.getByRole("button", { name: /Resync from repo/ });
+    expect(button.hasAttribute("disabled")).toBe(true);
+    await userEvent.click(button);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(resyncProduct).not.toHaveBeenCalled();
   });
 
   it("shows an error state with retry when the product fails to load", async () => {

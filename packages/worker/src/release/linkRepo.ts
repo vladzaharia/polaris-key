@@ -17,7 +17,7 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
-import type { Env } from "../env.js";
+import { type Env, secret } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { generateEd25519, seal } from "../keyvault.js";
 import {
@@ -81,6 +81,54 @@ export function parseRepoUrl(
   return { owner: m[1], repo: m[2] };
 }
 
+/**
+ * Operator allowlist of the hosts a **repo-supplied** OIDC issuer may name, read from the
+ * `OIDC_ISSUER_ALLOWLIST` var as a comma/whitespace-separated list of `host[:port]` entries.
+ * Returns `null` when the issuer may be persisted, or the operator-facing refusal otherwise.
+ *
+ * This is the ingest half of R9-01, and — unlike the copy at the sink (`oidc.ts`
+ * `issuerHostAllowed`, which treats "unset" as "unenforced") — it **fails closed**: with no
+ * allowlist configured, no manifest may introduce a custom issuer at all.
+ *
+ * The asymmetry is deliberate and is the whole point of doing this here rather than there.
+ * `oidc.issuer` is the base of the token POST that carries the product's OIDC `client_secret`,
+ * of the JWKS fetch that decides which keys may sign an ID token, and of the anonymous 302 out
+ * of `/<product>/auth/start` — and it arrives from a `.pkey/` file that any repo *writer* can
+ * push, not from a platform admin. `isSafeIssuerUrl` bounds that value's *shape* (https, no
+ * credentials, no reserved address literal), but nothing at the character level distinguishes
+ * `https://id.example` from `https://exfil.attacker.example`; only an operator can. The sink
+ * cannot fail closed, because it cannot tell a row written yesterday from one written by an
+ * attacker's push five minutes ago, and refusing both would take every already-configured
+ * custom-OIDC product offline on the deploy that ships this code. The two ingest paths —
+ * this file (first write) and `resync.ts` (issuer *change*) — are exactly where that
+ * distinction exists, so they are where the control belongs.
+ *
+ * Matched on `URL.host` (port included) and lower-cased, identically to the sink: a value
+ * accepted here must also survive `oidc.ts` at runtime, or linking would mint a product whose
+ * login is dead on arrival. There is deliberately **no** loopback carve-out — the manifest
+ * validator's `wrangler dev` exception is about address *shape*, and an operator running
+ * against a local IdP sets `OIDC_ISSUER_ALLOWLIST=localhost:8788`, which the sink needs anyway
+ * the moment any allowlist exists.
+ */
+export function manifestIssuerRefusal(env: Env, issuer: string): string | null {
+  const hosts = (secret(env, "OIDC_ISSUER_ALLOWLIST") ?? "")
+    .split(/[\s,]+/)
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean);
+  let host: string | null = null;
+  try {
+    host = new URL(issuer).host.toLowerCase();
+  } catch {
+    host = null;
+  }
+  if (host !== null && hosts.includes(host)) return null;
+  return (
+    `oidc.issuer ${JSON.stringify(issuer)} is not in OIDC_ISSUER_ALLOWLIST; ` +
+    `a platform operator must allowlist that host before a repo manifest can point ` +
+    `this product's identity provider at it`
+  );
+}
+
 /** Read the first existing variant of a `.pkey/` file (extensions tried in order). */
 async function readPkeyFile(
   token: string,
@@ -122,7 +170,15 @@ export async function linkRepo(
   let token: string;
   try {
     installId = await discoverInstallation(env, owner, repo, now, fetchImpl);
-    token = await getInstallationToken(env, repo, installId, now, fetchImpl);
+    // Structured scope, not a bare repo name: the string form is the legacy path, which
+    // yields an installation-wide token and its own cache entry (R5-03).
+    token = await getInstallationToken(
+      env,
+      { owner, repo },
+      installId,
+      now,
+      fetchImpl,
+    );
   } catch (err) {
     return {
       ok: false,
@@ -133,15 +189,26 @@ export async function linkRepo(
   // Read the `.pkey/` files (schema + product required, release optional). Missing required
   // files surface as parseManifest errors below.
   const files: Record<string, string> = {};
-  for (const name of ["schema", "product", "release"] as const) {
-    const text = await readPkeyFile(
-      token,
-      owner,
-      repo,
-      PKEY_FILES[name],
-      fetchImpl,
-    );
-    if (text !== undefined) files[name] = text;
+  try {
+    for (const name of ["schema", "product", "release"] as const) {
+      const text = await readPkeyFile(
+        token,
+        owner,
+        repo,
+        PKEY_FILES[name],
+        fetchImpl,
+      );
+      if (text !== undefined) files[name] = text;
+    }
+  } catch (err) {
+    // `fetchRepoFile` throws on a non-404 upstream status and on an over-cap body. Surfacing
+    // that as a structured error (as `resync.ts` already did) keeps an oversized or hostile
+    // `.pkey/` file a clean 4xx for the operator instead of an unhandled 500.
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? err.message : "github manifest fetch failed",
+    };
   }
 
   const result = parseManifest(files);
@@ -201,6 +268,15 @@ async function registerFromManifest(
       ok: false,
       error: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
     };
+  }
+
+  // R9-01, at ingest and fail-closed (see `manifestIssuerRefusal`). A first write has no
+  // already-working `oidc_config` row to protect, so an unset allowlist refuses it outright.
+  // A product that does not name a custom issuer never reaches this branch: `djdl` ships
+  // `provider: "platform"` and no issuer at all, so linking it is unaffected.
+  if (manifest.oidc?.provider === "custom") {
+    const refusal = manifestIssuerRefusal(env, manifest.oidc.issuer);
+    if (refusal) return { ok: false, error: refusal };
   }
 
   // The admin API screens every catalog it accepts (`admin/handlers/schema.ts`,

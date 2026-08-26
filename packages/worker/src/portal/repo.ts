@@ -780,6 +780,136 @@ export async function purgeExpiredDownloadTokens(
   );
 }
 
+/**
+ * Product-scoped retention for `release_download_tokens` — the `scheduled()` counterpart of the
+ * opportunistic sweep above. Returns how many rows were removed.
+ *
+ * Two statements, not one `OR`, because they want different indexes. The expiry pass rides
+ * `idx_release_download_tokens_expiry(product, expires_at)`; the spent pass is a short scan of
+ * what the first pass left behind, which by construction is only this product's still-live
+ * tokens (a 300-second TTL). Both are bounded by `limit`, so neither can turn into an unbounded
+ * delete inside a single cron invocation.
+ *
+ * A spent token is deleted before it expires on purpose: `markPortalDownloadUsed` is the
+ * single-use gate, so a row with `used_at` set can never authorize another download — retaining
+ * it buys nothing and keeps a row naming an account, a product and an artifact.
+ */
+export async function purgeDownloadTokensForProduct(
+  db: Db,
+  product: string,
+  now: number,
+  limit = 500,
+): Promise<number> {
+  const expired = await db.runChanges(
+    `DELETE FROM release_download_tokens
+      WHERE rowid IN (
+        SELECT rowid FROM release_download_tokens
+         WHERE product = ? AND expires_at < ? LIMIT ?
+      )`,
+    product,
+    now,
+    limit,
+  );
+  const spent = await db.runChanges(
+    `DELETE FROM release_download_tokens
+      WHERE rowid IN (
+        SELECT rowid FROM release_download_tokens
+         WHERE product = ? AND used_at IS NOT NULL LIMIT ?
+      )`,
+    product,
+    limit,
+  );
+  return expired + spent;
+}
+
+/**
+ * Delete `portal_audit` rows older than `cutoff` for one product, or — when `product` is null —
+ * for the platform-level rows that name no product at all.
+ *
+ * `portal_audit.product` is nullable by design (a magic-link sign-in belongs to no tenant), so a
+ * purely per-product sweep would leave those rows growing forever. The null pass is therefore
+ * not an edge case to tolerate but a required arm of the same job. `idx_portal_audit_product_at`
+ * (0017) serves both: SQLite indexes NULLs, so `product IS NULL AND at < ?` is a SEARCH too.
+ */
+export async function prunePortalAudit(
+  db: Db,
+  product: string | null,
+  cutoff: number,
+  limit: number,
+): Promise<number> {
+  const predicate = product === null ? "product IS NULL" : "product = ?";
+  const params = product === null ? [cutoff, limit] : [product, cutoff, limit];
+  return db.runChanges(
+    `DELETE FROM portal_audit
+      WHERE rowid IN (
+        SELECT rowid FROM portal_audit WHERE ${predicate} AND at < ? LIMIT ?
+      )`,
+    ...params,
+  );
+}
+
+/**
+ * Erase a portal account and everything that identifies the person behind it.
+ *
+ * R11-09 called right-to-erasure "structurally unimplementable", and the sharpest edge was that
+ * `portal_account_emails.email` is the PRIMARY KEY: there is nowhere to record "this address was
+ * erased" without re-storing the address, so erasure can only mean *deleting the row*. That is
+ * what happens here, and it is the correct answer rather than a compromise — a tombstone keyed
+ * on the address would retain exactly the datum the account holder asked to have removed.
+ *
+ * What survives is deliberately non-identifying:
+ *
+ * - `licenses` are the PRODUCT's records, not the portal account's. A portal account is a *view*
+ *   onto licences that already existed; deleting it must unlink, not destroy a tenant's customer
+ *   record. Per-product erasure is `deleteProduct`'s PII scrub, and a per-subject erase endpoint
+ *   remains reported.
+ * - one final `portal.account.delete` row in `portal_audit`, carrying the opaque `acct_…`
+ *   surrogate and no email, name or product. The account row it pointed at is gone, so the id no
+ *   longer resolves to a person; what remains is a dated receipt that an erasure happened, which
+ *   is the one record an erasure must not delete.
+ *
+ * The three child deletes are also implied by `ON DELETE CASCADE` (0017). They are still issued
+ * explicitly and FIRST, in one batch with the parent delete, so the erasure is atomic and does
+ * not depend on `PRAGMA foreign_keys` being on in whichever engine is underneath.
+ */
+export async function deletePortalAccount(
+  db: Db,
+  accountId: string,
+  now: number,
+): Promise<void> {
+  await db.batch([
+    {
+      sql: "DELETE FROM portal_account_emails WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM portal_account_identities WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM portal_license_links WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM portal_audit WHERE account_id = ?",
+      params: [accountId],
+    },
+    { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [accountId] },
+    {
+      sql: `INSERT INTO portal_audit
+              (id, account_id, at, action, product, target_kind, target_id, summary)
+            VALUES (?, ?, ?, 'portal.account.delete', NULL, 'account', ?, ?)`,
+      params: [
+        randomId("paud"),
+        accountId,
+        now,
+        accountId,
+        "Portal account erased at the account holder's request",
+      ],
+    },
+  ]);
+}
+
 export async function portalAudit(
   db: Db,
   input: {

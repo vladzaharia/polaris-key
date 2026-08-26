@@ -151,10 +151,13 @@ def license_state(
     revoked; no doc -> needs-activation; now > graceUntil -> expired; now > expiresAt ->
     grace; else ok.
 
-    ``high_water_mark`` is the greatest ``issuedAt`` ever verified. The gate evaluates at
+    ``high_water_mark`` is ``max(configDoc.issuedAt, trustManifest.issuedAt)`` over the
+    signed artifacts the client has re-verified. The gate evaluates at
     ``max(now, high_water_mark)`` (wire contract v2 §4.3), so winding the system clock
     back below the newest signed timestamp we have already seen buys nothing — clock
-    rollback (R4-04) is inert without needing a trusted local clock.
+    rollback (R4-04) is inert without needing a trusted local clock. Both sources are
+    required: derived from the document alone the floor can never exceed that document's
+    own ``graceUntil``, so it would never actually close the window.
     """
     now = max(now, high_water_mark)
     if blocked is not None:

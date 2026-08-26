@@ -165,9 +165,17 @@ public actor PolarisKeyClient {
     private var lastTrustIssuedAt: Int?
     /// Epoch MILLISECONDS of the last successful verification.
     private var lastVerifiedAt: Int?
-    /// §4.3 monotonic floor: the greatest `issuedAt` ever verified. `effectiveNow` is
+    /// §4.3 monotonic floor: `max` over the `issuedAt` of every signed artifact re-verified
+    /// here — the config document AND the trust manifest. `effectiveNow` is
     /// `max(systemClock, highWaterMark)`, which makes a clock rollback inert without
     /// requiring a trusted local clock. Internal so the derivation itself is testable.
+    ///
+    /// Both sources are load-bearing. Derived from the document alone the floor is inert
+    /// (R4-04): with one cached document the mark equals `doc.issuedAt`, which is below that
+    /// same document's `graceUntil` by construction, so it can never push `effectiveNow` past
+    /// the end of grace. The manifest is the second, independently-advancing signed clock —
+    /// `trustRefresh` is on by default, so it moves even while a content-stable config
+    /// document sits behind an unchanged ETag.
     private(set) var highWaterMark = 0
     private var lastStoreError: StoreError?
 
@@ -280,22 +288,26 @@ public actor PolarisKeyClient {
     /// - freshness is NOT enforced (`checkFreshness: false`) — a cached document is expected
     ///   to be past its short `expiresAt`, and deciding what that means is the gate's job
     ///   (`grace` / `expired`), not the verifier's; and
-    /// - the time claims are evaluated at `max(systemClock, doc.issuedAt)`, so a rolled-back
+    /// - the time claims are evaluated at `max(effectiveNow, doc.issuedAt)`, so a rolled-back
     ///   clock cannot widen a window (§4.3) and an honestly-wrong clock cannot silently
     ///   delete a licence the user paid for.
+    ///
+    /// Called AFTER the cached manifest is applied, so `effectiveNow` already carries the
+    /// manifest's floor — a clock wound back further than `MAX_GRACE_SECONDS` therefore
+    /// cannot make a current document unloadable.
     private func verifyCachedDoc(_ jws: String) -> ManagedConfigDoc? {
         // Signature-verified peek (never an unauthenticated parse) to learn `issuedAt`.
         guard let peek = JWSVerifier.verify(jws, trust: trust, typ: .config) else { return nil }
         // Evaluating at the doc's own `issuedAt` is what makes a wrong clock survivable, so
         // bound how far forward one artifact may drag the floor: a cached doc may sit ahead
         // of a badly-set clock, but not decades ahead of it.
-        guard peek.payload.issuedAt <= saturatingAdd(nowSec(), MAX_GRACE_SECONDS)
+        guard peek.payload.issuedAt <= saturatingAdd(effectiveNow(), MAX_GRACE_SECONDS)
         else { return nil }
         return verifyDoc(
             jws,
             options: VerifyDocOptions(
                 trust: trust, expectedAud: product, deviceId: deviceId,
-                now: max(nowSec(), peek.payload.issuedAt), checkFreshness: false))
+                now: max(effectiveNow(), peek.payload.issuedAt), checkFreshness: false))
     }
 
     // ── Gate / reads ────────────────────────────────────────────────────────────
@@ -654,6 +666,13 @@ public actor PolarisKeyClient {
         // ability to revoke at all.
         manifestKeys = result.discovered
         lastTrustIssuedAt = manifest.issuedAt
+        // §4.3 — the manifest is the floor's second source, and the one that actually
+        // advances: `trustRefresh` is on by default, so this runs on every refresh even when
+        // the config document is unchanged. A STALE cached manifest counts too — its
+        // `issuedAt` is a signed lower bound on real time whether or not it is still fresh
+        // enough to publish keys, so raising the floor here does not re-introduce the
+        // freshness check the reload path deliberately skips.
+        highWaterMark = max(highWaterMark, manifest.issuedAt)
         return true
     }
 

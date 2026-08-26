@@ -105,15 +105,72 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
     expect(fk?.foreign_keys).toBe(1);
   });
 
-  it("NOT ONE foreign key in the entire schema declares ON DELETE / ON UPDATE", async () => {
+  // PARTIALLY FIXED (R11-01, residual 6): 0017_portal_fk_cascade.sql rebuilds the four portal
+  // tables so their foreign keys declare `ON DELETE CASCADE` — the tables whose orphans would be
+  // PII, and the ones `DELETE /api/me` depends on. The rest are UNCHANGED and deliberately so:
+  // rebuilding `licenses`/`devices`/`keys_index`/`product_keys`/`products`/`tiers` would have to
+  // reconstruct the sixteen RAISE(ABORT) triggers 0015 hangs off them (a DROP TABLE takes a
+  // table's triggers with it), on D1, with no wrapping transaction. A half-landed rebuild leaves
+  // a populated table with no constraints, which is worse than the missing ON DELETE.
+  it("the portal tables now declare ON DELETE CASCADE; the product-scoped ones still do not", async () => {
     const db = makeTestDb();
-    const rows = await db.all<{ sql: string }>(
-      "SELECT sql FROM sqlite_master WHERE type = 'table' AND sql IS NOT NULL",
+    const cascading = [
+      "portal_account_emails",
+      "portal_account_identities",
+      "portal_license_links",
+      "portal_product_settings",
+    ];
+    for (const table of cascading) {
+      const fks = await db.all<{ on_delete: string; table: string }>(
+        `PRAGMA foreign_key_list(${table})`,
+      );
+      expect(fks.length).toBeGreaterThan(0);
+      expect(fks.every((f) => f.on_delete === "CASCADE")).toBe(true);
+    }
+
+    // Everything else still has NO ON DELETE at all — reported, not fixed.
+    const rows = await db.all<{ name: string; sql: string }>(
+      "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND sql IS NOT NULL",
     );
-    const ddl = rows.map((r) => r.sql).join("\n");
-    expect(ddl).toContain("REFERENCES");
-    expect(/ON\s+DELETE/i.test(ddl)).toBe(false);
-    expect(/ON\s+UPDATE/i.test(ddl)).toBe(false);
+    const rest = rows
+      .filter((r) => !cascading.includes(r.name))
+      .map((r) => r.sql)
+      .join("\n");
+    expect(rest).toContain("REFERENCES");
+    expect(/ON\s+DELETE/i.test(rest)).toBe(false);
+    // ON UPDATE is declared NOWHERE, including on the rebuilt tables: a product slug and a
+    // portal account id are immutable primary keys, so there is no update to cascade.
+    expect(/ON\s+UPDATE/i.test(rows.map((r) => r.sql).join("\n"))).toBe(false);
+  });
+
+  // FIXED (R11-09): erasing a portal account no longer depends on the application remembering
+  // to walk its children — the schema does it. This is the property `DELETE /api/me` rests on.
+  it("deleting a portal account CASCADEs its emails, identities and license links", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "acme");
+    const acct = await getOrCreateAccountByEmail(db, "erase@example.com", NOW);
+    await linkLicense(db, acct.id, "acme", "lic-1", "admin", NOW);
+    await db.run(
+      `INSERT INTO portal_account_identities (provider, subject, account_id, created_at, last_seen_at)
+       VALUES ('oidc', 'sub-1', ?, ?, ?)`,
+      acct.id,
+      NOW,
+      NOW,
+    );
+
+    await db.run("DELETE FROM portal_accounts WHERE id = ?", acct.id);
+
+    for (const table of [
+      "portal_account_emails",
+      "portal_account_identities",
+      "portal_license_links",
+    ]) {
+      const n = await db.first<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM ${table} WHERE account_id = ?`,
+        acct.id,
+      );
+      expect(n?.n).toBe(0);
+    }
   });
 
   // PARTIALLY FIXED (R11-13): `identity` is dropped by 0016_drop_dead_pii.sql, so it is no
@@ -517,6 +574,9 @@ describe("R11-05 product scoping", () => {
       "portal_account_identities",
       "portal_license_links", // PK (account_id, product, license_id)
       "portal_audit", // PK id, `product` nullable
+      // 0018_index_assertion.sql — a single-row deploy-time assertion about the SCHEMA, which
+      // is platform-wide by definition. It holds no tenant data of any kind.
+      "schema_index_assertion",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
@@ -779,10 +839,16 @@ describe("R11-08 migration safety", () => {
   });
 
   it("migrations are additive only, so migrate-then-deploy ordering is forward-safe", () => {
-    // 0016_drop_dead_pii.sql is the ONE deliberate exception: it removes `customers`,
-    // `identity` and `release_download_tokens.customer_id`, none of which any code in src/
-    // reads or writes (R11-13), so old code running against the new schema is unaffected.
-    const sql = MIGRATION_FILES.filter((f) => f !== "0016_drop_dead_pii.sql")
+    // TWO deliberate exceptions, both create/copy/drop/rename rebuilds — the only shape SQLite
+    // offers for changing a constraint in place:
+    //   * 0016_drop_dead_pii.sql removes `customers`, `identity` and
+    //     `release_download_tokens.customer_id`, none of which any code in src/ reads or writes
+    //     (R11-13), so old code running against the new schema is unaffected.
+    //   * 0017_portal_fk_cascade.sql rebuilds four portal tables to add `ON DELETE CASCADE`. It
+    //     changes NO column and NO name, only the foreign-key clause, so old code reads and
+    //     writes them exactly as before — the rebuild is invisible above the schema.
+    const REBUILDS = ["0016_drop_dead_pii.sql", "0017_portal_fk_cascade.sql"];
+    const sql = MIGRATION_FILES.filter((f) => !REBUILDS.includes(f))
       .map(sqlFor)
       .join("\n")
       // Statements only — the migrations now carry prose explaining *why* a rebuild was

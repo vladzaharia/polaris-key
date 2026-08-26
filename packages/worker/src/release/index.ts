@@ -16,6 +16,7 @@ import type { Db } from "../db/types.js";
 import type { Product } from "../product.js";
 import { bearer, errorResponse, json, notFound } from "../http.js";
 import { validateDeviceToken } from "../licenseCore.js";
+import { clientIp, rateLimitOk } from "../rateLimit.js";
 import { appSecurityHeaders } from "../securityHeaders.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import {
@@ -25,6 +26,7 @@ import {
   NotFoundError,
   resolveRelease,
   streamAsset,
+  UpstreamRateLimitedError,
 } from "./github.js";
 import { verifySparkleSignature } from "./sparkle.js";
 import {
@@ -90,6 +92,29 @@ const MOVING_CACHE = "public, max-age=120";
 const PINNED_CACHE = "public, max-age=86400, immutable";
 const APPCAST_CACHE = "public, max-age=300";
 
+/**
+ * Per-IP budgets for release requests that MISS the edge cache (R10-05).
+ *
+ * The release surface is public by default and every miss costs 1-3 GitHub subrequests
+ * against an installation quota of 5,000/hour, so before this an unauthenticated client at
+ * ~1 req/s could exhaust the product's entire quota in ~20 minutes and 404 every download and
+ * auto-update on the platform.
+ *
+ * Two budgets, because the two surfaces have very different legitimate shapes:
+ *
+ *   METADATA (appcast / version / changelog / install) — 30/min, matching `/activate`. These
+ *   are cached, so only a client walking distinct selectors (i.e. probing) misses repeatedly;
+ *   a Sparkle updater makes one call per check and `install.sh` three in total.
+ *
+ *   ARTIFACTS (cli / dmg) — 120/min. Not cached (they stream bodies up to 2 GB), and the
+ *   legitimate shape is bursty: a NAT'd office on release day, or one client issuing parallel
+ *   Range requests for a resumable download. Too tight a cap here would 429 real downloads,
+ *   which is the outage this finding is about, so the artifact lane is deliberately loose —
+ *   GitHub's own storage host, not our quota, absorbs the bytes.
+ */
+const METADATA_RATE_LIMIT = { limit: 30, windowSec: 60 } as const;
+const ARTIFACT_RATE_LIMIT = { limit: 120, windowSec: 60 } as const;
+
 type ReleaseAccessMode = "public" | "authenticated" | "licensed";
 
 function readAccessMode(value: unknown): ReleaseAccessMode {
@@ -143,12 +168,7 @@ async function enforceReleaseAccess(
   kind: ReleaseKind,
   now: number,
 ): Promise<Response | null> {
-  const policy = artifactPolicy(cfg);
-  const mode =
-    kind === "version" || kind === "changelog" || kind === "install"
-      ? policy.access.metadata
-      : policy.access.artifacts;
-  if (mode === "public") return null;
+  if (accessModeFor(artifactPolicy(cfg), kind) === "public") return null;
 
   const valid = await validateDeviceToken(env, db, product, bearer(req), now);
   if ("error" in valid) {
@@ -182,6 +202,56 @@ function isResolved(cfg: ReleaseConfigRow): cfg is ResolvedConfig {
   return Boolean(cfg.gh_owner && cfg.gh_repo && cfg.gh_installation_id);
 }
 
+// ── Edge cache (R10-05) ──────────────────────────────────────────────────────
+
+/**
+ * The surfaces whose responses are small, deterministic for a given selector, and pure
+ * functions of GitHub state — i.e. the ones worth absorbing in the Cache API.
+ *
+ * `cli`/`dmg` are excluded on purpose: they stream an artifact body (often hundreds of MB,
+ * with Range and If-None-Match passed through end-to-end), which is not something to buffer
+ * into a cache entry. They are covered by the rate limit instead, and GitHub's own storage
+ * redirect is already CDN-fronted.
+ */
+const CACHEABLE_KINDS = new Set<ReleaseKind>([
+  "appcast",
+  "channelAppcast",
+  "version",
+  "changelog",
+]);
+
+/**
+ * Cloudflare's shared per-colo cache. Absent outside workerd (the Node test environment, and
+ * any future non-Workers host), so every call site treats `null` as "no cache" and degrades
+ * to the pre-cache behaviour rather than throwing.
+ */
+function edgeCache(): Cache | null {
+  const c = (globalThis as { caches?: { default?: Cache } }).caches;
+  return c?.default ?? null;
+}
+
+/**
+ * A canonical cache key for a release read.
+ *
+ * Deliberately synthesised rather than reusing `req.url`: the real URL carries an
+ * attacker-controlled query string, so `?x=1`, `?x=2`, … would mint unbounded distinct cache
+ * entries and every one of them would miss — turning the cache itself into the amplifier it
+ * is meant to stop. Only the inputs that actually change the response are encoded.
+ */
+function releaseCacheKey(
+  origin: string,
+  product: string,
+  kind: ReleaseKind,
+  params: ReleaseParams,
+): Request {
+  const url = new URL(`${origin}/__pkey-release-cache`);
+  url.searchParams.set("p", product);
+  url.searchParams.set("k", kind);
+  if (params.version) url.searchParams.set("v", params.version);
+  if (params.channel) url.searchParams.set("c", params.channel);
+  return new Request(url.toString(), { method: "GET" }) as unknown as Request;
+}
+
 /**
  * Handle a release request. `kind` selects the surface; `params` carries the
  * version/channel/arch. Returns a clean 404 for anything missing or private.
@@ -200,6 +270,24 @@ export async function handleRelease(
 
   const now = Math.floor(Date.now() / 1000);
   const origin = new URL(req.url).origin;
+
+  // R10-05. Cache lookup runs FIRST and only for surfaces that are public for this product —
+  // a hit costs zero GitHub subrequests and zero limiter round-trips, so serving it is the
+  // most available thing we can do. A response is only ever cached when the effective access
+  // mode is `public`, so a hit can never bypass `enforceReleaseAccess`.
+  const cacheable =
+    req.method === "GET" &&
+    CACHEABLE_KINDS.has(kind) &&
+    accessModeFor(artifactPolicy(cfg), kind) === "public";
+  const cache = cacheable ? edgeCache() : null;
+  const cacheKey = cache
+    ? releaseCacheKey(origin, product.slug, kind, params)
+    : null;
+  if (cache && cacheKey) {
+    const hit = await cache.match(cacheKey).catch(() => undefined);
+    if (hit) return hit;
+  }
+
   const denied = await enforceReleaseAccess(
     req,
     env,
@@ -211,6 +299,70 @@ export async function handleRelease(
   );
   if (denied) return harden(denied);
 
+  // Only cache MISSES are metered: the budget exists to bound GitHub subrequests, and a hit
+  // issues none. `install` is included even though it makes no GitHub call — it is the entry
+  // point of the download flow and shares the same public surface.
+  const isArtifact = kind === "cli" || kind === "dmg";
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      {
+        bucket: isArtifact ? "releaseArtifact" : "release",
+        id: clientIp(req),
+        ...(isArtifact ? ARTIFACT_RATE_LIMIT : METADATA_RATE_LIMIT),
+      },
+      now,
+    ))
+  ) {
+    return harden(
+      errorResponse(429, "rate_limited", "too many release requests"),
+    );
+  }
+
+  const res = await computeRelease(
+    req,
+    env,
+    db,
+    product,
+    cfg,
+    kind,
+    params,
+    origin,
+    now,
+    fetchImpl,
+  );
+  if (cache && cacheKey && res.status === 200) {
+    // `put` consumes a body, so store the clone and return the original. A cache failure is
+    // never allowed to fail the request.
+    await cache.put(cacheKey, res.clone()).catch(() => undefined);
+  }
+  return res;
+}
+
+/** Which access mode governs a surface: metadata for the informational reads, else artifacts. */
+function accessModeFor(
+  policy: ReturnType<typeof artifactPolicy>,
+  kind: ReleaseKind,
+): ReleaseAccessMode {
+  return kind === "version" || kind === "changelog" || kind === "install"
+    ? policy.access.metadata
+    : policy.access.artifacts;
+}
+
+/** The surface switch: everything past access control, rate limiting and the edge cache. */
+async function computeRelease(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  cfg: ReleaseConfigRow,
+  kind: ReleaseKind,
+  params: ReleaseParams,
+  origin: string,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<Response> {
   try {
     // Every branch is AWAITED inside the try: `return <promise>` resolves *after* the try
     // block exits, so the NotFoundError -> 404 mapping below never fired for the async
@@ -286,6 +438,24 @@ export async function handleRelease(
         return harden(notFound());
     }
   } catch (err) {
+    // R10-05. GitHub quota exhaustion is a platform condition, not "no such release": it hits
+    // every product on the installation at once and previously surfaced as a 404, which is
+    // indistinguishable from a withdrawn release and silently stops auto-updaters.
+    if (err instanceof UpstreamRateLimitedError) {
+      const headers: Record<string, string> = { "cache-control": "no-store" };
+      if (err.retryAfterSeconds !== undefined) {
+        headers["retry-after"] = String(Math.ceil(err.retryAfterSeconds));
+      }
+      return harden(
+        json(
+          {
+            error: "upstream_rate_limited",
+            message: "release metadata is temporarily unavailable",
+          },
+          { status: 503, headers },
+        ),
+      );
+    }
     if (err instanceof NotFoundError) return harden(notFound());
     throw err;
   }
@@ -302,16 +472,28 @@ function harden(res: Response): Response {
   return new Response(res.body, { status: res.status, headers });
 }
 
+/**
+ * The installation token for this product's repo.
+ *
+ * R5-03: the scope is the repo coordinates, not the product slug. The slug was never a
+ * security boundary here — GitHub scopes a token to `(installation, repositories)` — and
+ * passing it made the KV cache entry collide with every other product on the same org-wide
+ * installation. `channelWorkflow` asks for the two extra read permissions only when this
+ * product actually resolves channels through the Actions API.
+ */
 async function token(
   env: Env,
   cfg: ResolvedConfig,
-  product: string,
   now: number,
   fetchImpl: FetchImpl,
 ): Promise<string> {
   return getInstallationToken(
     env,
-    product,
+    {
+      owner: cfg.gh_owner,
+      repo: cfg.gh_repo,
+      channelWorkflow: Boolean(cfg.channel_workflow),
+    },
     cfg.gh_installation_id,
     now,
     fetchImpl,
@@ -322,7 +504,6 @@ async function token(
 async function resolveSelector(
   env: Env,
   cfg: ResolvedConfig,
-  product: string,
   selector: string | undefined,
   now: number,
   fetchImpl: FetchImpl,
@@ -330,7 +511,7 @@ async function resolveSelector(
   const manual = parseManualChannels(cfg.manual_channels_json);
   const sel = classifyChannel(selector, manual);
   if (!sel) throw new NotFoundError(`unknown selector: ${selector}`);
-  const tok = await token(env, cfg, product, now, fetchImpl);
+  const tok = await token(env, cfg, now, fetchImpl);
 
   // A pinned stable tag can be resolved directly; moving selectors scan the release list.
   if (sel.kind === "stable" && sel.raw !== "latest" && sel.raw !== "stable") {
@@ -351,14 +532,7 @@ async function resolveSelector(
     100,
     fetchImpl,
   );
-  const channelTags = await channelTagsFor(
-    env,
-    cfg,
-    product,
-    sel,
-    now,
-    fetchImpl,
-  );
+  const channelTags = await channelTagsFor(env, cfg, sel, now, fetchImpl);
   const release = resolveChannel(sel, releases, channelTags);
   if (!release) throw new NotFoundError(`no release for selector: ${selector}`);
   return { release, sel };
@@ -372,14 +546,13 @@ async function resolveSelector(
 async function channelTagsFor(
   env: Env,
   cfg: ResolvedConfig,
-  product: string,
   sel: ChannelSelector,
   now: number,
   fetchImpl: FetchImpl,
 ): Promise<Set<string> | undefined> {
   if (sel.kind !== "beta" && sel.kind !== "pr") return undefined;
   if (!cfg.channel_workflow) return undefined;
-  const tok = await token(env, cfg, product, now, fetchImpl);
+  const tok = await token(env, cfg, now, fetchImpl);
   const base = `https://api.github.com/repos/${cfg.gh_owner}/${cfg.gh_repo}`;
   const headers = {
     Accept: "application/vnd.github+json",
@@ -474,7 +647,6 @@ async function handleVersion(
   const { release, sel } = await resolveSelector(
     env,
     cfg,
-    product.slug,
     params.version ?? params.channel,
     now,
     fetchImpl,
@@ -498,7 +670,7 @@ async function handleChangelog(
   fetchImpl: FetchImpl,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
-  const tok = await token(env, cfg, product.slug, now, fetchImpl);
+  const tok = await token(env, cfg, now, fetchImpl);
   const releases = await listReleases(
     tok,
     cfg.gh_owner,
@@ -543,7 +715,6 @@ async function handleBinary(
   const { release, sel } = await resolveSelector(
     env,
     cfg,
-    product.slug,
     params.version ?? params.channel,
     now,
     fetchImpl,
@@ -561,7 +732,7 @@ async function handleBinary(
         });
   if (!asset) return notFound();
 
-  const tok = await token(env, cfg, product.slug, now, fetchImpl);
+  const tok = await token(env, cfg, now, fetchImpl);
 
   // `?checksum=sha256` serves the artifact's published `<asset>.sha256` sidecar so the
   // installer can verify what it downloaded (R6-02). No sidecar -> 404, and the script
@@ -641,7 +812,6 @@ async function handleAppcast(
   const { release, sel } = await resolveSelector(
     env,
     cfg,
-    product.slug,
     selectorStr,
     now,
     fetchImpl,
@@ -665,7 +835,7 @@ async function handleAppcast(
   if (policy.requireSparkleSignature && !cfg.sparkle_ed25519_pub) {
     return notFound();
   }
-  const tok = await token(env, cfg, product.slug, now, fetchImpl);
+  const tok = await token(env, cfg, now, fetchImpl);
   const sig = release.assets.find((a) => a.name === sigAssetName(dmg.name));
   if (!sig && (cfg.sparkle_ed25519_pub || policy.requireSparkleSignature)) {
     return notFound();

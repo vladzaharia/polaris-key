@@ -56,6 +56,11 @@ import {
   upsertPortalProductSettings,
 } from "../../src/portal/repo.js";
 import { pk } from "../../src/kv.js";
+import {
+  type FetchImpl,
+  getInstallationToken,
+  installationTokenSlot,
+} from "../../src/release/githubApp.js";
 import { hashKey } from "../../src/crypto.js";
 
 const PORTAL_SECRET = "r5-portal-session-secret";
@@ -982,5 +987,263 @@ describe("REFUTED: portal email binding is sticky, so an inbox does not inherit 
     );
     await syncAccountLicenseLinks(db, attacker.id, NOW);
     expect(await listPortalLicenses(db, attacker.id)).toEqual([]);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// R5-03 — GitHub App installation tokens were minted UN-SCOPED, and the cache
+//         scope was whatever the caller happened to pass.
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// FIXED. Two defects, and the ORDER matters: fixing the mint alone would have been defeated
+// by the shared cache entry, because `installId` is identical for every product in an
+// org-wide installation and the only other key component was a caller-supplied string that
+// meant "repo name" at `linkRepo.ts`/`resync.ts` and "product slug" at
+// `index.ts`/`health.ts`. So:
+//
+//   1. the cache key is now derived inside `getInstallationToken` from
+//      `(installId, down-scope)` and ignores the caller's argument entirely; and
+//   2. the mint POSTs `repositories` + a read-only `permissions` set, which GitHub enforces
+//      server-side, instead of sending no body at all and getting installation-wide scope.
+//
+// The tests below are the original code-proven finding inverted into executable assertions.
+
+/** A GitHub App env whose private key really signs, so the mint path is exercised for real. */
+async function ghAppEnv(kv: KvMock): Promise<Env> {
+  const env = makeEnv(kv, [ACME]);
+  env.GITHUB_APP_ID = "123456";
+  const pair = (await crypto.subtle.generateKey(
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
+    true,
+    ["sign", "verify"],
+  )) as CryptoKeyPair;
+  const pkcs8 = (await crypto.subtle.exportKey(
+    "pkcs8",
+    pair.privateKey,
+  )) as ArrayBuffer;
+  let bin = "";
+  for (const b of new Uint8Array(pkcs8)) bin += String.fromCharCode(b);
+  const b64 = btoa(bin);
+  env.GITHUB_APP_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----\n${(b64.match(/.{1,64}/g) ?? [b64]).join("\n")}\n-----END PRIVATE KEY-----`;
+  return env;
+}
+
+interface MintCall {
+  url: string;
+  body: { repositories?: string[]; permissions?: Record<string, string> };
+}
+
+/** A fetch stub that records every access-token POST and answers with a distinct token. */
+function recordingMint(
+  token = "ghs_token",
+  status = 201,
+): { fetchImpl: FetchImpl; mints: MintCall[] } {
+  const mints: MintCall[] = [];
+  const fetchImpl: FetchImpl = async (input, init) => {
+    const url = String(input);
+    if (url.includes("/access_tokens")) {
+      mints.push({
+        url,
+        body: JSON.parse(String(init?.body ?? "{}")) as MintCall["body"],
+      });
+      return new Response(JSON.stringify({ token }), {
+        status,
+      }) as unknown as Response;
+    }
+    return new Response("{}", { status: 200 }) as unknown as Response;
+  };
+  return { fetchImpl, mints };
+}
+
+describe("R5-03 GitHub installation tokens are down-scoped to one repo", () => {
+  it("FIXED: the mint POSTs `repositories` + read-only `permissions` (it used to send NO body)", async () => {
+    const kv = new KvMock();
+    const env = await ghAppEnv(kv);
+    const { fetchImpl, mints } = recordingMint();
+
+    await getInstallationToken(
+      env,
+      { owner: "acme", repo: "widget" },
+      42,
+      NOW,
+      fetchImpl,
+    );
+
+    expect(mints).toHaveLength(1);
+    expect(mints[0]!.url).toBe(
+      "https://api.github.com/app/installations/42/access_tokens",
+    );
+    // The whole finding: an org-wide install used to hand back a token good for EVERY repo.
+    expect(mints[0]!.body.repositories).toEqual(["widget"]);
+    // ...and read-only, minimum permissions. Nothing on this path writes.
+    expect(mints[0]!.body.permissions).toEqual({
+      contents: "read",
+      metadata: "read",
+    });
+    for (const level of Object.values(mints[0]!.body.permissions ?? {})) {
+      expect(level).toBe("read");
+    }
+  });
+
+  it("FIXED: a channel-workflow product asks for actions/pull_requests read — and nothing more", async () => {
+    const kv = new KvMock();
+    const env = await ghAppEnv(kv);
+    const { fetchImpl, mints } = recordingMint();
+
+    await getInstallationToken(
+      env,
+      { owner: "acme", repo: "widget", channelWorkflow: true },
+      42,
+      NOW,
+      fetchImpl,
+    );
+    expect(mints[0]!.body.permissions).toEqual({
+      contents: "read",
+      metadata: "read",
+      actions: "read",
+      pull_requests: "read",
+    });
+  });
+
+  it("FIXED: two products on ONE org-wide installation no longer share a cache entry", async () => {
+    const kv = new KvMock();
+    const env = await ghAppEnv(kv);
+    // Same `installId` — the org-wide case. Before the fix the key was
+    // `p:<caller-string>:gh-token:42`, so a slug caller and a repo-name caller could land on
+    // one entry and be served each other's broad token.
+    const INSTALL = 42;
+    const a = installationTokenSlot(INSTALL, {
+      owner: "acme",
+      repo: "product-a",
+    });
+    const b = installationTokenSlot(INSTALL, {
+      owner: "acme",
+      repo: "product-b",
+    });
+    expect(a.key).not.toBe(b.key);
+    expect(a.key).toBe(`gh:install:${INSTALL}:token:acme/product-a`);
+
+    // Drive both through the real mint and confirm each got its OWN token, scoped to its own
+    // repo, and that neither can read the other's slot.
+    const first = recordingMint("ghs_for_a");
+    await getInstallationToken(
+      env,
+      { owner: "acme", repo: "product-a" },
+      INSTALL,
+      NOW,
+      first.fetchImpl,
+    );
+    const second = recordingMint("ghs_for_b");
+    const tokenB = await getInstallationToken(
+      env,
+      { owner: "acme", repo: "product-b" },
+      INSTALL,
+      NOW,
+      second.fetchImpl,
+    );
+
+    expect(first.mints[0]!.body.repositories).toEqual(["product-a"]);
+    expect(second.mints[0]!.body.repositories).toEqual(["product-b"]);
+    // B genuinely re-minted rather than reusing A's cached entry.
+    expect(tokenB).toBe("ghs_for_b");
+    expect(kv.keys().sort()).toEqual([a.key, b.key].sort());
+  });
+
+  it("FIXED: the cache key ignores the caller's scope argument entirely", async () => {
+    // The caller disagreement documented in R5-isolation.md is still present in the two
+    // off-limits call sites, so the key derivation has to be correct WITHOUT their help.
+    // A bare string (repo name at linkRepo/resync, product slug at health) can never produce
+    // the same slot as the structured, owner-qualified form.
+    const bare = installationTokenSlot(42, "widget");
+    const structured = installationTokenSlot(42, {
+      owner: "acme",
+      repo: "widget",
+    });
+    expect(bare.key).not.toBe(structured.key);
+    // Neither lives in the product namespace any more, so no product slug can collide with it.
+    expect(bare.key.startsWith("p:")).toBe(false);
+    expect(structured.key.startsWith("p:")).toBe(false);
+    // ...and the sealing AAD differs too, so even a guessed key yields an unopenable blob.
+    expect(bare.ctx.id).not.toBe(structured.ctx.id);
+  });
+
+  it("FIXED: a legacy bare-string caller still gets a down-scoped token when the name IS a repo", async () => {
+    const kv = new KvMock();
+    const env = await ghAppEnv(kv);
+    const { fetchImpl, mints } = recordingMint();
+    await getInstallationToken(env, "widget", 42, NOW, fetchImpl);
+    expect(mints).toHaveLength(1);
+    expect(mints[0]!.body.repositories).toEqual(["widget"]);
+  });
+
+  it("availability: a 422 on the narrowing falls back rather than 500ing the release surface", async () => {
+    // GitHub 422s a `repositories` entry that is not in the installation — which is what
+    // `release/health.ts` produces, because it passes a PRODUCT SLUG. Falling back keeps the
+    // health check working; the fallback token is still permission-minimised, and it is
+    // reported in R10-dos.md as the one caller this lane could not fully scope.
+    const kv = new KvMock();
+    const env = await ghAppEnv(kv);
+    const attempts: MintCall["body"][] = [];
+    const fetchImpl: FetchImpl = async (input, init) => {
+      const url = String(input);
+      if (!url.includes("/access_tokens"))
+        return new Response("{}", { status: 200 }) as unknown as Response;
+      const body = JSON.parse(String(init?.body ?? "{}")) as MintCall["body"];
+      attempts.push(body);
+      if (body.repositories)
+        return new Response("no such repo", {
+          status: 422,
+        }) as unknown as Response;
+      return new Response(JSON.stringify({ token: "ghs_wide" }), {
+        status: 201,
+      }) as unknown as Response;
+    };
+
+    const tok = await getInstallationToken(
+      env,
+      "not-a-repo",
+      42,
+      NOW,
+      fetchImpl,
+    );
+    expect(tok).toBe("ghs_wide");
+    expect(attempts).toHaveLength(2);
+    // Even the fallback is read-only — never the old "no body at all", which inherited the
+    // App's full write scopes.
+    expect(attempts[1]!.repositories).toBeUndefined();
+    expect(attempts[1]!.permissions).toEqual({
+      contents: "read",
+      metadata: "read",
+    });
+  });
+
+  it("a STRUCTURED caller never silently widens: a 422 there is a hard failure", async () => {
+    const kv = new KvMock();
+    const env = await ghAppEnv(kv);
+    const attempts: MintCall["body"][] = [];
+    const fetchImpl: FetchImpl = async (input, init) => {
+      const url = String(input);
+      if (!url.includes("/access_tokens"))
+        return new Response("{}", { status: 200 }) as unknown as Response;
+      attempts.push(JSON.parse(String(init?.body ?? "{}")) as MintCall["body"]);
+      return new Response("nope", { status: 422 }) as unknown as Response;
+    };
+    await expect(
+      getInstallationToken(
+        env,
+        { owner: "acme", repo: "widget" },
+        42,
+        NOW,
+        fetchImpl,
+      ),
+    ).rejects.toThrow(/installation token failed: 422/);
+    // One attempt only — no repositories-less retry for a caller that knows its coordinates.
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]!.repositories).toEqual(["widget"]);
   });
 });

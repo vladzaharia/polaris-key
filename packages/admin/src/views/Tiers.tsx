@@ -92,7 +92,7 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
       setDeleting(null);
       refresh();
     } catch (err) {
-      toast.error("Could not delete tier", describeError(err));
+      toast.error("Could not delete tier", describeError(err, TIER_IN_USE));
     } finally {
       setBusy(false);
     }
@@ -267,11 +267,15 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
         onSave={(id, body) => void handleSave(id, body)}
       />
 
+      {/* The server refuses outright while ANY license still references the tier
+          (`handlers/tiers.ts` → `countLicensesUsingTier` > 0 ⇒ 409). The old copy — "licenses
+          already assigned keep their settings, but the tier can no longer be assigned" —
+          described a soft-retire the control plane has never implemented. */}
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
         title={`Delete tier “${deleting?.id ?? ""}”?`}
-        description="Licenses already assigned to this tier keep their settings, but the tier can no longer be assigned. This cannot be undone."
+        description="Only an unused tier can be deleted: while any license is still assigned to it the server refuses. Reassign those licenses first. This cannot be undone."
         confirmLabel="Delete tier"
         loading={busy}
         onConfirm={() => void handleDelete()}
@@ -303,11 +307,24 @@ function VersionWindow({
   );
 }
 
-function describeError(err: unknown): string {
+/**
+ * `ApiError` carries only status/code/fields — never the server's message — so 409 has to be
+ * interpreted by the call site. The tiers endpoint uses it for two unrelated things: a
+ * duplicate id on create, and "tier is still referenced" on delete. Hard-coding "that id is
+ * already in use" told the operator the wrong reason on every failed delete.
+ */
+function describeError(
+  err: unknown,
+  conflict = "That id is already in use.",
+): string {
   if (err instanceof ApiError) {
-    if (err.status === 409) return "That id is already in use.";
+    if (err.status === 409) return conflict;
     if (err.fields?.length) return `Check: ${err.fields.join(", ")}.`;
     return err.message || `Request failed (${err.status}).`;
   }
   return err instanceof Error ? err.message : "Request failed.";
 }
+
+/** The only 409 a DELETE can produce (`countLicensesUsingTier` > 0). */
+const TIER_IN_USE =
+  "Licenses are still assigned to this tier. Reassign them first.";

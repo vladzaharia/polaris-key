@@ -31,7 +31,33 @@ class_name = "RateLimitDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["RateLimitDO"]
+# SQLite-backed, not KV-backed. Cloudflare no longer permits accounts to create the legacy
+# KV-backed Durable Object classes that `new_classes` declares, so this line as originally
+# written would have failed the very first deploy — and, per the operational-resilience
+# review, it also silently broke the "redeploy into a clean Cloudflare account" step that
+# every disaster-recovery procedure depends on.
+#
+# Changing it is free ONLY because this object has never been deployed and therefore holds
+# no state. Once RateLimitDO holds data, moving between storage backends is a real migration.
+new_sqlite_classes = ["RateLimitDO"]
+
+# ---------------------------------------------------------------------------
+# Scheduled maintenance (R11-09 / R12-10). Without this block the worker has no `scheduled()`
+# invocation at all, and `audit`, `portal_audit` and `release_download_tokens` grow forever
+# while dormant device seats stay occupied. `src/scheduled.ts` is the handler.
+#
+# 03:17 UTC, daily. Retention is measured in months (RETENTION_SECONDS = 180 days), so nothing
+# is gained by running more often, and a daily tick still bounds the tables and re-runs the
+# deploy-time index assertion within a day of any bad deploy. The odd minute is deliberate:
+# `0 3 * * *` puts the job in the same second as every other cron on the platform, and a sweep
+# that competes with a thundering herd for D1 is a sweep that starts timing out.
+#
+# `triggers` is an INHERITABLE wrangler key, so this one block applies to prod, staging and dev
+# without a per-environment copy; overriding it for one environment means adding
+# `[env.<name>.triggers]`, which then replaces this list for that environment entirely.
+# ---------------------------------------------------------------------------
+[triggers]
+crons = ["17 3 * * *"]
 
 # ---------------------------------------------------------------------------
 # Per-environment bindings. The D1 database and KV namespace are created once,

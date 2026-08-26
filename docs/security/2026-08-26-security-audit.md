@@ -10,8 +10,36 @@ rather than from source I re-read, it is marked. Where something is unproven, it
 
 ## 1. Executive summary
 
-**The single most important fact about this audit is that Polaris Key has never been deployed, and
-its CI has never passed.**
+> ## ⚠ CORRECTION (2026-08-26, post-publication)
+>
+> **This section originally claimed Polaris Key had never been deployed. That is wrong, and the
+> error mattered.** Verified against the live account after `wrangler login`:
+>
+> - `https://key.plrs.im/` → **HTTP 200**, and `/djdl/.well-known/jwks.json` → **HTTP 200**.
+> - `wrangler deployments list --env prod` shows deployed worker versions dated **2026-06-27**.
+> - Production D1 had migrations `0001`–`0009` applied while the repo was at `0011`.
+>
+> What was true is narrower: **the deploy _workflow_ never ran** — zero tags, CI never passed. The
+> worker was deployed **by hand** with `wrangler deploy`, bypassing the pipeline. The lagging
+> migration state is the fingerprint of exactly that.
+>
+> **Therefore the claim "nothing in this report is an incident" below is withdrawn.** The vulnerable
+> code is internet-reachable now. What limits the impact is the data, not the code: production holds
+> **1 product, 0 licenses, 0 devices, 1 portal account, 5 audit rows** — there is no user base to
+> harm yet, and the two tables the destructive migration drops (`customers`, `identity`) are empty.
+>
+> How the error happened is worth recording, because it is the audit's own methodological lesson:
+> every deployment signal reachable **from inside the repository** — tags, CI history, workflow
+> triggers — pointed at "never deployed", and all of them were consistent with each other. None of
+> them could see a manual `wrangler deploy`. The audit ran without Cloudflare credentials and
+> inferred production state from repository state. That inference was sound and the conclusion was
+> still false. Absence of evidence in the repo was treated as evidence of absence in the account.
+>
+> One thing the correction confirms rather than undermines: `jwks.json` returning 200 proves
+> `PLATFORM_KEK` is valid and the product signing key opens — the single most important precondition
+> for a safe deploy.
+
+**Polaris Key's CI has never passed, and its deploy workflow has never run.**
 
 - `git tag -l | wc -l` → **0**, across 37 commits spanning 2026-06-23 to 2026-08-25.
   `.github/workflows/deploy.yml:3-5` triggers exclusively on `push: tags: ["v*"]`. The production
@@ -25,11 +53,18 @@ its CI has never passed.**
   before the first `run:` step. `packageManager` has been present since the first commit
   (`dd54497`); the workflows landed later (`705ca58`). This is finding **R7-01**.
 
-The consequence that matters: **nothing in this report is an incident.** There is no production
-deployment, no customer, no revenue and no data at risk. Every Critical is a _release blocker_ —
-something that fires on the first real `v*` tag, or that would have to be fixed before one.
-`docs/security/findings/VERIFY-R10-01.md:192-200` reaches the same conclusion independently, by
-elimination, for the worst availability defect in the set.
+~~The consequence that matters: **nothing in this report is an incident.** There is no production
+deployment, no customer, no revenue and no data at risk.~~ **Withdrawn — see the correction above.**
+The worker is live and was deployed manually. The accurate statement is:
+
+> Every Critical is **live and internet-reachable**, and has been since 2026-06-27. What bounds the
+> impact is that production holds **0 licenses and 0 devices** — the platform is exposed but
+> unused. The findings are therefore urgent to deploy, not merely urgent to fix.
+
+`docs/security/findings/VERIFY-R10-01.md:192-200` reached the "never deployed" conclusion
+independently, by elimination from repository state — and was wrong for the same reason this
+section was. Its technical finding (Ajv codegen fails under workerd) was separately confirmed by
+booting real workerd and stands unaffected; only its deployment inference is retracted.
 
 The second consequence is less comfortable: **the 1158 green tests recorded in
 `docs/security/findings/BASELINE.md` were produced locally, never by CI.** Every control this audit

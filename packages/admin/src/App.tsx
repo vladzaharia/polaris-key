@@ -155,12 +155,16 @@ function renderRoute(
   if (route.kind === "dashboard") return <Dashboard />;
   if (route.kind === "products") return <Products />;
 
+  // `handleMe` returns every product or none — admin authority is platform-wide and there is
+  // no per-product grant to be missing. So the only way to land here is a hash pointing at a
+  // slug that does not exist. Saying "not authorized" implied an ACL to go and fix, and sent
+  // the operator looking for a permission nobody can issue.
   if (!me.products.some((prod) => prod.slug === activeSlug)) {
     return (
       <EmptyState
         icon={<AlertTriangle aria-hidden />}
-        title="Not authorized"
-        description={`You do not administer “${activeSlug}”.`}
+        title="Unknown product"
+        description={`No product with the slug “${activeSlug}” exists.`}
       />
     );
   }

@@ -759,6 +759,85 @@ def test_r4_04_offline_reload_preserves_grace_but_still_clamps(tmp_path) -> None
     c.close()
 
 
+def test_r4_04_the_trust_manifest_anchors_time_independently(tmp_path) -> None:
+    """§4.3 as CORRECTED — the floor needs a SECOND source or it is inert.
+
+    Derived from the config document alone, ``high_water_mark == doc.issuedAt``, which is
+    below that same document's ``graceUntil`` by construction — so the floor can never
+    reach the end of grace and winding the clock back still extends offline operation
+    indefinitely (the residual half of R4-04). The trust manifest is signed, cached
+    separately, and refreshed by default, so it advances even while the document does not.
+    """
+    issued = NOW - 400 * DAY  # grace ended 370 days ago
+    rolled_back = issued + 60  # `sudo date`, back inside the document's window
+    # A manifest verified YESTERDAY. Long past its own `expiresAt` — which is exactly what
+    # a cached manifest looks like — so this also pins that the reload path stays
+    # freshness-free while still anchoring time.
+    manifest_jws = sign_jws(
+        _manifest([_key_entry(KID, PUBKEY_RAW)], issued=NOW - DAY),
+        PRIVATE_PEM,
+        KID,
+        TYP_TRUST,
+    )
+
+    def seeded(name: str, *, with_manifest: bool) -> FileStore:
+        path = str(tmp_path / name)
+        store = FileStore(PRODUCT, path)
+        store.set_token("t")
+        store.write_cache(
+            CacheRecord(
+                # The document is bound to THIS store's device id, as a real one would be.
+                configJws=sign_jws(
+                    _doc(store.get_device_id(), issued=issued),
+                    PRIVATE_PEM,
+                    KID,
+                    TYP_CONFIG,
+                ),
+                trustJws=manifest_jws if with_manifest else None,
+            )
+        )
+        # A fresh instance, so the client re-reads and re-verifies from disk.
+        return FileStore(PRODUCT, path)
+
+    # (a) Document only: the rollback still works. This is the defect, pinned.
+    doc_only = _client(
+        _routes(config_status=503), store=seeded("doconly", with_manifest=False)
+    )
+    assert doc_only._high_water_mark == issued
+    assert doc_only.status(now=rolled_back).status == "ok"
+    doc_only.close()
+
+    # (b) With the cached manifest the floor clears `graceUntil`, so the gate refuses.
+    anchored = _client(
+        _routes(config_status=503), store=seeded("anchored", with_manifest=True)
+    )
+    assert anchored._high_water_mark == NOW - DAY
+    assert anchored.status(now=rolled_back).status == "expired"
+    assert not anchored.is_licensed(now=rolled_back)
+    # …and the manifest's keys still loaded: freshness is NOT re-checked on reload.
+    assert KID in anchored._manifest_keys
+    anchored.close()
+
+    # (c) The network path raises it too, even when /config is unreachable.
+    online = _client(
+        _routes(
+            config_status=503,
+            trust_jws=sign_jws(
+                _manifest([_key_entry(KID, PUBKEY_RAW)], issued=NOW),
+                PRIVATE_PEM,
+                KID,
+                TYP_TRUST,
+            ),
+        ),
+        store=seeded("online", with_manifest=False),
+    )
+    assert online.status(now=rolled_back).status == "ok"
+    online.refresh()
+    assert online._high_water_mark == NOW
+    assert online.status(now=rolled_back).status == "expired"
+    online.close()
+
+
 # ════════════════════════════════════════════════════════════════════════════════════
 # §5 / R2-11 — a 304 renews freshness
 # ════════════════════════════════════════════════════════════════════════════════════

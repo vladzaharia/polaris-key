@@ -187,7 +187,9 @@ class PolarisKeyClient:
         self._last_accepted_issued_at: Optional[int] = None
         self._last_trust_issued_at: Optional[int] = None
         self._last_verified_at: Optional[int] = None
-        # The greatest `issuedAt` ever verified — the monotonic time floor (§4.3).
+        # The monotonic time floor (§4.3): `max` over the `issuedAt` of every signed
+        # artifact re-verified here — the config document AND the trust manifest. Both
+        # sources are load-bearing; see `_raise_floor`.
         self._high_water_mark = 0
 
     @classmethod
@@ -288,9 +290,26 @@ class PolarisKeyClient:
         """Install a freshly verified document and re-derive the counters it anchors."""
         self._doc = doc
         self._last_accepted_issued_at = doc.issuedAt
-        # The monotonic floor only ever rises (§4.3) — a rolled-back system clock is inert.
-        if doc.issuedAt > self._high_water_mark:
-            self._high_water_mark = doc.issuedAt
+        self._raise_floor(doc.issuedAt)
+
+    def _raise_floor(self, issued_at: int) -> None:
+        """Raise the §4.3 clock floor to ``issued_at``.
+
+        Monotonic by construction — it only ever rises, and only from content whose
+        signature was just checked against the pins, so there is no unsigned field an
+        attacker could edit to move it either way.
+
+        The floor has TWO sources: ``configDoc.issuedAt`` and ``trustManifest.issuedAt``.
+        Both are required. Derived from the document alone it is inert (R4-04): with one
+        cached document the mark equals ``doc.issuedAt``, which is below that same
+        document's ``graceUntil`` by construction, so it can never push ``effective_now``
+        past the end of grace and a rolled-back clock still extends offline operation
+        indefinitely. The manifest is the second, independently-advancing signed clock —
+        ``trust_refresh`` is on by default, so it moves even while a content-stable config
+        document sits behind an unchanged ETag.
+        """
+        if issued_at > self._high_water_mark:
+            self._high_water_mark = issued_at
 
     def _effective_now(self, now: Optional[int] = None) -> int:
         """``max(systemClock, highWaterMark)`` — the §4.3 monotonic time floor.
@@ -682,6 +701,12 @@ class PolarisKeyClient:
         self._manifest_keys = result.discovered
         self._trust = merge_trust(self._pinned, result.discovered)
         self._last_trust_issued_at = result.doc["issuedAt"]
+        # §4.3 — the manifest is the floor's second source, and the one that actually
+        # advances. A stale cached manifest still counts: its ``issuedAt`` is a signed
+        # LOWER BOUND on real time regardless of whether it is fresh enough to publish
+        # keys, which is why raising the floor here does not re-introduce the freshness
+        # check ``check_freshness=False`` deliberately skipped above.
+        self._raise_floor(result.doc["issuedAt"])
         if persist:
             self._patch_cache(trust_jws=jws)
         return True

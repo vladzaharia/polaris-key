@@ -30,10 +30,14 @@ export interface GateInput {
   /** Epoch ms of the last successful online verify. */
   lastVerifiedAt?: number;
   /**
-   * Monotonic time floor (epoch seconds): the greatest `issuedAt` this client has ever
-   * VERIFIED, recomputed at load from the cached JWS — never read from an unsigned field.
-   * The gate evaluates at `max(now, highWaterMark)`, which makes clock rollback inert
-   * without requiring a trusted local clock (wire contract v2 §4.3, finding R4-04).
+   * Monotonic time floor (epoch seconds): `max(configDoc.issuedAt, trustManifest.issuedAt)`
+   * over the artifacts this client has re-VERIFIED, recomputed at load from the cached JWS
+   * — never read from an unsigned field. The gate evaluates at `max(now, highWaterMark)`,
+   * which makes clock rollback inert without requiring a trusted local clock (wire contract
+   * v2 §4.3, finding R4-04).
+   *
+   * Both sources are required. Derived from the document alone the floor is inert, because
+   * `doc.issuedAt < doc.graceUntil` always holds, so it can never reach the end of grace.
    */
   highWaterMark?: number;
 }

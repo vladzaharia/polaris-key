@@ -1019,7 +1019,8 @@
         "trust": {
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
           "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
-        }
+        },
+        "issuedAt": 1700000000
       }
     },
     {
@@ -1037,7 +1038,8 @@
         "accepted": true,
         "trust": {
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
-        }
+        },
+        "issuedAt": 1700000000
       }
     },
     {
@@ -1054,7 +1056,8 @@
         "trust": {
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
           "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
-        }
+        },
+        "issuedAt": 1700000000
       }
     },
     {
@@ -1072,7 +1075,8 @@
         "accepted": true,
         "trust": {
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
-        }
+        },
+        "issuedAt": 1700000000
       }
     },
     {
@@ -1107,7 +1111,8 @@
         "accepted": true,
         "trust": {
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
-        }
+        },
+        "issuedAt": 1700000000
       }
     },
     {
@@ -1125,7 +1130,8 @@
         "accepted": true,
         "trust": {
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
-        }
+        },
+        "issuedAt": 1700000000
       }
     },
     {
@@ -1145,6 +1151,25 @@
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
           "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
         }
+      }
+    },
+    {
+      "id": "trust-expired-manifest-reload-path",
+      "description": "The SAME long-expired manifest on the CACHE-RELOAD path. A manifest's `expiresAt` is `issuedAt + cacheSeconds` — minutes — so a client that re-checked it on load would drop every rotated key on every restart and lose the ability to verify offline. Freshness is a network-path rule only (§4.2), the mirror of `doc-expired-reload-path`. Its `issuedAt` is still a signed lower bound on real time and still raises the §4.3 clock floor.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "before": {},
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoic3RhZ2VkIn1dfQ.yaZgKbqBVV_vDMEPpy-7jfDP_EMPD-bnGwv_1EidmDvmthNFGLjbxxi1TiaXKM8a2GspkQlrzH9mCkWgkgFoCQ",
+      "now": 1700000601,
+      "checkFreshness": false,
+      "expect": {
+        "accepted": true,
+        "trust": {
+          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+        },
+        "issuedAt": 1700000000
       }
     },
     {
@@ -1180,6 +1205,108 @@
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
           "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
         }
+      }
+    }
+  ],
+  "clockFloorCases": [
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "id": "floor-config-doc-alone-does-not-stop-rollback",
+      "description": "The residual R4-04 defect, pinned so it cannot come back by accident: with the config document as the ONLY floor source, `highWaterMark === doc.issuedAt`, which is below `graceUntil` by construction. A clock wound back inside the document's window still reads `ok`. This case is why the mark must have a second source.",
+      "configJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktY29uZmlnK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.hl7N38sKKAkiWepKGWhxKWMLIKcunFfUgSI0SjQi8BDdgFHPl75XUGM4D-N4CeUkia1cVy9Ge7PU3bMkKlYnDg",
+      "systemClock": 1700000060,
+      "expect": {
+        "highWaterMark": 1700000000,
+        "effectiveNow": 1700000060,
+        "status": "ok"
+      }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "id": "floor-trust-manifest-defeats-rollback",
+      "description": "The fix. The same wound-back clock and the same document, plus a trust manifest the client verified 399 days later. `highWaterMark = max(doc.issuedAt, manifest.issuedAt)` is now past `graceUntil`, so the gate reads `expired` — a client that verified a manifest yesterday cannot claim it is last year (§4.3).",
+      "configJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktY29uZmlnK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.hl7N38sKKAkiWepKGWhxKWMLIKcunFfUgSI0SjQi8BDdgFHPl75XUGM4D-N4CeUkia1cVy9Ge7PU3bMkKlYnDg",
+      "trustJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTczNDQ3MzYwMCwiZXhwaXJlc0F0IjoxNzM0NDczOTAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.m6II9dbhgNaVO_LYUXfX5AboLoQVVya0D6EGTD4ztGmYrYycivXJ4aihdigEHCYVdl53bL5Lg65ap4mOXxyDBQ",
+      "systemClock": 1700000060,
+      "expect": {
+        "highWaterMark": 1734473600,
+        "effectiveNow": 1734473600,
+        "status": "expired"
+      }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "id": "floor-stale-cached-manifest-still-yields-its-keys",
+      "description": "Raising the floor from a cached manifest must NOT re-introduce freshness checking on that path. This manifest expired long ago and publishes the rotated key the cached document is signed with: it must still load (§4.2), or the document cannot verify at all and every restart after a key rotation strands the client. Its `issuedAt` predates the document's, so the document is what sets the mark.",
+      "configJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktY29uZmlnK2p3cyIsImtpZCI6ImRqZGwtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.nUBfbVEpx8ovlYstEtSbTll4sjYrfUYeELSMZGC0aGXVHUaRy5jCnJHy5v_i3HKVGbmOyGpSXloCiYQoIfW2BA",
+      "trustJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTY5OTk5NjQwMCwiZXhwaXJlc0F0IjoxNjk5OTk2NzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoic3RhZ2VkIn1dfQ.GrHp1h_mrbvisJyRDjy7J0mxhU-Tzz7_aNqI8WsaAd99kuk0V4GK95rC1I9PjW02l2ScREopndv4GJMcIL64Bg",
+      "systemClock": 1700000060,
+      "expect": {
+        "highWaterMark": 1700000000,
+        "effectiveNow": 1700000060,
+        "status": "ok"
+      }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "id": "floor-honest-clock-is-never-lowered",
+      "description": "The floor is a MINIMUM, never a substitute. With an honest clock long past the whole signed grace window, `effectiveNow` is the system clock and the gate reads `expired` — the floor costs nothing when the clock is truthful.",
+      "configJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktY29uZmlnK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.hl7N38sKKAkiWepKGWhxKWMLIKcunFfUgSI0SjQi8BDdgFHPl75XUGM4D-N4CeUkia1cVy9Ge7PU3bMkKlYnDg",
+      "trustJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTY5OTk5NjQwMCwiZXhwaXJlc0F0IjoxNjk5OTk2NzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.KpRzUBPsV5yIcr6aCnzgiWfScejzntPJUNEhnOKhjdYYR5B0VOkariro8PRLem1UIpUD1Bvh8lsMaLQRvNmABg",
+      "systemClock": 1734560000,
+      "expect": {
+        "highWaterMark": 1700000000,
+        "effectiveNow": 1734560000,
+        "status": "expired"
+      }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "id": "floor-rejected-manifest-does-not-raise-it",
+      "description": "Only RE-VERIFIED content moves the mark. This manifest carries a far later `issuedAt` but is signed by a discovered key rather than a pinned one, so it is refused outright — and a refused artifact must contribute nothing, or planting a file would become a way to force every client to `expired`.",
+      "configJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktY29uZmlnK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJwYXlsb2FkIjp7ImNvbmZpZyI6eyJydW4uY29uY3VycmVuY3kiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjo0LCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fSwic2VjcmV0cyI6e30sImVudGl0bGVtZW50cyI6eyJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX19.hl7N38sKKAkiWepKGWhxKWMLIKcunFfUgSI0SjQi8BDdgFHPl75XUGM4D-N4CeUkia1cVy9Ge7PU3bMkKlYnDg",
+      "trustJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTczNDQ3MzYwMCwiZXhwaXJlc0F0IjoxNzM0NDczOTAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJkamRsLXRlc3QtMjAyNiIsImFsZyI6IkVkRFNBIiwia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsInB1YmxpY0tleSI6IkgzdXNTWVVkSVFYcnJKTlUwTi1IaFI3WFNTWHI0bjBjbDRKZkZfWDVnOFUiLCJzdGF0dXMiOiJhY3RpdmUifV19.eT4OErfjwa0DcXLVt40JtUXWdOyt-6eEUQT4pnRT4WzfaENdVva_KGsCsc1XRxbuUQ1lXhed2emm4dRzv3qYAg",
+      "systemClock": 1700000060,
+      "expect": {
+        "highWaterMark": 1700000000,
+        "effectiveNow": 1700000060,
+        "status": "ok"
+      }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "id": "floor-manifest-without-a-document",
+      "description": "A manifest alone still anchors time. There is no config document, so the gate is `needs-activation` either way — but the mark it establishes survives, which is what stops a wound-back clock from later re-admitting a document that has already aged out.",
+      "trustJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTczNDQ3MzYwMCwiZXhwaXJlc0F0IjoxNzM0NDczOTAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.m6II9dbhgNaVO_LYUXfX5AboLoQVVya0D6EGTD4ztGmYrYycivXJ4aihdigEHCYVdl53bL5Lg65ap4mOXxyDBQ",
+      "systemClock": 1700000060,
+      "expect": {
+        "highWaterMark": 1734473600,
+        "effectiveNow": 1734473600,
+        "status": "needs-activation"
       }
     }
   ]

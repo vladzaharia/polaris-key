@@ -450,3 +450,71 @@ the cache with a signed `configJws` and passes an explicit `now: NOW` to `verify
 fixtures mint documents at a fixed epoch and §3 now asserts the freshness window. That file is
 4/4 green. `packages/worker/test/attack/R11-data.test.ts` has pre-existing typecheck errors
 from the R11 lane that are unrelated to this work.
+
+---
+
+## Remediation (clock floor)
+
+**R4-04 — closed properly.** The earlier "fixed" entry above was half a fix. `gate.ts` did
+evaluate at `max(now, highWaterMark)`, but the mark was derived from `configJws` alone, and
+that form is **inert**: with one cached document `highWaterMark === doc.issuedAt`, while
+`graceUntil = issuedAt + maxOfflineDays × 86400` is greater by construction, so the floor could
+never reach the end of grace. Rolling the clock back into an aged-out document's window still
+returned `ok`. It did block replay of an _older_ document, which is why it was not worthless —
+it simply did not stop the attack it was written for.
+
+Landed in all three client implementations, together, per wire contract v2 §4.3 as corrected:
+
+```
+highWaterMark = max(verifiedConfigDoc.issuedAt, verifiedTrustManifest.issuedAt)
+effectiveNow  = max(systemClock, highWaterMark)
+```
+
+| Implementation       | Change                                                                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@polaris-key/node`  | `client.ts` gains `raiseFloor()`; called from `loadCache()` for the cached manifest AND the cached doc (the doc assignment was `=`, which would have _lowered_ the mark), and from `refreshTrust()` on the network path.       |
+| `polaris-key` (py)   | `client.py` gains `_raise_floor()`; called from `_accept_doc()` and `_apply_trust_manifest()`, so both the reload and network paths raise it.                                                                                  |
+| `PolarisKey` (swift) | `applyTrustManifest()` raises `highWaterMark`. `verifyCachedDoc()` now evaluates at `effectiveNow()` instead of the raw clock, so a rollback larger than `MAX_GRACE_SECONDS` can no longer make a current document unloadable. |
+| `@polaris-key/jws`   | Unchanged — it verifies signatures and knows nothing about the gate.                                                                                                                                                           |
+
+**Why the manifest is the right second source.** It is signed by a **pinned** key, cached
+separately from the config document, and `trustRefresh` is on by default — so it advances even
+while a content-stable config document sits behind an unchanged ETag. A client that verified a
+manifest yesterday cannot then claim it is last month.
+
+**The freshness trap, avoided.** A cached manifest is loaded with `checkFreshness: false`; its
+`expiresAt` is minutes away, so re-checking it on load would drop every rotated key on restart
+(`testStaleCachedManifestStillYieldsItsKeysOnLoad`). Raising the floor from a stale cached
+manifest is nonetheless correct — `issuedAt` is a signed lower bound on real time whether or
+not the manifest is still fresh. No freshness check was re-introduced on that path, and
+`trust-expired-manifest-reload-path` now pins it cross-language.
+
+**Cross-language enforcement, not per-SDK convention.** `tools/sign-corpus.ts` gains a
+`clockFloorCases` section (6 cases) plus `checkFreshness` / `expect.issuedAt` on `trustCases`
+(1 new case). Each floor case replays the cache-reload path as pure data and every runner
+asserts all three of `highWaterMark`, `effectiveNow` and the gate status:
+
+| Case                                                | Pins                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------- |
+| `floor-config-doc-alone-does-not-stop-rollback`     | the defect itself — single-source is insufficient, so it cannot come back |
+| `floor-trust-manifest-defeats-rollback`             | the fix: rollback + yesterday's manifest ⇒ `expired`                      |
+| `floor-stale-cached-manifest-still-yields-its-keys` | no freshness checking re-introduced on the reload path                    |
+| `floor-honest-clock-is-never-lowered`               | the floor is a minimum, never a substitute                                |
+| `floor-rejected-manifest-does-not-raise-it`         | only re-verified content moves the mark (no planted-file DoS)             |
+| `floor-manifest-without-a-document`                 | the mark survives with no config document at all                          |
+
+Client-level regressions (not just the primitives) were added per SDK: `R4-client-attack.test.ts`
+→ "cannot extend an aged-out document's grace…", `test_wire_contract_v2.py` →
+`test_r4_04_the_trust_manifest_anchors_time_independently`, `TrustAndCacheTests.swift` →
+`testTrustManifestAnchorsTheClockFloorIndependently`. Each drives (a) document-only ⇒ rollback
+still works, (b) with the cached manifest ⇒ `expired`, (c) the online `refreshTrust()` path.
+
+### Still not fixed
+
+- **No far-future bound on a cached manifest's `issuedAt`.** With `checkFreshness: false` the
+  reload path does not bound it above, so a manifest the vendor mis-signs with an absurd
+  `issuedAt` would drive every client that caches it to `expired`. It requires the pinned
+  private key, so it is a vendor-footgun rather than an attacker path, and Node/Python have the
+  same gap on the cached _document_ (Swift alone rejects a far-future doc, via
+  `verifyCachedDoc`). Bounding all four consistently is a separate, cross-cutting change.
+- The R4-08 and payload-accessor items listed above are unchanged by this work.

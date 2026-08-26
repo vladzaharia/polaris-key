@@ -5,12 +5,13 @@ Mirrors ``conformance/runners/node/corpus.test.ts`` against the SAME
 ``corpus/v1/cases.json`` — that's how the SDKs prove byte-identical verification. The
 corpus is found via a relative path up to the monorepo root.
 
-Three sections, three layers of the wire contract:
+Four sections, four layers of the wire contract:
 
 ======================  ==========================================================
 ``cases``               raw compact-JWS verification            -> ``verify_jws``
 ``docCases``            §3 claim validation                     -> ``verify_doc``
 ``trustCases``          §1 trust-set merge / prune / revocation -> ``verify_trust_manifest``
+``clockFloorCases``     §4.3 monotonic clock floor              -> reload path + ``license_state``
 ======================  ==========================================================
 """
 
@@ -18,10 +19,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pytest
 
+from polaris_key.license import license_state
+from polaris_key.models import ManagedConfigDoc
 from polaris_key.trust import merge_trust, verify_trust_manifest
 from polaris_key.verify import sign_jws, verify_doc, verify_jws
 
@@ -39,6 +42,7 @@ _CORPUS = _load_corpus()
 _CASES: List[Dict[str, Any]] = _CORPUS["cases"]
 _DOC_CASES: List[Dict[str, Any]] = _CORPUS.get("docCases", [])
 _TRUST_CASES: List[Dict[str, Any]] = _CORPUS.get("trustCases", [])
+_CLOCK_FLOOR_CASES: List[Dict[str, Any]] = _CORPUS.get("clockFloorCases", [])
 
 
 def test_corpus_path_exists() -> None:
@@ -49,6 +53,7 @@ def test_corpus_has_cases() -> None:
     assert len(_CASES) > 0
     assert len(_DOC_CASES) > 0
     assert len(_TRUST_CASES) > 0
+    assert len(_CLOCK_FLOOR_CASES) > 0
 
 
 @pytest.mark.parametrize("case", _CASES, ids=[c["id"] for c in _CASES])
@@ -94,11 +99,68 @@ def test_corpus_trust_case(case: Dict[str, Any]) -> None:
         pinned=case["pinned"],
         expected_aud="djdl",
         now=case["now"],
+        check_freshness=case.get("checkFreshness", True),
     )
     assert (result.doc is not None) is case["expect"]["accepted"], f"{case['id']}"
     # Accepted => the discovered set REPLACES what was held; rejected => it is untouched.
     discovered = result.discovered if result.doc is not None else case["before"]
     assert merge_trust(case["pinned"], discovered) == case["expect"]["trust"]
+    # The accepted manifest's `issuedAt` is what §4.3 folds into the clock floor.
+    if "issuedAt" in case["expect"]:
+        assert result.doc is not None
+        assert result.doc["issuedAt"] == case["expect"]["issuedAt"], f"{case['id']}"
+
+
+@pytest.mark.parametrize(
+    "case", _CLOCK_FLOOR_CASES, ids=[c["id"] for c in _CLOCK_FLOOR_CASES]
+)
+def test_corpus_clock_floor_case(case: Dict[str, Any]) -> None:
+    """§4.3 — the monotonic clock floor, replayed as the cache-RELOAD path.
+
+    Re-verify the cached manifest (freshness OFF), re-verify the cached document against
+    the resulting trust set (freshness OFF), take the floor as the max of the ``issuedAt``
+    of whatever actually verified, and gate at ``max(systemClock, floor)``. Deriving the
+    floor from the document alone is inert (R4-04), which is exactly what
+    ``floor-config-doc-alone-does-not-stop-rollback`` pins.
+    """
+    trust: Dict[str, str] = dict(case["pinned"])
+    high_water_mark = 0
+
+    if case.get("trustJws") is not None:
+        manifest = verify_trust_manifest(
+            case["trustJws"],
+            pinned=case["pinned"],
+            expected_aud=case["expectedAud"],
+            now=case["systemClock"],
+            check_freshness=False,
+        )
+        if manifest.doc is not None:
+            trust = merge_trust(case["pinned"], manifest.discovered)
+            high_water_mark = max(high_water_mark, manifest.doc["issuedAt"])
+
+    doc: Optional[ManagedConfigDoc] = None
+    if case.get("configJws") is not None:
+        doc = verify_doc(
+            case["configJws"],
+            trust,
+            expected_aud=case["expectedAud"],
+            device_id=case["deviceId"],
+            now=case["systemClock"],
+            check_freshness=False,
+        )
+        if doc is not None:
+            high_water_mark = max(high_water_mark, doc.issuedAt)
+
+    assert high_water_mark == case["expect"]["highWaterMark"], f"{case['id']} floor"
+    effective_now = max(case["systemClock"], high_water_mark)
+    assert effective_now == case["expect"]["effectiveNow"], f"{case['id']} effectiveNow"
+    state = license_state(
+        has_token=True,
+        doc=doc,
+        now=case["systemClock"],
+        high_water_mark=high_water_mark,
+    )
+    assert state.status == case["expect"]["status"], f"{case['id']}: {case['description']}"
 
 
 def test_sign_roundtrips_against_corpus_key() -> None:

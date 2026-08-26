@@ -255,6 +255,24 @@ const PRODUCT_JSON = JSON.stringify({
   tiers: [{ id: "pro", label: "Pro" }],
 });
 
+/** The same manifest as a repo *writer* would rewrite it: new IdP, new admin group, fat tier. */
+const ATTACKER_PRODUCT_JSON = JSON.stringify({
+  slug: "acme",
+  name: "Acme",
+  compatMin: "1.0.0",
+  compatMax: "9.0.0",
+  adminGroup: "attacker-controlled-group",
+  oidc: {
+    provider: "custom",
+    issuer: "https://idp.attacker.example",
+    clientId: "attacker-client",
+    clientSecretSecret: "OIDC_SECRET__ACME",
+    redirectUris: ["https://attacker.example/cb"],
+    groupRoleMap: { everyone: { role: "admin" } },
+  },
+  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100000 }],
+});
+
 function releaseJson(over: Record<string, unknown> = {}): string {
   return JSON.stringify({
     release: {
@@ -1085,11 +1103,14 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
     );
   });
 
-  // NOT FIXED — splitting `.pkey/` into "repo may own" vs "admin only" (oidc, access
-  // gating, admin_group) is fix direction #4 of R6-05 and is out of this pass's scope.
-  it("a webhook push rewrites OIDC issuer/clientId, tiers, and admin_group from the repo", async () => {
+  // PARTLY FIXED — splitting `.pkey/` into "repo may own" vs "admin only" (access gating,
+  // admin_group, tiers) is fix direction #4 of R6-05 and is still open. The one piece that did
+  // land is the OIDC issuer: R9-01 gates a *new or changed* `oidc_config.issuer` on the
+  // operator's `OIDC_ISSUER_ALLOWLIST` at both ingest paths, and the gate runs before the
+  // first write, so a push that tries to introduce an unlisted IdP applies nothing at all.
+  it("a webhook push that repoints the IdP at an unlisted host is refused outright", async () => {
     const db = makeTestDb();
-    const env = envFor();
+    const env = envFor(); // no OIDC_ISSUER_ALLOWLIST — the fail-closed default
     env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
     const stub = pkeyFetch({
       ".pkey/schema.json": SCHEMA_JSON,
@@ -1100,22 +1121,59 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
     ).toBe(true);
 
-    stub.files[".pkey/product.json"] = JSON.stringify({
-      slug: "acme",
-      name: "Acme",
-      compatMin: "1.0.0",
-      compatMax: "9.0.0",
-      adminGroup: "attacker-controlled-group",
-      oidc: {
-        provider: "custom",
-        issuer: "https://idp.attacker.example",
-        clientId: "attacker-client",
-        clientSecretSecret: "OIDC_SECRET__ACME",
-        redirectUris: ["https://attacker.example/cb"],
-        groupRoleMap: { everyone: { role: "admin" } },
-      },
-      tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100000 }],
+    stub.files[".pkey/product.json"] = ATTACKER_PRODUCT_JSON;
+
+    const res = await handleGithubWebhook(
+      deliveryRequest(
+        await signedPush(
+          pushPayload({ head_commit: { modified: [".pkey/product.json"] } }),
+          "webhook-secret",
+        ),
+      ),
+      env,
+      db,
+      NOW + 10,
+      stub.fetchImpl,
+    );
+    expect(res.status).toBe(200); // the webhook still ACKs; the resync inside it failed
+    const oidc = await db.first<{ issuer: string; client_id: string }>(
+      "SELECT * FROM oidc_config WHERE product = ?",
+      "acme",
+    );
+    expect(oidc).toBeNull(); // no IdP introduced
+    // ...and because the gate precedes every write, the rest of the hostile manifest — the
+    // admin_group takeover included — never landed either.
+    const product = await db.first<{ admin_group: string; name: string }>(
+      "SELECT admin_group, name FROM products WHERE slug = ?",
+      "acme",
+    );
+    expect(product?.admin_group).toBe("acme-admins");
+    const tier = await db.first<{ policy_device_limit: number | null }>(
+      "SELECT policy_device_limit FROM tiers WHERE product = ? AND id = ?",
+      "acme",
+      "pro",
+    );
+    expect(tier?.policy_device_limit).not.toBe(100000);
+  });
+
+  // STILL NOT FIXED (R6-05 proper): once the issuer host IS operator-blessed, everything else
+  // in `.pkey/product` is still repo-owned with no admin-ownership flag — clientId, tiers and
+  // `admin_group` are all rewritten by a push.
+  it("a webhook push still rewrites clientId, tiers, and admin_group once the host is allowlisted", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
+    env.OIDC_ISSUER_ALLOWLIST = "idp.attacker.example";
+    const stub = pkeyFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": releaseJson(),
     });
+    expect(
+      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+    ).toBe(true);
+
+    stub.files[".pkey/product.json"] = ATTACKER_PRODUCT_JSON;
 
     const res = await handleGithubWebhook(
       deliveryRequest(

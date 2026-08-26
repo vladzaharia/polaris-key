@@ -25,6 +25,14 @@ import {
  * The operator landing view: who you are, what you administer, and quick links into each
  * product. Products come straight off the session (`me.products`) — name, slug, and the
  * config schema version each carries. A welcome/empty state covers operators with no products.
+ *
+ * THERE IS ONE PRIVILEGE LEVEL. `admin/authz.ts` states it outright, and `admin/auth.ts`
+ * gates session issuance on `hasAnyAdminGrant`, which is the SAME predicate as
+ * `isPlatformAdmin` — so `me.platformAdmin` is `true` for every session that can render this
+ * view, and `handleMe` returns either every product or none. This view used to branch on it
+ * three ways ("Product administrator", a two-valued Role tile, and an empty state telling the
+ * operator to "ask a platform admin to grant access"), which described a per-product admin
+ * tier the control plane does not have and offered a grant workflow that does not exist.
  */
 export function Dashboard(): React.ReactElement {
   const { me } = useAdmin();
@@ -41,10 +49,7 @@ export function Dashboard(): React.ReactElement {
           Welcome, {firstName}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {me.platformAdmin
-            ? "Platform administrator"
-            : "Product administrator"}{" "}
-          · {me.email}
+          Platform administrator · {me.email}
         </p>
       </header>
 
@@ -56,8 +61,8 @@ export function Dashboard(): React.ReactElement {
         />
         <StatCard
           icon={<ShieldCheck aria-hidden />}
-          label="Role"
-          value={me.platformAdmin ? "Platform" : "Product"}
+          label="Access"
+          value="All products"
         />
         <StatCard
           icon={<KeyRound aria-hidden />}
@@ -74,28 +79,20 @@ export function Dashboard(): React.ReactElement {
           >
             Your products
           </h3>
-          {me.platformAdmin ? (
-            <Button asChild variant="link" size="sm" className="h-auto p-0">
-              <a href={hashFor({ kind: "products" })}>Manage registry</a>
-            </Button>
-          ) : null}
+          <Button asChild variant="link" size="sm" className="h-auto p-0">
+            <a href={hashFor({ kind: "products" })}>Manage registry</a>
+          </Button>
         </div>
 
         {products.length === 0 ? (
           <EmptyState
             icon={<PackageOpen aria-hidden />}
             title="No products yet"
-            description={
-              me.platformAdmin
-                ? "Link a repository or create a product to get started."
-                : "You don’t administer any products yet. Ask a platform admin to grant access."
-            }
+            description="Link a repository or create a product to get started."
             action={
-              me.platformAdmin ? (
-                <Button asChild size="sm">
-                  <a href={hashFor({ kind: "products" })}>Open registry</a>
-                </Button>
-              ) : undefined
+              <Button asChild size="sm">
+                <a href={hashFor({ kind: "products" })}>Open registry</a>
+              </Button>
             }
           />
         ) : (
