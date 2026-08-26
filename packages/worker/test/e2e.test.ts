@@ -11,6 +11,7 @@ import {
   licenseState,
   isUsable,
   verifyDoc,
+  CACHE_VERSION,
   InMemoryStore,
   PolarisKeyClient,
 } from "@polaris-key/node";
@@ -95,10 +96,12 @@ async function activateAndFetch(
   return { jws: await cfgRes.text(), etag };
 }
 
-/** Build a real PolarisKeyClient over an InMemoryStore pre-seeded with the verified doc,
- *  so getConfig()/status() run the genuine layered resolver + gate (offline, no network). */
+/** Build a real PolarisKeyClient over an InMemoryStore pre-seeded with the SIGNED doc, so
+ *  getConfig()/status() run the genuine layered resolver + gate (offline, no network).
+ *  Wire contract v2 §4.1: the cache holds the compact JWS, which init() re-verifies against
+ *  the pinned trust set — the decoded doc and its counters are derived, never stored. */
 async function clientWithCachedDoc(
-  doc: ManagedConfigDoc,
+  jws: string,
   device: string,
   localOverrides?: Record<string, unknown>,
 ): Promise<PolarisKeyClient> {
@@ -106,11 +109,7 @@ async function clientWithCachedDoc(
   // The client binds doc.deviceId === its own device id; align the store's id to the doc.
   (store as unknown as { deviceId: string }).deviceId = device;
   await store.setToken("pkeyt_cached");
-  await store.writeCache({
-    doc,
-    lastAcceptedIssuedAt: doc.issuedAt,
-    lastVerifiedAt: Date.now(),
-  });
+  await store.writeCache({ v: CACHE_VERSION, configJws: jws });
   const client = new PolarisKeyClient({
     productSlug: "djdl",
     version: "1.2.3",
@@ -160,6 +159,9 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
       trust: TRUST,
       expectedAud: "djdl",
       deviceId: "dev-1",
+      // The fixtures mint documents at the fixed epoch NOW; verifyDoc asserts the §3
+      // freshness window, so the evaluation time must be stated rather than read off the wall.
+      now: NOW,
     });
     expect(sdkDoc).not.toBeNull();
 
@@ -188,11 +190,14 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
       trust: TRUST,
       expectedAud: "djdl",
       deviceId: "dev-1",
+      // The fixtures mint documents at the fixed epoch NOW; verifyDoc asserts the §3
+      // freshness window, so the evaluation time must be stated rather than read off the wall.
+      now: NOW,
     });
     expect(doc).not.toBeNull();
 
     // The real client, offline, reads its cached doc and reports `ok` while fresh.
-    const client = await clientWithCachedDoc(doc!, "dev-1");
+    const client = await clientWithCachedDoc(jws, "dev-1");
     expect(client.status(NOW).status).toBe("ok");
     expect(client.isLicensed(NOW)).toBe(true);
 
@@ -215,6 +220,7 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
       expectedAud: "djdl",
       deviceId: "dev-1",
       lastAcceptedIssuedAt: doc!.issuedAt,
+      now: expired,
     });
     expect(doc2).not.toBeNull();
     expect(doc2!.issuedAt).toBeGreaterThan(doc!.issuedAt);
@@ -233,12 +239,15 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
       trust: TRUST,
       expectedAud: "djdl",
       deviceId: "dev-1",
+      // The fixtures mint documents at the fixed epoch NOW; verifyDoc asserts the §3
+      // freshness window, so the evaluation time must be stated rather than read off the wall.
+      now: NOW,
     });
     expect(doc!.payload.config["quality.losslessOnly"]?.state).toBe("enforced");
 
     // The real client, given a CONFLICTING localOverride, must still surface the server value
     // for the enforced key — the client cannot override an enforced config entry.
-    const client = await clientWithCachedDoc(doc!, "dev-1", {
+    const client = await clientWithCachedDoc(jws, "dev-1", {
       "quality.losslessOnly": false,
     });
     expect(client.getConfig("quality.losslessOnly", false)).toBe(true); // server wins
@@ -256,8 +265,11 @@ describe("e2e: worker handlers → JWS → Node SDK gate", () => {
       trust: TRUST,
       expectedAud: "djdl",
       deviceId: "dev-1",
+      // The fixtures mint documents at the fixed epoch NOW; verifyDoc asserts the §3
+      // freshness window, so the evaluation time must be stated rather than read off the wall.
+      now: NOW,
     });
-    const client2 = await clientWithCachedDoc(doc2!, "dev-1", {
+    const client2 = await clientWithCachedDoc(jws2, "dev-1", {
       "quality.floor": "flac",
     });
     expect(client2.getConfig("quality.floor", "any")).toBe("flac"); // client override beats a default

@@ -16,6 +16,7 @@ import type { Db } from "../db/types.js";
 import type { Product } from "../product.js";
 import { bearer, errorResponse, json, notFound } from "../http.js";
 import { validateDeviceToken } from "../licenseCore.js";
+import { appSecurityHeaders } from "../securityHeaders.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import {
   type Release,
@@ -25,6 +26,7 @@ import {
   resolveRelease,
   streamAsset,
 } from "./github.js";
+import { verifySparkleSignature } from "./sparkle.js";
 import {
   type ChannelSelector,
   classifyChannel,
@@ -32,7 +34,12 @@ import {
   parseManualChannels,
   resolveChannel,
 } from "./channels.js";
-import { type Arch, findBinaryAsset, matchAsset } from "./assets.js";
+import {
+  type Arch,
+  findBinaryAsset,
+  matchAsset,
+  normalizeArch,
+} from "./assets.js";
 import { type ChangelogEntry, extractSummary } from "./changelog.js";
 import {
   buildAppcastItem,
@@ -77,6 +84,8 @@ interface ReleaseConfigRow {
   artifacts_access?: string | null;
 }
 
+/** The only Content-Type a streamed CLI binary is ever served as (R6-04). */
+const ARTIFACT_CONTENT_TYPE = "application/octet-stream";
 const MOVING_CACHE = "public, max-age=120";
 const PINNED_CACHE = "public, max-age=86400, immutable";
 const APPCAST_CACHE = "public, max-age=300";
@@ -89,6 +98,14 @@ function readAccessMode(value: unknown): ReleaseAccessMode {
   return "public";
 }
 
+/**
+ * Resolve the effective artifact policy.
+ *
+ * `requireSparkleSignature` is OPERATOR-owned (R6-03): `parseManifest` no longer carries the
+ * field, so a `.pkey/release.*` push can never write `false` into `artifact_policy_json` and
+ * disarm the platform's own signing requirement. Only an operator editing the row directly
+ * can opt a product out, and the default is always "required".
+ */
 function artifactPolicy(cfg: ReleaseConfigRow): {
   requireSparkleSignature: boolean;
   access: { metadata: ReleaseAccessMode; artifacts: ReleaseAccessMode };
@@ -179,7 +196,7 @@ export async function handleRelease(
   fetchImpl: FetchImpl = fetch,
 ): Promise<Response> {
   const cfg = await getReleaseConfig(db, product.slug);
-  if (!cfg) return notFound();
+  if (!cfg) return harden(notFound());
 
   const now = Math.floor(Date.now() / 1000);
   const origin = new URL(req.url).origin;
@@ -192,71 +209,97 @@ export async function handleRelease(
     kind,
     now,
   );
-  if (denied) return denied;
+  if (denied) return harden(denied);
 
   try {
+    // Every branch is AWAITED inside the try: `return <promise>` resolves *after* the try
+    // block exits, so the NotFoundError -> 404 mapping below never fired for the async
+    // surfaces and a private/absent release 500'd instead of 404'ing (R9-14).
     switch (kind) {
       case "install":
-        return handleInstall(cfg, product, origin);
+        return harden(handleInstall(cfg, product, origin));
       case "version":
-        return handleVersion(env, db, cfg, product, params, now, fetchImpl);
+        return harden(
+          await handleVersion(env, db, cfg, product, params, now, fetchImpl),
+        );
       case "changelog":
-        return handleChangelog(env, db, cfg, product, now, fetchImpl);
+        return harden(
+          await handleChangelog(env, db, cfg, product, now, fetchImpl),
+        );
       case "cli":
-        return handleBinary(
-          env,
-          db,
-          cfg,
-          product,
-          params,
-          "cli",
-          req,
-          now,
-          origin,
-          fetchImpl,
+        return harden(
+          await handleBinary(
+            env,
+            db,
+            cfg,
+            product,
+            params,
+            "cli",
+            req,
+            now,
+            origin,
+            fetchImpl,
+          ),
         );
       case "dmg":
-        return handleBinary(
-          env,
-          db,
-          cfg,
-          product,
-          params,
-          "dmg",
-          req,
-          now,
-          origin,
-          fetchImpl,
+        return harden(
+          await handleBinary(
+            env,
+            db,
+            cfg,
+            product,
+            params,
+            "dmg",
+            req,
+            now,
+            origin,
+            fetchImpl,
+          ),
         );
       case "appcast":
-        return handleAppcast(
-          env,
-          db,
-          cfg,
-          product,
-          { ...params, channel: "stable" },
-          origin,
-          now,
-          fetchImpl,
+        return harden(
+          await handleAppcast(
+            env,
+            db,
+            cfg,
+            product,
+            { ...params, channel: "stable" },
+            origin,
+            now,
+            fetchImpl,
+          ),
         );
       case "channelAppcast":
-        return handleAppcast(
-          env,
-          db,
-          cfg,
-          product,
-          params,
-          origin,
-          now,
-          fetchImpl,
+        return harden(
+          await handleAppcast(
+            env,
+            db,
+            cfg,
+            product,
+            params,
+            origin,
+            now,
+            fetchImpl,
+          ),
         );
       default:
-        return notFound();
+        return harden(notFound());
     }
   } catch (err) {
-    if (err instanceof NotFoundError) return notFound();
+    if (err instanceof NotFoundError) return harden(notFound());
     throw err;
   }
+}
+
+/**
+ * Apply the platform security headers to a release response (R6-04). `appSecurityHeaders`
+ * existed but was applied nowhere under `release/`, so artifacts, appcasts and the installer
+ * all shipped without `nosniff`, CSP or `X-Frame-Options` from an origin that also hosts the
+ * admin SPA and the customer portal.
+ */
+function harden(res: Response): Response {
+  const headers = appSecurityHeaders(new Headers(res.headers));
+  return new Response(res.body, { status: res.status, headers });
 }
 
 async function token(
@@ -345,22 +388,29 @@ async function channelTagsFor(
     "X-GitHub-Api-Version": "2022-11-28",
   };
 
+  // `channel_workflow` is repo-owned. Encoding it keeps dot-segments from steering this
+  // installation-token-bearing GET off the workflow-runs endpoint (R6-07) — `beta_branch`
+  // on the same line was already encoded.
+  const workflow = encodeURIComponent(cfg.channel_workflow);
   let runsUrl: string;
   if (sel.kind === "beta") {
-    runsUrl = `${base}/actions/workflows/${cfg.channel_workflow}/runs?branch=${encodeURIComponent(cfg.beta_branch)}&status=success&per_page=10`;
+    runsUrl = `${base}/actions/workflows/${workflow}/runs?branch=${encodeURIComponent(cfg.beta_branch)}&status=success&per_page=10`;
   } else {
     const prRes = await fetchImpl(`${base}/pulls/${sel.pr}`, { headers });
     if (!prRes.ok) throw new NotFoundError(`pr lookup failed: ${prRes.status}`);
     const pr = (await prRes.json()) as { head: { sha: string } };
-    runsUrl = `${base}/actions/workflows/${cfg.channel_workflow}/runs?event=pull_request&head_sha=${pr.head.sha}&status=success&per_page=10`;
+    runsUrl = `${base}/actions/workflows/${workflow}/runs?event=pull_request&head_sha=${encodeURIComponent(pr.head.sha)}&status=success&per_page=10`;
   }
 
   const res = await fetchImpl(runsUrl, { headers });
   if (!res.ok)
     throw new NotFoundError(`channel runs lookup failed: ${res.status}`);
   const data = (await res.json()) as {
-    workflow_runs: Array<{ head_branch: string | null; head_sha: string }>;
+    workflow_runs?: Array<{ head_branch: string | null; head_sha: string }>;
   };
+  // An off-shape response (wrong endpoint, empty body) used to throw an unhandled TypeError
+  // on the iteration below and 500 the route.
+  if (!Array.isArray(data.workflow_runs)) return undefined;
   // Map runs -> their associated release tags. Channel runs publish a tag named after
   // the run's head ref/sha; we accept any release whose tag references that head sha.
   const tags = new Set<string>();
@@ -397,7 +447,11 @@ function handleInstall(
     channels: ["staging", "beta"],
     versionEnv: `${binaryName.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_VERSION`,
   };
+  // Null means a field (repo-owned `binary_name`, or the request-derived origin) fell outside
+  // the installer's safe character classes. Serving a script we cannot prove safe is how
+  // R6-01 reached end users, so fail closed instead.
   const body = renderInstallScript(cfg.install_template, ctx);
+  if (body === null) return notFound();
   return new Response(body, {
     status: 200,
     headers: {
@@ -480,7 +534,10 @@ async function handleBinary(
   fetchImpl: FetchImpl,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
-  const arch = params.arch;
+  // The router accepts `aarch64` / `amd64` aliases; canonicalise them here so the arch
+  // never reaches `ARCH_TOKENS[…]` as an unknown key (which used to be an unhandled
+  // TypeError -> 500 on a public, unauthenticated route). R6-08.
+  const arch = normalizeArch(params.arch);
   if (!arch) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
   const { release, sel } = await resolveSelector(
@@ -505,12 +562,28 @@ async function handleBinary(
   if (!asset) return notFound();
 
   const tok = await token(env, cfg, product.slug, now, fetchImpl);
+
+  // `?checksum=sha256` serves the artifact's published `<asset>.sha256` sidecar so the
+  // installer can verify what it downloaded (R6-02). No sidecar -> 404, and the script
+  // refuses to install rather than proceeding unverified.
+  if (new URL(req.url).searchParams.get("checksum") === "sha256") {
+    return handleChecksum(tok, cfg, release, asset.name, sel, fetchImpl);
+  }
+
   const res = await streamAsset(
     tok,
     cfg.gh_owner,
     cfg.gh_repo,
     asset.id,
     req,
+    {
+      filename: asset.name,
+      // Never the repo-chosen upstream `content_type` (R6-04).
+      contentType:
+        kind === "dmg"
+          ? "application/x-apple-diskimage"
+          : ARTIFACT_CONTENT_TYPE,
+    },
     fetchImpl,
   );
   // Preserve streamed headers; add our cache policy.
@@ -518,6 +591,38 @@ async function handleBinary(
   if (!headers.has("cache-control"))
     headers.set("cache-control", cacheHeader(sel));
   return new Response(res.body, { status: res.status, headers });
+}
+
+/** Serve the `<asset>.sha256` sidecar as a bare lowercase hex digest. */
+async function handleChecksum(
+  tok: string,
+  cfg: ResolvedConfig,
+  release: Release,
+  assetName: string,
+  sel: ChannelSelector,
+  fetchImpl: FetchImpl,
+): Promise<Response> {
+  const sidecar = release.assets.find((a) => a.name === `${assetName}.sha256`);
+  if (!sidecar) return notFound();
+  const text = await fetchTextAsset(
+    tok,
+    cfg.gh_owner,
+    cfg.gh_repo,
+    sidecar.id,
+    fetchImpl,
+  );
+  // `shasum`-style sidecars are `<digest>  <filename>`; take the digest and nothing else so
+  // no repo-controlled bytes reach the installer.
+  const digest = text.trim().split(/\s+/)[0] ?? "";
+  if (!/^[0-9a-f]{64}$/i.test(digest)) return notFound();
+  return new Response(`${digest.toLowerCase()}\n`, {
+    status: 200,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": cacheHeader(sel),
+      "x-content-type-options": "nosniff",
+    },
+  });
 }
 
 async function handleAppcast(
@@ -554,8 +659,8 @@ async function handleAppcast(
   if (!dmg) return notFound();
 
   // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline.
-  // Signed Sparkle appcasts are required by default. An explicit artifact-policy opt-out
-  // is the only way to publish an unsigned feed.
+  // Signed Sparkle appcasts are required by default; only an operator (never a `.pkey/`
+  // push) can opt a product out. R6-03.
   const policy = artifactPolicy(cfg);
   if (policy.requireSparkleSignature && !cfg.sparkle_ed25519_pub) {
     return notFound();
@@ -565,11 +670,31 @@ async function handleAppcast(
   if (!sig && (cfg.sparkle_ed25519_pub || policy.requireSparkleSignature)) {
     return notFound();
   }
-  const edSignature = sig
-    ? (
-        await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)
-      ).trim()
-    : undefined;
+  let edSignature: string | undefined;
+  if (sig) {
+    const claimed = (
+      await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)
+    ).trim();
+    // The sidecar is repo-controlled. Verify it against the configured public key over the
+    // DMG's own bytes before it goes anywhere near the feed — the pubkey used to be a mere
+    // presence flag, so any string in the `.sig` shipped as `sparkle:edSignature`.
+    const verified = cfg.sparkle_ed25519_pub
+      ? await verifySparkleSignature(env, product.slug, {
+          token: tok,
+          owner: cfg.gh_owner,
+          repo: cfg.gh_repo,
+          assetId: dmg.id,
+          signature: claimed,
+          publicKey: cfg.sparkle_ed25519_pub,
+          fetchImpl,
+        })
+      : false;
+    // Fail closed: the item is dropped and the feed 404s rather than shipping an
+    // unverifiable enclosure. No log line — the worker deliberately carries no logging
+    // sink, so the 404 (and the release health check) is the signal.
+    if (!verified) return notFound();
+    edSignature = claimed;
+  }
 
   // Stable feeds (latest/stable/pinned) point the enclosure at the concrete version so
   // the DMG URL is immutable; moving channels point at their channel segment.

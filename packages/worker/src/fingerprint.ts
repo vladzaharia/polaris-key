@@ -92,6 +92,39 @@ export async function computeHwid(components: ComponentMap): Promise<string> {
   return sha256B64url(parts.join("\n"), FINGERPRINT_HWID_LENGTH);
 }
 
+/**
+ * The dedupe key for the keyless enrolment path — `licenses.enroll_hwid` (R3-03).
+ *
+ * This is deliberately NOT `computeHwid`. `computeHwid` digests exactly the components that
+ * were submitted, which is right for a device binding (a partial read should degrade match
+ * precision rather than collide with every other partial reader) and catastrophic for a dedupe
+ * key: with seven components there are 2^7 - 1 = 127 non-empty subsets, so one machine could
+ * present 127 distinct "identities" and collect 127 free licenses, each with its own seat pool.
+ * `parseFingerprint` accepts any non-empty subset, so nothing else stopped it either.
+ *
+ * The dedupe key is therefore computed over a FIXED projection — the anchor alone. The anchor
+ * (`machineUuid`) is the platform's own stable machine identifier and is already the component
+ * `matchFingerprint` treats as authoritative when it widens tolerance. Every subset of one
+ * machine's components that contains the anchor now yields the SAME key, so omitting components
+ * gains nothing; a submission without the anchor cannot be deduped at all and is refused by the
+ * caller rather than being minted a license.
+ *
+ * The domain-separation prefix keeps this value in a different space from `computeHwid`'s, so an
+ * enrol key can never be confused with (or replayed as) a device hwid.
+ *
+ * `computeHwid`'s formula is unchanged and stays pinned by `conformance/corpus/v1/fingerprint.json`.
+ */
+export async function computeEnrollHwid(
+  components: ComponentMap,
+): Promise<string | null> {
+  const anchor = components[FINGERPRINT_ANCHOR];
+  if (anchor === undefined) return null;
+  return sha256B64url(
+    `${FINGERPRINT_HASH_PREFIX}:enroll:${FINGERPRINT_ANCHOR}=${anchor}`,
+    FINGERPRINT_HWID_LENGTH,
+  );
+}
+
 /** The per-component digest, exposed so tests and the conformance generator share one formula. */
 export async function computeComponentHash(
   product: string,

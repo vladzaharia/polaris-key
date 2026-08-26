@@ -104,12 +104,16 @@ export interface ManifestProvisioning {
   allowedHosts?: string[];
 }
 
+/**
+ * Repo-owned artifact expectations. `requireSparkleSignature` is deliberately NOT part of
+ * this shape: signature enforcement is an operator-owned control and a repo must not be able
+ * to disable the platform's own check by pushing one line of YAML (R6-03).
+ */
 export interface ManifestReleaseArtifactPolicy {
   channels: string[];
   architectures: string[];
   requireDmg: boolean;
   requireCli: boolean;
-  requireSparkleSignature: boolean;
   allowAmbiguousAssets: boolean;
 }
 
@@ -181,6 +185,22 @@ const ID_RE = /^[A-Za-z0-9._:-]+$/;
 const SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;
 const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+// Release strings reach a shell (`install.sh`), a GitHub API path, or a RegExp source. Every
+// one of them is character-class-bounded HERE, at the ingest boundary, so a `.pkey/` push can
+// never smuggle a quote, a newline, a `$`, a backtick, or a dot-segment downstream (R6-01,
+// R6-07). Reject, never coerce: a manifest that fails these is not applied at all.
+/** `binaryName` — interpolated into the served POSIX shell installer. */
+const BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+/** `ghOwner` / `ghRepo` — interpolated unencoded into `api.github.com` paths. */
+const GH_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+/** `channelWorkflow` — a workflow filename or numeric id in an API path segment. */
+const CHANNEL_WORKFLOW_RE = /^(?:[0-9]{1,20}|[A-Za-z0-9._-]{1,100}\.ya?ml)$/;
+/** `betaBranch` — a git branch name used as a query value. */
+const BRANCH_RE = /^[A-Za-z0-9._][A-Za-z0-9._/-]{0,254}$/;
+/** `summaryMarker` — embedded (escaped) in a RegExp source; capped to bound the pattern. */
+const SUMMARY_MARKER_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
+/** `sparkleEd25519Pub` — a base64/base64url public key (or an operator placeholder). */
+const SPARKLE_PUB_RE = /^[A-Za-z0-9+/=_-]{1,512}$/;
 const RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"] as const;
 const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
 const FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"] as const;
@@ -519,6 +539,62 @@ export function validateManifestDocuments(
           "GitHub releases require owner and repo.",
         );
       }
+      releaseString(
+        errors,
+        owner,
+        "/release/provider/owner",
+        "invalid_github_owner",
+        GH_SLUG_RE,
+        "release owner must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$.",
+      );
+      releaseString(
+        errors,
+        repo,
+        "/release/provider/repo",
+        "invalid_github_repo",
+        GH_SLUG_RE,
+        "release repo must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$.",
+      );
+      releaseString(
+        errors,
+        relRoot.binaryName,
+        "/release/binaryName",
+        "invalid_binary_name",
+        BINARY_NAME_RE,
+        "release.binaryName must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ — it is interpolated into the published install.sh.",
+      );
+      releaseString(
+        errors,
+        relRoot.channelWorkflow,
+        "/release/channelWorkflow",
+        "invalid_channel_workflow",
+        CHANNEL_WORKFLOW_RE,
+        "release.channelWorkflow must be a workflow filename (*.yml / *.yaml) or a numeric workflow id.",
+      );
+      releaseString(
+        errors,
+        relRoot.betaBranch,
+        "/release/betaBranch",
+        "invalid_beta_branch",
+        BRANCH_RE,
+        "release.betaBranch must be a plain git branch name.",
+      );
+      releaseString(
+        errors,
+        relRoot.summaryMarker,
+        "/release/summaryMarker",
+        "invalid_summary_marker",
+        SUMMARY_MARKER_RE,
+        "release.summaryMarker must match ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$.",
+      );
+      releaseString(
+        errors,
+        relRoot.sparkleEd25519Pub,
+        "/release/sparkleEd25519Pub",
+        "invalid_sparkle_pub",
+        SPARKLE_PUB_RE,
+        "release.sparkleEd25519Pub must be a base64/base64url key of at most 512 characters.",
+      );
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
         add(
           errors,
@@ -790,7 +866,7 @@ function normalizeArtifactPolicy(
     architectures: arrayAt(raw, "architectures")?.filter(isString) ?? [],
     requireDmg: raw.requireDmg === true,
     requireCli: raw.requireCli === true,
-    requireSparkleSignature: raw.requireSparkleSignature !== false,
+    // `requireSparkleSignature` is intentionally dropped, not copied: see the interface note.
     allowAmbiguousAssets: raw.allowAmbiguousAssets === true,
   };
 }
@@ -1042,6 +1118,25 @@ function validateCatalogShape(catalog: ProductCatalog): string[] {
     }
   }
   return issues;
+}
+
+/**
+ * Enforce a character class on an optional release string. Absent/empty means "unset" (the
+ * worker substitutes its own default), so only present values are checked — but a present
+ * value that fails the class is a hard error, never a coerced one.
+ */
+function releaseString(
+  errors: ValidationMessage[],
+  value: unknown,
+  path: string,
+  code: string,
+  re: RegExp,
+  message: string,
+): void {
+  if (value === undefined || value === null || value === "") return;
+  if (typeof value !== "string" || !re.test(value)) {
+    add(errors, "release", path, code, message);
+  }
 }
 
 function releaseRoot(value: unknown): Record<string, unknown> | null {

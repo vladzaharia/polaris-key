@@ -6,6 +6,8 @@
 
 import type { Catalog } from "@polaris-key/catalog";
 import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
+import type { Env } from "../../env.js";
+import { isManagedSecretKey, sealManagedValue } from "./managedSecrets.js";
 
 export interface OverrideUpdate {
   key: string;
@@ -14,13 +16,22 @@ export interface OverrideUpdate {
 }
 
 /** Apply a validated batch onto a stored payload JSON; returns the new payload or errors.
- *  `now` (epoch seconds) is stamped as `updatedAt` on every entry written. */
-export function applyOverrides(
+ *  `now` (epoch seconds) is stamped as `updatedAt` on every entry written.
+ *
+ *  R12-02: a value under a `kind: "secret"` entry, or under a `kind: "config"` entry flagged
+ *  `secret: true`, is envelope-encrypted under `PLATFORM_KEK` before it reaches the caller —
+ *  so it is sealed by the time `profiles.payload_json` / `licenses.overrides_json` are written.
+ *  Validation still runs against the PLAINTEXT, so catalog schemas keep working unchanged. */
+export async function applyOverrides(
+  env: Env,
+  product: string,
   current: ManagedPayload,
   updates: OverrideUpdate[],
   catalog: Catalog,
   now: number,
-): { ok: true; payload: ManagedPayload } | { ok: false; fields: string[] } {
+): Promise<
+  { ok: true; payload: ManagedPayload } | { ok: false; fields: string[] }
+> {
   const fields: string[] = [];
   const next: ManagedPayload = {
     config: { ...current.config },
@@ -58,10 +69,15 @@ export function applyOverrides(
         continue;
       }
     }
+    // A state-only update (no `value`) carries the STORED value forward untouched — already
+    // sealed if it was a secret — so it is never re-sealed and never re-validated.
+    const nextValue = u.value ?? bucket[u.key]?.value ?? true;
     bucket[u.key] = {
       // Default-when-omitted is "enforced" so an admin-set value wins.
       state: u.state ?? "enforced",
-      value: (u.value ?? bucket[u.key]?.value ?? true) as ManagedEntry["value"],
+      value: (isManagedSecretKey(catalog, u.key)
+        ? await sealManagedValue(env, product, u.key, nextValue)
+        : nextValue) as ManagedEntry["value"],
       updatedAt: now,
     };
   }

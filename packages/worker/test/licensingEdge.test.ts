@@ -373,29 +373,28 @@ describe("licensing edge cases", () => {
     expect(body.deviceCount).toBe(2);
   });
 
-  it("treats a deviceLimit of 0 as unlimited", async () => {
+  it("FIXED (R11-02): a deviceLimit of 0 denies rather than meaning unlimited", async () => {
+    // Was: `if (limit > 0)` skipped the seat check entirely for a non-positive limit, so a
+    // mistyped, fuzzed or hostile `deviceLimit: 0` was the strongest possible entitlement.
+    // The tier and product COLUMNS now reject `<= 0` at the DB, but a stored entitlement
+    // override is JSON, so the code must fail closed on its own.
     const { key } = await seedLicenseWithKey(db, "djdl", {
       entitlements: {
         deviceLimit: { state: "enforced", value: 0, updatedAt: NOW },
       },
     });
-    for (const d of ["a", "b", "c", "d", "e", "f"])
-      await activate(env, db, product, key, d);
-    // (default product device limit is 5, but the entitlement override of 0 means unlimited)
-    expect(
-      (
-        await handleActivate(
-          mkReq("POST", {
-            authorization: `Bearer ${key}`,
-            "x-pkey-device": "g",
-          }),
-          env,
-          db,
-          product,
-          NOW,
-        )
-      ).status,
-    ).toBe(200);
+    const res = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "a",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ limit: 0, deviceCount: 0 });
   });
 
   it("re-authorizing a deauthorized device frees no extra slot but re-counts it", async () => {

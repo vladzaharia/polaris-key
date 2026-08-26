@@ -16,7 +16,9 @@ import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { openProductSecret, type Product } from "./product.js";
 import { errorResponse, json, methodNotAllowed } from "./http.js";
+import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
 import { randomId } from "./crypto.js";
+import { clientIp, rateLimitOk, type RateLimit } from "./rateLimit.js";
 import {
   appendAudit,
   claimEnrolledLicense,
@@ -28,12 +30,22 @@ import {
   moveDevices,
 } from "./repo.js";
 import { allowsOidcDefault } from "./fingerprint.js";
-import { authorizeDevice, licenseUsable } from "./licenseCore.js";
+import {
+  authorizeDevice,
+  licenseUsable,
+  tierExpiresAt,
+} from "./licenseCore.js";
 import { createBrowserSession } from "./browserSession.js";
 import { platformOidcConfig } from "./platformOidc.js";
 
 const FLOW_TTL_SECONDS = 600;
 const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];
+/** The poll cadence advertised by `/auth/device/start`, enforced server-side (R8-02). */
+const DEVICE_POLL_INTERVAL_SECONDS = 2;
+/** Freshness ceiling on the ID token's `iat`. `exp` alone is entirely the IdP's choice, so a
+ *  token minted long before this exchange must not be replayable into a sign-in (R8-05d). */
+const ID_TOKEN_MAX_AGE = "5m";
+const ID_TOKEN_CLOCK_TOLERANCE = 300;
 
 interface OidcConfigRow {
   product: string;
@@ -80,6 +92,12 @@ interface FlowRecord {
   deviceId?: string;
   licenseId?: string;
   error?: string;
+  /** Stamped when the human confirms the device-code flow. A device flow may only mint after
+   *  this is set — the poll surfaces must not be able to skip the confirmation (R8-01). */
+  confirmedAt?: number;
+  /** Stamped by the first callback that claims this state. A state is single-use: a second
+   *  callback must never be able to rebind `licenseId` under a waiting poller (R8-04). */
+  consumedAt?: number;
 }
 
 interface DeviceFlowRecord {
@@ -89,6 +107,11 @@ interface DeviceFlowRecord {
   authorizeUrl: string;
   deviceName?: string;
   confirmedAt?: number;
+  /** Minted on the GET render and required by the POST confirmation, so the state-mutating
+   *  half of device verification cannot be driven cross-site (R8-02). */
+  csrf?: string;
+  /** Last poll, for the advertised `interval` throttle (R8-02). */
+  lastPollAt?: number;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -231,6 +254,62 @@ function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
   return Array.isArray(allowed) && allowed.includes(redirectUri);
 }
 
+/** Parse a JSON config column, failing CLOSED (undefined) instead of throwing. A malformed
+ *  column is an operator mistake, not a reason to take the whole sign-in path down with an
+ *  uncaught SyntaxError (R8-06). */
+function parseJsonColumn<T>(raw: string | null | undefined): T | undefined {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Parse a stored flow record, treating a corrupt value exactly like a missing one (R11-06).
+ *
+ * Every caller already has a well-defined answer for "this flow does not exist" — `expired`,
+ * `unknown state`, `timeout`. A truncated or garbled KV value is indistinguishable from that
+ * for every purpose the handler has, so it should take the same branch rather than escape as
+ * an uncaught `SyntaxError` and 500 a sign-in path.
+ */
+function parseFlowRecord<T>(raw: string): T | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether a verified claim genuinely enables a provisioning hook. Truthiness is NOT enough:
+ *  an IdP that emits `"false"`, `"0"`, `"null"`, `0`, `[]` or `{}` must not grant an
+ *  entitlement, so we require a real boolean `true` or a meaningful string (R8-05c). */
+function claimEnables(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value !== "string") return false;
+  const s = value.trim().toLowerCase();
+  return s !== "" && s !== "false" && s !== "0" && s !== "null";
+}
+
+/** Apply one or more abuse ceilings to an unauthenticated OIDC surface. Returns a 429 to
+ *  return, or null when the call is within every limit. Poll/callback surfaces pass a second
+ *  bucket keyed on the flow so a single state cannot be hammered from a botnet (R8-10). */
+async function rateLimited(
+  env: Env,
+  product: Product,
+  now: number,
+  ...limits: RateLimit[]
+): Promise<Response | null> {
+  for (const rl of limits) {
+    if (!(await rateLimitOk(env, product.slug, rl, now))) {
+      return errorResponse(429, "rate_limited", "too many requests");
+    }
+  }
+  return null;
+}
+
 // ── identity mapping + provisioning ──────────────────────────────────────────
 /** Apply provisioning hooks (verified claim -> entitlement + secret) into a payload.
  *  `now` (epoch seconds) is stamped as `updatedAt` on every entry written. */
@@ -244,12 +323,17 @@ export async function applyProvisioning(
   const hooks = await getProvisioning(db, product);
   for (const h of hooks) {
     const claimVal = identity.claims[h.claim];
-    if (claimVal === undefined || claimVal === null || claimVal === false)
-      continue;
+    if (!claimEnables(claimVal)) continue;
     if (h.entitlement_key) {
-      const value = h.entitlement_value_json
-        ? (JSON.parse(h.entitlement_value_json) as ManagedEntry["value"])
-        : true;
+      let value: ManagedEntry["value"] = true;
+      if (h.entitlement_value_json) {
+        const parsed = parseJsonColumn<ManagedEntry["value"]>(
+          h.entitlement_value_json,
+        );
+        // A hook row we cannot parse is a hook we do not trust: skip it entirely.
+        if (parsed === undefined) continue;
+        value = parsed;
+      }
       payload.entitlements[h.entitlement_key] = {
         state: "enforced",
         value,
@@ -257,20 +341,20 @@ export async function applyProvisioning(
       };
     }
     if (h.secret_key && h.secret_url_template) {
-      const url = h.secret_url_template.replace(
+      // Global replace: a template may reference {claim} more than once, and leaving a
+      // literal placeholder in a "secret" ships a broken URL to the client (R8-06).
+      const url = h.secret_url_template.replaceAll(
         "{claim}",
         encodeURIComponent(String(claimVal)),
       );
-      // Host allowlist (defense against templated-secret injection).
-      const allowed = h.allowed_hosts_json
-        ? (JSON.parse(h.allowed_hosts_json) as string[])
-        : null;
-      if (allowed) {
-        try {
-          if (!allowed.includes(new URL(url).host)) continue;
-        } catch {
-          continue;
-        }
+      // Host allowlist (defense against templated-secret injection). Fails CLOSED: a missing
+      // or malformed allowlist drops the secret rather than emitting any host (R8-06).
+      const allowed = parseJsonColumn<string[]>(h.allowed_hosts_json);
+      if (!Array.isArray(allowed)) continue;
+      try {
+        if (!allowed.includes(new URL(url).host)) continue;
+      } catch {
+        continue;
       }
       payload.secrets[h.secret_key] = {
         state: "hidden",
@@ -295,12 +379,11 @@ export async function activateFromIdentity(
   { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
 > {
   const oidc = await getOidcConfig(db, product.slug);
-  const map = oidc?.group_role_map_json
-    ? (JSON.parse(oidc.group_role_map_json) as Record<
-        string,
-        { role: string; tier?: string }
-      >)
-    : {};
+  // A malformed map grants nothing (fail closed) instead of throwing out of sign-in (R8-06).
+  const map =
+    parseJsonColumn<Record<string, { role: string; tier?: string }>>(
+      oidc?.group_role_map_json,
+    ) ?? {};
 
   let entitled = false;
   let tierId: string | null = null;
@@ -325,9 +408,7 @@ export async function activateFromIdentity(
 
   let expiresAt: number | null = null;
   if (tierId) {
-    const tier = await getTier(db, product.slug, tierId);
-    if (tier?.policy_expiry_days)
-      expiresAt = now + tier.policy_expiry_days * 86400;
+    expiresAt = tierExpiresAt(await getTier(db, product.slug, tierId), now);
   }
 
   const overrides: ManagedPayload = {
@@ -394,8 +475,12 @@ export async function activateFromIdentity(
   // machines but ends up on the license that already holds their entitlements.
   if (claimable && existing && licenseUsable(existing, now)) {
     await moveDevices(db, product.slug, claimable.id, existing.id);
+    // R3-05: `enroll_hwid` is deliberately NOT cleared. The retired row keeps occupying
+    // `idx_licenses_enroll_hwid`, which is the only guard on "one free license per machine";
+    // clearing it let the same machine enrol again immediately and repeat the merge with a
+    // second identity, without limit.
     await db.run(
-      `UPDATE licenses SET status = 'disabled', enroll_hwid = NULL, modified_by = 'oidc',
+      `UPDATE licenses SET status = 'disabled', modified_by = 'oidc',
          modified_at = ? WHERE product = ? AND id = ?`,
       now,
       product.slug,
@@ -533,6 +618,13 @@ export async function handleAuthStart(
   db: Db,
   product: Product,
 ): Promise<Response> {
+  const limited = await rateLimited(
+    env,
+    product,
+    Math.floor(Date.now() / 1000),
+    { bucket: "authStart", id: clientIp(req), limit: 60, windowSec: 60 },
+  );
+  if (limited) return limited;
   const rawReturnTo = new URL(req.url).searchParams.get("return_to");
   const returnTo = safeReturnTo(req, rawReturnTo);
   if (rawReturnTo && !returnTo)
@@ -553,6 +645,13 @@ export async function handleAuthDeviceStart(
   product: Product,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
+  const limited = await rateLimited(
+    env,
+    product,
+    Math.floor(Date.now() / 1000),
+    { bucket: "authDeviceStart", id: clientIp(req), limit: 60, windowSec: 60 },
+  );
+  if (limited) return limited;
   let body: Record<string, unknown> = {};
   try {
     const text = await req.text();
@@ -594,7 +693,7 @@ export async function handleAuthDeviceStart(
     verificationUri,
     verificationUriComplete: verificationUri,
     expiresIn: FLOW_TTL_SECONDS,
-    interval: 2,
+    interval: DEVICE_POLL_INTERVAL_SECONDS,
     pollUrl: `${new URL(req.url).origin}/${product.slug}/auth/device/poll`,
   });
 }
@@ -607,35 +706,102 @@ function escapeHtml(input: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** GET /<product>/auth/device/verify — user-visible device confirmation. */
+/** The CSRF token the confirmation form posts back, from either an HTML form body or JSON. */
+async function readConfirmToken(req: Request): Promise<string | null> {
+  const text = await req.text().catch(() => "");
+  if (!text) return null;
+  if ((req.headers.get("content-type") ?? "").includes("application/json")) {
+    const body = parseJsonColumn<Record<string, unknown>>(text);
+    return typeof body?.csrf === "string" ? body.csrf : null;
+  }
+  return new URLSearchParams(text).get("csrf") || null;
+}
+
+/** POST half of device verification: mark the flow user-confirmed and hand the browser on to
+ *  the IdP. Requires the CSRF token minted on the GET render, so neither a prefetch nor a
+ *  cross-site form can confirm a flow (or read `state`/`nonce`) on the visitor's behalf. */
+async function confirmDeviceFlow(
+  req: Request,
+  env: Env,
+  product: Product,
+  deviceCode: string,
+  record: DeviceFlowRecord,
+  url: URL,
+  now: number,
+): Promise<Response> {
+  // Browsers always send Origin on a form POST; a cross-site submission is refused outright.
+  const origin = req.headers.get("origin");
+  if (origin && origin !== url.origin)
+    return errorResponse(403, "forbidden", "confirmation failed");
+  const token = await readConfirmToken(req);
+  if (!record.csrf || !token || token !== record.csrf)
+    return errorResponse(403, "forbidden", "confirmation failed");
+
+  // The confirmation is an authorization input for the poll surfaces, so it is recorded on
+  // the flow the pollers actually read, not only on the device record (R8-01).
+  const flowRaw = await env.HOT.get(flowKey(product.slug, record.state));
+  if (!flowRaw) return errorResponse(404, "not_found", "device code expired");
+  const flow = parseFlowRecord<FlowRecord>(flowRaw);
+  if (!flow) return errorResponse(404, "not_found", "device code expired");
+  flow.confirmedAt = now;
+  await env.HOT.put(flowKey(product.slug, record.state), JSON.stringify(flow), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
+  record.confirmedAt = now;
+  delete record.csrf; // single-use
+  await env.HOT.put(
+    deviceFlowKey(product.slug, deviceCode),
+    JSON.stringify(record),
+    { expirationTtl: FLOW_TTL_SECONDS },
+  );
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location: record.authorizeUrl,
+      // The authorize URL carries `state` and `nonce`: keep it out of the Referer chain and
+      // out of every cache (R8-02).
+      "referrer-policy": "no-referrer",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/** GET /<product>/auth/device/verify — render the confirmation page.
+ *  POST /<product>/auth/device/verify — confirm it. The GET is deliberately side-effect free:
+ *  it used to accept `?confirm=1`, which made an `<img src>` enough to confirm a flow AND
+ *  handed the caller `state` + `nonce` in the 302 (R8-02). */
 export async function handleAuthDeviceVerify(
   req: Request,
   env: Env,
   product: Product,
 ): Promise<Response> {
-  if (req.method !== "GET") return methodNotAllowed();
+  if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
+  const now = Math.floor(Date.now() / 1000);
+  const limited = await rateLimited(env, product, now, {
+    bucket: "authDeviceVerify",
+    id: clientIp(req),
+    limit: 60,
+    windowSec: 60,
+  });
+  if (limited) return limited;
   const url = new URL(req.url);
   const deviceCode = url.searchParams.get("device_code");
   if (!deviceCode) return errorResponse(400, "bad_request", "missing code");
   const raw = await env.HOT.get(deviceFlowKey(product.slug, deviceCode));
   if (!raw) return errorResponse(404, "not_found", "device code expired");
-  const record = JSON.parse(raw) as DeviceFlowRecord;
+  const record = parseFlowRecord<DeviceFlowRecord>(raw);
+  if (!record) return errorResponse(404, "not_found", "device code expired");
 
-  if (url.searchParams.get("confirm") === "1") {
-    record.confirmedAt = Math.floor(Date.now() / 1000);
-    await env.HOT.put(
-      deviceFlowKey(product.slug, deviceCode),
-      JSON.stringify(record),
-      { expirationTtl: FLOW_TTL_SECONDS },
-    );
-    return new Response(null, {
-      status: 302,
-      headers: { location: record.authorizeUrl },
-    });
-  }
+  if (req.method === "POST")
+    return confirmDeviceFlow(req, env, product, deviceCode, record, url, now);
 
-  const confirmUrl = new URL(url);
-  confirmUrl.searchParams.set("confirm", "1");
+  const csrf = b64url(randomBytes(16));
+  record.csrf = csrf;
+  await env.HOT.put(
+    deviceFlowKey(product.slug, deviceCode),
+    JSON.stringify(record),
+    { expirationTtl: FLOW_TTL_SECONDS },
+  );
   const deviceLabel = record.deviceName || record.deviceId;
   const html = `<!doctype html>
 <meta charset="utf-8">
@@ -651,12 +817,27 @@ export async function handleAuthDeviceVerify(
       <dt>Device</dt><dd style="margin:0;">${escapeHtml(deviceLabel)}</dd>
       <dt>Product</dt><dd style="margin:0;">${escapeHtml(product.slug)}</dd>
     </dl>
-    <a href="${escapeHtml(confirmUrl.toString())}" style="display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border-radius:8px; background:#5b7cfa; color:#fff; text-decoration:none; font-weight:650;">Continue to sign in</a>
+    <form method="post" action="${escapeHtml(url.toString())}">
+      <input type="hidden" name="csrf" value="${escapeHtml(csrf)}">
+      <button type="submit" style="display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border:0; border-radius:8px; background:#5b7cfa; color:#fff; font:inherit; font-weight:650; cursor:pointer;">Continue to sign in</button>
+    </form>
   </main>
 </body>`;
   return new Response(html, {
     status: 200,
-    headers: { "content-type": "text/html; charset=utf-8" },
+    // R1-09: `index.ts`'s `secureResponse` backstop would supply this policy anyway, but a
+    // handler that emits HTML should not depend on the dispatcher — a direct call (a test, or
+    // a future internal caller) must be hardened too. `staticHtmlSecurityHeaders` preserves
+    // the `referrer-policy` set here.
+    headers: staticHtmlSecurityHeaders(
+      new Headers({
+        "content-type": "text/html; charset=utf-8",
+        // The address bar holds the device code: never let it ride along as a Referer, and
+        // never let a shared cache keep the page (R8-02).
+        "referrer-policy": "no-referrer",
+        "cache-control": "no-store",
+      }),
+    ),
   });
 }
 
@@ -664,16 +845,26 @@ function mapClaims(payload: Record<string, unknown>): OidcIdentity {
   const groups = Array.isArray(payload.groups)
     ? (payload.groups.filter((g) => typeof g === "string") as string[])
     : [];
+  // Only a VERIFIED email is trusted: this value is persisted on the license, signed into the
+  // config document's identity profile, and is what the portal auto-links accounts on. An
+  // unverified claim is attacker-chosen, so we store nothing rather than that (R8-05b).
+  const email =
+    payload.email_verified === true && typeof payload.email === "string"
+      ? payload.email
+      : undefined;
   const name =
     (typeof payload.name === "string" && payload.name) ||
     [payload.given_name, payload.family_name]
       .filter((s) => typeof s === "string")
       .join(" ")
       .trim() ||
-    (typeof payload.email === "string" ? payload.email : "");
+    (email ?? "");
   return {
-    sub: String(payload.sub ?? ""),
-    email: typeof payload.email === "string" ? payload.email : undefined,
+    // No String() coercion: a non-string `sub` is a type-confusion hazard (123 vs "123"), and
+    // an empty one collapses every such identity onto a single license row (R8-05a). The
+    // caller rejects the empty result — see handleAuthCallback.
+    sub: typeof payload.sub === "string" ? payload.sub : "",
+    email,
     name: name || undefined,
     groups,
     claims: payload,
@@ -693,9 +884,27 @@ export async function handleAuthCallback(
   const state = url.searchParams.get("state");
   if (!code || !state)
     return errorResponse(400, "bad_request", "missing code/state");
+  const limited = await rateLimited(
+    env,
+    product,
+    now,
+    { bucket: "authCallback", id: clientIp(req), limit: 60, windowSec: 60 },
+    { bucket: "authCallbackState", id: state, limit: 5, windowSec: 60 },
+  );
+  if (limited) return limited;
   const raw = await env.HOT.get(flowKey(product.slug, state));
   if (!raw) return errorResponse(400, "bad_request", "unknown state");
-  const flow = JSON.parse(raw) as FlowRecord;
+  const flow = parseFlowRecord<FlowRecord>(raw);
+  if (!flow) return errorResponse(400, "bad_request", "unknown state");
+  // Single-use state (R8-04). Claim the flow before any outbound call so a second callback
+  // can never overwrite the license a poller is already waiting on; a replay gets exactly the
+  // same generic answer as an unknown state.
+  if (flow.consumedAt)
+    return errorResponse(400, "bad_request", "unknown state");
+  flow.consumedAt = now;
+  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
   const oidc = await resolveOidcConfig(env, db, product);
   if (oidc instanceof Response) {
     await env.HOT.delete(flowKey(product.slug, state));
@@ -749,6 +958,10 @@ export async function handleAuthCallback(
       issuer: oidc.issuer,
       audience: oidc.clientId,
       algorithms: ALLOWED_ID_TOKEN_ALGS,
+      // Freshness is ours to enforce: `exp` is entirely the IdP's choice, so a token minted
+      // long before this exchange must not be replayable into a sign-in (R8-05d).
+      clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
+      maxTokenAge: ID_TOKEN_MAX_AGE,
     });
     claims = verified.payload as Record<string, unknown>;
     // Reject unconditionally on a missing or mismatched nonce — a token with no nonce must
@@ -760,6 +973,16 @@ export async function handleAuthCallback(
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
+  // An identity with no subject is not an identity: `getLicenseBySub(…, "")` would match every
+  // other subject-less row, so distinct people would share one license. Admin and portal both
+  // reject this already (admin/auth.ts:216, portal/auth.ts:280) — so does the product flow now
+  // (R8-05a). Same generic 401 as any other bad ID token.
+  const identity = mapClaims(claims);
+  if (!identity.sub) {
+    await env.HOT.delete(flowKey(product.slug, state));
+    return errorResponse(401, "unauthorized", "id token invalid");
+  }
+
   // A device-code/loopback flow carries the device id that started it. If that device is
   // already running on an auto-issued license, sign-in claims that license in place rather
   // than stranding the user's existing devices and local state on an orphan.
@@ -767,13 +990,9 @@ export async function handleAuthCallback(
     ? ((await getDevice(db, product.slug, flow.deviceId))?.license_id ?? null)
     : null;
 
-  const result = await activateFromIdentity(
-    db,
-    product,
-    mapClaims(claims),
-    now,
-    { enrolledLicenseId },
-  );
+  const result = await activateFromIdentity(db, product, identity, now, {
+    enrolledLicenseId,
+  });
   if ("error" in result) {
     // Failed activation: drop the flow so the poller gets a generic error, not the reason.
     await env.HOT.delete(flowKey(product.slug, state));
@@ -816,7 +1035,17 @@ export async function handleAuthCallback(
   });
   return new Response(
     '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You\'re signed in</h1><p>You can close this tab and return to the app.</p>',
-    { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
+    {
+      status: 200,
+      // R1-09 — see the device-authorization page above: set the policy at the sink as well
+      // as in the dispatcher backstop.
+      headers: staticHtmlSecurityHeaders(
+        new Headers({
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+        }),
+      ),
+    },
   );
 }
 
@@ -832,10 +1061,19 @@ async function pollAuthFlow(
     return errorResponse(400, "bad_request", "missing state/device");
   const raw = await env.HOT.get(flowKey(product.slug, state));
   if (!raw) return json({ status: "timeout" });
-  const flow = JSON.parse(raw) as FlowRecord;
+  const flow = parseFlowRecord<FlowRecord>(raw);
+  if (!flow) return json({ status: "timeout" });
   // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
   if (flow.error) return json({ status: "error" });
   if (!flow.licenseId) return json({ status: "pending" });
+  // `state` is a non-secret by construction (it rides on the authorize and callback URLs), so
+  // it can never be the sole authorization input: the token is minted for the device that
+  // STARTED the flow and only after the human confirmed it — the same two guards
+  // handleAuthDevicePoll enforces, which this surface used to skip entirely (R8-01). The
+  // answers are the existing generic ones, so a prober learns nothing new.
+  if (!flow.deviceId || flow.deviceId !== deviceId)
+    return json({ status: "error" });
+  if (!flow.confirmedAt) return json({ status: "pending" });
 
   let token: string;
   try {
@@ -863,11 +1101,20 @@ export async function handleAuthPoll(
   now: number,
 ): Promise<Response> {
   const url = new URL(req.url);
+  const state = url.searchParams.get("state");
+  const limited = await rateLimited(
+    env,
+    product,
+    now,
+    { bucket: "authPoll", id: clientIp(req), limit: 120, windowSec: 60 },
+    { bucket: "authPollState", id: state ?? "-", limit: 40, windowSec: 60 },
+  );
+  if (limited) return limited;
   return pollAuthFlow(
     env,
     db,
     product,
-    url.searchParams.get("state"),
+    state,
     url.searchParams.get("device"),
     now,
   );
@@ -897,11 +1144,37 @@ export async function handleAuthDevicePoll(
   const deviceId = typeof body.deviceId === "string" ? body.deviceId : null;
   if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing deviceCode/deviceId");
+  const limited = await rateLimited(
+    env,
+    product,
+    now,
+    { bucket: "authDevicePoll", id: clientIp(req), limit: 120, windowSec: 60 },
+    { bucket: "authDevicePollCode", id: state, limit: 40, windowSec: 60 },
+  );
+  if (limited) return limited;
   const raw = await env.HOT.get(deviceFlowKey(product.slug, state));
   if (!raw) return json({ status: "timeout" });
-  const deviceFlow = JSON.parse(raw) as DeviceFlowRecord;
+  const deviceFlow = parseFlowRecord<DeviceFlowRecord>(raw);
+  if (!deviceFlow) return json({ status: "timeout" });
   if (deviceFlow.deviceId !== deviceId)
     return errorResponse(401, "unauthorized", "device mismatch");
+  // The `interval` we advertise at /auth/device/start is enforced, not decorative: a client
+  // polling faster than the contract is told to slow down instead of being served (R8-02).
+  if (
+    deviceFlow.lastPollAt !== undefined &&
+    now - deviceFlow.lastPollAt < DEVICE_POLL_INTERVAL_SECONDS
+  ) {
+    return json(
+      { status: "slow_down", interval: DEVICE_POLL_INTERVAL_SECONDS },
+      { status: 429 },
+    );
+  }
+  deviceFlow.lastPollAt = now;
+  await env.HOT.put(
+    deviceFlowKey(product.slug, state),
+    JSON.stringify(deviceFlow),
+    { expirationTtl: FLOW_TTL_SECONDS },
+  );
   if (!deviceFlow.confirmedAt) return json({ status: "pending" });
   const res = await pollAuthFlow(
     env,

@@ -1,7 +1,8 @@
 /**
- * Admin-portal session: a signed, HttpOnly cookie that proves an interactive OIDC
- * sign-in whose `groups` carried either the platform-admin group or a product admin
- * group.
+ * Admin-portal session: a signed, HttpOnly cookie that proves an interactive OIDC sign-in
+ * whose `groups` carried the platform-admin group. That is the only grant there is — product
+ * admin groups do not exist as a privilege level (see ./authz.ts), so a session either
+ * carries full platform authority or it was never issued.
  *
  * The license hot path uses a bearer *token*; the admin SPA is a BROWSER, so it uses a
  * cookie instead. The cookie is a compact HMAC-SHA-256 token (NOT a license JWS — a
@@ -20,8 +21,27 @@
 
 import type { Env } from "../env.js";
 
-/** Cookie name for the admin session. Distinct prefix so it can't collide. */
-export const ADMIN_COOKIE = "pkey_admin";
+/**
+ * Cookie name for the admin session.
+ *
+ * `__Host-` is not decoration — it is the only cookie property a *sibling subdomain* cannot
+ * defeat. Without it, anyone who controls (or has XSS on) any `*.plrs.im` host can set
+ * `pkey_admin=<their token>; Domain=plrs.im; Path=/manage/api`; RFC 6265 §5.4 orders cookies
+ * by descending path length, so that shadow is sent FIRST and wins (R1-08). The `__Host-`
+ * prefix makes the browser refuse such a cookie outright: a `__Host-` cookie must be
+ * `Secure`, must carry no `Domain`, and must be `Path=/`.
+ *
+ * That last requirement is why the cookie is no longer scoped to `Path=/manage`, and the
+ * trade is worth taking. Path scoping was never a boundary here: R1-09 established that any
+ * same-origin script reaches `/manage/api/*` with `credentials: "same-origin"` no matter how
+ * the cookie is pathed, and `Path` does nothing at all against a sibling-subdomain writer —
+ * which is the attack this closes. What remains is `HttpOnly` + `Secure` + `SameSite=Strict`
+ * + the per-session CSRF double-submit, plus a browser-enforced guarantee that only THIS host
+ * can have set the value.
+ *
+ * Renaming invalidates sessions issued before the deploy; admins re-auth with one redirect.
+ */
+export const ADMIN_COOKIE = "__Host-pkey_admin";
 
 /** The CSRF header the SPA must echo on every mutation (double-submit). */
 export const CSRF_HEADER = "X-PKey-CSRF";
@@ -96,6 +116,28 @@ function randomToken(byteLength: number): string {
   return base64UrlEncode(buf);
 }
 
+/**
+ * Domain-separation tag mixed into the signed message (R1-02).
+ *
+ * The admin and portal realms can be signed by the SAME raw key — `portal/session.ts` falls
+ * back to `ADMIN_SESSION_SECRET` when `PORTAL_SESSION_SECRET` is unset, which `wrangler.toml`
+ * documents as a supported deployment. Before this tag, the only thing stopping a portal
+ * cookie (obtainable by anyone with an email address) from being replayed as an admin cookie
+ * was that the two JSON bodies happened to carry different field names: add a `sub` and a
+ * `groups` array to `PortalSession` — both natural next features — and the realms collapse.
+ *
+ * Signing `"pkey.admin.v1|" + body` instead of `body` makes the realms cryptographically
+ * distinct regardless of payload shape: a portal token's signature is over a different
+ * message, so it cannot verify here even with an identical key and an identical body. The
+ * `.v1` allows a future rotation of the scheme itself.
+ */
+const ADMIN_SESSION_DOMAIN = "pkey.admin.v1|";
+
+/** The exact bytes that get HMAC'd: the realm tag followed by the encoded body. */
+function signingInput(body: string): Uint8Array {
+  return new TextEncoder().encode(ADMIN_SESSION_DOMAIN + body);
+}
+
 // ---------------------------------------------------------------------------
 // Issue / verify
 // ---------------------------------------------------------------------------
@@ -124,11 +166,7 @@ export async function issueSession(
   };
   const body = base64UrlEncodeString(JSON.stringify(session));
   const key = await sessionKey(env);
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(body),
-  );
+  const sig = await crypto.subtle.sign("HMAC", key, signingInput(body));
   const token = `${body}.${base64UrlEncode(new Uint8Array(sig))}`;
   return { token, session };
 }
@@ -148,11 +186,7 @@ export async function verifySession(
   const key = await sessionKey(env);
   let ok: boolean;
   try {
-    const expected = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      new TextEncoder().encode(body),
-    );
+    const expected = await crypto.subtle.sign("HMAC", key, signingInput(body));
     ok = safeEqual(sig, base64UrlEncode(new Uint8Array(expected)));
   } catch {
     return null;
@@ -174,38 +208,41 @@ export async function verifySession(
 // Cookie (de)serialization
 // ---------------------------------------------------------------------------
 
-/** Pull the admin session token out of a Cookie header. */
+/**
+ * Pull the admin session token out of a Cookie header.
+ *
+ * Reads EVERY match, not the first. Taking the first was the other half of R1-08: the browser
+ * sends the longest-path cookie first, so an attacker-planted duplicate is exactly what a
+ * first-match parser picks up. Two different values for one session cookie is never a
+ * legitimate state — with `__Host-` the browser will not even produce one — so ambiguity is
+ * resolved by failing closed rather than by choosing a winner.
+ */
 function readSessionCookie(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
+  const values = new Set<string>();
   for (const part of cookieHeader.split(";")) {
     const [name, ...rest] = part.trim().split("=");
-    if (name === ADMIN_COOKIE) return rest.join("=");
+    if (name === ADMIN_COOKIE) values.add(rest.join("="));
   }
-  return null;
+  if (values.size !== 1) return null;
+  return values.values().next().value ?? null;
 }
 
-/** Build the Set-Cookie value: HttpOnly + Secure + SameSite=Strict, path /manage. */
+/** The attributes `__Host-` requires (`Secure`, no `Domain`, `Path=/`) plus SameSite/HttpOnly. */
+const ADMIN_COOKIE_ATTRS = ["Path=/", "HttpOnly", "Secure", "SameSite=Strict"];
+
+/** Build the Set-Cookie value: `__Host-` prefixed, HttpOnly + Secure + SameSite=Strict. */
 export function buildSessionCookie(token: string): string {
   return [
     `${ADMIN_COOKIE}=${token}`,
-    "Path=/manage",
-    "HttpOnly",
-    "Secure",
-    "SameSite=Strict",
+    ...ADMIN_COOKIE_ATTRS,
     `Max-Age=${SESSION_TTL_SECONDS}`,
   ].join("; ");
 }
 
-/** Build a clearing cookie for sign-out. */
+/** Build a clearing cookie for sign-out. Attributes must match, or the browser keeps it. */
 export function buildClearCookie(): string {
-  return [
-    `${ADMIN_COOKIE}=`,
-    "Path=/manage",
-    "HttpOnly",
-    "Secure",
-    "SameSite=Strict",
-    "Max-Age=0",
-  ].join("; ");
+  return [`${ADMIN_COOKIE}=`, ...ADMIN_COOKIE_ATTRS, "Max-Age=0"].join("; ");
 }
 
 /** Read the session out of a request's Cookie header + verify it. */

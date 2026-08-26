@@ -17,11 +17,12 @@ export async function handleMe(
 ): Promise<Response> {
   const products = await listProducts(db);
   const platform = isPlatformAdmin(env, session);
-  const visible = products.filter(
-    (p) =>
-      platform ||
-      (p.admin_group != null && session.groups.includes(p.admin_group)),
-  );
+  // Admin authority is platform-wide: `hasAnyAdminGrant` (the login gate) and
+  // `isPlatformAdmin` (the product gate) are the SAME predicate, so a session that exists at
+  // all administers every product. The old `p.admin_group != null && groups.includes(...)`
+  // arm was unreachable dead code — it made `/api/me` look like it reported a per-product
+  // grant that no longer exists anywhere in the system. A non-platform session sees nothing.
+  const visible = platform ? products : [];
   const adminProducts = await Promise.all(
     visible.map(async (p) => {
       const schema = await getActiveSchema(db, p.slug);

@@ -6,6 +6,7 @@
 
 import type { Catalog } from "@polaris-key/catalog";
 import type { ManagedEntry, ManagedPayload } from "@polaris-key/protocol";
+import { isSealedEnvelope } from "./managedSecrets.js";
 
 /** Strip stored secret values out of a payload before it goes over the wire. */
 export function redactPayload(
@@ -32,10 +33,26 @@ export function redactPayload(
   }
   // A config key flagged `secret` in the catalog is also redacted (value blanked, but its
   // state + updatedAt are preserved so the admin UI can still show change metadata).
+  //
+  // R12-01 — this FAILS CLOSED. The catalog is mutable external state: it is null while a
+  // schema replacement or a manifest resync is between `deactivateSchemas` and `insertSchema`,
+  // null when `catalog_json` is unparseable, and a v2 catalog may legitimately drop a key or
+  // its `secret` flag. In every one of those cases the old code fell through to `: entry` and
+  // echoed the stored plaintext. An entry we cannot positively classify as non-secret is
+  // redacted, because the module's guarantee ("responses NEVER echo a stored secret value")
+  // has to hold when the catalog is missing, not only when it agrees with us.
   const config: Record<string, ManagedEntry> = {};
   for (const [key, entry] of Object.entries(payload.config ?? {})) {
     const meta = catalog?.entryByKey(key);
-    config[key] = meta?.secret
+    // A value that is a Sealed envelope was written as a secret (R12-02) and stays redacted
+    // whatever the CURRENT catalog says — that is what closes the "v2 catalog drops the flag"
+    // arm, where the catalog now positively (and wrongly) declares the key non-secret.
+    const isSecret = isSealedEnvelope(entry.value)
+      ? true
+      : meta
+        ? meta.secret === true
+        : true;
+    config[key] = isSecret
       ? { state: entry.state, value: "", updatedAt: entry.updatedAt }
       : entry;
   }

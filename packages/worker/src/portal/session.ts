@@ -1,6 +1,12 @@
 import type { Env } from "../env.js";
 
-export const PORTAL_COOKIE = "pkey_portal";
+/**
+ * `__Host-` prefixed for the same reason as the admin cookie (R1-08): it is the only way to
+ * stop a sibling `*.plrs.im` host from planting a `Domain=`-scoped duplicate that RFC 6265
+ * §5.4 orders ahead of the real one. The portal cookie is already `Path=/` with no `Domain`,
+ * so the prefix costs nothing here beyond invalidating sessions issued before the deploy.
+ */
+export const PORTAL_COOKIE = "__Host-pkey_portal";
 export const PORTAL_CSRF_HEADER = "X-PKey-Portal-CSRF";
 
 const SESSION_TTL_SECONDS = 14 * 24 * 60 * 60;
@@ -58,6 +64,27 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/**
+ * Domain-separation tag mixed into the signed message (R1-02) — the portal counterpart of
+ * `admin/session.ts`'s `ADMIN_SESSION_DOMAIN`. See that file for the full rationale. The
+ * short version: the key below may legitimately be the ADMIN key, and a shared key with no
+ * realm tag meant the boundary between "anyone with an email address" and "platform
+ * administrator" was a coincidence of JSON field names.
+ */
+const PORTAL_SESSION_DOMAIN = "pkey.portal.v1|";
+
+function signingInput(body: string): Uint8Array {
+  return new TextEncoder().encode(PORTAL_SESSION_DOMAIN + body);
+}
+
+/**
+ * The fallback to `ADMIN_SESSION_SECRET` is kept — `wrangler.toml` documents
+ * `PORTAL_SESSION_SECRET` as optional, and removing it would silently 500 every portal
+ * session on deployments that rely on it. It is now SAFE rather than merely lucky: with
+ * distinct domain tags on both sides, a token signed for one realm cannot verify in the
+ * other even when the two realms share one raw key and one payload shape. Setting a separate
+ * `PORTAL_SESSION_SECRET` is still preferred (it makes rotating one realm independent).
+ */
 async function sessionKey(env: Env): Promise<CryptoKey> {
   const material = env.PORTAL_SESSION_SECRET ?? env.ADMIN_SESSION_SECRET;
   if (!material) throw new Error("PORTAL_SESSION_SECRET is required");
@@ -84,11 +111,7 @@ export async function issuePortalSession(
   };
   const body = base64UrlEncodeString(JSON.stringify(session));
   const key = await sessionKey(env);
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(body),
-  );
+  const sig = await crypto.subtle.sign("HMAC", key, signingInput(body));
   const token = `${body}.${base64UrlEncode(new Uint8Array(sig))}`;
   return { token, session };
 }
@@ -106,11 +129,7 @@ export async function verifyPortalSession(
   const key = await sessionKey(env);
   let expected: ArrayBuffer;
   try {
-    expected = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      new TextEncoder().encode(body),
-    );
+    expected = await crypto.subtle.sign("HMAC", key, signingInput(body));
   } catch {
     return null;
   }
@@ -127,13 +146,16 @@ export async function verifyPortalSession(
   return session;
 }
 
+/** Reads EVERY match and fails closed on a duplicate — see `admin/session.ts` (R1-08). */
 function readSessionCookie(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
+  const values = new Set<string>();
   for (const part of cookieHeader.split(";")) {
     const [name, ...rest] = part.trim().split("=");
-    if (name === PORTAL_COOKIE) return rest.join("=");
+    if (name === PORTAL_COOKIE) values.add(rest.join("="));
   }
-  return null;
+  if (values.size !== 1) return null;
+  return values.values().next().value ?? null;
 }
 
 export function buildPortalSessionCookie(token: string): string {

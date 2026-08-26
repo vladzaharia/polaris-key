@@ -17,7 +17,10 @@ import { mergePayloads } from "./merge.js";
 import { tighterMax, tighterMin } from "./gate.js";
 import {
   appendAudit,
+  claimDeviceSeat,
   countActiveDevices,
+  seatActiveSince,
+  findFingerprintByHwid,
   getActiveSchema,
   getFingerprint,
   getLicense,
@@ -42,7 +45,13 @@ import {
   type PresentedFingerprint,
   type StoredFingerprint,
 } from "./fingerprint.js";
-import { deleteTokenRecord, getTokenRecord, putTokenRecord } from "./kv.js";
+import {
+  deleteTokenRecord,
+  getTokenRecord,
+  putTokenRecord,
+  type TokenRecord,
+} from "./kv.js";
+import { openManagedPayload } from "./admin/lib/managedSecrets.js";
 
 export interface ValidDeviceToken {
   tokenHash: string;
@@ -140,6 +149,28 @@ function injectAdminPolicy(
   if (maxVersion) payload.entitlements["app.maxVersion"] = enforced(maxVersion);
 }
 
+/**
+ * The `expires_at` a licence gets from its tier — the single definition of "this tier is time
+ * boxed", shared by every path that creates or re-tiers a licence.
+ *
+ * R3-06: `policy_expiry_days` was honoured on only two of the three insert sites. The two that
+ * ignored it are the ADMIN paths, and the business consequence is the expensive direction: a
+ * trial→paid re-licence kept the trial's `expires_at` and killed the licence days after the
+ * customer paid, while paid→trial left a time-boxed tier perpetual. A tier's expiry policy is
+ * a property of the tier, so it must be re-derived whenever the tier is assigned, not copied
+ * once at creation.
+ *
+ * `null` means "no expiry": either the tier is not time boxed, or there is no tier.
+ */
+export function tierExpiresAt(
+  tier: Pick<TierRow, "policy_expiry_days"> | null | undefined,
+  now: number,
+): number | null {
+  return tier?.policy_expiry_days
+    ? now + tier.policy_expiry_days * 86400
+    : null;
+}
+
 export function licenseUsable(
   license: LicenseRow | null,
   now: number,
@@ -182,6 +213,20 @@ async function catalogDefaultPayload(
   }
 }
 
+/**
+ * Merge every managed-payload layer for one license/device into the effective payload.
+ *
+ * `env` is OPTIONAL and is the reader half of R12-02. `admin/lib/overrides.ts` now `seal()`s
+ * catalog-declared secrets (`kind: "secret"`, or `kind: "config"` with `secret: true`) before
+ * they reach `profiles.payload_json` / `licenses.overrides_json`, so a stored value is an
+ * AES-GCM envelope rather than the plaintext it used to be. Pass `env` on any path that mints
+ * a signed config doc or renders a value to an owner and the envelopes are opened here; omit it
+ * and the envelope survives into `configDoc.validatePayload`, which prunes it as a schema
+ * violation — fail-closed, but the secret silently stops being delivered.
+ *
+ * Callers that only read `payload.entitlements` (the seat check below, `portal/api.ts`'s
+ * `entitlementView`) do NOT need it: entitlements are never sealed.
+ */
 export async function resolveEffective(
   db: Db,
   product: string,
@@ -192,6 +237,7 @@ export async function resolveEffective(
     tighterMin: (a?: string, b?: string) => string | undefined;
     tighterMax: (a?: string, b?: string) => string | undefined;
   },
+  env?: Env,
 ): Promise<ManagedPayload> {
   const layers: (string | null | undefined)[] = [
     await catalogDefaultPayload(db, product, now),
@@ -223,7 +269,10 @@ export async function resolveEffective(
     policy.tighterMin,
     policy.tighterMax,
   );
-  return payload;
+  // R12-02 read half. Opening happens AFTER the merge so a sealed value in a lower layer that
+  // a higher layer overrides is never decrypted at all, and after `injectAdminPolicy` because
+  // server policy is authored here in plaintext and must not be mistaken for an envelope.
+  return env ? openManagedPayload(env, product, payload) : payload;
 }
 
 /** Rehydrate a stored fingerprint row into the shape the pure matcher takes. */
@@ -333,6 +382,63 @@ export async function authorizeDevice(
     !existing ||
     existing.status !== "authorized" ||
     existing.license_id !== license.id;
+
+  // `X-PKey-Device` is a client-chosen string with no uniqueness requirement, so before this
+  // the cheapest way to hold N seats was to activate N times with N device ids from ONE
+  // machine — the server computed N identical hwids and never compared them.
+  // `findFingerprintByHwid` existed for exactly this and had zero callers (R3-11).
+  //
+  // POLICY: one machine holds one seat per license, and the NEWEST device id wins. Coalescing
+  // rather than refusing is deliberate — a reinstall or a cleared config legitimately produces
+  // a fresh device id, and refusing would strand the customer on a seat they can no longer
+  // reach. Retiring the stale id frees its seat and purges its fingerprint/facts rows through
+  // the same `setDeviceStatus` path the hardware-mismatch arm above uses.
+  //
+  // Scoped to the SAME license on purpose: one machine may legitimately hold this product's
+  // free enrolled license AND a purchased one, and those are different seat pools.
+  //
+  // Gated on `mode !== "off"` so a product whose customers genuinely run several instances on
+  // one host (containers sharing a machine UUID) has a documented escape hatch: turning
+  // fingerprint enforcement off for the product or the tier restores independent device ids.
+  const hwid = presented ? await computeHwid(presented.components) : null;
+  if (isNewAuthorization && hwid && mode !== "off") {
+    const sibling = await findFingerprintByHwid(db, product.slug, hwid);
+    if (sibling && sibling.device_id !== deviceId) {
+      const siblingDevice = await getDevice(
+        db,
+        product.slug,
+        sibling.device_id,
+      );
+      if (
+        siblingDevice?.status === "authorized" &&
+        siblingDevice.license_id === license.id
+      ) {
+        await setDeviceStatus(
+          db,
+          product.slug,
+          sibling.device_id,
+          "deauthorized",
+        );
+        if (siblingDevice.token_hash) {
+          await deleteTokenRecord(env, product.slug, siblingDevice.token_hash);
+        }
+        await appendAudit(db, {
+          product: product.slug,
+          id: randomId("aud"),
+          at: now,
+          actor_sub: null,
+          actor_name: null,
+          actor_email: null,
+          action: "device.seat.coalesced",
+          target_kind: "device",
+          target_id: sibling.device_id,
+          parent_id: license.id,
+          summary: `Same hardware re-registered as ${deviceId}; retired the stale device id so one machine holds one seat`,
+        });
+      }
+    }
+  }
+
   if (isNewAuthorization) {
     // Use gate.ts's semver-correct comparators rather than a lexicographic string compare.
     // Only `deviceLimit` is read from this result today, so the old inline version wasn't
@@ -343,11 +449,51 @@ export async function authorizeDevice(
       tighterMax,
     });
     const limit = resolveDeviceLimit(eff, product.defaultDeviceLimit);
-    if (limit > 0) {
-      const count = await countActiveDevices(db, product.slug, license.id);
-      if (count >= limit) {
-        return { error: "device_limit", limit, deviceCount: count };
-      }
+
+    // R3-02 / R11-02 — the seat is claimed by the DATABASE, not by a read-then-write.
+    // `claimDeviceSeat` takes the lowest free ordinal under `idx_devices_seat`
+    // (UNIQUE (product, license_id, seat_no) WHERE status = 'authorized'), so two isolates
+    // that compute the same ordinal cannot both commit: the loser retries against the ordinal
+    // set as it now stands and eventually runs out. N concurrent activations against a limit
+    // of L therefore admit exactly L, where previously all N were admitted.
+    //
+    // A non-positive limit now DENIES rather than meaning "unlimited" — reading `<= 0` as
+    // unlimited was the fail-open half of R11-02, and the DB no longer accepts such a value.
+    // The pre-count is kept ahead of the claim for two reasons: it reports the true
+    // `deviceCount` in the error, and it still refuses rows written before `seat_no` existed
+    // (a legacy authorized device holds no ordinal, so the seat map alone would under-count).
+    // Dormant devices do not hold seats (`SEAT_DORMANCY_SECONDS`): the count and
+    // `claimDeviceSeat`'s ordinal map must agree on who is still occupying capacity, or the
+    // pre-count would refuse an activation the seat map would happily have granted.
+    const count = await countActiveDevices(
+      db,
+      product.slug,
+      license.id,
+      seatActiveSince(now),
+    );
+    if (limit <= 0 || count >= limit) {
+      return { error: "device_limit", limit, deviceCount: count };
+    }
+    if (
+      !(await claimDeviceSeat(
+        db,
+        product.slug,
+        license.id,
+        deviceId,
+        limit,
+        now,
+      ))
+    ) {
+      return {
+        error: "device_limit",
+        limit,
+        deviceCount: await countActiveDevices(
+          db,
+          product.slug,
+          license.id,
+          seatActiveSince(now),
+        ),
+      };
     }
   }
 
@@ -385,7 +531,7 @@ export async function authorizeDevice(
     await upsertFingerprint(db, {
       product: product.slug,
       device_id: deviceId,
-      hwid: await computeHwid(presented.components),
+      hwid: hwid ?? (await computeHwid(presented.components)),
       components_json: JSON.stringify(presented.components),
       anchor_hash: presented.components[FINGERPRINT_ANCHOR] ?? null,
       status: "verified",
@@ -449,19 +595,22 @@ export async function validateDeviceToken(
 ): Promise<ValidDeviceToken | { error: "unauthorized" }> {
   if (!token) return { error: "unauthorized" };
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  let rec = await getTokenRecord(env, product.slug, tokenHash);
-  if (rec && rec.product !== product.slug) return { error: "unauthorized" };
-  let device = rec
-    ? await getDevice(db, product.slug, rec.deviceId)
+  const cached = await getTokenRecord(env, product.slug, tokenHash);
+  if (cached && cached.product !== product.slug)
+    return { error: "unauthorized" };
+  const device = cached
+    ? await getDevice(db, product.slug, cached.deviceId)
     : await getDeviceByTokenHash(db, product.slug, tokenHash);
-  if (!rec && device) {
-    rec = {
-      product: product.slug,
-      deviceId: device.device_id,
-      licenseId: device.license_id,
-    };
-    await putTokenRecord(env, product.slug, tokenHash, rec);
-  }
+  const rec: TokenRecord | null =
+    cached ??
+    (device
+      ? {
+          product: product.slug,
+          deviceId: device.device_id,
+          licenseId: device.license_id,
+        }
+      : null);
+
   if (opts.deviceId && rec?.deviceId !== opts.deviceId)
     return { error: "unauthorized" };
   if (!device || device.status !== "authorized")
@@ -472,6 +621,13 @@ export async function validateDeviceToken(
 
   const license = await getLicense(db, product.slug, rec.licenseId);
   if (!licenseUsable(license, now)) return { error: "unauthorized" };
+
+  // R10-12 — the cache is back-filled ONLY once every check above has passed. Writing it as
+  // soon as the device row was found (the previous behaviour) meant replaying a token that had
+  // just been revoked — deauthorized device, disabled or expired license — silently recreated
+  // the KV record that `deleteTokenRecord` had purged, so a "revoked" credential kept
+  // re-materialising its own hot-path entry on every attempt.
+  if (!cached) await putTokenRecord(env, product.slug, tokenHash, rec);
   return { tokenHash, license, device };
 }
 

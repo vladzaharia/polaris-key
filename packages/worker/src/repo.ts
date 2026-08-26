@@ -113,6 +113,9 @@ export interface DeviceRow {
   app_version?: string | null;
   sdk_name?: string | null;
   sdk_version?: string | null;
+  /** R11-02 — the seat ordinal this device holds. NULL = holds no seat. Written only by
+   *  `claimDeviceSeat`/`releaseDeviceSeat`; `upsertDevice` deliberately preserves it. */
+  seat_no?: number | null;
 }
 
 export interface ProfileRow {
@@ -727,8 +730,15 @@ export async function getLicenseByEnrollHwid(
   );
 }
 
-/** Attach an identity to an enrolled license, converting it in place to an OIDC license.
- *  Clearing `enroll_hwid` frees the unique index so the machine can enroll again later. */
+/**
+ * Attach an identity to an enrolled license, converting it in place to an OIDC license.
+ *
+ * R3-05: this used to `SET enroll_hwid = NULL`. `idx_licenses_enroll_hwid` is the ONLY thing
+ * enforcing one free license per machine, so releasing the column released the guard: sign in,
+ * claim, enrol again, sign in with a second identity, claim again — unbounded free licenses
+ * from one machine. The binding is now permanent. `enroll.ts` refuses to hand a claimed row to
+ * a later anonymous enrolment, so keeping the value costs the machine nothing it should have.
+ */
 export async function claimEnrolledLicense(
   db: Db,
   product: string,
@@ -745,7 +755,7 @@ export async function claimEnrolledLicense(
 ): Promise<void> {
   await db.run(
     `UPDATE licenses SET sub = ?, name = ?, email = ?, groups_json = ?, tier_id = ?,
-       expires_at = ?, origin = 'oidc', enroll_hwid = NULL, modified_by = 'oidc',
+       expires_at = ?, origin = 'oidc', modified_by = 'oidc',
        modified_at = ? WHERE product = ? AND id = ?`,
     identity.sub,
     identity.name,
@@ -759,7 +769,16 @@ export async function claimEnrolledLicense(
   );
 }
 
-/** Re-point every device of one license at another — the migrate arm of the merge table. */
+/**
+ * Re-point every device of one license at another — the migrate arm of the merge table.
+ *
+ * The seat ordinal is dropped in the same statement. `idx_devices_seat` is unique per
+ * (product, license_id, seat_no), so carrying an ordinal across licenses makes the migrate
+ * path throw a UNIQUE violation the moment the destination already holds that ordinal —
+ * which, once `licenseCore.authorizeDevice` claims seats, is the ordinary case. The moved
+ * device stays `authorized`, so `countActiveDevices` still counts it against the destination's
+ * limit; it simply holds no ordinal until its next new authorization.
+ */
 export async function moveDevices(
   db: Db,
   product: string,
@@ -767,7 +786,7 @@ export async function moveDevices(
   toLicenseId: string,
 ): Promise<void> {
   await db.run(
-    "UPDATE devices SET license_id = ? WHERE product = ? AND license_id = ?",
+    "UPDATE devices SET license_id = ?, seat_no = NULL WHERE product = ? AND license_id = ?",
     toLicenseId,
     product,
     fromLicenseId,
@@ -910,17 +929,184 @@ export async function listDevicesByLicense(
   );
 }
 
+/**
+ * How long a device may go without checking in before its seat becomes reclaimable.
+ *
+ * R3 (business model): `countActiveDevices` had no recency predicate and neither did
+ * `claimDeviceSeat`'s ordinal map, so a device that had not been seen for a year still held
+ * its seat forever. On a 1- or 2-seat product, a decommissioned laptop permanently consumed
+ * capacity the customer had paid for, and the only remedy was an operator.
+ *
+ * Reclamation is silent and safe in both directions: a dormant device that DOES come back
+ * authenticates with a `token_hash` that is still valid, and simply re-claims a seat (or gets
+ * a clean `device_limit` error if the licence has genuinely filled up since). Nothing is
+ * deleted here — the row keeps its status and its data. Properly deauthorizing dormant rows,
+ * so `releaseDeviceSeat`/`purgeDeviceData` run, needs the `scheduled()` handler that R11-09
+ * reports as still missing.
+ */
+export const SEAT_DORMANCY_SECONDS = 90 * 86400;
+
+/** The `last_seen` floor a device must be above to still be counted as holding a seat. */
+export function seatActiveSince(now: number): number {
+  return now - SEAT_DORMANCY_SECONDS;
+}
+
 export async function countActiveDevices(
   db: Db,
   product: string,
   licenseId: string,
+  /** Omit to count every authorized device regardless of dormancy (admin/reporting views). */
+  activeSince?: number,
 ): Promise<number> {
-  const r = await db.first<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM devices WHERE product = ? AND license_id = ? AND status = 'authorized'",
+  const base =
+    "SELECT COUNT(*) AS n FROM devices WHERE product = ? AND license_id = ? AND status = 'authorized'";
+  const r =
+    activeSince === undefined
+      ? await db.first<{ n: number }>(base, product, licenseId)
+      : await db.first<{ n: number }>(
+          `${base} AND last_seen > ?`,
+          product,
+          licenseId,
+          activeSince,
+        );
+  // R11-11: `COUNT(*)` ALWAYS returns exactly one row, so a missing row means the read did not
+  // happen. The old `?? 0` turned that into "this license has no devices" — fail-OPEN in the
+  // one query that decides whether a seat may be granted. Refuse instead.
+  if (!r || typeof r.n !== "number") {
+    throw new Error("countActiveDevices: seat-count read returned no row");
+  }
+  return r.n;
+}
+
+/**
+ * Atomically reserve a device seat, or refuse because the license is full.
+ *
+ * R11-02 / R3-02 — this replaces the check-then-act pair in `licenseCore.authorizeDevice`
+ * (`countActiveDevices()` … `await` … `upsertDevice()`), where N concurrent activations all
+ * read `count = limit - 1`, all passed, and all committed: final seat count `limit - 1 + N`.
+ * The `activate` rate limit bounds the burst but does not serialise it, and it is per-IP.
+ *
+ * The arbiter is `idx_devices_seat` (0015): `UNIQUE (product, license_id, seat_no) WHERE
+ * status = 'authorized' AND seat_no IS NOT NULL`. Two isolates that compute the same free
+ * ordinal cannot both commit — the loser takes a UNIQUE violation, retries against the ordinal
+ * set as it now stands, and eventually either finds a genuinely free ordinal or runs out. This
+ * is the same pattern `idx_licenses_enroll_hwid` already uses for enrolment, where the
+ * migration comment celebrates that "a race between two concurrent enrolments therefore cannot
+ * mint two licenses".
+ *
+ * A device that ALREADY holds an authorized seat on this license re-activates for free — that
+ * is a refresh, not a new install. `limit <= 0` denies rather than meaning "unlimited"; callers
+ * must express "unlimited" by not calling this at all.
+ *
+ * Seats held by DORMANT devices are reclaimed first (see `SEAT_DORMANCY_SECONDS`). Excluding
+ * them from the free-ordinal search alone would not work: the unique index still holds their
+ * ordinal, so the INSERT would collide and retry forever. The ordinal has to actually be
+ * released, which is what `releaseDormantSeats` does.
+ */
+/**
+ * Free the seat ordinals of devices on this licence that have stopped checking in.
+ *
+ * The row itself is left alone — same `status`, same `token_hash`, same data — so a device
+ * that comes back simply re-claims a seat on its next activation. Only the *capacity* is
+ * returned to the customer.
+ */
+async function releaseDormantSeats(
+  db: Db,
+  product: string,
+  licenseId: string,
+  now: number,
+): Promise<void> {
+  await db.run(
+    `UPDATE devices SET seat_no = NULL
+      WHERE product = ? AND license_id = ? AND status = 'authorized'
+        AND seat_no IS NOT NULL AND last_seen <= ?`,
     product,
     licenseId,
+    seatActiveSince(now),
   );
-  return r?.n ?? 0;
+}
+
+export async function claimDeviceSeat(
+  db: Db,
+  product: string,
+  licenseId: string,
+  deviceId: string,
+  limit: number,
+  now: number,
+): Promise<boolean> {
+  await releaseDormantSeats(db, product, licenseId, now);
+  const held = await db.first<{ seat_no: number | null }>(
+    `SELECT seat_no FROM devices
+      WHERE product = ? AND device_id = ? AND license_id = ? AND status = 'authorized'`,
+    product,
+    deviceId,
+    licenseId,
+  );
+  if (held) {
+    if (held.seat_no != null) return true;
+    // An authorized device from before this column existed: adopt it into the seat map below.
+  }
+  if (!Number.isFinite(limit) || limit <= 0) return false;
+
+  // One attempt per seat: each failure removes at least one ordinal from contention.
+  for (let attempt = 0; attempt <= limit; attempt++) {
+    const free = await db.first<{ n: number | null }>(
+      `WITH RECURSIVE seats(n) AS (
+         SELECT 1 UNION ALL SELECT n + 1 FROM seats WHERE n < ?
+       )
+       SELECT MIN(n) AS n FROM seats
+        WHERE n NOT IN (
+          SELECT seat_no FROM devices
+           WHERE product = ? AND license_id = ?
+             AND status = 'authorized' AND seat_no IS NOT NULL
+             AND last_seen > ?
+        )`,
+      limit,
+      product,
+      licenseId,
+      seatActiveSince(now),
+    );
+    if (!free || free.n == null) return false; // every seat is taken
+    try {
+      const changes = await db.runChanges(
+        `INSERT INTO devices
+           (product, device_id, license_id, status, seat_no, first_seen, last_seen)
+         VALUES (?, ?, ?, 'authorized', ?, ?, ?)
+         ON CONFLICT(product, device_id) DO UPDATE SET
+           license_id = excluded.license_id,
+           status = 'authorized',
+           seat_no = excluded.seat_no,
+           last_seen = excluded.last_seen
+         WHERE devices.seat_no IS NULL OR devices.status <> 'authorized'`,
+        product,
+        deviceId,
+        licenseId,
+        free.n,
+        now,
+        now,
+      );
+      if (changes > 0) return true;
+      // The row exists and already holds a seat — nothing to claim.
+      return true;
+    } catch {
+      // UNIQUE constraint on idx_devices_seat: another isolate took this ordinal first.
+      continue;
+    }
+  }
+  return false;
+}
+
+/** Free the seat a device was holding, so a deauthorized install stops occupying capacity. */
+export async function releaseDeviceSeat(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<void> {
+  await db.run(
+    "UPDATE devices SET seat_no = NULL WHERE product = ? AND device_id = ?",
+    product,
+    deviceId,
+  );
 }
 
 export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
@@ -970,7 +1156,14 @@ export async function setDeviceStatus(
   // history and labels survive) but loses its fingerprint and software snapshot. Every
   // deauthorize path — self-service, /deauthorize, admin, portal — routes through here, so
   // none of them can forget to purge, and no scheduled job is needed.
-  if (status === "deauthorized") await purgeDeviceData(db, product, deviceId);
+  //
+  // R11-02: the seat ordinal is released on the same path, for the same reason — every
+  // deauthorize goes through here, so a freed seat can never be left occupied by a device that
+  // is no longer authorized.
+  if (status === "deauthorized") {
+    await releaseDeviceSeat(db, product, deviceId);
+    await purgeDeviceData(db, product, deviceId);
+  }
 }
 
 /** Drop a device's fingerprint and software snapshot. Safe to call when neither exists. */

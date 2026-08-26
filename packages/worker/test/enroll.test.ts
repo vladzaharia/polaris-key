@@ -4,12 +4,19 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, mkReq, NOW, seedProduct, seedTier } from "./seed.js";
+import {
+  makeEnv,
+  mkReq,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  seedTier,
+} from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/env.js";
 import { loadProduct, type Product } from "../src/product.js";
 import { handleEnroll } from "../src/enroll.js";
-import { handleConfig } from "../src/licensing.js";
+import { handleActivate, handleConfig } from "../src/licensing.js";
 import { activateFromIdentity } from "../src/oidc.js";
 import { countActiveDevices, getLicense, listAudit } from "../src/repo.js";
 
@@ -28,6 +35,11 @@ const MACHINE_B = {
   machineUuid: hash("uuidB"),
   boardSerial: hash("boardB"),
   cpuModel: hash("cpuB"),
+};
+const MACHINE_C = {
+  machineUuid: hash("uuidC"),
+  boardSerial: hash("boardC"),
+  cpuModel: hash("cpuC"),
 };
 
 async function setAutoIssue(
@@ -133,12 +145,60 @@ describe("POST /<product>/enroll", () => {
     expect(b.license.id).not.toBe(a.license.id);
   });
 
-  it("enforces the tier's device limit across the shared free license", async () => {
-    await enroll(MACHINE_A, "dev-a");
-    // A second device on the same machine's license is fine (limit 2)…
-    expect((await enroll(MACHINE_A, "dev-a2")).status).toBe(200);
-    // …a third is refused.
-    const third = await enroll(MACHINE_A, "dev-a3");
+  it("FIXED (R3-11): one machine holds exactly one seat however many device ids it presents", async () => {
+    // Was: each new device id from the same machine consumed another seat, so this test
+    // asserted that the THIRD enrolment hit the tier's limit of 2. `X-PKey-Device` is a
+    // client-chosen string, so that made the seat count a function of how many times the
+    // caller cleared its config. `authorizeDevice` now coalesces on the server-computed hwid:
+    // the newest device id wins and the stale one is retired.
+    const first = (await (await enroll(MACHINE_A, "dev-a")).json()) as {
+      license: { id: string };
+    };
+    for (const dev of ["dev-a2", "dev-a3", "dev-a4"])
+      expect((await enroll(MACHINE_A, dev)).status).toBe(200);
+
+    expect(await countActiveDevices(db, "djdl", first.license.id)).toBe(1);
+    const rows = await db.all<{ device_id: string; status: string }>(
+      "SELECT device_id, status FROM devices WHERE product = ? AND license_id = ? AND status = 'authorized'",
+      "djdl",
+      first.license.id,
+    );
+    expect(rows.map((r) => r.device_id)).toEqual(["dev-a4"]);
+  });
+
+  it("still enforces the tier's device limit when distinct machines share a license", async () => {
+    // The enrol path mints one license per machine, so the shared-license case is reached by
+    // pointing a second machine's device at the first machine's license directly.
+    const { key } = await seedLicenseWithKey(db, "djdl", {
+      id: "lic_shared",
+      tierId: "free",
+    });
+    const p = await product();
+    for (const [i, machine] of [MACHINE_A, MACHINE_B].entries()) {
+      const res = await handleActivate(
+        mkReq(
+          "POST",
+          { authorization: `Bearer ${key}`, "x-pkey-device": `shared-${i}` },
+          { fingerprint: { components: machine, hwid: "x" } },
+        ),
+        env,
+        db,
+        p,
+        NOW,
+      );
+      expect(res.status).toBe(200);
+    }
+    const third = await handleActivate(
+      mkReq(
+        "POST",
+        { authorization: `Bearer ${key}`, "x-pkey-device": "shared-2" },
+        { fingerprint: { components: MACHINE_C, hwid: "x" } },
+      ),
+      env,
+      db,
+      p,
+      NOW,
+    );
     expect(third.status).toBe(403);
     expect(await third.json()).toMatchObject({ error: "device_limit" });
   });
@@ -285,8 +345,10 @@ describe("merge on sign-in", () => {
     expect(row?.email).toBe("ada@example.com");
     expect(row?.origin).toBe("oidc");
     expect(row?.tier_id).toBe("standard");
-    // The hwid is released so the machine can enroll again after a sign-out.
-    expect(row?.enroll_hwid).toBeNull();
+    // FIXED (R3-05): the hwid is NOT released. `idx_licenses_enroll_hwid` is the only guard
+    // on "one free license per machine", so freeing it on claim let the machine enrol again
+    // and be claimed by a second identity, without limit. The binding is permanent.
+    expect(row?.enroll_hwid).toBeTruthy();
     expect(await countActiveDevices(db, "djdl", licenseId)).toBe(1);
   });
 
@@ -316,11 +378,12 @@ describe("merge on sign-in", () => {
       merged: "migrated",
     });
 
-    // The device followed the user; the free row is retired and releases its hwid.
+    // The device followed the user; the free row is retired but KEEPS its hwid (R3-05), so
+    // the retired row goes on occupying the unique index and the machine cannot re-enrol.
     expect(await countActiveDevices(db, "djdl", identityLicense)).toBe(1);
     const old = await getLicense(db, "djdl", enrolled);
     expect(old?.status).toBe("disabled");
-    expect(old?.enroll_hwid).toBeNull();
+    expect(old?.enroll_hwid).toBeTruthy();
   });
 
   it("leaves a non-enrolled license alone", async () => {

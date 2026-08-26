@@ -20,6 +20,21 @@ const ARCH_TOKENS: Record<Arch, Set<string>> = {
 };
 
 /**
+ * Canonicalise a requested arch token. The router accepts the `aarch64` / `amd64` aliases,
+ * but `ARCH_TOKENS` is keyed on the two canonical values only — so an alias used to reach
+ * `[...ARCH_TOKENS[alias]]` as `undefined` and throw an unhandled TypeError (500) on a
+ * public route. Returns `null` for anything unrecognised so callers 404 instead.
+ */
+export function normalizeArch(raw: string | undefined): Arch | null {
+  if (!raw) return null;
+  const token = raw.toLowerCase();
+  for (const arch of Object.keys(ARCH_TOKENS) as Arch[]) {
+    if (arch === token || ARCH_TOKENS[arch].has(token)) return arch;
+  }
+  return null;
+}
+
+/**
  * Split a filename into lowercase tokens on common delimiters. `x86_64`/`x86-64`
  * fragment into `x86` + `64`, so we re-join that adjacent pair back into the compound
  * `x86_64` alias afterward — letting arch matching stay exact-set membership.
@@ -50,7 +65,9 @@ function extOf(name: string): string {
 /** Does the filename carry a token from the requested arch's alias set (and no other arch's)? */
 function archMatches(name: string, arch: Arch): boolean {
   const toks = new Set(tokens(name));
-  const wanted = ARCH_TOKENS[arch];
+  // Defensive: a non-canonical arch would key an undefined set here (see `normalizeArch`).
+  const wanted = ARCH_TOKENS[arch] as Set<string> | undefined;
+  if (!wanted) return false;
   const other = arch === "arm64" ? ARCH_TOKENS.x86_64 : ARCH_TOKENS.arm64;
   const hasWanted = [...wanted].some((t) => toks.has(t));
   const hasOther = [...other].some((t) => toks.has(t));

@@ -48,6 +48,18 @@ export async function updateProduct(
   );
 }
 
+/**
+ * Soft-delete a product and revoke everything that authenticates against it.
+ *
+ * R11-09 / R12-10: the soft delete used to be a pure status flip that deleted NOTHING, so
+ * `licenses.email`, `.name`, `.sub` and `.groups_json` survived verbatim forever and
+ * right-to-erasure was structurally unimplementable. The status flip is still the right
+ * primitive (audit trails, license ids and device history stay intact), but the personal data
+ * is now erased in the same atomic batch: a deleted product retains the SHAPE of its licenses,
+ * not the people behind them. `sub` and `enroll_hwid` go too — they are re-identifiers and,
+ * left in place, they keep occupying `idx_licenses_sub` / `idx_licenses_enroll_hwid` so a
+ * re-created product could never re-issue to the same subject or machine.
+ */
 export async function deleteProduct(
   db: Db,
   slug: string,
@@ -59,7 +71,15 @@ export async function deleteProduct(
       params: [now, now, slug],
     },
     {
-      sql: "UPDATE licenses SET status = 'disabled' WHERE product = ?",
+      sql: `UPDATE licenses
+               SET status = 'disabled',
+                   email = NULL, name = NULL, sub = NULL, groups_json = NULL,
+                   enroll_hwid = NULL, modified_at = ?
+             WHERE product = ?`,
+      params: [now, slug],
+    },
+    {
+      sql: "DELETE FROM portal_license_links WHERE product = ?",
       params: [slug],
     },
     {
@@ -233,15 +253,29 @@ export async function deleteProfile(
   );
 }
 
+/**
+ * How many things still point at this profile — across EVERY referrer, not just the direct
+ * license attachments.
+ *
+ * R11-01: this used to count `license_profiles` only. A tier attaches a baseline profile via
+ * `tiers.profile_id` (the documented way to give a whole tier a managed payload,
+ * 0001_init.sql:38-39) and that column is a plain TEXT with no foreign key, so deleting a
+ * tier's baseline passed the 0-reference guard, returned 200, and silently stripped the
+ * config defaults, secrets and ENFORCED ENTITLEMENTS that every license on that tier inherits
+ * — `resolveEffective` treats a dangling profile_id as an empty layer, so nothing errors.
+ */
 export async function countLicensesUsingProfile(
   db: Db,
   product: string,
   profileId: string,
 ): Promise<number> {
   const r = await db.first<{ n: number }>(
-    `SELECT COUNT(*) AS n
-       FROM license_profiles
-      WHERE product = ? AND profile_id = ?`,
+    `SELECT (SELECT COUNT(*) FROM license_profiles
+              WHERE product = ? AND profile_id = ?)
+          + (SELECT COUNT(*) FROM tiers
+              WHERE product = ? AND profile_id = ?) AS n`,
+    product,
+    profileId,
     product,
     profileId,
   );

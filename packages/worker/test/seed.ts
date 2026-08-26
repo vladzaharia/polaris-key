@@ -133,6 +133,7 @@ export async function seedTier(
     maxVersion?: string | null;
     deviceLimit?: number | null;
     fingerprint?: string | null;
+    expiryDays?: number | null;
   } = {},
 ): Promise<void> {
   await db.run(
@@ -143,7 +144,7 @@ export async function seedTier(
     id,
     id,
     null,
-    null,
+    opts.expiryDays ?? null,
     opts.deviceLimit ?? null,
     opts.channels ? JSON.stringify(opts.channels) : null,
     opts.minVersion ?? null,

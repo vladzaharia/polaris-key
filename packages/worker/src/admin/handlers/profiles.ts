@@ -4,6 +4,7 @@
  */
 
 import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import { ErrorCode } from "../../http.js";
 import { randomId } from "../../crypto.js";
 import {
@@ -21,6 +22,7 @@ import { loadCatalog } from "../lib/shape.js";
 
 export async function handleProfiles(
   req: Request,
+  env: Env,
   db: Db,
   session: AdminSession,
   slug: string,
@@ -93,7 +95,9 @@ export async function handleProfiles(
     const updates = Array.isArray(body.updates)
       ? (body.updates as OverrideUpdate[])
       : [];
-    const result = applyOverrides(
+    const result = await applyOverrides(
+      env,
+      slug,
       parsePayload(row.payload_json),
       updates,
       catalog,

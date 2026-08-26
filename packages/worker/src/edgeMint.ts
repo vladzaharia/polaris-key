@@ -12,6 +12,7 @@ import type { Db } from "./db/types.js";
 import { type Product, openProductSecret } from "./product.js";
 import { bearer, errorResponse } from "./http.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
+import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
 import { signJws } from "@polaris-key/jws";
 import { validateDeviceToken } from "./licenseCore.js";
 
@@ -203,9 +204,23 @@ export async function handleMintToken(
   );
   if (!pem) return errorResponse(500, "misconfigured", "missing mint key");
 
-  const template = cfg.claims_template_json
-    ? (JSON.parse(cfg.claims_template_json) as Record<string, unknown>)
-    : {};
+  // R11-06: an unguarded parse of a DB column turned a corrupt `claims_template_json` into an
+  // uncaught SyntaxError — a 500 with no diagnosis. Fail CLOSED with the same `misconfigured`
+  // shape the rest of this handler uses: silently minting a token with an EMPTY template
+  // would drop operator-set claims (`iss`, scopes, tenant) that the recipient may be relying
+  // on, which is worse than refusing.
+  let template: Record<string, unknown>;
+  try {
+    template = cfg.claims_template_json
+      ? (JSON.parse(cfg.claims_template_json) as Record<string, unknown>)
+      : {};
+  } catch {
+    return errorResponse(
+      500,
+      "misconfigured",
+      "mint claims template is not valid JSON",
+    );
+  }
   // Reserved claims are server/recipe-controlled and not overridable from the template:
   // sanitize first (drops iat/exp/nbf/aud) then stamp server iat/exp + the trusted `aud`.
   const claims: Record<string, unknown> = {
@@ -242,7 +257,16 @@ export async function handleMintToken(
   );
 }
 
-/** GET /<product>/mint/<id>/auth — serve the recipe's HTML auth page (e.g. MusicKit JS). */
+/**
+ * GET /<product>/mint/<id>/auth — serve the recipe's HTML auth page (e.g. MusicKit JS).
+ *
+ * `auth_page_template` is operator-supplied HTML rendered verbatim on the platform origin,
+ * i.e. a script-execution primitive pointed at the admin cookie (R1-05 + R1-09). It ships
+ * with the strict script-free policy: `default-src 'none'` means an injected `<script>`
+ * cannot run and an injected `fetch("/manage/api/me")` cannot connect. If this page is ever
+ * genuinely wired up to run MusicKit JS, it needs its OWN explicit allowlist here (and a
+ * separate sandbox origin) — do not relax this policy globally.
+ */
 export async function handleMintAuth(
   db: Db,
   product: Product,
@@ -253,6 +277,11 @@ export async function handleMintAuth(
     return errorResponse(404, "not_found", "no auth page");
   return new Response(cfg.auth_page_template, {
     status: 200,
-    headers: { "content-type": "text/html; charset=utf-8" },
+    headers: staticHtmlSecurityHeaders(
+      new Headers({
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      }),
+    ),
   });
 }

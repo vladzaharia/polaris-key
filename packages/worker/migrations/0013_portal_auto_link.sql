@@ -1,0 +1,11 @@
+-- R5-01 / R5-02 — per-product opt-in for implicit portal license auto-linking.
+--
+-- ONE statement per file: a bare `ADD COLUMN` cannot be made idempotent in SQLite, so the
+-- only safe shape is a file that contains nothing else. A replay fails on this statement and
+-- strands nothing, because there is nothing after it (R11-04).
+--
+-- NULL means "auto": derive the answer from the product's OIDC provider — enabled for
+-- products on the PLATFORM issuer, disabled for products on a tenant-controlled ('custom')
+-- issuer, whose subject and email claims are outside the platform's trust boundary. 1/0
+-- are explicit operator overrides. See portalAutoLinkPredicate() in portal/repo.ts.
+ALTER TABLE portal_product_settings ADD COLUMN auto_link_enabled INTEGER;

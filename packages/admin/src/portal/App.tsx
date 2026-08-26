@@ -336,11 +336,20 @@ function Shell({
                 <span className="hidden sm:inline">{account.name}</span>
               </a>
             </Button>
-            <Button asChild variant="ghost" size="icon" aria-label="Sign out">
-              <a href="/logout">
+            {/* R1-03: sign-out is a state change, so it is a form POST rather than a link.
+                `GET /logout` is still accepted for a same-origin navigation, but that is a
+                compatibility bridge — POST is the shape that cannot be driven cross-site by
+                an `<img>` or a cross-site link. */}
+            <form method="post" action="/logout">
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon"
+                aria-label="Sign out"
+              >
                 <LogOut aria-hidden />
-              </a>
-            </Button>
+              </Button>
+            </form>
           </div>
         </div>
       </header>

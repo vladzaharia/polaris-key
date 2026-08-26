@@ -218,4 +218,105 @@ describe("remote re-licensing", () => {
     const doc = await docFrom(await config());
     expect(doc.payload.entitlements["license.tier"]).toBeUndefined();
   });
+
+  // FIXED (R3-06, admin paths): `policy_expiry_days` was honoured by `/enroll` and the OIDC
+  // path but ignored by admin create AND admin re-tier. The expensive direction is
+  // trial→paid: the licence kept the TRIAL's `expires_at` and stopped working days after the
+  // customer paid. paid→trial was the mirror image — a time-boxed tier left perpetual.
+  describe("R3-06 the tier's expiry policy follows the tier", () => {
+    const DAY = 86400;
+
+    beforeEach(async () => {
+      await seedTier(db, "djdl", "trial", { expiryDays: 14 });
+      await seedTier(db, "djdl", "paid", { expiryDays: null });
+    });
+
+    async function expiresAt(): Promise<number | null> {
+      const row = await db.first<{ expires_at: number | null }>(
+        "SELECT expires_at FROM licenses WHERE product='djdl' AND id=?",
+        licenseId,
+      );
+      return row?.expires_at ?? null;
+    }
+
+    it("trial → paid clears the trial's expiry instead of killing a paying customer", async () => {
+      await adminPatch({ tier: "trial" });
+      expect(await expiresAt()).toBe(NOW + 14 * DAY);
+
+      await adminPatch({ tier: "paid" });
+      expect(await expiresAt()).toBeNull();
+    });
+
+    it("paid → trial applies the trial's time box instead of staying perpetual", async () => {
+      await adminPatch({ tier: "paid" });
+      expect(await expiresAt()).toBeNull();
+
+      await adminPatch({ tier: "trial" });
+      expect(await expiresAt()).toBe(NOW + 14 * DAY);
+    });
+
+    it("an explicit expiresAt still wins over the tier policy, in both directions", async () => {
+      await adminPatch({ tier: "trial", expiresAt: NOW + 999 });
+      expect(await expiresAt()).toBe(NOW + 999);
+
+      await adminPatch({ tier: "paid", expiresAt: null });
+      expect(await expiresAt()).toBeNull();
+
+      // A patch that does NOT move the tier leaves the expiry exactly as the operator set it.
+      await adminPatch({ tier: "paid", name: "Renamed" });
+      expect(await expiresAt()).toBeNull();
+    });
+
+    it("admin CREATE derives the expiry from the tier when none is given", async () => {
+      const { token: cookieToken, session } = await issueSession(
+        env,
+        { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
+        NOW,
+      );
+      const create = async (body: unknown): Promise<string> => {
+        const res = await handleAdmin(
+          mkReq(
+            "POST",
+            {
+              cookie: `${ADMIN_COOKIE}=${cookieToken}`,
+              [CSRF_HEADER]: session.csrf,
+              "content-type": "application/json",
+            },
+            body,
+          ),
+          env,
+          db,
+          "/api/products/djdl/licenses",
+          { now: NOW },
+        );
+        expect(res.status).toBe(201);
+        return ((await res.json()) as { licenseId: string }).licenseId;
+      };
+
+      const trialId = await create({ tier: "trial", email: "t@x.io" });
+      expect(
+        (
+          await db.first<{ expires_at: number | null }>(
+            "SELECT expires_at FROM licenses WHERE product='djdl' AND id=?",
+            trialId,
+          )
+        )?.expires_at,
+      ).toBe(NOW + 14 * DAY);
+
+      // An explicit `expiresAt: null` still means "never" — the operator overrides the tier.
+      const foreverId = await create({
+        tier: "trial",
+        email: "f@x.io",
+        expiresAt: null,
+      });
+      expect(
+        (
+          await db.first<{ expires_at: number | null }>(
+            "SELECT expires_at FROM licenses WHERE product='djdl' AND id=?",
+            foreverId,
+          )
+        )?.expires_at,
+      ).toBeNull();
+    });
+  });
 });

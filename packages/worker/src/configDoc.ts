@@ -29,7 +29,13 @@ export interface BuildDocInput {
  *  catalog, sits in the wrong payload bucket, or whose value fails the catalog schema,
  *  BEFORE signing. A misconfigured or stale override must never be minted into a signed
  *  doc. Entitlements pass through because server-side gates may be policy-only and not
- *  declared as user-facing catalog flags. */
+ *  declared as user-facing catalog flags.
+ *
+ *  This runs on the `/config` hot path, so it must not depend on runtime code generation:
+ *  `Catalog` interprets each schema fragment rather than compiling one, because workerd
+ *  forbids `Function(string)` inside a request and catalogs only ever load mid-request
+ *  (R10-01). A fragment the validator cannot interpret marks its value invalid, so this
+ *  prune fails CLOSED — an unenforceable constraint drops the value instead of signing it. */
 export function validatePayload(
   payload: ManagedPayload,
   catalog: Catalog,

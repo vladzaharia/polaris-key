@@ -14,6 +14,7 @@ import {
   getDeviceFacts,
   getFingerprint,
   getLicense,
+  getTier,
   insertLicense,
   insertKey,
   listKeysByLicense,
@@ -28,13 +29,19 @@ import {
   patchLicense,
   setLicenseStatus,
 } from "../repo.js";
+import { tierExpiresAt } from "../../licenseCore.js";
 import { shapeFacts, shapeFingerprint } from "../lib/deviceShape.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
 import { redactPayload, parsePayload } from "../lib/redact.js";
 import { applyOverrides, type OverrideUpdate } from "../lib/overrides.js";
-import { licenseSummary, loadCatalog } from "../lib/shape.js";
+import {
+  licenseSummary,
+  loadCatalog,
+  parseJsonColumn,
+  parseJsonList,
+} from "../lib/shape.js";
 import { handleKeys } from "./keys.js";
 import { handleAdminDevices } from "./devices.js";
 
@@ -104,6 +111,14 @@ export async function handleLicenses(
         return err(422, ErrorCode.BadRequest, "unknown reference", {
           fields: badRefs,
         });
+      // R3-06: an operator who states `expiresAt` (a number, or an explicit `null` for "never")
+      // is obeyed; an operator who says nothing gets the tier's policy, exactly as `/enroll`
+      // and the OIDC path already do. Previously an omitted field meant PERMANENT, so a trial
+      // tier minted through the admin API was never time boxed.
+      const tierRow =
+        typeof body.tier === "string"
+          ? await getTier(db, slug, body.tier)
+          : null;
       await insertLicense(db, {
         product: slug,
         id: licenseId,
@@ -114,7 +129,12 @@ export async function handleLicenses(
         groups_json: null,
         tier_id: typeof body.tier === "string" ? body.tier : null,
         activated_at: now,
-        expires_at: typeof body.expiresAt === "number" ? body.expiresAt : null,
+        expires_at:
+          "expiresAt" in body
+            ? typeof body.expiresAt === "number"
+              ? body.expiresAt
+              : null
+            : tierExpiresAt(tierRow, now),
         max_offline_days:
           typeof body.maxOfflineDays === "number" ? body.maxOfflineDays : null,
         overrides_json: JSON.stringify({
@@ -180,9 +200,8 @@ export async function handleLicenses(
       const overrides = parsePayload(license.overrides_json);
       return adminJson({
         ...(await licenseSummary(db, slug, license)),
-        groups: license.groups_json
-          ? (JSON.parse(license.groups_json) as string[])
-          : [],
+        // R11-06: guarded reads — a corrupt column degrades to empty/undefined, never a 500.
+        groups: parseJsonList(license.groups_json),
         profiles: profiles.map((p) => p.profile_id),
         maxOfflineDays: license.max_offline_days,
         overrides: redactPayload(overrides, catalog),
@@ -207,9 +226,7 @@ export async function handleLicenses(
             appVersion: m.app_version ?? undefined,
             sdkName: m.sdk_name ?? undefined,
             sdkVersion: m.sdk_version ?? undefined,
-            reported: m.reported_json
-              ? (JSON.parse(m.reported_json) as unknown)
-              : undefined,
+            reported: parseJsonColumn<unknown>(m.reported_json) ?? undefined,
             fingerprint: shapeFingerprint(
               await getFingerprint(db, slug, m.device_id),
             ),
@@ -229,6 +246,31 @@ export async function handleLicenses(
         return err(422, ErrorCode.BadRequest, "unknown reference", {
           fields: badRefs,
         });
+
+      // A tier change IS the remote re-licensing action, so it gets its own audit entry
+      // recording old → new rather than being buried in a generic "Updated license".
+      const changedTier =
+        "tier" in body && (body.tier ?? null) !== license.tier_id;
+
+      // R3-06: re-derive the expiry from the NEW tier whenever the tier moves and the operator
+      // did not state an expiry explicitly. Without this, trial→paid kept the trial's
+      // `expires_at` and expired a paying customer days after they paid, and paid→trial left a
+      // time-boxed tier perpetual. An explicit `expiresAt` (number, or `null` for "never")
+      // still wins — this only fills in the field the operator left unsaid.
+      let expiresAt: number | null | undefined =
+        body.expiresAt === null
+          ? null
+          : typeof body.expiresAt === "number"
+            ? body.expiresAt
+            : undefined;
+      if (expiresAt === undefined && changedTier) {
+        const nextTier =
+          typeof body.tier === "string"
+            ? await getTier(db, slug, body.tier)
+            : null;
+        expiresAt = tierExpiresAt(nextTier, now);
+      }
+
       await patchLicense(
         db,
         slug,
@@ -236,12 +278,7 @@ export async function handleLicenses(
         {
           name: typeof body.name === "string" ? body.name : undefined,
           email: typeof body.email === "string" ? body.email : undefined,
-          expires_at:
-            body.expiresAt === null
-              ? null
-              : typeof body.expiresAt === "number"
-                ? body.expiresAt
-                : undefined,
+          expires_at: expiresAt,
           max_offline_days:
             typeof body.maxOfflineDays === "number"
               ? body.maxOfflineDays
@@ -273,10 +310,6 @@ export async function handleLicenses(
       if ("profiles" in body || "profile" in body)
         await setLicenseProfiles(db, slug, id, profiles);
 
-      // A tier change IS the remote re-licensing action, so it gets its own audit entry
-      // recording old → new rather than being buried in a generic "Updated license".
-      const changedTier =
-        "tier" in body && (body.tier ?? null) !== license.tier_id;
       if (changedTier) {
         await audit(
           db,
@@ -360,7 +393,9 @@ export async function handleLicenses(
     const updates = Array.isArray(body.updates)
       ? (body.updates as OverrideUpdate[])
       : [];
-    const result = applyOverrides(
+    const result = await applyOverrides(
+      env,
+      slug,
       parsePayload(license.overrides_json),
       updates,
       catalog,

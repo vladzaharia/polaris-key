@@ -20,8 +20,5 @@
     "lint": "prettier --check \"src/**/*.ts\"",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1"
-  }
+  "dependencies": {}
 }

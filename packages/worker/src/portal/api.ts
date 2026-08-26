@@ -32,6 +32,7 @@ import {
   markPortalDownloadUsed,
   portalAuthCapabilities,
   portalAudit,
+  purgeExpiredDownloadTokens,
   syncAccountLicenseLinks,
   createPortalDownloadToken,
   type PortalArtifactRow,
@@ -261,6 +262,22 @@ function artifactAccess(artifact: PortalArtifactRow): string {
   return "public";
 }
 
+/**
+ * Charge a portal action against its rate-limit budget.
+ *
+ * R5-05: this used to key every action `${accountId}:${ip}` inside the single global
+ * `_portal` Durable Object. One portal account routinely holds licenses for several products,
+ * so a budget spent managing tenant A's devices 429'd the same person on tenants B, C and D —
+ * and because every product on the platform shared one DO, one noisy account was contention
+ * for everyone. `product` is therefore BOTH a dimension of the counter id and the DO shard, so
+ * a tenant's traffic can only exhaust that tenant's budget in that tenant's shard.
+ *
+ * `product` must already have been proven to exist (it names a Durable Object; an
+ * unvalidated, caller-supplied slug would let anyone spawn unbounded DO instances). Callers
+ * that have no validated product — `portalClaimKey`, which derives one from the submitted key
+ * — pass `undefined` and keep the account-wide budget, which for a brute-force guard on the
+ * caller's OWN account is strictly the stronger choice.
+ */
 async function requireActionRateLimit(
   req: Request,
   env: Env,
@@ -268,14 +285,15 @@ async function requireActionRateLimit(
   bucket: string,
   now: number,
   limit: number,
+  product?: string,
   windowSec = 60,
 ): Promise<Response | null> {
   const ok = await rateLimitOk(
     env,
-    "_portal",
+    product ?? "_portal",
     {
       bucket,
-      id: `${session.accountId}:${clientIp(req)}`,
+      id: `${product ?? "_"}:${session.accountId}:${clientIp(req)}`,
       limit,
       windowSec,
     },
@@ -302,8 +320,18 @@ async function handleMe(
   });
 }
 
-async function handleCapabilities(env: Env, db: Db): Promise<Response> {
-  const caps = await portalAuthCapabilities(db);
+/**
+ * R5-06 — `/api/capabilities?product=<slug>` answers for THAT product; without `product` it
+ * answers for the platform as a whole (the root login page, which has no product context).
+ * The unscoped answer used to be the only one available, so one tenant's settings decided
+ * every other tenant's — and leaked, pre-auth, whether any tenant had each feature on.
+ */
+async function handleCapabilities(
+  env: Env,
+  db: Db,
+  product?: string | null,
+): Promise<Response> {
+  const caps = await portalAuthCapabilities(db, product);
   return portalJson({
     auth: {
       oidc:
@@ -428,15 +456,6 @@ async function handleDeviceDelete(
   now: number,
 ): Promise<Response> {
   if (req.method !== "DELETE") return err(405, "method_not_allowed");
-  const limited = await requireActionRateLimit(
-    req,
-    env,
-    session,
-    "portalDeviceDisconnect",
-    now,
-    20,
-  );
-  if (limited) return limited;
   const settings = await getPortalProductSettings(db, product);
   if (settings.portal_enabled !== 1) return notFound();
   const license = await getPortalLicense(
@@ -446,6 +465,18 @@ async function handleDeviceDelete(
     licenseId,
   );
   if (!license) return notFound();
+  // R5-05: charged AFTER ownership is proven, so a caller who owns no license on this product
+  // cannot spend a budget at all — and the budget they do spend is scoped to this product.
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalDeviceDisconnect",
+    now,
+    20,
+    product,
+  );
+  if (limited) return limited;
   const device = await getDevice(db, product, deviceId);
   if (!device || device.license_id !== licenseId) return notFound();
   await setDeviceStatus(db, product, deviceId, "deauthorized");
@@ -542,15 +573,6 @@ async function handleReleases(
     return notFound();
   }
   if (req.method !== "POST") return err(405, "method_not_allowed");
-  const limited = await requireActionRateLimit(
-    req,
-    env,
-    session,
-    "portalDownloadToken",
-    now,
-    60,
-  );
-  if (limited) return limited;
   const productRow = await getProduct(db, product);
   if (!productRow) return notFound();
   const settings = await getPortalProductSettings(db, product);
@@ -562,6 +584,19 @@ async function handleReleases(
   if (!(await hasLinkedProductLicense(db, session.accountId, product))) {
     return notFound();
   }
+  // R5-05: same as the disconnect path — the charge lands after the linked-license check, in
+  // this product's own shard, so it can neither be spent by a non-owner nor 429 a sibling
+  // tenant of the same portal account.
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalDownloadToken",
+    now,
+    60,
+    product,
+  );
+  if (limited) return limited;
   const access = artifactAccess(artifact);
   if (access === "licensed") {
     const ok = await hasUsableProductLicense(
@@ -593,7 +628,8 @@ export async function handlePortalApi(
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
   const segments = p.split("/").filter(Boolean);
   if (segments[0] === "capabilities") {
-    return handleCapabilities(env, db);
+    const requested = new URL(req.url).searchParams.get("product");
+    return handleCapabilities(env, db, requested);
   }
   if (segments[0] === "magic" && segments[1] === "start") {
     return handleMagicStart(req, env, db);
@@ -645,8 +681,12 @@ export async function handlePortalDownload(
   now: number,
 ): Promise<Response> {
   if (req.method !== "GET") return err(405, "method_not_allowed");
-  const row = await getPortalDownloadToken(env, db, token);
-  if (!row || row.expires_at <= now || row.used_at != null) return notFound();
+  // R11-05: opportunistic retention. Nothing else ever deletes from this table and the worker
+  // has no scheduled() handler, so the read path does a bounded sweep of its own expired rows.
+  await purgeExpiredDownloadTokens(db, now);
+  // Expiry and single-use are now SQL predicates (R9-05b), so an unusable token never returns.
+  const row = await getPortalDownloadToken(env, db, token, now);
+  if (!row) return notFound();
   const artifact = row.artifact_id
     ? await getPortalArtifact(db, row.product, row.release_id, row.artifact_id)
     : null;
@@ -675,7 +715,11 @@ export async function handlePortalDownload(
   ) {
     return notFound();
   }
-  await markPortalDownloadUsed(db, row.product, row.token_hash, now);
+  // R9-05b: the conditional UPDATE IS the single-use gate. A concurrent redemption of the same
+  // token loses here (changes === 0) and gets a 404 instead of a second redirect.
+  if (!(await markPortalDownloadUsed(db, row.product, row.token_hash, now))) {
+    return notFound();
+  }
   return new Response(null, {
     status: 302,
     headers: portalSecurityHeaders(

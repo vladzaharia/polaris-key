@@ -506,7 +506,8 @@ describe("handleRelease", () => {
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(text).toContain("djdl installer");
-    expect(text).toContain('CLI_BASE="/djdl/cli"');
+    // Shell-quoted literals, not double-quoted interpolations (R6-01).
+    expect(text).toContain("CLI_BASE='/djdl/cli'");
     expect(text).toContain("$ORIGIN$CLI_BASE/$VERSION/djdl-$ARCH");
   });
 
@@ -590,7 +591,11 @@ describe("handleRelease", () => {
 
   it("generates an appcast reading the sibling .sig asset", async () => {
     const db = makeTestDb();
-    await seedReleaseConfig(db);
+    // The gateway now Ed25519-verifies the sidecar against `sparkle_ed25519_pub` over the
+    // DMG's own bytes (R6-03), so the fixture carries a real keypair and a real signature.
+    const dmgBytes = new TextEncoder().encode("DMG-BYTES");
+    const { publicKeyB64, signatureB64 } = await signFixture(dmgBytes);
+    await seedReleaseConfig(db, { sparkle_ed25519_pub: publicKeyB64 });
     const { env } = envFor();
     const rel = release({
       tag_name: "v1.2.3",
@@ -604,9 +609,10 @@ describe("handleRelease", () => {
         "/releases?per_page",
         () => new Response(JSON.stringify([rel]), { status: 200 }),
       ],
+      ["/releases/assets/101", () => new Response(signatureB64)],
       [
-        "/releases/assets/101",
-        () => new Response("SIG_BASE64==", { status: 200 }),
+        "/releases/assets/100",
+        () => new Response(dmgBytes as unknown as BodyInit),
       ],
     ]);
     const res = await handleRelease(
@@ -620,7 +626,7 @@ describe("handleRelease", () => {
     );
     expect(res.status).toBe(200);
     const xml = await res.text();
-    expect(xml).toContain('sparkle:edSignature="SIG_BASE64=="');
+    expect(xml).toContain(`sparkle:edSignature="${signatureB64}"`);
     expect(xml).toContain("/djdl/dmg/1.2.3/djdl-arm64.dmg");
     expect(xml).toContain(
       "<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>",
@@ -796,4 +802,27 @@ describe("release health", () => {
 
 function req(url = "https://key.plrs.im/djdl/version"): Request {
   return new Request(url) as unknown as Request;
+}
+
+/** Mint a throwaway Ed25519 keypair and sign `data`, both base64 — a real Sparkle sidecar. */
+async function signFixture(
+  data: Uint8Array,
+): Promise<{ publicKeyB64: string; signatureB64: string }> {
+  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
+  const raw = new Uint8Array(
+    (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
+  );
+  const sig = new Uint8Array(
+    await crypto.subtle.sign(
+      { name: "Ed25519" },
+      pair.privateKey,
+      data as BufferSource,
+    ),
+  );
+  const b64 = (bytes: Uint8Array): string =>
+    btoa(String.fromCharCode(...bytes));
+  return { publicKeyB64: b64(raw), signatureB64: b64(sig) };
 }

@@ -260,17 +260,120 @@ describe("checkBuildGate — channel entitlement", () => {
   });
 });
 
-describe("checkBuildGate — dev bypass", () => {
-  it("bypasses every gate for a dev build", () => {
+describe("checkBuildGate — dev bypass is opt-in (R3-01)", () => {
+  const devBuild = {
+    version: "0.0.0-dev+abc",
+    channelHeader: "staging",
+    compatMin: "5.0.0",
+    compatMax: "6.0.0",
+  };
+
+  it("does NOT bypass anything for an unentitled dev build", () => {
+    // `X-PKey-Version` is a header. Short-circuiting on it skipped both the window and the
+    // channel entitlement for anyone who typed `0.0.0-dev`.
+    const r = checkBuildGate({ ...devBuild, entitlements: {} });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("version-too-old");
+  });
+
+  it("bypasses every gate when the license is entitled to the dev channel", () => {
     const r = checkBuildGate({
-      version: "0.0.0-dev+abc",
-      channelHeader: "staging",
-      compatMin: "5.0.0",
-      compatMax: "6.0.0",
-      entitlements: {},
+      ...devBuild,
+      entitlements: { channels: ent(["stable", "dev"]) },
     });
     expect(r.ok).toBe(true);
     expect(r.reason).toBeUndefined();
     expect(r.allowedRange).toBeUndefined();
+  });
+
+  it("bypasses every gate when the product opts in explicitly", () => {
+    const r = checkBuildGate({
+      ...devBuild,
+      entitlements: {},
+      allowDevBuilds: true,
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("allowDevBuilds: false overrides a dev channel entitlement", () => {
+    const r = checkBuildGate({
+      ...devBuild,
+      entitlements: { channels: ent(["dev"]) },
+      allowDevBuilds: false,
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("a dev build inside the window still needs the dev channel (R3-01)", () => {
+    // An empty compatMin means "no floor" — a `0.0.0-*` prerelease sorts BELOW `0.0.0`, so
+    // with any floor at all the window check fires first and the channel check is unreached.
+    const inWindow = { compatMin: "", compatMax: "99.0.0" };
+    expect(
+      checkBuildGate({
+        version: "0.0.0-dev+abc",
+        entitlements: {},
+        ...inWindow,
+      }).reason,
+    ).toBe("channel-not-entitled");
+    expect(
+      checkBuildGate({
+        version: "0.0.0-dev+abc",
+        entitlements: { channels: ent(["dev"]) },
+        ...inWindow,
+      }).ok,
+    ).toBe(true);
+  });
+});
+
+describe("checkBuildGate — the declared channel cannot loosen the build's own (R3-07)", () => {
+  const win = { compatMin: "0.0.0", compatMax: "99.0.0" };
+
+  it("a pr build declaring `stable` is still checked as pr", () => {
+    const noFloor = { compatMin: "", compatMax: "99.0.0" };
+    for (const version of ["0.0.0-pr-42+sha", "0.0.0-pr42+sha"]) {
+      expect(
+        checkBuildGate({
+          version,
+          channelHeader: "stable",
+          entitlements: {},
+          ...noFloor,
+        }).reason,
+      ).toBe("channel-not-entitled");
+      expect(
+        checkBuildGate({
+          version,
+          channelHeader: "stable",
+          entitlements: { channels: ent(["pr"]) },
+          ...noFloor,
+        }).ok,
+      ).toBe(true);
+    }
+  });
+
+  it("an unrecognised channel declaration is refused, not coerced to stable", () => {
+    for (const channelHeader of ["staging-2", "STAGING", "beta", "nonsense"]) {
+      const r = checkBuildGate({
+        version: "1.2.3",
+        channelHeader,
+        entitlements: { channels: ent(["stable", "staging", "pr"]) },
+        ...win,
+      });
+      expect(r.ok).toBe(false);
+      expect(r.reason).toBe("channel-not-entitled");
+    }
+  });
+
+  it("ordinary words beginning with `pr` are no longer read as the pr channel (R3-13)", () => {
+    // They are unrecognised, so they are refused — but as an unknown declaration, not by
+    // being silently misfiled into a channel the caller never named.
+    for (const channelHeader of ["prod", "production", "preview", "prerelease"])
+      expect(
+        checkBuildGate({
+          version: "1.2.3",
+          channelHeader,
+          entitlements: { channels: ent(["pr"]) },
+          ...win,
+        }).ok,
+      ).toBe(false);
   });
 });

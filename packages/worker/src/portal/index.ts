@@ -8,6 +8,7 @@ import {
 } from "./auth.js";
 import { handlePortalApi, handlePortalDownload } from "./api.js";
 import { portalSecurityHeaders } from "./headers.js";
+import { isSafeAssetPath } from "../http.js";
 
 function portalShell(): Response {
   return new Response(
@@ -35,20 +36,14 @@ async function servePortalAsset(
 ): Promise<Response> {
   if (!env.ASSETS) return portalShell();
   const url = new URL(req.url);
-  if (cleanPath === "" || cleanPath === "/" || !cleanPath.includes(".")) {
-    url.pathname = "/index.html";
-  } else {
-    url.pathname = cleanPath;
-  }
+  // Same prefix-escape + CSP-stripping shape as the admin proxy (R1-06): only a literal,
+  // already-normalised path is proxied, and every response carries the security headers.
+  const isShell = !isSafeAssetPath(cleanPath) || !cleanPath.includes(".");
+  url.pathname = isShell ? "/index.html" : cleanPath;
   const res = await env.ASSETS.fetch(new Request(url, req));
-  if (url.pathname === "/index.html") {
-    const headers = new Headers(res.headers);
-    headers.set("cache-control", "no-store");
-    portalSecurityHeaders(headers);
-    return new Response(res.body, { status: res.status, headers });
-  }
   const headers = new Headers(res.headers);
-  headers.set("x-content-type-options", "nosniff");
+  if (isShell) headers.set("cache-control", "no-store");
+  portalSecurityHeaders(headers);
   return new Response(res.body, { status: res.status, headers });
 }
 
@@ -65,7 +60,7 @@ export async function handlePortal(
 
   if (clean === "/login") return handlePortalLogin(req, env, db);
   if (clean === "/callback") return handlePortalCallback(req, env, db, now);
-  if (clean === "/logout") return handlePortalLogout();
+  if (clean === "/logout") return handlePortalLogout(req);
   if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);
   if (clean === "/api" || clean.startsWith("/api/")) {
     return handlePortalApi(req, env, db, clean, now);

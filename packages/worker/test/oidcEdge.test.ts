@@ -253,13 +253,23 @@ describe("handleAuthPoll states", () => {
       NOW,
     );
 
+  /** A flow record shaped the way beginAuthFlow + device confirmation write it: bound to the
+   *  device that started it and stamped confirmed. Both are authorization inputs on the poll
+   *  surfaces (R8-01), so a fixture without them is not a pollable flow. */
   async function putFlow(
     state: string,
     flow: Record<string, unknown>,
   ): Promise<void> {
     await env.HOT.put(
       `p:djdl:flow:${state}`,
-      JSON.stringify({ verifier: "v", nonce: "n", redirectUri: "r", ...flow }),
+      JSON.stringify({
+        verifier: "v",
+        nonce: "n",
+        redirectUri: "r",
+        deviceId: "dev-1",
+        confirmedAt: NOW,
+        ...flow,
+      }),
     );
   }
 
@@ -354,7 +364,10 @@ describe("handleAuthPoll states", () => {
   it("polls a JSON device flow and mints through the shared authorizer", async () => {
     const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
-    await putFlow("oauth-state", { licenseId: r.licenseId });
+    await putFlow("oauth-state", {
+      licenseId: r.licenseId,
+      deviceId: "dev-json",
+    });
     await env.HOT.put(
       "p:djdl:device-flow:device-code",
       JSON.stringify({
@@ -385,6 +398,7 @@ describe("handleAuthPoll states", () => {
   });
 
   it("renders and confirms the JSON device verification page", async () => {
+    await putFlow("oauth-state", { deviceId: "dev-json" });
     await env.HOT.put(
       "p:djdl:device-flow:device-code",
       JSON.stringify({
@@ -403,16 +417,27 @@ describe("handleAuthPoll states", () => {
       product,
     );
     expect(page.status).toBe(200);
-    expect(await page.text()).toContain("Studio Mac");
+    const html = await page.text();
+    expect(html).toContain("Studio Mac");
+    // The GET renders only; confirmation is a POST carrying the token minted here (R8-02).
+    const csrf = html.match(/name="csrf" value="([^"]+)"/)![1]!;
 
     const confirm = await handleAuthDeviceVerify(
       new Request(
-        "https://key.plrs.im/djdl/auth/device/verify?device_code=device-code&confirm=1",
+        "https://key.plrs.im/djdl/auth/device/verify?device_code=device-code",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            origin: "https://key.plrs.im",
+          },
+          body: new URLSearchParams({ csrf }).toString(),
+        },
       ) as unknown as Request,
       env,
       product,
     );
-    expect(confirm.status).toBe(302);
+    expect(confirm.status).toBe(303);
     expect(confirm.headers.get("location")).toBe(
       "https://id.example/authorize",
     );
@@ -420,6 +445,13 @@ describe("handleAuthPoll states", () => {
       (await env.HOT.get("p:djdl:device-flow:device-code"))!,
     ) as { confirmedAt?: number };
     expect(stored.confirmedAt).toBeTruthy();
+    // …and the confirmation is recorded on the flow the poll surfaces actually read.
+    const flow = JSON.parse(
+      (await env.HOT.get("p:djdl:flow:oauth-state"))!,
+    ) as {
+      confirmedAt?: number;
+    };
+    expect(flow.confirmedAt).toBeTruthy();
   });
 
   it("rejects JSON device polls from a different device id", async () => {
@@ -610,11 +642,18 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
       .sign(priv);
   }
 
-  /** Seed a flow record the way handleAuthStart would, with a known nonce + redirect URI. */
+  /** Seed a flow record the way handleAuthDeviceStart + confirmation would: known nonce and
+   *  redirect URI, bound to `dev-1` and confirmed, so `poll()` below can complete it. */
   async function seedFlow(state: string, nonce: string): Promise<void> {
     await env.HOT.put(
       `p:djdl:flow:${state}`,
-      JSON.stringify({ verifier: "v", nonce, redirectUri: REDIRECT }),
+      JSON.stringify({
+        verifier: "v",
+        nonce,
+        redirectUri: REDIRECT,
+        deviceId: "dev-1",
+        confirmedAt: NOW,
+      }),
     );
   }
 

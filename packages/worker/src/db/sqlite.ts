@@ -26,6 +26,10 @@ export class SqliteDb implements Db {
     this.db.prepare(sql).run(...params.map(normParam));
   }
 
+  async runChanges(sql: string, ...params: DbParam[]): Promise<number> {
+    return this.db.prepare(sql).run(...params.map(normParam)).changes;
+  }
+
   async batch(statements: DbStatement[]): Promise<void> {
     const tx = this.db.transaction((stmts: DbStatement[]) => {
       for (const s of stmts)

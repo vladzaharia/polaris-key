@@ -95,4 +95,52 @@ describe("browser sessions", () => {
     expect(after?.status).toBe("deauthorized");
     expect(await env.HOT.get(`p:djdl:token:${device!.token_hash}`)).toBeNull();
   });
+
+  // FIXED: `GET /<p>/session` used to swallow a catalog-construction failure and then skip
+  // `validatePayload` entirely — i.e. deliver to a BROWSER exactly the unvalidated payload
+  // the catalog exists to prune. Its comment claimed this was "aligned with /config"; /config
+  // returns 500 `catalog_unavailable`. It now does the same.
+  it("a malformed active catalog fails CLOSED, matching /config", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = makeEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const { key } = await seedLicenseWithKey(db, "djdl");
+
+    const login = await handleBrowserSessionLicense(
+      req("POST", "/djdl/session/license", { body: { key } }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const cookie = login.headers.get("set-cookie")!;
+
+    // Sanity: a healthy catalog still serves the doc.
+    const ok = await handleBrowserSession(
+      req("GET", "/djdl/session", { cookie }),
+      env,
+      db,
+      product,
+      NOW + 1,
+    );
+    expect(ok.status).toBe(200);
+    expect((await ok.json()) as { doc: unknown }).toHaveProperty("doc");
+
+    // Corrupt the active catalog row the same way R11-06 describes.
+    await db.run(
+      "UPDATE product_schema SET catalog_json = '{not json' WHERE product = ? AND active = 1",
+      "djdl",
+    );
+    const broken = await handleBrowserSession(
+      req("GET", "/djdl/session", { cookie }),
+      env,
+      db,
+      product,
+      NOW + 2,
+    );
+    expect(broken.status).toBe(500);
+    expect(await broken.text()).toContain("catalog_unavailable");
+  });
 });

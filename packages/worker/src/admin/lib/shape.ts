@@ -48,16 +48,32 @@ interface ReleaseSetupRow {
   sparkle_ed25519_pub: string | null;
 }
 
-function parseJsonList(value: string | null): string[] {
-  if (!value) return [];
+/**
+ * R11-06 — the ONE guarded reader for every `_json` column on the admin surface.
+ *
+ * No `_json` column has a `json_valid()` constraint behind it, and a truncated D1 write, a
+ * manual `wrangler d1 execute` repair, or any future writer that forgets `JSON.stringify`
+ * produces a value that is accepted silently and then throws a `SyntaxError` out of whatever
+ * handler reads it next. A corrupt column has to DEGRADE, not 500 — most sharply for
+ * `licenses.channels_json`, which `licenseSummary` reads for every row of the license list, so
+ * one bad row used to take down the entire admin view including the one an operator would use
+ * to repair it.
+ */
+export function parseJsonColumn<T>(value: string | null | undefined): T | null {
+  if (!value) return null;
   try {
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string")
-      : [];
+    return JSON.parse(value) as T;
   } catch {
-    return [];
+    return null;
   }
+}
+
+/** A `_json` column that must read back as an array of strings; anything else is dropped. */
+export function parseJsonList(value: string | null | undefined): string[] {
+  const parsed = parseJsonColumn<unknown>(value);
+  return Array.isArray(parsed)
+    ? parsed.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function syncStateView(
@@ -113,9 +129,8 @@ export async function licenseSummary(
     profile: profiles[0]?.profile_id ?? null,
     profiles: profiles.map((p) => p.profile_id),
     tier: row.tier_id,
-    channels: row.channels_json
-      ? (JSON.parse(row.channels_json) as string[])
-      : [],
+    // R11-06: guarded — a single corrupt channels_json must not 500 the whole license list.
+    channels: parseJsonList(row.channels_json),
     minVersion: row.min_version,
     maxVersion: row.max_version,
     identityProvider: row.sub ? "oidc" : "manual",

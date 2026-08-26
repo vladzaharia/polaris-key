@@ -174,6 +174,19 @@ export async function handleProducts(
     return adminJson({ product: await productView(env, db, row) });
   if (req.method === "PATCH") {
     const body = await readBody(req);
+    // R11-02 part 2: `limit > 0` in licenseCore means a 0/negative limit reads as UNLIMITED.
+    if (
+      typeof body.defaultDeviceLimit === "number" &&
+      (!Number.isInteger(body.defaultDeviceLimit) ||
+        body.defaultDeviceLimit <= 0)
+    ) {
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "defaultDeviceLimit must be a positive integer",
+        { fields: ["defaultDeviceLimit"] },
+      );
+    }
     await updateProduct(
       db,
       slug,
@@ -554,6 +567,15 @@ async function handlePortalSettings(
     if (typeof body[key] !== "boolean") fields.push(key);
     else patch[key] = body[key];
   }
+  // R5-01/R5-02 — tri-state, so an operator can override the issuer-derived default in either
+  // direction: `null` restores "auto" (on for platform-issuer products, OFF for products on a
+  // tenant-controlled 'custom' issuer, whose email/sub claims are outside the trust boundary).
+  if (body.autoLinkEnabled !== undefined) {
+    if (body.autoLinkEnabled === null) patch.autoLinkEnabled = null;
+    else if (typeof body.autoLinkEnabled === "boolean")
+      patch.autoLinkEnabled = body.autoLinkEnabled;
+    else fields.push("autoLinkEnabled");
+  }
   if (body.branding !== undefined) patch.branding = body.branding;
   if (fields.length > 0) {
     return err(422, ErrorCode.BadRequest, "invalid portal settings", {
@@ -731,6 +753,20 @@ async function handleKeys(
   }
 
   if (action === "retire" || action === "revoke") {
+    // R11-07 — `idx_product_keys_one_active` enforces AT MOST one active key; nothing enforced
+    // AT LEAST one. Retiring or revoking the currently active key left the product with zero,
+    // so `getActiveProductKey` returned null, `loadProduct` returned null, and every signed
+    // surface for that product went dark until an operator staged and activated a replacement.
+    // The `activate` arm above already guards its precondition; these two did not. Rotation is
+    // unaffected: `activate` retires the outgoing key and installs the new one in one batch.
+    if (row.status === "active") {
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "cannot retire or revoke the active signing key; stage and activate a replacement first",
+        { kid, status: row.status },
+      );
+    }
     const status = action === "retire" ? "retired" : "revoked";
     await db.run(
       "UPDATE product_keys SET status = ?, rotated_at = ? WHERE product = ? AND kid = ?",

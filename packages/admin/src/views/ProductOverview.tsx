@@ -190,7 +190,10 @@ function SetupCard({
   const rows = [
     ["Product", product.name],
     ["Slug", product.slug],
-    ["Admin group", product.adminGroup ?? "not restricted"],
+    // Manifest metadata only. Admin authority is platform-wide (PLATFORM_ADMIN_GROUP);
+    // per-product admin was removed, so this value grants nothing and "not restricted" would
+    // read as though some other value DID restrict.
+    ["Admin group (metadata only)", product.adminGroup ?? "unset"],
     ["Compatibility", `${product.compatMin} to ${product.compatMax}`],
     ["Default devices", String(product.defaultDeviceLimit)],
     ["Offline window", `${product.defaultMaxOfflineDays} days`],

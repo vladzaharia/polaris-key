@@ -13,6 +13,7 @@ import {
   json,
   methodNotAllowed,
 } from "./http.js";
+import { clientIp, rateLimitOk } from "./rateLimit.js";
 import { hashKey, mintToken, randomId } from "./crypto.js";
 import {
   getActiveSchema,
@@ -162,6 +163,8 @@ async function browserDoc(
   | { ok: true; doc: ManagedConfigDoc }
   | {
       ok: false;
+      /** The active catalog could not be used to validate the payload — see below. */
+      catalogUnavailable?: true;
       blocked?: {
         reason: string;
         allowedRange?: { min?: string; max?: string };
@@ -180,6 +183,10 @@ async function browserDoc(
     valid.device,
     now,
     { tighterMin, tighterMax },
+    // R12-02 — `env` opens the sealed managed secrets. `secrets` is stripped below, but a
+    // `kind: "config"` entry flagged `secret: true` is sealed too and IS delivered here;
+    // without this the envelope reaches validatePayload and is pruned as a schema violation.
+    env,
   );
   const schemaRow = await getActiveSchema(db, product.slug);
   if (schemaRow) {
@@ -189,8 +196,14 @@ async function browserDoc(
         new Catalog(JSON.parse(schemaRow.catalog_json)),
       );
     } catch {
-      // If the catalog row is malformed, keep behavior aligned with /config and fail open
-      // for filtering while still relying on the signed/config gate below.
+      // FAIL CLOSED, matching `/config` (`licensing.ts` -> 500 `catalog_unavailable`).
+      // `validatePayload` is what prunes unknown/invalid keys and stale overrides out of the
+      // payload before it is signed; skipping it on a malformed catalog row delivered exactly
+      // the payload the catalog exists to refuse. The previous comment claimed this was
+      // "aligned with /config" — it was the opposite, and this surface is the one that hands
+      // the doc to a browser. A broken catalog row is an operator problem, not a reason to
+      // widen what a client receives.
+      return { ok: false, catalogUnavailable: true };
     }
   }
   payload = { ...payload, secrets: {} };
@@ -237,6 +250,13 @@ export async function handleBrowserSession(
   const session = await loadBrowserSession(req, env, product);
   if (!session) return json({ authenticated: false, doc: null });
   const result = await browserDoc(req, env, db, product, session.record, now);
+  if (!result.ok && result.catalogUnavailable) {
+    return errorResponse(
+      500,
+      "catalog_unavailable",
+      "active catalog could not validate the config payload",
+    );
+  }
   if (!result.ok && !result.blocked)
     return json({ authenticated: false, doc: null });
   return json({
@@ -247,6 +267,14 @@ export async function handleBrowserSession(
   });
 }
 
+/**
+ * POST /<product>/session/license — exchange a license KEY for a browser session cookie.
+ *
+ * This is a credential-exchange endpoint that takes an attacker-suppliable secret and reports
+ * whether it is valid, so it is an online oracle for guessing license keys — and it had no
+ * rate limit at all, while `/activate` (which does exactly the same key→credential exchange
+ * for native clients) is capped at 30/min. Same shape, same budget, same fail-closed policy.
+ */
 export async function handleBrowserSessionLicense(
   req: Request,
   env: Env,
@@ -255,6 +283,21 @@ export async function handleBrowserSessionLicense(
   now: number,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      {
+        bucket: "browserSessionLicense",
+        id: clientIp(req),
+        limit: 30,
+        windowSec: 60,
+      },
+      now,
+    ))
+  ) {
+    return errorResponse(429, "rate_limited", "too many session attempts");
+  }
   let body: { key?: unknown };
   try {
     body = (await req.json()) as { key?: unknown };

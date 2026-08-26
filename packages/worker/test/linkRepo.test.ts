@@ -94,6 +94,9 @@ async function signedWebhookRequest(
       "content-type": "application/json",
       "x-github-event": "push",
       "x-hub-signature-256": signatureOverride ?? `sha256=${hex(sig)}`,
+      // Real deliveries always carry a GUID; the handler now requires it for replay
+      // protection (R6-06), so each call gets a fresh one.
+      "x-github-delivery": crypto.randomUUID(),
     },
     body,
   }) as unknown as Request;
@@ -382,6 +385,64 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(keys.length).toBe(0);
   });
 
+  // FIXED: `linkRepo` and `resyncRepo` inserted `catalog_json` straight from the manifest with
+  // no `compileAll()`, while the admin API screens every catalog it accepts. The repo-sync
+  // path was therefore the one remaining way to install a catalog the admin API would refuse —
+  // unsupported keywords, or a `pattern` the validator will not compile — and it is reachable
+  // from a repo webhook. The manifest parser only checks `schema.type`'s SHAPE, so this
+  // fragment passes `parseManifest` and is caught only by the new screen.
+  it("a catalog the admin API would reject is refused by linkRepo and resyncRepo too", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    const badSchema = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "run.name",
+          kind: "config",
+          category: "run",
+          label: "Name",
+          description: "",
+          schema: { type: "string", pattern: 42 }, // not a string → UnsupportedSchemaError
+        },
+      ],
+    });
+    const { fetchImpl } = stubFetch({
+      ".pkey/schema.json": badSchema,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": RELEASE_JSON,
+    });
+
+    const result = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("invalid catalog in manifest");
+    // Nothing was written — the catalog screen runs before the batch is built.
+    expect(
+      (await db.all<{ slug: string }>("SELECT * FROM products")).length,
+    ).toBe(0);
+    expect(
+      (await db.all<{ product: string }>("SELECT * FROM product_schema"))
+        .length,
+    ).toBe(0);
+
+    // Same for the webhook-driven resync: link with a GOOD catalog, then have the repo serve
+    // the bad one. The active schema must not be replaced.
+    const good = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": RELEASE_JSON,
+    });
+    expect(
+      (await linkRepo(env, db, "acme-org/acme-app", NOW, good.fetchImpl)).ok,
+    ).toBe(true);
+    const resync = await resyncRepo(env, db, "acme", NOW + 1, fetchImpl);
+    expect(resync.ok).toBe(false);
+    if (resync.ok) return;
+    expect(resync.error).toContain("invalid catalog in manifest");
+    expect((await getActiveSchema(db, "acme"))?.catalog_json).toBe(SCHEMA_JSON);
+  });
+
   it("resyncRepo is idempotent for an unchanged catalog", async () => {
     const db = makeTestDb();
     const env = envFor();
@@ -409,7 +470,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(max?.v).toBe(1);
   });
 
-  it("GitHub webhook verifies HMAC, pins the push SHA, and records sync state", async () => {
+  it("GitHub webhook verifies HMAC, reads .pkey from the default branch, and records sync state", async () => {
     const db = makeTestDb();
     const env = envFor();
     env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
@@ -425,6 +486,8 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     const payload = {
       ref: "refs/heads/main",
       after: "abc123",
+      // Bound to the installation discovered at link time (R6-05).
+      installation: { id: 4242 },
       repository: {
         name: "acme-app",
         full_name: "acme-org/acme-app",
@@ -462,11 +525,11 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ],
       },
     ]);
-    expect(
-      calls
-        .filter((url) => url.includes("/contents/"))
-        .every((url) => url.includes("ref=abc123")),
-    ).toBe(true);
+    // R6-05: the manifest is read from the DB-configured repo's default branch (the
+    // Contents API default), NEVER from a payload-supplied `after`/ref.
+    const contents = calls.filter((url) => url.includes("/contents/"));
+    expect(contents.length).toBeGreaterThan(0);
+    expect(contents.every((url) => !url.includes("ref="))).toBe(true);
 
     const sync = await getProductSyncState(db, "acme");
     expect(sync).toMatchObject({

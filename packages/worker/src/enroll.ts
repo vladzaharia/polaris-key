@@ -16,7 +16,7 @@ import type { Product } from "./product.js";
 import { errorResponse, ErrorCode, json, methodNotAllowed } from "./http.js";
 import { randomId } from "./crypto.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
-import { allowsAnonymousEnroll, computeHwid } from "./fingerprint.js";
+import { allowsAnonymousEnroll, computeEnrollHwid } from "./fingerprint.js";
 import {
   appendAudit,
   getLicense,
@@ -24,6 +24,7 @@ import {
   getTier,
   insertLicense,
   type LicenseRow,
+  type TierRow,
 } from "./repo.js";
 import {
   authorizationError,
@@ -32,7 +33,7 @@ import {
   shapeDevice,
   shapeLicense,
 } from "./licensing.js";
-import { authorizeDevice } from "./licenseCore.js";
+import { authorizeDevice, tierExpiresAt } from "./licenseCore.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol";
 
 /**
@@ -47,13 +48,30 @@ async function locateOrMintLicense(
   db: Db,
   product: Product,
   hwid: string,
-  tierId: string,
+  tier: TierRow,
   now: number,
-): Promise<LicenseRow | null> {
+): Promise<LicenseRow | "claimed" | null> {
   const existing = await getLicenseByEnrollHwid(db, product.slug, hwid);
-  if (existing) return existing;
+  if (existing) {
+    // R3-05 — the machine's free license is now bound for good: `claimEnrolledLicense` and the
+    // OIDC merge arm no longer clear `enroll_hwid`, so this row may be one that has since been
+    // claimed by an identity or retired by a merge. Returning it would hand an ANONYMOUS
+    // caller a license that now carries somebody's identity and (post-claim) their tier, which
+    // is a strictly worse outcome than the re-enrolment loop R3-05 describes. This machine has
+    // had its free license; the caller signs in to reach it.
+    const stillAnonymous =
+      existing.origin === "enroll" &&
+      existing.sub === null &&
+      existing.status === "active";
+    return stillAnonymous ? existing : "claimed";
+  }
 
   const licenseId = randomId("lic");
+  // R3-06 — the tier's expiry policy applies here exactly as it does on every other path
+  // that assigns a tier. This used to be a hardcoded `null`, so a tier configured as a
+  // time-boxed trial issued PERMANENT licenses through `/enroll` — the one path where the
+  // license is free and unauthenticated, i.e. where the time box matters most.
+  const expiresAt = tierExpiresAt(tier, now);
   try {
     await insertLicense(db, {
       product: product.slug,
@@ -65,9 +83,9 @@ async function locateOrMintLicense(
       name: null,
       email: null,
       groups_json: null,
-      tier_id: tierId,
+      tier_id: tier.id,
       activated_at: now,
-      expires_at: null,
+      expires_at: expiresAt,
       max_offline_days: null,
       overrides_json: JSON.stringify({
         config: {},
@@ -84,8 +102,13 @@ async function locateOrMintLicense(
     });
   } catch {
     // Almost certainly the unique-index violation above. Re-read rather than surfacing a
-    // 500: the caller's intent ("give me the license for this machine") is satisfiable.
-    return getLicenseByEnrollHwid(db, product.slug, hwid);
+    // 500: the caller's intent ("give me the license for this machine") is satisfiable — but
+    // only if the winner of the race is still an anonymous enrolled row (R3-05).
+    const winner = await getLicenseByEnrollHwid(db, product.slug, hwid);
+    if (!winner) return null;
+    return winner.origin === "enroll" && winner.sub === null
+      ? winner
+      : "claimed";
   }
 
   await appendAudit(db, {
@@ -99,7 +122,7 @@ async function locateOrMintLicense(
     target_kind: "license",
     target_id: licenseId,
     parent_id: null,
-    summary: `Auto-issued a ${tierId} license for a new machine`,
+    summary: `Auto-issued a ${tier.id} license for a new machine`,
   });
   return getLicense(db, product.slug, licenseId);
 }
@@ -167,15 +190,29 @@ export async function handleEnroll(
       "enrollment requires a hardware fingerprint",
     );
   }
-  const hwid = await computeHwid(fingerprint.components);
+  // R3-03 — the dedupe key covers a FIXED projection (the anchor), not "whatever was sent".
+  // Using computeHwid here meant each of the 127 reachable component subsets of one machine
+  // hashed to a different "machine" and earned its own free license. A submission with no
+  // anchor is undedupable by construction, so it is refused rather than minted.
+  const hwid = await computeEnrollHwid(fingerprint.components);
+  if (!hwid) {
+    return errorResponse(
+      403,
+      ErrorCode.FingerprintRequired,
+      "enrollment requires a machine anchor in the hardware fingerprint",
+    );
+  }
 
-  const license = await locateOrMintLicense(
-    db,
-    product,
-    hwid,
-    policy.tierId,
-    now,
-  );
+  const license = await locateOrMintLicense(db, product, hwid, tier, now);
+  if (license === "claimed") {
+    // R3-05: this machine's free license already exists but belongs to an identity now (or was
+    // retired into one by a merge). Say so plainly rather than minting a second one.
+    return errorResponse(
+      403,
+      ErrorCode.EnrollClaimed,
+      "this machine's free license has been claimed; sign in to use it",
+    );
+  }
   if (!license)
     return errorResponse(500, "enroll_failed", "could not issue a license");
 

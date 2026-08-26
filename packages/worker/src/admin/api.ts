@@ -5,13 +5,17 @@
  *
  *   /api/me                                  — the signed-in identity + CSRF + grants
  *   /api/products                            — PLATFORM registry CRUD (platform admins only)
- *   /api/products/<slug>/...                 — per-product admin (product admins + platform)
+ *   /api/products/<slug>/...                 — per-product admin (platform admins only)
  *
  * Security posture, enforced on EVERY request (never trusting the SPA):
  *   - **Session-gated**: a valid signed cookie session is required (401 otherwise).
- *   - **Group-gated**: platform routes need `PLATFORM_ADMIN_GROUP`; product routes need the
- *     product's `admin_group` (platform admins pass too). 403 otherwise.
- *   - **CSRF**: mutations must echo `X-PKey-CSRF`; mismatch ⇒ 403.
+ *   - **Group-gated**: every route — platform and per-product alike — requires
+ *     `PLATFORM_ADMIN_GROUP`. There is no product-level admin: a product's `admin_group`
+ *     column grants nothing. 403 otherwise.
+ *   - **Rate-limited**: per-session-subject budget on the whole surface, plus a much tighter
+ *     one on the audited 403 branch (R1-04).
+ *   - **CSRF**: mutations must echo `X-PKey-CSRF`; mismatch ⇒ 403. Logout is a POST so that
+ *     it goes through that check rather than around it (R1-03).
  *   - **Product-scoped D1**: every per-product query carries the slug — no cross-tenant read.
  *   - **Catalog-validated**: config/secret/flag values validate against the active catalog
  *     before any write (422 on failure).
@@ -25,8 +29,13 @@
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { getProduct } from "../repo.js";
+import { rateLimitOk } from "../rateLimit.js";
 import { canAdminProduct } from "./authz.js";
 import { audit } from "./audit.js";
+
+/** Admin limiter shard. One global Durable Object for the whole platform — see the note in
+ *  rateLimitDo.ts; sub-sharding it is tracked as R10-04a. */
+const ADMIN_RL_SHARD = "_admin";
 import {
   buildClearCookie,
   CSRF_HEADER,
@@ -65,19 +74,39 @@ async function handleProductScoped(
 ): Promise<Response> {
   const product = await getProduct(db, slug);
   if (!product) return notFound();
-  if (!canAdminProduct(env, session, product)) {
-    // Authenticated-but-unauthorized cross-product access is low-volume + high-signal, so we
-    // audit it (attributed to the verified actor). NOTE: we intentionally do NOT audit the
+  if (!canAdminProduct(env, session)) {
+    // Authenticated-but-unauthorized access is low-volume + high-signal, so we audit it
+    // (attributed to the verified actor). NOTE: we intentionally do NOT audit the
     // unauthenticated credential-path 401s — that would be a D1-write DoS amplifier.
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "access.denied",
-      { kind: "product", id: slug },
-      `Denied admin access to product ${slug}`,
-    );
+    //
+    // R1-04: the same reasoning applies here. The 403 branch is a GET, so no CSRF token is
+    // required, and one D1 write per request is an amplifier for any actor holding a session
+    // that fails this gate. The audit row is therefore budgeted: a few per actor+product per
+    // window is all the signal an operator needs — the burst itself is the interesting event,
+    // not each request in it — and beyond that the 403 is still returned, just not written.
+    if (
+      await rateLimitOk(
+        env,
+        ADMIN_RL_SHARD,
+        {
+          bucket: "adminAccessDenied",
+          id: `${session.sub}:${slug}`,
+          limit: 3,
+          windowSec: 300,
+        },
+        now,
+      )
+    ) {
+      await audit(
+        db,
+        slug,
+        session,
+        now,
+        "access.denied",
+        { kind: "product", id: slug },
+        `Denied admin access to product ${slug}`,
+      );
+    }
     return forbidden("not an admin of this product");
   }
 
@@ -126,7 +155,9 @@ async function handleProductScoped(
   }
 
   if (resource === "profiles") {
-    return handleProfiles(req, db, session, slug, id, now);
+    // `env` threaded for R12-02: the profile payload editor seals catalog-declared secrets
+    // under PLATFORM_KEK before they reach profiles.payload_json.
+    return handleProfiles(req, env, db, session, slug, id, now);
   }
 
   if (resource === "tiers") {
@@ -154,6 +185,28 @@ export async function handleAdminApi(
   const session = await sessionFromRequest(env, req, now);
   if (!session) return unauthorized();
 
+  // R1-04: the admin API had NO rate limiter of any kind — only /manage/login and
+  // /manage/callback were limited — while several of its routes write to D1. The budget is
+  // keyed by the VERIFIED session subject, not the IP, so it follows the actor rather than
+  // the network path, and it is generous enough that the SPA's normal fan-out never trips it.
+  // Fails OPEN (see rateLimit.ts): a signed-in operator must not be locked out of the console
+  // by a limiter outage, and the session gate above is the real access control here.
+  if (
+    !(await rateLimitOk(
+      env,
+      ADMIN_RL_SHARD,
+      {
+        bucket: "adminApi",
+        id: session.sub,
+        limit: 600,
+        windowSec: 60,
+      },
+      now,
+    ))
+  ) {
+    return err(429, "rate_limited", "too many admin API requests");
+  }
+
   // Strip the `/api` prefix; tolerate trailing slash.
   let p = path.startsWith("/api") ? path.slice(4) : path;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
@@ -169,6 +222,13 @@ export async function handleAdminApi(
 
   if (head === "me") return handleMe(env, db, session);
   if (head === "logout") {
+    // R1-03: logout clears the session, so it is a mutation and must go through the CSRF
+    // check above — which `isMutation` only applies to non-GET methods. As a GET it was a
+    // state-changing route that skipped the gate entirely; cross-site exploitation was
+    // blocked only by `SameSite=Strict`, i.e. by a cookie attribute that a future relax to
+    // `SameSite=Lax` (the usual fix for post-OIDC redirects) would quietly remove.
+    if (req.method !== "POST")
+      return err(405, "method_not_allowed", "logout requires POST");
     return adminJson({ ok: true }, 200, { "set-cookie": buildClearCookie() });
   }
   if (head === "products") {

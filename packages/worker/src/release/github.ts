@@ -94,12 +94,34 @@ function isAllowedStorageHost(host: string): boolean {
   );
 }
 
+/** Strip an upstream asset name down to something safe inside a `filename="…"` parameter. */
+function sanitizeFilename(name: string): string {
+  const cleaned = name.replace(/[^A-Za-z0-9._-]/g, "_").replace(/^\.+/, "");
+  return cleaned.slice(0, 128) || "download";
+}
+
+export interface StreamAssetOptions {
+  /** Upstream asset name; sanitised into the forced `Content-Disposition`. */
+  filename: string;
+  /**
+   * The `Content-Type` this gateway will serve. Chosen by the caller from its own
+   * allowlist — the upstream value is repo-controlled and is never relayed (R6-04).
+   */
+  contentType: string;
+}
+
 /**
  * Stream a release asset's raw bytes back to the client. Requests the asset with
  * `Accept: application/octet-stream`; GitHub answers with a 302 to its storage
  * backend. We follow that redirect **manually** so we can SSRF-guard the redirect
  * target host before re-fetching, and pass Range/ETag through so range requests and
  * caching keep working end-to-end.
+ *
+ * SECURITY (R6-04). A GitHub release asset's `content_type` is chosen by whoever uploaded
+ * it, and this gateway shares an origin with the admin SPA and the customer portal. So the
+ * response type is forced from `opts.contentType`, `Content-Disposition: attachment` is
+ * always sent (GitHub sets one; the old header allowlist dropped it), and `nosniff` is set
+ * so a mislabelled body can never be sniffed into same-origin script.
  */
 export async function streamAsset(
   token: string,
@@ -107,6 +129,7 @@ export async function streamAsset(
   repo: string,
   assetId: number,
   clientRequest: Request,
+  opts: StreamAssetOptions,
   fetchImpl: FetchImpl = fetch,
 ): Promise<Response> {
   const headers = new Headers(apiHeaders(token, "application/octet-stream"));
@@ -143,8 +166,9 @@ export async function streamAsset(
   }
 
   const out = new Headers();
+  // NOTE: `Content-Type` is deliberately absent from this allowlist — it is set below from
+  // the gateway's own choice, never from the repo-controlled upstream value.
   for (const h of [
-    "Content-Type",
     "Content-Length",
     "Content-Range",
     "Accept-Ranges",
@@ -154,6 +178,12 @@ export async function streamAsset(
     const v = upstream.headers.get(h);
     if (v) out.set(h, v);
   }
+  out.set("Content-Type", opts.contentType);
+  out.set(
+    "Content-Disposition",
+    `attachment; filename="${sanitizeFilename(opts.filename)}"`,
+  );
+  out.set("X-Content-Type-Options", "nosniff");
   return new Response(upstream.body, { status: upstream.status, headers: out });
 }
 
@@ -196,14 +226,14 @@ export async function fetchRepoFile(
   return new TextDecoder().decode(bytes);
 }
 
-/** Fetch a small text asset (e.g. a `.sig` sidecar) and return its decoded body. */
-export async function fetchTextAsset(
+/** Fetch a release asset's raw bytes, following (and SSRF-guarding) the storage redirect. */
+async function fetchAsset(
   token: string,
   owner: string,
   repo: string,
   assetId: number,
-  fetchImpl: FetchImpl = fetch,
-): Promise<string> {
+  fetchImpl: FetchImpl,
+): Promise<Response> {
   const url = `${GITHUB_API}/repos/${owner}/${repo}/releases/assets/${assetId}`;
   let res = await fetchImpl(url, {
     headers: apiHeaders(token, "application/octet-stream"),
@@ -218,5 +248,40 @@ export async function fetchTextAsset(
     res = await fetchImpl(loc);
   }
   if (!res.ok) throw new NotFoundError(`asset fetch failed: ${res.status}`);
-  return res.text();
+  return res;
+}
+
+/** Fetch a small text asset (e.g. a `.sig` sidecar) and return its decoded body. */
+export async function fetchTextAsset(
+  token: string,
+  owner: string,
+  repo: string,
+  assetId: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<string> {
+  return (await fetchAsset(token, owner, repo, assetId, fetchImpl)).text();
+}
+
+/**
+ * Fetch a release asset's raw bytes into memory, for signature verification (R6-03).
+ * `maxBytes` bounds the read so a huge artifact can't blow the isolate's memory budget.
+ */
+export async function fetchAssetBytes(
+  token: string,
+  owner: string,
+  repo: string,
+  assetId: number,
+  maxBytes: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<Uint8Array> {
+  const res = await fetchAsset(token, owner, repo, assetId, fetchImpl);
+  const declared = Number(res.headers.get("Content-Length") ?? "0");
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new NotFoundError(`asset too large to verify: ${declared} bytes`);
+  }
+  const buf = new Uint8Array(await res.arrayBuffer());
+  if (buf.byteLength > maxBytes) {
+    throw new NotFoundError(`asset too large to verify: ${buf.byteLength}`);
+  }
+  return buf;
 }

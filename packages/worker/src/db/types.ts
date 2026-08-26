@@ -25,6 +25,16 @@ export interface Db {
     ...params: DbParam[]
   ): Promise<T | null>;
   run(sql: string, ...params: DbParam[]): Promise<void>;
+  /**
+   * `run`, but returns the number of rows the statement actually changed.
+   *
+   * This is the primitive that makes a conditional write ATOMIC without a transaction: issue
+   * `UPDATE ... WHERE <precondition>` and treat `changes === 0` as "someone else got there
+   * first". Both engines report it natively (D1 `meta.changes`, better-sqlite3 `info.changes`),
+   * so a single statement replaces a check-then-act pair with an `await` in the middle — see
+   * `markPortalDownloadUsed` (R9-05b) and `claimDeviceSeat` (R11-02).
+   */
+  runChanges(sql: string, ...params: DbParam[]): Promise<number>;
   /** Atomic batch (D1 batch / SQLite transaction). */
   batch(statements: DbStatement[]): Promise<void>;
 }

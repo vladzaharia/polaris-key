@@ -21,6 +21,7 @@ import {
 } from "./auth.js";
 import { handleAdminApi } from "./api.js";
 import { appSecurityHeaders } from "../securityHeaders.js";
+import { isSafeAssetPath } from "../http.js";
 
 /** Minimal SPA placeholder for tests/local configurations without an assets binding. */
 function spaShell(): Response {
@@ -45,20 +46,19 @@ async function serveAdminAsset(
 ): Promise<Response> {
   if (!env.ASSETS) return spaShell();
   const url = new URL(req.url);
-  if (cleanPath === "" || cleanPath === "/" || !cleanPath.includes(".")) {
-    url.pathname = "/manage.html";
-  } else {
-    url.pathname = cleanPath;
-  }
+  // R1-06: `cleanPath` is user-controlled and was assigned straight into `URL.pathname`,
+  // whose parser normalises percent-encoded dot segments — `/manage/%2e%2e/%2e%2e/x.html`
+  // walked the fetch out of the /manage prefix. Anything that is not a literal, already
+  // normalised asset path falls through to the SPA shell.
+  const isShell = !isSafeAssetPath(cleanPath) || !cleanPath.includes(".");
+  url.pathname = isShell ? "/manage.html" : cleanPath;
   const res = await env.ASSETS.fetch(new Request(url, req));
-  if (url.pathname === "/manage.html") {
-    const headers = new Headers(res.headers);
-    headers.set("cache-control", "no-store");
-    appSecurityHeaders(headers);
-    return new Response(res.body, { status: res.status, headers });
-  }
   const headers = new Headers(res.headers);
-  headers.set("x-content-type-options", "nosniff");
+  if (isShell) headers.set("cache-control", "no-store");
+  // R1-06/R1-09: the security headers are applied to EVERY asset response, not just the
+  // shell. Deciding on the resolved pathname was what let the escape above ship CSP-less
+  // HTML from the admin origin.
+  appSecurityHeaders(headers);
   return new Response(res.body, { status: res.status, headers });
 }
 

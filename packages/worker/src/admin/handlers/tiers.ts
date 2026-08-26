@@ -16,11 +16,25 @@ import {
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
+import { parseJsonList } from "../lib/shape.js";
 
 /** Normalize a request-body `channels` field into a JSON string array column value, or null. */
 function parseChannels(raw: unknown): string | null {
   if (!Array.isArray(raw)) return null;
   return JSON.stringify(raw.filter((c) => typeof c === "string") as string[]);
+}
+
+/**
+ * R11-02 part 2 — a tier's device limit must be a real seat count.
+ *
+ * `licenseCore.ts` gates the whole seat check on `limit > 0`, so `PATCH {"policyDeviceLimit":
+ * 0}` (or `-1`) did not mean "zero seats", it meant "UNLIMITED seats" for every license on the
+ * tier — the core commercial control removed by one mistyped or fuzzed admin field. NULL still
+ * means "inherit the product default". 0015_data_integrity.sql enforces the same rule at the
+ * database; this returns 422 instead of letting an operator hit a constraint error.
+ */
+function invalidDeviceLimit(raw: unknown): boolean {
+  return typeof raw === "number" && (!Number.isInteger(raw) || raw <= 0);
 }
 
 async function profileExists(
@@ -52,9 +66,8 @@ export async function handleTiers(
           profile: t.profile_id,
           policyExpiryDays: t.policy_expiry_days,
           policyDeviceLimit: t.policy_device_limit,
-          channels: t.channels_json
-            ? (JSON.parse(t.channels_json) as string[])
-            : [],
+          // R11-06: guarded — a corrupt tiers.channels_json must not 500 the tier list.
+          channels: parseJsonList(t.channels_json),
           minVersion: t.min_version,
           maxVersion: t.max_version,
         })),
@@ -67,6 +80,13 @@ export async function handleTiers(
         return err(422, ErrorCode.BadRequest, "unknown profile", {
           fields: ["profile"],
         });
+      if (invalidDeviceLimit(body.policyDeviceLimit))
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "policyDeviceLimit must be a positive integer",
+          { fields: ["policyDeviceLimit"] },
+        );
       await upsertTier(db, {
         product: slug,
         id: tierId,
@@ -111,6 +131,13 @@ export async function handleTiers(
       return err(422, ErrorCode.BadRequest, "unknown profile", {
         fields: ["profile"],
       });
+    if (invalidDeviceLimit(body.policyDeviceLimit))
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "policyDeviceLimit must be a positive integer",
+        { fields: ["policyDeviceLimit"] },
+      );
     await upsertTier(db, {
       ...row,
       label: typeof body.label === "string" ? body.label : row.label,

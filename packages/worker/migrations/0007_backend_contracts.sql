@@ -1,7 +1,8 @@
 -- Backend contract scaffolding for first-class customers and release portal data.
-
-ALTER TABLE release_config ADD COLUMN metadata_access TEXT NOT NULL DEFAULT 'public';
-ALTER TABLE release_config ADD COLUMN artifacts_access TEXT NOT NULL DEFAULT 'public';
+--
+-- R11-04: the two non-idempotent `ALTER TABLE ... ADD COLUMN`s that used to open this file now
+-- close it, so a replay that dies on `duplicate column name: metadata_access` no longer strands
+-- the ~130 lines of table and index creation that follow.
 
 CREATE TABLE IF NOT EXISTS customers (
   product       TEXT NOT NULL REFERENCES products(slug),
@@ -138,3 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_release_download_tokens_expiry
   ON release_download_tokens(product, expires_at);
 CREATE INDEX IF NOT EXISTS idx_release_download_tokens_artifact
   ON release_download_tokens(product, release_id, artifact_id);
+
+-- Non-idempotent tail (see the header): these must stay last in the file.
+ALTER TABLE release_config ADD COLUMN metadata_access TEXT NOT NULL DEFAULT 'public';
+ALTER TABLE release_config ADD COLUMN artifacts_access TEXT NOT NULL DEFAULT 'public';

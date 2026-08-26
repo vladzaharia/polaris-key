@@ -16,9 +16,10 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import { listProducts } from "../repo.js";
+import { hashKey } from "../crypto.js";
 import { clientIp, rateLimitOk } from "../rateLimit.js";
 import { platformOidcConfig } from "../platformOidc.js";
+import { staticHtmlSecurityHeaders } from "../securityHeaders.js";
 import { hasAnyAdminGrant } from "./authz.js";
 import {
   buildSessionCookie,
@@ -28,6 +29,20 @@ import {
 
 const FLOW_TTL_SECONDS = 600;
 const ADMIN_FLOW_PREFIX = "admin:flow:";
+
+/**
+ * KV key for an in-flight admin sign-in.
+ *
+ * R12-04: the `state` used to be the key name verbatim, so anyone who could list the HOT
+ * namespace read live OIDC `state` values straight out of the key names — a credential dump
+ * from metadata alone, with the PKCE `verifier` sitting in the value next to it. Hashing under
+ * `KEY_HASH_PEPPER` makes the listing inert: a key name is no longer a usable `state`, and
+ * without the pepper it cannot be reversed into one. Matches what `kv.ts` (device tokens) and
+ * `browserSession.ts` (download tokens) already do.
+ */
+async function adminFlowKey(state: string, env: Env): Promise<string> {
+  return `${ADMIN_FLOW_PREFIX}${await hashKey(state, env.KEY_HASH_PEPPER)}`;
+}
 
 interface FlowRecord {
   verifier: string;
@@ -135,10 +150,21 @@ const joseIdTokenVerifier: IdTokenVerifier = {
 };
 
 // ── handlers ──────────────────────────────────────────────────────────────────
+/** A sign-in error page. HTML on the admin origin, so it carries the strict script-free CSP
+ *  (R1-09): every message here is a hard-coded literal today, but this page must never be a
+ *  script-execution primitive if that changes. */
 function htmlError(status: number, message: string): Response {
   return new Response(
     `<!doctype html><meta charset=utf-8><title>Sign-in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>${message}</h1>`,
-    { status, headers: { "content-type": "text/html; charset=utf-8" } },
+    {
+      status,
+      headers: staticHtmlSecurityHeaders(
+        new Headers({
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+        }),
+      ),
+    },
   );
 }
 
@@ -165,7 +191,7 @@ export async function handleAdminLogin(
   const { verifier, challenge } = await pkce();
   const redirectUri = `${new URL(req.url).origin}/manage/callback`;
   const flow: FlowRecord = { verifier, nonce, redirectUri };
-  await env.HOT.put(`${ADMIN_FLOW_PREFIX}${state}`, JSON.stringify(flow), {
+  await env.HOT.put(await adminFlowKey(state, env), JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
 
@@ -207,17 +233,25 @@ export async function handleAdminCallback(
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state) return htmlError(400, "Missing authorization code.");
-  const raw = await env.HOT.get(`${ADMIN_FLOW_PREFIX}${state}`);
+  const flowKey = await adminFlowKey(state, env);
+  const raw = await env.HOT.get(flowKey);
   if (!raw) return htmlError(400, "This sign-in link has expired. Try again.");
-  const flow = JSON.parse(raw) as FlowRecord;
-  await env.HOT.delete(`${ADMIN_FLOW_PREFIX}${state}`);
+  let flow: FlowRecord;
+  try {
+    flow = JSON.parse(raw) as FlowRecord;
+  } catch {
+    await env.HOT.delete(flowKey);
+    return htmlError(400, "This sign-in link has expired. Try again.");
+  }
+  await env.HOT.delete(flowKey);
 
   const identity = await verifier.verify({ code, flow, env });
   if (!identity || !identity.sub)
     return htmlError(401, "Sign-in could not be verified.");
 
-  const products = await listProducts(db);
-  if (!hasAnyAdminGrant(env, identity.groups, products)) {
+  // Admin authority is platform-wide, so the gate needs no product list — the `listProducts`
+  // read that used to feed the (ignored) `_products` parameter is gone.
+  if (!hasAnyAdminGrant(env, identity.groups)) {
     return htmlError(
       403,
       "Your account is not an administrator of any product.",

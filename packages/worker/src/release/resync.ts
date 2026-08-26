@@ -10,6 +10,7 @@
  * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here.
  */
 
+import { Catalog } from "@polaris-key/catalog";
 import type { Env } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import {
@@ -40,6 +41,7 @@ import {
   getInstallationToken,
 } from "./githubApp.js";
 import { fetchRepoFile } from "./github.js";
+import { isSafeBinaryName } from "./install.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
@@ -57,10 +59,9 @@ async function readPkeyFile(
   repo: string,
   paths: string[],
   fetchImpl: FetchImpl,
-  ref?: string,
 ): Promise<string | undefined> {
   for (const path of paths) {
-    const text = await fetchRepoFile(token, owner, repo, path, fetchImpl, ref);
+    const text = await fetchRepoFile(token, owner, repo, path, fetchImpl);
     if (text !== null) return text;
   }
   return undefined;
@@ -69,6 +70,13 @@ async function readPkeyFile(
 /**
  * Re-apply a linked repo's `.pkey/` to an existing product. Resolves the GitHub coordinates
  * from `release_config`; if the product was never linked (no gh coordinates) it's an error.
+ *
+ * SECURITY (R6-05). This deliberately takes NO ref. It used to accept `payload.after` from
+ * the webhook body, which made the manifest applied to production a function of a value in
+ * the request body — an unreviewed branch or an old commit — structurally defeating branch
+ * protection and required review on `.pkey/`. Omitting the ref makes the Contents API serve
+ * the DB-configured repo's own default branch, resolved by GitHub, with nothing
+ * caller-supplied in the path.
  */
 export async function resyncRepo(
   env: Env,
@@ -76,7 +84,6 @@ export async function resyncRepo(
   slug: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ref?: string,
 ): Promise<ResyncResult> {
   const product = await getProduct(db, slug);
   if (!product) return { ok: false, error: "unknown product" };
@@ -111,7 +118,6 @@ export async function resyncRepo(
         repo,
         PKEY_FILES[name],
         fetchImpl,
-        ref,
       );
       if (text !== undefined) files[name] = text;
     }
@@ -184,6 +190,17 @@ export async function resyncRepo(
   const nextCatalogJson = JSON.stringify(manifest.catalog);
   const activeSchema = await getActiveSchema(db, slug);
   if (activeSchema?.catalog_json !== nextCatalogJson) {
+    // Same screening the admin API applies before writing `product_schema`. A resync is
+    // triggered by a repo webhook, so without this the sync path installs catalogs the admin
+    // API would refuse — and the refusal is the only thing bounding `pattern` complexity.
+    try {
+      new Catalog(manifest.catalog as never).compileAll();
+    } catch (e) {
+      return {
+        ok: false,
+        error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
+      };
+    }
     const version = await nextSchemaVersion(db, slug);
     await deactivateSchemas(db, slug);
     await insertSchema(db, {
@@ -199,13 +216,21 @@ export async function resyncRepo(
   // ── release_config: update the GitHub-distribution block in place ───────────
   const rel = manifest.release;
   if (rel) {
+    // Defence in depth for R6-01 (the repo-name fallback bypasses the manifest boundary).
+    const binaryName = rel.binaryName || repo;
+    if (!isSafeBinaryName(binaryName)) {
+      return {
+        ok: false,
+        error: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
+      };
+    }
     await db.run(
       `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
          sparkle_ed25519_pub = ?, summary_marker = ?, artifact_policy_json = ?,
          metadata_access = ?, artifacts_access = ? WHERE product = ?`,
       rel.channelWorkflow || null,
       rel.betaBranch || "main",
-      rel.binaryName || repo,
+      binaryName,
       rel.sparkleEd25519Pub || null,
       rel.summaryMarker || "pkey:summary",
       rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,

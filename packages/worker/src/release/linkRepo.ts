@@ -16,6 +16,7 @@
  * with a stubbed fetch (no network).
  */
 
+import { Catalog } from "@polaris-key/catalog";
 import type { Env } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { generateEd25519, seal } from "../keyvault.js";
@@ -40,6 +41,7 @@ import {
   getInstallationToken,
 } from "./githubApp.js";
 import { fetchRepoFile } from "./github.js";
+import { isSafeBinaryName } from "./install.js";
 
 export type LinkRepoResult =
   | {
@@ -190,6 +192,30 @@ async function registerFromManifest(
   const rel = manifest.release;
   const binaryName = rel?.binaryName || gh.repo;
   const summaryMarker = rel?.summaryMarker || "pkey:summary";
+
+  // Defence in depth for R6-01: the manifest boundary already enforces this class, but the
+  // repo-name fallback does not go through it — and this value is interpolated into the
+  // `curl | sh` installer served to every user of the product.
+  if (!isSafeBinaryName(binaryName)) {
+    return {
+      ok: false,
+      error: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
+    };
+  }
+
+  // The admin API screens every catalog it accepts (`admin/handlers/schema.ts`,
+  // `admin/handlers/products.ts` both `compileAll()` before writing). The repo-sync path did
+  // not, so a manifest from GitHub could install a catalog the admin API would have rejected
+  // — unsupported keywords, or a `pattern` the validator cannot compile. Screen it here too,
+  // so there is no route into `product_schema` that skips the check.
+  try {
+    new Catalog(manifest.catalog as never).compileAll();
+  } catch (e) {
+    return {
+      ok: false,
+      error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
+    };
+  }
 
   const statements: DbStatement[] = [
     stmtInsertProduct({

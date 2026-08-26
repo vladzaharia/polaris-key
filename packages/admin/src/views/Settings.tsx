@@ -105,7 +105,6 @@ function GeneralCard({
     compatMax: product.compatMax,
     defaultMaxOfflineDays: String(product.defaultMaxOfflineDays),
     defaultDeviceLimit: String(product.defaultDeviceLimit),
-    adminGroup: product.adminGroup ?? "",
   });
   const [saving, setSaving] = React.useState(false);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
@@ -120,7 +119,6 @@ function GeneralCard({
       compatMax: product.compatMax,
       defaultMaxOfflineDays: String(product.defaultMaxOfflineDays),
       defaultDeviceLimit: String(product.defaultDeviceLimit),
-      adminGroup: product.adminGroup ?? "",
     });
   }, [product]);
 
@@ -129,8 +127,7 @@ function GeneralCard({
     form.compatMin !== product.compatMin ||
     form.compatMax !== product.compatMax ||
     form.defaultMaxOfflineDays !== String(product.defaultMaxOfflineDays) ||
-    form.defaultDeviceLimit !== String(product.defaultDeviceLimit) ||
-    form.adminGroup !== (product.adminGroup ?? "");
+    form.defaultDeviceLimit !== String(product.defaultDeviceLimit);
 
   const set =
     (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -155,7 +152,6 @@ function GeneralCard({
       compatMax: form.compatMax.trim(),
       defaultMaxOfflineDays: offline,
       defaultDeviceLimit: devices,
-      adminGroup: form.adminGroup.trim(),
     };
     setSaving(true);
     try {
@@ -242,18 +238,6 @@ function GeneralCard({
               inputMode="numeric"
               value={form.defaultDeviceLimit}
               onChange={set("defaultDeviceLimit")}
-            />
-          </Field>
-          <Field
-            label="Admin group"
-            help="OIDC group whose members may administer this product. Blank to leave unset."
-            className="sm:col-span-2"
-          >
-            <Input
-              value={form.adminGroup}
-              onChange={set("adminGroup")}
-              placeholder="e.g. djdl-admins"
-              autoComplete="off"
             />
           </Field>
         </CardContent>

@@ -26,6 +26,7 @@ import { handleAdmin } from "./admin/index.js";
 import { handlePortal } from "./portal/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { notFound } from "./http.js";
+import { secureResponse } from "./securityHeaders.js";
 import { handleEnroll } from "./enroll.js";
 import {
   handleAccount,
@@ -74,6 +75,19 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    // R1-09: EVERY response leaving this worker goes through `secureResponse`, which adds
+    // HSTS and — for any `text/html` body that did not set its own policy — the strict
+    // script-free CSP. Handlers that set a policy themselves (the SPA shells) keep it. This
+    // makes "there is no CSP-less HTML on this origin" a property of the dispatcher rather
+    // than something each handler has to remember, and it is what currently covers the two
+    // `oidc.ts` pages (device-authorization + "you're signed in"), which set no headers of
+    // their own.
+    return secureResponse(await dispatch(req, env));
+  },
+} satisfies ExportedHandler<Env>;
+
+async function dispatch(req: Request, env: Env): Promise<Response> {
+  {
     const url = new URL(req.url);
     const route = matchRoute(url.pathname);
     const now = Math.floor(Date.now() / 1000);
@@ -195,5 +209,5 @@ export default {
       default:
         return notFound();
     }
-  },
-} satisfies ExportedHandler<Env>;
+  }
+}

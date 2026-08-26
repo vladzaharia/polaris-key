@@ -3,13 +3,21 @@
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { errorResponse, json } from "./http.js";
+import { pk } from "./kv.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
+import { getReleaseConfig } from "./release/index.js";
 import { resyncRepo } from "./release/resync.js";
 import type { FetchImpl } from "./release/githubApp.js";
+
+/** How long a processed `X-GitHub-Delivery` GUID is remembered (7 days). */
+const DELIVERY_TTL_SECONDS = 604_800;
+/** KV scope for delivery GUIDs. Not a legal product slug (`^[a-z0-9-]+$`), so it can't collide. */
+const PLATFORM_SCOPE = "_platform";
 
 interface PushPayload {
   ref?: string;
   after?: string;
+  installation?: { id?: number };
   repository?: {
     name?: string;
     full_name?: string;
@@ -123,6 +131,23 @@ export async function handleGithubWebhook(
   );
   if (!ok) return errorResponse(401, "unauthorized", "invalid signature");
 
+  // Replay protection (R6-06). A captured delivery (body + signature) was previously an
+  // unlimited-use state-rollback primitive: `resyncRepo` DELETEs and re-inserts oidc_config,
+  // profiles, tiers and more, so re-posting an old delivery reverted an operator's incident
+  // response. GitHub's own redelivery UI hands the App owner exactly that artifact. Recorded
+  // AFTER signature verification so an unauthenticated flood can't fill KV.
+  const deliveryId = req.headers.get("x-github-delivery") ?? "";
+  if (!deliveryId) {
+    return errorResponse(400, "bad_request", "missing X-GitHub-Delivery");
+  }
+  const deliveryKey = pk(PLATFORM_SCOPE, "gh-delivery", deliveryId);
+  if (await env.HOT.get(deliveryKey)) {
+    return json({ ok: true, ignored: "duplicate-delivery", deliveryId });
+  }
+  await env.HOT.put(deliveryKey, String(now), {
+    expirationTtl: DELIVERY_TTL_SECONDS,
+  });
+
   const event = req.headers.get("x-github-event") ?? "";
   if (event !== "push") {
     return json({ ok: true, ignored: event || "unknown-event" });
@@ -135,9 +160,17 @@ export async function handleGithubWebhook(
     return errorResponse(400, "bad_request", "invalid JSON payload");
   }
 
-  const branch = payload.repository?.default_branch ?? "main";
-  if (payload.ref !== `refs/heads/${branch}`) {
-    return json({ ok: true, ignored: "non-default-branch", branch });
+  // A structural gate only: tags and other non-branch refs are not `.pkey/` sources. The
+  // old check compared `payload.ref` against `payload.repository.default_branch` — both
+  // attacker-supplied, i.e. self-attestation. The branch that actually gets applied is now
+  // resolved by GitHub from the DB-configured repo (`resyncRepo` takes no ref), so nothing
+  // in this body can steer which content lands. R6-05.
+  if (!payload.ref?.startsWith("refs/heads/")) {
+    return json({
+      ok: true,
+      ignored: "non-branch-ref",
+      ref: payload.ref ?? null,
+    });
   }
 
   const paths = changedPaths(payload);
@@ -161,15 +194,22 @@ export async function handleGithubWebhook(
     errors?: string[];
   }> = [];
 
+  const installationId = payload.installation?.id;
   for (const product of products) {
-    const result = await resyncRepo(
-      env,
-      db,
-      product.slug,
-      now,
-      fetchImpl,
-      payload.after,
-    );
+    // Bind the delivery to the installation that owns this product's repo (R6-05). One
+    // webhook secret covers every installation, so without this a single secret compromise
+    // is a cross-tenant forgery capability.
+    const cfg = await getReleaseConfig(db, product.slug);
+    const expected = cfg?.gh_installation_id ?? null;
+    if (expected !== null && installationId !== expected) {
+      results.push({
+        product: product.slug,
+        ok: false,
+        error: "installation id does not match the linked repo",
+      });
+      continue;
+    }
+    const result = await resyncRepo(env, db, product.slug, now, fetchImpl);
     if (result.ok) {
       await upsertProductSyncState(db, {
         product: product.slug,

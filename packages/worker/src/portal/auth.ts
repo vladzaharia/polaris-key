@@ -18,6 +18,7 @@ import {
 } from "./session.js";
 import { sendMagicLink } from "./email.js";
 import { portalSecurityHeaders } from "./headers.js";
+import { isSameOriginNavigation } from "../http.js";
 
 const FLOW_TTL_SECONDS = 600;
 const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];
@@ -396,7 +397,28 @@ export async function handleMagicVerify(
   return issueRedirectSession(env, db, account, now, record.returnTo ?? "/");
 }
 
-export function handlePortalLogout(): Response {
+/**
+ * `POST /logout` (preferred) or a same-origin top-level `GET` navigation.
+ *
+ * R1-03: this used to be an unconditional `GET` that returned a clearing `Set-Cookie` with no
+ * token of any kind, and the portal cookie is `SameSite=Lax` — so
+ * `<img src="https://key.plrs.im/logout">` on any site was a working logout-CSRF. `POST` is
+ * the correct method and is accepted unconditionally — and the portal SPA now uses it: the
+ * sign-out control in `packages/admin/src/portal/App.tsx` is a form POST, not a link. `GET`
+ * survives only as a compatibility bridge for a browser holding a cached older bundle, and
+ * even then it is constrained to a genuine same-origin top-level navigation, which refuses
+ * both the `<img>` and the cross-site-link shapes. It can be dropped once no stale bundles
+ * are in circulation.
+ */
+export function handlePortalLogout(req: Request): Response {
+  if (req.method !== "POST" && !isSameOriginNavigation(req)) {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: portalSecurityHeaders(
+        new Headers({ "cache-control": "no-store" }),
+      ),
+    });
+  }
   return new Response(null, {
     status: 302,
     headers: portalSecurityHeaders(

@@ -347,7 +347,8 @@ function DistributionCard({
               ? "unlimited"
               : String(product.defaultDeviceLimit)}
           </Row>
-          <Row term="Admin group" mono>
+          {/* Manifest metadata only — not an authorization input (see ProductOverview). */}
+          <Row term="Admin group (metadata only)" mono>
             {product.adminGroup ?? "—"}
           </Row>
           <Row term="Last modified">{formatStamp(product.modifiedAt)}</Row>

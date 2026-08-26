@@ -442,6 +442,20 @@ export async function handleDevices(
   const target = devices.find((device) => device.device_id === deviceId);
   if (!target) return errorResponse(404, ErrorCode.NotFound);
 
+  // R3-09: a device token authenticates ONE device, not the licence. Listing siblings is
+  // legitimate self-service (the caller already paid for the seats), but MUTATING one is not:
+  // any device could relabel or deauthorize every other install on the same licence — and the
+  // DELETE arm purges the victim's fingerprint through `setDeviceStatus`, so the eviction is
+  // not even recoverable by re-activating the same hardware. Cross-device management belongs
+  // on the portal, which authenticates the licence OWNER and rate-limits the action.
+  if (deviceId !== valid.device.device_id) {
+    return errorResponse(
+      403,
+      ErrorCode.Forbidden,
+      "a device token may only manage its own device",
+    );
+  }
+
   if (req.method === "PATCH") {
     let body: Record<string, unknown>;
     try {
@@ -501,6 +515,12 @@ export async function handleConfig(
     valid.device,
     now,
     { tighterMin, tighterMax },
+    // R12-02 — `env` opens the sealed managed secrets. They are sealed at rest now
+    // (admin/lib/overrides.ts), so without this the still-sealed envelope reaches
+    // validatePayload, fails the catalog check, and is pruned fail-closed — silently
+    // dropping every managed secret from the signed doc. `/config` is the primary
+    // delivery surface, so this is the call site that matters most.
+    env,
   );
 
   // Defense-in-depth: re-validate the merged config/secret keys against the active catalog

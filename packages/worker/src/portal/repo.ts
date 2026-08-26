@@ -19,6 +19,8 @@ export interface PortalProductSettingsRow {
   magic_enabled: number;
   license_key_claim_enabled: number;
   releases_enabled: number;
+  /** R5-01/R5-02. NULL = derive from the product's OIDC provider (see AUTO_LINK_ENABLED_SQL). */
+  auto_link_enabled: number | null;
   branding_json: string | null;
   created_at: number;
   modified_at: number;
@@ -30,6 +32,7 @@ export interface PortalProductSettingsView {
   magicEnabled: boolean;
   licenseKeyClaimEnabled: boolean;
   releasesEnabled: boolean;
+  autoLinkEnabled: boolean | null;
   branding: unknown;
   modifiedAt: number;
 }
@@ -262,18 +265,67 @@ export async function linkLicense(
   );
 }
 
+/**
+ * Is implicit auto-linking allowed for the license's product?
+ *
+ * R5-01/R5-02. A product's `oidc_config.provider` is `'platform'` or `'custom'`; `'custom'`
+ * means a TENANT-CONTROLLED issuer, whose `email` and `sub` claims the platform cannot vouch
+ * for. `portal_product_settings.auto_link_enabled` is NULL by default and resolves to "on for
+ * platform-issuer products, off for custom-issuer products", so a tenant that stands up its own
+ * Keycloak/Authentik after this migration is opted out automatically rather than by an
+ * operator remembering to. An explicit 1/0 is an operator override in either direction.
+ */
+const AUTO_LINK_ENABLED_SQL = `
+  COALESCE(
+    s.auto_link_enabled,
+    CASE WHEN COALESCE(o.provider, 'platform') = 'custom' THEN 0 ELSE 1 END
+  ) = 1`;
+
+/**
+ * Fold every license this account can prove it owns into `portal_license_links`.
+ *
+ * Cross-product visibility is intentional (one portal account, every product the person holds
+ * a license for). What was NOT intentional was the join being a bare, unqualified equality on
+ * a tenant-supplied string:
+ *
+ * - **R5-01** — `WHERE lower(email) = ?` with no product predicate and no verification
+ *   requirement. Any tenant running its own IdP could assert `email: ceo@victim-corp.example`
+ *   (product-side `mapClaims` does not check `email_verified`), and the victim's next portal
+ *   request wrote the attacker's license — with attacker-controlled `name` and branding —
+ *   into the victim's account, along with `hasLinkedProductLicense` for the attacker's product.
+ *   R5 proved this is an INJECTION primitive, not an extraction one, so the fix belongs on the
+ *   write side: only emails the PORTAL itself verified may drive a link, and only into products
+ *   that opted into auto-linking.
+ * - **R5-02** — `WHERE sub = ?` with no product AND no issuer qualifier, so subjects minted by
+ *   N mutually-untrusted IdPs shared one flat namespace and `evilco` could mint a license with
+ *   `sub = "1000"` to collide with a platform-IdP subject. The left side of this join is ALWAYS
+ *   a platform-IdP subject (`portal/auth.ts` hardcodes `provider: "oidc"` with the issuer from
+ *   `platformOidcConfig`), so the right side must be restricted to licenses whose product also
+ *   authenticates against the platform issuer. That is the issuer qualifier, derived from
+ *   `oidc_config` rather than from a new denormalised column the product-OIDC lane would have
+ *   to populate.
+ *
+ * R11-08: both queries were also full `SCAN licenses` — across every tenant, twice per portal
+ * request. `idx_licenses_email_lower` and `idx_licenses_sub_global` (0015) make them SEARCHes.
+ */
 export async function syncAccountLicenseLinks(
   db: Db,
   accountId: string,
   now: number,
 ): Promise<void> {
+  // Only addresses the portal itself verified — a magic link it delivered, or an
+  // `email_verified: true` claim from the PLATFORM IdP (portal/auth.ts:286).
   const emails = await db.all<{ email: string }>(
-    "SELECT email FROM portal_account_emails WHERE account_id = ?",
+    "SELECT email FROM portal_account_emails WHERE account_id = ? AND verified_at > 0",
     accountId,
   );
   for (const row of emails) {
     const matches = await db.all<{ product: string; id: string }>(
-      "SELECT product, id FROM licenses WHERE lower(email) = ?",
+      `SELECT l.product AS product, l.id AS id
+         FROM licenses l
+         LEFT JOIN portal_product_settings s ON s.product = l.product
+         LEFT JOIN oidc_config o ON o.product = l.product
+        WHERE lower(l.email) = ? AND ${AUTO_LINK_ENABLED_SQL}`,
       row.email,
     );
     for (const license of matches) {
@@ -294,7 +346,13 @@ export async function syncAccountLicenseLinks(
   );
   for (const identity of identities) {
     const matches = await db.all<{ product: string; id: string }>(
-      "SELECT product, id FROM licenses WHERE sub = ?",
+      `SELECT l.product AS product, l.id AS id
+         FROM licenses l
+         LEFT JOIN portal_product_settings s ON s.product = l.product
+         LEFT JOIN oidc_config o ON o.product = l.product
+        WHERE l.sub = ?
+          AND COALESCE(o.provider, 'platform') = 'platform'
+          AND ${AUTO_LINK_ENABLED_SQL}`,
       identity.subject,
     );
     for (const license of matches) {
@@ -387,6 +445,7 @@ export async function getPortalProductSettings(
       magic_enabled: 1,
       license_key_claim_enabled: 1,
       releases_enabled: 1,
+      auto_link_enabled: null,
       branding_json: null,
       created_at: 0,
       modified_at: 0,
@@ -403,6 +462,9 @@ export function portalProductSettingsView(
     magicEnabled: row.magic_enabled === 1,
     licenseKeyClaimEnabled: row.license_key_claim_enabled === 1,
     releasesEnabled: row.releases_enabled === 1,
+    // null = "auto" (derived from the product's OIDC issuer). See AUTO_LINK_ENABLED_SQL.
+    autoLinkEnabled:
+      row.auto_link_enabled == null ? null : row.auto_link_enabled === 1,
     branding: parseJsonUnknown(row.branding_json),
     modifiedAt: row.modified_at,
   };
@@ -417,6 +479,8 @@ export async function upsertPortalProductSettings(
     magicEnabled: boolean;
     licenseKeyClaimEnabled: boolean;
     releasesEnabled: boolean;
+    /** `null` restores "auto" (derived from the product's OIDC issuer) — R5-01/R5-02. */
+    autoLinkEnabled: boolean | null;
     branding: unknown;
   }>,
   now: number,
@@ -453,6 +517,14 @@ export async function upsertPortalProductSettings(
         : patch.releasesEnabled
           ? 1
           : 0,
+    auto_link_enabled:
+      patch.autoLinkEnabled === undefined
+        ? current.auto_link_enabled
+        : patch.autoLinkEnabled === null
+          ? null
+          : patch.autoLinkEnabled
+            ? 1
+            : 0,
     branding_json:
       patch.branding === undefined
         ? current.branding_json
@@ -463,14 +535,16 @@ export async function upsertPortalProductSettings(
   await db.run(
     `INSERT INTO portal_product_settings
        (product, portal_enabled, oidc_enabled, magic_enabled,
-        license_key_claim_enabled, releases_enabled, branding_json, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        license_key_claim_enabled, releases_enabled, auto_link_enabled,
+        branding_json, created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product) DO UPDATE SET
        portal_enabled = excluded.portal_enabled,
        oidc_enabled = excluded.oidc_enabled,
        magic_enabled = excluded.magic_enabled,
        license_key_claim_enabled = excluded.license_key_claim_enabled,
        releases_enabled = excluded.releases_enabled,
+       auto_link_enabled = excluded.auto_link_enabled,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
     product,
@@ -479,6 +553,7 @@ export async function upsertPortalProductSettings(
     next.magic_enabled,
     next.license_key_claim_enabled,
     next.releases_enabled,
+    next.auto_link_enabled,
     next.branding_json,
     current.created_at || now,
     now,
@@ -486,7 +561,26 @@ export async function upsertPortalProductSettings(
   return getPortalProductSettings(db, product);
 }
 
-export async function portalAuthCapabilities(db: Db): Promise<{
+/**
+ * Which auth methods and modules are available.
+ *
+ * R5-06 — this used to be an unconditional `SUM(...) > 0` across EVERY tenant, so one tenant
+ * leaving magic-link on kept it enabled platform-wide for a tenant that had deliberately set
+ * `magic_enabled = 0`, and the last tenant to disable a feature turned it off for everyone. It
+ * is reached PRE-AUTHENTICATION, so the unauthenticated `/api/capabilities` response also
+ * leaked whether *any* tenant had each feature on.
+ *
+ * Passing `product` evaluates the settings where they belong — on that one product's row, with
+ * no cross-tenant term at all. Omitting it keeps the platform-wide aggregate, which is the
+ * honest answer for the ONE surface that genuinely has no product context: the root portal
+ * login page, where the visitor has not yet identified a product. That aggregate is now an
+ * explicit, documented choice rather than an accident of a missing predicate, and every
+ * product-scoped decision downstream still re-checks `getPortalProductSettings`.
+ */
+export async function portalAuthCapabilities(
+  db: Db,
+  product?: string | null,
+): Promise<{
   portalEnabled: boolean;
   oidcEnabled: boolean;
   magicEnabled: boolean;
@@ -512,7 +606,10 @@ export async function portalAuthCapabilities(db: Db): Promise<{
                  AND COALESCE(s.releases_enabled, 1) = 1 THEN 1 ELSE 0 END) AS release_count
        FROM products p
        LEFT JOIN portal_product_settings s ON s.product = p.slug
-      WHERE COALESCE(p.status, 'active') != 'deleted'`,
+      WHERE COALESCE(p.status, 'active') != 'deleted'
+        AND (? IS NULL OR p.slug = ?)`,
+    product ?? null,
+    product ?? null,
   );
   return {
     portalEnabled: Number(row?.portal_count ?? 0) > 0,
@@ -586,15 +683,16 @@ export async function createPortalDownloadToken(
   const token = mintToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   await db.run(
+    // R11-13: `customer_id` went with the dead `customers` table (0016_drop_dead_pii) — it was
+    // always written as a literal NULL and read nowhere.
     `INSERT INTO release_download_tokens
-       (product, token_hash, release_id, artifact_id, customer_id, device_id,
+       (product, token_hash, release_id, artifact_id, device_id,
         scope_json, expires_at, used_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.product,
     tokenHash,
     input.releaseId,
     input.artifactId,
-    null,
     null,
     JSON.stringify({ portalAccountId: input.accountId }),
     input.now + 300,
@@ -604,29 +702,81 @@ export async function createPortalDownloadToken(
   return token;
 }
 
+/**
+ * Resolve a `/download/<token>` bearer to its row.
+ *
+ * R5-10 / R11-12: the PRIMARY KEY is `(product, token_hash)`, so a bare `token_hash` predicate
+ * was neither unique — two products could hold the same hash and `db.first` picked one
+ * arbitrarily, which then became the authorization SCOPE for every downstream check — nor
+ * indexed: R11-05 measured `SCAN release_download_tokens` on an unauthenticated, unrate-limited
+ * endpoint backed by a table that only ever grew. This route has no product in its URL, so the
+ * predicate cannot be product-scoped; `idx_release_download_tokens_hash` (0015) instead makes
+ * the hash GLOBALLY unique, which is the real invariant (it is a 256-bit secret) and turns the
+ * lookup into a single-row index SEARCH. The unexpired/unused predicates are pushed into SQL
+ * so an expired or spent token is never even returned to the caller.
+ */
 export async function getPortalDownloadToken(
   env: Env,
   db: Db,
   token: string,
+  now: number,
 ): Promise<PortalDownloadTokenRow | null> {
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   return db.first<PortalDownloadTokenRow>(
-    "SELECT * FROM release_download_tokens WHERE token_hash = ?",
+    `SELECT * FROM release_download_tokens
+      WHERE token_hash = ? AND expires_at > ? AND used_at IS NULL`,
     tokenHash,
+    now,
   );
 }
 
+/**
+ * Spend a single-use download token. Returns false when it was already spent.
+ *
+ * R9-05b / R11-05: the read at `portal/api.ts` and this UPDATE sat ~6 awaits apart with no
+ * `used_at IS NULL` predicate, so two concurrent redemptions of the same token both read
+ * `used_at = null`, both passed, and both got the redirect — "single-use" was advisory. The
+ * predicate moves the decision into the statement: exactly one caller sees `changes === 1`.
+ */
 export async function markPortalDownloadUsed(
   db: Db,
   product: string,
   tokenHash: string,
   now: number,
-): Promise<void> {
-  await db.run(
-    "UPDATE release_download_tokens SET used_at = ? WHERE product = ? AND token_hash = ?",
+): Promise<boolean> {
+  const changes = await db.runChanges(
+    `UPDATE release_download_tokens
+        SET used_at = ?
+      WHERE product = ? AND token_hash = ? AND used_at IS NULL`,
     now,
     product,
     tokenHash,
+  );
+  return changes > 0;
+}
+
+/**
+ * R11-05 / R11-09 / R12-10 — retention for `release_download_tokens`.
+ *
+ * NOTHING deleted from this table: `grep "DELETE FROM"` over `src/` returned eight statements,
+ * none against it, and the worker exports no `scheduled()` handler, so no cron could exist.
+ * Every portal download-URL mint added a row with a 300-second TTL and infinite retention, and
+ * `idx_release_download_tokens_expiry` existed with no consumer. Until a `scheduled()` handler
+ * lands (see the Remediation section of R11-data.md), this is called opportunistically from the
+ * download path itself — bounded work, on the one route that reads the table.
+ */
+export async function purgeExpiredDownloadTokens(
+  db: Db,
+  now: number,
+  limit = 200,
+): Promise<number> {
+  return db.runChanges(
+    `DELETE FROM release_download_tokens
+      WHERE rowid IN (
+        SELECT rowid FROM release_download_tokens WHERE expires_at < ? LIMIT ?
+      )`,
+    now,
+    limit,
   );
 }
 

@@ -17,12 +17,11 @@ async function columnNames(table: string): Promise<Set<string>> {
 }
 
 describe("backend contract migrations", () => {
-  it("creates first-class customers/devices and release portal tables", async () => {
+  it("creates first-class devices and release portal tables", async () => {
     const tables = await tableNames();
 
     expect([...tables].sort()).toEqual(
       expect.arrayContaining([
-        "customers",
         "devices",
         "release_metadata",
         "release_artifacts",
@@ -30,6 +29,20 @@ describe("backend contract migrations", () => {
         "release_health",
         "release_download_tokens",
       ]),
+    );
+  });
+
+  // FIXED (R11-13 / R12-10): `customers` and `identity` carried sub/name/email/groups_json with
+  // NO reader and NO writer anywhere in src/ — latent PII stores with no owner, no erasure path
+  // and no retention story. 0016_drop_dead_pii.sql removes both, along with
+  // release_download_tokens.customer_id (always written NULL, read nowhere).
+  it("no longer carries the dead PII-bearing tables", async () => {
+    const tables = await tableNames();
+
+    expect(tables.has("customers")).toBe(false);
+    expect(tables.has("identity")).toBe(false);
+    expect(await columnNames("release_download_tokens")).not.toContain(
+      "customer_id",
     );
   });
 

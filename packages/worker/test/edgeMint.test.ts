@@ -202,6 +202,25 @@ describe("edge-mint token", () => {
     );
     expect(res.status).toBe(500);
   });
+
+  // FIXED (R11-06): `JSON.parse(cfg.claims_template_json)` was unguarded, so a corrupt column
+  // escaped as an uncaught SyntaxError. It now takes the same fail-closed `misconfigured`
+  // branch as an unsupported alg or a missing key — never a token minted with a silently
+  // emptied claims template.
+  it("500s `misconfigured` (not an uncaught SyntaxError) on a corrupt claims template", async () => {
+    const token = await activate(env, db, product);
+    await seedRecipe(db, { claims_template_json: "{not json" });
+    const res = await handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      "applemusic",
+      NOW,
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("misconfigured");
+  });
 });
 
 describe("edge-mint auth page + config lookup", () => {
