@@ -71,7 +71,9 @@ describe("@plrs/cli", () => {
     const manifest = await loadManifest(cwd);
     const result = validateLoadedManifest(manifest);
     expect(result.ok).toBe(true);
-    expect(result.enabledModules).toEqual(["licensing", "config"]);
+    // `--modules licensing,config` scaffolds the legacy module names; the validator reports
+    // back in Polaris service slugs (`licensing` -> `license`).
+    expect(result.enabledModules).toEqual(["license", "config"]);
   });
 
   it("fails validation when enabled releases have no release manifest", async () => {

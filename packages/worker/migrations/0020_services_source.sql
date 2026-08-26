@@ -1,0 +1,11 @@
+-- Polaris suite — ownership marker for `services_json` (design spec §2.2).
+--
+-- Same rule the fingerprint (0010) and auto-issue (0011) policies already follow:
+--   'manifest' => `.pkey/product` owns the enablement set and a resync reapplies it.
+--   'admin'    => an operator flipped a service live; resync must leave it alone.
+-- NULL is read as 'manifest' (COALESCE at the call site), so pre-existing rows stay
+-- manifest-owned without a backfill.
+--
+-- ONE statement per file (see 0013/0014): a bare ALTER cannot be made replay-idempotent in
+-- pure SQL, so nothing may sit behind it and be stranded by a failed replay.
+ALTER TABLE products ADD COLUMN services_source TEXT;

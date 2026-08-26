@@ -26,6 +26,10 @@ export interface ProductRow {
   // Auto-issue policy (migrations/0011_auto_issue.sql), same ownership rules.
   auto_issue_json?: string | null;
   auto_issue_source?: string;
+  // Polaris service enablement (migrations/0019+0020), same ownership rules again. Parsed by
+  // `core/services.ts`; NULL reads back as the defaults (license + config).
+  services_json?: string | null;
+  services_source?: string | null;
   created_at: number;
   modified_at: number;
 }
@@ -622,11 +626,21 @@ export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
 }
 
 /** Build the `products`-INSERT as a statement (for atomic batch with its child rows). */
+/**
+ * Build the products INSERT as a statement (for atomic batch).
+ *
+ * `services_json`/`services_source` are in the column list rather than applied afterwards like
+ * the fingerprint and auto-issue policies: which services a product runs decides which of its
+ * routes exist at all, so a product row must never be visible without one. Both are nullable,
+ * and a NULL pair reads back as the defaults (`core/services.ts`), so callers with nothing to
+ * say simply omit them.
+ */
 export function stmtInsertProduct(row: ProductRow): DbStatement {
   return {
     sql: `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
-            default_max_offline_days, default_device_limit, admin_group, branding_json, release_source, created_at, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
+            services_json, services_source, created_at, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.slug,
       row.name,
@@ -639,6 +653,8 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       row.admin_group,
       row.branding_json,
       row.release_source,
+      row.services_json ?? null,
+      row.services_source ?? null,
       row.created_at,
       row.modified_at,
     ],
@@ -1281,6 +1297,42 @@ export async function setAutoIssuePolicy(
     `UPDATE products SET auto_issue_json = ?, auto_issue_source = 'admin',
        modified_at = ? WHERE slug = ?`,
     policyJson,
+    at,
+    product,
+  );
+}
+
+/**
+ * Write a product's Polaris service enablement under the same manifest-vs-admin ownership rule
+ * as the fingerprint and auto-issue policies: a resync only writes while the row is still
+ * manifest-owned, so an operator who turns a service off in the console does not have it turned
+ * back on by the next push to the product repo.
+ *
+ * The stakes are higher here than for the sibling policies — this decides which ROUTES exist —
+ * which is exactly why the guard is the same `WHERE … = 'manifest'` predicate in the UPDATE
+ * itself rather than a read-then-write in the caller.
+ */
+export async function setServices(
+  db: Db,
+  product: string,
+  servicesJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): Promise<void> {
+  if (source === "manifest") {
+    await db.run(
+      `UPDATE products SET services_json = ?, modified_at = ?
+         WHERE slug = ? AND COALESCE(services_source, 'manifest') = 'manifest'`,
+      servicesJson,
+      at,
+      product,
+    );
+    return;
+  }
+  await db.run(
+    `UPDATE products SET services_json = ?, services_source = 'admin',
+       modified_at = ? WHERE slug = ?`,
+    servicesJson,
     at,
     product,
   );

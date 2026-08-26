@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseServices } from "../src/core/services.js";
 import { signJws, verifyJws } from "@plrs/jws";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -15,6 +16,7 @@ import {
   getActiveSchema,
   getProductSyncState,
   getProduct,
+  setServices,
 } from "../src/repo.js";
 import { getReleaseConfig } from "../src/release/index.js";
 
@@ -449,6 +451,158 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect((await getActiveSchema(db, "acme"))?.catalog_json).toBe(SCHEMA_JSON);
   });
 
+  // ── Service enablement (design spec §2.2) ──────────────────────────────────
+  // `services_json` decides which of a product's routes exist at all, so where and when it is
+  // written matters as much as what it says: in the SAME atomic batch as the product row (no
+  // instant with a product but no enablement set), and never over an operator's live edit.
+  describe("service enablement persistence", () => {
+    // Legacy module vocabulary + a release block: `licensing` -> license, `releases` ->
+    // release + update, `oidc` -> identity, `config` stays config.
+    const MODULES_PRODUCT_JSON = JSON.stringify({
+      slug: "acme",
+      name: "Acme",
+      modules: {
+        licensing: { enabled: true },
+        config: { enabled: true },
+        releases: { enabled: true },
+        oidc: { enabled: true },
+      },
+      oidc: {
+        provider: "custom",
+        issuer: "https://id.example",
+        clientId: "acme-client",
+        clientSecretSecret: "OIDC_SECRET__ACME",
+        redirectUris: ["https://acme.example/cb"],
+      },
+    });
+
+    it("writes the manifest's enablement set atomically with the product row", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      const { fetchImpl } = stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/product.json": MODULES_PRODUCT_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+      ).toBe(true);
+
+      const row = await getProduct(db, "acme");
+      expect(row?.services_source).toBe("manifest");
+      expect(parseServices(row?.services_json ?? null)).toEqual({
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: true },
+        update: { enabled: true },
+        identity: { enabled: true },
+      });
+    });
+
+    it("defaults an undeclared manifest to license + config", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      // PRODUCT_JSON declares no `modules:` block at all.
+      const { fetchImpl } = stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/product.json": PRODUCT_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+      ).toBe(true);
+
+      expect(
+        parseServices((await getProduct(db, "acme"))?.services_json ?? null),
+      ).toEqual({
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: false },
+        update: { enabled: false },
+        identity: { enabled: false },
+      });
+    });
+
+    it("resync re-applies the manifest while the row is manifest-owned", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      const linkFetch = stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/product.json": PRODUCT_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, linkFetch.fetchImpl))
+          .ok,
+      ).toBe(true);
+
+      // The repo now declares the full module set.
+      const { fetchImpl } = stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/product.json": MODULES_PRODUCT_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+      const resync = await resyncRepo(env, db, "acme", NOW + 1, fetchImpl);
+      expect(resync.ok).toBe(true);
+      if (!resync.ok) return;
+      expect(resync.updated).toContain("services");
+
+      const services = parseServices(
+        (await getProduct(db, "acme"))?.services_json ?? null,
+      );
+      expect(services.release.enabled).toBe(true);
+      expect(services.identity.enabled).toBe(true);
+    });
+
+    it("resync leaves an admin-claimed enablement set alone", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      const linkFetch = stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/product.json": PRODUCT_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, linkFetch.fetchImpl))
+          .ok,
+      ).toBe(true);
+
+      // An operator turns Config off in the admin API, claiming the row.
+      await setServices(
+        db,
+        "acme",
+        JSON.stringify({
+          license: { enabled: true },
+          config: { enabled: false },
+          release: { enabled: false },
+          update: { enabled: false },
+          identity: { enabled: false },
+        }),
+        "admin",
+        NOW + 1,
+      );
+
+      // A push then re-applies a manifest that turns everything on. It must not land: the
+      // routes an operator deliberately closed cannot be reopened by someone else's commit.
+      const { fetchImpl } = stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/product.json": MODULES_PRODUCT_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+      const resync = await resyncRepo(env, db, "acme", NOW + 2, fetchImpl);
+      expect(resync.ok).toBe(true);
+
+      const row = await getProduct(db, "acme");
+      expect(row?.services_source).toBe("admin");
+      const services = parseServices(row?.services_json ?? null);
+      expect(services.config.enabled).toBe(false);
+      expect(services.release.enabled).toBe(false);
+      expect(services.identity.enabled).toBe(false);
+    });
+  });
+
   it("resyncRepo is idempotent for an unchanged catalog", async () => {
     const db = makeTestDb();
     const env = envFor();
@@ -522,6 +676,9 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ok: true,
         updated: [
           "product",
+          // Service enablement is re-applied on every resync (it is always present on a
+          // parsed manifest), subject to the manifest-vs-admin ownership guard.
+          "services",
           "release",
           "oidc",
           "profiles",

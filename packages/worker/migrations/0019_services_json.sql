@@ -1,0 +1,14 @@
+-- Polaris suite — per-product service enablement (design spec §2.2).
+--
+-- The suite is License / Config / Release / Update / Identity over an always-on Core. Which of
+-- those a product actually runs used to be re-inferred independently by four surfaces (route
+-- mounting, discovery, the admin setup view, portal capabilities), each guessing from the
+-- presence of some child row. This column is the single authority they all become projections
+-- of: {"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":false},...}.
+--
+-- NULL means "never written" and reads back as the defaults (license + config enabled), which
+-- is exactly today's behaviour — so every existing row keeps working untouched.
+--
+-- ONE statement per file (see 0013/0014): a bare ALTER cannot be made replay-idempotent in
+-- pure SQL, so nothing may sit behind it and be stranded by a failed replay.
+ALTER TABLE products ADD COLUMN services_json TEXT;

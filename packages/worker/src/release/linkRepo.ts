@@ -306,6 +306,12 @@ async function registerFromManifest(
       admin_group: manifest.product.adminGroup,
       branding_json: null,
       release_source: "github",
+      // Which Polaris services this product runs, in the SAME atomic batch as the row itself.
+      // Not applied afterwards like the fingerprint/auto-issue policies: enablement decides
+      // which routes a product has, so there must be no instant where a product row exists
+      // without it. A freshly linked product is always manifest-owned.
+      services_json: JSON.stringify(manifest.services),
+      services_source: "manifest",
       created_at: now,
       modified_at: now,
     }),

@@ -8,6 +8,7 @@ import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
 } from "../src/fingerprint.js";
+import { DEFAULT_SERVICES } from "../src/core/services.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/release/githubApp.js";
 import {
@@ -117,6 +118,7 @@ function makeProduct(): Product {
     schemaVersion: 1,
     fingerprintPolicy: DEFAULT_FINGERPRINT_POLICY,
     autoIssue: DEFAULT_AUTO_ISSUE,
+    services: DEFAULT_SERVICES,
   };
 }
 

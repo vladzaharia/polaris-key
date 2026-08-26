@@ -19,6 +19,7 @@ import {
   insertSchema,
   setAutoIssuePolicy,
   setFingerprintPolicy,
+  setServices,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
   stmtInsertProfile,
@@ -220,6 +221,20 @@ export async function resyncRepo(
     );
     updated.push("autoIssue");
   }
+
+  // Service enablement, under the same ownership rule once more. Unconditional (unlike the two
+  // above) because `services` is always present on a parsed manifest — a manifest that declares
+  // no `modules:` block still means something definite, namely the defaults. The
+  // `services_source = 'admin'` guard lives inside `setServices`, so a push cannot turn a
+  // service back on after an operator has turned it off live.
+  await setServices(
+    db,
+    slug,
+    JSON.stringify(manifest.services),
+    "manifest",
+    now,
+  );
+  updated.push("services");
 
   // ── schema: publish a new active version only when the catalog changed ──────
   const nextCatalogJson = JSON.stringify(manifest.catalog);

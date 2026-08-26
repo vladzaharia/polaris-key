@@ -1,6 +1,6 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { validateManifestDocuments } from "@plrs/manifest";
+import { validateManifestDocuments, type ServiceSlug } from "@plrs/manifest";
 import { parse as parseYaml } from "yaml";
 
 export type ProductModule =
@@ -31,7 +31,12 @@ export interface ValidationResult {
   ok: boolean;
   errors: ValidationMessage[];
   warnings: ValidationMessage[];
-  enabledModules: ProductModule[];
+  /**
+   * The enabled set, reported in Polaris SERVICE-SLUG vocabulary (`license`, `config`,
+   * `release`, `update`, `identity`) whichever vocabulary the manifest wrote — the validator
+   * translates. `--modules` still takes the module names below; only the report is normalised.
+   */
+  enabledModules: ServiceSlug[];
   requiredSecrets: string[];
 }
 

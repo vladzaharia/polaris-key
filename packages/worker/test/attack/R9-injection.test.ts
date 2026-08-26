@@ -29,6 +29,7 @@ import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/fingerprint.js";
+import { DEFAULT_SERVICES } from "../../src/core/services.js";
 import { handleAuthCallback, handleAuthStart } from "../../src/oidc.js";
 import { handleMintAuth } from "../../src/edgeMint.js";
 import { handleRelease } from "../../src/release/index.js";
@@ -230,6 +231,7 @@ function makeProduct(): Product {
     schemaVersion: 1,
     fingerprintPolicy: DEFAULT_FINGERPRINT_POLICY,
     autoIssue: DEFAULT_AUTO_ISSUE,
+    services: DEFAULT_SERVICES,
   };
 }
 

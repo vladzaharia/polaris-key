@@ -56,6 +56,7 @@ import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/fingerprint.js";
+import { DEFAULT_SERVICES } from "../../src/core/services.js";
 
 // ── workerd codegen emulation ────────────────────────────────────────────────
 
@@ -469,6 +470,7 @@ function makeReleaseProduct(): Product {
     schemaVersion: 1,
     fingerprintPolicy: DEFAULT_FINGERPRINT_POLICY,
     autoIssue: DEFAULT_AUTO_ISSUE,
+    services: DEFAULT_SERVICES,
   };
 }
 

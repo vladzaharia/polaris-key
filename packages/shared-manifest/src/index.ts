@@ -1,12 +1,58 @@
 import { type ProductCatalog } from "@plrs/catalog";
 import { parse as parseYaml } from "yaml";
 
+/**
+ * What a `.pkey/product` `modules:` block may name.
+ *
+ * Two vocabularies, both accepted. The first five are the original module names; the last five
+ * are the Polaris service slugs they became (design spec §2.1). Old manifests keep validating
+ * unchanged — `normalizeModules` translates them — so nothing in the field has to be rewritten
+ * on the same day the server learns the new words.
+ */
 export type ProductModule =
+  // legacy module vocabulary
   | "licensing"
-  | "config"
   | "releases"
   | "oidc"
-  | "edgeMint";
+  | "edgeMint"
+  // Polaris service slugs
+  | "license"
+  | "config"
+  | "release"
+  | "update"
+  | "identity";
+
+/**
+ * The five opt-in Polaris services (design spec §2.4/D-04). Declared here rather than imported
+ * from the worker: this package is a *dependency* of the worker (and of the CLI), so the type
+ * has to originate on this side of the arrow. The worker's `core/services.ts` declares the
+ * structurally-identical pair for its own D1-facing use.
+ */
+export type ServiceSlug =
+  | "license"
+  | "config"
+  | "release"
+  | "update"
+  | "identity";
+
+/** Canonical order — iterate this rather than `Object.keys` so output is stable. */
+export const SERVICE_SLUGS: readonly ServiceSlug[] = [
+  "license",
+  "config",
+  "release",
+  "update",
+  "identity",
+];
+
+/** The enablement set a manifest declares, in the shape `products.services_json` stores. */
+export type ManifestServices = Record<ServiceSlug, { enabled: boolean }>;
+
+/** Who may register a device against this product (design spec §2.3). */
+export const REGISTRATION_POLICIES = [
+  "open",
+  "requires-identity",
+  "requires-license",
+] as const;
 
 export interface ValidationMessage {
   file: "product" | "schema" | "release";
@@ -25,7 +71,8 @@ export interface ValidationResult {
   ok: boolean;
   errors: ValidationMessage[];
   warnings: ValidationMessage[];
-  enabledModules: ProductModule[];
+  /** The enabled set, always in SERVICE-SLUG vocabulary regardless of what the manifest wrote. */
+  enabledModules: ServiceSlug[];
   requiredSecrets: string[];
 }
 
@@ -167,19 +214,57 @@ export interface ParsedManifest {
   autoIssue?: ManifestAutoIssue;
   release?: ManifestRelease;
   edgeMint: ManifestEdgeMint[];
+  /**
+   * Which Polaris services this product runs (design spec §2.2). Always complete — every slug
+   * is present with an explicit boolean — so a persist site can `JSON.stringify` it straight
+   * into `products.services_json` without deciding anything of its own.
+   *
+   * This is the value the manifest used to validate and then throw away.
+   */
+  services: ManifestServices;
+  /** `devices.registration` — who may register a device (§2.3). Undefined = undeclared; the
+   *  default is derived from the enabled services at the point of use, not baked in here. */
+  registration?: string;
 }
 
 export type ParseManifestResult =
   | { ok: true; manifest: ParsedManifest }
   | { ok: false; errors: string[] };
 
-const MODULES: ProductModule[] = [
-  "licensing",
-  "config",
-  "releases",
-  "oidc",
-  "edgeMint",
-];
+/**
+ * Every module name a `modules:` block may use, mapped to the service slug(s) it enables.
+ *
+ * The three interesting rows:
+ *
+ *   `releases` -> release + update. The old module meant "this product distributes software",
+ *   which the suite splits into the truth store (Release) and the feed (Update, D-05). Mapping
+ *   it to Release alone would silently take the appcast and `/version` away from every product
+ *   that already serves them, on the very change that is supposed to preserve behaviour. It
+ *   also can never produce an `update_requires_release` violation, because Release comes with
+ *   it by construction.
+ *
+ *   `oidc` -> identity. A rename, not a change of meaning (D-14).
+ *
+ *   `edgeMint` -> config. Edge-minting is a secret-DELIVERY capability of Config, not a
+ *   service of its own (D-19); declaring it therefore turns Config on.
+ */
+const MODULE_SERVICES: Record<ProductModule, readonly ServiceSlug[]> = {
+  licensing: ["license"],
+  releases: ["release", "update"],
+  oidc: ["identity"],
+  edgeMint: ["config"],
+  license: ["license"],
+  config: ["config"],
+  release: ["release"],
+  update: ["update"],
+  identity: ["identity"],
+};
+
+const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
+
+/** What a manifest that declares nothing runs: licensing + settings distribution, which is
+ *  today's behaviour for every product (design spec §2.2). */
+const DEFAULT_ENABLED: readonly ServiceSlug[] = ["license", "config"];
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
 const SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;
@@ -279,14 +364,43 @@ const DEFAULT_RELEASE_ACCESS: ManifestReleaseAccessPolicy = {
   artifacts: "public",
 };
 
-export function normalizeModules(raw: unknown): ProductModule[] {
-  if (!isRecord(raw)) return ["licensing", "config"];
-  const out: ProductModule[] = [];
+/**
+ * Read a `modules:` block into the set of enabled SERVICE SLUGS.
+ *
+ * Both vocabularies are accepted and translated (see `MODULE_SERVICES`), so `{licensing: …}`
+ * and `{license: …}` mean the same thing and a manifest may mix them. Unknown keys are
+ * ignored, exactly as before — a `modules:` block is a declaration of intent, and a name this
+ * build does not know is not a reason to refuse the whole product.
+ *
+ * Output is in canonical `SERVICE_SLUGS` order and duplicate-free, so two module names that
+ * map to the same service (`licensing` + `license`) collapse to one entry.
+ */
+export function normalizeModules(raw: unknown): ServiceSlug[] {
+  if (!isRecord(raw)) return [...DEFAULT_ENABLED];
+  const enabled = new Set<ServiceSlug>();
   for (const module of MODULES) {
     const cfg = raw[module];
-    if (isRecord(cfg) && cfg.enabled === true) out.push(module);
+    if (isRecord(cfg) && cfg.enabled === true) {
+      for (const slug of MODULE_SERVICES[module]) enabled.add(slug);
+    }
   }
-  return out.length ? out : ["licensing", "config"];
+  if (enabled.size === 0) return [...DEFAULT_ENABLED];
+  return SERVICE_SLUGS.filter((slug) => enabled.has(slug));
+}
+
+/** Expand an enabled-slug list into the complete map `products.services_json` stores. */
+export function servicesFromModules(
+  enabled: readonly ServiceSlug[],
+): ManifestServices {
+  const out = {} as ManifestServices;
+  for (const slug of SERVICE_SLUGS)
+    out[slug] = { enabled: enabled.includes(slug) };
+  return out;
+}
+
+/** Read `devices.registration` off a product document, or undefined when undeclared. */
+function registrationPolicy(productRoot: Record<string, unknown>): unknown {
+  return asRecord(productRoot.devices).registration;
 }
 
 export function validateManifestDocuments(
@@ -569,7 +683,7 @@ export function validateManifestDocuments(
     }
   }
 
-  if (modules.includes("oidc") || productRoot.oidc !== undefined) {
+  if (modules.includes("identity") || productRoot.oidc !== undefined) {
     if (!isRecord(productRoot.oidc)) {
       add(
         errors,
@@ -676,7 +790,7 @@ export function validateManifestDocuments(
 
   const relDoc =
     releaseRoot(manifest.release) ?? releaseRoot(productRoot.release);
-  if (modules.includes("releases") || relDoc) {
+  if (modules.includes("release") || relDoc) {
     const relRoot = relDoc;
     if (!relRoot) {
       add(
@@ -1036,8 +1150,8 @@ export function validateManifestDocuments(
   );
   if (
     modules.includes("config") &&
-    !modules.includes("licensing") &&
-    !modules.includes("oidc")
+    !modules.includes("license") &&
+    !modules.includes("identity")
   ) {
     add(
       warnings,
@@ -1045,6 +1159,37 @@ export function validateManifestDocuments(
       "/modules/config",
       "config_without_activation",
       "Config is enabled without an activation method.",
+    );
+  }
+
+  // Update renders a feed over Release's truth store (D-05). With Release off there are no
+  // releases, channels or artifacts to render, so the feed would answer every client with an
+  // empty document rather than an error — a silent failure, which is why this is an error and
+  // not a warning. `releases`/`release`+`update` manifests cannot trip it (see MODULE_SERVICES).
+  if (modules.includes("update") && !modules.includes("release")) {
+    add(
+      errors,
+      "product",
+      "/modules/update",
+      "update_requires_release",
+      "The update service renders a feed over release data, so release must be enabled too.",
+    );
+  }
+
+  // `devices.registration` decides who may mint a device token (design spec §2.3). An
+  // unrecognised value is refused rather than coerced: silently falling back to a default
+  // would answer "requires-licence" with "open" for the one manifest that most meant it.
+  const registration = registrationPolicy(productRoot);
+  if (
+    registration !== undefined &&
+    !isOneOf(registration, REGISTRATION_POLICIES)
+  ) {
+    add(
+      errors,
+      "product",
+      "/devices/registration",
+      "invalid_registration_policy",
+      `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}.`,
     );
   }
 
@@ -1130,7 +1275,15 @@ export function parseManifest(
     tiers: rawTiers.map(normalizeTier).filter(notNull),
     provisioning: rawProvisioning.map(normalizeProvisioning).filter(notNull),
     edgeMint: rawEdgeMint.map(normalizeEdgeMint).filter(notNull),
+    // The enablement set finally survives parsing. `validation` above already ran the
+    // coherence rules over the same list, so this cannot carry an inapplicable combination.
+    services: servicesFromModules(validation.enabledModules),
   };
+
+  // Validated above; carried verbatim so the derivation of the default (which depends on the
+  // enabled services) stays with the consumer rather than being frozen at ingest.
+  const registration = registrationPolicy(productRoot);
+  if (typeof registration === "string") parsed.registration = registration;
 
   if (productRoot.oidc !== undefined) {
     const provider = isOneOf(oidcRoot.provider, OIDC_PROVIDER_VALUES)

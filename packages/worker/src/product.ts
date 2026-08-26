@@ -20,6 +20,7 @@ import {
   type AutoIssuePolicy,
   type FingerprintPolicy,
 } from "./fingerprint.js";
+import { parseServices, type ServicesMap } from "./core/services.js";
 
 export interface Product {
   slug: string;
@@ -35,6 +36,9 @@ export interface Product {
   schemaVersion: number;
   fingerprintPolicy: FingerprintPolicy;
   autoIssue: AutoIssuePolicy;
+  /** Which Polaris services this product runs (design spec §2.2). Always complete: a row that
+   *  has never been written reads back as the defaults, i.e. today's behaviour. */
+  services: ServicesMap;
 }
 
 export interface PublicSigningKey {
@@ -114,6 +118,7 @@ export async function loadProduct(
       schemaVersion: schema?.catalog_version ?? 1,
       fingerprintPolicy: parseFingerprintPolicy(row.fingerprint_policy_json),
       autoIssue: parseAutoIssue(row.auto_issue_json),
+      services: parseServices(row.services_json),
     };
   } catch {
     return null;

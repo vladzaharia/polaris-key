@@ -618,3 +618,364 @@ describe("manifest identifier character classes (R9-01 audit)", () => {
     );
   });
 });
+
+// ── Polaris service enablement (design spec §2.2 / §2.3) ─────────────────────
+//
+// The `modules:` block used to be validated and then thrown away. It is now the source of a
+// product's `services_json` — the single authority for which routes exist, which discovery
+// fragments are emitted, and which console sections appear — so what it maps to is a wire
+// contract, not a hint.
+//
+// Two vocabularies are accepted on the way in (the original module names and the service
+// slugs they became); exactly one comes out.
+
+describe("module vocabulary → service slugs", () => {
+  const validate = (over: Record<string, unknown>) =>
+    validateManifestDocuments({
+      product: { ...PRODUCT, ...over },
+      schema: catalogWithSecretDelivery(),
+      release: release().release,
+    });
+
+  const parse = (over: Record<string, unknown>) =>
+    parseManifest({
+      product: JSON.stringify({ ...PRODUCT, ...over }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify(release()),
+    });
+
+  const enabledOf = (over: Record<string, unknown>): string[] => {
+    const res = parse(over);
+    if (!res.ok) throw new Error(res.errors.join("; "));
+    return Object.entries(res.manifest.services)
+      .filter(([, v]) => v.enabled)
+      .map(([k]) => k);
+  };
+
+  it("defaults an undeclared modules block to license + config", () => {
+    expect(validate({}).enabledModules).toEqual(["license", "config"]);
+    expect(enabledOf({})).toEqual(["license", "config"]);
+  });
+
+  it("defaults a modules block that enables nothing", () => {
+    expect(
+      validate({ modules: { licensing: { enabled: false } } }).enabledModules,
+    ).toEqual(["license", "config"]);
+  });
+
+  it("maps licensing → license", () => {
+    expect(
+      validate({ modules: { licensing: { enabled: true } } }).enabledModules,
+    ).toEqual(["license"]);
+  });
+
+  it("maps releases → release AND update", () => {
+    // The old module meant "this product distributes software", which the suite splits into
+    // the truth store and the feed (D-05). Mapping it to release alone would silently take
+    // the appcast and /version away from every product already serving them.
+    expect(
+      validate({ modules: { releases: { enabled: true } } }).enabledModules,
+    ).toEqual(["release", "update"]);
+  });
+
+  it("maps oidc → identity", () => {
+    expect(
+      validate({
+        modules: { oidc: { enabled: true } },
+        oidc: { provider: "platform" },
+      }).enabledModules,
+    ).toEqual(["identity"]);
+  });
+
+  it("folds edgeMint into config (D-19: a secret-delivery capability, not a service)", () => {
+    expect(
+      validate({ modules: { edgeMint: { enabled: true } } }).enabledModules,
+    ).toEqual(["config"]);
+  });
+
+  it("accepts the new slugs directly", () => {
+    expect(
+      validate({
+        modules: {
+          license: { enabled: true },
+          config: { enabled: true },
+          release: { enabled: true },
+          update: { enabled: true },
+          identity: { enabled: true },
+        },
+        oidc: { provider: "platform" },
+      }).enabledModules,
+    ).toEqual(["license", "config", "release", "update", "identity"]);
+  });
+
+  it("collapses a mixed-vocabulary block instead of double-counting", () => {
+    expect(
+      validate({
+        modules: {
+          licensing: { enabled: true },
+          license: { enabled: true },
+          releases: { enabled: true },
+          release: { enabled: true },
+        },
+      }).enabledModules,
+    ).toEqual(["license", "release", "update"]);
+  });
+
+  it("reports in canonical order whatever order the manifest used", () => {
+    expect(
+      validate({
+        modules: {
+          update: { enabled: true },
+          release: { enabled: true },
+          config: { enabled: true },
+        },
+      }).enabledModules,
+    ).toEqual(["config", "release", "update"]);
+  });
+
+  it("ignores an unknown module name rather than refusing the product", () => {
+    const res = validate({
+      modules: { license: { enabled: true }, telemetry: { enabled: true } },
+    });
+    expect(res.ok).toBe(true);
+    expect(res.enabledModules).toEqual(["license"]);
+  });
+
+  it("only counts modules explicitly enabled", () => {
+    expect(
+      validate({
+        modules: { license: { enabled: true }, release: { enabled: "yes" } },
+      }).enabledModules,
+    ).toEqual(["license"]);
+  });
+});
+
+describe("parseManifest carries the enablement set", () => {
+  const parse = (over: Record<string, unknown>, withRelease = true) =>
+    parseManifest({
+      product: JSON.stringify({ ...PRODUCT, ...over }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      ...(withRelease ? { release: JSON.stringify(release()) } : {}),
+    });
+
+  it("emits a COMPLETE map — every slug present with an explicit boolean", () => {
+    // The persist site does `JSON.stringify(manifest.services)` straight into
+    // `products.services_json`; it must not have to decide anything of its own.
+    const res = parse({ modules: { licensing: { enabled: true } } });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.services).toEqual({
+      license: { enabled: true },
+      config: { enabled: false },
+      release: { enabled: false },
+      update: { enabled: false },
+      identity: { enabled: false },
+    });
+  });
+
+  it("defaults to license + config when the manifest declares nothing", () => {
+    const res = parse({});
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.services).toEqual({
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: false },
+      update: { enabled: false },
+      identity: { enabled: false },
+    });
+  });
+
+  it("turns a legacy releases manifest into release + update", () => {
+    const res = parse({ modules: { releases: { enabled: true } } });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.services.release.enabled).toBe(true);
+    expect(res.manifest.services.update.enabled).toBe(true);
+  });
+});
+
+describe("update_requires_release", () => {
+  const validate = (modules: Record<string, unknown>) =>
+    validateManifestDocuments({
+      product: { ...PRODUCT, modules },
+      schema: catalogWithSecretDelivery(),
+      release: release().release,
+    });
+
+  it("refuses update declared without release", () => {
+    // Update renders a feed over Release's truth store; alone it would answer every client
+    // with an empty document rather than an error — a silent failure.
+    const res = validate({
+      config: { enabled: true },
+      update: { enabled: true },
+    });
+    expect(res.ok).toBe(false);
+    expect(res.errors.map((e) => e.code)).toContain("update_requires_release");
+  });
+
+  it("accepts update alongside release", () => {
+    const res = validate({
+      release: { enabled: true },
+      update: { enabled: true },
+    });
+    expect(res.errors.map((e) => e.code)).not.toContain(
+      "update_requires_release",
+    );
+  });
+
+  it("accepts release without update", () => {
+    const res = validate({ release: { enabled: true } });
+    expect(res.ok).toBe(true);
+  });
+
+  it("cannot be tripped by the legacy releases module", () => {
+    // `releases` maps to both, so the mapping can never produce its own violation.
+    const res = validate({ releases: { enabled: true } });
+    expect(res.ok).toBe(true);
+    expect(res.enabledModules).toEqual(["release", "update"]);
+  });
+
+  it("surfaces through parseManifest as a hard failure", () => {
+    const res = parseManifest({
+      product: JSON.stringify({
+        ...PRODUCT,
+        modules: { update: { enabled: true } },
+      }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify(release()),
+    });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors.join("\n")).toContain("release must be enabled too");
+  });
+});
+
+describe("config_without_activation stays a warning", () => {
+  const validate = (
+    modules: Record<string, unknown>,
+    over: Record<string, unknown> = {},
+  ) =>
+    validateManifestDocuments({
+      product: { ...PRODUCT, modules, ...over },
+      schema: catalogWithSecretDelivery(),
+    });
+
+  it("warns — but does not refuse — a config-only product", () => {
+    // D-08 / wire v3 §2.2: a config-only product issuing config documents to registered
+    // devices is the wire-level PROOF of service independence, so this cannot be an error.
+    // The registration-policy-dependent upgrade to an error lands with device registration.
+    const res = validate({ config: { enabled: true } });
+    expect(res.ok).toBe(true);
+    expect(res.warnings.map((w) => w.code)).toContain(
+      "config_without_activation",
+    );
+    expect(res.errors.map((e) => e.code)).not.toContain(
+      "config_without_activation",
+    );
+  });
+
+  it("is silent when license provides activation", () => {
+    expect(
+      validate({
+        config: { enabled: true },
+        license: { enabled: true },
+      }).warnings.map((w) => w.code),
+    ).not.toContain("config_without_activation");
+  });
+
+  it("is silent when identity provides activation", () => {
+    expect(
+      validate(
+        { config: { enabled: true }, identity: { enabled: true } },
+        { oidc: { provider: "platform" } },
+      ).warnings.map((w) => w.code),
+    ).not.toContain("config_without_activation");
+  });
+
+  it("recognises the legacy vocabulary as activation too", () => {
+    expect(
+      validate({
+        config: { enabled: true },
+        licensing: { enabled: true },
+      }).warnings.map((w) => w.code),
+    ).not.toContain("config_without_activation");
+  });
+});
+
+describe("devices.registration policy", () => {
+  const parse = (devices: unknown) =>
+    parseManifest({
+      product: JSON.stringify({ ...PRODUCT, devices }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+
+  it("carries each accepted policy through to the parsed manifest", () => {
+    for (const policy of ["open", "requires-identity", "requires-license"]) {
+      const res = parse({ registration: policy });
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.manifest.registration).toBe(policy);
+    }
+  });
+
+  it("leaves registration undefined when undeclared", () => {
+    // The default is DERIVED from the enabled services at the point of use (§2.3), so it is
+    // deliberately not frozen at ingest.
+    const res = parse(undefined);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.registration).toBeUndefined();
+  });
+
+  it("refuses an unrecognised policy instead of coercing it to a default", () => {
+    // Silently defaulting would answer "requires-license" with "open" for the one manifest
+    // that most meant it.
+    for (const bad of ["Open", "requires-payment", "", 1, true, null]) {
+      const res = parse({ registration: bad });
+      expect(res.ok).toBe(false);
+      if (res.ok) return;
+      expect(res.errors.join("\n")).toContain(
+        "devices.registration must be one of",
+      );
+    }
+  });
+
+  it("reports the invalid_registration_policy code", () => {
+    const res = validateManifestDocuments({
+      product: { ...PRODUCT, devices: { registration: "nope" } },
+      schema: catalogWithSecretDelivery(),
+    });
+    expect(res.ok).toBe(false);
+    expect(res.errors.map((e) => e.code)).toContain(
+      "invalid_registration_policy",
+    );
+  });
+
+  it("ignores a non-object devices block", () => {
+    const res = parse("open");
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.registration).toBeUndefined();
+  });
+});
+
+describe("release-block requirement survives the vocabulary change", () => {
+  const validate = (modules: Record<string, unknown>) =>
+    validateManifestDocuments({
+      product: { ...PRODUCT, modules },
+      schema: catalogWithSecretDelivery(),
+    });
+
+  it("still demands a release document for the legacy releases module", () => {
+    expect(
+      validate({ releases: { enabled: true } }).errors.map((e) => e.code),
+    ).toContain("missing_release");
+  });
+
+  it("demands one for the new release slug as well", () => {
+    expect(
+      validate({ release: { enabled: true } }).errors.map((e) => e.code),
+    ).toContain("missing_release");
+  });
+});
