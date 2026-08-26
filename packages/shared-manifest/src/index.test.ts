@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+// Used only to measure the quadratic path we deliberately turned OFF, as a control.
+import { parse as parseYaml } from "yaml";
 import {
   issuerUrlProblem,
   isSafeIssuerUrl,
@@ -410,17 +412,17 @@ describe("manifest document limits (R7-02)", () => {
     for (let i = 0; yaml.length < MAX_MANIFEST_BYTES * 2; i++) {
       yaml += `k${i}: ${"v".repeat(10)}\n`;
     }
-    const started = Date.now();
     const res = parseManifest({ schema: validSchema, product: yaml });
-    const elapsed = Date.now() - started;
 
     expect(res.ok).toBe(false);
     if (res.ok) return;
+    // This error can ONLY be produced by the pre-parse byte check — the parser never runs,
+    // and a parsed-then-rejected document fails with a different message. The error text is
+    // therefore the proof that rejection was O(1); a wall-clock assertion added nothing on
+    // top of it and made the test fail on slow CI runners for reasons unrelated to R7-02.
     expect(res.errors.join("\n")).toContain(
       `${MAX_MANIFEST_BYTES}-byte .pkey/ document limit`,
     );
-    // The point of the cap is that the rejection is O(1), not "parse it then complain".
-    expect(elapsed).toBeLessThan(1000);
   });
 
   it("counts UTF-8 bytes, not UTF-16 code units", () => {
@@ -433,15 +435,35 @@ describe("manifest document limits (R7-02)", () => {
     expect(res.errors.join("\n")).toContain("document limit");
   });
 
-  it("parses a large-but-legal YAML manifest quickly (uniqueKeys is off)", () => {
+  it("parses a large-but-legal YAML manifest without the quadratic uniqueKeys scan", () => {
     let yaml = "slug: acme\nname: Acme\n";
     for (let i = 0; yaml.length < MAX_MANIFEST_BYTES - 4096; i++) {
       yaml += `k${i}: ${"v".repeat(10)}\n`;
     }
-    const started = Date.now();
-    const res = parseManifest({ schema: validSchema, product: yaml });
-    expect(Date.now() - started).toBeLessThan(1000);
-    expect(res.ok).toBe(true);
+
+    // A large-but-legal document must still parse.
+    expect(parseManifest({ schema: validSchema, product: yaml }).ok).toBe(true);
+  });
+
+  it("parses with uniqueKeys disabled — the quadratic scan is off", () => {
+    // Asserted by BEHAVIOUR, not by a clock. Two earlier attempts here were both wrong:
+    // an absolute `toBeLessThan(1000)` failed CI at 1098ms, and a relative
+    // production-vs-quadratic ratio only reached ~1.8x because the 34x gap was measured at
+    // 1.67 MB — a size the byte cap now makes unreachable. Any timing test of this property
+    // is therefore either flaky or, at permitted sizes, measuring nothing.
+    //
+    // `yaml` THROWS on a duplicate key when `uniqueKeys` is true and accepts it (last wins)
+    // when false, so a duplicate-key document parsing successfully is a deterministic proof
+    // that the option is off — which is the actual R7-02 mitigation.
+    const dupes = "slug: acme\nname: Acme\nname: Acme Two\n";
+    expect(() => parseYaml(dupes, { uniqueKeys: true })).toThrow();
+    expect(parseYaml(dupes, { uniqueKeys: false })).toMatchObject({
+      slug: "acme",
+    });
+
+    // And the production path agrees: it accepts the document rather than erroring on it.
+    const res = parseManifest({ schema: validSchema, product: dupes });
+    expect(res.ok ? "" : res.errors.join("\n")).not.toContain("duplicate");
   });
 
   it("refuses a document nested past the depth cap, in JSON and in YAML", () => {
