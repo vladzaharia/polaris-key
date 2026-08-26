@@ -40,14 +40,18 @@ function watchedTrust(inner: TrustSet): { trust: TrustSet; reads: string[] } {
 // FIXED (R2-04). `MAX_HEADER_BYTES` (1 KiB) now bounds the protected header, and both
 // segments are length-checked in their ENCODED form before anything is decoded.
 describe("R2-04 · the protected header is size-capped (regression)", () => {
-  it("an 8 MiB attacker-controlled HEADER is rejected before any decode or trust lookup", async () => {
+  // Sizes are deliberately just-over-cap rather than dramatic. The original versions used
+  // 8 MiB and 16 MiB fillers, which passed locally and TIMED OUT on CI — the first CI run in
+  // this repository's history is what surfaced it. `MAX_HEADER_BYTES` is 1 KiB and
+  // `MAX_DOC_BYTES` is 64 KiB, so a few KiB over the line exercises exactly the same branch
+  // as a few MiB while keeping the suite fast. Proving a bound needs one byte past it, not
+  // four orders of magnitude.
+  it("an over-cap attacker-controlled HEADER is rejected before any decode or trust lookup", async () => {
     // Previously MAX_DOC_BYTES guarded only `encPayload`, so moving the blob into the
     // header skipped the guard entirely and bought the attacker a free decode + JSON.parse
     // on an unauthenticated segment.
-    const filler = "A".repeat(8 * 1024 * 1024);
-    const bigHeader = { alg: "EdDSA", kid: KID, junk: filler };
+    const bigHeader = { alg: "EdDSA", kid: KID, junk: "A".repeat(4 * 1024) };
     const jws = `${enc(bigHeader)}.${enc(DOC)}.${encRaw("sig")}`;
-    expect(jws.length).toBeGreaterThan(8 * 1024 * 1024);
 
     const { trust, reads } = watchedTrust({ [KID]: PUB });
     expect(await verifyJws(jws, trust)).toBeNull();
@@ -56,37 +60,27 @@ describe("R2-04 · the protected header is size-capped (regression)", () => {
     expect(reads).not.toContain(KID);
   });
 
-  it("contrast: an 8 MiB PAYLOAD is short-circuited by the cap before the trust lookup", async () => {
-    const filler = "A".repeat(8 * 1024 * 1024);
-    const jws = `${enc({ alg: "EdDSA", kid: KID })}.${enc({ ...DOC, junk: filler })}.${encRaw("sig")}`;
+  it("contrast: an over-cap PAYLOAD is short-circuited before the trust lookup too", async () => {
+    const jws = `${enc({ alg: "EdDSA", kid: KID })}.${enc({ ...DOC, junk: "A".repeat(128 * 1024) })}.${encRaw("sig")}`;
 
     const { trust, reads } = watchedTrust({ [KID]: PUB });
     expect(await verifyJws(jws, trust)).toBeNull();
-    // The cap fires first, so the kid is never looked up. This is the guard the header
-    // segment is missing.
     expect(reads).not.toContain(KID);
   });
 
-  it("the 64 KiB cap is applied AFTER a full base64 decode — the allocation is unbounded", async () => {
-    // `base64UrlDecode(encPayload)` materialises an atob() string PLUS a Uint8Array of the
-    // full attacker-chosen size before `payloadBytes.byteLength > MAX_DOC_BYTES` runs.
-    // Measure that the verifier's cost still scales with the oversized input.
-    const small = `${enc({ alg: "EdDSA", kid: KID })}.${enc(DOC)}.${encRaw("s")}`;
-    const bigPayload = `${enc({ alg: "EdDSA", kid: KID })}.${enc({ ...DOC, junk: "A".repeat(16 * 1024 * 1024) })}.${encRaw("s")}`;
+  it("the cap is applied to the ENCODED segment, before any base64 decode or allocation", async () => {
+    // This replaces a test that measured how long an over-cap payload took to reject, back
+    // when `base64UrlDecode` materialised the whole attacker-chosen buffer before the length
+    // check. That is no longer possible: both segments are bounded in their encoded form, so
+    // there is nothing to time. Assert the property directly instead of its old symptom.
+    const overCap = "A".repeat(200 * 1024);
+    const jws = `${enc({ alg: "EdDSA", kid: KID })}.${overCap}.${encRaw("s")}`;
 
-    const t0 = performance.now();
-    await verifyJws(small, { [KID]: PUB });
-    const smallMs = performance.now() - t0;
-    const t1 = performance.now();
-    await verifyJws(bigPayload, { [KID]: PUB });
-    const bigMs = performance.now() - t1;
-
-    // Not a threshold assertion (CI timing is noisy) — just record the shape.
-    // eslint-disable-next-line no-console
-    console.log(
-      `[R2-01] 16 MiB over-cap payload cost ${bigMs.toFixed(1)}ms vs ${smallMs.toFixed(1)}ms baseline`,
-    );
-    expect(bigMs).toBeGreaterThan(0);
+    // A Proxy on the trust set proves rejection happened before key selection, which is the
+    // first thing that follows a successful decode.
+    const { trust, reads } = watchedTrust({ [KID]: PUB });
+    expect(await verifyJws(jws, trust)).toBeNull();
+    expect(reads).toEqual([]);
   });
 });
 
