@@ -24,7 +24,15 @@ export interface JwsHeader {
  * and trust manifests, so without this a manifest could be replayed where a config doc is
  * expected. See docs/security/WIRE-CONTRACT-V2.md §2.4.
  */
-export type JwsTyp = "pkey-config+jws" | "pkey-trust+jws";
+export type JwsTyp =
+  // Wire contract v2 (legacy; removed in P8 once no signer/verifier emits them)
+  | "pkey-config+jws"
+  | "pkey-trust+jws"
+  // Wire contract v3 (docs/security/WIRE-CONTRACT-V3.md §2)
+  | "plrs-license+jws"
+  | "plrs-config+jws"
+  | "plrs-trust+jws"
+  | "plrs-bundle+jws";
 
 export interface VerifyOptions {
   /**

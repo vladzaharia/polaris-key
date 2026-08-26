@@ -1,0 +1,224 @@
+// @plrs/protocol/core — wire contract v3 Core substrate types: the shared document
+// envelope, device principal, telemetry, errors, and transport headers. Types only, no
+// runtime, no crypto. Normative source: docs/security/WIRE-CONTRACT-V3.md. Any field drift
+// is wire-breaking: bump PROTOCOL_VERSION and regenerate conformance/corpus/v2.
+//
+// Times are epoch SECONDS (matching the JOSE world the Worker signs in), never millis.
+
+/** Bumped on any wire-breaking change to the document shapes or HTTP contract. */
+export const PROTOCOL_VERSION = 3;
+
+/** The `iss` every Polaris document carries. Host-neutral (D-09): the serving hostname is
+ *  infrastructure, not wire identity — moving hosts must never be a wire break. */
+export const ISSUER = "plrs.im";
+
+/** A JSON-serialisable value — the type every managed entry carries. */
+export type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JSONValue[]
+  | { [key: string]: JSONValue };
+
+/** Per-key MDM-style management state.
+ *  - `enforced` ⇒ the server value wins; the client CANNOT override it (shown read-only).
+ *  - `hidden`   ⇒ `enforced` AND withheld from user-facing enumeration (still applied).
+ *  - `default`  ⇒ the server's `value` is a default; the client may override it via a
+ *    local/user override or an environment variable (precedence: enforced|hidden > local >
+ *    env > remote-default > schema-default). */
+export type ManagementState = "default" | "enforced" | "hidden";
+
+/** A managed value, its management state, and when an admin last changed it. */
+export interface ManagedEntry {
+  state: ManagementState;
+  value: JSONValue;
+  /** Epoch seconds of the last admin change to this key (for client change-detection). */
+  updatedAt: number;
+}
+
+/**
+ * The shared claims envelope carried by every per-service signed document
+ * (WIRE-CONTRACT-V3 §2). `aud` (product slug) + `iss` scope a document to one
+ * product/tenant as defense-in-depth on top of the per-product signing key; clients MUST
+ * assert `aud === their configured product` and `deviceId === their local device id`.
+ * `expiresAt` is short (`issuedAt + DOC_EXPIRY_SECONDS`); `graceUntil` carries the long,
+ * server-signed offline window (`issuedAt + maxOfflineDays * 86400`).
+ */
+export interface DocClaims {
+  /** Always `ISSUER` ("plrs.im"). */
+  iss: string;
+  /** Product slug — the audience this document is scoped to. */
+  aud: string;
+  deviceId: string;
+  issuedAt: number;
+  expiresAt: number;
+  graceUntil: number;
+}
+
+/**
+ * Offline activation bundle payload (`typ: "plrs-bundle+jws"`, WIRE-CONTRACT-V3 §7).
+ * Wraps up to three inner compact JWSs; the bundle payload cap is 262 144 bytes (unlike
+ * the 65 536-byte cap on ordinary documents). `expiresAt` is the IMPORT window for the
+ * bundle itself (network-path freshness at import); the inner documents carry the long
+ * `graceUntil` and are validated with the reload profile.
+ */
+export interface BundleDoc {
+  /** ULID; the audit anchor for the mint event. */
+  bundleId: string;
+  /** Product slug the bundle is scoped to. */
+  aud: string;
+  /** The requesting device's id — bundles are device-bound (request-code flow). */
+  deviceId: string;
+  issuedAt: number;
+  /** Import deadline for the bundle artifact itself. */
+  expiresAt: number;
+  /** Inner compact JWSs: `plrs-license+jws` and optionally `plrs-config+jws`. */
+  docs: { license?: string; config?: string };
+  /** The current trust manifest (`plrs-trust+jws`), so an air-gapped device can build its
+   *  effective trust set at import time. */
+  trust: string;
+}
+
+/** Maximum decoded payload bytes for `plrs-bundle+jws` (WIRE-CONTRACT-V3 §1). */
+export const MAX_BUNDLE_BYTES = 262_144;
+
+/** Per-product device registration policy (WIRE-CONTRACT-V3 §6). Default is derived:
+ *  `requires-license` if the license service is enabled, else `requires-identity` if the
+ *  identity service is enabled, else `open`. */
+export type RegistrationPolicy = "open" | "requires-identity" | "requires-license";
+
+export interface DeviceMetadata {
+  label?: string;
+  platform?: string;
+  arch?: string;
+  appVersion?: string;
+  sdkName?: string;
+  sdkVersion?: string;
+}
+
+/** One hashed hardware signal in a device fingerprint. `machineUuid` is the ANCHOR: when it
+ *  matches, drift tolerance widens by one — the same shape as Windows activation treating the
+ *  NIC as a privileged component. */
+export type FingerprintComponent =
+  | "machineUuid"
+  | "boardSerial"
+  | "cpuModel"
+  | "primaryMac"
+  | "bootVolumeUuid"
+  | "ramBucket"
+  | "machineModel";
+
+/** Canonical component order — the `hwid` digest is built from this order, so every SDK must
+ *  iterate it rather than a language-native map ordering. */
+export const FINGERPRINT_COMPONENTS = [
+  "machineUuid",
+  "boardSerial",
+  "cpuModel",
+  "primaryMac",
+  "bootVolumeUuid",
+  "ramBucket",
+  "machineModel",
+] as const satisfies readonly FingerprintComponent[];
+
+/** The component whose match widens the drift tolerance by one. */
+export const FINGERPRINT_ANCHOR: FingerprintComponent = "machineUuid";
+
+/** Domain-separation prefix for per-component hashes. Deliberately NOT rebranded in v3:
+ *  it is a hash domain baked into every stored digest (fingerprintVersion 1 is unchanged),
+ *  not a user-visible identifier — changing it would orphan every enrolled fingerprint. */
+export const FINGERPRINT_HASH_PREFIX = "pkey-hw";
+
+/** base64url chars kept from each per-component digest. */
+export const FINGERPRINT_COMPONENT_LENGTH = 22;
+
+/** base64url chars kept from the composite digest. */
+export const FINGERPRINT_HWID_LENGTH = 32;
+
+/** A device's hardware identity. Components the device could not read are OMITTED — never
+ *  substituted with a placeholder, so a partial read degrades match precision instead of
+ *  silently colliding with every other partial reader. */
+export interface HardwareFingerprint {
+  components: Partial<Record<FingerprintComponent, string>>;
+  /** Composite hash over the present components — the coarse dedupe key. Because it covers
+   *  only what was read, losing a component changes it; component-wise matching is the
+   *  authority and this is the fast path. */
+  hwid: string;
+}
+
+/** Per-tier enforcement strength. `strict` additionally REQUIRES a fingerprint. */
+export type FingerprintMode = "off" | "lenient" | "normal" | "strict";
+
+/** Drift tolerance per mode, before the anchor bonus. `off` never enforces. */
+export const FINGERPRINT_TOLERANCE: Record<FingerprintMode, number> = {
+  off: Number.POSITIVE_INFINITY,
+  lenient: 4,
+  normal: 2,
+  strict: 0,
+};
+
+/** A product-declared companion-application check, answered by the client. */
+export interface DeviceProbeResult {
+  present: boolean;
+  version?: string;
+}
+
+/** The device's current software snapshot, reported through `POST /<product>/devices/report`.
+ *  Deliberately narrow: no full installed-app enumeration, only product-declared probes. */
+export interface DeviceFacts {
+  os: { name: string; version?: string; build?: string; kernel?: string };
+  hardware?: {
+    cpuModel?: string;
+    cpuCores?: number;
+    ramMb?: number;
+    machineModel?: string;
+  };
+  runtime?: { name: string; version: string };
+  locale?: string;
+  timezone?: string;
+  probes?: Record<string, DeviceProbeResult>;
+}
+
+/** Upper bound on probe results accepted in one report, so `probes` can't become an
+ *  unbounded inventory smuggled past the report's size cap. */
+export const MAX_DEVICE_PROBES = 32;
+
+export type PolarisErrorCode =
+  | "unauthorized"
+  | "device_limit"
+  | "license_disabled"
+  | "license_expired"
+  | "version_blocked"
+  | "channel_not_allowed"
+  | "rate_limited"
+  | "not_found"
+  | "bad_request"
+  | "forbidden"
+  | "hardware_mismatch"
+  | "fingerprint_required"
+  | "enroll_disabled"
+  | "registration_closed";
+
+export interface PolarisErrorBody {
+  error: {
+    code: PolarisErrorCode | string;
+    message?: string;
+    fields?: string[];
+    [key: string]: unknown;
+  };
+}
+
+/** Short signed-document lifetime (seconds) — a replayed doc needs constant re-signing. */
+export const DOC_EXPIRY_SECONDS = 3600;
+
+/** Seconds per day, for the offline-grace computation. */
+export const SECONDS_PER_DAY = 86_400;
+
+/** Client→Worker request headers (wire contract v3; the `X-PKey-*` names are legacy). */
+export const HEADER_DEVICE = "X-Polaris-Device";
+export const HEADER_VERSION = "X-Polaris-Version";
+export const HEADER_CHANNEL = "X-Polaris-Channel";
+export const HEADER_SDK_NAME = "X-Polaris-SDK";
+export const HEADER_SDK_VERSION = "X-Polaris-SDK-Version";
+export const HEADER_PLATFORM = "X-Polaris-Platform";
+export const HEADER_ARCH = "X-Polaris-Arch";
