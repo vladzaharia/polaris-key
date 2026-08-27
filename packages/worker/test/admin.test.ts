@@ -26,8 +26,9 @@ import {
   listAudit,
 } from "../src/repo.js";
 import { loadProduct } from "../src/core/products.js";
-import { handleConfig, handleActivate } from "../src/licensing.js";
-import { handleMintToken } from "../src/edgeMint.js";
+import { handleActivate } from "../src/services/license/activation.js";
+import { handleLicenseDocument } from "../src/services/license/document.js";
+import { handleMintToken } from "../src/services/config/mint.js";
 import { buildDoc } from "../src/configDoc.js";
 import { signDoc } from "../src/core/signing.js";
 import { open } from "../src/keyvault.js";
@@ -37,6 +38,7 @@ import type {
   ManagedPayload,
   DocProfile,
 } from "@plrs/protocol";
+import type { LicenseDoc } from "@plrs/protocol/license";
 import { getTokenRecord } from "../src/kv.js";
 import { hashKey } from "../src/crypto.js";
 
@@ -879,7 +881,7 @@ describe("admin api", () => {
     );
     expect(activateRes.status).toBe(200);
     const { token } = (await activateRes.json()) as { token: string };
-    const cfgRes = await handleConfig(
+    const cfgRes = await handleLicenseDocument(
       mkLicReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.0.0",
@@ -890,7 +892,7 @@ describe("admin api", () => {
       NOW,
     );
     expect(cfgRes.status).toBe(200);
-    const verified = await verifyJws<ManagedConfigDoc>(await cfgRes.text(), {
+    const verified = await verifyJws<LicenseDoc>(await cfgRes.text(), {
       [product.signingKid]: product.signingPub!,
     });
     expect(verified).not.toBeNull();

@@ -1,10 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Db } from "./db/types.js";
-import type { Product } from "./core/products.js";
-import { getActiveSchema } from "./repo.js";
-import { errorResponse } from "./core/errors.js";
+import type { Db } from "../../core/platform.js";
+import type { Product } from "../../core/products.js";
+import { getActiveSchema } from "../../core/data.js";
+import { errorResponse } from "../../core/errors.js";
 
-/** GET /<product>/schema — the data-driven config catalog the SDKs + admin render from. */
+/** GET /<product>/config/schema — the data-driven config catalog the SDKs + admin render from.
+ *  Moved from `/<product>/schema` (§R1); the body is unchanged. */
 export async function handleSchema(
   db: Db,
   product: Product,

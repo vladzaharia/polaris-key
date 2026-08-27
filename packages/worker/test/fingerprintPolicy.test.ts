@@ -18,7 +18,7 @@ import {
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
-import { handleActivate } from "../src/licensing.js";
+import { handleActivate } from "../src/services/license/activation.js";
 import { handleAdmin } from "../src/admin/index.js";
 import {
   ADMIN_COOKIE,

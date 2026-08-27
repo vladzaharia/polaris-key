@@ -44,14 +44,8 @@ describe("matchRoute — product-scoped routes", () => {
   const cases: Array<[string, Route["kind"]]> = [
     ["/djdl/.well-known/polaris.json", "discovery"],
     ["/djdl/.well-known/jwks.json", "jwks"],
-    ["/djdl/schema", "schema"],
-    ["/djdl/activate", "activate"],
-    ["/djdl/token", "token"],
-    ["/djdl/account", "account"],
     ["/djdl/devices", "devices"],
-    ["/djdl/deauthorize", "deauthorize"],
-    ["/djdl/config", "config"],
-    ["/djdl/config/report", "configReport"],
+    ["/djdl/devices/report", "report"],
     ["/djdl/session", "browserSession"],
     ["/djdl/session/license", "browserSessionLicense"],
     ["/djdl/auth/start", "authStart"],
@@ -75,28 +69,110 @@ describe("matchRoute — product-scoped routes", () => {
   });
 
   it("carries the product slug through for hyphenated slugs", () => {
-    const r = matchRoute("/my-app/config");
-    expect(r.kind).toBe("config");
+    const r = matchRoute("/my-app/license/document");
+    expect(r.kind).toBe("service");
     expect((r as { product: string }).product).toBe("my-app");
   });
 });
 
-describe("matchRoute — mint / cli / dmg / appcast(channel)", () => {
-  it("routes mint token + auth recipes", () => {
-    const t = matchRoute("/djdl/mint/applemusic/token");
-    expect(t).toMatchObject({
-      kind: "mintToken",
+// §R1: `/<p>/license/*` and `/<p>/config/*` no longer resolve to a route kind of their own.
+// They resolve to ONE kind carrying the slug and the remaining segments, and the service's
+// descriptor routes them from there — which is what lets a product turn a service off and have
+// its whole surface disappear rather than answer 403 per path.
+describe("matchRoute — service namespaces (license, config)", () => {
+  const serviceCases: Array<[string, string, string[]]> = [
+    ["/djdl/license/activate", "license", ["activate"]],
+    ["/djdl/license/enroll", "license", ["enroll"]],
+    ["/djdl/license/token", "license", ["token"]],
+    ["/djdl/license/deauthorize", "license", ["deauthorize"]],
+    ["/djdl/license/document", "license", ["document"]],
+    ["/djdl/config/document", "config", ["document"]],
+    ["/djdl/config/schema", "config", ["schema"]],
+    [
+      "/djdl/config/mint/applemusic/token",
+      "config",
+      ["mint", "applemusic", "token"],
+    ],
+    [
+      "/djdl/config/mint/applemusic/auth",
+      "config",
+      ["mint", "applemusic", "auth"],
+    ],
+  ];
+
+  it.each(serviceCases)("routes %s -> %s %j", (path, slug, rest) => {
+    expect(matchRoute(path)).toEqual({
+      kind: "service",
+      slug,
       product: "djdl",
-      mintId: "applemusic",
-    });
-    const a = matchRoute("/djdl/mint/applemusic/auth");
-    expect(a).toMatchObject({
-      kind: "mintAuth",
-      product: "djdl",
-      mintId: "applemusic",
+      rest,
     });
   });
 
+  it("hands the bare namespace to the service with no segments", () => {
+    // `/djdl/config` used to be the FUSED signed document. It is gone (§R1): the service gets
+    // an empty `rest`, matches nothing, and Core answers its single not-found. A route that
+    // once returned a signed document must never quietly return one of its halves.
+    expect(matchRoute("/djdl/config")).toEqual({
+      kind: "service",
+      slug: "config",
+      product: "djdl",
+      rest: [],
+    });
+    expect(matchRoute("/djdl/license")).toEqual({
+      kind: "service",
+      slug: "license",
+      product: "djdl",
+      rest: [],
+    });
+  });
+
+  it("keeps unknown depth inside the service rather than falling through", () => {
+    expect(matchRoute("/djdl/config/report")).toEqual({
+      kind: "service",
+      slug: "config",
+      product: "djdl",
+      rest: ["report"],
+    });
+    expect(matchRoute("/djdl/license/anything/at/all")).toMatchObject({
+      kind: "service",
+      slug: "license",
+    });
+  });
+
+  it("lets a service namespace shadow the channel-appcast pattern", () => {
+    // `/<p>/<channel>/appcast.xml` would otherwise match `/djdl/license/appcast.xml` with
+    // channel "license". Reserved namespaces win, exactly as `/manage` wins over a product slug.
+    expect(matchRoute("/djdl/license/appcast.xml")).toMatchObject({
+      kind: "service",
+      slug: "license",
+      rest: ["appcast.xml"],
+    });
+    expect(matchRoute("/djdl/staging/appcast.xml")).toMatchObject({
+      kind: "appcast",
+      channel: "staging",
+    });
+  });
+});
+
+// §R1 removals: these paths carried real behaviour before wire v3 and must now be dead ends,
+// not silent aliases of whatever replaced them.
+describe("matchRoute — routes removed by wire v3", () => {
+  it.each([
+    "/djdl/activate",
+    "/djdl/enroll",
+    "/djdl/token",
+    "/djdl/deauthorize",
+    "/djdl/account",
+    "/djdl/schema",
+    "/djdl/mint/applemusic/token",
+    "/djdl/mint/applemusic/auth",
+  ])("404s the pre-suite path %s", (path) => {
+    expect(matchRoute(path).kind).toBe("notFound");
+  });
+});
+
+describe("matchRoute — cli / dmg / appcast(channel)", () => {
   it("routes a cli binary by version + arch (and aliases)", () => {
     expect(matchRoute("/djdl/cli/1.2.3/djdl-arm64")).toMatchObject({
       kind: "cli",
@@ -151,7 +227,11 @@ describe("matchRoute — mint / cli / dmg / appcast(channel)", () => {
 
 describe("matchRoute — normalization + notFound", () => {
   it("strips a single trailing slash before matching", () => {
-    expect(matchRoute("/djdl/config/").kind).toBe("config");
+    expect(matchRoute("/djdl/config/document/")).toMatchObject({
+      kind: "service",
+      slug: "config",
+      rest: ["document"],
+    });
     expect(matchRoute("/manage/").kind).toBe("adminSpa");
   });
 
@@ -166,6 +246,6 @@ describe("matchRoute — normalization + notFound", () => {
   });
 
   it("returns notFound for an uppercase / illegal slug", () => {
-    expect(matchRoute("/DJDL/config").kind).toBe("notFound");
+    expect(matchRoute("/DJDL/config/document").kind).toBe("notFound");
   });
 });

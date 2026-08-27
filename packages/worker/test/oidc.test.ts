@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { verifyJws } from "@plrs/jws";
-import type { ManagedConfigDoc } from "@plrs/protocol";
+import type { LicenseDoc } from "@plrs/protocol/license";
+import type { ConfigDoc } from "@plrs/protocol/config";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -18,7 +19,8 @@ import {
   authorizeAndMint,
   type OidcIdentity,
 } from "../src/oidc.js";
-import { handleConfig } from "../src/licensing.js";
+import { handleLicenseDocument } from "../src/services/license/document.js";
+import { handleConfigDocument } from "../src/services/config/document.js";
 
 async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
   await db.run(
@@ -205,27 +207,27 @@ describe("OIDC activation", () => {
       NOW,
     );
 
-    const res = await handleConfig(
-      mkReq("GET", {
-        authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
-      }),
-      env,
-      db,
-      product,
-      NOW,
-    );
-    expect(res.status).toBe(200);
-    const v = await verifyJws<ManagedConfigDoc>(await res.text(), {
-      [TEST_KID]: TEST_PUB,
+    const req = mkReq("GET", {
+      authorization: `Bearer ${token}`,
+      "x-pkey-version": "1.2.3",
     });
-    expect(v!.payload.payload.entitlements.polarisVpn?.value).toBe(true);
-    expect(v!.payload.payload.secrets["proxy.subscriptionUrl"]?.value).toBe(
+    const trust = { [TEST_KID]: TEST_PUB };
+
+    // The provisioning hook writes an entitlement AND a secret. Wire v3 delivers them on
+    // DIFFERENT documents (§2.1/§2.2), so this pins both halves — which is also the check that
+    // the split did not drop one of the two provisioned buckets on the floor.
+    const licRes = await handleLicenseDocument(req, env, db, product, NOW);
+    expect(licRes.status).toBe(200);
+    const lic = await verifyJws<LicenseDoc>(await licRes.text(), trust);
+    expect(lic!.payload.entitlements.polarisVpn?.value).toBe(true);
+
+    const cfgRes = await handleConfigDocument(req, env, db, product, NOW);
+    expect(cfgRes.status).toBe(200);
+    const cfg = await verifyJws<ConfigDoc>(await cfgRes.text(), trust);
+    expect(cfg!.payload.secrets["proxy.subscriptionUrl"]?.value).toBe(
       "https://vpn.polaris.rest/abc123",
     );
-    expect(v!.payload.payload.secrets["proxy.subscriptionUrl"]?.state).toBe(
-      "hidden",
-    );
+    expect(cfg!.payload.secrets["proxy.subscriptionUrl"]?.state).toBe("hidden");
   });
 });
 

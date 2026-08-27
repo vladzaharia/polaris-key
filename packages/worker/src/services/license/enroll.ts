@@ -1,27 +1,29 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// `POST /<product>/enroll` — the keyless "always free" path.
+// `POST /<product>/license/enroll` — the keyless "always free" path.
 //
 // A product that mainly wants signed settings distribution shouldn't have to gate every
 // install behind a license key or a sign-in. Enrolment auto-issues a license bound to the
-// machine's hwid and hands back the same shape `/activate` does, so every SDK reuses its
-// existing activation result type with no new client plumbing.
+// machine's hwid and hands back the same shape `/license/activate` does, so every SDK reuses
+// its existing activation result type with no new client plumbing.
 //
-// Lives in its own module rather than in licensing.ts, which is already long and owns the
-// key-redemption hot path.
+// Moved verbatim from `src/enroll.ts` under the v3 namespace (§R1). It stays in its own module
+// rather than joining `activation.ts`, which owns the key-redemption hot path.
 
-import type { Env } from "./env.js";
-import type { Db } from "./db/types.js";
-import type { Product } from "./core/products.js";
+import type { Env, Db } from "../../core/platform.js";
+import type { Product } from "../../core/products.js";
 import {
   errorResponse,
   ErrorCode,
   json,
   methodNotAllowed,
-} from "./core/errors.js";
-import { randomId } from "./crypto.js";
-import { clientIp, rateLimitOk } from "./core/rateLimit.js";
-import { allowsAnonymousEnroll, computeEnrollHwid } from "./fingerprint.js";
+} from "../../core/errors.js";
+import { randomId } from "../../core/platform.js";
+import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import {
+  allowsAnonymousEnroll,
+  computeEnrollHwid,
+} from "../../core/fingerprint.js";
 import {
   appendAudit,
   getLicense,
@@ -30,14 +32,14 @@ import {
   insertLicense,
   type LicenseRow,
   type TierRow,
-} from "./repo.js";
-import { authorizationError, shapeLicense } from "./licensing.js";
+} from "../../core/data.js";
+import { authorizationError, shapeLicense } from "./activation.js";
 import {
   deviceMetadata,
   readFingerprint,
   shapeDevice,
-} from "./core/devices.js";
-import { authorizeDevice, tierExpiresAt } from "./licenseCore.js";
+} from "../../core/devices.js";
+import { authorizeDevice, tierExpiresAt } from "./authz.js";
 import { HEADER_DEVICE } from "@plrs/protocol";
 
 /**
@@ -131,7 +133,8 @@ async function locateOrMintLicense(
   return getLicense(db, product.slug, licenseId);
 }
 
-/** POST /<product>/enroll — auto-issue a license for this machine and authorize the device. */
+/** POST /<product>/license/enroll — auto-issue a license for this machine and authorize the
+ *  device. */
 export async function handleEnroll(
   req: Request,
   env: Env,

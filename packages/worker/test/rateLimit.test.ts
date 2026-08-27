@@ -10,7 +10,7 @@ import {
   seedProduct,
 } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
-import { handleActivate } from "../src/licensing.js";
+import { handleActivate } from "../src/services/license/activation.js";
 
 describe("rateLimitOk", () => {
   it("allows up to the limit within a window, then blocks", async () => {

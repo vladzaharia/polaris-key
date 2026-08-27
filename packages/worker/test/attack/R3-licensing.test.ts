@@ -10,10 +10,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import { verifyJws } from "@plrs/jws";
-import {
-  FINGERPRINT_COMPONENT_LENGTH,
-  type ManagedConfigDoc,
-} from "@plrs/protocol";
+import { FINGERPRINT_COMPONENT_LENGTH } from "@plrs/protocol";
+import type { ConfigDoc } from "@plrs/protocol/config";
+import type { LicenseDoc } from "@plrs/protocol/license";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
@@ -29,13 +28,13 @@ import {
 } from "../seed.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
 import {
-  handleAccount,
   handleActivate,
-  handleConfig,
   handleToken,
-} from "../../src/licensing.js";
+} from "../../src/services/license/activation.js";
+import { handleLicenseDocument } from "../../src/services/license/document.js";
+import { handleConfigDocument } from "../../src/services/config/document.js";
 import { handleDevices } from "../../src/core/devices.js";
-import { handleEnroll } from "../../src/enroll.js";
+import { handleEnroll } from "../../src/services/license/enroll.js";
 import { handleBrowserSessionLicense } from "../../src/browserSession.js";
 import { activateFromIdentity } from "../../src/oidc.js";
 import {
@@ -122,23 +121,49 @@ async function activate(
   return ((await res.json()) as { token: string }).token;
 }
 
-function configReq(
-  token: string,
-  headers: Record<string, string> = {},
-): Request {
+function docReq(token: string, headers: Record<string, string> = {}): Request {
   return mkReq("GET", { authorization: `Bearer ${token}`, ...headers });
 }
 
-async function config(
+/** `GET /<p>/license/document` — the half of the old fused `/config` that carries the
+ *  entitlements AND runs the build gate. Almost every probe below wants this one. */
+async function licenseDoc(
   h: Harness,
   token: string,
   headers: Record<string, string> = {},
 ): Promise<Response> {
-  return handleConfig(configReq(token, headers), h.env, h.db, h.product, NOW);
+  return handleLicenseDocument(
+    docReq(token, headers),
+    h.env,
+    h.db,
+    h.product,
+    NOW,
+  );
 }
 
-async function docOf(res: Response): Promise<ManagedConfigDoc> {
-  const verified = await verifyJws<ManagedConfigDoc>(await res.text(), TRUST);
+/** `GET /<p>/config/document` — the other half: config + secrets, device auth, no gate. */
+async function configDoc(
+  h: Harness,
+  token: string,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  return handleConfigDocument(
+    docReq(token, headers),
+    h.env,
+    h.db,
+    h.product,
+    NOW,
+  );
+}
+
+async function docOf(res: Response): Promise<LicenseDoc> {
+  const verified = await verifyJws<LicenseDoc>(await res.text(), TRUST);
+  expect(verified).not.toBeNull();
+  return verified!.payload;
+}
+
+async function configDocOf(res: Response): Promise<ConfigDoc> {
+  const verified = await verifyJws<ConfigDoc>(await res.text(), TRUST);
   expect(verified).not.toBeNull();
   return verified!.payload;
 }
@@ -161,15 +186,19 @@ describe("R3-01 build gate is attacker-controlled", () => {
     const { key } = await seedLicenseWithKey(h.db, "djdl", { tierId: "pro" });
     const token = await activate(h, key, "dev-1");
 
-    const honest = await config(h, token, { "x-pkey-version": "1.0.0" });
+    const honest = await licenseDoc(h, token, { "x-pkey-version": "1.0.0" });
     expect(honest.status).toBe(403);
-    expect(await honest.json()).toMatchObject({ reason: "version-too-old" });
+    expect(await honest.json()).toMatchObject({
+      error: { code: "version_blocked", reason: "version-too-old" },
+    });
 
-    const bypass = await config(h, token, {
+    const bypass = await licenseDoc(h, token, {
       "x-pkey-version": "0.0.0-dev+abc",
     });
     expect(bypass.status).toBe(403);
-    expect(await bypass.json()).toMatchObject({ reason: "version-too-old" });
+    expect(await bypass.json()).toMatchObject({
+      error: { code: "version_blocked", reason: "version-too-old" },
+    });
   });
 
   it("FIXED (R3-01): the dev bypass is available only to a dev-entitled license", async () => {
@@ -178,16 +207,16 @@ describe("R3-01 build gate is attacker-controlled", () => {
     });
     const token = await activate(h, key, "dev-1");
 
-    const honest = await config(h, token, {
+    const honest = await licenseDoc(h, token, {
       "x-pkey-version": "9.9.9",
       "x-pkey-channel": "staging",
     });
     expect(honest.status).toBe(403);
     expect(await honest.json()).toMatchObject({
-      reason: "channel-not-entitled",
+      error: { code: "channel_not_allowed", reason: "channel-not-entitled" },
     });
 
-    const bypass = await config(h, token, {
+    const bypass = await licenseDoc(h, token, {
       "x-pkey-version": "0.0.0-dev",
       "x-pkey-channel": "staging",
     });
@@ -201,7 +230,7 @@ describe("R3-01 build gate is attacker-controlled", () => {
     const devToken = await activate(h, devKey, "dev-2");
     expect(
       (
-        await config(h, devToken, {
+        await licenseDoc(h, devToken, {
           "x-pkey-version": "0.0.0-dev",
           "x-pkey-channel": "staging",
         })
@@ -218,20 +247,20 @@ describe("R3-01 build gate is attacker-controlled", () => {
     // Was: every one of these normalised to `stable`, the one channel that is never
     // entitlement-checked, so a genuine staging build just declared a word nobody parsed.
     for (const claimed of ["staging-2", "STAGING", "beta"]) {
-      const res = await config(h, token, {
+      const res = await licenseDoc(h, token, {
         "x-pkey-version": "9.9.9",
         "x-pkey-channel": claimed,
       });
       expect(res.status).toBe(403);
       expect(await res.json()).toMatchObject({
-        reason: "channel-not-entitled",
+        error: { code: "channel_not_allowed", reason: "channel-not-entitled" },
       });
     }
     // A stable build declaring `stable` is of course still fine. Declaring `stable` no longer
     // LAUNDERS a pre-release build, though — see the pr-N case below.
     expect(
       (
-        await config(h, token, {
+        await licenseDoc(h, token, {
           "x-pkey-version": "9.9.9",
           "x-pkey-channel": "stable",
         })
@@ -274,8 +303,8 @@ describe("R3-01 build gate is attacker-controlled", () => {
         { "x-pkey-channel": "stable" },
       ];
       for (const extra of extras) {
-        const res = await handleConfig(
-          configReq(token, { "x-pkey-version": version, ...extra }),
+        const res = await handleLicenseDocument(
+          docReq(token, { "x-pkey-version": version, ...extra }),
           h.env,
           h.db,
           product,
@@ -283,7 +312,10 @@ describe("R3-01 build gate is attacker-controlled", () => {
         );
         expect(res.status).toBe(403);
         expect(await res.json()).toMatchObject({
-          reason: "channel-not-entitled",
+          error: {
+            code: "channel_not_allowed",
+            reason: "channel-not-entitled",
+          },
         });
       }
     }
@@ -304,8 +336,8 @@ describe("R3-01 build gate is attacker-controlled", () => {
     for (const version of ["0.0.0-pr-42+sha", "0.0.0-pr42+sha"]) {
       expect(
         (
-          await handleConfig(
-            configReq(prToken, { "x-pkey-version": version }),
+          await handleLicenseDocument(
+            docReq(prToken, { "x-pkey-version": version }),
             h.env,
             h.db,
             product,
@@ -655,7 +687,7 @@ describe("R3-05 fingerprint is activation-only", () => {
 
     // The attacker copies the token file onto an unrelated Windows box. No endpoint below
     // accepts, let alone checks, a fingerprint — matchFingerprint has exactly one call site
-    // (licenseCore.ts:290), inside authorizeDevice.
+    // (core/devices.ts), inside reconcileDeviceHardware.
     const alien = {
       "x-pkey-device": "victim-mac",
       "x-pkey-platform": "win32",
@@ -663,23 +695,14 @@ describe("R3-05 fingerprint is activation-only", () => {
       "user-agent": "attacker/1.0",
     };
 
-    const cfg = await config(h, token, alien);
-    expect(cfg.status).toBe(200);
-    expect((await docOf(cfg)).payload.entitlements).toHaveProperty(
-      "polarisVpn",
-    );
+    const lic = await licenseDoc(h, token, alien);
+    expect(lic.status).toBe(200);
+    expect((await docOf(lic)).entitlements).toHaveProperty("polarisVpn");
 
-    expect(
-      (
-        await handleAccount(
-          mkReq("GET", { authorization: `Bearer ${token}`, ...alien }),
-          h.env,
-          h.db,
-          h.product,
-          NOW,
-        )
-      ).status,
-    ).toBe(200);
+    // `GET /<p>/account` was removed by wire v3 (superseded by `/devices` + the license
+    // document), so the config document stands in for it here: it is the OTHER signed surface
+    // the stolen token opens, and it authenticates the device without a licence at all.
+    expect((await configDoc(h, token, alien)).status).toBe(200);
     expect(
       (
         await handleDevices(
@@ -702,7 +725,7 @@ describe("R3-05 fingerprint is activation-only", () => {
     );
     expect(rot.status).toBe(200);
     const rotated = ((await rot.json()) as { token: string }).token;
-    expect((await config(h, rotated, alien)).status).toBe(200);
+    expect((await licenseDoc(h, rotated, alien)).status).toBe(200);
 
     // The stored binding is byte-identical: nothing ever looked at it.
     const after = await getFingerprint(h.db, "djdl", "victim-mac");
@@ -751,13 +774,13 @@ describe("R3-05 fingerprint is activation-only", () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // R3-06 / R3-07 — the entitlement layer is never pruned, and the seat check uses
-// a different layer stack than /config.
+// a different layer stack than the license document.
 // ─────────────────────────────────────────────────────────────────────────────
 describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
   it("a stored deviceLimit entitlement overrides the product cap when no tier policy exists", async () => {
     const h = await harness();
-    // No tier → injectAdminPolicy (licenseCore.ts:126) never overwrites deviceLimit, so the
-    // merged override is authoritative for the seat check.
+    // No tier → injectAdminPolicy (services/license/entitlements.ts) never overwrites
+    // deviceLimit, so the merged override is authoritative for the seat check.
     const { licenseId, key } = await seedLicenseWithKey(h.db, "djdl", {
       entitlements: {
         deviceLimit: { state: "enforced", value: 99, updatedAt: NOW },
@@ -779,7 +802,7 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
       },
     });
     const token = await activate(h, key, "chan-1");
-    const res = await config(h, token, {
+    const res = await licenseDoc(h, token, {
       "x-pkey-version": "9.9.9",
       "x-pkey-channel": "staging",
     });
@@ -802,21 +825,24 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
       },
     });
     const token = await activate(h, key, "cat-1");
-    const doc = await docOf(
-      await config(h, token, { "x-pkey-version": "1.0.0" }),
+    // The two halves now ride different documents, so the asymmetry is read off both.
+    const cfg = await configDocOf(await configDoc(h, token));
+    const lic = await docOf(
+      await licenseDoc(h, token, { "x-pkey-version": "1.0.0" }),
     );
 
-    // configDoc.ts:53 — config is pruned against the catalog, entitlements are not.
-    expect(doc.payload.config).not.toHaveProperty("not.in.catalog");
-    expect(doc.payload.config["quality.floor"]).toBeTruthy();
-    expect(doc.payload.entitlements["not.in.catalog.either"]).toEqual({
+    // core/payload.ts validatePayload — config is pruned against the catalog, entitlements are
+    // not.
+    expect(cfg.config).not.toHaveProperty("not.in.catalog");
+    expect(cfg.config["quality.floor"]).toBeTruthy();
+    expect(lic.entitlements["not.in.catalog.either"]).toEqual({
       state: "enforced",
       value: { arbitrary: "json" },
       updatedAt: NOW,
     });
   });
 
-  it("R3-07 the seat check ignores the device layer that /config merges", async () => {
+  it("R3-07 the seat check ignores the device layer that the license document merges", async () => {
     const h = await harness();
     const { licenseId, key } = await seedLicenseWithKey(h.db, "djdl");
     const token = await activate(h, key, "layer-1");
@@ -831,14 +857,14 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
       }),
     );
 
-    // /config merges the device layer (licensing.ts:497-504) and reports a limit of 1...
+    // The license document merges the device layer (core/payload.ts) and reports a limit of 1...
     const doc = await docOf(
-      await config(h, token, { "x-pkey-version": "1.0.0" }),
+      await licenseDoc(h, token, { "x-pkey-version": "1.0.0" }),
     );
-    expect(doc.payload.entitlements.deviceLimit).toMatchObject({ value: 1 });
+    expect(doc.entitlements.deviceLimit).toMatchObject({ value: 1 });
 
-    // ...while the seat check resolves with device = null (licenseCore.ts:341) and lets more
-    // devices on.
+    // ...while the seat check resolves with device = null (services/license/authz.ts) and lets
+    // more devices on.
     await activate(h, key, "layer-2");
     expect(await countActiveDevices(h.db, "djdl", licenseId)).toBe(2);
   });
@@ -912,7 +938,7 @@ describe("R3-09 sibling seat eviction", () => {
     expect(kill.status).toBe(403);
 
     // The victim is untouched: still authorized, still holding its seat.
-    expect((await config(h, theirs)).status).toBe(200);
+    expect((await licenseDoc(h, theirs)).status).toBe(200);
     expect(await countActiveDevices(h.db, "djdl", licenseId)).toBe(2);
 
     const relabel = await handleDevices(

@@ -16,7 +16,12 @@ import type { Db } from "../db/types.js";
 import type { Product } from "../core/products.js";
 import { bearer } from "../http.js";
 import { errorResponse, json, notFound } from "../core/errors.js";
-import { validateDeviceToken } from "../core/devices.js";
+// Artifact access asks a LICENCE question ("is a valid license required to download this"), so
+// it takes the License service's wrapper rather than Core's token check — the latter no longer
+// looks at the licence at all (see `services/license/auth.ts`). This surface becomes
+// `services/release/` in P2 and will consume the entitlement through the core-mediated seam;
+// until then the import keeps its 401s exactly as they were.
+import { requireLicensedDevice } from "../services/license/index.js";
 import { clientIp, rateLimitOk } from "../core/rateLimit.js";
 import { appSecurityHeaders } from "../securityHeaders.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
@@ -171,7 +176,7 @@ async function enforceReleaseAccess(
 ): Promise<Response | null> {
   if (accessModeFor(artifactPolicy(cfg), kind) === "public") return null;
 
-  const valid = await validateDeviceToken(env, db, product, bearer(req), now);
+  const valid = await requireLicensedDevice(env, db, product, bearer(req), now);
   if ("error" in valid) {
     return errorResponse(
       401,

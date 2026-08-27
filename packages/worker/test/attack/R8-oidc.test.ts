@@ -18,7 +18,7 @@ import {
   type KeyLike,
   SignJWT,
 } from "jose";
-import type { ManagedConfigDoc } from "@plrs/protocol";
+import type { LicenseDoc } from "@plrs/protocol/license";
 import { verifyJws } from "@plrs/jws";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
@@ -41,8 +41,12 @@ import {
   handleAuthPoll,
   handleAuthStart,
 } from "../../src/oidc.js";
-import { handleConfig } from "../../src/licensing.js";
-import { validateDeviceToken } from "../../src/core/devices.js";
+import { handleLicenseDocument } from "../../src/services/license/document.js";
+// Wire v3 split `validateDeviceToken` in two: core answers "is this token a live device row",
+// and `requireLicensedDevice` adds back the licence-usability check core used to apply inline.
+// The latter is the exact behavioural equivalent of the pre-split core function, so it is what
+// these tests assert against.
+import { requireLicensedDevice } from "../../src/services/license/auth.js";
 import { getDevice, getLicense } from "../../src/repo.js";
 import {
   handleMagicStart,
@@ -283,7 +287,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
       token: string;
     };
     expect(victim.status).toBe("ready");
-    const valid = await validateDeviceToken(
+    const valid = await requireLicensedDevice(
       ctx.env,
       ctx.db,
       ctx.product,
@@ -295,9 +299,9 @@ describe("R8-01 /auth/poll device-id confusion", () => {
     expect(valid.license.sub).toBe("victim-sub");
     expect(valid.license.email).toBe("victim@corp.com");
 
-    // 6. …and it unlocks the signed configuration document for its rightful owner.
-    const cfg = await handleConfig(
-      req(`${ORIGIN}/djdl/config`, {
+    // 6. …and it unlocks the signed license document for its rightful owner.
+    const cfg = await handleLicenseDocument(
+      req(`${ORIGIN}/djdl/license/document`, {
         headers: {
           authorization: `Bearer ${victim.token}`,
           "x-pkey-version": "1.2.3",
@@ -309,12 +313,10 @@ describe("R8-01 /auth/poll device-id confusion", () => {
       NOW,
     );
     expect(cfg.status).toBe(200);
-    const doc = await verifyJws<ManagedConfigDoc>(await cfg.text(), {
+    const doc = await verifyJws<LicenseDoc>(await cfg.text(), {
       [TEST_KID]: TEST_PUB,
     });
-    expect(doc!.payload.payload.entitlements["license.tier"]?.value).toBe(
-      "pro",
-    );
+    expect(doc!.payload.entitlements["license.tier"]?.value).toBe("pro");
   });
 
   // R8-01 — /auth/poll enforces the same two guards as /auth/device/poll.
@@ -888,7 +890,7 @@ describe("R8-04 non-single-use state / flow injection", () => {
       )
     ).json()) as { status: string; token: string };
     expect(out.status).toBe("ready");
-    const valid = await validateDeviceToken(
+    const valid = await requireLicensedDevice(
       ctx.env,
       ctx.db,
       ctx.product,
@@ -974,7 +976,8 @@ describe("R8-05 claim trust", () => {
     );
     expect(lic!.email).toBeNull();
 
-    // …so it cannot reach the SIGNED doc that products authorize on.
+    // …so it cannot reach the SIGNED doc that products authorize on. Wire v3 moved the
+    // identity profile onto the LICENSE document; the title keeps the finding-doc mapping.
     await ctx.env.HOT.put(
       "p:djdl:flow:S2",
       JSON.stringify({
@@ -989,8 +992,8 @@ describe("R8-05 claim trust", () => {
     const { token } = (await (await poll(ctx, "S2", "dev-1")).json()) as {
       token: string;
     };
-    const cfg = await handleConfig(
-      req(`${ORIGIN}/djdl/config`, {
+    const cfg = await handleLicenseDocument(
+      req(`${ORIGIN}/djdl/license/document`, {
         headers: {
           authorization: `Bearer ${token}`,
           "x-pkey-version": "1.2.3",
@@ -1001,10 +1004,10 @@ describe("R8-05 claim trust", () => {
       ctx.product,
       NOW,
     );
-    const doc = await verifyJws<ManagedConfigDoc>(await cfg.text(), {
+    const doc = await verifyJws<LicenseDoc>(await cfg.text(), {
       [TEST_KID]: TEST_PUB,
     });
-    expect(doc!.payload.profile.email).toBe("");
+    expect(doc!.payload.profile?.email).toBe("");
 
     // …and the portal's email auto-linker (portal/repo.ts:276) finds nothing to link.
     const matches = await ctx.db.all<{ id: string }>(

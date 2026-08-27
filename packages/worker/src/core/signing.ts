@@ -6,24 +6,27 @@
  * `kid` + key are what scope a signed document to one tenant. Every service that mints a
  * document (license, config, and the offline bundle later) signs through here rather than
  * reaching for `signJws` itself, so there is exactly one call site to audit when the envelope
- * changes at wire v3.
+ * changes.
  *
- * Only the SIGNING half of `src/configDoc.ts` moved. Document ASSEMBLY — `buildDoc`,
- * `validatePayload`, `computeETag` — is still config-document-shaped (it reads `ManagedConfigDoc`
- * fields by name) and stays in `configDoc.ts` until it lands in `services/config/document.ts`.
+ * `typ` is the wire-v3 domain separator (WIRE-CONTRACT-V3 §2). One product key signs the
+ * license document, the config document and the trust manifest, so `typ` is the ONLY thing
+ * standing between them: without it a config document could be replayed into a call site
+ * expecting a license document and verify perfectly. It is optional here only because the
+ * trust manifest and the browser-session document still emit their v2 headers until T1.6; a
+ * new signer that omits it is a bug, not a compatibility choice.
  *
  * Key MATERIAL is loaded by `core/products.ts` (`loadProduct` opens the sealed `product_keys`
  * row under the KEK; `loadPublicSigningKey(s)` reads the public halves), and published by
  * `core/trust.ts`. This module never touches storage.
  */
 
-import { signJws } from "@plrs/jws";
-import type { ManagedConfigDoc } from "@plrs/protocol";
+import { signJws, type JwsTyp } from "@plrs/jws";
 
 export async function signDoc(
-  doc: ManagedConfigDoc,
+  doc: unknown,
   signingKeyPem: string,
   kid: string,
+  typ?: JwsTyp,
 ): Promise<string> {
-  return signJws(doc, signingKeyPem, kid);
+  return signJws(doc, signingKeyPem, kid, typ);
 }

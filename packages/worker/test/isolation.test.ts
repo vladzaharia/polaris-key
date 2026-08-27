@@ -9,7 +9,8 @@ import {
   seedProduct,
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
-import { handleConfig, handleActivate } from "../src/licensing.js";
+import { handleActivate } from "../src/services/license/activation.js";
+import { handleLicenseDocument } from "../src/services/license/document.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
@@ -45,7 +46,7 @@ async function activate(
 }
 
 const config = (env: Env, db: SqliteDb, product: Product, token: string) =>
-  handleConfig(
+  handleLicenseDocument(
     mkReq("GET", {
       authorization: `Bearer ${token}`,
       "x-pkey-version": "1.0.0",

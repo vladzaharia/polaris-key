@@ -24,7 +24,13 @@ import {
   type LicenseRow,
 } from "./repo.js";
 import { deleteTokenRecord } from "./kv.js";
-import { deviceMetadata, validateDeviceToken } from "./core/devices.js";
+import { deviceMetadata } from "./core/devices.js";
+// The licence-gated device check. Core's `validateDeviceToken` now answers only "is this token
+// a live device", because a config-only product has devices with no licence at all (D-08); the
+// licence-usability half moved to the License service and is imported here so this surface —
+// which mints a fused v2 document for a browser and moves to `services/identity/` in P3 —
+// behaves byte-identically to before the split.
+import { requireLicensedDevice } from "./services/license/index.js";
 import {
   authorizeDevice,
   docProfile,
@@ -170,9 +176,14 @@ async function browserDoc(
       };
     }
 > {
-  const valid = await validateDeviceToken(env, db, product, record.token, now, {
-    deviceId: record.deviceId,
-  });
+  const valid = await requireLicensedDevice(
+    env,
+    db,
+    product,
+    record.token,
+    now,
+    { deviceId: record.deviceId },
+  );
   if ("error" in valid) return { ok: false };
 
   let payload = await resolveEffective(

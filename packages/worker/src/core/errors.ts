@@ -52,6 +52,28 @@ export function errorResponse(
   );
 }
 
+/**
+ * The wire-v3 NESTED error body — `{"error":{"code":…}, …extra}` (WIRE-CONTRACT-V3 §5, R4).
+ *
+ * Distinct from `errorResponse` above, which still emits the flat v2 shape
+ * (`{"error":"not_found"}`) that the routes not yet moved onto the registry answer with. The
+ * two co-exist deliberately: a handler that MOVED without changing its body keeps the flat
+ * shape so its behaviour is byte-identical after the move, while the surfaces v3 introduces —
+ * the two signed documents, and the registry's own not-found — speak the nested shape from
+ * their first request. Mixing them inside one handler is the thing to avoid; carrying both
+ * across a migration is the point.
+ *
+ * `extra` rides at the TOP level, not inside `error`, because that is where the contract puts
+ * `allowedRange` on the 403 build block.
+ */
+export function wireError(
+  status: number,
+  code: string,
+  extra?: Record<string, unknown>,
+): Response {
+  return json({ error: { code }, ...(extra ?? {}) }, { status });
+}
+
 export function notFound(): Response {
   return errorResponse(404, ErrorCode.NotFound);
 }

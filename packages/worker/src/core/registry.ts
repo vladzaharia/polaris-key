@@ -17,18 +17,26 @@
 import type { ParsedManifest } from "@plrs/manifest";
 import type { Env } from "../env.js";
 import type { Product } from "./products.js";
-import type { DbStatement } from "../db/types.js";
+import type { Db, DbStatement } from "../db/types.js";
 import type { AdminSession } from "../admin/session.js";
 import { ErrorCode, json } from "./errors.js";
 import type { ServiceSlug, ServicesMap } from "./services.js";
 
 /** Everything a service handler is given. `rest` is the path AFTER `/<product>/<service>`,
- *  already split — the service owns its own sub-routing from there. */
+ *  already split — the service owns its own sub-routing from there.
+ *
+ *  `db` and `now` are handed down rather than re-derived: the tests drive the same handlers
+ *  against in-memory SQLite, and a service that opened its own D1 connection could not be
+ *  tested; a service that read its own clock could not be given a fixed epoch, which every
+ *  document-shape assertion depends on. */
 export interface ServiceContext {
   req: Request;
   env: Env;
+  db: Db;
   product: Product;
   rest: string[];
+  /** Epoch seconds for this request — one value for every timestamp it writes or signs. */
+  now: number;
 }
 
 /**

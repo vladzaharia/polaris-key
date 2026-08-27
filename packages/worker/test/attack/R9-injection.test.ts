@@ -31,7 +31,7 @@ import {
 } from "../../src/fingerprint.js";
 import { DEFAULT_SERVICES } from "../../src/core/services.js";
 import { handleAuthCallback, handleAuthStart } from "../../src/oidc.js";
-import { handleMintAuth } from "../../src/edgeMint.js";
+import { handleMintAuth } from "../../src/services/config/mint.js";
 import { handleRelease } from "../../src/release/index.js";
 import {
   type FetchImpl,

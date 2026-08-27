@@ -50,8 +50,12 @@ function makeCtx(env: Env, rest: string[] = ["document"]): ServiceContext {
   return {
     req: new Request("https://key.plrs.im/djdl/license/document") as Request,
     env,
+    // Dispatch never touches either of these — the point of the suite is what happens BEFORE a
+    // descriptor runs — so a stub database and a fixed epoch are enough to satisfy the context.
+    db: null as unknown as ServiceContext["db"],
     product: makeProduct(),
     rest,
+    now: 1_700_000_000,
   };
 }
 

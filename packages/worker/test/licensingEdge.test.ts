@@ -10,11 +10,11 @@ import {
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
-  handleConfig,
   handleDeauthorize,
   handleActivate,
   handleToken,
-} from "../src/licensing.js";
+} from "../src/services/license/activation.js";
+import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleReport } from "../src/core/devices.js";
 import { getDevice, setKeyStatus } from "../src/repo.js";
 import type { Env } from "../src/env.js";
@@ -152,7 +152,13 @@ describe("licensing edge cases", () => {
       "UPDATE licenses SET expires_at = ? WHERE product = 'djdl' AND id = 'lic_djdl_1'",
       NOW + 10,
     );
-    const res = await handleConfig(cfg(token), env, db, product, NOW + 100);
+    const res = await handleLicenseDocument(
+      cfg(token),
+      env,
+      db,
+      product,
+      NOW + 100,
+    );
     expect(res.status).toBe(401);
   });
 
@@ -169,7 +175,7 @@ describe("licensing edge cases", () => {
     );
     expect(deauth.status).toBe(200);
     // The KV token record is gone → config is unauthorized.
-    const res = await handleConfig(cfg(token), env, db, product, NOW);
+    const res = await handleLicenseDocument(cfg(token), env, db, product, NOW);
     expect(res.status).toBe(401);
     // And the device row flips to deauthorized.
     expect((await getDevice(db, "djdl", "dev-1"))?.status).toBe("deauthorized");
@@ -282,10 +288,12 @@ describe("licensing edge cases", () => {
 
     // Old token no longer authenticates; new token does.
     expect(
-      (await handleConfig(cfg(oldToken), env, db, product, NOW + 1)).status,
+      (await handleLicenseDocument(cfg(oldToken), env, db, product, NOW + 1))
+        .status,
     ).toBe(401);
     expect(
-      (await handleConfig(cfg(newToken), env, db, product, NOW + 1)).status,
+      (await handleLicenseDocument(cfg(newToken), env, db, product, NOW + 1))
+        .status,
     ).toBe(200);
   });
 
@@ -327,10 +335,16 @@ describe("licensing edge cases", () => {
   it("two identical configs produce a stable ETag (304)", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
-    const first = await handleConfig(cfg(token), env, db, product, NOW);
+    const first = await handleLicenseDocument(
+      cfg(token),
+      env,
+      db,
+      product,
+      NOW,
+    );
     const etag = first.headers.get("etag")!;
     // Even at a later `now` (different issuedAt) the content ETag is unchanged.
-    const second = await handleConfig(
+    const second = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.2.3",

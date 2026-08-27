@@ -14,10 +14,10 @@ import {
 } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
 import { generateEd25519 } from "../src/keyvault.js";
-import { handleActivate } from "../src/licensing.js";
+import { handleActivate } from "../src/services/license/activation.js";
 import { handleJwks } from "../src/core/trust.js";
 import { handleDiscovery } from "../src/core/discovery.js";
-import { handleMintToken } from "../src/edgeMint.js";
+import { handleMintToken } from "../src/services/config/mint.js";
 
 const ES_PEM =
   "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgav85fotyJ04AYsKF\nDojZziUJg9TuJamPiszlECztPLuhRANCAATgaZHNpIiLDSEQHY4H4BE5HnA9L8hR\n11WcM/ABvqCnO5CWZyHKWoEnKnKnmQwVibF2w5YwimX7Z1hIqJPHGCTB\n-----END PRIVATE KEY-----";
@@ -123,7 +123,10 @@ describe("worker surfaces", () => {
       product: string;
       name: string;
       endpoints: {
+        activate: string;
         config: string;
+        licenseDocument: string;
+        report: string;
         jwks: string;
         authDeviceStart: string;
         authDevicePoll: string;
@@ -144,6 +147,12 @@ describe("worker surfaces", () => {
             devicePollUrl: string;
           } | null;
         };
+        license: {
+          activateUrl: string;
+          enrollUrl: string;
+          documentUrl: string;
+          deauthorizeUrl: string;
+        };
         config: { schemaVersion: number; schemaUrl: string };
         release: {
           enabled: boolean;
@@ -160,7 +169,21 @@ describe("worker surfaces", () => {
 
     expect(body.product).toBe("djdl");
     expect(body.name).toBe("djdl");
-    expect(body.endpoints.config).toBe("https://key.plrs.im/djdl/config");
+    // §R1: the fused `/djdl/config` is gone. `endpoints.config` names the CONFIG document and
+    // `endpoints.licenseDocument` the other half; the report surface moved to core's
+    // `/devices/report`, and the catalog under the config service.
+    expect(body.endpoints.config).toBe(
+      "https://key.plrs.im/djdl/config/document",
+    );
+    expect(body.endpoints.licenseDocument).toBe(
+      "https://key.plrs.im/djdl/license/document",
+    );
+    expect(body.endpoints.report).toBe(
+      "https://key.plrs.im/djdl/devices/report",
+    );
+    expect(body.endpoints.activate).toBe(
+      "https://key.plrs.im/djdl/license/activate",
+    );
     expect(body.endpoints.jwks).toBe(
       "https://key.plrs.im/djdl/.well-known/jwks.json",
     );
@@ -175,7 +198,15 @@ describe("worker surfaces", () => {
       signingPub: TEST_PUB,
       pinnedKeys: { [TEST_KID]: TEST_PUB },
     });
-    expect(body.modules.auth.tokenUrl).toBe("https://key.plrs.im/djdl/token");
+    expect(body.modules.auth.tokenUrl).toBe(
+      "https://key.plrs.im/djdl/license/token",
+    );
+    expect(body.modules.license).toMatchObject({
+      activateUrl: "https://key.plrs.im/djdl/license/activate",
+      enrollUrl: "https://key.plrs.im/djdl/license/enroll",
+      documentUrl: "https://key.plrs.im/djdl/license/document",
+      deauthorizeUrl: "https://key.plrs.im/djdl/license/deauthorize",
+    });
     expect(body.modules.auth.oidc).toMatchObject({
       enabled: true,
       loginUrl: "https://key.plrs.im/djdl/auth/login",
@@ -188,7 +219,7 @@ describe("worker surfaces", () => {
     expect(body.modules.auth.oidc).not.toHaveProperty("clientId");
     expect(body.modules.config).toMatchObject({
       schemaVersion: 1,
-      schemaUrl: "https://key.plrs.im/djdl/schema",
+      schemaUrl: "https://key.plrs.im/djdl/config/schema",
     });
     expect(body.modules.release).toMatchObject({
       enabled: true,

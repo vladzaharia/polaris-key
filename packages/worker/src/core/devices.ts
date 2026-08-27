@@ -82,10 +82,48 @@ import {
 import { bearer } from "../http.js";
 import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
 
+/**
+ * What a valid device token proves, at CORE's level of authority: this token belongs to this
+ * live device row of this product.
+ *
+ * `license` is the row the device is BOUND to, loaded because the caller almost always needs it
+ * and re-reading it would be a second query for the same answer — but it is deliberately NOT
+ * usability-checked here, and it is nullable.
+ *
+ * ── THE SEAM WITH LICENSE (wire v3 §6, D-08) ────────────────────────────────────────────────
+ *
+ * Until v3, "is this token valid" and "is the licence behind it usable" were one question, and
+ * `validateDeviceToken` answered both. They are now different questions, because a product may
+ * run Config with License DISABLED: its devices are registered, hold real `plrst_` tokens, and
+ * have no licence at all. If Core kept refusing a device whose licence is missing or lapsed,
+ * `GET /<p>/config/document` could never answer for such a product, and service independence
+ * would be unimplementable at the only layer that could enforce it.
+ *
+ * So the split is:
+ *
+ *     core.validateDeviceToken          token → device row.        (this function)
+ *     services/license/auth.requireLicensedDevice
+ *                                       token → device row, AND the licence is usable.
+ *
+ * Every surface that was license-gated before still is — `requireLicensedDevice` is what they
+ * call, and it applies `licenseUsable` in exactly the position this function used to, so the
+ * 401s are the same 401s for the same reasons. Only `GET /<p>/config/document` takes the
+ * core-only answer. The two Core surfaces below (`/devices`, `/devices/report`) keep the
+ * licence requirement inline for now: relaxing them belongs with device registration (T1.5),
+ * which is what creates licence-less devices in the first place.
+ */
 export interface ValidDeviceToken {
   tokenHash: string;
-  license: LicenseRow;
+  /** The licence this device is bound to; `null` when the row names one that no longer exists.
+   *  NOT checked for usability — see `licenseUsable` and the seam note above. */
+  license: LicenseRow | null;
   device: DeviceRow;
+}
+
+/** `ValidDeviceToken` narrowed to the license-enabled case: the licence exists AND is usable.
+ *  Produced only by `services/license/auth.requireLicensedDevice`. */
+export interface LicensedDeviceToken extends ValidDeviceToken {
+  license: LicenseRow;
 }
 
 /** The hardware-reconciliation outcome that aborts an authorization. Structurally identical to
@@ -436,14 +474,21 @@ export async function validateDeviceToken(
     return { error: "unauthorized" };
 
   const license = await getLicense(db, product.slug, rec.licenseId);
-  if (!licenseUsable(license, now)) return { error: "unauthorized" };
 
   // R10-12 — the cache is back-filled ONLY once every check above has passed. Writing it as
   // soon as the device row was found (the previous behaviour) meant replaying a token that had
   // just been revoked — deauthorized device, disabled or expired license — silently recreated
   // the KV record that `deleteTokenRecord` had purged, so a "revoked" credential kept
   // re-materialising its own hot-path entry on every attempt.
-  if (!cached) await putTokenRecord(env, product.slug, tokenHash, rec);
+  //
+  // `licenseUsable` survives here as a CACHE-WRITE guard even though it is no longer an
+  // authorization decision (that moved to `requireLicensedDevice`). Splitting the two questions
+  // must not un-fix R10-12: a token whose licence is disabled or expired still re-warms
+  // nothing, whatever the caller goes on to decide. A device with NO licence row is the D-08
+  // shape rather than a revocation, so it is cached normally.
+  if (!cached && (license === null || licenseUsable(license, now))) {
+    await putTokenRecord(env, product.slug, tokenHash, rec);
+  }
   return { tokenHash, license, device };
 }
 
@@ -465,9 +510,39 @@ export async function rotateDeviceToken(
   await putTokenRecord(env, product.slug, tokenHash, {
     product: product.slug,
     deviceId: valid.device.device_id,
-    licenseId: valid.license.id,
+    // The DEVICE row's binding, not the licence object's id — `validateDeviceToken` has
+    // already asserted the two agree, and reading it here keeps rotation working for a device
+    // that holds no licence row at all (§6).
+    licenseId: valid.device.license_id,
   });
   return token;
+}
+
+/**
+ * Fold the request's client metadata into the device row and stamp `last_seen`.
+ *
+ * Was inline in `/config`, which was the one hot path every SDK hit on a schedule. Wire v3
+ * splits that request into two documents, so the touch moves into Core and BOTH document
+ * routes call it: whichever services a product runs, a device that is talking to us is
+ * recorded as seen. The write is a full-row upsert of values that are almost always unchanged,
+ * so calling it twice in one sync is idempotent rather than merely tolerable.
+ */
+export async function touchDeviceMetadata(
+  db: Db,
+  device: DeviceRow,
+  meta: ReturnType<typeof deviceMetadata>,
+  now: number,
+): Promise<void> {
+  await upsertDevice(db, {
+    ...device,
+    last_seen: now,
+    ua: meta.userAgent ?? device.ua,
+    platform: meta.platform ?? device.platform ?? null,
+    arch: meta.arch ?? device.arch ?? null,
+    app_version: meta.appVersion ?? device.app_version ?? null,
+    sdk_name: meta.sdkName ?? device.sdk_name ?? null,
+    sdk_version: meta.sdkVersion ?? device.sdk_version ?? null,
+  });
 }
 
 export function deviceMetadata(req: Request): {
@@ -549,7 +624,12 @@ export async function handleDevices(
 ): Promise<Response> {
   const token = bearer(req);
   const valid = await validateDeviceToken(env, db, product, token, now);
-  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+  // `/devices` lists the SEATS of a licence, so it needs one — and it kept the usability
+  // requirement `validateDeviceToken` used to apply for it, byte for byte. Relaxing this for
+  // registered-without-licence devices belongs with `POST /<p>/devices/register` (T1.5), which
+  // is what creates them; until then this surface behaves exactly as it did.
+  if ("error" in valid || !licenseUsable(valid.license, now))
+    return errorResponse(401, ErrorCode.Unauthorized);
 
   const devices = await listDevicesByLicense(
     db,
@@ -718,7 +798,15 @@ function factsFromReport(
   };
 }
 
-/** POST /<product>/config/report — store the device's reported (non-secret) snapshot. */
+/**
+ * POST /<product>/devices/report — store the device's reported (non-secret) snapshot.
+ *
+ * Relocated from `/<product>/config/report` (R1): it was always licence anti-fraud telemetry
+ * living under a config path, and wire v3 §6 makes it a Core surface. The handler is unchanged
+ * — same allowlist, same caps, same 401 — including the licence-usability requirement, which
+ * `validateDeviceToken` used to apply on its behalf and is now explicit. T1.5 revisits it with
+ * device registration.
+ */
 export async function handleReport(
   req: Request,
   env: Env,
@@ -729,7 +817,8 @@ export async function handleReport(
   if (req.method !== "POST") return methodNotAllowed();
   const token = bearer(req);
   const valid = await validateDeviceToken(env, db, product, token, now);
-  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+  if ("error" in valid || !licenseUsable(valid.license, now))
+    return errorResponse(401, ErrorCode.Unauthorized);
   const len = req.headers.get("content-length");
   if (len && Number(len) > 16 * 1024)
     return errorResponse(413, "body_too_large", "report body too large");

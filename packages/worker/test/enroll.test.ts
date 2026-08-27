@@ -15,8 +15,10 @@ import {
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
-import { handleEnroll } from "../src/enroll.js";
-import { handleActivate, handleConfig } from "../src/licensing.js";
+import { handleEnroll } from "../src/services/license/enroll.js";
+import { handleActivate } from "../src/services/license/activation.js";
+import { handleLicenseDocument } from "../src/services/license/document.js";
+import { handleConfigDocument } from "../src/services/config/document.js";
 import { activateFromIdentity } from "../src/oidc.js";
 import { countActiveDevices, getLicense, listAudit } from "../src/repo.js";
 
@@ -256,22 +258,22 @@ describe("POST /<product>/enroll", () => {
     expect(enrolls).toHaveLength(1);
   });
 
-  it("issues a config doc the client can actually use", async () => {
+  it("issues documents the client can actually use", async () => {
     const body = (await (await enroll(MACHINE_A, "dev-a")).json()) as {
       token: string;
     };
-    const res = await handleConfig(
-      mkReq("GET", {
-        authorization: `Bearer ${body.token}`,
-        "x-pkey-device": "dev-a",
-      }),
-      env,
-      db,
-      await product(),
-      NOW,
-    );
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toBe("application/jwt");
+    const req = mkReq("GET", {
+      authorization: `Bearer ${body.token}`,
+      "x-pkey-device": "dev-a",
+    });
+    const p = await product();
+    // An enrolled device holds an ordinary licence, so BOTH halves of the split document are
+    // reachable with the token enrolment handed back.
+    for (const handler of [handleLicenseDocument, handleConfigDocument]) {
+      const res = await handler(req, env, db, p, NOW);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/jwt");
+    }
   });
 });
 

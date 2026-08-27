@@ -32,7 +32,7 @@ import {
 import { hasAnyAdminGrant } from "../../src/admin/authz.js";
 import { hashKey } from "../../src/crypto.js";
 import { listAudit } from "../../src/repo.js";
-import { handleMintAuth } from "../../src/edgeMint.js";
+import { handleMintAuth } from "../../src/services/config/mint.js";
 import { secureResponse } from "../../src/securityHeaders.js";
 import { loadProduct } from "../../src/core/products.js";
 import {

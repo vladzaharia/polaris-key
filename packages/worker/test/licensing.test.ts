@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { verifyJws } from "@plrs/jws";
-import type { ManagedConfigDoc } from "@plrs/protocol";
+import { verifyConfigDoc, verifyLicenseDoc } from "@plrs/client-core";
+import type { LicenseDoc } from "@plrs/protocol/license";
+import type { ConfigDoc } from "@plrs/protocol/config";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -15,11 +17,11 @@ import {
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
-  handleAccount,
-  handleConfig,
   handleActivate,
   handleToken,
-} from "../src/licensing.js";
+} from "../src/services/license/activation.js";
+import { handleLicenseDocument } from "../src/services/license/document.js";
+import { handleConfigDocument } from "../src/services/config/document.js";
 import { handleDevices } from "../src/core/devices.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
@@ -63,7 +65,12 @@ describe("licensing", () => {
     expect(product).toBeTruthy();
   });
 
-  it("activate → config returns a verifiable signed doc scoped to the product", async () => {
+  // The two documents are asserted through `@plrs/client-core`'s verifiers rather than through
+  // a hand-written shape check. That is the whole point of the exercise: client-core is the
+  // reference implementation every SDK's verifier is ported from, so a document it accepts is a
+  // document the wire contract accepts, and a field the worker drifts on fails here rather than
+  // in a language runner three phases later.
+  it("activate → license/document returns a v3 license doc the reference verifier accepts", async () => {
     const { licenseId, key } = await seedLicenseWithKey(db, "djdl", {
       entitlements: {
         polarisVpn: { state: "enforced", value: true, updatedAt: NOW },
@@ -71,7 +78,7 @@ describe("licensing", () => {
     });
     const token = await activate(env, db, product, key, "dev-1");
 
-    const res = await handleConfig(
+    const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.2.3",
@@ -82,21 +89,149 @@ describe("licensing", () => {
       NOW,
     );
     expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/jwt");
     const jws = await res.text();
-    const v = await verifyJws<ManagedConfigDoc>(jws, TRUST);
-    expect(v).not.toBeNull();
-    expect(v!.kid).toBe(TEST_KID);
-    expect(v!.payload.aud).toBe("djdl");
-    expect(v!.payload.iss).toBe("key.plrs.im");
-    expect(v!.payload.deviceId).toBe("dev-1");
-    expect(v!.payload.licenseId).toBe(licenseId);
-    expect(v!.payload.payload.entitlements.polarisVpn?.value).toBe(true);
+
+    // The frozen envelope: signed by the product's kid, and stamped `plrs-license+jws` so it
+    // cannot be replayed where a config document is expected.
+    const raw = await verifyJws<LicenseDoc>(jws, TRUST);
+    expect(raw).not.toBeNull();
+    expect(raw!.kid).toBe(TEST_KID);
+    expect(
+      JSON.parse(
+        atob(jws.split(".")[0]!.replace(/-/g, "+").replace(/_/g, "/")),
+      ),
+    ).toMatchObject({
+      alg: "EdDSA",
+      typ: "plrs-license+jws",
+      kid: TEST_KID,
+    });
+
+    const doc = await verifyLicenseDoc(jws, {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+      now: NOW,
+    });
+    expect(doc).not.toBeNull();
+    expect(doc!.iss).toBe("plrs.im"); // host-neutral in v3 (D-09), not `key.plrs.im`
+    expect(doc!.licenseId).toBe(licenseId);
+    expect(doc!.issuedAt).toBe(NOW);
+    expect(doc!.expiresAt).toBe(NOW + 3600);
+    // graceUntil = issuedAt + maxOfflineDays * 86400; the seeded product default is 30 days.
+    expect(doc!.graceUntil).toBe(NOW + 30 * 86_400);
+    expect(doc!.profile?.email).toBe("ada@example.com");
+    // Grants — and ONLY grants (D-20).
+    expect(doc!.entitlements.polarisVpn?.value).toBe(true);
+    expect(doc).not.toHaveProperty("config");
+    expect(doc).not.toHaveProperty("secrets");
+    expect(doc).not.toHaveProperty("payload");
+  });
+
+  it("config/document returns a v3 config doc carrying settings and no license fields", async () => {
+    const { key } = await seedLicenseWithKey(db, "djdl", {
+      config: {
+        "app.theme": { state: "enforced", value: "dark", updatedAt: NOW },
+      },
+      entitlements: {
+        polarisVpn: { state: "enforced", value: true, updatedAt: NOW },
+      },
+    });
+    // A catalog that declares the key, so it survives the pre-sign prune.
+    await db.run("DELETE FROM product_schema WHERE product = ?", "djdl");
+    await db.run(
+      "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?,?,?,?,?)",
+      "djdl",
+      7,
+      JSON.stringify({
+        schemaVersion: 7,
+        entries: [
+          {
+            key: "app.theme",
+            kind: "config",
+            category: "app",
+            label: "Theme",
+            description: "",
+            schema: { type: "string" },
+            managementDefault: "default",
+          },
+        ],
+      }),
+      1,
+      NOW,
+    );
+    product = (await loadProduct(env, db, "djdl"))!;
+    const token = await activate(env, db, product, key, "dev-1");
+
+    const res = await handleConfigDocument(
+      mkReq("GET", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/jwt");
+    const jws = await res.text();
+    expect(
+      JSON.parse(
+        atob(jws.split(".")[0]!.replace(/-/g, "+").replace(/_/g, "/")),
+      ),
+    ).toMatchObject({
+      typ: "plrs-config+jws",
+    });
+
+    const doc = await verifyConfigDoc(jws, {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+      now: NOW,
+    });
+    expect(doc).not.toBeNull();
+    expect(doc!.iss).toBe("plrs.im");
+    // The PRODUCT's catalog version, not the wire version.
+    expect(doc!.schemaVersion).toBe(7);
+    expect(doc!.config["app.theme"]).toEqual({
+      state: "enforced",
+      value: "dark",
+      updatedAt: NOW,
+    });
+    expect(doc!.secrets).toEqual({});
+    // §2.2 — no licence fields whatsoever, entitlements included.
+    expect(doc).not.toHaveProperty("licenseId");
+    expect(doc).not.toHaveProperty("profile");
+    expect(doc).not.toHaveProperty("entitlements");
+  });
+
+  it("gives the two documents independent ETags", async () => {
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    const token = await activate(env, db, product, key, "dev-1");
+    const get = async (
+      handler: typeof handleLicenseDocument,
+    ): Promise<string> =>
+      (
+        await handler(
+          mkReq("GET", { authorization: `Bearer ${token}` }),
+          env,
+          db,
+          product,
+          NOW,
+        )
+      ).headers.get("etag")!;
+
+    const licenseTag = await get(handleLicenseDocument);
+    const configTag = await get(handleConfigDocument);
+    expect(licenseTag).toBeTruthy();
+    expect(configTag).toBeTruthy();
+    // §5 applies the ETag rule PER DOCUMENT: a licence change must not force a settings
+    // re-download, which is only true if the two tags are computed over disjoint content.
+    expect(licenseTag).not.toBe(configTag);
   });
 
   it("returns 304 when If-None-Match matches", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
-    const first = await handleConfig(
+    const first = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.2.3",
@@ -108,7 +243,7 @@ describe("licensing", () => {
     );
     const etag = first.headers.get("etag")!;
     expect(etag).toBeTruthy();
-    const second = await handleConfig(
+    const second = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.2.3",
@@ -191,28 +326,25 @@ describe("licensing", () => {
     expect(body.deviceCount).toBe(1);
   });
 
-  it("account and devices endpoints expose friendly self-service management", async () => {
+  it("the devices endpoint exposes friendly self-service management", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
 
-    const account = await handleAccount(
-      mkReq("GET", {
-        authorization: `Bearer ${token}`,
-      }),
+    // `GET /<p>/account` used to open this test by returning the licence plus the same device
+    // list. Wire v3 removes it (§R1): its licence half is the license document and its device
+    // half is exactly the `GET /devices` call below, so it was a third name for two answers.
+    const current = await handleDevices(
+      mkReq("GET", { authorization: `Bearer ${token}` }),
       env,
       db,
       product,
       NOW,
     );
-    expect(account.status).toBe(200);
-    const accountBody = (await account.json()) as {
-      currentDeviceId: string;
-      devices: Array<{ id: string; current: boolean }>;
-    };
-    expect(accountBody.currentDeviceId).toBe("dev-1");
-    expect(accountBody.devices).toEqual([
-      expect.objectContaining({ id: "dev-1", current: true }),
-    ]);
+    expect(current.status).toBe(200);
+    expect(await current.json()).toMatchObject({
+      currentDeviceId: "dev-1",
+      devices: [expect.objectContaining({ id: "dev-1", current: true })],
+    });
 
     const rename = await handleDevices(
       mkReq(
@@ -260,7 +392,7 @@ describe("licensing", () => {
     );
     expect(remove.status).toBe(200);
 
-    const rejected = await handleConfig(
+    const rejected = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.2.3",
@@ -300,7 +432,7 @@ describe("licensing", () => {
       },
     });
     const token = await activate(env, db, product, key, "dev-1");
-    const res = await handleConfig(
+    const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.0.0",
@@ -311,16 +443,17 @@ describe("licensing", () => {
       NOW,
     );
     expect(res.status).toBe(403);
-    const body = (await res.json()) as {
-      reason: string;
-      allowedRange: { min: string };
-    };
-    expect(body.reason).toBe("version-too-old");
-    expect(body.allowedRange.min).toBe("2.0.0");
+    // §5 / R4: the nested v3 error body, with `allowedRange` beside it rather than inside it.
+    // `code` collapses both version outcomes into `version_blocked`; `reason` keeps the
+    // distinction a client needs to word the message.
+    expect(await res.json()).toEqual({
+      error: { code: "version_blocked", reason: "version-too-old" },
+      allowedRange: { min: "2.0.0", max: "99.0.0" },
+    });
   });
 
   it("rejects an unknown token", async () => {
-    const res = await handleConfig(
+    const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: "Bearer pkeyt_nope",
         "x-pkey-version": "1.2.3",
@@ -343,7 +476,7 @@ describe("licensing", () => {
       "dev-1",
     );
 
-    const res = await handleConfig(
+    const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.2.3",
@@ -427,7 +560,7 @@ describe("licensing", () => {
     await setLicenseProfiles(db, "djdl", licenseId, ["base", "override"]);
     const token = await activate(env, db, product, key, "dev-1");
 
-    const res = await handleConfig(
+    const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.2.3",
@@ -438,9 +571,23 @@ describe("licensing", () => {
       NOW,
     );
     expect(res.status).toBe(200);
-    const v = await verifyJws<ManagedConfigDoc>(await res.text(), TRUST);
-    expect(v!.payload.payload.config["app.theme"]?.value).toBe("dark");
-    expect(v!.payload.payload.config["app.region"]?.value).toBe("us");
+    // Config values ride the CONFIG document now; the license document above only proves the
+    // same token reaches both.
+    const cfg = await handleConfigDocument(
+      mkReq("GET", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const doc = await verifyConfigDoc(await cfg.text(), {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+      now: NOW,
+    });
+    expect(doc!.config["app.theme"]?.value).toBe("dark");
+    expect(doc!.config["app.region"]?.value).toBe("us");
   });
 
   it("requires the current bearer token to replace a token", async () => {
@@ -497,7 +644,7 @@ describe("licensing", () => {
       licenseId: "lic_djdl_1",
     });
 
-    const oldConfig = await handleConfig(
+    const oldConfig = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${oldToken}`,
         "x-pkey-version": "1.2.3",
@@ -509,7 +656,7 @@ describe("licensing", () => {
     );
     expect(oldConfig.status).toBe(401);
 
-    const newConfig = await handleConfig(
+    const newConfig = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${newToken}`,
         "x-pkey-version": "1.2.3",
@@ -538,7 +685,7 @@ describe("licensing", () => {
     );
     expect(res.status).toBe(401);
 
-    const stillValid = await handleConfig(
+    const stillValid = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.2.3",
@@ -564,7 +711,7 @@ describe("licensing", () => {
       blocked.key,
       "dev-block",
     );
-    const blockedRes = await handleConfig(
+    const blockedRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${blockedToken}`,
         "x-pkey-version": "1.0.0",
@@ -576,9 +723,9 @@ describe("licensing", () => {
       NOW,
     );
     expect(blockedRes.status).toBe(403);
-    expect(((await blockedRes.json()) as { reason: string }).reason).toBe(
-      "channel-not-entitled",
-    );
+    expect(await blockedRes.json()).toMatchObject({
+      error: { code: "channel_not_allowed", reason: "channel-not-entitled" },
+    });
 
     // A second license with the admin channel policy granted.
     const granted = await seedLicenseWithKey(db, "djdl", {
@@ -592,7 +739,7 @@ describe("licensing", () => {
       granted.key,
       "dev-ok",
     );
-    const okRes = await handleConfig(
+    const okRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${grantedToken}`,
         "x-pkey-version": "1.0.0",
@@ -612,7 +759,7 @@ describe("licensing", () => {
       maxVersion: "2.0.0",
     });
     const token = await activate(env, db, product, key, "dev-1");
-    const res = await handleConfig(
+    const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "3.0.0",
@@ -623,14 +770,12 @@ describe("licensing", () => {
       NOW,
     );
     expect(res.status).toBe(403);
-    const body = (await res.json()) as {
-      reason: string;
-      allowedRange: { max: string };
-    };
-    expect(body.reason).toBe("version-too-new");
-    expect(body.allowedRange.max).toBe("2.0.0");
+    expect(await res.json()).toMatchObject({
+      error: { code: "version_blocked", reason: "version-too-new" },
+      allowedRange: { max: "2.0.0" },
+    });
     // A build inside the tightened window still passes.
-    const okRes = await handleConfig(
+    const okRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.5.0",
@@ -652,7 +797,7 @@ describe("licensing", () => {
     const token = await activate(env, db, product, key, "dev-1");
 
     // The tier's channel grant lets a staging build (signalled via header) through.
-    const chanRes = await handleConfig(
+    const chanRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "1.5.0",
@@ -666,7 +811,7 @@ describe("licensing", () => {
     expect(chanRes.status).toBe(200);
 
     // The tier's maxVersion window blocks a too-new stable build.
-    const winRes = await handleConfig(
+    const winRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-version": "3.0.0",
@@ -677,8 +822,8 @@ describe("licensing", () => {
       NOW,
     );
     expect(winRes.status).toBe(403);
-    expect(((await winRes.json()) as { reason: string }).reason).toBe(
-      "version-too-new",
-    );
+    expect(await winRes.json()).toMatchObject({
+      error: { code: "version_blocked", reason: "version-too-new" },
+    });
   });
 });

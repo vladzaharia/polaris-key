@@ -6,16 +6,18 @@
 // signs. Apple MusicKit's ES256 developer token is the first instance; RS256 and EdDSA are
 // also supported. Reserved claims (iat/exp/nbf/aud) are server/recipe-controlled; the caller
 // must hold a valid licensed token (confused-deputy guard).
+//
+// Moved from `src/edgeMint.ts` to `/<p>/config/mint/:id/{token,auth}` (D-19): edge minting is
+// how a catalog SECRET with `delivery: "edgeMint"` actually reaches a runtime, so it belongs
+// with the service that owns the catalog rather than sitting at the product root.
 
-import type { Env } from "./env.js";
-import type { Db } from "./db/types.js";
-import { type Product, openProductSecret } from "./core/products.js";
-import { bearer } from "./http.js";
-import { errorResponse } from "./core/errors.js";
-import { clientIp, rateLimitOk } from "./core/rateLimit.js";
-import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
+import type { Env, Db } from "../../core/platform.js";
+import { bearer, staticHtmlSecurityHeaders } from "../../core/platform.js";
+import { type Product, openProductSecret } from "../../core/products.js";
+import { errorResponse } from "../../core/errors.js";
+import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws } from "@plrs/jws";
-import { validateDeviceToken } from "./core/devices.js";
+import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 
 interface EdgeMintRow {
   product: string;
@@ -165,7 +167,7 @@ function sanitizeTemplate(t: Record<string, unknown>): Record<string, unknown> {
   return rest;
 }
 
-/** POST/GET /<product>/mint/<id>/token — mint an edge token for the recipe. */
+/** POST/GET /<product>/config/mint/<id>/token — mint an edge token for the recipe. */
 export async function handleMintToken(
   req: Request,
   env: Env,
@@ -184,11 +186,21 @@ export async function handleMintToken(
   ) {
     return errorResponse(429, "rate_limited", "too many mint requests");
   }
-  // Confused-deputy guard: only a licensed device may mint.
+  // Confused-deputy guard: only a LICENSED device may mint. This is the one place inside the
+  // config service that still asks a licence question, and it is asked with Core's pure
+  // `licenseUsable` predicate rather than by importing License — a service may not import
+  // another service, and the boundary is not worth spending on a two-line check.
+  //
+  // The check is byte-identical to what `validateDeviceToken` used to apply on this handler's
+  // behalf before the split (`services/license/auth.ts`). Its consequence for a config-only
+  // product (D-08) is honest and known: with no licence there is nothing to be licensed by, so
+  // edge minting is unavailable until device registration lands (T1.5) and this guard can be
+  // restated as "a registered device of this product".
   const token = bearer(req);
   if (!token) return errorResponse(401, "unauthorized");
   const valid = await validateDeviceToken(env, db, product, token, now);
-  if ("error" in valid) return errorResponse(401, "unauthorized");
+  if ("error" in valid || !licenseUsable(valid.license, now))
+    return errorResponse(401, "unauthorized");
 
   const cfg = await getEdgeMintConfig(db, product.slug, mintId);
   if (!cfg) return errorResponse(404, "not_found", "no such edge-mint recipe");
@@ -259,7 +271,7 @@ export async function handleMintToken(
 }
 
 /**
- * GET /<product>/mint/<id>/auth — serve the recipe's HTML auth page (e.g. MusicKit JS).
+ * GET /<product>/config/mint/<id>/auth — serve the recipe's HTML auth page (e.g. MusicKit JS).
  *
  * `auth_page_template` is operator-supplied HTML rendered verbatim on the platform origin,
  * i.e. a script-execution primitive pointed at the admin cookie (R1-05 + R1-09). It ships

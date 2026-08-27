@@ -9,7 +9,7 @@ import {
   seedProduct,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
-import { handleActivate } from "../src/licensing.js";
+import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
 import { hashKey } from "../src/crypto.js";
 import { getTokenRecord } from "../src/kv.js";

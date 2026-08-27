@@ -28,7 +28,13 @@ import type { Env } from "../../src/env.js";
 import type { Db } from "../../src/db/types.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 import { Catalog } from "@plrs/catalog";
-import { handleActivate, handleConfig } from "../../src/licensing.js";
+import { handleActivate } from "../../src/services/license/activation.js";
+// Wire v3 split the fused `GET /<p>/config` into two signed documents. The catalog-validation
+// lane below belongs to the CONFIG document (it is the one that prunes `config`/`secrets`
+// against the catalog); the cost/metadata lanes use the LICENSE document, which does the same
+// auth + merge + sign work and additionally runs the build gate.
+import { handleConfigDocument } from "../../src/services/config/document.js";
+import { handleLicenseDocument } from "../../src/services/license/document.js";
 import { handleSchema as handleAdminSchema } from "../../src/admin/handlers/schema.js";
 import { handleRelease } from "../../src/release/index.js";
 import { matchRoute } from "../../src/router.js";
@@ -139,7 +145,7 @@ async function activate(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// R10-01 — Ajv codegen on the /config hot path ⇒ guaranteed 500 on workerd
+// R10-01 — Ajv codegen on the config-document hot path ⇒ guaranteed 500 on workerd
 // ═════════════════════════════════════════════════════════════════════════════
 
 // FIXED (R10-01): `@plrs/catalog` interprets schema fragments instead of compiling
@@ -148,13 +154,13 @@ async function activate(
 // `withoutCodegen` harness is retained deliberately: it is what makes these Node tests
 // meaningful about workerd. See the workerd re-verification in R10-dos.md §Remediation.
 describe("R10-01 catalog validation no longer generates code at request time", () => {
-  it("GET /<product>/config performs ZERO dynamic codegen", async () => {
+  it("GET /<product>/config/document performs ZERO dynamic codegen", async () => {
     const { db, env, product } = await seedRealCatalogProduct();
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
 
     const { result, codegen } = await countCodegen(() =>
-      handleConfig(
+      handleConfigDocument(
         mkReq("GET", { authorization: `Bearer ${token}` }),
         env,
         db,
@@ -172,7 +178,7 @@ describe("R10-01 catalog validation no longer generates code at request time", (
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
     const call = () =>
-      handleConfig(
+      handleConfigDocument(
         mkReq("GET", { authorization: `Bearer ${token}` }),
         env,
         db,
@@ -186,13 +192,13 @@ describe("R10-01 catalog validation no longer generates code at request time", (
     expect(second.codegen).toBe(0);
   });
 
-  it("with codegen disabled (as workerd does) GET /config still returns a signed 200", async () => {
+  it("with codegen disabled (as workerd does) GET /config/document still returns a signed 200", async () => {
     const { db, env, product } = await seedRealCatalogProduct();
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
 
     const res = await withoutCodegen(() =>
-      handleConfig(
+      handleConfigDocument(
         mkReq("GET", { authorization: `Bearer ${token}` }),
         env,
         db,
@@ -219,7 +225,7 @@ describe("R10-01 catalog validation no longer generates code at request time", (
     const token = await activate(env, db, product, key, "dev-1");
 
     const res = await withoutCodegen(() =>
-      handleConfig(
+      handleConfigDocument(
         mkReq("GET", { authorization: `Bearer ${token}` }),
         env,
         db,
@@ -233,11 +239,11 @@ describe("R10-01 catalog validation no longer generates code at request time", (
         (await res.text()).split(".")[1] as string,
         "base64url",
       ).toString(),
-    ) as { payload: { config: Record<string, { value: unknown }> } };
+    ) as { config: Record<string, { value: unknown }> };
     // The out-of-range override never reaches the signed doc…
-    expect(claims.payload.config["run.concurrency"]?.value).not.toBe(9999);
+    expect(claims.config["run.concurrency"]?.value).not.toBe(9999);
     // …while a schema-valid override on the same request does.
-    expect(claims.payload.config["ui.theme"]?.value).toBe("light");
+    expect(claims.config["ui.theme"]?.value).toBe("light");
   });
 
   it("with codegen disabled, publishing a catalog via the admin API succeeds", async () => {
@@ -948,7 +954,7 @@ describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () =
     expect(consumed).toBe(MB * 1024 * 1024);
   });
 
-  it("there is no Content-Length precheck on the webhook (unlike /config/report)", async () => {
+  it("there is no Content-Length precheck on the webhook (unlike /devices/report)", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), []);
     env.GITHUB_WEBHOOK_SECRET = "s3cret";
@@ -1015,7 +1021,7 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("R10-08 device metadata headers are persisted with no length cap", () => {
-  it("GET /config writes 16 KiB header values verbatim into `devices`", async () => {
+  it("GET /license/document writes 16 KiB header values verbatim into `devices`", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
@@ -1025,7 +1031,7 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     const token = await activate(env, db, product, key, "dev-1");
 
     const big = "U".repeat(16 * 1024);
-    const res = await handleConfig(
+    const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "user-agent": big,
@@ -1043,7 +1049,7 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     expect(res.status).toBe(200);
 
     const row = await getDevice(db, "djdl", "dev-1");
-    // Six columns × 16 KiB, versus the 128-char cap the /config/report path applies.
+    // Six columns × 16 KiB, versus the 128-char cap the /devices/report path applies.
     expect(row?.ua?.length).toBe(16 * 1024);
     expect(row?.platform?.length).toBe(16 * 1024);
     expect(row?.arch?.length).toBe(16 * 1024);
@@ -1065,7 +1071,7 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// R10-10 — /config is the priciest unrate-limited endpoint (D1 write per poll)
+// R10-10 — the document routes are the priciest unrate-limited endpoints (D1 write per poll)
 // ═════════════════════════════════════════════════════════════════════════════
 
 /** Wrap a Db and tally reads/writes, so the per-request D1 cost is measurable. */
@@ -1104,27 +1110,32 @@ function countingDb(inner: Db): { db: Db; reads: number; writes: number } {
   };
 }
 
-describe("R10-10 GET /<p>/config: no rate limit, one D1 write per poll", () => {
+describe("R10-10 GET /<p>/{license,config}/document: no rate limit, one D1 write per poll", () => {
+  // A sync is now TWO requests, so the per-poll cost is the pair's. Measuring them together
+  // keeps this pinning the same quantity the fused `/config` measured — total D1 work an
+  // unauthenticated-to-the-limiter poll loop can force — rather than half of it.
   it("each poll costs multiple D1 reads plus a device row write", async () => {
     const { db, env, product } = await seedRealCatalogProduct();
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
 
     const counted = countingDb(db);
-    const res = await handleConfig(
-      mkReq("GET", { authorization: `Bearer ${token}` }),
-      env,
-      counted.db,
-      product,
-      NOW,
-    );
-    expect(res.status).toBe(200);
+    for (const handler of [handleLicenseDocument, handleConfigDocument]) {
+      const res = await handler(
+        mkReq("GET", { authorization: `Bearer ${token}` }),
+        env,
+        counted.db,
+        product,
+        NOW,
+      );
+      expect(res.status).toBe(200);
+    }
     // ≥1 write per poll (upsertDevice) — unmetered, and D1 is shared by ALL products.
     expect(counted.writes).toBeGreaterThanOrEqual(1);
     expect(counted.reads).toBeGreaterThanOrEqual(5);
     // Recorded for the finding write-up; not an assertion target.
     console.log(
-      `[R10-10] one GET /config = ${counted.reads} D1 reads + ${counted.writes} D1 writes`,
+      `[R10-10] one document poll = ${counted.reads} D1 reads + ${counted.writes} D1 writes`,
     );
   });
 
@@ -1133,7 +1144,7 @@ describe("R10-10 GET /<p>/config: no rate limit, one D1 write per poll", () => {
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
     for (let i = 0; i < 200; i++) {
-      const res = await handleConfig(
+      const res = await handleLicenseDocument(
         mkReq("GET", {
           authorization: `Bearer ${token}`,
           "cf-connecting-ip": "203.0.113.9",

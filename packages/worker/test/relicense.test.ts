@@ -7,7 +7,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { verifyJws } from "@plrs/jws";
-import type { ManagedConfigDoc } from "@plrs/protocol";
+import type { LicenseDoc } from "@plrs/protocol/license";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -24,7 +24,8 @@ import {
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
-import { handleActivate, handleConfig } from "../src/licensing.js";
+import { handleActivate } from "../src/services/license/activation.js";
+import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleAdmin } from "../src/admin/index.js";
 import {
   ADMIN_COOKIE,
@@ -71,7 +72,7 @@ describe("remote re-licensing", () => {
   });
 
   async function config(): Promise<Response> {
-    return handleConfig(
+    return handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "x-pkey-device": DEVICE,
@@ -83,9 +84,9 @@ describe("remote re-licensing", () => {
     );
   }
 
-  async function docFrom(res: Response): Promise<ManagedConfigDoc> {
+  async function docFrom(res: Response): Promise<LicenseDoc> {
     const verified = await verifyJws(await res.text(), TRUST);
-    return verified!.payload as ManagedConfigDoc;
+    return verified!.payload as LicenseDoc;
   }
 
   async function adminPatch(body: unknown): Promise<Response> {
@@ -113,24 +114,24 @@ describe("remote re-licensing", () => {
 
   it("exposes the tier to the client as entitlements", async () => {
     const doc = await docFrom(await config());
-    expect(doc.payload.entitlements["license.tier"]).toMatchObject({
+    expect(doc.entitlements["license.tier"]).toMatchObject({
       state: "enforced",
       value: "free",
     });
-    expect(doc.payload.entitlements["license.tierLabel"]).toMatchObject({
+    expect(doc.entitlements["license.tierLabel"]).toMatchObject({
       value: "free",
     });
   });
 
   it("changes the client's entitlements on the next config fetch", async () => {
     const before = await docFrom(await config());
-    expect(before.payload.entitlements["deviceLimit"]?.value).toBe(5);
+    expect(before.entitlements["deviceLimit"]?.value).toBe(5);
 
     expect((await adminPatch({ tier: "pro" })).status).toBe(200);
 
     const after = await docFrom(await config());
-    expect(after.payload.entitlements["license.tier"]?.value).toBe("pro");
-    expect(after.payload.entitlements["deviceLimit"]?.value).toBe(10);
+    expect(after.entitlements["license.tier"]?.value).toBe("pro");
+    expect(after.entitlements["deviceLimit"]?.value).toBe(10);
   });
 
   it("changes the ETag, which is how the SDK detects a real change", async () => {
@@ -216,7 +217,7 @@ describe("remote re-licensing", () => {
   it("omits the tier entitlements when a license has no tier", async () => {
     await adminPatch({ tier: null });
     const doc = await docFrom(await config());
-    expect(doc.payload.entitlements["license.tier"]).toBeUndefined();
+    expect(doc.entitlements["license.tier"]).toBeUndefined();
   });
 
   // FIXED (R3-06, admin paths): `policy_expiry_days` was honoured by `/enroll` and the OIDC

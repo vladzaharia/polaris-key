@@ -4,9 +4,10 @@ import { D1Db } from "./db/d1.js";
 import { matchRoute, type Route } from "./router.js";
 import { loadProduct } from "./core/products.js";
 import { handleDiscovery } from "./core/discovery.js";
-import { handleSchema } from "./schema.js";
 import { handleJwks, handleTrustManifest } from "./core/trust.js";
-import { handleMintAuth, handleMintToken } from "./edgeMint.js";
+import { dispatchService, type ServiceRegistry } from "./core/registry.js";
+import { licenseService } from "./services/license/index.js";
+import { configService } from "./services/config/index.js";
 import {
   handleAuthCallback,
   handleAuthDevicePoll,
@@ -27,32 +28,31 @@ import { handlePortal } from "./portal/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { notFound } from "./core/errors.js";
 import { secureResponse } from "./securityHeaders.js";
-import { handleEnroll } from "./enroll.js";
 import { handleScheduled } from "./scheduled.js";
-import {
-  handleAccount,
-  handleActivate,
-  handleConfig,
-  handleDeauthorize,
-  handleToken,
-} from "./licensing.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 
 export { RateLimitDO } from "./rateLimitDo.js";
+
+/**
+ * The services the core router mounts (design spec §5.1, D-02).
+ *
+ * Built once at module scope: descriptors are stateless route tables, and rebuilding the map
+ * per request would be work done on every cold path for no benefit. Adding a service is one
+ * entry here plus one entry in `router.ts`'s `SERVICE_NAMESPACES` — nothing else in Core learns
+ * the name.
+ */
+const SERVICES: ServiceRegistry = new Map([
+  [licenseService.slug, licenseService],
+  [configService.slug, configService],
+]);
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "discovery",
   "jwks",
   "trustManifest",
-  "schema",
-  "activate",
-  "enroll",
-  "token",
-  "account",
   "devices",
-  "deauthorize",
-  "config",
-  "configReport",
+  "report",
+  "service",
   "browserSession",
   "browserSessionLicense",
   "authStart",
@@ -63,8 +63,6 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "authDevicePoll",
   "authCallback",
   "authPoll",
-  "mintToken",
-  "mintAuth",
   "appcast",
   "install",
   "version",
@@ -116,27 +114,30 @@ async function dispatch(req: Request, env: Env): Promise<Response> {
     if ("product" in route && PRODUCT_ROUTES.has(route.kind)) {
       const product = await loadProduct(env, db, route.product);
       if (!product) return notFound();
+
+      // Services first: `dispatchService` checks THIS product's enablement before the
+      // descriptor is consulted, so a service a product has not enabled never runs a line of
+      // its own code and is indistinguishable from one that does not exist (see
+      // `core/registry.ts`). Everything below is a core route or a service that has not been
+      // carved yet (P2/P3).
+      if (route.kind === "service") {
+        return dispatchService(SERVICES, route.slug, product.services, {
+          req,
+          env,
+          db,
+          product,
+          rest: route.rest,
+          now,
+        });
+      }
+
       switch (route.kind) {
         case "discovery":
           return handleDiscovery(req, db, product);
-        case "activate":
-          return handleActivate(req, env, db, product, now);
-        case "enroll":
-          return handleEnroll(req, env, db, product, now);
-        case "token":
-          return handleToken(req, env, db, product, now);
-        case "account":
-          return handleAccount(req, env, db, product, now);
         case "devices":
           return handleDevices(req, env, db, product, now, route.deviceId);
-        case "config":
-          return handleConfig(req, env, db, product, now);
-        case "configReport":
+        case "report":
           return handleReport(req, env, db, product, now);
-        case "deauthorize":
-          return handleDeauthorize(req, env, db, product);
-        case "schema":
-          return handleSchema(db, product);
         case "jwks":
           return handleJwks(db, product);
         case "trustManifest":
@@ -145,10 +146,6 @@ async function dispatch(req: Request, env: Env): Promise<Response> {
           return handleBrowserSession(req, env, db, product, now);
         case "browserSessionLicense":
           return handleBrowserSessionLicense(req, env, db, product, now);
-        case "mintToken":
-          return handleMintToken(req, env, db, product, route.mintId, now);
-        case "mintAuth":
-          return handleMintAuth(db, product, route.mintId);
         case "authStart":
           return handleAuthStart(req, env, db, product);
         case "authLogin":

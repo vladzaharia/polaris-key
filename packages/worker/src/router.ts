@@ -1,6 +1,37 @@
 // Pure route matching. Platform/manage/root-portal routes are matched FIRST so a product
 // slug can never shadow them; everything else is `/<product>/...` and carries the product
 // slug.
+//
+// ── THE HYBRID STATE ────────────────────────────────────────────────────────────────────────
+//
+// Wire v3 namespaces every product-scoped route under the service that owns it (plan §R1).
+// License and Config have moved: `/<p>/license/…` and `/<p>/config/…` no longer resolve to a
+// route KIND at all — they resolve to `{kind:"service"}` carrying the slug and the remaining
+// segments, and the service's own descriptor routes them from there. That is what lets a
+// product turn a service off and have its whole surface disappear rather than 403.
+//
+// Release, Update and Identity have not moved yet (P2/P3), so their paths keep their existing
+// kinds and their existing dispatch. This file is deliberately readable as "which services
+// have been cut over": the `SERVICE_NAMESPACES` set below is the complete answer, and adding a
+// slug to it is what moves the next one.
+//
+// Core routes stay core routes whatever happens to the services: discovery, JWKS, the trust
+// manifest, `/devices[/:id]` and `/devices/report`.
+
+import type { ServiceSlug } from "./core/services.js";
+
+/**
+ * The service slugs the core router dispatches through the registry today.
+ *
+ * Everything under `/<p>/<slug>/…` for a slug in this set is the service's to route, INCLUDING
+ * paths the service does not implement — those become the registry's not-found, not a fall
+ * through to some other matcher. That is why the set is checked before the channel-appcast
+ * pattern below: a product may not have a release channel called `license`.
+ */
+const SERVICE_NAMESPACES: ReadonlySet<string> = new Set<ServiceSlug>([
+  "license",
+  "config",
+]);
 
 export type Route =
   | { kind: "adminSpa" }
@@ -19,15 +50,12 @@ export type Route =
   | { kind: "discovery"; product: string }
   | { kind: "jwks"; product: string }
   | { kind: "trustManifest"; product: string }
-  | { kind: "schema"; product: string }
-  | { kind: "activate"; product: string }
-  | { kind: "enroll"; product: string }
-  | { kind: "token"; product: string }
-  | { kind: "account"; product: string }
   | { kind: "devices"; product: string; deviceId?: string }
-  | { kind: "deauthorize"; product: string }
-  | { kind: "config"; product: string }
-  | { kind: "configReport"; product: string }
+  /** `POST /<p>/devices/report` — core telemetry, relocated from `/<p>/config/report`. */
+  | { kind: "report"; product: string }
+  /** A product-scoped request for a service the core router has cut over. `rest` is the path
+   *  after `/<product>/<slug>`, already split; `[]` means the bare namespace. */
+  | { kind: "service"; slug: ServiceSlug; product: string; rest: string[] }
   | { kind: "browserSession"; product: string }
   | { kind: "browserSessionLicense"; product: string }
   | { kind: "authStart"; product: string }
@@ -38,8 +66,6 @@ export type Route =
   | { kind: "authDevicePoll"; product: string }
   | { kind: "authCallback"; product: string }
   | { kind: "authPoll"; product: string }
-  | { kind: "mintToken"; product: string; mintId: string }
-  | { kind: "mintAuth"; product: string; mintId: string }
   | { kind: "appcast"; product: string; channel?: string }
   | { kind: "install"; product: string }
   | { kind: "version"; product: string }
@@ -98,24 +124,12 @@ export function matchRoute(pathname: string): Route {
       return { kind: "jwks", product };
     case "/.well-known/polaris-trust.jws":
       return { kind: "trustManifest", product };
-    case "/schema":
-      return { kind: "schema", product };
-    case "/activate":
-      return { kind: "activate", product };
-    case "/enroll":
-      return { kind: "enroll", product };
-    case "/token":
-      return { kind: "token", product };
-    case "/account":
-      return { kind: "account", product };
     case "/devices":
       return { kind: "devices", product };
-    case "/deauthorize":
-      return { kind: "deauthorize", product };
-    case "/config":
-      return { kind: "config", product };
-    case "/config/report":
-      return { kind: "configReport", product };
+    // Ahead of the `/devices/<id>` pattern further down, so `report` can never be read as a
+    // device id.
+    case "/devices/report":
+      return { kind: "report", product };
     case "/session":
       return { kind: "browserSession", product };
     case "/session/license":
@@ -146,6 +160,19 @@ export function matchRoute(pathname: string): Route {
       return { kind: "changelog", product };
   }
 
+  // /<product>/<service>/<rest…> for the services that have been cut over. Placed before the
+  // channel-appcast and download patterns so a service namespace can never be shadowed by a
+  // release channel or a binary name.
+  const svc = rest.match(/^\/([a-z0-9-]+)(?:\/(.+))?$/);
+  if (svc?.[1] && SERVICE_NAMESPACES.has(svc[1])) {
+    return {
+      kind: "service",
+      slug: svc[1] as ServiceSlug,
+      product,
+      rest: svc[2] ? svc[2].split("/") : [],
+    };
+  }
+
   // /cli/<version>/<binary>-<arch>
   const cli = rest.match(/^\/cli\/([^/]+)\/([^/]+)$/);
   if (cli && cli[1] && cli[2]) {
@@ -157,13 +184,6 @@ export function matchRoute(pathname: string): Route {
   if (dmg && dmg[1] && dmg[2]) {
     const a = dmg[2].match(ARCH);
     if (a && a[1]) return { kind: "dmg", product, version: dmg[1], arch: a[1] };
-  }
-
-  const mint = rest.match(/^\/mint\/([a-z0-9-]+)\/(token|auth)$/);
-  if (mint && mint[1] && mint[2]) {
-    return mint[2] === "token"
-      ? { kind: "mintToken", product, mintId: mint[1] }
-      : { kind: "mintAuth", product, mintId: mint[1] };
   }
 
   const appcast = rest.match(/^\/([a-z0-9-]+)\/appcast\.xml$/);

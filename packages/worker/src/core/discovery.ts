@@ -50,18 +50,24 @@ export async function handleDiscovery(
   const signingPublicKey = activeKey?.publicKey ?? product.signingPub;
   const jwksUrl = `${base}/.well-known/jwks.json`;
   const trustManifestUrl = `${base}/.well-known/polaris-trust.jws`;
+  // §R1 paths. The document/schema/mint/telemetry URLs moved with their services; the shape of
+  // this object has NOT changed, because registry-assembled fragments (spec §4.3) are T1.6's
+  // job and re-shaping it here would land the wire break twice. `config` names the CONFIG
+  // document now — the fused `/<p>/config` it used to point at no longer exists — and
+  // `licenseDocument` is added beside it so a client can reach the other half.
   const endpoints = {
-    activate: `${base}/activate`,
-    token: `${base}/token`,
-    config: `${base}/config`,
-    report: `${base}/config/report`,
+    activate: `${base}/license/activate`,
+    token: `${base}/license/token`,
+    licenseDocument: `${base}/license/document`,
+    config: `${base}/config/document`,
+    report: `${base}/devices/report`,
     session: `${base}/session`,
     sessionLicense: `${base}/session/license`,
     authLogin: `${base}/auth/login`,
     authLogout: `${base}/auth/logout`,
     authDeviceStart: `${base}/auth/device/start`,
     authDevicePoll: `${base}/auth/device/poll`,
-    schema: `${base}/schema`,
+    schema: `${base}/config/schema`,
     jwks: jwksUrl,
     version: `${base}/version`,
     changelog: `${base}/changelog`,
@@ -111,6 +117,13 @@ export async function handleDiscovery(
         sessionUrl: endpoints.session,
         licenseUrl: endpoints.sessionLicense,
         logoutUrl: endpoints.authLogout,
+      },
+      license: {
+        activateUrl: endpoints.activate,
+        enrollUrl: `${base}/license/enroll`,
+        tokenUrl: endpoints.token,
+        deauthorizeUrl: `${base}/license/deauthorize`,
+        documentUrl: endpoints.licenseDocument,
       },
       config: {
         documentUrl: endpoints.config,
