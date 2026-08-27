@@ -23,18 +23,18 @@
 //     have revealed the forgery. The body below is built from documents `CacheManager`
 //     re-verified microseconds earlier, and is `{}` when nothing verified.
 //
-// Every request is asserted for its route, method and the `X-Polaris-*` device header, because
+// Every request is asserted for its route, method and the `X-PKey-*` device header, because
 // those three are what the Worker's §6 handlers actually key on.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { signJws } from "@plrs/jws";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { CacheRecordV3, Store } from "@plrs/client-core";
-import { PolarisClient } from "../src/client.js";
+import { signJws } from "@polaris-key/jws";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { CacheRecordV3, Store } from "@polaris-key/client-core";
+import { PolarisKeyClient } from "../src/client.js";
 import { CACHE_VERSION } from "../src/core/store.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────────────────
@@ -61,8 +61,8 @@ const PINNED = { [KID]: KEY.publicKeyRaw };
 
 const PRODUCT = "djdl";
 const DEVICE = "dev_7c1e2d";
-const STALE_TOKEN = `plrst_${"S".repeat(43)}`;
-const MINTED_TOKEN = `plrst_${"M".repeat(43)}`;
+const STALE_TOKEN = `pkeyt_${"S".repeat(43)}`;
+const MINTED_TOKEN = `pkeyt_${"M".repeat(43)}`;
 const NOW = Math.floor(Date.now() / 1000);
 
 class FakeStore implements Store {
@@ -117,9 +117,9 @@ function recorder(respond: Responder) {
       path: url.pathname,
       method: init?.method ?? "GET",
       authorization: headers.get("authorization"),
-      device: headers.get("x-polaris-device"),
+      device: headers.get("x-pkey-device"),
       contentType: headers.get("content-type"),
-      sdk: headers.get("x-polaris-sdk"),
+      sdk: headers.get("x-pkey-sdk"),
       body: init?.body
         ? (JSON.parse(String(init.body)) as Record<string, unknown>)
         : undefined,
@@ -141,7 +141,7 @@ const json = (body: unknown, status = 200): Response =>
   });
 
 interface Harness {
-  client: PolarisClient;
+  client: PolarisKeyClient;
   store: FakeStore;
   calls: Call[];
   only: () => Call;
@@ -157,7 +157,7 @@ async function harness(opts: {
   store.token = opts.token ?? null;
   store.cache = opts.cache ?? null;
   const rec = recorder(opts.respond);
-  const client = new PolarisClient({
+  const client = new PolarisKeyClient({
     productSlug: PRODUCT,
     baseUrl: "https://k.test",
     version: "1.2.3",
@@ -206,7 +206,7 @@ describe("devices.register() — the keyless mint path (§6)", () => {
     expect(call.method).toBe("POST");
     expect(call.authorization).toBeNull();
     expect(call.device).toBe(DEVICE);
-    // The seven `X-Polaris-*` client-metadata headers ride every product-scoped call.
+    // The seven `X-PKey-*` client-metadata headers ride every product-scoped call.
     expect(call.sdk).toBeTruthy();
     // 200 REPLACES whatever was stored — the mint is the point of the call.
     expect(await h.store.getToken()).toBe(MINTED_TOKEN);
@@ -432,7 +432,7 @@ describe("devices.report() — the body is built from RE-VERIFIED documents (R4-
     // `CacheManager` re-verified against the pins at `init()`, not from the record's bytes.
     const license = await signJws(
       {
-        iss: "plrs.im",
+        iss: "key.plrs.im",
         aud: PRODUCT,
         deviceId: DEVICE,
         issuedAt: NOW,
@@ -446,11 +446,11 @@ describe("devices.report() — the body is built from RE-VERIFIED documents (R4-
       } satisfies LicenseDoc,
       PEM,
       KID,
-      "plrs-license+jws",
+      "pkey-license+jws",
     );
     const config = await signJws(
       {
-        iss: "plrs.im",
+        iss: "key.plrs.im",
         aud: PRODUCT,
         deviceId: DEVICE,
         issuedAt: NOW,
@@ -471,7 +471,7 @@ describe("devices.report() — the body is built from RE-VERIFIED documents (R4-
       } satisfies ConfigDoc,
       PEM,
       KID,
-      "plrs-config+jws",
+      "pkey-config+jws",
     );
 
     const h = await harness({

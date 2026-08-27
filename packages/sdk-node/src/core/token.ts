@@ -1,6 +1,6 @@
 // The device credential — wire contract v3 §6.
 //
-// A `plrst_` token is what a device authenticates every document fetch with. Core holds it
+// A `pkeyt_` token is what a device authenticates every document fetch with. Core holds it
 // because it is the DEVICE's credential, not the licence's: a config-only product's registered
 // devices hold real tokens with no licence behind them (D-08), and the token survives a licence
 // changing tier or expiring.
@@ -19,7 +19,7 @@
 // `beginPass()` (called once per `sync()`) is what re-arms it — without that the memo would
 // make the second sync of a session unable to recover from a rotated token.
 
-import type { Store } from "@plrs/client-core";
+import type { Store } from "@polaris-key/client-core";
 import type { CoreContext } from "./context.js";
 
 /** How the token was obtained, for the callers that care about the transition. */

@@ -461,34 +461,38 @@ describe("identity/portal", () => {
     ).toMatchObject({ portalEnabled: true, magicEnabled: false });
   });
 
-  it("answers the console's pre-namespace `portal` path with the SAME handler", async () => {
-    // §R1 regroups `portal` under `identity/`; the console migrates in P7. The old spelling is a
-    // rewrite onto the descriptor, not a second implementation, so a write through one path is
-    // visible through the other and neither can drift.
+  it("404s the pre-namespace `portal` path — the rewrite is gone, not merely deprecated", async () => {
+    // §R1 regrouped `portal` under `identity/` and the console migrated in P7, so the transitional
+    // rewrite was deleted. It has to answer 404 rather than 200: an alias that quietly keeps
+    // working is an alias nobody ever stops using, and a WRITE through it would land on the same
+    // rows while no test covered that spelling.
     const { db, env, auth } = await fixture(false);
+    const readCanonical = async (): Promise<Record<string, unknown>> => {
+      const res = await dispatch(
+        mkReq("GET", CANONICAL, { cookie: auth.cookie }),
+        env,
+        db,
+        CANONICAL,
+      );
+      return ((await res.json()) as { settings: Record<string, unknown> })
+        .settings;
+    };
+    const before = await readCanonical();
 
-    const viaLegacy = await dispatch(
+    for (const req of [
       mkReq("PATCH", LEGACY, {
         cookie: auth.cookie,
         csrf: auth.csrf,
-        body: { releasesEnabled: true },
+        body: { releasesEnabled: !before.releasesEnabled },
       }),
-      env,
-      db,
-      LEGACY,
-    );
-    expect(viaLegacy.status).toBe(200);
+      mkReq("GET", LEGACY, { cookie: auth.cookie }),
+    ]) {
+      expect((await dispatch(req, env, db, LEGACY)).status).toBe(404);
+    }
 
-    const viaCanonical = await dispatch(
-      mkReq("GET", CANONICAL, { cookie: auth.cookie }),
-      env,
-      db,
-      CANONICAL,
-    );
-    expect(
-      ((await viaCanonical.json()) as { settings: Record<string, unknown> })
-        .settings,
-    ).toMatchObject({ releasesEnabled: true });
+    // …and the settings are untouched: the 404 happened before any handler ran, so the
+    // rejected PATCH is a rejected WRITE and not merely a rejected response shape.
+    expect(await readCanonical()).toEqual(before);
   });
 
   it("audits the change against the verified actor", async () => {

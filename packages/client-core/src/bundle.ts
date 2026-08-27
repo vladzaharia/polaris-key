@@ -1,6 +1,6 @@
 // Offline activation bundles — wire contract v3 §7.
 //
-// A bundle (`plrs-bundle+jws`) is the air-gapped activation path (D-12): an operator mints
+// A bundle (`pkey-bundle+jws`) is the air-gapped activation path (D-12): an operator mints
 // one against a device's request code, carries it across on a USB stick, and the client
 // imports it with no network at all. It wraps up to three inner compact JWSs — a license
 // document, an optional config document, and the trust manifest needed to verify them — so
@@ -10,7 +10,7 @@
 //
 // This is the VERIFIER, and only the verifier: it is pure, isomorphic, and touches no store.
 // Step 5 of §7 — "atomically write cache v3" — belongs to the host, because only the host has
-// a cache. `@plrs/node`'s `core/bundle.ts` calls this and writes; React's will do the same.
+// a cache. `@polaris-key/node`'s `core/bundle.ts` calls this and writes; React's will do the same.
 // Keeping the write out here is what makes the ALL-OR-NOTHING rule structural rather than
 // disciplinary: there is no partial result to write, because a refusal returns no documents.
 //
@@ -26,10 +26,10 @@
 // `verifyBundle` — the plain `VerifiedBundle | null` shape — is the ergonomic call for hosts
 // that only need yes/no. `inspectBundle` is the same walk with the step attributed.
 
-import { verifyJws, type TrustSet } from "@plrs/jws";
-import { MAX_BUNDLE_BYTES, type BundleDoc } from "@plrs/protocol/core";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
+import { verifyJws, type TrustSet } from "@polaris-key/jws";
+import { MAX_BUNDLE_BYTES, type BundleDoc } from "@polaris-key/protocol/core";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { CLOCK_SKEW_SECONDS } from "./claims.js";
 import { verifyConfigDoc, verifyLicenseDoc } from "./verify.js";
 import { mergeTrust, verifyTrustManifest } from "./trust.js";
@@ -119,13 +119,12 @@ export async function inspectBundle(
   opts: BundleOptions,
 ): Promise<BundleInspection> {
   // ── 1. The bundle JWS against PINNED keys only ────────────────────────────────────────
-  // `requireTyp` closes the replay this artifact would otherwise open: the raised cap travels
+  // The `typ` closes the replay this artifact would otherwise open: the raised cap travels
   // with the `typ`, so an untyped 256 KiB blob accepted here could be re-presented at an
   // ordinary document call site. The cap is taken from the protocol constant rather than
   // from the caller — no host gets to choose how big a bundle may be.
   const verified = await verifyJws<BundleDoc>(jws, opts.pinned, {
-    typ: "plrs-bundle+jws",
-    requireTyp: true,
+    typ: "pkey-bundle+jws",
     maxPayloadBytes: MAX_BUNDLE_BYTES,
   });
   if (!verified) return refuse("bundle-jws-rejected");

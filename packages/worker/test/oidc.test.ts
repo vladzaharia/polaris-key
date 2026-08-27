@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { verifyJws } from "@plrs/jws";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
+import { verifyJws } from "@polaris-key/jws";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -209,7 +209,7 @@ describe("OIDC activation", () => {
 
     const req = mkReq("GET", {
       authorization: `Bearer ${token}`,
-      "x-polaris-version": "1.2.3",
+      "x-pkey-version": "1.2.3",
     });
     const trust = { [TEST_KID]: TEST_PUB };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { verifyJws } from "@plrs/jws";
+import { verifyJws } from "@polaris-key/jws";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -375,7 +375,7 @@ describe("worker surfaces", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -428,7 +428,7 @@ describe("worker surfaces", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -491,7 +491,7 @@ describe("worker surfaces", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -552,7 +552,7 @@ describe("worker surfaces", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,

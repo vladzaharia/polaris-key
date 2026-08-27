@@ -4,8 +4,9 @@
  * active catalog have their value blanked.
  */
 
-import type { Catalog } from "@plrs/catalog";
-import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
+import type { Catalog } from "@polaris-key/catalog";
+import type { ManagedEntry } from "@polaris-key/protocol";
+import type { ManagedPayload } from "../../core/payload.js";
 import { isSealedEnvelope } from "./managedSecrets.js";
 
 /** Strip stored secret values out of a payload before it goes over the wire. */

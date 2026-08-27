@@ -1,20 +1,20 @@
-// `@plrs/node` — the Polaris suite's Node SDK.
+// `@polaris-key/node` — the Polaris Key Node SDK.
 //
-// The barrel is the convenience surface: `PolarisClient` plus the types a host touches. Every
-// module also has a subpath (`@plrs/node/core`, `/license`, `/config`, `/devices`, `/release`,
+// The barrel is the convenience surface: `PolarisKeyClient` plus the types a host touches. Every
+// module also has a subpath (`@polaris-key/node/core`, `/license`, `/config`, `/devices`, `/release`,
 // `/update`, `/local`, `/cli`) so a config-only daemon can import the Config client without
 // pulling the license module, and a bundler can drop what nobody imported.
 //
 // Pure verification logic is NOT re-exported here. `verifyLicenseDoc`, `licenseState`,
-// `mergeTrust`, `compareSemver` and friends live in `@plrs/client-core`, the isomorphic package
+// `mergeTrust`, `compareSemver` and friends live in `@polaris-key/client-core`, the isomorphic package
 // this SDK consumes and that React, and the conformance runners, consume too. The pre-suite
-// `@plrs/node` shipped its own copies; keeping re-exports would have preserved the illusion
+// `@polaris-key/node` shipped its own copies; keeping re-exports would have preserved the illusion
 // that there are two implementations to keep in step.
 
 export {
-  PolarisClient,
+  PolarisKeyClient,
   DeviceManagementUnsupportedError,
-  type PolarisClientOptions,
+  type PolarisKeyClientOptions,
   type DeviceInfo,
   type SyncState,
 } from "./client.js";
@@ -97,7 +97,7 @@ export type {
   DeviceProbeResult,
   FingerprintComponent,
   HardwareFingerprint,
-} from "@plrs/protocol/core";
+} from "@polaris-key/protocol/core";
 export type {
   ActivationSource,
   AllowedRange,
@@ -105,10 +105,10 @@ export type {
   DocProfile,
   LicenseDoc,
   LicenseStatus,
-} from "@plrs/protocol/license";
-export type { ConfigDoc } from "@plrs/protocol/config";
-export type { TrustSet } from "@plrs/jws";
-export type { BlockedState, LicenseState } from "@plrs/client-core";
+} from "@polaris-key/protocol/license";
+export type { ConfigDoc } from "@polaris-key/protocol/config";
+export type { TrustSet } from "@polaris-key/jws";
+export type { BlockedState, LicenseState } from "@polaris-key/client-core";
 // The one error type the transport/orchestration layers throw. Its `.code` carries the wire
 // error code, the §7 bundle refusal step, `local-only`, or `service-unavailable`.
-export { PolarisError } from "@plrs/client-core";
+export { PolarisError } from "@polaris-key/client-core";

@@ -1,16 +1,19 @@
 // Bridge protocol v2 — the contract an Electron/Tauri host implements.
 //
-// The load-bearing assertion here is the MIRROR: `@plrs/node`'s `PolarisClient.getSyncState()`
+// The load-bearing assertion here is the MIRROR: `@polaris-key/node`'s `PolarisKeyClient.getSyncState()`
 // must satisfy this package's `BridgeState` with nothing in between, so a host can write
-// `getSyncState: () => client.getSyncState()` in its preload and be done. `@plrs/node` is a
+// `getSyncState: () => client.getSyncState()` in its preload and be done. `@polaris-key/node` is a
 // Node-only package (keyring, `node:fs`) and cannot be a dependency of a browser bundle, so the
 // mirror is pinned by re-declaring its `SyncState` here — copied from
 // `packages/sdk-node/src/client.ts` — and asserting assignability at the type level. A field
 // rename on either side then stops COMPILING rather than drifting quietly.
 
 import { describe, expect, it, vi } from "vitest";
-import type { ActivationSource, LicenseDoc } from "@plrs/protocol/license";
-import type { BlockedState } from "@plrs/client-core";
+import type {
+  ActivationSource,
+  LicenseDoc,
+} from "@polaris-key/protocol/license";
+import type { BlockedState } from "@polaris-key/client-core";
 import { BRIDGE_VERSION, resolveBridge } from "../src/desktop/bridge.js";
 import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
@@ -44,7 +47,7 @@ async function ready(adapter: {
   }
 }
 
-describe("BridgeState mirrors @plrs/node's SyncState", () => {
+describe("BridgeState mirrors @polaris-key/node's SyncState", () => {
   it("a Node SyncState is assignable to a BridgeState, field for field", () => {
     const fromNode: NodeSyncState = {
       activation: "bundle",

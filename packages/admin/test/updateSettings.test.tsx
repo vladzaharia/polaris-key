@@ -182,6 +182,31 @@ describe("Update settings — feed access", () => {
     expect(
       screen.getByLabelText(/Compat max/).hasAttribute("aria-invalid"),
     ).toBe(false);
+    // …and it says so ONCE. `ServicesCard` established the split: a rejection the server
+    // attributed to an input belongs beside that input, and a toast on top would put the same
+    // sentence in the corner of the screen where it dismisses itself.
+    expect(screen.queryByText(/Couldn.t save update settings/)).toBeNull();
+  });
+
+  it("falls back to a toast when the server attributes the failure to nothing", async () => {
+    // The other half of the same rule: a 500 has no input to sit beside, so it must not vanish.
+    saveUpdateSettings.mockRejectedValue(new ApiError(500, []));
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    const min = screen.getByLabelText(/Compat min/);
+    await userEvent.clear(min);
+    await userEvent.type(min, "1.2.3");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save update settings" }),
+    );
+
+    expect(
+      await screen.findByText(/Couldn.t save update settings/),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText(/Compat min/).hasAttribute("aria-invalid"),
+    ).toBe(false);
   });
 
   it("prefers the server's own sentence over the generic fallback", async () => {

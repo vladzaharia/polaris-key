@@ -31,7 +31,7 @@
  * beta / `pr-42` / an operator's manual channel) is Release's model, not Core's.
  */
 
-import type { AllowedRange } from "@plrs/protocol";
+import type { AllowedRange } from "@polaris-key/protocol";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";

@@ -1,6 +1,6 @@
 // Offline bundle import THROUGH THE SDK — wire contract v3 §7, step 5.
 //
-// Steps 1–4 belong to `@plrs/client-core`'s `inspectBundle` and are pinned there (and by the
+// Steps 1–4 belong to `@polaris-key/client-core`'s `inspectBundle` and are pinned there (and by the
 // conformance runner). What this suite pins is the half that only a HOST can have: the cache.
 // `conformance/corpus/v2`'s nine `bundleCases` are driven through `client.importBundle` here
 // rather than through the verifier, because the questions worth asking at this layer are not
@@ -25,17 +25,17 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { signJws } from "@plrs/jws";
-import type { BundleDoc } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { TrustManifestDoc } from "@plrs/protocol/trust";
+import { signJws } from "@polaris-key/jws";
+import type { BundleDoc } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
 import {
   PolarisError,
   type CacheRecordV3,
   type Store,
-} from "@plrs/client-core";
-import { PolarisClient } from "../src/client.js";
+} from "@polaris-key/client-core";
+import { PolarisKeyClient } from "../src/client.js";
 import { CACHE_VERSION } from "../src/core/store.js";
 
 // ── The corpus ────────────────────────────────────────────────────────────────────────────
@@ -139,8 +139,8 @@ function clientOver(
   store: Store,
   over: { pinned?: Record<string, string>; product?: string } = {},
   fetchImpl: typeof fetch = explodingFetch(),
-): PolarisClient {
-  return new PolarisClient({
+): PolarisKeyClient {
+  return new PolarisKeyClient({
     productSlug: over.product ?? PRODUCT,
     baseUrl: "https://k.test",
     version: "1.2.3",
@@ -158,7 +158,7 @@ function manifest(over: Partial<TrustManifestDoc> = {}): TrustManifestDoc {
   return {
     schemaVersion: 1,
     aud: PRODUCT,
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     issuedAt: MINTED,
     expiresAt: MINTED + 300,
     jwksUrl: `https://k.test/${PRODUCT}/.well-known/jwks.json`,
@@ -179,7 +179,7 @@ function manifest(over: Partial<TrustManifestDoc> = {}): TrustManifestDoc {
 
 function licenseDoc(over: Partial<LicenseDoc> = {}): LicenseDoc {
   return {
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     aud: PRODUCT,
     deviceId: DEVICE,
     issuedAt: MINTED,
@@ -193,7 +193,7 @@ function licenseDoc(over: Partial<LicenseDoc> = {}): LicenseDoc {
 
 function configDoc(over: Partial<ConfigDoc> = {}): ConfigDoc {
   return {
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     aud: PRODUCT,
     deviceId: DEVICE,
     issuedAt: MINTED,
@@ -219,17 +219,17 @@ async function mint(
     issuedAt: MINTED,
     expiresAt: MINTED + 30 * 86_400,
     docs,
-    trust: await signJws(manifest(), PEM, KID, "plrs-trust+jws"),
+    trust: await signJws(manifest(), PEM, KID, "pkey-trust+jws"),
     ...over,
   };
-  return signJws(payload, PEM, KID, "plrs-bundle+jws");
+  return signJws(payload, PEM, KID, "pkey-bundle+jws");
 }
 
 /** A config-only bundle — `bundle-valid-license-only`'s sibling (D-08: a config-only product
  *  air-gaps with settings and no grant). */
 const configOnlyBundle = async (): Promise<string> =>
   mint(
-    { config: await signJws(configDoc(), PEM, KID, "plrs-config+jws") },
+    { config: await signJws(configDoc(), PEM, KID, "pkey-config+jws") },
     { bundleId: "01JBUNDLECONFIGONLY00000" },
   );
 
@@ -300,17 +300,17 @@ describe("importBundle — the corpus vectors, driven through the SDK", () => {
 
     it(`${c.id} leaves a POPULATED cache untouched — all-or-nothing does not clobber`, async () => {
       // The interesting half of all-or-nothing: a device that is already provisioned must not
-      // lose what it has because someone handed it a bad `.plrsbundle`.
+      // lose what it has because someone handed it a bad `.pkeybundle`.
       const store = new FakeStore(c.deviceId);
       const incumbent: CacheRecordV3 = {
         v: CACHE_VERSION,
-        trustJws: await signJws(manifest(), PEM, KID, "plrs-trust+jws"),
+        trustJws: await signJws(manifest(), PEM, KID, "pkey-trust+jws"),
         docs: {
           license: await signJws(
             licenseDoc({ licenseId: "lic-incumbent", deviceId: c.deviceId }),
             PEM,
             KID,
-            "plrs-license+jws",
+            "pkey-license+jws",
           ),
         },
         etags: { license: '"L-incumbent"' },
@@ -402,7 +402,7 @@ describe("importBundle — a token supersedes a bundle (§7)", () => {
     expect(client.getSyncState().activation).toBe("bundle");
 
     // The device later activates online. §7: "the token path supersedes."
-    store.token = `plrst_${"B".repeat(43)}`;
+    store.token = `pkeyt_${"B".repeat(43)}`;
     const online = clientOver(store);
     await online.init();
     expect(online.getSyncState().activation).toBe("token");
@@ -439,13 +439,13 @@ describe("importBundle — the write REPLACES, it does not merge (§7 step 5)", 
     const store = new FakeStore(DEVICE);
     store.cache = {
       v: CACHE_VERSION,
-      trustJws: await signJws(manifest(), PEM, KID, "plrs-trust+jws"),
+      trustJws: await signJws(manifest(), PEM, KID, "pkey-trust+jws"),
       docs: {
         license: await signJws(
           licenseDoc({ licenseId: "lic-superseded" }),
           PEM,
           KID,
-          "plrs-license+jws",
+          "pkey-license+jws",
         ),
       },
       etags: { license: '"L1"', config: '"C1"' },
@@ -498,13 +498,13 @@ describe("importBundle — the §4.2 clock floor rises from what was imported", 
 
     const later = MINTED + 5_000;
     const jws = await mint(
-      { license: await signJws(licenseDoc(), PEM, KID, "plrs-license+jws") },
+      { license: await signJws(licenseDoc(), PEM, KID, "pkey-license+jws") },
       {
         trust: await signJws(
           manifest({ issuedAt: later, expiresAt: later + 300 }),
           PEM,
           KID,
-          "plrs-trust+jws",
+          "pkey-trust+jws",
         ),
       },
     );

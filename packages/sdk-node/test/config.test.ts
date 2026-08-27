@@ -1,6 +1,6 @@
 // Layered config resolution through the Config sub-client — `client.config.*`.
 //
-// The resolution RULES live in `@plrs/client-core` (`resolveValue`/`resolveSource`/
+// The resolution RULES live in `@polaris-key/client-core` (`resolveValue`/`resolveSource`/
 // `listUserEntries`) and are pinned there; what this file protects is the wiring on the Node
 // side, which is where every one of these values actually comes from in a shipped product:
 //
@@ -11,7 +11,7 @@
 // §4.1: the cache stores compact JWSs and nothing else, and every load re-verifies them against
 // the pins before a single value is readable. Seeding a decoded document would test a code path
 // that does not exist — an unsigned fixture simply would not load. So each client here is built
-// from a genuinely signed `plrs-config+jws` in a `v: 3` record, with an EXPLODING `fetchImpl`:
+// from a genuinely signed `pkey-config+jws` in a `v: 3` record, with an EXPLODING `fetchImpl`:
 // if any of these reads were to reach the network the test fails loudly rather than passing for
 // the wrong reason.
 //
@@ -20,19 +20,23 @@
 //   * the accessors are `client.config.*`, not the god-object's `client.getConfig` — config
 //     resolution is the config SERVICE's job, and a product that disabled it never has to think
 //     about `envPrefix`/`env`/`localOverrides` at all (they ride `ConfigClientOptions`);
-//   * the document is `plrs-config+jws` with `config`/`secrets` at the TOP LEVEL — v2's
+//   * the document is `pkey-config+jws` with `config`/`secrets` at the TOP LEVEL — v2's
 //     `payload: {config, secrets, entitlements}` is gone, and entitlements moved to the licence
 //     document (D-20);
-//   * the env prefix is `PLRS_CONFIG_`, not `PKEY_CONFIG_` (§8). That rename is silent by
-//     nature — a stale var simply stops being read — so it gets its own pin below;
+//   * the env prefix stays `PKEY_CONFIG_` (§8) — the interim `PLRS_CONFIG_` spelling was
+//     withdrawn by Amendment A1 and is NOT read, which is the kind of thing that fails
+//     silently (a stale var simply stops being honored), so it gets its own pin below;
 //   * the cache record is `{v:3, docs:{config}, etags:{config}}`: per-service slices, because
 //     licence and config are now independently fetched and independently ETagged.
 
 import { describe, expect, it } from "vitest";
-import { signJws } from "@plrs/jws";
-import { ISSUER, type ManagedEntry } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import { PolarisClient, type PolarisClientOptions } from "../src/client.js";
+import { signJws } from "@polaris-key/jws";
+import { ISSUER, type ManagedEntry } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import {
+  PolarisKeyClient,
+  type PolarisKeyClientOptions,
+} from "../src/client.js";
 import {
   CACHE_VERSION,
   InMemoryStore,
@@ -53,7 +57,7 @@ const base = {
   trust: { pinnedKeys: { [TEST_KID]: TEST_PUB } },
   // Hardware probes shell out; nothing here activates, so keep the suite deterministic.
   devices: { fingerprint: false },
-} as const satisfies Partial<PolarisClientOptions>;
+} as const satisfies Partial<PolarisKeyClientOptions>;
 
 const NOW = 1_700_000_000;
 
@@ -75,13 +79,13 @@ async function clientWith(
   configOpts: ConfigClientOptions = {},
   over: {
     secrets?: Record<string, ManagedEntry>;
-    extra?: Partial<PolarisClientOptions>;
+    extra?: Partial<PolarisKeyClientOptions>;
   } = {},
-): Promise<PolarisClient> {
+): Promise<PolarisKeyClient> {
   const store = new InMemoryStore("djdl");
   const deviceId = await store.getDeviceId();
   const doc: ConfigDoc = {
-    // v3 is host-NEUTRAL: `plrs.im`, not the serving hostname (D-09). A `key.plrs.im` issuer
+    // v3 is host-NEUTRAL: `key.plrs.im`, not the serving hostname (D-09). A `key.plrs.im` issuer
     // is a v2 artifact and would fail verification outright.
     iss: ISSUER,
     aud: "djdl",
@@ -93,14 +97,14 @@ async function clientWith(
     config,
     secrets: over.secrets ?? {},
   };
-  await store.setToken("plrst_cached");
+  await store.setToken("pkeyt_cached");
   const rec: CacheRecordV3 = {
     v: CACHE_VERSION,
-    docs: { config: await signJws(doc, TEST_PEM, TEST_KID, "plrs-config+jws") },
+    docs: { config: await signJws(doc, TEST_PEM, TEST_KID, "pkey-config+jws") },
     etags: { config: '"v1"' },
   };
   await store.writeCache(rec);
-  return PolarisClient.create({
+  return PolarisKeyClient.create({
     ...base,
     store,
     fetchImpl: exploding,
@@ -117,7 +121,7 @@ describe("layered config — enforced/hidden are locked", () => {
       { "quality.floor": entry("enforced", "flac") },
       {
         localOverrides: { "quality.floor": "mp3" },
-        env: { PLRS_CONFIG_quality__floor: "wav" },
+        env: { PKEY_CONFIG_quality__floor: "wav" },
       },
     );
     expect(c.config.getConfig("quality.floor", "x")).toBe("flac");
@@ -130,7 +134,7 @@ describe("layered config — enforced/hidden are locked", () => {
       { "secret.knob": entry("hidden", "locked") },
       {
         localOverrides: { "secret.knob": "nope" },
-        env: { PLRS_CONFIG_secret__knob: "nope2" },
+        env: { PKEY_CONFIG_secret__knob: "nope2" },
       },
     );
     expect(c.config.getConfig("secret.knob", "x")).toBe("locked");
@@ -144,7 +148,7 @@ describe("layered config — default precedence (local > env > remote > fallback
   it("local override wins over env and remote-default", async () => {
     const c = await clientWith(cfg, {
       localOverrides: { "run.concurrency": 8 },
-      env: { PLRS_CONFIG_run__concurrency: "16" },
+      env: { PKEY_CONFIG_run__concurrency: "16" },
     });
     expect(c.config.getConfig("run.concurrency", 1)).toBe(8);
     expect(c.config.getConfigSource("run.concurrency")).toBe("local");
@@ -152,7 +156,7 @@ describe("layered config — default precedence (local > env > remote > fallback
 
   it("env wins over remote-default when no local override (JSON-parsed)", async () => {
     const c = await clientWith(cfg, {
-      env: { PLRS_CONFIG_run__concurrency: "16" },
+      env: { PKEY_CONFIG_run__concurrency: "16" },
     });
     expect(c.config.getConfig("run.concurrency", 1)).toBe(16);
     expect(c.config.getConfigSource("run.concurrency")).toBe("env");
@@ -162,7 +166,7 @@ describe("layered config — default precedence (local > env > remote > fallback
     const c = await clientWith(
       { "log.level": entry("default", "info") },
       {
-        env: { PLRS_CONFIG_log__level: "debug" },
+        env: { PKEY_CONFIG_log__level: "debug" },
       },
     );
     expect(c.config.getConfig("log.level", "x")).toBe("debug");
@@ -191,24 +195,24 @@ describe("layered config — default precedence (local > env > remote > fallback
   });
 });
 
-describe("env var naming — PLRS_CONFIG_ + dotted-key mapping (§8)", () => {
+describe("env var naming — PKEY_CONFIG_ + dotted-key mapping (§8)", () => {
   const cfg = { "run.concurrency": entry("default", 4) };
 
-  it("a dotted key maps to PLRS_CONFIG_run__concurrency (dots → double underscore)", async () => {
+  it("a dotted key maps to PKEY_CONFIG_run__concurrency (dots → double underscore)", async () => {
     // Dots are not legal in env var names on every shell, so `.` becomes `__`. The mapping is
     // the contract an operator reads from the docs; getting it wrong is silent.
     const c = await clientWith(cfg, {
-      env: { PLRS_CONFIG_run__concurrency: "16" },
+      env: { PKEY_CONFIG_run__concurrency: "16" },
     });
     expect(c.config.getConfig("run.concurrency", 1)).toBe(16);
     expect(c.config.getConfigSource("run.concurrency")).toBe("env");
   });
 
-  it("the retired PKEY_CONFIG_ prefix is NOT read any more", async () => {
-    // The rename is the kind that fails quietly — a stale var simply stops being honored and
-    // the remote default reappears — so it gets an explicit negative pin.
+  it("the withdrawn PLRS_CONFIG_ prefix is NOT read", async () => {
+    // A prefix change fails quietly — a stale var simply stops being honored and the remote
+    // default reappears — so the spelling A1 withdrew gets an explicit negative pin.
     const c = await clientWith(cfg, {
-      env: { PKEY_CONFIG_run__concurrency: "16" },
+      env: { PLRS_CONFIG_run__concurrency: "16" },
     });
     expect(c.config.getConfig("run.concurrency", 1)).toBe(4);
     expect(c.config.getConfigSource("run.concurrency")).toBe("remote-default");
@@ -216,7 +220,7 @@ describe("env var naming — PLRS_CONFIG_ + dotted-key mapping (§8)", () => {
 
   it("a single underscore in the var name does not match a dotted key", async () => {
     const c = await clientWith(cfg, {
-      env: { PLRS_CONFIG_run_concurrency: "16" },
+      env: { PKEY_CONFIG_run_concurrency: "16" },
     });
     expect(c.config.getConfig("run.concurrency", 1)).toBe(4);
   });
@@ -240,7 +244,7 @@ describe("env value coercion", () => {
     const c = await clientWith(
       { "run.knob": entry("default", "remote") },
       {
-        env: { PLRS_CONFIG_run__knob: raw },
+        env: { PKEY_CONFIG_run__knob: raw },
       },
     );
     expect(c.config.getConfig("run.knob", "fb")).toEqual(expected);
@@ -253,7 +257,7 @@ describe("env value coercion", () => {
     const c = await clientWith(
       { "run.knob": entry("default", "remote") },
       {
-        env: { PLRS_CONFIG_run__knob: '{"a":' },
+        env: { PKEY_CONFIG_run__knob: '{"a":' },
       },
     );
     expect(c.config.getConfig("run.knob", "fb")).toBe('{"a":');
@@ -264,7 +268,7 @@ describe("env value coercion", () => {
     const c = await clientWith(
       { "run.knob": entry("default", "remote") },
       {
-        env: { PLRS_CONFIG_run__knob: "debug" },
+        env: { PKEY_CONFIG_run__knob: "debug" },
       },
     );
     expect(c.config.getConfig("run.knob", "fb")).toBe("debug");
@@ -341,10 +345,10 @@ describe("secrets are a separate map", () => {
 describe("D-08 — a product with the config service DISABLED", () => {
   /** No cached document at all: a product that does not run Config never fetches one, and
    *  `sync()` skips the route entirely (`wantConfig`). */
-  async function configDisabledClient(): Promise<PolarisClient> {
+  async function configDisabledClient(): Promise<PolarisKeyClient> {
     const store = new InMemoryStore("djdl");
-    await store.setToken("plrst_cached");
-    return PolarisClient.create({
+    await store.setToken("pkeyt_cached");
+    return PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: exploding,
@@ -374,14 +378,14 @@ describe("D-08 — a product with the config service DISABLED", () => {
     // and honor env vars. `enabled` is the signal about the SERVICE, not a mute switch on the
     // resolution layers.
     const store = new InMemoryStore("djdl");
-    const c = await PolarisClient.create({
+    const c = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: exploding,
       expectedServices: ["license"],
       config: {
         localOverrides: { "run.concurrency": 8 },
-        env: { PLRS_CONFIG_log__level: "debug" },
+        env: { PKEY_CONFIG_log__level: "debug" },
       },
     });
     expect(c.config.getConfig("run.concurrency", 1)).toBe(8);
@@ -403,7 +407,7 @@ describe("D4 — doc-less getters return fallbacks without throwing", () => {
       if (path === "/djdl/license/activate") {
         activated = true;
         return new Response(
-          JSON.stringify({ token: "plrst_e", schemaVersion: 3 }),
+          JSON.stringify({ token: "pkeyt_e", schemaVersion: 3 }),
           { status: 200 },
         );
       }
@@ -424,12 +428,12 @@ describe("D4 — doc-less getters return fallbacks without throwing", () => {
       return new Response("", { status: 404 });
     }) as typeof fetch;
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: impl,
     });
-    await client.license.activateWithKey("plrs_djdl_AAAAAAAAAAAAAAAAAAAAAA");
+    await client.license.activateWithKey("pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA");
 
     expect(client.status().status).toBe("version-too-old");
     expect(client.status().allowedRange).toEqual({ min: "2.0.0" });

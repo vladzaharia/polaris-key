@@ -1,6 +1,6 @@
 // The Core substrate's shared state and transport primitives — wire contract v3 §4–§6.
 //
-// Polaris is a suite of opt-in services over an always-on Core. On the client that division is
+// Polaris Key is a suite of opt-in services over an always-on Core. On the client that division is
 // the same one the Worker makes: Core owns the device principal, the credential, the trust set,
 // the verified cache, the monotonic clock floor and the sync loop; a service module owns its
 // own routes and the reads they feed. `CoreContext` is the object every one of them is handed.
@@ -16,14 +16,14 @@
 //
 // ── WHY THE TRANSPORT LIVES HERE ────────────────────────────────────────────────────────────
 //
-// Every product-scoped request carries the same seven `X-Polaris-*` headers and the same
+// Every product-scoped request carries the same seven `X-PKey-*` headers and the same
 // deadline, and gets the same treatment when the network simply fails. Putting that in one
 // place is what keeps a new service from shipping a call with no timeout on it (R4-08).
 
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { arch, platform } from "node:os";
-import type { TrustSet } from "@plrs/jws";
+import type { TrustSet } from "@polaris-key/jws";
 import {
   HEADER_ARCH,
   HEADER_CHANNEL,
@@ -32,14 +32,14 @@ import {
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
   HEADER_VERSION,
-} from "@plrs/protocol/core";
-import type { AllowedRange, BlockReason } from "@plrs/protocol/license";
+} from "@polaris-key/protocol/core";
+import type { AllowedRange, BlockReason } from "@polaris-key/protocol/license";
 import {
   PolarisError,
   channelForVersion,
   effectiveNow,
   type Store,
-} from "@plrs/client-core";
+} from "@polaris-key/client-core";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
 import {
@@ -102,7 +102,7 @@ export interface CoreOptions {
   productSlug: string;
   /** MUST be `https:` — or `http://localhost` / `http://127.0.0.1` for local development. */
   baseUrl?: string;
-  /** The HOST APPLICATION's version, sent as `X-Polaris-Version` and gated on by the server. */
+  /** The HOST APPLICATION's version, sent as `X-PKey-Version` and gated on by the server. */
   version: string;
   /** Release channel; derived from `version` when omitted. */
   channel?: string;
@@ -145,7 +145,7 @@ export type DocumentResult =
  * Core's live state: identity, credentials-adjacent wiring, transport, and the clock floor.
  *
  * Constructed once per client. `init()` reads the device id off the store; nothing in the
- * constructor touches the disk or the network, so a `new PolarisClient(...)` that throws
+ * constructor touches the disk or the network, so a `new PolarisKeyClient(...)` that throws
  * `InsecureBaseUrlError` has done nothing else first.
  */
 export class CoreContext {
@@ -284,7 +284,7 @@ export class CoreContext {
       : undefined;
   }
 
-  /** The `X-Polaris-*` client metadata every product-scoped call carries (§5). */
+  /** The `X-PKey-*` client metadata every product-scoped call carries (§5). */
   headers(extra: Record<string, string> = {}): Record<string, string> {
     return {
       [HEADER_DEVICE]: this.deviceIdValue,

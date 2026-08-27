@@ -29,16 +29,16 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from polaris.core.bundle import (
+from polaris_key.core.bundle import (
     MAX_BUNDLE_BYTES,
     inspect_bundle,
     verify_bundle,
 )
-from polaris.core.clock import effective_now, high_water_mark
-from polaris.core.jws import sign_jws, verify_jws
-from polaris.core.trust import merge_trust, verify_trust_manifest
-from polaris.core.verify import verify_config_doc, verify_license_doc
-from polaris.license.gate import license_state
+from polaris_key.core.clock import effective_now, high_water_mark
+from polaris_key.core.jws import sign_jws, verify_jws
+from polaris_key.core.trust import merge_trust, verify_trust_manifest
+from polaris_key.core.verify import verify_config_doc, verify_license_doc
+from polaris_key.license.gate import license_state
 
 # tests/ -> python/ -> sdks/ -> repo root -> conformance/corpus/v2/cases.json
 _CORPUS_DIR = Path(__file__).resolve().parents[3] / "conformance" / "corpus" / "v2"

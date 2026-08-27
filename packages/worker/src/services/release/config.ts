@@ -10,7 +10,7 @@
  * the split is meant to prevent.
  */
 
-import type { ReleaseAccess } from "@plrs/protocol/release";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db } from "../../core/platform.js";
 
 export interface ReleaseConfigRow {
@@ -66,7 +66,7 @@ export function readAccessMode(value: unknown): ReleaseAccess {
   return "public";
 }
 
-/** The four modes an operator (or `.polaris/release`) may write. */
+/** The four modes an operator (or `.pkey/release`) may write. */
 export const RELEASE_ACCESS_MODES: readonly ReleaseAccess[] = [
   "public",
   "authenticated",

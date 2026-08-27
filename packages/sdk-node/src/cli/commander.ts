@@ -1,4 +1,4 @@
-// Commander adapter. `registerPolarisCommands(program, factory)` attaches the Polaris
+// Commander adapter. `registerPolarisCommands(program, factory)` attaches the Polaris Key
 // subcommands to a commander `Command`, building a client from the program's options via
 // `factory` and printing each `CommandResult`. `commander` is an OPTIONAL peer dependency —
 // only its TYPES are imported (erased at build), so this module compiles + ships without

@@ -18,7 +18,7 @@
 import type { Env, Db } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";
-import type { UpdateArch } from "@plrs/protocol/update";
+import type { UpdateArch } from "@polaris-key/protocol/update";
 import type { FetchImpl } from "../release/githubApp.js";
 import { fetchTextAsset } from "../release/github.js";
 import { matchAsset, normalizeArch, sigAssetName } from "../release/assets.js";

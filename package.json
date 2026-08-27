@@ -16,7 +16,7 @@
     "gen:corpus": "tsx tools/sign-corpus.ts",
     "gen:mirrors": "tsx tools/gen-mirrors.ts",
     "prepare": "husky",
-    "conformance": "turbo run test --filter=@plrs/conformance-node",
+    "conformance": "turbo run test --filter=@polaris-key/conformance-node",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "format": "prettier --check \"**/*.{ts,tsx,md,json}\"",

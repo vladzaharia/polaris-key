@@ -1,4 +1,4 @@
--- Polaris suite — ownership marker for `services_json` (design spec §2.2).
+-- Polaris Key suite — ownership marker for `services_json` (design spec §2.2).
 --
 -- Same rule the fingerprint (0010) and auto-issue (0011) policies already follow:
 --   'manifest' => `.pkey/product` owns the enablement set and a resync reapplies it.

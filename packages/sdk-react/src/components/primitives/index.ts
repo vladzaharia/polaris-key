@@ -1,4 +1,4 @@
-// The shared UI primitives every prebuilt Polaris component is assembled from. Exported so a
+// The shared UI primitives every prebuilt Polaris Key component is assembled from. Exported so a
 // product building a custom screen can inherit the same themed surfaces + a11y contract
 // instead of reimplementing them next to the ones it replaced.
 

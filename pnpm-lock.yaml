@@ -38,22 +38,22 @@ importers:
 
   conformance/runners/node:
     dependencies:
-      '@plrs/client-core':
+      '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../../../packages/client-core
-      '@plrs/jws':
+      '@polaris-key/jws':
         specifier: workspace:*
         version: link:../../../packages/shared-jws
-      '@plrs/node':
+      '@polaris-key/node':
         specifier: workspace:*
         version: link:../../../packages/sdk-node
-      '@plrs/protocol':
+      '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../../../packages/shared-protocol
 
   packages/admin:
     dependencies:
-      '@plrs/catalog':
+      '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog
       '@radix-ui/react-checkbox':
@@ -144,7 +144,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@plrs/manifest':
+      '@polaris-key/manifest':
         specifier: workspace:*
         version: link:../shared-manifest
       yaml:
@@ -153,10 +153,10 @@ importers:
 
   packages/client-core:
     dependencies:
-      '@plrs/jws':
+      '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
-      '@plrs/protocol':
+      '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
     devDependencies:
@@ -166,13 +166,13 @@ importers:
 
   packages/sdk-node:
     dependencies:
-      '@plrs/client-core':
+      '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
-      '@plrs/jws':
+      '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
-      '@plrs/protocol':
+      '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
     devDependencies:
@@ -195,10 +195,10 @@ importers:
 
   packages/sdk-react:
     dependencies:
-      '@plrs/client-core':
+      '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
-      '@plrs/protocol':
+      '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
     devDependencies:
@@ -227,7 +227,7 @@ importers:
 
   packages/shared-manifest:
     dependencies:
-      '@plrs/catalog':
+      '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog
       yaml:
@@ -238,16 +238,16 @@ importers:
 
   packages/worker:
     dependencies:
-      '@plrs/catalog':
+      '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog
-      '@plrs/jws':
+      '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
-      '@plrs/manifest':
+      '@polaris-key/manifest':
         specifier: workspace:*
         version: link:../shared-manifest
-      '@plrs/protocol':
+      '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
       jose:
@@ -263,10 +263,10 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20251001.0
         version: 4.20260623.1
-      '@plrs/client-core':
+      '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
-      '@plrs/node':
+      '@polaris-key/node':
         specifier: workspace:*
         version: link:../sdk-node
       '@types/better-sqlite3':
@@ -281,19 +281,19 @@ importers:
 
   products:
     dependencies:
-      '@plrs/catalog':
+      '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../packages/shared-catalog
-      '@plrs/manifest':
+      '@polaris-key/manifest':
         specifier: workspace:*
         version: link:../packages/shared-manifest
 
   tools:
     dependencies:
-      '@plrs/catalog':
+      '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../packages/shared-catalog
-      '@plrs/jws':
+      '@polaris-key/jws':
         specifier: workspace:*
         version: link:../packages/shared-jws
 

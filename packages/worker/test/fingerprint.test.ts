@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   FINGERPRINT_COMPONENT_LENGTH,
   FINGERPRINT_HWID_LENGTH,
-} from "@plrs/protocol";
+} from "@polaris-key/protocol";
 import {
   computeComponentHash,
   computeHwid,

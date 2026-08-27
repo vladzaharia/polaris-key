@@ -16,11 +16,11 @@
 // Isomorphic like the rest of the package: WebCrypto only, key generated in `beforeAll`.
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { base64UrlEncodeBytes, signJws, type TrustSet } from "@plrs/jws";
-import type { BundleDoc } from "@plrs/protocol/core";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { TrustManifestDoc } from "@plrs/protocol/trust";
+import { base64UrlEncodeBytes, signJws, type TrustSet } from "@polaris-key/jws";
+import type { BundleDoc } from "@polaris-key/protocol/core";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
 import {
   MAX_BUNDLE_BYTES,
   inspectBundle,
@@ -28,7 +28,7 @@ import {
   type BundleOptions,
 } from "../src/bundle.js";
 
-const KID = "plrs-test-2026";
+const KID = "pkey-test-2026";
 const PRODUCT = "djdl";
 const DEVICE = "dev-1";
 
@@ -73,7 +73,7 @@ function manifest(): TrustManifestDoc {
   return {
     schemaVersion: 1,
     aud: PRODUCT,
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     issuedAt: MINTED,
     expiresAt: MINTED + 300,
     jwksUrl: `https://k.test/${PRODUCT}/.well-known/jwks.json`,
@@ -93,7 +93,7 @@ function manifest(): TrustManifestDoc {
 
 function licenseDoc(): LicenseDoc {
   return {
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     aud: PRODUCT,
     deviceId: DEVICE,
     issuedAt: MINTED,
@@ -106,7 +106,7 @@ function licenseDoc(): LicenseDoc {
 
 function configDoc(): ConfigDoc {
   return {
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     aud: PRODUCT,
     deviceId: DEVICE,
     issuedAt: MINTED,
@@ -132,17 +132,17 @@ async function mint(
     issuedAt: MINTED,
     expiresAt: MINTED + IMPORT_WINDOW,
     docs,
-    trust: await signJws(manifest(), PEM, KID, "plrs-trust+jws"),
+    trust: await signJws(manifest(), PEM, KID, "pkey-trust+jws"),
     ...over,
   };
-  return signJws(payload, PEM, KID, "plrs-bundle+jws");
+  return signJws(payload, PEM, KID, "pkey-bundle+jws");
 }
 
 async function innerDocs(
   which: "both" | "license" | "config",
 ): Promise<BundleDoc["docs"]> {
-  const license = await signJws(licenseDoc(), PEM, KID, "plrs-license+jws");
-  const config = await signJws(configDoc(), PEM, KID, "plrs-config+jws");
+  const license = await signJws(licenseDoc(), PEM, KID, "pkey-license+jws");
+  const config = await signJws(configDoc(), PEM, KID, "pkey-config+jws");
   if (which === "license") return { license };
   if (which === "config") return { config };
   return { license, config };
@@ -206,7 +206,7 @@ describe("verifyBundle — what a passing bundle hands back", () => {
       { ...licenseDoc(), deviceId: "someone-elses-laptop" },
       PEM,
       KID,
-      "plrs-license+jws",
+      "pkey-license+jws",
     );
     const jws = await mint({ license: foreign }, { deviceId: DEVICE });
     expect(await inspectBundle(jws, opts())).toEqual({
@@ -219,7 +219,7 @@ describe("verifyBundle — what a passing bundle hands back", () => {
 describe("verifyBundle — the cap is the verifier's, not the caller's", () => {
   it("exposes the §1 bundle cap as a constant callers cannot raise", () => {
     // There is no `maxPayloadBytes` on `BundleOptions` at all: the raised cap is a property of
-    // `plrs-bundle+jws`, and a host that could pass its own would be able to grant a quarter
+    // `pkey-bundle+jws`, and a host that could pass its own would be able to grant a quarter
     // megabyte to something that is not a bundle.
     expect(MAX_BUNDLE_BYTES).toBe(262_144);
     expect(Object.keys(opts())).toEqual([
@@ -280,7 +280,7 @@ describe("verifyBundle — step attribution", () => {
       ],
     };
     const jws = await mint(await innerDocs("license"), {
-      trust: await signJws(swapped, PEM, KID, "plrs-trust+jws"),
+      trust: await signJws(swapped, PEM, KID, "pkey-trust+jws"),
     });
     expect(await inspectBundle(jws, opts())).toEqual({
       ok: false,
@@ -299,11 +299,11 @@ describe("verifyBundle — step attribution", () => {
         issuedAt: MINTED,
         expiresAt: MINTED + IMPORT_WINDOW,
         docs: await innerDocs("license"),
-        trust: await signJws(manifest(), PEM, KID, "plrs-trust+jws"),
+        trust: await signJws(manifest(), PEM, KID, "pkey-trust+jws"),
       },
       PEM,
       KID,
-      "plrs-license+jws",
+      "pkey-license+jws",
     );
     expect(await inspectBundle(jws, opts())).toEqual({
       ok: false,

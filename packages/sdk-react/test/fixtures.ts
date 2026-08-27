@@ -3,8 +3,8 @@
 // returning the identity session + v3 discovery shapes. The same documents → identical hook
 // outputs is the parity guarantee.
 
-import type { ManagedEntry } from "@plrs/protocol/core";
-import type { LicenseDoc } from "@plrs/protocol/license";
+import type { ManagedEntry } from "@polaris-key/protocol/core";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
 import type { ServiceSlug, ServicesMap } from "../src/core/services.js";
 import { noServices } from "../src/core/services.js";
@@ -34,7 +34,7 @@ export function services(...slugs: ServiceSlug[]): ServicesMap {
 export function makeDoc(over: Partial<LicenseDoc> = {}): LicenseDoc {
   return {
     aud: "acme",
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     licenseId: "lic-1",
     deviceId: "dev-1",
     issuedAt: 1000,

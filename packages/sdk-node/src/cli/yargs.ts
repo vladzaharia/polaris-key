@@ -1,5 +1,5 @@
 // yargs adapter. `polarisCommandModule(factory, options)` returns a yargs `CommandModule`
-// exposing the Polaris subcommands under a `polaris <command>` group, and
+// exposing the Polaris Key subcommands under a `polaris-key <command>` group, and
 // `registerPolarisCommands(yargs, factory, options)` registers that module on an `Argv`.
 // `yargs` is an OPTIONAL peer dependency — only its TYPES are imported (erased at build), so
 // this module compiles + ships without yargs installed; the consumer supplies the `Argv`.
@@ -54,7 +54,7 @@ function makeBuildClient(factory: ClientFactory, options: YargsAdapterOptions) {
     });
 }
 
-/** Build a yargs `CommandModule` (`polaris <command>`) covering the four subcommands. */
+/** Build a yargs `CommandModule` (`polaris-key <command>`) covering the four subcommands. */
 export function polarisCommandModule(
   factory: ClientFactory,
   options: YargsAdapterOptions,
@@ -72,8 +72,8 @@ export function polarisCommandModule(
   };
 
   return {
-    command: "polaris <command>",
-    describe: "Polaris suite commands",
+    command: "polaris-key <command>",
+    describe: "Polaris Key commands",
     builder: (yargs: Argv<CommonArgs>) =>
       yargs
         .command<CommonArgs & { key: string }>({

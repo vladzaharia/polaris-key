@@ -34,7 +34,7 @@
  * registry, or answers `{"enabled":false}`.
  */
 
-import { PROTOCOL_VERSION } from "@plrs/protocol";
+import { PROTOCOL_VERSION } from "@polaris-key/protocol";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";

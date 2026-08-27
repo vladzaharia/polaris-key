@@ -13,26 +13,26 @@
 // ── ACTIVATION (§5) ─────────────────────────────────────────────────────────────────────────
 //
 // The gate's `activation` input is `"token"` for an authenticated session: the session cookie
-// IS the credential here, standing in for the per-device `plrst_` token a native client holds.
+// IS the credential here, standing in for the per-device `pkeyt_` token a native client holds.
 // A browser can never be `"bundle"`-activated — there is no local store to import one into.
 //
 // Mode-parity: the adapter reduces the authenticated session read to the SAME `client-core`
 // `GateInput` the desktop bridge produces and runs the SAME `licenseState`, so a browser
 // snapshot is shape-identical to a desktop one.
 
-import type { ManagedEntry } from "@plrs/protocol/core";
+import type { ManagedEntry } from "@polaris-key/protocol/core";
 import {
   HEADER_PLATFORM,
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
   HEADER_VERSION,
-} from "@plrs/protocol/core";
+} from "@polaris-key/protocol/core";
 import type {
   BlockReason,
   DocProfile,
   LicenseDoc,
-} from "@plrs/protocol/license";
-import { compareSemver, highWaterMark } from "@plrs/client-core";
+} from "@polaris-key/protocol/license";
+import { compareSemver, highWaterMark } from "@polaris-key/client-core";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import {
   configSource,
@@ -84,7 +84,7 @@ export interface BrowserAdapterOptions {
   /** Client-supplied local/user overrides for `default`-state config keys. Never override
    *  `enforced`/`hidden` keys (server wins). */
   localOverrides?: Record<string, JSONValue>;
-  /** The host app's version, reported as `X-Polaris-Version` so a browser device row carries
+  /** The host app's version, reported as `X-PKey-Version` so a browser device row carries
    *  the same app-version metadata a native one does. Also the basis of `updateAvailable`. */
   version?: string;
   /** What the host EXPECTS this product to run, used only while discovery has not answered
@@ -109,7 +109,7 @@ interface SessionResponse {
 }
 
 /** The fused document the identity session still mints (license claims + config + entitlements
- *  in one artifact). Kept local rather than imported from `@plrs/protocol`'s legacy barrel:
+ *  in one artifact). Kept local rather than imported from `@polaris-key/protocol`'s legacy barrel:
  *  nothing new may depend on that module, and this is the last surface that speaks it. */
 interface FusedSessionDoc {
   schemaVersion?: number;
@@ -199,7 +199,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   /**
-   * The same `X-Polaris-*` metadata the native SDKs send, so a browser device row is not a
+   * The same `X-PKey-*` metadata the native SDKs send, so a browser device row is not a
    * blank entry in the admin panel next to fully described native ones.
    *
    * Browsers send NO hardware fingerprint — canvas/WebGL-style fingerprinting is unreliable,
@@ -492,7 +492,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   /**
-   * A cookie session holds no `plrst_` bearer token, and `/<p>/devices` authenticates with
+   * A cookie session holds no `pkeyt_` bearer token, and `/<p>/devices` authenticates with
    * one — so remote device management is genuinely unreachable from a browser rather than
    * merely unimplemented. `DeviceManager` renders this refusal as an explanation.
    */

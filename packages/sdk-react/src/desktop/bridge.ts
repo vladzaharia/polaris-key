@@ -1,5 +1,5 @@
 // The desktop IPC contract, version 2. In an Electron/Tauri app the main/native process owns
-// the real `@plrs/node` client (token + keyring + loopback OIDC) and exposes THIS object to the
+// the real `@polaris-key/node` client (token + keyring + loopback OIDC) and exposes THIS object to the
 // renderer (default: `window.polarisKey`, via a contextBridge preload). The React desktop
 // adapter is a thin renderer-side proxy over these methods — all credential and filesystem
 // state stays in the privileged process.
@@ -20,9 +20,9 @@
 //     on `doc` (a `LicenseDoc`) and settings arrive here.
 //   * `getSyncState()` and a versioned `invoke(service, method, args)` escape hatch.
 //
-// ── THE @plrs/node MIRROR ───────────────────────────────────────────────────────────────────
+// ── THE @polaris-key/node MIRROR ───────────────────────────────────────────────────────────────────
 //
-// `@plrs/node`'s `PolarisClient.getSyncState(): SyncState` SATISFIES this contract's state
+// `@polaris-key/node`'s `PolarisKeyClient.getSyncState(): SyncState` SATISFIES this contract's state
 // half: `BridgeState` is `SyncState` field for field (`activation`, `doc`, `lastSyncUnauthorized`,
 // `blocked`, `lastVerifiedAt`, `highWaterMark`) plus the two renderer-only additions above. The
 // optionality is deliberately WIDER here than on the Node side, so a host can write
@@ -32,14 +32,17 @@
 // and have it type-check with nothing in between. `test/bridge.test.ts` pins the assignability
 // so a field rename on either side stops compiling instead of drifting.
 
-import type { JSONValue, ManagedEntry } from "@plrs/protocol/core";
-import type { ActivationSource, LicenseDoc } from "@plrs/protocol/license";
-import type { BlockedState } from "@plrs/client-core";
+import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
+import type {
+  ActivationSource,
+  LicenseDoc,
+} from "@polaris-key/protocol/license";
+import type { BlockedState } from "@polaris-key/client-core";
 import type { ServicesMap } from "../core/services.js";
 
 /** The serialized gate inputs the bridge reports — the renderer can't run the Node gate
  *  itself, so the privileged process sends the documents + the sync bookkeeping and the
- *  adapter derives the same `LicenseState` the Node SDK would (via `@plrs/client-core`). */
+ *  adapter derives the same `LicenseState` the Node SDK would (via `@polaris-key/client-core`). */
 export interface BridgeState {
   /** How this install became activated, or `null`. Replaces v1's `hasToken`. */
   activation: ActivationSource | null;
@@ -78,7 +81,7 @@ export type BridgeOidcPoll =
   | { kind: "expired" }
   | { kind: "error"; message: string };
 
-/** The result of submitting a typed key (mirrors @plrs/node's ActivationResult). */
+/** The result of submitting a typed key (mirrors @polaris-key/node's ActivationResult). */
 export type BridgeActivation =
   | { kind: "ok" }
   | { kind: "device-limit"; limit?: number; deviceCount?: number }
@@ -98,7 +101,7 @@ export interface PolarisBridge {
   /** The bridge protocol revision. Absent ⇒ treated as 1 (pre-suite). */
   readonly version?: number;
   /** Snapshot the current gate inputs (no network). The v2 name, mirroring
-   *  `@plrs/node`'s `getSyncState()`. */
+   *  `@polaris-key/node`'s `getSyncState()`. */
   getSyncState(): Promise<BridgeState>;
   /** Re-pull + re-apply the managed documents; resolves to the fresh state. */
   refresh(): Promise<BridgeState>;
@@ -112,7 +115,7 @@ export interface PolarisBridge {
   signOut(): Promise<void>;
   /**
    * The versioned escape hatch: call any sub-client verb the privileged process exposes
-   * without growing this interface for it. `service` is the sub-client name as `@plrs/node`
+   * without growing this interface for it. `service` is the sub-client name as `@polaris-key/node`
    * spells it (`"devices"`, `"update"`, `"release"`, `"config"`, `"license"`), `method` the
    * verb, `args` a single serialisable bag.
    *

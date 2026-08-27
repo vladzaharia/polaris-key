@@ -26,9 +26,9 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from polaris.core.models import AllowedRange, BlockedState, LicenseDoc, ManagedEntry
-from polaris.core.semver import channel_for_version, compare_semver, is_dev_build
-from polaris.license.gate import is_usable, license_state
+from polaris_key.core.models import AllowedRange, BlockedState, LicenseDoc, ManagedEntry
+from polaris_key.core.semver import channel_for_version, compare_semver, is_dev_build
+from polaris_key.license.gate import is_usable, license_state
 
 # tests/ -> python/ -> sdks/ -> repo root -> conformance/corpus/v2/gate-matrix.json
 _MATRIX_PATH = (
@@ -104,7 +104,7 @@ def _build_doc(lic: Dict[str, Any]) -> Optional[LicenseDoc]:
     if not {"issuedAt", "expiresAt", "graceUntil"} <= set(lic):
         return None
     return LicenseDoc(
-        iss="plrs.im",
+        iss="key.plrs.im",
         aud="djdl",
         deviceId="dev_matrix",
         issuedAt=lic["issuedAt"],

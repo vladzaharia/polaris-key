@@ -1,4 +1,4 @@
-// R2 RED TEAM — adversarial tests against the FROZEN wire contract (@plrs/jws).
+// R2 RED TEAM — adversarial tests against the FROZEN wire contract (@polaris-key/jws).
 // These tests document CURRENT behaviour. Several of them assert the *insecure* /
 // divergent behaviour on purpose, so that a future fix flips them red and forces a
 // deliberate wire-contract decision. Nothing here modifies src/index.ts.
@@ -191,7 +191,7 @@ describe("R2-07 · verifyJws does ZERO payload schema validation (diverges from 
     const jws = await signJws(42, PEM, KID);
     const v = await verifyJws<unknown>(jws, { [KID]: PUB });
     expect(v?.payload).toBe(42);
-    // Swift's `JWSVerifier.verify` runs JSONDecoder<ManagedConfigDoc> and returns nil
+    // Swift's `JWSVerifier.verify` decodes into a concrete document type and returns nil
     // here; Python's `verify_jws` returns the raw scalar like TS. Unpinned by the corpus.
   });
 

@@ -15,8 +15,8 @@
 // the a11y contract stay.
 
 import { useId, useState, type ReactNode } from "react";
-import type { JSONValue } from "@plrs/protocol/core";
-import type { ConfigSource } from "@plrs/client-core";
+import type { JSONValue } from "@polaris-key/protocol/core";
+import type { ConfigSource } from "@polaris-key/client-core";
 import { useManagedConfig, usePolarisTheme } from "../react/hooks.js";
 import { Button } from "./primitives/buttons.js";
 import { Panel, mutedText } from "./primitives/card.js";

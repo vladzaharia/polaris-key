@@ -40,7 +40,7 @@ jobs:
       # gate once a product opts into generated mirrors and wires up the paths, e.g.:
       #   pnpm gen:mirrors -- --catalog products/<slug>/catalog.json \
       #     --out-dir <mirror-dir> --lang ts,python,swift --check
-      - run: pnpm --filter @plrs/admin build
+      - run: pnpm --filter @polaris-key/admin build
 
   # The `js` job above runs every suite under `environment: "node"`. Node permits the runtime
   # code generation workerd forbids, so it is structurally incapable of catching the class of
@@ -66,8 +66,8 @@ jobs:
       # The worker imports the workspace packages from their built `dist`, and wrangler.toml's
       # assets binding points at `packages/admin/dist`, so both must exist before workerd boots.
       - run: pnpm build
-      - run: pnpm --filter @plrs/worker typecheck:workerd
-      - run: pnpm --filter @plrs/worker test:workerd
+      - run: pnpm --filter @polaris-key/worker typecheck:workerd
+      - run: pnpm --filter @polaris-key/worker test:workerd
 
   python:
     name: Python SDK

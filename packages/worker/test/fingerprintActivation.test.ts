@@ -3,7 +3,7 @@
 // contract are verified together rather than in isolation.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { FINGERPRINT_COMPONENT_LENGTH } from "@plrs/protocol";
+import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -70,7 +70,7 @@ describe("fingerprinted activation", () => {
     return handleActivate(
       mkReq(
         "POST",
-        { authorization: `Bearer ${key}`, "x-polaris-device": device },
+        { authorization: `Bearer ${key}`, "x-pkey-device": device },
         components
           ? { fingerprint: { components, hwid: "ignored" } }
           : undefined,
@@ -229,7 +229,7 @@ describe("device facts reporting", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": DEVICE,
+        "x-pkey-device": DEVICE,
       }),
       env,
       db,

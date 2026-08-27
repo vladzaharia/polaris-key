@@ -1,9 +1,9 @@
-// @plrs/protocol/config — Config service wire types (wire contract v3 §2.2).
+// @polaris-key/protocol/config — Config service wire types (wire contract v3 §2.2).
 
 import type { DocClaims, ManagedEntry } from "./core.js";
 
 /**
- * The config document (`typ: "plrs-config+jws"`) — config + secrets only. Contains no
+ * The config document (`typ: "pkey-config+jws"`) — config + secrets only. Contains no
  * license fields; a product with `config` enabled and `license` disabled issues these to
  * any registered device, which is the wire-level guarantee of service independence (D-08).
  * Entitlements ride the LICENSE document, not this one.

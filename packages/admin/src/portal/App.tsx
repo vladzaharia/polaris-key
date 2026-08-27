@@ -227,7 +227,7 @@ function SignIn({
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
           <CardDescription>
-            Access licenses, devices, and downloads across your Polaris
+            Access licenses, devices, and downloads across your Polaris Key
             products.
           </CardDescription>
         </CardHeader>
@@ -401,7 +401,7 @@ function Dashboard({
           Licensing portal
         </h1>
         <p className="text-sm text-muted-foreground">
-          Your licenses, devices, and downloads across Polaris products.
+          Your licenses, devices, and downloads across Polaris Key products.
         </p>
       </header>
       <div className="grid gap-4 md:grid-cols-3">

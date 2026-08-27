@@ -619,7 +619,7 @@ describe("manifest identifier character classes (R9-01 audit)", () => {
   });
 });
 
-// ── Polaris service enablement (design spec §2.2 / §2.3) ─────────────────────
+// ── Polaris Key service enablement (design spec §2.2 / §2.3) ─────────────────────
 //
 // The `modules:` block used to be validated and then thrown away. It is now the source of a
 // product's `services_json` — the single authority for which routes exist, which discovery

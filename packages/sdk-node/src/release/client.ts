@@ -10,7 +10,7 @@
 // access mode is `entitled` (P2.T3) the server refuses without a device token; this client
 // forwards the bearer when one is held and reports the refusal rather than inventing a retry.
 
-import { PolarisError } from "@plrs/client-core";
+import { PolarisError } from "@polaris-key/client-core";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 

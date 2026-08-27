@@ -21,13 +21,13 @@
 // changed, not merely that the document was re-signed.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { signJws } from "@plrs/jws";
-import { ISSUER } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { TrustManifestDoc } from "@plrs/protocol/trust";
-import type { LicenseState } from "@plrs/client-core";
-import { PolarisClient } from "../src/client.js";
+import { signJws } from "@polaris-key/jws";
+import { ISSUER } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
+import type { LicenseState } from "@polaris-key/client-core";
+import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
 
 const TEST_KID = "pkey-test-prod-2026";
@@ -140,7 +140,7 @@ const jwsRes = (jws: string, etag: string): Response =>
 // ── The refresh-loop / onChange scenario (carried from refreshLoop.test.ts) ────────────────
 
 interface Scenario {
-  client: PolarisClient;
+  client: PolarisKeyClient;
   changes: LicenseState[];
   paths: string[];
   /** Swap what the next /license/document returns, as a remote tier change would. */
@@ -171,7 +171,7 @@ async function scenario(
     const validator = new Headers(init?.headers).get("if-none-match");
 
     if (p.endsWith("/license/activate"))
-      return jsonRes({ token: "plrst_test", schemaVersion: 1 });
+      return jsonRes({ token: "pkeyt_test", schemaVersion: 1 });
     if (p.endsWith("/devices/report")) return jsonRes({});
 
     if (p.endsWith("/license/document")) {
@@ -185,7 +185,7 @@ async function scenario(
           licenseDoc(deviceId, issuedAt, tier),
           TEST_PEM,
           TEST_KID,
-          "plrs-license+jws",
+          "pkey-license+jws",
         ),
         licenseEtag,
       );
@@ -201,7 +201,7 @@ async function scenario(
           configDoc(deviceId, issuedAt),
           TEST_PEM,
           TEST_KID,
-          "plrs-config+jws",
+          "pkey-config+jws",
         ),
         configEtag,
       );
@@ -209,7 +209,7 @@ async function scenario(
     return new Response("not found", { status: 404 });
   }) as typeof fetch;
 
-  const client = await PolarisClient.create({
+  const client = await PolarisKeyClient.create({
     ...base,
     store,
     fetchImpl,
@@ -326,7 +326,7 @@ describe("sync — the ETag/304 half-life rule, per document (R2-11)", () => {
       const validator = new Headers(init?.headers).get("if-none-match");
 
       if (p.endsWith("/license/activate"))
-        return jsonRes({ token: "plrst_stable", schemaVersion: 1 });
+        return jsonRes({ token: "pkeyt_stable", schemaVersion: 1 });
       if (p.endsWith("/devices/report")) return jsonRes({});
 
       if (p.endsWith("/license/document")) {
@@ -339,7 +339,7 @@ describe("sync — the ETag/304 half-life rule, per document (R2-11)", () => {
             licenseDoc(deviceId, nowSec(), "free", LICENSE_TTL),
             TEST_PEM,
             TEST_KID,
-            "plrs-license+jws",
+            "pkey-license+jws",
           ),
           '"stable-lic"',
         );
@@ -353,7 +353,7 @@ describe("sync — the ETag/304 half-life rule, per document (R2-11)", () => {
             configDoc(deviceId, nowSec(), CONFIG_TTL),
             TEST_PEM,
             TEST_KID,
-            "plrs-config+jws",
+            "pkey-config+jws",
           ),
           '"stable-cfg"',
         );
@@ -361,7 +361,7 @@ describe("sync — the ETag/304 half-life rule, per document (R2-11)", () => {
       return new Response("not found", { status: 404 });
     }) as typeof fetch;
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl,
@@ -429,17 +429,17 @@ describe("sync — trust refresh on Core's own cadence (§4.2)", () => {
     // document alone is provably inert, because `doc.issuedAt < doc.graceUntil` always holds
     // (R4-04). Core drives this now, before the documents and independently of them.
     const store = new InMemoryStore(PRODUCT);
-    await store.setToken("plrst_seeded"); // sync() needs a credential to do anything at all
+    await store.setToken("pkeyt_seeded"); // sync() needs a credential to do anything at all
     const at = nowSec();
     const manifestJws = await signJws(
       trustManifest(at),
       TEST_PEM,
       TEST_KID,
-      "plrs-trust+jws",
+      "pkey-trust+jws",
     );
     const paths: string[] = [];
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       trustRefresh: true,
@@ -464,16 +464,16 @@ describe("sync — trust refresh on Core's own cadence (§4.2)", () => {
 
   it("never fetches the trust manifest when trustRefresh is false", async () => {
     const store = new InMemoryStore(PRODUCT);
-    await store.setToken("plrst_seeded");
+    await store.setToken("pkeyt_seeded");
     const manifestJws = await signJws(
       trustManifest(nowSec()),
       TEST_PEM,
       TEST_KID,
-      "plrs-trust+jws",
+      "pkey-trust+jws",
     );
     const paths: string[] = [];
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       trustRefresh: false,
@@ -505,9 +505,9 @@ async function serviceMock(store: InMemoryStore): Promise<ServiceMock> {
       .pathname;
     paths.push(p);
     if (p.endsWith("/license/activate"))
-      return jsonRes({ token: "plrst_activated", schemaVersion: 1 });
+      return jsonRes({ token: "pkeyt_activated", schemaVersion: 1 });
     if (p.endsWith("/devices/register"))
-      return jsonRes({ token: "plrst_registered", deviceId });
+      return jsonRes({ token: "pkeyt_registered", deviceId });
     if (p.endsWith("/devices/report")) return jsonRes({});
     if (p.endsWith("/license/document"))
       return jwsRes(
@@ -515,7 +515,7 @@ async function serviceMock(store: InMemoryStore): Promise<ServiceMock> {
           licenseDoc(deviceId, at + bump++),
           TEST_PEM,
           TEST_KID,
-          "plrs-license+jws",
+          "pkey-license+jws",
         ),
         '"lic-v1"',
       );
@@ -525,7 +525,7 @@ async function serviceMock(store: InMemoryStore): Promise<ServiceMock> {
           configDoc(deviceId, at + bump++),
           TEST_PEM,
           TEST_KID,
-          "plrs-config+jws",
+          "pkey-config+jws",
         ),
         '"cfg-v1"',
       );
@@ -538,7 +538,7 @@ describe("sync — per-service parallel fetch (D-08 / D-21)", () => {
   it("with only the license service enabled, /config/document is NEVER requested", async () => {
     const store = new InMemoryStore(PRODUCT);
     const m = await serviceMock(store);
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: m.impl,
@@ -573,7 +573,7 @@ describe("sync — per-service parallel fetch (D-08 / D-21)", () => {
     // `needs-activation` forever waiting for a licence that does not exist.
     const store = new InMemoryStore(PRODUCT);
     const m = await serviceMock(store);
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: m.impl,
@@ -619,9 +619,9 @@ describe("sync — the per-document result shape", () => {
         .pathname;
       const validator = new Headers(init?.headers).get("if-none-match");
       if (p.endsWith("/license/activate"))
-        return jsonRes({ token: "plrst_activated", schemaVersion: 1 });
+        return jsonRes({ token: "pkeyt_activated", schemaVersion: 1 });
       if (p.endsWith("/license/token"))
-        return jsonRes({ token: "plrst_rotated", schemaVersion: 1 });
+        return jsonRes({ token: "pkeyt_rotated", schemaVersion: 1 });
       if (p.endsWith("/devices/report")) return jsonRes({});
 
       if (p.endsWith("/license/document")) {
@@ -641,7 +641,7 @@ describe("sync — the per-document result shape", () => {
             licenseDoc(deviceId, at + bump++),
             TEST_PEM,
             TEST_KID,
-            "plrs-license+jws",
+            "pkey-license+jws",
           ),
           '"lic-v1"',
         );
@@ -655,7 +655,7 @@ describe("sync — the per-document result shape", () => {
             configDoc(deviceId, at + bump++),
             TEST_PEM,
             TEST_KID,
-            "plrs-config+jws",
+            "pkey-config+jws",
           ),
           '"cfg-v1"',
         );
@@ -663,7 +663,7 @@ describe("sync — the per-document result shape", () => {
       return new Response("not found", { status: 404 });
     }) as typeof fetch;
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl,

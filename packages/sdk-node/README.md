@@ -1,17 +1,17 @@
-# @plrs/node
+# @polaris-key/node
 
-The Node/TypeScript client for the **Polaris suite** — an always-on **Core** substrate (device
+The Node/TypeScript client for **Polaris Key** — an always-on **Core** substrate (device
 principal, credential, trust, verified cache, sync loop) plus one opt-in sub-client per service
 (**License**, **Config**, **Devices**, **Release**, **Update**). **Offline-first**: `init()`
 loads and re-verifies the cached signed documents with **no network**. The frozen wire crypto
-(Ed25519 compact JWS) is verified through [`@plrs/client-core`](../client-core), the isomorphic
+(Ed25519 compact JWS) is verified through [`@polaris-key/client-core`](../client-core), the isomorphic
 package the React SDK shares, and pinned byte-for-byte by the same cross-language conformance
 corpus the Python and Swift SDKs run.
 
 ## Install
 
 ```sh
-pnpm add @plrs/node
+pnpm add @polaris-key/node
 ```
 
 Node 22+. The OS keyring is an **optional** dependency (`@napi-rs/keyring`); without it the
@@ -20,17 +20,18 @@ token falls back to a `0600` file under the config dir.
 ## Quick start
 
 ```ts
-import { PolarisClient } from "@plrs/node";
+import { PolarisKeyClient } from "@polaris-key/node";
 
 // Offline-first: create() loads the token + re-verifies the cached documents, no network.
-const client = await PolarisClient.create({
+const client = await PolarisKeyClient.create({
   productSlug: "djdl",
   version: "1.4.2",
   trust: {
     pinnedKeys: {
       // kid -> raw Ed25519 public key (base64url). Pinned by the caller; NEVER read from
       // the document, and never learnable from the cache.
-      "plrs-djdl-prod-2026-06": "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
+      "pkey-djdl-prod-2026-06":
+        "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
     },
   },
 });
@@ -52,35 +53,35 @@ await client.sync();
 
 ## Shape
 
-| Surface           | Subpath              | What it owns                                                                                                 |
-| ----------------- | -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `client.core`     | `@plrs/node/core`    | Device id, `plrst_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import      |
-| `client.license`  | `@plrs/node/license` | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile                              |
-| `client.config`   | `@plrs/node/config`  | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret`                                              |
-| `client.devices`  | `@plrs/node/devices` | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas |
-| `client.release`  | `@plrs/node/release` | `changelog` / `installUrl` / `downloadUrl`                                                                   |
-| `client.update`   | `@plrs/node/update`  | `check` (version) / `appcastUrl` (from discovery)                                                            |
-| —                 | `@plrs/node/local`   | The transportless profile: every network-requiring call refuses                                              |
-| —                 | `@plrs/node/cli`     | Framework-agnostic commands + commander/yargs adapters                                                       |
+| Surface          | Subpath                     | What it owns                                                                                                        |
+| ---------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `client.core`    | `@polaris-key/node/core`    | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import           |
+| `client.license` | `@polaris-key/node/license` | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile                                     |
+| `client.config`  | `@polaris-key/node/config`  | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret`                                                    |
+| `client.devices` | `@polaris-key/node/devices` | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas |
+| `client.release` | `@polaris-key/node/release` | `changelog` / `installUrl` / `downloadUrl`                                                                          |
+| `client.update`  | `@polaris-key/node/update`  | `check` (version) / `appcastUrl` (from discovery)                                                                   |
+| —                | `@polaris-key/node/local`   | The transportless profile: every network-requiring call refuses                                                     |
+| —                | `@polaris-key/node/cli`     | Framework-agnostic commands + commander/yargs adapters                                                              |
 
 Pure verification logic is **not** re-exported here. `verifyLicenseDoc`, `licenseState`,
-`mergeTrust`, `verifyBundle`, `compareSemver` and friends live in `@plrs/client-core`; there is
+`mergeTrust`, `verifyBundle`, `compareSemver` and friends live in `@polaris-key/client-core`; there is
 one implementation, and every JS host consumes it.
 
 ### `CoreOptions`
 
-| Option              | Notes                                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `productSlug`       | The product slug; also the document `aud`. Scopes every route + the cache.                                  |
-| `version`           | The **host application's** semver. Sent as `X-Polaris-Version`; the channel derives from it.                |
-| `trust.pinnedKeys`  | `{ kid -> rawEd25519PubBase64url }`. Core-owned: it verifies licence documents, config documents, trust manifests and offline bundles alike. |
-| `baseUrl`           | Control-plane origin (default `https://key.plrs.im`). Must be `https:` or loopback.                          |
-| `channel`           | Override the channel (default derived from `version`).                                                       |
-| `trustRefresh`      | Refresh the trust manifest on Core's own cadence inside `sync()` (default true).                             |
-| `store`             | A `Store` (default `KeyringStore`; `InMemoryStore` for tests).                                                |
-| `configDir`         | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                     |
-| `requestTimeoutMs`  | Per-request deadline (default 15000; `0` disables).                                                          |
-| `expectedServices`  | What this build expects the product to run — the capability fallback when discovery has not been fetched.    |
+| Option             | Notes                                                                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `productSlug`      | The product slug; also the document `aud`. Scopes every route + the cache.                                                                   |
+| `version`          | The **host application's** semver. Sent as `X-PKey-Version`; the channel derives from it.                                                    |
+| `trust.pinnedKeys` | `{ kid -> rawEd25519PubBase64url }`. Core-owned: it verifies licence documents, config documents, trust manifests and offline bundles alike. |
+| `baseUrl`          | Control-plane origin (default `https://key.plrs.im`). Must be `https:` or loopback.                                                          |
+| `channel`          | Override the channel (default derived from `version`).                                                                                       |
+| `trustRefresh`     | Refresh the trust manifest on Core's own cadence inside `sync()` (default true).                                                             |
+| `store`            | A `Store` (default `KeyringStore`; `InMemoryStore` for tests).                                                                               |
+| `configDir`        | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                                                     |
+| `requestTimeoutMs` | Per-request deadline (default 15000; `0` disables).                                                                                          |
+| `expectedServices` | What this build expects the product to run — the capability fallback when discovery has not been fetched.                                    |
 
 Per-service inputs ride their own bags: `config: { localOverrides, envPrefix, env }`,
 `license: { fingerprint }`, `devices: { probes, fingerprint }`.
@@ -124,14 +125,14 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 - A **`default`** (or absent) key can be overridden locally, then by an env var, then falls back
   to the remote value, then to the caller's `fallback`.
 
-### The `PLRS_CONFIG_*` env convention
+### The `PKEY_CONFIG_*` env convention
 
 An override env var is `${envPrefix}${key.replaceAll(".", "__")}` (dots → double underscores):
 
 | Config key        | Env var                        |
 | ----------------- | ------------------------------ |
-| `run.concurrency` | `PLRS_CONFIG_run__concurrency` |
-| `quality.floor`   | `PLRS_CONFIG_quality__floor`   |
+| `run.concurrency` | `PKEY_CONFIG_run__concurrency` |
+| `quality.floor`   | `PKEY_CONFIG_quality__floor`   |
 
 The value is JSON-parsed when it looks like JSON (`4` → number, `true` → boolean, `[…]`/`{…}` →
 array/object, `"…"` → string); otherwise it is the raw string. Malformed JSON-looking values fall
@@ -142,28 +143,28 @@ back to the raw string.
 1. **Online with grace** — the default. Documents carry a short `expiresAt` and a long,
    server-signed `graceUntil`.
 2. **Bundle-activated** — `await client.importBundle(jws)` verifies an operator-minted
-   `plrs-bundle+jws` against the pinned keys, **all-or-nothing**, and writes the cache atomically.
+   `pkey-bundle+jws` against the pinned keys, **all-or-nothing**, and writes the cache atomically.
    No token is created; the gate reads `activation: "bundle"`. A rejection throws a
    `PolarisError` naming the step that refused.
-3. **Local-only** — `@plrs/node/local`'s `createLocalClient` / `createBundleClient`. There is no
+3. **Local-only** — `@polaris-key/node/local`'s `createLocalClient` / `createBundleClient`. There is no
    transport at all: config resolution, the gate and bundle import work, and every
    network-requiring call throws `PolarisError` code `local-only`.
 
 ## CLI hooks
 
-`@plrs/node/cli` exposes a framework-agnostic command core plus thin **commander** and **yargs**
+`@polaris-key/node/cli` exposes a framework-agnostic command core plus thin **commander** and **yargs**
 adapters over the same core, so the two front ends never diverge. Verbs are grouped by owning
 service — `activate` / `enroll` / `deactivate` / `status` (license), `register` (devices),
 `config <key>` (config), `import-bundle <file>` (core):
 
 ```ts
 import { Command } from "commander";
-import { PolarisClient } from "@plrs/node";
-import { registerPolarisCommands } from "@plrs/node/cli";
+import { PolarisKeyClient } from "@polaris-key/node";
+import { registerPolarisCommands } from "@polaris-key/node/cli";
 
 const program = new Command();
-registerPolarisCommands(program, (opts) => PolarisClient.create(opts), {
-  pinnedKeys: { "plrs-djdl-prod-2026-06": "…" },
+registerPolarisCommands(program, (opts) => PolarisKeyClient.create(opts), {
+  pinnedKeys: { "pkey-djdl-prod-2026-06": "…" },
   productSlug: "djdl",
   version: "1.4.2",
 });
@@ -173,7 +174,7 @@ program.parseAsync(process.argv);
 ## The frozen wire contract
 
 Documents are compact **JWS (EdDSA / Ed25519)**, domain-separated by `typ`
-(`plrs-license+jws`, `plrs-config+jws`, `plrs-trust+jws`, `plrs-bundle+jws`). The verifying key
+(`pkey-license+jws`, `pkey-config+jws`, `pkey-trust+jws`, `pkey-bundle+jws`). The verifying key
 is chosen by the header `kid` from the pinned trust set — never from the document, and never
 from the cache. The encoding and every claim rule are pinned by
 `conformance/corpus/v2/cases.json`, which this SDK, the worker, and the other three SDKs verify
@@ -182,7 +183,7 @@ identically. See `docs/security/WIRE-CONTRACT-V3.md`.
 ## Develop
 
 ```sh
-pnpm --filter @plrs/node typecheck
-pnpm --filter @plrs/node test
-pnpm --filter @plrs/node build
+pnpm --filter @polaris-key/node typecheck
+pnpm --filter @polaris-key/node test
+pnpm --filter @polaris-key/node build
 ```

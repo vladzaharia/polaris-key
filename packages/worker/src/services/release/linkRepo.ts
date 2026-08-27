@@ -1,16 +1,15 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * GitHub-forward product creation: paste a repo URL, read its `.polaris/` (or `.pkey/`)
- * manifest, mint a per-product Ed25519 signing key (sealed under the platform KEK), and register
- * the product atomically. This is the "link a repo" path; the manual path lives in
- * admin/handlers.
+ * GitHub-forward product creation: paste a repo URL, read its `.pkey/` manifest, mint a
+ * per-product Ed25519 signing key (sealed under the platform KEK), and register the product
+ * atomically. This is the "link a repo" path; the manual path lives in admin/handlers.
  *
  * The flow:
  *   1. Parse `owner/repo` from the URL.
  *   2. Discover the App installation on that repo, mint an installation token.
- *   3. Read `schema.*`, `product.*`, `release.*` (JSON or YAML) from `.polaris/`, falling back
- *      to `.pkey/` per file (`manifestFiles.ts`), and parse them.
+ *   3. Read `schema.*`, `product.*`, `release.*` (JSON or YAML) from `.pkey/`
+ *      (`manifestFiles.ts`), and parse them.
  *   4. Generate + seal an Ed25519 key; assemble the products + child rows.
  *   5. Insert everything in ONE `db.batch` so a partial product can never exist.
  *
@@ -18,7 +17,7 @@
  * with a stubbed fetch (no network).
  */
 
-import { Catalog } from "@plrs/catalog";
+import { Catalog } from "@polaris-key/catalog";
 import {
   generateEd25519,
   seal,
@@ -134,8 +133,8 @@ export function manifestIssuerRefusal(env: Env, issuer: string): string | null {
   );
 }
 
-/** Read the first existing variant of a manifest document (`.polaris/` then `.pkey/`, JSON
- *  before YAML — see `manifestFiles.ts`). */
+/** Read the first existing variant of a manifest document (JSON before YAML — see
+ *  `manifestFiles.ts`). */
 async function readManifestFile(
   token: string,
   owner: string,
@@ -314,7 +313,7 @@ async function registerFromManifest(
       admin_group: manifest.product.adminGroup,
       branding_json: null,
       release_source: "github",
-      // Which Polaris services this product runs — and, in the same value, who may register a
+      // Which Polaris Key services this product runs — and, in the same value, who may register a
       // device against it (`core/services.ts` explains why the two share a column). In the SAME
       // atomic batch as the row itself, not applied afterwards like the fingerprint/auto-issue
       // policies: enablement decides which routes a product has, so there must be no instant

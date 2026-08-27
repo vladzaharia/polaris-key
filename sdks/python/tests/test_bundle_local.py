@@ -14,16 +14,16 @@ from typing import Any
 import httpx
 import pytest
 
-from polaris.core.bundle import (
+from polaris_key.core.bundle import (
     BUNDLE_CLAIMS_REJECTED,
     BUNDLE_JWS_REJECTED,
     BUNDLE_TRUST_REJECTED,
     INNER_DOC_REJECTED,
 )
-from polaris.core.errors import PolarisError
-from polaris.core.store import CACHE_FORMAT_VERSION
-from polaris.devices.store import FileStore, InMemoryStore
-from polaris.local import create_bundle_client, create_local_client
+from polaris_key.core.errors import PolarisError
+from polaris_key.core.store import CACHE_FORMAT_VERSION
+from polaris_key.devices.store import FileStore, InMemoryStore
+from polaris_key.local import create_bundle_client, create_local_client
 
 from helpers import (
     ATTACKER_PEM,
@@ -278,7 +278,7 @@ def test_local_only_refuses_every_network_call_at_the_DIAL() -> None:
     client = _local()
     # A credential is held, so the roster calls get past their own guard and reach the
     # dial — which is where the refusal has to live.
-    client._tokens.set("plrst_" + "x" * 43)
+    client._tokens.set("pkeyt_" + "x" * 43)
     for call in (
         lambda: client.license.activate_with_key("k"),
         lambda: client.license.enroll(),
@@ -304,7 +304,7 @@ def test_local_only_sync_is_a_silent_no_op_without_a_credential() -> None:
 def test_local_only_sync_refuses_LOUDLY_once_a_credential_exists() -> None:
     """A transportless client holding a credential must not silently pretend to sync."""
     client = _local()
-    client._tokens.set("plrst_" + "x" * 43)
+    client._tokens.set("pkeyt_" + "x" * 43)
     with pytest.raises(PolarisError) as exc:
         client.sync()
     assert exc.value.code == "local-only"

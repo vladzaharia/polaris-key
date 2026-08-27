@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { verifyJws } from "@plrs/jws";
-import { Catalog, type ProductCatalog } from "@plrs/catalog";
+import { verifyJws } from "@polaris-key/jws";
+import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
 import {
   DOC_EXPIRY_SECONDS,
   ISSUER,
   SECONDS_PER_DAY,
   type DocProfile,
-  type ManagedConfigDoc,
-  type ManagedPayload,
-} from "@plrs/protocol";
-import { buildDoc, computeETag } from "../src/services/identity/doc.js";
+} from "@polaris-key/protocol";
+import type { ManagedPayload } from "../src/core/payload.js";
+import {
+  buildDoc,
+  computeETag,
+  type FusedSessionDoc,
+} from "../src/services/identity/doc.js";
 // The catalog prune is the last gate before signing on all three document paths, so it lives in
 // Core; `services/identity/doc.ts` stopped re-exporting it when the fused builder moved into the
 // service (P3).
@@ -130,7 +133,7 @@ describe("signDoc", () => {
   it("produces a JWS that verifies under the test trust set with aud=product", async () => {
     const doc = buildDoc(input());
     const jws = await signDoc(doc, TEST_PEM, TEST_KID);
-    const v = await verifyJws<ManagedConfigDoc>(jws, { [TEST_KID]: TEST_PUB });
+    const v = await verifyJws<FusedSessionDoc>(jws, { [TEST_KID]: TEST_PUB });
     expect(v).not.toBeNull();
     expect(v!.kid).toBe(TEST_KID);
     expect(v!.payload.aud).toBe("djdl");
@@ -140,7 +143,7 @@ describe("signDoc", () => {
 
   it("fails verification under an unrelated trust set", async () => {
     const jws = await signDoc(buildDoc(input()), TEST_PEM, TEST_KID);
-    const v = await verifyJws<ManagedConfigDoc>(jws, { "other-kid": TEST_PUB });
+    const v = await verifyJws<FusedSessionDoc>(jws, { "other-kid": TEST_PUB });
     expect(v).toBeNull();
   });
 });

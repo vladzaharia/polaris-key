@@ -1,12 +1,12 @@
 // The Node conformance runner for corpus v2 / wire contract v3. It drives EVERY vector in
-// `conformance/corpus/v2/` through `@plrs/client-core` — the single isomorphic implementation
+// `conformance/corpus/v2/` through `@polaris-key/client-core` — the single isomorphic implementation
 // every JS SDK will consume — and asserts the expected outcome. The Python and Swift runners
 // mirror THIS file against the SAME corpus in P5; that is how four SDKs prove byte-identical
-// verification. `corpus.test.ts` keeps driving v1 through `@plrs/node` until they land.
+// verification. `corpus.test.ts` keeps driving v1 through `@polaris-key/node` until they land.
 //
 // Seven sections, seven layers of the contract:
 //
-//   jwsCases         §1–§2 raw compact-JWS verification    → @plrs/jws verifyJws
+//   jwsCases         §1–§2 raw compact-JWS verification    → @polaris-key/jws verifyJws
 //   licenseDocCases  §3 claim validation, license          → verifyLicenseDoc
 //   configDocCases   §3 claim validation, config           → verifyConfigDoc
 //   trustCases       §1 trust merge / prune / revocation   → verifyTrustManifest + mergeTrust
@@ -15,7 +15,7 @@
 //   bundleCases      §7 offline bundle import              → inspectBundle
 //
 // The bundle section used to carry an inline reference implementation of §7's numbered order,
-// because no shipped verifier existed. P4 shipped one — `@plrs/client-core`'s `inspectBundle`
+// because no shipped verifier existed. P4 shipped one — `@polaris-key/client-core`'s `inspectBundle`
 // — and this file now drives THAT, vector for vector, including which numbered step refuses.
 // The step attribution is the whole point of the section, so the shipped API reports it
 // (`BundleRefusalReason`) rather than collapsing every failure into a bare null.
@@ -24,14 +24,14 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { verifyJws, type TrustSet } from "@plrs/jws";
-import type { ManagedEntry } from "@plrs/protocol/core";
+import { verifyJws, type TrustSet } from "@polaris-key/jws";
+import type { ManagedEntry } from "@polaris-key/protocol/core";
 import type {
   ActivationSource,
   AllowedRange,
   BlockReason,
   LicenseDoc,
-} from "@plrs/protocol/license";
+} from "@polaris-key/protocol/license";
 import {
   MAX_BUNDLE_BYTES,
   channelForVersion,
@@ -50,13 +50,13 @@ import {
   type BlockedState,
   type BundleRefusalReason,
   type VerifyOptions,
-} from "@plrs/client-core";
+} from "@polaris-key/client-core";
 
 type TypV3 =
-  | "plrs-license+jws"
-  | "plrs-config+jws"
-  | "plrs-trust+jws"
-  | "plrs-bundle+jws";
+  | "pkey-license+jws"
+  | "pkey-config+jws"
+  | "pkey-trust+jws"
+  | "pkey-bundle+jws";
 
 interface JwsCase {
   id: string;
@@ -174,9 +174,6 @@ const matrix = JSON.parse(readFileSync(v2("gate-matrix.json"), "utf8")) as {
   rows: MatrixRow[];
 };
 
-/** §2 — v3 verifiers ALWAYS demand a `typ`. There is no call site that does not. */
-const V3 = { requireTyp: true } as const;
-
 describe(`conformance corpus v${corpus.corpusVersion} — JWS (§1–§2)`, () => {
   it("has vectors in every section", () => {
     expect(corpus.corpusVersion).toBe(2);
@@ -191,7 +188,8 @@ describe(`conformance corpus v${corpus.corpusVersion} — JWS (§1–§2)`, () =
   for (const c of corpus.jwsCases) {
     it(`${c.id} → verify:${c.expect.verify}`, async () => {
       const result = await verifyJws(c.jws, c.trust, {
-        ...V3,
+        // §2 — every vector names its `typ`; a verifier that did not would be asking for
+        // no domain separation at all, which no shipping call site does.
         typ: c.typ,
         // §1 — the raised cap travels with the vector, so a runner cannot accidentally
         // grant bundle sizes to ordinary documents.
@@ -384,7 +382,7 @@ function matrixDoc(l: MatrixRow["license"]): LicenseDoc | null {
     return null;
   return {
     aud: "djdl",
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     licenseId: "lic_matrix",
     deviceId: "dev_matrix",
     issuedAt: l.issuedAt,

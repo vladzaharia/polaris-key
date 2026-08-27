@@ -8,7 +8,7 @@
  *   1. `../../core/…`         — the always-on substrate (products, devices, trust, signing,
  *                               discovery, rate limiting, errors, audit, registry).
  *   2. anything within its own service directory (`./x`, `./sub/y`).
- *   3. a package: `@plrs/*` shared packages, plus the worker's other declared runtime
+ *   3. a package: `@polaris-key/*` shared packages, plus the worker's other declared runtime
  *      dependencies. A bare specifier cannot name a worker-internal module, so it can never be
  *      a boundary violation; the set is read from `package.json` `dependencies` so widening it
  *      requires a reviewed dependency change rather than an edit to this file.
@@ -141,12 +141,12 @@ function violation(site: ImportSite): string | null {
   if (specifier.startsWith("node:")) return null;
   if (!specifier.startsWith(".")) {
     if (ALLOWED_PACKAGES.has(specifier)) return null;
-    // A subpath export of an allowed package (`@plrs/protocol/license`).
+    // A subpath export of an allowed package (`@polaris-key/protocol/license`).
     const scoped = specifier.split("/").slice(0, 2).join("/");
     if (specifier.startsWith("@") && ALLOWED_PACKAGES.has(scoped)) return null;
     const bare = specifier.split("/")[0] ?? specifier;
     if (ALLOWED_PACKAGES.has(bare)) return null;
-    return `imports "${specifier}", which is not a declared dependency of @plrs/worker`;
+    return `imports "${specifier}", which is not a declared dependency of @polaris-key/worker`;
   }
 
   // Resolve the specifier against the importing file, as a path under `src/`.
@@ -245,8 +245,8 @@ describe("service boundaries", () => {
       "../../core/devices.js",
       "./document.js",
       "./admin/handlers.js",
-      "@plrs/protocol",
-      "@plrs/protocol/license",
+      "@polaris-key/protocol",
+      "@polaris-key/protocol/license",
       "jose",
       "node:crypto",
     ];

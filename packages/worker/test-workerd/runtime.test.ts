@@ -9,10 +9,11 @@
 
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { Catalog } from "@plrs/catalog";
-import { signJws, verifyJws } from "@plrs/jws";
-import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
-import type { ConfigDoc } from "@plrs/protocol/config";
+import { Catalog } from "@polaris-key/catalog";
+import { signJws, verifyJws } from "@polaris-key/jws";
+import type { ManagedEntry } from "@polaris-key/protocol";
+import type { ManagedPayload } from "../src/core/payload.js";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import djdlCatalog from "../../../products/djdl/catalog.json";
 import { D1Db } from "../src/db/d1.js";
 import { validatePayload } from "../src/core/payload.js";
@@ -166,7 +167,7 @@ describe("GET /<product>/config/document end to end on workerd", () => {
         method: "POST",
         headers: {
           authorization: `Bearer ${key}`,
-          "x-polaris-device": "workerd-smoke-1",
+          "x-pkey-device": "workerd-smoke-1",
         },
       },
     );
@@ -179,7 +180,7 @@ describe("GET /<product>/config/document end to end on workerd", () => {
       {
         headers: {
           authorization: `Bearer ${token}`,
-          "x-polaris-version": "1.2.3",
+          "x-pkey-version": "1.2.3",
         },
       },
     );
@@ -198,7 +199,7 @@ describe("GET /<product>/config/document end to end on workerd", () => {
   });
 
   it("serves the licence document over the same activation", async () => {
-    // The other half of the v3 split, on the same credential: a `plrst_` token is a DEVICE
+    // The other half of the v3 split, on the same credential: a `pkeyt_` token is a DEVICE
     // principal, and both documents are minted for it.
     const db = new D1Db(env.DB);
     await seedProduct(env, db, "djdl2", djdlCatalog);
@@ -209,7 +210,7 @@ describe("GET /<product>/config/document end to end on workerd", () => {
         method: "POST",
         headers: {
           authorization: `Bearer ${key}`,
-          "x-polaris-device": "workerd-smoke-2",
+          "x-pkey-device": "workerd-smoke-2",
         },
       },
     );
@@ -219,7 +220,7 @@ describe("GET /<product>/config/document end to end on workerd", () => {
     const res = await SELF.fetch("https://key.plrs.im/djdl2/license/document", {
       headers: {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       },
     });
     expect(res.status).toBe(200);

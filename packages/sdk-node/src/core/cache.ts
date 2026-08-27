@@ -32,9 +32,9 @@ import {
   verifyLicenseDoc,
   type BlockedState,
   type CacheRecordV3,
-} from "@plrs/client-core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
+} from "@polaris-key/client-core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { CoreContext } from "./context.js";
 import type { TrustManager } from "./trust.js";
 

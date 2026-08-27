@@ -1,4 +1,4 @@
-// `@plrs/node/local` — the transportless profile (offline depth 3).
+// `@polaris-key/node/local` — the transportless profile (offline depth 3).
 //
 // The suite has three offline depths: online-with-grace, bundle-activated, and LOCAL-ONLY — a
 // build that must never open a socket. What this suite pins is that "never" is STRUCTURAL and
@@ -37,16 +37,16 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { signJws } from "@plrs/jws";
-import type { BundleDoc } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { TrustManifestDoc } from "@plrs/protocol/trust";
+import { signJws } from "@polaris-key/jws";
+import type { BundleDoc } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
 import {
   PolarisError,
   type CacheRecordV3,
   type Store,
-} from "@plrs/client-core";
+} from "@polaris-key/client-core";
 import { CACHE_VERSION } from "../src/core/store.js";
 import { createBundleClient, createLocalClient } from "../src/local/index.js";
 
@@ -75,7 +75,7 @@ const PINNED = { [KID]: PUB };
 
 const PRODUCT = "djdl";
 const DEVICE = "dev_air_gapped";
-const TOKEN = `plrst_${"C".repeat(43)}`;
+const TOKEN = `pkeyt_${"C".repeat(43)}`;
 /** The pre-seeded cache is minted against the WALL clock so the gate can be read with no
  *  explicit `now` — an offline install's whole point is that it answers as it is. */
 const NOW = Math.floor(Date.now() / 1000);
@@ -113,7 +113,7 @@ const manifestJws = (issuedAt = NOW): Promise<string> =>
     {
       schemaVersion: 1,
       aud: PRODUCT,
-      iss: "plrs.im",
+      iss: "key.plrs.im",
       issuedAt,
       expiresAt: issuedAt + 300,
       jwksUrl: `https://k.test/${PRODUCT}/.well-known/jwks.json`,
@@ -131,13 +131,13 @@ const manifestJws = (issuedAt = NOW): Promise<string> =>
     } satisfies TrustManifestDoc,
     PEM,
     KID,
-    "plrs-trust+jws",
+    "pkey-trust+jws",
   );
 
 const licenseJws = (over: Partial<LicenseDoc> = {}): Promise<string> =>
   signJws(
     {
-      iss: "plrs.im",
+      iss: "key.plrs.im",
       aud: PRODUCT,
       deviceId: DEVICE,
       issuedAt: NOW,
@@ -151,13 +151,13 @@ const licenseJws = (over: Partial<LicenseDoc> = {}): Promise<string> =>
     } satisfies LicenseDoc,
     PEM,
     KID,
-    "plrs-license+jws",
+    "pkey-license+jws",
   );
 
 const configJws = (over: Partial<ConfigDoc> = {}): Promise<string> =>
   signJws(
     {
-      iss: "plrs.im",
+      iss: "key.plrs.im",
       aud: PRODUCT,
       deviceId: DEVICE,
       issuedAt: NOW,
@@ -174,7 +174,7 @@ const configJws = (over: Partial<ConfigDoc> = {}): Promise<string> =>
     } satisfies ConfigDoc,
     PEM,
     KID,
-    "plrs-config+jws",
+    "pkey-config+jws",
   );
 
 /** A store that already holds a verified, signed install: manifest + both documents. */
@@ -215,7 +215,7 @@ async function mintBundle(
     } satisfies BundleDoc,
     PEM,
     KID,
-    "plrs-bundle+jws",
+    "pkey-bundle+jws",
   );
 }
 
@@ -352,7 +352,7 @@ describe("createLocalClient — the refusal is at the DIAL (§4/§5)", () => {
     // The sharpest edge in this whole profile. `discoverProduct` falls back to the module-global
     // `fetch` when it is given no `fetchImpl`, so a `discover()` that passed `undefined` for a
     // local-only client would open a real socket to the control plane — the one thing this entry
-    // point exists to make impossible. `PolarisClient.discover` therefore calls `fetcher()`
+    // point exists to make impossible. `PolarisKeyClient.discover` therefore calls `fetcher()`
     // EAGERLY and lets the refusal propagate. The global is intercepted here so that a
     // regression shows up as "global fetch reached" rather than as a silent DNS lookup.
     const store = await provisionedStore();

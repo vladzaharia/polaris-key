@@ -1,6 +1,6 @@
 // The Config sub-client — layered settings resolution over the signed config document.
 //
-// The resolution rules themselves are `@plrs/client-core`'s (`resolveValue`/`resolveSource`/
+// The resolution rules themselves are `@polaris-key/client-core`'s (`resolveValue`/`resolveSource`/
 // `listUserEntries`), shared with React and mirrored in Python and Swift. What lives here is
 // the OVERRIDE LAYERS, and they are config-side options rather than Core ones for a reason:
 // `envPrefix`, `env` and `localOverrides` are inputs to this resolution and to nothing else,
@@ -12,8 +12,8 @@
 // effect, and the remote value still wins. That is the whole point of the management state —
 // see docs/CONCEPTS.md.
 
-import type { JSONValue } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
+import type { JSONValue } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import {
   listUserEntries,
   resolveSource,
@@ -21,7 +21,7 @@ import {
   type ConfigSource,
   type ResolveContext,
   type UserConfigEntry,
-} from "@plrs/client-core";
+} from "@polaris-key/client-core";
 import type { CacheManager } from "../core/cache.js";
 import type { CoreContext } from "../core/context.js";
 
@@ -29,14 +29,14 @@ export type { ConfigSource, UserConfigEntry };
 
 /** Env-var prefix for config overrides. A key's env var is
  *  `${envPrefix}${key.replaceAll(".", "__")}` — `run.concurrency` →
- *  `PLRS_CONFIG_run__concurrency`. */
-export const DEFAULT_ENV_PREFIX = "PLRS_CONFIG_";
+ *  `PKEY_CONFIG_run__concurrency`. */
+export const DEFAULT_ENV_PREFIX = "PKEY_CONFIG_";
 
 export interface ConfigClientOptions {
   /** User/local config overrides — beat a remote `default` value, but NOT an `enforced`/
    *  `hidden` one (the server stays authoritative for those). */
   localOverrides?: Record<string, JSONValue>;
-  /** Env-var prefix for config overrides (default `"PLRS_CONFIG_"`). */
+  /** Env-var prefix for config overrides (default `"PKEY_CONFIG_"`). */
   envPrefix?: string;
   /** Environment table to read overrides from (default `process.env`). */
   env?: Record<string, string | undefined>;

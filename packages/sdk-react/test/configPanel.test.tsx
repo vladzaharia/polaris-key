@@ -13,7 +13,7 @@ import {
 import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { ConfigPanel } from "../src/components/ConfigPanel.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
-import type { ManagedEntry } from "@plrs/protocol/core";
+import type { ManagedEntry } from "@polaris-key/protocol/core";
 import {
   entry,
   makeFakeBridge,

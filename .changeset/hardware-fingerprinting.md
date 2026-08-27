@@ -1,6 +1,6 @@
 ---
-"@plrs/protocol": minor
-"@plrs/node": minor
+"@polaris-key/protocol": minor
+"@polaris-key/node": minor
 ---
 
 Add hardware and software fingerprinting.
@@ -33,6 +33,6 @@ Also in this release:
   the software-facts record, where it belongs.
 - New `ActivationResult` variants `fingerprint-required` and `hardware-mismatch`.
 
-The signed `ManagedConfigDoc` is unchanged and `PROTOCOL_VERSION` stays at 2.
+(Historical note: this predated wire contract v3, which split the fused document into per-service `pkey-license+jws`/`pkey-config+jws` documents and bumped `PROTOCOL_VERSION` to 3.)
 
 See `docs/PRIVACY.md` for exactly what is collected, why, and how long it is kept.

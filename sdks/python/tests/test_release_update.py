@@ -13,7 +13,7 @@ from typing import Any, Dict
 import httpx
 import pytest
 
-from polaris.core.errors import PolarisError
+from polaris_key.core.errors import PolarisError
 
 from helpers import BASE_URL, PRODUCT, TOKEN, discovery_doc, make_client
 

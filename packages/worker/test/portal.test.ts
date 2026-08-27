@@ -257,7 +257,7 @@ describe("customer portal", () => {
     const activated = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,

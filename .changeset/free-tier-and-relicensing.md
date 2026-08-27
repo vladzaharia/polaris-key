@@ -1,8 +1,8 @@
 ---
-"@plrs/protocol": minor
-"@plrs/manifest": minor
-"@plrs/node": minor
-"@plrs/react": minor
+"@polaris-key/protocol": minor
+"@polaris-key/manifest": minor
+"@polaris-key/node": minor
+"@polaris-key/react": minor
 ---
 
 Add auto-issued free licenses and remote re-licensing.
@@ -42,4 +42,4 @@ changes. Node and Python gained `close()` to stop the loop.
 Also fixed: `authorizeDevice` used a lexicographic string comparator where the hot path uses
 semver-correct ones from `gate.ts`.
 
-The signed `ManagedConfigDoc` is unchanged and `PROTOCOL_VERSION` stays at 2.
+(Historical note: this predated wire contract v3, which split the fused document into per-service `pkey-license+jws`/`pkey-config+jws` documents and bumped `PROTOCOL_VERSION` to 3.)

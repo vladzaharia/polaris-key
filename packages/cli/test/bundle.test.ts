@@ -12,7 +12,7 @@
 //     defaults it) and sent only to turn config OFF, so "sends the field" and "sends the right
 //     field" are different assertions.
 //   * the REFUSALS THAT COST NOTHING. A bad device id, an out-of-range grace window, a missing
-//     flag, or an unset PLRS_ADMIN_COOKIE must produce a message with ZERO network calls made —
+//     flag, or an unset PKEY_ADMIN_COOKIE must produce a message with ZERO network calls made —
 //     an operator pasting a device id off an air-gapped screen should not learn about a typo
 //     from a server round trip, and a mint is an audited event that should not be attempted
 //     with input we already know is wrong.
@@ -31,12 +31,12 @@ import { ADMIN_COOKIE_ENV, mintBundle, runPkey } from "../src/index.js";
 const PRODUCT = "acme";
 /** 32 base64url characters — the shape wire v3 §6 fixes and `core/bundles.ts` enforces. */
 const DEVICE = "AbCdEfGh0123456789_-ijKLmnOPqrst";
-const COOKIE = "__Host-plrs_admin=session-token-value";
+const COOKIE = "__Host-pkey_admin=session-token-value";
 const CSRF = "csrf-token-abc123";
 const BUNDLE_ID = "01JQ8Z9K3M4N5P6Q7R8S9T0V1W";
 const JWS = "eyJhbGciOiJFZERTQSJ9.eyJidW5kbGVJZCI6IjAxSlEifQ.c2lnbmF0dXJl";
 const ORIGIN = "https://key.example";
-const DEFAULT_FILE = `${PRODUCT}-AbCdEfGh.plrsbundle`;
+const DEFAULT_FILE = `${PRODUCT}-AbCdEfGh.pkeybundle`;
 
 /** `/manage/api/me`'s body, as `admin/handlers/me.ts` builds it. */
 const ME = {
@@ -59,7 +59,7 @@ async function tempDir(): Promise<string> {
   return dir;
 }
 
-/** Set (or, with `undefined`, unset) PLRS_ADMIN_COOKIE for one test only. */
+/** Set (or, with `undefined`, unset) PKEY_ADMIN_COOKIE for one test only. */
 function setCookieEnv(value: string | undefined): void {
   if (!cookieTouched) {
     savedCookie = process.env[ADMIN_COOKIE_ENV];
@@ -337,7 +337,7 @@ describe("pkey bundle — the request", () => {
 
 // ── The output file ─────────────────────────────────────────────────────────────────────────
 describe("pkey bundle — the output file", () => {
-  it("names the file <product>-<first 8 of device>.plrsbundle by default", async () => {
+  it("names the file <product>-<first 8 of device>.pkeybundle by default", async () => {
     const cwd = await tempDir();
     const io = capture();
     setCookieEnv(COOKIE);
@@ -356,14 +356,14 @@ describe("pkey bundle — the output file", () => {
     stub(server());
 
     expect(
-      await runPkey(argv("--out", "ticket-4471.plrsbundle"), {
+      await runPkey(argv("--out", "ticket-4471.pkeybundle"), {
         cwd,
         ...capture(),
       }),
     ).toBe(0);
 
     expect(
-      await readFile(path.join(cwd, "ticket-4471.plrsbundle"), "utf8"),
+      await readFile(path.join(cwd, "ticket-4471.pkeybundle"), "utf8"),
     ).toBe(JWS);
   });
 
@@ -486,7 +486,7 @@ describe("pkey bundle — local refusals", () => {
     expect(m.calls).toHaveLength(0);
   });
 
-  it("names PLRS_ADMIN_COOKIE and how to get it when it is unset", async () => {
+  it("names PKEY_ADMIN_COOKIE and how to get it when it is unset", async () => {
     const cwd = await tempDir();
     const io = capture();
     setCookieEnv(undefined);
@@ -494,8 +494,8 @@ describe("pkey bundle — local refusals", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    expect(io.err()).toContain("PLRS_ADMIN_COOKIE is not set");
-    expect(io.err()).toContain("__Host-plrs_admin");
+    expect(io.err()).toContain("PKEY_ADMIN_COOKIE is not set");
+    expect(io.err()).toContain("__Host-pkey_admin");
     expect(io.err()).toContain("Application -> Cookies");
     expect(m.calls).toHaveLength(0);
   });
@@ -537,7 +537,7 @@ describe("pkey bundle — server failures", () => {
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
     expect(io.err()).toContain("missing or expired");
-    expect(io.err()).toContain("PLRS_ADMIN_COOKIE");
+    expect(io.err()).toContain("PKEY_ADMIN_COOKIE");
     // The mint is never attempted without a CSRF token.
     expect(m.calls).toHaveLength(1);
   });
@@ -639,7 +639,7 @@ describe("mintBundle — the fetchImpl seam", () => {
         cookie: "   ",
         fetchImpl: m.impl,
       }),
-    ).rejects.toThrow(/PLRS_ADMIN_COOKIE is not set/);
+    ).rejects.toThrow(/PKEY_ADMIN_COOKIE is not set/);
     expect(m.calls).toHaveLength(0);
   });
 });

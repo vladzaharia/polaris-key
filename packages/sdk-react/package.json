@@ -1,5 +1,5 @@
 {
-  "name": "@plrs/react",
+  "name": "@polaris-key/react",
   "version": "0.0.0",
   "type": "module",
   "sideEffects": false,
@@ -50,8 +50,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@plrs/client-core": "workspace:*",
-    "@plrs/protocol": "workspace:*"
+    "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",

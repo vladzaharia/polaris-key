@@ -1,4 +1,4 @@
-// Framework-agnostic CLI command core. Each command takes plain arguments + a `PolarisClient`
+// Framework-agnostic CLI command core. Each command takes plain arguments + a `PolarisKeyClient`
 // and returns a `CommandResult` (an outcome flag + a human-readable message + optional
 // structured data). The commander / yargs adapters are thin shells over these, so the behavior
 // lives in exactly one place and is testable with no console / process side-effects.
@@ -13,12 +13,12 @@
 //
 // `register` is the new one and the reason the grouping matters: it is a DEVICES verb, not a
 // licensing one. A config-only product (D-08) has no `activate` to run and its whole
-// provisioning story is `plrs register` — which under a licence-shaped CLI would have had
+// provisioning story is `pkey register` — which under a licence-shaped CLI would have had
 // nowhere to live.
 
-import type { JSONValue } from "@plrs/protocol/core";
-import type { TrustSet } from "@plrs/jws";
-import type { PolarisClient } from "../client.js";
+import type { JSONValue } from "@polaris-key/protocol/core";
+import type { TrustSet } from "@polaris-key/jws";
+import type { PolarisKeyClient } from "../client.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import type { ServiceSlug } from "../discovery.js";
 
@@ -31,7 +31,7 @@ export interface CommandResult {
 }
 
 /** The parsed-flag shape an adapter hands to a `ClientFactory`. Mirrors the subset of
- *  `PolarisClientOptions` a CLI front end typically exposes as flags. */
+ *  `PolarisKeyClientOptions` a CLI front end typically exposes as flags. */
 export interface ClientFactoryOptions {
   productSlug: string;
   version: string;
@@ -43,11 +43,11 @@ export interface ClientFactoryOptions {
   expectedServices?: ServiceSlug[];
 }
 
-/** Builds (and initializes) a `PolarisClient` from parsed flags. A consumer wires this once
+/** Builds (and initializes) a `PolarisKeyClient` from parsed flags. A consumer wires this once
  *  with its product slug + pinned trust, and the adapters call it per-invocation. */
 export type ClientFactory = (
   opts: ClientFactoryOptions,
-) => Promise<PolarisClient>;
+) => Promise<PolarisKeyClient>;
 
 /** Render a non-ok activation outcome. Shared by `activate` and `enroll` so the two can't
  *  drift into describing the same server response differently. */
@@ -91,7 +91,7 @@ function describeFailure(
 // ── license ────────────────────────────────────────────────────────────────────────────
 /** Activate this device with a licence `key` and pull the first documents. */
 export async function activate(
-  client: PolarisClient,
+  client: PolarisKeyClient,
   key: string,
 ): Promise<CommandResult> {
   const r = await client.license.activateWithKey(key);
@@ -103,7 +103,7 @@ export async function activate(
 }
 
 /** Obtain a licence with no key and no sign-in, when the product offers a free tier. */
-export async function enroll(client: PolarisClient): Promise<CommandResult> {
+export async function enroll(client: PolarisKeyClient): Promise<CommandResult> {
   const r = await client.license.enroll();
   if (r.kind === "ok") {
     const st = client.status();
@@ -114,7 +114,7 @@ export async function enroll(client: PolarisClient): Promise<CommandResult> {
 
 /** Deauthorize this device and wipe the local token + cache. */
 export async function deactivate(
-  client: PolarisClient,
+  client: PolarisKeyClient,
 ): Promise<CommandResult> {
   await client.license.deactivate();
   return { ok: true, message: "Deactivated. Local credentials wiped." };
@@ -123,7 +123,7 @@ export async function deactivate(
 /** Report the current gate status + a short profile/grace summary. `ok` reflects whether the
  *  gate currently permits running (so an adapter can map it to a process exit code) — which
  *  for a product with License disabled is TRUE on `not-applicable`, not a failure. */
-export function status(client: PolarisClient): CommandResult {
+export function status(client: PolarisKeyClient): CommandResult {
   const st = client.status();
   const lines = [`Status: ${st.status}`];
   if (st.graceUntil !== undefined)
@@ -151,7 +151,9 @@ export function status(client: PolarisClient): CommandResult {
  * is reported as-is rather than being retried against `activate`: the two are different
  * operator intents and quietly substituting one would hide a misconfigured policy.
  */
-export async function register(client: PolarisClient): Promise<CommandResult> {
+export async function register(
+  client: PolarisKeyClient,
+): Promise<CommandResult> {
   const r = await client.devices.register();
   switch (r.kind) {
     case "ok": {
@@ -197,7 +199,7 @@ export async function register(client: PolarisClient): Promise<CommandResult> {
  *  layers), reporting its provenance. Returns `ok: false` only when nothing matched and no
  *  `fallback` was provided. */
 export function getConfig(
-  client: PolarisClient,
+  client: PolarisKeyClient,
   key: string,
   fallback?: JSONValue,
 ): CommandResult {
@@ -231,7 +233,7 @@ export function getConfig(
 /** Import an offline activation bundle (§7). All-or-nothing: a rejection leaves the install
  *  exactly as it was, and the message names the step that refused. */
 export async function importBundle(
-  client: PolarisClient,
+  client: PolarisKeyClient,
   jws: string,
 ): Promise<CommandResult> {
   try {

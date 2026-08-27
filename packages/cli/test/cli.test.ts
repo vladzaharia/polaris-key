@@ -49,7 +49,7 @@ function capture(): {
   };
 }
 
-describe("@plrs/cli", () => {
+describe("@polaris-key/cli", () => {
   it("initializes and validates a config/licensing manifest", async () => {
     const cwd = await tempDir();
     await initManifest({
@@ -72,7 +72,7 @@ describe("@plrs/cli", () => {
     const result = validateLoadedManifest(manifest);
     expect(result.ok).toBe(true);
     // `--modules licensing,config` scaffolds the legacy module names; the validator reports
-    // back in Polaris service slugs (`licensing` -> `license`).
+    // back in Polaris Key service slugs (`licensing` -> `license`).
     expect(result.enabledModules).toEqual(["license", "config"]);
   });
 

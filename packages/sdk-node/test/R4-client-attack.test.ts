@@ -11,9 +11,9 @@
 // a curious licensee, a "crack" script distributed as a JSON file, a low-privilege process
 // or a compromised transitive dependency, and a cloud-synced/backed-up home directory.
 //
-// Ported to wire contract v3. The god-object `PolarisKeyClient` became `PolarisClient` —
+// Ported to wire contract v3. The god-object `PolarisKeyClient` became `PolarisKeyClient` —
 // Core plus one sub-client per service — and the single fused document became TWO
-// (`plrs-license+jws` for grants, `plrs-config+jws` for config + secrets), fetched IN PARALLEL
+// (`pkey-license+jws` for grants, `pkey-config+jws` for config + secrets), fetched IN PARALLEL
 // by `sync()` from `/license/document` and `/config/document`. The cache moved to v3, whose
 // FIRST rule is that a record with any other `v` is DISCARDED rather than migrated (§4.1) —
 // which is why every "plant a JSON file" PoC below is inert before a byte of it is read.
@@ -23,13 +23,13 @@ import { generateKeyPairSync, type KeyObject } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { signJws } from "@plrs/jws";
-import { ISSUER, type BundleDoc } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { TrustManifestDoc } from "@plrs/protocol/trust";
-import { PolarisError, type CacheRecordV3 } from "@plrs/client-core";
-import { PolarisClient } from "../src/client.js";
+import { signJws } from "@polaris-key/jws";
+import { ISSUER, type BundleDoc } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
+import { PolarisError, type CacheRecordV3 } from "@polaris-key/client-core";
+import { PolarisKeyClient } from "../src/client.js";
 import { InsecureBaseUrlError } from "../src/core/context.js";
 import { CACHE_VERSION, FileStore } from "../src/core/store.js";
 
@@ -43,7 +43,7 @@ const PRODUCT = "djdl";
 const DEVICE = "device-under-attack";
 /** v3 credential prefix (§8). Never validated locally — holding one is what makes `sync()`
  *  reach the network at all, which is what these attacks need in order to be tested. */
-const TOKEN = "plrst_anything_at_all";
+const TOKEN = "pkeyt_anything_at_all";
 const HOUR = 3600;
 const DAY = 86_400;
 
@@ -53,7 +53,7 @@ afterEach(() => {
 });
 
 function tempConfigDir(): string {
-  const d = mkdtempSync(join(tmpdir(), "r4-plrs-"));
+  const d = mkdtempSync(join(tmpdir(), "r4-pkey-"));
   dirs.push(d);
   return d;
 }
@@ -66,7 +66,7 @@ function attackerKeypair(): { pem: string; rawPubB64Url: string; kid: string } {
     format: "pem",
   }) as string;
   // JWK `x` for an OKP key IS the raw 32-byte public key, base64url-encoded — exactly the
-  // format a Polaris trust set stores.
+  // format a Polaris Key trust set stores.
   const jwk = (publicKey as KeyObject).export({ format: "jwk" }) as {
     x: string;
   };
@@ -117,9 +117,9 @@ function makeConfigDoc(over: Partial<ConfigDoc> = {}): ConfigDoc {
 }
 
 const signLicense = (doc: LicenseDoc, pem = VENDOR_PEM, kid = VENDOR_KID) =>
-  signJws(doc, pem, kid, "plrs-license+jws");
+  signJws(doc, pem, kid, "pkey-license+jws");
 const signConfig = (doc: ConfigDoc, pem = VENDOR_PEM, kid = VENDOR_KID) =>
-  signJws(doc, pem, kid, "plrs-config+jws");
+  signJws(doc, pem, kid, "pkey-config+jws");
 
 function trustManifest(issuedAt: number): TrustManifestDoc {
   return {
@@ -144,7 +144,7 @@ function trustManifest(issuedAt: number): TrustManifestDoc {
 }
 
 const signManifest = (issuedAt: number): Promise<string> =>
-  signJws(trustManifest(issuedAt), VENDOR_PEM, VENDOR_KID, "plrs-trust+jws");
+  signJws(trustManifest(issuedAt), VENDOR_PEM, VENDOR_KID, "pkey-trust+jws");
 
 /**
  * Plant a raw `managed.json` + `token` + `device` on disk, exactly as `FileStore` would.
@@ -180,9 +180,9 @@ function readCacheFile(configDir: string): CacheRecordV3 | null {
 
 function clientOn(
   configDir: string,
-  extra: Partial<ConstructorParameters<typeof PolarisClient>[0]> = {},
+  extra: Partial<ConstructorParameters<typeof PolarisKeyClient>[0]> = {},
 ) {
-  return new PolarisClient({
+  return new PolarisKeyClient({
     productSlug: PRODUCT,
     baseUrl: "https://k.test",
     version: "1.2.3",
@@ -194,7 +194,7 @@ function clientOn(
     // Hardware probes shell out (ioreg/sw_vers); nothing here asserts on a fingerprint.
     license: { fingerprint: false },
     devices: { fingerprint: false },
-    // An ambient `PLRS_CONFIG_*` var in the developer's shell must not be able to change what
+    // An ambient `PKEY_CONFIG_*` var in the developer's shell must not be able to change what
     // these tests observe about the signed config document.
     config: { env: {} },
     ...extra,
@@ -485,7 +485,7 @@ describe("R4-03: anti-replay counters are attacker-controlled in both directions
         ...trustManifest(now),
         keys: [
           {
-            kid: "plrs-rotated-2027",
+            kid: "pkey-rotated-2027",
             kty: "OKP",
             crv: "Ed25519",
             alg: "EdDSA",
@@ -496,7 +496,7 @@ describe("R4-03: anti-replay counters are attacker-controlled in both directions
       },
       VENDOR_PEM,
       VENDOR_KID,
-      "plrs-trust+jws",
+      "pkey-trust+jws",
     );
     let trustFetches = 0;
     const fetchImpl = (async (input: string | URL | Request) => {
@@ -885,7 +885,7 @@ describe("R4-06: transport hardening gaps", () => {
 //   so it is the one place a partial write would be a licence granted by a failed import.
 // ═══════════════════════════════════════════════════════════════════════════════════════
 describe("R4-09: offline bundle import is all-or-nothing", () => {
-  /** Mint a `plrs-bundle+jws` around whatever inner artifacts the caller supplies. */
+  /** Mint a `pkey-bundle+jws` around whatever inner artifacts the caller supplies. */
   async function mintBundle(over: Partial<BundleDoc> = {}): Promise<string> {
     const now = nowSec();
     const bundle: BundleDoc = {
@@ -898,7 +898,7 @@ describe("R4-09: offline bundle import is all-or-nothing", () => {
       trust: await signManifest(now),
       ...over,
     };
-    return signJws(bundle, VENDOR_PEM, VENDOR_KID, "plrs-bundle+jws");
+    return signJws(bundle, VENDOR_PEM, VENDOR_KID, "pkey-bundle+jws");
   }
 
   /** Rewrite a compact JWS's payload while keeping its ORIGINAL header and signature — the

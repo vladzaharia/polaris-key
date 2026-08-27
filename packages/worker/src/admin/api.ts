@@ -119,14 +119,12 @@ async function handleProductScoped(
     return forbidden("not an admin of this product");
   }
 
-  // §R1 regroups the customer-portal settings under Identity (`portal` → `identity/portal`).
-  // The console now spells the canonical path; this rewrite survives only until P8's rebrand
-  // sweep removes it, because the P3-era note said it would and deleting an alias is a separate
-  // decision from moving a resource. Everything ELSE in §R1's admin table has moved outright:
-  // `licenses`/`tiers`/`policy` are License's, `schema`/`profiles` are Config's, and the old
-  // spellings are gone rather than aliased.
-  const path = rest[0] === "portal" ? ["identity", ...rest] : rest;
-  const [resource, id] = path;
+  // §R1 regrouped the customer-portal settings under Identity. The console spells the canonical
+  // `identity/portal`, and the transitional `portal` → `identity/portal` rewrite is GONE: the
+  // bare spelling now falls through to the 404 every other unknown resource gets. Everything
+  // else in §R1's admin table moved the same way — `licenses`/`tiers`/`policy` are License's,
+  // `schema`/`profiles` are Config's — with no aliases left behind.
+  const [resource, id] = rest;
 
   // ── per-SERVICE admin (design spec §4.2) ────────────────────────────────────────────────
   //
@@ -148,7 +146,7 @@ async function handleProductScoped(
         env,
         db,
         product: loaded,
-        rest: path.slice(1),
+        rest: rest.slice(1),
         now,
         session,
       });
@@ -174,7 +172,7 @@ async function handleProductScoped(
     );
   }
 
-  // Which Polaris services this product runs (plan §R4). A CORE resource, not a per-service
+  // Which Polaris Key services this product runs (plan §R4). A CORE resource, not a per-service
   // one: a service cannot own its own off switch, because it would have to be running to be
   // turned off. `id` carries the single sub-action (`revert`).
   if (resource === "services") {

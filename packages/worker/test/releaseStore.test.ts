@@ -118,8 +118,8 @@ function envFor(): Env {
 
 /** The minimum manifest a resync accepts: a catalog and a product block naming this slug. */
 const MANIFEST: Record<string, string> = {
-  ".polaris/schema.json": JSON.stringify({ schemaVersion: 1, entries: [] }),
-  ".polaris/product.json": JSON.stringify({
+  ".pkey/schema.json": JSON.stringify({ schemaVersion: 1, entries: [] }),
+  ".pkey/product.json": JSON.stringify({
     slug: SLUG,
     name: "DJDL",
     compatMin: "0.0.0",

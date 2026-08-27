@@ -1,6 +1,6 @@
 """Licence-gate transitions + semver/channel helpers.
 
-Mirrors ``@plrs/client-core``'s ``gate.test.ts`` / ``semver.ts``. The corpus's gate matrix
+Mirrors ``@polaris-key/client-core``'s ``gate.test.ts`` / ``semver.ts``. The corpus's gate matrix
 pins the cross-SDK decisions; this suite pins the transitions and boundaries around them,
 including the two guards v3 added.
 """
@@ -9,19 +9,19 @@ from __future__ import annotations
 
 import pytest
 
-from polaris.core.models import AllowedRange, BlockedState, LicenseDoc
-from polaris.core.semver import (
+from polaris_key.core.models import AllowedRange, BlockedState, LicenseDoc
+from polaris_key.core.semver import (
     channel_for_version,
     compare_semver,
     is_dev_build,
     parse_semver,
 )
-from polaris.license.gate import is_usable, license_state
+from polaris_key.license.gate import is_usable, license_state
 
 
 def _doc(*, issued: int, expires: int, grace: int) -> LicenseDoc:
     return LicenseDoc(
-        iss="plrs.im",
+        iss="key.plrs.im",
         aud="djdl",
         deviceId="dev_1",
         issuedAt=issued,
@@ -55,7 +55,7 @@ def test_not_applicable_precedes_every_other_rule() -> None:
 
 @pytest.mark.parametrize("activation", ["token", "bundle"])
 def test_both_activation_sources_gate_identically(activation: str) -> None:
-    """§7: a device is activated either by an online-minted ``plrst_`` token or by a
+    """§7: a device is activated either by an online-minted ``pkeyt_`` token or by a
     verified offline bundle import. Both are activated; only ``None`` is not."""
     doc = _doc(issued=0, expires=1000, grace=2000)
     assert license_state(activation=activation, doc=doc, now=500).status == "ok"

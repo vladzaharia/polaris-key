@@ -1,7 +1,7 @@
 /**
  * Per-product service enablement — the single authority (design spec §2.2).
  *
- * Polaris is a suite of opt-in services (License, Config, Release, Update, Identity) over an
+ * Polaris Key is a suite of opt-in services (License, Config, Release, Update, Identity) over an
  * always-on Core substrate. `products.services_json` records which of them a product runs, and
  * every consumer — route mounting, the discovery document, the admin setup view, portal
  * capabilities — becomes a projection of THIS, instead of each re-inferring enablement from
@@ -12,7 +12,7 @@
  * policies; see `setServices` in `../repo.ts`.
  */
 
-import type { RegistrationPolicy } from "@plrs/protocol/core";
+import type { RegistrationPolicy } from "@polaris-key/protocol/core";
 
 export type { RegistrationPolicy };
 
@@ -264,7 +264,7 @@ export function validateServices(
   if (registration === "requires-identity" && !services.identity.enabled) {
     errors.push("registration_requires_identity");
   }
-  // Config with License off is the D-08 shape: devices register, hold `plrst_` tokens, and
+  // Config with License off is the D-08 shape: devices register, hold `pkeyt_` tokens, and
   // fetch config documents with no licence anywhere. `requires-license` closes the only mint
   // path such a product has, so its devices could never obtain a token at all — the service is
   // enabled and unreachable. (Spec §2.2 generalises the old `config_without_activation`

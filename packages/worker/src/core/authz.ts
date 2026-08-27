@@ -42,8 +42,8 @@ import type {
   FingerprintComponent,
   FingerprintMode,
   ManagedEntry,
-  ManagedPayload,
-} from "@plrs/protocol";
+} from "@polaris-key/protocol";
+import type { ManagedPayload } from "./payload.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";

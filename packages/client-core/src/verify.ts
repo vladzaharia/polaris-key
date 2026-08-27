@@ -1,20 +1,20 @@
 // JWS verification + per-document claim validation — wire contract v3 §2–§3.
 //
-// Cryptographic verification is the frozen @plrs/jws path (encoded-length caps, strict
+// Cryptographic verification is the frozen @polaris-key/jws path (encoded-length caps, strict
 // base64url, duplicate-key rejection, verify-before-parse, `kid` selected only from the
 // caller's trust set). On top of it this module asserts the full v3 claim set, so a document
 // that is expired, foreign, far-future, or wearing the wrong `typ` never becomes a document
 // at all.
 //
-// v3 splits the single v2 `pkey-config+jws` document into TWO: `plrs-license+jws` (grants)
-// and `plrs-config+jws` (config + secrets). The envelope they share (§2) is validated once,
+// v3 splits the single v2 `pkey-config+jws` document into TWO: `pkey-license+jws` (grants)
+// and `pkey-config+jws` (config + secrets). The envelope they share (§2) is validated once,
 // in `validateEnvelope`; only the per-document claims differ, and those live in the two
 // `DocTypeSpec`s below. `verifyDoc` is generic so P6's bundle verifier can reuse it.
 
-import { verifyJws, type JwsTyp, type TrustSet } from "@plrs/jws";
-import { ISSUER, type DocClaims } from "@plrs/protocol/core";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
+import { verifyJws, type JwsTyp, type TrustSet } from "@polaris-key/jws";
+import { ISSUER, type DocClaims } from "@polaris-key/protocol/core";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { CLOCK_SKEW_SECONDS, MAX_GRACE_SECONDS } from "./claims.js";
 
 /** A JSON object — not an array, not null. Managed maps must be exactly this. */
@@ -39,7 +39,7 @@ function isValidSchemaVersion(v: unknown): boolean {
 export interface VerifyOptions {
   trust: TrustSet;
   expectedAud: string;
-  /** Expected `iss`; defaults to `ISSUER` ("plrs.im" — host-neutral in v3, D-09). */
+  /** Expected `iss`; defaults to `ISSUER` ("key.plrs.im"). */
   expectedIss?: string;
   deviceId: string;
   /** Per-TYPE anti-replay floor: reject a document not strictly newer than the one already
@@ -71,9 +71,9 @@ export interface DocTypeSpec<T extends DocClaims> {
   validate: (doc: T) => boolean;
 }
 
-/** `plrs-license+jws` — grants. `entitlements` is the sole carrier of grant data (D-20). */
+/** `pkey-license+jws` — grants. `entitlements` is the sole carrier of grant data (D-20). */
 export const LICENSE_DOC: DocTypeSpec<LicenseDoc> = {
-  typ: "plrs-license+jws",
+  typ: "pkey-license+jws",
   validate: (doc) => {
     if (typeof doc.licenseId !== "string" || doc.licenseId === "") return false;
     if (!isPlainObject(doc.entitlements)) return false;
@@ -83,9 +83,9 @@ export const LICENSE_DOC: DocTypeSpec<LicenseDoc> = {
   },
 };
 
-/** `plrs-config+jws` — config + secrets, and no license fields whatsoever (§2.2, D-08). */
+/** `pkey-config+jws` — config + secrets, and no license fields whatsoever (§2.2, D-08). */
 export const CONFIG_DOC: DocTypeSpec<ConfigDoc> = {
-  typ: "plrs-config+jws",
+  typ: "pkey-config+jws",
   validate: (doc) => {
     if (!isValidSchemaVersion(doc.schemaVersion)) return false;
     if (!isPlainObject(doc.config)) return false;
@@ -105,8 +105,8 @@ function validateEnvelope(
   now: number,
 ): boolean {
   if (doc.aud !== opts.expectedAud) return false;
-  // v3 is host-neutral: `plrs.im`, NOT the serving hostname. A `key.plrs.im` issuer is a v2
-  // artifact and is refused (§8).
+  // The issuer is the fixed `key.plrs.im` (Amendment A1), never a caller-derived hostname —
+  // an attacker-controlled base URL must not be able to name its own issuer (§8).
   if (doc.iss !== (opts.expectedIss ?? ISSUER)) return false;
   if (doc.deviceId !== opts.deviceId) return false;
   if (
@@ -135,7 +135,7 @@ function validateEnvelope(
 }
 
 /**
- * Verify one signed Polaris document of a known type. Returns the payload, or `null` on ANY
+ * Verify one signed Polaris Key document of a known type. Returns the payload, or `null` on ANY
  * failure — never a throw, so every call site fails closed identically.
  */
 export async function verifyDoc<T extends DocClaims>(
@@ -148,7 +148,6 @@ export async function verifyDoc<T extends DocClaims>(
   // replay — a trust manifest, or the *other* document type, presented here (§2).
   const v = await verifyJws<T>(jws, opts.trust, {
     typ: spec.typ,
-    requireTyp: true,
   });
   if (!v) return null;
   const doc = v.payload;
@@ -159,7 +158,7 @@ export async function verifyDoc<T extends DocClaims>(
   return doc;
 }
 
-/** Verify a `plrs-license+jws` document (§2.1). */
+/** Verify a `pkey-license+jws` document (§2.1). */
 export function verifyLicenseDoc(
   jws: string,
   opts: VerifyOptions,
@@ -167,7 +166,7 @@ export function verifyLicenseDoc(
   return verifyDoc(jws, LICENSE_DOC, opts);
 }
 
-/** Verify a `plrs-config+jws` document (§2.2). */
+/** Verify a `pkey-config+jws` document (§2.2). */
 export function verifyConfigDoc(
   jws: string,
   opts: VerifyOptions,

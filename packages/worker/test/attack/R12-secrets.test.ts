@@ -44,7 +44,7 @@ import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
 import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
 import { insertSchema, upsertDevice } from "../../src/repo.js";
 import { deactivateSchemas } from "../../src/admin/repo.js";
-import { verifyJws, signJws } from "@plrs/jws";
+import { verifyJws, signJws } from "@polaris-key/jws";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..", "..", "..", "..");
@@ -578,8 +578,8 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
   });
 
   it("REFUTED-BY-CONTRAST: device tokens and download tokens ARE hashed before storage", async () => {
-    const hashed = await hashKey("plrst_abc", "pepper");
-    expect(hashed).not.toContain("plrst_");
+    const hashed = await hashKey("pkeyt_abc", "pepper");
+    expect(hashed).not.toContain("pkeyt_");
     expect(hashed).toMatch(/^[0-9a-f]{64}$/);
   });
 });
@@ -680,7 +680,7 @@ describe("R12-07 committed corpus key published as a prod trust anchor", () => {
   it("FIXED: no SDK README publishes a corpus public key as a trust anchor", async () => {
     const corpus = JSON.parse(
       readFileSync(
-        join(REPO, "conformance", "corpus", "v1", "cases.json"),
+        join(REPO, "conformance", "corpus", "v2", "cases.json"),
         "utf8",
       ),
     ) as {

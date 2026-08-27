@@ -150,7 +150,7 @@ describe("admin fingerprint reset", () => {
     const activated = await handleActivate(
       mkReq(
         "POST",
-        { authorization: `Bearer ${key}`, "x-polaris-device": device },
+        { authorization: `Bearer ${key}`, "x-pkey-device": device },
         {
           fingerprint: {
             components: { machineUuid: "a".repeat(22) },

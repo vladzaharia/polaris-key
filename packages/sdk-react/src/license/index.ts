@@ -1,4 +1,4 @@
-// @plrs/react/license — the License service's UI surface: the gate, the device roster, and
+// @polaris-key/react/license — the License service's UI surface: the gate, the device roster, and
 // the hook they read from. Layered OVER the transport subpaths (`./browser`, `./desktop`):
 // a service entry says WHAT you are talking to, a transport entry says HOW.
 //
@@ -20,5 +20,8 @@ export {
   type DeviceManagerSlots,
 } from "../components/DeviceManager.js";
 export type { DeviceInfo, LicenseState } from "../core/index.js";
-export { isUsable, licenseState } from "@plrs/client-core";
-export type { LicenseStatus, ActivationSource } from "@plrs/protocol/license";
+export { isUsable, licenseState } from "@polaris-key/client-core";
+export type {
+  LicenseStatus,
+  ActivationSource,
+} from "@polaris-key/protocol/license";

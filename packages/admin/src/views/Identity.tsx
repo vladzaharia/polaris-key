@@ -5,6 +5,7 @@ import {
   FileCog,
   Globe2,
   KeyRound,
+  Link2,
   Mail,
   RefreshCw,
   ShieldCheck,
@@ -25,6 +26,11 @@ import {
   CardHeader,
   CardTitle,
   EmptyState,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   Switch,
   useToast,
@@ -75,11 +81,52 @@ const DEFAULT_PORTAL_SETTINGS: PortalProductSettings = {
   magicEnabled: true,
   licenseKeyClaimEnabled: true,
   releasesEnabled: true,
+  autoLinkEnabled: null,
   branding: null,
   modifiedAt: 0,
 };
 
-type PortalToggleKey = Exclude<keyof UpdatePortalSettingsBody, "branding">;
+type PortalToggleKey = Exclude<
+  keyof UpdatePortalSettingsBody,
+  "branding" | "autoLinkEnabled"
+>;
+
+/**
+ * `autoLinkEnabled` is the one portal setting that is NOT a switch, because it has three
+ * states and the third is the one an operator should usually be on (R5-01/R5-02). A switch
+ * would have to pick a side for "auto", and whichever side it picked would silently become an
+ * explicit override the moment anyone touched it — turning a value that TRACKS the product's
+ * OIDC issuer into a frozen one. So: a select, with "auto" nameable and returnable.
+ */
+const AUTO_LINK_OPTIONS: {
+  value: "auto" | "on" | "off";
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "auto",
+    label: "Auto (follow the OIDC issuer)",
+    description:
+      "On for products on the platform issuer; off for a product on its own ‘custom’ issuer, whose email and subject claims this platform does not vouch for.",
+  },
+  {
+    value: "on",
+    label: "Always link",
+    description:
+      "Link matching licenses on sign-in even when the issuer is tenant-controlled. Only for an issuer you operate.",
+  },
+  {
+    value: "off",
+    label: "Never link",
+    description:
+      "Customers must claim each license explicitly, even on the platform issuer.",
+  },
+];
+
+const autoLinkValue = (v: boolean | null): "auto" | "on" | "off" =>
+  v === null ? "auto" : v ? "on" : "off";
+const autoLinkSetting = (v: "auto" | "on" | "off"): boolean | null =>
+  v === "auto" ? null : v === "on";
 
 const PORTAL_ROWS: {
   key: PortalToggleKey;
@@ -140,6 +187,7 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
       magicEnabled: settings.magicEnabled,
       licenseKeyClaimEnabled: settings.licenseKeyClaimEnabled,
       releasesEnabled: settings.releasesEnabled,
+      autoLinkEnabled: settings.autoLinkEnabled,
       branding: settings.branding ?? null,
     });
   }, [settings]);
@@ -149,7 +197,8 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
     form.oidcEnabled !== settings.oidcEnabled ||
     form.magicEnabled !== settings.magicEnabled ||
     form.licenseKeyClaimEnabled !== settings.licenseKeyClaimEnabled ||
-    form.releasesEnabled !== settings.releasesEnabled;
+    form.releasesEnabled !== settings.releasesEnabled ||
+    form.autoLinkEnabled !== settings.autoLinkEnabled;
 
   const setToggle =
     (key: PortalToggleKey) =>
@@ -166,6 +215,7 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
         magicEnabled: form.magicEnabled,
         licenseKeyClaimEnabled: form.licenseKeyClaimEnabled,
         releasesEnabled: form.releasesEnabled,
+        autoLinkEnabled: form.autoLinkEnabled,
       });
       invalidate(`portal:${slug}`);
       toast.success("Portal settings saved");
@@ -210,6 +260,8 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
     );
   }
 
+  const autoLinkId = `portal-${slug}-autoLinkEnabled`;
+
   return (
     <Card>
       <form onSubmit={onSubmit}>
@@ -251,6 +303,59 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
               </div>
             );
           })}
+
+          {/* The tri-state, kept in the same list so it reads as one more access decision. */}
+          <div className="flex flex-wrap items-start justify-between gap-4 py-4 last:pb-0">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Link2 aria-hidden className="size-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <label
+                  htmlFor={autoLinkId}
+                  className="text-sm font-medium text-foreground"
+                >
+                  Automatic license linking
+                </label>
+                <p
+                  id={`${autoLinkId}-help`}
+                  className="mt-1 max-w-2xl text-sm text-muted-foreground"
+                >
+                  {
+                    AUTO_LINK_OPTIONS.find(
+                      (o) => o.value === autoLinkValue(form.autoLinkEnabled),
+                    )!.description
+                  }
+                </p>
+              </div>
+            </div>
+            <Select
+              value={autoLinkValue(form.autoLinkEnabled)}
+              onValueChange={(next) =>
+                setForm((current) => ({
+                  ...current,
+                  autoLinkEnabled: autoLinkSetting(
+                    next as "auto" | "on" | "off",
+                  ),
+                }))
+              }
+            >
+              <SelectTrigger
+                id={autoLinkId}
+                aria-describedby={`${autoLinkId}-help`}
+                className="w-56"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AUTO_LINK_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" loading={saving} disabled={!dirty}>

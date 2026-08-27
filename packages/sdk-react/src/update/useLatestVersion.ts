@@ -3,7 +3,7 @@
 // It polls `GET /<product>/update/version` and reports the newest build on a channel plus
 // whether the HOST APPLICATION is behind it. Two sources, in order:
 //
-//   1. a host-supplied `fetcher`, for an app whose updates do not come through the Polaris
+//   1. a host-supplied `fetcher`, for an app whose updates do not come through the Polaris Key
 //      transport at all (a Sparkle host reading its own appcast, an internal feed);
 //   2. otherwise the active adapter's `checkUpdate()` — the browser transport's real HTTP
 //      call, or the desktop bridge's `invoke("update", "check")`.
@@ -56,7 +56,7 @@ export function useLatestVersion(
   const { channel, intervalSeconds, immediate = true, fetcher } = opts;
 
   // A host `fetcher` is the host's own update source, so it is honoured even for a product
-  // whose Polaris Update service is off.
+  // whose Polaris Key Update service is off.
   const enabled = Boolean(fetcher) || state.capabilities.update.enabled;
 
   const [latest, setLatest] = useState<VersionCheck | null>(null);

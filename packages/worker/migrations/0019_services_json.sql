@@ -1,4 +1,4 @@
--- Polaris suite — per-product service enablement (design spec §2.2).
+-- Polaris Key suite — per-product service enablement (design spec §2.2).
 --
 -- The suite is License / Config / Release / Update / Identity over an always-on Core. Which of
 -- those a product actually runs used to be re-inferred independently by four surfaces (route

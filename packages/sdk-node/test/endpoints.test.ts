@@ -25,13 +25,13 @@
 // ── WHY THE HEADERS AND THE DEADLINE ARE PINNED PER VERB ────────────────────────────────────
 //
 // R4-08: Node's `fetch` has no default timeout, so a slowloris on any endpoint stalls `sync()`
-// forever. Both the seven `X-Polaris-*` metadata headers and the deadline come from
+// forever. Both the seven `X-PKey-*` metadata headers and the deadline come from
 // `CoreContext`, and the table at the bottom asserts EVERY verb goes through it — a new
 // endpoint that assembled its own headers would fail here rather than in production.
 
 import { describe, expect, it } from "vitest";
 import { arch, platform } from "node:os";
-import type { HardwareFingerprint } from "@plrs/protocol/core";
+import type { HardwareFingerprint } from "@polaris-key/protocol/core";
 import { CoreContext } from "../src/core/context.js";
 import { InMemoryStore } from "../src/core/store.js";
 import {
@@ -84,7 +84,7 @@ function explodingFetch(message = "ECONNREFUSED"): typeof fetch {
 
 /**
  * A ready-to-use Core. `init()` is what loads the device id off the store, so it must run
- * before any endpoint call — an un-`init()`ed context sends an empty `X-Polaris-Device`.
+ * before any endpoint call — an un-`init()`ed context sends an empty `X-PKey-Device`.
  */
 async function makeCtx(impl: typeof fetch): Promise<CoreContext> {
   const ctx = new CoreContext({
@@ -110,31 +110,31 @@ const FINGERPRINT: HardwareFingerprint = {
 describe("activateWithKey — POST /<p>/license/activate", () => {
   it("POSTs the v3 route with Bearer <key> + the device header and returns the minted token", async () => {
     const { impl, calls } = fakeFetch([
-      { status: 200, json: { token: "plrst_minted", schemaVersion: 3 } },
+      { status: 200, json: { token: "pkeyt_minted", schemaVersion: 3 } },
     ]);
     const ctx = await makeCtx(impl);
-    const res = await activateWithKey(ctx, "plrs_djdl_AAA", null);
+    const res = await activateWithKey(ctx, "pkey_djdl_AAA", null);
 
     expect(res).toEqual({
       kind: "ok",
-      token: "plrst_minted",
+      token: "pkeyt_minted",
       schemaVersion: 3,
     });
     // The route moved under `/license/` in v3; the old `/djdl/activate` now 404s.
     expect(calls[0]?.url).toBe("https://k.test/djdl/license/activate");
     expect(calls[0]?.init.method).toBe("POST");
     const h = headersOf(calls[0]!.init);
-    // The KEY is the bearer here — the `plrst_` device token does not exist yet.
-    expect(h.get("authorization")).toBe("Bearer plrs_djdl_AAA");
-    expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
+    // The KEY is the bearer here — the `pkeyt_` device token does not exist yet.
+    expect(h.get("authorization")).toBe("Bearer pkey_djdl_AAA");
+    expect(h.get("x-pkey-device")).toBe(ctx.deviceId);
   });
 
   it("sends the fingerprint as a JSON body when the host produced one", async () => {
     const { impl, calls } = fakeFetch([
-      { status: 200, json: { token: "plrst_minted", schemaVersion: 3 } },
+      { status: 200, json: { token: "pkeyt_minted", schemaVersion: 3 } },
     ]);
     const ctx = await makeCtx(impl);
-    await activateWithKey(ctx, "plrs_djdl_AAA", FINGERPRINT);
+    await activateWithKey(ctx, "pkey_djdl_AAA", FINGERPRINT);
 
     expect(headersOf(calls[0]!.init).get("content-type")).toBe(
       "application/json",
@@ -149,7 +149,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
       { status: 403, json: { limit: 3, deviceCount: 3 } },
     ]);
     expect(
-      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+      await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
     ).toEqual({ kind: "device-limit", limit: 3, deviceCount: 3 });
   });
 
@@ -163,7 +163,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
       },
     ]);
     expect(
-      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+      await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
     ).toEqual({ kind: "device-limit", limit: 3, deviceCount: 3 });
   });
 
@@ -172,7 +172,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
       { status: 403, json: { error: "fingerprint_required" } },
     ]);
     expect(
-      (await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null)).kind,
+      (await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null)).kind,
     ).toBe("fingerprint-required");
   });
 
@@ -181,7 +181,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
       { status: 403, json: { error: { code: "fingerprint_required" } } },
     ]);
     expect(
-      (await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null)).kind,
+      (await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null)).kind,
     ).toBe("fingerprint-required");
   });
 
@@ -190,7 +190,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
     // tells an operator to free a seat, never as a fingerprint problem they cannot fix.
     const { impl } = fakeFetch([{ status: 403, text: "not json" }]);
     expect(
-      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+      await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
     ).toEqual({
       kind: "device-limit",
       limit: undefined,
@@ -206,7 +206,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
       { status: 409, json: { drift: 3, changed: ["primaryMac", "cpuModel"] } },
     ]);
     expect(
-      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+      await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
     ).toEqual({
       kind: "hardware-mismatch",
       drift: 3,
@@ -228,7 +228,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
       },
     ]);
     expect(
-      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+      await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
     ).toEqual({
       kind: "hardware-mismatch",
       drift: 1,
@@ -239,20 +239,20 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
   it("maps a 401 to unauthorized (bad/revoked key)", async () => {
     const { impl } = fakeFetch([{ status: 401 }]);
     expect(
-      (await activateWithKey(await makeCtx(impl), "plrs_bad", null)).kind,
+      (await activateWithKey(await makeCtx(impl), "pkey_bad", null)).kind,
     ).toBe("unauthorized");
   });
 
   it("maps a 404 to enroll-disabled — the shared ladder, not an enroll-only rule", async () => {
     const { impl } = fakeFetch([{ status: 404 }]);
     expect(
-      (await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null)).kind,
+      (await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null)).kind,
     ).toBe("enroll-disabled");
   });
 
   it("maps other failures to error with the body message", async () => {
     const { impl } = fakeFetch([{ status: 500, text: "boom" }]);
-    const res = await activateWithKey(await makeCtx(impl), "plrs_x", null);
+    const res = await activateWithKey(await makeCtx(impl), "pkey_x", null);
     expect(res.kind).toBe("error");
     expect(res).toMatchObject({ message: "boom" });
   });
@@ -260,7 +260,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
   it("returns error (not throw) on a network failure", async () => {
     const res = await activateWithKey(
       await makeCtx(explodingFetch()),
-      "plrs_x",
+      "pkey_x",
       null,
     );
     expect(res).toEqual({ kind: "error", message: "ECONNREFUSED" });
@@ -272,22 +272,22 @@ describe("enroll — POST /<p>/license/enroll", () => {
     // The whole point of §5's keyless tier: there is no credential to present. An
     // `Authorization` header here would make an unauthenticated mint look authenticated.
     const { impl, calls } = fakeFetch([
-      { status: 200, json: { token: "plrst_free", schemaVersion: 3 } },
+      { status: 200, json: { token: "pkeyt_free", schemaVersion: 3 } },
     ]);
     const ctx = await makeCtx(impl);
     const res = await enroll(ctx, null);
 
-    expect(res).toEqual({ kind: "ok", token: "plrst_free", schemaVersion: 3 });
+    expect(res).toEqual({ kind: "ok", token: "pkeyt_free", schemaVersion: 3 });
     expect(calls[0]?.url).toBe("https://k.test/djdl/license/enroll");
     expect(calls[0]?.init.method).toBe("POST");
     const h = headersOf(calls[0]!.init);
     expect(h.get("authorization")).toBeNull();
-    expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
+    expect(h.get("x-pkey-device")).toBe(ctx.deviceId);
   });
 
   it("sends a fingerprint body only when one is given", async () => {
     const { impl, calls } = fakeFetch([
-      { status: 200, json: { token: "plrst_free", schemaVersion: 3 } },
+      { status: 200, json: { token: "pkeyt_free", schemaVersion: 3 } },
     ]);
     const ctx = await makeCtx(impl);
     await enroll(ctx, FINGERPRINT);
@@ -300,7 +300,7 @@ describe("enroll — POST /<p>/license/enroll", () => {
     // A host that opted out must send a byte-identical request to one that had nothing to
     // report — `{"fingerprint":null}` would be a distinguishable "I refused" signal.
     const { impl, calls } = fakeFetch([
-      { status: 200, json: { token: "plrst_free", schemaVersion: 3 } },
+      { status: 200, json: { token: "pkeyt_free", schemaVersion: 3 } },
     ]);
     await enroll(await makeCtx(impl), null);
     expect(calls[0]!.init.body).toBeUndefined();
@@ -324,21 +324,21 @@ describe("enroll — POST /<p>/license/enroll", () => {
 describe("reacquireToken — POST /<p>/license/token", () => {
   it("POSTs the token route with the CURRENT bearer + device header", async () => {
     const { impl, calls } = fakeFetch([
-      { status: 200, json: { token: "plrst_reacquired", schemaVersion: 3 } },
+      { status: 200, json: { token: "pkeyt_reacquired", schemaVersion: 3 } },
     ]);
     const ctx = await makeCtx(impl);
-    const res = await reacquireToken(ctx, "plrst_current");
+    const res = await reacquireToken(ctx, "pkeyt_current");
 
     expect(res).toEqual({
       kind: "ok",
-      token: "plrst_reacquired",
+      token: "pkeyt_reacquired",
       schemaVersion: 3,
     });
     expect(calls[0]?.url).toBe("https://k.test/djdl/license/token");
     expect(calls[0]?.init.method).toBe("POST");
     const h = headersOf(calls[0]!.init);
-    expect(h.get("authorization")).toBe("Bearer plrst_current");
-    expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
+    expect(h.get("authorization")).toBe("Bearer pkeyt_current");
+    expect(h.get("x-pkey-device")).toBe(ctx.deviceId);
     // Rotation re-presents the credential; it never re-presents hardware.
     expect(calls[0]!.init.body).toBeUndefined();
   });
@@ -348,14 +348,14 @@ describe("reacquireToken — POST /<p>/license/token", () => {
       { status: 403, json: { limit: 2, deviceCount: 2 } },
     ]);
     expect(
-      (await reacquireToken(await makeCtx(impl), "plrst_current")).kind,
+      (await reacquireToken(await makeCtx(impl), "pkeyt_current")).kind,
     ).toBe("device-limit");
   });
 
   it("maps 401 to unauthorized", async () => {
     const { impl } = fakeFetch([{ status: 401 }]);
     expect(
-      (await reacquireToken(await makeCtx(impl), "plrst_current")).kind,
+      (await reacquireToken(await makeCtx(impl), "pkeyt_current")).kind,
     ).toBe("unauthorized");
   });
 
@@ -364,7 +364,7 @@ describe("reacquireToken — POST /<p>/license/token", () => {
       (
         await reacquireToken(
           await makeCtx(explodingFetch("offline")),
-          "plrst_current",
+          "pkeyt_current",
         )
       ).kind,
     ).toBe("error");
@@ -374,12 +374,12 @@ describe("reacquireToken — POST /<p>/license/token", () => {
 describe("deauthorize — POST /<p>/license/deauthorize", () => {
   it("POSTs the deauthorize route with the token bearer", async () => {
     const { impl, calls } = fakeFetch([{ status: 200, json: { ok: true } }]);
-    await deauthorize(await makeCtx(impl), "plrst_x");
+    await deauthorize(await makeCtx(impl), "pkeyt_x");
 
     expect(calls[0]?.url).toBe("https://k.test/djdl/license/deauthorize");
     expect(calls[0]?.init.method).toBe("POST");
     expect(headersOf(calls[0]!.init).get("authorization")).toBe(
-      "Bearer plrst_x",
+      "Bearer pkeyt_x",
     );
   });
 
@@ -387,14 +387,14 @@ describe("deauthorize — POST /<p>/license/deauthorize", () => {
     // The LOCAL wipe is what `deactivate()` actually depends on. A device deauthorizing on a
     // plane must not be left holding credentials because the control plane was unreachable.
     await expect(
-      deauthorize(await makeCtx(explodingFetch()), "plrst_x"),
+      deauthorize(await makeCtx(explodingFetch()), "pkeyt_x"),
     ).resolves.toBeUndefined();
   });
 
   it("swallows a non-OK response too (no throw)", async () => {
     const { impl } = fakeFetch([{ status: 401 }]);
     await expect(
-      deauthorize(await makeCtx(impl), "plrst_x"),
+      deauthorize(await makeCtx(impl), "pkeyt_x"),
     ).resolves.toBeUndefined();
   });
 });
@@ -404,7 +404,7 @@ describe("reportSnapshot — POST /<p>/devices/report", () => {
     // §6: telemetry moved off the config service. It is licence anti-fraud data that had been
     // living under a config path, and a config-only product reports on it too.
     const { impl, calls } = fakeFetch([{ status: 200, json: {} }]);
-    const ok = await reportSnapshot(await makeCtx(impl), "plrst_x", {
+    const ok = await reportSnapshot(await makeCtx(impl), "pkeyt_x", {
       config: { a: 1 },
       entitlements: {},
     });
@@ -413,7 +413,7 @@ describe("reportSnapshot — POST /<p>/devices/report", () => {
     expect(calls[0]?.url).toBe("https://k.test/djdl/devices/report");
     expect(calls[0]?.init.method).toBe("POST");
     const h = headersOf(calls[0]!.init);
-    expect(h.get("authorization")).toBe("Bearer plrst_x");
+    expect(h.get("authorization")).toBe("Bearer pkeyt_x");
     expect(h.get("content-type")).toBe("application/json");
     expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
       config: { a: 1 },
@@ -423,7 +423,7 @@ describe("reportSnapshot — POST /<p>/devices/report", () => {
 
   it("returns false on a non-OK response", async () => {
     const { impl } = fakeFetch([{ status: 500 }]);
-    expect(await reportSnapshot(await makeCtx(impl), "plrst_x", {})).toBe(
+    expect(await reportSnapshot(await makeCtx(impl), "pkeyt_x", {})).toBe(
       false,
     );
   });
@@ -432,7 +432,7 @@ describe("reportSnapshot — POST /<p>/devices/report", () => {
     expect(
       await reportSnapshot(
         await makeCtx(explodingFetch("offline")),
-        "plrst_x",
+        "pkeyt_x",
         {},
       ),
     ).toBe(false);
@@ -440,44 +440,44 @@ describe("reportSnapshot — POST /<p>/devices/report", () => {
 });
 
 describe("every call carries the Core metadata headers + a deadline (R4-08)", () => {
-  /** The seven `X-Polaris-*` headers §5 requires on every product-scoped request. */
+  /** The seven `X-PKey-*` headers §5 requires on every product-scoped request. */
   const METADATA_HEADERS = [
-    "x-polaris-device",
-    "x-polaris-version",
-    "x-polaris-channel",
-    "x-polaris-platform",
-    "x-polaris-arch",
-    "x-polaris-sdk",
-    "x-polaris-sdk-version",
+    "x-pkey-device",
+    "x-pkey-version",
+    "x-pkey-channel",
+    "x-pkey-platform",
+    "x-pkey-arch",
+    "x-pkey-sdk",
+    "x-pkey-sdk-version",
   ] as const;
 
   const VERBS: Array<[string, (ctx: CoreContext) => Promise<unknown>]> = [
-    ["activate", (ctx) => activateWithKey(ctx, "plrs_djdl_AAA", null)],
+    ["activate", (ctx) => activateWithKey(ctx, "pkey_djdl_AAA", null)],
     ["enroll", (ctx) => enroll(ctx, null)],
-    ["token", (ctx) => reacquireToken(ctx, "plrst_current")],
-    ["deauthorize", (ctx) => deauthorize(ctx, "plrst_x")],
-    ["report", (ctx) => reportSnapshot(ctx, "plrst_x", {})],
+    ["token", (ctx) => reacquireToken(ctx, "pkeyt_current")],
+    ["deauthorize", (ctx) => deauthorize(ctx, "pkeyt_x")],
+    ["report", (ctx) => reportSnapshot(ctx, "pkeyt_x", {})],
   ];
 
   it.each(VERBS)(
-    "%s sends all seven X-Polaris-* headers with the right values",
+    "%s sends all seven X-PKey-* headers with the right values",
     async (_name, call) => {
       const { impl, calls } = fakeFetch([
-        { status: 200, json: { token: "plrst_t", schemaVersion: 3 } },
+        { status: 200, json: { token: "pkeyt_t", schemaVersion: 3 } },
       ]);
       const ctx = await makeCtx(impl);
       await call(ctx);
 
       const h = headersOf(calls[0]!.init);
       for (const name of METADATA_HEADERS) expect(h.get(name)).toBeTruthy();
-      expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
-      expect(h.get("x-polaris-version")).toBe("1.2.3");
+      expect(h.get("x-pkey-device")).toBe(ctx.deviceId);
+      expect(h.get("x-pkey-version")).toBe("1.2.3");
       // Derived from the host version when the caller names no channel.
-      expect(h.get("x-polaris-channel")).toBe("stable");
-      expect(h.get("x-polaris-platform")).toBe(platform());
-      expect(h.get("x-polaris-arch")).toBe(arch());
-      expect(h.get("x-polaris-sdk")).toBe(SDK_NAME);
-      expect(h.get("x-polaris-sdk-version")).toBe(SDK_VERSION);
+      expect(h.get("x-pkey-channel")).toBe("stable");
+      expect(h.get("x-pkey-platform")).toBe(platform());
+      expect(h.get("x-pkey-arch")).toBe(arch());
+      expect(h.get("x-pkey-sdk")).toBe(SDK_NAME);
+      expect(h.get("x-pkey-sdk-version")).toBe(SDK_VERSION);
     },
   );
 
@@ -486,7 +486,7 @@ describe("every call carries the Core metadata headers + a deadline (R4-08)", ()
     // stalls `sync()` forever. The signal comes from `CoreContext.deadline()`, so a new
     // endpoint cannot ship without one.
     const { impl, calls } = fakeFetch([
-      { status: 200, json: { token: "plrst_t", schemaVersion: 3 } },
+      { status: 200, json: { token: "pkeyt_t", schemaVersion: 3 } },
     ]);
     await call(await makeCtx(impl));
     expect(calls[0]!.init.signal).toBeInstanceOf(AbortSignal);

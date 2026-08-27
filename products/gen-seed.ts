@@ -3,18 +3,18 @@
 // This does NOT mint sealed product_keys or store product secret values, so it is not a
 // live onboarding path. Register real products through the admin/GitHub-link flow.
 //
-//   pnpm --filter @plrs/products gen-seed djdl > products/djdl/seed.sql
+//   pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Catalog, type ProductCatalog } from "@plrs/catalog";
+import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
 import {
   normalizeModules,
   servicesFromModules,
   SERVICE_SLUGS,
   REGISTRATION_POLICIES,
   type RegistrationPolicy,
-} from "@plrs/manifest";
+} from "@polaris-key/manifest";
 
 interface Tier {
   id: string;
@@ -53,7 +53,7 @@ interface ProductDef {
   defaultMaxOfflineDays: number;
   defaultDeviceLimit: number;
   adminGroup: string;
-  /** `modules.<name>.enabled` — the same block a `.polaris/product` manifest carries. */
+  /** `modules.<name>.enabled` — the same block a `.pkey/product` manifest carries. */
   modules?: Record<string, { enabled?: boolean }>;
   devices?: { registration?: string };
   oidc: {

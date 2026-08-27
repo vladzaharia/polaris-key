@@ -165,7 +165,7 @@ async function deviceToken(
   const res = await handleActivate(
     mkReq("POST", {
       authorization: `Bearer ${key}`,
-      "x-polaris-device": "dev-1",
+      "x-pkey-device": "dev-1",
     }),
     env,
     db,
@@ -302,7 +302,7 @@ describe("entitled feeds (D-13) — the R3 gap", () => {
 
   it("requires a token at all, in the v3 shape", async () => {
     const { db, env, product } = await fixture({ metadata_access: "entitled" });
-    for (const headers of [{}, { authorization: "Bearer plrst_nope" }] as Array<
+    for (const headers of [{}, { authorization: "Bearer pkeyt_nope" }] as Array<
       Record<string, string>
     >) {
       const res = await handleUpdate(

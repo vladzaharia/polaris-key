@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { verifyJws } from "@plrs/jws";
-import { verifyConfigDoc, verifyLicenseDoc } from "@plrs/client-core";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
+import { verifyJws } from "@polaris-key/jws";
+import { verifyConfigDoc, verifyLicenseDoc } from "@polaris-key/client-core";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -42,7 +42,7 @@ async function activate(
   const res = await handleActivate(
     mkReq("POST", {
       authorization: `Bearer ${key}`,
-      "x-polaris-device": device,
+      "x-pkey-device": device,
     }),
     env,
     db,
@@ -69,7 +69,7 @@ describe("licensing", () => {
     expect(product).toBeTruthy();
   });
 
-  // The two documents are asserted through `@plrs/client-core`'s verifiers rather than through
+  // The two documents are asserted through `@polaris-key/client-core`'s verifiers rather than through
   // a hand-written shape check. That is the whole point of the exercise: client-core is the
   // reference implementation every SDK's verifier is ported from, so a document it accepts is a
   // document the wire contract accepts, and a field the worker drifts on fails here rather than
@@ -85,7 +85,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -96,7 +96,7 @@ describe("licensing", () => {
     expect(res.headers.get("content-type")).toBe("application/jwt");
     const jws = await res.text();
 
-    // The frozen envelope: signed by the product's kid, and stamped `plrs-license+jws` so it
+    // The frozen envelope: signed by the product's kid, and stamped `pkey-license+jws` so it
     // cannot be replayed where a config document is expected.
     const raw = await verifyJws<LicenseDoc>(jws, TRUST);
     expect(raw).not.toBeNull();
@@ -107,7 +107,7 @@ describe("licensing", () => {
       ),
     ).toMatchObject({
       alg: "EdDSA",
-      typ: "plrs-license+jws",
+      typ: "pkey-license+jws",
       kid: TEST_KID,
     });
 
@@ -118,7 +118,7 @@ describe("licensing", () => {
       now: NOW,
     });
     expect(doc).not.toBeNull();
-    expect(doc!.iss).toBe("plrs.im"); // host-neutral in v3 (D-09), not `key.plrs.im`
+    expect(doc!.iss).toBe("key.plrs.im"); // host-neutral in v3 (D-09), not `key.plrs.im`
     expect(doc!.licenseId).toBe(licenseId);
     expect(doc!.issuedAt).toBe(NOW);
     expect(doc!.expiresAt).toBe(NOW + 3600);
@@ -182,7 +182,7 @@ describe("licensing", () => {
         atob(jws.split(".")[0]!.replace(/-/g, "+").replace(/_/g, "/")),
       ),
     ).toMatchObject({
-      typ: "plrs-config+jws",
+      typ: "pkey-config+jws",
     });
 
     const doc = await verifyConfigDoc(jws, {
@@ -192,7 +192,7 @@ describe("licensing", () => {
       now: NOW,
     });
     expect(doc).not.toBeNull();
-    expect(doc!.iss).toBe("plrs.im");
+    expect(doc!.iss).toBe("key.plrs.im");
     // The PRODUCT's catalog version, not the wire version.
     expect(doc!.schemaVersion).toBe(7);
     expect(doc!.config["app.theme"]).toEqual({
@@ -238,7 +238,7 @@ describe("licensing", () => {
     const first = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -250,7 +250,7 @@ describe("licensing", () => {
     const second = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
         "if-none-match": etag,
       }),
       env,
@@ -271,7 +271,7 @@ describe("licensing", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-2",
+        "x-pkey-device": "dev-2",
       }),
       env,
       db,
@@ -293,7 +293,7 @@ describe("licensing", () => {
     const first = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -312,7 +312,7 @@ describe("licensing", () => {
     const second = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-2",
+        "x-pkey-device": "dev-2",
       }),
       env,
       db,
@@ -399,7 +399,7 @@ describe("licensing", () => {
     const rejected = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -419,7 +419,7 @@ describe("licensing", () => {
     const again = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -439,7 +439,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.0.0",
+        "x-pkey-version": "1.0.0",
       }),
       env,
       db,
@@ -460,7 +460,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${UNKNOWN_DEVICE_TOKEN}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -483,7 +483,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -567,7 +567,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -599,7 +599,7 @@ describe("licensing", () => {
     await activate(env, db, product, key, "dev-1");
 
     const missing = await handleToken(
-      mkReq("POST", { "x-polaris-device": "dev-1" }),
+      mkReq("POST", { "x-pkey-device": "dev-1" }),
       env,
       db,
       product,
@@ -610,7 +610,7 @@ describe("licensing", () => {
     const unknown = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${UNKNOWN_DEVICE_TOKEN}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -629,7 +629,7 @@ describe("licensing", () => {
     const res = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${oldToken}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -651,7 +651,7 @@ describe("licensing", () => {
     const oldConfig = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${oldToken}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -663,7 +663,7 @@ describe("licensing", () => {
     const newConfig = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${newToken}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -680,7 +680,7 @@ describe("licensing", () => {
     const res = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${token}`,
-        "x-polaris-device": "dev-2",
+        "x-pkey-device": "dev-2",
       }),
       env,
       db,
@@ -692,7 +692,7 @@ describe("licensing", () => {
     const stillValid = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
       }),
       env,
       db,
@@ -718,8 +718,8 @@ describe("licensing", () => {
     const blockedRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${blockedToken}`,
-        "x-polaris-version": "1.0.0",
-        "x-polaris-channel": "staging",
+        "x-pkey-version": "1.0.0",
+        "x-pkey-channel": "staging",
       }),
       env,
       db,
@@ -746,8 +746,8 @@ describe("licensing", () => {
     const okRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${grantedToken}`,
-        "x-polaris-version": "1.0.0",
-        "x-polaris-channel": "staging",
+        "x-pkey-version": "1.0.0",
+        "x-pkey-channel": "staging",
       }),
       env,
       db,
@@ -766,7 +766,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "3.0.0",
+        "x-pkey-version": "3.0.0",
       }),
       env,
       db,
@@ -782,7 +782,7 @@ describe("licensing", () => {
     const okRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.5.0",
+        "x-pkey-version": "1.5.0",
       }),
       env,
       db,
@@ -804,8 +804,8 @@ describe("licensing", () => {
     const chanRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.5.0",
-        "x-polaris-channel": "staging",
+        "x-pkey-version": "1.5.0",
+        "x-pkey-channel": "staging",
       }),
       env,
       db,
@@ -818,7 +818,7 @@ describe("licensing", () => {
     const winRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "3.0.0",
+        "x-pkey-version": "3.0.0",
       }),
       env,
       db,

@@ -21,7 +21,7 @@
  *
  * ── THE CREDENTIAL ──────────────────────────────────────────────────────────────────────────
  *
- * The product browser session (`browserSession.ts`): the `plrs_<slug>_session` cookie, resolved
+ * The product browser session (`browserSession.ts`): the `pkey_<slug>_session` cookie, resolved
  * through the peppered hash to a KV record scoped to THIS product, whose device token must
  * still validate as a live device. Both halves matter:
  *

@@ -33,13 +33,11 @@ import { handleMintToken } from "../src/services/config/mint.js";
 import { buildDoc } from "../src/services/identity/doc.js";
 import { signDoc } from "../src/core/signing.js";
 import { open } from "../src/keyvault.js";
-import { verifyJws } from "@plrs/jws";
-import type {
-  ManagedConfigDoc,
-  ManagedPayload,
-  DocProfile,
-} from "@plrs/protocol";
-import type { LicenseDoc } from "@plrs/protocol/license";
+import { verifyJws } from "@polaris-key/jws";
+import type { DocProfile } from "@polaris-key/protocol";
+import type { FusedSessionDoc } from "../src/services/identity/doc.js";
+import type { ManagedPayload } from "../src/core/payload.js";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { getTokenRecord } from "../src/kv.js";
 import { hashKey } from "../src/crypto.js";
 
@@ -299,7 +297,7 @@ describe("admin api", () => {
     });
 
     const updated = await dispatch(
-      mkReq("PATCH", "/api/products/djdl/portal", {
+      mkReq("PATCH", "/api/products/djdl/identity/portal", {
         cookie,
         csrf,
         body: {
@@ -312,7 +310,7 @@ describe("admin api", () => {
       }),
       env,
       db,
-      "/api/products/djdl/portal",
+      "/api/products/djdl/identity/portal",
     );
     expect(updated.status).toBe(200);
     const settingsBody = (await updated.json()) as {
@@ -626,7 +624,7 @@ describe("admin api", () => {
     const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -825,7 +823,7 @@ describe("admin api", () => {
       payload,
     });
     const jws = await signDoc(doc, product!.signingKeyPem, product!.signingKid);
-    const verified = await verifyJws<ManagedConfigDoc>(jws, {
+    const verified = await verifyJws<FusedSessionDoc>(jws, {
       [product!.signingKid]: product!.signingPub!,
     });
     expect(verified).not.toBeNull();
@@ -883,7 +881,7 @@ describe("admin api", () => {
     const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -895,7 +893,7 @@ describe("admin api", () => {
     const cfgRes = await handleLicenseDocument(
       mkLicReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.0.0",
+        "x-pkey-version": "1.0.0",
       }),
       env,
       db,
@@ -1121,7 +1119,7 @@ describe("admin api", () => {
     const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,

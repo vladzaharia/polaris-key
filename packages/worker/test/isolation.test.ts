@@ -37,7 +37,7 @@ async function activate(
   const res = await handleActivate(
     mkReq("POST", {
       authorization: `Bearer ${key}`,
-      "x-polaris-device": device,
+      "x-pkey-device": device,
     }),
     env,
     db,
@@ -52,7 +52,7 @@ const config = (env: Env, db: SqliteDb, product: Product, token: string) =>
   handleLicenseDocument(
     mkReq("GET", {
       authorization: `Bearer ${token}`,
-      "x-polaris-version": "1.0.0",
+      "x-pkey-version": "1.0.0",
     }),
     env,
     db,
@@ -102,7 +102,7 @@ describe("multi-tenant isolation (driven through the worker)", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,

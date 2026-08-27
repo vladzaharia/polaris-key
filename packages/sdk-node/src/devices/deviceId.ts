@@ -1,8 +1,8 @@
 // The device identity formula — wire contract v3 §6, pinned by
-// `conformance/corpus/v1/fingerprint.json` (`fingerprintVersion` 1, unchanged in v3).
+// `conformance/corpus/v2/fingerprint.json` (`fingerprintVersion` 1, unchanged in v3).
 //
 // It lives under `devices/` because that is what it IS: the Device principal's name, the value
-// that goes into `X-Polaris-Device`, into every signed document's `deviceId` claim, and into
+// that goes into `X-PKey-Device`, into every signed document's `deviceId` claim, and into
 // the server's primary key. `core/store.ts` calls it to mint one on first run, which is a store
 // USING an identity rather than a store defining one.
 //

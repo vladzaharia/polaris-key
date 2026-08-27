@@ -9,7 +9,10 @@
 import { execFileSync } from "node:child_process";
 import { accessSync, readFileSync } from "node:fs";
 import { arch, cpus, platform, release, totalmem, type } from "node:os";
-import type { DeviceFacts, DeviceProbeResult } from "@plrs/protocol/core";
+import type {
+  DeviceFacts,
+  DeviceProbeResult,
+} from "@polaris-key/protocol/core";
 
 /** A product-declared companion-application check, delivered in the product's policy. */
 export interface ProbeDeclaration {
@@ -92,7 +95,7 @@ export function collectFacts(
   const probes = opts.probes?.length ? runProbes(opts.probes) : undefined;
   return {
     os: {
-      // Short family (`darwin`/`win32`/`linux`), matching X-Polaris-Platform. The detailed
+      // Short family (`darwin`/`win32`/`linux`), matching X-PKey-Platform. The detailed
       // version lives here rather than being crammed into that header.
       name: platform(),
       version: release(),

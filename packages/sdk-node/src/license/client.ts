@@ -2,14 +2,14 @@
 //
 // ── WHAT THE GATE READS, AND WHERE EACH INPUT COMES FROM ────────────────────────────────────
 //
-// `status()` is a pure call into `@plrs/client-core`'s `licenseState`; everything interesting
+// `status()` is a pure call into `@polaris-key/client-core`'s `licenseState`; everything interesting
 // is in assembling its inputs, and each one comes from exactly one owner:
 //
 //   licenseServiceEnabled  Core's resolved capabilities (discovery → expectedServices →
 //                          default). FALSE short-circuits the machine to `not-applicable` with
 //                          `isUsable: true`, which is how a config-only product boots usable
 //                          instead of sitting on `needs-activation` forever (D-08).
-//   activation             `"token"` if a `plrst_` credential is held, else `"bundle"` if a
+//   activation             `"token"` if a `pkeyt_` credential is held, else `"bundle"` if a
 //                          verified offline import left a license document, else null. A token
 //                          SUPERSEDES a bundle (§7): once the device is online-activated the
 //                          bundle is history.
@@ -21,13 +21,17 @@
 // meant every activation path had to remember to, and a config-only product had no way to say
 // "there is no licence here, sync anyway".
 
-import type { JSONValue } from "@plrs/protocol/core";
+import type { JSONValue } from "@polaris-key/protocol/core";
 import type {
   ActivationSource,
   DocProfile,
   LicenseDoc,
-} from "@plrs/protocol/license";
-import { isUsable, licenseState, type LicenseState } from "@plrs/client-core";
+} from "@polaris-key/protocol/license";
+import {
+  isUsable,
+  licenseState,
+  type LicenseState,
+} from "@polaris-key/client-core";
 import type { CacheManager } from "../core/cache.js";
 import { nowSec, type CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";

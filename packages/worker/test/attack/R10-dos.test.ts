@@ -27,7 +27,7 @@ import { loadProduct, type Product } from "../../src/core/products.js";
 import type { Env } from "../../src/env.js";
 import type { Db } from "../../src/db/types.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
-import { Catalog } from "@plrs/catalog";
+import { Catalog } from "@polaris-key/catalog";
 import { handleActivate } from "../../src/services/license/activation.js";
 // Wire v3 split the fused `GET /<p>/config` into two signed documents. The catalog-validation
 // lane below belongs to the CONFIG document (it is the one that prunes `config`/`secrets`
@@ -135,7 +135,7 @@ async function activate(
   const res = await handleActivate(
     mkReq("POST", {
       authorization: `Bearer ${key}`,
-      "x-polaris-device": device,
+      "x-pkey-device": device,
       ...extraHeaders,
     }),
     env,
@@ -151,7 +151,7 @@ async function activate(
 // R10-01 — Ajv codegen on the config-document hot path ⇒ guaranteed 500 on workerd
 // ═════════════════════════════════════════════════════════════════════════════
 
-// FIXED (R10-01): `@plrs/catalog` interprets schema fragments instead of compiling
+// FIXED (R10-01): `@polaris-key/catalog` interprets schema fragments instead of compiling
 // them, so nothing on this path constructs a function from a string. These five assertions
 // are the originals INVERTED — each now pins the fixed behaviour it used to disprove. The
 // `withoutCodegen` harness is retained deliberately: it is what makes these Node tests
@@ -697,7 +697,7 @@ describe("R10-03 rateLimitOk fail mode", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -1055,11 +1055,11 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "user-agent": big,
-        "x-polaris-platform": big,
-        "x-polaris-arch": big,
-        "x-polaris-version": big,
-        "x-polaris-sdk": big,
-        "x-polaris-sdk-version": big,
+        "x-pkey-platform": big,
+        "x-pkey-arch": big,
+        "x-pkey-version": big,
+        "x-pkey-sdk": big,
+        "x-pkey-sdk-version": big,
       }),
       env,
       db,

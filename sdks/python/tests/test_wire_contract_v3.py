@@ -15,13 +15,13 @@ WHAT THE v2→v3 RE-BASELINE CHANGED, case by case:
   half and keeps the other half verbatim.
 * the R2-08 ``schemaVersion`` case moves from the (single) v2 document to the CONFIG
   document, which is where the field lives in v3 (§2.2).
-* the R4-13 ``profile`` case is re-based: v3's normative verifier (``@plrs/client-core``)
+* the R4-13 ``profile`` case is re-based: v3's normative verifier (``@polaris-key/client-core``)
   checks that ``profile`` is an OBJECT and nothing more, so a malformed inner field must be
   ACCEPTED-AND-INERT rather than rejected — a Python that rejected there would be a fifth
   implementation disagreeing with the other four. The heir pins that, and the
   "never raises" property it was actually protecting.
-* everything else carries over with v3 identifiers (``plrs-*`` typs, ``plrs.im`` issuer,
-  ``X-Polaris-*`` headers, ``/license/document`` + ``/config/document``, cache v3).
+* everything else carries over with v3 identifiers (``pkey-*`` typs, ``key.plrs.im`` issuer,
+  ``X-PKey-*`` headers, ``/license/document`` + ``/config/document``, cache v3).
 
 Grouped by spec section:
 
@@ -53,34 +53,34 @@ from typing import Any, Dict, List
 import httpx
 import pytest
 
-import polaris.core.jws as jws_mod
-from polaris.cli import core as cli_core
-from polaris.core.b64url import b64url_decode, b64url_encode, b64url_encode_str
-from polaris.core.bundle import (
+import polaris_key.core.jws as jws_mod
+from polaris_key.cli import core as cli_core
+from polaris_key.core.b64url import b64url_decode, b64url_encode, b64url_encode_str
+from polaris_key.core.bundle import (
     BUNDLE_CLAIMS_REJECTED,
     BUNDLE_JWS_REJECTED,
     MAX_BUNDLE_BYTES,
     inspect_bundle,
 )
-from polaris.core.context import (
+from polaris_key.core.context import (
     DEFAULT_REQUEST_TIMEOUT_SECONDS,
     CoreContext,
     normalize_base_url,
 )
-from polaris.core.errors import InsecureBaseUrlError, PolarisError
-from polaris.core.jws import MAX_HEADER_B64, MAX_PAYLOAD_B64, sign_jws, verify_jws
-from polaris.core.models import (
+from polaris_key.core.errors import InsecureBaseUrlError, PolarisError
+from polaris_key.core.jws import MAX_HEADER_B64, MAX_PAYLOAD_B64, sign_jws, verify_jws
+from polaris_key.core.models import (
     MAX_DOC_BYTES,
     TYP_BUNDLE,
     TYP_LICENSE,
     TYP_TRUST,
     LicenseDoc,
 )
-from polaris.core.store import CACHE_FORMAT_VERSION, CacheRecord
-from polaris.core.trust import verify_trust_manifest
-from polaris.core.verify import verify_config_doc, verify_license_doc
-from polaris.devices.store import SYMLINK_GUARD, FileStore
-from polaris.license.gate import license_state
+from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord
+from polaris_key.core.trust import verify_trust_manifest
+from polaris_key.core.verify import verify_config_doc, verify_license_doc
+from polaris_key.devices.store import SYMLINK_GUARD, FileStore
+from polaris_key.license.gate import license_state
 
 from helpers import (
     ATTACKER_PEM,
@@ -217,7 +217,7 @@ def test_r2_04_oversized_header_never_reaches_the_trust_set() -> None:
 
 
 def test_r2_04_the_bundle_cap_does_not_widen_the_header_cap() -> None:
-    """§1: the raised ``plrs-bundle+jws`` payload cap is exactly that. Moving a blob into
+    """§1: the raised ``pkey-bundle+jws`` payload cap is exactly that. Moving a blob into
     the HEADER is R2-04, and no ``typ`` widens it."""
     header = json.dumps(
         {"alg": "EdDSA", "typ": TYP_BUNDLE, "kid": KID, "junk": "A" * 4096}
@@ -718,7 +718,7 @@ def test_r4_03_the_anti_replay_floors_are_PER_TYPE() -> None:
     "over,why",
     [
         ({"iss": "https://evil.example"}, "iss mismatch"),
-        ({"iss": "key.plrs.im"}, "the v2 host issuer is refused (§8)"),
+        ({"iss": "plrs.im"}, "a foreign issuer is refused (§8)"),
         ({"aud": "other-product"}, "aud mismatch"),
         ({"deviceId": "someone-else"}, "device mismatch"),
         ({"issuedAt": NOW + 10 * 365 * DAY}, "far-future issuedAt"),
@@ -737,7 +737,7 @@ def test_r2_08_license_claim_checks(over: Dict[str, Any], why: str) -> None:
 @pytest.mark.parametrize(
     "over,why",
     [
-        ({"iss": "key.plrs.im"}, "the v2 host issuer is refused (§8)"),
+        ({"iss": "plrs.im"}, "a foreign issuer is refused (§8)"),
         ({"schemaVersion": 0}, "non-positive schemaVersion"),
         ({"schemaVersion": "4"}, "schemaVersion is shape-checked, not coerced"),
         ({"config": []}, "config must be an object"),
@@ -777,7 +777,7 @@ def test_r2_08_the_grace_ceiling_binds_at_verify_time_not_only_in_the_gate() -> 
 # ════════════════════════════════════════════════════════════════════════════════════
 def test_r4_04_clock_floor_clamps_a_rolled_back_clock() -> None:
     c = make_client(
-        routes(license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]))
+        routes(license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]))
     )
     assert c.license.activate_with_key("k").kind == "ok"
     assert c.core.now(NOW - 400 * DAY) == NOW
@@ -788,7 +788,7 @@ def test_r4_04_clock_floor_clamps_a_rolled_back_clock() -> None:
 def test_r4_04_the_gate_evaluates_at_the_floor_not_the_wall_clock() -> None:
     """``license_state`` never sees a time earlier than the newest verified ``issuedAt``."""
     doc = LicenseDoc(
-        iss="plrs.im",
+        iss="key.plrs.im",
         aud=PRODUCT,
         deviceId="dev",
         issuedAt=NOW,
@@ -941,7 +941,7 @@ def test_r2_11_a_continuously_online_client_never_drifts_into_grace(monkeypatch)
             served.append(clock["t"])
             return httpx.Response(
                 200,
-                text=sign_license(r.headers["X-Polaris-Device"], issued=clock["t"]),
+                text=sign_license(r.headers["X-PKey-Device"], issued=clock["t"]),
                 headers={"etag": "stable-etag"},
             )
         if path == f"{p}/devices/report":
@@ -979,7 +979,7 @@ def test_r2_11_a_304_inside_the_window_does_not_re_request(monkeypatch) -> None:
             full["n"] += 1
             return httpx.Response(
                 200,
-                text=sign_license(r.headers["X-Polaris-Device"], issued=clock["t"]),
+                text=sign_license(r.headers["X-PKey-Device"], issued=clock["t"]),
                 headers={"etag": "stable-etag"},
             )
         if path == f"{p}/devices/report":
@@ -1024,7 +1024,7 @@ def test_r2_11_the_half_life_rule_is_applied_PER_DOCUMENT(monkeypatch) -> None:
                 )
                 return httpx.Response(
                     200,
-                    text=signer(r.headers["X-Polaris-Device"], issued=issued, **extra),
+                    text=signer(r.headers["X-PKey-Device"], issued=issued, **extra),
                     headers={"etag": tag},
                 )
         if path == f"{p}/devices/report":
@@ -1070,7 +1070,7 @@ def test_r4_13_malformed_signed_config_returns_none(over: Dict[str, Any]) -> Non
 def test_r4_13_a_malformed_nested_profile_is_accepted_and_inert() -> None:
     """HEIR of the v2 ``{"profile": {... "activatedAt": "0"}}`` case, RE-BASELINED.
 
-    v3's normative verifier (``@plrs/client-core``'s ``verify.ts``) checks that ``profile``
+    v3's normative verifier (``@polaris-key/client-core``'s ``verify.ts``) checks that ``profile``
     is an OBJECT and nothing more. Rejecting on a malformed inner field would make this
     SDK the one implementation of four that refuses a document Node, React and Swift
     accept — a divergence in the strict direction is still a divergence (§10). What
@@ -1092,7 +1092,7 @@ def test_r4_13_license_state_never_raises_on_a_bad_window() -> None:
     """The gate is the client's hottest read path; a ``TypeError`` escaping it turns every
     check into a crash."""
     doc = LicenseDoc(
-        iss="plrs.im",
+        iss="key.plrs.im",
         aud=PRODUCT,
         deviceId="dev",
         issuedAt=NOW,
@@ -1116,7 +1116,7 @@ def test_r4_13_sync_survives_a_malformed_signed_doc() -> None:
 # R4-07 / R12-13 / R4-10 — CLI + store hardening
 # ════════════════════════════════════════════════════════════════════════════════════
 def test_r4_07_cli_no_longer_defaults_to_a_build_gate_bypassing_version() -> None:
-    from polaris.core.semver import channel_for_version, is_dev_build
+    from polaris_key.core.semver import channel_for_version, is_dev_build
 
     assert not is_dev_build(cli_core.DEFAULT_VERSION)
     assert channel_for_version(cli_core.DEFAULT_VERSION) == "stable"
@@ -1124,7 +1124,7 @@ def test_r4_07_cli_no_longer_defaults_to_a_build_gate_bypassing_version() -> Non
 
     import argparse
 
-    from polaris.cli.argparse_cli import build_parser
+    from polaris_key.cli.argparse_cli import build_parser
 
     args = build_parser().parse_args(["status", "--product", PRODUCT])
     assert not is_dev_build(args.version)
@@ -1176,22 +1176,23 @@ def test_r12_13_key_resolution_prefers_non_argv_sources(tmp_path) -> None:
         cli_core.resolve_activation_key(None, env={}, stdin=io.StringIO(""), warn=warn)
 
 
-def test_r12_13_the_key_env_var_is_rebranded_and_the_old_one_is_not_read(monkeypatch) -> None:
-    """§8: the CLI's env var moves with the rest of the identifiers, and the pre-suite
-    name is NOT read as a fallback (pre-launch, no dual-accept window)."""
-    assert cli_core.KEY_ENV_VAR == "POLARIS_ACTIVATION_KEY"
+def test_r12_13_the_key_env_var_is_namespaced_and_no_other_name_is_read(monkeypatch) -> None:
+    """§8: the CLI reads exactly one env var. The un-namespaced ``POLARIS_ACTIVATION_KEY``
+    the interim suite design used (withdrawn by Amendment A1) is NOT read as a fallback —
+    a second accepted name is a second way to smuggle a key past the intended one."""
+    assert cli_core.KEY_ENV_VAR == "POLARIS_KEY_ACTIVATION_KEY"
     with pytest.raises(ValueError):
         cli_core.resolve_activation_key(
-            None, env={"POLARIS_KEY_ACTIVATION_KEY": "STALE"}, stdin=__import__("io").StringIO("")
+            None, env={"POLARIS_ACTIVATION_KEY": "STALE"}, stdin=__import__("io").StringIO("")
         )
 
 
 def test_r12_13_argparse_activate_reads_the_env_var(monkeypatch) -> None:
     import argparse
 
-    from polaris.cli.argparse_cli import register_argparse
-    from polaris.license.endpoints import ActivationOk
-    from polaris.license.gate import LicenseState
+    from polaris_key.cli.argparse_cli import register_argparse
+    from polaris_key.license.endpoints import ActivationOk
+    from polaris_key.license.gate import LicenseState
 
     seen: Dict[str, Any] = {}
 
@@ -1218,11 +1219,11 @@ def test_r12_13_argparse_activate_reads_the_env_var(monkeypatch) -> None:
     parser = argparse.ArgumentParser(prog="host")
     sub = parser.add_subparsers(dest="command", required=True)
     register_argparse(sub, client_factory=lambda opts: _Fake())
-    monkeypatch.setenv(cli_core.KEY_ENV_VAR, "PLRS-FROM-ENV")
+    monkeypatch.setenv(cli_core.KEY_ENV_VAR, "PKEY-FROM-ENV")
     args = parser.parse_args(["activate", "--product", PRODUCT])
     assert args.key is None, "the positional is optional now"
     assert args.func(args) == 0
-    assert seen["key"] == "PLRS-FROM-ENV"
+    assert seen["key"] == "PKEY-FROM-ENV"
     assert seen["closed"] is True
 
 
@@ -1235,7 +1236,7 @@ def test_r4_10_symlink_guard_is_declared_honestly() -> None:
 
 def test_r4_10_lstat_precheck_refuses_a_symlink(monkeypatch, tmp_path) -> None:
     """Force the no-O_NOFOLLOW (Windows) path and prove it refuses rather than writes."""
-    import polaris.devices.store as store_mod
+    import polaris_key.devices.store as store_mod
 
     store = FileStore(PRODUCT, str(tmp_path))
     target = tmp_path / "outside.txt"
@@ -1255,7 +1256,7 @@ def test_r4_10_lstat_precheck_refuses_a_symlink(monkeypatch, tmp_path) -> None:
 # §8 — the identifier rebrand, asserted on the wire
 # ════════════════════════════════════════════════════════════════════════════════════
 def test_v3_identifier_rebrand_on_every_product_scoped_call() -> None:
-    """§8: ``X-Polaris-*`` headers, ``plrs.im`` issuer, ``plrst_`` credential, and the
+    """§8: ``X-PKey-*`` headers, ``key.plrs.im`` issuer, ``pkeyt_`` credential, and the
     ``/license/*`` + ``/config/*`` + ``/devices/*`` route shapes."""
     seen: Dict[str, Any] = {}
 
@@ -1269,13 +1270,13 @@ def test_v3_identifier_rebrand_on_every_product_scoped_call() -> None:
             seen["doc_headers"] = dict(r.headers)
             return httpx.Response(
                 200,
-                text=sign_license(r.headers["X-Polaris-Device"]),
+                text=sign_license(r.headers["X-PKey-Device"]),
                 headers={"etag": "lic"},
             )
         if path == f"{p}/config/document":
             return httpx.Response(
                 200,
-                text=sign_config(r.headers["X-Polaris-Device"]),
+                text=sign_config(r.headers["X-PKey-Device"]),
                 headers={"etag": "cfg"},
             )
         if path == f"{p}/devices/report":
@@ -1287,20 +1288,22 @@ def test_v3_identifier_rebrand_on_every_product_scoped_call() -> None:
     assert c.license.activate_with_key("k").kind == "ok"
     for headers in (seen["activate_headers"], seen["doc_headers"]):
         for name in (
-            "x-polaris-device",
-            "x-polaris-version",
-            "x-polaris-channel",
-            "x-polaris-platform",
-            "x-polaris-arch",
-            "x-polaris-sdk",
-            "x-polaris-sdk-version",
+            "x-pkey-device",
+            "x-pkey-version",
+            "x-pkey-channel",
+            "x-pkey-platform",
+            "x-pkey-arch",
+            "x-pkey-sdk",
+            "x-pkey-sdk-version",
         ):
             assert name in headers, name
-        assert not any(k.startswith("x-pkey-") for k in headers), "no v2 headers survive"
+        assert not any(
+            k.startswith("x-polaris-") for k in headers
+        ), "the withdrawn X-Polaris-* headers must not be sent"
     assert seen["doc_headers"]["authorization"] == f"Bearer {TOKEN}"
-    assert TOKEN.startswith("plrst_")
+    assert TOKEN.startswith("pkeyt_")
     assert seen.get("report") is True, "telemetry lands on POST /devices/report"
-    assert c._cache.license_doc().iss == "plrs.im"
+    assert c._cache.license_doc().iss == "key.plrs.im"
     c.close()
 
 
@@ -1310,8 +1313,8 @@ def test_v3_the_old_config_report_path_is_never_called() -> None:
     seen: Dict[str, Any] = {"paths": []}
     c = make_client(
         routes(
-            license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]),
-            config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"]),
+            license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]),
+            config_jws=lambda r: sign_config(r.headers["X-PKey-Device"]),
             seen=seen,
         )
     )
@@ -1322,32 +1325,32 @@ def test_v3_the_old_config_report_path_is_never_called() -> None:
     c.close()
 
 
-def test_v3_keyring_service_tag_is_plrs(tmp_path) -> None:
-    """§8: the OS keyring service tag is ``plrs:<product>``."""
-    from polaris.devices.store import KeyringStore
+def test_v3_keyring_service_tag_is_pkey(tmp_path) -> None:
+    """§8: the OS keyring service tag is ``pkey:<product>``."""
+    from polaris_key.devices.store import KeyringStore
 
-    assert KeyringStore(PRODUCT, str(tmp_path)).service == f"plrs:{PRODUCT}"
+    assert KeyringStore(PRODUCT, str(tmp_path)).service == f"pkey:{PRODUCT}"
 
 
-def test_v3_env_prefix_is_plrs_config_and_pkey_config_is_not_read() -> None:
-    """§8 + the negative half: the pre-suite ``PKEY_CONFIG_`` prefix is NOT read as a
-    fallback. A dual-accept window here would mean a stale exported variable silently
-    overriding a v3 deployment's settings."""
-    from polaris.config.resolve import DEFAULT_ENV_PREFIX
+def test_v3_env_prefix_is_pkey_config_and_plrs_config_is_not_read() -> None:
+    """§8 + the negative half: the ``PLRS_CONFIG_`` spelling that Amendment A1 withdrew is
+    NOT read as a fallback. A dual-accept window here would mean a stale exported variable
+    silently overriding a deployment's settings."""
+    from polaris_key.config.resolve import DEFAULT_ENV_PREFIX
 
-    assert DEFAULT_ENV_PREFIX == "PLRS_CONFIG_"
+    assert DEFAULT_ENV_PREFIX == "PKEY_CONFIG_"
     c = make_client(
-        routes(config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"])),
-        env={"PKEY_CONFIG_ui__theme": '"dark"'},
+        routes(config_jws=lambda r: sign_config(r.headers["X-PKey-Device"])),
+        env={"PLRS_CONFIG_ui__theme": '"dark"'},
     )
     c.license.activate_with_key("k")
-    assert c.config.get_config("ui.theme") == "light", "the v2 prefix must be inert"
+    assert c.config.get_config("ui.theme") == "light", "the withdrawn prefix must be inert"
     assert c.config.get_config_source("ui.theme") == "remote-default"
     c.close()
 
     c2 = make_client(
-        routes(config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"])),
-        env={"PLRS_CONFIG_ui__theme": '"dark"'},
+        routes(config_jws=lambda r: sign_config(r.headers["X-PKey-Device"])),
+        env={"PKEY_CONFIG_ui__theme": '"dark"'},
     )
     c2.license.activate_with_key("k")
     assert c2.config.get_config("ui.theme") == "dark"
@@ -1376,10 +1379,10 @@ def test_parity_insecure_base_url_is_refused_at_construction(url: str) -> None:
     in the constructor, before the store is touched or a request is built."""
     with pytest.raises(InsecureBaseUrlError):
         normalize_base_url(url)
-    from polaris import PolarisClient
+    from polaris_key import PolarisKeyClient
 
     with pytest.raises(InsecureBaseUrlError):
-        PolarisClient(product_slug=PRODUCT, version="1.0.0", trust=TRUST, base_url=url)
+        PolarisKeyClient(product_slug=PRODUCT, version="1.0.0", trust=TRUST, base_url=url)
 
 
 @pytest.mark.parametrize(
@@ -1406,8 +1409,8 @@ def test_parity_per_request_timeout_is_applied_to_an_INJECTED_client() -> None:
             return super().request(method, url, **kwargs)
 
     handler = routes(
-        license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]),
-        config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"]),
+        license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]),
+        config_jws=lambda r: sign_config(r.headers["X-PKey-Device"]),
         trust_jws=sign_manifest([key_entry(KID, PUBKEY_RAW)]),
     )
     injected = _RecordingClient(transport=httpx.MockTransport(handler), base_url="")
@@ -1421,11 +1424,11 @@ def test_parity_per_request_timeout_is_applied_to_an_INJECTED_client() -> None:
 
 def test_parity_request_timeout_defaults_and_can_be_disabled() -> None:
     ctx = CoreContext(product_slug=PRODUCT, version="1.0.0", trust=TRUST,
-                      store=__import__("polaris").InMemoryStore(PRODUCT))
+                      store=__import__("polaris_key").InMemoryStore(PRODUCT))
     assert ctx.timeout == DEFAULT_REQUEST_TIMEOUT_SECONDS
     off = CoreContext(product_slug=PRODUCT, version="1.0.0", trust=TRUST,
                       request_timeout=0,
-                      store=__import__("polaris").InMemoryStore(PRODUCT))
+                      store=__import__("polaris_key").InMemoryStore(PRODUCT))
     assert off.timeout is None
 
 
@@ -1464,14 +1467,14 @@ def test_v3_registration_mints_a_credential_with_no_license() -> None:
     def handler(r: httpx.Request) -> httpx.Response:
         if r.url.path == f"/{PRODUCT}/devices/register":
             seen["auth"] = r.headers.get("authorization")
-            seen["device"] = r.headers.get("X-Polaris-Device")
+            seen["device"] = r.headers.get("X-PKey-Device")
             return httpx.Response(
                 200, json={"token": TOKEN, "deviceId": seen["device"]}
             )
         return httpx.Response(404)
 
     c = make_client(handler)
-    c._tokens.set("plrst_" + "s" * 43)
+    c._tokens.set("pkeyt_" + "s" * 43)
     r = c.devices.register()
     assert r.kind == "ok" and r.token == TOKEN
     assert seen["auth"] is None, "registration is keyless"
@@ -1538,7 +1541,7 @@ def test_v3_a_vacuous_bundle_is_refused() -> None:
 def test_v3_gate_not_applicable_and_bundle_activation() -> None:
     """§5: the two new gate inputs, stated directly."""
     doc = LicenseDoc(
-        iss="plrs.im",
+        iss="key.plrs.im",
         aud=PRODUCT,
         deviceId="dev",
         issuedAt=NOW,
@@ -1564,7 +1567,7 @@ def test_v3_gate_not_applicable_and_bundle_activation() -> None:
         == "expired"
     )
     # and no activation at all still wins over a stale blocked hint (the v3 ordering).
-    from polaris.core.models import BlockedState
+    from polaris_key.core.models import BlockedState
 
     assert (
         license_state(

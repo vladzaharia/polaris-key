@@ -15,7 +15,7 @@
 // Best-effort throughout: facts collection is wrapped, the POST is wrapped, and a failure at
 // either end is invisible to the caller. Telemetry must never be able to fail a sync.
 
-import type { DeviceFacts, JSONValue } from "@plrs/protocol/core";
+import type { DeviceFacts, JSONValue } from "@polaris-key/protocol/core";
 import { collectFacts, type ProbeDeclaration } from "../devices/facts.js";
 import type { CacheManager } from "./cache.js";
 import type { CoreContext } from "./context.js";

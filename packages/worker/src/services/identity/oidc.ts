@@ -21,14 +21,15 @@
 // path for free.
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
-import { HEADER_DEVICE } from "@plrs/protocol/core";
+import type { ManagedEntry } from "@polaris-key/protocol";
+import type { ManagedPayload } from "../../core/payload.js";
+import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // R9-01: the manifest validator's issuer rule, applied again at the SINK. Ingest-only
 // validation would leave every `oidc_config` row written before it landed (or by any future
 // writer that bypasses `parseManifest`) able to steer the token POST that carries this
 // product's client secret. Imported from the shared package rather than through Release, whose
 // `manifest.ts` merely re-exports it — a service may not import a sibling.
-import { isSafeIssuerUrl } from "@plrs/manifest";
+import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import {
   platformOidcConfig,
   secret,
@@ -670,7 +671,7 @@ async function beginAuthFlow(
   // value the IdP must have REGISTERED — `redirectUriAllowed` below refuses anything else the
   // moment `redirect_uris_json` is set — so an operator upgrading a product with a custom (or
   // strictly-configured platform) IdP re-registers `…/<p>/identity/auth/callback` and updates
-  // the `oidc.redirectUris` block in its `.polaris/product` manifest. Pre-launch, so there is
+  // the `oidc.redirectUris` block in its `.pkey/product` manifest. Pre-launch, so there is
   // no dual-registration window to keep: one spelling, computed in exactly one place.
   const redirectUri = `${new URL(req.url).origin}/${product.slug}/identity/auth/callback`;
   if (!redirectUriAllowed(oidc.row, redirectUri)) {

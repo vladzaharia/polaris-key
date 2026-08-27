@@ -1,5 +1,5 @@
 // The Node persistence layer: the device-id formula and the three stores that round-trip the
-// `plrst_` credential and the Core-owned cache record.
+// `pkeyt_` credential and the Core-owned cache record.
 //
 // A store is DUMB on purpose (§4.1): it moves bytes and knows nothing about versions,
 // verification or migration. Discarding a `v !== 3` record is `CacheManager`'s decision, and a
@@ -16,10 +16,10 @@ import { mkdtempSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ISSUER } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { CacheRecordV3 } from "@plrs/client-core";
+import { ISSUER } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { CacheRecordV3 } from "@polaris-key/client-core";
 import { deriveDeviceId, deviceIdFromRaw } from "../src/devices/deviceId.js";
 import {
   CACHE_VERSION,
@@ -33,8 +33,8 @@ import {
 // the wrong thing to pin, and the interesting branch is the FALLBACK anyway — the headless/CI
 // path every server-side install actually takes. This double makes the keyring reliably
 // UNAVAILABLE (present, but failing every operation) and records the service tag it was asked
-// for, which is the only way to observe §8's `plrs:<product>` rebrand without reaching into a
-// private field.
+// for, which is the only way to observe §8's `pkey:<product>` service tag without reaching
+// into a private field.
 const keyring = vi.hoisted(() => ({ services: [] as string[] }));
 vi.mock("@napi-rs/keyring", () => {
   class AsyncEntry {
@@ -123,8 +123,8 @@ function sampleCache(): CacheRecordV3 {
   return {
     v: CACHE_VERSION,
     docs: {
-      license: fakeJws("plrs-license+jws", sampleLicenseDoc()),
-      config: fakeJws("plrs-config+jws", sampleConfigDoc()),
+      license: fakeJws("pkey-license+jws", sampleLicenseDoc()),
+      config: fakeJws("pkey-config+jws", sampleConfigDoc()),
     },
     etags: { license: '"lic-etag-1"', config: '"cfg-etag-1"' },
     lastSyncUnauthorized: false,
@@ -203,8 +203,8 @@ describe("InMemoryStore", () => {
     const dev = await s.getDeviceId();
     expect(dev).toBe(await s.getDeviceId()); // stable across calls
 
-    await s.setToken("plrst_x");
-    expect(await s.getToken()).toBe("plrst_x");
+    await s.setToken("pkeyt_x");
+    expect(await s.getToken()).toBe("pkeyt_x");
 
     const rec = sampleCache();
     await s.writeCache(rec);
@@ -220,16 +220,16 @@ describe("InMemoryStore", () => {
 describe("FileStore", () => {
   let dir: string;
   beforeEach(() => {
-    dir = realpathSync(mkdtempSync(join(tmpdir(), "plrs-store-")));
+    dir = realpathSync(mkdtempSync(join(tmpdir(), "pkey-store-")));
   });
 
   it("round-trips the token across instances (persisted to disk)", async () => {
     const a = new FileStore(PRODUCT, dir);
-    await a.setToken("plrst_persisted");
-    expect(await a.getToken()).toBe("plrst_persisted");
+    await a.setToken("pkeyt_persisted");
+    expect(await a.getToken()).toBe("pkeyt_persisted");
     // A fresh instance over the same dir sees it.
     expect(await new FileStore(PRODUCT, dir).getToken()).toBe(
-      "plrst_persisted",
+      "pkeyt_persisted",
     );
 
     await a.clearToken();
@@ -270,7 +270,7 @@ describe("FileStore", () => {
 
   it("writes the token, cache, and device files with 0600 permissions", async () => {
     const a = new FileStore(PRODUCT, dir);
-    await a.setToken("plrst_x");
+    await a.setToken("pkeyt_x");
     await a.writeCache(sampleCache());
     await a.getDeviceId();
     const product = join(dir, PRODUCT);
@@ -284,7 +284,7 @@ describe("FileStore", () => {
 describe("KeyringStore", () => {
   let dir: string;
   beforeEach(() => {
-    dir = realpathSync(mkdtempSync(join(tmpdir(), "plrs-keyring-")));
+    dir = realpathSync(mkdtempSync(join(tmpdir(), "pkey-keyring-")));
     keyring.services.length = 0;
   });
 
@@ -296,11 +296,11 @@ describe("KeyringStore", () => {
     const store = new KeyringStore(PRODUCT, dir);
     expect(await store.getToken()).toBeNull();
 
-    await store.setToken("plrst_fallback");
-    expect(await store.getToken()).toBe("plrst_fallback");
+    await store.setToken("pkeyt_fallback");
+    expect(await store.getToken()).toBe("pkeyt_fallback");
 
     // It really is the FILE: a plain FileStore over the same directory reads the same bytes.
-    expect(await new FileStore(PRODUCT, dir).getToken()).toBe("plrst_fallback");
+    expect(await new FileStore(PRODUCT, dir).getToken()).toBe("pkeyt_fallback");
     expect(statSync(join(dir, PRODUCT, "token")).mode & 0o777).toBe(0o600);
 
     await store.clearToken();
@@ -308,15 +308,16 @@ describe("KeyringStore", () => {
     expect(await new FileStore(PRODUCT, dir).getToken()).toBeNull();
   });
 
-  it("asks the keyring for the rebranded `plrs:<product>` service tag (§8)", async () => {
+  it("asks the keyring for the `pkey:<product>` service tag (§8)", async () => {
     const store = new KeyringStore(PRODUCT, dir);
-    await store.setToken("plrst_tagged");
+    await store.setToken("pkeyt_tagged");
     await store.getToken();
 
     expect(keyring.services.length).toBeGreaterThan(0);
-    expect(keyring.services).toContain(`plrs:${PRODUCT}`);
-    // Pre-launch, so there is no `pkey:` entry to migrate — and nothing may still write one.
-    expect(keyring.services.every((s) => !s.startsWith("pkey:"))).toBe(true);
+    expect(keyring.services).toContain(`pkey:${PRODUCT}`);
+    // The `plrs:` spelling Amendment A1 withdrew must never be written: an install that
+    // stored a token under it would silently re-register on every launch.
+    expect(keyring.services.every((s) => !s.startsWith("plrs:"))).toBe(true);
   });
 
   it("delegates the cache record and the device id to the file store", async () => {

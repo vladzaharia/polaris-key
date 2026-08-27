@@ -177,8 +177,11 @@ function SettingsForm({
       invalidate(`product:${slug}`);
       toast.success("Update settings saved");
     } catch (err) {
-      // A 422 names the offending keys in `fields`; showing them inline beats a toast that
-      // makes the operator guess which of the four inputs the server rejected.
+      // Same split as `ServicesCard`: a 422 that NAMES the offending keys is rendered beside
+      // those inputs and nowhere else. Adding a toast on top would put the same rejection in
+      // two places — one of which is in the corner of the screen, away from the field at
+      // fault, and dismisses itself. The toast is the fallback for a failure the server did
+      // not attribute to an input (a 500, a dropped connection), which has nowhere inline to go.
       if (err instanceof ApiError && err.fields?.length) {
         setFieldErrors(
           Object.fromEntries(
@@ -190,11 +193,12 @@ function SettingsForm({
             ]),
           ),
         );
+      } else {
+        toast.error(
+          "Couldn’t save update settings",
+          err instanceof Error ? err.message : undefined,
+        );
       }
-      toast.error(
-        "Couldn’t save update settings",
-        err instanceof Error ? err.message : undefined,
-      );
     } finally {
       setSaving(false);
     }

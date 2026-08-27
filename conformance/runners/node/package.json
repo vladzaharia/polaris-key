@@ -1,5 +1,5 @@
 {
-  "name": "@plrs/conformance-node",
+  "name": "@polaris-key/conformance-node",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,9 +8,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@plrs/client-core": "workspace:*",
-    "@plrs/jws": "workspace:*",
-    "@plrs/node": "workspace:*",
-    "@plrs/protocol": "workspace:*"
+    "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/node": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
   }
 }

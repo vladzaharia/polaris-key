@@ -1,10 +1,10 @@
-// @plrs/client-core — the isomorphic client substrate shared by every JS Polaris SDK.
+// @polaris-key/client-core — the isomorphic client substrate shared by every JS Polaris Key SDK.
 //
 // WebCrypto only, zero Node APIs, no I/O: everything here is a pure function over bytes,
-// claims, and clocks, so the identical implementation runs in @plrs/node, in @plrs/react's
+// claims, and clocks, so the identical implementation runs in @polaris-key/node, in @polaris-key/react's
 // browser bundle, and in a Worker. Transport, storage, and keyrings belong to the hosts.
 //
-// Subpath exports mirror these modules one-for-one (`@plrs/client-core/gate`, …) for hosts
+// Subpath exports mirror these modules one-for-one (`@polaris-key/client-core/gate`, …) for hosts
 // that want a single concern without pulling the barrel.
 
 export {

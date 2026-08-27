@@ -33,12 +33,12 @@
 // nothing — so the shape is asserted by `Object.keys(...).sort()`, not just by field.
 
 import { afterEach, describe, expect, it } from "vitest";
-import { signJws } from "@plrs/jws";
-import { ISSUER } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import { PolarisError } from "@plrs/client-core";
-import { PolarisClient } from "../src/client.js";
+import { signJws } from "@polaris-key/jws";
+import { ISSUER } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import { PolarisError } from "@polaris-key/client-core";
+import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
 import type { ServiceSlug } from "../src/discovery.js";
 
@@ -49,7 +49,7 @@ const TEST_PEM =
 
 const PRODUCT = "djdl";
 const BASE_URL = "https://k.test";
-const KEY = "plrs_djdl_test";
+const KEY = "pkey_djdl_test";
 const WELL_KNOWN = "/.well-known/polaris.json";
 const nowSec = (): number => Math.floor(Date.now() / 1000);
 
@@ -116,7 +116,7 @@ function mockFetch(routes: Record<string, Route>): Mock {
   };
 }
 
-const open: PolarisClient[] = [];
+const open: PolarisKeyClient[] = [];
 afterEach(() => {
   for (const client of open.splice(0)) client.close();
 });
@@ -124,8 +124,8 @@ afterEach(() => {
 async function makeClient(
   fetchImpl: typeof fetch,
   opts: { expectedServices?: ServiceSlug[] } = {},
-): Promise<PolarisClient> {
-  const client = await PolarisClient.create({
+): Promise<PolarisKeyClient> {
+  const client = await PolarisKeyClient.create({
     ...base,
     store: new InMemoryStore(PRODUCT),
     fetchImpl,
@@ -424,17 +424,17 @@ describe("the config-only product flow (D-08)", () => {
     const m = mockFetch({
       "/devices/register": ({ headers }) =>
         json({
-          token: "plrst_reg",
-          // The server echoes the principal the client announced in `X-Polaris-Device`.
-          deviceId: headers.get("x-polaris-device") ?? "",
+          token: "pkeyt_reg",
+          // The server echoes the principal the client announced in `X-PKey-Device`.
+          deviceId: headers.get("x-pkey-device") ?? "",
         }),
       "/config/document": async ({ headers }) =>
         new Response(
           await signJws(
-            configDoc(headers.get("x-polaris-device") ?? "", issuedAt),
+            configDoc(headers.get("x-pkey-device") ?? "", issuedAt),
             TEST_PEM,
             TEST_KID,
-            "plrs-config+jws",
+            "pkey-config+jws",
           ),
           {
             status: 200,
@@ -447,12 +447,12 @@ describe("the config-only product flow (D-08)", () => {
 
     const registered = await client.devices.register();
     expect(registered.kind).toBe("ok");
-    expect(registered.kind === "ok" ? registered.token : "").toBe("plrst_reg");
+    expect(registered.kind === "ok" ? registered.token : "").toBe("pkeyt_reg");
     expect(registered.kind === "ok" ? registered.deviceId : "").toBe(
       client.core.deviceId,
     );
     // The credential is real and persisted — that is what "registered device" means in v3 §6.
-    expect(registered.kind === "ok" ? registered.token : "").toMatch(/^plrst_/);
+    expect(registered.kind === "ok" ? registered.token : "").toMatch(/^pkeyt_/);
 
     const synced = await client.sync();
 
@@ -518,14 +518,14 @@ describe("getSyncState() — the React bridge contract", () => {
   it("(b) after a licence activation: token, the verified doc, and the floor at its issuedAt", async () => {
     const issuedAt = nowSec();
     const m = mockFetch({
-      "/license/activate": () => json({ token: "plrst_act", schemaVersion: 4 }),
+      "/license/activate": () => json({ token: "pkeyt_act", schemaVersion: 4 }),
       "/license/document": async ({ headers }) =>
         new Response(
           await signJws(
-            licenseDoc(headers.get("x-polaris-device") ?? "", issuedAt),
+            licenseDoc(headers.get("x-pkey-device") ?? "", issuedAt),
             TEST_PEM,
             TEST_KID,
-            "plrs-license+jws",
+            "pkey-license+jws",
           ),
           { status: 200, headers: { etag: '"lic-1"' } },
         ),
@@ -553,17 +553,17 @@ describe("getSyncState() — the React bridge contract", () => {
     const issuedAt = nowSec();
     let phase: "live" | "revoked" = "live";
     const m = mockFetch({
-      "/license/activate": () => json({ token: "plrst_act", schemaVersion: 4 }),
+      "/license/activate": () => json({ token: "pkeyt_act", schemaVersion: 4 }),
       // §5's single re-acquire: it is attempted exactly once and it fails here too.
       "/license/token": () => new Response("", { status: 401 }),
       "/license/document": async ({ headers }) => {
         if (phase === "revoked") return new Response("", { status: 401 });
         return new Response(
           await signJws(
-            licenseDoc(headers.get("x-polaris-device") ?? "", issuedAt),
+            licenseDoc(headers.get("x-pkey-device") ?? "", issuedAt),
             TEST_PEM,
             TEST_KID,
-            "plrs-license+jws",
+            "pkey-license+jws",
           ),
           { status: 200, headers: { etag: '"lic-1"' } },
         );
@@ -591,7 +591,7 @@ describe("getSyncState() — the React bridge contract", () => {
 
   it("(d) a 403 build block surfaces its reason and allowedRange", async () => {
     const m = mockFetch({
-      "/license/activate": () => json({ token: "plrst_act", schemaVersion: 4 }),
+      "/license/activate": () => json({ token: "pkeyt_act", schemaVersion: 4 }),
       // v3 nests the machine-readable code and keeps `allowedRange` at the top level (§5/D-20).
       "/license/document": () =>
         json(

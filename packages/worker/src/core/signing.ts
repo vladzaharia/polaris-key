@@ -1,8 +1,8 @@
 /**
- * Document signing — the one place a Polaris document becomes a compact JWS under a product's
+ * Document signing — the one place a Polaris Key document becomes a compact JWS under a product's
  * active signing key (design spec §5.1: "trust & signing (per-product Ed25519 keys …)" is core).
  *
- * The encoding is FROZEN: `@plrs/jws` is what the conformance corpus pins, and the per-product
+ * The encoding is FROZEN: `@polaris-key/jws` is what the conformance corpus pins, and the per-product
  * `kid` + key are what scope a signed document to one tenant. Every service that mints a
  * document (license, config, and the offline bundle later) signs through here rather than
  * reaching for `signJws` itself, so there is exactly one call site to audit when the envelope
@@ -21,7 +21,7 @@
  * `core/trust.ts`. This module never touches storage.
  */
 
-import { signJws, type JwsTyp } from "@plrs/jws";
+import { signJws, type JwsTyp } from "@polaris-key/jws";
 
 export async function signDoc(
   doc: unknown,

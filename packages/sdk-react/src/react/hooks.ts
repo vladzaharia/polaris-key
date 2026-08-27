@@ -4,12 +4,15 @@
 // hook returns everything a custom gate UI needs without rendering anything.
 //
 // The service hooks (`useLicense`, `useManagedConfig`, `usePolarisAuth`, `useLatestVersion`)
-// are re-homed under the matching subpath entries (`@plrs/react/license`, `/config`,
+// are re-homed under the matching subpath entries (`@polaris-key/react/license`, `/config`,
 // `/identity`, `/update`) and re-exported from here + the root barrel while callers migrate.
 
 import { useCallback, useContext, useMemo, useSyncExternalStore } from "react";
-import type { JSONValue } from "@plrs/protocol/core";
-import type { ActivationSource, LicenseStatus } from "@plrs/protocol/license";
+import type { JSONValue } from "@polaris-key/protocol/core";
+import type {
+  ActivationSource,
+  LicenseStatus,
+} from "@polaris-key/protocol/license";
 import {
   anyBusy,
   firstError,
@@ -65,7 +68,7 @@ export function useCapabilities(): ServicesMap & {
 
 /** The primary hook: the adapter, the live state, and bound action callbacks.
  *
- *  @deprecated Prefer the per-service hooks — `useLicense` (`@plrs/react/license`),
+ *  @deprecated Prefer the per-service hooks — `useLicense` (`@polaris-key/react/license`),
  *  `useManagedConfig` (`/config`), `usePolarisAuth` (`/identity`), `useLatestVersion`
  *  (`/update`) — which re-render only on the slice they read and carry that service's own
  *  busy/error rather than an aggregate. This hook stays for the whole-client case. */

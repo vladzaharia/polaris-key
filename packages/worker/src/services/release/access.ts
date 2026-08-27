@@ -3,7 +3,7 @@
 /**
  * Who may read a release surface — the single enforcement point for both services.
  *
- * Four modes, in increasing strictness (`@plrs/protocol/release`):
+ * Four modes, in increasing strictness (`@polaris-key/protocol/release`):
  *
  *   public         anyone. The default, and the reason anonymous update checking keeps working.
  *   authenticated  a device token whose licence is usable.

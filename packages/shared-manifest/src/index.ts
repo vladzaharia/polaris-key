@@ -1,11 +1,11 @@
-import { type ProductCatalog } from "@plrs/catalog";
+import { type ProductCatalog } from "@polaris-key/catalog";
 import { parse as parseYaml } from "yaml";
 
 /**
  * What a `.pkey/product` `modules:` block may name.
  *
  * Two vocabularies, both accepted. The first five are the original module names; the last five
- * are the Polaris service slugs they became (design spec §2.1). Old manifests keep validating
+ * are the Polaris Key service slugs they became (design spec §2.1). Old manifests keep validating
  * unchanged — `normalizeModules` translates them — so nothing in the field has to be rewritten
  * on the same day the server learns the new words.
  */
@@ -15,7 +15,7 @@ export type ProductModule =
   | "releases"
   | "oidc"
   | "edgeMint"
-  // Polaris service slugs
+  // Polaris Key service slugs
   | "license"
   | "config"
   | "release"
@@ -23,7 +23,7 @@ export type ProductModule =
   | "identity";
 
 /**
- * The five opt-in Polaris services (design spec §2.4/D-04). Declared here rather than imported
+ * The five opt-in Polaris Key services (design spec §2.4/D-04). Declared here rather than imported
  * from the worker: this package is a *dependency* of the worker (and of the CLI), so the type
  * has to originate on this side of the arrow. The worker's `core/services.ts` declares the
  * structurally-identical pair for its own D1-facing use.
@@ -54,7 +54,7 @@ export const REGISTRATION_POLICIES = [
   "requires-license",
 ] as const;
 
-/** The three policies as a type. Structurally identical to `@plrs/protocol/core`'s
+/** The three policies as a type. Structurally identical to `@polaris-key/protocol/core`'s
  *  `RegistrationPolicy` and to the worker's; declared here for the same reason `ServiceSlug`
  *  is — this package is a dependency of both, so the name has to originate on this side. */
 export type RegistrationPolicy = (typeof REGISTRATION_POLICIES)[number];
@@ -220,7 +220,7 @@ export interface ParsedManifest {
   release?: ManifestRelease;
   edgeMint: ManifestEdgeMint[];
   /**
-   * Which Polaris services this product runs (design spec §2.2). Always complete — every slug
+   * Which Polaris Key services this product runs (design spec §2.2). Always complete — every slug
    * is present with an explicit boolean — so a persist site can `JSON.stringify` it straight
    * into `products.services_json` without deciding anything of its own.
    *

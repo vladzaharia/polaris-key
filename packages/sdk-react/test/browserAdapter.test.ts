@@ -118,7 +118,7 @@ describe("BrowserAdapter — construction + first load", () => {
     adapter.dispose();
   });
 
-  it("sends the X-Polaris-* metadata headers, not the legacy X-PKey-* ones", async () => {
+  it("sends the X-PKey-* metadata headers, and none of the withdrawn X-Polaris-* ones", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
       productSlug: "acme",
@@ -134,10 +134,10 @@ describe("BrowserAdapter — construction + first load", () => {
       string,
       string
     >;
-    expect(headers["X-Polaris-Platform"]).toBe("browser");
-    expect(headers["X-Polaris-SDK"]).toBe("@plrs/react");
-    expect(headers["X-Polaris-Version"]).toBe("1.4.2");
-    expect(Object.keys(headers).some((k) => k.startsWith("X-PKey-"))).toBe(
+    expect(headers["X-PKey-Platform"]).toBe("browser");
+    expect(headers["X-PKey-SDK"]).toBe("@polaris-key/react");
+    expect(headers["X-PKey-Version"]).toBe("1.4.2");
+    expect(Object.keys(headers).some((k) => k.startsWith("X-Polaris-"))).toBe(
       false,
     );
     adapter.dispose();
@@ -217,7 +217,7 @@ describe("BrowserAdapter — submitKey", () => {
       now: () => NOW_SEC,
     });
     await ready(adapter);
-    await adapter.submitKey("plrs_acme_test");
+    await adapter.submitKey("pkey_acme_test");
     const call = fetchImpl.mock.calls.find((c) =>
       String(c[0]).includes("/identity/session/license"),
     );
@@ -225,7 +225,7 @@ describe("BrowserAdapter — submitKey", () => {
     const init = call?.[1] as RequestInit;
     expect(init.method).toBe("POST");
     expect(init.credentials).toBe("include");
-    expect(JSON.parse(String(init.body))).toEqual({ key: "plrs_acme_test" });
+    expect(JSON.parse(String(init.body))).toEqual({ key: "pkey_acme_test" });
     expect(adapter.snapshot().status).toBe("ok");
     adapter.dispose();
   });

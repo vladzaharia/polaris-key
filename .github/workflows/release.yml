@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 # Changesets opens/maintains a "Version Packages" PR; merging it publishes the JS SDKs
-# (@plrs/*) to the private registry. Python (PyPI) and Swift (git tag) are released
+# (@polaris-key/*) to the private registry. Python (PyPI) and Swift (git tag) are released
 # from their own tags.
 jobs:
   release:

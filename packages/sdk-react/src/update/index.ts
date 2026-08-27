@@ -1,4 +1,4 @@
-// @plrs/react/update — the Update service's UI surface: the headless version-check hook and
+// @polaris-key/react/update — the Update service's UI surface: the headless version-check hook and
 // the slotted prompt built on it.
 
 export {

@@ -3,13 +3,13 @@
 // Until this landed, device-id derivation was the ONE cross-language behaviour with no golden
 // vector — Node, Python, and Swift agreed only by code review. Both formulas are now pinned,
 // and the Python (pytest) and Swift (XCTest) runners mirror this file against the SAME
-// corpus/v1/fingerprint.json.
+// corpus/v2/fingerprint.json.
 //
-// P4 re-attribution: these two stay with `@plrs/node`, unlike the verification cases that
-// moved to `@plrs/client-core`. They are the one part of the wire contract that CANNOT be
+// P4 re-attribution: these two stay with `@polaris-key/node`, unlike the verification cases that
+// moved to `@polaris-key/client-core`. They are the one part of the wire contract that CANNOT be
 // isomorphic — reading a machine UUID means `ioreg`/the registry/`/sys/class/dmi`, and the
 // hashing that follows is only meaningful over what those reads produced. They now live at the
-// `@plrs/node/devices` subpath, together, because they are the same kind of thing (hashed
+// `@polaris-key/node/devices` subpath, together, because they are the same kind of thing (hashed
 // hardware identity, computed on-device so raw serials never cross the wire) and because THIS
 // FILE pins both. `fingerprintVersion` is 1 and unchanged by v3.
 
@@ -17,8 +17,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
-import type { FingerprintComponent } from "@plrs/protocol/core";
-import { deviceIdFromRaw, hashComponents } from "@plrs/node/devices";
+import type { FingerprintComponent } from "@polaris-key/protocol/core";
+import { deviceIdFromRaw, hashComponents } from "@polaris-key/node/devices";
 
 interface Vector {
   id: string;
@@ -44,7 +44,7 @@ interface FingerprintCorpus {
 const here = dirname(fileURLToPath(import.meta.url));
 const corpus = JSON.parse(
   readFileSync(
-    join(here, "..", "..", "corpus", "v1", "fingerprint.json"),
+    join(here, "..", "..", "corpus", "v2", "fingerprint.json"),
     "utf8",
   ),
 ) as FingerprintCorpus;

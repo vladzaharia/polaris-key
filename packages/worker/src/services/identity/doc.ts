@@ -1,8 +1,8 @@
-// Build and ETag the FUSED v2 managed-config document — Identity's own, and nobody else's.
+// Build and ETag the FUSED session document — Identity's own, and nobody else's.
 //
 // `aud`/`iss` bind it to the product as defense-in-depth; the per-product `kid` + key that scope
 // each doc to one tenant are applied by `core/signing.ts`, which owns the signing step for every
-// Polaris document.
+// Polaris Key document.
 //
 // Wire v3 split this document in two (`services/license/document.ts` +
 // `services/config/document.ts`), and `GET /<p>/config` is gone. The ONE caller that still
@@ -15,15 +15,35 @@
 // all THREE document paths, so it lives in `core/payload.ts` and the browser session imports it
 // from there directly.
 
-import { sha256Base64Url } from "@plrs/jws";
+import { sha256Base64Url } from "@polaris-key/jws";
 import {
   DOC_EXPIRY_SECONDS,
   ISSUER,
   SECONDS_PER_DAY,
   type DocProfile,
-  type ManagedConfigDoc,
-  type ManagedPayload,
-} from "@plrs/protocol";
+} from "@polaris-key/protocol";
+import type { ManagedPayload } from "../../core/payload.js";
+
+/**
+ * The FUSED document shape: licence claims, config, secrets and entitlements in one artifact.
+ *
+ * Declared HERE rather than in `@polaris-key/protocol` because it is no longer a wire type
+ * anyone else speaks — v3 split it into `pkey-license+jws` + `pkey-config+jws`, and the browser
+ * session is the last minter. The React SDK keeps its own local copy at its own edge for the
+ * same reason. When the session moves to the split pair, both copies go with it.
+ */
+export interface FusedSessionDoc {
+  schemaVersion: number;
+  aud: string;
+  iss: string;
+  licenseId: string;
+  deviceId: string;
+  issuedAt: number;
+  expiresAt: number;
+  graceUntil: number;
+  profile: DocProfile;
+  payload: ManagedPayload;
+}
 
 export interface BuildDocInput {
   schemaVersion: number;
@@ -37,7 +57,7 @@ export interface BuildDocInput {
 }
 
 /** Stamp the time-bound fields into a doc (field order matches the conformance corpus). */
-export function buildDoc(input: BuildDocInput): ManagedConfigDoc {
+export function buildDoc(input: BuildDocInput): FusedSessionDoc {
   return {
     schemaVersion: input.schemaVersion,
     aud: input.aud,
@@ -54,7 +74,7 @@ export function buildDoc(input: BuildDocInput): ManagedConfigDoc {
 
 /** A strong ETag over the doc content, excluding the per-request timestamps so an
  *  unchanged config collapses to the same ETag → If-None-Match 304. */
-export async function computeETag(doc: ManagedConfigDoc): Promise<string> {
+export async function computeETag(doc: FusedSessionDoc): Promise<string> {
   const material = JSON.stringify({
     schemaVersion: doc.schemaVersion,
     aud: doc.aud,

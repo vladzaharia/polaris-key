@@ -1,14 +1,10 @@
 /**
  * `pkey bundle` — mint one OFFLINE ACTIVATION BUNDLE and write it to a file.
  *
- * (The bin is still named `pkey`; it becomes `plrs` at the rebrand. Every string below spells
- * the command the way the SHIPPED bin spells it, so an error an operator reads today is an
- * error they can paste back into their shell today.)
- *
  * The server half is `packages/worker/src/core/bundles.ts` —
  * `POST /manage/api/products/<slug>/bundles`. It signs the licence and/or config documents an
  * air-gapped install would have fetched, wraps them with the trust manifest needed to verify
- * them, and returns one compact `plrs-bundle+jws`. This module performs that call and drops the
+ * them, and returns one compact `pkey-bundle+jws`. This module performs that call and drops the
  * JWS on disk as a single file an operator can hand-carry to the offline machine.
  *
  * ── AUTHENTICATION: WHY A BROWSER COOKIE ────────────────────────────────────────────────────
@@ -16,17 +12,17 @@
  * The admin API has exactly one credential today: the console's OIDC browser session. There is
  * no API-token surface yet, and inventing one here would mean shipping a second, weaker path to
  * the same authority. So this command reads the operator's live session cookie out of the
- * environment variable `PLRS_ADMIN_COOKIE`, GETs `/manage/api/me` with it to learn that
+ * environment variable `PKEY_ADMIN_COOKIE`, GETs `/manage/api/me` with it to learn that
  * session's CSRF token, and echoes that token in `X-PKey-CSRF` on the POST — the same
  * double-submit the console itself performs (`packages/worker/src/admin/api.ts`). This is
  * pre-launch operator-grade pragmatism, stated plainly rather than dressed up: it is the only
  * credential that exists.
  *
  * HOW TO OBTAIN IT. Sign in to the console, open browser devtools → Application → Cookies →
- * the console origin, and copy the `__Host-plrs_admin` cookie. Then, in the shell you are about
+ * the console origin, and copy the `__Host-pkey_admin` cookie. Then, in the shell you are about
  * to run `pkey bundle` in:
  *
- *     export PLRS_ADMIN_COOKIE='__Host-plrs_admin=<value>'
+ *     export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'
  *
  * (The bare `<value>` is accepted too — this module prefixes the cookie name when the variable
  * holds no `=`.)
@@ -65,10 +61,10 @@ import path from "node:path";
 export const DEFAULT_BASE_URL = "https://key.plrs.im";
 
 /** The environment variable this command reads its admin session cookie from. */
-export const ADMIN_COOKIE_ENV = "PLRS_ADMIN_COOKIE";
+export const ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
 
 /** The console's session cookie name (`packages/worker/src/admin/session.ts`). */
-export const ADMIN_COOKIE_NAME = "__Host-plrs_admin";
+export const ADMIN_COOKIE_NAME = "__Host-pkey_admin";
 
 /** The CSRF header every admin-API mutation must echo `/manage/api/me`'s `csrf` in. */
 export const CSRF_HEADER = "X-PKey-CSRF";
@@ -79,7 +75,7 @@ export const MAX_GRACE_DAYS = 365;
 /** Wire v3 §6's device id: 32 base64url characters. */
 const DEVICE_ID = /^[A-Za-z0-9_-]{32}$/;
 
-const BUNDLE_EXTENSION = ".plrsbundle";
+const BUNDLE_EXTENSION = ".pkeybundle";
 
 /** The one usage line, so the help text and every refusal cannot drift apart. */
 export const BUNDLE_USAGE =
@@ -103,7 +99,7 @@ export interface MintBundleOptions {
   /** Output path; relative paths resolve against `cwd`. Defaults to `bundleFileName(...)`. */
   out?: string;
   force?: boolean;
-  /** `process.env.PLRS_ADMIN_COOKIE`, read by the caller — this module never touches env. */
+  /** `process.env.PKEY_ADMIN_COOKIE`, read by the caller — this module never touches env. */
   cookie?: string;
   /** The test seam: `packages/sdk-node/src/discovery.ts` establishes it repo-wide. */
   fetchImpl?: typeof fetch;
@@ -112,7 +108,7 @@ export interface MintBundleOptions {
 
 export interface MintBundleResult {
   bundleId: string;
-  /** The compact `plrs-bundle+jws`, exactly as written to `file`. */
+  /** The compact `pkey-bundle+jws`, exactly as written to `file`. */
   bundle: string;
   /** Absolute path of the file written. */
   file: string;
@@ -124,7 +120,7 @@ export interface MintBundleResult {
   url: string;
 }
 
-/** `<product>-<first 8 of deviceId>.plrsbundle`. The slug is reduced to filename-safe
+/** `<product>-<first 8 of deviceId>.pkeybundle`. The slug is reduced to filename-safe
  *  characters so a slug can never contribute a path separator to the default name. */
 export function bundleFileName(product: string, deviceId: string): string {
   const safe = product.replace(/[^A-Za-z0-9._-]+/g, "-");

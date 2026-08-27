@@ -1,4 +1,4 @@
-// @plrs/react — one hook API over two transports (browser cookie-session OIDC and
+// @polaris-key/react — one hook API over two transports (browser cookie-session OIDC and
 // desktop Electron/Tauri bridge) plus brandable drop-in UIs.
 //
 // TWO AXES OF SUBPATH ENTRIES, and they compose:
@@ -180,7 +180,7 @@ export type {
   JSONValue,
   ManagedEntry,
   ManagementState,
-} from "@plrs/protocol/core";
+} from "@polaris-key/protocol/core";
 export type {
   ActivationSource,
   AllowedRange,
@@ -188,5 +188,5 @@ export type {
   DocProfile,
   LicenseDoc,
   LicenseStatus,
-} from "@plrs/protocol/license";
-export type { ConfigDoc } from "@plrs/protocol/config";
+} from "@polaris-key/protocol/license";
+export type { ConfigDoc } from "@polaris-key/protocol/config";

@@ -29,7 +29,7 @@
 
 // ── catalog / config shapes ──────────────────────────────────────────────────
 /**
- * Re-exported from `@plrs/catalog`, which is the ONE definition the worker validates against,
+ * Re-exported from `@polaris-key/catalog`, which is the ONE definition the worker validates against,
  * the SDKs read, and `tools/gen-mirrors.ts` generates from. The console used to re-declare a
  * hand-copied subset here (`ui.widget` as a bare `string`, no `dependsOn`/`appliesTo`), which is
  * how a form silently stops rendering a field the catalog gained. Views keep importing these
@@ -42,8 +42,8 @@ export type {
   ManagementState,
   ProductCatalog,
   UiHints,
-} from "@plrs/catalog";
-import type { ManagementState, ProductCatalog } from "@plrs/catalog";
+} from "@polaris-key/catalog";
+import type { ManagementState, ProductCatalog } from "@polaris-key/catalog";
 
 // ── identity ──────────────────────────────────────────────────────────────────
 export interface ProductRef {
@@ -137,6 +137,13 @@ export interface PortalProductSettings {
   magicEnabled: boolean;
   licenseKeyClaimEnabled: boolean;
   releasesEnabled: boolean;
+  /**
+   * TRI-STATE (R5-01/R5-02). `null` is "auto": derived from the product's OIDC issuer — on for
+   * the platform issuer, OFF for a product on a tenant-controlled `custom` issuer, whose email
+   * and `sub` claims are outside the trust boundary. `true`/`false` is an explicit operator
+   * override in either direction, which is why this is not a boolean with a default.
+   */
+  autoLinkEnabled: boolean | null;
   branding?: unknown;
   modifiedAt?: number;
 }
@@ -243,6 +250,7 @@ export type UpdatePortalSettingsBody = Partial<
     | "magicEnabled"
     | "licenseKeyClaimEnabled"
     | "releasesEnabled"
+    | "autoLinkEnabled"
     | "branding"
   >
 >;
@@ -592,7 +600,7 @@ export interface MintBundleResult {
   /** A ULID, and the audit anchor: the mint is recorded under it and the importing client
    *  reports it back, so it is the only string tying a support ticket to a row. */
   bundleId: string;
-  /** The compact `plrs-bundle+jws` — this string IS the file the operator carries across. */
+  /** The compact `pkey-bundle+jws` — this string IS the file the operator carries across. */
   bundle: string;
 }
 
@@ -783,7 +791,7 @@ export const api = {
   releaseHealth: (slug: string) =>
     call<{ health: ReleaseHealth }>(`${p(slug)}/release/health`),
   /** The release TRUTH STORE (`release_metadata`/`_artifacts`/`_channels`, P2.T2) — what
-   *  Polaris believes the linked repo publishes, without spending a GitHub round-trip. */
+   *  Polaris Key believes the linked repo publishes, without spending a GitHub round-trip. */
   releases: (slug: string) =>
     call<ReleaseStoreResponse>(`${p(slug)}/release/releases`),
   portalSettings: (slug: string) =>

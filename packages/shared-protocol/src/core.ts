@@ -1,4 +1,4 @@
-// @plrs/protocol/core — wire contract v3 Core substrate types: the shared document
+// @polaris-key/protocol/core — wire contract v3 Core substrate types: the shared document
 // envelope, device principal, telemetry, errors, and transport headers. Types only, no
 // runtime, no crypto. Normative source: docs/security/WIRE-CONTRACT-V3.md. Any field drift
 // is wire-breaking: bump PROTOCOL_VERSION and regenerate conformance/corpus/v2.
@@ -8,9 +8,11 @@
 /** Bumped on any wire-breaking change to the document shapes or HTTP contract. */
 export const PROTOCOL_VERSION = 3;
 
-/** The `iss` every Polaris document carries. Host-neutral (D-09): the serving hostname is
- *  infrastructure, not wire identity — moving hosts must never be a wire break. */
-export const ISSUER = "plrs.im";
+/** The `iss` every Polaris Key document carries. A FIXED string, never derived from the base URL
+ *  or the serving host — an attacker-controlled host must not be able to name its own issuer.
+ *  (Amendment A1: the host-neutral `plrs.im` spelling was withdrawn; a future host move is a
+ *  sanctioned pre-launch wire break, not something this constant absorbs.) */
+export const ISSUER = "key.plrs.im";
 
 /** A JSON-serialisable value — the type every managed entry carries. */
 export type JSONValue =
@@ -46,7 +48,7 @@ export interface ManagedEntry {
  * server-signed offline window (`issuedAt + maxOfflineDays * 86400`).
  */
 export interface DocClaims {
-  /** Always `ISSUER` ("plrs.im"). */
+  /** Always `ISSUER` ("key.plrs.im"). */
   iss: string;
   /** Product slug — the audience this document is scoped to. */
   aud: string;
@@ -57,7 +59,7 @@ export interface DocClaims {
 }
 
 /**
- * Offline activation bundle payload (`typ: "plrs-bundle+jws"`, WIRE-CONTRACT-V3 §7).
+ * Offline activation bundle payload (`typ: "pkey-bundle+jws"`, WIRE-CONTRACT-V3 §7).
  * Wraps up to three inner compact JWSs; the bundle payload cap is 262 144 bytes (unlike
  * the 65 536-byte cap on ordinary documents). `expiresAt` is the IMPORT window for the
  * bundle itself (network-path freshness at import); the inner documents carry the long
@@ -73,14 +75,14 @@ export interface BundleDoc {
   issuedAt: number;
   /** Import deadline for the bundle artifact itself. */
   expiresAt: number;
-  /** Inner compact JWSs: `plrs-license+jws` and optionally `plrs-config+jws`. */
+  /** Inner compact JWSs: `pkey-license+jws` and optionally `pkey-config+jws`. */
   docs: { license?: string; config?: string };
-  /** The current trust manifest (`plrs-trust+jws`), so an air-gapped device can build its
+  /** The current trust manifest (`pkey-trust+jws`), so an air-gapped device can build its
    *  effective trust set at import time. */
   trust: string;
 }
 
-/** Maximum decoded payload bytes for `plrs-bundle+jws` (WIRE-CONTRACT-V3 §1). */
+/** Maximum decoded payload bytes for `pkey-bundle+jws` (WIRE-CONTRACT-V3 §1). */
 export const MAX_BUNDLE_BYTES = 262_144;
 
 /** Per-product device registration policy (WIRE-CONTRACT-V3 §6). Default is derived:
@@ -218,10 +220,10 @@ export const DOC_EXPIRY_SECONDS = 3600;
 export const SECONDS_PER_DAY = 86_400;
 
 /** Client→Worker request headers (wire contract v3; the `X-PKey-*` names are legacy). */
-export const HEADER_DEVICE = "X-Polaris-Device";
-export const HEADER_VERSION = "X-Polaris-Version";
-export const HEADER_CHANNEL = "X-Polaris-Channel";
-export const HEADER_SDK_NAME = "X-Polaris-SDK";
-export const HEADER_SDK_VERSION = "X-Polaris-SDK-Version";
-export const HEADER_PLATFORM = "X-Polaris-Platform";
-export const HEADER_ARCH = "X-Polaris-Arch";
+export const HEADER_DEVICE = "X-PKey-Device";
+export const HEADER_VERSION = "X-PKey-Version";
+export const HEADER_CHANNEL = "X-PKey-Channel";
+export const HEADER_SDK_NAME = "X-PKey-SDK";
+export const HEADER_SDK_VERSION = "X-PKey-SDK-Version";
+export const HEADER_PLATFORM = "X-PKey-Platform";
+export const HEADER_ARCH = "X-PKey-Arch";

@@ -1,7 +1,7 @@
 // The CLI command surface — `src/cli/commands.ts` plus the commander adapter.
 //
 // The commands are framework-agnostic and side-effect-free by construction: each takes plain
-// arguments and a `PolarisClient` and returns a `CommandResult` (`{ok, message, data}`). That
+// arguments and a `PolarisKeyClient` and returns a `CommandResult` (`{ok, message, data}`). That
 // is what makes them testable with no console and no `process.exitCode`, and it is why the
 // adapters are shells with no logic of their own — the behavior lives in exactly one place.
 //
@@ -31,15 +31,18 @@
 //     `not-applicable` (the D-08 CLI pin). A config-only product must exit 0, not sit on
 //     `needs-activation` forever.
 //   * config values are resolved through `client.config.*`, and overrides ride
-//     `PolarisClientOptions.config`.
+//     `PolarisKeyClientOptions.config`.
 
 import { describe, expect, it } from "vitest";
 import { Command } from "commander";
-import { signJws } from "@plrs/jws";
-import { ISSUER } from "@plrs/protocol/core";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import { PolarisClient, type PolarisClientOptions } from "../src/client.js";
+import { signJws } from "@polaris-key/jws";
+import { ISSUER } from "@polaris-key/protocol/core";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import {
+  PolarisKeyClient,
+  type PolarisKeyClientOptions,
+} from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
 import {
   activate,
@@ -67,7 +70,7 @@ const base = {
   // endpoints.test.ts, so keep the CLI suite fast and deterministic by opting out here.
   devices: { fingerprint: false },
   license: { fingerprint: false },
-} as const satisfies Partial<PolarisClientOptions>;
+} as const satisfies Partial<PolarisKeyClientOptions>;
 
 const jsonResponse = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), {
@@ -75,7 +78,7 @@ const jsonResponse = (body: unknown, status = 200): Response =>
     headers: { "content-type": "application/json" },
   });
 
-/** The signed licence document (`plrs-license+jws`) the stub server hands back. */
+/** The signed licence document (`pkey-license+jws`) the stub server hands back. */
 function licenseJws(deviceId: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const doc: LicenseDoc = {
@@ -96,10 +99,10 @@ function licenseJws(deviceId: string): Promise<string> {
       "license.tier": { state: "enforced", value: "pro", updatedAt: now },
     },
   };
-  return signJws(doc, TEST_PEM, TEST_KID, "plrs-license+jws");
+  return signJws(doc, TEST_PEM, TEST_KID, "pkey-license+jws");
 }
 
-/** The signed config document (`plrs-config+jws`), with one `default` key so override
+/** The signed config document (`pkey-config+jws`), with one `default` key so override
  *  layering is observable through the `config` verb. */
 function configJws(deviceId: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
@@ -114,7 +117,7 @@ function configJws(deviceId: string): Promise<string> {
     config: { "run.mode": { state: "default", value: "fast", updatedAt: now } },
     secrets: {},
   };
-  return signJws(doc, TEST_PEM, TEST_KID, "plrs-config+jws");
+  return signJws(doc, TEST_PEM, TEST_KID, "pkey-config+jws");
 }
 
 interface StubOptions {
@@ -144,7 +147,7 @@ function stubFetch(opts: StubOptions = {}): {
     init?: RequestInit,
   ): Promise<Response> => {
     const path = new URL(String(input)).pathname;
-    const device = new Headers(init?.headers).get("x-polaris-device") ?? "d";
+    const device = new Headers(init?.headers).get("x-pkey-device") ?? "d";
     calls.push(`${init?.method ?? "GET"} ${path}`);
 
     switch (path) {
@@ -153,14 +156,14 @@ function stubFetch(opts: StubOptions = {}): {
       case "/djdl/.well-known/polaris-trust.jws":
         return new Response("", { status: 404 });
       case "/djdl/license/activate":
-        return mint(opts.activate ?? 200, "plrst_activated");
+        return mint(opts.activate ?? 200, "pkeyt_activated");
       case "/djdl/license/enroll":
-        return mint(opts.enroll ?? 200, "plrst_enrolled");
+        return mint(opts.enroll ?? 200, "pkeyt_enrolled");
       case "/djdl/license/deauthorize":
         return jsonResponse({});
       case "/djdl/devices/register":
         return (opts.register ?? 200) === 200
-          ? jsonResponse({ token: "plrst_registered", deviceId: device })
+          ? jsonResponse({ token: "pkeyt_registered", deviceId: device })
           : new Response("", { status: opts.register ?? 200 });
       case "/djdl/devices/report":
         return jsonResponse({});
@@ -184,9 +187,9 @@ function stubFetch(opts: StubOptions = {}): {
 
 function makeClient(
   fetchImpl: typeof fetch,
-  over: Partial<PolarisClientOptions> = {},
-): Promise<PolarisClient> {
-  return PolarisClient.create({
+  over: Partial<PolarisKeyClientOptions> = {},
+): Promise<PolarisKeyClient> {
+  return PolarisKeyClient.create({
     ...base,
     store: new InMemoryStore("djdl"),
     fetchImpl,
@@ -194,7 +197,7 @@ function makeClient(
   });
 }
 
-const KEY = "plrs_djdl_AAAAAAAAAAAAAAAAAAAAAA";
+const KEY = "pkey_djdl_AAAAAAAAAAAAAAAAAAAAAA";
 
 describe("cli/commands — license verbs", () => {
   it("activate success reflects the gate status", async () => {
@@ -267,7 +270,7 @@ describe("cli/commands — status under D-08 (licence service disabled)", () => 
   it("is ok:true with not-applicable, so a config-only product exits 0", async () => {
     // The whole D-08 promise at the CLI: a product that does not license must not be held
     // hostage by a licence gate. `ok` maps to the exit code, so `false` here would break every
-    // `plrs status || exit 1` in a config-only product's installer.
+    // `pkey status || exit 1` in a config-only product's installer.
     const client = await makeClient(stubFetch().impl, {
       expectedServices: ["config"],
     });
@@ -372,7 +375,7 @@ describe("cli/commands — config", () => {
 
 describe("cli/commander adapter smoke", () => {
   it("registerPolarisCommands wires a Command and dispatches status to the core", async () => {
-    const seen: { client?: PolarisClient; factoryOpts?: unknown } = {};
+    const seen: { client?: PolarisKeyClient; factoryOpts?: unknown } = {};
     const lines: string[] = [];
 
     const factory: ClientFactory = async (opts) => {
@@ -406,7 +409,7 @@ describe("cli/commander adapter smoke", () => {
     });
     // ...and the status command printed the core's output (gate = needs-activation).
     expect(lines.join("\n")).toContain("needs-activation");
-    expect(seen.client).toBeInstanceOf(PolarisClient);
+    expect(seen.client).toBeInstanceOf(PolarisKeyClient);
 
     // Every v3 verb is attached, in its service group. `register` in particular: a config-only
     // product's whole provisioning story is this command, and an adapter that forgot it would

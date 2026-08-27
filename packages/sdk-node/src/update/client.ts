@@ -12,7 +12,7 @@
 //                  is a host that breaks the next time they move, whereas the discovery
 //                  document is the product's own statement of where its feed lives.
 
-import { PolarisError, compareSemver } from "@plrs/client-core";
+import { PolarisError, compareSemver } from "@polaris-key/client-core";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import { appcastUrlFrom, type ProductDiscoveryDocument } from "../discovery.js";

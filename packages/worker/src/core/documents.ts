@@ -38,10 +38,10 @@ import {
   DOC_EXPIRY_SECONDS,
   SECONDS_PER_DAY,
   type ManagedEntry,
-} from "@plrs/protocol";
-import { ISSUER } from "@plrs/protocol/core";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
+} from "@polaris-key/protocol";
+import { ISSUER } from "@polaris-key/protocol/core";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { DeviceRow, LicenseRow } from "./data.js";

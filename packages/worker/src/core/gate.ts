@@ -13,7 +13,7 @@
 // it is built from. `services/license/gate.ts` re-exports it, so every existing importer of that
 // module — and the `src/gate.ts` compat shim — is unchanged.
 //
-// R3-01 — this module is fed `X-Polaris-Version` / `X-Polaris-Channel`, i.e. two strings the caller
+// R3-01 — this module is fed `X-PKey-Version` / `X-PKey-Channel`, i.e. two strings the caller
 // chooses. That is tolerable for the CLIENT-side gate an SDK runs against its own compiled-in
 // version; it is not tolerable server-side, where the same values arrive over the wire. So:
 //
@@ -22,7 +22,11 @@
 //   * the declared channel can only ever be TIGHTENED relative to the one the version implies,
 //     so a `0.0.0-pr-42` build cannot present itself as `stable` to skip the entitlement check.
 
-import type { AllowedRange, BlockReason, ManagedEntry } from "@plrs/protocol";
+import type {
+  AllowedRange,
+  BlockReason,
+  ManagedEntry,
+} from "@polaris-key/protocol";
 // The semver algebra and the two entitlement readers live next door in `core/entitlements.ts`:
 // Release and Update need exactly that computation for the `entitled` access mode (D-13). They
 // are re-exported below so every importer of this module (and of the two shims that point at

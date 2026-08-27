@@ -10,7 +10,7 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { verifyConfigDoc, verifyLicenseDoc } from "@plrs/client-core";
+import { verifyConfigDoc, verifyLicenseDoc } from "@polaris-key/client-core";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -22,7 +22,7 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import { normalizeModules, servicesFromModules } from "@plrs/manifest";
+import { normalizeModules, servicesFromModules } from "@polaris-key/manifest";
 import { matchRoute } from "../src/router.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleDiscovery } from "../src/core/discovery.js";
@@ -134,7 +134,7 @@ describe("service routing through the core router", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -249,7 +249,7 @@ describe("a config-only product (D-08)", () => {
       now: NOW,
     });
     expect(doc).not.toBeNull();
-    expect(doc!.iss).toBe("plrs.im");
+    expect(doc!.iss).toBe("key.plrs.im");
     expect(doc!.schemaVersion).toBe(1);
     // The catalog default still arrives — the merge tolerates the missing licence layers
     // rather than bailing out of the whole document.
@@ -284,8 +284,8 @@ describe("a config-only product (D-08)", () => {
     const res = await call(env, db, product, "/cfgonly/config/document", {
       headers: {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "0.0.1",
-        "x-polaris-channel": "staging",
+        "x-pkey-version": "0.0.1",
+        "x-pkey-channel": "staging",
       },
     });
     expect(res.status).toBe(200);
@@ -308,7 +308,7 @@ describe("a config-only product (D-08)", () => {
 
   it("refuses an unknown token exactly as a licensed product does", async () => {
     const res = await call(env, db, product, "/cfgonly/config/document", {
-      headers: { authorization: "Bearer plrst_nope" },
+      headers: { authorization: "Bearer pkeyt_nope" },
     });
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: { code: "unauthorized" } });
@@ -333,7 +333,7 @@ describe("a license-only product", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,
@@ -377,7 +377,7 @@ describe("a license-only product", () => {
 // The manifest mapping is what makes that impossible, so it is exercised here rather than
 // asserted about: the enablement set is derived by the same `normalizeModules` →
 // `servicesFromModules` pair that `linkRepo`/`resync` and the seed generator use, from the same
-// `modules:` block a `.polaris/product` file carries.
+// `modules:` block a `.pkey/product` file carries.
 
 /** Seed a product OIDC config, as a repo link would write it. */
 async function seedOidcConfig(db: SqliteDb, slug: string): Promise<void> {

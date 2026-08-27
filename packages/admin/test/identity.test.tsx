@@ -45,6 +45,7 @@ const PORTAL: PortalProductSettings = {
   magicEnabled: true,
   licenseKeyClaimEnabled: false,
   releasesEnabled: true,
+  autoLinkEnabled: null,
   branding: null,
   modifiedAt: 1_700_000_000,
 };
@@ -157,6 +158,7 @@ describe("Identity — the customer portal card", () => {
       magicEnabled: true,
       licenseKeyClaimEnabled: false,
       releasesEnabled: true,
+      autoLinkEnabled: null,
     });
     // `branding` is a blob this card never renders; sending it back would let a console that
     // cannot show branding overwrite it.
@@ -189,6 +191,44 @@ describe("Identity — the customer portal card", () => {
     expect(readPath).toBe("/manage/api/products/djdl/identity/portal");
     expect(writePath).toBe("/manage/api/products/djdl/identity/portal");
     expect(writeInit?.method).toBe("PATCH");
+  });
+
+  it("renders automatic linking as a TRI-STATE, defaulting to auto", async () => {
+    // R5-01/R5-02: `null` means "follow the OIDC issuer". A switch cannot express that — it
+    // would have to render `null` as on or off, and the first touch would freeze a value that
+    // is supposed to track the issuer. So it is a select with "auto" as a nameable choice.
+    renderIdentity();
+    const control = await screen.findByRole("combobox", {
+      name: "Automatic license linking",
+    });
+    expect(control.textContent).toContain("Auto");
+    expect(
+      screen.queryByRole("switch", { name: "Automatic license linking" }),
+    ).toBeNull();
+  });
+
+  it("sends an explicit override, and can return to auto", async () => {
+    portalSettings.mockResolvedValue({
+      settings: { ...PORTAL, autoLinkEnabled: false },
+    });
+    renderIdentity();
+    const control = await screen.findByRole("combobox", {
+      name: "Automatic license linking",
+    });
+    expect(control.textContent).toContain("Never link");
+
+    await userEvent.click(control);
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Always link/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save portal settings" }),
+    );
+
+    await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
+    expect(updatePortalSettings.mock.calls[0]![1]).toMatchObject({
+      autoLinkEnabled: true,
+    });
   });
 
   it("keeps save inert until a module actually moves", async () => {

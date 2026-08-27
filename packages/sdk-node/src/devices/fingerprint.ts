@@ -1,8 +1,8 @@
 // Hardware fingerprint collection. Each component is hashed HERE, on the device, so the raw
 // serial/UUID/MAC never crosses the wire — the server only ever compares opaque digests. This
 // mirrors the device-id construction in `./deviceId.ts` (`pkey-device:…`) so both formulas are
-// recognisably the same shape, and both are pinned by conformance/corpus/v1/fingerprint.json —
-// which is why `@plrs/node/devices` exports the pair together.
+// recognisably the same shape, and both are pinned by conformance/corpus/v2/fingerprint.json —
+// which is why `@polaris-key/node/devices` exports the pair together.
 //
 // Every read is best-effort. A component that cannot be read is OMITTED, never substituted:
 // a partial fingerprint degrades match precision, whereas a placeholder would make every
@@ -19,7 +19,7 @@ import {
   FINGERPRINT_HWID_LENGTH,
   type FingerprintComponent,
   type HardwareFingerprint,
-} from "@plrs/protocol/core";
+} from "@polaris-key/protocol/core";
 
 type RawComponents = Partial<Record<FingerprintComponent, string>>;
 

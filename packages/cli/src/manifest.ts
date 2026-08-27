@@ -1,6 +1,9 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { validateManifestDocuments, type ServiceSlug } from "@plrs/manifest";
+import {
+  validateManifestDocuments,
+  type ServiceSlug,
+} from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 
 export type ProductModule =
@@ -32,7 +35,7 @@ export interface ValidationResult {
   errors: ValidationMessage[];
   warnings: ValidationMessage[];
   /**
-   * The enabled set, reported in Polaris SERVICE-SLUG vocabulary (`license`, `config`,
+   * The enabled set, reported in Polaris Key SERVICE-SLUG vocabulary (`license`, `config`,
    * `release`, `update`, `identity`) whichever vocabulary the manifest wrote — the validator
    * translates. `--modules` still takes the module names below; only the report is normalised.
    */
@@ -174,7 +177,7 @@ export function sdkSnippet(opts: {
     opts.kid && opts.publicKey
       ? `,\n  trust: { pinnedKeys: ${JSON.stringify({ [opts.kid]: opts.publicKey })} }`
       : "";
-  return `import { PolarisKeyClient } from "@plrs/node";
+  return `import { PolarisKeyClient } from "@polaris-key/node";
 
 const client = await PolarisKeyClient.create({
   productSlug: "${opts.product}",
@@ -182,11 +185,11 @@ const client = await PolarisKeyClient.create({
   version: "1.0.0"${trust}
 });
 
-await client.refresh();
+await client.sync();
 
 const enabled = client.isLicensed();
-const value = client.getConfig("your.config.key", "fallback");
-const secret = client.getSecret("your.secret.key");`;
+const value = client.config.getConfig("your.config.key", "fallback");
+const secret = client.config.getSecret("your.secret.key");`;
 }
 
 function productYaml(opts: InitOptions): string {

@@ -1,7 +1,7 @@
 """Tests for the composable CLI command hooks.
 
 The ``core`` commands are exercised against a tiny *fake* client that duck-types only the
-surface the commands touch — no network, no real ``PolarisClient``. The argparse / click /
+surface the commands touch — no network, no real ``PolarisKeyClient``. The argparse / click /
 typer hooks are then wired against a factory that returns that fake client, so each
 framework adapter is verified to dispatch into the shared core. click / typer tests skip
 gracefully if the optional extra is missing.
@@ -18,11 +18,11 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from polaris.cli import core
-from polaris.core.errors import PolarisError
-from polaris.core.models import AllowedRange
-from polaris.devices.client import RegisterClosed, RegisterOk
-from polaris.license.endpoints import (
+from polaris_key.cli import core
+from polaris_key.core.errors import PolarisError
+from polaris_key.core.models import AllowedRange
+from polaris_key.devices.client import RegisterClosed, RegisterOk
+from polaris_key.license.endpoints import (
     ActivationDeviceLimit,
     ActivationOk,
     ActivationUnauthorized,
@@ -89,7 +89,7 @@ class _FakeDevices:
 
 
 class FakeClient:
-    """Duck-types the subset of ``PolarisClient`` the core commands use."""
+    """Duck-types the subset of ``PolarisKeyClient`` the core commands use."""
 
     def __init__(
         self,
@@ -106,12 +106,12 @@ class FakeClient:
         self._activation_result = (
             activation_result
             if activation_result is not None
-            else ActivationOk(token="plrst_t", schemaVersion=4)
+            else ActivationOk(token="pkeyt_t", schemaVersion=4)
         )
         self._register_result = (
             register_result
             if register_result is not None
-            else RegisterOk(token="plrst_t", deviceId="dev-123")
+            else RegisterOk(token="pkeyt_t", deviceId="dev-123")
         )
         self._state = state or _State()
         self._licensed = licensed
@@ -282,7 +282,7 @@ def test_run_command_always_closes():
 
 # ── argparse hook ─────────────────────────────────────────────────────────────────────
 def _argparse_app(client: FakeClient) -> argparse.ArgumentParser:
-    from polaris.cli.argparse_cli import register_argparse
+    from polaris_key.cli.argparse_cli import register_argparse
 
     parser = argparse.ArgumentParser(prog="host")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -340,7 +340,7 @@ def test_register_argparse_dispatch_config(capsys):
 
 def test_register_argparse_dispatch_import_bundle(tmp_path, capsys):
     client = FakeClient()
-    path = tmp_path / "offline.plrsbundle"
+    path = tmp_path / "offline.pkeybundle"
     path.write_text("a.b.c\n")
     parser = _argparse_app(client)
     args = parser.parse_args(["import-bundle", "--product", "djdl", str(path)])
@@ -365,7 +365,7 @@ def test_register_argparse_passes_trust_and_services_to_the_factory():
     factory = _factory_for(client)
     parser = argparse.ArgumentParser(prog="host")
     sub = parser.add_subparsers(dest="command", required=True)
-    from polaris.cli.argparse_cli import register_argparse
+    from polaris_key.cli.argparse_cli import register_argparse
 
     register_argparse(sub, client_factory=factory)
     args = parser.parse_args(
@@ -396,10 +396,10 @@ def test_register_argparse_rejects_a_malformed_trust_pair():
         args.func(args)
 
 
-def test_the_default_parser_is_named_polaris():
-    from polaris.cli.argparse_cli import build_parser
+def test_the_default_parser_is_named_polaris_key():
+    from polaris_key.cli.argparse_cli import build_parser
 
-    assert build_parser().prog == "polaris"
+    assert build_parser().prog == "polaris-key"
 
 
 # ── click hook ────────────────────────────────────────────────────────────────────────
@@ -408,7 +408,7 @@ def test_polaris_click_group_builds_and_invokes():
     import click
     from click.testing import CliRunner
 
-    from polaris.cli.click_cli import polaris_click_group
+    from polaris_key.cli.click_cli import polaris_click_group
 
     client = FakeClient(config={"run.concurrency": 4}, sources={"run.concurrency": "enforced"})
     group = polaris_click_group(client_factory=_factory_for(client))
@@ -427,7 +427,7 @@ def test_polaris_click_group_builds_and_invokes():
 
 def test_polaris_click_group_exposes_every_v3_verb():
     pytest.importorskip("click")
-    from polaris.cli.click_cli import polaris_click_group
+    from polaris_key.cli.click_cli import polaris_click_group
 
     group = polaris_click_group(client_factory=_factory_for(FakeClient()))
     expected = {verb for verbs in core.SERVICE_COMMANDS.values() for verb in verbs}
@@ -438,7 +438,7 @@ def test_polaris_click_group_register_and_activate_exit_codes():
     pytest.importorskip("click")
     from click.testing import CliRunner
 
-    from polaris.cli.click_cli import polaris_click_group
+    from polaris_key.cli.click_cli import polaris_click_group
 
     runner = CliRunner()
     ok = FakeClient(state=_State(status="ok"))
@@ -462,10 +462,10 @@ def test_polaris_click_group_import_bundle(tmp_path):
     pytest.importorskip("click")
     from click.testing import CliRunner
 
-    from polaris.cli.click_cli import polaris_click_group
+    from polaris_key.cli.click_cli import polaris_click_group
 
     client = FakeClient()
-    path = tmp_path / "offline.plrsbundle"
+    path = tmp_path / "offline.pkeybundle"
     path.write_text("a.b.c")
     runner = CliRunner()
     result = runner.invoke(
@@ -482,7 +482,7 @@ def test_polaris_typer_app_builds_and_invokes():
     import typer
     from typer.testing import CliRunner
 
-    from polaris.cli.typer_cli import polaris_typer_app
+    from polaris_key.cli.typer_cli import polaris_typer_app
 
     client = FakeClient(
         state=_State(status="ok"),
@@ -504,7 +504,7 @@ def test_polaris_typer_app_config():
     pytest.importorskip("typer")
     from typer.testing import CliRunner
 
-    from polaris.cli.typer_cli import polaris_typer_app
+    from polaris_key.cli.typer_cli import polaris_typer_app
 
     client = FakeClient(config={"x": "y"}, sources={"x": "local"})
     runner = CliRunner()
@@ -520,7 +520,7 @@ def test_polaris_typer_app_register_and_import_bundle(tmp_path):
     pytest.importorskip("typer")
     from typer.testing import CliRunner
 
-    from polaris.cli.typer_cli import polaris_typer_app
+    from polaris_key.cli.typer_cli import polaris_typer_app
 
     runner = CliRunner()
     client = FakeClient(state=_State(status="ok"))
@@ -532,7 +532,7 @@ def test_polaris_typer_app_register_and_import_bundle(tmp_path):
     assert client.registered is True
 
     other = FakeClient()
-    path = tmp_path / "offline.plrsbundle"
+    path = tmp_path / "offline.pkeybundle"
     path.write_text("a.b.c")
     result = runner.invoke(
         polaris_typer_app(client_factory=_factory_for(other)),
@@ -543,7 +543,7 @@ def test_polaris_typer_app_register_and_import_bundle(tmp_path):
 
 
 def test_the_cli_barrel_re_exports_all_three_adapters():
-    from polaris import cli
+    from polaris_key import cli
 
     assert callable(cli.register_argparse)
     assert callable(cli.polaris_click_group)

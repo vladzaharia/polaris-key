@@ -266,7 +266,7 @@ export function ServicesCard({ slug }: { slug: string }): React.ReactElement {
             <div className="space-y-1.5">
               <CardTitle>Services</CardTitle>
               <CardDescription>
-                Which Polaris services this product runs. Disabled services
+                Which Polaris Key services this product runs. Disabled services
                 answer as not-configured on the wire and disappear from the
                 navigation.
               </CardDescription>

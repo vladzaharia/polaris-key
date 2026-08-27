@@ -7,29 +7,37 @@ adding or changing a product never requires a Worker redeploy.
 
 This doc is the source of truth for the `.pkey/` files and the `ConfigEntry` shape, using
 **djdl** (the first product) as the worked example. The canonical terminology lives in
-`docs/CONCEPTS.md`; the byte-for-byte wire contract lives in the root `README.md`.
+`docs/CONCEPTS.md`; the byte-for-byte wire contract lives in
+`docs/security/WIRE-CONTRACT-V3.md`.
 
 ## The `.pkey/` directory
 
-A `.pkey/` directory holds up to **three independent files**, each in **JSON or YAML**
-(detection is "try JSON first, else YAML"). The base name (no extension) selects the role.
-The files are the **manifest baseline**: they describe intended product defaults. Runtime
-admin changes such as secrets, license/device overrides, temporary module toggles, and
-operator policy overrides live separately in Polaris and are preserved across resync.
+`.pkey/` is the **only** manifest directory. There is no second candidate directory and no
+fallback between two: an interim design renamed it, and the dual-read that rename needed meant
+every miss cost a second GitHub round trip and made "which file is actually live" a question you
+had to trace through a fallback chain. Both were withdrawn.
 
-| File        | Base name                 | Maps to                                                                             | What it carries                                                                                                     |
-| ----------- | ------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                   |
-| **product** | `product.{json,yaml,yml}` | `products` + module baseline + `oidc_config` + `tiers` + `provisioning_config` rows | product metadata, enabled modules, OIDC, tiers, provisioning hooks (**required**)                                   |
-| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `edge_mint_config` rows                          | release provider coordinates + channel/install/appcast/edge-mint settings (required only when releases are enabled) |
+The directory holds up to **three independent files**. The base name (no extension) selects the
+role; the extension is a pure format preference, tried in the fixed order **`.json`, then
+`.yaml`, then `.yml`**, resolved per document independently — so a repo may keep `product.yaml`
+next to `schema.json`. The files are the **manifest baseline**: they describe intended product
+defaults. Runtime admin changes such as secrets, license/device overrides, live service toggles,
+and operator policy overrides live separately in Polaris Key and are preserved across resync.
+
+| File        | Base name                 | Maps to                                                                                                | What it carries                                                                                                          |
+| ----------- | ------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                   | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                        |
+| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**) |
+| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `edge_mint_config` rows                                             | release provider coordinates + channel/install/appcast/edge-mint settings (required only when releases are enabled)      |
 
 In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
 (the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
-a product hosts its own `.pkey/`, `packages/worker/src/release/manifest.ts#parseManifest`
-parses the files, aggregates **all** validation errors, and returns a `ParsedManifest` ready
-for D1 insertion. The schema is compiled through `@plrs/catalog` before anything is
-written so malformed JSON-Schema fragments fail during import/resync, not during a client
-request.
+a product hosts its own `.pkey/`,
+`packages/worker/src/services/release/manifest.ts#parseManifest` — Release's re-export of
+`@polaris-key/manifest`, since repo ingest is a release-service path — parses the files,
+aggregates **all** validation errors, and returns a `ParsedManifest` ready for D1 insertion. The
+schema is compiled through `@polaris-key/catalog` before anything is written so malformed
+JSON-Schema fragments fail during import/resync, not during a client request.
 
 ## The catalog: `ConfigEntry`
 
@@ -97,6 +105,82 @@ parses, else taken as a raw string. (See each SDK README for the per-language AP
 > `hidden`, auto-provisioned). `flag` keys are not "managed config" in this sense — they are
 > entitlements read via `isEntitled`/`getEntitlements`.
 
+## Enabled services: `modules` + `devices.registration`
+
+Polaris Key is five opt-in services — **license, config, release, update, identity** — over an
+always-on Core substrate (see `docs/CONCEPTS.md`). `.pkey/product` declares which of them the
+product runs, and that declaration is persisted verbatim into `products.services_json`, the
+single authority every other surface projects from. It used to be validated and then thrown
+away, which is how four surfaces each ended up re-deriving enablement from the presence of some
+child row.
+
+```jsonc
+{
+  // Every entry is `{ "enabled": <boolean> }`; a key present with `enabled` anything other than
+  // literal `true` counts as off. Unknown module names are ignored rather than fatal — a
+  // manifest naming a service this build has not heard of is not a reason to refuse the product.
+  "modules": {
+    "license": { "enabled": true },
+    "config": { "enabled": true },
+    "release": { "enabled": true },
+    "update": { "enabled": true },
+    "identity": { "enabled": true },
+  },
+
+  "devices": {
+    // Who may mint a device token at POST /<product>/devices/register (a Core route, present
+    // under every policy). OPTIONAL — omit it to follow the services.
+    //   open              → any caller, rate-limited by edge IP, fingerprint optional
+    //   requires-identity → only behind a live product browser session
+    //   requires-license  → refused; activation/enrollment are the only mint paths
+    "registration": "requires-license",
+  },
+}
+```
+
+**Defaults.** A manifest with no `modules` block — or one whose every entry is off — gets
+`license` + `config` enabled and the rest off, which is exactly how every product behaved before
+the block was persisted. `devices.registration` is optional and stays optional in storage:
+undeclared means "derive from the services" (`requires-license` if license is on, else
+`requires-identity` if identity is, else `open`), which is a different thing from someone having
+chosen `open`. A product that later turns license off must move to the derived `open`, not stay
+pinned to a value nobody wrote.
+
+**The legacy vocabulary still parses.** The pre-suite module names are translated to service
+slugs at ingest and only slugs are stored, so a manifest in the field does not have to be
+rewritten on the day the server learns the new words, and one block may mix both spellings:
+
+| Declared    | Enables              | Note                                                                                                                                          |
+| ----------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `licensing` | `license`            | rename                                                                                                                                        |
+| `releases`  | `release` + `update` | the old module meant "distributes software"; mapping it to `release` alone would take the appcast away from every product already serving one |
+| `oidc`      | `identity`           | rename                                                                                                                                        |
+| `edgeMint`  | `config`             | edge-minting is a secret-**delivery** capability of Config, not a unit of its own                                                             |
+
+**Validation at ingest.** `parseManifest` aggregates every error before it refuses, and a refusal
+applies nothing:
+
+- `update_requires_release` — **error**. Update renders a feed over Release's truth store, so
+  Update on with Release off would answer every client with an empty document rather than an
+  error. A `releases` manifest can never trip this: the mapping brings Release with it.
+- `invalid_registration_policy` — **error**. An unrecognised `devices.registration` is refused
+  rather than coerced; silently falling back to a default would answer "requires-license" with
+  "open" for the one manifest that most meant it.
+- `config_without_activation` — **warning**, when `config` is on with neither `license` nor
+  `identity`. It stays a warning because a config-only product issuing config documents to
+  registered devices is the wire-level proof that the services are independent, not a mistake.
+  The enablement API applies the same code as a hard **error** for the one combination that is
+  genuinely unreachable — `config` on, `license` off, and a declared `requires-license` policy,
+  which closes the only mint path such a product has.
+- `registration_requires_identity` is enforced by the enablement API
+  (`PATCH /manage/api/products/<slug>/services`), not at manifest ingest.
+
+**Live toggles.** Services can also be changed from the admin panel; a live edit claims the
+column (`services_source` flips `manifest` → `admin`) so a later push cannot silently turn a
+service back on, nor re-open registration after an operator closed it. "Revert to manifest" flips
+ownership back and changes nothing else — the manifest re-applies on the next resync, not
+immediately, so the operator's escape hatch never depends on a GitHub round trip that can fail.
+
 ## Device policy: fingerprinting + auto-issued licenses
 
 Both blocks live in `.pkey/product` and are applied on link/resync. Either can also be changed
@@ -129,7 +213,7 @@ hands ownership back.
     // Off unless you opt in. A policy naming no tier counts as off.
     "enabled": true,
     "tierId": "free",
-    // anonymous  → opens POST /<product>/enroll (keyless, one license per machine)
+    // anonymous  → opens POST /<product>/license/enroll (keyless, one license per machine)
     // oidcDefault→ an authenticated user matching no IdP group lands on this tier
     // both       → both paths
     "mode": "both",
@@ -157,18 +241,18 @@ manual create is for early experiments; seed SQL is a fixture tool only.
    is pinned to the pushed commit SHA, records changed `.pkey/` paths, and surfaces applied
    sections or validation errors in the admin Releases view.
 2. **Manual schema create.** The admin can create a product with metadata plus a schema
-   JSON/YAML document. Polaris still mints the sealed product signing key, but release,
+   JSON/YAML document. Polaris Key still mints the sealed product signing key, but release,
    OIDC, provisioning, profiles, tiers, and edge-mint rows are configured later in admin or
    by linking a repo.
 3. **Seed SQL (fixture generation only).** Generate fixture SQL from the monorepo's
    `products/<slug>` files:
 
    ```sh
-   pnpm --filter @plrs/products gen-seed djdl > products/djdl/seed.sql
+   pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
    ```
 
    Do not use this for live onboarding: it cannot mint sealed `product_keys` or store
-   product secret values. Normal product registration must use the admin portal so Polaris
+   product secret values. Normal product registration must use the admin portal so Polaris Key
    can mint the sealed signing key, return the public trust key, and list missing product
    secrets.
 
@@ -189,14 +273,17 @@ does not expose whether a product uses platform or custom OIDC.
 
 Admins set **management state + values** (per profile/tier/license/device) and operational
 runtime overrides in the admin SPA. Those values live in D1 and are **not** overwritten by a
-re-sync. A re-sync updates the manifest baseline from `.pkey/`: product metadata, module
-defaults, catalog shape, OIDC baseline, release baseline, provisioning, and edge-mint
-recipes. So the flow is:
+re-sync. A re-sync updates the manifest baseline from `.pkey/`: product metadata, service
+enablement + registration policy, fingerprint and auto-issue policy, catalog shape, OIDC
+baseline, release baseline, profiles, tiers, provisioning, and edge-mint recipes. The three
+operator-claimable blocks (`services_source`, `fingerprint_policy_source`, `auto_issue_source`)
+are skipped while an admin owns them. So the flow is:
 
 1. Edit `.pkey/schema` in the product repo (add a key, tighten a schema, change a
    `managementDefault`); bump `schemaVersion` only on an incompatible shape change.
 2. Re-link / push → the Worker re-parses and updates `product_schema`; SDKs pick up the new
-   catalog at `/<product>/schema` and the next signed `/config`.
+   catalog at `/<product>/config/schema` and the next signed config document at
+   `/<product>/config/document`.
 3. Existing admin value/state overrides persist; new keys take their `managementDefault`
    until an admin overrides them. The admin UI should label whether a value came from the
    manifest baseline, an admin override, a generated signing key, a configured secret, or a

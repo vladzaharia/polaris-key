@@ -8,17 +8,17 @@ import stat
 
 import pytest
 
-from polaris.core.b64url import b64url_decode, b64url_encode, b64url_encode_str
-from polaris.core.jws import sign_jws, verify_jws
-from polaris.core.models import (
+from polaris_key.core.b64url import b64url_decode, b64url_encode, b64url_encode_str
+from polaris_key.core.jws import sign_jws, verify_jws
+from polaris_key.core.models import (
     MAX_DOC_BYTES,
     TYP_LICENSE,
     AllowedRange,
     BlockedState,
 )
-from polaris.core.store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle
-from polaris.devices.deviceid import derive_device_id
-from polaris.devices.store import FileStore, InMemoryStore, KeyringStore
+from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle
+from polaris_key.devices.deviceid import derive_device_id
+from polaris_key.devices.store import FileStore, InMemoryStore, KeyringStore
 
 KID = "pkey-test-prod-2026"
 PUBKEY_RAW = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
@@ -153,8 +153,8 @@ def test_filestore_roundtrip_and_permissions(tmp_path) -> None:
     store = FileStore("djdl", str(tmp_path))
 
     assert store.get_token() is None
-    store.set_token("plrst_abc")
-    assert store.get_token() == "plrst_abc"
+    store.set_token("pkeyt_abc")
+    assert store.get_token() == "pkeyt_abc"
 
     device_id = store.get_device_id()
     assert len(device_id) == 32
@@ -233,15 +233,14 @@ def test_filestore_ignores_an_unreadable_cache(tmp_path) -> None:
     assert store.read_cache() is None
 
 
-def test_keyring_store_falls_back_to_files_and_uses_the_plrs_tag(tmp_path) -> None:
-    """§8: the OS keyring service tag is ``plrs:<product>``. The pre-suite ``pkey:`` tag is
-    NOT read as a fallback — a device upgrading from a pre-suite build re-mints rather than
-    inheriting a credential minted under a different wire contract."""
+def test_keyring_store_falls_back_to_files_and_uses_the_pkey_tag(tmp_path) -> None:
+    """§8: the OS keyring service tag is ``pkey:<product>`` — stable across wire-contract
+    revisions. The ``plrs:`` spelling withdrawn by Amendment A1 is neither written nor read."""
     store = KeyringStore("djdl", str(tmp_path))
-    assert store.service == "plrs:djdl"
+    assert store.service == "pkey:djdl"
     # With no `keyring` extra installed the file fallback carries everything.
-    store.set_token("plrst_x")
-    assert store.get_token() == "plrst_x"
+    store.set_token("pkeyt_x")
+    assert store.get_token() == "pkeyt_x"
     assert len(store.get_device_id()) == 32
     rec = CacheRecord(lastSyncUnauthorized=True)
     store.write_cache(rec)
@@ -254,8 +253,8 @@ def test_keyring_store_falls_back_to_files_and_uses_the_plrs_tag(tmp_path) -> No
 def test_inmemory_store_roundtrip() -> None:
     s = InMemoryStore("djdl")
     assert s.get_token() is None
-    s.set_token("plrst_t")
-    assert s.get_token() == "plrst_t"
+    s.set_token("pkeyt_t")
+    assert s.get_token() == "pkeyt_t"
     assert len(s.get_device_id()) == 32
     assert s.read_cache() is None
     rec = CacheRecord(lastSyncUnauthorized=True)

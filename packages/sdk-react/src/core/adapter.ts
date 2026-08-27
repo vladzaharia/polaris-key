@@ -2,13 +2,13 @@
 // `PolarisState`. Centralizing this is what guarantees mode-parity: the browser and desktop
 // adapters disagree on transport, never on how a document becomes state.
 //
-// Neither the gate nor the config precedence lives here any more — both are `@plrs/client-core`
+// Neither the gate nor the config precedence lives here any more — both are `@polaris-key/client-core`
 // (wire contract v3 §4.2/§5 and the layered-config rules), which is the single implementation
 // Node, React, and the conformance runners all execute. What IS here is the React-shaped
 // enumeration a settings UI needs on top of it: override-only keys included, `hidden` excluded,
 // effective values resolved.
 
-import type { JSONValue, ManagedEntry } from "@plrs/protocol/core";
+import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
 import {
   licenseState,
   resolveSource,
@@ -16,7 +16,7 @@ import {
   type ConfigSource,
   type GateInput,
   type ResolveContext,
-} from "@plrs/client-core";
+} from "@polaris-key/client-core";
 import {
   type DeviceInfo,
   type PolarisDocs,

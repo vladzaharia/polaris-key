@@ -276,16 +276,16 @@ describe("R1-02 cross-realm session signing", () => {
     // is deliberately kept), but the signed message now carries a realm tag, so the signature
     // is NOT an HMAC over the bare body...
     expect(await hmacB64url(ADMIN_SECRET, body)).not.toBe(sig);
-    // ...it is an HMAC over "plrs.portal.v1|" + body. The admin realm's tag produces a
+    // ...it is an HMAC over "pkey.portal.v1|" + body. The admin realm's tag produces a
     // different tag over the identical body and identical key — that difference is what now
     // separates the realms, instead of a coincidence of JSON field names.
-    expect(await hmacB64url(ADMIN_SECRET, `plrs.portal.v1|${body}`)).toBe(sig);
-    expect(await hmacB64url(ADMIN_SECRET, `plrs.admin.v1|${body}`)).not.toBe(
+    expect(await hmacB64url(ADMIN_SECRET, `pkey.portal.v1|${body}`)).toBe(sig);
+    expect(await hmacB64url(ADMIN_SECRET, `pkey.admin.v1|${body}`)).not.toBe(
       sig,
     );
   });
 
-  it("R1-02b: REFUTED today — a portal cookie replayed as plrs_admin is rejected by the SHAPE check only", async () => {
+  it("R1-02b: REFUTED today — a portal cookie replayed as pkey_admin is rejected by the SHAPE check only", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock());
     const { token } = await issuePortalSession(
@@ -308,7 +308,7 @@ describe("R1-02 cross-realm session signing", () => {
     expect(res.status).toBe(401);
   });
 
-  it("R1-02c: REFUTED today — an admin cookie replayed as plrs_portal is rejected (no accountId)", async () => {
+  it("R1-02c: REFUTED today — an admin cookie replayed as pkey_portal is rejected (no accountId)", async () => {
     const env = adminEnv(new KvMock());
     const { token } = await issueSession(
       env,
@@ -337,12 +337,12 @@ describe("R1-02 cross-realm session signing", () => {
     // Signed for the PORTAL realm: the portal accepts it, the admin realm does not — even
     // though the body passes `!session.sub || !Array.isArray(session.groups)` cleanly and the
     // key is byte-identical. Shape is no longer load-bearing.
-    const portalToken = `${body}.${await hmacB64url(ADMIN_SECRET, `plrs.portal.v1|${body}`)}`;
+    const portalToken = `${body}.${await hmacB64url(ADMIN_SECRET, `pkey.portal.v1|${body}`)}`;
     expect(await verifyPortalSession(env, portalToken, NOW)).not.toBeNull();
     expect(await verifySession(env, portalToken, NOW)).toBeNull();
 
     // And symmetrically for the admin realm.
-    const adminToken = `${body}.${await hmacB64url(ADMIN_SECRET, `plrs.admin.v1|${body}`)}`;
+    const adminToken = `${body}.${await hmacB64url(ADMIN_SECRET, `pkey.admin.v1|${body}`)}`;
     expect(await verifySession(env, adminToken, NOW)).not.toBeNull();
     expect(await verifyPortalSession(env, adminToken, NOW)).toBeNull();
 
@@ -961,9 +961,9 @@ describe("REFUTED hypotheses", () => {
   });
 
   it("a product slug can never produce the admin or portal cookie name", () => {
-    // browserSession cookies are `plrs_<slug>_session`; the suffix makes collision with
-    // `plrs_admin` / `plrs_portal` impossible for any [a-z0-9-]+ slug.
-    const name = (slug: string) => `plrs_${slug.replace(/-/g, "_")}_session`;
+    // browserSession cookies are `pkey_<slug>_session`; the suffix makes collision with
+    // `pkey_admin` / `pkey_portal` impossible for any [a-z0-9-]+ slug.
+    const name = (slug: string) => `pkey_${slug.replace(/-/g, "_")}_session`;
     expect(name("admin")).not.toBe(ADMIN_COOKIE);
     expect(name("portal")).not.toBe(PORTAL_COOKIE);
   });

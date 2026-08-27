@@ -1,5 +1,5 @@
 // Cross-SDK gate-parity conformance, re-baselined onto `conformance/corpus/v2/gate-matrix.json`
-// (wire contract v3 §5). Every row runs through the SAME `@plrs/client-core` `licenseState` the
+// (wire contract v3 §5). Every row runs through the SAME `@polaris-key/client-core` `licenseState` the
 // Node runner drives — this package no longer carries a port of it to diverge from — and then
 // through `projectState`, so the assertion covers the React PROJECTION as well as the gate.
 //
@@ -20,13 +20,13 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { isUsable, licenseState } from "@plrs/client-core";
+import { isUsable, licenseState } from "@polaris-key/client-core";
 import type {
   ActivationSource,
   AllowedRange,
   BlockReason,
   LicenseDoc,
-} from "@plrs/protocol/license";
+} from "@polaris-key/protocol/license";
 import { projectState } from "../src/core/adapter.js";
 import { noServices, servicesFromList } from "../src/core/services.js";
 
@@ -89,7 +89,7 @@ function buildDoc(l: LicenseInputs): LicenseDoc | null {
     return null;
   return {
     aud: "djdl",
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     licenseId: "lic_matrix",
     deviceId: "dev_matrix",
     issuedAt: l.issuedAt,
@@ -164,7 +164,7 @@ describe(`gate-matrix v${matrix.gateMatrixVersion} (React)`, () => {
 describe("monotonic clock floor (§4.2) reaches the React projection", () => {
   const doc: LicenseDoc = {
     aud: "acme",
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     licenseId: "lic-1",
     deviceId: "dev-1",
     issuedAt: 1000,

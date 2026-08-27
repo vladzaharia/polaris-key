@@ -23,7 +23,7 @@ import { entry, makeConfig, makeDoc, NOW_SEC } from "./fixtures.js";
 // adapters flow the same document pair through `projectState`, so the *shape* is
 // transport-independent. These unit-test the projection in isolation (no React, no transport).
 //
-// The PRECEDENCE itself is `@plrs/client-core`'s and is proven by its own suite plus the
+// The PRECEDENCE itself is `@polaris-key/client-core`'s and is proven by its own suite plus the
 // conformance corpus; what these rows pin is that React feeds it the right context — an EMPTY
 // environment layer above all, because a renderer must never inherit the privileged process's.
 
@@ -171,7 +171,7 @@ describe("readConfig / readEntitled", () => {
 
 // ── Config semantics: state honoring + local overrides ─────────────────────────
 // Precedence per key: enforced|hidden (remote, locked) > local override > remote-default >
-// fallback. The `env` layer `@plrs/client-core` also supports is deliberately starved here.
+// fallback. The `env` layer `@polaris-key/client-core` also supports is deliberately starved here.
 
 describe("resolveConfigValue (precedence)", () => {
   const entries = {

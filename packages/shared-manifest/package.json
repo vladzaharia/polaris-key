@@ -1,5 +1,5 @@
 {
-  "name": "@plrs/manifest",
+  "name": "@polaris-key/manifest",
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -21,7 +21,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@plrs/catalog": "workspace:*",
+    "@polaris-key/catalog": "workspace:*",
     "yaml": "^2.6.1"
   }
 }

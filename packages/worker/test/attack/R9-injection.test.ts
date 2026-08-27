@@ -61,7 +61,7 @@ import {
   renderAppcast,
 } from "../../src/services/update/appcast.js";
 import { applyOverrides } from "../../src/admin/lib/overrides.js";
-import { Catalog } from "@plrs/catalog";
+import { Catalog } from "@polaris-key/catalog";
 import {
   handlePortalApi,
   handlePortalDownload,

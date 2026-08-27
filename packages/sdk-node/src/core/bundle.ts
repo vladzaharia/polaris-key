@@ -1,6 +1,6 @@
 // Offline bundle import — wire contract v3 §7 step 5.
 //
-// Steps 1–4 are `@plrs/client-core`'s `inspectBundle`, which is where they belong: they are
+// Steps 1–4 are `@polaris-key/client-core`'s `inspectBundle`, which is where they belong: they are
 // pure, isomorphic, and pinned byte-for-byte by `conformance/corpus/v2`'s `bundleCases`. What
 // is left here is the one thing a host has that a verifier does not — a cache — and the one
 // rule that goes with it:
@@ -23,7 +23,7 @@ import {
   inspectBundle,
   type BundleRefusalReason,
   type CacheRecordV3,
-} from "@plrs/client-core";
+} from "@polaris-key/client-core";
 import type { CacheManager } from "./cache.js";
 import type { CoreContext } from "./context.js";
 import { nowSec } from "./context.js";

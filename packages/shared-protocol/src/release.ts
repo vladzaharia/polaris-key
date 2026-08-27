@@ -1,4 +1,4 @@
-// @plrs/protocol/release — Release service wire types (spec §A/D-13).
+// @polaris-key/protocol/release — Release service wire types (spec §A/D-13).
 
 /** Release surface visibility. `entitled` (v3, D-13) additionally enforces the caller's
  *  per-license channel entitlement + version window on feeds and artifacts — the

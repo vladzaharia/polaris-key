@@ -285,14 +285,16 @@ describe("discoverProduct — the typed stable fields", () => {
   it("preserves unknown top-level fields verbatim — the document is allowed to grow", async () => {
     const res = await parse(
       workerDoc({
-        sdk: { node: { package: "@plrs/node" } },
+        sdk: { node: { package: "@polaris-key/node" } },
         onboarding: { steps: ["register", "activate"] },
       }),
     );
 
     expect(res.kind).toBe("ok");
     if (res.kind !== "ok") return;
-    expect(res.manifest.sdk).toEqual({ node: { package: "@plrs/node" } });
+    expect(res.manifest.sdk).toEqual({
+      node: { package: "@polaris-key/node" },
+    });
     expect(res.manifest.onboarding).toEqual({
       steps: ["register", "activate"],
     });

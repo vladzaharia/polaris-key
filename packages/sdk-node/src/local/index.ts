@@ -1,4 +1,4 @@
-// `@plrs/node/local` — the transportless profile (offline depth 3).
+// `@polaris-key/node/local` — the transportless profile (offline depth 3).
 //
 // The suite has three offline depths: online-with-grace (the default), bundle-activated, and
 // LOCAL-ONLY — a build that must never open a socket at all. Air-gapped labs, regulated
@@ -22,11 +22,11 @@
 // Two construction routes, both fully offline:
 //
 //   `createLocalClient()`  config-only or already-provisioned — reads whatever the cache holds.
-//   `createBundleClient()` a fresh air-gapped install: import the operator's `.plrsbundle`
+//   `createBundleClient()` a fresh air-gapped install: import the operator's `.pkeybundle`
 //                          first, then hand back a client already gated on it.
 
-import { PolarisError } from "@plrs/client-core";
-import { PolarisClient, type PolarisClientOptions } from "../client.js";
+import { PolarisError } from "@polaris-key/client-core";
+import { PolarisKeyClient, type PolarisKeyClientOptions } from "../client.js";
 import type { ImportBundleResult } from "../core/bundle.js";
 
 export { PolarisError };
@@ -36,7 +36,7 @@ export { PolarisError };
  * transportless client is a contradiction, and the type says so.
  */
 export type LocalOptions = Omit<
-  PolarisClientOptions,
+  PolarisKeyClientOptions,
   "fetchImpl" | "refreshIntervalSeconds"
 >;
 
@@ -51,8 +51,8 @@ export type LocalOptions = Omit<
  */
 export async function createLocalClient(
   opts: LocalOptions,
-): Promise<PolarisClient> {
-  const client = new PolarisClient({ ...opts, localOnly: true });
+): Promise<PolarisKeyClient> {
+  const client = new PolarisKeyClient({ ...opts, localOnly: true });
   await client.init();
   return client;
 }
@@ -66,7 +66,7 @@ export async function createLocalClient(
  */
 export async function createBundleClient(
   opts: LocalOptions & { bundle: string; now?: number },
-): Promise<{ client: PolarisClient; imported: ImportBundleResult }> {
+): Promise<{ client: PolarisKeyClient; imported: ImportBundleResult }> {
   const { bundle, now, ...rest } = opts;
   const client = await createLocalClient(rest);
   const imported = await client.importBundle(bundle, now);

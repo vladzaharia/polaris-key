@@ -1,4 +1,4 @@
-// @plrs/react/identity — the Identity service's UI surface: sign-in / sign-out and the
+// @polaris-key/react/identity — the Identity service's UI surface: sign-in / sign-out and the
 // profile the signed license document carries.
 //
 // `supportsOidcLogin` is derived from the identity service's discovery fragment, so a product
@@ -15,4 +15,4 @@ export {
   type PolarisLogoutProps,
 } from "../components/PolarisLogout.js";
 export type { OidcSignInHandle } from "../core/index.js";
-export type { DocProfile } from "@plrs/protocol/license";
+export type { DocProfile } from "@polaris-key/protocol/license";

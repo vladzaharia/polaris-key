@@ -3,7 +3,7 @@
 // `activation: "bundle"` as a first-class activation, and the monotonic clock floor.
 
 import { describe, expect, it } from "vitest";
-import type { LicenseDoc } from "@plrs/protocol/license";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { isUsable, licenseState, type GateInput } from "../src/gate.js";
 
 const ISSUED = 1000;
@@ -13,7 +13,7 @@ const GRACE = ISSUED + 30 * 86400; // 2_593_000
 function doc(over: Partial<LicenseDoc> = {}): LicenseDoc {
   return {
     aud: "djdl",
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     licenseId: "l",
     deviceId: "d",
     issuedAt: ISSUED,

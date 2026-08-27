@@ -10,8 +10,8 @@
 // policy, which is why they live here rather than under License: a device roster is a property
 // of the product's fleet, not of any one grant.
 
-import type { HardwareFingerprint } from "@plrs/protocol/core";
-import { PolarisError } from "@plrs/client-core";
+import type { HardwareFingerprint } from "@polaris-key/protocol/core";
+import { PolarisError } from "@polaris-key/client-core";
 import type { CoreContext } from "../core/context.js";
 import type { CacheManager } from "../core/cache.js";
 import type { TokenManager } from "../core/token.js";

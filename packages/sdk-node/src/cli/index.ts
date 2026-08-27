@@ -1,4 +1,4 @@
-// `@plrs/node/cli` — composable CLI command hooks. Consumers inject Polaris commands into
+// `@polaris-key/node/cli` — composable CLI command hooks. Consumers inject Polaris Key commands into
 // their own commander- or yargs-based CLI in a couple of lines. The core (`commands.ts`) is
 // framework-agnostic + side-effect-free; the commander/yargs adapters are thin shells (each an
 // OPTIONAL peer dependency).

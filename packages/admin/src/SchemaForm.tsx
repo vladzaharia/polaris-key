@@ -1,5 +1,5 @@
 import * as React from "react";
-import { compileLinearPattern, type LinearPattern } from "@plrs/catalog";
+import { compileLinearPattern, type LinearPattern } from "@polaris-key/catalog";
 import type { ConfigEntry, ManagementState } from "./api.js";
 import {
   Badge,
@@ -50,7 +50,7 @@ function coerce(schema: Record<string, unknown>, raw: string): unknown {
  * in this audit. The console has no worker thread and no timeout, so that is a frozen browser
  * tab for the operator, on a value they typed themselves.
  *
- * `@plrs/catalog` ships the Thompson/Pike NFA the worker already validates with
+ * `@polaris-key/catalog` ships the Thompson/Pike NFA the worker already validates with
  * (`shared-catalog/src/regex.ts`: input, source, quantifier and instruction budgets, semantics
  * pinned by differential comparison against the host `RegExp`). Reusing it — rather than
  * adding a second, differently-shaped cap here — is what keeps the console's verdict AND its

@@ -1,7 +1,7 @@
-// Persistence: the per-device `plrst_` token and the Core-owned offline cache record.
+// Persistence: the per-device `pkeyt_` token and the Core-owned offline cache record.
 //
 // The SHAPE of what is stored (`Store`, `CacheRecordV3`, `CACHE_VERSION`) is isomorphic and
-// lives in `@plrs/client-core`; only the Node-flavoured implementations are here. The default
+// lives in `@polaris-key/client-core`; only the Node-flavoured implementations are here. The default
 // `KeyringStore` keeps the token in the OS keyring when one is available and falls back to
 // explicit 0600 file storage for headless/CI hosts; tests use `InMemoryStore`.
 //
@@ -25,7 +25,7 @@ import {
   CACHE_VERSION,
   type CacheRecordV3,
   type Store,
-} from "@plrs/client-core";
+} from "@polaris-key/client-core";
 import { deriveDeviceId } from "../devices/deviceId.js";
 
 export { CACHE_VERSION };
@@ -156,7 +156,7 @@ export class KeyringStore implements Store {
     this.files = new FileStore(productSlug, configDir);
     // Rebranded with the rest of the identifier registry (§8). Pre-launch, so there is no
     // `pkey:` entry to migrate — a host that somehow has one simply re-activates.
-    this.service = `plrs:${productSlug}`;
+    this.service = `pkey:${productSlug}`;
   }
 
   async getToken() {

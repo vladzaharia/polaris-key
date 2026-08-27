@@ -1,6 +1,6 @@
-"""``PolarisClient`` against a mock httpx transport that signs REAL JWSs with the test PEM.
+"""``PolarisKeyClient`` against a mock httpx transport that signs REAL JWSs with the test PEM.
 
-The handler activates (key -> ``plrst_`` token), serves a signed licence document and a
+The handler activates (key -> ``pkeyt_`` token), serves a signed licence document and a
 signed config document scoped to the product + the client's derived device id, and
 exercises the 403 build-gate block path. No network is touched — everything routes through
 ``httpx.MockTransport``.
@@ -16,8 +16,8 @@ from typing import Any, Dict
 import httpx
 import pytest
 
-from polaris.devices.client import DeviceManagementUnsupportedError
-from polaris.license.gate import LicenseState
+from polaris_key.devices.client import DeviceManagementUnsupportedError
+from polaris_key.license.gate import LicenseState
 
 from helpers import (
     NOW,
@@ -32,8 +32,8 @@ from helpers import (
 
 def _ok_routes(**kw: Any):
     return routes(
-        license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]),
-        config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"]),
+        license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]),
+        config_jws=lambda r: sign_config(r.headers["X-PKey-Device"]),
         **kw,
     )
 
@@ -43,7 +43,7 @@ def test_enforced_remote_value_wins_over_local_and_env() -> None:
     c = make_client(
         _ok_routes(),
         local_overrides={"run.concurrency": 99},
-        env={"PLRS_CONFIG_run__concurrency": "42"},
+        env={"PKEY_CONFIG_run__concurrency": "42"},
     )
     c.license.activate_with_key("my-license-key")
     # enforced -> remote wins regardless of override/env.
@@ -61,7 +61,7 @@ def test_default_state_local_override_then_env_then_remote() -> None:
     c.close()
 
     # env wins over remote-default; JSON-parsed when it parses.
-    c = make_client(_ok_routes(), env={"PLRS_CONFIG_ui__theme": '"dark"'})
+    c = make_client(_ok_routes(), env={"PKEY_CONFIG_ui__theme": '"dark"'})
     c.license.activate_with_key("k")
     assert c.config.get_config("ui.theme") == "dark"
     assert c.config.get_config_source("ui.theme") == "env"
@@ -76,7 +76,7 @@ def test_default_state_local_override_then_env_then_remote() -> None:
 
 
 def test_env_raw_string_when_not_json_and_fallback_source() -> None:
-    c = make_client(_ok_routes(), env={"PLRS_CONFIG_ui__theme": "not json {"})
+    c = make_client(_ok_routes(), env={"PKEY_CONFIG_ui__theme": "not json {"})
     c.license.activate_with_key("k")
     assert c.config.get_config("ui.theme") == "not json {"
     assert c.config.get_config_source("ui.theme") == "env"
@@ -115,18 +115,18 @@ def test_activation_then_reads_across_both_documents() -> None:
         p = f"/{PRODUCT}"
         if path == f"{p}/license/activate":
             assert r.headers["authorization"] == "Bearer my-license-key"
-            assert r.headers["X-Polaris-Device"]
+            assert r.headers["X-PKey-Device"]
             return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
         if path == f"{p}/license/document":
             assert r.headers["authorization"] == f"Bearer {TOKEN}"
-            assert r.headers["X-Polaris-Version"] == "1.0.0"
-            assert r.headers["X-Polaris-Channel"] == "stable"
+            assert r.headers["X-PKey-Version"] == "1.0.0"
+            assert r.headers["X-PKey-Channel"] == "stable"
             return httpx.Response(
-                200, text=sign_license(r.headers["X-Polaris-Device"]), headers={"etag": "l1"}
+                200, text=sign_license(r.headers["X-PKey-Device"]), headers={"etag": "l1"}
             )
         if path == f"{p}/config/document":
             return httpx.Response(
-                200, text=sign_config(r.headers["X-Polaris-Device"]), headers={"etag": "c1"}
+                200, text=sign_config(r.headers["X-PKey-Device"]), headers={"etag": "c1"}
             )
         if path == f"{p}/devices/report":
             body = json.loads(r.content)
@@ -197,7 +197,7 @@ def test_re_serving_the_same_document_is_refused_as_a_replay() -> None:
 def test_a_disabled_service_is_skipped_entirely() -> None:
     seen: Dict[str, Any] = {"paths": []}
     c = make_client(
-        routes(license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]), seen=seen),
+        routes(license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]), seen=seen),
         expected_services=["license"],
     )
     c.license.activate_with_key("k")
@@ -305,7 +305,7 @@ def test_a_healthy_sync_clears_the_unsigned_hints() -> None:
             if state["blocked"]:
                 return httpx.Response(403, json={"reason": "version-too-old"})
             return httpx.Response(
-                200, text=sign_license(r.headers["X-Polaris-Device"]), headers={"etag": "l"}
+                200, text=sign_license(r.headers["X-PKey-Device"]), headers={"etag": "l"}
             )
         if r.url.path == f"{p}/devices/report":
             return httpx.Response(200, json={"ok": True})
@@ -374,17 +374,17 @@ def test_401_reacquires_the_token_exactly_once_then_succeeds() -> None:
     def handler(r: httpx.Request) -> httpx.Response:
         p = f"/{PRODUCT}"
         if r.url.path == f"{p}/license/activate":
-            return httpx.Response(200, json={"token": "plrst_stale", "schemaVersion": 4})
+            return httpx.Response(200, json={"token": "pkeyt_stale", "schemaVersion": 4})
         if r.url.path == f"{p}/license/token":
             state["token_calls"] += 1
-            assert r.headers["authorization"] == "Bearer plrst_stale"
+            assert r.headers["authorization"] == "Bearer pkeyt_stale"
             return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
         if r.url.path == f"{p}/license/document":
             state["doc_calls"] += 1
-            if r.headers["authorization"] == "Bearer plrst_stale":
+            if r.headers["authorization"] == "Bearer pkeyt_stale":
                 return httpx.Response(401)
             return httpx.Response(
-                200, text=sign_license(r.headers["X-Polaris-Device"]), headers={"etag": "l"}
+                200, text=sign_license(r.headers["X-PKey-Device"]), headers={"etag": "l"}
             )
         if r.url.path == f"{p}/devices/report":
             return httpx.Response(200, json={"ok": True})

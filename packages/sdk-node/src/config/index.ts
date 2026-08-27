@@ -1,4 +1,4 @@
-// `@plrs/node/config` — the Config service's client surface.
+// `@polaris-key/node/config` — the Config service's client surface.
 
 export {
   ConfigClient,

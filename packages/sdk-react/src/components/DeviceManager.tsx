@@ -1,7 +1,7 @@
 // `<DeviceManager>` — list / rename / disconnect, over the adapter's device methods.
 //
 // The interesting case here is the one that ISN'T supported. A browser cookie session holds no
-// `plrst_` bearer token and `/<p>/devices` authenticates with one, so remote device management
+// `pkeyt_` bearer token and `/<p>/devices` authenticates with one, so remote device management
 // is genuinely unreachable from a browser — and a desktop bridge that predates the `invoke()`
 // escape hatch cannot reach it either. Both refuse with `device-management-unsupported`.
 //

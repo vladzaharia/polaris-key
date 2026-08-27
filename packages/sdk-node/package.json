@@ -1,5 +1,5 @@
 {
-  "name": "@plrs/node",
+  "name": "@polaris-key/node",
   "version": "0.0.0",
   "type": "module",
   "sideEffects": false,
@@ -54,9 +54,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@plrs/client-core": "workspace:*",
-    "@plrs/jws": "workspace:*",
-    "@plrs/protocol": "workspace:*"
+    "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
   },
   "optionalDependencies": {
     "@napi-rs/keyring": "^1.1.6"

@@ -1,4 +1,4 @@
-// `@plrs/node/core` — the always-on substrate: device principal, credential, trust, verified
+// `@polaris-key/node/core` — the always-on substrate: device principal, credential, trust, verified
 // cache, monotonic clock floor, sync loop, telemetry, offline bundles, and the Node stores.
 //
 // A host that only wants Core (a headless daemon that ships settings and reports facts, with

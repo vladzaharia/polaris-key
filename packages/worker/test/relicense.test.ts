@@ -6,8 +6,8 @@
 // ETag) and that a downgrade grandfathers existing devices instead of evicting them.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { verifyJws } from "@plrs/jws";
-import type { LicenseDoc } from "@plrs/protocol/license";
+import { verifyJws } from "@polaris-key/jws";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -61,7 +61,7 @@ describe("remote re-licensing", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${seeded.key}`,
-        "x-polaris-device": DEVICE,
+        "x-pkey-device": DEVICE,
       }),
       env,
       db,
@@ -75,7 +75,7 @@ describe("remote re-licensing", () => {
     return handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-device": DEVICE,
+        "x-pkey-device": DEVICE,
       }),
       env,
       db,
@@ -172,7 +172,7 @@ describe("remote re-licensing", () => {
     const second = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${secondKey}`,
-        "x-polaris-device": "device-two",
+        "x-pkey-device": "device-two",
       }),
       env,
       db,
@@ -203,7 +203,7 @@ describe("remote re-licensing", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "device-new",
+        "x-pkey-device": "device-new",
       }),
       env,
       db,

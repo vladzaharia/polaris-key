@@ -3,7 +3,7 @@
 /**
  * The browser session — Identity's cookie-bearing principal (design spec §2.1, D-14).
  *
- * A page signs in (OIDC, or by presenting a licence key), gets a `plrs_<slug>_session` cookie
+ * A page signs in (OIDC, or by presenting a licence key), gets a `pkey_<slug>_session` cookie
  * bound to a `browser:<licenseId>` device row, and reads its settings from
  * `GET /<p>/identity/session`.
  *
@@ -20,9 +20,8 @@
  * exactly the order and with exactly the fail-closed behaviour they had before the move.
  */
 
-import type { ManagedConfigDoc } from "@plrs/protocol";
-import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol/core";
-import { Catalog } from "@plrs/catalog";
+import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
+import { Catalog } from "@polaris-key/catalog";
 import {
   bearer,
   deleteTokenRecord,
@@ -62,7 +61,7 @@ import {
 } from "../../core/authz.js";
 import { validatePayload } from "../../core/payload.js";
 import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
-import { buildDoc } from "./doc.js";
+import { buildDoc, type FusedSessionDoc } from "./doc.js";
 
 interface BrowserSessionRecord {
   token: string;
@@ -75,7 +74,7 @@ interface BrowserSessionRecord {
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 function cookieName(product: string): string {
-  return `plrs_${product.replace(/-/g, "_")}_session`;
+  return `pkey_${product.replace(/-/g, "_")}_session`;
 }
 
 function sessionKey(product: string, hash: string): string {
@@ -214,7 +213,7 @@ async function browserDoc(
   record: BrowserSessionRecord,
   now: number,
 ): Promise<
-  | { ok: true; doc: ManagedConfigDoc }
+  | { ok: true; doc: FusedSessionDoc }
   | {
       ok: false;
       /** The active catalog could not be used to validate the payload — see below. */

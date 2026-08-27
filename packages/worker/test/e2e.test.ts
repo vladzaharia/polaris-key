@@ -1,15 +1,15 @@
 // True end-to-end wire contract v3, over the REAL worker handlers (makeTestDb + KvMock) feeding
-// the REAL reference client (`@plrs/client-core`). Nothing here re-implements server or client
+// the REAL reference client (`@polaris-key/client-core`). Nothing here re-implements server or client
 // logic: the documents are minted by handleRegister / handleActivate → handleLicenseDocument /
 // handleConfigDocument / handleTrustManifest, verified by client-core's frozen JWS + claim path,
 // gated by `licenseState` against the monotonic floor, and read back through client-core's
 // layered config resolver. This is the cross-package contract test the per-package unit suites
 // cannot cover alone.
 //
-// ── WHY client-core AND NOT @plrs/node ──────────────────────────────────────────────────────
+// ── WHY client-core AND NOT @polaris-key/node ──────────────────────────────────────────────────────
 //
-// This file used to drive `@plrs/node`'s client over the fused v2 document. Wire v3 splits that
-// document in two, so `@plrs/node` — whose verifier demands `typ: "pkey-config+jws"`, whose
+// This file used to drive `@polaris-key/node`'s client over the fused v2 document. Wire v3 splits that
+// document in two, so `@polaris-key/node` — whose verifier demands `typ: "pkey-config+jws"`, whose
 // expected `iss` is `key.plrs.im`, and whose cache record holds a single `configJws` — cannot
 // consume what the worker now signs. Re-shaping the Node SDK is P4. What this file does is run
 // the complete v3 flow against the same worker code, expressed over the reference client that
@@ -40,10 +40,10 @@ import {
   verifyLicenseDoc,
   verifyTrustManifest,
   type ResolveContext,
-} from "@plrs/client-core";
-import type { ManagedEntry } from "@plrs/protocol";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
+} from "@polaris-key/client-core";
+import type { ManagedEntry } from "@polaris-key/protocol";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -140,7 +140,7 @@ async function sync(w: World, token: string, now = NOW): Promise<Cache> {
   const req = (): Request =>
     mkReq("GET", {
       authorization: `Bearer ${token}`,
-      "x-polaris-version": "1.2.3",
+      "x-pkey-version": "1.2.3",
     });
 
   // Core refreshes trust on its OWN schedule — not as a side effect of a document fetch
@@ -186,7 +186,7 @@ async function activateAndSync(
   const activateRes = await handleActivate(
     mkReq("POST", {
       authorization: `Bearer ${key}`,
-      "x-polaris-device": device,
+      "x-pkey-device": device,
     }),
     w.env,
     w.db,
@@ -272,7 +272,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     expect(w.product.registration).toBe("requires-license");
 
     const refused = await handleRegister(
-      mkReq("POST", { "x-polaris-device": DEVICE }),
+      mkReq("POST", { "x-pkey-device": DEVICE }),
       w.env,
       w.db,
       w.product,
@@ -285,7 +285,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     });
 
     const { token } = await activateAndSync(w, w.key, DEVICE);
-    expect(token).toMatch(/^plrst_[A-Za-z0-9_-]{43}$/);
+    expect(token).toMatch(/^pkeyt_[A-Za-z0-9_-]{43}$/);
   });
 
   it("activate → both documents → verify → the gate reports ok", async () => {
@@ -302,7 +302,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     );
     expect(lic).not.toBeNull();
     expect(lic!.aud).toBe("djdl");
-    expect(lic!.iss).toBe("plrs.im");
+    expect(lic!.iss).toBe("key.plrs.im");
     expect(lic!.deviceId).toBe(DEVICE);
     expect(lic!.licenseId).toBe(w.licenseId);
     expect(lic!.issuedAt).toBe(NOW);
@@ -370,7 +370,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     const conditional = (etag: string): Request =>
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+        "x-pkey-version": "1.2.3",
         "if-none-match": etag,
       });
     const status = async (
@@ -554,7 +554,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     const rotated = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${stale}`,
-        "x-polaris-device": DEVICE,
+        "x-pkey-device": DEVICE,
       }),
       w.env,
       w.db,
@@ -564,7 +564,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     expect(rotated.status).toBe(200);
     const { token: fresh } = (await rotated.json()) as { token: string };
     expect(fresh).not.toBe(stale);
-    expect(fresh).toMatch(/^plrst_/);
+    expect(fresh).toMatch(/^pkeyt_/);
 
     // The stale credential now 401s…
     expect(
@@ -585,7 +585,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
         await handleToken(
           mkReq("POST", {
             authorization: `Bearer ${stale}`,
-            "x-polaris-device": DEVICE,
+            "x-pkey-device": DEVICE,
           }),
           w.env,
           w.db,
@@ -660,7 +660,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     expect(
       (
         await handleToken(
-          mkReq("POST", { ...auth, "x-polaris-device": DEVICE }),
+          mkReq("POST", { ...auth, "x-pkey-device": DEVICE }),
           w.env,
           w.db,
           w.product,
@@ -691,7 +691,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     expect(w.product.registration).toBe("open");
 
     const res = await handleRegister(
-      mkReq("POST", { "x-polaris-device": DEVICE }),
+      mkReq("POST", { "x-pkey-device": DEVICE }),
       w.env,
       w.db,
       w.product,
@@ -704,7 +704,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
       deviceId: string;
     };
     expect(deviceId).toBe(DEVICE);
-    expect(token).toMatch(/^plrst_/);
+    expect(token).toMatch(/^pkeyt_/);
 
     const cfgRes = await handleConfigDocument(
       mkReq("GET", { authorization: `Bearer ${token}` }),

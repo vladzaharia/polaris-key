@@ -3,7 +3,7 @@
  * the active-catalog loader used for value validation + redaction.
  */
 
-import { Catalog } from "@plrs/catalog";
+import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
 import {
@@ -191,8 +191,12 @@ export async function productView(
       setup,
       modules: setup.modules,
       baseUrl: `/${p.slug}`,
-      configUrl: `/${p.slug}/config`,
-      activateUrl: `/${p.slug}/activate`,
+      // Wire v3 route names. `/<p>/config` and `/<p>/activate` are GONE — the fused document
+      // split in two and activation moved under the license namespace — so emitting the old
+      // spellings here handed an operator two 404s from the one panel that exists to tell them
+      // where to point a client.
+      configUrl: `/${p.slug}/config/document`,
+      activateUrl: `/${p.slug}/license/activate`,
       jwksUrl,
       nextActions: setup.nextActions,
     },

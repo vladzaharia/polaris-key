@@ -121,7 +121,7 @@ export const defaultTheme: PolarisTheme = {
     productName: "Polaris Key",
     signInTitle: "Sign in",
     signInSubtitle: "Authenticate to unlock this app.",
-    oidcButtonLabel: "Continue with Polaris",
+    oidcButtonLabel: "Continue with Polaris Key",
     keyEntryLabel: "Have a license key?",
     keyEntryPlaceholder: "Paste your key",
     keySubmitLabel: "Activate",

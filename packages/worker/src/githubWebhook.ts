@@ -177,9 +177,8 @@ export async function handleGithubWebhook(
   }
 
   const paths = changedPaths(payload);
-  // Both manifest directories (`manifestFiles.ts`): a push that ADDS `.polaris/product.yaml` is
-  // the migration itself, and a filter that only knew `.pkey/` would ignore the one delivery
-  // that mattered.
+  // `manifestFiles.ts` owns the shape: `.pkey/` itself, or anything under it. GitHub reports a
+  // whole-directory rename as the bare path, so the bare-path case is deliberate.
   if (!paths.some(isManifestPath)) {
     return json({
       ok: true,

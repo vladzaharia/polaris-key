@@ -28,9 +28,9 @@ describe("mintLicenseKey", () => {
 });
 
 describe("mintDeviceToken", () => {
-  it("is the wire v3 §6 device principal: plrst_ + 43 base64url chars", () => {
+  it("is the wire v3 §6 device principal: pkeyt_ + 43 base64url chars", () => {
     const t = mintDeviceToken();
-    expect(t).toMatch(/^plrst_[A-Za-z0-9_-]{43}$/);
+    expect(t).toMatch(/^pkeyt_[A-Za-z0-9_-]{43}$/);
     // Not product-identifiable — a device token must not leak which product it belongs to.
     expect(productFromKey(t)).toBeNull();
   });
@@ -45,17 +45,17 @@ describe("isDeviceToken", () => {
     expect(isDeviceToken(mintDeviceToken())).toBe(true);
   });
 
-  it("REJECTS the retired pkeyt_ prefix (wire v3 §8, no migration window)", () => {
+  it("REJECTS the withdrawn plrst_ prefix (wire v3 §8 — one prefix, never two)", () => {
     expect(
-      isDeviceToken("pkeyt_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+      isDeviceToken("plrst_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
     ).toBe(false);
   });
 
   it("rejects other credential shapes presented as a device token", () => {
     expect(isDeviceToken(mintLicenseKey("djdl"))).toBe(false);
     expect(isDeviceToken(mintOpaqueToken())).toBe(false);
-    expect(isDeviceToken("plrst_short")).toBe(false);
-    expect(isDeviceToken("plrst_" + "A".repeat(43) + "!")).toBe(false);
+    expect(isDeviceToken("pkeyt_short")).toBe(false);
+    expect(isDeviceToken("pkeyt_" + "A".repeat(43) + "!")).toBe(false);
     expect(isDeviceToken("")).toBe(false);
   });
 });
@@ -89,7 +89,7 @@ describe("productFromKey", () => {
   });
   it("returns null for non-license strings", () => {
     expect(productFromKey("not-a-key")).toBeNull();
-    expect(productFromKey("plrst_opaqueXXXXXXXX")).toBeNull(); // token, not key
+    expect(productFromKey("pkeyt_opaqueXXXXXXXX")).toBeNull(); // token, not key
     expect(productFromKey("pkey_acme_short")).toBeNull(); // suffix too short (<8)
     expect(productFromKey("pkey__AbCdEfGhIjKl")).toBeNull(); // empty product
     expect(productFromKey("pkey_UPPER_AbCdEfGhIjKl")).toBeNull(); // uppercase slug illegal

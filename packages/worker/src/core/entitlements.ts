@@ -17,11 +17,8 @@
  * Everything in this file is PURE: rows and maps in, values out. No I/O, no clock, no `Env`.
  */
 
-import type {
-  AllowedRange,
-  ManagedEntry,
-  ManagedPayload,
-} from "@plrs/protocol";
+import type { AllowedRange, ManagedEntry } from "@polaris-key/protocol";
+import type { ManagedPayload } from "./payload.js";
 import type { LicenseRow, TierRow } from "./data.js";
 
 interface ParsedSemver {

@@ -5,7 +5,7 @@
  *
  * `health` and `resync` were already service-shaped under the old admin handler; they move here
  * verbatim (§R1) so the service owns its own console API. `releases` is new: the truth store now
- * has a writer (P2.T2), so an operator can see what Polaris believes GitHub publishes without
+ * has a writer (P2.T2), so an operator can see what Polaris Key believes GitHub publishes without
  * spending a GitHub subrequest to find out.
  *
  * The session, CSRF, rate-limit and platform-admin gates all run in `admin/api.ts` before this

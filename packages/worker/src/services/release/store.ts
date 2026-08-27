@@ -31,7 +31,7 @@
  * will 404 on its own.
  */
 
-import type { ReleaseAccess } from "@plrs/protocol/release";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db, DbStatement } from "../../core/platform.js";
 import { archOf } from "./assets.js";
 import type { Release, ReleaseAsset } from "./github.js";
@@ -158,7 +158,7 @@ export async function listReleaseHealth(
  * `CHECK (… IN ('public','authenticated','licensed'))` (0007), and `entitled` (D-13) arrived
  * after them. It is mapped to `licensed` rather than widened by migration because these columns
  * are read by ONE consumer — the customer portal — which authenticates a human with a portal
- * session, not a device with a `plrst_` token. There is no device grant to evaluate on that
+ * session, not a device with a `pkeyt_` token. There is no device grant to evaluate on that
  * path, so `entitled`'s channel/version check is not expressible there; `licensed` is the
  * strictest thing the portal CAN enforce (`hasUsableProductLicense`), which makes this a
  * tightening, never a downgrade. The `entitled` check itself lives on the device-facing routes,

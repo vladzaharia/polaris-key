@@ -182,14 +182,14 @@ export function OfflineBundleDialog({
                   type="button"
                   onClick={() =>
                     downloadText(
-                      `${slug}-${minted.deviceId.slice(0, 8)}.plrsbundle`,
+                      `${slug}-${minted.deviceId.slice(0, 8)}.pkeybundle`,
                       BUNDLE_MIME,
                       minted.bundle,
                     )
                   }
                 >
                   <Download aria-hidden />
-                  Download .plrsbundle
+                  Download .pkeybundle
                 </Button>
               </div>
             </DialogBody>

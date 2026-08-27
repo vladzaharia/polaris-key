@@ -13,8 +13,8 @@ from typing import Any
 import httpx
 import pytest
 
-from polaris.core.errors import PolarisError
-from polaris.discovery import (
+from polaris_key.core.errors import PolarisError
+from polaris_key.discovery import (
     DEFAULT_SERVICES,
     SERVICE_SLUGS,
     DiscoveryError,

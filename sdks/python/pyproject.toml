@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "polaris-suite"
+name = "polaris-key"
 version = "0.1.0"
-description = "Product-agnostic Python client for the Polaris suite (Core + License/Config/Release/Update over wire contract v3)."
+description = "Product-agnostic Python client for Polaris Key (Core + License/Config/Release/Update over wire contract v3)."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Vlad Zaharia" }]
-keywords = ["license", "managed-config", "jws", "ed25519", "polaris"]
+keywords = ["license", "managed-config", "jws", "ed25519", "polaris-key"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
@@ -30,13 +30,13 @@ typer = ["typer>=0.9"]
 dev = ["pytest>=7", "click>=8", "typer>=0.9"]
 
 [project.scripts]
-polaris = "polaris.cli:main"
+polaris-key = "polaris_key.cli:main"
 
 [project.urls]
 Homepage = "https://key.plrs.im"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/polaris"]
+packages = ["src/polaris_key"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

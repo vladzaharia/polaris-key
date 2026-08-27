@@ -1,4 +1,4 @@
-// @plrs/protocol/license — License service wire types (wire contract v3 §2.1, §5).
+// @polaris-key/protocol/license — License service wire types (wire contract v3 §2.1, §5).
 
 import type { DocClaims, ManagedEntry } from "./core.js";
 
@@ -13,7 +13,7 @@ export interface DocProfile {
 }
 
 /**
- * The license document (`typ: "plrs-license+jws"`) — the ONLY carrier of grant data
+ * The license document (`typ: "pkey-license+jws"`) — the ONLY carrier of grant data
  * (D-20). Admin/tier policy arrives as enforced entitlements (`license.tier`,
  * `license.tierLabel`, `channels`, `app.minVersion`, `app.maxVersion`, `deviceLimit`)
  * alongside catalog-declared flags. License STATE (`ok`/`grace`/…) is never carried in
@@ -51,6 +51,6 @@ export interface AllowedRange {
   max?: string;
 }
 
-/** How the client became activated: an online-minted `plrst_` device token, or a verified
+/** How the client became activated: an online-minted `pkeyt_` device token, or a verified
  *  offline bundle import (WIRE-CONTRACT-V3 §7). A later token supersedes a bundle. */
 export type ActivationSource = "token" | "bundle";

@@ -3,7 +3,7 @@
 // is for the transport and orchestration layers built on top of this package, where the
 // caller needs the server's machine-readable error code rather than a message to regex.
 
-import type { PolarisErrorCode } from "@plrs/protocol/core";
+import type { PolarisErrorCode } from "@polaris-key/protocol/core";
 
 export class PolarisError extends Error {
   /** The wire error code (`PolarisErrorBody.error.code`). Widened to `string` because the

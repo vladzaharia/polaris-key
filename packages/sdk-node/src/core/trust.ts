@@ -3,12 +3,12 @@
 // Two tiers, strictly decreasing authority, and nothing else:
 //
 //   pinned    compiled into the host application. Terminal.
-//   manifest  keys learned from a `plrs-trust+jws` verified AGAINST THE PINS, re-verified on
+//   manifest  keys learned from a `pkey-trust+jws` verified AGAINST THE PINS, re-verified on
 //             every load and REPLACED wholesale on every refresh, so absence is revocation.
 //
 // The on-disk cache is not a key source: it persists the manifest's compact JWS, never bare
 // `kid → key` JSON, so a file write can neither add a kid nor swap the bytes behind one
-// (R2-01 / R2-02 / R4-02). All of the actual rules live in `@plrs/client-core`; this class is
+// (R2-01 / R2-02 / R4-02). All of the actual rules live in `@polaris-key/client-core`; this class is
 // the CUSTODIAN — it holds the two tiers, decides when to go to the network, and folds each
 // accepted manifest into the clock floor.
 //
@@ -21,9 +21,9 @@
 // the floor bite at all — a floor built from a document alone is provably inert, because
 // `doc.issuedAt < doc.graceUntil` always holds (R4-04).
 
-import type { TrustSet } from "@plrs/jws";
-import type { TrustManifestDoc } from "@plrs/protocol/trust";
-import { mergeTrust, verifyTrustManifest } from "@plrs/client-core";
+import type { TrustSet } from "@polaris-key/jws";
+import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
+import { mergeTrust, verifyTrustManifest } from "@polaris-key/client-core";
 import type { CoreContext } from "./context.js";
 
 export class TrustManager {

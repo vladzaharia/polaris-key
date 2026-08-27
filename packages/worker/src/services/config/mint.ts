@@ -16,7 +16,7 @@ import { bearer, staticHtmlSecurityHeaders } from "../../core/platform.js";
 import { type Product, openProductSecret } from "../../core/products.js";
 import { errorResponse } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
-import { signJws } from "@plrs/jws";
+import { signJws } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 
 interface EdgeMintRow {
@@ -208,7 +208,7 @@ export async function handleMintToken(
   // this handler's behalf before the split (`services/license/auth.ts`). The scope — "iff the
   // License service is enabled", the same rule Core's own `/devices` and `/devices/report` use —
   // is what makes edge minting reachable at all for a config-only product (D-08): its devices
-  // register, hold real `plrst_` tokens, and have no licence to be licensed by. Edge minting is
+  // register, hold real `pkeyt_` tokens, and have no licence to be licensed by. Edge minting is
   // how a catalog secret with `delivery: "edgeMint"` reaches a runtime, so a Config service that
   // could not mint would be Config with a hole in it.
   const token = bearer(req);
@@ -268,7 +268,7 @@ export async function handleMintToken(
       minted = await signRs256(claims, pem, kid);
       break;
     case "EdDSA":
-      // @plrs/jws emits a compact JWS with header {alg:"EdDSA", kid}.
+      // @polaris-key/jws emits a compact JWS with header {alg:"EdDSA", kid}.
       minted = await signJws(claims, pem, kid ?? "");
       break;
     default:

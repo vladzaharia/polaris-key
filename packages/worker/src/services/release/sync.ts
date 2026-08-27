@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * The sync surface — how a linked GitHub repo becomes rows Polaris serves.
+ * The sync surface — how a linked GitHub repo becomes rows Polaris Key serves.
  *
  * ── WHAT THIS MODULE IS ─────────────────────────────────────────────────────────────────────
  *
@@ -18,7 +18,7 @@
  * ── WHY INGESTION LIVES IN THE SERVICE AT ALL ───────────────────────────────────────────────
  *
  * A repo link IS Release's front door — the coordinates, the installation token, the
- * `.polaris/` read. But what it WRITES is the whole product (catalog, tiers, profiles, OIDC,
+ * `.pkey/` read. But what it WRITES is the whole product (catalog, tiers, profiles, OIDC,
  * edge-mint), almost none of which is Release's data. Since a service may only import `core/`,
  * those writers are reached through `core/ingest.ts`, a core-owned COUNTABLE re-export — the
  * same shape `core/data.ts` gives License and Config. See that file's header.
@@ -43,7 +43,7 @@ export { resyncRepo } from "./resync.js";
 export type { ResyncResult } from "./resync.js";
 export {
   isManifestPath,
-  MANIFEST_DIRS,
+  MANIFEST_DIR,
   MANIFEST_FILES,
 } from "./manifestFiles.js";
 export type { ManifestFileName } from "./manifestFiles.js";

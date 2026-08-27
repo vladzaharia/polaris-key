@@ -10,7 +10,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { FingerprintComponent } from "@plrs/protocol";
+import type { FingerprintComponent } from "@polaris-key/protocol";
 import { computeComponentHash, computeHwid } from "../src/fingerprint.js";
 
 interface Vector {
@@ -32,7 +32,7 @@ const corpus = JSON.parse(
       "..",
       "conformance",
       "corpus",
-      "v1",
+      "v2",
       "fingerprint.json",
     ),
     "utf8",

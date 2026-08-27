@@ -1,4 +1,4 @@
-// `PolarisClient` — the suite facade: Core plus one sub-client per service.
+// `PolarisKeyClient` — the suite facade: Core plus one sub-client per service.
 //
 // The pre-suite `PolarisKeyClient` was a 780-line god object that fused the device principal,
 // the credential, the trust set, the cache, the gate, config resolution, device management and
@@ -18,13 +18,13 @@
 // the monotonic clock floor and `lastVerifiedAt` are recomputed on every load. There is no
 // unsigned field left for a local attacker to poison.
 
-import type { JSONValue } from "@plrs/protocol/core";
+import type { JSONValue } from "@polaris-key/protocol/core";
 import type {
   ActivationSource,
   DocProfile,
   LicenseDoc,
-} from "@plrs/protocol/license";
-import type { BlockedState, LicenseState } from "@plrs/client-core";
+} from "@polaris-key/protocol/license";
+import type { BlockedState, LicenseState } from "@polaris-key/client-core";
 import { CacheManager } from "./core/cache.js";
 import { CoreContext, nowSec, type CoreOptions } from "./core/context.js";
 import { importBundle, type ImportBundleResult } from "./core/bundle.js";
@@ -51,7 +51,7 @@ import {
 
 export { DeviceManagementUnsupportedError };
 
-export interface PolarisClientOptions extends CoreOptions {
+export interface PolarisKeyClientOptions extends CoreOptions {
   /** Config service inputs (override layers). */
   config?: ConfigClientOptions;
   /** License service inputs. */
@@ -102,7 +102,7 @@ export interface DeviceInfo {
   sdkVersion?: string | null;
 }
 
-export class PolarisClient {
+export class PolarisKeyClient {
   readonly product: string;
   readonly core: CoreContext;
   readonly license: LicenseClient;
@@ -120,7 +120,7 @@ export class PolarisClient {
   private timer: ReturnType<typeof setInterval> | null = null;
   private discoveryDoc: ProductDiscoveryDocument | null = null;
 
-  constructor(opts: PolarisClientOptions & { localOnly?: boolean }) {
+  constructor(opts: PolarisKeyClientOptions & { localOnly?: boolean }) {
     this.product = opts.productSlug;
     this.core = new CoreContext(opts);
     this.trust = new TrustManager(this.core);
@@ -168,8 +168,10 @@ export class PolarisClient {
     this.onChange = opts.onChange;
   }
 
-  static async create(opts: PolarisClientOptions): Promise<PolarisClient> {
-    const c = new PolarisClient(opts);
+  static async create(
+    opts: PolarisKeyClientOptions,
+  ): Promise<PolarisKeyClient> {
+    const c = new PolarisKeyClient(opts);
     await c.init();
     return c;
   }

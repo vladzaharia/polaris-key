@@ -1,9 +1,9 @@
 // Per-document verification — wire contract v3 §2–§3.
 //
-// Signs real `plrs-license+jws` / `plrs-config+jws` documents with a freshly generated
+// Signs real `pkey-license+jws` / `pkey-config+jws` documents with a freshly generated
 // Ed25519 key (WebCrypto only — the package is isomorphic, and so is its test) and drives
 // them through `verifyLicenseDoc` / `verifyConfigDoc`. The interesting half is what must be
-// REFUSED: the other document type, v2's `key.plrs.im` issuer, a foreign audience or device,
+// REFUSED: the other document type, a foreign issuer, a foreign audience or device,
 // a grace window past the one-year ceiling, and a stale document on the network path.
 
 import { beforeAll, describe, expect, it } from "vitest";
@@ -12,9 +12,9 @@ import {
   base64UrlEncodeBytes,
   signJws,
   type TrustSet,
-} from "@plrs/jws";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { ConfigDoc } from "@plrs/protocol/config";
+} from "@polaris-key/jws";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
 import {
   verifyConfigDoc,
   verifyLicenseDoc,
@@ -22,7 +22,7 @@ import {
 } from "../src/verify.js";
 import { CLOCK_SKEW_SECONDS, MAX_GRACE_SECONDS } from "../src/claims.js";
 
-const KID = "plrs-test-2026";
+const KID = "pkey-test-2026";
 let PEM = "";
 let trust: TrustSet = {};
 
@@ -72,7 +72,7 @@ function baseOpts(over: Partial<VerifyOptions> = {}): VerifyOptions {
 function licenseDoc(over: Partial<LicenseDoc> = {}): LicenseDoc {
   return {
     aud: "djdl",
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     deviceId: "dev-1",
     issuedAt: ISSUED,
     expiresAt: EXPIRES,
@@ -94,7 +94,7 @@ function licenseDoc(over: Partial<LicenseDoc> = {}): LicenseDoc {
 function configDoc(over: Partial<ConfigDoc> = {}): ConfigDoc {
   return {
     aud: "djdl",
-    iss: "plrs.im",
+    iss: "key.plrs.im",
     deviceId: "dev-1",
     issuedAt: ISSUED,
     expiresAt: EXPIRES,
@@ -109,9 +109,9 @@ function configDoc(over: Partial<ConfigDoc> = {}): ConfigDoc {
 }
 
 const signLicense = (over: Partial<LicenseDoc> = {}): Promise<string> =>
-  signJws(licenseDoc(over), PEM, KID, "plrs-license+jws");
+  signJws(licenseDoc(over), PEM, KID, "pkey-license+jws");
 const signConfig = (over: Partial<ConfigDoc> = {}): Promise<string> =>
-  signJws(configDoc(over), PEM, KID, "plrs-config+jws");
+  signJws(configDoc(over), PEM, KID, "pkey-config+jws");
 
 describe("verifyLicenseDoc / verifyConfigDoc — happy path", () => {
   it("accepts a well-formed license document and reproduces it byte-for-byte", async () => {
@@ -150,7 +150,7 @@ describe("verifyDoc — typ domain separation (§2)", () => {
       {
         schemaVersion: 1,
         aud: "djdl",
-        iss: "plrs.im",
+        iss: "key.plrs.im",
         issuedAt: ISSUED,
         expiresAt: EXPIRES,
         jwksUrl: "https://k.test/djdl/.well-known/jwks.json",
@@ -159,7 +159,7 @@ describe("verifyDoc — typ domain separation (§2)", () => {
       },
       PEM,
       KID,
-      "plrs-trust+jws",
+      "pkey-trust+jws",
     );
     expect(await verifyLicenseDoc(manifest, baseOpts())).toBeNull();
     expect(await verifyConfigDoc(manifest, baseOpts())).toBeNull();
@@ -173,28 +173,25 @@ describe("verifyDoc — typ domain separation (§2)", () => {
     expect(await verifyLicenseDoc(typless, baseOpts())).toBeNull();
   });
 
-  it("refuses a v2 `pkey-config+jws` document outright (no dual-accept window)", async () => {
-    const legacy = await signJws(licenseDoc(), PEM, KID, "pkey-config+jws");
-    expect(await verifyLicenseDoc(legacy, baseOpts())).toBeNull();
-    expect(await verifyConfigDoc(legacy, baseOpts())).toBeNull();
+  it("refuses licence claims wearing the config `typ` (and vice versa)", async () => {
+    // The v2 fused document's shape with the v2 `typ` string that v3's config document reuses.
+    // `typ` is the domain separator, so a payload whose CLAIMS are a licence must not verify
+    // at either call site once it asserts the config type.
+    const crossed = await signJws(licenseDoc(), PEM, KID, "pkey-config+jws");
+    expect(await verifyLicenseDoc(crossed, baseOpts())).toBeNull();
+    expect(await verifyConfigDoc(crossed, baseOpts())).toBeNull();
   });
 });
 
 describe("verifyDoc — shared envelope (§3)", () => {
-  it("refuses v2's `key.plrs.im` issuer; v3 is the host-neutral `plrs.im`", async () => {
+  it("refuses the abandoned host-neutral `plrs.im` issuer; `key.plrs.im` is the only one", async () => {
     expect(
-      await verifyLicenseDoc(
-        await signLicense({ iss: "key.plrs.im" }),
-        baseOpts(),
-      ),
+      await verifyLicenseDoc(await signLicense({ iss: "plrs.im" }), baseOpts()),
     ).toBeNull();
     expect(
-      await verifyConfigDoc(
-        await signConfig({ iss: "key.plrs.im" }),
-        baseOpts(),
-      ),
+      await verifyConfigDoc(await signConfig({ iss: "plrs.im" }), baseOpts()),
     ).toBeNull();
-    // …and the plain `plrs.im` default is what actually passes.
+    // …and the `key.plrs.im` default is what actually passes.
     expect(
       await verifyLicenseDoc(await signLicense(), baseOpts()),
     ).not.toBeNull();
@@ -439,7 +436,7 @@ describe("verifyDoc — per-document claims", () => {
   });
 });
 
-describe("verifyDoc — crypto path (delegated to @plrs/jws, asserted here)", () => {
+describe("verifyDoc — crypto path (delegated to @polaris-key/jws, asserted here)", () => {
   it("refuses a tampered payload", async () => {
     const jws = await signLicense();
     const [h, p, s] = jws.split(".") as [string, string, string];
@@ -465,7 +462,7 @@ describe("verifyDoc — crypto path (delegated to @plrs/jws, asserted here)", ()
     const [, p, s] = jws.split(".") as [string, string, string];
     const noneHeader = base64UrlEncodeBytes(
       enc.encode(
-        JSON.stringify({ alg: "none", typ: "plrs-license+jws", kid: KID }),
+        JSON.stringify({ alg: "none", typ: "pkey-license+jws", kid: KID }),
       ),
     );
     expect(

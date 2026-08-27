@@ -2,19 +2,19 @@
 // and desktop adapters — this is what makes the hooks return the same shapes regardless
 // of transport (mode-parity). The adapters differ only in HOW they fill a `PolarisState`.
 //
-// The GATE is not defined here any more: `@plrs/client-core` owns the one implementation every
+// The GATE is not defined here any more: `@polaris-key/client-core` owns the one implementation every
 // JS SDK runs (wire contract v3 §5), including the monotonic clock floor this package's old
 // local port silently dropped. Both adapters reduce their transport to the same
 // `client-core` `GateInput` and run the same `licenseState`.
 
-import type { JSONValue, ManagedEntry } from "@plrs/protocol/core";
+import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
 import type {
   ActivationSource,
   DocProfile,
   LicenseDoc,
   LicenseStatus,
-} from "@plrs/protocol/license";
-import type { ConfigSource, LicenseState } from "@plrs/client-core";
+} from "@polaris-key/protocol/license";
+import type { ConfigSource, LicenseState } from "@polaris-key/client-core";
 // `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
 // erased, so this value import creates no runtime cycle.
 import { noBusy, noErrors } from "./services.js";
@@ -33,7 +33,7 @@ export type PolarisMode = "browser" | "desktop";
 export type PolarisPhase = "loading" | "ready";
 
 /** Stable error codes surfaced by adapter operations. These describe what the UI should DO,
- *  which is why they are not `@plrs/protocol`'s wire codes: `device-management-unsupported`
+ *  which is why they are not `@polaris-key/protocol`'s wire codes: `device-management-unsupported`
  *  is a capability statement, not an HTTP status. */
 export type PolarisErrorCode =
   | "key-entry-unsupported"
@@ -71,7 +71,7 @@ export interface DeviceInfo {
 }
 
 /** The newest build on a channel, as `GET /<product>/update/version` reports it. Mirrors
- *  `@plrs/node`'s `VersionCheck` field for field. */
+ *  `@polaris-key/node`'s `VersionCheck` field for field. */
 export interface VersionCheck {
   version: string;
   tag: string;
@@ -106,7 +106,7 @@ export interface PolarisState {
   phase: PolarisPhase;
   /** The transport that produced this state. */
   mode: PolarisMode;
-  /** The full gate result (status + grace/version metadata), from `@plrs/client-core`. */
+  /** The full gate result (status + grace/version metadata), from `@polaris-key/client-core`. */
   gate: LicenseState;
   /** Convenience mirror of `gate.status`. */
   status: LicenseStatus;

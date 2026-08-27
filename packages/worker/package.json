@@ -1,5 +1,5 @@
 {
-  "name": "@plrs/worker",
+  "name": "@polaris-key/worker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,18 +15,18 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@plrs/catalog": "workspace:*",
-    "@plrs/jws": "workspace:*",
-    "@plrs/manifest": "workspace:*",
-    "@plrs/protocol": "workspace:*",
+    "@polaris-key/catalog": "workspace:*",
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/manifest": "workspace:*",
+    "@polaris-key/protocol": "workspace:*",
     "jose": "^5.9.6",
     "yaml": "^2.6.1"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.12.21",
     "@cloudflare/workers-types": "^4.20251001.0",
-    "@plrs/client-core": "workspace:*",
-    "@plrs/node": "workspace:*",
+    "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/node": "workspace:*",
     "@types/better-sqlite3": "^7.6.11",
     "better-sqlite3": "^11.8.0",
     "wrangler": "^4.40.0"

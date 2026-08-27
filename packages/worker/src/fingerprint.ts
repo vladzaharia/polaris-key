@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// Hardware-fingerprint matching. The device id (`X-Polaris-Device`) stays the stable primary key
+// Hardware-fingerprint matching. The device id (`X-PKey-Device`) stays the stable primary key
 // every existing row and signed doc is bound to; the fingerprint is a separate, server-verified
 // signal layered on top, so enabling it can never orphan an existing device.
 //
@@ -17,7 +17,7 @@ import {
   FINGERPRINT_TOLERANCE,
   type FingerprintComponent,
   type FingerprintMode,
-} from "@plrs/protocol";
+} from "@polaris-key/protocol";
 import { sha256B64url } from "./crypto.js";
 
 export type ComponentMap = Partial<Record<FingerprintComponent, string>>;
@@ -112,7 +112,7 @@ export async function computeHwid(components: ComponentMap): Promise<string> {
  * The domain-separation prefix keeps this value in a different space from `computeHwid`'s, so an
  * enrol key can never be confused with (or replayed as) a device hwid.
  *
- * `computeHwid`'s formula is unchanged and stays pinned by `conformance/corpus/v1/fingerprint.json`.
+ * `computeHwid`'s formula is unchanged and stays pinned by `conformance/corpus/v2/fingerprint.json`.
  */
 export async function computeEnrollHwid(
   components: ComponentMap,

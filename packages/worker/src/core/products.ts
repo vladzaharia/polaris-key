@@ -41,7 +41,7 @@ export interface Product {
   schemaVersion: number;
   fingerprintPolicy: FingerprintPolicy;
   autoIssue: AutoIssuePolicy;
-  /** Which Polaris services this product runs (design spec §2.2). Always complete: a row that
+  /** Which Polaris Key services this product runs (design spec §2.2). Always complete: a row that
    *  has never been written reads back as the defaults, i.e. today's behaviour. */
   services: ServicesMap;
   /** Who may mint a device token here (wire v3 §6). Already RESOLVED — an undeclared policy is

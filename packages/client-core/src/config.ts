@@ -10,7 +10,7 @@
 // Isomorphic: the environment is an injected lookup table, never `process.env` read here, so
 // this module runs unchanged in a browser bundle.
 
-import type { JSONValue, ManagedEntry } from "@plrs/protocol/core";
+import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
 
 /** Where a resolved config value came from, for diagnostics + settings UIs. */
 export type ConfigSource =
@@ -42,8 +42,8 @@ export interface ResolveContext {
   envPrefix: string;
 }
 
-/** `run.concurrency` → `PLRS_CONFIG_run__concurrency` (dots become double underscores). The
- *  prefix itself is the HOST's (`@plrs/node` defaults it to `PLRS_CONFIG_`); this module only
+/** `run.concurrency` → `PKEY_CONFIG_run__concurrency` (dots become double underscores). The
+ *  prefix itself is the HOST's (`@polaris-key/node` defaults it to `PKEY_CONFIG_`); this module only
  *  owns the dot→`__` mapping, which every SDK must agree on. */
 function envVarName(envPrefix: string, key: string): string {
   return envPrefix + key.replaceAll(".", "__");

@@ -1,9 +1,9 @@
-// `@plrs/node/devices` — the Device principal's surface: registration, the roster, telemetry,
+// `@polaris-key/node/devices` — the Device principal's surface: registration, the roster, telemetry,
 // and the two Node-only identity formulas.
 //
 // `deviceIdFromRaw` and `hashComponents` live together here because they are the same kind of
 // thing — hashed hardware identity, computed on the device so raw serials never cross the wire
-// — and because `conformance/corpus/v1/fingerprint.json` pins BOTH. This is the subpath the
+// — and because `conformance/corpus/v2/fingerprint.json` pins BOTH. This is the subpath the
 // Node conformance runner imports.
 
 export {

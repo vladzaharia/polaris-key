@@ -1,4 +1,4 @@
-// `@plrs/node/license` — the License service's client surface.
+// `@polaris-key/node/license` — the License service's client surface.
 
 export {
   LicenseClient,

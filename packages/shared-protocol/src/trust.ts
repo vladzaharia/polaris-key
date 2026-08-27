@@ -1,4 +1,4 @@
-// @plrs/protocol/trust — trust-manifest wire types (wire contract v3 §1, §2.3).
+// @polaris-key/protocol/trust — trust-manifest wire types (wire contract v3 §1, §2.3).
 // Semantics are carried unchanged from v2: manifests are verified against PINNED keys
 // only; the discovered set is replaced wholesale; absence is revocation.
 

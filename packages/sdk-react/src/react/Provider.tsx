@@ -5,7 +5,7 @@
 // disposed on unmount, so credential/session state is stable across renders.
 
 import { useEffect, useMemo, type CSSProperties, type ReactNode } from "react";
-import type { JSONValue } from "@plrs/protocol/core";
+import type { JSONValue } from "@polaris-key/protocol/core";
 import { browserAdapter } from "../browser/browserAdapter.js";
 import { desktopAdapter } from "../desktop/desktopAdapter.js";
 import { resolveBridge, type PolarisBridge } from "../desktop/bridge.js";

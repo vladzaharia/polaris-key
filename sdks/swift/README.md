@@ -1,28 +1,28 @@
-# Polaris — Swift SDK
+# PolarisKey — Swift SDK
 
-A product-agnostic native Swift client for the **Polaris suite** (licensing, remotely-managed
-config, updates). It implements the frozen Polaris wire crypto natively on **CryptoKit**
+A product-agnostic native Swift client for **Polaris Key** (licensing, remotely-managed
+config, updates). It implements the frozen Polaris Key wire crypto natively on **CryptoKit**
 (Ed25519 compact JWS) and stores the per-device token in the **Keychain** — no Node engine, no
 network dependency for verification. The same cross-language conformance corpus that pins the
 Node/Python/React SDKs is verified here byte-for-byte (`conformance/corpus/v2`, mirrored into
-`Tests/PolarisTests/Resources/v2/`).
+`Tests/PolarisKeyTests/Resources/v2/`).
 
 Wire contract: [`docs/security/WIRE-CONTRACT-V3.md`](../../docs/security/WIRE-CONTRACT-V3.md).
 
 ## Targets
 
-Polaris is a suite of opt-in services over an always-on Core, and on Apple platforms that
+Polaris Key is a suite of opt-in services over an always-on Core, and on Apple platforms that
 division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
 a product with no license service does not carry the gate.
 
-| Product          | Contents                                                                          | Depends on               |
-| ---------------- | --------------------------------------------------------------------------------- | ------------------------ |
-| `Polaris`        | `PolarisClient` + `@_exported import` of Core/License/Config — the one-import path | Core, License, Config    |
-| `PolarisCore`    | device principal, trust set, verified cache, clock floor, transport, discovery, bundles | —                   |
-| `PolarisLicense` | the gate, activation, entitlements                                                 | Core                     |
-| `PolarisConfig`  | the config document, layered resolution, device facts                              | Core                     |
-| `PolarisUpdate`  | Sparkle wiring. **macOS only**                                                     | Core, Sparkle ≥ 2.6.4    |
-| `PolarisUI`      | the brandable SwiftUI drop-in gate                                                 | Core, License, Config    |
+| Product             | Contents                                                                                | Depends on            |
+| ------------------- | --------------------------------------------------------------------------------------- | --------------------- |
+| `Polaris Key`       | `PolarisKeyClient` + `@_exported import` of Core/License/Config — the one-import path   | Core, License, Config |
+| `PolarisKeyCore`    | device principal, trust set, verified cache, clock floor, transport, discovery, bundles | —                     |
+| `PolarisKeyLicense` | the gate, activation, entitlements                                                      | Core                  |
+| `PolarisKeyConfig`  | the config document, layered resolution, device facts                                   | Core                  |
+| `PolarisKeyUpdate`  | Sparkle wiring. **macOS only**                                                          | Core, Sparkle ≥ 2.6.4 |
+| `PolarisKeyUI`      | the brandable SwiftUI drop-in gate                                                      | Core, License, Config |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -35,10 +35,10 @@ dependencies: [
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
-        .product(name: "Polaris", package: "Polaris"),
-        .product(name: "PolarisUI", package: "Polaris"),
+        .product(name: "PolarisKey", package: "PolarisKey"),
+        .product(name: "PolarisKeyUI", package: "PolarisKey"),
         // macOS only — see "Updates" below.
-        .product(name: "PolarisUpdate", package: "Polaris",
+        .product(name: "PolarisKeyUpdate", package: "PolarisKey",
                  condition: .when(platforms: [.macOS])),
     ])
 ]
@@ -47,12 +47,12 @@ targets: [
 ## Headless usage
 
 ```swift
-import Polaris
+import PolarisKey
 
 // `create` throws on a non-https base URL and when the credential store itself is unavailable
 // (locked keychain, unwritable config dir) — the latter used to be swallowed, silently
 // re-activating every launch and burning a seat each time.
-let client = try await PolarisClient.create(options: .init(
+let client = try await PolarisKeyClient.create(options: .init(
     productSlug: "djdl",
     version: "1.4.2",
     // kid -> raw Ed25519 public key (base64url). PLACEHOLDERS — substitute YOUR product's real
@@ -120,7 +120,7 @@ runtime fetch; routine key rotation is handled by the signed trust manifest at
 ### Layered config
 
 `client.config.config(_:default:)` resolves a value through the **same precedence** as every
-Polaris SDK; `configSource(_:)` returns which layer won:
+Polaris Key SDK; `configSource(_:)` returns which layer won:
 
 ```
 enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default  >  fallback
@@ -131,17 +131,17 @@ are ignored for those keys; `hidden` keys are additionally withheld from `listUs
 still applied by `config(_:default:)`).
 
 The env var for a key is `envPrefix + key` with dots replaced by `__` (default prefix
-`PLRS_CONFIG_`): `run.concurrency` → `PLRS_CONFIG_run__concurrency`. The raw string is
+`PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The raw string is
 JSON-decoded when it looks like JSON (`4` → int, `true` → bool, `[1,2]` → array); otherwise it
 is taken as a plain string. Supply `localOverrides` / `envPrefix` / an injected `environment`
 via `ConfigClientOptions`.
 
 ### Stores
 
-- `KeychainStore` (default) — token in the OS keychain (service **`plrs:<product>`**), device id
-  + offline cache as 0600 files under `~/.config/<product>/` (Application Support on iOS). Files
-  are created at 0600 by `open(2)` (never chmod'd afterwards) and both the read and write paths
-  refuse to follow a symlink.
+- `KeychainStore` (default) — token in the OS keychain (service **`pkey:<product>`**), device id
+  - offline cache as 0600 files under `~/.config/<product>/` (Application Support on iOS). Files
+    are created at 0600 by `open(2)` (never chmod'd afterwards) and both the read and write paths
+    refuse to follow a symlink.
 - `InMemoryStore` — for tests.
 - `Store` is a protocol; supply your own to back the token/cache differently. Its mutating
   methods `throw`, so a failed keychain write or an unwritable config dir surfaces as a typed
@@ -161,15 +161,15 @@ version is **discarded, never migrated**.
 Three depths, all first-class:
 
 1. **Online with grace** (default) — post-activation zero-network operation to `graceUntil`.
-2. **Air-gapped activation** (§7) — an operator mints a `.plrsbundle` against this device's id;
+2. **Air-gapped activation** (§7) — an operator mints a `.pkeybundle` against this device's id;
    `try await client.importBundle(jws)` verifies it against the **pins** all-or-nothing and
    writes the cache atomically. No token is created; the gate reads `activation: .bundle`. A
    refusal throws `PolarisError` carrying the §7 step that refused, because the step is the
    operator's remedy.
-3. **Local-only** (§7.3) — `PolarisClient.createLocal(options:)` substitutes `NoNetworkTransport`,
+3. **Local-only** (§7.3) — `PolarisKeyClient.createLocal(options:)` substitutes `NoNetworkTransport`,
    which refuses at the DIAL, before a URL is built. Config resolution, the gate and bundle
    import all still work; anything that would open a socket rejects with code `local-only`.
-   `PolarisClient.createFromBundle(options:bundle:)` does both in one step.
+   `PolarisKeyClient.createFromBundle(options:bundle:)` does both in one step.
 
 ## SwiftUI gate
 
@@ -178,8 +178,8 @@ activation is needed, an offline-grace banner over your content, version-block a
 expired/revoked screens, and your own UI once usable (`ok` / `grace` / `not-applicable`).
 
 ```swift
-import Polaris
-import PolarisUI
+import PolarisKey
+import PolarisKeyUI
 
 @StateObject var gate = PolarisGateModel(
     license: client.license,
@@ -203,12 +203,12 @@ var body: some View {
 
 ## Updates (macOS, D-24)
 
-`PolarisUpdate` wires **Sparkle ≥ 2.6.4** (the CVE-2025-0509 floor) to the product's own feed.
-It carries three facts from Polaris to Sparkle and refuses to do a fourth:
+`PolarisKeyUpdate` wires **Sparkle ≥ 2.6.4** (the CVE-2025-0509 floor) to the product's own feed.
+It carries three facts from Polaris Key to Sparkle and refuses to do a fourth:
 
 ```swift
 #if os(macOS)
-import PolarisUpdate
+import PolarisKeyUpdate
 
 await client.discover()                       // the feed URL comes from DISCOVERY, not a literal
 let update = UpdateClient(core: client.core)
@@ -233,9 +233,9 @@ updaterController.updater.delegate = delegate // RETAIN it: `delegate` is weak
   not offered a beta the server will then refuse. A UX narrowing, not an enforcement point.
 
 It does **not** verify updates. `SUPublicEDKey` in the host app's code-signed `Info.plist` is the
-terminal anchor; `PolarisUpdate` asserts it is present and fails loudly if it is not, because an
+terminal anchor; `PolarisKeyUpdate` asserts it is present and fails loudly if it is not, because an
 app that ships Sparkle without it does not fail to build, launch, or check for updates — it
-simply installs unsigned payloads. A Polaris-side signature check would be a second, weaker
+simply installs unsigned payloads. A Polaris Key-side signature check would be a second, weaker
 anchor beside the real one.
 
 ## The frozen wire contract
@@ -257,16 +257,16 @@ over the ASCII bytes of the original `encHeader.encPayload` substrings; the payl
 re-serialised, so verification is byte-stable across Node, Python, React and Swift.
 
 Additionally, in this order: the **encoded** segments are bounded before any decode (1 KiB
-header, 64 KiB payload — 256 KiB for `plrs-bundle+jws` alone), base64url is **strict** (`-_`
+header, 64 KiB payload — 256 KiB for `pkey-bundle+jws` alone), base64url is **strict** (`-_`
 only — no `+/`, no `=`, no whitespace), **duplicate JSON keys are rejected** rather than resolved
 (`JSONSerialization` is used nowhere in the verify path), `typ` is **required** and asserted
 against the call site's expected document type, and the payload is parsed **only after** the
-signature verifies. `verifyLicenseDoc`/`verifyConfigDoc` then check `aud`, `iss` (`plrs.im` —
+signature verifies. `verifyLicenseDoc`/`verifyConfigDoc` then check `aud`, `iss` (`key.plrs.im` —
 host-neutral), `deviceId`, the per-type monotonic `issuedAt` floor, the 365-day grace ceiling,
 and the whole signed validity window with a 300 s clock skew.
 
-Four document types, domain-separated by `typ`: `plrs-license+jws`, `plrs-config+jws`,
-`plrs-trust+jws`, `plrs-bundle+jws`.
+Four document types, domain-separated by `typ`: `pkey-license+jws`, `pkey-config+jws`,
+`pkey-trust+jws`, `pkey-bundle+jws`.
 
 ## Develop
 
@@ -274,10 +274,10 @@ Four document types, domain-separated by `typ`: `plrs-license+jws`, `plrs-config
 swift build
 swift test    # includes the cross-language conformance corpus (v2)
 
-# The Sparkle conditioning: PolarisUpdate must build for iOS without linking a macOS framework.
-xcodebuild -scheme PolarisUpdate -destination 'generic/platform=iOS' build
+# The Sparkle conditioning: PolarisKeyUpdate must build for iOS without linking a macOS framework.
+xcodebuild -scheme PolarisKeyUpdate -destination 'generic/platform=iOS' build
 ```
 
-The corpus fixtures under `Tests/PolarisTests/Resources/` are **generated**: run
+The corpus fixtures under `Tests/PolarisKeyTests/Resources/` are **generated**: run
 `pnpm gen:corpus` from the repo root after any wire change, and `pnpm gen:corpus -- --check` is
 the CI drift gate.

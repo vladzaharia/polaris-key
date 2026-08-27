@@ -18,7 +18,7 @@
 // device token when it holds one and reports the refusal rather than inventing a retry.
 
 import { describe, expect, it } from "vitest";
-import { PolarisClient } from "../src/client.js";
+import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
 
 const PRODUCT = "djdl";
@@ -75,8 +75,8 @@ async function client(
     services?: ("release" | "update" | "license" | "config")[];
     version?: string;
   } = {},
-): Promise<PolarisClient> {
-  return PolarisClient.create({
+): Promise<PolarisKeyClient> {
+  return PolarisKeyClient.create({
     productSlug: PRODUCT,
     baseUrl: BASE,
     version: opts.version ?? "1.2.3",
@@ -119,14 +119,14 @@ describe("ReleaseClient — the truth store's public face (§R1)", () => {
     c.close();
   });
 
-  it("carries the X-Polaris-* metadata headers, so an entitled feed can gate on the build", async () => {
+  it("carries the X-PKey-* metadata headers, so an entitled feed can gate on the build", async () => {
     const mock = mockFetch({ "/release/changelog": () => json(CHANGELOG) });
     const c = await client(mock);
     await c.release.changelog();
     const h = mock.calls[0]!.headers;
-    expect(h.get("x-polaris-version")).toBe("1.2.3");
-    expect(h.get("x-polaris-channel")).toBe("stable");
-    expect(h.get("x-polaris-device")).toBe(c.core.deviceId);
+    expect(h.get("x-pkey-version")).toBe("1.2.3");
+    expect(h.get("x-pkey-channel")).toBe("stable");
+    expect(h.get("x-pkey-device")).toBe(c.core.deviceId);
     c.close();
   });
 
@@ -148,11 +148,11 @@ describe("ReleaseClient — the truth store's public face (§R1)", () => {
   it("forwards the device token when one IS held — the `entitled` access mode (P2.T3)", async () => {
     const mock = mockFetch({ "/release/changelog": () => json(CHANGELOG) });
     const c = await client(mock);
-    await c.core.store.setToken("plrst_entitled");
+    await c.core.store.setToken("pkeyt_entitled");
     // Re-init so the token manager picks the credential up the way a restart would.
     await c.init();
     await c.release.changelog();
-    expect(mock.calls.at(-1)!.bearer).toBe("Bearer plrst_entitled");
+    expect(mock.calls.at(-1)!.bearer).toBe("Bearer pkeyt_entitled");
     c.close();
   });
 

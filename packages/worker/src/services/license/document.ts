@@ -22,15 +22,15 @@
  * a document at all.
  */
 
-import type { LicenseDoc } from "@plrs/protocol/license";
-import { sha256Base64Url } from "@plrs/jws";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import { sha256Base64Url } from "@polaris-key/jws";
 import type { Env, Db } from "../../core/platform.js";
 import { bearer } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import { ErrorCode, methodNotAllowed, wireError } from "../../core/errors.js";
 import { deviceMetadata, touchDeviceMetadata } from "../../core/devices.js";
 import { signDoc } from "../../core/signing.js";
-import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol/core";
+import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
 import { requireLicensedDevice } from "./auth.js";
 import { docProfile } from "./authz.js";
 import { resolveEntitlements } from "./entitlements.js";
@@ -147,7 +147,7 @@ export async function handleLicenseDocument(
     doc,
     product.signingKeyPem,
     product.signingKid,
-    "plrs-license+jws",
+    "pkey-license+jws",
   );
   return new Response(jws, {
     status: 200,

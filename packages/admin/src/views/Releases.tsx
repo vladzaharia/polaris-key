@@ -35,7 +35,7 @@ import { releaseSourceOf } from "./products/util.js";
 /**
  * Releases view: the release TRUTH STORE plus the manifest-driven status around it.
  *
- * The store (`release_metadata`/`_artifacts`/`_channels`) is what Polaris believes the linked
+ * The store (`release_metadata`/`_artifacts`/`_channels`) is what Polaris Key believes the linked
  * repo publishes, and it is what every feed is rendered from — so it leads. Health and sync
  * describe how that belief was formed and whether it is current; they follow it rather than
  * standing in for it, which is what this view did while the store had no reader.
@@ -214,8 +214,9 @@ function ReleaseStoreCard({
           <CardTitle>Releases</CardTitle>
         </div>
         <CardDescription>
-          What Polaris has synced from the linked repo — the store every update
-          feed is rendered from, read without spending a GitHub round-trip.
+          What Polaris Key has synced from the linked repo — the store every
+          update feed is rendered from, read without spending a GitHub
+          round-trip.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

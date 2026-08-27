@@ -2,8 +2,8 @@
 //
 // This package is isomorphic (WebCrypto, zero Node APIs), so it declares the shape of a store
 // and nothing that touches a disk, a keyring, or `localStorage`. The concrete implementations
-// live with their host: `FileStore`/`KeyringStore` in @plrs/node, the browser/desktop stores
-// in @plrs/react, `KeychainStore` in Swift.
+// live with their host: `FileStore`/`KeyringStore` in @polaris-key/node, the browser/desktop stores
+// in @polaris-key/react, `KeychainStore` in Swift.
 
 import type { BlockedState } from "./gate.js";
 

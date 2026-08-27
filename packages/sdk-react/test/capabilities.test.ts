@@ -45,7 +45,7 @@ async function ready(adapter: {
   }
 }
 
-describe("service map shape mirrors @plrs/node's discovery.ts", () => {
+describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
   it("carries exactly the five slugs, in the canonical order", () => {
     // The order is load-bearing: every SDK iterates it rather than a language-native map
     // ordering, so a reorder here silently reorders output everywhere else.

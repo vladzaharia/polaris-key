@@ -1,15 +1,15 @@
 ---
-"@plrs/protocol": minor
-"@plrs/jws": minor
-"@plrs/catalog": minor
-"@plrs/manifest": minor
-"@plrs/cli": minor
-"@plrs/node": minor
-"@plrs/react": minor
+"@polaris-key/protocol": minor
+"@polaris-key/jws": minor
+"@polaris-key/catalog": minor
+"@polaris-key/manifest": minor
+"@polaris-key/cli": minor
+"@polaris-key/node": minor
+"@polaris-key/react": minor
 ---
 
 Initial release of the Polaris Key shared packages and SDKs: the frozen JWS wire contract
-(`@plrs/jws`), wire types (`@plrs/protocol`), the data-driven config catalog
-(`@plrs/catalog`), manifest tooling (`@plrs/manifest`), the platform CLI
-(`@plrs/cli`), the Node client + CLI adapters (`@plrs/node`), and the React
-SDK with browser-OIDC + desktop modes and a brandable login UI (`@plrs/react`).
+(`@polaris-key/jws`), wire types (`@polaris-key/protocol`), the data-driven config catalog
+(`@polaris-key/catalog`), manifest tooling (`@polaris-key/manifest`), the platform CLI
+(`@polaris-key/cli`), the Node client + CLI adapters (`@polaris-key/node`), and the React
+SDK with browser-OIDC + desktop modes and a brandable login UI (`@polaris-key/react`).

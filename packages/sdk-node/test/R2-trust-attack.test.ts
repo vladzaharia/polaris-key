@@ -1,4 +1,4 @@
-// R2 RED TEAM — attacks on client-side key custody + document acceptance in @plrs/node.
+// R2 RED TEAM — attacks on client-side key custody + document acceptance in @polaris-key/node.
 //
 // These began life as PoCs asserting the CURRENT (vulnerable) behaviour. They have now been
 // INVERTED: every test asserts that the attack FAILS, so each one is the regression test for
@@ -15,9 +15,9 @@
 //     reads live on `client.license.*` / `client.config.*`.
 //   * `signJws` MUST be handed a `typ`: v3 sets `requireTyp`, so an untyped JWS is refused
 //     outright and cross-document replay is closed by construction.
-//   * `iss` is `plrs.im`. A `key.plrs.im` issuer is a v2 artifact and is REFUSED — pinned
-//     explicitly below, because "the old issuer still verifies" would silently un-split the
-//     document types for anyone holding a v2 capture.
+//   * `iss` is the fixed `key.plrs.im`. Any OTHER issuer is REFUSED — pinned explicitly below,
+//     because "a second issuer also verifies" would let a document minted under a different
+//     name stand in for the real one.
 //   * The cache is v3 (§4.1). A record whose `v !== 3` is DISCARDED, never migrated, which is
 //     what makes every "plant a JSON file" PoC in this file inert before a byte is read.
 //
@@ -28,19 +28,19 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { signJws, base64UrlEncodeBytes } from "@plrs/jws";
-import { ISSUER } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { TrustManifestDoc } from "@plrs/protocol/trust";
+import { signJws, base64UrlEncodeBytes } from "@polaris-key/jws";
+import { ISSUER } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
 import {
   mergeTrust,
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
   type CacheRecordV3,
-} from "@plrs/client-core";
-import { PolarisClient } from "../src/client.js";
+} from "@polaris-key/client-core";
+import { PolarisKeyClient } from "../src/client.js";
 import { CACHE_VERSION, FileStore } from "../src/core/store.js";
 
 // ── The legitimate, PINNED product key (the corpus test key) ───────────────────
@@ -53,7 +53,7 @@ const PRODUCT = "djdl";
 const BASE = "https://k.test";
 /** v3 credential prefix (§8). The value is never checked by the client — holding *a* token is
  *  what makes `sync()` go to the network at all, which is what these attacks need. */
-const TOKEN = "plrst_whatever";
+const TOKEN = "pkeyt_whatever";
 const nowSec = (): number => Math.floor(Date.now() / 1000);
 
 afterEach(() => {
@@ -160,7 +160,7 @@ function readMaybe(path: string): string | null {
 }
 
 function tempStore(): { dir: string; store: FileStore; cachePath: string } {
-  const dir = mkdtempSync(join(tmpdir(), "plrs-r2-"));
+  const dir = mkdtempSync(join(tmpdir(), "pkey-r2-"));
   const store = new FileStore(PRODUCT, dir);
   return { dir, store, cachePath: join(dir, PRODUCT, "managed.json") };
 }
@@ -192,7 +192,7 @@ const PINNED_ENTRY = {
 
 /** The shared client shape. Fingerprint probes shell out to `ioreg`/`sw_vers` and nothing
  *  here asserts on hardware, so they are off; `config.env` is pinned empty so an ambient
- *  `PLRS_CONFIG_*` in the developer's shell cannot change what a test observes. */
+ *  `PKEY_CONFIG_*` in the developer's shell cannot change what a test observes. */
 const base = {
   productSlug: PRODUCT,
   baseUrl: BASE,
@@ -234,7 +234,7 @@ function mockFetch(route: Route): {
     const u = new URL(typeof input === "string" ? input : input.toString());
     const headers = new Headers(init?.headers);
     paths.push(u.pathname);
-    const device = headers.get("x-polaris-device") ?? "d";
+    const device = headers.get("x-pkey-device") ?? "d";
     const signer = route.docSigner ?? { pem: PINNED_PEM, kid: PINNED_KID };
 
     if (u.pathname.endsWith("/polaris-trust.jws")) {
@@ -243,7 +243,7 @@ function mockFetch(route: Route): {
       const entry = list[Math.min(mi, list.length - 1)]!;
       mi++;
       return new Response(
-        await signJws(entry.doc, entry.pem, entry.kid, "plrs-trust+jws"),
+        await signJws(entry.doc, entry.pem, entry.kid, "pkey-trust+jws"),
         { status: 200, headers: { "content-type": "application/jose" } },
       );
     }
@@ -257,7 +257,7 @@ function mockFetch(route: Route): {
         ...route.docOpts,
       });
       return new Response(
-        await signJws(doc, signer.pem, signer.kid, "plrs-license+jws"),
+        await signJws(doc, signer.pem, signer.kid, "pkey-license+jws"),
         {
           status: 200,
           headers: { "content-type": "application/jose", etag: '"r2-lic"' },
@@ -271,7 +271,7 @@ function mockFetch(route: Route): {
         ...route.docOpts,
       });
       return new Response(
-        await signJws(doc, signer.pem, signer.kid, "plrs-config+jws"),
+        await signJws(doc, signer.pem, signer.kid, "pkey-config+jws"),
         {
           status: 200,
           headers: { "content-type": "application/jose", etag: '"r2-cfg"' },
@@ -309,7 +309,7 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
       docSigner: { pem: atk.pem, kid: PINNED_KID }, // signed by the ATTACKER
       docOpts: { entitlement: true, secret: "ATTACKER-OWNED" },
     });
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: false,
       store,
@@ -337,7 +337,7 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
     const atk = await attackerKey();
     const { store } = tempStore();
     await store.setToken(TOKEN);
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: false,
       store,
@@ -357,7 +357,7 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
       manifest([{ ...PINNED_ENTRY, publicKey: atk.pub }], t),
       PINNED_PEM,
       PINNED_KID,
-      "plrs-trust+jws",
+      "pkey-trust+jws",
     );
     const result = await verifyTrustManifest(substitution, {
       pinned: { [PINNED_KID]: PINNED_PUB },
@@ -408,7 +408,7 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
       ],
       docSigner: { pem: atk2.pem, kid: "attacker-forever-2099" },
     });
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: true,
       store,
@@ -451,7 +451,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
       status: "active" as const,
     };
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: true,
       store,
@@ -505,7 +505,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
           makeLicenseDoc({ deviceId, issuedAt: t + 999 }),
           rotated.pem,
           "product-key-2026",
-          "plrs-license+jws",
+          "pkey-license+jws",
         ),
         { trust, expectedAud: PRODUCT, deviceId },
       ),
@@ -516,7 +516,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
           makeConfigDoc({ deviceId, issuedAt: t + 999 }),
           rotated.pem,
           "product-key-2026",
-          "plrs-config+jws",
+          "pkey-config+jws",
         ),
         { trust, expectedAud: PRODUCT, deviceId },
       ),
@@ -568,7 +568,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
       ),
       PINNED_PEM,
       PINNED_KID,
-      "plrs-trust+jws",
+      "pkey-trust+jws",
     );
 
     const result = await verifyTrustManifest(mixed, {
@@ -583,7 +583,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
     // End to end: the revoked key cannot sign an accepted document of either type.
     const { store } = tempStore();
     await store.setToken(TOKEN);
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: true,
       store,
@@ -645,7 +645,7 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
       }),
     );
 
-    const client = await PolarisClient.create(offline);
+    const client = await PolarisKeyClient.create(offline);
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
     expect(client.license.isEntitled("polarisVpn")).toBe(false);
@@ -665,18 +665,18 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
             makeLicenseDoc({ deviceId, issuedAt: t }),
             atk.pem,
             PINNED_KID,
-            "plrs-license+jws",
+            "pkey-license+jws",
           ),
           config: await signJws(
             makeConfigDoc({ deviceId, issuedAt: t }),
             atk.pem,
             PINNED_KID,
-            "plrs-config+jws",
+            "pkey-config+jws",
           ),
         },
       } satisfies CacheRecordV3),
     );
-    const c2 = await PolarisClient.create(offline);
+    const c2 = await PolarisKeyClient.create(offline);
     expect(c2.status().status).toBe("needs-activation");
     expect(c2.license.getEntitlements()).toEqual({});
     expect(c2.config.getSecret("soundcloud.oauth")).toBeNull();
@@ -702,13 +702,13 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
             makeLicenseDoc({ deviceId, issuedAt: t }),
             PINNED_PEM,
             PINNED_KID,
-            "plrs-license+jws",
+            "pkey-license+jws",
           ),
           config: await signJws(
             makeConfigDoc({ deviceId, issuedAt: t, secret: "CURRENT-SECRET" }),
             PINNED_PEM,
             PINNED_KID,
-            "plrs-config+jws",
+            "pkey-config+jws",
           ),
         },
         // The attacker adds the old counter back by hand. It is not a field any more, in
@@ -730,15 +730,15 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
       makeLicenseDoc(replayedOpts),
       PINNED_PEM,
       PINNED_KID,
-      "plrs-license+jws",
+      "pkey-license+jws",
     );
     const replayedConfig = await signJws(
       makeConfigDoc({ ...replayedOpts, secret: "REPLAYED" }),
       PINNED_PEM,
       PINNED_KID,
-      "plrs-config+jws",
+      "pkey-config+jws",
     );
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: false,
       store,
@@ -803,7 +803,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     await store.setToken(TOKEN);
     const t = nowSec() - 400 * 86400; // 400 days ago
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: false,
       store,
@@ -839,11 +839,11 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     client.close();
   });
 
-  // NEW IN v3 — §3 / §8. The issuer is host-neutral (`plrs.im`), NOT the serving hostname.
-  // A `key.plrs.im` document is a v2 artifact, and a captured one must not verify against a
-  // v3 client: the v2 issuer travelled with the FUSED document, so honouring it would be a
-  // path back to a single artifact carrying grants and secrets at once.
-  it("the v2 issuer `key.plrs.im` is now REFUSED on both document types", async () => {
+  // NEW IN v3 — §3 / §8. The issuer is the FIXED `key.plrs.im`, never derived from the base URL
+  // or the serving hostname. Any other issuer — including the `plrs.im` spelling the interim
+  // suite design proposed and Amendment A1 withdrew — must not verify against a v3 client:
+  // honouring a second issuer would let a document minted under a different name pass here.
+  it("a foreign issuer (`plrs.im`) is REFUSED on both document types", async () => {
     const deviceId = "dev_fixture";
     const t = nowSec();
     const opts = {
@@ -859,7 +859,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
           makeLicenseDoc({ deviceId, issuedAt: t }),
           PINNED_PEM,
           PINNED_KID,
-          "plrs-license+jws",
+          "pkey-license+jws",
         ),
         opts,
       ),
@@ -870,7 +870,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
           makeConfigDoc({ deviceId, issuedAt: t }),
           PINNED_PEM,
           PINNED_KID,
-          "plrs-config+jws",
+          "pkey-config+jws",
         ),
         opts,
       ),
@@ -880,10 +880,10 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     expect(
       await verifyLicenseDoc(
         await signJws(
-          makeLicenseDoc({ deviceId, issuedAt: t, iss: "key.plrs.im" }),
+          makeLicenseDoc({ deviceId, issuedAt: t, iss: "plrs.im" }),
           PINNED_PEM,
           PINNED_KID,
-          "plrs-license+jws",
+          "pkey-license+jws",
         ),
         opts,
       ),
@@ -891,10 +891,10 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     expect(
       await verifyConfigDoc(
         await signJws(
-          makeConfigDoc({ deviceId, issuedAt: t, iss: "key.plrs.im" }),
+          makeConfigDoc({ deviceId, issuedAt: t, iss: "plrs.im" }),
           PINNED_PEM,
           PINNED_KID,
-          "plrs-config+jws",
+          "pkey-config+jws",
         ),
         opts,
       ),
@@ -905,10 +905,10 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
       (
         await verifyTrustManifest(
           await signJws(
-            { ...manifest([PINNED_ENTRY], t), iss: "key.plrs.im" },
+            { ...manifest([PINNED_ENTRY], t), iss: "plrs.im" },
             PINNED_PEM,
             PINNED_KID,
-            "plrs-trust+jws",
+            "pkey-trust+jws",
           ),
           { pinned: { [PINNED_KID]: PINNED_PUB }, expectedAud: PRODUCT },
         )
@@ -936,7 +936,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     ): Promise<Response> => {
       const u = new URL(typeof input === "string" ? input : input.toString());
       const headers = new Headers(init?.headers);
-      const device = headers.get("x-polaris-device") ?? "d";
+      const device = headers.get("x-pkey-device") ?? "d";
       if (u.pathname.endsWith("/devices/report"))
         return new Response("{}", { status: 200 });
 
@@ -950,7 +950,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
         servedLicense++;
         const doc = makeLicenseDoc({ deviceId: device, issuedAt: nowSec() });
         return new Response(
-          await signJws(doc, PINNED_PEM, PINNED_KID, "plrs-license+jws"),
+          await signJws(doc, PINNED_PEM, PINNED_KID, "pkey-license+jws"),
           { status: 200, headers: { etag: '"stable-license"' } },
         );
       }
@@ -963,14 +963,14 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
         servedConfig++;
         const doc = makeConfigDoc({ deviceId: device, issuedAt: nowSec() });
         return new Response(
-          await signJws(doc, PINNED_PEM, PINNED_KID, "plrs-config+jws"),
+          await signJws(doc, PINNED_PEM, PINNED_KID, "pkey-config+jws"),
           { status: 200, headers: { etag: '"stable-config"' } },
         );
       }
       return new Response("", { status: 404 });
     }) as typeof fetch;
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: false,
       store,
@@ -1012,7 +1012,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
       makeLicenseDoc({ deviceId, issuedAt: t }),
       PINNED_PEM,
       PINNED_KID,
-      "plrs-license+jws",
+      "pkey-license+jws",
     );
     // A client up to CLOCK_SKEW seconds fast still accepts a brand-new document.
     const doc = await verifyLicenseDoc(jws, {
@@ -1029,7 +1029,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
         makeLicenseDoc({ deviceId, issuedAt: t + 10 * 365 * 86400 }),
         PINNED_PEM,
         PINNED_KID,
-        "plrs-license+jws",
+        "pkey-license+jws",
       ),
       { trust: { [PINNED_KID]: PINNED_PUB }, expectedAud: PRODUCT, deviceId },
     );
@@ -1041,7 +1041,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
           makeConfigDoc({ deviceId, issuedAt: t + 10 * 365 * 86400 }),
           PINNED_PEM,
           PINNED_KID,
-          "plrs-config+jws",
+          "pkey-config+jws",
         ),
         { trust: { [PINNED_KID]: PINNED_PUB }, expectedAud: PRODUCT, deviceId },
       ),
@@ -1108,7 +1108,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     );
     writeFileSync(cachePath, JSON.stringify({ v: 2, configJws: v2Jws }));
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: false,
       store,
@@ -1152,13 +1152,13 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
         makeLicenseDoc({ deviceId, issuedAt: t }),
         PINNED_PEM,
         PINNED_KID,
-        "plrs-license+jws",
+        "pkey-license+jws",
       ),
       config: await signJws(
         makeConfigDoc({ deviceId, issuedAt: t, secret: "STOWAWAY" }),
         PINNED_PEM,
         PINNED_KID,
-        "plrs-config+jws",
+        "pkey-config+jws",
       ),
     };
     const offline = {
@@ -1170,7 +1170,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     };
 
     writeFileSync(cachePath, JSON.stringify({ v: 2, docs }));
-    const stale = await PolarisClient.create(offline);
+    const stale = await PolarisKeyClient.create(offline);
     expect(stale.status().status).toBe("needs-activation");
     expect(stale.license.isEntitled("polarisVpn")).toBe(false);
     expect(stale.config.getSecret("soundcloud.oauth")).toBeNull();
@@ -1182,7 +1182,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
       cachePath,
       JSON.stringify({ v: CACHE_VERSION, docs } satisfies CacheRecordV3),
     );
-    const current = await PolarisClient.create(offline);
+    const current = await PolarisKeyClient.create(offline);
     expect(current.status().status).toBe("ok");
     expect(current.license.isEntitled("polarisVpn")).toBe(true);
     expect(current.config.getSecret("soundcloud.oauth")).toBe("STOWAWAY");
@@ -1191,7 +1191,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
 
   // NEW (§2 / §4.1) — the v3 form of the typ-separation attack. Splitting one document into
   // two created a new place to swap them: the cache's own slices. `verifyLicenseDoc` demands
-  // `typ: plrs-license+jws` with `requireTyp` on, so a config artifact filed under
+  // `typ: pkey-license+jws` with `requireTyp` on, so a config artifact filed under
   // `docs.license` is not a licence — it is dropped, and dropped SLICE-WISE, so the honest
   // config slice beside it still loads. Fail-closed, not fail-empty.
   it("a valid config artifact planted in `docs.license` grants nothing, and the real config slice still loads", async () => {
@@ -1204,7 +1204,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
       makeConfigDoc({ deviceId, issuedAt: t, secret: "REAL-SECRET" }),
       PINNED_PEM,
       PINNED_KID,
-      "plrs-config+jws",
+      "pkey-config+jws",
     );
     // The same artifact in BOTH slices: correct in one, type-confused in the other.
     writeFileSync(
@@ -1215,7 +1215,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
       } satisfies CacheRecordV3),
     );
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       trustRefresh: false,
       store,
@@ -1239,7 +1239,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
       makeLicenseDoc({ deviceId, issuedAt: t }),
       PINNED_PEM,
       PINNED_KID,
-      "plrs-license+jws",
+      "pkey-license+jws",
     );
     writeFileSync(
       cachePath,
@@ -1248,7 +1248,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
         docs: { license: licenseJws, config: licenseJws },
       } satisfies CacheRecordV3),
     );
-    const mirrored = await PolarisClient.create({
+    const mirrored = await PolarisKeyClient.create({
       ...base,
       trustRefresh: false,
       store,

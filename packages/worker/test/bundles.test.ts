@@ -4,7 +4,7 @@
  *
  * ── WHY THE ASSERTIONS RUN THROUGH `inspectBundle` ──────────────────────────────────────────
  *
- * A bundle is only correct if the four SDKs accept it, and `@plrs/client-core`'s `inspectBundle`
+ * A bundle is only correct if the four SDKs accept it, and `@polaris-key/client-core`'s `inspectBundle`
  * IS the walk they all run (§7's numbered steps, pinned byte-for-byte by the corpus's
  * `bundleCases`). So this suite never hand-parses what the endpoint emits: it verifies the
  * artifact the way an air-gapped machine would, against the product's PINNED key, and reads the
@@ -25,8 +25,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { inspectBundle } from "@plrs/client-core";
-import type { ManagedEntry } from "@plrs/protocol";
+import { inspectBundle } from "@polaris-key/client-core";
+import type { ManagedEntry } from "@polaris-key/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -272,7 +272,7 @@ describe("bundle mint — the artifact a client actually imports", () => {
       inspection.bundle.docs.license!.doc,
       inspection.bundle.docs.config!.doc,
     ]) {
-      expect(doc.iss).toBe("plrs.im");
+      expect(doc.iss).toBe("key.plrs.im");
       expect(doc.aud).toBe(SLUG);
       expect(doc.deviceId).toBe(DEVICE);
     }

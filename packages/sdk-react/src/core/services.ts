@@ -1,7 +1,7 @@
 // The service capability model — wire contract v3 §2 / design spec §4.3, D-21.
 //
-// A MIRROR of `@plrs/node`'s `src/discovery.ts` capability half, field for field. It is
-// duplicated rather than imported because `@plrs/node` is a Node-only package (keyring, fs,
+// A MIRROR of `@polaris-key/node`'s `src/discovery.ts` capability half, field for field. It is
+// duplicated rather than imported because `@polaris-key/node` is a Node-only package (keyring, fs,
 // `node:crypto`) and this one has to survive a browser bundler. The shapes are pinned against
 // the Node originals by `test/capabilities.test.ts`, so the two cannot drift silently.
 //

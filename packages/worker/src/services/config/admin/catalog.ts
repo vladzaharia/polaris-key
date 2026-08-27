@@ -10,11 +10,11 @@
  * Config already serves `GET /<product>/config/schema` on the public wire — the same document,
  * read by devices. Naming the admin resource `schema` too would have put a read-only wire route
  * and an operator-writable admin route one namespace apart under the same noun. `catalog` is
- * what the thing is called everywhere else in the codebase (`@plrs/catalog`, `catalog_json`,
+ * what the thing is called everywhere else in the codebase (`@polaris-key/catalog`, `catalog_json`,
  * `ProductCatalog`), so the admin surface now says so.
  */
 
-import { Catalog } from "@plrs/catalog";
+import { Catalog } from "@polaris-key/catalog";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema, insertSchema } from "../../../core/data.js";
 import {

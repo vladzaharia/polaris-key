@@ -5,10 +5,10 @@
 // Verification, caching and the gate live elsewhere on purpose — an HTTP layer that verified
 // would be an HTTP layer that could be talked into not verifying.
 //
-// Every call carries the seven `X-Polaris-*` metadata headers and a deadline, both from
+// Every call carries the seven `X-PKey-*` metadata headers and a deadline, both from
 // `CoreContext.headers()` / `.deadline()`, so a new endpoint cannot ship without them (R4-08).
 
-import type { HardwareFingerprint } from "@plrs/protocol/core";
+import type { HardwareFingerprint } from "@polaris-key/protocol/core";
 import type { CoreContext, DocumentResult } from "../core/context.js";
 
 export type ActivationResult =
@@ -105,7 +105,7 @@ export function enroll(
   return activationLike(ctx, "license/enroll", ctx.headers(), fingerprint);
 }
 
-/** `POST /<p>/license/activate` — exchange a licence key for a per-device `plrst_` token. */
+/** `POST /<p>/license/activate` — exchange a licence key for a per-device `pkeyt_` token. */
 export function activateWithKey(
   ctx: CoreContext,
   key: string,

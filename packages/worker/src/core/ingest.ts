@@ -6,7 +6,7 @@
  *
  * `linkRepo` and `resyncRepo` live under `services/release/` because a repo link IS the release
  * service's front door — the GitHub coordinates it needs, the installation token it mints, the
- * `.polaris/` files it reads. But what they WRITE is the whole product: the `products` row, the
+ * `.pkey/` files it reads. But what they WRITE is the whole product: the `products` row, the
  * catalog, the signing key, tiers, profiles, provisioning, OIDC, edge-mint recipes. Almost none
  * of that is Release's data (spec §5.2).
  *

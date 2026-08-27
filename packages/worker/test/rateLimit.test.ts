@@ -100,7 +100,7 @@ describe("register rate limiting", () => {
       handleRegister(
         mkReq("POST", {
           "cf-connecting-ip": "203.0.113.9",
-          "x-polaris-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
+          "x-pkey-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
         }),
         env,
         db,
@@ -126,7 +126,7 @@ describe("register rate limiting", () => {
       const res = await handleRegister(
         mkReq("POST", {
           "cf-connecting-ip": "203.0.113.9",
-          "x-polaris-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
+          "x-pkey-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
         }),
         env,
         db,
@@ -151,7 +151,7 @@ describe("activate rate limiting", () => {
       const res = await handleActivate(
         mkReq("POST", {
           authorization: `Bearer ${key}`,
-          "x-polaris-device": "dev-1",
+          "x-pkey-device": "dev-1",
         }),
         env,
         db,
@@ -163,7 +163,7 @@ describe("activate rate limiting", () => {
     const blocked = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": "dev-1",
+        "x-pkey-device": "dev-1",
       }),
       env,
       db,

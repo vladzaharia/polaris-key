@@ -2,7 +2,7 @@
 
 /**
  * The Device principal — core's always-on substrate for "which machine is this, and is its
- * credential still live" (design spec §5.1: registration, `plrst_` tokens, list/rename/
+ * credential still live" (design spec §5.1: registration, `pkeyt_` tokens, list/rename/
  * deauthorize, fingerprints, facts/telemetry).
  *
  * Assembled from the device halves of `licenseCore.ts` (`validateDeviceToken`,
@@ -36,14 +36,14 @@ import {
   type DeviceProbeResult,
   type FingerprintComponent,
   type FingerprintMode,
-} from "@plrs/protocol";
+} from "@polaris-key/protocol";
 import {
   HEADER_ARCH,
   HEADER_PLATFORM,
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
   HEADER_VERSION,
-} from "@plrs/protocol/core";
+} from "@polaris-key/protocol/core";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";
@@ -101,7 +101,7 @@ import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
  *
  * Until v3, "is this token valid" and "is the licence behind it usable" were one question, and
  * `validateDeviceToken` answered both. They are now different questions, because a product may
- * run Config with License DISABLED: its devices are registered, hold real `plrst_` tokens, and
+ * run Config with License DISABLED: its devices are registered, hold real `pkeyt_` tokens, and
  * have no licence at all. If Core kept refusing a device whose licence is missing or lapsed,
  * `GET /<p>/config/document` could never answer for such a product, and service independence
  * would be unimplementable at the only layer that could enforce it.
@@ -291,7 +291,7 @@ export async function reconcileDeviceHardware(
     existing.status !== "authorized" ||
     existing.license_id !== license.id;
 
-  // `X-Polaris-Device` is a client-chosen string with no uniqueness requirement, so before this
+  // `X-PKey-Device` is a client-chosen string with no uniqueness requirement, so before this
   // the cheapest way to hold N seats was to activate N times with N device ids from ONE
   // machine — the server computed N identical hwids and never compared them.
   // `findFingerprintByHwid` existed for exactly this and had zero callers (R3-11).
@@ -565,11 +565,11 @@ export async function validateDeviceToken(
   opts: { deviceId?: string | null } = {},
 ): Promise<ValidDeviceToken | { error: "unauthorized" }> {
   if (!token) return { error: "unauthorized" };
-  // Wire v3 §6/§8: the device principal is `plrst_`. A `pkeyt_` token — or a licence key, or a
-  // session cookie value pasted into the Authorization header — is refused on SHAPE, before the
-  // pepper HMAC and the KV/D1 reads it would otherwise cost. Rejecting the old prefix has to be
-  // an explicit rule and not merely a consequence of no such hash existing, or "pkeyt_ is
-  // rejected" would be a fact about the current contents of a table rather than about this code.
+  // Wire v3 §6/§8: the device principal is `pkeyt_`. Anything else — a `plrst_` token, a licence
+  // key, or a session cookie value pasted into the Authorization header — is refused on SHAPE,
+  // before the pepper HMAC and the KV/D1 reads it would otherwise cost. That rejection has to be
+  // an explicit rule and not merely a consequence of no such hash existing, or it would be a
+  // fact about the current contents of a table rather than about this code.
   if (!isDeviceToken(token)) return { error: "unauthorized" };
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   const cached = await getTokenRecord(env, product.slug, tokenHash);
@@ -729,7 +729,7 @@ export async function readFingerprint(
  * These two surfaces are Core's, "available under every policy" (§6), and until registration
  * existed that cost nothing: every device had a licence, so requiring a usable one was a
  * distinction without a difference. It is a difference now. A config-only product's devices
- * hold real `plrst_` tokens and no licence at all, and a Core surface that refused them would
+ * hold real `pkeyt_` tokens and no licence at all, and a Core surface that refused them would
  * make "Core is always on" false for exactly the products the suite exists to enable — they
  * could fetch a signed config document but could not rename the device that fetched it.
  *

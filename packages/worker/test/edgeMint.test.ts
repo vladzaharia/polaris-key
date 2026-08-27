@@ -40,7 +40,7 @@ async function activate(
   const res = await handleActivate(
     mkReq("POST", {
       authorization: `Bearer ${key}`,
-      "x-polaris-device": "dev-1",
+      "x-pkey-device": "dev-1",
     }),
     env,
     db,

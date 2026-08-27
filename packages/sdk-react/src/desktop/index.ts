@@ -1,6 +1,6 @@
-// @plrs/react/desktop — the Electron/Tauri transport. Import the `PolarisBridge`
-// type on the Node/preload side to implement the IPC contract; `@plrs/node`'s
-// `PolarisClient.getSyncState()` satisfies its state half unchanged.
+// @polaris-key/react/desktop — the Electron/Tauri transport. Import the `PolarisBridge`
+// type on the Node/preload side to implement the IPC contract; `@polaris-key/node`'s
+// `PolarisKeyClient.getSyncState()` satisfies its state half unchanged.
 
 export {
   DesktopAdapter,

@@ -30,9 +30,9 @@ import {
   REFRESH_MARGIN_SECONDS,
   type BlockedState,
   type CacheRecordV3,
-} from "@plrs/client-core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
+} from "@polaris-key/client-core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { fetchLicenseDocument } from "../license/endpoints.js";
 import { fetchConfigDocument } from "../config/fetch.js";
 import type { CacheManager } from "./cache.js";

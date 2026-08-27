@@ -23,7 +23,7 @@
  * it the entitled mode would be asked about a request it could not describe.
  */
 
-import type { UpdateArch } from "@plrs/protocol/update";
+import type { UpdateArch } from "@polaris-key/protocol/update";
 import type { ReleaseParams } from "../release/gateway.js";
 import { appcastArch, type UpdateSurfaceKind } from "./feed.js";
 

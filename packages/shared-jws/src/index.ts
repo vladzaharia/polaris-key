@@ -1,4 +1,4 @@
-// @plrs/jws — the FROZEN Polaris Key wire crypto: compact JWS (EdDSA / Ed25519)
+// @polaris-key/jws — the FROZEN Polaris Key wire crypto: compact JWS (EdDSA / Ed25519)
 // encode + verify, implemented on WebCrypto so the SAME code runs in workerd (the Worker
 // signer) and Node 22 (SDKs/tools). The cross-language conformance corpus pins this
 // byte-for-byte; the Swift/Python SDKs re-implement the identical construction natively.
@@ -20,36 +20,33 @@ export interface JwsHeader {
 }
 
 /**
- * Document-type domain separator (wire contract v2). One signing key signs BOTH config docs
- * and trust manifests, so without this a manifest could be replayed where a config doc is
- * expected. See docs/security/WIRE-CONTRACT-V2.md §2.4.
+ * Document-type domain separator. One signing key signs every document kind, so without this
+ * a trust manifest could be replayed where a config document is expected.
+ * See docs/security/WIRE-CONTRACT-V3.md §2.
+ *
+ * `pkey-config+jws` and `pkey-trust+jws` carry over verbatim from wire contract v2 — the
+ * document *shapes* changed in v3, the type strings did not (Amendment A1; pre-launch, and
+ * corpus v1 is gone, so no dual-shape ambiguity ever shipped).
  */
 export type JwsTyp =
-  // Wire contract v2 (legacy; removed in P8 once no signer/verifier emits them)
+  | "pkey-license+jws"
   | "pkey-config+jws"
   | "pkey-trust+jws"
-  // Wire contract v3 (docs/security/WIRE-CONTRACT-V3.md §2)
-  | "plrs-license+jws"
-  | "plrs-config+jws"
-  | "plrs-trust+jws"
-  | "plrs-bundle+jws";
+  | "pkey-bundle+jws";
 
 export interface VerifyOptions {
   /**
-   * Require this `typ`. When omitted, a header carrying NO `typ` is accepted (v1
-   * compatibility) but a header carrying a DIFFERENT one is still rejected — so the
-   * cross-protocol replay is closed immediately, before `typ` becomes mandatory.
+   * Require this `typ` (WIRE-CONTRACT-V3 §2). A header carrying a DIFFERENT type is rejected,
+   * and so is a header carrying NONE — there is no tolerance for an absent `typ`, because a
+   * typeless artifact is exactly the one that can be replayed at whichever call site an
+   * attacker prefers.
+   *
+   * Omitting this asks for no domain separation at all, which no shipping call site does.
    */
   typ?: JwsTyp;
   /**
-   * Wire contract v3 §2: a missing `typ` is REJECTED, not tolerated. v3 verifiers
-   * (client-core) set this; v2 call sites keep the v1-compat tolerance until they and
-   * corpus v1 are retired in P8, at which point this becomes the only behavior.
-   */
-  requireTyp?: boolean;
-  /**
    * RAISE the decoded-payload cap for this call only, and with it the encoded-length
-   * pre-check derived from it. Exists for exactly one artifact: `plrs-bundle+jws`, whose
+   * pre-check derived from it. Exists for exactly one artifact: `pkey-bundle+jws`, whose
    * payload wraps up to three inner compact JWSs and is capped at 262 144 bytes instead of
    * 65 536 (WIRE-CONTRACT-V3 §1). The caller passes the cap explicitly for that `typ`;
    * nothing else in the system may.
@@ -95,7 +92,7 @@ const MAX_HEADER_B64 = b64Cap(MAX_HEADER_BYTES);
 
 /**
  * The decoded-payload cap in force for one `verifyJws` call. `VerifyOptions.maxPayloadBytes`
- * may only RAISE it (`plrs-bundle+jws` at 262 144, §1); a smaller or non-finite request leaves
+ * may only RAISE it (`pkey-bundle+jws` at 262 144, §1); a smaller or non-finite request leaves
  * the frozen 64 KiB default in place, so no call site can quietly tighten below the contract.
  */
 function payloadCapFor(requested: number | undefined): number {
@@ -335,16 +332,12 @@ export async function verifyJws<T = unknown>(
 
   // --- 3. Algorithm + type + key selection, all BEFORE any signature math. ---------------
   if (header.alg !== "EdDSA") return null;
-  // Domain separation. An absent `typ` is tolerated for v1 compatibility, but a header
-  // asserting a DIFFERENT type is rejected outright — that closes cross-protocol replay
-  // (a trust manifest presented where a config doc is expected) immediately.
-  if (header.typ === undefined) {
-    // Wire v3 verifiers demand a typ (WIRE-CONTRACT-V3 §2); v2 tolerates absence.
-    if (opts.requireTyp) return null;
-  } else {
-    if (typeof header.typ !== "string") return null;
-    if (opts.typ !== undefined && header.typ !== opts.typ) return null;
-  }
+  // Domain separation (WIRE-CONTRACT-V3 §2). Once the caller names a `typ`, a header carrying
+  // a DIFFERENT one and a header carrying NONE are both rejected: tolerating absence would
+  // leave every typeless artifact replayable at whichever call site an attacker prefers,
+  // which is the cross-protocol replay this field exists to close.
+  if (opts.typ !== undefined && header.typ !== opts.typ) return null;
+  if (header.typ !== undefined && typeof header.typ !== "string") return null;
   if (typeof header.kid !== "string") return null;
   const rawKey = trustedKeys[header.kid];
   if (!rawKey) return null;

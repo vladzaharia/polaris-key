@@ -15,8 +15,8 @@ from typing import Any, Dict
 import httpx
 import pytest
 
-from polaris.core.errors import PolarisError
-from polaris.devices.client import DeviceManagementUnsupportedError
+from polaris_key.core.errors import PolarisError
+from polaris_key.devices.client import DeviceManagementUnsupportedError
 
 from helpers import (
     PRODUCT,
@@ -63,7 +63,7 @@ def test_register_sends_the_fingerprint_when_collection_is_on() -> None:
             seen["body"] = r.content
             seen["ct"] = r.headers.get("content-type")
             return httpx.Response(
-                200, json={"token": TOKEN, "deviceId": r.headers["X-Polaris-Device"]}
+                200, json={"token": TOKEN, "deviceId": r.headers["X-PKey-Device"]}
             )
         return httpx.Response(404)
 
@@ -84,7 +84,7 @@ def test_register_with_fingerprint_off_sends_no_body_at_all() -> None:
         if r.url.path == f"/{PRODUCT}/devices/register":
             seen["body"] = r.content
             return httpx.Response(
-                200, json={"token": TOKEN, "deviceId": r.headers["X-Polaris-Device"]}
+                200, json={"token": TOKEN, "deviceId": r.headers["X-PKey-Device"]}
             )
         return httpx.Response(404)
 
@@ -152,8 +152,8 @@ def test_list_devices_blends_local_state_into_the_roster() -> None:
     c = make_client(
         routes(
             devices=ROSTER,
-            license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]),
-            config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"]),
+            license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]),
+            config_jws=lambda r: sign_config(r.headers["X-PKey-Device"]),
         )
     )
     c.license.activate_with_key("k")
@@ -244,11 +244,11 @@ def test_report_posts_to_devices_report_and_is_built_from_verified_docs() -> Non
             return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
         if r.url.path == f"{p}/license/document":
             return httpx.Response(
-                200, text=sign_license(r.headers["X-Polaris-Device"]), headers={"etag": "l"}
+                200, text=sign_license(r.headers["X-PKey-Device"]), headers={"etag": "l"}
             )
         if r.url.path == f"{p}/config/document":
             return httpx.Response(
-                200, text=sign_config(r.headers["X-Polaris-Device"]), headers={"etag": "c"}
+                200, text=sign_config(r.headers["X-PKey-Device"]), headers={"etag": "c"}
             )
         return httpx.Response(404)
 

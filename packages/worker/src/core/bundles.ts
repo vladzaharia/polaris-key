@@ -7,8 +7,8 @@
  * The server half of the classic request-code flow. An air-gapped install shows its request
  * code (product + `deviceId`); an operator pastes it here; this endpoint signs the documents
  * that install would have fetched over the network, wraps them with the trust manifest needed
- * to verify them, and hands back one `plrs-bundle+jws` file to carry across on a USB stick.
- * `@plrs/client-core`'s `inspectBundle` is the verifier every SDK runs against what this emits,
+ * to verify them, and hands back one `pkey-bundle+jws` file to carry across on a USB stick.
+ * `@polaris-key/client-core`'s `inspectBundle` is the verifier every SDK runs against what this emits,
  * so it — not this file — is the contract; everything below exists to satisfy it.
  *
  * ── WHY THIS LIVES IN CORE ──────────────────────────────────────────────────────────────────
@@ -55,8 +55,8 @@
  * group gates, and a second budget on top of that would protect nothing the first does not.
  */
 
-import { SECONDS_PER_DAY } from "@plrs/protocol";
-import type { BundleDoc } from "@plrs/protocol/core";
+import { SECONDS_PER_DAY } from "@polaris-key/protocol";
+import type { BundleDoc } from "@polaris-key/protocol/core";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { AdminSession } from "../admin/session.js";
@@ -106,7 +106,7 @@ const DEVICE_ID = /^[A-Za-z0-9_-]{32}$/;
 /**
  * The grace ceiling, in DAYS (§3.3, D-22).
  *
- * The same bound as `@plrs/client-core`'s `MAX_GRACE_SECONDS` (365 × 86 400), expressed in the
+ * The same bound as `@polaris-key/client-core`'s `MAX_GRACE_SECONDS` (365 × 86 400), expressed in the
  * unit this endpoint takes. It is restated rather than imported because client-core is a
  * TEST-only dependency of the worker — the server must not take a runtime dependency on the
  * reference client — and because §3.3 makes the point that the ceiling is enforced at BOTH ends:
@@ -281,7 +281,7 @@ export async function handleBundleMint(
       doc,
       product.signingKeyPem,
       product.signingKid,
-      "plrs-license+jws",
+      "pkey-license+jws",
     );
   }
 
@@ -316,7 +316,7 @@ export async function handleBundleMint(
       doc,
       product.signingKeyPem,
       product.signingKid,
-      "plrs-config+jws",
+      "pkey-config+jws",
     );
   }
 
@@ -338,7 +338,7 @@ export async function handleBundleMint(
     bundle,
     product.signingKeyPem,
     product.signingKid,
-    "plrs-bundle+jws",
+    "pkey-bundle+jws",
   );
 
   const carried = [

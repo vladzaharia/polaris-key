@@ -54,7 +54,7 @@ function explodingFetch(message = "ECONNREFUSED"): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
-/** A ready-to-use Core. `init()` loads the device id, which rides `X-Polaris-Device`. */
+/** A ready-to-use Core. `init()` loads the device id, which rides `X-PKey-Device`. */
 async function makeCtx(impl: typeof fetch): Promise<CoreContext> {
   const ctx = new CoreContext({
     productSlug: "djdl",
@@ -69,7 +69,7 @@ async function makeCtx(impl: typeof fetch): Promise<CoreContext> {
   return ctx;
 }
 
-const TOKEN = "plrst_test";
+const TOKEN = "pkeyt_test";
 
 /** The two documents, driven through identical assertions. */
 const DOCUMENTS = [
@@ -101,11 +101,11 @@ describe.each(DOCUMENTS)("$name document — request construction", (doc) => {
 
     expect(calls[0]?.url).toBe(doc.url);
     const h = new Headers(calls[0]!.init.headers);
-    // The `plrst_` DEVICE token — never a licence key. Both documents are device-scoped.
+    // The `pkeyt_` DEVICE token — never a licence key. Both documents are device-scoped.
     expect(h.get("authorization")).toBe(`Bearer ${TOKEN}`);
-    expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
-    expect(h.get("x-polaris-version")).toBe("1.2.3");
-    expect(h.get("x-polaris-channel")).toBe("stable");
+    expect(h.get("x-pkey-device")).toBe(ctx.deviceId);
+    expect(h.get("x-pkey-version")).toBe("1.2.3");
+    expect(h.get("x-pkey-channel")).toBe("stable");
     // No ETag held ⇒ the conditional header is omitted, not sent empty.
     expect(h.get("if-none-match")).toBeNull();
   });

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { ManagedEntry } from "@plrs/protocol";
+import type { ManagedEntry } from "@polaris-key/protocol";
 import {
   channelForVersion,
   checkBuildGate,
   compareSemver,
   isDevBuild,
   parseSemver,
-} from "../src/gate.js";
+} from "../src/core/gate.js";
 
 // Convenience: an enforced entitlement entry.
 const ent = (value: ManagedEntry["value"]): ManagedEntry => ({
@@ -269,7 +269,7 @@ describe("checkBuildGate — dev bypass is opt-in (R3-01)", () => {
   };
 
   it("does NOT bypass anything for an unentitled dev build", () => {
-    // `X-Polaris-Version` is a header. Short-circuiting on it skipped both the window and the
+    // `X-PKey-Version` is a header. Short-circuiting on it skipped both the window and the
     // channel entitlement for anyone who typed `0.0.0-dev`.
     const r = checkBuildGate({ ...devBuild, entitlements: {} });
     expect(r.ok).toBe(false);

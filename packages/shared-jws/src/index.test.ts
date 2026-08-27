@@ -80,7 +80,7 @@ describe("verifyJws — frozen contract", () => {
     expect(jws).toBe(DJDL_JWS);
   });
 
-  it("round-trips a Polaris v1 doc (with aud/iss) under the rotation key", async () => {
+  it("round-trips a Polaris Key v1 doc (with aud/iss) under the rotation key", async () => {
     const doc = {
       schemaVersion: 1,
       aud: "djdl",
@@ -313,10 +313,10 @@ describe("verifyJws structural failures", () => {
 });
 
 // WIRE-CONTRACT-V3 §1: the payload cap is 65 536 bytes for every artifact EXCEPT
-// `plrs-bundle+jws`, which wraps up to three inner compact JWSs and is capped at 262 144.
+// `pkey-bundle+jws`, which wraps up to three inner compact JWSs and is capped at 262 144.
 // The bundle verifier passes that cap explicitly, per call — it is not a global relaxation,
 // and it can only ever raise.
-describe("verifyJws — maxPayloadBytes (the plrs-bundle+jws cap, §1)", () => {
+describe("verifyJws — maxPayloadBytes (the pkey-bundle+jws cap, §1)", () => {
   // 100 KiB: over the 64 KiB default, under the 256 KiB bundle cap. Sizes stay just past the
   // boundary being proved — the multi-MiB versions of these tests are what timed out CI once.
   const oversizeDoc = { schemaVersion: 1, blob: "A".repeat(100 * 1024) };

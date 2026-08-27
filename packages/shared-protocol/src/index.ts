@@ -1,12 +1,19 @@
-// @plrs/protocol — the Polaris wire-contract types ONLY (no runtime, no crypto).
-// Organized by service since wire contract v3; this barrel preserves the pre-suite (v2)
-// import surface for consumers that have not migrated yet, which means it intentionally
-// exports the LEGACY values of `ISSUER` and the `HEADER_*` constants. New code imports
-// from the service subpaths (`@plrs/protocol/core`, `/license`, `/config`, `/release`,
-// `/update`, `/trust`), which carry the v3 values. The barrel's legacy names disappear
-// in P8 along with ./legacy.js.
+// @polaris-key/protocol — the Polaris Key wire-contract types ONLY (no runtime, no crypto).
+// Organized by service since wire contract v3. There is exactly ONE identifier set: this
+// barrel re-exports core's values verbatim (`ISSUER` = `key.plrs.im`, the `X-PKey-*` headers),
+// so an import from here and an import from `@polaris-key/protocol/core` can never disagree.
+// Prefer the service subpaths (`/core`, `/license`, `/config`, `/release`, `/update`, `/trust`)
+// in new code; the barrel exists for consumers that want one import.
 
 export {
+  ISSUER,
+  HEADER_DEVICE,
+  HEADER_VERSION,
+  HEADER_CHANNEL,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
+  HEADER_PLATFORM,
+  HEADER_ARCH,
   PROTOCOL_VERSION,
   MAX_BUNDLE_BYTES,
   FINGERPRINT_COMPONENTS,
@@ -57,16 +64,3 @@ export type {
   TrustManifestKey,
   TrustManifestDoc,
 } from "./trust.js";
-
-// ── Legacy v2 surface (worker + SDKs until P1/P4/P5; deleted in P8) ──────────────────
-export {
-  ISSUER,
-  HEADER_DEVICE,
-  HEADER_VERSION,
-  HEADER_CHANNEL,
-  HEADER_SDK_NAME,
-  HEADER_SDK_VERSION,
-  HEADER_PLATFORM,
-  HEADER_ARCH,
-} from "./legacy.js";
-export type { ManagedPayload, ManagedConfigDoc } from "./legacy.js";

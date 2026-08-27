@@ -26,7 +26,7 @@ export interface ProductRow {
   // Auto-issue policy (migrations/0011_auto_issue.sql), same ownership rules.
   auto_issue_json?: string | null;
   auto_issue_source?: string;
-  // Polaris service enablement (migrations/0019+0020), same ownership rules again. Parsed by
+  // Polaris Key service enablement (migrations/0019+0020), same ownership rules again. Parsed by
   // `core/services.ts`; NULL reads back as the defaults (license + config).
   services_json?: string | null;
   services_source?: string | null;
@@ -1303,7 +1303,7 @@ export async function setAutoIssuePolicy(
 }
 
 /**
- * Write a product's Polaris service enablement under the same manifest-vs-admin ownership rule
+ * Write a product's Polaris Key service enablement under the same manifest-vs-admin ownership rule
  * as the fingerprint and auto-issue policies: a resync only writes while the row is still
  * manifest-owned, so an operator who turns a service off in the console does not have it turned
  * back on by the next push to the product repo.

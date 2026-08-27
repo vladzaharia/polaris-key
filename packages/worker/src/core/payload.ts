@@ -4,8 +4,8 @@
  *
  * ── WHY THIS IS CORE AND NOT ONE OF THE TWO SERVICES ────────────────────────────────────────
  *
- * Wire v3 splits one signed document into two: `plrs-license+jws` carries `entitlements`,
- * `plrs-config+jws` carries `config` + `secrets`. They are assembled by different services, but
+ * Wire v3 splits one signed document into two: `pkey-license+jws` carries `entitlements`,
+ * `pkey-config+jws` carries `config` + `secrets`. They are assembled by different services, but
  * they are assembled from the SAME stack of stored layers:
  *
  *     catalog defaults  →  tier's profile  →  the license's profiles (in order)
@@ -31,8 +31,8 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import { Catalog } from "@plrs/catalog";
-import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
+import { Catalog } from "@polaris-key/catalog";
+import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../db/types.js";
 import { mergePayloads } from "../merge.js";
 import {
@@ -44,6 +44,22 @@ import {
   type LicenseRow,
   type TierRow,
 } from "../repo.js";
+
+/**
+ * The three managed-entry maps as the CONTROL PLANE stores them, in one object.
+ *
+ * Server-side only, and deliberately NOT in `@polaris-key/protocol`: nothing signs or ships
+ * this shape. Wire contract v3 splits it across two documents — `entitlements` rides
+ * `pkey-license+jws`, `config` + `secrets` ride `pkey-config+jws` — so the fused object exists
+ * exactly as far as the signing boundary and no further. (In v2 it WAS the wire payload, which
+ * is the whole reason it used to live in the protocol package.) Core owns it because both
+ * services assemble their document from the same merged instance.
+ */
+export interface ManagedPayload {
+  config: Record<string, ManagedEntry>;
+  secrets: Record<string, ManagedEntry>;
+  entitlements: Record<string, ManagedEntry>;
+}
 
 /** The merged layers plus the tier they were resolved against — License needs the row itself
  *  to inject its policy, and re-reading it would be a second query for the same answer. */

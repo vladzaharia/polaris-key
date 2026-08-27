@@ -1,9 +1,9 @@
-# polaris-suite (Python SDK)
+# polaris-key (Python SDK)
 
-A product-agnostic Python client for the **Polaris suite** — an always-on **Core**
+A product-agnostic Python client for **Polaris Key** — an always-on **Core**
 (device principal, credential, trust, verified cache, clock floor, sync) with opt-in
 **License**, **Config**, **Release** and **Update** services layered over it. It mirrors
-the Node SDK (`@plrs/node`) module for module and verifies the **same** cross-language
+the Node SDK (`@polaris-key/node`) module for module and verifies the **same** cross-language
 conformance corpus byte-for-byte.
 
 The wire crypto is a compact JWS (EdDSA / Ed25519) over per-service signed documents; the
@@ -11,15 +11,15 @@ verifying key is selected by the header `kid` from a caller-supplied **trust set
 from the document, and the `alg` is asserted before any signature math (no `none`/HMAC
 downgrade).
 
-Distribution **`polaris-suite`**, import package **`polaris`**, console script
-**`polaris`**.
+Distribution **`polaris-key`**, import package **`polaris`**, console script
+**`polaris-key`**.
 
 ## Install
 
 ```sh
-pip install polaris-suite
+pip install polaris-key
 # optional extras: OS keyring + alternate CLI front ends
-pip install "polaris-suite[keyring,click,typer]"
+pip install "polaris-key[keyring,click,typer]"
 ```
 
 Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`.
@@ -27,13 +27,13 @@ Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`.
 ## Quickstart
 
 ```python
-from polaris import PolarisClient
+from polaris_key import PolarisKeyClient
 
 # kid -> raw Ed25519 public key (base64url). PLACEHOLDERS — substitute YOUR product's
 # real values; see "Where the trust set comes from" below.
 TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 
-client = PolarisClient.create(
+client = PolarisKeyClient.create(
     product_slug="djdl",
     version="1.0.0",                 # the HOST APPLICATION's version
     trust=TRUST,                     # pinned signing keys
@@ -41,7 +41,7 @@ client = PolarisClient.create(
 )
 
 # Activate this device with a license key (then pull the first signed documents).
-result = client.license.activate_with_key("PLRS-XXXX-XXXX")
+result = client.license.activate_with_key("PKEY-XXXX-XXXX")
 if result.kind == "ok":
     print("status:", client.status().status)
 
@@ -63,9 +63,9 @@ client.sync()
 client.license.deactivate()
 ```
 
-`PolarisClient.create(...)` loads the cached documents with **no network**; `sync()`
+`PolarisKeyClient.create(...)` loads the cached documents with **no network**; `sync()`
 re-pulls. The default `KeyringStore` stores credentials in the OS keyring when available
-(service tag `plrs:<product>`) and uses `0600` files for device/cache data and headless
+(service tag `pkey:<product>`) and uses `0600` files for device/cache data and headless
 fallback. Inject an `InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client`
 (e.g. with a `MockTransport`) for the transport.
 
@@ -73,15 +73,15 @@ fallback. Inject an `InMemoryStore` (or your own `Store`) for tests, and an `htt
 
 Every one is importable on its own, so a config-only daemon never pulls the licence module:
 
-| Import            | Owns                                                                            |
-| ----------------- | ------------------------------------------------------------------------------- |
-| `polaris.core`    | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto |
-| `polaris.license` | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate |
-| `polaris.config`  | the signed config document + layered resolution                                 |
-| `polaris.devices` | registration, the roster, fingerprint / facts / device-id, the stores           |
-| `polaris.release` | changelog, install script, artifact URLs                                        |
-| `polaris.update`  | version check + the Sparkle appcast URL                                         |
-| `polaris.local`   | the transportless profile                                                       |
+| Import                | Owns                                                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `polaris_key.core`    | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto |
+| `polaris_key.license` | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate                                 |
+| `polaris_key.config`  | the signed config document + layered resolution                                                                      |
+| `polaris_key.devices` | registration, the roster, fingerprint / facts / device-id, the stores                                                |
+| `polaris_key.release` | changelog, install script, artifact URLs                                                                             |
+| `polaris_key.update`  | version check + the Sparkle appcast URL                                                                              |
+| `polaris_key.local`   | the transportless profile                                                                                            |
 
 ### Capabilities (fail-closed)
 
@@ -128,7 +128,7 @@ forever.
 ## Layered config
 
 `client.config.get_config(key, fallback)` resolves a value through the **same precedence**
-as every Polaris SDK; `get_config_source(key)` returns which layer won:
+as every Polaris Key SDK; `get_config_source(key)` returns which layer won:
 
 ```
 enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
@@ -140,19 +140,19 @@ vars are ignored for those keys; `hidden` keys are additionally withheld from
 through local → env → remote value → your `fallback`.
 
 ```python
-client = PolarisClient.create(
+client = PolarisKeyClient.create(
     product_slug="djdl", version="1.0.0", trust=TRUST,
     local_overrides={"run.concurrency": 6},  # beats a `default`, never an `enforced`/`hidden`
-    env_prefix="PLRS_CONFIG_",               # the default
+    env_prefix="PKEY_CONFIG_",               # the default
 )
 client.config.get_config_source("run.concurrency")  # "local" | "env" | "remote-default" | …
 ```
 
-### The `PLRS_CONFIG_*` env convention
+### The `PKEY_CONFIG_*` env convention
 
 An override env var is `env_prefix + key.replace(".", "__")` (dots → double underscores):
-`run.concurrency` → `PLRS_CONFIG_run__concurrency`, `quality.floor` →
-`PLRS_CONFIG_quality__floor`. The value is JSON-parsed when it parses (`"4"` → int,
+`run.concurrency` → `PKEY_CONFIG_run__concurrency`, `quality.floor` →
+`PKEY_CONFIG_quality__floor`. The value is JSON-parsed when it parses (`"4"` → int,
 `"true"` → bool, `"[…]"` → list); otherwise it is taken as the raw string.
 
 The pre-suite `PKEY_CONFIG_*` prefix is **not** read as a fallback.
@@ -162,11 +162,11 @@ The pre-suite `PKEY_CONFIG_*` prefix is **not** read as a fallback.
 Three depths:
 
 1. **online with grace** (the default) — a cached document keeps working until `graceUntil`.
-2. **bundle-activated** — an operator mints a `.plrsbundle` against this device's id and you
+2. **bundle-activated** — an operator mints a `.pkeybundle` against this device's id and you
    import it with no network at all:
 
    ```python
-   client.import_bundle(open("offline.plrsbundle").read())
+   client.import_bundle(open("offline.pkeybundle").read())
    ```
 
    Verification is all-or-nothing and the error names the step that refused
@@ -176,7 +176,7 @@ Three depths:
 3. **local-only** — a build that must never open a socket:
 
    ```python
-   from polaris.local import create_local_client, create_bundle_client
+   from polaris_key.local import create_local_client, create_bundle_client
 
    client = create_local_client(product_slug="djdl", version="1.0.0", trust=TRUST)
    client, imported = create_bundle_client(bundle=jws, product_slug="djdl",
@@ -188,18 +188,18 @@ Three depths:
 
 ## CLI
 
-A framework-agnostic command **core** (`polaris.cli.core`) powers a dependency-free
-**argparse** front end (`polaris.cli.argparse_cli`, the default), plus optional **click**
-(`polaris.cli.click_cli`) and **typer** (`polaris.cli.typer_cli`) adapters under the
+A framework-agnostic command **core** (`polaris_key.cli.core`) powers a dependency-free
+**argparse** front end (`polaris_key.cli.argparse_cli`, the default), plus optional **click**
+(`polaris_key.cli.click_cli`) and **typer** (`polaris_key.cli.typer_cli`) adapters under the
 matching extras. All three wrap the same core, so they never diverge. Verbs are grouped by
 the service that owns them:
 
-| Service   | Verbs                                        |
-| --------- | -------------------------------------------- |
+| Service   | Verbs                                           |
+| --------- | ----------------------------------------------- |
 | `license` | `activate` · `enroll` · `deactivate` · `status` |
-| `devices` | `register`                                   |
-| `config`  | `config <key>`                               |
-| `core`    | `import-bundle`                              |
+| `devices` | `register`                                      |
+| `config`  | `config <key>`                                  |
+| `core`    | `import-bundle`                                 |
 
 Trust keys are passed as repeatable `--trust kid=rawBase64url` pairs so the CLI stays
 product-agnostic; `--service <slug>` (repeatable) carries the capability expectation.
@@ -208,18 +208,18 @@ product-agnostic; `--service <slug>` (repeatable) carries the capability expecta
 # `--trust` takes YOUR product's real kid=publicKey pair — see "Where the trust set comes
 # from" above. The values below are placeholders, not keys.
 # Preferred: the key never touches argv (see "Supplying the license key" below).
-POLARIS_ACTIVATION_KEY=PLRS-XXXX-XXXX polaris activate \
+POLARIS_KEY_ACTIVATION_KEY=PKEY-XXXX-XXXX polaris-key activate \
   --product djdl --version 1.0.0 \
   --trust '<your-signing-key-id>=<your-product-signing-key-b64url>'
-polaris register --product djdl --trust '<your-signing-key-id>=...'
-polaris status --product djdl --trust '<your-signing-key-id>=...'
-polaris import-bundle --product djdl --trust '...' ./offline.plrsbundle
-# equivalently: python -m polaris …
+polaris-key register --product djdl --trust '<your-signing-key-id>=...'
+polaris-key status --product djdl --trust '<your-signing-key-id>=...'
+polaris-key import-bundle --product djdl --trust '...' ./offline.pkeybundle
+# equivalently: python -m polaris_key …
 ```
 
 ### Supplying the license key
 
-A key passed as `polaris activate PLRS-XXXX` is written verbatim to your shell history, is
+A key passed as `polaris-key activate PKEY-XXXX` is written verbatim to your shell history, is
 visible to every user on the machine via `ps auxww` while the command runs, and is readable
 from `/proc/<pid>/cmdline` on Linux. The CLI therefore resolves the key from a **non-argv**
 source first:
@@ -228,14 +228,14 @@ source first:
 | ----- | -------------------------------------------------------------------------------- |
 | 1     | `--key-file <path>`                                                              |
 | 2     | `--key-stdin` (one line from stdin)                                              |
-| 3     | `$POLARIS_ACTIVATION_KEY`                                                        |
+| 3     | `$POLARIS_KEY_ACTIVATION_KEY`                                                    |
 | 4     | the positional argument — still supported for scripting, but it prints a warning |
 | 5     | an interactive prompt, when stdin is a TTY                                       |
 
 ```sh
-printf '%s' "$KEY" | polaris activate --key-stdin --product djdl
-polaris activate --key-file ~/.config/djdl/license.key --product djdl
-polaris activate --product djdl        # prompts when run interactively
+printf '%s' "$KEY" | polaris-key activate --key-stdin --product djdl
+polaris-key activate --key-file ~/.config/djdl/license.key --product djdl
+polaris-key activate --product djdl        # prompts when run interactively
 ```
 
 ### `--version`
@@ -247,9 +247,9 @@ enforcement. Pass your application's real version when you mount these commands 
 own CLI.
 
 To mount the commands onto your own program, import the adapter you use: the click adapter
-exposes a `cli` group (`polaris.cli.click_cli.cli`) and the typer adapter exposes an `app`
-(`polaris.cli.typer_cli.app`); both are thin wrappers over `core`. The argparse hook is
-`polaris.cli.register_argparse(subparsers, client_factory=…)`.
+exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter exposes an `app`
+(`polaris_key.cli.typer_cli.app`); both are thin wrappers over `core`. The argparse hook is
+`polaris_key.cli.register_argparse(subparsers, client_factory=…)`.
 
 ## Trust, caching, and the offline gate
 
@@ -268,7 +268,7 @@ The SDK follows [wire contract v3](../../docs/security/WIRE-CONTRACT-V3.md):
 - **Core owns trust refresh** on its own cadence, before and independently of any document
   fetch — so a product with _any_ service enabled still advances the independent signed
   clock that makes rollback inert.
-- **Claim checks** cover `typ` (mandatory in v3), `aud`, `iss` (`plrs.im`, host-neutral),
+- **Claim checks** cover `typ` (mandatory in v3), `aud`, `iss` (`key.plrs.im`, host-neutral),
   `deviceId`, monotonic `issuedAt`, `expiresAt` and a bounded `graceUntil` (365 days, at
   verify time), with a 300-second clock skew. An expired document is rejected at
   verification, not merely reported by the gate.
@@ -283,7 +283,7 @@ The SDK follows [wire contract v3](../../docs/security/WIRE-CONTRACT-V3.md):
 ## Low-level verification
 
 ```python
-from polaris import verify_jws, verify_license_doc, verify_config_doc, TYP_LICENSE
+from polaris_key import verify_jws, verify_license_doc, verify_config_doc, TYP_LICENSE
 
 v = verify_jws(jws, {"kid": "rawBase64urlPubKey"}, require_typ=True)
 v = verify_jws(jws, trust, typ=TYP_LICENSE, require_typ=True)  # assert the document type

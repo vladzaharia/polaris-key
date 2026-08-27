@@ -316,7 +316,7 @@ Commands:
               [--base-url url] [--out file] [--force]
 
 pkey bundle mints one offline activation bundle and writes it to a file (default
-<product>-<first 8 of device id>.plrsbundle; --base-url defaults to ${DEFAULT_BASE_URL}).
+<product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}).
 Copy that file to the air-gapped machine and import it there.
 
 Environment:

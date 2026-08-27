@@ -1,9 +1,9 @@
-# @plrs/react
+# @polaris-key/react
 
-One React hook API over **two transports**, plus brandable drop-in UIs for the Polaris suite
+One React hook API over **two transports**, plus brandable drop-in UIs for Polaris Key
 services.
 
-- **Desktop** (Electron/Tauri): wraps [`@plrs/node`](../sdk-node) through an injected
+- **Desktop** (Electron/Tauri): wraps [`@polaris-key/node`](../sdk-node) through an injected
   `PolarisBridge` (default `window.polarisKey`). The privileged process owns the token,
   keyring, and loopback-OIDC; the renderer is a thin proxy.
 - **Browser**: cookie-session OIDC against `key.plrs.im` over `fetch(..., { credentials:
@@ -11,13 +11,13 @@ services.
 
 Both adapters satisfy the **same `PolarisAdapter`** and the hooks return the **same shapes**,
 so a component renders identically in either mode (mode-parity). The gate itself is
-[`@plrs/client-core`](../client-core)'s — the one implementation every JS SDK and the
+[`@polaris-key/client-core`](../client-core)'s — the one implementation every JS SDK and the
 conformance corpus run, clock floor included.
 
 ## Install
 
 ```sh
-pnpm add @plrs/react react react-dom
+pnpm add @polaris-key/react react react-dom
 ```
 
 `react` / `react-dom` `>=18` are peer dependencies. The package is `sideEffects: false`.
@@ -25,8 +25,8 @@ pnpm add @plrs/react react react-dom
 ## Quick start
 
 ```tsx
-import { PolarisKeyProvider } from "@plrs/react";
-import { LicenseGate } from "@plrs/react/license";
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { LicenseGate } from "@polaris-key/react/license";
 
 export function App() {
   return (
@@ -69,16 +69,16 @@ that renders children straight through (D-08).
 Two axes, and they compose — a **transport** entry says how you talk to the control plane, a
 **service** entry says what you are talking to.
 
-| entry                  | contents                                                           |
-| ---------------------- | ------------------------------------------------------------------ |
-| `@plrs/react`          | everything                                                         |
-| `@plrs/react/core`     | mode-agnostic types + the shared state model (no React)            |
-| `@plrs/react/browser`  | the browser adapter + discovery client                             |
-| `@plrs/react/desktop`  | the desktop adapter + the `PolarisBridge` IPC contract             |
-| `@plrs/react/license`  | `useLicense`, `useLicenseGate`, `<LicenseGate>`, `<DeviceManager>` |
-| `@plrs/react/config`   | `useManagedConfig`, `<ConfigPanel>`                                |
-| `@plrs/react/identity` | `usePolarisAuth`, `<PolarisLogin>`, `<PolarisLogout>`              |
-| `@plrs/react/update`   | `useLatestVersion`, `<UpdatePrompt>`                               |
+| entry                         | contents                                                           |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `@polaris-key/react`          | everything                                                         |
+| `@polaris-key/react/core`     | mode-agnostic types + the shared state model (no React)            |
+| `@polaris-key/react/browser`  | the browser adapter + discovery client                             |
+| `@polaris-key/react/desktop`  | the desktop adapter + the `PolarisBridge` IPC contract             |
+| `@polaris-key/react/license`  | `useLicense`, `useLicenseGate`, `<LicenseGate>`, `<DeviceManager>` |
+| `@polaris-key/react/config`   | `useManagedConfig`, `<ConfigPanel>`                                |
+| `@polaris-key/react/identity` | `usePolarisAuth`, `<PolarisLogin>`, `<PolarisLogout>`              |
+| `@polaris-key/react/update`   | `useLatestVersion`, `<UpdatePrompt>`                               |
 
 ## Components
 
@@ -118,7 +118,7 @@ exposes the aggregates (`busy`, `error`) alongside `busyByService` / `errorBySer
 ## Layered config
 
 `useManagedConfig().get(key, fallback)` resolves a config value through the **same precedence**
-as every Polaris SDK:
+as every Polaris Key SDK:
 
 ```
 enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
@@ -127,17 +127,17 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 `enforced`/`hidden` values are locked to the server and cannot be overridden; `hidden` keys are
 additionally withheld from the user-facing list (`listUserConfig`) but still applied. The
 **environment** layer never applies in React: a browser has no environment and a renderer must
-not inherit the privileged process's, so env layering resolves in `@plrs/node` on the desktop
+not inherit the privileged process's, so env layering resolves in `@polaris-key/node` on the desktop
 side and nowhere at all in the browser.
 
 ## Desktop bridge contract (protocol v2)
 
-Implement `PolarisBridge` (from `@plrs/react/desktop`) in your Electron/Tauri preload,
-delegating each method to `@plrs/node`. `BridgeState` mirrors `PolarisClient.getSyncState()`
+Implement `PolarisBridge` (from `@polaris-key/react/desktop`) in your Electron/Tauri preload,
+delegating each method to `@polaris-key/node`. `BridgeState` mirrors `PolarisKeyClient.getSyncState()`
 field for field, so the state method is a straight passthrough:
 
 ```ts
-import type { PolarisBridge } from "@plrs/react/desktop";
+import type { PolarisBridge } from "@polaris-key/react/desktop";
 
 const bridge: PolarisBridge = {
   version: 2,
@@ -169,7 +169,7 @@ override any `--pk-*` var from your own stylesheet.
 ## Develop
 
 ```sh
-pnpm --filter @plrs/react typecheck
-pnpm --filter @plrs/react test
-pnpm --filter @plrs/react build
+pnpm --filter @polaris-key/react typecheck
+pnpm --filter @polaris-key/react test
+pnpm --filter @polaris-key/react build
 ```

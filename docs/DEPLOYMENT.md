@@ -88,16 +88,16 @@ access. PocketID ID tokens must include a `groups` claim containing group names 
 Create a platform OIDC client for Polaris Key admin, the root customer portal, and every
 product that uses platform OIDC (the default):
 
-| Field        | Value                                    |
-| ------------ | ---------------------------------------- |
-| Issuer       | `https://id.plrs.im`                     |
-| Redirect URI | `https://key.plrs.im/manage/callback`    |
-| Redirect URI | `https://key.plrs.im/callback`           |
-| Redirect URI | `https://key.plrs.im/djdl/auth/callback` |
-| Scopes       | `openid email profile groups`            |
+| Field        | Value                                             |
+| ------------ | ------------------------------------------------- |
+| Issuer       | `https://id.plrs.im`                              |
+| Redirect URI | `https://key.plrs.im/manage/callback`             |
+| Redirect URI | `https://key.plrs.im/callback`                    |
+| Redirect URI | `https://key.plrs.im/djdl/identity/auth/callback` |
+| Scopes       | `openid email profile groups`                     |
 
-Each additional product using platform OIDC adds its own `/<slug>/auth/callback` to this
-client. Products with `oidc.provider: custom` use a separate client and do not need an
+Each additional product using platform OIDC adds its own `/<slug>/identity/auth/callback` to
+this client. Products with `oidc.provider: custom` use a separate client and do not need an
 entry here.
 
 Record the platform client ID and client secret. They become Worker secrets:
@@ -115,7 +115,7 @@ mapping):
 {
   "oidc": {
     "provider": "platform",
-    "redirectUris": ["https://key.plrs.im/djdl/auth/callback"],
+    "redirectUris": ["https://key.plrs.im/djdl/identity/auth/callback"],
     "groupRoleMap": {
       "family": { "role": "user", "tier": "standard" },
       "friends": { "role": "user", "tier": "standard" },
@@ -190,8 +190,9 @@ database_name = "polaris_key_prod"
 database_id = "<polaris_key_prod database_id>"
 ```
 
-Do not commit real IDs unless this private repo is the intended source of truth for
-deployment config. If placeholders remain, `wrangler deploy --env prod` cannot bind D1/KV.
+The prod IDs are already committed — this private repo is the source of truth for deployment
+config — so this step only applies when bootstrapping a fresh account or a new environment.
+If placeholders remain for the target env, `wrangler deploy --env <env>` cannot bind D1/KV.
 
 Apply all D1 migrations:
 
@@ -260,9 +261,9 @@ cd packages/worker
 npx wrangler deploy --dry-run --env prod
 ```
 
-The dry run validates the bundle and config shape, including bindings. It does not prove
-that placeholder D1/KV IDs exist remotely; real deploy still requires replacing the prod
-resource IDs in `wrangler.toml`.
+The dry run validates the bundle and config shape, including bindings. It does not prove the
+D1/KV IDs in `wrangler.toml` exist remotely. The prod IDs are committed; `staging` and `dev`
+still carry `REPLACE_ME_*` placeholders and cannot deploy until those are filled in.
 
 ## 6. Deploy manually
 
@@ -307,7 +308,9 @@ vMAJOR.MINOR.PATCH-prerelease
 ```
 
 The workflow applies D1 migrations, deploys the Worker/admin assets, and smoke-checks
-`https://key.plrs.im/manage`.
+`https://key.plrs.im/djdl/.well-known/jwks.json`, asserting a non-empty key set. That is a
+data-plane endpoint on purpose: `/manage` is a static asset and returns 200 with D1, KV and
+the signing path all down.
 
 Create a production release tag:
 
@@ -346,7 +349,7 @@ Before linking, confirm the DJDL repo contains `.pkey/schema`, `.pkey/product`, 
 
 ```text
 provider: platform
-redirectUris: https://key.plrs.im/djdl/auth/callback
+redirectUris: https://key.plrs.im/djdl/identity/auth/callback
 adminGroup: admins
 ```
 
@@ -355,7 +358,7 @@ Link the repo:
 1. Open `https://key.plrs.im/manage`.
 2. Choose the product repo-link flow.
 3. Enter `vladzaharia/djdl`.
-4. Confirm Polaris validates the `.pkey/` manifest.
+4. Confirm Polaris Key validates the `.pkey/` manifest.
 5. Save the returned `kid -> publicKey` trust set for DJDL SDK/app pinning.
 
 Set the required DJDL product secrets in the admin UI/API:
@@ -374,24 +377,27 @@ Run public product checks:
 ```sh
 curl -fsS https://key.plrs.im/djdl/.well-known/polaris.json | jq .
 curl -fsS https://key.plrs.im/djdl/.well-known/jwks.json | jq .
-curl -fsS https://key.plrs.im/djdl/schema | jq .
+curl -fsS https://key.plrs.im/djdl/config/schema | jq .
 curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 ```
 
 Expected checks:
 
 - Discovery shows `baseUrl: "https://key.plrs.im"`.
-- Discovery shows `modules.auth.oidc.enabled: true`.
+- Discovery shows `services.identity.enabled: true`. Every service the product has not
+  enabled appears as `{"enabled": false}` and nothing else.
 - JWKS contains the active product `kid`.
 - Schema returns DJDL catalog version 1.
-- Appcast responds once release config and release assets are available.
+- Appcast responds once release config and release assets are available. `/djdl/appcast.xml`
+  is a permanent alias for `/djdl/update/appcast.xml`, kept because it is compiled into
+  shipped `SUFeedURL` values.
 
 Validate product auth:
 
-1. Start DJDL OIDC activation from the SDK/app or `/<product>/auth/start`.
+1. Start DJDL OIDC activation from the SDK/app or `/<product>/identity/auth/start`.
 2. Sign in as a PocketID user in an entitled group.
 3. Confirm a license is created or found in `/manage`.
-4. Confirm a device token can fetch `https://key.plrs.im/djdl/config`.
+4. Confirm a device token can fetch `https://key.plrs.im/djdl/config/document`.
 5. Verify the signed config JWS against the captured DJDL trust key.
 
 Validate release/webhook sync:
@@ -461,7 +467,8 @@ Portal says email sign-in is disabled.
 - Confirm the prod `EMAIL` binding deployed.
 - Confirm Cloudflare Email Service permits `noreply@plrs.im`.
 
-`wrangler deploy --env prod` fails on D1/KV bindings.
+`wrangler deploy --env <env>` fails on D1/KV bindings.
 
-- Replace `REPLACE_ME_PROD_D1_ID` and `REPLACE_ME_PROD_KV_ID` with real IDs from the
-  resource creation commands.
+- Only `env.prod` carries real IDs. For `staging`/`dev`, replace the `REPLACE_ME_*_D1_ID`
+  and `REPLACE_ME_*_KV_ID` placeholders in `wrangler.toml` with IDs from the resource
+  creation commands.

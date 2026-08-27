@@ -1082,6 +1082,16 @@ five implementations diverge on a shared contract — the right call. Landing it
 four SDKs plus the corpus. **Until it lands, treat clock-rollback protection as absent, not merely
 weak, and do not claim it in user-facing documentation.** (`WIRE-CONTRACT-V2.md:252-276`.)
 
+> **Correction, 2026-08-27 — item 1 is CLOSED.** The paragraph above is kept as written because it
+> is the finding of record, but it no longer describes the code. Clock-rollback protection shipped
+> in `6e7cad0` and was carried into wire contract v3 §4.2: `highWaterMark` folds over the WHOLE
+> verified artifact set — license document, config document and trust manifest — rather than one
+> document, and Core refreshes trust on its own schedule so the mark advances for any service mix
+> (`packages/client-core/src/clock.ts`, mirrored in the Python and Swift cores). The defective
+> single-document form is pinned as a corpus vector,
+> `floor-config-doc-alone-does-not-stop-rollback`, so it cannot return silently. The rest of §8
+> stands as ranked.
+
 **2. There is no `scheduled()` handler.** Verified: `packages/worker/src/index.ts` exports `fetch`
 only, and `packages/worker/wrangler.toml` declares no `[triggers]` / `crons`. There is no cron, no
 queue and no DO alarm outside the rate limiter, so there is nowhere to hang a sweep, a backup or a

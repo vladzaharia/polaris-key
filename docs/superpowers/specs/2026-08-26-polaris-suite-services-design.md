@@ -273,18 +273,126 @@ On review, the suite keeps the **Polaris Key** identity, living at `key.plrs.im`
 named **Polaris Key License / Config / Release / Update / Identity**. The architecture (Core
 substrate, five opt-in services, `services_json`, wire v3's per-service documents, device
 principal, bundles, entitled mode, SDK sub-clients, suite console) is unchanged — this amendment
-reverts the *naming layer only*. Decision register deltas:
+reverts the _naming layer only_. Decision register deltas:
 
-| # | Was | Now |
-|---|---|---|
-| D-03 | Suite "Polaris"; packages `@plrs/*` | Suite "Polaris Key"; packages **`@polaris-key/*`** (org exists — the external gate dissolves). PyPI **`polaris-key`** / `import polaris_key` / script `polaris-key`; Swift package **`PolarisKey`** with `PolarisKeyCore/License/Config/Update/UI` targets and umbrella `PolarisKey`; facade class `PolarisKeyClient` |
-| D-09 | ISSUER `plrs.im` (host-neutral) | ISSUER **`key.plrs.im`** (total brand/wire coherence; a future host move is a sanctioned pre-launch wire break) |
+| #    | Was                                   | Now                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-03 | Suite "Polaris"; packages `@plrs/*`   | Suite "Polaris Key"; packages **`@polaris-key/*`** (org exists — the external gate dissolves). PyPI **`polaris-key`** / `import polaris_key` / script `polaris-key`; Swift package **`PolarisKey`** with `PolarisKeyCore/License/Config/Update/UI` targets and umbrella `PolarisKey`; facade class `PolarisKeyClient`                                                                                                            |
+| D-09 | ISSUER `plrs.im` (host-neutral)       | ISSUER **`key.plrs.im`** (total brand/wire coherence; a future host move is a sanctioned pre-launch wire break)                                                                                                                                                                                                                                                                                                                  |
 | D-10 | Identifier rebrand to the plrs family | **Full revert to the pkey family**: typs `pkey-license+jws` / `pkey-config+jws` / `pkey-trust+jws` / `pkey-bundle+jws`; tokens `pkeyt_`; license keys `pkey_`; headers `X-PKey-*`; session tags `pkey.admin.v1\|` / `pkey.portal.v1\|`; cookies `__Host-pkey_*` / `pkey_<p>_session`; keyring `pkey:<product>`; env `PKEY_CONFIG_*`; manifest dir **`.pkey/` only** (the `.polaris/` dual-read is removed); CLI bin stays `pkey` |
-| D-17 | Per-section `data-service` accents | **Kept** (per this review) — sections stay visually distinct inside the Polaris Key console |
-| D-23 | `@plrs` org creation as external gate | Obsolete — `@polaris-key` publishing continues as-is |
+| D-17 | Per-section `data-service` accents    | **Kept** (per this review) — sections stay visually distinct inside the Polaris Key console                                                                                                                                                                                                                                                                                                                                      |
+| D-23 | `@plrs` org creation as external gate | Obsolete — `@polaris-key` publishing continues as-is                                                                                                                                                                                                                                                                                                                                                                             |
 
 Notes: the v2 typ strings `pkey-config+jws`/`pkey-trust+jws` are re-used for the v3 config
 document and trust manifest (pre-launch; corpus v1 is deleted in the same wave, so no dual-shape
-ambiguity ever ships). `PROTOCOL_VERSION` stays 3 — the document *shapes* are unchanged; corpus
+ambiguity ever ships). `PROTOCOL_VERSION` stays 3 — the document _shapes_ are unchanged; corpus
 v2 regenerates with the pkey identifiers. The djdl repository's `.pkey/` manifests (GitHub-synced)
 are updated to the v3 modules/registration/redirect-URI shape as part of this amendment's rollout.
+
+---
+
+## Implementation closeout (2026-08-27)
+
+Shipped. The architecture landed as specified; **Amendment A1 was executed**
+in the finalization  
+ wave, reverting the naming layer to Polaris Key while leaving Core, the five
+services,  
+ services_json, wire v3's split documents, the device principal, offline  
+ bundles, the SDK  
+ sub-clients and the suite console exactly as designed. Corpus v1 is deleted;
+corpus/v2 is the  
+ only corpus, in all four languages.
+
+### §10 risk register — outcomes
+
+| Risk                                | Outcome                             |
+| ----------------------------------- | ----------------------------------- |
+| 4-language corpus lockstep during   | **Held.** One generator, one        |
+| a wire break                        | corpus, four runners; gen:corpus -- |
+| --check is the drift gate and       |
+| stayed green through the A1         |
+| identifier flip, which re-signed    |
+| every vector. The Swift mirror is   |
+| written by the same generator, so   |
+| the copy cannot drift from the      |
+| source.                             |
+| Clock-floor regression while re-    | **Closed.** highWaterMark folds the |
+| orchestrating refresh               | whole verified artifact set and     |
+| Core owns trust refresh, so the     |
+| floor stays live for any service    |
+| mix. The defective single-document  |
+| form is pinned as the corpus vector |
+| floor-config-doc-alone-does-not-    |
+| stop-rollback; seven                |
+| clockFloorCases cover the rest.     |
+| Bundle import as new attack         | **Closed as designed.** Pins-only   |
+| surface                             | bundle verification, verify-        |
+| everything-before-write, no partial |
+| imports, and a pkey-bundle+jws-only |
+| raised payload cap. Nine            |
+| bundleCases pin the refusal order,  |
+| including the all-or-nothing        |
+| property against a populated cache. |
+| Truth-store arming of R6-12         | **Closed.** The open-               |
+| redirect/TOCTOU fix landed with the |
+| ingestion, as the blocking          |
+| requirement said it must            |
+| (services/release/store.ts,         |
+| services/release/github.ts,         |
+| http.ts; regression cases in R6-    |
+| release.test.ts).                   |
+| @polaris org / PyPI name            | **Moot.** A1 dissolved the gate:    |
+| unavailable                         | @polaris-key/\* and the polaris-key |
+| PyPI name are the existing, owned   |
+| names. Nothing external was ever    |
+| required.                           |
+| Appcast changes breaking live       | **Held.** /<p>/appcast.xml and      |
+| Sparkle clients                     | /<p>/<channel>/appcast.xml are      |
+| permanent aliases onto the update   |
+| service (router.ts), so shipped     |
+| SUFeedURL values keep resolving;    |
+| djdl is re-seeded regardless.       |
+| Four "modules" surfaces drifting    | **Held structurally.** Route        |
+| back                                | mounting, discovery, the admin      |
+| setup view and portal capabilities  |
+| are all projections of              |
+| services_json (core/services.ts);   |
+| test/boundaries.test.ts walks every |
+| file under src/services/ and        |
+| refuses cross-service imports and   |
+| reach-backs into legacy top-level   |
+| modules.                            |
+
+### Deferred out (unchanged, and deliberately)
+
+• **Repo and domain rename — NOW MOOT for naming.** D-23 deferred a rename  
+ that A1 removed the  
+ reason for: the repo simply stays polaris-key and the host stays key.plrs.im.
+Nothing is  
+ pending here; the entry is closed rather than carried.  
+ • **Brand rollout workstream** (docs/superpowers/specs/2026-06-30-polaris-  
+ brand-rollout-design.md)  
+ — restyles the console structure this wave built. Its D4 stays amended by D-
+17: the per-section  
+ data-service accents survive A1 and are what the brand package must  
+ accommodate.  
+ • **Sparkle key lifecycle tooling.** PolarisKeyUpdate asserts SUPublicEDKey
+is present and  
+ never reimplements the check; rotating that key is still a manual, app-  
+ bundle-side operation.  
+ • **Non-GitHub release providers.** The seam is designed (services/release/),
+not built.  
+ • **Sparkle delta updates.** Full artifacts only.  
+ • **Centralized identity.** The boundary is carved (services/identity/); the
+capability is not  
+ built. Per-service Workers and perpetual/no-expiry license documents  
+ likewise stay unbuilt —  
+ the modular monolith is split-ready, not split.
+
+*Closeout correction:* §5.1's "lint-enforced boundaries (ESLint `no-restricted-imports`)" is
+implemented as `packages/worker/test/boundaries.test.ts` (a static import-walk over
+`src/services/`), not ESLint — the repo has no ESLint toolchain and `lint` is prettier. The
+enforcement is equivalent and CI-gated; the mechanism differs from the spec's wording. Separately
+noted for CI: `pnpm -r build` does not typecheck the worker (esbuild strips types), so the green
+gate must include `pnpm -r typecheck` — build+test alone missed five broken type-only imports
+during the A1 sweep.

@@ -64,7 +64,7 @@ export function Logo({
     >
       <LogoMark className={markClassName} />
       <span className="flex items-baseline gap-1.5 font-semibold tracking-tight">
-        Polaris&nbsp;Key
+        Polaris Key&nbsp;Key
         {subtitle ? (
           <span className="text-xs font-normal uppercase tracking-wider text-muted-foreground">
             {subtitle}

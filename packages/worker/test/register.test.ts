@@ -9,7 +9,7 @@
 //   1. THE POLICY MATRIX. `open` mints; the other two refuse with ONE body, so an
 //      unauthenticated prober cannot tell `requires-license` from `requires-identity` and map
 //      which products run which services.
-//   2. THE TOKEN. `plrst_` is minted and `pkeyt_` is refused — the latter on shape, so the
+//   2. THE TOKEN. `pkeyt_` is minted and `pkeyt_` is refused — the latter on shape, so the
 //      refusal is a property of the code and not of what happens to be in the token table.
 //   3. THE RELAXATION. `/devices`, `/devices/report` and edge-mint accept a registered device
 //      when License is off, and are UNCHANGED when License is on. The second half is the one
@@ -110,7 +110,7 @@ async function world(
 }
 
 function registerReq(
-  headers: Record<string, string> = { "x-polaris-device": DEVICE },
+  headers: Record<string, string> = { "x-pkey-device": DEVICE },
   body?: unknown,
 ): Request {
   return mkReq("POST", headers, body);
@@ -137,13 +137,13 @@ async function register(
 }
 
 describe("POST /<p>/devices/register — policy matrix", () => {
-  it("open: mints a plrst_ token bound to the client-supplied device id", async () => {
+  it("open: mints a pkeyt_ token bound to the client-supplied device id", async () => {
     const w = await world(SET.configOnly);
     expect(w.product.registration).toBe("open");
 
     const res = await register(w);
     expect(res.status).toBe(200);
-    expect(res.token).toMatch(/^plrst_[A-Za-z0-9_-]{43}$/);
+    expect(res.token).toMatch(/^pkeyt_[A-Za-z0-9_-]{43}$/);
     expect(res.deviceId).toBe(DEVICE);
 
     // The row exists, is authorized, and carries NO licence — that is the whole point.
@@ -221,9 +221,9 @@ describe("POST /<p>/devices/register — policy matrix", () => {
     expect(w.product.registration).toBe("requires-identity");
     const cookie = await browserSession(w);
 
-    const res = await register(w, { "x-polaris-device": DEVICE, cookie });
+    const res = await register(w, { "x-pkey-device": DEVICE, cookie });
     expect(res.status).toBe(200);
-    expect(res.token).toMatch(/^plrst_[A-Za-z0-9_-]{43}$/);
+    expect(res.token).toMatch(/^pkeyt_[A-Za-z0-9_-]{43}$/);
     expect(res.deviceId).toBe(DEVICE);
 
     // The minted device is the ORDINARY licence-less registration row — the session authorized
@@ -244,7 +244,7 @@ describe("POST /<p>/devices/register — policy matrix", () => {
     );
 
     const res = await handleRegister(
-      registerReq({ "x-polaris-device": DEVICE, cookie }),
+      registerReq({ "x-pkey-device": DEVICE, cookie }),
       w.env,
       w.db,
       w.product,
@@ -275,7 +275,7 @@ describe("POST /<p>/devices/register — policy matrix", () => {
 
     const res = await handleRegister(
       registerReq({
-        "x-polaris-device": DEVICE,
+        "x-pkey-device": DEVICE,
         cookie: created.cookie.split(";")[0]!,
       }),
       w.env,
@@ -318,7 +318,7 @@ describe("POST /<p>/devices/register — policy matrix", () => {
     expect(forced.services.identity.enabled).toBe(false);
 
     const res = await handleRegister(
-      registerReq({ "x-polaris-device": DEVICE, cookie }),
+      registerReq({ "x-pkey-device": DEVICE, cookie }),
       w.env,
       w.db,
       forced,
@@ -342,7 +342,7 @@ describe("POST /<p>/devices/register — policy matrix", () => {
   it("rejects a non-POST method", async () => {
     const w = await world(SET.configOnly);
     const res = await handleRegister(
-      mkReq("GET", { "x-polaris-device": DEVICE }),
+      mkReq("GET", { "x-pkey-device": DEVICE }),
       w.env,
       w.db,
       w.product,
@@ -368,7 +368,7 @@ describe("POST /<p>/devices/register — the device id", () => {
     ];
     for (const id of bad) {
       const res = await handleRegister(
-        registerReq(id === undefined ? {} : { "x-polaris-device": id }),
+        registerReq(id === undefined ? {} : { "x-pkey-device": id }),
         w.env,
         w.db,
         w.product,
@@ -420,7 +420,7 @@ describe("POST /<p>/devices/register — the device id", () => {
     const activated = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": DEVICE,
+        "x-pkey-device": DEVICE,
       }),
       w.env,
       w.db,
@@ -460,12 +460,12 @@ describe("POST /<p>/devices/register — the device id", () => {
   it("records the client metadata headers on the device row", async () => {
     const w = await world(SET.configOnly);
     await register(w, {
-      "x-polaris-device": DEVICE,
-      "x-polaris-platform": "darwin",
-      "x-polaris-arch": "arm64",
-      "x-polaris-version": "4.5.6",
-      "x-polaris-sdk": "polaris-node",
-      "x-polaris-sdk-version": "0.9.0",
+      "x-pkey-device": DEVICE,
+      "x-pkey-platform": "darwin",
+      "x-pkey-arch": "arm64",
+      "x-pkey-version": "4.5.6",
+      "x-pkey-sdk": "polaris-node",
+      "x-pkey-sdk-version": "0.9.0",
     });
     const row = await getDevice(w.db, "djdl", DEVICE);
     expect(row).toMatchObject({
@@ -491,7 +491,7 @@ describe("POST /<p>/devices/register — the device id", () => {
     // A presented fingerprint is recorded, with a SERVER-computed hwid.
     const res = await register(
       w,
-      { "x-polaris-device": DEVICE_2 },
+      { "x-pkey-device": DEVICE_2 },
       { fingerprint: { components: { machineUuid: "uuid".padEnd(22, "x") } } },
     );
     expect(res.status).toBe(200);
@@ -521,9 +521,9 @@ describe("the registered device token", () => {
     expect(res.headers.get("content-type")).toBe("application/jwt");
   });
 
-  it("is refused if it carries the retired pkeyt_ prefix", async () => {
-    // Wire v3 §8: no migration window. The shape gate makes this a fact about the code rather
-    // than about which hashes happen to exist.
+  it("is refused if it carries the withdrawn plrst_ prefix", async () => {
+    // Wire v3 §8: exactly one device-token prefix. The shape gate makes this a fact about the
+    // code rather than about which hashes happen to exist.
     const w = await world(SET.configOnly);
     for (const token of [RETIRED_DEVICE_TOKEN, UNKNOWN_DEVICE_TOKEN]) {
       const res = await handleConfigDocument(
@@ -544,7 +544,7 @@ describe("Core surfaces accept a registered device when License is disabled", ()
     // would hand one caller the product's entire device list. This is the isolation assertion.
     const w = await world(SET.configOnly);
     const mine = await register(w);
-    const theirs = await register(w, { "x-polaris-device": DEVICE_2 });
+    const theirs = await register(w, { "x-pkey-device": DEVICE_2 });
     expect(theirs.status).toBe(200);
 
     const res = await handleDevices(
@@ -606,9 +606,7 @@ describe("Core surfaces accept a registered device when License is disabled", ()
   it("cannot manage a sibling device it cannot see", async () => {
     const w = await world(SET.configOnly);
     const mine = await register(w);
-    expect((await register(w, { "x-polaris-device": DEVICE_2 })).status).toBe(
-      200,
-    );
+    expect((await register(w, { "x-pkey-device": DEVICE_2 })).status).toBe(200);
     const res = await handleDevices(
       mkReq("DELETE", { authorization: `Bearer ${mine.token}` }),
       w.env,
@@ -684,7 +682,7 @@ describe("Core surfaces are UNCHANGED when License is enabled", () => {
     const activated = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-polaris-device": DEVICE,
+        "x-pkey-device": DEVICE,
       }),
       w.env,
       w.db,

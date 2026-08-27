@@ -2,7 +2,7 @@
 
 /**
  * Re-fetch a linked repo's manifest and re-apply it to an already-registered product. This is
- * the "resync" path: an operator pushes new manifest files and asks Polaris to pick up the
+ * the "resync" path: an operator pushes new manifest files and asks Polaris Key to pick up the
  * changes WITHOUT minting a new product or touching the signing key.
  *
  * Minimal-viable scope (diff-then-update): we re-parse the manifest and update the catalog
@@ -10,7 +10,7 @@
  * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here.
  */
 
-import { Catalog } from "@plrs/catalog";
+import { Catalog } from "@polaris-key/catalog";
 import type { Db, DbStatement, Env } from "../../core/platform.js";
 import {
   countLicensesUsingProfile,
@@ -220,7 +220,7 @@ export async function resyncRepo(
   // more. Unconditional (unlike the two above) because `services` is always present on a parsed
   // manifest — a manifest that declares no `modules:` block still means something definite,
   // namely the defaults. `registration` rides in the same value and is written only when the
-  // manifest declared it, so dropping the key from `.polaris/product` returns the product to the
+  // manifest declared it, so dropping the key from `.pkey/product` returns the product to the
   // derived default rather than freezing whatever it last said. The `services_source = 'admin'`
   // guard lives inside `setServices`, so a push cannot turn a service back on after an operator
   // has turned it off live — nor re-open registration after one has closed it.

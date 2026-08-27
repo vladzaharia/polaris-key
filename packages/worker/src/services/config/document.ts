@@ -27,8 +27,8 @@
  * DOCUMENT, and a config-only install is entitled to one.
  */
 
-import type { ConfigDoc } from "@plrs/protocol/config";
-import { sha256Base64Url } from "@plrs/jws";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import { sha256Base64Url } from "@polaris-key/jws";
 import type { Env, Db } from "../../core/platform.js";
 import { bearer } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
@@ -115,7 +115,7 @@ export async function handleConfigDocument(
     doc,
     product.signingKeyPem,
     product.signingKid,
-    "plrs-config+jws",
+    "pkey-config+jws",
   );
   return new Response(jws, {
     status: 200,

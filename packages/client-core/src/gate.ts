@@ -9,7 +9,7 @@
 //     release-only product has no license to be missing, so it must boot USABLE rather than
 //     sitting on `needs-activation` forever (D-08).
 //   * `activation` replaces v2's `hasToken` boolean: a device is activated either by an
-//     online-minted `plrst_` token or by a verified offline bundle import (§7). Both are
+//     online-minted `pkeyt_` token or by a verified offline bundle import (§7). Both are
 //     activated; only `null` is not.
 //
 // Everything below those two guards is the v2 state machine, unchanged.
@@ -20,7 +20,7 @@ import type {
   BlockReason,
   LicenseDoc,
   LicenseStatus,
-} from "@plrs/protocol/license";
+} from "@polaris-key/protocol/license";
 
 /** The unsigned 403 hint recorded from the last `/license/document` fetch. Unsigned is safe
  *  because it can only ever make the gate STRICTER (§4.1). */

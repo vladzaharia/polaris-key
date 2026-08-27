@@ -1,24 +1,24 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// The Polaris suite for Swift — wire contract v3 (docs/security/WIRE-CONTRACT-V3.md).
+// Polaris Key for Swift — wire contract v3 (docs/security/WIRE-CONTRACT-V3.md).
 //
 // ── WHY FIVE TARGETS ────────────────────────────────────────────────────────────────────────
 //
-// Polaris is a suite of opt-in services over an always-on Core, and on Apple platforms that
+// Polaris Key is a suite of opt-in services over an always-on Core, and on Apple platforms that
 // division is worth spending link-time on rather than only runtime flags: a product that does
 // not ship updates does not link Sparkle, and a product that runs no license service does not
-// carry the gate. §7.3's local-only profile is a LINK-TIME guarantee here — "PolarisUpdate is
+// carry the gate. §7.3's local-only profile is a LINK-TIME guarantee here — "PolarisKeyUpdate is
 // absent ⇒ no update traffic" is a fact about the binary, not a promise about a code path.
 //
-//   PolarisCore     device principal, credential, trust set, verified cache, clock floor,
+//   PolarisKeyCore     device principal, credential, trust set, verified cache, clock floor,
 //                   transport, discovery, bundle verification. Always on.
-//   PolarisLicense  the gate, activation, the license document.        (deps Core)
-//   PolarisConfig   the config document, layered resolution, facts.    (deps Core)
-//   PolarisUpdate   Sparkle wiring. macOS ONLY.                        (deps Core)
-//   PolarisUI       the drop-in SwiftUI gate.              (deps Core + License + Config)
-//   Polaris         the umbrella: `PolarisClient` + `@_exported import` of the three
-//                   always-relevant modules, so a one-import adopter writes `import Polaris`.
+//   PolarisKeyLicense  the gate, activation, the license document.        (deps Core)
+//   PolarisKeyConfig   the config document, layered resolution, facts.    (deps Core)
+//   PolarisKeyUpdate   Sparkle wiring. macOS ONLY.                        (deps Core)
+//   PolarisKeyUI       the drop-in SwiftUI gate.              (deps Core + License + Config)
+//   PolarisKey      the umbrella: `PolarisKeyClient` + `@_exported import` of the three
+//                   always-relevant modules, so a one-import adopter writes `import PolarisKey`.
 //
 // ── THE SPARKLE CONDITIONING (D-24) ─────────────────────────────────────────────────────────
 //
@@ -35,22 +35,22 @@ import PackageDescription
 // to compile on iOS, and a guarded import with an unconditioned product still drags a macOS
 // XCFramework into an iOS link line.
 let package = Package(
-    name: "Polaris",
+    name: "PolarisKey",
     platforms: [
         .macOS(.v14),
         .iOS(.v17),
     ],
     products: [
-        // The one-import surface: Core + License + Config re-exported, plus `PolarisClient`.
-        .library(name: "Polaris", targets: ["Polaris"]),
+        // The one-import surface: Core + License + Config re-exported, plus `PolarisKeyClient`.
+        .library(name: "PolarisKey", targets: ["PolarisKey"]),
         // The substrate on its own, for a product that composes its own services.
-        .library(name: "PolarisCore", targets: ["PolarisCore"]),
-        .library(name: "PolarisLicense", targets: ["PolarisLicense"]),
-        .library(name: "PolarisConfig", targets: ["PolarisConfig"]),
+        .library(name: "PolarisKeyCore", targets: ["PolarisKeyCore"]),
+        .library(name: "PolarisKeyLicense", targets: ["PolarisKeyLicense"]),
+        .library(name: "PolarisKeyConfig", targets: ["PolarisKeyConfig"]),
         // macOS only — see the conditioning note above.
-        .library(name: "PolarisUpdate", targets: ["PolarisUpdate"]),
+        .library(name: "PolarisKeyUpdate", targets: ["PolarisKeyUpdate"]),
         // Brandable SwiftUI login/gate components layered over the services.
-        .library(name: "PolarisUI", targets: ["PolarisUI"]),
+        .library(name: "PolarisKeyUI", targets: ["PolarisKeyUI"]),
     ],
     dependencies: [
         // D-24: Sparkle continues as the update mechanism; 2.6.4 is the CVE-2025-0509 floor.
@@ -58,23 +58,23 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PolarisCore",
+            name: "PolarisKeyCore",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
-            name: "PolarisLicense",
-            dependencies: ["PolarisCore"],
+            name: "PolarisKeyLicense",
+            dependencies: ["PolarisKeyCore"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
-            name: "PolarisConfig",
-            dependencies: ["PolarisCore"],
+            name: "PolarisKeyConfig",
+            dependencies: ["PolarisKeyCore"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
-            name: "PolarisUpdate",
+            name: "PolarisKeyUpdate",
             dependencies: [
-                "PolarisCore",
+                "PolarisKeyCore",
                 .product(
                     name: "Sparkle", package: "Sparkle",
                     condition: .when(platforms: [.macOS])),
@@ -82,31 +82,28 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
-            name: "Polaris",
-            dependencies: ["PolarisCore", "PolarisLicense", "PolarisConfig"],
+            name: "PolarisKey",
+            dependencies: ["PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
-            name: "PolarisUI",
-            dependencies: ["PolarisCore", "PolarisLicense", "PolarisConfig"],
+            name: "PolarisKeyUI",
+            dependencies: ["PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
-            name: "PolarisTests",
+            name: "PolarisKeyTests",
             dependencies: [
-                "Polaris", "PolarisCore", "PolarisLicense", "PolarisConfig", "PolarisUI",
-                "PolarisUpdate",
+                "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig", "PolarisKeyUI",
+                "PolarisKeyUpdate",
             ],
             // Bundle the SAME cross-language corpus + gate-matrix + fingerprint fixtures the
-            // Node/Python/React runners drive, so the Swift verifier, gate and bundle importer
-            // are held to byte-for-byte conformance. `Resources/v2` is wire contract v3 and is
-            // what every runner below reads; the flat v1 files are the frozen wire-v2 corpus,
-            // still mirrored (and still drift-gated) until P8 deletes corpus/v1 outright.
-            // Both sets are written by `pnpm gen:corpus`, guarded by `--check`.
+            // Node and Python runners drive, so the Swift verifier, gate and bundle importer
+            // are held to byte-for-byte conformance. The `v2` segment is kept so this path
+            // matches `conformance/corpus/v2/` one-for-one — the mirror is findable from the
+            // source without a translation step. Written by `pnpm gen:corpus`, guarded by
+            // `--check`.
             resources: [
-                .copy("Resources/cases.json"),
-                .copy("Resources/gate-matrix.json"),
-                .copy("Resources/fingerprint.json"),
                 .copy("Resources/v2"),
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]

@@ -1,4 +1,4 @@
-// `PolarisClient` behaviour pins — the suite facade over Core + the per-service sub-clients.
+// `PolarisKeyClient` behaviour pins — the suite facade over Core + the per-service sub-clients.
 //
 // These are the descendants of the pre-suite `PolarisKeyClient` tests, re-attributed to the
 // modules that own each behaviour now. Nothing was dropped: activation, the reads, cache
@@ -7,26 +7,26 @@
 // pin here. What CHANGED is the shape they are expressed in, and every change is a wire
 // contract v3 rule:
 //
-//   * ONE document became TWO (§2.1/§2.2). Entitlements + profile ride `plrs-license+jws`;
-//     config + secrets ride `plrs-config+jws`. They are fetched IN PARALLEL from two routes
+//   * ONE document became TWO (§2.1/§2.2). Entitlements + profile ride `pkey-license+jws`;
+//     config + secrets ride `pkey-config+jws`. They are fetched IN PARALLEL from two routes
 //     with two independent ETags, so every fixture below answers both.
 //   * `refresh()` became `sync()` (§5) and returns a per-document outcome map.
 //   * The cache record is v3 (§4.1): `docs`/`etags` per slice, signed artifacts only. The
 //     decoded doc and the unsigned counters that used to sit beside it are GONE, and the
 //     "no such property" assertions below are what keeps them gone (R4-01/R4-03/R4-04).
-//   * `iss` is `plrs.im`, tokens are `plrst_`, headers are `X-Polaris-*` (§8).
+//   * `iss` is `key.plrs.im`, tokens are `pkeyt_`, headers are `X-PKey-*` (§8).
 //
 // `trustRefresh` is off in the shared base: Core's trust cadence is a `sync()` concern with its
 // own pins in sync.test.ts, and leaving it on here would put an unrelated request in the middle
 // of every call-count assertion.
 
 import { describe, expect, it } from "vitest";
-import { signJws } from "@plrs/jws";
-import { ISSUER } from "@plrs/protocol/core";
-import type { ConfigDoc } from "@plrs/protocol/config";
-import type { LicenseDoc } from "@plrs/protocol/license";
-import type { CacheRecordV3 } from "@plrs/client-core";
-import { PolarisClient } from "../src/client.js";
+import { signJws } from "@polaris-key/jws";
+import { ISSUER } from "@polaris-key/protocol/core";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
+import type { CacheRecordV3 } from "@polaris-key/client-core";
+import { PolarisKeyClient } from "../src/client.js";
 import { CACHE_VERSION, InMemoryStore } from "../src/core/store.js";
 
 const TEST_KID = "pkey-test-prod-2026";
@@ -49,7 +49,7 @@ const base = {
   // Hardware probes shell out (ioreg/sw_vers); nothing here asserts on a fingerprint.
   license: { fingerprint: false },
   devices: { fingerprint: false },
-  // Resolution layers are the config service's, and an ambient `PLRS_CONFIG_*` var in the
+  // Resolution layers are the config service's, and an ambient `PKEY_CONFIG_*` var in the
   // developer's shell must not be able to change what these tests observe.
   config: { env: {} },
 } as const;
@@ -165,9 +165,9 @@ function mockFetch(initial: MockOpts = {}): MockState {
       method: init?.method ?? "GET",
       ifNoneMatch: headers.get("if-none-match"),
       bearer: headers.get("authorization"),
-      device: headers.get("x-polaris-device"),
-      version: headers.get("x-polaris-version"),
-      channel: headers.get("x-polaris-channel"),
+      device: headers.get("x-pkey-device"),
+      version: headers.get("x-pkey-version"),
+      channel: headers.get("x-pkey-channel"),
     };
     calls.push(call);
     const device = call.device ?? "d";
@@ -175,18 +175,18 @@ function mockFetch(initial: MockOpts = {}): MockState {
 
     // §R1 routes: the mint/rotate/release verbs all live under /license now.
     if (p.endsWith("/license/activate"))
-      return jsonRes({ token: "plrst_activated", schemaVersion: 1 });
+      return jsonRes({ token: "pkeyt_activated", schemaVersion: 1 });
     if (p.endsWith("/license/enroll"))
-      return jsonRes({ token: "plrst_enrolled", schemaVersion: 1 });
+      return jsonRes({ token: "pkeyt_enrolled", schemaVersion: 1 });
     if (p.endsWith("/license/token")) {
       reacquired = true;
-      return jsonRes({ token: "plrst_reacquired", schemaVersion: 1 });
+      return jsonRes({ token: "pkeyt_reacquired", schemaVersion: 1 });
     }
     if (p.endsWith("/license/deauthorize")) return jsonRes({});
     // §6 — telemetry is a Core surface now; `/config/report` is gone.
     if (p.endsWith("/devices/report")) return jsonRes({});
     if (p.endsWith("/devices/register"))
-      return jsonRes({ token: "plrst_registered", deviceId: device });
+      return jsonRes({ token: "pkeyt_registered", deviceId: device });
 
     if (p.endsWith("/license/document")) {
       if (opts.alwaysUnauthorized) return new Response("", { status: 401 });
@@ -199,7 +199,7 @@ function mockFetch(initial: MockOpts = {}): MockState {
           licenseDoc(device, at + bump++),
           TEST_PEM,
           TEST_KID,
-          "plrs-license+jws",
+          "pkey-license+jws",
         ),
         '"lic-v1"',
       );
@@ -215,7 +215,7 @@ function mockFetch(initial: MockOpts = {}): MockState {
           configDoc(device, at + bump++),
           TEST_PEM,
           TEST_KID,
-          "plrs-config+jws",
+          "pkey-config+jws",
         ),
         '"cfg-v1"',
       );
@@ -238,12 +238,12 @@ function mockFetch(initial: MockOpts = {}): MockState {
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
-describe("PolarisClient — activation + reads", () => {
+describe("PolarisKeyClient — activation + reads", () => {
   it("activate → ok; reads config, entitlement, secret, profile across the SPLIT documents", async () => {
     // The v2 pin read all four off one document. v3 splits them (§2.1/§2.2) and the point of
     // this test is that the split is invisible to a host: one activation still populates the
     // license reads AND the config reads, because `sync()` fetches both in the same pass.
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: mockFetch().impl,
@@ -278,7 +278,7 @@ describe("PolarisClient — activation + reads", () => {
   });
 
   it("reads return fallbacks/null/empty when no documents are cached", async () => {
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: mockFetch().impl,
@@ -294,11 +294,11 @@ describe("PolarisClient — activation + reads", () => {
   });
 });
 
-describe("PolarisClient — sync / persistence", () => {
+describe("PolarisKeyClient — sync / persistence", () => {
   it("activate persists BOTH signed artifacts per slice and reports a snapshot", async () => {
     const store = new InMemoryStore(PRODUCT);
     const m = mockFetch();
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: m.impl,
@@ -331,10 +331,10 @@ describe("PolarisClient — sync / persistence", () => {
     expect(typeof client.getCurrentDevice().lastVerifiedAt).toBe("number");
 
     // §6 — the report goes to `POST /<p>/devices/report` (not `/config/report`), bearing the
-    // `plrst_` device token.
+    // `pkeyt_` device token.
     expect(m.count("/devices/report")).toBeGreaterThanOrEqual(1);
     expect(m.last("/devices/report")?.method).toBe("POST");
-    expect(m.last("/devices/report")?.bearer).toBe("Bearer plrst_activated");
+    expect(m.last("/devices/report")?.bearer).toBe("Bearer pkeyt_activated");
     expect(m.count("/config/report")).toBe(0);
   });
 
@@ -342,7 +342,7 @@ describe("PolarisClient — sync / persistence", () => {
     // The two services carry INDEPENDENT validators (§5). Distinct etag values are the whole
     // point of the fixture: crossing the wires would show up here immediately.
     const m = mockFetch();
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: m.impl,
@@ -358,7 +358,7 @@ describe("PolarisClient — sync / persistence", () => {
 
   it("sync({force:true}) omits If-None-Match on both documents", async () => {
     const m = mockFetch();
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: m.impl,
@@ -374,7 +374,7 @@ describe("PolarisClient — sync / persistence", () => {
     // Structural, not incidental: `sync()` returns before the trust refresh and before either
     // document, so an unactivated client that polls generates no traffic at all.
     const m = mockFetch();
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: m.impl,
@@ -385,7 +385,7 @@ describe("PolarisClient — sync / persistence", () => {
 
   it("performs exactly ONE /license/token re-acquire on a 401, then retries the failed fetch and applies", async () => {
     const m = mockFetch({ unauthorizedUntilReacquire: "license" });
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: m.impl,
@@ -398,7 +398,7 @@ describe("PolarisClient — sync / persistence", () => {
     expect(m.count("/license/token")).toBe(1); // exactly one re-acquire, no retry loop
     const tokenCall = m.first("/license/token");
     expect(tokenCall?.method).toBe("POST");
-    expect(tokenCall?.bearer).toBe("Bearer plrst_activated");
+    expect(tokenCall?.bearer).toBe("Bearer pkeyt_activated");
     expect(tokenCall?.device).toBeTruthy();
   });
 
@@ -410,7 +410,7 @@ describe("PolarisClient — sync / persistence", () => {
     // or a config document stuck on `unauthorized`.
     const m = mockFetch({ unauthorizedUntilReacquire: "both" });
     const store = new InMemoryStore(PRODUCT);
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: m.impl,
@@ -435,7 +435,7 @@ describe("PolarisClient — sync / persistence", () => {
     // signal. A retry loop here would hammer the control plane forever and would keep
     // postponing that signal.
     const m = mockFetch({ alwaysUnauthorized: true });
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: m.impl,
@@ -458,7 +458,7 @@ describe("PolarisClient — sync / persistence", () => {
         allowedRange: { min: "2.0.0" },
       },
     });
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: m.impl,
@@ -485,7 +485,7 @@ describe("PolarisClient — sync / persistence", () => {
       licenseBlocked: true,
       blockedBody: { error: { code: "channel_not_allowed" } },
     });
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: m.impl,
@@ -500,7 +500,7 @@ describe("PolarisClient — sync / persistence", () => {
 
   it("304 keeps the cached documents and clears a prior block", async () => {
     const m = mockFetch();
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store: new InMemoryStore(PRODUCT),
       fetchImpl: m.impl,
@@ -534,14 +534,14 @@ describe("PolarisClient — sync / persistence", () => {
   });
 });
 
-describe("PolarisClient — offline-first init", () => {
+describe("PolarisKeyClient — offline-first init", () => {
   it("init() applies a pre-seeded v3 cache with NO network and reflects ok status", async () => {
     // An offline-first host must be able to render its gate before it has ever reached the
     // control plane, so `init()` is a pure load: device id, token, cache — no fetch.
     const store = new InMemoryStore(PRODUCT);
     const deviceId = await store.getDeviceId();
     const now = nowSec();
-    await store.setToken("plrst_cached");
+    await store.setToken("pkeyt_cached");
 
     const rec: CacheRecordV3 = {
       v: CACHE_VERSION,
@@ -550,13 +550,13 @@ describe("PolarisClient — offline-first init", () => {
           { ...licenseDoc(deviceId, now), licenseId: "lic_cached" },
           TEST_PEM,
           TEST_KID,
-          "plrs-license+jws",
+          "pkey-license+jws",
         ),
         config: await signJws(
           configDoc(deviceId, now),
           TEST_PEM,
           TEST_KID,
-          "plrs-config+jws",
+          "pkey-config+jws",
         ),
       },
       etags: { license: '"lic-v1"', config: '"cfg-v1"' },
@@ -568,7 +568,7 @@ describe("PolarisClient — offline-first init", () => {
       throw new Error("network must not be used during init");
     }) as unknown as typeof fetch;
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: exploding,
@@ -584,11 +584,11 @@ describe("PolarisClient — offline-first init", () => {
   });
 });
 
-describe("PolarisClient — deactivate", () => {
+describe("PolarisKeyClient — deactivate", () => {
   it("deactivate POSTs /license/deauthorize, wipes the store, and resets to needs-activation", async () => {
     const store = new InMemoryStore(PRODUCT);
     const m = mockFetch();
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: m.impl,
@@ -602,7 +602,7 @@ describe("PolarisClient — deactivate", () => {
     expect(await store.readCache()).toBeNull();
     expect(m.last("/license/deauthorize")?.method).toBe("POST");
     expect(m.last("/license/deauthorize")?.bearer).toBe(
-      "Bearer plrst_activated",
+      "Bearer pkeyt_activated",
     );
     // The monotonic floor drops only alongside every artifact it was derived from — a floor
     // without its sources would be exactly the bare counter §4.2 abolished.
@@ -624,7 +624,7 @@ describe("PolarisClient — deactivate", () => {
       return m.impl(input, init);
     }) as typeof fetch;
 
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: offline,
@@ -638,11 +638,11 @@ describe("PolarisClient — deactivate", () => {
   });
 });
 
-describe("PolarisClient — device management surface", () => {
+describe("PolarisKeyClient — device management surface", () => {
   it("reports the current device and only deauthorizes the current device", async () => {
     const store = new InMemoryStore(PRODUCT);
     const deviceId = await store.getDeviceId();
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: (async () =>
@@ -673,10 +673,10 @@ describe("PolarisClient — device management surface", () => {
   });
 });
 
-describe("PolarisClient — channel derivation", () => {
-  it("derives the channel from the version and sends it as X-Polaris-Channel", async () => {
+describe("PolarisKeyClient — channel derivation", () => {
+  it("derives the channel from the version and sends it as X-PKey-Channel", async () => {
     const m = mockFetch();
-    const client = new PolarisClient({
+    const client = new PolarisKeyClient({
       ...base,
       version: "0.0.0-staging+abc",
       store: new InMemoryStore(PRODUCT),
@@ -696,14 +696,14 @@ describe("PolarisClient — channel derivation", () => {
   });
 });
 
-describe("PolarisClient — getSyncState (the React bridge contract)", () => {
+describe("PolarisKeyClient — getSyncState (the React bridge contract)", () => {
   it("returns exactly the bridge shape, before and after activation", async () => {
     // §P5's React lane consumes this object field-for-field. Pinning the KEY SET as well as
     // the values is deliberate: silently adding or renaming a field here breaks a consumer in
     // another package that this suite never runs.
     const store = new InMemoryStore(PRODUCT);
     const m = mockFetch();
-    const client = await PolarisClient.create({
+    const client = await PolarisKeyClient.create({
       ...base,
       store,
       fetchImpl: m.impl,
@@ -733,7 +733,7 @@ describe("PolarisClient — getSyncState (the React bridge contract)", () => {
     expect(Object.keys(after).sort()).toEqual(Object.keys(before).sort());
     expect(after.activation).toBe("token"); // null → "token"
     expect(after.doc?.licenseId).toBe("lic_1");
-    expect(after.doc?.iss).toBe("plrs.im");
+    expect(after.doc?.iss).toBe("key.plrs.im");
     expect(after.doc?.deviceId).toBe(await store.getDeviceId());
     expect(after.lastSyncUnauthorized).toBe(false);
     expect(after.blocked).toBeNull();

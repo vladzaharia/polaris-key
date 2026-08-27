@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from polaris.devices.deviceid import device_id_from_raw
-from polaris.devices.fingerprint import COMPONENT_ORDER, hash_components
+from polaris_key.devices.deviceid import device_id_from_raw
+from polaris_key.devices.fingerprint import COMPONENT_ORDER, hash_components
 
 CORPUS = json.loads(
     (

@@ -14,11 +14,11 @@ import httpx
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from polaris.client import PolarisClient
-from polaris.core.b64url import b64url_encode
-from polaris.core.jws import sign_jws
-from polaris.core.models import TYP_BUNDLE, TYP_CONFIG, TYP_LICENSE, TYP_TRUST
-from polaris.devices.store import InMemoryStore
+from polaris_key.client import PolarisKeyClient
+from polaris_key.core.b64url import b64url_encode
+from polaris_key.core.jws import sign_jws
+from polaris_key.core.models import TYP_BUNDLE, TYP_CONFIG, TYP_LICENSE, TYP_TRUST
+from polaris_key.devices.store import InMemoryStore
 
 PRODUCT = "djdl"
 KID = "pkey-test-prod-2026"
@@ -29,8 +29,8 @@ PRIVATE_PEM = (
     "-----END PRIVATE KEY-----"
 )
 TRUST = {KID: PUBKEY_RAW}
-#: v3 device credentials carry the `plrst_` prefix (§6/§8).
-TOKEN = "plrst_" + "t" * 43
+#: v3 device credentials carry the `pkeyt_` prefix (§6/§8).
+TOKEN = "pkeyt_" + "t" * 43
 BASE_URL = "https://key.example"
 NOW = int(time.time())
 DAY = 86_400
@@ -57,9 +57,9 @@ ROTATED_PEM, ROTATED_PUB = new_keypair()
 
 # ── Signed artifacts ────────────────────────────────────────────────────────────────
 def license_payload(device_id: str, *, issued: int = NOW, **over: Any) -> Dict[str, Any]:
-    """A ``plrs-license+jws`` payload (§2.1): the shared envelope + grants."""
+    """A ``pkey-license+jws`` payload (§2.1): the shared envelope + grants."""
     d: Dict[str, Any] = {
-        "iss": "plrs.im",
+        "iss": "key.plrs.im",
         "aud": PRODUCT,
         "deviceId": device_id,
         "issuedAt": issued,
@@ -82,10 +82,10 @@ def license_payload(device_id: str, *, issued: int = NOW, **over: Any) -> Dict[s
 
 
 def config_payload(device_id: str, *, issued: int = NOW, **over: Any) -> Dict[str, Any]:
-    """A ``plrs-config+jws`` payload (§2.2): the shared envelope + config/secrets, and NO
+    """A ``pkey-config+jws`` payload (§2.2): the shared envelope + config/secrets, and NO
     licence fields whatsoever."""
     d: Dict[str, Any] = {
-        "iss": "plrs.im",
+        "iss": "key.plrs.im",
         "aud": PRODUCT,
         "deviceId": device_id,
         "issuedAt": issued,
@@ -114,7 +114,7 @@ def manifest_payload(
     d: Dict[str, Any] = {
         "schemaVersion": 1,
         "aud": PRODUCT,
-        "iss": "plrs.im",
+        "iss": "key.plrs.im",
         "issuedAt": issued,
         "expiresAt": issued + 3600,
         "jwksUrl": f"{BASE_URL}/{PRODUCT}/.well-known/jwks.json",
@@ -164,7 +164,7 @@ def sign_bundle(
     typ: Optional[str] = TYP_BUNDLE,
     **over: Any,
 ) -> str:
-    """A ``plrs-bundle+jws`` (§7): up to three inner compact JWSs + the import window."""
+    """A ``pkey-bundle+jws`` (§7): up to three inner compact JWSs + the import window."""
     payload: Dict[str, Any] = {
         "bundleId": bundle_id,
         "aud": PRODUCT,
@@ -216,7 +216,7 @@ def routes(
             if register_status != 200:
                 return httpx.Response(register_status, json={"error": {"code": "registration_closed"}})
             return httpx.Response(
-                200, json={"token": TOKEN, "deviceId": r.headers.get("X-Polaris-Device", "")}
+                200, json={"token": TOKEN, "deviceId": r.headers.get("X-PKey-Device", "")}
             )
         if path == f"{p}/.well-known/polaris-trust.jws":
             if trust_jws is None:
@@ -259,9 +259,9 @@ def mock_client(handler) -> httpx.Client:
 
 def make_client(
     handler, *, store=None, trust=None, client=None, version="1.0.0", **kw
-) -> PolarisClient:
-    """A ``PolarisClient`` wired to a mock transport. Nothing here touches the network."""
-    c = PolarisClient(
+) -> PolarisKeyClient:
+    """A ``PolarisKeyClient`` wired to a mock transport. Nothing here touches the network."""
+    c = PolarisKeyClient(
         product_slug=PRODUCT,
         version=version,
         trust=TRUST if trust is None else trust,

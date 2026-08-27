@@ -1,5 +1,5 @@
 {
-  "name": "@plrs/client-core",
+  "name": "@polaris-key/client-core",
   "version": "0.0.0",
   "type": "module",
   "sideEffects": false,
@@ -62,8 +62,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@plrs/jws": "workspace:*",
-    "@plrs/protocol": "workspace:*"
+    "@polaris-key/jws": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.14.0"

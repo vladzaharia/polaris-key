@@ -32,7 +32,7 @@ import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
 import { adminJson, audit, err, readBody } from "../../core/adminApi.js";
 import { setCompatWindow } from "../../core/products.js";
-import type { ReleaseAccess } from "@plrs/protocol/release";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
   artifactPolicy,
   getReleaseConfig,

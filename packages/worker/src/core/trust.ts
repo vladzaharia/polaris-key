@@ -9,12 +9,12 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Product } from "./products.js";
 import type { Db } from "../db/types.js";
-import { signJws } from "@plrs/jws";
-import type { TrustManifestDoc } from "@plrs/protocol";
-// The v3 issuer (`plrs.im`, host-neutral — D-09), NOT the barrel's legacy `key.plrs.im`. The
+import { signJws } from "@polaris-key/jws";
+import type { TrustManifestDoc } from "@polaris-key/protocol";
+// The v3 issuer (`key.plrs.im`, host-neutral — D-09), NOT the barrel's legacy `key.plrs.im`. The
 // two signed documents already moved; the trust manifest is the third artifact the client
 // verifies and has to agree with them, or an SDK that pins one `iss` cannot accept all three.
-import { ISSUER } from "@plrs/protocol/core";
+import { ISSUER } from "@polaris-key/protocol/core";
 import { loadPublicSigningKeys } from "./products.js";
 
 const TRUST_CACHE_SECONDS = 300;
@@ -87,7 +87,7 @@ export async function signTrustManifest(
     doc,
     product.signingKeyPem,
     product.signingKid,
-    "plrs-trust+jws",
+    "pkey-trust+jws",
   );
 }
 

@@ -1,5 +1,5 @@
-import { Catalog } from "@plrs/catalog";
-import type { ConfigEntry } from "@plrs/catalog";
+import { Catalog } from "@polaris-key/catalog";
+import type { ConfigEntry } from "@polaris-key/catalog";
 import {
   deleteTokenRecord,
   hashKey,

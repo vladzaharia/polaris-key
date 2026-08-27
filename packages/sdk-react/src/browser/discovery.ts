@@ -1,7 +1,7 @@
 // Product discovery for the browser transport: `GET /<product>/.well-known/polaris.json`,
 // wire contract v3.
 //
-// A deliberately smaller cousin of `@plrs/node`'s `discovery.ts`: the React SDK consumes the
+// A deliberately smaller cousin of `@polaris-key/node`'s `discovery.ts`: the React SDK consumes the
 // `services` map and the endpoints it needs, and preserves the rest verbatim for a host that
 // wants richer onboarding metadata. The PARSING RULES are identical, and identical on purpose:
 //

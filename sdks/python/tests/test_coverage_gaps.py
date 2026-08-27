@@ -17,9 +17,9 @@ from typing import Any, Dict
 import httpx
 import pytest
 
-import polaris.devices.deviceid as deviceid
-from polaris.cli import core
-from polaris.core.context import (
+import polaris_key.devices.deviceid as deviceid
+from polaris_key.cli import core
+from polaris_key.core.context import (
     DocumentBlocked,
     DocumentDeviceCap,
     DocumentError,
@@ -27,10 +27,10 @@ from polaris.core.context import (
     DocumentOk,
     DocumentUnauthorized,
 )
-from polaris.core.models import AllowedRange
-from polaris.devices.deviceid import derive_device_id, raw_os_device_id
-from polaris.devices.facts import ProbeDeclaration, collect_facts, run_probes
-from polaris.devices.store import FileStore
+from polaris_key.core.models import AllowedRange
+from polaris_key.devices.deviceid import derive_device_id, raw_os_device_id
+from polaris_key.devices.facts import ProbeDeclaration, collect_facts, run_probes
+from polaris_key.devices.store import FileStore
 
 from helpers import PRODUCT, TOKEN, make_client, routes, sign_config, sign_license
 
@@ -68,7 +68,7 @@ def test_filestore_refuses_to_follow_a_planted_symlink(tmp_path) -> None:
 @pytest.mark.skipif(not hasattr(os, "O_NOFOLLOW"), reason="O_NOFOLLOW unavailable")
 def test_the_cache_file_is_symlink_guarded_too(tmp_path) -> None:
     """Every secure write goes through the same guard — not just the token."""
-    from polaris.core.store import CacheRecord
+    from polaris_key.core.store import CacheRecord
 
     store = FileStore(PRODUCT, str(tmp_path))
     cache_path = os.path.join(str(tmp_path), PRODUCT, "managed.json")
@@ -261,8 +261,8 @@ def test_a_probe_with_no_target_for_this_platform_is_not_applicable(tmp_path) ->
 def _cli_client(**kw: Any):
     return make_client(
         routes(
-            license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]),
-            config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"]),
+            license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]),
+            config_jws=lambda r: sign_config(r.headers["X-PKey-Device"]),
             **kw,
         )
     )
@@ -290,7 +290,7 @@ def test_cli_status_exits_zero_on_not_applicable() -> None:
     """For a product with License disabled the gate is ``not-applicable`` and USABLE, so
     the CLI must not report failure."""
     c = make_client(
-        routes(config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"])),
+        routes(config_jws=lambda r: sign_config(r.headers["X-PKey-Device"])),
         expected_services=["config"],
     )
     st = core.status(c)
@@ -377,10 +377,10 @@ def test_cli_import_bundle_success_and_refusal(tmp_path) -> None:
 
 
 def test_cli_read_bundle_file(tmp_path) -> None:
-    path = tmp_path / "b.plrsbundle"
+    path = tmp_path / "b.pkeybundle"
     path.write_text("  a.b.c \n")
     assert core.read_bundle_file(str(path)) == "a.b.c"
-    empty = tmp_path / "empty.plrsbundle"
+    empty = tmp_path / "empty.pkeybundle"
     empty.write_text("   ")
     with pytest.raises(ValueError):
         core.read_bundle_file(str(empty))

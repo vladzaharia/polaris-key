@@ -1,5 +1,5 @@
 /**
- * The service registry — how Core mounts a Polaris service (design spec §5.1, D-02).
+ * The service registry — how Core mounts a Polaris Key service (design spec §5.1, D-02).
  *
  * The worker is a modular monolith, split-ready: one Cloudflare Worker containing an
  * always-on `core/` substrate plus one directory per opt-in service. Adding a service is
@@ -14,7 +14,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import type { ParsedManifest } from "@plrs/manifest";
+import type { ParsedManifest } from "@polaris-key/manifest";
 import type { Env } from "../env.js";
 import type { Product } from "./products.js";
 import type { Db, DbStatement } from "../db/types.js";
@@ -177,10 +177,14 @@ export async function dispatchService(
  *
  * Fails CLOSED at every step, and the enablement check leads for the same reason it leads in
  * `dispatchService`: a product whose `services_json` says the service is off must not have that
- * service's code run, even to say no. `validateServices` already refuses the
- * `requires-identity` + identity-disabled combination at ingest and in the admin API
- * (`registration_requires_identity`), so reaching the first `false` below means a row that was
- * hand-edited past both — exactly the case that must not mint a token.
+ * service's code run, even to say no.
+ *
+ * `validateServices` refuses the `requires-identity` + identity-disabled combination on the
+ * ADMIN path (`registration_requires_identity`, via `servicesAdmin.ts`) — and ONLY there.
+ * Manifest ingest does not call it: `linkRepo`/`resync` go straight to `serializeServices`.
+ * So this check is not a redundant second opinion, it is the only thing standing between a
+ * repo-authored `devices.registration: requires-identity` on an identity-disabled product and
+ * a minted device token. Do not remove it on the grounds that validation "already" happened.
  */
 export async function authorizeRegistration(
   registry: ServiceRegistry,
