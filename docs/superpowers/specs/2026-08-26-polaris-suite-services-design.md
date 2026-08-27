@@ -264,3 +264,27 @@ Per-app integration mode with **no network code paths active**: Swift by not lin
 | Four "modules" surfaces drifting back                 | All become projections of `services_json`; lint forbids new presence-inference                             |
 
 **Verification model:** existing behavior pins stay authoritative — wire-contract regression suites (per language), gate matrix, fingerprint corpus, React parity/a11y harnesses, worker e2e — all re-baselined intentionally per phase, never deleted to go green. Tests run on Node 22 (better-sqlite3 constraint).
+
+---
+
+## Amendment A1 (2026-08-27): Polaris Key remains the brand
+
+On review, the suite keeps the **Polaris Key** identity, living at `key.plrs.im`; services are
+named **Polaris Key License / Config / Release / Update / Identity**. The architecture (Core
+substrate, five opt-in services, `services_json`, wire v3's per-service documents, device
+principal, bundles, entitled mode, SDK sub-clients, suite console) is unchanged — this amendment
+reverts the *naming layer only*. Decision register deltas:
+
+| # | Was | Now |
+|---|---|---|
+| D-03 | Suite "Polaris"; packages `@plrs/*` | Suite "Polaris Key"; packages **`@polaris-key/*`** (org exists — the external gate dissolves). PyPI **`polaris-key`** / `import polaris_key` / script `polaris-key`; Swift package **`PolarisKey`** with `PolarisKeyCore/License/Config/Update/UI` targets and umbrella `PolarisKey`; facade class `PolarisKeyClient` |
+| D-09 | ISSUER `plrs.im` (host-neutral) | ISSUER **`key.plrs.im`** (total brand/wire coherence; a future host move is a sanctioned pre-launch wire break) |
+| D-10 | Identifier rebrand to the plrs family | **Full revert to the pkey family**: typs `pkey-license+jws` / `pkey-config+jws` / `pkey-trust+jws` / `pkey-bundle+jws`; tokens `pkeyt_`; license keys `pkey_`; headers `X-PKey-*`; session tags `pkey.admin.v1\|` / `pkey.portal.v1\|`; cookies `__Host-pkey_*` / `pkey_<p>_session`; keyring `pkey:<product>`; env `PKEY_CONFIG_*`; manifest dir **`.pkey/` only** (the `.polaris/` dual-read is removed); CLI bin stays `pkey` |
+| D-17 | Per-section `data-service` accents | **Kept** (per this review) — sections stay visually distinct inside the Polaris Key console |
+| D-23 | `@plrs` org creation as external gate | Obsolete — `@polaris-key` publishing continues as-is |
+
+Notes: the v2 typ strings `pkey-config+jws`/`pkey-trust+jws` are re-used for the v3 config
+document and trust manifest (pre-launch; corpus v1 is deleted in the same wave, so no dual-shape
+ambiguity ever ships). `PROTOCOL_VERSION` stays 3 — the document *shapes* are unchanged; corpus
+v2 regenerates with the pkey identifiers. The djdl repository's `.pkey/` manifests (GitHub-synced)
+are updated to the v3 modules/registration/redirect-URI shape as part of this amendment's rollout.
