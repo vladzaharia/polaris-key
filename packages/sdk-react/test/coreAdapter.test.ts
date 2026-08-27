@@ -11,11 +11,25 @@ import {
 } from "../src/core/adapter.js";
 import { createStore } from "../src/core/store.js";
 import { initialState, PolarisError } from "../src/core/types.js";
-import { entry, makeConfigDoc, makeDoc, NOW_SEC } from "./fixtures.js";
+import {
+  defaultServices,
+  noBusy,
+  noErrors,
+  servicesFromList,
+} from "../src/core/services.js";
+import { entry, makeConfig, makeDoc, NOW_SEC } from "./fixtures.js";
 
 // The shared projection helpers (core/adapter.ts) are what guarantee mode-parity: both
-// adapters flow a doc through `projectState` so the *shape* is transport-independent. These
-// unit-test the projection in isolation (no React, no transport).
+// adapters flow the same document pair through `projectState`, so the *shape* is
+// transport-independent. These unit-test the projection in isolation (no React, no transport).
+//
+// The PRECEDENCE itself is `@plrs/client-core`'s and is proven by its own suite plus the
+// conformance corpus; what these rows pin is that React feeds it the right context — an EMPTY
+// environment layer above all, because a renderer must never inherit the privileged process's.
+
+const licensed = servicesFromList(["license", "config"]);
+const gateOk = { activation: "token" as const, now: NOW_SEC };
+const gateNone = { activation: null, now: NOW_SEC };
 
 describe("flattenEntries", () => {
   it("flattens a ManagedEntry record to key→value", () => {
@@ -36,20 +50,18 @@ describe("flattenEntries", () => {
         b: { value: 0 },
         c: { value: "" },
       }),
-    ).toEqual({
-      a: false,
-      b: 0,
-      c: "",
-    });
+    ).toEqual({ a: false, b: 0, c: "" });
   });
 });
 
 describe("projectState", () => {
-  it("flips phase to ready and projects config + entitlements from the doc", () => {
-    const state = projectState("desktop", makeDoc(), {
-      hasToken: true,
-      now: NOW_SEC,
-    });
+  it("flips phase to ready and projects config + entitlements from the document pair", () => {
+    const state = projectState(
+      "desktop",
+      { license: makeDoc(), config: makeConfig() },
+      gateOk,
+      { capabilities: licensed },
+    );
     expect(state.phase).toBe("ready");
     expect(state.mode).toBe("desktop");
     expect(state.status).toBe("ok");
@@ -57,54 +69,90 @@ describe("projectState", () => {
     expect(state.config).toEqual({ "theme.mode": "dark" });
     expect(state.entitlements).toEqual({ polarisVpn: true, beta: false });
     expect(state.profile?.email).toBe("ada@acme.test");
+    expect(state.activation).toBe("token");
   });
 
-  it("a null doc yields empty config/entitlements and a null profile", () => {
-    const state = projectState("browser", null, {
-      hasToken: false,
-      now: NOW_SEC,
-    });
+  it("a null license document yields empty entitlements and a null profile", () => {
+    const state = projectState(
+      "browser",
+      { license: null, config: {} },
+      gateNone,
+      { capabilities: licensed },
+    );
     expect(state.config).toEqual({});
     expect(state.entitlements).toEqual({});
     expect(state.profile).toBeNull();
     expect(state.status).toBe("needs-activation");
   });
 
-  it("threads busy + error flags through", () => {
-    const err = new PolarisError("network", "boom");
+  it("config survives a null license document (D-08: the services are independent)", () => {
     const state = projectState(
       "browser",
-      null,
-      { hasToken: false, now: NOW_SEC },
-      { busy: true, error: err },
+      { license: null, config: makeConfig() },
+      gateNone,
+      { capabilities: servicesFromList(["config"]) },
     );
-    expect(state.busy).toBe(true);
-    expect(state.error).toBe(err);
+    expect(state.config["theme.mode"]).toBe("dark");
+    expect(state.status).toBe("not-applicable");
   });
 
-  it("defaults busy=false and error=null when no flags given", () => {
-    const state = projectState("browser", makeDoc(), {
-      hasToken: true,
-      now: NOW_SEC,
-    });
-    expect(state.busy).toBe(false);
-    expect(state.error).toBeNull();
+  it("threads the per-service busy + error maps through", () => {
+    const err = new PolarisError("network", "boom");
+    const busy = { ...noBusy(), config: true };
+    const error = { ...noErrors(), identity: err };
+    const state = projectState(
+      "browser",
+      { license: null, config: {} },
+      gateNone,
+      { busy, error, capabilities: licensed },
+    );
+    expect(state.busy.config).toBe(true);
+    expect(state.busy.license).toBe(false);
+    expect(state.error.identity).toBe(err);
+    expect(state.error.config).toBeNull();
+  });
+
+  it("defaults to no busy and no errors when no flags are given", () => {
+    const state = projectState(
+      "browser",
+      { license: makeDoc(), config: {} },
+      gateOk,
+      { capabilities: licensed },
+    );
+    expect(state.busy).toEqual(noBusy());
+    expect(state.error).toEqual(noErrors());
+  });
+
+  it("carries the clock floor onto the snapshot", () => {
+    const state = projectState(
+      "desktop",
+      { license: makeDoc(), config: {} },
+      { ...gateOk, highWaterMark: 1700 },
+      { capabilities: licensed },
+    );
+    expect(state.highWaterMark).toBe(1700);
   });
 
   it("does NOT expose secrets in the projected config map", () => {
-    const state = projectState("desktop", makeDoc(), {
-      hasToken: true,
-      now: NOW_SEC,
-    });
+    // Secrets never reach `PolarisDocs.config` — the transports strip them at their edge —
+    // so a projected snapshot has nowhere to leak one from.
+    const state = projectState(
+      "desktop",
+      { license: makeDoc(), config: makeConfig() },
+      gateOk,
+      { capabilities: licensed },
+    );
     expect(state.config).not.toHaveProperty("api.token");
   });
 });
 
 describe("readConfig / readEntitled", () => {
-  const state = projectState("desktop", makeDoc(), {
-    hasToken: true,
-    now: NOW_SEC,
-  });
+  const state = projectState(
+    "desktop",
+    { license: makeDoc(), config: makeConfig() },
+    gateOk,
+    { capabilities: licensed },
+  );
 
   it("readConfig returns the value when present", () => {
     expect(readConfig(state, "theme.mode", "light")).toBe("dark");
@@ -121,11 +169,11 @@ describe("readConfig / readEntitled", () => {
   });
 });
 
-// ── v2 config semantics: state honoring + local overrides ──────────────────────
+// ── Config semantics: state honoring + local overrides ─────────────────────────
 // Precedence per key: enforced|hidden (remote, locked) > local override > remote-default >
-// fallback. (Environment layering is a node/python/swift concern, never present here.)
+// fallback. The `env` layer `@plrs/client-core` also supports is deliberately starved here.
 
-describe("resolveConfigValue (v2 precedence)", () => {
+describe("resolveConfigValue (precedence)", () => {
   const entries = {
     locked: entry("enforced", "server"),
     secretLocked: entry("hidden", "server-hidden"),
@@ -162,7 +210,7 @@ describe("resolveConfigValue (v2 precedence)", () => {
 });
 
 describe("resolveConfig (effective map)", () => {
-  it("merges doc keys + override-only keys through the precedence", () => {
+  it("merges document keys + override-only keys through the precedence", () => {
     const entries = {
       locked: entry("enforced", "srv"),
       soft: entry("default", "def"),
@@ -176,11 +224,11 @@ describe("resolveConfig (effective map)", () => {
 });
 
 describe("projectState honors local overrides", () => {
-  const doc = makeConfigDoc({
+  const config = {
     enforcedKey: entry("enforced", "srv"),
     hiddenKey: entry("hidden", "srv-hidden"),
     defaultKey: entry("default", "remote"),
-  });
+  };
   const local = {
     enforcedKey: "tryToWin",
     defaultKey: "localWin",
@@ -188,9 +236,9 @@ describe("projectState honors local overrides", () => {
   };
   const state = projectState(
     "desktop",
-    doc,
-    { hasToken: true, now: NOW_SEC },
-    { localOverrides: local },
+    { license: makeDoc(), config },
+    gateOk,
+    { localOverrides: local, capabilities: licensed },
   );
 
   it("enforced beats a local override", () => {
@@ -200,10 +248,12 @@ describe("projectState honors local overrides", () => {
 
   it("default is overridden by local, then remote-default, then fallback", () => {
     expect(readConfig(state, "defaultKey", "fb")).toBe("localWin");
-    const noOverride = projectState("desktop", doc, {
-      hasToken: true,
-      now: NOW_SEC,
-    });
+    const noOverride = projectState(
+      "desktop",
+      { license: makeDoc(), config },
+      gateOk,
+      { capabilities: licensed },
+    );
     expect(readConfig(noOverride, "defaultKey", "fb")).toBe("remote");
     expect(readConfig(noOverride, "absentKey", "fb")).toBe("fb");
   });
@@ -215,17 +265,20 @@ describe("projectState honors local overrides", () => {
 });
 
 describe("getConfigSource (provenance)", () => {
-  const doc = makeConfigDoc({
+  const config = {
     enforcedKey: entry("enforced", "srv"),
     hiddenKey: entry("hidden", "srv"),
     defaultKey: entry("default", "remote"),
     overriddenDefault: entry("default", "remote"),
-  });
+  };
   const state = projectState(
     "browser",
-    doc,
-    { hasToken: true, now: NOW_SEC },
-    { localOverrides: { overriddenDefault: "local", onlyLocal: "x" } },
+    { license: makeDoc(), config },
+    gateOk,
+    {
+      localOverrides: { overriddenDefault: "local", onlyLocal: "x" },
+      capabilities: licensed,
+    },
   );
 
   it("classifies every provenance bucket", () => {
@@ -239,16 +292,19 @@ describe("getConfigSource (provenance)", () => {
 });
 
 describe("listUserConfig (settings-UI enumeration)", () => {
-  const doc = makeConfigDoc({
+  const config = {
     enforcedKey: entry("enforced", "srv"),
     hiddenKey: entry("hidden", "srv-hidden"),
     defaultKey: entry("default", "remote"),
-  });
+  };
   const state = projectState(
     "desktop",
-    doc,
-    { hasToken: true, now: NOW_SEC },
-    { localOverrides: { defaultKey: "local", onlyLocal: "y" } },
+    { license: makeDoc(), config },
+    gateOk,
+    {
+      localOverrides: { defaultKey: "local", onlyLocal: "y" },
+      capabilities: licensed,
+    },
   );
 
   it("excludes hidden keys and flags enforced rows read-only", () => {
@@ -265,6 +321,8 @@ describe("listUserConfig (settings-UI enumeration)", () => {
       value: "local",
       enforced: false,
     });
+    // Override-only rows are included — which is why this is NOT client-core's
+    // `listUserEntries`, which enumerates the remote catalog alone.
     expect(byKey.onlyLocal).toEqual({
       key: "onlyLocal",
       value: "y",
@@ -274,13 +332,23 @@ describe("listUserConfig (settings-UI enumeration)", () => {
 });
 
 describe("initialState", () => {
-  it("seeds a loading, needs-activation snapshot for the given mode", () => {
-    const s = initialState("browser");
+  it("seeds a loading, needs-activation snapshot for a licensed product", () => {
+    const s = initialState("browser", defaultServices());
     expect(s.phase).toBe("loading");
     expect(s.mode).toBe("browser");
     expect(s.status).toBe("needs-activation");
-    expect(s.busy).toBe(false);
-    expect(s.error).toBeNull();
+    expect(s.busy).toEqual(noBusy());
+    expect(s.error).toEqual(noErrors());
+    expect(s.activation).toBeNull();
+    expect(s.highWaterMark).toBe(0);
+  });
+
+  it("seeds `not-applicable` for a product with no license service", () => {
+    // Without this a config-only product flashes a sign-in screen on its first frame — the
+    // one it can never satisfy.
+    const s = initialState("browser", servicesFromList(["config"]));
+    expect(s.status).toBe("not-applicable");
+    expect(s.gate.status).toBe("not-applicable");
   });
 });
 

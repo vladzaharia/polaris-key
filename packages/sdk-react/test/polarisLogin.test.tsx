@@ -12,7 +12,12 @@ import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { PolarisBridge } from "../src/desktop/bridge.js";
 import type { PolarisAdapter } from "../src/core/index.js";
-import { makeFakeBridge, makeFakeFetch } from "./fixtures.js";
+import {
+  emptyBridgeState,
+  makeFakeBridge,
+  makeFakeFetch,
+  services,
+} from "./fixtures.js";
 
 afterEach(cleanup);
 
@@ -43,12 +48,11 @@ describe("PolarisLogin — OIDC button", () => {
 
   it("hides OIDC when discovery or the bridge disables it", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({
-        hasToken: false,
-        doc: null,
-        supportsOidcLogin: false,
-      }),
+      bridge: makeFakeBridge(
+        emptyBridgeState({ capabilities: services("license", "config") }),
+      ),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = renderLogin(adapter);
     await waitFor(() =>
@@ -59,9 +63,13 @@ describe("PolarisLogin — OIDC button", () => {
   });
 
   it("clicking OIDC triggers signInWithOidc on the adapter", async () => {
-    const bridge = makeFakeBridge({ hasToken: false, doc: null });
+    const bridge = makeFakeBridge(emptyBridgeState());
     const beginSpy = vi.spyOn(bridge, "beginSignIn");
-    const adapter = desktopAdapter({ bridge, now: () => 2000 });
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => 2000,
+      expectServices: services(),
+    });
     const { container } = renderLogin(adapter);
     const btn = await waitFor(
       () => container.querySelector("[data-polaris-oidc]") as HTMLButtonElement,
@@ -75,8 +83,9 @@ describe("PolarisLogin — OIDC button", () => {
 describe("PolarisLogin — key card visibility", () => {
   it("desktop shows the typed-key card", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = renderLogin(adapter);
     await waitFor(() =>
@@ -101,8 +110,9 @@ describe("PolarisLogin — key card visibility", () => {
 
   it("places OIDC sign-in and key activation side by side when key entry is available", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = renderLogin(adapter);
     const oidc = await waitFor(
@@ -118,8 +128,9 @@ describe("PolarisLogin — key card visibility", () => {
 
   it("hideKeyEntry hides the card even on desktop", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = renderLogin(adapter, { hideKeyEntry: true });
     await waitFor(() =>
@@ -132,9 +143,13 @@ describe("PolarisLogin — key card visibility", () => {
 
 describe("PolarisLogin — key submission", () => {
   it("submits a trimmed key and surfaces the bridge's rejection as an alert", async () => {
-    const bridge = makeFakeBridge({ hasToken: false, doc: null });
+    const bridge = makeFakeBridge(emptyBridgeState());
     bridge.submitKey = vi.fn(async () => ({ kind: "unauthorized" }) as const);
-    const adapter = desktopAdapter({ bridge, now: () => 2000 });
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => 2000,
+      expectServices: services(),
+    });
     const { container } = renderLogin(adapter);
     const input = (await waitFor(() =>
       container.querySelector("[data-polaris-key-input]"),
@@ -155,8 +170,9 @@ describe("PolarisLogin — key submission", () => {
 
   it("the submit button is disabled while the key field is empty", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = renderLogin(adapter);
     const input = (await waitFor(() =>
@@ -175,8 +191,9 @@ describe("PolarisLogin — key submission", () => {
 describe("PolarisLogin — theme copy + logo", () => {
   it("renders the themed sign-in title + OIDC label", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = render(
       <PolarisKeyProvider
@@ -200,8 +217,9 @@ describe("PolarisLogin — theme copy + logo", () => {
 
   it("an instance logo prop renders above the card", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = renderLogin(adapter, {
       logo: <span data-testid="brand-logo">LOGO</span>,

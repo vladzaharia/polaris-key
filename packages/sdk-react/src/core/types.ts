@@ -1,14 +1,29 @@
 // The shared, mode-agnostic surface. Every type here is identical across the browser
 // and desktop adapters — this is what makes the hooks return the same shapes regardless
 // of transport (mode-parity). The adapters differ only in HOW they fill a `PolarisState`.
+//
+// The GATE is not defined here any more: `@plrs/client-core` owns the one implementation every
+// JS SDK runs (wire contract v3 §5), including the monotonic clock floor this package's old
+// local port silently dropped. Both adapters reduce their transport to the same
+// `client-core` `GateInput` and run the same `licenseState`.
 
+import type { JSONValue, ManagedEntry } from "@plrs/protocol/core";
 import type {
+  ActivationSource,
   DocProfile,
-  JSONValue,
+  LicenseDoc,
   LicenseStatus,
-  ManagedEntry,
-} from "@plrs/protocol";
-import type { LicenseState } from "./gateModel.js";
+} from "@plrs/protocol/license";
+import type { ConfigSource, LicenseState } from "@plrs/client-core";
+// `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
+// erased, so this value import creates no runtime cycle.
+import { noBusy, noErrors } from "./services.js";
+import type {
+  ServiceBusyMap,
+  ServiceErrorMap,
+  ServiceSlug,
+  ServicesMap,
+} from "./services.js";
 
 /** Which transport an adapter speaks. `auto` resolves at construction time. */
 export type PolarisMode = "browser" | "desktop";
@@ -17,27 +32,19 @@ export type PolarisMode = "browser" | "desktop";
  *  snapshot resolves we render a loading screen, not a (misleading) `needs-activation`. */
 export type PolarisPhase = "loading" | "ready";
 
-/** Stable error codes surfaced by adapter operations. */
+/** Stable error codes surfaced by adapter operations. These describe what the UI should DO,
+ *  which is why they are not `@plrs/protocol`'s wire codes: `device-management-unsupported`
+ *  is a capability statement, not an HTTP status. */
 export type PolarisErrorCode =
   | "key-entry-unsupported"
   | "device-management-unsupported"
+  | "service-disabled"
   | "sign-in-failed"
   | "sign-out-failed"
   | "refresh-failed"
   | "network"
   | "bridge-missing"
   | "unknown";
-
-/** Where a resolved config value came from, in precedence order. `enforced`/`hidden` are
- *  server-locked; `local` is a client `localOverrides` win; `remote-default` is the doc's
- *  `default` value untouched by any override; `fallback` means the key was absent entirely.
- *  (Environment-variable layering is a node/python/swift concern and never appears here.) */
-export type ConfigSource =
-  | "enforced"
-  | "hidden"
-  | "local"
-  | "remote-default"
-  | "fallback";
 
 /** One user-facing config row for a settings UI: `hidden` keys are excluded entirely, and
  *  `enforced` flags whether the row should render read-only (server value wins). */
@@ -54,6 +61,24 @@ export interface DeviceInfo {
   licenseId?: string;
   profile?: DocProfile;
   lastVerifiedAt?: number;
+  /** Operator-set label, when the backend supports device management. */
+  label?: string | null;
+  platform?: string | null;
+  arch?: string | null;
+  appVersion?: string | null;
+  sdkName?: string | null;
+  sdkVersion?: string | null;
+}
+
+/** The newest build on a channel, as `GET /<product>/update/version` reports it. Mirrors
+ *  `@plrs/node`'s `VersionCheck` field for field. */
+export interface VersionCheck {
+  version: string;
+  tag: string;
+  url: string;
+  /** Whether the HOST APPLICATION's version is older than `version` (never the SDK's — the
+   *  SDK ships inside the thing being updated). */
+  updateAvailable: boolean;
 }
 
 /** A typed error every adapter throws so callers can branch on `.code` not on strings. */
@@ -66,6 +91,14 @@ export class PolarisError extends Error {
   }
 }
 
+/** The two documents a snapshot is projected from. v3 split the fused v2 artifact in two:
+ *  grants ride the LICENSE document, settings ride the CONFIG document. A transport that
+ *  still receives them fused (the browser identity session) splits them at its own edge. */
+export interface PolarisDocs {
+  license: LicenseDoc | null;
+  config: Record<string, ManagedEntry>;
+}
+
 /** The single immutable snapshot the store holds and every hook reads from. Both adapters
  *  produce exactly this shape. */
 export interface PolarisState {
@@ -73,36 +106,44 @@ export interface PolarisState {
   phase: PolarisPhase;
   /** The transport that produced this state. */
   mode: PolarisMode;
-  /** The full gate result (status + grace/version metadata). */
+  /** The full gate result (status + grace/version metadata), from `@plrs/client-core`. */
   gate: LicenseState;
   /** Convenience mirror of `gate.status`. */
   status: LicenseStatus;
-  /** The signed profile (name/email), once a doc is present. */
+  /** How this install became activated, or `null`. Replaces v2's `hasToken` boolean: an
+   *  air-gapped install activated from a signed bundle is activated too (§7). */
+  activation: ActivationSource | null;
+  /**
+   * §4.2's monotonic clock floor, in epoch SECONDS: `max(issuedAt)` over the verified
+   * artifacts this client holds. The gate evaluates at `max(now, highWaterMark)`, which makes
+   * a wound-back system clock inert. `0` when nothing signed has been seen yet.
+   */
+  highWaterMark: number;
+  /** What the product runs, per D-21. Discovery when it answered; the host's `expectServices`
+   *  (default: license + config) when it did not. Never all-true. */
+  capabilities: ServicesMap;
+  /** The signed profile (name/email), once a license document is present. */
   profile: DocProfile | null;
-  /** Device id from the verified doc, once a device-bound doc is present. */
+  /** Device id from the verified document, once a device-bound document is present. */
   currentDeviceId: string | null;
-  /** License id from the verified doc, once present. */
+  /** License id from the verified document, once present. */
   licenseId: string | null;
   /** Plaintext config, RESOLVED to effective values (key → value): per-key precedence is
    *  `enforced|hidden` (remote, locked) > `local` override > `remote-default` > fallback.
    *  This is the map every existing hook/getter reads, so it stays effective, not raw. */
   config: Record<string, JSONValue>;
-  /** The raw v2 config entries off the doc (state + value + updatedAt), kept so provenance
-   *  (`getConfigSource`) and user-facing enumeration (`listUserConfig`) can be derived. */
+  /** The raw config entries off the config document (state + value + updatedAt), kept so
+   *  provenance (`getConfigSource`) and enumeration (`listUserConfig`) can be derived. */
   configEntries: Record<string, ManagedEntry>;
   /** The client-supplied local/user overrides applied to `default`-state keys (never to
    *  `enforced`/`hidden`). Frozen onto the snapshot so reads are pure. */
   localOverrides: Record<string, JSONValue>;
-  /** Capability map (entitlement name → value). */
+  /** Capability map (entitlement name → value), off the LICENSE document (D-20). */
   entitlements: Record<string, JSONValue>;
-  /** True while a refresh/sign-in/sign-out op is in flight (post first load). */
-  busy: boolean;
-  /** The last operation error, if any (cleared on the next successful op). */
-  error: PolarisError | null;
-  /** True when this product exposes the generic OIDC login flow. */
-  supportsOidcLogin: boolean;
-  /** True when this product exposes typed license-key activation. */
-  supportsKeyEntry: boolean;
+  /** Per-service in-flight flags. A config refresh no longer greys out the sign-out button. */
+  busy: ServiceBusyMap;
+  /** Per-service last error (cleared on that service's next successful op). */
+  error: ServiceErrorMap;
 }
 
 /** A device sign-in handle the desktop adapter returns from `signInWithOidc` so a caller
@@ -132,13 +173,18 @@ export interface PolarisAdapter {
   submitKey(key: string): Promise<void>;
   /** Sign out / deauthorize and wipe local state. */
   signOut(): Promise<void>;
-  /** The current device, when the active session has a verified device-bound doc. */
+  /** The current device, when the active session has a verified device-bound document. */
   currentDevice(): DeviceInfo | null;
   /** List account/license devices when supported by the backend. */
   listDevices(): Promise<DeviceInfo[]>;
-  /** Deauthorize a device. Only the current device is supported today. */
+  /** Rename a device. Throws `device-management-unsupported` where the transport cannot. */
+  renameDevice(deviceId: string, label: string | null): Promise<void>;
+  /** Deauthorize a device. */
   deauthorizeDevice(deviceId: string): Promise<void>;
-  /** Read a single config value with a fallback, honoring v2 state + local overrides:
+  /** `GET /<product>/update/version` for the requested channel. Throws `service-disabled`
+   *  when the product does not run the Update service. */
+  checkUpdate(opts?: { channel?: string }): Promise<VersionCheck>;
+  /** Read a single config value with a fallback, honoring v3 state + local overrides:
    *  `enforced`/`hidden` → remote value (locked); else `localOverrides[key] ?? remote ?? fallback`. */
   getConfig<T = JSONValue>(key: string, fallback: T): T;
   /** Enumerate config for a settings UI: every key EXCEPT `hidden`, each resolved to its
@@ -155,16 +201,23 @@ export interface PolarisAdapter {
 }
 
 /** Build the initial `loading` state for a given mode (shared adapter seed). Local overrides
- *  are carried from the very first seed so a getter is correct even before the first doc. */
+ *  and the fail-closed capability fallback are carried from the very first seed, so a getter
+ *  is correct — and a capability check honest — before the first document lands. */
 export function initialState(
   mode: PolarisMode,
+  capabilities: ServicesMap,
   localOverrides: Record<string, JSONValue> = {},
 ): PolarisState {
   return {
     phase: "loading",
     mode,
-    gate: { status: "needs-activation" },
-    status: "needs-activation",
+    // Seeded from the fallback capabilities so a config-only product is `not-applicable`
+    // (usable) rather than flashing `needs-activation` on its very first frame.
+    gate: { status: seedStatus(capabilities) },
+    status: seedStatus(capabilities),
+    activation: null,
+    highWaterMark: 0,
+    capabilities,
     profile: null,
     currentDeviceId: null,
     licenseId: null,
@@ -172,9 +225,13 @@ export function initialState(
     configEntries: {},
     localOverrides,
     entitlements: {},
-    busy: false,
-    error: null,
-    supportsOidcLogin: true,
-    supportsKeyEntry: true,
+    busy: noBusy(),
+    error: noErrors(),
   };
 }
+
+function seedStatus(capabilities: ServicesMap): LicenseStatus {
+  return capabilities.license.enabled ? "needs-activation" : "not-applicable";
+}
+
+export type { ServiceSlug, ServicesMap, ServiceBusyMap, ServiceErrorMap };

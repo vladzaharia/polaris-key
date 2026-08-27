@@ -55,6 +55,36 @@ export interface PolarisThemeCopy {
   loadingLabel: string;
   retryLabel: string;
   signOutLabel: string;
+  /** `not-applicable` never reaches a gate screen — a product without the license service
+   *  renders children straight through — but the string exists for a host that wants to
+   *  explain the state in its own settings UI. */
+  notApplicableLabel: string;
+  // ── ConfigPanel (./config) ───────────────────────────────────────────────
+  configTitle: string;
+  configSubtitle: string;
+  configEmpty: string;
+  configEnforcedBadge: string;
+  configLocalBadge: string;
+  configRemoteBadge: string;
+  configOverrideLabel: string;
+  configDisabledTitle: string;
+  configDisabledBody: string;
+  // ── UpdatePrompt (./update) ──────────────────────────────────────────────
+  updateTitle: string;
+  updateBody: string;
+  updateActionLabel: string;
+  updateDismissLabel: string;
+  updateUpToDateLabel: string;
+  // ── DeviceManager (./license) ────────────────────────────────────────────
+  devicesTitle: string;
+  devicesSubtitle: string;
+  devicesEmpty: string;
+  deviceCurrentBadge: string;
+  deviceRenameLabel: string;
+  deviceRenameSubmitLabel: string;
+  deviceDisconnectLabel: string;
+  devicesUnsupportedTitle: string;
+  devicesUnsupportedBody: string;
 }
 
 export interface PolarisTheme {
@@ -115,6 +145,33 @@ export const defaultTheme: PolarisTheme = {
     loadingLabel: "Checking your license…",
     retryLabel: "Try again",
     signOutLabel: "Sign out",
+    notApplicableLabel: "This product is not licensed separately.",
+    configTitle: "Settings",
+    configSubtitle:
+      "Values your administrator manages. Locked rows are set for you.",
+    configEmpty: "No settings have been delivered for this product.",
+    configEnforcedBadge: "Managed",
+    configLocalBadge: "Overridden",
+    configRemoteBadge: "Default",
+    configOverrideLabel: "Override",
+    configDisabledTitle: "Settings are not managed",
+    configDisabledBody:
+      "This product does not distribute managed settings, so there is nothing to show here.",
+    updateTitle: "An update is available",
+    updateBody: "A newer version of this app has been released.",
+    updateActionLabel: "Get the update",
+    updateDismissLabel: "Not now",
+    updateUpToDateLabel: "You're up to date.",
+    devicesTitle: "Your devices",
+    devicesSubtitle: "Devices signed in with this license.",
+    devicesEmpty: "No devices are registered to this license yet.",
+    deviceCurrentBadge: "This device",
+    deviceRenameLabel: "Device name",
+    deviceRenameSubmitLabel: "Save",
+    deviceDisconnectLabel: "Disconnect",
+    devicesUnsupportedTitle: "Device management is unavailable",
+    devicesUnsupportedBody:
+      "This app can't manage the device list from here. Sign in to the portal to review your devices.",
   },
 };
 

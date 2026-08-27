@@ -2,22 +2,34 @@
 // `useSyncExternalStore`, so a desktop and a browser session render IDENTICALLY shaped
 // values — mode-parity is enforced here, not branched on. The headless `useLicenseGate`
 // hook returns everything a custom gate UI needs without rendering anything.
+//
+// The service hooks (`useLicense`, `useManagedConfig`, `usePolarisAuth`, `useLatestVersion`)
+// are re-homed under the matching subpath entries (`@plrs/react/license`, `/config`,
+// `/identity`, `/update`) and re-exported from here + the root barrel while callers migrate.
 
 import { useCallback, useContext, useMemo, useSyncExternalStore } from "react";
-import type { JSONValue, LicenseStatus } from "@plrs/protocol";
+import type { JSONValue } from "@plrs/protocol/core";
+import type { ActivationSource, LicenseStatus } from "@plrs/protocol/license";
 import {
+  anyBusy,
+  firstError,
   isUsable,
   type ConfigSource,
   type DeviceInfo,
   type LicenseState,
   type PolarisAdapter,
+  type PolarisError,
   type PolarisState,
+  type ServiceBusyMap,
+  type ServiceErrorMap,
+  type ServicesMap,
   type UserConfigEntry,
+  type VersionCheck,
 } from "../core/index.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 import type { PolarisTheme } from "../components/theme.js";
 
-function useCtx(): PolarisContextValue {
+export function useCtx(): PolarisContextValue {
   const ctx = useContext(PolarisContext);
   if (!ctx) {
     throw new Error("usePolarisKey must be used within <PolarisKeyProvider>.");
@@ -26,7 +38,7 @@ function useCtx(): PolarisContextValue {
 }
 
 /** Subscribe to the adapter's full snapshot (re-renders on any state change). */
-function useAdapterState(adapter: PolarisAdapter): PolarisState {
+export function useAdapterState(adapter: PolarisAdapter): PolarisState {
   return useSyncExternalStore(
     useCallback((cb) => adapter.subscribe(cb), [adapter]),
     () => adapter.snapshot(),
@@ -34,7 +46,29 @@ function useAdapterState(adapter: PolarisAdapter): PolarisState {
   );
 }
 
-/** The primary hook: the adapter, the live state, and bound action callbacks. */
+/** The product's service capability map (D-21) plus the two convenience predicates a UI
+ *  reaches for most. Discovery when it answered; the provider's `expectServices` when it did
+ *  not; never all-true. */
+export function useCapabilities(): ServicesMap & {
+  has: (slug: keyof ServicesMap) => boolean;
+} {
+  const { adapter } = useCtx();
+  const state = useAdapterState(adapter);
+  return useMemo(
+    () => ({
+      ...state.capabilities,
+      has: (slug: keyof ServicesMap) => state.capabilities[slug].enabled,
+    }),
+    [state.capabilities],
+  );
+}
+
+/** The primary hook: the adapter, the live state, and bound action callbacks.
+ *
+ *  @deprecated Prefer the per-service hooks — `useLicense` (`@plrs/react/license`),
+ *  `useManagedConfig` (`/config`), `usePolarisAuth` (`/identity`), `useLatestVersion`
+ *  (`/update`) — which re-render only on the slice they read and carry that service's own
+ *  busy/error rather than an aggregate. This hook stays for the whole-client case. */
 export interface UsePolarisKey {
   /** The active transport. */
   mode: PolarisState["mode"];
@@ -46,19 +80,29 @@ export interface UsePolarisKey {
   gate: LicenseState;
   /** Convenience mirror of `gate.status`. */
   status: LicenseStatus;
-  /** True when the gate permits running (ok or grace). */
+  /** True when the gate permits running (ok, grace, or not-applicable). */
   usable: boolean;
-  /** An in-flight op is running. */
+  /** How this install became activated, or `null`. */
+  activation: ActivationSource | null;
+  /** The product's service capability map. */
+  capabilities: ServicesMap;
+  /** True when ANY service has an op in flight (the aggregate of the per-service map). */
   busy: boolean;
-  /** The last op error. */
-  error: PolarisState["error"];
+  /** Per-service in-flight flags. */
+  busyByService: ServiceBusyMap;
+  /** The first error in canonical service order (the aggregate of the per-service map). */
+  error: PolarisError | null;
+  /** Per-service last error. */
+  errorByService: ServiceErrorMap;
   refresh: () => Promise<void>;
   signInWithOidc: PolarisAdapter["signInWithOidc"];
   submitKey: (key: string) => Promise<void>;
   signOut: () => Promise<void>;
   currentDevice: () => DeviceInfo | null;
   listDevices: () => Promise<DeviceInfo[]>;
+  renameDevice: (deviceId: string, label: string | null) => Promise<void>;
   deauthorizeDevice: (deviceId: string) => Promise<void>;
+  checkUpdate: (opts?: { channel?: string }) => Promise<VersionCheck>;
   getConfig: PolarisAdapter["getConfig"];
   /** Config for a settings UI: every key EXCEPT `hidden`, each `{ key, value, enforced }`. */
   listUserConfig: () => UserConfigEntry[];
@@ -68,6 +112,7 @@ export interface UsePolarisKey {
   isEntitled: (name: string) => boolean;
 }
 
+/** @deprecated See {@link UsePolarisKey} — prefer the per-service hooks. */
 export function usePolarisKey(): UsePolarisKey {
   const { adapter } = useCtx();
   const state = useAdapterState(adapter);
@@ -79,15 +124,21 @@ export function usePolarisKey(): UsePolarisKey {
       gate: state.gate,
       status: state.status,
       usable: isUsable(state.status),
-      busy: state.busy,
-      error: state.error,
+      activation: state.activation,
+      capabilities: state.capabilities,
+      busy: anyBusy(state.busy),
+      busyByService: state.busy,
+      error: firstError(state.error),
+      errorByService: state.error,
       refresh: () => adapter.refresh(),
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
       currentDevice: () => adapter.currentDevice(),
       listDevices: () => adapter.listDevices(),
+      renameDevice: (deviceId, label) => adapter.renameDevice(deviceId, label),
       deauthorizeDevice: (deviceId) => adapter.deauthorizeDevice(deviceId),
+      checkUpdate: (opts) => adapter.checkUpdate(opts),
       getConfig: (key, fallback) => adapter.getConfig(key, fallback),
       listUserConfig: () => adapter.listUserConfig(),
       getConfigSource: (key) => adapter.getConfigSource(key),
@@ -98,13 +149,26 @@ export function usePolarisKey(): UsePolarisKey {
   );
 }
 
-/** Just the license gate (status + grace/version metadata) and `usable`. */
-export function useLicense(): {
+export interface UseLicense {
   gate: LicenseState;
   status: LicenseStatus;
+  /** True when the gate permits running: `ok`, `grace`, or `not-applicable`. */
   usable: boolean;
   loading: boolean;
-} {
+  /** False for a product that does not run the license service — its gate is
+   *  `not-applicable` and a `<LicenseGate>` renders children straight through (D-08). */
+  enabled: boolean;
+  /** How this install became activated (`"token"`, `"bundle"`), or `null`. */
+  activation: ActivationSource | null;
+  /** §4.2's monotonic clock floor, epoch seconds. `0` before anything signed is seen. */
+  highWaterMark: number;
+  busy: boolean;
+  error: PolarisError | null;
+  refresh: () => Promise<void>;
+}
+
+/** Just the license gate (status + grace/version metadata) and `usable`. */
+export function useLicense(): UseLicense {
   const { adapter } = useCtx();
   const state = useAdapterState(adapter);
   return {
@@ -112,13 +176,16 @@ export function useLicense(): {
     status: state.status,
     usable: isUsable(state.status),
     loading: state.phase === "loading",
+    enabled: state.capabilities.license.enabled,
+    activation: state.activation,
+    highWaterMark: state.highWaterMark,
+    busy: state.busy.license,
+    error: state.error.license,
+    refresh: () => adapter.refresh(),
   };
 }
 
-/** The delivered managed config — the v2 EFFECTIVE map (per-key precedence:
- *  `enforced|hidden` > local override > remote-default > fallback) plus a typed getter, a
- *  user-facing enumeration (excludes `hidden`), and a per-key provenance source. */
-export function useManagedConfig(): {
+export interface UseManagedConfig {
   /** The effective config map (key → resolved value). */
   config: Record<string, JSONValue>;
   /** Read one key's effective value with a typed fallback. */
@@ -127,7 +194,17 @@ export function useManagedConfig(): {
   listUserConfig: () => UserConfigEntry[];
   /** Where a key's effective value came from (its provenance). */
   getConfigSource: (key: string) => ConfigSource;
-} {
+  /** False when the product does not run the config service. */
+  enabled: boolean;
+  loading: boolean;
+  busy: boolean;
+  error: PolarisError | null;
+}
+
+/** The delivered managed config — the EFFECTIVE map (per-key precedence: `enforced|hidden` >
+ *  local override > remote-default > fallback) plus a typed getter, a user-facing enumeration
+ *  (excludes `hidden`), and a per-key provenance source. */
+export function useManagedConfig(): UseManagedConfig {
   const { adapter } = useCtx();
   const state = useAdapterState(adapter);
   return {
@@ -135,10 +212,15 @@ export function useManagedConfig(): {
     get: (key, fallback) => adapter.getConfig(key, fallback),
     listUserConfig: () => adapter.listUserConfig(),
     getConfigSource: (key) => adapter.getConfigSource(key),
+    enabled: state.capabilities.config.enabled,
+    loading: state.phase === "loading",
+    busy: state.busy.config,
+    error: state.error.config,
   };
 }
 
-/** A single boolean entitlement (capability) by name. */
+/** A single boolean entitlement (capability) by name. Entitlements ride the LICENSE
+ *  document (D-20), so a product without the license service grants none. */
 export function useEntitlement(name: string): boolean {
   const { adapter } = useCtx();
   const state = useAdapterState(adapter);
@@ -150,18 +232,25 @@ export function useEntitlement(name: string): boolean {
 export interface UsePolarisAuth {
   profile: PolarisState["profile"];
   status: LicenseStatus;
+  /** Identity-service busy (sign-in / sign-out), NOT a whole-client aggregate. */
   busy: boolean;
-  error: PolarisState["error"];
+  /** The identity error, falling back to the license error so a rejected key still surfaces
+   *  on the login card that submitted it. */
+  error: PolarisError | null;
   /** True when the user must activate/sign in. */
   needsAuth: boolean;
   signInWithOidc: PolarisAdapter["signInWithOidc"];
   /** Activate with a license key using the active transport. */
   submitKey: (key: string) => Promise<void>;
   signOut: () => Promise<void>;
-  /** True when this product exposes generic OIDC sign-in. */
+  /** True when this product exposes generic OIDC sign-in. DERIVED from the identity service's
+   *  discovery fragment — a product with no identity service has no login to offer. */
   supportsOidcLogin: boolean;
-  /** True when typed-key entry is offered. */
+  /** True when typed-key entry is offered. DERIVED from the license service's fragment —
+   *  a key activates a LICENSE, so a config-only product has nothing to type in. */
   supportsKeyEntry: boolean;
+  /** License-service busy, for the key-entry half of a login card. */
+  keyEntryBusy: boolean;
 }
 
 export function usePolarisAuth(): UsePolarisAuth {
@@ -171,15 +260,16 @@ export function usePolarisAuth(): UsePolarisAuth {
     () => ({
       profile: state.profile,
       status: state.status,
-      busy: state.busy,
-      error: state.error,
+      busy: state.busy.identity,
+      error: state.error.identity ?? state.error.license,
       needsAuth:
         state.status === "needs-activation" || state.status === "revoked",
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
-      supportsOidcLogin: state.supportsOidcLogin,
-      supportsKeyEntry: state.supportsKeyEntry,
+      supportsOidcLogin: state.capabilities.identity.enabled,
+      supportsKeyEntry: state.capabilities.license.enabled,
+      keyEntryBusy: state.busy.license,
     }),
     [adapter, state],
   );
@@ -190,6 +280,7 @@ export function usePolarisAuth(): UsePolarisAuth {
 export type GateScreen =
   | "loading"
   | "ok"
+  | "not-applicable"
   | "grace"
   | "login"
   | "revoked"
@@ -204,12 +295,22 @@ export interface UseLicenseGate {
   status: LicenseStatus;
   theme: PolarisTheme;
   usable: boolean;
+  /** The error the gate would describe: license first, then identity. */
+  error: PolarisError | null;
   retry: () => Promise<void>;
 }
 
-function screenFor(state: PolarisState): GateScreen {
+export function screenFor(state: PolarisState): GateScreen {
   if (state.phase === "loading") return "loading";
-  if (state.error && state.status === "needs-activation") return "error";
+  // A product that does not run the license service has no gate to show and must not be held
+  // hostage by one (D-08): children render, no chrome. This precedes the error branch —
+  // an unreachable licensing service is not an error for a product that has none.
+  if (state.status === "not-applicable") return "not-applicable";
+  if (
+    (state.error.license ?? state.error.identity) &&
+    state.status === "needs-activation"
+  )
+    return "error";
   switch (state.status) {
     case "ok":
       return "ok";
@@ -241,6 +342,7 @@ export function useLicenseGate(): UseLicenseGate {
     status: state.status,
     theme,
     usable: isUsable(state.status),
+    error: state.error.license ?? state.error.identity,
     retry: () => adapter.refresh(),
   };
 }

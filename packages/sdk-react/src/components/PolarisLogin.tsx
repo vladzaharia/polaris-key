@@ -1,16 +1,29 @@
-// `<PolarisLogin>` — the drop-in sign-in card: an OIDC button plus a typed
-// key-entry form. Themed entirely via the `--pk-*` custom properties the Provider sets, so
-// it inherits the brand without any CSS-in-JS. All copy comes from the theme so it's fully
-// localizable/brandable.
+// `<PolarisLogin>` — the drop-in sign-in card: an OIDC button plus a typed key-entry form.
+// Themed entirely via the `--pk-*` custom properties the Provider sets, so it inherits the
+// brand without any CSS-in-JS. All copy comes from the theme so it's fully localizable.
+//
+// WHICH METHODS APPEAR is a capability question, not a mode question (D-21). The OIDC button
+// appears when the product runs the IDENTITY service; the key form appears when it runs the
+// LICENSE service, because a key activates a license and a config-only product has none. Both
+// answers come from discovery when it answered and from `expectServices` when it did not —
+// never from "assume on".
 //
 // Accessibility: the primary action (OIDC button) is auto-focused on mount; the key form
 // submits on Enter; the input has an associated <label> and is wired to its error via
 // `aria-describedby`; errors are `role="alert"`; busy/disabled states are announced with
 // `aria-busy`. The whole card carries an accessible name (`aria-labelledby` → the title).
 
-import { useId, useState, type CSSProperties, type FormEvent } from "react";
-import { usePolarisAuth } from "../react/hooks.js";
-import { usePolarisTheme } from "../react/hooks.js";
+import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { usePolarisAuth, usePolarisTheme } from "../react/hooks.js";
+import { Button } from "./primitives/buttons.js";
+import {
+  Panel,
+  actionGrid,
+  actionPanel,
+  dangerText,
+  mutedText,
+} from "./primitives/card.js";
+import { TextField } from "./primitives/input.js";
 
 export interface PolarisLoginProps {
   /** Hide the typed-key card. */
@@ -18,70 +31,11 @@ export interface PolarisLoginProps {
   /** Extra className on the root. */
   className?: string;
   /** A node rendered above the card (overrides the theme logo for this instance). */
-  logo?: import("react").ReactNode;
+  logo?: ReactNode;
   /** Auto-focus the primary action on mount (default true). Disable when several login
    *  cards share a screen, to avoid focus fights. */
   autoFocus?: boolean;
 }
-
-const card: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "16px",
-  width: "min(760px, 100%)",
-  padding: "28px",
-  background: "var(--pk-surface)",
-  color: "var(--pk-text)",
-  border: "1px solid var(--pk-border)",
-  borderRadius: "var(--pk-radius)",
-  fontFamily: "var(--pk-font-family)",
-};
-
-const actionGrid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "16px",
-  alignItems: "stretch",
-};
-
-const actionPanel: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-  minWidth: 0,
-};
-
-const primaryBtn: CSSProperties = {
-  appearance: "none",
-  cursor: "pointer",
-  border: "none",
-  padding: "12px 16px",
-  borderRadius: "var(--pk-radius)",
-  background: "var(--pk-accent)",
-  color: "var(--pk-accent-text)",
-  fontWeight: 600,
-  fontSize: "15px",
-  outlineColor: "var(--pk-ring)",
-  outlineOffset: "2px",
-};
-
-const input: CSSProperties = {
-  padding: "10px 12px",
-  borderRadius: "var(--pk-radius)",
-  border: "1px solid var(--pk-border)",
-  background: "transparent",
-  color: "var(--pk-text)",
-  fontSize: "14px",
-  outlineColor: "var(--pk-ring)",
-  outlineOffset: "2px",
-};
-
-const secondaryBtn: CSSProperties = {
-  ...primaryBtn,
-  background: "transparent",
-  color: "var(--pk-text)",
-  border: "1px solid var(--pk-border)",
-};
 
 /** Map a `PolarisError` to a clearer, user-facing message when the adapter handed us a
  *  recognizable code/message; otherwise fall back to the raw message. The desktop adapter
@@ -97,6 +51,9 @@ function describeAuthError(err: { code?: string; message: string }): string {
   }
   if (err.code === "key-entry-unsupported") {
     return "Key entry isn't available here — use the sign-in button instead.";
+  }
+  if (err.code === "service-disabled") {
+    return msg || "That sign-in method isn't enabled for this product.";
   }
   if (err.code === "network") {
     return "We couldn't reach the licensing service. Check your connection and try again.";
@@ -138,9 +95,8 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
       : null;
 
   return (
-    <section
+    <Panel
       className={props.className}
-      style={card}
       data-polaris-login=""
       aria-labelledby={titleId}
     >
@@ -151,23 +107,17 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
         <h2 id={titleId} style={{ margin: "0 0 4px", fontSize: "20px" }}>
           {theme.copy.signInTitle}
         </h2>
-        <p
-          style={{ margin: 0, color: "var(--pk-text-muted)", fontSize: "14px" }}
-        >
-          {theme.copy.signInSubtitle}
-        </p>
+        <p style={mutedText}>{theme.copy.signInSubtitle}</p>
       </div>
 
       <div style={showOidcLogin && showKeyEntry ? actionGrid : actionPanel}>
         {showOidcLogin ? (
           <div style={actionPanel}>
-            <button
-              type="button"
-              style={primaryBtn}
+            <Button
+              variant="primary"
               disabled={auth.busy}
-              aria-busy={auth.busy}
-              // Keep an accessible name even while the busy glyph ("...") shows.
-              aria-label={theme.copy.oidcButtonLabel}
+              busy={auth.busy}
+              label={theme.copy.oidcButtonLabel}
               autoFocus={autoFocus}
               onClick={() => {
                 void auth.signInWithOidc();
@@ -175,63 +125,46 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
               data-polaris-oidc=""
             >
               {auth.busy ? "..." : theme.copy.oidcButtonLabel}
-            </button>
+            </Button>
           </div>
         ) : null}
 
         {showKeyEntry ? (
           <form onSubmit={onSubmitKey} style={actionPanel}>
-            <label
-              htmlFor={keyInputId}
-              style={{ fontSize: "13px", color: "var(--pk-text-muted)" }}
-            >
-              {theme.copy.keyEntryLabel}
-            </label>
-            <input
+            <TextField
               id={keyInputId}
-              style={input}
+              label={theme.copy.keyEntryLabel}
               value={key}
               placeholder={theme.copy.keyEntryPlaceholder}
-              onChange={(e) => setKey(e.target.value)}
+              onChange={setKey}
               autoFocus={!showOidcLogin && autoFocus}
-              aria-invalid={errorText ? true : undefined}
-              aria-describedby={errorText ? errorId : undefined}
+              invalid={Boolean(errorText)}
+              errorId={errorText ? errorId : undefined}
               data-polaris-key-input=""
             />
-            <button
+            <Button
+              variant="secondary"
               type="submit"
-              style={secondaryBtn}
-              disabled={auth.busy || key.trim().length === 0}
-              aria-busy={auth.busy}
+              disabled={auth.keyEntryBusy || key.trim().length === 0}
+              busy={auth.keyEntryBusy}
             >
               {theme.copy.keySubmitLabel}
-            </button>
+            </Button>
           </form>
         ) : null}
 
         {showNoMethods ? (
-          <p
-            style={{
-              margin: 0,
-              color: "var(--pk-text-muted)",
-              fontSize: "14px",
-            }}
-            role="status"
-          >
+          <p style={mutedText} role="status">
             No sign-in methods are available.
           </p>
         ) : null}
       </div>
 
       {errorText ? (
-        <p
-          id={errorId}
-          style={{ margin: 0, color: "var(--pk-danger)", fontSize: "13px" }}
-          role="alert"
-        >
+        <p id={errorId} style={dangerText} role="alert">
           {errorText}
         </p>
       ) : null}
-    </section>
+    </Panel>
   );
 }

@@ -6,7 +6,14 @@ import type { LicenseGateSlots } from "../src/components/LicenseGate.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { BridgeState } from "../src/desktop/bridge.js";
 import type { PartialTheme } from "../src/components/theme.js";
-import { makeDoc, makeFakeBridge, NOW_SEC } from "./fixtures.js";
+import {
+  emptyBridgeState,
+  makeDoc,
+  makeFakeBridge,
+  NOW_SEC,
+  okBridgeState,
+  services,
+} from "./fixtures.js";
 
 afterEach(cleanup);
 
@@ -16,11 +23,13 @@ function renderGate(
     slots?: LicenseGateSlots;
     allowGrace?: boolean;
     theme?: PartialTheme;
+    expectServices?: ReturnType<typeof services>;
   } = {},
 ) {
   const adapter = desktopAdapter({
     bridge: makeFakeBridge(state),
     now: () => NOW_SEC,
+    expectServices: opts.expectServices ?? services(),
   });
   return render(
     <PolarisKeyProvider productSlug="acme" adapter={adapter} theme={opts.theme}>
@@ -33,32 +42,24 @@ function renderGate(
 
 // A doc that is past expiresAt but still within graceUntil at NOW_SEC.
 function graceDoc(): BridgeState {
-  return {
-    hasToken: true,
+  return okBridgeState({
     doc: makeDoc({
       issuedAt: 100,
       expiresAt: 200,
       graceUntil: NOW_SEC + 10_000,
     }),
-    lastVerifiedAt: NOW_SEC * 1000,
-  };
+  });
 }
 // A doc fully past graceUntil ⇒ expired.
 function expiredDoc(): BridgeState {
-  return {
-    hasToken: true,
+  return okBridgeState({
     doc: makeDoc({ issuedAt: 100, expiresAt: 200, graceUntil: 300 }),
-    lastVerifiedAt: NOW_SEC * 1000,
-  };
+  });
 }
 
 describe("LicenseGate — ok renders children directly", () => {
   it("renders children unwrapped (no gate chrome) when ok", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      lastVerifiedAt: NOW_SEC * 1000,
-    });
+    const { container } = renderGate(okBridgeState());
     await waitFor(() =>
       expect(within(container).getByTestId("app")).toBeTruthy(),
     );
@@ -83,14 +84,14 @@ describe("LicenseGate — expired screen", () => {
 
 describe("LicenseGate — version-block shows the allowed range", () => {
   it("renders the version-block screen with the allowed range in the body", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      blocked: {
-        reason: "version-too-old",
-        allowedRange: { min: "2.0.0", max: "3.0.0" },
-      },
-    });
+    const { container } = renderGate(
+      okBridgeState({
+        blocked: {
+          reason: "version-too-old",
+          allowedRange: { min: "2.0.0", max: "3.0.0" },
+        },
+      }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="version-block"]'),
@@ -100,11 +101,11 @@ describe("LicenseGate — version-block shows the allowed range", () => {
   });
 
   it("uses the version-too-new copy for that reason", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      blocked: { reason: "version-too-new", allowedRange: { max: "3.0.0" } },
-    });
+    const { container } = renderGate(
+      okBridgeState({
+        blocked: { reason: "version-too-new", allowedRange: { max: "3.0.0" } },
+      }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="version-block"]'),
@@ -115,11 +116,9 @@ describe("LicenseGate — version-block shows the allowed range", () => {
   });
 
   it("uses the channel-not-entitled copy for that reason", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      blocked: { reason: "channel-not-entitled" },
-    });
+    const { container } = renderGate(
+      okBridgeState({ blocked: { reason: "channel-not-entitled" } }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="version-block"]'),
@@ -157,14 +156,11 @@ describe("LicenseGate — grace banner vs. block", () => {
 
 describe("LicenseGate — render-prop slot overrides", () => {
   it("a custom login slot fully replaces the default login screen", async () => {
-    const { container } = renderGate(
-      { hasToken: false, doc: null },
-      {
-        slots: {
-          login: (ctx) => <div data-testid="custom-login">{ctx.status}</div>,
-        },
+    const { container } = renderGate(emptyBridgeState(), {
+      slots: {
+        login: (ctx) => <div data-testid="custom-login">{ctx.status}</div>,
       },
-    );
+    });
     await waitFor(() =>
       expect(within(container).getByTestId("custom-login")).toBeTruthy(),
     );
@@ -187,11 +183,9 @@ describe("LicenseGate — render-prop slot overrides", () => {
 
   it("a custom versionBlock slot receives the gate context (range available)", async () => {
     const { container } = renderGate(
-      {
-        hasToken: true,
-        doc: makeDoc(),
+      okBridgeState({
         blocked: { reason: "version-too-old", allowedRange: { min: "5.0.0" } },
-      },
+      }),
       {
         slots: {
           versionBlock: (ctx) => (
@@ -211,10 +205,9 @@ describe("LicenseGate — render-prop slot overrides", () => {
 
 describe("LicenseGate — brandable theme tokens", () => {
   it("applies custom theme tokens as --pk-* custom properties on the root", async () => {
-    const { container } = renderGate(
-      { hasToken: false, doc: null },
-      { theme: { tokens: { accent: "rgb(255, 0, 0)" } } },
-    );
+    const { container } = renderGate(emptyBridgeState(), {
+      theme: { tokens: { accent: "rgb(255, 0, 0)" } },
+    });
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="login"]'),
@@ -228,11 +221,7 @@ describe("LicenseGate — brandable theme tokens", () => {
 
   it("renders custom copy from the theme on the version-block screen", async () => {
     const { container } = renderGate(
-      {
-        hasToken: true,
-        doc: makeDoc(),
-        blocked: { reason: "version-too-old" },
-      },
+      okBridgeState({ blocked: { reason: "version-too-old" } }),
       { theme: { copy: { versionTooOldTitle: "Please upgrade now" } } },
     );
     await waitFor(() =>
@@ -246,8 +235,8 @@ describe("LicenseGate — brandable theme tokens", () => {
 
 describe("LicenseGate — error screen", () => {
   it("renders the error screen with a retry when first-load fails", async () => {
-    const bridge = makeFakeBridge({ hasToken: false, doc: null });
-    bridge.getState = async () => {
+    const bridge = makeFakeBridge(emptyBridgeState());
+    bridge.getSyncState = async () => {
       throw new Error("ipc broke");
     };
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
@@ -268,6 +257,51 @@ describe("LicenseGate — error screen", () => {
     expect(container.textContent).toContain(
       "couldn't reach the licensing service",
     );
+    adapter.dispose();
+  });
+});
+
+describe("LicenseGate — a product that runs no license service (D-08)", () => {
+  it("renders children immediately, with no gate chrome at all", async () => {
+    // A config-only product has no license to be missing. The pre-suite gate parked it on a
+    // sign-in screen it could never satisfy; `not-applicable` is the fix.
+    const configOnly = services("config");
+    const { container } = renderGate(
+      emptyBridgeState({ capabilities: configOnly }),
+      { expectServices: configOnly },
+    );
+    await waitFor(() =>
+      expect(within(container).getByTestId("app")).toBeTruthy(),
+    );
+    expect(container.querySelector("[data-polaris-gate]")).toBeNull();
+    expect(container.querySelector("[data-polaris-login]")).toBeNull();
+  });
+
+  it("stays out of the way even when the license transport errors", async () => {
+    // An unreachable licensing service is not an error for a product that has none.
+    const configOnly = services("config");
+    const bridge = makeFakeBridge(
+      emptyBridgeState({ capabilities: configOnly }),
+    );
+    bridge.getSyncState = async () => {
+      throw new Error("ipc broke");
+    };
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => NOW_SEC,
+      expectServices: configOnly,
+    });
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <LicenseGate>
+          <div data-testid="app">APP</div>
+        </LicenseGate>
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(within(container).getByTestId("app")).toBeTruthy(),
+    );
+    expect(container.querySelector('[data-polaris-gate="error"]')).toBeNull();
     adapter.dispose();
   });
 });

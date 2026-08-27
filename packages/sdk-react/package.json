@@ -2,6 +2,7 @@
   "name": "@plrs/react",
   "version": "0.0.0",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -20,6 +21,22 @@
     "./desktop": {
       "types": "./dist/desktop/index.d.ts",
       "default": "./dist/desktop/index.js"
+    },
+    "./license": {
+      "types": "./dist/license/index.d.ts",
+      "default": "./dist/license/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "default": "./dist/config/index.js"
+    },
+    "./identity": {
+      "types": "./dist/identity/index.d.ts",
+      "default": "./dist/identity/index.js"
+    },
+    "./update": {
+      "types": "./dist/update/index.d.ts",
+      "default": "./dist/update/index.js"
     }
   },
   "files": [
@@ -33,11 +50,12 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@plrs/client-core": "workspace:*",
     "@plrs/protocol": "workspace:*"
   },
   "peerDependencies": {
-    "react": "^18",
-    "react-dom": "^18"
+    "react": ">=18",
+    "react-dom": ">=18"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",

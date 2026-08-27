@@ -15,12 +15,13 @@ import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { BridgeState } from "../src/desktop/bridge.js";
 import type { PolarisAdapter } from "../src/core/index.js";
 import {
+  emptyBridgeState,
   entry,
-  makeConfigDoc,
   makeDoc,
   makeFakeBridge,
   makeFakeFetch,
   NOW_SEC,
+  okBridgeState,
 } from "./fixtures.js";
 
 afterEach(cleanup);
@@ -34,7 +35,7 @@ function wrapperFor(adapter: PolarisAdapter) {
 }
 
 function okBridge(): BridgeState {
-  return { hasToken: true, doc: makeDoc(), lastVerifiedAt: NOW_SEC * 1000 };
+  return okBridgeState();
 }
 
 describe("usePolarisKey", () => {
@@ -92,18 +93,14 @@ describe("useManagedConfig", () => {
     adapter.dispose();
   });
 
-  it("exposes listUserConfig + getConfigSource honoring v2 precedence", async () => {
-    const doc = makeConfigDoc({
+  it("exposes listUserConfig + getConfigSource honoring the v3 precedence", async () => {
+    const config = {
       enforcedKey: entry("enforced", "srv"),
       hiddenKey: entry("hidden", "srv-hidden"),
       defaultKey: entry("default", "remote"),
-    });
+    };
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({
-        hasToken: true,
-        doc,
-        lastVerifiedAt: NOW_SEC * 1000,
-      }),
+      bridge: makeFakeBridge(okBridgeState({ config })),
       now: () => NOW_SEC,
       localOverrides: { enforcedKey: "ignored", defaultKey: "local" },
     });
@@ -126,7 +123,6 @@ describe("useManagedConfig", () => {
   });
 
   it("Provider forwards localOverrides into a built (browser) adapter", async () => {
-    const doc = makeConfigDoc({ defaultKey: entry("default", "remote") });
     function Probe(): JSX.Element {
       const cfg = useManagedConfig();
       return <span data-testid="v">{String(cfg.get("defaultKey", "fb"))}</span>;
@@ -134,7 +130,9 @@ describe("useManagedConfig", () => {
     const { findByTestId } = render(
       <PolarisKeyProvider
         productSlug="acme"
-        fetchImpl={makeFakeFetch(doc)}
+        fetchImpl={makeFakeFetch(makeDoc(), {
+          config: { defaultKey: entry("default", "remote") },
+        })}
         now={() => NOW_SEC}
         localOverrides={{ defaultKey: "fromProvider" }}
       >
@@ -197,7 +195,7 @@ describe("usePolarisAuth", () => {
 
   it("needsAuth is true when needs-activation", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => NOW_SEC,
     });
     const { result } = renderHook(() => usePolarisAuth(), {
@@ -226,7 +224,7 @@ describe("useLicenseGate", () => {
 
   it("maps needs-activation to the 'login' screen", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => NOW_SEC,
     });
     const { result } = renderHook(() => useLicenseGate(), {
@@ -238,11 +236,9 @@ describe("useLicenseGate", () => {
 
   it("maps a 403 block to the 'version-block' screen", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({
-        hasToken: true,
-        doc: makeDoc(),
-        blocked: { reason: "version-too-old" },
-      }),
+      bridge: makeFakeBridge(
+        okBridgeState({ blocked: { reason: "version-too-old" } }),
+      ),
       now: () => NOW_SEC,
     });
     const { result } = renderHook(() => useLicenseGate(), {
@@ -256,7 +252,7 @@ describe("useLicenseGate", () => {
 describe("usePolarisTheme", () => {
   it("returns the resolved (merged) theme", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => NOW_SEC,
     });
     const { result } = renderHook(() => usePolarisTheme(), {

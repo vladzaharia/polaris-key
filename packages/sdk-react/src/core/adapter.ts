@@ -1,16 +1,49 @@
-// Shared projection helpers both adapters use to turn a verified doc + gate input into a
-// `PolarisState`. Centralizing this is what guarantees mode-parity: the browser and
-// desktop adapters disagree on transport, never on how a doc becomes state.
+// Shared projection helpers both adapters use to turn verified documents + gate inputs into a
+// `PolarisState`. Centralizing this is what guarantees mode-parity: the browser and desktop
+// adapters disagree on transport, never on how a document becomes state.
+//
+// Neither the gate nor the config precedence lives here any more — both are `@plrs/client-core`
+// (wire contract v3 §4.2/§5 and the layered-config rules), which is the single implementation
+// Node, React, and the conformance runners all execute. What IS here is the React-shaped
+// enumeration a settings UI needs on top of it: override-only keys included, `hidden` excluded,
+// effective values resolved.
 
-import type { JSONValue, ManagedConfigDoc, ManagedEntry } from "@plrs/protocol";
-import { licenseState, type GateInput } from "./gateModel.js";
+import type { JSONValue, ManagedEntry } from "@plrs/protocol/core";
 import {
+  licenseState,
+  resolveSource,
+  resolveValue,
   type ConfigSource,
+  type GateInput,
+  type ResolveContext,
+} from "@plrs/client-core";
+import {
   type DeviceInfo,
+  type PolarisDocs,
   type PolarisMode,
   type PolarisState,
   type UserConfigEntry,
 } from "./types.js";
+import {
+  noBusy,
+  noErrors,
+  type ServiceBusyMap,
+  type ServiceErrorMap,
+  type ServicesMap,
+} from "./services.js";
+
+/**
+ * The React resolve context. `env` is deliberately EMPTY: environment-variable layering is a
+ * Node/Python/Swift concern (a browser has no environment, and a renderer must not inherit the
+ * privileged process's), so `resolveSource` can never answer `"env"` here. Keeping the shared
+ * function and starving its env layer is safer than forking the precedence.
+ */
+function ctxFor(
+  entries: Record<string, ManagedEntry>,
+  localOverrides: Record<string, JSONValue>,
+): ResolveContext {
+  return { remote: entries, localOverrides, env: {}, envPrefix: "" };
+}
 
 /** Flatten a `Record<string, ManagedEntry>` to `key → value`. */
 export function flattenEntries(
@@ -21,79 +54,81 @@ export function flattenEntries(
   return out;
 }
 
-/** True when a v2 management state locks the value to the server (client cannot override). */
-function isLocked(state: ManagedEntry["state"]): boolean {
-  return state === "enforced" || state === "hidden";
-}
-
-/** Resolve the v2 precedence for ONE key against the raw entries + local overrides:
- *    `enforced`/`hidden` (remote, locked)  >  local override  >  remote `default`.
- *  Environment layering lives in the node/python/swift SDKs, not the browser, so it is
- *  deliberately absent here. Returns `undefined` when the key is unknown AND unoverridden. */
+/** Resolve the v3 precedence for ONE key. Returns `undefined` when the key is unknown AND
+ *  unoverridden, so the caller can substitute its own fallback. */
 export function resolveConfigValue(
   entries: Record<string, ManagedEntry>,
   localOverrides: Record<string, JSONValue>,
   key: string,
 ): JSONValue | undefined {
-  const entry = entries[key];
-  if (entry && isLocked(entry.state)) return entry.value; // server wins, locked.
-  if (key in localOverrides) return localOverrides[key]; // default-state local win.
-  return entry?.value; // remote default (or undefined if absent).
+  return resolveValue(ctxFor(entries, localOverrides), key);
 }
 
 /** Resolve EVERY key's effective value into the flat map the store's `config` field holds.
- *  Keys come from both the doc entries and any override-only keys, so an override for a key
- *  the server never sent still surfaces in the effective config. */
+ *  Keys come from both the document entries and any override-only keys, so an override for a
+ *  key the server never sent still surfaces in the effective config. */
 export function resolveConfig(
   entries: Record<string, ManagedEntry>,
   localOverrides: Record<string, JSONValue>,
 ): Record<string, JSONValue> {
+  const ctx = ctxFor(entries, localOverrides);
   const out: Record<string, JSONValue> = {};
-  const keys = new Set([
-    ...Object.keys(entries),
-    ...Object.keys(localOverrides),
-  ]);
-  for (const key of keys) {
-    const v = resolveConfigValue(entries, localOverrides, key);
+  for (const key of allKeys(entries, localOverrides)) {
+    const v = resolveValue(ctx, key);
     if (v !== undefined) out[key] = v;
   }
   return out;
 }
 
-/** Project a doc + gate input into the immutable snapshot the store holds. `phase` flips
- *  to `ready` here — this is only ever called after a first transport resolution. The
- *  effective `config` map is resolved through the v2 precedence using `localOverrides`. */
+function allKeys(
+  entries: Record<string, ManagedEntry>,
+  localOverrides: Record<string, JSONValue>,
+): Set<string> {
+  return new Set([...Object.keys(entries), ...Object.keys(localOverrides)]);
+}
+
+/** Optional projection flags — everything a transport knows that the documents do not. */
+export interface ProjectFlags {
+  busy?: ServiceBusyMap;
+  error?: ServiceErrorMap;
+  localOverrides?: Record<string, JSONValue>;
+  capabilities: ServicesMap;
+}
+
+/**
+ * Project the documents + gate inputs into the immutable snapshot the store holds. `phase`
+ * flips to `ready` here — this is only ever called after a first transport resolution.
+ */
 export function projectState(
   mode: PolarisMode,
-  doc: ManagedConfigDoc | null,
-  gateInput: Omit<GateInput, "doc">,
-  flags: {
-    busy?: boolean;
-    error?: PolarisState["error"];
-    localOverrides?: Record<string, JSONValue>;
-    supportsOidcLogin?: boolean;
-    supportsKeyEntry?: boolean;
-  } = {},
+  docs: PolarisDocs,
+  gateInput: Omit<GateInput, "doc" | "licenseServiceEnabled">,
+  flags: ProjectFlags,
 ): PolarisState {
-  const gate = licenseState({ ...gateInput, doc });
-  const configEntries = doc?.payload.config ?? {};
+  const gate = licenseState({
+    ...gateInput,
+    licenseServiceEnabled: flags.capabilities.license.enabled,
+    doc: docs.license,
+  });
+  const configEntries = docs.config;
   const localOverrides = flags.localOverrides ?? {};
   return {
     phase: "ready",
     mode,
     gate,
     status: gate.status,
-    profile: doc?.profile ?? null,
-    currentDeviceId: doc?.deviceId ?? null,
-    licenseId: doc?.licenseId ?? null,
+    activation: gateInput.activation,
+    highWaterMark: gateInput.highWaterMark ?? 0,
+    capabilities: flags.capabilities,
+    profile: docs.license?.profile ?? null,
+    currentDeviceId: docs.license?.deviceId ?? null,
+    licenseId: docs.license?.licenseId ?? null,
     config: resolveConfig(configEntries, localOverrides),
     configEntries,
     localOverrides,
-    entitlements: flattenEntries(doc?.payload.entitlements),
-    busy: flags.busy ?? false,
-    error: flags.error ?? null,
-    supportsOidcLogin: flags.supportsOidcLogin ?? true,
-    supportsKeyEntry: flags.supportsKeyEntry ?? true,
+    entitlements: flattenEntries(docs.license?.entitlements),
+    busy: flags.busy ?? noBusy(),
+    error: flags.error ?? noErrors(),
   };
 }
 
@@ -111,7 +146,7 @@ export function currentDeviceFromState(s: PolarisState): DeviceInfo | null {
   return out;
 }
 
-/** Read a config value off a snapshot with a typed fallback, via the v2 precedence. */
+/** Read a config value off a snapshot with a typed fallback, via the v3 precedence. */
 export function readConfig<T = JSONValue>(
   state: PolarisState,
   key: string,
@@ -121,33 +156,22 @@ export function readConfig<T = JSONValue>(
   return v === undefined ? fallback : (v as unknown as T);
 }
 
-/** Where a key's effective value came from (its provenance), per the v2 precedence. */
+/** Where a key's effective value came from (its provenance), per the v3 precedence. */
 export function configSource(state: PolarisState, key: string): ConfigSource {
-  const entry = state.configEntries[key];
-  if (entry?.state === "enforced") return "enforced";
-  if (entry?.state === "hidden") return "hidden";
-  if (key in state.localOverrides) return "local";
-  if (entry) return "remote-default";
-  return "fallback";
+  return resolveSource(ctxFor(state.configEntries, state.localOverrides), key);
 }
 
 /** Enumerate config for a settings UI: every key EXCEPT `hidden`, resolved to its effective
  *  value with an `enforced` flag (true ⇒ the server value wins and the row is read-only).
- *  Override-only keys (no server entry) are included as un-enforced rows. */
+ *  Override-only keys (no server entry) are included as un-enforced rows — which is why this
+ *  is not `client-core`'s `listUserEntries`, which enumerates the REMOTE catalog only. */
 export function listUserConfig(state: PolarisState): UserConfigEntry[] {
+  const ctx = ctxFor(state.configEntries, state.localOverrides);
   const out: UserConfigEntry[] = [];
-  const keys = new Set([
-    ...Object.keys(state.configEntries),
-    ...Object.keys(state.localOverrides),
-  ]);
-  for (const key of keys) {
+  for (const key of allKeys(state.configEntries, state.localOverrides)) {
     const entry = state.configEntries[key];
     if (entry?.state === "hidden") continue; // withheld from user-facing enumeration.
-    const value = resolveConfigValue(
-      state.configEntries,
-      state.localOverrides,
-      key,
-    );
+    const value = resolveValue(ctx, key);
     if (value === undefined) continue;
     out.push({ key, value, enforced: entry?.state === "enforced" });
   }

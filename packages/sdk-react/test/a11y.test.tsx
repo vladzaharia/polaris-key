@@ -16,10 +16,18 @@ import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { LicenseGate } from "../src/components/LicenseGate.js";
 import { PolarisLogin } from "../src/components/PolarisLogin.js";
 import { PolarisLogout } from "../src/components/PolarisLogout.js";
+import { MessageScreen } from "../src/components/primitives/MessageScreen.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { BridgeState } from "../src/desktop/bridge.js";
 import type { PolarisAdapter } from "../src/core/index.js";
-import { makeDoc, makeFakeBridge, NOW_SEC } from "./fixtures.js";
+import {
+  emptyBridgeState,
+  makeDoc,
+  makeFakeBridge,
+  NOW_SEC,
+  okBridgeState,
+  services,
+} from "./fixtures.js";
 
 afterEach(cleanup);
 
@@ -27,6 +35,7 @@ function renderGate(state: BridgeState, opts: { allowGrace?: boolean } = {}) {
   const adapter = desktopAdapter({
     bridge: makeFakeBridge(state),
     now: () => NOW_SEC,
+    expectServices: services(),
   });
   const utils = render(
     <PolarisKeyProvider productSlug="acme" adapter={adapter}>
@@ -51,31 +60,25 @@ function renderLogin(
 
 // expired = past graceUntil → blocking dialog with a re-auth card.
 function expiredDoc(): BridgeState {
-  return {
-    hasToken: true,
+  return okBridgeState({
     doc: makeDoc({ issuedAt: 100, expiresAt: 200, graceUntil: 300 }),
-    lastVerifiedAt: NOW_SEC * 1000,
-  };
+  });
 }
 function graceDoc(): BridgeState {
-  return {
-    hasToken: true,
+  return okBridgeState({
     doc: makeDoc({
       issuedAt: 100,
       expiresAt: 200,
       graceUntil: NOW_SEC + 10_000,
     }),
-    lastVerifiedAt: NOW_SEC * 1000,
-  };
+  });
 }
 
 describe("LicenseGate a11y — dialog roles + accessible names", () => {
   it("the revoked screen is an alertdialog with an accessible name", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      lastSyncUnauthorized: true,
-    });
+    const { container } = renderGate(
+      okBridgeState({ lastSyncUnauthorized: true }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="revoked"]'),
@@ -89,11 +92,11 @@ describe("LicenseGate a11y — dialog roles + accessible names", () => {
   });
 
   it("the version-block screen is an alertdialog with a named retry button", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      blocked: { reason: "version-too-old", allowedRange: { min: "2.0.0" } },
-    });
+    const { container } = renderGate(
+      okBridgeState({
+        blocked: { reason: "version-too-old", allowedRange: { min: "2.0.0" } },
+      }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="version-block"]'),
@@ -107,7 +110,7 @@ describe("LicenseGate a11y — dialog roles + accessible names", () => {
   });
 
   it("the login screen exposes an alertdialog wrapper named for sign-in", async () => {
-    const { container } = renderGate({ hasToken: false, doc: null });
+    const { container } = renderGate(emptyBridgeState());
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="login"]'),
@@ -119,11 +122,15 @@ describe("LicenseGate a11y — dialog roles + accessible names", () => {
   });
 
   it("the error screen is an alertdialog with a retry", async () => {
-    const bridge = makeFakeBridge({ hasToken: false, doc: null });
-    bridge.getState = async () => {
+    const bridge = makeFakeBridge(emptyBridgeState());
+    bridge.getSyncState = async () => {
       throw new Error("ipc broke");
     };
-    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => NOW_SEC,
+      expectServices: services(),
+    });
     const { container } = render(
       <PolarisKeyProvider productSlug="acme" adapter={adapter}>
         <LicenseGate>
@@ -146,11 +153,11 @@ describe("LicenseGate a11y — dialog roles + accessible names", () => {
 
 describe("LicenseGate a11y — focus management", () => {
   it("moves focus to the retry button when a blocking dialog mounts", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      blocked: { reason: "version-too-old", allowedRange: { min: "2.0.0" } },
-    });
+    const { container } = renderGate(
+      okBridgeState({
+        blocked: { reason: "version-too-old", allowedRange: { min: "2.0.0" } },
+      }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="version-block"]'),
@@ -161,7 +168,7 @@ describe("LicenseGate a11y — focus management", () => {
   });
 
   it("moves focus to the login card's primary action on the login screen", async () => {
-    const { container } = renderGate({ hasToken: false, doc: null });
+    const { container } = renderGate(emptyBridgeState());
     await waitFor(() =>
       expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy(),
     );
@@ -192,11 +199,15 @@ describe("LicenseGate a11y — grace banner is a status region", () => {
 describe("LicenseGate a11y — loading is a polite status, not a dialog", () => {
   it("renders the loading screen as role=status (transient, no focus steal)", async () => {
     // A slow bridge keeps the gate in the loading phase long enough to assert on it.
-    const bridge = makeFakeBridge({ hasToken: false, doc: null });
+    const bridge = makeFakeBridge(emptyBridgeState());
     let resolveState: (s: BridgeState) => void = () => {};
-    bridge.getState = () =>
+    bridge.getSyncState = () =>
       new Promise<BridgeState>((res) => (resolveState = res));
-    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => NOW_SEC,
+      expectServices: services(),
+    });
     const { container } = render(
       <PolarisKeyProvider productSlug="acme" adapter={adapter}>
         <LicenseGate>
@@ -214,7 +225,7 @@ describe("LicenseGate a11y — loading is a polite status, not a dialog", () => 
     expect(container.querySelector('[role="alertdialog"]')).toBeNull();
     // Let the pending load settle inside act() so the post-loading state update is flushed.
     await act(async () => {
-      resolveState({ hasToken: false, doc: null });
+      resolveState(emptyBridgeState());
     });
     adapter.dispose();
   });
@@ -223,8 +234,9 @@ describe("LicenseGate a11y — loading is a polite status, not a dialog", () => 
 describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
   it("auto-focuses the OIDC button on mount", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({ hasToken: false, doc: null }),
+      bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = renderLogin(adapter);
     const oidc = (await waitFor(() =>
@@ -235,9 +247,13 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
   });
 
   it("submits the key form on Enter and the input is labelled", async () => {
-    const bridge = makeFakeBridge({ hasToken: false, doc: null });
+    const bridge = makeFakeBridge(emptyBridgeState());
     bridge.submitKey = vi.fn(async () => ({ kind: "ok" }) as const);
-    const adapter = desktopAdapter({ bridge, now: () => 2000 });
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => 2000,
+      expectServices: services(),
+    });
     const { container } = renderLogin(adapter);
     const input = (await waitFor(() =>
       container.querySelector("[data-polaris-key-input]"),
@@ -255,9 +271,13 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
   });
 
   it("wires the input to its error via aria-describedby and announces role=alert", async () => {
-    const bridge = makeFakeBridge({ hasToken: false, doc: null });
+    const bridge = makeFakeBridge(emptyBridgeState());
     bridge.submitKey = vi.fn(async () => ({ kind: "unauthorized" }) as const);
-    const adapter = desktopAdapter({ bridge, now: () => 2000 });
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => 2000,
+      expectServices: services(),
+    });
     const { container } = renderLogin(adapter);
     const input = (await waitFor(() =>
       container.querySelector("[data-polaris-key-input]"),
@@ -274,10 +294,14 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
   });
 
   it("announces the busy state on the primary action (aria-busy)", async () => {
-    const bridge = makeFakeBridge({ hasToken: false, doc: null });
+    const bridge = makeFakeBridge(emptyBridgeState());
     // Keep beginSignIn pending so busy stays true.
     bridge.beginSignIn = () => new Promise(() => {});
-    const adapter = desktopAdapter({ bridge, now: () => 2000 });
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => 2000,
+      expectServices: services(),
+    });
     const { container } = renderLogin(adapter);
     const oidc = (await waitFor(() =>
       container.querySelector("[data-polaris-oidc]"),
@@ -294,13 +318,13 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
 
 describe("PolarisLogout", () => {
   it("renders a branded button and calls signOut on click", async () => {
-    const bridge = makeFakeBridge({
-      hasToken: true,
-      doc: makeDoc(),
-      lastVerifiedAt: 2000 * 1000,
-    });
+    const bridge = makeFakeBridge(okBridgeState());
     const signOutSpy = vi.spyOn(bridge, "signOut");
-    const adapter = desktopAdapter({ bridge, now: () => 2000 });
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => 2000,
+      expectServices: services(),
+    });
     const { container } = render(
       <PolarisKeyProvider productSlug="acme" adapter={adapter}>
         <PolarisLogout />
@@ -320,12 +344,9 @@ describe("PolarisLogout", () => {
 
   it("honours a custom label", async () => {
     const adapter = desktopAdapter({
-      bridge: makeFakeBridge({
-        hasToken: true,
-        doc: makeDoc(),
-        lastVerifiedAt: 2000 * 1000,
-      }),
+      bridge: makeFakeBridge(okBridgeState()),
       now: () => 2000,
+      expectServices: services(),
     });
     const { container } = render(
       <PolarisKeyProvider productSlug="acme" adapter={adapter}>
@@ -337,6 +358,122 @@ describe("PolarisLogout", () => {
         within(container).getByRole("button", { name: "Log out of Acme" }),
       ).toBeTruthy(),
     );
+    adapter.dispose();
+  });
+});
+
+// ── The extracted primitive, asserted directly ────────────────────────────────────────────
+//
+// The gate suites above cover `MessageScreen` THROUGH `<LicenseGate>`; these cover it as the
+// shared primitive `ConfigPanel`, `UpdatePrompt` and `DeviceManager` now inherit, so a
+// regression is caught once rather than three times or not at all.
+
+describe("MessageScreen — the promoted a11y contract", () => {
+  it("blocking: alertdialog + aria-modal + a name from its title", () => {
+    const { container } = render(
+      <MessageScreen title="Blocked" body="Because reasons." />,
+    );
+    const dialog = within(container).getByRole("alertdialog", {
+      name: "Blocked",
+    });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(dialog.getAttribute("tabindex")).toBe("-1");
+    // The body is wired as the description.
+    const describedBy = dialog.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    // `useId()` values contain colons, so look the node up by id rather than by selector.
+    expect(document.getElementById(describedBy as string)?.textContent).toBe(
+      "Because reasons.",
+    );
+  });
+
+  it("blocking with no body sets NO aria-describedby", () => {
+    // Pointing it at an element that does not exist makes some screen readers announce
+    // nothing at all.
+    const { container } = render(<MessageScreen title="Just a title" />);
+    expect(
+      within(container)
+        .getByRole("alertdialog")
+        .getAttribute("aria-describedby"),
+    ).toBeNull();
+  });
+
+  it("blocking moves focus to the retry action, then to the panel when there is none", async () => {
+    const onRetry = vi.fn();
+    const withRetry = render(
+      <MessageScreen title="Retryable" onRetry={onRetry} retryLabel="Retry" />,
+    );
+    const btn = within(withRetry.container).getByRole("button", {
+      name: "Retry",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(btn));
+    fireEvent.click(btn);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    cleanup();
+
+    const bare = render(<MessageScreen title="No action" />);
+    const dialog = within(bare.container).getByRole("alertdialog");
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+  });
+
+  it("transient: role=status, polite, not modal, and never steals focus", () => {
+    const { container } = render(<MessageScreen title="Loading…" transient />);
+    const status = within(container).getByRole("status");
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(status.getAttribute("aria-modal")).toBeNull();
+    expect(status.getAttribute("tabindex")).toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
+// ── Per-service busy: the scalar that used to grey out the wrong control ──────────────────
+
+describe("per-service busy scoping", () => {
+  it("PolarisLogout disables on identity busy, not on a config refresh", async () => {
+    const bridge = makeFakeBridge(okBridgeState());
+    // A refresh that never settles keeps license+config busy indefinitely.
+    bridge.refresh = () => new Promise(() => {});
+    // A sign-out that never settles keeps identity busy.
+    let releaseSignOut: () => void = () => {};
+    bridge.signOut = () => new Promise<void>((res) => (releaseSignOut = res));
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => NOW_SEC,
+      expectServices: services(),
+    });
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <PolarisLogout />
+      </PolarisKeyProvider>,
+    );
+    const btn = (await waitFor(() =>
+      within(container).getByRole("button", { name: /sign out/i }),
+    )) as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+
+    // A document refresh is in flight — under the old single `busy` scalar this greyed the
+    // sign-out button out, which is a licensing detail reaching into an unrelated control.
+    await act(async () => {
+      void adapter.refresh();
+    });
+    expect(adapter.snapshot().busy.license).toBe(true);
+    expect(btn.disabled).toBe(false);
+
+    // Its OWN service being busy does disable it.
+    await act(async () => {
+      void adapter.signOut();
+    });
+    await waitFor(() => expect(btn.disabled).toBe(true));
+    expect(btn.getAttribute("aria-busy")).toBe("true");
+    // It keeps its accessible name throughout.
+    expect(within(container).getByRole("button", { name: /sign out/i })).toBe(
+      btn,
+    );
+    // Let the in-flight sign-out settle inside act() so its state update is flushed.
+    await act(async () => {
+      releaseSignOut();
+      await Promise.resolve();
+    });
     adapter.dispose();
   });
 });

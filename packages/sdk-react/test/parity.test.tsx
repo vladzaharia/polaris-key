@@ -11,7 +11,13 @@ import {
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { PolarisAdapter } from "../src/core/index.js";
-import { makeDoc, makeFakeBridge, makeFakeFetch, NOW_SEC } from "./fixtures.js";
+import {
+  makeDoc,
+  makeFakeBridge,
+  makeFakeFetch,
+  NOW_SEC,
+  okBridgeState,
+} from "./fixtures.js";
 
 afterEach(cleanup);
 
@@ -75,11 +81,7 @@ describe("mode parity", () => {
     const doc = makeDoc();
 
     const desktop = desktopAdapter({
-      bridge: makeFakeBridge({
-        hasToken: true,
-        doc,
-        lastVerifiedAt: NOW_SEC * 1000,
-      }),
+      bridge: makeFakeBridge(okBridgeState({ doc })),
       now: () => NOW_SEC,
     });
     const desktopOut = await renderWith(desktop);

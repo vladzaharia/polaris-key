@@ -195,6 +195,9 @@ importers:
 
   packages/sdk-react:
     dependencies:
+      '@plrs/client-core':
+        specifier: workspace:*
+        version: link:../client-core
       '@plrs/protocol':
         specifier: workspace:*
         version: link:../shared-protocol

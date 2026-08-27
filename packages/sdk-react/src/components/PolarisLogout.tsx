@@ -1,10 +1,13 @@
 // `<PolarisLogout>` — a branded sign-out button wired to `usePolarisAuth().signOut`. Themed
-// via the same `--pk-*` custom properties as the login card so it inherits the brand. The
-// busy state is announced (aria-busy + aria-live) and the button keeps an accessible name
-// even while the spinner glyph is showing, so screen-reader users always know its purpose.
+// via the same `--pk-*` custom properties as the login card so it inherits the brand.
+//
+// It disables on the IDENTITY service's busy flag alone. Under the pre-suite single `busy`
+// scalar a background config refresh greyed this button out, which is a licensing detail
+// reaching into an unrelated control; the per-service maps make "is sign-out in flight?" a
+// question with an actual answer.
 
-import { type CSSProperties } from "react";
 import { usePolarisAuth, usePolarisTheme } from "../react/hooks.js";
+import { Button } from "./primitives/buttons.js";
 
 export interface PolarisLogoutProps {
   /** Extra className on the button. */
@@ -15,46 +18,25 @@ export interface PolarisLogoutProps {
   label?: string;
 }
 
-const base: CSSProperties = {
-  appearance: "none",
-  cursor: "pointer",
-  padding: "10px 16px",
-  borderRadius: "var(--pk-radius)",
-  color: "var(--pk-text)",
-  background: "transparent",
-  border: "1px solid var(--pk-border)",
-  fontSize: "14px",
-  fontWeight: 600,
-  fontFamily: "var(--pk-font-family)",
-  outlineColor: "var(--pk-ring)",
-  outlineOffset: "2px",
-};
-
 export function PolarisLogout(props: PolarisLogoutProps): JSX.Element {
   const auth = usePolarisAuth();
   const theme = usePolarisTheme();
   const label = props.label ?? theme.copy.signOutLabel;
 
-  const style: CSSProperties = {
-    ...base,
-    ...(props.variant === "ghost" ? { border: "none" } : null),
-    opacity: auth.busy ? 0.7 : 1,
-  };
-
   return (
-    <button
-      type="button"
+    <Button
       className={props.className}
-      style={style}
+      variant={props.variant === "ghost" ? "ghost" : "secondary"}
+      style={{ padding: "10px 16px", fontSize: "14px" }}
       disabled={auth.busy}
-      aria-busy={auth.busy}
-      aria-label={label}
+      busy={auth.busy}
+      label={label}
       onClick={() => {
         void auth.signOut();
       }}
       data-polaris-logout=""
     >
       {label}
-    </button>
+    </Button>
   );
 }

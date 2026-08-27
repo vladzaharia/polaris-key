@@ -4,7 +4,13 @@ import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { LicenseGate } from "../src/components/LicenseGate.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { BridgeState } from "../src/desktop/bridge.js";
-import { makeDoc, makeFakeBridge, NOW_SEC } from "./fixtures.js";
+import {
+  emptyBridgeState,
+  makeDoc,
+  makeFakeBridge,
+  NOW_SEC,
+  okBridgeState,
+} from "./fixtures.js";
 
 afterEach(cleanup);
 
@@ -25,18 +31,14 @@ function renderGate(state: BridgeState) {
 
 describe("LicenseGate screen selection", () => {
   it("renders children when ok", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      lastVerifiedAt: NOW_SEC * 1000,
-    });
+    const { container } = renderGate(okBridgeState());
     await waitFor(() =>
       expect(within(container).getByTestId("app")).toBeTruthy(),
     );
   });
 
   it("renders the login screen when needs-activation", async () => {
-    const { container } = renderGate({ hasToken: false, doc: null });
+    const { container } = renderGate(emptyBridgeState());
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="login"]'),
@@ -50,11 +52,9 @@ describe("LicenseGate screen selection", () => {
   });
 
   it("renders the revoked screen on a hard 401", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      lastSyncUnauthorized: true,
-    });
+    const { container } = renderGate(
+      okBridgeState({ lastSyncUnauthorized: true }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="revoked"]'),
@@ -64,11 +64,11 @@ describe("LicenseGate screen selection", () => {
   });
 
   it("renders a version-block screen on a 403 block", async () => {
-    const { container } = renderGate({
-      hasToken: true,
-      doc: makeDoc(),
-      blocked: { reason: "version-too-old", allowedRange: { min: "2.0.0" } },
-    });
+    const { container } = renderGate(
+      okBridgeState({
+        blocked: { reason: "version-too-old", allowedRange: { min: "2.0.0" } },
+      }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="version-block"]'),
@@ -78,16 +78,15 @@ describe("LicenseGate screen selection", () => {
   });
 
   it("renders children behind a grace banner when in grace", async () => {
-    const doc = makeDoc({
-      issuedAt: 100,
-      expiresAt: 200,
-      graceUntil: NOW_SEC + 10_000,
-    });
-    const { container } = renderGate({
-      hasToken: true,
-      doc,
-      lastVerifiedAt: NOW_SEC * 1000,
-    });
+    const { container } = renderGate(
+      okBridgeState({
+        doc: makeDoc({
+          issuedAt: 100,
+          expiresAt: 200,
+          graceUntil: NOW_SEC + 10_000,
+        }),
+      }),
+    );
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-gate="grace"]'),

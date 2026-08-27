@@ -1,11 +1,16 @@
 // The desktop adapter: a renderer-side `PolarisAdapter` that proxies every operation to a
-// `PolarisBridge` (the privileged Electron/Tauri process owning @plrs/node). It
-// derives the gate locally from the bridge's `BridgeState` using the SHARED gateModel, so
-// a desktop snapshot is byte-identical in shape to a browser snapshot (mode-parity).
+// `PolarisBridge` (the privileged Electron/Tauri process owning `@plrs/node`). It derives the
+// gate locally from the bridge's `BridgeState` using `@plrs/client-core`'s `licenseState` — the
+// same function the Node side would run — so a desktop snapshot is byte-identical in shape to a
+// browser snapshot (mode-parity), clock floor included.
 //
-// All credential/keyring/loopback-OIDC work lives behind the bridge; this file is pure
-// glue + state projection. `submitKey` IS supported here (unlike browser): desktop apps
-// allow typed-key activation as an offline-friendly path.
+// All credential/keyring/loopback-OIDC work lives behind the bridge; this file is pure glue +
+// state projection. `submitKey` IS supported here (unlike browser): desktop apps allow typed-key
+// activation as an offline-friendly path.
+//
+// Device management and update checks go through the bridge's versioned `invoke()` escape hatch
+// rather than dedicated methods, so a host that predates them reports them unsupported instead
+// of failing to satisfy the interface.
 
 import {
   configSource,
@@ -26,7 +31,18 @@ import {
   type PolarisAdapter,
   type PolarisState,
   type UserConfigEntry,
+  type VersionCheck,
 } from "../core/index.js";
+import {
+  copyServices,
+  defaultServices,
+  noBusy,
+  noErrors,
+  withBusy,
+  withError,
+  type ServiceSlug,
+  type ServicesMap,
+} from "../core/services.js";
 import {
   resolveBridge,
   type BridgeState,
@@ -41,6 +57,9 @@ export interface DesktopAdapterOptions {
   /** Client-supplied local/user overrides for `default`-state config keys. Never override
    *  `enforced`/`hidden` keys (server wins). The node host owns env layering, not this. */
   localOverrides?: Record<string, JSONValue>;
+  /** What the host EXPECTS this product to run, used only while the bridge has not reported
+   *  a capability map (D-21). Defaults to license + config; never all-true. */
+  expectServices?: ServicesMap;
 }
 
 const nowSec = (): number => Math.floor(Date.now() / 1000);
@@ -51,6 +70,8 @@ export class DesktopAdapter implements PolarisAdapter {
   private readonly store: Store<PolarisState>;
   private readonly clock: () => number;
   private readonly localOverrides: Record<string, JSONValue>;
+  private readonly fallbackServices: ServicesMap;
+  private capabilities: ServicesMap;
   private offBridge: (() => void) | null = null;
 
   constructor(opts: DesktopAdapterOptions = {}) {
@@ -64,8 +85,12 @@ export class DesktopAdapter implements PolarisAdapter {
     this.bridge = bridge;
     this.clock = opts.now ?? nowSec;
     this.localOverrides = opts.localOverrides ?? {};
+    this.fallbackServices = copyServices(
+      opts.expectServices ?? defaultServices(),
+    );
+    this.capabilities = copyServices(this.fallbackServices);
     this.store = createStore<PolarisState>(
-      initialState("desktop", this.localOverrides),
+      initialState("desktop", this.capabilities, this.localOverrides),
     );
     // Subscribe to state changes from the privileged process.
     this.offBridge = this.bridge.on("stateChanged", (s) => this.apply(s));
@@ -83,24 +108,31 @@ export class DesktopAdapter implements PolarisAdapter {
 
   private apply(
     s: BridgeState,
-    flags: { busy?: boolean; error?: PolarisError | null } = {},
+    flags: {
+      busy?: PolarisState["busy"];
+      error?: PolarisState["error"];
+    } = {},
   ): void {
+    // D-21: honour a reported map; otherwise keep the configured expectation. Never all-true.
+    this.capabilities = s.capabilities
+      ? copyServices(s.capabilities)
+      : this.fallbackServices;
     this.store.set(
       projectState(
         "desktop",
-        s.doc,
+        { license: s.doc, config: s.config ?? {} },
         {
-          hasToken: s.hasToken,
+          activation: s.activation,
           now: this.clock(),
+          highWaterMark: s.highWaterMark ?? 0,
           lastSyncUnauthorized: s.lastSyncUnauthorized,
-          blocked: s.blocked,
-          lastVerifiedAt: s.lastVerifiedAt,
+          blocked: s.blocked ?? null,
+          lastVerifiedAt: s.lastVerifiedAt ?? null,
         },
         {
           ...flags,
           localOverrides: this.localOverrides,
-          supportsOidcLogin: s.supportsOidcLogin ?? true,
-          supportsKeyEntry: s.supportsKeyEntry ?? true,
+          capabilities: this.capabilities,
         },
       ),
     );
@@ -108,39 +140,89 @@ export class DesktopAdapter implements PolarisAdapter {
 
   private async load(): Promise<void> {
     try {
-      this.apply(await this.bridge.getState());
+      this.apply(await this.bridge.getSyncState());
     } catch (e) {
       // First load failed: present a ready, error-bearing, needs-activation state.
       this.apply(
-        { hasToken: false, doc: null },
-        { error: new PolarisError("network", (e as Error).message) },
+        { activation: null, doc: null },
+        {
+          error: withError(
+            noErrors(),
+            "license",
+            new PolarisError("network", (e as Error).message),
+          ),
+        },
       );
     }
   }
 
-  private setBusy(busy: boolean): void {
-    this.store.set((prev) => (prev.busy === busy ? prev : { ...prev, busy }));
+  private patch(mutate: (prev: PolarisState) => Partial<PolarisState>): void {
+    this.store.set((prev) => {
+      const next = mutate(prev);
+      const changed = (Object.keys(next) as (keyof PolarisState)[]).some(
+        (k) => prev[k] !== next[k],
+      );
+      return changed ? { ...prev, ...next } : prev;
+    });
+  }
+
+  private setBusy(slug: ServiceSlug, busy: boolean): void {
+    this.patch((prev) => ({ busy: withBusy(prev.busy, slug, busy) }));
+  }
+
+  private fail(slug: ServiceSlug, err: PolarisError): PolarisError {
+    this.patch((prev) => ({
+      busy: withBusy(prev.busy, slug, false),
+      error: withError(prev.error, slug, err),
+    }));
+    return err;
+  }
+
+  /** Call a sub-client verb through the bridge's escape hatch, mapping an absent `invoke` to
+   *  the honest capability refusal rather than a mysterious TypeError. */
+  private async invoke<T>(
+    service: string,
+    method: string,
+    args?: unknown,
+    unsupported = new PolarisError(
+      "device-management-unsupported",
+      "This desktop bridge does not expose that capability.",
+    ),
+  ): Promise<T> {
+    if (!this.bridge.invoke) throw unsupported;
+    return (await this.bridge.invoke(service, method, args)) as T;
   }
 
   async refresh(): Promise<void> {
-    this.setBusy(true);
+    this.setBusy("license", true);
+    this.setBusy("config", true);
     try {
-      this.apply(await this.bridge.refresh());
+      this.apply(await this.bridge.refresh(), {
+        busy: noBusy(),
+        error: noErrors(),
+      });
     } catch (e) {
-      const err = new PolarisError("refresh-failed", (e as Error).message);
-      this.store.set((prev) => ({ ...prev, busy: false, error: err }));
-      throw err;
+      this.patch((prev) => ({
+        busy: withBusy(withBusy(prev.busy, "license", false), "config", false),
+      }));
+      throw this.fail(
+        "license",
+        new PolarisError("refresh-failed", (e as Error).message),
+      );
     }
   }
 
   async signInWithOidc(): Promise<OidcSignInHandle | void> {
-    if (!this.store.get().supportsOidcLogin) {
-      throw new PolarisError(
-        "sign-in-failed",
-        "OIDC login is not enabled for this product.",
+    if (!this.capabilities.identity.enabled) {
+      throw this.fail(
+        "identity",
+        new PolarisError(
+          "service-disabled",
+          "OIDC login is not enabled for this product.",
+        ),
       );
     }
-    this.setBusy(true);
+    this.setBusy("identity", true);
     try {
       const begin = await this.bridge.beginSignIn();
       // Poll in the background; flip out of busy + apply the fresh state on completion.
@@ -150,9 +232,10 @@ export class DesktopAdapter implements PolarisAdapter {
         userCode: begin.userCode,
       };
     } catch (e) {
-      const err = new PolarisError("sign-in-failed", (e as Error).message);
-      this.store.set((prev) => ({ ...prev, busy: false, error: err }));
-      throw err;
+      throw this.fail(
+        "identity",
+        new PolarisError("sign-in-failed", (e as Error).message),
+      );
     }
   }
 
@@ -166,30 +249,40 @@ export class DesktopAdapter implements PolarisAdapter {
           continue;
         }
         if (r.kind === "ok") {
-          this.apply(await this.bridge.getState());
+          this.apply(await this.bridge.getSyncState(), {
+            busy: noBusy(),
+            error: noErrors(),
+          });
           return;
         }
-        const err = new PolarisError(
-          "sign-in-failed",
-          r.kind === "error" ? r.message : r.kind,
+        this.fail(
+          "identity",
+          new PolarisError(
+            "sign-in-failed",
+            r.kind === "error" ? r.message : r.kind,
+          ),
         );
-        this.store.set((prev) => ({ ...prev, busy: false, error: err }));
         return;
       }
     } catch (e) {
-      const err = new PolarisError("sign-in-failed", (e as Error).message);
-      this.store.set((prev) => ({ ...prev, busy: false, error: err }));
+      this.fail(
+        "identity",
+        new PolarisError("sign-in-failed", (e as Error).message),
+      );
     }
   }
 
   async submitKey(key: string): Promise<void> {
-    if (!this.store.get().supportsKeyEntry) {
-      throw new PolarisError(
-        "key-entry-unsupported",
-        "Key entry is not enabled for this product.",
+    if (!this.capabilities.license.enabled) {
+      throw this.fail(
+        "license",
+        new PolarisError(
+          "key-entry-unsupported",
+          "Key entry is not enabled for this product.",
+        ),
       );
     }
-    this.setBusy(true);
+    this.setBusy("license", true);
     try {
       const r = await this.bridge.submitKey(key);
       if (r.kind !== "ok") {
@@ -201,26 +294,33 @@ export class DesktopAdapter implements PolarisAdapter {
               : r.message;
         throw new PolarisError("sign-in-failed", msg);
       }
-      this.apply(await this.bridge.getState());
+      this.apply(await this.bridge.getSyncState(), {
+        busy: noBusy(),
+        error: noErrors(),
+      });
     } catch (e) {
-      const err =
+      throw this.fail(
+        "license",
         e instanceof PolarisError
           ? e
-          : new PolarisError("sign-in-failed", (e as Error).message);
-      this.store.set((prev) => ({ ...prev, busy: false, error: err }));
-      throw err;
+          : new PolarisError("sign-in-failed", (e as Error).message),
+      );
     }
   }
 
   async signOut(): Promise<void> {
-    this.setBusy(true);
+    this.setBusy("identity", true);
     try {
       await this.bridge.signOut();
-      this.apply(await this.bridge.getState());
+      this.apply(await this.bridge.getSyncState(), {
+        busy: noBusy(),
+        error: noErrors(),
+      });
     } catch (e) {
-      const err = new PolarisError("sign-out-failed", (e as Error).message);
-      this.store.set((prev) => ({ ...prev, busy: false, error: err }));
-      throw err;
+      throw this.fail(
+        "identity",
+        new PolarisError("sign-out-failed", (e as Error).message),
+      );
     }
   }
 
@@ -229,22 +329,74 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 
   async listDevices(): Promise<DeviceInfo[]> {
-    throw new PolarisError(
-      "device-management-unsupported",
-      "Remote device management is not supported by this backend.",
-    );
+    this.setBusy("license", true);
+    try {
+      const rows = await this.invoke<DeviceInfo[]>("devices", "list");
+      this.setBusy("license", false);
+      return Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      throw this.fail("license", asPolarisError(e));
+    }
+  }
+
+  async renameDevice(deviceId: string, label: string | null): Promise<void> {
+    this.setBusy("license", true);
+    try {
+      await this.invoke("devices", "rename", { deviceId, label });
+      this.setBusy("license", false);
+    } catch (e) {
+      throw this.fail("license", asPolarisError(e));
+    }
   }
 
   async deauthorizeDevice(deviceId: string): Promise<void> {
+    // Deauthorizing THIS device is a full local deactivation, which the bridge already owns.
     const current = this.currentDevice();
     if (current?.id === deviceId) {
       await this.signOut();
       return;
     }
-    throw new PolarisError(
-      "device-management-unsupported",
-      "Remote device deauthorization is not supported by this backend.",
-    );
+    this.setBusy("license", true);
+    try {
+      await this.invoke("devices", "deauthorize", { deviceId });
+      this.apply(await this.bridge.getSyncState(), {
+        busy: noBusy(),
+        error: noErrors(),
+      });
+    } catch (e) {
+      throw this.fail("license", asPolarisError(e));
+    }
+  }
+
+  async checkUpdate(opts: { channel?: string } = {}): Promise<VersionCheck> {
+    if (!this.capabilities.update.enabled) {
+      throw this.fail(
+        "update",
+        new PolarisError(
+          "service-disabled",
+          "This product does not publish updates.",
+        ),
+      );
+    }
+    this.setBusy("update", true);
+    try {
+      const result = await this.invoke<VersionCheck>(
+        "update",
+        "check",
+        opts,
+        new PolarisError(
+          "service-disabled",
+          "This desktop bridge does not expose update checks.",
+        ),
+      );
+      this.patch((prev) => ({
+        busy: withBusy(prev.busy, "update", false),
+        error: withError(prev.error, "update", null),
+      }));
+      return result;
+    } catch (e) {
+      throw this.fail("update", asPolarisError(e));
+    }
   }
 
   getConfig<T = JSONValue>(key: string, fallback: T): T {
@@ -274,6 +426,11 @@ export class DesktopAdapter implements PolarisAdapter {
     this.offBridge?.();
     this.offBridge = null;
   }
+}
+
+function asPolarisError(e: unknown): PolarisError {
+  if (e instanceof PolarisError) return e;
+  return new PolarisError("unknown", (e as Error)?.message ?? String(e));
 }
 
 function delay(ms: number): Promise<void> {

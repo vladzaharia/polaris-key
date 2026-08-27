@@ -1,7 +1,14 @@
 // @plrs/react — one hook API over two transports (browser cookie-session OIDC and
-// desktop Electron/Tauri bridge) plus a brandable drop-in <LicenseGate>/<PolarisLogin>.
-// Subpath entries (./core, ./browser, ./desktop) exist for tree-shaking + targeted imports;
-// this barrel re-exports the full surface for the common case.
+// desktop Electron/Tauri bridge) plus brandable drop-in UIs.
+//
+// TWO AXES OF SUBPATH ENTRIES, and they compose:
+//
+//   transport   ./core ./browser ./desktop      — HOW you talk to the control plane
+//   service     ./license ./config ./identity ./update
+//                                               — WHAT you are talking to
+//
+// This barrel re-exports the full surface for the common case; the service hooks and
+// components are re-exported here while callers migrate to their subpaths.
 
 // ── React layer ──────────────────────────────────────────────────────────────
 export {
@@ -11,17 +18,26 @@ export {
 export { PolarisContext, type PolarisContextValue } from "./react/context.js";
 export {
   usePolarisKey,
+  useCapabilities,
   useLicense,
   useManagedConfig,
   useEntitlement,
   usePolarisAuth,
   useLicenseGate,
   usePolarisTheme,
+  screenFor,
   type UsePolarisKey,
+  type UseLicense,
+  type UseManagedConfig,
   type UsePolarisAuth,
   type UseLicenseGate,
   type GateScreen,
 } from "./react/hooks.js";
+export {
+  useLatestVersion,
+  type UseLatestVersion,
+  type UseLatestVersionOptions,
+} from "./update/useLatestVersion.js";
 
 // ── Components ───────────────────────────────────────────────────────────────
 export {
@@ -38,6 +54,22 @@ export {
   type PolarisLogoutProps,
 } from "./components/PolarisLogout.js";
 export {
+  ConfigPanel,
+  type ConfigPanelProps,
+  type ConfigPanelSlots,
+  type ConfigRow,
+} from "./components/ConfigPanel.js";
+export {
+  UpdatePrompt,
+  type UpdatePromptProps,
+  type UpdatePromptSlots,
+} from "./components/UpdatePrompt.js";
+export {
+  DeviceManager,
+  type DeviceManagerProps,
+  type DeviceManagerSlots,
+} from "./components/DeviceManager.js";
+export {
   defaultTheme,
   highContrastTheme,
   mergeTheme,
@@ -48,18 +80,41 @@ export {
   type PartialTheme,
 } from "./components/theme.js";
 
+// ── Primitives (build a custom screen with the same a11y contract) ───────────
+export {
+  MessageScreen,
+  Button,
+  Panel,
+  TextField,
+  type MessageScreenProps,
+  type ButtonProps,
+  type ButtonVariant,
+  type PanelProps,
+  type TextFieldProps,
+} from "./components/primitives/index.js";
+
 // ── Adapters (so callers can build/inject them directly) ─────────────────────
 export {
   browserAdapter,
   BrowserAdapter,
+  splitSessionDoc,
   type BrowserAdapterOptions,
 } from "./browser/browserAdapter.js";
+export {
+  discoverProduct,
+  parseDiscovery,
+  parseServices,
+  type DiscoveryDocument,
+  type DiscoveryResult,
+  type ServiceFragment,
+} from "./browser/discovery.js";
 export {
   desktopAdapter,
   DesktopAdapter,
   type DesktopAdapterOptions,
 } from "./desktop/desktopAdapter.js";
 export {
+  BRIDGE_VERSION,
   resolveBridge,
   type PolarisBridge,
   type PolarisBridgeWindow,
@@ -73,6 +128,8 @@ export {
 export {
   licenseState,
   isUsable,
+  effectiveNow,
+  highWaterMark,
   createStore,
   projectState,
   flattenEntries,
@@ -85,27 +142,51 @@ export {
   listUserConfig,
   PolarisError,
   initialState,
+  SERVICE_SLUGS,
+  anyBusy,
+  copyServices,
+  defaultServices,
+  firstError,
+  noBusy,
+  noErrors,
+  noServices,
+  servicesEqual,
+  servicesFromList,
+  withBusy,
+  withError,
   type LicenseState,
   type GateInput,
+  type BlockedState,
+  type ConfigSource,
   type Store,
   type PolarisAdapter,
+  type PolarisDocs,
   type PolarisMode,
   type PolarisPhase,
   type PolarisErrorCode,
   type PolarisState,
   type OidcSignInHandle,
   type DeviceInfo,
-  type ConfigSource,
   type UserConfigEntry,
+  type VersionCheck,
+  type ServiceSlug,
+  type ServicesMap,
+  type ServiceBusyMap,
+  type ServiceErrorMap,
 } from "./core/index.js";
 
+// ── Wire types (re-exported for convenience; the protocol package is the source) ──
 export type {
-  ManagedConfigDoc,
-  ManagedPayload,
-  ManagedEntry,
-  DocProfile,
-  LicenseStatus,
-  BlockReason,
-  AllowedRange,
   JSONValue,
-} from "@plrs/protocol";
+  ManagedEntry,
+  ManagementState,
+} from "@plrs/protocol/core";
+export type {
+  ActivationSource,
+  AllowedRange,
+  BlockReason,
+  DocProfile,
+  LicenseDoc,
+  LicenseStatus,
+} from "@plrs/protocol/license";
+export type { ConfigDoc } from "@plrs/protocol/config";
