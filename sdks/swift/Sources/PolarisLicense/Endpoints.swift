@@ -1,188 +1,130 @@
-// Activation + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report),
-// on URLSession. Mirrors sdk-node's endpoints.ts.
+// The License service's HTTP surface — `POST /<p>/license/{activate,enroll,token,deauthorize}`
+// (§R1, wire contract v3 §5).
+//
+// Pure transport: it builds the request, maps the status ladder, and hands back a result.
+// Verification, caching and the gate live elsewhere on purpose — an HTTP layer that verified
+// would be an HTTP layer that could be talked into not verifying. `GET /license/document` is
+// NOT here: it is one of the two documents Core's `sync()` drives through identical machinery,
+// so its route lives in `Endpoints` and its status ladder in `CoreContext.getDocument`.
+//
+// Every call goes through `CoreContext.request`, so the seven `X-Polaris-*` headers and the
+// deadline arrive automatically and a new endpoint cannot ship without them (R4-08).
+//
+// ── WHY THE ERROR READER LOOKS AT TWO SHAPES ────────────────────────────────────────────────
+//
+// The Worker emits two envelopes. Routes that MOVED but did not change keep the flat v2 shape
+// (`{"error":"device_limit","limit":3}`); genuinely new v3 surfaces use the nested one
+// (`{"error":{"code":…}}`). A 403 that means "device limit" and a 403 that means "fingerprint
+// required" are different outcomes for the caller, and guessing between them would be worse
+// than reading both spellings.
 
 import Foundation
+import PolarisCore
 
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
-
-/// The outcome of an activation-like call (`/activate`, `/token`).
+/// The outcome of an activation-like call (`/license/{activate,enroll,token}`).
 public enum ActivationResult: Sendable, Equatable {
     case ok(token: String, schemaVersion: Int)
     case deviceLimit(limit: Int?, deviceCount: Int?)
     case unauthorized
     /// The tier requires a hardware fingerprint this host could not produce.
     case fingerprintRequired
-    /// Hardware drifted past the tier's tolerance; the binding was retired. Retrying
-    /// activation re-binds the new hardware and consumes a seat.
+    /// Hardware drifted past the tier's tolerance; the binding was retired. Retrying activation
+    /// re-binds the new hardware and consumes a seat. (The Worker answers 409, not 403,
+    /// precisely because it is retryable.)
     case hardwareMismatch(drift: Int?, changed: [String]?)
-    /// The product does not offer keyless enrollment.
+    /// The product does not offer keyless enrollment — surfaced from a 404, which the Worker
+    /// uses deliberately to hide the route rather than admit it exists and is closed.
     case enrollDisabled
     case error(message: String)
 }
 
-/// Default deadline for every SDK request. `URLSession` has no useful default here, so a
-/// stalled control plane would hang activation forever (audit finding R4-08).
-public let DEFAULT_REQUEST_TIMEOUT: Double = 15
-
-public enum Endpoints {
-    private static func metadataHeaders() -> [String: String] {
-        [
-            HEADER_PLATFORM: PlatformFamily.current,
-            HEADER_ARCH: swiftArch(),
-            HEADER_SDK_NAME: POLARIS_KEY_SDK_NAME,
-            HEADER_SDK_VERSION: POLARIS_KEY_SDK_VERSION,
-        ]
-    }
-
-    private static func swiftArch() -> String {
-        #if arch(arm64)
-        return "arm64"
-        #elseif arch(x86_64)
-        return "x86_64"
-        #else
-        return "unknown"
-        #endif
-    }
-
-    /// Exchange a license key for a per-device token (`POST /<product>/activate`).
-    public static func activateWithKey(
-        baseUrl: String, product: String, key: String, deviceId: String,
-        fingerprint: HardwareFingerprint? = nil,
-        session: URLSession = .shared,
-        timeout: Double = DEFAULT_REQUEST_TIMEOUT
+public enum LicenseEndpoints {
+    /// `POST /<p>/license/activate` — exchange a licence key for a per-device `plrst_` token.
+    public static func activate(
+        _ core: CoreContext, key: String, fingerprint: HardwareFingerprint? = nil
     ) async -> ActivationResult {
         await activationLike(
-            urlString: "\(baseUrl)/\(product)/activate",
-            headers: ["Authorization": "Bearer \(key)", HEADER_DEVICE: deviceId]
-                .merging(metadataHeaders()) { current, _ in current },
-            session: session,
-            timeout: timeout,
-            fingerprint: fingerprint)
+            core, url: core.endpoints.licenseActivate,
+            extra: ["authorization": "Bearer \(key)"], fingerprint: fingerprint)
     }
 
-    /// Obtain a license with no key and no sign-in (`POST /<product>/enroll`).
-    ///
-    /// Returns the same `ActivationResult` `activateWithKey` does, so callers need no new
-    /// branching. A product that hasn't opted in answers 404 → `.enrollDisabled`.
+    /// `POST /<p>/license/enroll` — obtain a licence with no key and no sign-in. Returns the
+    /// same shape `activate` does, so callers need no new branching.
     public static func enroll(
-        baseUrl: String, product: String, deviceId: String,
-        fingerprint: HardwareFingerprint? = nil,
-        session: URLSession = .shared,
-        timeout: Double = DEFAULT_REQUEST_TIMEOUT
+        _ core: CoreContext, fingerprint: HardwareFingerprint? = nil
     ) async -> ActivationResult {
         await activationLike(
-            urlString: "\(baseUrl)/\(product)/enroll",
-            headers: [HEADER_DEVICE: deviceId]
-                .merging(metadataHeaders()) { current, _ in current },
-            session: session,
-            timeout: timeout,
-            fingerprint: fingerprint)
+            core, url: core.endpoints.licenseEnroll, extra: [:], fingerprint: fingerprint)
     }
 
-    /// Re-acquire a token for an already-activated device (`POST /<product>/token`).
+    /// `POST /<p>/license/token` — rotate the current device token. The §5 single re-acquire.
     public static func reacquireToken(
-        baseUrl: String, product: String, token: String, deviceId: String,
-        session: URLSession = .shared,
-        timeout: Double = DEFAULT_REQUEST_TIMEOUT
+        _ core: CoreContext, token: String
     ) async -> ActivationResult {
         await activationLike(
-            urlString: "\(baseUrl)/\(product)/token",
-            headers: ["Authorization": "Bearer \(token)", HEADER_DEVICE: deviceId]
-                .merging(metadataHeaders()) { current, _ in current },
-            session: session,
-            timeout: timeout)
+            core, url: core.endpoints.licenseToken,
+            extra: ["authorization": "Bearer \(token)"], fingerprint: nil)
     }
 
-    /// Best-effort server-side deauthorize (`POST /<product>/deauthorize`). The local wipe
-    /// is what actually matters, so failures are swallowed.
-    public static func deauthorize(
-        baseUrl: String, product: String, token: String,
-        session: URLSession = .shared,
-        timeout: Double = DEFAULT_REQUEST_TIMEOUT
-    ) async {
-        guard let url = URL(string: "\(baseUrl)/\(product)/deauthorize") else { return }
-        var req = URLRequest(url: url)
-        req.timeoutInterval = timeout
-        req.httpMethod = "POST"
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        _ = try? await session.data(for: req)
+    /// `POST /<p>/license/deauthorize` — release this device's seat.
+    ///
+    /// Best-effort: the LOCAL wipe is what the caller actually depends on, and a device that
+    /// deactivates on a plane must not be left holding credentials because the server was
+    /// unreachable. That includes the local-only refusal (§7.3), which is swallowed here for
+    /// the same reason being offline is.
+    public static func deauthorize(_ core: CoreContext, token: String) async {
+        _ = try? await core.request(
+            core.endpoints.licenseDeauthorize, method: "POST",
+            headers: ["authorization": "Bearer \(token)"])
     }
 
-    /// Post a non-secret config/entitlement snapshot for the admin panel
-    /// (`POST /<product>/config/report`). Returns whether the server accepted it.
-    @discardableResult
-    public static func reportSnapshot(
-        baseUrl: String, product: String, token: String, snapshot: Data,
-        session: URLSession = .shared,
-        timeout: Double = DEFAULT_REQUEST_TIMEOUT
-    ) async -> Bool {
-        guard let url = URL(string: "\(baseUrl)/\(product)/config/report") else { return false }
-        var req = URLRequest(url: url)
-        req.timeoutInterval = timeout
-        req.httpMethod = "POST"
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        for (key, value) in metadataHeaders() {
-            req.setValue(value, forHTTPHeaderField: key)
-        }
-        req.httpBody = snapshot
-        guard let (_, response) = try? await session.data(for: req),
-              let http = response as? HTTPURLResponse
-        else { return false }
-        return (200..<300).contains(http.statusCode)
-    }
-
+    /// The three mint/rotate endpoints share a response ladder, so they share a reader.
     private static func activationLike(
-        urlString: String, headers: [String: String], session: URLSession,
-        timeout: Double = DEFAULT_REQUEST_TIMEOUT,
-        fingerprint: HardwareFingerprint? = nil
+        _ core: CoreContext, url: URL, extra: [String: String],
+        fingerprint: HardwareFingerprint?
     ) async -> ActivationResult {
-        guard let url = URL(string: urlString) else {
-            return .error(message: "invalid url")
-        }
-        var req = URLRequest(url: url)
-        req.timeoutInterval = timeout
-        req.httpMethod = "POST"
-        for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
-        // No body at all when there is no fingerprint, so the call stays byte-identical to
-        // the pre-fingerprint contract against an older Worker.
+        var headers = extra
+        var body: Data?
+        // The body is omitted entirely when there is no fingerprint, so a host that opted out
+        // sends a byte-identical request to one that has nothing to report.
         if let fingerprint,
-           let body = try? JSONEncoder().encode(FingerprintBody(fingerprint: fingerprint)) {
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.httpBody = body
+            let encoded = try? JSONEncoder().encode(ActivationFingerprintBody(fingerprint))
+        {
+            headers["content-type"] = "application/json"
+            body = encoded
         }
 
-        let data: Data
-        let response: URLResponse
+        let response: PolarisResponse
         do {
-            (data, response) = try await session.data(for: req)
+            response = try await core.request(url, method: "POST", headers: headers, body: body)
+        } catch let error as PolarisError {
+            return .error(message: error.message)
         } catch {
             return .error(message: error.localizedDescription)
         }
-        guard let http = response as? HTTPURLResponse else {
-            return .error(message: "non-http response")
-        }
-        switch http.statusCode {
+
+        switch response.status {
         case 200:
-            guard let body = try? JSONDecoder().decode(ActivationOkBody.self, from: data) else {
-                return .error(message: "malformed activate response")
-            }
-            return .ok(token: body.token, schemaVersion: body.schemaVersion)
+            guard let ok = try? JSONDecoder().decode(ActivationOkBody.self, from: response.body)
+            else { return .error(message: "malformed activation response") }
+            return .ok(token: ok.token, schemaVersion: ok.schemaVersion)
         case 409:
-            let body = try? JSONDecoder().decode(HardwareMismatchBody.self, from: data)
-            return .hardwareMismatch(drift: body?.drift, changed: body?.changed)
+            let body = try? JSONDecoder().decode(HardwareMismatchBody.self, from: response.body)
+            return .hardwareMismatch(
+                drift: body?.drift ?? body?.error?.drift,
+                changed: body?.changed ?? body?.error?.changed)
         case 403:
-            let body = try? JSONDecoder().decode(DeviceLimitBody.self, from: data)
-            if body?.error == "fingerprint_required" { return .fingerprintRequired }
-            return .deviceLimit(limit: body?.limit, deviceCount: body?.deviceCount)
+            let body = try? JSONDecoder().decode(ForbiddenBody.self, from: response.body)
+            if body?.code == "fingerprint_required" { return .fingerprintRequired }
+            return .deviceLimit(
+                limit: body?.limit ?? body?.error?.limit,
+                deviceCount: body?.deviceCount ?? body?.error?.deviceCount)
         case 401:
             return .unauthorized
         case 404:
             return .enrollDisabled
         default:
-            return .error(message: String(decoding: data, as: UTF8.self))
+            return .error(message: String(decoding: response.body, as: UTF8.self))
         }
     }
 }
@@ -192,26 +134,69 @@ private struct ActivationOkBody: Decodable {
     let schemaVersion: Int
 }
 
-private struct DeviceLimitBody: Decodable {
-    let error: String?
-    let limit: Int?
-    let deviceCount: Int?
-}
-
+/// The 409 body in BOTH spellings. `error` is a bare CODE STRING in the flat shape the moved
+/// routes kept, and an object in the nested v3 one — so it is decoded permissively rather than
+/// typed, since a decoder that threw on the string form would lose the `drift`/`changed` detail
+/// sitting beside it at the top level.
 private struct HardwareMismatchBody: Decodable {
+    struct Nested: Decodable {
+        let drift: Int?
+        let changed: [String]?
+    }
     let drift: Int?
     let changed: [String]?
+    let error: Nested?
+
+    private enum CodingKeys: String, CodingKey {
+        case error, drift, changed
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        drift = try c.decodeIfPresent(Int.self, forKey: .drift)
+        changed = try c.decodeIfPresent([String].self, forKey: .changed)
+        error = try? c.decode(Nested.self, forKey: .error)
+    }
+}
+
+/// The 403 body in BOTH spellings: `{"error":"device_limit","limit":3}` (flat, from the routes
+/// that merely moved) and `{"error":{"code":"…","limit":3}}` (nested, v3). `code` collapses them.
+private struct ForbiddenBody: Decodable {
+    struct Nested: Decodable {
+        let code: String?
+        let limit: Int?
+        let deviceCount: Int?
+    }
+    let error: Nested?
+    let errorCode: String?
+    let limit: Int?
+    let deviceCount: Int?
+
+    var code: String? { errorCode ?? error?.code }
+
+    private enum CodingKeys: String, CodingKey {
+        case error, limit, deviceCount
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        limit = try c.decodeIfPresent(Int.self, forKey: .limit)
+        deviceCount = try c.decodeIfPresent(Int.self, forKey: .deviceCount)
+        // `error` is a string in the flat shape and an object in the nested one.
+        errorCode = try? c.decode(String.self, forKey: .error)
+        error = errorCode == nil ? try? c.decode(Nested.self, forKey: .error) : nil
+    }
 }
 
 /// `{ "fingerprint": { "components": {...}, "hwid": "..." } }`
-private struct FingerprintBody: Encodable {
+private struct ActivationFingerprintBody: Encodable {
     struct Payload: Encodable {
         let components: [String: String]
         let hwid: String
     }
     let fingerprint: Payload
 
-    init(fingerprint: HardwareFingerprint) {
+    init(_ fingerprint: HardwareFingerprint) {
         self.fingerprint = Payload(
             components: fingerprint.components, hwid: fingerprint.hwid)
     }

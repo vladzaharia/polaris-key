@@ -5,7 +5,7 @@
 
 import XCTest
 
-@testable import PolarisKey
+import PolarisCore
 
 final class SemverTests: XCTestCase {
     func testParseCoreAndPrerelease() {

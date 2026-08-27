@@ -1,15 +1,16 @@
-// Shared test scaffolding: an in-test Ed25519 signer that emits byte-identical compact JWS
-// to the Worker's, builders for the two signed document shapes, and a routing URLProtocol
-// stub so a whole `PolarisKeyClient` can be driven offline.
+// Shared test scaffolding: an in-test Ed25519 signer that emits byte-identical compact JWS to
+// the Worker's, builders for the four v3 signed shapes, and a routing `PolarisTransport` stub so
+// a whole `PolarisClient` can be driven with no network.
 //
-// Everything here exists so the wire-contract-v2 regression tests can present the exact
-// artifacts an attacker would: a manifest that substitutes a pinned kid, a hand-written
-// cache, a header with two `alg` members, an oversized header.
+// Everything here exists so the wire-contract regression tests can present the exact artifacts an
+// attacker would: a manifest that substitutes a pinned kid, a hand-written cache, a header with
+// two `alg` members, an oversized header, a bundle minted for another machine.
 
 import CryptoKit
 import Foundation
-
-@testable import PolarisKey
+import PolarisConfig
+import PolarisCore
+import PolarisLicense
 
 // ── Signing ────────────────────────────────────────────────────────────────────────
 
@@ -25,8 +26,8 @@ struct TestSigner {
     var publicKeyB64: String { Base64URL.encode(key.publicKey.rawRepresentation) }
     var trust: TrustSet { [kid: publicKeyB64] }
 
-    /// The canonical protected header. `typ: nil` reproduces a v1 header exactly.
-    func header(typ: String? = JwsTyp.config.rawValue) -> String {
+    /// The canonical protected header. `typ: nil` reproduces the untyped header v3 now refuses.
+    func header(typ: String?) -> String {
         guard let typ else { return #"{"alg":"EdDSA","kid":"\#(kid)"}"# }
         return #"{"alg":"EdDSA","typ":"\#(typ)","kid":"\#(kid)"}"#
     }
@@ -40,40 +41,60 @@ struct TestSigner {
         return signingInput + "." + Base64URL.encode(sig)
     }
 
-    func sign(payloadJSON: String, typ: String? = JwsTyp.config.rawValue) -> String {
+    func sign(payloadJSON: String, typ: String?) -> String {
         signRaw(header: header(typ: typ), payload: payloadJSON)
     }
 
-    func sign<T: Encodable>(_ value: T, typ: String? = JwsTyp.config.rawValue) -> String {
+    func sign<T: Encodable>(_ value: T, typ: JwsTyp) -> String {
         let data = try! JSONEncoder().encode(value)
-        return sign(payloadJSON: String(decoding: data, as: UTF8.self), typ: typ)
+        return sign(payloadJSON: String(decoding: data, as: UTF8.self), typ: typ.rawValue)
     }
+
+    func sign(_ doc: LicenseDoc) -> String { sign(doc, typ: .license) }
+    func sign(_ doc: ConfigDoc) -> String { sign(doc, typ: .config) }
+    func sign(_ doc: TrustManifestDoc) -> String { sign(doc, typ: .trust) }
+    func sign(_ doc: BundleDoc) -> String { sign(doc, typ: .bundle) }
 }
 
 // ── Document builders ──────────────────────────────────────────────────────────────
 
 enum Fixtures {
-    static func doc(
+    static func license(
         aud: String = "djdl",
         iss: String = POLARIS_ISSUER,
         deviceId: String = "dev",
         licenseId: String = "lic",
+        issuedAt: Int,
+        expiresAt: Int? = nil,
+        graceUntil: Int? = nil,
+        entitlements: [String: ManagedEntry] = [:]
+    ) -> LicenseDoc {
+        LicenseDoc(
+            iss: iss, aud: aud, deviceId: deviceId, issuedAt: issuedAt,
+            expiresAt: expiresAt ?? (issuedAt + DOC_EXPIRY_SECONDS),
+            graceUntil: graceUntil ?? (issuedAt + 30 * SECONDS_PER_DAY),
+            licenseId: licenseId,
+            profile: DocProfile(
+                name: "Ada", firstName: "Ada", email: "a@e.com", activatedAt: 1),
+            entitlements: entitlements)
+    }
+
+    static func config(
+        aud: String = "djdl",
+        iss: String = POLARIS_ISSUER,
+        deviceId: String = "dev",
         schemaVersion: Int = 1,
         issuedAt: Int,
         expiresAt: Int? = nil,
         graceUntil: Int? = nil,
         config: [String: ManagedEntry] = [:],
-        secrets: [String: ManagedEntry] = [:],
-        entitlements: [String: ManagedEntry] = [:]
-    ) -> ManagedConfigDoc {
-        ManagedConfigDoc(
-            schemaVersion: schemaVersion, aud: aud, iss: iss, licenseId: licenseId,
-            deviceId: deviceId, issuedAt: issuedAt,
+        secrets: [String: ManagedEntry] = [:]
+    ) -> ConfigDoc {
+        ConfigDoc(
+            iss: iss, aud: aud, deviceId: deviceId, issuedAt: issuedAt,
             expiresAt: expiresAt ?? (issuedAt + DOC_EXPIRY_SECONDS),
             graceUntil: graceUntil ?? (issuedAt + 30 * SECONDS_PER_DAY),
-            profile: DocProfile(name: "Ada", firstName: "Ada", email: "a@e.com", activatedAt: 1),
-            payload: ManagedPayload(
-                config: config, secrets: secrets, entitlements: entitlements))
+            schemaVersion: schemaVersion, config: config, secrets: secrets)
     }
 
     static func manifest(
@@ -98,16 +119,35 @@ enum Fixtures {
             status: status)
     }
 
+    static func bundle(
+        bundleId: String = "01JBUNDLE0000000000000TEST",
+        aud: String = "djdl",
+        deviceId: String = "dev",
+        issuedAt: Int,
+        expiresAt: Int? = nil,
+        license: String? = nil,
+        config: String? = nil,
+        trust: String
+    ) -> BundleDoc {
+        BundleDoc(
+            bundleId: bundleId, aud: aud, deviceId: deviceId, issuedAt: issuedAt,
+            expiresAt: expiresAt ?? (issuedAt + 30 * SECONDS_PER_DAY),
+            docs: BundleDocs(license: license, config: config), trust: trust)
+    }
+
     static func entry(_ value: JSONValue, _ state: ManagementState = .default) -> ManagedEntry {
         ManagedEntry(state: state, value: value, updatedAt: 1)
     }
 }
 
-// ── A routing HTTP stub ────────────────────────────────────────────────────────────
+// ── A routing transport stub ───────────────────────────────────────────────────────
 
-/// A `URLProtocol` that answers by PATH, records every request, and defaults to `200 {}` so
-/// the report-snapshot POST never has to be stubbed explicitly.
-final class StubServer: URLProtocol {
+/// A `PolarisTransport` that answers by PATH, records every request, and defaults to `200 {}` so
+/// the telemetry POST never has to be stubbed explicitly.
+///
+/// An actor rather than a locked class: it is the only mutable state a test shares between the
+/// client's tasks, and letting the compiler prove that is cheaper than reviewing it.
+actor StubServer {
     struct Reply: Sendable {
         let status: Int
         let body: Data
@@ -120,58 +160,52 @@ final class StubServer: URLProtocol {
         }
     }
 
-    nonisolated(unsafe) private static var routes:
-        [String: @Sendable (URLRequest) -> Reply] = [:]
-    nonisolated(unsafe) private static var log: [URLRequest] = []
-    private static let lock = NSLock()
+    private var routes: [String: @Sendable (PolarisRequest) -> Reply] = [:]
+    private var log: [PolarisRequest] = []
 
-    static func reset() {
-        lock.lock()
-        defer { lock.unlock() }
+    func route(_ path: String, _ handler: @escaping @Sendable (PolarisRequest) -> Reply) {
+        routes[path] = handler
+    }
+
+    func reply(_ path: String, status: Int = 200, body: String = "{}") {
+        route(path) { _ in Reply(status: status, body: body) }
+    }
+
+    func reset() {
         routes = [:]
         log = []
     }
 
-    static func route(_ path: String, _ handler: @escaping @Sendable (URLRequest) -> Reply) {
-        lock.lock()
-        defer { lock.unlock() }
-        routes[path] = handler
+    func handle(_ request: PolarisRequest) -> Reply {
+        log.append(request)
+        return routes[request.url.path]?(request) ?? Reply()
     }
 
-    static var requests: [URLRequest] {
-        lock.lock()
-        defer { lock.unlock() }
-        return log
+    var requests: [PolarisRequest] { log }
+
+    func requests(forPath path: String) -> [PolarisRequest] {
+        log.filter { $0.url.path == path }
     }
 
-    static func requests(forPath path: String) -> [URLRequest] {
-        requests.filter { $0.url?.path == path }
+    /// A transport bound to this server.
+    nonisolated var transport: StubTransport { StubTransport(server: self) }
+}
+
+struct StubTransport: PolarisTransport {
+    let server: StubServer
+
+    func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+        let reply = await server.handle(request)
+        return PolarisResponse(
+            status: reply.status, body: reply.body, headers: reply.headers)
     }
+}
 
-    static func session() -> URLSession {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [StubServer.self]
-        return URLSession(configuration: config)
+/// A transport that fails every request the way a dropped connection does — for the tests that
+/// prove a code path never dials, and the ones that prove it survives when the control plane is
+/// unreachable.
+struct ExplodingTransport: PolarisTransport {
+    func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+        throw PolarisError(code: "transport", message: "no network in this test")
     }
-
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-    override func startLoading() {
-        let request = self.request
-        StubServer.lock.lock()
-        StubServer.log.append(request)
-        let handler = StubServer.routes[request.url?.path ?? ""]
-        StubServer.lock.unlock()
-
-        let reply = handler?(request) ?? Reply()
-        let response = HTTPURLResponse(
-            url: request.url!, statusCode: reply.status, httpVersion: "HTTP/1.1",
-            headerFields: reply.headers)!
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: reply.body)
-        client?.urlProtocolDidFinishLoading(self)
-    }
-
-    override func stopLoading() {}
 }

@@ -1,27 +1,37 @@
-// The Polaris Key wire types — Codable mirrors of @plrs/protocol's ManagedConfigDoc
-// tree. These shapes are the source of truth every SDK + the Worker share; field drift
-// silently breaks cross-platform verification, so they track `shared-protocol/src/index.ts`.
+// The Polaris wire types — Codable mirrors of `@plrs/protocol`'s v3 tree. These shapes are
+// the source of truth every SDK and the Worker share; field drift silently breaks
+// cross-platform verification, so they track `packages/shared-protocol/src/{core,license,
+// config,trust}.ts` and are pinned by `conformance/corpus/v2`.
 //
 // Times are epoch SECONDS (the JOSE world the Worker signs in), never millis.
 //
-// Product binding (`aud == expected`) is enforced in `verifyDoc` after signature checks.
+// ── WHAT v3 CHANGED ─────────────────────────────────────────────────────────────────────────
+//
+// v2 had ONE fused document (`pkey-config+jws`) carrying licence, config, secrets and
+// entitlements together. v3 splits it in two along the service boundary (§2): `LicenseDoc`
+// carries grants, `ConfigDoc` carries settings, and neither knows about the other — which is
+// what lets a config-only product issue documents to a device that has no licence at all
+// (D-08). What they share is the ENVELOPE (`DocClaims`), declared once here so the two can
+// never drift apart on `iss`, `aud`, device binding, or the grace ceiling.
 
 import Foundation
 
-/// Per-key MDM-style management state (wire v2). `enforced`/`hidden` ⇒ the server value
-/// wins (the user cannot override it); `default` ⇒ the user owns it, but a present `value`
-/// is an admin-set default that local/env overrides may replace.
+// ── Managed values ──────────────────────────────────────────────────────────────────────────
+
+/// Per-key MDM-style management state. `enforced`/`hidden` ⇒ the server value wins (the user
+/// cannot override it); `default` ⇒ the user owns it, but a present `value` is an admin-set
+/// default that local/env overrides may replace.
 ///
-/// `default` is a Swift reserved word, so the case is escaped with backticks; the raw value
-/// is still the bare `"default"` string the wire carries.
+/// `default` is a Swift reserved word, so the case is escaped with backticks; the raw value is
+/// still the bare `"default"` string the wire carries.
 public enum ManagementState: String, Sendable, Codable, Equatable {
     case `default`
     case enforced
     case hidden
 }
 
-/// A managed value plus its management state and the epoch-seconds timestamp it last
-/// changed server-side (wire v2). Clients change-detect on `updatedAt`.
+/// A managed value plus its management state and the epoch-seconds timestamp it last changed
+/// server-side. Clients change-detect on `updatedAt`.
 public struct ManagedEntry: Sendable, Codable, Equatable {
     public let state: ManagementState
     public let value: JSONValue
@@ -35,21 +45,25 @@ public struct ManagedEntry: Sendable, Codable, Equatable {
     }
 }
 
-/// The three payload kinds, each routed to a different store on arrival.
-public struct ManagedPayload: Sendable, Codable, Equatable {
-    public let config: [String: ManagedEntry]
-    public let secrets: [String: ManagedEntry]
-    public let entitlements: [String: ManagedEntry]
+// ── The shared envelope (§2) ────────────────────────────────────────────────────────────────
 
-    public init(
-        config: [String: ManagedEntry] = [:],
-        secrets: [String: ManagedEntry] = [:],
-        entitlements: [String: ManagedEntry] = [:]
-    ) {
-        self.config = config
-        self.secrets = secrets
-        self.entitlements = entitlements
-    }
+/// The claims every per-service signed document carries. `aud` (product slug) + `iss` scope a
+/// document to one product as defense-in-depth on top of the per-product signing key; clients
+/// MUST assert `aud == their configured product` and `deviceId == their local device id`.
+///
+/// A protocol rather than a base class so `LicenseDoc` and `ConfigDoc` stay plain value types
+/// while `verifyDoc` can validate the envelope generically, in exactly one place.
+public protocol DocClaims: Sendable, Codable, Equatable {
+    /// Always `POLARIS_ISSUER` ("plrs.im").
+    var iss: String { get }
+    /// Product slug — the audience this document is scoped to.
+    var aud: String { get }
+    var deviceId: String { get }
+    var issuedAt: Int { get }
+    /// Short — `issuedAt + DOC_EXPIRY_SECONDS`.
+    var expiresAt: Int { get }
+    /// The long, server-signed offline window — `issuedAt + maxOfflineDays * 86400`.
+    var graceUntil: Int { get }
 }
 
 /// The signed profile block — a tamper-proof, offline greeting.
@@ -68,47 +82,134 @@ public struct DocProfile: Sendable, Codable, Equatable {
     }
 }
 
-/// The JWS payload — the whole object the Worker signs (EdDSA/Ed25519) and clients verify.
-public struct ManagedConfigDoc: Sendable, Codable, Equatable {
-    public let schemaVersion: Int
-    /// Product slug — the audience this document is scoped to.
-    public let aud: String
-    /// Issuer — always `key.plrs.im`.
+/// The license document (`plrs-license+jws`, §2.1) — the ONLY carrier of grant data (D-20).
+///
+/// Admin/tier policy arrives as enforced entitlements (`license.tier`, `license.tierLabel`,
+/// `channels`, `app.minVersion`, `app.maxVersion`, `deviceLimit`) alongside catalog-declared
+/// flags. License STATE (`ok`/`grace`/…) is never carried here; the client gate derives it.
+public struct LicenseDoc: DocClaims {
     public let iss: String
-    public let licenseId: String
+    public let aud: String
     public let deviceId: String
     public let issuedAt: Int
-    /// Short — `issuedAt + DOC_EXPIRY_SECONDS`.
     public let expiresAt: Int
-    /// Offline-grace anchor — `issuedAt + maxOfflineDays * 86400`.
     public let graceUntil: Int
-    public let profile: DocProfile
-    public let payload: ManagedPayload
+    public let licenseId: String
+    /// Optional by design — a licence with no holder block is still a licence.
+    public let profile: DocProfile?
+    public let entitlements: [String: ManagedEntry]
 
     public init(
-        schemaVersion: Int,
+        iss: String = POLARIS_ISSUER,
         aud: String,
-        iss: String,
-        licenseId: String,
         deviceId: String,
         issuedAt: Int,
         expiresAt: Int,
         graceUntil: Int,
-        profile: DocProfile,
-        payload: ManagedPayload
+        licenseId: String,
+        profile: DocProfile? = nil,
+        entitlements: [String: ManagedEntry] = [:]
     ) {
-        self.schemaVersion = schemaVersion
-        self.aud = aud
         self.iss = iss
-        self.licenseId = licenseId
+        self.aud = aud
         self.deviceId = deviceId
         self.issuedAt = issuedAt
         self.expiresAt = expiresAt
         self.graceUntil = graceUntil
+        self.licenseId = licenseId
         self.profile = profile
-        self.payload = payload
+        self.entitlements = entitlements
     }
 }
+
+/// The config document (`plrs-config+jws`, §2.2) — config + secrets, and no license fields
+/// whatsoever. A product with `config` enabled and `license` disabled issues these to any
+/// registered device: the wire-level guarantee of service independence (D-08).
+public struct ConfigDoc: DocClaims {
+    public let iss: String
+    public let aud: String
+    public let deviceId: String
+    public let issuedAt: Int
+    public let expiresAt: Int
+    public let graceUntil: Int
+    /// The product's active CATALOG version — not the wire protocol version.
+    public let schemaVersion: Int
+    public let config: [String: ManagedEntry]
+    public let secrets: [String: ManagedEntry]
+
+    public init(
+        iss: String = POLARIS_ISSUER,
+        aud: String,
+        deviceId: String,
+        issuedAt: Int,
+        expiresAt: Int,
+        graceUntil: Int,
+        schemaVersion: Int,
+        config: [String: ManagedEntry] = [:],
+        secrets: [String: ManagedEntry] = [:]
+    ) {
+        self.iss = iss
+        self.aud = aud
+        self.deviceId = deviceId
+        self.issuedAt = issuedAt
+        self.expiresAt = expiresAt
+        self.graceUntil = graceUntil
+        self.schemaVersion = schemaVersion
+        self.config = config
+        self.secrets = secrets
+    }
+}
+
+/// The offline activation bundle payload (`plrs-bundle+jws`, §7). Wraps up to three inner
+/// compact JWSs, which is why its payload cap is `MAX_BUNDLE_BYTES` rather than the 64 KiB
+/// every other document gets.
+///
+/// Deliberately NOT a `DocClaims`: it has no `graceUntil`, and its `expiresAt` means something
+/// different — the operator's IMPORT deadline, checked with network-path freshness even though
+/// the documents inside it are validated on the reload profile (§7.2).
+public struct BundleDoc: Sendable, Codable, Equatable {
+    /// ULID; the audit anchor for the mint event.
+    public let bundleId: String
+    public let aud: String
+    /// The requesting device's id — bundles are device-bound (the request-code flow).
+    public let deviceId: String
+    public let issuedAt: Int
+    /// Import deadline for the bundle artifact itself.
+    public let expiresAt: Int
+    /// Inner compact JWSs. `license` is optional by design: a config-only product (D-08)
+    /// air-gaps with a bundle carrying only `config`.
+    public let docs: BundleDocs
+    /// The trust manifest (`plrs-trust+jws`), so an air-gapped device can build its effective
+    /// trust set at import time.
+    public let trust: String
+
+    public init(
+        bundleId: String, aud: String, deviceId: String, issuedAt: Int, expiresAt: Int,
+        docs: BundleDocs, trust: String
+    ) {
+        self.bundleId = bundleId
+        self.aud = aud
+        self.deviceId = deviceId
+        self.issuedAt = issuedAt
+        self.expiresAt = expiresAt
+        self.docs = docs
+        self.trust = trust
+    }
+}
+
+/// The inner-document slice of a bundle. Both members optional; a bundle carrying NEITHER is
+/// vacuous and refused at §7 step 2.
+public struct BundleDocs: Sendable, Codable, Equatable {
+    public let license: String?
+    public let config: String?
+
+    public init(license: String? = nil, config: String? = nil) {
+        self.license = license
+        self.config = config
+    }
+}
+
+// ── Trust manifest (§2.3) ───────────────────────────────────────────────────────────────────
 
 public struct TrustManifestKey: Sendable, Codable, Equatable {
     public let kid: String
@@ -117,6 +218,17 @@ public struct TrustManifestKey: Sendable, Codable, Equatable {
     public let crv: String
     public let publicKey: String
     public let status: String
+
+    public init(
+        kid: String, alg: String, kty: String, crv: String, publicKey: String, status: String
+    ) {
+        self.kid = kid
+        self.alg = alg
+        self.kty = kty
+        self.crv = crv
+        self.publicKey = publicKey
+        self.status = status
+    }
 }
 
 public struct TrustManifestDoc: Sendable, Codable, Equatable {
@@ -128,62 +240,89 @@ public struct TrustManifestDoc: Sendable, Codable, Equatable {
     public let jwksUrl: String
     public let cacheSeconds: Int
     public let keys: [TrustManifestKey]
+
+    public init(
+        schemaVersion: Int, aud: String, iss: String, issuedAt: Int, expiresAt: Int,
+        jwksUrl: String, cacheSeconds: Int, keys: [TrustManifestKey]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.aud = aud
+        self.iss = iss
+        self.issuedAt = issuedAt
+        self.expiresAt = expiresAt
+        self.jwksUrl = jwksUrl
+        self.cacheSeconds = cacheSeconds
+        self.keys = keys
+    }
 }
 
-// ── Gate / wire constants (mirror shared-protocol) ───────────────────────────────
+// ── Wire constants (§2, §8) ─────────────────────────────────────────────────────────────────
 
-/// The `iss` every Polaris Key document carries.
-public let POLARIS_ISSUER = "key.plrs.im"
+/// Bumped on any wire-breaking change to the document shapes or HTTP contract.
+public let POLARIS_PROTOCOL_VERSION = 3
 
-/// Short signed-token lifetime (seconds).
+/// The `iss` every Polaris document carries. HOST-NEUTRAL in v3 (D-09): the serving hostname
+/// is infrastructure, not wire identity, so moving hosts is never a wire break. A `key.plrs.im`
+/// issuer is a v2 artifact and is refused.
+public let POLARIS_ISSUER = "plrs.im"
+
+/// Short signed-document lifetime (seconds).
 public let DOC_EXPIRY_SECONDS = 3600
 
 /// Seconds per day, for the offline-grace computation.
 public let SECONDS_PER_DAY = 86_400
 
-/// Tolerance applied to every time claim, identical in all five implementations (wire
-/// contract v2 §3). Without it a device an hour fast flips a freshly-signed document
-/// straight to `grace` (audit finding R2-08).
+/// Tolerance applied to every clock comparison, identical in all implementations (§2). Without
+/// it a device an hour fast flips a freshly-signed document straight to `grace` (R2-08).
 public let CLOCK_SKEW_SECONDS = 300
 
-/// Upper bound on a document's signed offline-grace window, `graceUntil - issuedAt`. Bounds
-/// a hostile control plane and a tampered cache alike; a year comfortably exceeds any real
-/// `maxOfflineDays` (the product default is 30 days). Normative — identical in every
-/// implementation (`packages/sdk-node/src/claims.ts`).
+/// Upper bound on a document's signed offline window, `graceUntil - issuedAt`. Bounds a hostile
+/// control plane and a tampered cache alike, and applies at VERIFY time rather than only in the
+/// gate (§3.3) — so an over-generous offline bundle is refused before it reaches the cache.
 public let MAX_GRACE_SECONDS = 365 * SECONDS_PER_DAY
 
-/// TRUST MANIFEST wire versions this SDK understands. An unknown version fails CLOSED — a
-/// newer manifest shape may carry key attributes whose enforcement this build lacks.
-///
-/// Deliberately NOT applied to `ManagedConfigDoc.schemaVersion` (§3.1 correction 1): that
-/// field is the per-product CATALOG version, which increments every time an operator edits a
-/// catalog, so allow-listing it would reject every product that ever republished its schema.
-/// The doc's version gets a shape check only — which, in Swift, is what `Codable` already
-/// enforces by requiring an `Int`.
-public let SUPPORTED_TRUST_SCHEMA_VERSIONS: Set<Int> = [1]
-
-/// How long before `expiresAt` a `304` must be escalated to a full re-fetch, so a
-/// continuously ONLINE client can never drift into `grace` on a stable ETag (§5, R2-11).
+/// How close to `expiresAt` a cached document may drift before a `304` must be escalated to a
+/// full re-fetch (§5). v3 applies the rule PER DOCUMENT — license and config carry independent
+/// ETags, so each one escalates on its own half-life.
 public let REFRESH_MARGIN_SECONDS = DOC_EXPIRY_SECONDS / 2
 
-/// On-disk cache format version. A `v1` record is DISCARDED, never migrated (§7.3): it holds
-/// unsigned state that security decisions used to read.
-public let CACHE_RECORD_VERSION = 2
+/// Maximum decoded payload bytes for `plrs-bundle+jws` (§1). Four times the ordinary document
+/// cap because a bundle wraps up to three inner compact JWSs. The raise travels with the `typ`:
+/// a call site that does not expect a bundle never grants it.
+public let MAX_BUNDLE_BYTES = 262_144
 
-/// Client→Worker request headers.
-public let HEADER_DEVICE = "X-PKey-Device"
-public let HEADER_VERSION = "X-PKey-Version"
-public let HEADER_CHANNEL = "X-PKey-Channel"
-public let HEADER_PLATFORM = "X-PKey-Platform"
-public let HEADER_ARCH = "X-PKey-Arch"
-public let HEADER_SDK_NAME = "X-PKey-SDK"
-public let HEADER_SDK_VERSION = "X-PKey-SDK-Version"
+/// TRUST MANIFEST wire versions this SDK understands. An unknown version fails CLOSED — a newer
+/// manifest shape may carry key attributes whose enforcement this build lacks.
+///
+/// Deliberately NOT applied to `ConfigDoc.schemaVersion`: that field is the per-product CATALOG
+/// version, which increments every time an operator edits a catalog, so allow-listing it would
+/// reject every product that ever republished its schema. That one gets a SHAPE check only.
+public let SUPPORTED_TRUST_SCHEMA_VERSIONS: Set<Int> = [1]
 
-/// SDK metadata sent with activation and config requests.
-public let POLARIS_KEY_SDK_NAME = "PolarisKeySwift"
-public let POLARIS_KEY_SDK_VERSION = "0.1.0"
+/// On-disk cache format version (§4.1). A record carrying any other value is DISCARDED, never
+/// migrated: one network round trip is the correct price for not carrying poisoned state
+/// forward, and an air-gapped install re-imports its bundle.
+public let CACHE_RECORD_VERSION = 3
 
-/// A 403 block reason returned by `GET /<product>/config`.
+/// Client→Worker request headers (§5). Every product-scoped call carries all seven.
+public let HEADER_DEVICE = "X-Polaris-Device"
+public let HEADER_VERSION = "X-Polaris-Version"
+public let HEADER_CHANNEL = "X-Polaris-Channel"
+public let HEADER_PLATFORM = "X-Polaris-Platform"
+public let HEADER_ARCH = "X-Polaris-Arch"
+public let HEADER_SDK_NAME = "X-Polaris-SDK"
+public let HEADER_SDK_VERSION = "X-Polaris-SDK-Version"
+
+/// SDK metadata sent with every product-scoped request.
+public let POLARIS_SDK_NAME = "PolarisSwift"
+public let POLARIS_SDK_VERSION = "0.2.0"
+
+/// The device credential prefix (§6). `pkeyt_` is rejected outright — pre-launch, no migration.
+public let DEVICE_TOKEN_PREFIX = "plrst_"
+
+// ── Gate vocabulary (§5) ────────────────────────────────────────────────────────────────────
+
+/// A 403 block reason returned by `GET /<product>/license/document`.
 public enum BlockReason: String, Sendable, Codable, Equatable {
     case versionTooOld = "version-too-old"
     case versionTooNew = "version-too-new"
@@ -202,6 +341,10 @@ public struct AllowedRange: Sendable, Codable, Equatable {
 }
 
 /// The terminal gate state a client renders from.
+///
+/// `notApplicable` is v3's addition: a product that does not enable the license service has no
+/// licence to be missing, so it must boot USABLE rather than sitting on `needs-activation`
+/// forever (D-08).
 public enum LicenseStatus: String, Sendable, Equatable {
     case ok
     case grace
@@ -211,4 +354,21 @@ public enum LicenseStatus: String, Sendable, Equatable {
     case versionTooOld = "version-too-old"
     case versionTooNew = "version-too-new"
     case channelNotEntitled = "channel-not-entitled"
+    case notApplicable = "not-applicable"
+}
+
+/// How this install became activated (§7). An online-minted `plrst_` token supersedes a
+/// verified offline bundle import; only the absence of both is "not activated".
+public enum ActivationSource: String, Sendable, Codable, Equatable {
+    case token
+    case bundle
+}
+
+/// Per-product device registration policy (§6). The default is DERIVED server-side:
+/// `requires-license` if the license service is enabled, else `requires-identity` if identity
+/// is, else `open`.
+public enum RegistrationPolicy: String, Sendable, Codable, Equatable {
+    case open
+    case requiresIdentity = "requires-identity"
+    case requiresLicense = "requires-license"
 }

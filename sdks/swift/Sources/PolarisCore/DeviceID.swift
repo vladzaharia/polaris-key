@@ -21,7 +21,7 @@ public enum DeviceID {
     }
 
     /// The device-id formula itself, split out from the hardware read so it can be pinned by
-    /// `conformance/corpus/v1/fingerprint.json`. Node, Python, and Swift must agree exactly.
+    /// `conformance/corpus/v2/fingerprint.json`. Node, Python, and Swift must agree exactly.
     public static func fromRaw(productSlug: String, raw: String) -> String {
         let digest = SHA256.hash(data: Data("pkey-device:\(productSlug):\(raw)".utf8))
         return String(Base64URL.encode(Data(digest)).prefix(32))

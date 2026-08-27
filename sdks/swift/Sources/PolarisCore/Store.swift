@@ -1,56 +1,130 @@
-// Persistence: the per-device token, a stable device id, and the offline-first config
-// cache. `Store` is the protocol the client talks to; `InMemoryStore` backs tests, and
-// `KeychainStore` keeps the token in the OS keychain (secret) with the device id + cache
-// in a 0600 file under the config dir. Mirrors sdk-node's store.ts split (secret in the
-// keyring, bookkeeping on disk).
+// Persistence: the per-device token, a stable device id, and the offline-first verified cache.
+// `Store` is the protocol Core talks to; `InMemoryStore` backs tests, and `KeychainStore` keeps
+// the token in the OS keychain (secret) with the device id + cache in 0600 files under the
+// config dir. Mirrors sdk-node's store split (secret in the keyring, bookkeeping on disk).
 //
-// Wire contract v2 §4: the cache persists ONLY SIGNED ARTIFACTS. Every security-relevant
-// counter (`lastAcceptedIssuedAt`, `lastTrustIssuedAt`, `lastVerifiedAt`, the trust set, the
-// decoded doc) used to live here unsigned and was read back as fact; all of them are now
-// DERIVED by re-verifying the stored JWS on load. `blocked`/`lastSyncUnauthorized` remain
-// unsigned because they only ever make the gate STRICTER.
+// Wire contract v3 §4.1: the cache persists ONLY SIGNED ARTIFACTS. Every security-relevant
+// counter — the per-type anti-replay floors, the trust set, `lastVerifiedAt`, the decoded
+// documents — is DERIVED by re-verifying the stored JWSs on load. `blocked` and
+// `lastSyncUnauthorized` remain unsigned because they can only ever make the gate STRICTER.
+//
+// ── WHAT v3 CHANGED ─────────────────────────────────────────────────────────────────────────
+//
+//   * `CACHE_RECORD_VERSION` is 3, and a record carrying anything else is DISCARDED rather than
+//     migrated — including a perfectly well-formed v2 record. One network round trip is the
+//     right price for not carrying poisoned state forward.
+//   * `configJws`/`etag` become per-service SLICES (`docs`/`etags`), because license and config
+//     are now two independently-fetched, independently-ETagged documents.
+//   * `importedBundle` records an offline activation (§7), which is what lets the gate answer
+//     `activation: .bundle` for an install that holds no credential at all.
+//   * the keychain service tag is `plrs:<product>` (§8).
 
 import Foundation
 import Security
 
-/// The offline-first cache record — the signed artifacts plus fail-closed sync hints.
+/// The offline cache record — the signed artifacts plus fail-closed sync hints (§4.1).
 ///
-/// A doc-less record (`configJws == nil`) is valid: it carries only `blocked`/
-/// `lastSyncUnauthorized` so the gate can render a revoked/blocked state before any doc has
-/// ever been accepted.
+/// A doc-less record is valid: it carries only `blocked`/`lastSyncUnauthorized` so the gate can
+/// render a revoked/blocked state before any document has ever been accepted.
 public struct CacheRecord: Sendable, Codable, Equatable {
-    /// Format version. A `v1` record decodes to nothing and is discarded, never migrated —
-    /// carrying its unsigned state forward is exactly the defect v2 removes.
+    /// Format version. Any value but `CACHE_RECORD_VERSION` is discarded, never migrated.
     public var v: Int
-    /// The compact JWS of the managed-config doc, VERBATIM as served.
-    public var configJws: String?
     /// The compact JWS of the trust manifest, VERBATIM as served.
     public var trustJws: String?
-    /// Cache validator — a non-security hint.
-    public var etag: String?
-    /// Fail-CLOSED hint: the last `/config` ended in a hard 401.
+    /// Per-service signed documents. An absent slice means the service is unused by this
+    /// product, or has not been fetched yet — never that it failed open.
+    public var docs: [DocumentSlice: String]
+    /// Non-security hints: the per-document conditional-request validators.
+    public var etags: [DocumentSlice: String]
+    /// Set by `importBundle` (§7). Present with a verified license doc ⇒ `activation: .bundle`;
+    /// a later online activation supersedes it with `activation: .token`.
+    public var importedBundle: ImportedBundle?
+    /// Fail-CLOSED hint: the last document fetch ended in a hard 401 (§4.3).
     public var lastSyncUnauthorized: Bool?
-    /// Fail-CLOSED hint: the last `/config` returned a 403 version/channel block.
+    /// Fail-CLOSED hint: the last `/license/document` returned a 403 version/channel block.
     public var blocked: BlockInfoRecord?
 
     public init(
-        configJws: String? = nil,
         trustJws: String? = nil,
-        etag: String? = nil,
+        docs: [DocumentSlice: String] = [:],
+        etags: [DocumentSlice: String] = [:],
+        importedBundle: ImportedBundle? = nil,
         lastSyncUnauthorized: Bool? = nil,
         blocked: BlockInfoRecord? = nil,
         v: Int = CACHE_RECORD_VERSION
     ) {
         self.v = v
-        self.configJws = configJws
         self.trustJws = trustJws
-        self.etag = etag
+        self.docs = docs
+        self.etags = etags
+        self.importedBundle = importedBundle
         self.lastSyncUnauthorized = lastSyncUnauthorized
         self.blocked = blocked
     }
+
+    /// `docs`/`etags` are keyed by a `DocumentSlice` enum, and Swift's `Codable` would otherwise
+    /// encode an enum-keyed dictionary as a flat `[key, value, …]` ARRAY — which would make the
+    /// on-disk shape disagree with `{"docs":{"license":"…"}}` in every other SDK. These coding
+    /// keys keep the JSON an object, per §4.1.
+    private enum CodingKeys: String, CodingKey {
+        case v, trustJws, docs, etags, importedBundle, lastSyncUnauthorized, blocked
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        v = try c.decode(Int.self, forKey: .v)
+        trustJws = try c.decodeIfPresent(String.self, forKey: .trustJws)
+        docs = CacheRecord.slices(
+            try c.decodeIfPresent([String: String].self, forKey: .docs))
+        etags = CacheRecord.slices(
+            try c.decodeIfPresent([String: String].self, forKey: .etags))
+        importedBundle = try c.decodeIfPresent(ImportedBundle.self, forKey: .importedBundle)
+        lastSyncUnauthorized = try c.decodeIfPresent(Bool.self, forKey: .lastSyncUnauthorized)
+        blocked = try c.decodeIfPresent(BlockInfoRecord.self, forKey: .blocked)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(v, forKey: .v)
+        try c.encodeIfPresent(trustJws, forKey: .trustJws)
+        if !docs.isEmpty { try c.encode(CacheRecord.strings(docs), forKey: .docs) }
+        if !etags.isEmpty { try c.encode(CacheRecord.strings(etags), forKey: .etags) }
+        try c.encodeIfPresent(importedBundle, forKey: .importedBundle)
+        try c.encodeIfPresent(lastSyncUnauthorized, forKey: .lastSyncUnauthorized)
+        try c.encodeIfPresent(blocked, forKey: .blocked)
+    }
+
+    /// An unrecognised slice name is DROPPED rather than decoded — a future service's document
+    /// is not something this build can verify, and keeping it would mean persisting an artifact
+    /// nothing re-checks.
+    private static func slices(_ raw: [String: String]?) -> [DocumentSlice: String] {
+        var out: [DocumentSlice: String] = [:]
+        for (key, value) in raw ?? [:] {
+            if let slice = DocumentSlice(rawValue: key) { out[slice] = value }
+        }
+        return out
+    }
+
+    private static func strings(_ slices: [DocumentSlice: String]) -> [String: String] {
+        var out: [String: String] = [:]
+        for (slice, value) in slices { out[slice.rawValue] = value }
+        return out
+    }
 }
 
-/// Codable mirror of `BlockInfo` for the on-disk cache.
+/// The §7 import marker. `importedAt` is a local timestamp and is NOT security state: the gate
+/// reads the imported license document's own signed claims, never this.
+public struct ImportedBundle: Sendable, Codable, Equatable {
+    public let bundleId: String
+    public let importedAt: Int
+
+    public init(bundleId: String, importedAt: Int) {
+        self.bundleId = bundleId
+        self.importedAt = importedAt
+    }
+}
+
+/// Codable mirror of the unsigned 403 hint for the on-disk cache.
 public struct BlockInfoRecord: Sendable, Codable, Equatable {
     public let reason: BlockReason
     public let allowedRange: AllowedRange?
@@ -63,9 +137,9 @@ public struct BlockInfoRecord: Sendable, Codable, Equatable {
 
 /// A persistence failure the host application can act on.
 ///
-/// These used to be swallowed: a failed keychain write left `setToken` returning normally
-/// having stored nothing (re-activation on every launch), and a failed device-id write
-/// produced a NEW random device id per launch — burning a seat each time (R4-12).
+/// These used to be swallowed: a failed keychain write left `setToken` returning normally having
+/// stored nothing (re-activation on every launch), and a failed device-id write produced a NEW
+/// random device id per launch — burning a seat each time (R4-12).
 public enum StoreError: Error, Sendable, Equatable {
     /// A `SecItem*` call failed with this `OSStatus` (e.g. `errSecInteractionNotAllowed`).
     case keychain(OSStatus)
@@ -77,16 +151,16 @@ public enum StoreError: Error, Sendable, Equatable {
     case encoding
 }
 
-/// The persistence surface the client depends on. All methods are async so a keychain or
-/// network-backed implementation can be slotted in without changing the client; the mutating
-/// ones throw so a failure is never silent.
+/// The persistence surface Core depends on. All methods are async so a keychain- or
+/// network-backed implementation can be slotted in without changing Core; the mutating ones
+/// throw so a failure is never silent.
 public protocol Store: Sendable {
     func getToken() async throws -> String?
     func setToken(_ token: String) async throws
     func clearToken() async throws
     func getDeviceId() async throws -> String
     /// A missing, unreadable, or unparseable cache is not an error — it is "no cache", which
-    /// the client treats as `needs-activation`. Fail closed.
+    /// Core treats as `needs-activation`. Fail closed.
     func readCache() async -> CacheRecord?
     func writeCache(_ record: CacheRecord) async throws
     func clearCache() async throws
@@ -116,12 +190,12 @@ public actor InMemoryStore: Store {
 // ── Keychain + 0600 file (production) ──────────────────────────────────────────────
 
 /// Production store: the secret token lives in the OS keychain (generic password, service
-/// `pkey:<product>`), while the device id + offline cache are 0600 JSON files under
-/// `<configDir>/<product>/`. An actor for `Sendable` safety; keychain/file I/O is
-/// serialized through it.
+/// `plrs:<product>` per §8), while the device id + offline cache are 0600 JSON files under
+/// `<configDir>/<product>/`. An actor for `Sendable` safety; keychain/file I/O is serialized
+/// through it.
 public actor KeychainStore: Store {
-    /// Largest cache file we will read. The record is a JWS pair plus two hints.
-    private static let maxCacheBytes = 512 * 1024
+    /// Largest cache file we will read. The record is at most three compact JWSs plus hints.
+    private static let maxCacheBytes = 1024 * 1024
 
     private let productSlug: String
     private let service: String
@@ -130,11 +204,30 @@ public actor KeychainStore: Store {
     private let cacheURL: URL
     private let deviceURL: URL
 
+    /// Where the device id and cache live when the host does not say.
+    ///
+    /// `~/.config/` on macOS, matching the Node SDK's `XDG_CONFIG_HOME ?? ~/.config`, so a
+    /// developer running both against the same product finds one directory rather than two.
+    /// `homeDirectoryForCurrentUser` is UNAVAILABLE on iOS — a real gap the target split
+    /// surfaced, since the package has declared `.iOS(.v17)` support since v1 — so iOS uses
+    /// Application Support, the sandboxed equivalent, and falls back to the temporary directory
+    /// only on a platform that has neither.
+    private static func defaultConfigDir() -> URL {
+        #if os(macOS)
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config", isDirectory: true)
+        #else
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first ?? FileManager.default.temporaryDirectory
+        #endif
+    }
+
     public init(productSlug: String, configDir: URL? = nil) {
         self.productSlug = productSlug
-        self.service = "pkey:\(productSlug)"
-        let base = configDir ?? FileManager.default
-            .homeDirectoryForCurrentUser.appendingPathComponent(".config", isDirectory: true)
+        // §8 — the keychain service tag is `plrs:<product>`. Pre-launch, no dual-read: a
+        // `pkey:` item is simply not found, and the device re-registers once.
+        self.service = "plrs:\(productSlug)"
+        let base = configDir ?? KeychainStore.defaultConfigDir()
         self.dir = base.appendingPathComponent(productSlug, isDirectory: true)
         self.cacheURL = dir.appendingPathComponent("managed.json")
         self.deviceURL = dir.appendingPathComponent("device")
@@ -142,6 +235,10 @@ public actor KeychainStore: Store {
             at: dir, withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])
     }
+
+    /// The keychain service tag this store reads and writes. Exposed so a test can assert the
+    /// §8 rebrand rather than trust a comment.
+    public var keychainService: String { service }
 
     // ── Token (keychain) ──
     public func getToken() async throws -> String? {
@@ -171,9 +268,9 @@ public actor KeychainStore: Store {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
-        // `kSecAttrAccessible` must ride on the UPDATE too — it was only ever set on the
-        // initial add, so a re-issued token silently inherited whatever protection class the
-        // original item happened to carry (R4-11).
+        // `kSecAttrAccessible` must ride on the UPDATE too — it was only ever set on the initial
+        // add, so a re-issued token silently inherited whatever protection class the original
+        // item happened to carry (R4-11).
         let update: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
@@ -239,8 +336,8 @@ public actor KeychainStore: Store {
     /// Create/overwrite `url` at mode 0600, refusing to follow a symlink.
     ///
     /// `Data.write(options: .atomic)` created the file at the ambient umask — measured 0644 —
-    /// and only THEN chmod'd it, so the first-ever write of `managed.json` (the one that
-    /// first contains `payload.secrets`) was briefly world-readable, and permanently so if
+    /// and only THEN chmod'd it, so the first-ever write of `managed.json` (the one that first
+    /// contains a config document's secrets) was briefly world-readable, and permanently so if
     /// the process died in between (R4-09). `open(2)` applies the mode AT CREATION, and
     /// `O_NOFOLLOW` gives Swift the symlink refusal Node's `writeSecure` already had.
     private func writeSecure(_ data: Data, to url: URL) throws {
@@ -266,8 +363,8 @@ public actor KeychainStore: Store {
         }
     }
 
-    /// Read `url`, refusing to follow a symlink and bounding the read. Returns nil when the
-    /// file simply does not exist.
+    /// Read `url`, refusing to follow a symlink and bounding the read. Returns nil when the file
+    /// simply does not exist.
     private func readSecure(_ url: URL) throws -> Data? {
         let path = url.path
         let fd = path.withCString { open($0, O_RDONLY | O_NOFOLLOW | O_CLOEXEC) }

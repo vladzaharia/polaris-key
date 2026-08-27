@@ -1,16 +1,28 @@
-# PolarisKey — Swift SDK
+# Polaris — Swift SDK
 
-A product-agnostic native Swift client for **Polaris Key** (licensing + remotely-managed
-config). It implements the frozen Polaris wire crypto natively on **CryptoKit** (Ed25519
-compact JWS) and stores the per-device token in the **Keychain** — no Node engine, no
-network dependency for verification. The same cross-language conformance corpus that pins
-the Node/Python/React SDKs is verified here byte-for-byte (`Tests/.../cases.json`).
+A product-agnostic native Swift client for the **Polaris suite** (licensing, remotely-managed
+config, updates). It implements the frozen Polaris wire crypto natively on **CryptoKit**
+(Ed25519 compact JWS) and stores the per-device token in the **Keychain** — no Node engine, no
+network dependency for verification. The same cross-language conformance corpus that pins the
+Node/Python/React SDKs is verified here byte-for-byte (`conformance/corpus/v2`, mirrored into
+`Tests/PolarisTests/Resources/v2/`).
 
-Two products:
+Wire contract: [`docs/security/WIRE-CONTRACT-V3.md`](../../docs/security/WIRE-CONTRACT-V3.md).
 
-- **`PolarisKey`** — the headless core: JWS verifier, license gate, HTTP endpoints, device
-  id, stores, and the `PolarisKeyClient` actor.
-- **`PolarisKeyUI`** — a brandable SwiftUI drop-in gate layered over the core.
+## Targets
+
+Polaris is a suite of opt-in services over an always-on Core, and on Apple platforms that
+division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
+a product with no license service does not carry the gate.
+
+| Product          | Contents                                                                          | Depends on               |
+| ---------------- | --------------------------------------------------------------------------------- | ------------------------ |
+| `Polaris`        | `PolarisClient` + `@_exported import` of Core/License/Config — the one-import path | Core, License, Config    |
+| `PolarisCore`    | device principal, trust set, verified cache, clock floor, transport, discovery, bundles | —                   |
+| `PolarisLicense` | the gate, activation, entitlements                                                 | Core                     |
+| `PolarisConfig`  | the config document, layered resolution, device facts                              | Core                     |
+| `PolarisUpdate`  | Sparkle wiring. **macOS only**                                                     | Core, Sparkle ≥ 2.6.4    |
+| `PolarisUI`      | the brandable SwiftUI drop-in gate                                                 | Core, License, Config    |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -23,8 +35,11 @@ dependencies: [
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
-        .product(name: "PolarisKey", package: "PolarisKey"),
-        .product(name: "PolarisKeyUI", package: "PolarisKey"),
+        .product(name: "Polaris", package: "Polaris"),
+        .product(name: "PolarisUI", package: "Polaris"),
+        // macOS only — see "Updates" below.
+        .product(name: "PolarisUpdate", package: "Polaris",
+                 condition: .when(platforms: [.macOS])),
     ])
 ]
 ```
@@ -32,54 +47,71 @@ targets: [
 ## Headless usage
 
 ```swift
-import PolarisKey
+import Polaris
 
-// `create` throws when the credential store itself is unavailable (locked keychain,
-// unwritable config dir) — that used to be swallowed, silently re-activating every launch.
-let client = try await PolarisKeyClient.create(options: .init(
+// `create` throws on a non-https base URL and when the credential store itself is unavailable
+// (locked keychain, unwritable config dir) — the latter used to be swallowed, silently
+// re-activating every launch and burning a seat each time.
+let client = try await PolarisClient.create(options: .init(
     productSlug: "djdl",
     version: "1.4.2",
-    // kid -> raw Ed25519 public key (base64url). PLACEHOLDERS — substitute YOUR product's
-    // real values; see "Where the trust set comes from" below.
-    trust: PolarisTrust(pinnedKeys: [
-        "<your-signing-key-id>": "<your-product-signing-key-b64url>"
-    ])
+    // kid -> raw Ed25519 public key (base64url). PLACEHOLDERS — substitute YOUR product's real
+    // values; see "Where the trust set comes from" below.
+    pinnedKeys: ["<your-signing-key-id>": "<your-product-signing-key-b64url>"],
+    // What this build expects the product to run, for the offline capability fallback (D-21).
+    expectedServices: [.license, .config]
 ))
 
-// Offline-first: status comes from the cached signed doc with no network.
-if client.isLicensed() {
-    let concurrency = client.config("run.concurrency", default: .int(4)).intValue ?? 4
-    let vpnUrl = client.secret("proxy.subscriptionUrl")
-    let hasVpn = client.isEntitled("polarisVpn")
+// Offline-first: status comes from the cached signed documents with no network.
+if await client.isLicensed() {
+    let concurrency = await client.config.config("run.concurrency", default: .int(4))
+    let vpnUrl = await client.config.secret("proxy.subscriptionUrl")
+    let hasVpn = await client.license.isEntitled("polarisVpn")
 }
 
-// Activate with a license key (exchanges key → token, persists, refreshes).
+// Activate with a license key (key → token, persisted, then a forced sync).
 let result = await client.activate(key: userEnteredKey)
 
-// Re-pull managed config online (single /token re-acquire on 401), then re-apply.
-// `force: true` drops the conditional request, so the server must return a fresh document.
-await client.refresh()
+// Or, for a config-only product, mint a credential with no key at all (§6).
+let registered = await client.register()
 
-// Wipe local state + best-effort server deauthorize. Throws if the local wipe failed —
-// the caller needs to know the credential is still on the machine.
+// One Core pass: trust refresh → enabled documents in parallel → verify → cache → floor →
+// telemetry. `force: true` drops the conditional requests.
+await client.sync()
+
+// Wipe local state + best-effort server deauthorize. Throws if the LOCAL wipe failed — the
+// caller needs to know the credential is still on the machine.
 try await client.deactivate()
 ```
 
-The client mirrors the Node SDK's surface: `start()`/`activate(key:)`/`deactivate()`/
-`refresh(force:)`/`status()`/`isLicensed()`/`config(_:default:)`/`secret(_:)`/
-`isEntitled(_:)`/`entitlements()`/`profile()`.
+The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
+isEntitled,entitlements,profile,deactivate}` and `client.config.{config,configSource,secret,
+listUserConfig,schemaVersion}`. `client.{status,isLicensed,config,activate,enroll,register,
+sync,deactivate,importBundle,syncState}` are convenience passthroughs for the calls a host
+makes before it knows which service it is talking to.
+
+### Capabilities
+
+`client.capabilities()` reports which services the product runs. Resolution is: a discovery
+document loaded this session (`await client.discover()`) > `expectedServices` > the suite
+default (license + config; release/update/identity off). It is **fail-closed** (D-21): a
+service the discovery document omits reads as disabled, never as "unknown, assume on".
+
+A product with the license service disabled gates `not-applicable` — `isLicensed()` is `true`
+and the gate renders your UI. That is the point of D-08: a config-only product boots usable
+rather than sitting on `needs-activation` forever.
 
 ### Where the trust set comes from
 
 > [!WARNING]
-> Every `kid`/public key shown in this repository's docs, tests and
-> `conformance/corpus/v1/cases.json` is a **placeholder or a test fixture whose private
-> half is committed**. Pinning one means anyone can forge a document your client accepts:
-> the verifying key is selected by the header `kid` from whatever map you supply.
+> Every `kid`/public key shown in this repository's docs, tests and `conformance/corpus/**` is
+> a **placeholder or a test fixture whose private half is committed**. Pinning one means anyone
+> can forge a document your client accepts: the verifying key is selected by the header `kid`
+> from whatever map you supply.
 
 Your product's real trust set is minted server-side when the product is registered, and is
-never checked into a client repo. Get it from either the **onboarding bundle** the admin
-portal returns when it mints the product's signing key (`kid -> publicKey`), or
+never checked into a client repo. Get it from either the **onboarding bundle** the admin portal
+returns when it mints the product's signing key (`kid -> publicKey`), or
 `GET https://key.plrs.im/<product>/.well-known/jwks.json` over TLS, once — then compile the
 values into your application. Pins are terminal, so treat updating them as a release, not a
 runtime fetch; routine key rotation is handled by the signed trust manifest at
@@ -87,102 +119,165 @@ runtime fetch; routine key rotation is handled by the signed trust manifest at
 
 ### Layered config
 
-`config(_:default:)` resolves a value through the **same precedence** as every Polaris Key
-SDK; `configSource(_:)` returns which layer won:
+`client.config.config(_:default:)` resolves a value through the **same precedence** as every
+Polaris SDK; `configSource(_:)` returns which layer won:
 
 ```
 enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default  >  fallback
 ```
 
-`enforced`/`hidden` remote values are **locked to the server** — `localOverrides` and env
-vars are ignored for those keys; `hidden` keys are additionally withheld from
-`listUserConfig()` (but still applied by `config(_:default:)`). Otherwise the order is
-`localOverrides[key]` → env → remote value → your `default`.
+`enforced`/`hidden` remote values are **locked to the server** — `localOverrides` and env vars
+are ignored for those keys; `hidden` keys are additionally withheld from `listUserConfig()` (but
+still applied by `config(_:default:)`).
 
 The env var for a key is `envPrefix + key` with dots replaced by `__` (default prefix
-`PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The raw string is
-JSON-decoded when it parses (`"4"` → int, `"true"` → bool, `"[1,2]"` → array); otherwise it
-is taken as a plain string. Supply `localOverrides` / `envPrefix` via the client options.
+`PLRS_CONFIG_`): `run.concurrency` → `PLRS_CONFIG_run__concurrency`. The raw string is
+JSON-decoded when it looks like JSON (`4` → int, `true` → bool, `[1,2]` → array); otherwise it
+is taken as a plain string. Supply `localOverrides` / `envPrefix` / an injected `environment`
+via `ConfigClientOptions`.
 
 ### Stores
 
-- `KeychainStore` (default) — token in the OS keychain (service `pkey:<product>`), device
-  id + offline cache as 0600 files under `~/.config/<product>/`. Files are created at 0600
-  by `open(2)` (never chmod'd afterwards) and both the read and write paths refuse to follow
-  a symlink.
+- `KeychainStore` (default) — token in the OS keychain (service **`plrs:<product>`**), device id
+  + offline cache as 0600 files under `~/.config/<product>/` (Application Support on iOS). Files
+  are created at 0600 by `open(2)` (never chmod'd afterwards) and both the read and write paths
+  refuse to follow a symlink.
 - `InMemoryStore` — for tests.
 - `Store` is a protocol; supply your own to back the token/cache differently. Its mutating
-  methods `throw`, so a failed keychain write or an unwritable config dir surfaces as a
-  typed `StoreError` instead of vanishing.
+  methods `throw`, so a failed keychain write or an unwritable config dir surfaces as a typed
+  `StoreError` instead of vanishing.
 
 ### What the cache holds
 
-Only **signed artifacts**: the compact JWS of the managed-config doc and of the trust
-manifest, plus two fail-closed hints (`blocked`, `lastSyncUnauthorized`). Both JWS are
-re-verified on load — the manifest against the **pinned** keys only — and every counter
-(`lastAcceptedIssuedAt`, the monotonic clock floor, `lastVerifiedAt`) is derived from that
-re-verified content. A `v1` cache record is discarded, not migrated. See
-`docs/security/WIRE-CONTRACT-V2.md` §4.
+Only **signed artifacts** (§4.1): the compact JWS of each per-service document and of the trust
+manifest, per-document ETags, an offline-bundle import marker, and two fail-closed hints
+(`blocked`, `lastSyncUnauthorized`). Every JWS is re-verified on load — the manifest against the
+**pinned** keys only — and every counter (the per-type anti-replay floors, the monotonic clock
+floor, `lastVerifiedAt`) is derived from that re-verified content. A record from any other cache
+version is **discarded, never migrated**.
+
+## Offline
+
+Three depths, all first-class:
+
+1. **Online with grace** (default) — post-activation zero-network operation to `graceUntil`.
+2. **Air-gapped activation** (§7) — an operator mints a `.plrsbundle` against this device's id;
+   `try await client.importBundle(jws)` verifies it against the **pins** all-or-nothing and
+   writes the cache atomically. No token is created; the gate reads `activation: .bundle`. A
+   refusal throws `PolarisError` carrying the §7 step that refused, because the step is the
+   operator's remedy.
+3. **Local-only** (§7.3) — `PolarisClient.createLocal(options:)` substitutes `NoNetworkTransport`,
+   which refuses at the DIAL, before a URL is built. Config resolution, the gate and bundle
+   import all still work; anything that would open a socket rejects with code `local-only`.
+   `PolarisClient.createFromBundle(options:bundle:)` does both in one step.
 
 ## SwiftUI gate
 
-`PolarisKeyLoginView` renders by status: an OIDC sign-in button + license-key entry card
-when activation is needed, an offline-grace banner over your content, version-block and
-expired/revoked screens, and your own UI once usable (ok/grace).
+`PolarisLoginView` renders by status: an OIDC sign-in button + license-key entry card when
+activation is needed, an offline-grace banner over your content, version-block and
+expired/revoked screens, and your own UI once usable (`ok` / `grace` / `not-applicable`).
 
 ```swift
-import PolarisKey
-import PolarisKeyUI
+import Polaris
+import PolarisUI
 
-@StateObject var gate = PolarisKeyGateModel(client: client)
+@StateObject var gate = PolarisGateModel(
+    license: client.license,
+    sync: { await client.sync() }   // the gate renders licence state; a sync is Core's
+)
 
 var body: some View {
-    PolarisKeyLoginView(
+    PolarisLoginView(
         model: gate,
-        theme: PolarisKeyTheme(
+        theme: PolarisTheme(
             accent: .indigo,
-            copy: PolarisKeyCopy(productName: "DJDL"),
+            copy: PolarisCopy(productName: "DJDL"),
             logo: { AnyView(Image("BrandLogo").resizable().scaledToFit().frame(width: 56)) }
         ),
         onSignIn: { startMyOIDCFlow() }   // the SDK is transport-agnostic about the browser dance
     ) {
-        MyAppRootView()   // shown when licensed
+        MyAppRootView()   // shown when usable
     }
 }
 ```
 
-Everything is brandable via `PolarisKeyTheme` (accent, logo, copy). The headless API stays
-on `PolarisKeyClient`; the view is a thin renderer over it.
+## Updates (macOS, D-24)
+
+`PolarisUpdate` wires **Sparkle ≥ 2.6.4** (the CVE-2025-0509 floor) to the product's own feed.
+It carries three facts from Polaris to Sparkle and refuses to do a fourth:
+
+```swift
+#if os(macOS)
+import PolarisUpdate
+
+await client.discover()                       // the feed URL comes from DISCOVERY, not a literal
+let update = UpdateClient(core: client.core)
+let feed = await update.feed(
+    channel: "stable",
+    entitlements: await client.license.entitlements())
+
+// Throws SparkleAnchorError when the host bundle carries no `SUPublicEDKey`.
+let delegate = try PolarisSparkleUpdater.configure(
+    updaterController.updater,
+    feed: feed,
+    headers: await update.feedHeaders())      // the bearer token, for `entitled` feeds
+updaterController.updater.delegate = delegate // RETAIN it: `delegate` is weak
+#endif
+```
+
+- **feed URL** from the discovery document (`?arch=` applied), never string-built — §R1 moved
+  these paths and left aliases behind.
+- **`httpHeaders`** so an `entitled` product's feed (D-13) is reachable at all; Sparkle makes its
+  own HTTP requests, and without this they are anonymous and answer 401.
+- **`allowedChannels`** from the licence's `channels` entitlement, so a stable-only customer is
+  not offered a beta the server will then refuse. A UX narrowing, not an enforcement point.
+
+It does **not** verify updates. `SUPublicEDKey` in the host app's code-signed `Info.plist` is the
+terminal anchor; `PolarisUpdate` asserts it is present and fails loudly if it is not, because an
+app that ships Sparkle without it does not fail to build, launch, or check for updates — it
+simply installs unsigned payloads. A Polaris-side signature check would be a second, weaker
+anchor beside the real one.
 
 ## The frozen wire contract
 
 Compact JWS, **EdDSA / Ed25519**:
 
 ```
-header       = {"alg":"EdDSA","typ":<typ>,"kid":<kid>}  (key order fixed; typ is v2+)
+header       = {"alg":"EdDSA","kid":<kid>,"typ":<typ>}   (key order fixed)
 signingInput = base64url(utf8(JSON(header))) "." base64url(utf8(JSON(payload)))
 signature    = Ed25519 over the ASCII bytes of signingInput
 compact JWS  = signingInput "." base64url(signature)
 ```
 
-The verifying key is selected by the header `kid` from a caller-supplied trust set (NEVER
-from the document); `alg == "EdDSA"` and a String `kid` are asserted _before_ any signature
-math (a `none`/HMAC downgrade is rejected). Public keys are RAW 32 bytes
-(`Curve25519.Signing.PublicKey(rawRepresentation:)`) — no SPKI prefix. The signature is
-checked over the ASCII bytes of the original `encHeader.encPayload` substrings; the payload
-is never re-serialised, so verification is byte-stable across Node, Python, React, and Swift.
+The verifying key is selected by the header `kid` from a caller-supplied trust set (NEVER from
+the document); `alg == "EdDSA"` and a String `kid` are asserted _before_ any signature math (a
+`none`/HMAC downgrade is rejected). Public keys are RAW 32 bytes
+(`Curve25519.Signing.PublicKey(rawRepresentation:)`) — no SPKI prefix. The signature is checked
+over the ASCII bytes of the original `encHeader.encPayload` substrings; the payload is never
+re-serialised, so verification is byte-stable across Node, Python, React and Swift.
 
-Wire contract v2 additionally requires, in this order: the **encoded** segments are bounded
-before any decode (1 KiB header, 64 KiB payload), base64url is **strict** (`-_` only — no
-`+/`, no `=`, no whitespace), **duplicate JSON keys are rejected** rather than resolved
-(`JSONSerialization` is no longer used anywhere in the verify path), `typ` is asserted
+Additionally, in this order: the **encoded** segments are bounded before any decode (1 KiB
+header, 64 KiB payload — 256 KiB for `plrs-bundle+jws` alone), base64url is **strict** (`-_`
+only — no `+/`, no `=`, no whitespace), **duplicate JSON keys are rejected** rather than resolved
+(`JSONSerialization` is used nowhere in the verify path), `typ` is **required** and asserted
 against the call site's expected document type, and the payload is parsed **only after** the
-signature verifies. `verifyDoc` then checks `schemaVersion`, `aud`, `iss`, `deviceId`,
-monotonic `issuedAt`, and the whole signed validity window with a 300s clock skew.
+signature verifies. `verifyLicenseDoc`/`verifyConfigDoc` then check `aud`, `iss` (`plrs.im` —
+host-neutral), `deviceId`, the per-type monotonic `issuedAt` floor, the 365-day grace ceiling,
+and the whole signed validity window with a 300 s clock skew.
+
+Four document types, domain-separated by `typ`: `plrs-license+jws`, `plrs-config+jws`,
+`plrs-trust+jws`, `plrs-bundle+jws`.
 
 ## Develop
 
 ```sh
 swift build
-swift test    # includes the cross-language conformance corpus
+swift test    # includes the cross-language conformance corpus (v2)
+
+# The Sparkle conditioning: PolarisUpdate must build for iOS without linking a macOS framework.
+xcodebuild -scheme PolarisUpdate -destination 'generic/platform=iOS' build
 ```
+
+The corpus fixtures under `Tests/PolarisTests/Resources/` are **generated**: run
+`pnpm gen:corpus` from the repo root after any wire change, and `pnpm gen:corpus -- --check` is
+the CI drift gate.

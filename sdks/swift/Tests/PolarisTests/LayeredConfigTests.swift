@@ -1,24 +1,29 @@
-// Wire-v2 layered config: management-state honoring + localOverrides/env precedence, plus
-// the listUserConfig()/configSource() surface. The client is seeded through an InMemoryStore
-// holding a hand-built doc so no network/signing is needed.
+// Layered config: management-state honoring + localOverrides/env precedence, plus the
+// `listUserConfig()`/`configSource()` surface.
 //
-// Note: awaited actor reads are hoisted into `let`s before asserting — `await` is not
-// permitted inside XCTAssert*'s non-async autoclosure arguments.
+//   enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
+//
+// The client is seeded through an `InMemoryStore` holding a SIGNED config document (§4.1 — the
+// cache persists nothing else), so no network is needed. The environment is INJECTED rather than
+// read from the process, which is the v3 change worth having: the precedence rules are now
+// testable without `setenv`, and two tests that disagreed about a variable can no longer race.
+//
+// Note: awaited actor reads are hoisted into `let`s before asserting — `await` is not permitted
+// inside XCTAssert*'s non-async autoclosure arguments.
 
 import Foundation
+import Polaris
+import PolarisConfig
+import PolarisCore
 import XCTest
 
-@testable import PolarisKey
-
 final class LayeredConfigTests: XCTestCase {
-    /// The cache holds only SIGNED artifacts now (wire contract v2 §4), so the fixture doc is
-    /// signed in-test and the pinned key is the one that signed it.
     private let signer = TestSigner(kid: "layered-config-key")
     private lazy var issuedAt = Int(Date().timeIntervalSince1970)
 
-    /// Build a doc whose config carries one entry per relevant state.
-    private func makeDoc() -> ManagedConfigDoc {
-        Fixtures.doc(
+    /// A document whose config carries one entry per relevant state.
+    private func makeDoc() -> ConfigDoc {
+        Fixtures.config(
             deviceId: "dev", issuedAt: issuedAt,
             config: [
                 "run.concurrency": ManagedEntry(
@@ -27,32 +32,39 @@ final class LayeredConfigTests: XCTestCase {
                     state: .default, value: .string("dark"), updatedAt: 200),
                 "proxy.secret": ManagedEntry(
                     state: .hidden, value: .string("s"), updatedAt: 300),
+            ],
+            secrets: [
+                "api.key": ManagedEntry(
+                    state: .enforced, value: .string("sk-live"), updatedAt: 400)
             ])
     }
 
-    /// Seed an InMemoryStore with the signed doc, then create a client.
     private func client(
-        localOverrides: [String: JSONValue]? = nil
-    ) async throws -> PolarisKeyClient {
+        localOverrides: [String: JSONValue] = [:],
+        environment: [String: String] = [:],
+        services: [ServiceSlug] = [.license, .config]
+    ) async throws -> PolarisClient {
         let store = InMemoryStore(deviceId: "dev")
-        await store.setToken("tok")
-        await store.writeCache(CacheRecord(configJws: signer.sign(makeDoc())))
-        return try await PolarisKeyClient.create(
-            options: PolarisKeyOptions(
-                productSlug: "djdl", version: "1.0.0",
-                trust: PolarisTrust(pinnedKeys: signer.trust), store: store,
-                localOverrides: localOverrides, trustRefresh: false))
+        await store.setToken("plrst_test")
+        await store.writeCache(CacheRecord(docs: [.config: signer.sign(makeDoc())]))
+        return try await PolarisClient.create(
+            options: PolarisClientOptions(
+                core: CoreOptions(
+                    productSlug: "djdl", version: "1.0.0", pinnedKeys: signer.trust,
+                    trustRefresh: false, store: store, transport: ExplodingTransport(),
+                    expectedServices: services),
+                config: ConfigClientOptions(
+                    localOverrides: localOverrides, environment: environment)))
     }
 
     func testEnforcedAndHiddenAlwaysWinOverOverrides() async throws {
-        let c = try await client(localOverrides: [
-            "run.concurrency": .int(99), "proxy.secret": .string("nope"),
-        ])
-        // Remote enforced/hidden values win even with a local override present.
-        let conc = await c.config("run.concurrency", default: .int(0))
-        let secret = await c.config("proxy.secret", default: .string("d"))
-        let concSrc = await c.configSource("run.concurrency")
-        let secretSrc = await c.configSource("proxy.secret")
+        let c = try await client(
+            localOverrides: ["run.concurrency": .int(99), "proxy.secret": .string("nope")],
+            environment: ["PLRS_CONFIG_run__concurrency": "1234"])
+        let conc = await c.config.config("run.concurrency", default: .int(0))
+        let secret = await c.config.config("proxy.secret", default: .string("d"))
+        let concSrc = await c.config.configSource("run.concurrency")
+        let secretSrc = await c.config.configSource("proxy.secret")
         XCTAssertEqual(conc, .int(4))
         XCTAssertEqual(secret, .string("s"))
         XCTAssertEqual(concSrc, .enforced)
@@ -61,67 +73,71 @@ final class LayeredConfigTests: XCTestCase {
 
     func testDefaultStateLocalOverrideBeatsRemote() async throws {
         let c = try await client(localOverrides: ["ui.theme": .string("light")])
-        let theme = await c.config("ui.theme", default: .string("d"))
-        let src = await c.configSource("ui.theme")
+        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let src = await c.config.configSource("ui.theme")
         XCTAssertEqual(theme, .string("light"))
         XCTAssertEqual(src, .local)
     }
 
     func testDefaultStateFallsBackToRemoteThenFallback() async throws {
         let c = try await client()
-        // No override → remote default value.
-        let theme = await c.config("ui.theme", default: .string("d"))
-        let themeSrc = await c.configSource("ui.theme")
+        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let themeSrc = await c.config.configSource("ui.theme")
         XCTAssertEqual(theme, .string("dark"))
         XCTAssertEqual(themeSrc, .remoteDefault)
-        // Unknown key → caller fallback.
-        let missing = await c.config("missing.key", default: .int(7))
-        let missingSrc = await c.configSource("missing.key")
+        let missing = await c.config.config("missing.key", default: .int(7))
+        let missingSrc = await c.config.configSource("missing.key")
         XCTAssertEqual(missing, .int(7))
         XCTAssertEqual(missingSrc, .fallback)
     }
 
+    /// The v3 env prefix is `PLRS_CONFIG_`, and the dot→`__` mapping is the part every SDK must
+    /// agree on.
     func testEnvOverrideBeatsRemoteDefaultAndParsesJson() async throws {
-        setenv("PKEY_CONFIG_ui__theme", "\"midnight\"", 1)
-        setenv("PKEY_CONFIG_feature__count", "42", 1)
-        defer {
-            unsetenv("PKEY_CONFIG_ui__theme")
-            unsetenv("PKEY_CONFIG_feature__count")
-        }
-        let c = try await client()
-        // Env (dots→"__") replaces a default-state remote value, parsed as JSON.
-        let theme = await c.config("ui.theme", default: .string("d"))
-        let themeSrc = await c.configSource("ui.theme")
+        let c = try await client(environment: [
+            "PLRS_CONFIG_ui__theme": "\"midnight\"",
+            "PLRS_CONFIG_feature__count": "42",
+            "PLRS_CONFIG_feature__on": "true",
+            "PLRS_CONFIG_feature__list": "[1,2]",
+        ])
+        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let themeSrc = await c.config.configSource("ui.theme")
         XCTAssertEqual(theme, .string("midnight"))
         XCTAssertEqual(themeSrc, .env)
-        // Numeric env parses to int; with no remote entry it still applies.
-        let count = await c.config("feature.count", default: .int(0))
-        let countSrc = await c.configSource("feature.count")
+        let count = await c.config.config("feature.count", default: .int(0))
         XCTAssertEqual(count, .int(42))
-        XCTAssertEqual(countSrc, .env)
+        let on = await c.config.config("feature.on", default: .bool(false))
+        XCTAssertEqual(on, .bool(true))
+        let list = await c.config.config("feature.list", default: .null)
+        XCTAssertEqual(list, .array([.int(1), .int(2)]))
+    }
+
+    /// The v2 prefix is NOT read — pre-launch, no dual-read (§8).
+    func testLegacyEnvPrefixIsIgnored() async throws {
+        let c = try await client(environment: ["PKEY_CONFIG_ui__theme": "\"legacy\""])
+        let theme = await c.config.config("ui.theme", default: .string("d"))
+        XCTAssertEqual(theme, .string("dark"), "PKEY_CONFIG_ is a v2 identifier")
     }
 
     func testLocalOverrideBeatsEnvForDefaultState() async throws {
-        setenv("PKEY_CONFIG_ui__theme", "\"midnight\"", 1)
-        defer { unsetenv("PKEY_CONFIG_ui__theme") }
-        let c = try await client(localOverrides: ["ui.theme": .string("local-wins")])
-        let theme = await c.config("ui.theme", default: .string("d"))
-        let src = await c.configSource("ui.theme")
+        let c = try await client(
+            localOverrides: ["ui.theme": .string("local-wins")],
+            environment: ["PLRS_CONFIG_ui__theme": "\"midnight\""])
+        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let src = await c.config.configSource("ui.theme")
         XCTAssertEqual(theme, .string("local-wins"))
         XCTAssertEqual(src, .local)
     }
 
     func testEnvNonJsonFallsBackToRawString() async throws {
-        setenv("PKEY_CONFIG_ui__theme", "not json: bare", 1)
-        defer { unsetenv("PKEY_CONFIG_ui__theme") }
-        let c = try await client()
-        let v = await c.config("ui.theme", default: .string("d"))
+        let c = try await client(environment: ["PLRS_CONFIG_ui__theme": "not json: bare"])
+        let v = await c.config.config("ui.theme", default: .string("d"))
         XCTAssertEqual(v, .string("not json: bare"))
     }
 
     func testListUserConfigExcludesHiddenAndFlagsEnforced() async throws {
         let c = try await client(localOverrides: ["ui.theme": .string("light")])
-        let rows = await c.listUserConfig()
+        let rows = await c.config.listUserConfig()
         let byKey = Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
         XCTAssertNil(byKey["proxy.secret"], "hidden entries must be excluded")
         XCTAssertEqual(byKey.count, 2)
@@ -131,27 +147,42 @@ final class LayeredConfigTests: XCTestCase {
         XCTAssertEqual(byKey["ui.theme"]?.value, .string("light"))
     }
 
-    func testDeviceManagementSurfaceCurrentOnly() async throws {
+    /// Secrets are readable but never ENUMERATED — `listUserConfig` is a settings-UI surface and
+    /// a secret has no business on one.
+    func testSecretsAreReadableButNotEnumerated() async throws {
+        let c = try await client()
+        let secret = await c.config.secret("api.key")
+        let missing = await c.config.secret("nope")
+        let rows = await c.config.listUserConfig()
+        XCTAssertEqual(secret, "sk-live")
+        XCTAssertNil(missing)
+        XCTAssertFalse(rows.contains { $0.key == "api.key" })
+    }
+
+    /// D-08's client-side consequence: a product that runs Config and NOT License boots usable,
+    /// resolves its settings, and reports `not-applicable` rather than `needs-activation`.
+    func testConfigOnlyProductIsUsableWithNoLicence() async throws {
+        let c = try await client(services: [.config])
+        let status = await c.status()
+        let usable = await c.isLicensed()
+        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let configEnabled = await c.config.isEnabled()
+        let schemaVersion = await c.config.schemaVersion()
+        XCTAssertEqual(status.status, .notApplicable)
+        XCTAssertTrue(usable)
+        XCTAssertEqual(theme, .string("dark"))
+        XCTAssertTrue(configEnabled)
+        XCTAssertEqual(schemaVersion, 1)
+    }
+
+    /// The current-device view is assembled from the re-verified documents, and works offline.
+    func testCurrentDeviceSurface() async throws {
         let c = try await client()
         let current = await c.currentDevice()
         XCTAssertEqual(current.id, "dev")
-        XCTAssertEqual(current.current, true)
-        XCTAssertEqual(current.status, .ok)
-
-        do {
-            _ = try await c.listDevices()
-            XCTFail("expected unsupported device listing")
-        } catch DeviceManagementError.unsupported {
-        } catch {
-            XCTFail("unexpected error: \(error)")
-        }
-
-        do {
-            try await c.deauthorizeDevice("other")
-            XCTFail("expected unsupported remote deauthorization")
-        } catch DeviceManagementError.unsupported {
-        } catch {
-            XCTFail("unexpected error: \(error)")
-        }
+        XCTAssertTrue(current.current)
+        // Config-only cache: there is no licence document, so the gate says so honestly.
+        XCTAssertEqual(current.status, .needsActivation)
+        XCTAssertNil(current.licenseId)
     }
 }

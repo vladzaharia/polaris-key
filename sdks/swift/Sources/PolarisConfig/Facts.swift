@@ -1,34 +1,15 @@
-// Software facts: the OS/runtime/hardware summary and product-declared probe results the
-// client reports through POST /<product>/config/report. Mirrors packages/sdk-node/src/facts.ts
-// and sdks/python/src/polaris_key/facts.py.
+// Software facts: the OS/runtime/hardware summary and product-declared probe results the client
+// reports through `POST /<product>/devices/report` (wire contract v3 §6 — the route moved out of
+// the config service, but the COLLECTOR stays here alongside the catalog it reports against).
+// Mirrors packages/sdk-node/src/devices/facts.ts and the Python SDK's facts module.
 //
 // Deliberately narrow — there is no installed-application enumeration. A product declares the
 // companion apps it cares about and the client answers only those, so the payload stays small
-// and the privacy story stays defensible (see docs/PRIVACY.md).
+// and the privacy story stays defensible (see docs/PRIVACY.md). The Worker's report allowlist
+// caps `probes` at 32 entries and truncates every string, so anything wider is dropped anyway.
 
 import Foundation
-
-/// The short OS family sent in `X-PKey-Platform`.
-///
-/// This exists because Swift previously sent `ProcessInfo.operatingSystemVersionString` — a
-/// full "Version 15.1 (Build 24B83)" string — into the same header where Node and Python send
-/// `darwin`/`linux`, which made any server-side branch on platform unreliable. The detailed
-/// version now lives in `DeviceFacts.os` where it belongs.
-public enum PlatformFamily {
-    public static var current: String {
-        #if os(macOS)
-        return "darwin"
-        #elseif os(iOS)
-        return "ios"
-        #elseif os(Linux)
-        return "linux"
-        #elseif os(Windows)
-        return "win32"
-        #else
-        return "unknown"
-        #endif
-    }
-}
+import PolarisCore
 
 /// A product-declared companion-application check.
 public struct ProbeDeclaration: Sendable, Equatable {

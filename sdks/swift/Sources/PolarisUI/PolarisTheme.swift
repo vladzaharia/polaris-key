@@ -1,16 +1,17 @@
-// Brandable theming for the drop-in login/gate. A product passes its logo, accent color,
-// and copy; everything else (layout, status routing) is provided by `PolarisKeyLoginView`.
-// Headless API stays on `PolarisKeyClient` — this is purely presentation.
+// Brandable theming for the drop-in login/gate. A product passes its logo, accent color, and
+// copy; everything else (layout, status routing) is provided by `PolarisLoginView`. The headless
+// API stays on `LicenseClient` — this is purely presentation.
 
-import PolarisKey
+import PolarisCore
+import PolarisLicense
 import SwiftUI
 
 /// User-facing copy for the gate. Defaults read for the generic "this app" case; a product
 /// overrides `productName` (and any string it wants to brand) at construction.
 ///
-/// Every string the gate renders lives here (including the divider/retry/reconnect chrome),
-/// so a product can fully localize/brand the surface and so VoiceOver reads product copy.
-public struct PolarisKeyCopy: Sendable {
+/// Every string the gate renders lives here (including the divider/retry/reconnect chrome), so a
+/// product can fully localize/brand the surface and so VoiceOver reads product copy.
+public struct PolarisCopy: Sendable {
     public var productName: String
     public var welcomeTitle: String
     public var welcomeSubtitle: String
@@ -42,7 +43,8 @@ public struct PolarisKeyCopy: Sendable {
         retryButton: String = "Retry",
         reconnectButton: String = "Reconnect",
         graceTitle: String = "Offline grace period",
-        graceSubtitle: String = "We couldn't reach the license server. You can keep working for now.",
+        graceSubtitle: String =
+            "We couldn't reach the license server. You can keep working for now.",
         expiredTitle: String = "License expired",
         expiredSubtitle: String = "Reconnect to renew your license.",
         revokedTitle: String = "License revoked",
@@ -75,17 +77,16 @@ public struct PolarisKeyCopy: Sendable {
 }
 
 /// The brandable theme: an accent color, an optional logo view, and the copy block.
-public struct PolarisKeyTheme: Sendable {
+public struct PolarisTheme: Sendable {
     public var accent: Color
-    public var copy: PolarisKeyCopy
-    /// A product-supplied logo view builder (image, SF Symbol, anything). Defaults to the
-    /// Polaris north-star glyph in the brand accent so the component renders standalone and
-    /// on-brand.
+    public var copy: PolarisCopy
+    /// A product-supplied logo view builder (image, SF Symbol, anything). Defaults to the Polaris
+    /// north-star glyph in the brand accent so the component renders standalone and on-brand.
     public var logo: @Sendable () -> AnyView
 
     public init(
-        accent: Color = PolarisKeyTheme.brandAccent,
-        copy: PolarisKeyCopy = PolarisKeyCopy(),
+        accent: Color = PolarisTheme.brandAccent,
+        copy: PolarisCopy = PolarisCopy(),
         logo: (@Sendable () -> AnyView)? = nil
     ) {
         self.accent = accent
@@ -101,10 +102,10 @@ public struct PolarisKeyTheme: Sendable {
             }
     }
 
-    /// The Polaris Key brand indigo (`#5B7CFA`, HSL 232°/92%/68%) — the same accent the
-    /// admin/React surface uses. Tuned to read on a deep-slate dark background while clearing
-    /// WCAG AA for large text / UI chrome. Exposed so consumers can reference the canonical
-    /// hue without re-deriving it.
+    /// The Polaris brand indigo (`#5B7CFA`, HSL 232°/92%/68%) — the same accent the admin/React
+    /// surface uses. Tuned to read on a deep-slate dark background while clearing WCAG AA for
+    /// large text / UI chrome. Exposed so consumers can reference the canonical hue without
+    /// re-deriving it.
     public static let brandAccent = Color(
         red: 0x5B / 255.0, green: 0x7C / 255.0, blue: 0xFA / 255.0)
 }
@@ -115,7 +116,7 @@ public struct PolarisKeyTheme: Sendable {
 ///
 /// Pulled out as a pure value so the gate-state → copy mapping is unit-testable without
 /// rendering SwiftUI, and so the view and tests share one source of truth.
-public struct PolarisKeyMessageCopy: Sendable, Equatable {
+public struct PolarisMessageCopy: Sendable, Equatable {
     public let title: String
     public let subtitle: String
     public let symbol: String
@@ -127,21 +128,26 @@ public struct PolarisKeyMessageCopy: Sendable, Equatable {
     }
 }
 
-extension PolarisKeyCopy {
-    /// Map a terminal gate status (plus any server-supplied allowed range, for version blocks)
-    /// to its rendered title/subtitle/symbol. Returns `nil` for statuses that don't render a
-    /// message card (`.ok`, `.grace`, `.needsActivation`), which the view routes elsewhere.
+extension PolarisCopy {
+    /// Map a terminal gate status (plus any server-supplied allowed range, for version blocks) to
+    /// its rendered title/subtitle/symbol.
+    ///
+    /// Returns `nil` for statuses that render no message card: `.ok` and `.notApplicable` route
+    /// straight to the product's own UI, `.grace` gets a banner over it, and `.needsActivation`
+    /// gets the activation form. `.notApplicable` is the v3 addition (D-08) — a product with the
+    /// license service disabled has nothing to say about a licence, and saying nothing is the
+    /// correct rendering.
     public func message(for status: LicenseStatus, allowedRange: AllowedRange? = nil)
-        -> PolarisKeyMessageCopy?
+        -> PolarisMessageCopy?
     {
         switch status {
-        case .ok, .grace, .needsActivation:
+        case .ok, .grace, .needsActivation, .notApplicable:
             return nil
         case .revoked:
-            return PolarisKeyMessageCopy(
+            return PolarisMessageCopy(
                 title: revokedTitle, subtitle: revokedSubtitle, symbol: "xmark.seal.fill")
         case .expired:
-            return PolarisKeyMessageCopy(
+            return PolarisMessageCopy(
                 title: expiredTitle, subtitle: expiredSubtitle,
                 symbol: "clock.badge.exclamationmark")
         case .versionTooOld, .versionTooNew, .channelNotEntitled:
@@ -151,16 +157,16 @@ extension PolarisKeyCopy {
             case .channelNotEntitled: title = channelNotEntitledTitle
             default: title = versionTooOldTitle
             }
-            return PolarisKeyMessageCopy(
+            return PolarisMessageCopy(
                 title: title,
-                subtitle: PolarisKeyCopy.versionBlockSubtitle(
+                subtitle: PolarisCopy.versionBlockSubtitle(
                     base: versionBlockSubtitle, allowedRange: allowedRange),
                 symbol: "exclamationmark.triangle.fill")
         }
     }
 
-    /// Append a human "(allowed: min …, max …)" suffix to the version-block body when the
-    /// server told us the permitted window. Shared by the view and tests.
+    /// Append a human "(allowed: min …, max …)" suffix to the version-block body when the server
+    /// told us the permitted window. Shared by the view and tests.
     public static func versionBlockSubtitle(base: String, allowedRange: AllowedRange?) -> String {
         guard let range = allowedRange else { return base }
         let parts = [range.min.map { "min \($0)" }, range.max.map { "max \($0)" }]

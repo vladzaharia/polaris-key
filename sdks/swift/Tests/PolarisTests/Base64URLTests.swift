@@ -5,7 +5,7 @@
 import Foundation
 import XCTest
 
-@testable import PolarisKey
+import PolarisCore
 
 final class Base64URLTests: XCTestCase {
     func testEncodeIsUnpaddedURLSafe() {

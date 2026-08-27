@@ -1,161 +1,24 @@
-// Exhaustive gate matrix + verifyDoc anti-replay (driven off the shared corpus's signed
-// vectors so no in-test signer is needed). The gate precedence is load-bearing, so this
-// enumerates every status and every block-reason mapping, plus isUsable across the whole
-// LicenseStatus space.
+// Cross-SDK gate parity — wire contract v3 §5, driven off `conformance/corpus/v2`'s
+// `gate-matrix.json` (version 2, 21 rows).
+//
+// Each row carries the BUILD-gate inputs (version/channel/compat window/entitlements) and the
+// LICENSE-state inputs, paired with one expected decision. Rows 1–15 are corpus v1's matrix
+// carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` and
+// `hasToken → activation` — so a v3 gate that changes any v2 decision goes red here. Rows 16–21
+// pin what v1 could not express: `not-applicable` (D-08), `activation: "bundle"` (§7), and the
+// one ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint.
+//
+// The build-gate half is a PORT: `checkBuildGate` mirrors the Worker's, rebuilt from `Semver.*`,
+// with the fixture as the oracle. The Node runner ports the same forty lines. That duplication
+// is deliberate — the point of the matrix is that four independent implementations agree, and a
+// shared helper would prove only that they share a helper.
 
 import Foundation
+import PolarisCore
+import PolarisLicense
 import XCTest
 
-@testable import PolarisKey
-
-private struct Corpus: Decodable {
-    let cases: [CorpusCase]
-}
-private struct CorpusCase: Decodable {
-    let id: String
-    let jws: String
-    let trust: [String: String]
-    let expect: Expect
-}
-private struct Expect: Decodable {
-    let verify: String
-    let doc: ManagedConfigDoc?
-}
-
 final class GateMatrixTests: XCTestCase {
-    private func makeDoc(issuedAt: Int, expiresAt: Int, graceUntil: Int) -> ManagedConfigDoc {
-        ManagedConfigDoc(
-            schemaVersion: 1, aud: "djdl", iss: POLARIS_ISSUER,
-            licenseId: "lic_m", deviceId: "dev_m",
-            issuedAt: issuedAt, expiresAt: expiresAt, graceUntil: graceUntil,
-            profile: DocProfile(name: "M", firstName: "M", email: "m@x.y", activatedAt: 0),
-            payload: ManagedPayload())
-    }
-
-    // ── Precedence: blocked beats token/doc/expiry entirely ──────────────────────
-    func testBlockedBeatsEverythingEvenWithValidDoc() {
-        let doc = makeDoc(issuedAt: 0, expiresAt: 1000, graceUntil: 2000)
-        let s = licenseState(
-            GateInput(
-                hasToken: true, doc: doc, now: 500,
-                blocked: BlockInfo(reason: .versionTooNew, allowedRange: AllowedRange(max: "9.9.9"))))
-        XCTAssertEqual(s.status, .versionTooNew)
-        XCTAssertEqual(s.allowedRange?.max, "9.9.9")
-    }
-
-    func testAllThreeBlockReasonsMapToTheirStatus() {
-        let cases: [(BlockReason, LicenseStatus)] = [
-            (.versionTooOld, .versionTooOld),
-            (.versionTooNew, .versionTooNew),
-            (.channelNotEntitled, .channelNotEntitled),
-        ]
-        for (reason, expected) in cases {
-            let s = licenseState(
-                GateInput(hasToken: true, doc: nil, now: 1, blocked: BlockInfo(reason: reason)))
-            XCTAssertEqual(s.status, expected, "reason \(reason) → \(expected)")
-        }
-    }
-
-    // ── The non-blocked ladder ───────────────────────────────────────────────────
-    func testNoTokenBeforeRevokedBeforeNoDoc() {
-        // No token wins over a lingering unauthorized flag.
-        XCTAssertEqual(
-            licenseState(GateInput(hasToken: false, doc: nil, now: 1, lastSyncUnauthorized: true)).status,
-            .needsActivation)
-        // With a token, the unauthorized flag → revoked.
-        XCTAssertEqual(
-            licenseState(GateInput(hasToken: true, doc: nil, now: 1, lastSyncUnauthorized: true)).status,
-            .revoked)
-        // Token, no flag, no doc → needs-activation.
-        XCTAssertEqual(
-            licenseState(GateInput(hasToken: true, doc: nil, now: 1)).status, .needsActivation)
-    }
-
-    func testExpiryLadderWithExactBoundaries() {
-        let doc = makeDoc(issuedAt: 100, expiresAt: 200, graceUntil: 300)
-        let now = { (n: Int) in licenseState(GateInput(hasToken: true, doc: doc, now: n)).status }
-        XCTAssertEqual(now(199), .ok)
-        XCTAssertEqual(now(200), .ok)        // now == expiresAt is still ok
-        XCTAssertEqual(now(201), .grace)     // first second past expiry
-        XCTAssertEqual(now(300), .grace)     // now == graceUntil is still grace
-        XCTAssertEqual(now(301), .expired)   // first second past grace
-    }
-
-    func testLastVerifiedAtPropagatesInOkAndGraceOnly() {
-        let doc = makeDoc(issuedAt: 0, expiresAt: 1000, graceUntil: 2000)
-        XCTAssertEqual(
-            licenseState(GateInput(hasToken: true, doc: doc, now: 500, lastVerifiedAt: 480)).lastVerifiedAt,
-            480)
-        XCTAssertEqual(
-            licenseState(GateInput(hasToken: true, doc: doc, now: 1500, lastVerifiedAt: 480)).lastVerifiedAt,
-            480)
-        // Expired carries graceUntil but not lastVerifiedAt.
-        let expired = licenseState(GateInput(hasToken: true, doc: doc, now: 2500, lastVerifiedAt: 480))
-        XCTAssertEqual(expired.graceUntil, 2000)
-        XCTAssertNil(expired.lastVerifiedAt)
-    }
-
-    func testIsUsableAcrossEveryStatus() {
-        let usable: [LicenseStatus] = [.ok, .grace]
-        let notUsable: [LicenseStatus] = [
-            .expired, .revoked, .needsActivation, .versionTooOld, .versionTooNew, .channelNotEntitled,
-        ]
-        for s in usable { XCTAssertTrue(isUsable(s), "\(s) should be usable") }
-        for s in notUsable { XCTAssertFalse(isUsable(s), "\(s) should NOT be usable") }
-    }
-
-    // ── verifyDoc anti-replay on the multi-trust corpus vector ───────────────────
-    private func loadCase(_ id: String) throws -> CorpusCase {
-        guard let url = Bundle.module.url(forResource: "cases", withExtension: "json") else {
-            throw NSError(domain: "corpus", code: 1)
-        }
-        let corpus = try JSONDecoder().decode(Corpus.self, from: Data(contentsOf: url))
-        guard let c = corpus.cases.first(where: { $0.id == id }) else {
-            throw NSError(domain: "corpus", code: 2)
-        }
-        return c
-    }
-
-    func testVerifyDocAntiReplayOnSecondKeyVector() throws {
-        let c = try loadCase("valid-second-key-multi-trust")
-        guard let doc = c.expect.doc else { return XCTFail("missing doc") }
-
-        // Correct aud + device + a fresh issuedAt passes.
-        XCTAssertNotNil(
-            verifyDoc(
-                c.jws,
-                options: VerifyDocOptions(
-                    trust: c.trust, expectedAud: "djdl", deviceId: doc.deviceId,
-                    lastAcceptedIssuedAt: doc.issuedAt - 1, now: doc.issuedAt)))
-        // Replay (issuedAt == last accepted) is rejected.
-        XCTAssertNil(
-            verifyDoc(
-                c.jws,
-                options: VerifyDocOptions(
-                    trust: c.trust, expectedAud: "djdl", deviceId: doc.deviceId,
-                    lastAcceptedIssuedAt: doc.issuedAt, now: doc.issuedAt)))
-        // Wrong audience rejected.
-        XCTAssertNil(
-            verifyDoc(
-                c.jws,
-                options: VerifyDocOptions(
-                    trust: c.trust, expectedAud: "other", deviceId: doc.deviceId,
-                    now: doc.issuedAt)))
-        // Wrong device rejected.
-        XCTAssertNil(
-            verifyDoc(
-                c.jws,
-                options: VerifyDocOptions(
-                    trust: c.trust, expectedAud: "djdl", deviceId: "nope",
-                    now: doc.issuedAt)))
-    }
-
-    // ── Cross-SDK gate-matrix parity (shared conformance/corpus/v1/gate-matrix.json) ──
-    // Drives the SAME fixture the Node/React/Python suites run through the Swift gate, so
-    // the four matrices can't silently diverge. Each row's build-gate half is reduced to a
-    // `BlockInfo` via the port below (mirroring the Worker's `checkBuildGate`, rebuilt from
-    // `Semver.*`), then fed with the license half into `licenseState`; the resulting
-    // status / ok / reason / allowedRange must match the fixture exactly.
     private struct GateMatrix: Decodable {
         let gateMatrixVersion: Int
         let rows: [Row]
@@ -174,11 +37,12 @@ final class GateMatrixTests: XCTestCase {
         let entitlements: [String: ManagedEntry]
     }
     private struct LicenseInputs: Decodable {
-        let hasToken: Bool
-        let now: Int
+        let licenseServiceEnabled: Bool
+        let activation: ActivationSource?
         let issuedAt: Int?
         let expiresAt: Int?
         let graceUntil: Int?
+        let now: Int
         let lastSyncUnauthorized: Bool?
         let lastVerifiedAt: Int?
     }
@@ -190,15 +54,13 @@ final class GateMatrixTests: XCTestCase {
     }
 
     private func loadMatrix() throws -> GateMatrix {
-        guard let url = Bundle.module.url(forResource: "gate-matrix", withExtension: "json") else {
-            throw NSError(domain: "gate-matrix", code: 1)
-        }
-        return try JSONDecoder().decode(GateMatrix.self, from: Data(contentsOf: url))
+        try CorpusBundleLoader.load(GateMatrix.self, "gate-matrix")
     }
 
+    // ── The Worker's build gate, ported ──────────────────────────────────────────────
     private func strEnt(_ e: ManagedEntry?) -> String? { e?.value.stringValue }
     private func arrEnt(_ e: ManagedEntry?) -> [String]? {
-        e?.value.arrayValue?.compactMap { $0.stringValue }
+        e?.value.arrayValue?.compactMap(\.stringValue)
     }
     private func tighterMin(_ a: String?, _ b: String?) -> String? {
         guard let a else { return b }
@@ -217,8 +79,6 @@ final class GateMatrixTests: XCTestCase {
         return .stable
     }
 
-    /// Port of the Worker's `checkBuildGate` over `Semver.*` — the surface every SDK keeps
-    /// in lockstep, with the fixture as the oracle.
     private func checkBuildGate(_ g: GateInputs) -> BlockInfo? {
         if Semver.isDevBuild(g.version) { return nil }
         let minV = tighterMin(g.compatMin, strEnt(g.entitlements["app.minVersion"]))
@@ -240,19 +100,21 @@ final class GateMatrixTests: XCTestCase {
         return nil
     }
 
-    private func buildDoc(_ l: LicenseInputs) -> ManagedConfigDoc? {
-        guard let issuedAt = l.issuedAt, let expiresAt = l.expiresAt, let graceUntil = l.graceUntil
+    /// `nil` unless all three timestamps are present — the "token held, nothing cached yet" rows.
+    private func buildDoc(_ l: LicenseInputs) -> LicenseDoc? {
+        guard let issuedAt = l.issuedAt, let expiresAt = l.expiresAt,
+            let graceUntil = l.graceUntil
         else { return nil }
-        return ManagedConfigDoc(
-            schemaVersion: 1, aud: "djdl", iss: POLARIS_ISSUER,
-            licenseId: "lic_matrix", deviceId: "dev_matrix",
-            issuedAt: issuedAt, expiresAt: expiresAt, graceUntil: graceUntil,
-            profile: DocProfile(name: "M", firstName: "M", email: "m@x.y", activatedAt: 0),
-            payload: ManagedPayload())
+        return LicenseDoc(
+            aud: "djdl", deviceId: "dev_matrix", issuedAt: issuedAt, expiresAt: expiresAt,
+            graceUntil: graceUntil, licenseId: "lic_matrix")
     }
 
-    func testGateMatrixHasRows() throws {
-        XCTAssertGreaterThan(try loadMatrix().rows.count, 0)
+    // ── The parity assertions ────────────────────────────────────────────────────────
+    func testGateMatrixIsV2AndPopulated() throws {
+        let matrix = try loadMatrix()
+        XCTAssertEqual(matrix.gateMatrixVersion, 2)
+        XCTAssertFalse(matrix.rows.isEmpty)
     }
 
     func testGateMatrixParityAcrossEveryRow() throws {
@@ -260,7 +122,8 @@ final class GateMatrixTests: XCTestCase {
             let blocked = checkBuildGate(row.gate)
             let state = licenseState(
                 GateInput(
-                    hasToken: row.license.hasToken,
+                    licenseServiceEnabled: row.license.licenseServiceEnabled,
+                    activation: row.license.activation,
                     doc: buildDoc(row.license),
                     now: row.license.now,
                     lastSyncUnauthorized: row.license.lastSyncUnauthorized ?? false,
@@ -268,15 +131,30 @@ final class GateMatrixTests: XCTestCase {
                     lastVerifiedAt: row.license.lastVerifiedAt))
 
             XCTAssertEqual(state.status.rawValue, row.expect.status, row.name)
-            XCTAssertEqual(isUsable(state.status), row.expect.ok, "\(row.name) usable")
+            XCTAssertEqual(isUsable(state), row.expect.ok, "\(row.name) usable")
             if let reason = row.expect.reason {
+                // `expect.reason` names the build-gate hint that was DERIVED, which on the last
+                // row is deliberately NOT the status — that is the ordering v3 changed.
                 XCTAssertEqual(blocked?.reason, reason, "\(row.name) reason")
             }
-            if let range = row.expect.allowedRange {
-                XCTAssertEqual(state.allowedRange, range, "\(row.name) allowedRange")
-            } else {
-                XCTAssertNil(state.allowedRange, "\(row.name) no allowedRange")
-            }
+            XCTAssertEqual(
+                state.allowedRange, row.expect.allowedRange, "\(row.name) allowedRange")
+        }
+    }
+
+    /// The rows that only v2 could express, asserted by NAME so a corpus that quietly dropped
+    /// one is caught rather than silently passing a smaller matrix.
+    func testMatrixCoversTheV3Additions() throws {
+        let names = Set(try loadMatrix().rows.map(\.name))
+        for fragment in [
+            "not-applicable — license service disabled, nothing cached",
+            "not-applicable — license service disabled even with a valid document cached",
+            "ok — bundle activation inside the document window",
+            "grace — bundle activation past expiresAt, inside graceUntil",
+            "expired — bundle activation past graceUntil (the air-gapped install runs out)",
+            "needs-activation — unactivated device with a build block (activation precedes blocked)",
+        ] {
+            XCTAssertTrue(names.contains(fragment), "gate-matrix v2 must carry: \(fragment)")
         }
     }
 }

@@ -1,29 +1,46 @@
-// A drop-in SwiftUI gate that renders by license status. It observes a `PolarisKeyClient`
-// (the headless API stays there) and shows the right surface for each state: an OIDC sign-in
-// button + license-key entry card when activation is needed, an offline-grace banner, a
-// version-block screen, or — when usable — the product's own UI via a slot closure.
+// A drop-in SwiftUI gate that renders by license status. It observes a `LicenseClient` (the
+// headless API stays there) and shows the right surface for each state: an OIDC sign-in button +
+// license-key entry card when activation is needed, an offline-grace banner, a version-block
+// screen, or — when usable — the product's own UI via a slot closure.
 //
-// Brandable through `PolarisKeyTheme`; extensible through the `content` slot, so a product
-// drops this in at its root and supplies (a) what to render once licensed and (b) how to
-// start its OIDC flow.
+// ── WHY IT WRAPS `LicenseClient` AND NOT `PolarisClient` ────────────────────────────────────
+//
+// PolarisUI depends on Core + License + Config, not on the umbrella. A gate renders LICENSE
+// state, so the license sub-client is the honest dependency, and taking it directly keeps the UI
+// usable by a product that composed its own client rather than the facade. The one thing the
+// view needs that the license service does not own is a SYNC — a Core pass across every enabled
+// document — so that arrives as a closure the host wires to `client.sync()`. A config-only
+// product passes no gate at all; its status is `notApplicable` and `content()` renders straight
+// through.
+//
+// Brandable through `PolarisTheme`; extensible through the `content` slot.
 
-import PolarisKey
+import PolarisCore
+import PolarisLicense
 import SwiftUI
 
-/// An observable wrapper that bridges the `PolarisKeyClient` actor into SwiftUI. It snapshots
-/// the gate state on the main actor so views update; call `refresh()`/`activate(key:)` to
-/// drive the client and re-snapshot.
+/// An observable wrapper that bridges the `LicenseClient` actor into SwiftUI. It snapshots the
+/// gate state on the main actor so views update; call `refresh()`/`activate(key:)` to drive the
+/// client and re-snapshot.
 @MainActor
-public final class PolarisKeyGateModel: ObservableObject {
+public final class PolarisGateModel: ObservableObject {
     @Published public private(set) var state: LicenseState
     @Published public private(set) var profile: DocProfile?
     @Published public private(set) var isWorking = false
     @Published public var lastError: String?
 
-    private let client: PolarisKeyClient
+    private let client: LicenseClient
+    private let syncAction: @Sendable () async -> Void
 
-    public init(client: PolarisKeyClient, initialState: LicenseState = LicenseState(status: .needsActivation)) {
-        self.client = client
+    /// - Parameter sync: a Core sync pass. Defaults to a no-op, which is correct for a
+    ///   local-only build (§7.3) where "retry" cannot mean a network call.
+    public init(
+        license: LicenseClient,
+        initialState: LicenseState = LicenseState(status: .needsActivation),
+        sync: @escaping @Sendable () async -> Void = {}
+    ) {
+        self.client = license
+        self.syncAction = sync
         self.state = initialState
     }
 
@@ -33,11 +50,11 @@ public final class PolarisKeyGateModel: ObservableObject {
         profile = await client.profile()
     }
 
-    /// Re-fetch managed config online, then re-snapshot the gate.
+    /// Run a Core sync, then re-snapshot the gate.
     public func refresh() async {
         isWorking = true
         defer { isWorking = false }
-        _ = await client.refresh()
+        await syncAction()
         await reload()
     }
 
@@ -55,11 +72,14 @@ public final class PolarisKeyGateModel: ObservableObject {
             lastError = "That license key wasn't accepted."
         case .fingerprintRequired:
             lastError =
-                "This license tier requires a hardware fingerprint, which couldn't be read on this Mac."
+                "This license tier requires a hardware fingerprint, which couldn't be read on "
+                + "this Mac."
         case .hardwareMismatch(_, let changed):
-            let detail = (changed?.isEmpty == false) ? " (\(changed!.joined(separator: ", ")))" : ""
+            let detail =
+                (changed?.isEmpty == false) ? " (\(changed!.joined(separator: ", ")))" : ""
             lastError =
-                "This Mac's hardware changed\(detail). The previous authorization was released — activate again to re-bind."
+                "This Mac's hardware changed\(detail). The previous authorization was released "
+                + "— activate again to re-bind."
         case .enrollDisabled:
             lastError = "This product doesn't offer keyless enrollment."
         case .error(let message):
@@ -75,27 +95,28 @@ public final class PolarisKeyGateModel: ObservableObject {
             try await client.deactivate()
             lastError = nil
         } catch {
-            // The local wipe failing means the credential is STILL on this machine — the
-            // user has to know, rather than seeing a sign-out that silently did nothing.
+            // The local wipe failing means the credential is STILL on this machine — the user
+            // has to know, rather than seeing a sign-out that silently did nothing.
             lastError = "Sign-out couldn't clear the stored license: \(error)"
         }
         await reload()
     }
 }
 
-/// The drop-in gate. `content` is rendered when the gate is usable (ok/grace); `onSignIn`
-/// starts the product's OIDC flow (the SDK is transport-agnostic about the browser dance).
-public struct PolarisKeyLoginView<Content: View>: View {
-    @ObservedObject private var model: PolarisKeyGateModel
-    private let theme: PolarisKeyTheme
+/// The drop-in gate. `content` is rendered when the gate is usable (ok / grace / not-applicable);
+/// `onSignIn` starts the product's OIDC flow (the SDK is transport-agnostic about the browser
+/// dance).
+public struct PolarisLoginView<Content: View>: View {
+    @ObservedObject private var model: PolarisGateModel
+    private let theme: PolarisTheme
     private let onSignIn: () -> Void
     private let content: () -> Content
 
     @State private var licenseKey: String = ""
 
     public init(
-        model: PolarisKeyGateModel,
-        theme: PolarisKeyTheme = PolarisKeyTheme(),
+        model: PolarisGateModel,
+        theme: PolarisTheme = PolarisTheme(),
         onSignIn: @escaping () -> Void = {},
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -108,7 +129,10 @@ public struct PolarisKeyLoginView<Content: View>: View {
     public var body: some View {
         Group {
             switch model.state.status {
-            case .ok:
+            case .ok, .notApplicable:
+                // §5 / D-08 — a product that does not run the license service has no gate to
+                // show. Rendering the activation form there would demand a licence that does not
+                // exist.
                 content()
             case .grace:
                 graceScreen
@@ -116,7 +140,7 @@ public struct PolarisKeyLoginView<Content: View>: View {
                 activationScreen
             case .revoked, .expired, .versionTooOld, .versionTooNew, .channelNotEntitled:
                 // One shared mapping for every terminal "message" surface — see
-                // `PolarisKeyCopy.message(for:allowedRange:)`.
+                // `PolarisCopy.message(for:allowedRange:)`.
                 if let copy = theme.copy.message(
                     for: model.state.status, allowedRange: model.state.allowedRange)
                 {
@@ -215,8 +239,8 @@ public struct PolarisKeyLoginView<Content: View>: View {
     private func messageScreen(title: String, subtitle: String, symbol: String) -> some View {
         cardShell {
             // Group the glyph + title + body so VoiceOver reads them as one status card
-            // ("<title>. <subtitle>.") instead of three disjoint swipes; the glyph carries
-            // no independent meaning, so it folds into the combined label.
+            // ("<title>. <subtitle>.") instead of three disjoint swipes; the glyph carries no
+            // independent meaning, so it folds into the combined label.
             VStack(spacing: 12) {
                 Image(systemName: symbol)
                     .font(.system(size: 40)).foregroundStyle(theme.accent)
@@ -255,7 +279,9 @@ public struct PolarisKeyLoginView<Content: View>: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func banner(title: String, subtitle: String, symbol: String, tint: Color) -> some View {
+    private func banner(title: String, subtitle: String, symbol: String, tint: Color)
+        -> some View
+    {
         HStack(spacing: 10) {
             Image(systemName: symbol).foregroundStyle(tint)
                 .accessibilityHidden(true)
@@ -267,8 +293,8 @@ public struct PolarisKeyLoginView<Content: View>: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            // Combine the title + body into a single announced label; flag it as an alert so
-            // VoiceOver proactively reads the grace state when the banner appears.
+            // Combine the title + body into a single announced label; flag it as static text so
+            // VoiceOver reads the grace state when the banner appears.
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isStaticText)
             Spacer()

@@ -1,61 +1,72 @@
-// Wire contract v2 §2/§3 regression tests: the parser hardening and the claim checks.
+// Wire contract v3 §1–§3 regression tests: the parser hardening and the claim checks.
 //
-// Each test corresponds to a finding whose proof-of-concept PASSED against the previous
-// build — they are written so that reverting the fix fails the test, not so that they merely
-// exercise the happy path.
+// The heir to `WireContractV2Tests`. Every v2 case is carried — each one corresponds to a
+// finding whose proof-of-concept PASSED against an earlier build, and they are written so that
+// reverting the fix fails the test rather than merely exercising the happy path. Three v3
+// additions sit alongside them: `typ` is now REQUIRED (the v1 tolerance window closed), the
+// payload cap is raise-only and coupled to a proven `typ`, and the two document types must
+// refuse each other.
 
 import CryptoKit
 import Foundation
+@testable import PolarisCore
 import XCTest
 
-@testable import PolarisKey
+final class WireContractV3Tests: XCTestCase {
+    private let signer = TestSigner(kid: "wire-v3-key")
+    private let issued = 1_700_000_000
 
-final class WireContractV2Tests: XCTestCase {
-    private let signer = TestSigner(kid: "wire-v2-key")
-
-    private func docJSON(issuedAt: Int) -> String {
-        String(decoding: try! JSONEncoder().encode(Fixtures.doc(issuedAt: issuedAt)), as: UTF8.self)
+    private func licenseJSON(issuedAt: Int) -> String {
+        String(
+            decoding: try! JSONEncoder().encode(Fixtures.license(issuedAt: issuedAt)),
+            as: UTF8.self)
     }
 
-    // ── §2.2 duplicate keys (R2-06) ────────────────────────────────────────────────
-    /// The sharp one. `JSONSerialization` resolved duplicates FIRST-wins while TS/Python
-    /// resolve LAST-wins, so `{"alg":"none","kid":K,"alg":"EdDSA"}` read as `none` in Swift
-    /// and `EdDSA` everywhere else — the algorithm-downgrade guard answering differently for
-    /// identical signed bytes. v2 rejects duplicates outright, in BOTH orderings.
+    // ── §1 duplicate keys (R2-06) ──────────────────────────────────────────────────
+    /// The sharp one. `JSONSerialization` resolved duplicates FIRST-wins while TS/Python resolve
+    /// LAST-wins, so `{"alg":"none","kid":K,"alg":"EdDSA"}` read as `none` in Swift and `EdDSA`
+    /// everywhere else — the algorithm-downgrade guard answering differently for identical signed
+    /// bytes. v2 rejected duplicates outright, in BOTH orderings, and v3 carries that unchanged.
     func testDuplicateAlgInHeaderIsRejectedInBothOrderings() {
-        let payload = docJSON(issuedAt: 1_700_000_000)
+        let payload = licenseJSON(issuedAt: issued)
+        let typ = JwsTyp.license.rawValue
         let noneFirst = signer.signRaw(
-            header: #"{"alg":"none","kid":"\#(signer.kid)","alg":"EdDSA"}"#, payload: payload)
+            header: #"{"alg":"none","typ":"\#(typ)","kid":"\#(signer.kid)","alg":"EdDSA"}"#,
+            payload: payload)
         let eddsaFirst = signer.signRaw(
-            header: #"{"alg":"EdDSA","kid":"\#(signer.kid)","alg":"none"}"#, payload: payload)
+            header: #"{"alg":"EdDSA","typ":"\#(typ)","kid":"\#(signer.kid)","alg":"none"}"#,
+            payload: payload)
 
         XCTAssertNil(
-            JWSVerifier.verify(noneFirst, trust: signer.trust),
+            JWSVerifier.verify(noneFirst, trust: signer.trust, typ: .license),
             "a header declaring `alg` twice must be REJECTED, not resolved")
         XCTAssertNil(
-            JWSVerifier.verify(eddsaFirst, trust: signer.trust),
+            JWSVerifier.verify(eddsaFirst, trust: signer.trust, typ: .license),
             "duplicate rejection must not depend on which member comes first")
-        // Control: the same signer, the same payload, one `alg` ⇒ verifies. So the rejection
-        // above is the duplicate scan, not a broken signature.
+        // Control: the same signer, the same payload, one `alg` ⇒ verifies.
         XCTAssertNotNil(
             JWSVerifier.verify(
-                signer.signRaw(header: signer.header(), payload: payload), trust: signer.trust))
+                signer.sign(payloadJSON: payload, typ: typ), trust: signer.trust, typ: .license))
     }
 
     func testDuplicateKidInHeaderIsRejected() {
+        let typ = JwsTyp.license.rawValue
         let jws = signer.signRaw(
-            header: #"{"alg":"EdDSA","kid":"\#(signer.kid)","kid":"other"}"#,
-            payload: docJSON(issuedAt: 1_700_000_000))
-        XCTAssertNil(JWSVerifier.verify(jws, trust: signer.trust))
+            header: #"{"alg":"EdDSA","typ":"\#(typ)","kid":"\#(signer.kid)","kid":"other"}"#,
+            payload: licenseJSON(issuedAt: issued))
+        XCTAssertNil(JWSVerifier.verify(jws, trust: signer.trust, typ: .license))
     }
 
     func testDuplicateKeyInPayloadIsRejected() {
-        let dup = #"{"schemaVersion":1,"schemaVersion":2,"aud":"djdl"}"#
-        XCTAssertNil(JWSVerifier.verifyPayloadData(signer.sign(payloadJSON: dup), trust: signer.trust))
+        let dup = #"{"licenseId":"a","licenseId":"b","aud":"djdl"}"#
+        XCTAssertNil(
+            JWSVerifier.verify(
+                signer.sign(payloadJSON: dup, typ: JwsTyp.license.rawValue),
+                trust: signer.trust, typ: .license))
     }
 
-    /// Duplicates nested inside an object, and inside an object inside an ARRAY, are caught
-    /// too — a scan that only tracked the top level would miss both.
+    /// Duplicates nested inside an object, and inside an object inside an ARRAY, are caught too —
+    /// a scan that only tracked the top level would miss both.
     func testDuplicateKeyNestedAndInsideArrayIsRejected() {
         let nested = #"{"a":{"x":1,"x":2}}"#
         let inArray = #"{"a":[{"x":1,"x":2}]}"#
@@ -66,43 +77,47 @@ final class WireContractV2Tests: XCTestCase {
         XCTAssertFalse(StrictJSON.hasDuplicateKeys(Data(legit.utf8)))
     }
 
-    /// Escaped and unescaped spellings of the same key collide, exactly as a JSON parser
-    /// would collapse them — a byte-comparison scan would let `a` smuggle a second `a`.
+    /// Escaped and unescaped spellings of the same key collide, exactly as a JSON parser would
+    /// collapse them — a byte-comparison scan would let `a` smuggle a second `a`.
     func testEscapedDuplicateKeyIsRejected() {
         XCTAssertTrue(StrictJSON.hasDuplicateKeys(Data(#"{"a":1,"a":2}"#.utf8)))
         XCTAssertTrue(StrictJSON.hasDuplicateKeys(Data(#"{"a\"b":1,"a\"b":2}"#.utf8)))
         XCTAssertFalse(StrictJSON.hasDuplicateKeys(Data(#"{"a\"b":1,"ab":2}"#.utf8)))
     }
 
-    // ── §2.1 size caps (R2-04) ─────────────────────────────────────────────────────
+    // ── §1 size caps (R2-04) ───────────────────────────────────────────────────────
     /// The payload cap was bypassable by moving the blob into the PROTECTED HEADER, which no
     /// implementation bounded. The signature here is VALID, so only the cap can reject it.
     func testOversizedHeaderIsRejectedDespiteValidSignature() {
         let junk = String(repeating: "x", count: 8 * 1024 * 1024)
+        let typ = JwsTyp.license.rawValue
         let jws = signer.signRaw(
-            header: #"{"alg":"EdDSA","kid":"\#(signer.kid)","junk":"\#(junk)"}"#,
-            payload: docJSON(issuedAt: 1_700_000_000))
-        XCTAssertNil(JWSVerifier.verify(jws, trust: signer.trust))
+            header: #"{"alg":"EdDSA","typ":"\#(typ)","kid":"\#(signer.kid)","junk":"\#(junk)"}"#,
+            payload: licenseJSON(issuedAt: issued))
+        XCTAssertNil(JWSVerifier.verify(jws, trust: signer.trust, typ: .license))
     }
 
     /// The boundary: a header exactly at 1024 decoded bytes verifies, one byte over does not.
     func testHeaderCapBoundary() {
+        let typ = JwsTyp.license.rawValue
         func header(padding: Int) -> String {
-            #"{"alg":"EdDSA","kid":"\#(signer.kid)","p":"\#(String(repeating: "x", count: padding))"}"#
+            #"{"alg":"EdDSA","typ":"\#(typ)","kid":"\#(signer.kid)","p":"\#(String(repeating: "x", count: padding))"}"#
         }
         let base = header(padding: 0).utf8.count
         let atCap = header(padding: JWSVerifier.maxHeaderBytes - base)
         let overCap = header(padding: JWSVerifier.maxHeaderBytes - base + 1)
         XCTAssertEqual(atCap.utf8.count, JWSVerifier.maxHeaderBytes)
 
-        let payload = docJSON(issuedAt: 1_700_000_000)
+        let payload = licenseJSON(issuedAt: issued)
         XCTAssertNotNil(
             JWSVerifier.verify(
-                signer.signRaw(header: atCap, payload: payload), trust: signer.trust),
+                signer.signRaw(header: atCap, payload: payload), trust: signer.trust,
+                typ: .license),
             "a header at the cap must verify")
         XCTAssertNil(
             JWSVerifier.verify(
-                signer.signRaw(header: overCap, payload: payload), trust: signer.trust),
+                signer.signRaw(header: overCap, payload: payload), trust: signer.trust,
+                typ: .license),
             "a header one byte over the cap must be rejected")
     }
 
@@ -112,19 +127,49 @@ final class WireContractV2Tests: XCTestCase {
         XCTAssertEqual(JWSVerifier.maxHeaderB64, (1024 * 4 + 2) / 3 + 4)
         XCTAssertEqual(JWSVerifier.maxPayloadB64, (65536 * 4 + 2) / 3 + 4)
         let huge = String(repeating: "A", count: JWSVerifier.maxPayloadB64 + 1)
-        XCTAssertNil(JWSVerifier.verify("aGVhZGVy.\(huge).c2ln", trust: signer.trust))
+        XCTAssertNil(
+            JWSVerifier.verify("aGVhZGVy.\(huge).c2ln", trust: signer.trust, typ: .license))
     }
 
-    // ── §2.3 strict base64url (R2-05) ──────────────────────────────────────────────
-    /// Out-of-alphabet bytes anywhere in a segment are a hard failure — not silently
-    /// discarded (Python) and not accepted via the standard alphabet.
+    /// §1's bundle exception: the cap is RAISE-ONLY, and the raise travels with the `typ`.
+    ///
+    /// A caller cannot lower the frozen cap (so an over-eager host cannot break legitimate
+    /// documents), and a raise offered without a required `typ` is refused outright — otherwise
+    /// a 256 KiB untyped blob accepted here could be re-presented at an ordinary document call
+    /// site with the raise still in force.
+    func testPayloadCapOverrideIsRaiseOnlyAndRequiresATyp() {
+        let payload = licenseJSON(issuedAt: issued)
+        let jws = signer.sign(payloadJSON: payload, typ: JwsTyp.license.rawValue)
+        // A "lower" cap is ignored: this document is well under 64 KiB and still verifies.
+        XCTAssertNotNil(
+            JWSVerifier.verify(
+                jws, trust: signer.trust, typ: .license, maxPayloadBytes: 16),
+            "the frozen cap is a floor the caller cannot lower")
+        // A RAISE with no expected typ is refused, even though everything else about the JWS is
+        // valid.
+        XCTAssertNil(
+            JWSVerifier.verify(
+                jws, trust: signer.trust, typ: nil, maxPayloadBytes: MAX_BUNDLE_BYTES),
+            "a raised cap must be coupled to a proven typ")
+        // …and with `requireTyp` switched off, likewise.
+        XCTAssertNil(
+            JWSVerifier.verify(
+                jws, trust: signer.trust, typ: .license, requireTyp: false,
+                maxPayloadBytes: MAX_BUNDLE_BYTES))
+    }
+
+    // ── §1 strict base64url (R2-05) ────────────────────────────────────────────────
+    /// Out-of-alphabet bytes anywhere in a segment are a hard failure — not silently discarded
+    /// (Python) and not accepted via the standard alphabet.
     func testOutOfAlphabetSegmentsAreRejected() {
-        let valid = signer.sign(payloadJSON: docJSON(issuedAt: 1_700_000_000))
+        let valid = signer.sign(
+            payloadJSON: licenseJSON(issuedAt: issued), typ: JwsTyp.license.rawValue)
         let parts = valid.split(separator: ".").map(String.init)
         for junk in ["***", "\n", "====", "++", "//", " "] {
             XCTAssertNil(
                 JWSVerifier.verify(
-                    "\(parts[0]).\(parts[1]).\(parts[2])\(junk)", trust: signer.trust),
+                    "\(parts[0]).\(parts[1]).\(parts[2])\(junk)", trust: signer.trust,
+                    typ: .license),
                 "signature segment with \(junk.debugDescription) must be rejected")
         }
         XCTAssertNil(Base64URL.decodeStrict("ab+c"))
@@ -133,30 +178,55 @@ final class WireContractV2Tests: XCTestCase {
         XCTAssertNotNil(Base64URL.decodeStrict("a-b_"))
     }
 
-    // ── §2.4 domain separation (R2-10) ─────────────────────────────────────────────
-    /// A trust manifest presented where a config doc is expected is rejected on `typ`, not by
-    /// accident on a downstream decode error.
+    // ── §2 domain separation (R2-10) ───────────────────────────────────────────────
+    /// A trust manifest presented where a license document is expected is rejected on `typ`, not
+    /// by accident on a downstream decode error.
     func testWrongTypIsRejectedAtTheCallSite() {
-        let payload = docJSON(issuedAt: 1_700_000_000)
+        let payload = licenseJSON(issuedAt: issued)
         let asTrust = signer.sign(payloadJSON: payload, typ: JwsTyp.trust.rawValue)
-        XCTAssertNil(JWSVerifier.verify(asTrust, trust: signer.trust, typ: .config))
+        XCTAssertNil(JWSVerifier.verify(asTrust, trust: signer.trust, typ: .license))
         XCTAssertNotNil(JWSVerifier.verify(asTrust, trust: signer.trust, typ: .trust))
     }
 
-    /// v1 compatibility (§7.2): a header carrying NO `typ` is still accepted for one release.
-    func testAbsentTypIsAcceptedForV1Compatibility() {
-        let v1 = signer.sign(payloadJSON: docJSON(issuedAt: 1_700_000_000), typ: nil)
-        XCTAssertNotNil(JWSVerifier.verify(v1, trust: signer.trust, typ: .config))
+    /// The two v3 documents refuse EACH OTHER. One signing key signs both, so without domain
+    /// separation a config document — which carries no entitlements — could be presented as a
+    /// licence, or a licence smuggled in where settings are read.
+    func testTheTwoDocumentTypesRefuseEachOther() {
+        let license = signer.sign(Fixtures.license(issuedAt: issued))
+        let config = signer.sign(Fixtures.config(issuedAt: issued))
+        let opts = VerifyOptions(
+            trust: signer.trust, expectedAud: "djdl", deviceId: "dev", now: issued)
+        XCTAssertNotNil(verifyLicenseDoc(license, options: opts))
+        XCTAssertNotNil(verifyConfigDoc(config, options: opts))
+        XCTAssertNil(verifyConfigDoc(license, options: opts), "a licence is not a config doc")
+        XCTAssertNil(verifyLicenseDoc(config, options: opts), "a config doc is not a licence")
+    }
+
+    /// v3's tolerance change: a header carrying NO `typ` is now REFUSED. v2 accepted it for one
+    /// release as v1 compatibility; that window is over (§2), and the corpus pins it as
+    /// `typ-missing-rejected`.
+    func testAbsentTypIsNowRejected() {
+        let untyped = signer.sign(payloadJSON: licenseJSON(issuedAt: issued), typ: nil)
+        XCTAssertNil(
+            JWSVerifier.verify(untyped, trust: signer.trust, typ: .license),
+            "an untyped document is a document whose call site cannot be proved")
+        // The escape hatch exists, but only for a caller that deliberately opts out.
+        XCTAssertNotNil(
+            JWSVerifier.verify(
+                untyped, trust: signer.trust, typ: .license, requireTyp: false))
     }
 
     /// A non-string `typ`/`kid`/`alg` fails at parse, not on property access.
     func testNonObjectAndWrongTypedHeadersAreRejected() {
-        let payload = docJSON(issuedAt: 1_700_000_000)
-        for header in ["\"x\"", "1", "null", "[]", #"{"alg":1,"kid":"k"}"#,
-                       #"{"alg":"EdDSA","kid":7}"#, #"{"alg":"EdDSA","typ":7,"kid":"k"}"#] {
+        let payload = licenseJSON(issuedAt: issued)
+        for header in [
+            "\"x\"", "1", "null", "[]", #"{"alg":1,"kid":"k"}"#,
+            #"{"alg":"EdDSA","kid":7}"#, #"{"alg":"EdDSA","typ":7,"kid":"k"}"#,
+        ] {
             XCTAssertNil(
                 JWSVerifier.verify(
-                    signer.signRaw(header: header, payload: payload), trust: signer.trust),
+                    signer.signRaw(header: header, payload: payload), trust: signer.trust,
+                    typ: .license),
                 "header \(header) must be rejected")
         }
     }
@@ -164,125 +234,221 @@ final class WireContractV2Tests: XCTestCase {
     // ── §3 claim checks (R2-08) ────────────────────────────────────────────────────
     private func options(
         now: Int, lastAcceptedIssuedAt: Int? = nil, checkFreshness: Bool = true
-    ) -> VerifyDocOptions {
-        VerifyDocOptions(
+    ) -> VerifyOptions {
+        VerifyOptions(
             trust: signer.trust, expectedAud: "djdl", deviceId: "dev",
             lastAcceptedIssuedAt: lastAcceptedIssuedAt, now: now,
             checkFreshness: checkFreshness)
     }
 
     func testClaimChecks() {
-        let t = 1_700_000_000
+        let t = issued
         // Happy path.
         XCTAssertNotNil(
-            verifyDoc(signer.sign(Fixtures.doc(issuedAt: t)), options: options(now: t)))
+            verifyLicenseDoc(signer.sign(Fixtures.license(issuedAt: t)), options: options(now: t)))
 
-        // `iss` — documented as always `key.plrs.im`, never enforced before v2.
+        // `iss` — host-neutral in v3. The v2 serving-host spelling is a REJECTED artifact (§8).
         XCTAssertNil(
-            verifyDoc(
-                signer.sign(Fixtures.doc(iss: "https://evil.example", issuedAt: t)),
-                options: options(now: t)))
-        // `schemaVersion` is the per-product CATALOG version, so an unfamiliar one is
-        // ACCEPTED — allow-listing it would brick every product that republished its schema
-        // (§3.1 correction 1). The shape check is that it must be an integer at all.
-        XCTAssertNotNil(
-            verifyDoc(
-                signer.sign(Fixtures.doc(schemaVersion: 999, issuedAt: t)),
-                options: options(now: t)))
-        XCTAssertNil(
-            verifyDoc(
-                signer.sign(
-                    payloadJSON: docJSON(issuedAt: t)
-                        .replacingOccurrences(
-                            of: #""schemaVersion":1"#, with: #""schemaVersion":"1""#)),
+            verifyLicenseDoc(
+                signer.sign(Fixtures.license(iss: "key.plrs.im", issuedAt: t)),
                 options: options(now: t)),
-            "a non-integer schemaVersion must fail the shape check")
+            "the v2 `key.plrs.im` issuer must not be accepted by a v3 verifier")
+        XCTAssertNil(
+            verifyLicenseDoc(
+                signer.sign(Fixtures.license(iss: "https://evil.example", issuedAt: t)),
+                options: options(now: t)))
         // A 400-day-expired doc is rejected AT VERIFY, not merely at the gate.
         XCTAssertNil(
-            verifyDoc(
-                signer.sign(Fixtures.doc(issuedAt: t)),
+            verifyLicenseDoc(
+                signer.sign(Fixtures.license(issuedAt: t)),
                 options: options(now: t + 400 * SECONDS_PER_DAY)))
-        // A far-future `issuedAt` is prima facie tampering (there was no upper bound at all).
+        // A far-future `issuedAt` is prima facie tampering.
         XCTAssertNil(
-            verifyDoc(
-                signer.sign(Fixtures.doc(issuedAt: t + 10 * SECONDS_PER_DAY)),
+            verifyLicenseDoc(
+                signer.sign(Fixtures.license(issuedAt: t + 10 * SECONDS_PER_DAY)),
                 options: options(now: t)))
         // graceUntil must not precede expiresAt…
         XCTAssertNil(
-            verifyDoc(
+            verifyLicenseDoc(
                 signer.sign(
-                    Fixtures.doc(issuedAt: t, expiresAt: t + 3600, graceUntil: t + 60)),
+                    Fixtures.license(issuedAt: t, expiresAt: t + 3600, graceUntil: t + 60)),
                 options: options(now: t)))
         // …nor run past the bound that keeps a hostile server honest.
         XCTAssertNil(
-            verifyDoc(
+            verifyLicenseDoc(
                 signer.sign(
-                    Fixtures.doc(issuedAt: t, graceUntil: t + MAX_GRACE_SECONDS + 1)),
+                    Fixtures.license(issuedAt: t, graceUntil: t + MAX_GRACE_SECONDS + 1)),
                 options: options(now: t)))
-        // Anti-replay is unchanged: strictly newer than the last accepted.
-        XCTAssertNil(
-            verifyDoc(
-                signer.sign(Fixtures.doc(issuedAt: t)),
-                options: options(now: t, lastAcceptedIssuedAt: t)))
-    }
-
-    /// `CLOCK_SKEW_SECONDS` is applied in both directions: a device five minutes fast no
-    /// longer flips a freshly signed document, and a doc five minutes past `expiresAt` is
-    /// still installable.
-    func testClockSkewToleranceIsSymmetric() {
-        let t = 1_700_000_000
-        let doc = Fixtures.doc(issuedAt: t)
-        let jws = signer.sign(doc)
-        XCTAssertNotNil(verifyDoc(jws, options: options(now: t - CLOCK_SKEW_SECONDS)))
-        XCTAssertNil(verifyDoc(jws, options: options(now: t - CLOCK_SKEW_SECONDS - 1)))
+        // Exactly AT the ceiling is fine — the bound is inclusive.
         XCTAssertNotNil(
-            verifyDoc(jws, options: options(now: doc.expiresAt + CLOCK_SKEW_SECONDS - 1)))
+            verifyLicenseDoc(
+                signer.sign(Fixtures.license(issuedAt: t, graceUntil: t + MAX_GRACE_SECONDS)),
+                options: options(now: t)))
+        // Anti-replay: strictly newer than the last accepted, per TYPE.
         XCTAssertNil(
-            verifyDoc(jws, options: options(now: doc.expiresAt + CLOCK_SKEW_SECONDS)))
+            verifyLicenseDoc(
+                signer.sign(Fixtures.license(issuedAt: t)),
+                options: options(now: t, lastAcceptedIssuedAt: t)))
+        // An empty licenseId is not a licence.
+        XCTAssertNil(
+            verifyLicenseDoc(
+                signer.sign(Fixtures.license(licenseId: "", issuedAt: t)),
+                options: options(now: t)))
     }
 
-    /// The cache-reload path (`checkFreshness: false`) accepts a document that is past its
-    /// short `expiresAt` — being past it is what offline operation IS — while every other
-    /// claim, including the device and product binding, still applies.
+    /// A config document's `schemaVersion` is the per-product CATALOG version, so an unfamiliar
+    /// one is ACCEPTED — allow-listing it would brick every product that republished its schema.
+    /// The SHAPE is what is enforceable, and `"4"` is the shape R2-08 slipped through.
+    func testConfigSchemaVersionIsShapeCheckedNotAllowListed() {
+        let t = issued
+        XCTAssertNotNil(
+            verifyConfigDoc(
+                signer.sign(Fixtures.config(schemaVersion: 999, issuedAt: t)),
+                options: options(now: t)))
+        let asString = String(
+            decoding: try! JSONEncoder().encode(Fixtures.config(issuedAt: t)), as: UTF8.self
+        ).replacingOccurrences(of: #""schemaVersion":1"#, with: #""schemaVersion":"1""#)
+        XCTAssertNil(
+            verifyConfigDoc(
+                signer.sign(payloadJSON: asString, typ: JwsTyp.config.rawValue),
+                options: options(now: t)),
+            "a non-integer schemaVersion must fail the shape check")
+        XCTAssertNil(
+            verifyConfigDoc(
+                signer.sign(Fixtures.config(schemaVersion: 0, issuedAt: t)),
+                options: options(now: t)),
+            "a non-positive schemaVersion is not a catalog version")
+    }
+
+    /// `CLOCK_SKEW_SECONDS` is applied in both directions: a device five minutes fast no longer
+    /// flips a freshly signed document, and a doc five minutes past `expiresAt` is still
+    /// installable.
+    func testClockSkewToleranceIsSymmetric() {
+        let t = issued
+        let doc = Fixtures.license(issuedAt: t)
+        let jws = signer.sign(doc)
+        XCTAssertNotNil(verifyLicenseDoc(jws, options: options(now: t - CLOCK_SKEW_SECONDS)))
+        XCTAssertNil(verifyLicenseDoc(jws, options: options(now: t - CLOCK_SKEW_SECONDS - 1)))
+        XCTAssertNotNil(
+            verifyLicenseDoc(jws, options: options(now: doc.expiresAt + CLOCK_SKEW_SECONDS - 1)))
+        XCTAssertNil(
+            verifyLicenseDoc(jws, options: options(now: doc.expiresAt + CLOCK_SKEW_SECONDS)))
+    }
+
+    /// The cache-reload path (`checkFreshness: false`) accepts a document past its short
+    /// `expiresAt` — being past it is what offline operation IS — while every other claim,
+    /// including the device and product binding, still applies.
     func testCacheReloadPathSkipsFreshnessOnly() {
-        let t = 1_700_000_000
-        let doc = Fixtures.doc(issuedAt: t)
+        let t = issued
+        let doc = Fixtures.license(issuedAt: t)
         let jws = signer.sign(doc)
         let midGrace = doc.expiresAt + SECONDS_PER_DAY
-        XCTAssertNil(verifyDoc(jws, options: options(now: midGrace)))
+        XCTAssertNil(verifyLicenseDoc(jws, options: options(now: midGrace)))
         XCTAssertNotNil(
-            verifyDoc(jws, options: options(now: midGrace, checkFreshness: false)))
-        // …but a doc bound to another device is still refused on the reload path — that is
-        // the check the old cache path skipped entirely (R4-01).
+            verifyLicenseDoc(jws, options: options(now: midGrace, checkFreshness: false)))
+        // …but a doc bound to another device is still refused on the reload path — that is the
+        // check the old cache path skipped entirely (R4-01).
         XCTAssertNil(
-            verifyDoc(
-                signer.sign(Fixtures.doc(deviceId: "someone-else", issuedAt: t)),
+            verifyLicenseDoc(
+                signer.sign(Fixtures.license(deviceId: "someone-else", issuedAt: t)),
                 options: options(now: midGrace, checkFreshness: false)))
     }
 
     /// Extreme timestamps must be REJECTED, not trap. Swift traps on integer overflow, so a
     /// signed doc carrying `Int.max` would crash the host application inside the claim
     /// arithmetic — a remote DoS reachable by anyone holding a signing key.
+    ///
+    /// Every one of these is refused on the NETWORK path. On the RELOAD path the far-future
+    /// guard is deliberately absent — `checkFreshness: false` turns off both halves of the
+    /// freshness window, exactly as `@plrs/client-core` does, because a cached document is
+    /// expected to be outside it. The bound that still applies there is
+    /// `CoreContext.verifyCached`'s explicit `issuedAt <= effectiveNow + MAX_GRACE_SECONDS`,
+    /// which is what stops one artifact from dragging the clock floor decades forward; see
+    /// `TrustAndCacheTests.testCachedDocIsReVerifiedOnLoad`.
     func testExtremeTimestampsAreRejectedWithoutTrapping() {
-        let t = 1_700_000_000
-        for doc in [
-            Fixtures.doc(issuedAt: Int.max, expiresAt: Int.max, graceUntil: Int.max),
-            Fixtures.doc(issuedAt: Int.min, expiresAt: Int.min, graceUntil: Int.max),
-            Fixtures.doc(issuedAt: t, expiresAt: Int.max, graceUntil: Int.max),
-        ] {
-            XCTAssertNil(verifyDoc(signer.sign(doc), options: options(now: t)))
-            XCTAssertNil(
-                verifyDoc(signer.sign(doc), options: options(now: t, checkFreshness: false)))
+        let t = issued
+        let saturated = Fixtures.license(
+            issuedAt: Int.max, expiresAt: Int.max, graceUntil: Int.max)
+        let graceBeyondCeiling = [
+            Fixtures.license(issuedAt: Int.min, expiresAt: Int.min, graceUntil: Int.max),
+            Fixtures.license(issuedAt: t, expiresAt: Int.max, graceUntil: Int.max),
+        ]
+
+        // The network path refuses all three, and — the actual point — none of them trap.
+        for doc in [saturated] + graceBeyondCeiling {
+            XCTAssertNil(verifyLicenseDoc(signer.sign(doc), options: options(now: t)))
         }
+        // On the reload path the grace ceiling still bites, because it is a claim invariant
+        // rather than a freshness one.
+        for doc in graceBeyondCeiling {
+            XCTAssertNil(
+                verifyLicenseDoc(
+                    signer.sign(doc), options: options(now: t, checkFreshness: false)))
+        }
+        // …and the fully saturated document survives the arithmetic rather than trapping on it.
+        XCTAssertNotNil(
+            verifyLicenseDoc(
+                signer.sign(saturated), options: options(now: t, checkFreshness: false)))
     }
 
-    /// The trust set is consulted for the key, never the document — and an unknown or pruned
-    /// kid simply is not in it.
+    /// The trust set is consulted for the key, never the document — and an unknown or pruned kid
+    /// simply is not in it.
     func testKeySelectionIsFromTheTrustSetOnly() {
-        let jws = signer.sign(Fixtures.doc(issuedAt: 1_700_000_000))
-        XCTAssertNil(JWSVerifier.verify(jws, trust: [:]))
+        let jws = signer.sign(Fixtures.license(issuedAt: issued))
+        XCTAssertNil(JWSVerifier.verify(jws, trust: [:], typ: .license))
         XCTAssertNil(
             JWSVerifier.verify(
-                jws, trust: [signer.kid: TestSigner(kid: signer.kid).publicKeyB64]))
+                jws, trust: [signer.kid: TestSigner(kid: signer.kid).publicKeyB64],
+                typ: .license))
+    }
+
+    /// The manifest's `schemaVersion` IS a genuine wire version, so an unknown one fails closed —
+    /// unlike a config doc's, which is the per-product catalog version.
+    func testUnknownManifestSchemaVersionIsRefused() {
+        let t = issued
+        let manifest = Fixtures.manifest(
+            issuedAt: t,
+            keys: [Fixtures.manifestKey(kid: signer.kid, publicKey: signer.publicKeyB64)])
+        let good = verifyTrustManifest(
+            signer.sign(manifest),
+            options: VerifyTrustManifestOptions(
+                pinned: signer.trust, expectedAud: "djdl", now: t))
+        XCTAssertNotNil(good.doc)
+
+        let future = signer.sign(
+            payloadJSON: String(
+                decoding: try! JSONEncoder().encode(manifest), as: UTF8.self
+            ).replacingOccurrences(of: #""schemaVersion":1"#, with: #""schemaVersion":99"#),
+            typ: JwsTyp.trust.rawValue)
+        let refused = verifyTrustManifest(
+            future,
+            options: VerifyTrustManifestOptions(
+                pinned: signer.trust, expectedAud: "djdl", now: t))
+        XCTAssertNil(refused.doc)
+        XCTAssertTrue(refused.discovered.isEmpty)
+    }
+
+    /// §8 — the identifier registry, asserted rather than assumed. Every one of these is a value
+    /// the Worker and the other three SDKs also hardcode, so a typo here is a silent
+    /// cross-language break rather than a local bug.
+    func testV3IdentifierRegistry() {
+        XCTAssertEqual(POLARIS_ISSUER, "plrs.im")
+        XCTAssertEqual(POLARIS_PROTOCOL_VERSION, 3)
+        XCTAssertEqual(CACHE_RECORD_VERSION, 3)
+        XCTAssertEqual(DEVICE_TOKEN_PREFIX, "plrst_")
+        XCTAssertEqual(MAX_BUNDLE_BYTES, 262_144)
+        XCTAssertEqual(REFRESH_MARGIN_SECONDS, 1800)
+        XCTAssertEqual(CLOCK_SKEW_SECONDS, 300)
+        XCTAssertEqual(MAX_GRACE_SECONDS, 31_536_000)
+        XCTAssertEqual(HEADER_DEVICE, "X-Polaris-Device")
+        XCTAssertEqual(HEADER_VERSION, "X-Polaris-Version")
+        XCTAssertEqual(HEADER_CHANNEL, "X-Polaris-Channel")
+        XCTAssertEqual(HEADER_PLATFORM, "X-Polaris-Platform")
+        XCTAssertEqual(HEADER_ARCH, "X-Polaris-Arch")
+        XCTAssertEqual(HEADER_SDK_NAME, "X-Polaris-SDK")
+        XCTAssertEqual(HEADER_SDK_VERSION, "X-Polaris-SDK-Version")
+        XCTAssertEqual(
+            Set(JwsTyp.allCases.map(\.rawValue)),
+            ["plrs-license+jws", "plrs-config+jws", "plrs-trust+jws", "plrs-bundle+jws"])
     }
 }

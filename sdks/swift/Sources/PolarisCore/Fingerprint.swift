@@ -1,10 +1,10 @@
-// Hardware fingerprint collection. Mirrors packages/sdk-node/src/fingerprint.ts and
+// Hardware fingerprint collection. Mirrors packages/sdk-node/src/devices/fingerprint.ts and
 // sdks/python/src/polaris_key/fingerprint.py: each component is hashed HERE, on the device, as
 // `pkey-hw:<product>:<component>:<raw>` → SHA-256 → base64url, first 22 chars, so the raw
 // serial/UUID/MAC never crosses the wire. The composite `hwid` is a second digest over the
 // present components in CANONICAL order, truncated to 32 chars.
 //
-// Both formulas are pinned by conformance/corpus/v1/fingerprint.json — this file and its
+// Both formulas are pinned by conformance/corpus/v2/fingerprint.json — this file and its
 // Node/Python/Worker counterparts must produce byte-identical output for identical input.
 //
 // Every read is best-effort. A component that cannot be read is OMITTED, never substituted: a
@@ -126,9 +126,11 @@ public enum Fingerprint {
     private static func sysctlString(_ name: String) -> String? {
         var size = 0
         guard sysctlbyname(name, nil, &size, nil, 0) == 0, size > 0 else { return nil }
-        var buffer = [CChar](repeating: 0, count: size)
+        var buffer = [UInt8](repeating: 0, count: size)
         guard sysctlbyname(name, &buffer, &size, nil, 0) == 0 else { return nil }
-        let value = String(cString: buffer)
+        // `sysctl` returns a NUL-terminated C string; decode only up to the terminator so the
+        // trailing NUL never becomes part of the hashed component value.
+        let value = String(decoding: buffer.prefix(while: { $0 != 0 }), as: UTF8.self)
         return value.isEmpty ? nil : value
     }
 

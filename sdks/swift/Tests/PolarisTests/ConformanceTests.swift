@@ -1,52 +1,73 @@
-// The Swift conformance runner. It drives EVERY case in the shared corpus through the
-// native CryptoKit verifier and asserts the expected outcome — the Node (vitest), Python
-// (pytest), and React (vitest/WebCrypto) runners mirror this file against the SAME
-// corpus/v1/cases.json. That's how the SDKs prove byte-identical verification: one signer,
-// four runners.
+// The Swift conformance runner for wire contract v3. It drives EVERY case in
+// `conformance/corpus/v2` through the native CryptoKit verifier and asserts the expected
+// outcome — the Node runner (`conformance/runners/node/corpusV2.test.ts`) mirrors this file
+// against the SAME vectors. That is how the SDKs prove byte-identical verification: one signer,
+// several runners.
 //
-// Four sections, four layers of the wire contract:
+// Six sections, six layers of the contract:
 //
-//   cases            raw compact-JWS verification           → JWSVerifier.verify
-//   docCases         §3 claim validation                    → verifyDoc
-//   trustCases       §1 trust-set merge / prune / revocation → verifyTrustManifest + mergeTrust
-//   clockFloorCases  §4.3 monotonic clock floor              → the reload path + licenseState
+//   jwsCases          §1–§2  raw compact-JWS verification      → JWSVerifier.verify
+//   licenseDocCases   §3     claim validation, license          → verifyLicenseDoc
+//   configDocCases    §3     claim validation, config           → verifyConfigDoc
+//   trustCases        §1     trust merge / prune / revocation   → verifyTrustManifest + mergeTrust
+//   clockFloorCases   §4.2   the monotonic floor over 3 kinds   → reload path + licenseState
+//   bundleCases       §7     all-or-nothing bundle import       → inspectBundle
+//
+// Everything reads `Resources/v2/`. The flat `Resources/*.json` files are the frozen wire-v2
+// corpus, still mirrored (and still drift-gated) until P8 deletes corpus/v1; nothing in the
+// Swift suite reads them any more.
 
 import CryptoKit
 import Foundation
+import PolarisCore
+import PolarisLicense
 import XCTest
 
-@testable import PolarisKey
+// ── Corpus shapes ──────────────────────────────────────────────────────────────────
 
-private struct Corpus: Decodable {
+struct Corpus: Decodable {
     let corpusVersion: Int
     let keys: [CorpusKey]
-    let cases: [CorpusCase]
-    let docCases: [CorpusDocCase]
+    let jwsCases: [CorpusJwsCase]
+    let licenseDocCases: [CorpusDocCase]
+    let configDocCases: [CorpusDocCase]
     let trustCases: [CorpusTrustCase]
     let clockFloorCases: [CorpusClockFloorCase]
+    let bundleCases: [CorpusBundleCase]
 }
 
-private struct CorpusKey: Decodable {
+struct CorpusKey: Decodable {
     let kid: String
     let publicKeyRaw: String
 }
 
-private struct CorpusCase: Decodable {
+struct CorpusJwsCase: Decodable {
     let id: String
     let description: String
     let jws: String
-    let trust: [String: String]
-    /// The document type the call site expects, when the case pins one (§2.4).
-    let typ: String?
-    let expect: Expect
+    let trust: TrustSet
+    /// v3 pins a `typ` on EVERY vector — the untyped tolerance window is over (§2).
+    let typ: String
+    /// Present only on the two `plrs-bundle+jws` vectors, which exercise §1's raised cap.
+    let maxPayloadBytes: Int?
+    let expect: JwsExpect
+}
+
+struct JwsExpect: Decodable {
+    let verify: String
+    let kid: String?
+    /// The expected payload, compared STRUCTURALLY rather than field-by-field: the two bundle
+    /// cap vectors carry a quarter-megabyte of padding and omit it entirely.
+    let doc: JSONValue?
 }
 
 /// §3 — claim validation over an already-signature-valid document.
-private struct CorpusDocCase: Decodable {
+struct CorpusDocCase: Decodable {
     let id: String
     let description: String
     let jws: String
-    let trust: [String: String]
+    let trust: TrustSet
+    let typ: String
     let expectedAud: String
     let expectedIss: String
     let deviceId: String
@@ -57,36 +78,36 @@ private struct CorpusDocCase: Decodable {
     let expect: DocExpect
 }
 
-private struct DocExpect: Decodable {
+struct DocExpect: Decodable {
     let accept: Bool
 }
 
 /// §1 — what a manifest does to a trust set, given what was already held.
-private struct CorpusTrustCase: Decodable {
+struct CorpusTrustCase: Decodable {
     let id: String
     let description: String
-    let pinned: [String: String]
-    let before: [String: String]
+    let pinned: TrustSet
+    let before: TrustSet
     let manifestJws: String
     let now: Int
-    /// Absent ⇒ the NETWORK path (freshness enforced); `false` ⇒ the cache-reload path.
     let checkFreshness: Bool?
     let expect: TrustExpect
 }
 
-private struct TrustExpect: Decodable {
+struct TrustExpect: Decodable {
     let accepted: Bool
-    let trust: [String: String]
-    /// The accepted manifest's `issuedAt` — the value §4.3 folds into the clock floor.
+    let trust: TrustSet
+    /// The accepted manifest's `issuedAt` — the value §4.2 folds into the clock floor.
     let issuedAt: Int?
 }
 
-/// §4.3 — the cache-RELOAD path replayed as pure data, ending at a gate decision.
-private struct CorpusClockFloorCase: Decodable {
+/// §4.2 — the cache-RELOAD path replayed as pure data, ending at a gate decision.
+struct CorpusClockFloorCase: Decodable {
     let id: String
     let description: String
-    let pinned: [String: String]
+    let pinned: TrustSet
     let trustJws: String?
+    let licenseJws: String?
     let configJws: String?
     let expectedAud: String
     let deviceId: String
@@ -94,57 +115,152 @@ private struct CorpusClockFloorCase: Decodable {
     let expect: ClockFloorExpect
 }
 
-private struct ClockFloorExpect: Decodable {
+struct ClockFloorExpect: Decodable {
     let highWaterMark: Int
     let effectiveNow: Int
     let status: String
 }
 
-private struct Expect: Decodable {
-    let verify: String
-    let kid: String?
-    let doc: ManagedConfigDoc?
+/// §7 — the offline bundle import, with the refusing STEP attributed.
+struct CorpusBundleCase: Decodable {
+    let id: String
+    let description: String
+    let pinned: TrustSet
+    let expectedAud: String
+    let deviceId: String
+    let now: Int
+    let maxPayloadBytes: Int
+    let bundleJws: String
+    let expect: BundleExpect
 }
 
-final class ConformanceTests: XCTestCase {
-    private func loadCorpus() throws -> Corpus {
-        guard let url = Bundle.module.url(forResource: "cases", withExtension: "json") else {
-            XCTFail("cases.json not found in test bundle")
-            throw NSError(domain: "corpus", code: 1)
+struct BundleExpect: Decodable {
+    let imports: Bool
+    /// Which documents landed, in §7 order. A SEQUENCE, not a set.
+    let docs: [String]?
+    /// The `BundleRefusalReason` raw value, when `imports` is false.
+    let reason: String?
+}
+
+// ── Loading ────────────────────────────────────────────────────────────────────────
+
+enum CorpusBundleLoader {
+    /// The v3 corpus lives in a `v2/` subdirectory of the test bundle so both corpora can keep
+    /// their canonical file names until P8 promotes these.
+    static func url(_ resource: String) throws -> URL {
+        guard
+            let url = Bundle.module.url(
+                forResource: resource, withExtension: "json", subdirectory: "v2")
+        else {
+            throw NSError(
+                domain: "corpus", code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "v2/\(resource).json missing from the test bundle — run `pnpm gen:corpus`"
+                ])
         }
-        let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(Corpus.self, from: data)
+        return url
     }
 
-    func testCorpusHasCases() throws {
+    static func load<T: Decodable>(_ type: T.Type, _ resource: String) throws -> T {
+        try JSONDecoder().decode(type, from: Data(contentsOf: url(resource)))
+    }
+
+    static func corpus() throws -> Corpus { try load(Corpus.self, "cases") }
+}
+
+// ── The runner ─────────────────────────────────────────────────────────────────────
+
+final class ConformanceTests: XCTestCase {
+    private func loadCorpus() throws -> Corpus { try CorpusBundleLoader.corpus() }
+
+    /// The corpus this build is held to is v2, and every section carries at least what it
+    /// carried when this runner was written.
+    ///
+    /// A floor rather than an equality, because the corpus is expected to GROW — §10 says a new
+    /// divergence gets a case before it gets a fix. What a floor catches is the dangerous
+    /// direction: a section that silently shrank, or a `Decodable` mismatch that quietly emptied
+    /// one, would otherwise let every loop below pass by iterating nothing.
+    func testCorpusIsV3AndFullyPopulated() throws {
         let corpus = try loadCorpus()
-        XCTAssertGreaterThan(corpus.cases.count, 0)
-        XCTAssertGreaterThan(corpus.docCases.count, 0)
-        XCTAssertGreaterThan(corpus.trustCases.count, 0)
-        XCTAssertGreaterThan(corpus.clockFloorCases.count, 0)
-        XCTAssertGreaterThanOrEqual(corpus.corpusVersion, 1)
+        XCTAssertEqual(corpus.corpusVersion, 2)
+        XCTAssertGreaterThanOrEqual(corpus.jwsCases.count, 36)
+        XCTAssertGreaterThanOrEqual(corpus.licenseDocCases.count, 16)
+        XCTAssertGreaterThanOrEqual(corpus.configDocCases.count, 18)
+        XCTAssertGreaterThanOrEqual(corpus.trustCases.count, 11)
+        XCTAssertGreaterThanOrEqual(corpus.clockFloorCases.count, 7)
+        XCTAssertGreaterThanOrEqual(corpus.bundleCases.count, 9)
+        // Every refusal step §7 can attribute must have at least one vector behind it, or the
+        // attribution assertions below are only testing the steps that happen to be covered.
+        let refusals = Set(corpus.bundleCases.compactMap(\.expect.reason))
+        XCTAssertEqual(refusals, Set(BundleRefusalReason.allCases.map(\.rawValue)))
     }
 
-    /// §3 — every claim the wire contract makes about a document, at a pinned `now`.
-    func testAllCorpusDocCases() throws {
-        for c in try loadCorpus().docCases {
-            let doc = verifyDoc(
-                c.jws,
-                options: VerifyDocOptions(
-                    trust: c.trust, expectedAud: c.expectedAud, deviceId: c.deviceId,
-                    lastAcceptedIssuedAt: c.lastAcceptedIssuedAt, expectedIss: c.expectedIss,
-                    now: c.now, checkFreshness: c.checkFreshness ?? true))
-            if c.expect.accept {
-                XCTAssertNotNil(doc, "\(c.id) should be accepted — \(c.description)")
+    /// §1–§2 — every raw JWS vector: an `ok` case must verify, expose the expected `kid`, and
+    /// reproduce the expected payload structurally; a `fail` case (tampered / wrong-kid /
+    /// alg=none / oversized / duplicate-key / untyped / mistyped) must return nil.
+    func testAllJwsCases() throws {
+        for c in try loadCorpus().jwsCases {
+            let typ = JwsTyp(rawValue: c.typ)
+            XCTAssertNotNil(typ, "\(c.id): corpus names a typ this SDK does not know — \(c.typ)")
+            let result = JWSVerifier.verify(
+                c.jws, trust: c.trust, typ: typ, requireTyp: true,
+                maxPayloadBytes: c.maxPayloadBytes)
+            if c.expect.verify == "ok" {
+                guard let result else {
+                    XCTFail("\(c.id) should verify but returned nil — \(c.description)")
+                    continue
+                }
+                XCTAssertEqual(result.kid, c.expect.kid, "\(c.id): kid mismatch")
+                if let expected = c.expect.doc {
+                    let actual = try JSONDecoder().decode(
+                        JSONValue.self, from: result.payload)
+                    XCTAssertEqual(actual, expected, "\(c.id): payload mismatch")
+                }
             } else {
-                XCTAssertNil(doc, "\(c.id) must be rejected — \(c.description)")
+                XCTAssertNil(result, "\(c.id) must fail verification — \(c.description)")
             }
         }
     }
 
-    /// §1 — a manifest is verified against the PINNED keys only, and what it publishes
-    /// REPLACES the discovered set. A refused manifest leaves the previous set untouched.
-    func testAllCorpusTrustCases() throws {
+    /// §3 — every claim the contract makes about a LICENSE document, at a pinned `now`.
+    func testAllLicenseDocCases() throws {
+        for c in try loadCorpus().licenseDocCases {
+            XCTAssertEqual(c.typ, JwsTyp.license.rawValue, "\(c.id) typ")
+            let doc = verifyLicenseDoc(c.jws, options: options(c))
+            assertAccept(doc != nil, c)
+        }
+    }
+
+    /// §3 — the same envelope rules over a CONFIG document, plus the two config-only vectors:
+    /// a document with no licence fields at all is ACCEPTED (D-08's wire-level guarantee), and a
+    /// string `schemaVersion` is refused on shape.
+    func testAllConfigDocCases() throws {
+        for c in try loadCorpus().configDocCases {
+            XCTAssertEqual(c.typ, JwsTyp.config.rawValue, "\(c.id) typ")
+            let doc = verifyConfigDoc(c.jws, options: options(c))
+            assertAccept(doc != nil, c)
+        }
+    }
+
+    private func options(_ c: CorpusDocCase) -> VerifyOptions {
+        VerifyOptions(
+            trust: c.trust, expectedAud: c.expectedAud, deviceId: c.deviceId,
+            lastAcceptedIssuedAt: c.lastAcceptedIssuedAt, expectedIss: c.expectedIss,
+            now: c.now, checkFreshness: c.checkFreshness ?? true)
+    }
+
+    private func assertAccept(_ accepted: Bool, _ c: CorpusDocCase) {
+        if c.expect.accept {
+            XCTAssertTrue(accepted, "\(c.id) should be accepted — \(c.description)")
+        } else {
+            XCTAssertFalse(accepted, "\(c.id) must be rejected — \(c.description)")
+        }
+    }
+
+    /// §1 — a manifest is verified against the PINNED keys only, and what it publishes REPLACES
+    /// the discovered set. A refused manifest leaves the previous set untouched.
+    func testAllTrustCases() throws {
         for c in try loadCorpus().trustCases {
             let result = verifyTrustManifest(
                 c.manifestJws,
@@ -152,30 +268,29 @@ final class ConformanceTests: XCTestCase {
                     pinned: c.pinned, expectedAud: "djdl", now: c.now,
                     checkFreshness: c.checkFreshness ?? true))
             XCTAssertEqual(
-                result.doc != nil, c.expect.accepted,
-                "\(c.id) acceptance — \(c.description)")
+                result.doc != nil, c.expect.accepted, "\(c.id) acceptance — \(c.description)")
             let discovered = result.doc != nil ? result.discovered : c.before
             XCTAssertEqual(
-                mergeTrust(c.pinned, discovered), c.expect.trust,
-                "\(c.id) resulting trust set")
+                mergeTrust(c.pinned, discovered), c.expect.trust, "\(c.id) resulting trust set")
             if let issuedAt = c.expect.issuedAt {
                 XCTAssertEqual(result.doc?.issuedAt, issuedAt, "\(c.id) issuedAt")
             }
         }
     }
 
-    /// §4.3 — the monotonic clock floor. Each case replays the cache-RELOAD path as pure
-    /// data: re-verify the cached manifest (freshness OFF), re-verify the cached document
-    /// against the resulting trust set (freshness OFF), take the floor as the max of the
-    /// `issuedAt` of whatever actually verified, then gate at `max(systemClock, floor)`.
+    /// §4.2 — the monotonic clock floor. Each case replays the cache-RELOAD path as pure data:
+    /// re-verify the cached manifest (freshness OFF), re-verify each cached document against the
+    /// resulting trust set (freshness OFF), take the floor as the max over the `issuedAt` of
+    /// whatever actually verified, then gate at `max(systemClock, floor)`.
     ///
-    /// Deriving the floor from the document ALONE is inert (R4-04) — that is what
-    /// `floor-config-doc-alone-does-not-stop-rollback` pins, and why the manifest must be
-    /// the second source.
-    func testAllCorpusClockFloorCases() throws {
+    /// Order is load-bearing: trust first, because the documents may be signed by a key only the
+    /// manifest publishes. Deriving the floor from the DOCUMENTS alone is inert (R4-04) — that is
+    /// what `floor-config-doc-alone-does-not-stop-rollback` pins, and v3 giving the client a
+    /// second document changes nothing, because both are stamped by the same fetch.
+    func testAllClockFloorCases() throws {
         for c in try loadCorpus().clockFloorCases {
             var trust = c.pinned
-            var highWaterMark = 0
+            var verified: [any DatedArtifact] = []
 
             if let trustJws = c.trustJws {
                 let manifest = verifyTrustManifest(
@@ -185,174 +300,188 @@ final class ConformanceTests: XCTestCase {
                         checkFreshness: false))
                 if let doc = manifest.doc {
                     trust = mergeTrust(c.pinned, manifest.discovered)
-                    highWaterMark = max(highWaterMark, doc.issuedAt)
+                    verified.append(doc)
                 }
             }
 
-            var doc: ManagedConfigDoc?
-            if let configJws = c.configJws {
-                doc = verifyDoc(
-                    configJws,
-                    options: VerifyDocOptions(
-                        trust: trust, expectedAud: c.expectedAud, deviceId: c.deviceId,
-                        now: c.systemClock, checkFreshness: false))
-                if let doc { highWaterMark = max(highWaterMark, doc.issuedAt) }
+            let reload = { (t: TrustSet) in
+                VerifyOptions(
+                    trust: t, expectedAud: c.expectedAud, deviceId: c.deviceId,
+                    now: c.systemClock, checkFreshness: false)
+            }
+            var license: LicenseDoc?
+            if let jws = c.licenseJws, let doc = verifyLicenseDoc(jws, options: reload(trust)) {
+                license = doc
+                verified.append(doc)
+            }
+            if let jws = c.configJws, let doc = verifyConfigDoc(jws, options: reload(trust)) {
+                verified.append(doc)
             }
 
-            XCTAssertEqual(highWaterMark, c.expect.highWaterMark, "\(c.id) highWaterMark")
+            let floor = highWaterMark(verified)
+            XCTAssertEqual(floor, c.expect.highWaterMark, "\(c.id) highWaterMark")
             XCTAssertEqual(
-                max(c.systemClock, highWaterMark), c.expect.effectiveNow,
-                "\(c.id) effectiveNow")
+                effectiveNow(c.systemClock, floor), c.expect.effectiveNow, "\(c.id) effectiveNow")
             let state = licenseState(
                 GateInput(
-                    hasToken: true, doc: doc, now: max(c.systemClock, highWaterMark)))
+                    licenseServiceEnabled: true, activation: .token, doc: license,
+                    now: c.systemClock, highWaterMark: floor))
             XCTAssertEqual(
                 state.status.rawValue, c.expect.status, "\(c.id) — \(c.description)")
         }
     }
 
-    /// Every corpus case: an `ok` case must verify, expose the expected `kid`, and reproduce
-    /// the expected doc byte-for-byte; a `fail` case (tampered / wrong-kid / alg=none /
-    /// malformed) must return nil.
-    func testAllCorpusCases() throws {
-        let corpus = try loadCorpus()
-        for c in corpus.cases {
-            let result = JWSVerifier.verify(
-                c.jws, trust: c.trust, typ: c.typ.flatMap(JwsTyp.init(rawValue:)))
-            if c.expect.verify == "ok" {
-                guard let result else {
-                    XCTFail("\(c.id) should verify but returned nil")
+    /// §7 — offline bundle import, all-or-nothing, with the refusing STEP attributed.
+    ///
+    /// The corpus pins WHICH step refused, not merely that something did: "the bundle was
+    /// addressed to another device" (step 2) and "the license document inside it was addressed to
+    /// another device" (step 4) are different failures with different operator remedies.
+    func testAllBundleCases() throws {
+        for c in try loadCorpus().bundleCases {
+            // The raised cap is the implementation's constant, never the caller's — the corpus
+            // asserts the two agree rather than passing the value in.
+            XCTAssertEqual(
+                c.maxPayloadBytes, MAX_BUNDLE_BYTES, "\(c.id): bundle cap must be the constant")
+            let options = BundleOptions(
+                pinned: c.pinned, product: c.expectedAud, deviceId: c.deviceId, now: c.now)
+            let inspection = inspectBundle(c.bundleJws, options: options)
+
+            if c.expect.imports {
+                guard case .ok(let bundle) = inspection else {
+                    XCTFail("\(c.id) should import — \(c.description)")
                     continue
                 }
-                XCTAssertEqual(result.kid, c.expect.kid, "\(c.id): kid mismatch")
-                XCTAssertEqual(result.payload, c.expect.doc, "\(c.id): doc mismatch")
+                XCTAssertEqual(
+                    bundle.importedSlices.map(\.rawValue), c.expect.docs ?? [],
+                    "\(c.id) imported documents, in §7 order")
+                // The ergonomic entry point must never disagree with the attributed one.
+                XCTAssertEqual(
+                    verifyBundle(c.bundleJws, options: options), bundle,
+                    "\(c.id): verifyBundle and inspectBundle must agree")
             } else {
-                XCTAssertNil(result, "\(c.id) must fail verification")
+                guard case .refused(let reason) = inspection else {
+                    XCTFail("\(c.id) must be refused — \(c.description)")
+                    continue
+                }
+                XCTAssertEqual(
+                    reason.rawValue, c.expect.reason, "\(c.id) refusal step — \(c.description)")
+                XCTAssertNil(
+                    verifyBundle(c.bundleJws, options: options),
+                    "\(c.id): a refused bundle must yield nothing at all")
             }
         }
     }
 
-    /// The trusted production test key + a deliberately wrong key, to prove key selection is
-    /// driven by the trust set's value, not merely the presence of the kid.
+    /// The control bundle in detail: step 4 runs against the set step 3 BUILT, not against the
+    /// pins alone — the config document inside it is signed by a rotated key that only the inner
+    /// manifest publishes.
+    func testValidBundleCarriesVerifiedContents() throws {
+        let corpus = try loadCorpus()
+        guard let c = corpus.bundleCases.first(where: { $0.id == "bundle-valid-full" }) else {
+            return XCTFail("missing bundle-valid-full")
+        }
+        guard
+            let bundle = verifyBundle(
+                c.bundleJws,
+                options: BundleOptions(
+                    pinned: c.pinned, product: c.expectedAud, deviceId: c.deviceId, now: c.now))
+        else { return XCTFail("bundle-valid-full should verify") }
+
+        XCTAssertFalse(bundle.bundleId.isEmpty)
+        XCTAssertEqual(bundle.trustJws.split(separator: ".").count, 3)
+        XCTAssertGreaterThan(
+            bundle.effectiveTrust.count, c.pinned.count,
+            "the inner manifest must have published at least one further key")
+        XCTAssertEqual(bundle.license?.doc.deviceId, c.deviceId)
+        XCTAssertEqual(bundle.license?.doc.aud, c.expectedAud)
+        XCTAssertEqual(bundle.config?.doc.deviceId, c.deviceId)
+        XCTAssertEqual(bundle.license?.jws.split(separator: ".").count, 3)
+        XCTAssertEqual(bundle.config?.jws.split(separator: ".").count, 3)
+    }
+
+    // ── Targeted checks the corpus cannot express as data ────────────────────────────
+
+    /// Key selection is driven by the trust set's VALUE, not merely by the presence of the kid.
     func testWrongKeyForKnownKidFails() throws {
         let corpus = try loadCorpus()
-        guard let valid = corpus.cases.first(where: { $0.id == "valid-stable" }) else {
-            XCTFail("missing valid-stable case")
-            return
+        guard let valid = corpus.jwsCases.first(where: { $0.id == "valid-stable" }) else {
+            return XCTFail("missing valid-stable case")
         }
-        // Same kid, but the other corpus key's bytes — signature must fail.
-        let wrongTrust = ["pkey-test-prod-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"]
-        XCTAssertNil(JWSVerifier.verify(valid.jws, trust: wrongTrust))
+        // Same kid, the OTHER corpus key's bytes.
+        let other = corpus.keys.first { $0.kid != "pkey-test-prod-2026" }
+        XCTAssertNotNil(other)
+        XCTAssertNil(
+            JWSVerifier.verify(
+                valid.jws, trust: ["pkey-test-prod-2026": other!.publicKeyRaw], typ: .license))
     }
 
     /// A 31-byte (non-32) key is rejected before any signature math.
     func testNon32ByteKeyRejected() throws {
         let corpus = try loadCorpus()
-        guard let valid = corpus.cases.first(where: { $0.id == "valid-stable" }) else {
-            XCTFail("missing valid-stable case")
-            return
+        guard let valid = corpus.jwsCases.first(where: { $0.id == "valid-stable" }) else {
+            return XCTFail("missing valid-stable case")
         }
         let short = Base64URL.encode(Data(repeating: 0, count: 31))
-        XCTAssertNil(JWSVerifier.verify(valid.jws, trust: ["pkey-test-prod-2026": short]))
+        XCTAssertNil(
+            JWSVerifier.verify(
+                valid.jws, trust: ["pkey-test-prod-2026": short], typ: .license))
     }
 
-    /// The product-scoped `verifyDoc` wrapper: right aud/device passes, wrong fails, and a
-    /// replayed issuedAt is rejected.
-    ///
-    /// `now` is anchored to the vector's own `issuedAt` because wire contract v2 §3 checks
-    /// the whole signed validity window, and these are fixed-timestamp 2023 fixtures.
+    /// The product-scoped wrapper: right aud/device passes, wrong fails, and a replayed
+    /// `issuedAt` is rejected. `now` is anchored to the vector's own `issuedAt` because §3 checks
+    /// the whole signed validity window and these are fixed-timestamp fixtures.
     func testVerifyDocAntiReplay() throws {
         let corpus = try loadCorpus()
-        guard let valid = corpus.cases.first(where: { $0.id == "valid-stable" }),
-            let doc = valid.expect.doc
-        else {
-            XCTFail("missing valid-stable case")
-            return
+        guard let valid = corpus.jwsCases.first(where: { $0.id == "valid-stable" }),
+            let doc = valid.expect.doc?.objectValue,
+            let deviceId = doc["deviceId"]?.stringValue,
+            let issuedAt = doc["issuedAt"]?.intValue
+        else { return XCTFail("missing valid-stable case") }
+
+        func verify(aud: String, device: String, floor: Int? = nil) -> LicenseDoc? {
+            verifyLicenseDoc(
+                valid.jws,
+                options: VerifyOptions(
+                    trust: valid.trust, expectedAud: aud, deviceId: device,
+                    lastAcceptedIssuedAt: floor, now: issuedAt))
         }
-        // Correct product + device.
-        XCTAssertNotNil(
-            verifyDoc(
-                valid.jws,
-                options: VerifyDocOptions(
-                    trust: valid.trust, expectedAud: "djdl", deviceId: doc.deviceId,
-                    now: doc.issuedAt)))
-        // Wrong audience.
+        XCTAssertNotNil(verify(aud: "djdl", device: deviceId))
+        XCTAssertNil(verify(aud: "other", device: deviceId), "wrong audience")
+        XCTAssertNil(verify(aud: "djdl", device: "someone-else"), "wrong device")
         XCTAssertNil(
-            verifyDoc(
-                valid.jws,
-                options: VerifyDocOptions(
-                    trust: valid.trust, expectedAud: "other", deviceId: doc.deviceId,
-                    now: doc.issuedAt)))
-        // Wrong device.
-        XCTAssertNil(
-            verifyDoc(
-                valid.jws,
-                options: VerifyDocOptions(
-                    trust: valid.trust, expectedAud: "djdl", deviceId: "someone-else",
-                    now: doc.issuedAt)))
-        // Replay: issuedAt not strictly greater than the last accepted.
-        XCTAssertNil(
-            verifyDoc(
-                valid.jws,
-                options: VerifyDocOptions(
-                    trust: valid.trust, expectedAud: "djdl", deviceId: doc.deviceId,
-                    lastAcceptedIssuedAt: doc.issuedAt, now: doc.issuedAt)))
-        // Fresh: issuedAt strictly greater than the last accepted passes.
-        XCTAssertNotNil(
-            verifyDoc(
-                valid.jws,
-                options: VerifyDocOptions(
-                    trust: valid.trust, expectedAud: "djdl", deviceId: doc.deviceId,
-                    lastAcceptedIssuedAt: doc.issuedAt - 1, now: doc.issuedAt)))
+            verify(aud: "djdl", device: deviceId, floor: issuedAt),
+            "replay: issuedAt not strictly greater than the last accepted")
+        XCTAssertNotNil(verify(aud: "djdl", device: deviceId, floor: issuedAt - 1))
     }
 
-    // ── P1.7: payload byte-size cap ──────────────────────────────────────────────
-    /// Sign a JWS in-test with a fresh key so the signature is valid, then prove the size cap
-    /// (not the signature) is what rejects an over-cap payload: an exactly-at-cap blob still
-    /// verifies, a 1-byte-over blob does not.
-    private func signJws(kid: String, payloadJSON: Data, key: Curve25519.Signing.PrivateKey)
-        -> String
-    {
-        let header = Data(#"{"alg":"EdDSA","kid":"\#(kid)"}"#.utf8)
-        let signingInput = Base64URL.encode(header) + "." + Base64URL.encode(payloadJSON)
-        let sig = try! key.signature(for: Data(signingInput.utf8))
-        return signingInput + "." + Base64URL.encode(sig)
-    }
+    /// The payload cap, not the signature, is what rejects an over-cap document: an
+    /// exactly-at-cap blob still verifies and a one-byte-over blob does not. The corpus pins the
+    /// same boundary for both the ordinary 64 KiB cap and the bundle's 256 KiB one; this proves
+    /// the Swift arithmetic independently, with a locally-minted key.
+    func testPayloadSizeCapRejectsOversizedButAcceptsAtCap() {
+        let signer = TestSigner(kid: "test-cap-key")
 
-    func testPayloadSizeCapRejectsOversizedButAcceptsAtCap() throws {
-        let key = Curve25519.Signing.PrivateKey()
-        let kid = "test-cap-key"
-        let trust = [kid: Base64URL.encode(key.publicKey.rawRepresentation)]
-
-        // A valid doc whose `licenseId` is padded so the serialized payload lands at an exact
-        // byte length. We build at cap, then one byte over.
-        func payload(padLen: Int) -> Data {
+        func payload(padLen: Int) -> String {
             let pad = String(repeating: "x", count: padLen)
-            let json = """
-                {"schemaVersion":1,"aud":"djdl","iss":"key.plrs.im","licenseId":"\(pad)",\
-                "deviceId":"d","issuedAt":1,\
-                "expiresAt":2,"graceUntil":3,"profile":{"name":"n","firstName":"f",\
-                "email":"e","activatedAt":0},"payload":{"config":{},"secrets":{},\
-                "entitlements":{}}}
+            return """
+                {"iss":"plrs.im","aud":"djdl","deviceId":"d","issuedAt":1,"expiresAt":2,\
+                "graceUntil":3,"licenseId":"\(pad)","entitlements":{}}
                 """
-            return Data(json.utf8)
         }
-
-        // Find a pad that puts us exactly AT the cap.
-        let base = payload(padLen: 0).count
+        let base = payload(padLen: 0).utf8.count
         let atCapPad = JWSVerifier.maxPayloadBytes - base
-        let atCap = payload(padLen: atCapPad)
-        XCTAssertEqual(atCap.count, JWSVerifier.maxPayloadBytes)
-        let overCap = payload(padLen: atCapPad + 1)
-        XCTAssertEqual(overCap.count, JWSVerifier.maxPayloadBytes + 1)
+        XCTAssertEqual(payload(padLen: atCapPad).utf8.count, JWSVerifier.maxPayloadBytes)
 
-        // At cap: valid signature + within cap ⇒ verifies.
         XCTAssertNotNil(
-            JWSVerifier.verify(signJws(kid: kid, payloadJSON: atCap, key: key), trust: trust),
+            JWSVerifier.verify(
+                signer.sign(payloadJSON: payload(padLen: atCapPad), typ: JwsTyp.license.rawValue),
+                trust: signer.trust, typ: .license),
             "payload at the cap must verify")
-        // Over cap: valid signature but rejected by the size guard.
         XCTAssertNil(
-            JWSVerifier.verify(signJws(kid: kid, payloadJSON: overCap, key: key), trust: trust),
+            JWSVerifier.verify(
+                signer.sign(
+                    payloadJSON: payload(padLen: atCapPad + 1), typ: JwsTyp.license.rawValue),
+                trust: signer.trust, typ: .license),
             "payload over the cap must be rejected before decode")
     }
 }

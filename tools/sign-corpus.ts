@@ -6,14 +6,14 @@
 //
 // TWO corpora are emitted from the same two committed test keys and the same fixed clocks:
 //
-//   conformance/corpus/v1/  wire contract v2. FROZEN — Python and Swift still consume it
-//                           (they move to v2 in P5; v1 is deleted in P8). Mirrored into the
-//                           Swift test bundle, which cannot reach up the monorepo at test
-//                           time. Any byte of drift here is a cross-language break.
+//   conformance/corpus/v1/  wire contract v2. FROZEN — Python still consumes it (it moves to
+//                           v2 in P5; v1 is deleted in P8). Still mirrored into the Swift test
+//                           bundle so the drift gate keeps guarding it, though the Swift
+//                           runners now read v2. Any byte of drift here is a cross-language
+//                           break.
 //   conformance/corpus/v2/  wire contract v3 (docs/security/WIRE-CONTRACT-V3.md). Consumed
-//                           by conformance/runners/node/corpusV2.test.ts via @plrs/client-core.
-//                           NOT mirrored to Swift yet — that lands with the Swift target
-//                           rename in P5.
+//                           by conformance/runners/node/corpusV2.test.ts via @plrs/client-core
+//                           and, mirrored into `Resources/v2/`, by the Swift suite.
 //
 //   pnpm gen:corpus            # write both corpora
 //   pnpm gen:corpus -- --check # CI drift guard (exit 1 if any file is stale)
@@ -39,9 +39,13 @@ const SWIFT_RESOURCES = join(
   "sdks",
   "swift",
   "Tests",
-  "PolarisKeyTests",
+  "PolarisTests",
   "Resources",
 );
+
+/** The v3 corpus lives in a `v2/` SUBDIRECTORY of the same bundle, so both sets can coexist
+ *  under their canonical file names until P8 deletes corpus/v1 and promotes these. */
+const SWIFT_V2_RESOURCES = join(SWIFT_RESOURCES, "v2");
 const GATE_MATRIX = join(CORPUS_DIR, "gate-matrix.json");
 
 /** Committed TEST keypairs. These are NOT production keys — they exist only to sign the
@@ -3361,6 +3365,24 @@ async function main(): Promise<void> {
   });
   stale = reconcile(V2_GATE_MATRIX_OUT, v2GateMatrix, check) || stale;
   stale = reconcile(V2_FINGERPRINT_OUT, fingerprint, check) || stale;
+
+  // …and the same three into the Swift test bundle's `Resources/v2/`, which is what the Swift
+  // conformance/gate-matrix/fingerprint runners read.
+  stale =
+    reconcile(join(SWIFT_V2_RESOURCES, "cases.json"), v2Content, check) ||
+    stale;
+  stale =
+    reconcile(
+      join(SWIFT_V2_RESOURCES, "gate-matrix.json"),
+      v2GateMatrix,
+      check,
+    ) || stale;
+  stale =
+    reconcile(
+      join(SWIFT_V2_RESOURCES, "fingerprint.json"),
+      fingerprint,
+      check,
+    ) || stale;
 
   if (check && stale) process.exit(1);
 }
