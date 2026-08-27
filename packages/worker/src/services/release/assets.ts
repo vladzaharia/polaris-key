@@ -74,6 +74,19 @@ function archMatches(name: string, arch: Arch): boolean {
   return hasWanted && !hasOther;
 }
 
+/**
+ * The architecture an asset name carries, or null when it names none (or names both).
+ *
+ * Exported for the truth store, which records `release_artifacts.arch`: it must agree with the
+ * matcher below, or the portal would offer a build the download route refuses to select.
+ */
+export function archOf(name: string): Arch | null {
+  for (const arch of Object.keys(ARCH_TOKENS) as Arch[]) {
+    if (archMatches(name, arch)) return arch;
+  }
+  return null;
+}
+
 export interface MatchSpec {
   /** Required canonical architecture. */
   arch: Arch;
@@ -158,4 +171,16 @@ export function findBinaryAsset(
   const exact = assets.find((a) => a.name === exactName);
   if (exact) return exact;
   return matchAsset(assets, { arch, ext: "", binaryName, channelSuffix });
+}
+
+/**
+ * The conventional sibling-signature asset name for a DMG (`<dmg>.sig`).
+ *
+ * Asset NAMING is Release's model, not Update's: the release health check reads it to tell an
+ * operator which sidecar is missing, and the appcast renderer reads it to find the signature it
+ * must verify. It lived next to the renderer until P2.T1 split the feed out; keeping it here is
+ * what lets `services/release/health.ts` ask the question without reaching into Update.
+ */
+export function sigAssetName(dmgName: string): string {
+  return `${dmgName}.sig`;
 }

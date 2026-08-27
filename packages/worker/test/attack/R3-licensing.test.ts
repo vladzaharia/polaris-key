@@ -270,10 +270,11 @@ describe("R3-01 build gate is attacker-controlled", () => {
 
   it("FIXED (R3-07): 0.0.0-pr-N is the pr channel to the worker, as it already was to the SDK", async () => {
     // Was: gate.ts  /^0\.0\.0-pr\d+/     → "0.0.0-pr-42" is "stable"
-    //      sdk semver.ts:56 /^0\.0\.0-pr-?\d+/ → "0.0.0-pr-42" is "pr"
-    // The SDK's form is pinned by sdk-node/test/semver.test.ts:92, so the WORKER moved.
+    //      sdk semver /^0\.0\.0-pr-?\d+/ → "0.0.0-pr-42" is "pr"
+    // The SDK's form is pinned by client-core/test/semver.test.ts, so the WORKER moved.
+    // (The shared implementation moved to @plrs/client-core in P4.)
     const sdkSource = readFileSync(
-      join(HERE, "..", "..", "..", "sdk-node", "src", "semver.ts"),
+      join(HERE, "..", "..", "..", "client-core", "src", "semver.ts"),
       "utf8",
     );
     expect(sdkSource).toContain("/^0\\.0\\.0-pr-?\\d+/");

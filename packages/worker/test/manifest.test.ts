@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { stringify as toYaml } from "yaml";
-import { parseManifest } from "../src/release/manifest.js";
+import { parseManifest } from "../src/services/release/manifest.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 

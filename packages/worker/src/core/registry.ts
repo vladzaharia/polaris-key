@@ -37,6 +37,18 @@ export interface ServiceContext {
   rest: string[];
   /** Epoch seconds for this request — one value for every timestamp it writes or signs. */
   now: number;
+  /**
+   * True when the request arrived on one of the permanent pre-namespace aliases (§R1,
+   * `router.ts`): `/<p>/appcast.xml`, `/<p>/<channel>/appcast.xml`, `/<p>/install.sh`,
+   * `/<p>/version`.
+   *
+   * Present so the route table can be ASSERTED on, not so a handler can branch. The router
+   * rewrites an alias into the canonical segments before dispatch, so every handler sees the
+   * canonical request and the two spellings are byte-identical by construction. A service that
+   * read this flag to change its answer would be re-introducing exactly the divergence the
+   * rewrite exists to prevent.
+   */
+  alias?: boolean;
 }
 
 /**

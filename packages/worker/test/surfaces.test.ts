@@ -18,8 +18,7 @@ import { handleActivate } from "../src/services/license/activation.js";
 import { handleJwks } from "../src/core/trust.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { handleMintToken } from "../src/services/config/mint.js";
-import { licenseService } from "../src/services/license/index.js";
-import { configService } from "../src/services/config/index.js";
+import { SERVICES } from "../src/mount.js";
 import { serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 import type { Db } from "../src/db/types.js";
@@ -93,10 +92,9 @@ async function discover(
     env,
     db,
     product,
-    new Map([
-      [licenseService.slug, licenseService],
-      [configService.slug, configService],
-    ]),
+    // The real mount table, not a hand-built double: a fragment that stopped being registered
+    // would otherwise silently become `{enabled:false}` and this suite would still pass.
+    SERVICES,
   );
   expect(res.status).toBe(200);
   expect(res.headers.get("cache-control")).toContain("max-age=300");
@@ -236,20 +234,32 @@ describe("worker surfaces", () => {
       // No recipes seeded for this product, so the capability reads honestly.
       mint: { available: false },
     });
-    expect(body.services.release).toMatchObject({
+    // P2.T1: these two fragments are now the SERVICES' own, not Core stand-ins, and they
+    // advertise the CANONICAL §R1 paths. The four permanent aliases still answer — that is what
+    // `router.test.ts` pins — but discovery is where a compatibility spelling stops being taught
+    // to new clients.
+    expect(body.services.release).toEqual({
       enabled: true,
       configured: true,
-      source: "github",
+      binaryName: "djdl",
       repository: { owner: "acme", name: "djdl" },
-      channels: ["stable", "beta", "nightly"],
+      endpoints: {
+        changelog: "https://key.plrs.im/djdl/release/changelog",
+        install: "https://key.plrs.im/djdl/release/install.sh",
+        download: "https://key.plrs.im/djdl/release/dl",
+      },
     });
-    expect(body.services.update).toMatchObject({
+    expect(body.services.update).toEqual({
       enabled: true,
+      configured: true,
+      channels: ["stable", "beta", "nightly"],
       sparkleEd25519PublicKey: "SPARKLEPUB",
       endpoints: {
-        version: "https://key.plrs.im/djdl/version",
-        appcast: "https://key.plrs.im/djdl/appcast.xml",
+        version: "https://key.plrs.im/djdl/update/version",
+        appcast: "https://key.plrs.im/djdl/update/appcast.xml",
+        channelAppcast: "https://key.plrs.im/djdl/update/{channel}/appcast.xml",
       },
+      archParameter: ["arm64", "x86_64"],
     });
     expect(body.services.identity).toMatchObject({
       enabled: true,

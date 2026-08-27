@@ -11,12 +11,17 @@
  */
 
 import { Catalog } from "@plrs/catalog";
-import type { Env } from "../env.js";
-import type { Db, DbStatement } from "../db/types.js";
+import type { Db, DbStatement, Env } from "../../core/platform.js";
 import {
+  countLicensesUsingProfile,
+  countLicensesUsingTier,
+  deactivateSchemas,
   getActiveSchema,
   getProduct,
   insertSchema,
+  listProfiles,
+  listTiers,
+  nextSchemaVersion,
   setAutoIssuePolicy,
   setFingerprintPolicy,
   setServices,
@@ -25,16 +30,8 @@ import {
   stmtInsertProfile,
   stmtInsertProvisioning,
   stmtInsertTier,
-} from "../repo.js";
-import {
-  countLicensesUsingProfile,
-  countLicensesUsingTier,
-  deactivateSchemas,
-  listProfiles,
-  listTiers,
-  nextSchemaVersion,
-} from "../admin/repo.js";
-import { getReleaseConfig } from "./index.js";
+} from "../../core/ingest.js";
+import { getReleaseConfig } from "./config.js";
 import { parseManifest } from "./manifest.js";
 import {
   discoverInstallation,
@@ -45,7 +42,8 @@ import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
-import { serializeServices } from "../core/services.js";
+import { releaseStoreSyncStatements } from "./sync.js";
+import { serializeServices } from "../../core/services.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
@@ -398,6 +396,31 @@ export async function resyncRepo(
     );
   }
   updated.push("edgeMint");
+
+  // ── release truth store: the same pass, one extra GitHub read (P2.T2) ───────
+  //
+  // `release_metadata`/`release_artifacts`/`release_channels`/`release_health` have existed as
+  // write-orphaned scaffolding since 0007. This is the writer. It rides in the SAME batch as the
+  // manifest-owned rows so a resync is one transaction: a truth store that landed separately
+  // could survive a failure that rolled the rest back, and the portal would then list releases
+  // for a product whose tiers had not been updated.
+  //
+  // The row is re-read rather than reused, because the UPDATE above may just have changed the
+  // access modes the store records.
+  const syncedCfg = rel ? await getReleaseConfig(db, slug) : cfg;
+  if (syncedCfg) {
+    const storeStmts = await releaseStoreSyncStatements(
+      env,
+      syncedCfg,
+      now,
+      fetchImpl,
+    );
+    if (storeStmts.length > 0) {
+      stmts.push(...storeStmts);
+      updated.push("releases");
+    }
+  }
+
   if (stmts.length > 0) await db.batch(stmts);
 
   return { ok: true, updated };

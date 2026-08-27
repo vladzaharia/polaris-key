@@ -12,7 +12,6 @@
  *                                             KEK (the rotation sweep; idempotent + resumable).
  *   - `PUT  /api/products/<slug>/secrets/<name>` — write-only sealed secret (never echoed).
  *   - `POST /api/products/<slug>/keys/rotate`    — retire the active key, mint a new active one.
- *   - `POST /api/products/<slug>/release/resync`  — re-fetch `.pkey/` and re-apply.
  *
  * Platform admin gates the registry + link-repo + manual create; product admin (or platform)
  * gates the per-product key/secret/release operations.
@@ -37,7 +36,6 @@ import {
   stmtRetireProductKeys,
   stmtSetProductKeyStatus,
   stmtInsertSchema,
-  upsertProductSyncState,
   upsertProductSecret,
 } from "../../repo.js";
 import { deleteTokenRecord } from "../../kv.js";
@@ -49,10 +47,7 @@ import {
   seal,
   type Sealed,
 } from "../../keyvault.js";
-import { linkRepo } from "../../release/linkRepo.js";
-import { MAX_MANIFEST_BYTES } from "../../release/manifest.js";
-import { resyncRepo } from "../../release/resync.js";
-import { checkReleaseHealth } from "../../release/health.js";
+import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
@@ -223,10 +218,11 @@ export async function handleProducts(
       slug,
       {
         name: typeof body.name === "string" ? body.name : undefined,
-        compat_min:
-          typeof body.compatMin === "string" ? body.compatMin : undefined,
-        compat_max:
-          typeof body.compatMax === "string" ? body.compatMax : undefined,
+        // `compatMin`/`compatMax` are NOT accepted here any more. The compatibility window is a
+        // statement about which BUILDS this product supports, so spec §8 relocates it to
+        // `PATCH …/update/settings`. Dropped rather than ignored: an endpoint that quietly
+        // accepts a field it no longer owns lets a console appear to save a value that never
+        // changes, which is a worse failure than a rejected request.
         default_max_offline_days:
           typeof body.defaultMaxOfflineDays === "number"
             ? body.defaultMaxOfflineDays
@@ -814,9 +810,12 @@ async function handleKekKeyring(
 }
 
 /**
- * Product-scoped key/secret/release/portal operations: PUT a write-only secret, rotate the
- * signing key, resync from the linked repo, or update customer portal module settings. Called
- * from the dispatcher with the product already authz-checked (product admin OR platform).
+ * Product-scoped key/secret/portal operations: PUT a write-only secret, rotate the signing key,
+ * or update customer portal module settings. Called from the dispatcher with the product already
+ * authz-checked (product admin OR platform).
+ *
+ * `release/{health,resync}` used to be here; it moved to the Release service's own `adminHandle`
+ * in P2.T1 (§R1), which is why this list is shorter than the module header describes.
  */
 export async function handleProductScopedResource(
   req: Request,
@@ -826,7 +825,7 @@ export async function handleProductScopedResource(
   slug: string,
   resource: string,
   // The trailing path segment: a secret NAME (secrets/<name>) or an action (keys/<rotate>,
-  // release/<resync>). One position serves all resources that need a sub-action.
+  // keys/<rotate>). One position serves all resources that need a sub-action.
   id: string | undefined,
   now: number,
 ): Promise<Response> {
@@ -834,8 +833,6 @@ export async function handleProductScopedResource(
     return handleSecrets(req, env, db, session, slug, id, now);
   if (resource === "keys")
     return handleKeys(req, env, db, session, slug, id, now);
-  if (resource === "release")
-    return handleRelease(req, env, db, session, slug, id, now);
   if (resource === "portal")
     return handlePortalSettings(req, db, session, slug, now);
   if (resource === "policy")
@@ -1245,67 +1242,4 @@ async function handleKeys(
   }
 
   return notFound();
-}
-
-/** GET/POST /api/products/<slug>/release/* — release health + linked repo resync. */
-async function handleRelease(
-  req: Request,
-  env: Env,
-  db: Db,
-  session: AdminSession,
-  slug: string,
-  action: string | undefined,
-  now: number,
-): Promise<Response> {
-  if (action === "health") {
-    if (req.method !== "GET")
-      return err(405, ErrorCode.BadRequest, "method not allowed");
-    return adminJson({ health: await checkReleaseHealth(env, db, slug, now) });
-  }
-  if (action !== "resync") return notFound();
-  if (req.method !== "POST")
-    return err(405, ErrorCode.BadRequest, "method not allowed");
-  const result = await resyncRepo(env, db, slug, now);
-  if (!result.ok) {
-    await upsertProductSyncState(db, {
-      product: slug,
-      source: "manual",
-      status: "error",
-      last_checked_at: now,
-      last_synced_at: null,
-      commit_sha: null,
-      changed_paths_json: null,
-      updated_json: null,
-      errors_json: result.errors ? JSON.stringify(result.errors) : null,
-      message: result.error,
-    });
-    return err(
-      422,
-      ErrorCode.BadRequest,
-      result.error,
-      result.errors ? { errors: result.errors } : undefined,
-    );
-  }
-  await upsertProductSyncState(db, {
-    product: slug,
-    source: "manual",
-    status: "ok",
-    last_checked_at: now,
-    last_synced_at: now,
-    commit_sha: null,
-    changed_paths_json: null,
-    updated_json: JSON.stringify(result.updated),
-    errors_json: null,
-    message: null,
-  });
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "release.resync",
-    { kind: "product", id: slug },
-    `Resynced ${slug} from its linked repo`,
-  );
-  return adminJson({ ok: true, slug, updated: result.updated });
 }

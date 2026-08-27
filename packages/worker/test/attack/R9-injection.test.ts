@@ -32,24 +32,27 @@ import {
 import { DEFAULT_SERVICES } from "../../src/core/services.js";
 import { handleAuthCallback, handleAuthStart } from "../../src/oidc.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
-import { handleRelease } from "../../src/release/index.js";
+import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
 import {
   type FetchImpl,
   installationTokenSlot,
-} from "../../src/release/githubApp.js";
+} from "../../src/services/release/githubApp.js";
 import { seal } from "../../src/keyvault.js";
-import { linkRepo, parseRepoUrl } from "../../src/release/linkRepo.js";
-import { resyncRepo } from "../../src/release/resync.js";
+import { linkRepo, parseRepoUrl } from "../../src/services/release/linkRepo.js";
+import { resyncRepo } from "../../src/services/release/resync.js";
 import {
   fetchRepoFile,
   MAX_REPO_FILE_BYTES,
-} from "../../src/release/github.js";
+} from "../../src/services/release/github.js";
 import {
   MAX_MANIFEST_BYTES,
   parseManifest,
-} from "../../src/release/manifest.js";
-import { extractSummary } from "../../src/release/changelog.js";
-import { renderAppcast } from "../../src/release/appcast.js";
+} from "../../src/services/release/manifest.js";
+import { extractSummary } from "../../src/services/release/changelog.js";
+import {
+  proseToHtml,
+  renderAppcast,
+} from "../../src/services/update/appcast.js";
 import { applyOverrides } from "../../src/admin/lib/overrides.js";
 import { Catalog } from "@plrs/catalog";
 import { handlePortalApi, handlePortalDownload } from "../../src/portal/api.js";
@@ -990,9 +993,61 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     return { cookie: `${PORTAL_COOKIE}=${token}`, csrf: session.csrf };
   }
 
-  async function mintDownloadUrl(env: Env, db: Db): Promise<string> {
+  /** A second release/artifact pair, for the "repointed after minting" case. */
+  async function seedArtifact2(db: Db, sourceUrl: string): Promise<void> {
+    await db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, title, notes, commit_sha, source_url,
+          metadata_access, artifacts_access, published_at, metadata_json,
+          created_at, modified_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      SLUG,
+      "rel_2",
+      "1.2.4",
+      "DJDL 1.2.4",
+      null,
+      null,
+      "https://github.com/acme/djdl/releases/tag/v1.2.4",
+      "authenticated",
+      "authenticated",
+      NOW,
+      null,
+      NOW,
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO release_artifacts
+         (product, release_id, artifact_id, name, kind, platform, arch, content_type,
+          size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
+          metadata_json, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      SLUG,
+      "rel_2",
+      "art_2",
+      "djdl.dmg",
+      "dmg",
+      "macos",
+      "arm64",
+      "application/octet-stream",
+      1,
+      "sha",
+      sourceUrl,
+      null,
+      null,
+      "authenticated",
+      null,
+      NOW,
+    );
+  }
+
+  async function mintDownloadUrl(
+    env: Env,
+    db: Db,
+    releaseId = "rel_1",
+    artifactId = "art_1",
+  ): Promise<string> {
     const s = await portalSession(env, db);
-    const path = `/api/releases/${SLUG}/rel_1/artifacts/art_1/token`;
+    const path = `/api/releases/${SLUG}/${releaseId}/artifacts/${artifactId}/token`;
     const res = await handlePortalApi(
       req(`https://key.plrs.im${path}`, {
         method: "POST",
@@ -1008,13 +1063,68 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     return decodeURIComponent(url.replace("/download/", ""));
   }
 
-  it("302s to ANY host stored in release_artifacts.source_url (no allowlist)", async () => {
+  // RE-BASELINED (P2.T2): `release_artifacts` has a writer now, so the allowlist this finding
+  // asked for is applied — see `portal/api.ts` `redirectableSourceUrl`, which is the SAME
+  // predicate `release/github.ts` uses on GitHub's own redirects.
+  it("FIXED: refuses any host outside the GitHub storage allowlist", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), [SLUG]);
     env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
     await seedProduct(db, SLUG);
     await seedLicenseWithKey(db, SLUG);
     await seedArtifact(db, "https://malware.attacker.example/pwn.dmg");
+
+    // The refusal lands at MINT time, one layer earlier than the finding's PoC reached: a token
+    // that could only ever be rejected is a row written and a URL handed to the user for
+    // nothing. No token exists to redeem.
+    const s = await portalSession(env, db);
+    const path = `/api/releases/${SLUG}/rel_1/artifacts/art_1/token`;
+    const minted = await handlePortalApi(
+      req(`https://key.plrs.im${path}`, {
+        method: "POST",
+        headers: { cookie: s.cookie, [PORTAL_CSRF_HEADER]: s.csrf },
+      }),
+      env,
+      db,
+      path,
+      NOW,
+    );
+    expect(minted.status).toBe(404);
+    expect(
+      await db.first("SELECT 1 FROM release_download_tokens LIMIT 1"),
+    ).toBeNull();
+
+    // And a token minted BEFORE the artifact was repointed — the real shape of this attack,
+    // since `source_url` is rewritten by a sync — is refused at redemption too.
+    await seedArtifact2(db, "https://ok.githubusercontent.com/djdl.dmg");
+    const token = await mintDownloadUrl(env, db, "rel_2", "art_2");
+    await db.run(
+      "UPDATE release_artifacts SET source_url = ? WHERE artifact_id = ?",
+      "https://malware.attacker.example/pwn.dmg",
+      "art_2",
+    );
+    const res = await handlePortalDownload(
+      req(`https://key.plrs.im/download/${token}`),
+      env,
+      db,
+      token,
+      NOW,
+    );
+    expect(res.status).toBe(404);
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("FIXED: still redirects to an allowlisted GitHub storage host", async () => {
+    // The other direction, so the fix cannot be "refuse everything".
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), [SLUG]);
+    env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
+    await seedProduct(db, SLUG);
+    await seedLicenseWithKey(db, SLUG);
+    await seedArtifact(
+      db,
+      "https://github.com/acme/djdl/releases/download/v1.2.3/djdl.dmg",
+    );
 
     const token = await mintDownloadUrl(env, db);
     const res = await handlePortalDownload(
@@ -1026,9 +1136,8 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     );
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe(
-      "https://malware.attacker.example/pwn.dmg",
+      "https://github.com/acme/djdl/releases/download/v1.2.3/djdl.dmg",
     );
-    // Contrast: release/github.ts:88-95 DOES allowlist redirect targets.
   });
 
   // FIXED (R9-05b / R11-05): `markPortalDownloadUsed` is now a conditional UPDATE carrying
@@ -1041,7 +1150,9 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
     await seedProduct(db, SLUG);
     await seedLicenseWithKey(db, SLUG);
-    await seedArtifact(db, "https://downloads.example.com/djdl.dmg");
+    // An allowlisted host, so this test exercises the single-use race rather than stopping at
+    // the host check the tests above cover.
+    await seedArtifact(db, "https://objects.githubusercontent.com/djdl.dmg");
     const token = await mintDownloadUrl(env, db);
 
     // Model real D1 write latency: the `used_at` UPDATE lands one turn late. Any
@@ -1179,9 +1290,18 @@ describe("R9-07 extractSummary passes raw HTML/script through", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 // R9-08 — appcast CDATA break-out (latent: descriptionHtml is never populated)
 // ═════════════════════════════════════════════════════════════════════════════
-describe("R9-08 renderAppcast CDATA has no `]]>` neutralization", () => {
-  it("descriptionHtml can terminate the CDATA section and inject sibling XML", () => {
-    const xml = renderAppcast({
+describe("R9-08 renderAppcast CDATA `]]>` neutralization", () => {
+  // RE-BASELINED (P2.T4). The finding was rated Info on one ground only: `descriptionHtml` had
+  // no producer, so the sink was unreachable. P2.T4 gives it one — the curated changelog summary
+  // is now wired into every appcast item — so the two assertions below replace the two that
+  // documented the latency. Both directions of the fix are pinned: the CDATA section can no
+  // longer be terminated, and the payload survives as inert text rather than being silently
+  // dropped (a fix that ate the content would pass a weaker test and lose release notes).
+  const BREAKOUT =
+    "ok]]></description><enclosure url='https://evil'/><description><![CDATA[";
+
+  function feedWith(descriptionHtml: string): string {
+    return renderAppcast({
       channelTitle: "djdl",
       link: "https://key.plrs.im",
       items: [
@@ -1189,26 +1309,80 @@ describe("R9-08 renderAppcast CDATA has no `]]>` neutralization", () => {
           title: "djdl 1.0.0",
           shortVersion: "1.0.0",
           build: "1.0.0",
-          url: "https://key.plrs.im/djdl/dmg/1.0.0/djdl-arm64.dmg",
+          url: "https://key.plrs.im/djdl/release/dl/1.0.0/djdl-arm64.dmg",
           length: 1,
           pubDate: "Thu, 01 Jan 1970 00:00:00 GMT",
-          descriptionHtml:
-            "ok]]></description><enclosure url='https://evil'/><description><![CDATA[",
+          descriptionHtml,
         },
       ],
     });
-    expect(xml).toContain("<enclosure url='https://evil'/>");
+  }
+
+  it("FIXED: descriptionHtml can no longer terminate the CDATA section", () => {
+    const xml = feedWith(BREAKOUT);
+    // The injected element's TEXT is still in the byte stream — that is the point of a
+    // neutralisation rather than a filter — but it is character data, not markup: the
+    // `</description>` that would have closed the element early no longer does, so the payload
+    // never leaves the description and exactly one enclosure (the real one) exists.
+    const descStart = xml.indexOf("<description><![CDATA[");
+    const descEnd = xml.indexOf("]]></description>");
+    expect(descStart).toBeGreaterThan(-1);
+    expect(xml.indexOf("<enclosure url='https://evil'/>")).toBeGreaterThan(
+      descStart,
+    );
+    expect(xml.indexOf("<enclosure url='https://evil'/>")).toBeLessThan(
+      descEnd,
+    );
+    // Outside the description — where markup actually is markup — there is exactly one
+    // enclosure, and it is the gateway's own.
+    const afterDescription = xml.slice(descEnd);
+    expect(afterDescription.match(/<enclosure /g)).toHaveLength(1);
+    expect(xml).toContain(
+      '<enclosure url="https://key.plrs.im/djdl/release/dl/1.0.0/djdl-arm64.dmg"',
+    );
+    // The split-encode is what does it: `]]` closes, `]]>` re-opens, `>` is character data.
+    expect(xml).toContain("]]]]><![CDATA[>");
   });
 
-  it("LATENT: release/index.ts never sets descriptionHtml, so the sink is unreachable today", async () => {
-    const src = readFileSync(
-      join(HERE, "..", "..", "src", "release", "index.ts"),
+  it("FIXED: a `]]><script>` payload renders inert, and is not dropped", () => {
+    const xml = feedWith("notes ]]><script>alert(1)</script> more");
+    expect(xml).not.toContain("]]><script>");
+    // Still inside the description, still readable — neutralised, not censored.
+    const description = xml.slice(
+      xml.indexOf("<description>"),
+      xml.indexOf("</description>") + "</description>".length,
+    );
+    expect(description).toContain("notes ");
+    expect(description).toContain("script>alert(1)");
+    expect(description.endsWith("]]></description>")).toBe(true);
+    // Nothing escaped the element: the feed still has one enclosure and no stray tags.
+    expect(xml.match(/<enclosure /g)).toHaveLength(1);
+  });
+
+  it("ARMED: the appcast now populates descriptionHtml from the changelog summary", () => {
+    // The premise of the Info rating is gone. Both layers are asserted at their sources: the
+    // producer escapes the prose (`proseToHtml`), and the renderer neutralises `]]>`.
+    const feed = readFileSync(
+      join(HERE, "..", "..", "src", "services", "update", "feed.ts"),
       "utf8",
     );
-    expect(src).not.toContain("descriptionHtml");
-    expect(src).toContain(
-      "buildAppcastItem(release, dmg, edSignature, enclosureUrl, {",
+    expect(feed).toContain("descriptionHtml: proseToHtml(summary)");
+    expect(feed).toContain("extractSummary(release.body, cfg.summary_marker)");
+    const renderer = readFileSync(
+      join(HERE, "..", "..", "src", "services", "update", "appcast.ts"),
+      "utf8",
     );
+    expect(renderer).toContain("neutralizeCdata(item.descriptionHtml)");
+  });
+
+  it("FIXED: the wired summary is HTML-escaped before it reaches the feed", () => {
+    // R9-07 next door proves `extractSummary` leaves raw HTML intact — `stripMarkdown` is not a
+    // sanitiser. The producer therefore escapes it, so a release note carrying `<script>` lands
+    // as text in Sparkle's release-notes view rather than as markup.
+    const summary = extractSummary(
+      "<img src=x onerror=alert(1)>\n\n## Changes",
+    )!;
+    expect(proseToHtml(summary)).toBe("&lt;img src=x onerror=alert(1)&gt;");
   });
 });
 
@@ -1325,7 +1499,7 @@ describe("R9-10 KV key construction", () => {
   // `{owner, repo}` scope, so they no longer take the legacy installation-wide path at all.
   it("the installation-token cache key no longer comes from the caller's scope argument", () => {
     const src = readFileSync(
-      join(HERE, "..", "..", "src", "release", "linkRepo.ts"),
+      join(HERE, "..", "..", "src", "services", "release", "linkRepo.ts"),
       "utf8",
     );
     // The bare-repo-name call site is gone; the scope is structured.

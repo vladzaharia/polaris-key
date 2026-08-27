@@ -5,10 +5,12 @@ import type { Db } from "./db/types.js";
 import { errorResponse, json } from "./core/errors.js";
 import { pk } from "./kv.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
-import { getReleaseConfig } from "./release/index.js";
-import { resyncRepo } from "./release/resync.js";
-import { isManifestPath } from "./release/manifestFiles.js";
-import type { FetchImpl } from "./release/githubApp.js";
+import {
+  getReleaseConfig,
+  isManifestPath,
+  resyncRepo,
+  type FetchImpl,
+} from "./services/release/sync.js";
 
 /** How long a processed `X-GitHub-Delivery` GUID is remembered (7 days). */
 const DELIVERY_TTL_SECONDS = 604_800;

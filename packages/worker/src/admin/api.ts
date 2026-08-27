@@ -62,6 +62,9 @@ import { handleProfiles } from "./handlers/profiles.js";
 import { handleTiers } from "./handlers/tiers.js";
 import { handleActivity } from "./handlers/activity.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
+import { loadProduct } from "../core/products.js";
+import { SERVICES } from "../mount.js";
+import type { ServiceSlug } from "../core/services.js";
 
 // ── per-product routing ────────────────────────────────────────────────────────
 async function handleProductScoped(
@@ -113,17 +116,44 @@ async function handleProductScoped(
 
   const [resource, id, sub, subId, action] = rest;
 
-  // New per-product resources: write-only secrets, signing-key rotation, repo resync,
-  // and customer portal module settings.
+  // ── per-SERVICE admin (design spec §4.2) ────────────────────────────────────────────────
+  //
+  // `/manage/api/products/<slug>/<service>/…` is the service's own, dispatched through the same
+  // descriptor the public router uses (`ServiceDescriptor.adminHandle`). The FULL remaining path
+  // is handed over, not the five destructured positions below — a service routes itself.
+  //
+  // Enablement is NOT checked here, unlike the public dispatcher. An operator has to be able to
+  // reach a service's settings in order to configure it before turning it on, and the console is
+  // already behind the platform-admin gate above; hiding a disabled service from an authenticated
+  // platform admin would protect nothing and would make "enable then configure" impossible.
+  if (resource && SERVICES.has(resource as ServiceSlug)) {
+    const descriptor = SERVICES.get(resource as ServiceSlug)!;
+    if (descriptor.adminHandle) {
+      const loaded = await loadProduct(env, db, slug);
+      if (!loaded) return notFound();
+      const res = await descriptor.adminHandle({
+        req,
+        env,
+        db,
+        product: loaded,
+        rest: rest.slice(1),
+        now,
+        session,
+      });
+      if (res) return res;
+    }
+    return notFound();
+  }
+
+  // New per-product resources: write-only secrets, signing-key rotation, and customer portal
+  // module settings.
   //   PUT  /products/<slug>/secrets/<name>
   //   POST /products/<slug>/keys/rotate
-  //   POST /products/<slug>/release/resync
   //   PATCH /products/<slug>/portal
   //   GET|PATCH /products/<slug>/policy   ·   POST /products/<slug>/policy/revert
   if (
     resource === "secrets" ||
     resource === "keys" ||
-    resource === "release" ||
     resource === "portal" ||
     resource === "policy"
   ) {

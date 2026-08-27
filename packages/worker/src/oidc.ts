@@ -31,7 +31,7 @@ import { authorizeDevice, tierExpiresAt } from "./licenseCore.js";
 import { licenseUsable } from "./core/devices.js";
 import { createBrowserSession } from "./browserSession.js";
 import { platformOidcConfig } from "./platformOidc.js";
-import { isSafeIssuerUrl } from "./release/manifest.js";
+import { isSafeIssuerUrl } from "./services/release/manifest.js";
 
 const FLOW_TTL_SECONDS = 600;
 const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];

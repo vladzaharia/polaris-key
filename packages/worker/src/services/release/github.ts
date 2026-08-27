@@ -139,8 +139,15 @@ export async function listReleases(
   return (await res.json()) as Release[];
 }
 
-/** True for GitHub release-asset storage hosts the SSRF guard permits re-fetching. */
-function isAllowedStorageHost(host: string): boolean {
+/**
+ * True for GitHub release-asset storage hosts the SSRF guard permits re-fetching.
+ *
+ * Exported since P2.T2: the portal's `/download/<token>` redirect validates its target against
+ * this same allowlist (R6-12). One definition, because "which hosts may we send a user to" and
+ * "which hosts may we fetch from" are the same question about the same upstream, and answering
+ * it twice is how the two drift.
+ */
+export function isAllowedStorageHost(host: string): boolean {
   return (
     host === "github.com" ||
     host === "githubusercontent.com" ||

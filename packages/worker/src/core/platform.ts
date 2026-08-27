@@ -8,11 +8,11 @@
  * quietly keeping a wire back into the pre-suite layout, and it is worth keeping strict.
  *
  * But the substrate a service genuinely needs — the Worker bindings, the database handle, the
- * bearer-token reader, hashing and id minting, the hot token cache, the response-hygiene
- * helpers — still physically lives in the top-level modules P1.T1 did not relocate
- * (`../env.js`, `../db/types.js`, `../http.js`, `../crypto.js`, `../kv.js`,
- * `../securityHeaders.js`). Relocating those is a mechanical change across ~90 import sites in
- * code no service touches, and it is not what Tasks 1.2–1.4 are.
+ * bearer-token reader, hashing and id minting, the hot token cache, the KEK-sealing vault, the
+ * response-hygiene helpers — still physically lives in the top-level modules P1.T1 did not
+ * relocate (`../env.js`, `../db/types.js`, `../http.js`, `../crypto.js`, `../kv.js`,
+ * `../keyvault.js`, `../securityHeaders.js`). Relocating those is a mechanical change across
+ * ~90 import sites in code no service touches, and it is not what Tasks 1.2–1.4 are.
  *
  * So Core DECLARES the interface here and owns where the implementation sits. A service binds
  * to `core/platform.js`; the day the implementations physically move under `core/`, this file
@@ -32,6 +32,21 @@ export { bearer } from "../http.js";
 
 export { hashKey, mintDeviceToken, randomId } from "../crypto.js";
 
-export { deleteTokenRecord } from "../kv.js";
+export {
+  deleteTokenRecord,
+  ghInstallationTokenKey,
+  pk as kvKey,
+} from "../kv.js";
 
-export { staticHtmlSecurityHeaders } from "../securityHeaders.js";
+export {
+  generateEd25519,
+  open,
+  seal,
+  type SealContext,
+  type Sealed,
+} from "../keyvault.js";
+
+export {
+  appSecurityHeaders,
+  staticHtmlSecurityHeaders,
+} from "../securityHeaders.js";

@@ -38,7 +38,7 @@ import { hashKey, mintLicenseKey, randomId } from "../../src/crypto.js";
 import {
   getInstallationToken,
   installationTokenSlot,
-} from "../../src/release/githubApp.js";
+} from "../../src/services/release/githubApp.js";
 import { open } from "../../src/keyvault.js";
 import { handleMagicStart } from "../../src/portal/auth.js";
 import { upsertPortalProductSettings } from "../../src/portal/repo.js";
@@ -829,14 +829,17 @@ describe("R12 refuted hypotheses", () => {
   });
 
   it("REFUTED: GitHub error strings carry STATUS CODES only — never a body, URL or token", () => {
-    const src = readFileSync(join(WORKER_SRC, "release", "github.ts"), "utf8");
+    const src = readFileSync(
+      join(WORKER_SRC, "services", "release", "github.ts"),
+      "utf8",
+    );
     for (const m of src.matchAll(/NotFoundError\(`([^`]+)`\)/g)) {
       expect(m[1]).not.toContain("${jwt}");
       expect(m[1]).not.toContain("${token}");
       expect(m[1]).not.toContain("${url}");
     }
     const app = readFileSync(
-      join(WORKER_SRC, "release", "githubApp.ts"),
+      join(WORKER_SRC, "services", "release", "githubApp.ts"),
       "utf8",
     );
     for (const m of app.matchAll(/new Error\(`([^`]+)`\)/g)) {

@@ -12,9 +12,14 @@
  * with no network. The only ambient dependency is WebCrypto, which workerd provides.
  */
 
-import { type Env, secret } from "../env.js";
-import { ghInstallationTokenKey } from "../kv.js";
-import { open, seal, type SealContext } from "../keyvault.js";
+import {
+  ghInstallationTokenKey,
+  open,
+  seal,
+  secret,
+  type Env,
+  type SealContext,
+} from "../../core/platform.js";
 
 const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "polaris-key-release";

@@ -26,8 +26,12 @@
 export interface InstallContext {
   /** Gateway origin, e.g. `https://key.plrs.im` (no trailing slash). */
   origin: string;
-  /** Path prefix for this product's CLI downloads, e.g. `/<product>/cli`. */
+  /** Path prefix for this product's artifact downloads, e.g. `/<product>/release/dl`. */
   cliBase: string;
+  /** Canonical path of this script, e.g. `/<product>/release/install.sh`, for its own usage
+   *  lines. Previously derived as `cliBase + "/install.sh"`, which named a path that has never
+   *  existed — the installer told users to curl a URL that 404s. */
+  installPath: string;
   /** Product binary name, e.g. `djdl`. */
   binaryName: string;
   /** Channel selectors the installer should advertise (e.g. `staging`, `beta`). */
@@ -40,8 +44,14 @@ export interface InstallContext {
 const BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 /** Derived from the request URL (R6-11); scheme + host + optional port, nothing else. */
 const ORIGIN_RE = /^https?:\/\/[A-Za-z0-9._-]+(?::[0-9]{1,5})?$/;
-/** Built from the product slug, which the router bounds to `[a-z0-9-]`. */
-const CLI_BASE_RE = /^\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
+/**
+ * Built from the product slug, which the router bounds to `[a-z0-9-]`, plus a fixed suffix.
+ *
+ * Two-to-four segments since P2.T1: the download base moved from `/<p>/cli` to the canonical
+ * `/<p>/release/dl` (§R1). The CHARACTER CLASS is unchanged — that is the part doing the R6-01
+ * work — and the bound stays finite so no caller-derived value can grow a path arbitrarily.
+ */
+const PRODUCT_PATH_RE = /^\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+){1,3}$/;
 /** Shell env-var name, so it must be a shell-legal identifier. */
 const VERSION_ENV_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
@@ -70,8 +80,10 @@ export function validateInstallContext(ctx: InstallContext): string | null {
     return `unsafe binaryName: ${JSON.stringify(ctx.binaryName)}`;
   if (!ORIGIN_RE.test(ctx.origin))
     return `unsafe origin: ${JSON.stringify(ctx.origin)}`;
-  if (!CLI_BASE_RE.test(ctx.cliBase))
+  if (!PRODUCT_PATH_RE.test(ctx.cliBase))
     return `unsafe cliBase: ${JSON.stringify(ctx.cliBase)}`;
+  if (!PRODUCT_PATH_RE.test(ctx.installPath))
+    return `unsafe installPath: ${JSON.stringify(ctx.installPath)}`;
   if (!VERSION_ENV_RE.test(ctx.versionEnv))
     return `unsafe versionEnv: ${JSON.stringify(ctx.versionEnv)}`;
   return null;
@@ -87,6 +99,7 @@ export function applyInstallTemplate(
     .replace(/\{\{\s*binaryName\s*\}\}/g, ctx.binaryName)
     .replace(/\{\{\s*origin\s*\}\}/g, ctx.origin)
     .replace(/\{\{\s*cliBase\s*\}\}/g, ctx.cliBase)
+    .replace(/\{\{\s*installPath\s*\}\}/g, ctx.installPath)
     .replace(/\{\{\s*versionEnv\s*\}\}/g, ctx.versionEnv)
     .replace(/\{\{\s*channels\s*\}\}/g, channelsList);
 }
@@ -101,19 +114,19 @@ export function applyInstallTemplate(
 export function defaultInstallScript(ctx: InstallContext): string {
   const reason = validateInstallContext(ctx);
   if (reason) throw new Error(`refusing to render install.sh: ${reason}`);
-  const { origin, cliBase, binaryName, versionEnv } = ctx;
+  const { origin, cliBase, installPath, binaryName, versionEnv } = ctx;
   return `#!/bin/sh
 # ${binaryName} installer — ${origin}
 #
 # Usage:
-#   curl -fsSL ${origin}${cliBase}/install.sh | sh
+#   curl -fsSL ${origin}${installPath} | sh
 #
 # Install a specific version (defaults to the latest release):
-#   curl -fsSL ${origin}${cliBase}/install.sh | ${versionEnv}=1.2.3 sh
+#   curl -fsSL ${origin}${installPath} | ${versionEnv}=1.2.3 sh
 #
 # Install a testing channel (coexists with stable; installs ${binaryName}-<channel>):
-#   curl -fsSL ${origin}${cliBase}/install.sh | ${versionEnv}=staging sh
-#   curl -fsSL ${origin}${cliBase}/install.sh | ${versionEnv}=pr-42 sh
+#   curl -fsSL ${origin}${installPath} | ${versionEnv}=staging sh
+#   curl -fsSL ${origin}${installPath} | ${versionEnv}=pr-42 sh
 set -eu
 
 ORIGIN=${shQuote(origin)}

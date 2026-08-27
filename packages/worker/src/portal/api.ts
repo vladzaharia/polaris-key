@@ -17,6 +17,7 @@ import { resolveEffective } from "../licenseCore.js";
 import { licenseUsable } from "../core/devices.js";
 import { tighterMax, tighterMin } from "../gate.js";
 import { clientIp, rateLimitOk } from "../core/rateLimit.js";
+import { isAllowedStorageHost } from "../services/release/github.js";
 import {
   getPortalAccount,
   getPortalArtifact,
@@ -263,6 +264,44 @@ function artifactAccess(artifact: PortalArtifactRow): string {
     return artifact.access;
   }
   return "public";
+}
+
+/**
+ * R6-12 — may this artifact's `source_url` be handed to a browser as a redirect target?
+ *
+ * ── WHY THIS EXISTS NOW ─────────────────────────────────────────────────────────────────────
+ *
+ * The finding was rated **dormant**, on one ground: `release_artifacts.source_url` had no writer
+ * anywhere in `src/`, so the value could not be attacker-controlled and the missing allowlist
+ * could not be reached. P2.T2 gives it a writer (`services/release/store.ts`). The redirect is
+ * hardened in the same change, as a blocking requirement of arming the store.
+ *
+ * ── WHY ALLOWLIST RATHER THAN PROXY ─────────────────────────────────────────────────────────
+ *
+ * The finding offers "or proxy the bytes". Proxying an ARBITRARY stored URL would be strictly
+ * worse: it converts a redirect the user's browser makes into a fetch this worker makes, from
+ * inside Cloudflare's network, with the worker's own egress — i.e. it trades an open redirect
+ * for an SSRF. `streamAsset` is safe because it addresses an asset by ID through the GitHub API
+ * and guards the redirect it gets back with THIS predicate; it is not a general URL proxy. So
+ * the answer is the same predicate, applied one layer earlier, and a refusal when it fails.
+ *
+ * Two layers, deliberately: the writer only ever stores GitHub's own `browser_download_url`, and
+ * the reader refuses anything else. Either alone would be enough today; together they mean a
+ * future writer (an R2 mirror, an operator import) cannot silently re-open this by forgetting.
+ */
+function redirectableSourceUrl(artifact: PortalArtifactRow): string | null {
+  if (!artifact.source_url) return null;
+  let url: URL;
+  try {
+    url = new URL(artifact.source_url);
+  } catch {
+    return null;
+  }
+  // `https` only. A stored `http://` target would strip transport security from a download the
+  // user believes this origin vouched for, and no GitHub storage host serves plaintext.
+  if (url.protocol !== "https:") return null;
+  if (!isAllowedStorageHost(url.hostname)) return null;
+  return url.toString();
 }
 
 /**
@@ -617,8 +656,11 @@ async function handleReleases(
           sizeBytes: artifact.size_bytes,
           sha256: artifact.sha256,
           access: artifactAccess(artifact),
+          // Same predicate the redirect applies (R6-12), so the portal never offers a download
+          // it is going to refuse — an artifact stored with an unservable URL reads as
+          // unavailable here rather than as a button that 404s.
           canDownload:
-            Boolean(artifact.source_url) &&
+            redirectableSourceUrl(artifact) !== null &&
             (artifactAccess(artifact) !== "licensed" || usable),
         })),
       });
@@ -642,7 +684,9 @@ async function handleReleases(
     return notFound();
   }
   const artifact = await getPortalArtifact(db, product, releaseId, artifactId);
-  if (!artifact || !artifact.source_url) return notFound();
+  // Refused at MINT time as well as at redemption: a token that could only ever be rejected is
+  // a row written, a rate-limit charge spent and a URL handed to the user for nothing.
+  if (!artifact || redirectableSourceUrl(artifact) === null) return notFound();
   if (!(await hasLinkedProductLicense(db, session.accountId, product))) {
     return notFound();
   }
@@ -762,7 +806,11 @@ export async function handlePortalDownload(
   const artifact = row.artifact_id
     ? await getPortalArtifact(db, row.product, row.release_id, row.artifact_id)
     : null;
-  if (!artifact?.source_url) return notFound();
+  // R6-12: the ONLY value that may become a `Location` header. `null` here means the stored URL
+  // is absent, unparseable, not https, or not a GitHub storage host — all of which are refusals,
+  // never redirects.
+  const location = artifact ? redirectableSourceUrl(artifact) : null;
+  if (!artifact || location === null) return notFound();
   const settings = await getPortalProductSettings(db, row.product);
   if (settings.portal_enabled !== 1 || settings.releases_enabled !== 1) {
     return notFound();
@@ -796,7 +844,7 @@ export async function handlePortalDownload(
     status: 302,
     headers: portalSecurityHeaders(
       new Headers({
-        location: artifact.source_url,
+        location,
         "cache-control": "no-store",
       }),
     ),

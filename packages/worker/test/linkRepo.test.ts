@@ -6,9 +6,9 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
-import type { FetchImpl } from "../src/release/githubApp.js";
-import { linkRepo, parseRepoUrl } from "../src/release/linkRepo.js";
-import { resyncRepo } from "../src/release/resync.js";
+import type { FetchImpl } from "../src/services/release/githubApp.js";
+import { linkRepo, parseRepoUrl } from "../src/services/release/linkRepo.js";
+import { resyncRepo } from "../src/services/release/resync.js";
 import { handleGithubWebhook } from "../src/githubWebhook.js";
 import { open } from "../src/keyvault.js";
 import {
@@ -18,7 +18,7 @@ import {
   getProduct,
   setServices,
 } from "../src/repo.js";
-import { getReleaseConfig } from "../src/release/index.js";
+import { getReleaseConfig } from "../src/services/release/index.js";
 
 // A throwaway 2048-bit RSA private key (PKCS#8 PEM) so the App-JWT signer actually runs; the
 // fetch stub then shortcuts the installation-token exchange. Never a prod key.

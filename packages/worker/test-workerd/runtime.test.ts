@@ -11,11 +11,8 @@ import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { Catalog } from "@plrs/catalog";
 import { signJws, verifyJws } from "@plrs/jws";
-import type {
-  ManagedConfigDoc,
-  ManagedEntry,
-  ManagedPayload,
-} from "@plrs/protocol";
+import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
+import type { ConfigDoc } from "@plrs/protocol/config";
 import djdlCatalog from "../../../products/djdl/catalog.json";
 import { D1Db } from "../src/db/d1.js";
 import { validatePayload } from "../src/configDoc.js";
@@ -150,45 +147,122 @@ describe("JWS signing on workerd WebCrypto", () => {
   });
 });
 
-describe("GET /<product>/config end to end on workerd", () => {
-  it("activates a key and returns a signed, verifiable config doc", async () => {
+describe("GET /<product>/config/document end to end on workerd", () => {
+  // RE-PATHED for wire v3 (§R1). The pre-suite `/activate` and the fused `/config` document are
+  // gone: activation is `POST /<p>/license/activate`, and the one document split into
+  // `/<p>/license/document` (the grant) and `/<p>/config/document` (the settings). This lane
+  // exists to catch what only workerd can fail, so it drives the routes the worker actually
+  // serves — a smoke test pointed at a 404 proves the runtime nothing.
+  it("activates a key and returns a signed, verifiable config document", async () => {
     // Real D1 (migrated in `setup.ts`), real KV, real Durable Object rate limiter, and the
     // real `src/index.ts` module graph — driven over HTTP, not by calling handlers directly.
     const db = new D1Db(env.DB);
     await seedProduct(env, db, SLUG, djdlCatalog);
-    const { key, licenseId } = await seedLicenseWithKey(db, SLUG);
+    const { key } = await seedLicenseWithKey(db, SLUG);
 
-    const activated = await SELF.fetch(`https://key.plrs.im/${SLUG}/activate`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${key}`,
-        "x-polaris-device": "workerd-smoke-1",
+    const activated = await SELF.fetch(
+      `https://key.plrs.im/${SLUG}/license/activate`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${key}`,
+          "x-polaris-device": "workerd-smoke-1",
+        },
       },
-    });
+    );
     expect(activated.status).toBe(200);
     const { token } = (await activated.json()) as { token: string };
     expect(token).toBeTruthy();
 
-    const res = await SELF.fetch(`https://key.plrs.im/${SLUG}/config`, {
-      headers: {
-        authorization: `Bearer ${token}`,
-        "x-polaris-version": "1.2.3",
+    const res = await SELF.fetch(
+      `https://key.plrs.im/${SLUG}/config/document`,
+      {
+        headers: {
+          authorization: `Bearer ${token}`,
+          "x-polaris-version": "1.2.3",
+        },
       },
-    });
+    );
     // THE R10-01 ASSERTION. Before the interpreting validator this was
     // `500 {"error":"catalog_unavailable"}` on every poll, for every device, warm or cold.
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/jwt");
 
     const jws = await res.text();
-    const verified = await verifyJws<ManagedConfigDoc>(jws, TRUST);
+    const verified = await verifyJws<ConfigDoc>(jws, TRUST);
     expect(verified).not.toBeNull();
     expect(verified!.kid).toBe(TEST_KID);
     expect(verified!.payload.aud).toBe(SLUG);
-    expect(verified!.payload.licenseId).toBe(licenseId);
     // Catalog defaults survived the pre-signing prune rather than being dropped fail-closed.
-    expect(
-      Object.keys(verified!.payload.payload.config).length,
-    ).toBeGreaterThan(0);
+    expect(Object.keys(verified!.payload.config).length).toBeGreaterThan(0);
+  });
+
+  it("serves the licence document over the same activation", async () => {
+    // The other half of the v3 split, on the same credential: a `plrst_` token is a DEVICE
+    // principal, and both documents are minted for it.
+    const db = new D1Db(env.DB);
+    await seedProduct(env, db, "djdl2", djdlCatalog);
+    const { key, licenseId } = await seedLicenseWithKey(db, "djdl2");
+    const activated = await SELF.fetch(
+      "https://key.plrs.im/djdl2/license/activate",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${key}`,
+          "x-polaris-device": "workerd-smoke-2",
+        },
+      },
+    );
+    expect(activated.status).toBe(200);
+    const { token } = (await activated.json()) as { token: string };
+
+    const res = await SELF.fetch("https://key.plrs.im/djdl2/license/document", {
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-polaris-version": "1.2.3",
+      },
+    });
+    expect(res.status).toBe(200);
+    const verified = await verifyJws<{ aud: string; licenseId: string }>(
+      await res.text(),
+      TRUST,
+    );
+    expect(verified!.payload.aud).toBe("djdl2");
+    expect(verified!.payload.licenseId).toBe(licenseId);
+  });
+
+  it("routes the permanent aliases to the same handlers as the canonical paths", async () => {
+    // §R1/D-07: `/<p>/appcast.xml`, `/<p>/version` and `/<p>/install.sh` are kept forever. Both
+    // spellings go through the real router, and Release/Update are not enabled for this product,
+    // so both must produce the registry's single not-found — the property being checked is that
+    // the alias reaches the SAME dispatch, not that it serves a feed.
+    const db = new D1Db(env.DB);
+    await seedProduct(env, db, "djdl3", djdlCatalog);
+    for (const [aliasPath, canonical] of [
+      ["/djdl3/appcast.xml", "/djdl3/update/appcast.xml"],
+      ["/djdl3/version", "/djdl3/update/version"],
+      ["/djdl3/install.sh", "/djdl3/release/install.sh"],
+      ["/djdl3/beta/appcast.xml", "/djdl3/update/beta/appcast.xml"],
+    ]) {
+      const aliased = await SELF.fetch(`https://key.plrs.im${aliasPath}`);
+      const direct = await SELF.fetch(`https://key.plrs.im${canonical}`);
+      expect(aliased.status).toBe(direct.status);
+      expect(await aliased.text()).toBe(await direct.text());
+    }
+  });
+
+  it("removes the pre-suite paths wire v3 retired", async () => {
+    const db = new D1Db(env.DB);
+    await seedProduct(env, db, "djdl4", djdlCatalog);
+    for (const path of [
+      "/djdl4/activate",
+      "/djdl4/config",
+      "/djdl4/cli/1.2.3/djdl-arm64",
+      "/djdl4/dmg/1.2.3/djdl-arm64.dmg",
+      "/djdl4/changelog",
+    ]) {
+      const res = await SELF.fetch(`https://key.plrs.im${path}`);
+      expect(res.status).toBe(404);
+    }
   });
 });

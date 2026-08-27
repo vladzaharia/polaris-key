@@ -304,7 +304,7 @@ describe("customer portal", () => {
       "application/octet-stream",
       123,
       "sha",
-      "https://downloads.example.com/djdl.dmg",
+      "https://github.com/acme/djdl/releases/download/v1.2.3/djdl.dmg",
       null,
       null,
       "licensed",
@@ -335,7 +335,7 @@ describe("customer portal", () => {
     );
     expect(redirect.status).toBe(302);
     expect(redirect.headers.get("location")).toBe(
-      "https://downloads.example.com/djdl.dmg",
+      "https://github.com/acme/djdl/releases/download/v1.2.3/djdl.dmg",
     );
 
     const reused = await handlePortalDownload(
@@ -388,7 +388,7 @@ describe("customer portal", () => {
       "application/octet-stream",
       123,
       "sha",
-      "https://downloads.example.com/djdl.dmg",
+      "https://github.com/acme/djdl/releases/download/v1.2.3/djdl.dmg",
       null,
       null,
       "authenticated",
@@ -450,7 +450,7 @@ describe("customer portal", () => {
       "application/octet-stream",
       123,
       "sha",
-      "https://downloads.example.com/djdl.dmg",
+      "https://github.com/acme/djdl/releases/download/v1.2.3/djdl.dmg",
       null,
       null,
       "licensed",

@@ -32,8 +32,9 @@
  * gates every commit. A test runs on the same gate, needs no new dependencies, and can say
  * *why* in its failure message.
  *
- * `src/services/` does not exist yet — the per-service directories land in P1–P3 — so this
- * currently passes vacuously, on purpose. It is armed for the change that will need it.
+ * `src/services/` now holds `license/`, `config/`, `release/` and `update/`; `identity/` lands in
+ * P3. The last case in this file is the one that does the work — it walks every file actually
+ * present — so the rule stops being hypothetical as each directory appears.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -165,6 +166,32 @@ describe("service boundaries", () => {
     // P1–P3 create the per-service directories. Until then this suite must not fail, and must
     // not silently stop being wired up either — hence the explicit case.
     expect(() => collectImportSites()).not.toThrow();
+  });
+
+  it("is actually policing the four services that exist", () => {
+    // The guard against this file quietly becoming a no-op: if a service directory stopped being
+    // scanned — a rename, a move, a broken walk — the last case below would pass on an empty
+    // set and nobody would notice. Naming the expected services makes that failure loud.
+    const services = new Set(collectImportSites().map((s) => s.service));
+    for (const slug of ["license", "config", "release", "update"]) {
+      expect(services, `${slug} should be scanned`).toContain(slug);
+    }
+  });
+
+  it("proves update -> release is a LIVE edge, not just a permitted one", () => {
+    // D-05 makes Update a feed over Release's truth, so the exception exists to be used. If it
+    // ever stopped being used, the exception should be deleted rather than left standing as a
+    // hole nothing needs.
+    const crossings = collectImportSites().filter(
+      (s) => s.service === "update" && s.specifier.startsWith("../release/"),
+    );
+    expect(crossings.length).toBeGreaterThan(0);
+    // …and nothing crosses the other way.
+    expect(
+      collectImportSites().filter(
+        (s) => s.service === "release" && s.specifier.startsWith("../update/"),
+      ),
+    ).toEqual([]);
   });
 
   it("lets services import core, their own directory, packages and node builtins", () => {

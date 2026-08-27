@@ -158,3 +158,33 @@ export async function openProductSecret(
     return undefined;
   }
 }
+
+/**
+ * Set a product's global compatibility window (spec §8, P2.T3).
+ *
+ * The window relocated from `PATCH /manage/api/products/<slug>` to `update/settings`: it is a
+ * statement about which BUILDS this product supports, which is the Update service's subject, and
+ * leaving it on the product PATCH meant one console form edited two unrelated policies. The row
+ * stays core-owned (`products` is Core's per spec §5.2), so the writer lives here and Update
+ * reaches it through Core rather than reaching into the table.
+ *
+ * `undefined` leaves a bound alone; the COALESCE keeps a partial patch partial.
+ */
+export async function setCompatWindow(
+  db: Db,
+  slug: string,
+  window: { min?: string; max?: string },
+  now: number,
+): Promise<void> {
+  await db.run(
+    `UPDATE products
+        SET compat_min = COALESCE(?, compat_min),
+            compat_max = COALESCE(?, compat_max),
+            modified_at = ?
+      WHERE slug = ?`,
+    window.min ?? null,
+    window.max ?? null,
+    now,
+    slug,
+  );
+}

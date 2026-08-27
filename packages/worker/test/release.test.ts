@@ -10,22 +10,23 @@ import {
 } from "../src/fingerprint.js";
 import { DEFAULT_SERVICES } from "../src/core/services.js";
 import type { Env } from "../src/env.js";
-import type { FetchImpl } from "../src/release/githubApp.js";
+import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
   classifyChannel,
   parseManualChannels,
   resolveChannel,
-} from "../src/release/channels.js";
-import type { Release, ReleaseAsset } from "../src/release/github.js";
-import { findBinaryAsset, matchAsset } from "../src/release/assets.js";
-import { extractSummary } from "../src/release/changelog.js";
+} from "../src/services/release/channels.js";
+import type { Release, ReleaseAsset } from "../src/services/release/github.js";
+import { findBinaryAsset, matchAsset } from "../src/services/release/assets.js";
+import { extractSummary } from "../src/services/release/changelog.js";
 import {
   applyInstallTemplate,
   defaultInstallScript,
-} from "../src/release/install.js";
-import { renderAppcast } from "../src/release/appcast.js";
-import { handleRelease } from "../src/release/index.js";
-import { checkReleaseHealth } from "../src/release/health.js";
+} from "../src/services/release/install.js";
+import { renderAppcast } from "../src/services/update/appcast.js";
+import { handleReleaseSurface as handleRelease } from "./releaseSurface.js";
+import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
+import { checkReleaseHealth } from "../src/services/release/health.js";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -158,36 +159,6 @@ function envFor(): { env: Env; kv: KvMock } {
   env.GITHUB_APP_PRIVATE_KEY = TEST_RSA_PKCS8;
   return { env, kv };
 }
-
-// A throwaway 2048-bit RSA private key (PKCS#8 PEM) for tests only.
-const TEST_RSA_PKCS8 = `-----BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCsEMREsWAll4vT
-9mDM1zr8yF9klknqOJPqLj/1SvQx3IJNKks0LfEhPK+1LqTIrALhx3UM3N8hmmY6
-Kk7C8cXsA0b49QtF/KtFPFnK+cSBGtOmZMJ7tJBQhUswWeJ2BPr24sDJZaCS4JH5
-QlCi2g7Lchwkzp6d2H23rm9CD8LT6OPcgXnALdM4wfQ3Wa1gklDi0zd29FyKsdtF
-3PjhzUVn7xRJQFOQU3vOqizauuYvM2WmV9K3BnkZZyPRgSVIEggBwlyrJLBSVZYI
-8C2zmxLs7SeUaoq29rewma3h5mLhwL62VN0WC6B7rM18cifR0sR46VVc3/2gNAZ3
-BxnHKG+TAgMBAAECggEAAvfVEuRGZs+a62CcIdxymYqxTpBjHQW103vRwZ714GhP
-3RnmKzPBrZOY6lSwJgAFmrRwmfSzaqZ5rfYt3qICCoSx9Dhx5daqc6rLV7uAPsPi
-M8QYML8YIDN0bRSX2fZTB/A4aCD3KKF0EysoLe76A1toDeB8jvd9j64UID0aXMJn
-7UNX6BrmAj36r/gUZNiIPDQRg0RZV+weDv8Q0BG2yE6wpA2B5jdEJbX4jq7Tr2WU
-3xJlG2GBOt1kNcaVKlr2FmF+3xFAdafJW/AYaMBL5EWytiMqP9bu/H3cm/laphKA
-+phJ2fGgw094+ZS+fP2Qja7yqI6/6rDg53pGWCVuVQKBgQDhvS/Q8BM2dJIZUy+B
-KZpZKuQSKvYvKvuNvjkuUSj8XA6AvfehcQWWJRngB7S1cYJoANsO3KvAyHQ4RUe9
-s6AHDGJljnB/kfqMdQKbMtmw7u8MEtLRHCELZ0eVcd/8nHBmCgkCe1sj8OmXBVkN
-pqW16lfsLu58g8u/qzPRrRQ+bwKBgQDDIaKwhhl0UD9+9wNBLZZ2lurLUiNnK4ZM
-0yHaYselF8WkBRRlpTYJrEEYetlFLxToNlqk4VlWES0ZtJQ5SQJgqzG2cmMApvAJ
-hurjuDBPaGcu56K7wUobYFbw9aNM7Nnm+Tpt+DehIJ48rjBMKSBAqLj2QXBSP+ST
-QU/BYgbzHQKBgBFz+h1yYlnke2M/3j1jRQ691TJeZfhRn29fFLazCbMxPuHPTjUK
-Mv9f0PdUQTGCHC4EWut0PkdCeFHdcWWGXMoOuBDYCXSjibaQWWo8bT5TyuGpFumZ
-/igOjSdNzZ6PTdVl0zqA5RQLTVQi0rbOeqNtAe0916yC2B7ykqgUdKs7AoGBAI2L
-MYsgywgPSe/cWDUIT5OYZ5qy61FkRhgmMvFKJA3Cj7ApqyEMVYVwuQt72W0Q+PZ0
-rw3ZFUeUUAXMcpSXPC1JIVd55AzOC2KtxmcG7aw8TFS+29GcJRh0qrxBQoKDcJDW
-CqdInXm4wm+73vbwAiBFA15GG6beB/01LBhX9jiVAoGBAM2aHdDaIHzO71WMB7Qi
-6e6lkI53ovO8vzw/hITzvTqbEslxweqRjv0LHwMo1/+zdFtnxyWHUTFQtT4VM7FV
-86FY7DjzErSUSOhQfXvKGVvy2oAYxQUqqJgHI2iowSMVNg1O45wW4O3eUsJuMx06
-d+RKUGe97dQXkny7eE7qJPbg
------END PRIVATE KEY-----`;
 
 // ── Pure unit tests ─────────────────────────────────────────────────────────
 
@@ -341,7 +312,8 @@ describe("install templating", () => {
       "install {{binaryName}} from {{origin}} channels={{channels}}",
       {
         origin: "https://key.plrs.im",
-        cliBase: "/djdl/cli",
+        cliBase: "/djdl/release/dl",
+        installPath: "/djdl/release/install.sh",
         binaryName: "djdl",
         channels: ["staging", "beta"],
         versionEnv: "DJDL_VERSION",
@@ -355,7 +327,8 @@ describe("install templating", () => {
   it("ports arch detection in the default script", () => {
     const script = defaultInstallScript({
       origin: "https://key.plrs.im",
-      cliBase: "/djdl/cli",
+      cliBase: "/djdl/release/dl",
+      installPath: "/djdl/release/install.sh",
       binaryName: "djdl",
       channels: ["staging"],
       versionEnv: "DJDL_VERSION",
@@ -376,7 +349,7 @@ describe("appcast XML", () => {
           title: "djdl 1.2.3",
           shortVersion: "1.2.3",
           build: "1.2.3",
-          url: "https://key.plrs.im/djdl/dmg/1.2.3/djdl-arm64.dmg",
+          url: "https://key.plrs.im/djdl/release/dl/1.2.3/djdl-arm64.dmg",
           length: 12345,
           pubDate: "Thu, 02 Jan 2026 03:04:05 GMT",
           edSignature: "ABCDEF==",
@@ -396,7 +369,7 @@ describe("appcast XML", () => {
             <sparkle:version>1.2.3</sparkle:version>
             <sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://key.plrs.im/djdl/dmg/1.2.3/djdl-arm64.dmg" type="application/octet-stream" length="12345" sparkle:edSignature="ABCDEF==" />
+            <enclosure url="https://key.plrs.im/djdl/release/dl/1.2.3/djdl-arm64.dmg" type="application/octet-stream" length="12345" sparkle:edSignature="ABCDEF==" />
           </item>
         </channel>
       </rss>
@@ -510,7 +483,7 @@ describe("handleRelease", () => {
     const text = await res.text();
     expect(text).toContain("djdl installer");
     // Shell-quoted literals, not double-quoted interpolations (R6-01).
-    expect(text).toContain("CLI_BASE='/djdl/cli'");
+    expect(text).toContain("CLI_BASE='/djdl/release/dl'");
     expect(text).toContain("$ORIGIN$CLI_BASE/$VERSION/djdl-$ARCH");
   });
 
@@ -630,7 +603,7 @@ describe("handleRelease", () => {
     expect(res.status).toBe(200);
     const xml = await res.text();
     expect(xml).toContain(`sparkle:edSignature="${signatureB64}"`);
-    expect(xml).toContain("/djdl/dmg/1.2.3/djdl-arm64.dmg");
+    expect(xml).toContain("/djdl/release/dl/1.2.3/djdl-arm64.dmg");
     expect(xml).toContain(
       "<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>",
     );
@@ -696,7 +669,7 @@ describe("handleRelease", () => {
     expect(res.status).toBe(200);
     const xml = await res.text();
     expect(xml).not.toContain("sparkle:edSignature");
-    expect(xml).toContain("/djdl/dmg/1.2.3/djdl-arm64.dmg");
+    expect(xml).toContain("/djdl/release/dl/1.2.3/djdl-arm64.dmg");
     expect(xml).toContain(
       "<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>",
     );

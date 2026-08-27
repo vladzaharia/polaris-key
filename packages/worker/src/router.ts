@@ -5,18 +5,27 @@
 // ── THE HYBRID STATE ────────────────────────────────────────────────────────────────────────
 //
 // Wire v3 namespaces every product-scoped route under the service that owns it (plan §R1).
-// License and Config have moved: `/<p>/license/…` and `/<p>/config/…` no longer resolve to a
-// route KIND at all — they resolve to `{kind:"service"}` carrying the slug and the remaining
-// segments, and the service's own descriptor routes them from there. That is what lets a
-// product turn a service off and have its whole surface disappear rather than 403.
+// License, Config, Release and Update have moved: `/<p>/<slug>/…` no longer resolves to a route
+// KIND at all — it resolves to `{kind:"service"}` carrying the slug and the remaining segments,
+// and the service's own descriptor routes them from there. That is what lets a product turn a
+// service off and have its whole surface disappear rather than 403.
 //
-// Release, Update and Identity have not moved yet (P2/P3), so their paths keep their existing
-// kinds and their existing dispatch. This file is deliberately readable as "which services
-// have been cut over": the `SERVICE_NAMESPACES` set below is the complete answer, and adding a
-// slug to it is what moves the next one.
+// Identity has not moved yet (P3), so its paths keep their existing kinds and their existing
+// dispatch. This file is deliberately readable as "which services have been cut over": the
+// `SERVICE_NAMESPACES` set below is the complete answer, and adding a slug to it is what moves
+// the next one.
 //
 // Core routes stay core routes whatever happens to the services: discovery, JWKS, the trust
 // manifest, `/devices[/:id]` and `/devices/report`.
+//
+// ── THE PERMANENT ALIASES (D-07) ────────────────────────────────────────────────────────────
+//
+// Four paths predate the namespacing and are baked into things nobody can recall: `SUFeedURL`
+// values compiled into shipped app bundles, and `curl … | sh` lines in published documentation.
+// They are kept FOREVER (spec §4.1), and they are implemented by REWRITING — the alias resolves
+// to the same `{kind:"service"}` route, with the same segments, as its canonical spelling. There
+// is therefore no second handler to keep in step and no way for the two to answer differently;
+// the `alias` flag exists so a route table can be asserted on, not so a handler can branch.
 
 import type { ServiceSlug } from "./core/services.js";
 
@@ -31,6 +40,8 @@ import type { ServiceSlug } from "./core/services.js";
 const SERVICE_NAMESPACES: ReadonlySet<string> = new Set<ServiceSlug>([
   "license",
   "config",
+  "release",
+  "update",
 ]);
 
 export type Route =
@@ -57,8 +68,18 @@ export type Route =
    *  not a service one: the device principal is substrate, available under every policy. */
   | { kind: "register"; product: string }
   /** A product-scoped request for a service the core router has cut over. `rest` is the path
-   *  after `/<product>/<slug>`, already split; `[]` means the bare namespace. */
-  | { kind: "service"; slug: ServiceSlug; product: string; rest: string[] }
+   *  after `/<product>/<slug>`, already split; `[]` means the bare namespace.
+   *
+   *  `alias` marks one of the four permanent pre-namespace spellings (§R1). It carries no
+   *  behaviour: the route it produces is identical to the canonical one, which is the property
+   *  the route tests pin. */
+  | {
+      kind: "service";
+      slug: ServiceSlug;
+      product: string;
+      rest: string[];
+      alias?: true;
+    }
   | { kind: "browserSession"; product: string }
   | { kind: "browserSessionLicense"; product: string }
   | { kind: "authStart"; product: string }
@@ -69,15 +90,12 @@ export type Route =
   | { kind: "authDevicePoll"; product: string }
   | { kind: "authCallback"; product: string }
   | { kind: "authPoll"; product: string }
-  | { kind: "appcast"; product: string; channel?: string }
-  | { kind: "install"; product: string }
-  | { kind: "version"; product: string }
-  | { kind: "changelog"; product: string }
-  | { kind: "cli"; product: string; version: string; arch: string }
-  | { kind: "dmg"; product: string; version: string; arch: string }
   | { kind: "notFound" };
 
-const ARCH = /^(?:[^/]+)-(arm64|aarch64|x86_64|amd64)$/;
+/** One alias route: same slug, same segments, marked. */
+function alias(slug: ServiceSlug, product: string, rest: string[]): Route {
+  return { kind: "service", slug, product, rest, alias: true };
+}
 
 export function matchRoute(pathname: string): Route {
   const path =
@@ -155,14 +173,15 @@ export function matchRoute(pathname: string): Route {
       return { kind: "authCallback", product };
     case "/auth/poll":
       return { kind: "authPoll", product };
+    // The permanent aliases (§R1). `/<p>/changelog` is NOT among them: unlike the four below it
+    // was never compiled into a shipped binary or a published curl line, so wire v3 moves it to
+    // `/<p>/release/changelog` outright.
     case "/appcast.xml":
-      return { kind: "appcast", product };
+      return alias("update", product, ["appcast.xml"]);
     case "/install.sh":
-      return { kind: "install", product };
+      return alias("release", product, ["install.sh"]);
     case "/version":
-      return { kind: "version", product };
-    case "/changelog":
-      return { kind: "changelog", product };
+      return alias("update", product, ["version"]);
   }
 
   // /<product>/<service>/<rest…> for the services that have been cut over. Placed before the
@@ -178,22 +197,12 @@ export function matchRoute(pathname: string): Route {
     };
   }
 
-  // /cli/<version>/<binary>-<arch>
-  const cli = rest.match(/^\/cli\/([^/]+)\/([^/]+)$/);
-  if (cli && cli[1] && cli[2]) {
-    const a = cli[2].match(ARCH);
-    if (a && a[1]) return { kind: "cli", product, version: cli[1], arch: a[1] };
-  }
-  // /dmg/<version>/<binary>-<arch>.dmg
-  const dmg = rest.match(/^\/dmg\/([^/]+)\/([^/]+)\.dmg$/);
-  if (dmg && dmg[1] && dmg[2]) {
-    const a = dmg[2].match(ARCH);
-    if (a && a[1]) return { kind: "dmg", product, version: dmg[1], arch: a[1] };
-  }
-
+  // `/<p>/<channel>/appcast.xml` — the fourth permanent alias. Below the service-namespace
+  // check above, so a product cannot have a release channel named `release` or `update` that
+  // shadows the service it belongs to.
   const appcast = rest.match(/^\/([a-z0-9-]+)\/appcast\.xml$/);
   if (appcast && appcast[1])
-    return { kind: "appcast", product, channel: appcast[1] };
+    return alias("update", product, [appcast[1], "appcast.xml"]);
 
   const devices = rest.match(/^\/devices\/([^/]+)$/);
   if (devices && devices[1])

@@ -19,9 +19,14 @@
  */
 
 import { Catalog } from "@plrs/catalog";
-import { type Env, secret } from "../env.js";
-import type { Db, DbStatement } from "../db/types.js";
-import { generateEd25519, seal } from "../keyvault.js";
+import {
+  generateEd25519,
+  seal,
+  secret,
+  type Db,
+  type DbStatement,
+  type Env,
+} from "../../core/platform.js";
 import {
   getProduct,
   setAutoIssuePolicy,
@@ -35,7 +40,7 @@ import {
   stmtInsertReleaseConfig,
   stmtInsertSchema,
   stmtInsertTier,
-} from "../repo.js";
+} from "../../core/ingest.js";
 import { parseManifest, type ParsedManifest } from "./manifest.js";
 import {
   discoverInstallation,
@@ -45,7 +50,8 @@ import {
 import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
-import { serializeServices } from "../core/services.js";
+import { syncReleaseStore } from "./sync.js";
+import { serializeServices } from "../../core/services.js";
 
 export type LinkRepoResult =
   | {
@@ -231,6 +237,7 @@ export async function linkRepo(
     manifest,
     { owner, repo, installId },
     now,
+    fetchImpl,
   );
 }
 
@@ -241,6 +248,7 @@ async function registerFromManifest(
   manifest: ParsedManifest,
   gh: { owner: string; repo: string; installId: number },
   now: number,
+  fetchImpl: FetchImpl,
 ): Promise<LinkRepoResult> {
   const slug = manifest.product.slug;
   const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}`;
@@ -444,6 +452,13 @@ async function registerFromManifest(
       now,
     );
   }
+
+  // The release truth store, seeded from the repo's current releases (P2.T2). AFTER the batch
+  // for the same reason the two policies above are: `release_metadata.product` references
+  // `products(slug)`, so there must be a product row to point at. Best-effort by construction
+  // (`syncReleaseStore` swallows GitHub failures) — a repo with no releases yet is the normal
+  // case at link time, and a link must not fail because of it.
+  await syncReleaseStore(env, db, slug, now, fetchImpl);
 
   // Secrets the manifest references by NAME (OIDC client secret, edge-mint key material) but
   // that an operator must still supply out-of-band via PUT /secrets. Names only — never values.

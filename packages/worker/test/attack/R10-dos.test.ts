@@ -36,7 +36,7 @@ import { handleActivate } from "../../src/services/license/activation.js";
 import { handleConfigDocument } from "../../src/services/config/document.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 import { handleSchema as handleAdminSchema } from "../../src/admin/handlers/schema.js";
-import { handleRelease } from "../../src/release/index.js";
+import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
 import { matchRoute } from "../../src/router.js";
 import { rateLimitOk } from "../../src/core/rateLimit.js";
 import { RateLimitDO } from "../../src/rateLimitDo.js";
@@ -45,14 +45,14 @@ import { handleAuthDeviceStart, handleAuthStart } from "../../src/oidc.js";
 import {
   resolveChannel,
   type ChannelSelector,
-} from "../../src/release/channels.js";
+} from "../../src/services/release/channels.js";
 import {
   fetchTextAsset,
   MAX_TEXT_ASSET_BYTES,
   type Release,
   type ReleaseAsset,
-} from "../../src/release/github.js";
-import type { FetchImpl } from "../../src/release/githubApp.js";
+} from "../../src/services/release/github.js";
+import type { FetchImpl } from "../../src/services/release/githubApp.js";
 import type { AdminSession } from "../../src/admin/session.js";
 import { getDevice, upsertDevice } from "../../src/repo.js";
 import { hashKey } from "../../src/crypto.js";
@@ -518,14 +518,19 @@ function stubReleaseFetch(rel: Release): FetchImpl {
 }
 
 describe("R10-02 arch alias is never normalized ⇒ unhandled TypeError", () => {
-  it("the router hands `aarch64`/`amd64` through verbatim as an `Arch`", () => {
-    expect(matchRoute("/djdl/dmg/1.2.3/app-aarch64.dmg")).toMatchObject({
-      kind: "dmg",
-      arch: "aarch64",
+  it("the router hands `aarch64`/`amd64` through verbatim to the release service", () => {
+    // P2.T1 removed `/cli` and `/dmg` and moved arch parsing off the router entirely: the
+    // canonical `/release/dl/…` route hands the whole leaf to `services/release/routes.ts`,
+    // which is where `normalizeArch` runs. The finding's premise — an un-normalised alias
+    // reaching a handler — is therefore what these paths still deliver, and the two tests
+    // below still prove the handler survives it.
+    expect(matchRoute("/djdl/release/dl/1.2.3/app-aarch64.dmg")).toMatchObject({
+      slug: "release",
+      rest: ["dl", "1.2.3", "app-aarch64.dmg"],
     });
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-amd64")).toMatchObject({
-      kind: "cli",
-      arch: "amd64",
+    expect(matchRoute("/djdl/release/dl/1.2.3/djdl-amd64")).toMatchObject({
+      slug: "release",
+      rest: ["dl", "1.2.3", "djdl-amd64"],
     });
   });
 
@@ -1385,7 +1390,7 @@ describe("R10-05 public release surface no longer amplifies into GitHub", () => 
       }
       // One entry, not ten: the key is synthesised from (product, kind, selector) only.
       expect(cache.store.size).toBe(1);
-      expect([...cache.store.keys()][0]).toContain("/__pkey-release-cache");
+      expect([...cache.store.keys()][0]).toContain("/__polaris-release-cache");
     });
   });
 

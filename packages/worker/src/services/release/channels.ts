@@ -167,3 +167,14 @@ export function resolveChannel(
     }
   }
 }
+
+/**
+ * Parse `vX.Y.Z` / `X.Y.Z` to a bare semver string.
+ *
+ * Release's, not Update's: it is how a GitHub TAG becomes the version the truth store keys on
+ * (`release_metadata.version`), which the feed then quotes as Sparkle's `shortVersionString`.
+ * It lived beside the renderer until P2.T1 split the feed out.
+ */
+export function versionFromTag(tag: string): string {
+  return tag.replace(/^v/, "");
+}

@@ -24,23 +24,17 @@
  *
  * Pre-launch, so this is a clean replacement with no `modules` compatibility alias (§9).
  *
- * ── THE THREE FRAGMENTS CORE STILL BUILDS ───────────────────────────────────────────────────
+ * ── THE ONE FRAGMENT CORE STILL BUILDS ──────────────────────────────────────────────────────
  *
- * Release, Update and Identity have no descriptors yet — they are carved in P2/P3. Their
- * fragments are therefore still built HERE, from the same rows the v2 document read, but they
- * are already nested under their service keys and already carry an honest `enabled`. The SHAPE
- * lands now so clients can be written against it; the producers move later, and when they do
- * this file loses three functions and gains nothing.
+ * Identity has no descriptor yet — it is carved in P3 — so its fragment is still built HERE,
+ * from the same `oidc_config` row the v2 document read, already nested under its service key.
+ * The SHAPE lands now so clients can be written against it; the producer moves later, and when
+ * it does this file loses a function and gains nothing.
  *
- * Their `enabled` sources differ on purpose, and the difference is temporary:
- *
- *   release/update — `services_json`, the real authority. A product whose manifest does not
- *                    declare them reads `false` even if a `release_config` row exists, which is
- *                    the point: the row is configuration, not consent.
- *   identity       — the `oidc_config` row. Identity's routes are NOT yet gated by
- *                    `services_json` (P3 does that), so reporting `services.identity.enabled`
- *                    would tell every existing OIDC product that its working login is off. The
- *                    document must describe what answers, so until P3 it describes the row.
+ * Its `enabled` source differs from the other four on purpose, and the difference is temporary:
+ * Identity's routes are NOT yet gated by `services_json` (P3 does that), so reporting
+ * `services.identity.enabled` would tell every existing OIDC product that its working login is
+ * off. The document must describe what answers, so until P3 it describes the row.
  */
 
 import { PROTOCOL_VERSION } from "@plrs/protocol";
@@ -52,18 +46,9 @@ import { methodNotAllowed } from "./errors.js";
 import type { DiscoveryContext, ServiceRegistry } from "./registry.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./services.js";
 import { getProduct } from "../repo.js";
-import { parseManualChannels } from "../release/channels.js";
 
 interface OidcConfigRow {
   product: string;
-}
-
-interface ReleaseConfigRow {
-  gh_owner: string | null;
-  gh_repo: string | null;
-  manual_channels_json: string | null;
-  binary_name: string | null;
-  sparkle_ed25519_pub: string | null;
 }
 
 /** The one fragment shape a disabled service gets, everywhere. */
@@ -83,11 +68,6 @@ export async function handleDiscovery(
   const row = await getProduct(db, product.slug);
   const oidc = await db.first<OidcConfigRow>(
     "SELECT product FROM oidc_config WHERE product = ?",
-    product.slug,
-  );
-  const release = await db.first<ReleaseConfigRow>(
-    `SELECT gh_owner, gh_repo, manual_channels_json, binary_name, sparkle_ed25519_pub
-     FROM release_config WHERE product = ?`,
     product.slug,
   );
   const activeKey = await loadPublicSigningKey(db, product.slug);
@@ -112,11 +92,7 @@ export async function handleDiscovery(
     identity: DISABLED,
   };
   for (const slug of SERVICE_SLUGS) {
-    services[slug] = await fragmentFor(slug, ctx, registry, {
-      row,
-      oidc,
-      release,
-    });
+    services[slug] = await fragmentFor(slug, ctx, registry, { row, oidc });
   }
 
   const body = {
@@ -182,7 +158,6 @@ export async function handleDiscovery(
 interface LegacyRows {
   row: { release_source?: string | null } | null;
   oidc: OidcConfigRow | null;
-  release: ReleaseConfigRow | null;
 }
 
 /**
@@ -204,81 +179,7 @@ async function fragmentFor(
       ? await descriptor.discoveryFragment(ctx)
       : DISABLED;
   }
-  switch (slug) {
-    case "release":
-      return ctx.product.services.release.enabled
-        ? releaseFragment(ctx, rows)
-        : DISABLED;
-    case "update":
-      return ctx.product.services.update.enabled
-        ? updateFragment(ctx, rows)
-        : DISABLED;
-    case "identity":
-      return rows.oidc ? identityFragment(ctx) : DISABLED;
-    default:
-      return DISABLED;
-  }
-}
-
-/** The channels a client may ask for: the two built-ins plus whatever the product declared. */
-function channelsOf(rows: LegacyRows): string[] {
-  if (!rows.release) return [];
-  return [
-    "stable",
-    "beta",
-    ...parseManualChannels(rows.release.manual_channels_json).map(
-      (c) => c.name,
-    ),
-  ];
-}
-
-/**
- * Release: the truth store's public face — where the software comes from and what it is called.
- *
- * Paths are the ones that answer TODAY, not the §R1 canonical ones: P2 moves `/changelog` under
- * `/release/` and `/install.sh` keeps a permanent alias. A discovery document that advertised
- * routes the running worker does not serve would be worse than one that is a phase behind.
- */
-function releaseFragment(
-  ctx: DiscoveryContext,
-  rows: LegacyRows,
-): Record<string, unknown> {
-  const { base, product } = ctx;
-  return {
-    enabled: true,
-    source: rows.row?.release_source ?? "manual",
-    /** True once the product has GitHub coordinates; `enabled` without this is spec §2.2's
-     *  "not-configured" state — consented to, nothing to serve yet. */
-    configured: Boolean(rows.release),
-    binaryName: rows.release?.binary_name ?? product.slug,
-    channels: channelsOf(rows),
-    repository:
-      rows.release?.gh_owner && rows.release.gh_repo
-        ? { owner: rows.release.gh_owner, name: rows.release.gh_repo }
-        : null,
-    endpoints: {
-      changelog: `${base}/changelog`,
-      install: `${base}/install.sh`,
-    },
-  };
-}
-
-/** Update: the FEED over Release's store (D-05) — appcast, version check, Sparkle key. */
-function updateFragment(
-  ctx: DiscoveryContext,
-  rows: LegacyRows,
-): Record<string, unknown> {
-  const { base } = ctx;
-  return {
-    enabled: true,
-    configured: Boolean(rows.release),
-    channels: channelsOf(rows),
-    sparkleEd25519PublicKey: rows.release?.sparkle_ed25519_pub ?? null,
-    endpoints: {
-      version: `${base}/version`,
-      appcast: `${base}/appcast.xml`,
-    },
-  };
+  return slug === "identity" && rows.oidc ? identityFragment(ctx) : DISABLED;
 }
 
 /**

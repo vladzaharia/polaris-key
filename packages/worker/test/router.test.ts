@@ -57,10 +57,6 @@ describe("matchRoute — product-scoped routes", () => {
     ["/djdl/auth/device/poll", "authDevicePoll"],
     ["/djdl/auth/callback", "authCallback"],
     ["/djdl/auth/poll", "authPoll"],
-    ["/djdl/appcast.xml", "appcast"],
-    ["/djdl/install.sh", "install"],
-    ["/djdl/version", "version"],
-    ["/djdl/changelog", "changelog"],
   ];
 
   it.each(cases)("routes %s -> %s", (path, kind) => {
@@ -80,7 +76,7 @@ describe("matchRoute — product-scoped routes", () => {
 // They resolve to ONE kind carrying the slug and the remaining segments, and the service's
 // descriptor routes them from there — which is what lets a product turn a service off and have
 // its whole surface disappear rather than answer 403 per path.
-describe("matchRoute — service namespaces (license, config)", () => {
+describe("matchRoute — service namespaces (license, config, release, update)", () => {
   const serviceCases: Array<[string, string, string[]]> = [
     ["/djdl/license/activate", "license", ["activate"]],
     ["/djdl/license/enroll", "license", ["enroll"]],
@@ -99,6 +95,21 @@ describe("matchRoute — service namespaces (license, config)", () => {
       "config",
       ["mint", "applemusic", "auth"],
     ],
+    ["/djdl/release/changelog", "release", ["changelog"]],
+    ["/djdl/release/install.sh", "release", ["install.sh"]],
+    [
+      "/djdl/release/dl/1.2.3/djdl-arm64",
+      "release",
+      ["dl", "1.2.3", "djdl-arm64"],
+    ],
+    [
+      "/djdl/release/dl/1.2.3/djdl-arm64.dmg",
+      "release",
+      ["dl", "1.2.3", "djdl-arm64.dmg"],
+    ],
+    ["/djdl/update/appcast.xml", "update", ["appcast.xml"]],
+    ["/djdl/update/version", "update", ["version"]],
+    ["/djdl/update/beta/appcast.xml", "update", ["beta", "appcast.xml"]],
   ];
 
   it.each(serviceCases)("routes %s -> %s %j", (path, slug, rest) => {
@@ -150,9 +161,53 @@ describe("matchRoute — service namespaces (license, config)", () => {
       rest: ["appcast.xml"],
     });
     expect(matchRoute("/djdl/staging/appcast.xml")).toMatchObject({
-      kind: "appcast",
-      channel: "staging",
+      kind: "service",
+      slug: "update",
+      rest: ["staging", "appcast.xml"],
     });
+    // …and a product may not have a channel named after a service, in either direction.
+    expect(matchRoute("/djdl/update/appcast.xml")).toMatchObject({
+      kind: "service",
+      slug: "update",
+      rest: ["appcast.xml"],
+    });
+    expect(matchRoute("/djdl/release/appcast.xml")).toMatchObject({
+      kind: "service",
+      slug: "release",
+      rest: ["appcast.xml"],
+    });
+  });
+});
+
+// §R1 / D-07: four pre-namespace paths are kept FOREVER — they are compiled into shipped app
+// bundles (`SUFeedURL`) and printed in published `curl … | sh` lines. They are implemented by
+// REWRITING to the canonical route, which is what makes "byte-identical" a property of the
+// router rather than a promise about two handlers.
+describe("matchRoute — the permanent aliases", () => {
+  const aliases: Array<[string, string]> = [
+    ["/djdl/appcast.xml", "/djdl/update/appcast.xml"],
+    ["/djdl/beta/appcast.xml", "/djdl/update/beta/appcast.xml"],
+    ["/djdl/install.sh", "/djdl/release/install.sh"],
+    ["/djdl/version", "/djdl/update/version"],
+  ];
+
+  it.each(aliases)("routes %s exactly like %s", (aliasPath, canonical) => {
+    const aliased = matchRoute(aliasPath);
+    const direct = matchRoute(canonical);
+    // Identical but for the marker: same kind, same slug, same segments. A handler therefore
+    // cannot tell them apart unless it deliberately reads `alias`.
+    expect({ ...aliased, alias: undefined }).toEqual({
+      ...direct,
+      alias: undefined,
+    });
+    expect((aliased as { alias?: true }).alias).toBe(true);
+    expect((direct as { alias?: true }).alias).toBeUndefined();
+  });
+
+  it("does NOT alias /<p>/changelog — wire v3 moves it outright", () => {
+    // Unlike the four above, `/changelog` was never baked into a shipped binary or a published
+    // command line, so there is nothing to keep working.
+    expect(matchRoute("/djdl/changelog").kind).toBe("notFound");
   });
 });
 
@@ -173,44 +228,37 @@ describe("matchRoute — routes removed by wire v3", () => {
   });
 });
 
-describe("matchRoute — cli / dmg / appcast(channel)", () => {
-  it("routes a cli binary by version + arch (and aliases)", () => {
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-arm64")).toMatchObject({
-      kind: "cli",
-      product: "djdl",
-      version: "1.2.3",
-      arch: "arm64",
-    });
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-aarch64")).toMatchObject({
-      kind: "cli",
-      arch: "aarch64",
-    });
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-x86_64")).toMatchObject({
-      kind: "cli",
-      arch: "x86_64",
-    });
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-amd64")).toMatchObject({
-      kind: "cli",
-      arch: "amd64",
-    });
+describe("matchRoute — downloads and devices", () => {
+  it("removes the pre-suite /cli and /dmg paths outright", () => {
+    // `/release/dl` unifies them (§R1). They are NOT aliased: the only URL that ever carried a
+    // DMG path was inside a generated appcast, which this release regenerates, so there is no
+    // installed client holding one.
+    for (const path of [
+      "/djdl/cli/1.2.3/djdl-arm64",
+      "/djdl/cli/1.2.3/djdl-x86_64",
+      "/djdl/dmg/1.2.3/djdl-arm64.dmg",
+    ]) {
+      expect(matchRoute(path).kind).toBe("notFound");
+    }
   });
 
-  it("routes a dmg download by version + arch", () => {
-    expect(matchRoute("/djdl/dmg/1.2.3/djdl-arm64.dmg")).toMatchObject({
-      kind: "dmg",
-      product: "djdl",
-      version: "1.2.3",
-      arch: "arm64",
-    });
-  });
-
-  it("routes a channel-suffixed appcast", () => {
-    const r = matchRoute("/djdl/staging/appcast.xml");
-    expect(r).toMatchObject({
-      kind: "appcast",
-      product: "djdl",
-      channel: "staging",
-    });
+  it("hands the whole dl path to the release service, arch and all", () => {
+    // The router no longer parses the arch: the service does, because the arch aliases it
+    // accepts (`aarch64`, `amd64`) are an asset-naming concern and `assets.ts` owns them.
+    for (const leaf of [
+      "djdl-arm64",
+      "djdl-aarch64",
+      "djdl-x86_64",
+      "djdl-amd64",
+      "djdl-sparc",
+    ]) {
+      expect(matchRoute(`/djdl/release/dl/1.2.3/${leaf}`)).toEqual({
+        kind: "service",
+        slug: "release",
+        product: "djdl",
+        rest: ["dl", "1.2.3", leaf],
+      });
+    }
   });
 
   it("routes a specific device management endpoint", () => {
@@ -232,10 +280,6 @@ describe("matchRoute — cli / dmg / appcast(channel)", () => {
       kind: "devices",
       deviceId: "registered",
     });
-  });
-
-  it("rejects a cli path with an unknown arch", () => {
-    expect(matchRoute("/djdl/cli/1.2.3/djdl-sparc").kind).toBe("notFound");
   });
 });
 

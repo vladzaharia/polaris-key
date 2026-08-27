@@ -20,84 +20,19 @@
  * `/session`, the portal's entitlement view) are byte-identical to before the split.
  */
 
-import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
+import type { ManagedEntry } from "@plrs/protocol";
 import type { Db } from "../../core/platform.js";
 import { resolveMergedPayload } from "../../core/payload.js";
-import type { DeviceRow, LicenseRow, TierRow } from "../../core/data.js";
+import type { DeviceRow, LicenseRow } from "../../core/data.js";
+import { injectAdminPolicy } from "../../core/entitlements.js";
 import { tighterMax, tighterMin } from "./gate.js";
 
-/** Parse a JSON string-array column, ignoring null/invalid. */
-function parseChannelsJson(json: string | null): string[] {
-  if (!json) return [];
-  try {
-    const v = JSON.parse(json);
-    return Array.isArray(v)
-      ? (v.filter((c) => typeof c === "string") as string[])
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Inject the admin upgrade-channel + version-window policy (from the tier and license rows)
- * as ENFORCED entitlements, so the existing gate governs them with no gate-logic changes.
- *
- * The comparator parameters stay explicit rather than closing over `./gate.js` directly: the
- * legacy `licenseCore.resolveEffective` passes its caller's pair, and taking them as arguments
- * is what let this function move into the service without changing a single one of those call
- * sites.
- */
-export function injectAdminPolicy(
-  payload: ManagedPayload,
-  tier: TierRow | null,
-  license: LicenseRow,
-  minOf: (a?: string, b?: string) => string | undefined,
-  maxOf: (a?: string, b?: string) => string | undefined,
-): void {
-  const updatedAt = license.modified_at;
-  const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({
-    state: "enforced",
-    value,
-    updatedAt,
-  });
-
-  // The license's plan, surfaced to the client as ordinary entitlements. This is what makes
-  // remote re-licensing visible without touching the signed document's shape: changing
-  // `licenses.tier_id` bumps `modified_at`, which changes these entries' `updatedAt`, which
-  // changes the doc's ETag — so the client's next refresh detects a real content change.
-  if (license.tier_id) {
-    payload.entitlements["license.tier"] = enforced(license.tier_id);
-    if (tier?.label) {
-      payload.entitlements["license.tierLabel"] = enforced(tier.label);
-    }
-  }
-
-  const channels = [
-    ...new Set([
-      ...parseChannelsJson(tier?.channels_json ?? null),
-      ...parseChannelsJson(license.channels_json),
-    ]),
-  ];
-  if (channels.length > 0)
-    payload.entitlements["channels"] = enforced(channels);
-
-  if (typeof tier?.policy_device_limit === "number") {
-    payload.entitlements["deviceLimit"] = enforced(tier.policy_device_limit);
-  }
-
-  const minVersion = minOf(
-    tier?.min_version ?? undefined,
-    license.min_version ?? undefined,
-  );
-  if (minVersion) payload.entitlements["app.minVersion"] = enforced(minVersion);
-
-  const maxVersion = maxOf(
-    tier?.max_version ?? undefined,
-    license.max_version ?? undefined,
-  );
-  if (maxVersion) payload.entitlements["app.maxVersion"] = enforced(maxVersion);
-}
+// `injectAdminPolicy` moved to `core/entitlements.ts` in P2.T3 so the `entitled` release/update
+// access mode (D-13) computes the SAME entitlement map this document carries, rather than a
+// second row-only derivation that would silently ignore channels authored in a profile or an
+// override. Re-exported here because `licenseCore.resolveEffective` — and through it identity's
+// `/session` and the portal's entitlement view — imports it from this module.
+export { injectAdminPolicy } from "../../core/entitlements.js";
 
 /**
  * The effective entitlement map for one license/device: every stored layer, merged, with the

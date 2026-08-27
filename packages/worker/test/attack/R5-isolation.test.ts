@@ -61,7 +61,7 @@ import {
   type FetchImpl,
   getInstallationToken,
   installationTokenSlot,
-} from "../../src/release/githubApp.js";
+} from "../../src/services/release/githubApp.js";
 import { hashKey } from "../../src/crypto.js";
 
 const PORTAL_SECRET = "r5-portal-session-secret";
