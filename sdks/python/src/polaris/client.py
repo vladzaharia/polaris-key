@@ -1,770 +1,412 @@
-"""The Polaris Key client: a small, product-agnostic facade over activate/fetch/verify/
-cache/gate.
+"""``PolarisClient`` — the suite facade: Core plus one sub-client per service.
 
-Offline-first — ``__init__``/``create`` apply the cached doc with no network;
-``refresh()`` re-pulls (with a single ``/token`` re-acquire on 401) and re-applies.
-Mirrors ``client.ts`` at wire contract v2 (docs/security/WIRE-CONTRACT-V2.md).
+The pre-suite ``PolarisKeyClient`` was a 770-line god object that fused the device
+principal, the credential, the trust set, the cache, the gate, config resolution, device
+management and the refresh loop into one class with a 20-field option bag. Every one of
+those is now owned by exactly one module, and this file does nothing but compose them and
+wire the two things that genuinely need a whole-client view:
 
-TRUST MODEL (§1). Three tiers in strictly decreasing authority:
+* ``on_license_acquired`` → ``sync()``. Activation used to call refresh inline, so every
+  mint path had to remember to, and a config-only product had no way to say "there is no
+  licence here, sync anyway". Now the licence client raises an EVENT and the facade
+  decides.
+* :meth:`PolarisClient.get_sync_state` — the bridge contract, one snapshot of everything a
+  UI layer renders from, assembled from the managers that own each piece. Field-for-field
+  with ``@plrs/node``'s ``SyncState``.
 
-* **pinned** — ``trust=`` compiled into the host application. Terminal: a pinned ``kid``
-  can never be overridden, and is never pruned.
-* **manifest** — keys learned from a ``polaris-trust.jws`` that verified against the
-  pinned set. Replaced wholesale on every refresh, so absence is revocation.
-* *(nothing else — the cache is no longer a key source.)*
-
-The v1 merge was ``{**pinned, **cache}``, i.e. cache wins, so one write to
-``managed.json`` substituted the key bytes behind a kid the application had explicitly
-pinned in source (R2-01/R4-02, CRITICAL). Every downstream defence reasoning "the kid
-must be one I pinned" still passed. The merge is now ``{**manifest, **pinned}`` and the
-cache holds only the signed manifest, re-verified against the pins on every load.
-
-DERIVED STATE (§4). ``lastAcceptedIssuedAt``, ``lastTrustIssuedAt``, ``lastVerifiedAt``
-and the monotonic clock floor are **recomputed from re-verified content** on every load.
-None of them is read from disk, so none of them can be poisoned there.
+SECURITY (wire contract v3): every security-relevant value the client holds is DERIVED
+from a signature it has just checked. The cache stores compact JWSs and nothing else; the
+trust set is ``{**manifest_keys, **pinned_keys}`` with the pins terminal; the per-type
+anti-replay floors, the monotonic clock floor and ``lastVerifiedAt`` are recomputed on
+every load. There is no unsigned field left for a local attacker to poison.
 """
 
 from __future__ import annotations
 
-import json
-import os
 import threading
-import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 import httpx
 
-from .endpoints import (
-    ActivationOk,
-    ActivationResult,
-    deauthorize,
-    activate_with_key,
-    enroll,
-    reacquire_token,
-    report_snapshot,
-)
-from .fetch import (
-    FetchBlocked,
-    FetchDeviceCap,
-    FetchError,
-    FetchNotModified,
-    FetchOk,
-    FetchUnauthorized,
-    fetch_managed_config,
-)
-from .license import (
+from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
+from .core.bundle import ImportBundleResult, import_bundle
+from .core.cache import CacheManager
+from .core.context import DEFAULT_REQUEST_TIMEOUT_SECONDS, CoreContext
+from .core.models import (
+    ActivationSource,
     BlockedState,
-    LicenseState,
-    channel_for_version,
-    is_usable,
-    license_state,
+    DocProfile,
+    LicenseDoc,
 )
-from .facts import ProbeDeclaration, collect_facts
-from .fingerprint import collect_fingerprint
-from .models import DocProfile, ManagedConfigDoc, ManagedEntry
-from .store import CacheRecord, KeyringStore, Store
-from .trust import merge_trust, verify_trust_manifest
-from .verify import TrustSet, verify_doc
+from .core.store import Store
+from .core.sync import SyncDeps, SyncResult, sync as run_sync
+from .core.telemetry import build_snapshot, report_snapshot
+from .core.token import TokenManager
+from .core.trust import TrustManager
+from .devices.client import (
+    DeviceManagementUnsupportedError,
+    DevicesClient,
+    RegisterResult,
+)
+from .devices.facts import ProbeDeclaration
+from .discovery import (
+    DiscoveryOk,
+    ServicesMap,
+    discover_product,
+)
+from .license.client import LicenseClient
+from .license.endpoints import ActivationOk, reacquire_token
+from .license.gate import LicenseState
+from .release.client import ReleaseClient
+from .update.client import UpdateClient
 
 __all__ = [
-    "PolarisKeyClient",
-    "RefreshResult",
+    "PolarisClient",
+    "SyncState",
     "DeviceInfo",
     "DeviceManagementUnsupportedError",
 ]
 
-DEFAULT_BASE = "https://key.plrs.im"
-
-# How close to `expiresAt` a cached document may drift before a 304 must be escalated to
-# a full re-request (§5) — half of DOC_EXPIRY_SECONDS, matching
-# `packages/sdk-node/src/claims.ts`. The content-only ETag is deliberately blind to the
-# time fields, so a stable config 304s forever and a CONTINUOUSLY ONLINE client silently
-# ages into `grace` and then `expired` (R2-11). A 304 means "content unchanged, freshness
-# renewed": when the signed window is more than half gone, ask for a fresh signature.
-REFRESH_MARGIN_SECONDS = 1800
-
-# Sentinel distinguishing "leave unchanged" from "clear to None" in patch_cache.
-_UNSET = object()
-
-
-def _now_sec() -> int:
-    return int(time.time())
-
-
-def _now_ms() -> int:
-    return int(time.time() * 1000)
-
-
-def _default_config_dir() -> str:
-    return os.environ.get("XDG_CONFIG_HOME") or os.path.join(
-        os.path.expanduser("~"), ".config"
-    )
-
 
 @dataclass(frozen=True)
-class RefreshResult:
-    applied: bool
-    unauthorized: bool = False
-    blocked: bool = False
-    deviceCap: bool = False
+class SyncState:
+    """The bridge contract — one snapshot of everything a UI layer renders from.
+
+    ``doc`` is the LICENCE document because that is what a gate UI renders; config values
+    are read through ``client.config``, which has its own accessors and no reason to hand
+    out a whole doc.
+    """
+
+    activation: Optional[ActivationSource]
+    doc: Optional[LicenseDoc]
+    lastSyncUnauthorized: bool
+    blocked: Optional[BlockedState]
+    #: Epoch MILLIseconds, or ``None``. Offline this is derived from the newest document's
+    #: signed ``issuedAt``, so it is never a value an attacker chose (R4-04).
+    lastVerifiedAt: Optional[int]
+    #: §4.2's monotonic floor, in epoch SECONDS.
+    highWaterMark: int
 
 
 @dataclass(frozen=True)
 class DeviceInfo:
+    """One device as the facade reports it, blending the roster with locally-derived
+    state."""
+
     id: str
     current: bool
     status: str
     licenseId: Optional[str] = None
     profile: Optional[DocProfile] = None
     lastVerifiedAt: Optional[int] = None
+    label: Optional[str] = None
+    platform: Optional[str] = None
+    arch: Optional[str] = None
+    appVersion: Optional[str] = None
+    sdkName: Optional[str] = None
+    sdkVersion: Optional[str] = None
 
 
-class DeviceManagementUnsupportedError(RuntimeError):
-    code = "device-management-unsupported"
-
-
-class PolarisKeyClient:
-    """Product-agnostic license + managed-config client."""
+class PolarisClient:
+    """Core plus ``client.license`` / ``.config`` / ``.devices`` / ``.release`` /
+    ``.update``."""
 
     def __init__(
         self,
         *,
         product_slug: str,
         version: str,
-        trust: TrustSet,
+        trust: Dict[str, str],
         base_url: Optional[str] = None,
         channel: Optional[str] = None,
         store: Optional[Store] = None,
         config_dir: Optional[str] = None,
         client: Optional[httpx.Client] = None,
-        local_overrides: Optional[dict] = None,
-        env_prefix: str = "PKEY_CONFIG_",
-        env: Optional[Mapping[str, str]] = None,
         trust_refresh: bool = True,
+        request_timeout: Optional[float] = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+        expected_services: Optional[Iterable[str]] = None,
+        local_only: bool = False,
+        # ── config service inputs (override layers) ──────────────────────────────────
+        local_overrides: Optional[Mapping[str, Any]] = None,
+        env_prefix: str = DEFAULT_ENV_PREFIX,
+        env: Optional[Mapping[str, str]] = None,
+        # ── licence + devices inputs ─────────────────────────────────────────────────
         fingerprint: bool = True,
         probes: Optional[List[ProbeDeclaration]] = None,
+        # ── lifecycle ────────────────────────────────────────────────────────────────
         refresh_interval_seconds: Optional[float] = None,
         on_change: Optional[Callable[[LicenseState], None]] = None,
     ) -> None:
         self.product = product_slug
-        self._base_url = (base_url or DEFAULT_BASE).rstrip("/")
-        self._version = version
-        self._channel = channel or channel_for_version(version)
-        # `_pinned` is the host application's root of trust and is NEVER mutated.
-        # `_manifest_keys` is replaced wholesale by each verified manifest (§1.2.4:
-        # pruning is mandatory — absence is revocation). `_trust` is the resolved set,
-        # with the pins terminal.
-        self._pinned: TrustSet = dict(trust)
-        self._manifest_keys: Dict[str, str] = {}
-        self._trust: TrustSet = dict(trust)
-        self._trust_refresh = trust_refresh
-        self._fingerprint_enabled = fingerprint
+        self.core = CoreContext(
+            product_slug=product_slug,
+            version=version,
+            trust=trust,
+            base_url=base_url,
+            channel=channel,
+            store=store,
+            config_dir=config_dir,
+            client=client,
+            trust_refresh=trust_refresh,
+            request_timeout=request_timeout,
+            expected_services=expected_services,
+            local_only=local_only,
+        )
+        self._trust = TrustManager(self.core)
+        self._cache = CacheManager(self.core, self._trust)
+        # The re-acquire path is INJECTED so Core does not depend on the license module;
+        # §5's single-attempt rule lives in `TokenManager` and the ROUTE lives in
+        # `license/endpoints.py`.
+        self._tokens = TokenManager(self.core, self.core.store, _reacquire)
         self._probes: List[ProbeDeclaration] = list(probes or [])
+
+        self.devices = DevicesClient(
+            self.core,
+            self._cache,
+            self._tokens,
+            probes=self._probes,
+            fingerprint=fingerprint,
+        )
+        self.license = LicenseClient(
+            self.core,
+            self._cache,
+            self._tokens,
+            self.devices,
+            # The activation event: mint a credential, then sync. Only LICENCE
+            # acquisition fires it — `devices.register()` deliberately does not, because
+            # a keyless registration is a provisioning step a host may want to take long
+            # before it wants documents (an installer that registers at setup and syncs on
+            # first launch). The CLI's `register` verb syncs explicitly for exactly that
+            # reason; the SDK does not decide it for the host.
+            lambda _source: self._on_license_acquired(),
+            fingerprint=fingerprint,
+        )
+        self.config = ConfigClient(
+            self.core,
+            self._cache,
+            local_overrides=local_overrides,
+            env_prefix=env_prefix,
+            env=env,
+        )
+        self.release = ReleaseClient(self.core, self._tokens)
+        self.update = UpdateClient(self.core, self._tokens, lambda: self._discovery_doc)
+
+        self._discovery_doc: Optional[Dict[str, Any]] = None
         self._refresh_interval = refresh_interval_seconds
         self._on_change = on_change
         self._timer_stop = threading.Event()
         self._timer: Optional[threading.Thread] = None
-        self._store: Store = store or KeyringStore(
-            product_slug, config_dir or _default_config_dir()
-        )
-        # An injected transport/client (tests) or a lazily-created default.
-        self._client = client
-        self._owns_client = client is None
-
-        # Layered-config inputs: local overrides win over env over remote-default,
-        # but an ``enforced``/``hidden`` remote entry always wins over both.
-        self._local_overrides: Dict[str, Any] = dict(local_overrides or {})
-        self._env_prefix = env_prefix
-        self._env: Mapping[str, str] = os.environ if env is None else env
-
-        self._token: Optional[str] = None
-        self._device_id = ""
-        self._cache: Optional[CacheRecord] = None
-        # ── Derived security state (§4). Recomputed from re-verified signed artifacts
-        #    on every load; never read from disk. ──────────────────────────────────
-        self._doc: Optional[ManagedConfigDoc] = None
-        self._last_accepted_issued_at: Optional[int] = None
-        self._last_trust_issued_at: Optional[int] = None
-        self._last_verified_at: Optional[int] = None
-        # The monotonic time floor (§4.3): `max` over the `issuedAt` of every signed
-        # artifact re-verified here — the config document AND the trust manifest. Both
-        # sources are load-bearing; see `_raise_floor`.
-        self._high_water_mark = 0
 
     @classmethod
-    def create(cls, **opts: Any) -> "PolarisKeyClient":
+    def create(cls, **opts: Any) -> "PolarisClient":
         c = cls(**opts)
         c.init()
         return c
 
-    @property
-    def _http(self) -> httpx.Client:
-        if self._client is None:
-            self._client = httpx.Client(timeout=30.0)
-        return self._client
+    # ── Lifecycle ───────────────────────────────────────────────────────────────────
+    def init(self) -> None:
+        """Load device id + token + cached documents. NO NETWORK — an offline-first host
+        must be able to render its gate before it has ever reached the control plane."""
+        self.core.init()
+        self._tokens.load()
+        self._cache.load()
+        self._start_timer()
 
     def close(self) -> None:
-        """Stop the refresh thread and release the HTTP client. Safe to call more than once."""
+        """Stop the refresh thread and release the HTTP client. Safe to call twice."""
         self._timer_stop.set()
         timer = self._timer
         if timer is not None:
             timer.join(timeout=1.0)
             self._timer = None
-        if self._owns_client and self._client is not None:
-            self._client.close()
-            self._client = None
+        self.core.close()
 
-    def __enter__(self) -> "PolarisKeyClient":
+    def __enter__(self) -> "PolarisClient":
         return self
 
     def __exit__(self, *exc: Any) -> None:
         self.close()
 
-    # ── Init ────────────────────────────────────────────────────────────────────
-    def init(self) -> None:
-        """Load token + device id + cached doc (no network)."""
-        self._device_id = self._store.get_device_id()
-        self._token = self._store.get_token()
-        self._cache = self._store.read_cache()
-        self._load_cached_artifacts()
-        self._start_timer()
-
-    def _load_cached_artifacts(self) -> None:
-        """Re-verify the cached JWS artifacts and DERIVE all state from them (§4.2).
-
-        1. Re-verify ``trustJws`` against the **pinned** keys only. On failure discard
-           it and fall back to the pins alone — never to whatever the file claimed.
-        2. Build the trust set per §1.
-        3. Re-verify ``configJws`` against that trust set, with the full §3 claim checks.
-        4. Derive ``lastAcceptedIssuedAt`` / ``lastTrustIssuedAt`` / the clock floor from
-           the verified content.
-        5. Any failure => treat as no cache => ``needs-activation``. Fail closed, never
-           fall back to a partially-trusted state.
-        """
-        self._manifest_keys = {}
-        self._trust = dict(self._pinned)
-        self._doc = None
-        self._last_accepted_issued_at = None
-        self._last_trust_issued_at = None
-        self._last_verified_at = None
-        self._high_water_mark = 0
-
-        rec = self._cache
-        if rec is None:
-            return
-        now = _now_sec()
-
-        # Freshness is NOT asserted on reload: a manifest is only minutes-fresh by design,
-        # and refusing a stale one would strand every offline client that has rotated keys.
-        # Its signature, `typ`, `aud`/`iss` binding and pinned-substitution guard all apply.
-        if rec.trustJws and not self._apply_trust_manifest(
-            rec.trustJws, now=now, persist=False, check_freshness=False
-        ):
-            # Drop it in memory too, so a later _patch_cache can't write it back.
-            rec.trustJws = None
-
-        if rec.configJws:
-            doc = verify_doc(
-                rec.configJws,
-                self._trust,
-                expected_aud=self.product,
-                device_id=self._device_id,
-                now=now,
-                # §3.1 correction 2 — a cached doc is EXPECTED to be past its short
-                # `expiresAt`; that is what offline operation is. Its signed outer bound
-                # here is `graceUntil`, enforced by the gate against the monotonic floor.
-                # Asserting freshness on reload would delete offline grace outright.
-                check_freshness=False,
-            )
-            if doc is None:
-                rec.configJws = None
-                rec.etag = None
-            else:
-                self._accept_doc(doc)
-                # Derived, not stored: offline, the server's own statement of when this
-                # document was minted is the only trustworthy "last verified" signal.
-                self._last_verified_at = doc.issuedAt * 1000
-
-    def _accept_doc(self, doc: ManagedConfigDoc) -> None:
-        """Install a freshly verified document and re-derive the counters it anchors."""
-        self._doc = doc
-        self._last_accepted_issued_at = doc.issuedAt
-        self._raise_floor(doc.issuedAt)
-
-    def _raise_floor(self, issued_at: int) -> None:
-        """Raise the §4.3 clock floor to ``issued_at``.
-
-        Monotonic by construction — it only ever rises, and only from content whose
-        signature was just checked against the pins, so there is no unsigned field an
-        attacker could edit to move it either way.
-
-        The floor has TWO sources: ``configDoc.issuedAt`` and ``trustManifest.issuedAt``.
-        Both are required. Derived from the document alone it is inert (R4-04): with one
-        cached document the mark equals ``doc.issuedAt``, which is below that same
-        document's ``graceUntil`` by construction, so it can never push ``effective_now``
-        past the end of grace and a rolled-back clock still extends offline operation
-        indefinitely. The manifest is the second, independently-advancing signed clock —
-        ``trust_refresh`` is on by default, so it moves even while a content-stable config
-        document sits behind an unchanged ETag.
-        """
-        if issued_at > self._high_water_mark:
-            self._high_water_mark = issued_at
-
-    def _effective_now(self, now: Optional[int] = None) -> int:
-        """``max(systemClock, highWaterMark)`` — the §4.3 monotonic time floor.
-
-        The greatest ``issuedAt`` we have ever verified is a signed statement that time
-        had at least reached that point. Taking the max makes clock rollback (R4-04)
-        inert without requiring a trusted local clock, and costs nothing when the clock
-        is honest.
-        """
-        wall = _now_sec() if now is None else now
-        return wall if wall > self._high_water_mark else self._high_water_mark
-
     def _start_timer(self) -> None:
         """Start the optional refresh loop.
 
         OFF unless ``refresh_interval_seconds`` is set — enabling it by default would add
-        network traffic and wakeups to every already-shipped integration. The thread is a
-        daemon so it can never hold a CLI open.
+        network traffic and wakeups to every already-shipped integration. Never started in
+        local-only mode: a transportless client must not have a thread whose whole job is
+        to attempt a request. The thread is a daemon so it can never hold a CLI open.
         """
         interval = self._refresh_interval
         if not interval or interval <= 0 or self._timer is not None:
+            return
+        if self.core.local_only:
             return
 
         def loop() -> None:
             while not self._timer_stop.wait(interval):
                 try:
-                    self.refresh()
+                    self.sync()
                 except Exception:
                     # A transient network failure must not kill the loop.
                     pass
 
-        self._timer = threading.Thread(
-            target=loop, name="polaris-key-refresh", daemon=True
-        )
+        self._timer = threading.Thread(target=loop, name="polaris-sync", daemon=True)
         self._timer.start()
 
-    # ── Gate / reads ────────────────────────────────────────────────────────────
-    def status(self, now: Optional[int] = None) -> LicenseState:
-        cache = self._cache
-        return license_state(
-            has_token=self._token is not None,
-            doc=self._doc,
-            now=_now_sec() if now is None else now,
-            high_water_mark=self._high_water_mark,
-            last_sync_unauthorized=cache.lastSyncUnauthorized if cache else False,
-            blocked=cache.blocked if cache else None,
-            last_verified_at=self._last_verified_at,
+    # ── Capabilities (D-21) ─────────────────────────────────────────────────────────
+    def discover(self) -> Any:
+        """Fetch ``/.well-known/polaris.json`` and install the product's real capability
+        map.
+
+        Explicit rather than automatic, because it is a NETWORK read and ``sync()`` must
+        stay predictable: a client that has never called this resolves capabilities from
+        ``expected_services`` or the suite default. Once a document is loaded it wins over
+        both — discovery is the authority when it is available.
+        """
+        # `http()` is called EAGERLY, and its local-only refusal is allowed to propagate:
+        # a transportless client must not open a socket to the control plane, which is the
+        # one thing `polaris.local` exists to make impossible.
+        client = self.core.http()
+        result = discover_product(
+            base_url=self.core.base_url,
+            product=self.product,
+            client=client,
+            timeout=self.core.timeout,
+        )
+        if isinstance(result, DiscoveryOk):
+            self._discovery_doc = result.manifest
+            self.core.set_services(result.services)
+        return result
+
+    def capabilities(self) -> ServicesMap:
+        """What this client currently believes the product runs."""
+        return self.core.services()
+
+    # ── Sync ────────────────────────────────────────────────────────────────────────
+    def sync(self, *, force: bool = False) -> SyncResult:
+        """One Core pass: trust refresh → enabled documents → verify → cache → floor →
+        report. See :mod:`polaris.core.sync` for the full ordering rationale."""
+        before_license = self._cache.etag("license")
+        before_config = self._cache.etag("config")
+        result = run_sync(
+            SyncDeps(
+                ctx=self.core,
+                trust=self._trust,
+                cache=self._cache,
+                tokens=self._tokens,
+                report=self._report_once,
+            ),
+            force=force,
+        )
+        # The ETags are the change signal: they exclude the per-request timestamps, so a
+        # differing tag means the CONTENT changed rather than that the document was merely
+        # re-signed.
+        changed = (
+            self._cache.etag("license") != before_license
+            or self._cache.etag("config") != before_config
+        )
+        if self._on_change is not None and result.applied and changed:
+            self._on_change(self.license.status())
+        return result
+
+    def _report_once(self) -> None:
+        token = self._tokens.current
+        if not token:
+            return
+        report_snapshot(self.core, token, build_snapshot(self._cache, self._probes))
+
+    def _on_license_acquired(self) -> None:
+        self.sync(force=True)
+
+    def get_sync_state(self) -> SyncState:
+        state = self._cache.state
+        return SyncState(
+            activation=self.license.activation(),
+            doc=self._cache.license_doc(),
+            lastSyncUnauthorized=state.lastSyncUnauthorized,
+            blocked=state.blocked,
+            lastVerifiedAt=state.lastVerifiedAt,
+            highWaterMark=self.core.high_water_mark,
         )
 
+    # ── Offline bundles (§7) ────────────────────────────────────────────────────────
+    def import_bundle(self, jws: str, now: Optional[int] = None) -> ImportBundleResult:
+        """Verify and install an offline activation bundle. All-or-nothing; no token is
+        created. Raises :class:`PolarisError` carrying the §7 step that refused."""
+        return import_bundle(self.core, self._cache, jws, now)
+
+    # ── Convenience passthroughs ────────────────────────────────────────────────────
+    # Kept deliberately small. The suite's shape is `client.<service>.<verb>`; these exist
+    # only for the calls a host makes before it knows which service it is talking to.
+    def status(self, now: Optional[int] = None) -> LicenseState:
+        return self.license.status(now)
+
     def is_licensed(self, now: Optional[int] = None) -> bool:
-        return is_usable(self.status(now).status)
+        return self.license.is_licensed(now)
 
     def get_config(self, key: str, fallback: Any = None) -> Any:
-        """Resolve a config key through the layered precedence.
+        return self.config.get_config(key, fallback)
 
-        For an ``enforced``/``hidden`` remote entry, the remote value wins. Otherwise
-        ``local_overrides`` > env (``env_prefix + key`` with ``.`` -> ``__``) > remote
-        ``value`` > ``fallback``.
-        """
-        value, _source = self._resolve_config(key, fallback)
-        return value
-
-    def _config_entry(self, key: str) -> Optional[ManagedEntry]:
-        doc = self._doc
-        if not doc:
-            return None
-        return doc.payload.config.get(key)
-
-    def _env_value(self, key: str) -> Any:
-        """Read ``env[env_prefix + key.replace('.','__')]``; JSON-parse if it parses."""
-        env_key = self._env_prefix + key.replace(".", "__")
-        if env_key not in self._env:
-            return _UNSET
-        raw = self._env[env_key]
-        try:
-            return json.loads(raw)
-        except (ValueError, TypeError):
-            return raw
-
-    def _resolve_config(self, key: str, fallback: Any = None) -> Tuple[Any, str]:
-        """Return ``(value, source)`` per the layered-config precedence."""
-        entry = self._config_entry(key)
-        if entry is not None and entry.state in ("enforced", "hidden"):
-            return entry.value, ("hidden" if entry.state == "hidden" else "enforced")
-        if key in self._local_overrides:
-            return self._local_overrides[key], "local"
-        env_val = self._env_value(key)
-        if env_val is not _UNSET:
-            return env_val, "env"
-        if entry is not None:
-            return entry.value, "remote-default"
-        return fallback, "fallback"
-
-    def get_config_source(self, key: str) -> str:
-        """One of ``enforced|hidden|local|env|remote-default|fallback``."""
-        _value, source = self._resolve_config(key)
-        return source
-
-    def list_user_config(self) -> List[Dict[str, Any]]:
-        """User-facing config: every key except ``hidden`` ones, resolved per layering.
-
-        Each item is ``{key, value, enforced}`` where ``enforced`` reflects whether the
-        remote entry locks the value (an ``enforced`` state).
-        """
-        doc = self._doc
-        if not doc:
-            return []
-        out: List[Dict[str, Any]] = []
-        for key, entry in doc.payload.config.items():
-            if entry.state == "hidden":
-                continue
-            value, _source = self._resolve_config(key)
-            out.append(
-                {"key": key, "value": value, "enforced": entry.state == "enforced"}
-            )
-        return out
-
-    def get_secret(self, key: str) -> Optional[str]:
-        doc = self._doc
-        if not doc:
-            return None
-        e = doc.payload.secrets.get(key)
-        if e is not None and isinstance(e.value, str):
-            return e.value
-        return None
-
-    def is_entitled(self, name: str) -> bool:
-        doc = self._doc
-        if not doc:
-            return False
-        e = doc.payload.entitlements.get(name)
-        return bool(e is not None and e.value is True)
-
-    def get_entitlements(self) -> Dict[str, Any]:
-        doc = self._doc
-        if not doc:
-            return {}
-        return {k: v.value for k, v in doc.payload.entitlements.items()}
-
-    def get_profile(self) -> Optional[DocProfile]:
-        doc = self._doc
-        return doc.profile if doc else None
+    def register(self) -> RegisterResult:
+        return self.devices.register()
 
     def current_device(self) -> DeviceInfo:
-        doc = self._doc
+        state = self._cache.state
         return DeviceInfo(
-            id=self._device_id,
+            id=self.core.device_id,
             current=True,
-            status=self.status().status,
-            licenseId=doc.licenseId if doc else None,
-            profile=doc.profile if doc else None,
-            lastVerifiedAt=self._last_verified_at,
+            status=self.license.status().status,
+            licenseId=self.license.get_license_id(),
+            profile=self.license.get_profile(),
+            lastVerifiedAt=state.lastVerifiedAt,
         )
 
     def list_devices(self) -> List[DeviceInfo]:
-        raise DeviceManagementUnsupportedError(
-            "Remote device management is not supported by this backend."
-        )
+        """The device roster, blended with this device's locally-derived state.
+
+        Without a credential there is no roster to fetch, so the answer is this device
+        alone — which is the honest offline answer, not an error.
+        """
+        current = self.current_device()
+        try:
+            roster = self.devices.list()
+        except DeviceManagementUnsupportedError:
+            return [current]
+        return [
+            DeviceInfo(
+                id=d.id,
+                current=d.current,
+                status=current.status if d.current else d.status,
+                licenseId=d.licenseId
+                or (current.licenseId if d.current else None),
+                profile=current.profile if d.current else None,
+                lastVerifiedAt=current.lastVerifiedAt if d.current else None,
+                label=d.label,
+                platform=d.platform,
+                arch=d.arch,
+                appVersion=d.appVersion,
+                sdkName=d.sdkName,
+                sdkVersion=d.sdkVersion,
+            )
+            for d in roster
+        ]
 
     def deauthorize_device(self, device_id: str) -> None:
-        if device_id == self._device_id:
-            self.deactivate()
+        """Deauthorizing THIS device is a full local deactivation; any other device is a
+        roster operation that needs a credential."""
+        if device_id == self.core.device_id:
+            self.license.deactivate()
             return
-        raise DeviceManagementUnsupportedError(
-            "Remote device deauthorization is not supported by this backend."
-        )
+        self.devices.deauthorize(device_id)
 
-    # ── Activation ──────────────────────────────────────────────────────────────
-    def _fingerprint(self) -> Optional[dict]:
-        """This machine's hashed hardware components, or None when collection is disabled or
-        nothing could be read. Raw hardware values never leave the device."""
-        if not self._fingerprint_enabled:
-            return None
-        try:
-            return collect_fingerprint(self.product)
-        except Exception:
-            # Fingerprinting is best-effort: a host that refuses every probe still
-            # activates, and the server records it as unverified.
-            return None
-
-    def enroll(self) -> ActivationResult:
-        """Obtain a license with no key and no sign-in, when the product offers a free tier."""
-        r = enroll(
-            base_url=self._base_url,
-            product=self.product,
-            device_id=self._device_id,
-            client=self._http,
-            fingerprint=self._fingerprint(),
-        )
-        if isinstance(r, ActivationOk):
-            self._token = r.token
-            self._store.set_token(r.token)
-            self.refresh(force=True)
-        return r
-
-    def activate_with_key(self, key: str) -> ActivationResult:
-        r = activate_with_key(
-            base_url=self._base_url,
-            product=self.product,
-            key=key,
-            device_id=self._device_id,
-            client=self._http,
-            fingerprint=self._fingerprint(),
-        )
-        if isinstance(r, ActivationOk):
-            self._token = r.token
-            self._store.set_token(r.token)
-            self.refresh(force=True)
-        return r
+    def rename_device(self, device_id: str, label: Optional[str]) -> None:
+        self.devices.rename(device_id, label)
 
     def deactivate(self) -> None:
-        if self._token:
-            deauthorize(
-                base_url=self._base_url,
-                product=self.product,
-                token=self._token,
-                client=self._http,
-            )
-        self._token = None
-        self._cache = None
-        self._store.clear_token()
-        self._store.clear_cache()
-        # Drop every derived artifact too: keys learned from a manifest, the doc, and the
-        # counters anchored to it. Only the compiled-in pins survive a deactivation.
-        self._manifest_keys = {}
-        self._trust = dict(self._pinned)
-        self._doc = None
-        self._last_accepted_issued_at = None
-        self._last_trust_issued_at = None
-        self._last_verified_at = None
-        self._high_water_mark = 0
+        self.license.deactivate()
 
-    # ── Refresh ─────────────────────────────────────────────────────────────────
-    def refresh(self, force: bool = False) -> RefreshResult:
-        if not self._token:
-            return RefreshResult(applied=False)
-        # compute_etag() deliberately excludes issuedAt/expiresAt/graceUntil, so the tag is
-        # stable across a pure re-sign and differs iff the CONTENT changed. That makes it the
-        # change signal — no payload diffing, no new wire field.
-        before_etag = self._cache.etag if self._cache else None
-        result = self._fetch_and_apply(allow_reacquire=True, force=force)
-        if (
-            self._on_change is not None
-            and result.applied
-            and self._cache is not None
-            and self._cache.etag is not None
-            and self._cache.etag != before_etag
-        ):
-            self._on_change(self.status())
-        if result.applied or not result.unauthorized:
-            report_snapshot(
-                base_url=self._base_url,
-                product=self.product,
-                token=self._token,
-                snapshot=self._report_snapshot_body(),
-                client=self._http,
-            )
-        return result
 
-    def _fetch_and_apply(
-        self, allow_reacquire: bool, force: bool = False
-    ) -> RefreshResult:
-        if not self._token:
-            return RefreshResult(applied=False)
-        if self._trust_refresh:
-            try:
-                self._refresh_trust()
-            except Exception:
-                pass
-        res = fetch_managed_config(
-            base_url=self._base_url,
-            product=self.product,
-            token=self._token,
-            device_id=self._device_id,
-            version=self._version,
-            channel=self._channel,
-            etag=None if force else (self._cache.etag if self._cache else None),
-            client=self._http,
-        )
-
-        if isinstance(res, FetchNotModified):
-            # A 304 is a successful, authenticated verification: clear the fail-closed
-            # hints. But the ETag covers CONTENT only, so a stable config would 304 until
-            # the signed window ran out — §5 forbids letting a continuously online client
-            # drift into `grace`. Escalate to a full re-request once the doc is past its
-            # half-life (or missing entirely), exactly once, so this cannot loop.
-            if not force and self._needs_fresh_signature():
-                return self._fetch_and_apply(
-                    allow_reacquire=allow_reacquire, force=True
-                )
-            # A 304 IS a successful authenticated verification.
-            self._last_verified_at = _now_ms()
-            self._patch_cache(blocked=None, last_sync_unauthorized=False)
-            return RefreshResult(applied=False)
-
-        if isinstance(res, FetchUnauthorized):
-            if allow_reacquire:
-                re = reacquire_token(
-                    base_url=self._base_url,
-                    product=self.product,
-                    token=self._token,
-                    device_id=self._device_id,
-                    client=self._http,
-                )
-                if isinstance(re, ActivationOk):
-                    self._token = re.token
-                    self._store.set_token(re.token)
-                    return self._fetch_and_apply(
-                        allow_reacquire=False, force=force
-                    )
-            self._patch_cache(last_sync_unauthorized=True)
-            return RefreshResult(applied=False, unauthorized=True)
-
-        if isinstance(res, FetchDeviceCap):
-            return RefreshResult(applied=False, deviceCap=True)
-
-        if isinstance(res, FetchBlocked):
-            self._patch_cache(
-                blocked=BlockedState(reason=res.reason, allowedRange=res.allowedRange)
-            )
-            return RefreshResult(applied=False, blocked=True)
-
-        if isinstance(res, FetchOk):
-            doc = verify_doc(
-                res.jws,
-                self._trust,
-                expected_aud=self.product,
-                device_id=self._device_id,
-                # Derived from the doc we last verified — never from an on-disk counter.
-                last_accepted_issued_at=self._last_accepted_issued_at,
-            )
-            if doc is None:
-                return RefreshResult(applied=False)
-            self._accept_doc(doc)
-            self._last_verified_at = _now_ms()
-            # Persist the SIGNED ARTIFACT, not the decoded document. Everything the gate
-            # later reads is re-derived from this string by re-verifying it (§4.1).
-            self._patch_cache(
-                config_jws=res.jws,
-                etag=res.etag,
-                blocked=None,
-                last_sync_unauthorized=False,
-            )
-            return RefreshResult(applied=True)
-
-        # FetchError
-        return RefreshResult(applied=False)
-
-    def _needs_fresh_signature(self, now: Optional[int] = None) -> bool:
-        """True when a 304 must be escalated to a full re-request (§5 / R2-11)."""
-        if self._doc is None:
-            return True
-        wall = _now_sec() if now is None else now
-        return wall > self._doc.expiresAt - REFRESH_MARGIN_SECONDS
-
-    def _refresh_trust(self) -> bool:
-        res = self._http.get(
-            f"{self._base_url}/{self.product}/.well-known/polaris-trust.jws",
-            headers={"accept": "application/jose"},
-        )
-        if res.status_code != 200:
-            return False
-        return self._apply_trust_manifest(res.text, now=_now_sec(), persist=True)
-
-    def _apply_trust_manifest(
-        self, jws: str, *, now: int, persist: bool, check_freshness: bool = True
-    ) -> bool:
-        """Verify a trust manifest and REPLACE the learned key set with its contents.
-
-        The rules live in :mod:`polaris_key.trust` so this SDK and the Node one can be
-        driven by the same ``trustCases`` corpus section. Returns ``True`` when the
-        manifest was accepted and installed; on ``False`` the previous trust set is left
-        exactly as it was.
-        """
-        result = verify_trust_manifest(
-            jws,
-            pinned=self._pinned,
-            expected_aud=self.product,
-            last_trust_issued_at=self._last_trust_issued_at,
-            now=now,
-            check_freshness=check_freshness,
-        )
-        if result.doc is None:
-            return False
-        # §1.2 rule 4 — PRUNE. The trust set becomes exactly `pinned ∪ {manifest keys
-        # whose status != revoked}`; a kid absent from the new manifest and not pinned is
-        # dropped. Absence is revocation. The v1 code merged and never removed, so a
-        # compromised kid stayed trusted forever, on disk, across restarts (R2-02).
-        self._manifest_keys = result.discovered
-        self._trust = merge_trust(self._pinned, result.discovered)
-        self._last_trust_issued_at = result.doc["issuedAt"]
-        # §4.3 — the manifest is the floor's second source, and the one that actually
-        # advances. A stale cached manifest still counts: its ``issuedAt`` is a signed
-        # LOWER BOUND on real time regardless of whether it is fresh enough to publish
-        # keys, which is why raising the floor here does not re-introduce the freshness
-        # check ``check_freshness=False`` deliberately skipped above.
-        self._raise_floor(result.doc["issuedAt"])
-        if persist:
-            self._patch_cache(trust_jws=jws)
-        return True
-
-    def _patch_cache(
-        self,
-        *,
-        config_jws: Any = _UNSET,
-        trust_jws: Any = _UNSET,
-        etag: Any = _UNSET,
-        blocked: Any = _UNSET,
-        last_sync_unauthorized: Any = _UNSET,
-    ) -> None:
-        """Update the cache record, creating it only when there is something to keep.
-
-        ``_UNSET`` means "leave that field unchanged". When there is no record yet, a
-        no-op patch (e.g. clearing already-clear fail-closed hints) must not create an
-        empty file — the gate tolerates an absent cache.
-        """
-        if self._cache is None:
-            meaningful = (
-                (config_jws is not _UNSET and config_jws is not None)
-                or (trust_jws is not _UNSET and trust_jws is not None)
-                or (blocked is not _UNSET and blocked is not None)
-                or last_sync_unauthorized is True
-            )
-            if not meaningful:
-                return
-            self._cache = CacheRecord()
-
-        rec = self._cache
-        if config_jws is not _UNSET:
-            rec.configJws = config_jws
-        if trust_jws is not _UNSET:
-            rec.trustJws = trust_jws
-        if etag is not _UNSET:
-            rec.etag = etag
-        if blocked is not _UNSET:
-            rec.blocked = blocked
-        if last_sync_unauthorized is not _UNSET:
-            rec.lastSyncUnauthorized = last_sync_unauthorized
-        self._store.write_cache(rec)
-
-    def _report_snapshot_body(self) -> Dict[str, Any]:
-        doc = self._doc
-        config: Dict[str, Any] = {}
-        entitlements: Dict[str, Any] = {}
-        if doc:
-            for k, v in doc.payload.config.items():
-                config[k] = v.value
-            for k, v in doc.payload.entitlements.items():
-                entitlements[k] = v.value
-        # Software facts ride alongside the config/entitlement snapshot on the SAME report
-        # call — no extra round trip, and the Worker's allowlist keeps the payload bounded.
-        facts: Dict[str, Any] = {}
-        try:
-            facts = collect_facts(self._probes)
-        except Exception:
-            # Facts are diagnostic; failing to gather them must never break a refresh.
-            facts = {}
-        return {**facts, "config": config, "entitlements": entitlements}
+def _reacquire(ctx: CoreContext, current: str) -> Optional[str]:
+    """§5's single ``POST /<p>/license/token`` attempt, wired into ``TokenManager``."""
+    r = reacquire_token(ctx, current)
+    return r.token if isinstance(r, ActivationOk) else None

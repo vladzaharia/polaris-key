@@ -1,21 +1,25 @@
-# polaris-key (Python SDK)
+# polaris-suite (Python SDK)
 
-A product-agnostic Python client for the **Polaris Key** control plane — license
-gating + signed managed-config delivery. It mirrors the Node SDK
-(`@plrs/node`) and verifies the **same** cross-language conformance corpus
-byte-for-byte.
+A product-agnostic Python client for the **Polaris suite** — an always-on **Core**
+(device principal, credential, trust, verified cache, clock floor, sync) with opt-in
+**License**, **Config**, **Release** and **Update** services layered over it. It mirrors
+the Node SDK (`@plrs/node`) module for module and verifies the **same** cross-language
+conformance corpus byte-for-byte.
 
-The wire crypto is a compact JWS (EdDSA / Ed25519) over a managed-config document; the
-verifying key is selected by the header `kid` from a caller-supplied **trust set**,
-never from the document, and the `alg` is asserted before any signature math (no
-`none`/HMAC downgrade).
+The wire crypto is a compact JWS (EdDSA / Ed25519) over per-service signed documents; the
+verifying key is selected by the header `kid` from a caller-supplied **trust set**, never
+from the document, and the `alg` is asserted before any signature math (no `none`/HMAC
+downgrade).
+
+Distribution **`polaris-suite`**, import package **`polaris`**, console script
+**`polaris`**.
 
 ## Install
 
 ```sh
-pip install polaris-key
+pip install polaris-suite
 # optional extras: OS keyring + alternate CLI front ends
-pip install "polaris-key[keyring,click,typer]"
+pip install "polaris-suite[keyring,click,typer]"
 ```
 
 Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`.
@@ -23,49 +27,77 @@ Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`.
 ## Quickstart
 
 ```python
-from polaris_key import PolarisKeyClient
+from polaris import PolarisClient
 
 # kid -> raw Ed25519 public key (base64url). PLACEHOLDERS — substitute YOUR product's
 # real values; see "Where the trust set comes from" below.
 TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 
-client = PolarisKeyClient.create(
+client = PolarisClient.create(
     product_slug="djdl",
-    version="1.0.0",
-    trust=TRUST,                 # pinned signing keys
-    base_url="https://key.plrs.im",
+    version="1.0.0",                 # the HOST APPLICATION's version
+    trust=TRUST,                     # pinned signing keys
+    base_url="https://key.plrs.im",  # must be https: (or http://localhost)
 )
 
-# Activate this device with a license key (then pull the first signed config doc).
-result = client.activate_with_key("PKEY-XXXX-XXXX")
+# Activate this device with a license key (then pull the first signed documents).
+result = client.license.activate_with_key("PLRS-XXXX-XXXX")
 if result.kind == "ok":
-    print("status:", client.status().status)   # ok | grace | expired | revoked | needs-activation | ...
+    print("status:", client.status().status)
+
+# …or register keylessly, when the product's policy is `open` (a config-only product's
+# whole provisioning story).
+client.devices.register()
 
 # Offline-first gate.
 if client.is_licensed():
-    concurrency = client.get_config("run.concurrency", 4)
-    vpn_url = client.get_secret("proxy.subscriptionUrl")
-    if client.is_entitled("polarisVpn"):
+    concurrency = client.config.get_config("run.concurrency", 4)
+    vpn_url = client.config.get_secret("proxy.subscriptionUrl")
+    if client.license.is_entitled("polarisVpn"):
         ...
 
-# Re-pull the latest config (one /token re-acquire on 401), then re-apply.
-client.refresh()
+# One Core pass: trust refresh -> enabled documents -> verify -> cache -> floor -> report.
+client.sync()
 
 # Wipe local credentials + deauthorize the device server-side.
-client.deactivate()
+client.license.deactivate()
 ```
 
-`PolarisKeyClient.create(...)` loads the cached doc with **no network**; `refresh()`
+`PolarisClient.create(...)` loads the cached documents with **no network**; `sync()`
 re-pulls. The default `KeyringStore` stores credentials in the OS keyring when available
-and uses `0600` files for device/cache data and headless fallback. Inject an
-`InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client` (e.g. with a
-`MockTransport`) for the transport.
+(service tag `plrs:<product>`) and uses `0600` files for device/cache data and headless
+fallback. Inject an `InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client`
+(e.g. with a `MockTransport`) for the transport.
+
+## Sub-packages
+
+Every one is importable on its own, so a config-only daemon never pulls the licence module:
+
+| Import            | Owns                                                                            |
+| ----------------- | ------------------------------------------------------------------------------- |
+| `polaris.core`    | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto |
+| `polaris.license` | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate |
+| `polaris.config`  | the signed config document + layered resolution                                 |
+| `polaris.devices` | registration, the roster, fingerprint / facts / device-id, the stores           |
+| `polaris.release` | changelog, install script, artifact URLs                                        |
+| `polaris.update`  | version check + the Sparkle appcast URL                                         |
+| `polaris.local`   | the transportless profile                                                       |
+
+### Capabilities (fail-closed)
+
+`client.capabilities()` reports which services the product runs. Resolution is: a discovery
+document fetched this session (`client.discover()`) > the `expected_services=[…]` your
+build was compiled expecting > the suite default (`license` + `config`). Release, Update
+and Identity are OFF in that default, so their sub-clients raise
+`PolarisError("service-unavailable")` until something says otherwise — a service that is
+not advertised must not be reachable. License and Config are ON, because an offline-first
+client must not lose its gate to an unreachable control plane.
 
 ### Where the trust set comes from
 
 > [!WARNING]
 > Every `kid`/public key shown in this repository's docs, tests and
-> `conformance/corpus/v1/cases.json` is a **placeholder or a test fixture whose private
+> `conformance/corpus/v2/cases.json` is a **placeholder or a test fixture whose private
 > half is committed**. Pinning one means anyone can forge a document your client accepts:
 > the verifying key is selected by the header `kid` from whatever map you supply.
 
@@ -86,13 +118,17 @@ against your pins.
 ## Gate statuses
 
 `status().status` is one of: `ok`, `grace`, `expired`, `revoked`, `needs-activation`,
-`version-too-old`, `version-too-new`, `channel-not-entitled`. `is_licensed()` is true
-for `ok`/`grace`.
+`not-applicable`, `version-too-old`, `version-too-new`, `channel-not-entitled`.
+`is_licensed()` is true for `ok` / `grace` / `not-applicable`.
+
+`not-applicable` is what a product that does not enable the License service reports: it has
+no licence to be missing, so it boots **usable** rather than sitting on `needs-activation`
+forever.
 
 ## Layered config
 
-`get_config(key, fallback)` resolves a value through the **same precedence** as every
-Polaris Key SDK; `get_config_source(key)` returns which layer won:
+`client.config.get_config(key, fallback)` resolves a value through the **same precedence**
+as every Polaris SDK; `get_config_source(key)` returns which layer won:
 
 ```
 enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
@@ -104,117 +140,171 @@ vars are ignored for those keys; `hidden` keys are additionally withheld from
 through local → env → remote value → your `fallback`.
 
 ```python
-client = PolarisKeyClient.create(
+client = PolarisClient.create(
     product_slug="djdl", version="1.0.0", trust=TRUST,
-    local_overrides={"run.concurrency": 6},   # beats a `default`, never an `enforced`/`hidden`
-    env_prefix="PKEY_CONFIG_",                  # the default
+    local_overrides={"run.concurrency": 6},  # beats a `default`, never an `enforced`/`hidden`
+    env_prefix="PLRS_CONFIG_",               # the default
 )
-client.get_config_source("run.concurrency")     # "local" | "env" | "remote-default" | ...
+client.config.get_config_source("run.concurrency")  # "local" | "env" | "remote-default" | …
 ```
 
-### The `PKEY_CONFIG_*` env convention
+### The `PLRS_CONFIG_*` env convention
 
 An override env var is `env_prefix + key.replace(".", "__")` (dots → double underscores):
-`run.concurrency` → `PKEY_CONFIG_run__concurrency`, `quality.floor` →
-`PKEY_CONFIG_quality__floor`. The value is JSON-parsed when it parses (`"4"` → int, `"true"`
-→ bool, `"[…]"` → list); otherwise it is taken as the raw string.
+`run.concurrency` → `PLRS_CONFIG_run__concurrency`, `quality.floor` →
+`PLRS_CONFIG_quality__floor`. The value is JSON-parsed when it parses (`"4"` → int,
+`"true"` → bool, `"[…]"` → list); otherwise it is taken as the raw string.
+
+The pre-suite `PKEY_CONFIG_*` prefix is **not** read as a fallback.
+
+## Offline
+
+Three depths:
+
+1. **online with grace** (the default) — a cached document keeps working until `graceUntil`.
+2. **bundle-activated** — an operator mints a `.plrsbundle` against this device's id and you
+   import it with no network at all:
+
+   ```python
+   client.import_bundle(open("offline.plrsbundle").read())
+   ```
+
+   Verification is all-or-nothing and the error names the step that refused
+   (`bundle-jws-rejected` / `bundle-claims-rejected` / `bundle-trust-rejected` /
+   `inner-doc-rejected`), because the step is the operator's remedy.
+
+3. **local-only** — a build that must never open a socket:
+
+   ```python
+   from polaris.local import create_local_client, create_bundle_client
+
+   client = create_local_client(product_slug="djdl", version="1.0.0", trust=TRUST)
+   client, imported = create_bundle_client(bundle=jws, product_slug="djdl",
+                                           version="1.0.0", trust=TRUST)
+   ```
+
+   Every network-requiring call raises `PolarisError` with code `local-only` at the DIAL,
+   before a URL is built — so a transportless build cannot make a request even by accident.
 
 ## CLI
 
-A framework-agnostic command **core** (`polaris_key.cli.core` — `activate` / `deactivate` /
-`status`) powers a dependency-free **argparse** front end (`polaris_key.cli.argparse_cli`, the
-default), plus optional **click** (`polaris_key.cli.click_cli`) and **typer**
-(`polaris_key.cli.typer_cli`) adapters under the matching extras. All three wrap the same
-core, so they never diverge. Trust keys are passed as repeatable `--trust kid=rawBase64url`
-pairs so the CLI stays product-agnostic:
+A framework-agnostic command **core** (`polaris.cli.core`) powers a dependency-free
+**argparse** front end (`polaris.cli.argparse_cli`, the default), plus optional **click**
+(`polaris.cli.click_cli`) and **typer** (`polaris.cli.typer_cli`) adapters under the
+matching extras. All three wrap the same core, so they never diverge. Verbs are grouped by
+the service that owns them:
+
+| Service   | Verbs                                        |
+| --------- | -------------------------------------------- |
+| `license` | `activate` · `enroll` · `deactivate` · `status` |
+| `devices` | `register`                                   |
+| `config`  | `config <key>`                               |
+| `core`    | `import-bundle`                              |
+
+Trust keys are passed as repeatable `--trust kid=rawBase64url` pairs so the CLI stays
+product-agnostic; `--service <slug>` (repeatable) carries the capability expectation.
 
 ```sh
 # `--trust` takes YOUR product's real kid=publicKey pair — see "Where the trust set comes
 # from" above. The values below are placeholders, not keys.
 # Preferred: the key never touches argv (see "Supplying the license key" below).
-POLARIS_KEY_ACTIVATION_KEY=PKEY-XXXX-XXXX polaris-key activate \
+POLARIS_ACTIVATION_KEY=PLRS-XXXX-XXXX polaris activate \
   --product djdl --version 1.0.0 \
   --trust '<your-signing-key-id>=<your-product-signing-key-b64url>'
-polaris-key status --product djdl --trust '<your-signing-key-id>=...'
-polaris-key deactivate --product djdl --trust '<your-signing-key-id>=...'
-# equivalently: python -m polaris_key ...
+polaris register --product djdl --trust '<your-signing-key-id>=...'
+polaris status --product djdl --trust '<your-signing-key-id>=...'
+polaris import-bundle --product djdl --trust '...' ./offline.plrsbundle
+# equivalently: python -m polaris …
 ```
 
 ### Supplying the license key
 
-A key passed as `polaris-key activate PKEY-XXXX` is written verbatim to your shell
-history, is visible to every user on the machine via `ps auxww` while the command runs,
-and is readable from `/proc/<pid>/cmdline` on Linux. The CLI therefore resolves the key
-from a **non-argv** source first:
+A key passed as `polaris activate PLRS-XXXX` is written verbatim to your shell history, is
+visible to every user on the machine via `ps auxww` while the command runs, and is readable
+from `/proc/<pid>/cmdline` on Linux. The CLI therefore resolves the key from a **non-argv**
+source first:
 
 | Order | Source                                                                           |
 | ----- | -------------------------------------------------------------------------------- |
 | 1     | `--key-file <path>`                                                              |
 | 2     | `--key-stdin` (one line from stdin)                                              |
-| 3     | `$POLARIS_KEY_ACTIVATION_KEY`                                                    |
+| 3     | `$POLARIS_ACTIVATION_KEY`                                                        |
 | 4     | the positional argument — still supported for scripting, but it prints a warning |
 | 5     | an interactive prompt, when stdin is a TTY                                       |
 
 ```sh
-printf '%s' "$KEY" | polaris-key activate --key-stdin --product djdl
-polaris-key activate --key-file ~/.config/djdl/license.key --product djdl
-polaris-key activate --product djdl        # prompts when run interactively
+printf '%s' "$KEY" | polaris activate --key-stdin --product djdl
+polaris activate --key-file ~/.config/djdl/license.key --product djdl
+polaris activate --product djdl        # prompts when run interactively
 ```
 
 ### `--version`
 
-`--version` defaults to the **installed package version**, not to a `0.0.0-dev`
-sentinel. The control plane's build gate short-circuits on a dev version, so defaulting
-to one meant the CLI's out-of-the-box invocation requested a document that skipped
-version _and_ channel enforcement. Pass your application's real version when you mount
-these commands into your own CLI.
+`--version` defaults to the **installed package version**, not to a `0.0.0-dev` sentinel.
+The control plane's build gate short-circuits on a dev version, so defaulting to one meant
+the CLI's out-of-the-box invocation requested a document that skipped version _and_ channel
+enforcement. Pass your application's real version when you mount these commands into your
+own CLI.
 
 To mount the commands onto your own program, import the adapter you use: the click adapter
-exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter exposes an
-`app` (`polaris_key.cli.typer_cli.app`); both are thin wrappers over `core`.
+exposes a `cli` group (`polaris.cli.click_cli.cli`) and the typer adapter exposes an `app`
+(`polaris.cli.typer_cli.app`); both are thin wrappers over `core`. The argparse hook is
+`polaris.cli.register_argparse(subparsers, client_factory=…)`.
 
 ## Trust, caching, and the offline gate
 
-The SDK follows [wire contract v2](../../docs/security/WIRE-CONTRACT-V2.md):
+The SDK follows [wire contract v3](../../docs/security/WIRE-CONTRACT-V3.md):
 
 - **Pinned keys are terminal.** The `trust=` map you compile into your application is the
   only root. Keys learned from a signed trust manifest are merged _under_ it, and a
   manifest that presents a pinned `kid` with different key bytes is rejected whole.
-- **`key.status` is honoured.** `revoked` keys are refused and removed; a `kid` absent
-  from the newest manifest is dropped (absence is revocation).
-- **The cache stores only signed artifacts** — the compact JWS of the config document and
-  of the trust manifest. The trust set, the anti-replay counters, `lastVerifiedAt` and the
-  monotonic clock floor are all _derived_ by re-verifying those two strings against your
-  pins on every load. Nothing security-relevant is read from disk unverified, and a
-  pre-v2 cache record is discarded rather than migrated.
-- **Claim checks** cover `typ`, `aud`, `iss`, `deviceId`, monotonic `issuedAt`,
-  `expiresAt` and a bounded `graceUntil`, with a 300-second clock skew. An expired
-  document is rejected at verification, not merely reported by the gate.
-- **A `304` renews freshness.** The content-only ETag is blind to the validity window, so
-  once a cached document is past its half-life the client escalates a `304` to a full
-  re-request. A continuously online client cannot drift into `grace`.
+- **`key.status` is honoured.** `revoked` keys are refused and removed; a `kid` absent from
+  the newest manifest is dropped (absence is revocation).
+- **The cache stores only signed artifacts** — the compact JWS of each per-service document
+  and of the trust manifest. The trust set, the per-type anti-replay floors,
+  `lastVerifiedAt` and the monotonic clock floor are all _derived_ by re-verifying those
+  strings against your pins on every load. Nothing security-relevant is read from disk
+  unverified, and a cache record from any other version is **discarded**, not migrated.
+- **Core owns trust refresh** on its own cadence, before and independently of any document
+  fetch — so a product with _any_ service enabled still advances the independent signed
+  clock that makes rollback inert.
+- **Claim checks** cover `typ` (mandatory in v3), `aud`, `iss` (`plrs.im`, host-neutral),
+  `deviceId`, monotonic `issuedAt`, `expiresAt` and a bounded `graceUntil` (365 days, at
+  verify time), with a 300-second clock skew. An expired document is rejected at
+  verification, not merely reported by the gate.
+- **A `304` renews freshness, per document.** The content-only ETag is blind to the
+  validity window, so once a cached document is past its half-life the client escalates a
+  `304` to an unconditional re-request. A continuously online client cannot drift into
+  `grace`.
+- **A non-HTTPS `base_url` is refused at construction** (`InsecureBaseUrlError`), except
+  for loopback hosts.
+- **Every request carries a deadline** — including calls on an `httpx.Client` you injected.
 
 ## Low-level verification
 
 ```python
-from polaris_key import verify_jws, TYP_CONFIG
+from polaris import verify_jws, verify_license_doc, verify_config_doc, TYP_LICENSE
 
-v = verify_jws(jws, {"kid": "rawBase64urlPubKey"})   # -> VerifiedJws(kid, payload) | None
-v = verify_jws(jws, trust, typ=TYP_CONFIG)           # assert the document type too
+v = verify_jws(jws, {"kid": "rawBase64urlPubKey"}, require_typ=True)
+v = verify_jws(jws, trust, typ=TYP_LICENSE, require_typ=True)  # assert the document type
+doc = verify_license_doc(jws, trust, expected_aud="djdl", device_id=device_id)
 ```
 
-`verify_jws` never raises and never parses an unverified payload: the encoded segments
-are size-capped before decoding, base64url decoding is strict (the `-_` alphabet only —
-no `+/`, no `=`, no whitespace), duplicate JSON keys are rejected rather than resolved,
-and the payload is decoded only after the Ed25519 signature checks out.
+`verify_jws` never raises and never parses an unverified payload: the encoded segments are
+size-capped before decoding, base64url decoding is strict (the `-_` alphabet only — no
+`+/`, no `=`, no whitespace), duplicate JSON keys are rejected rather than resolved, a
+missing `typ` is refused, and the payload is decoded only after the Ed25519 signature checks
+out.
 
 ## Development
 
 ```sh
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[keyring,click,typer]" pytest
+pip install -e ".[dev,keyring]"
 pytest
 ```
 
-The conformance suite reads `../../conformance/corpus/v1/cases.json` from the monorepo
-and asserts byte-identical verify outcomes alongside the Node / Swift / React runners.
+The conformance suite reads `../../conformance/corpus/v2/` from the monorepo and asserts
+byte-identical verify outcomes alongside the Node / Swift / React runners — JWS cases,
+per-document claim cases, trust cases, the clock floor, the gate matrix, and the offline
+bundle order.

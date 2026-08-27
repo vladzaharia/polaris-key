@@ -1,4 +1,5 @@
-"""``python -m polaris_key`` -> the argparse CLI."""
+"""``python -m polaris`` -> the argparse CLI (the same entry point the ``polaris``
+console script uses)."""
 
 from __future__ import annotations
 

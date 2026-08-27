@@ -1,0 +1,293 @@
+"""The Devices sub-client — the Core device principal's own surface (wire contract v3 §6).
+
+``register()`` is the headline: until v3 the only way to become a device was to present a
+licence key, which made "device" a licensing concept. D-08 undoes that — a config-only
+product's installs need an identity to fetch a document AS and a credential to fetch it
+WITH, and ``POST /<p>/devices/register`` is where they get one, keylessly, under the
+``open`` registration policy.
+
+The rest (``list``/``rename``/``deauthorize``/``report``) are Core surfaces available under
+every policy, which is why they live here rather than under License: a device roster is a
+property of the product's fleet, not of any one grant.
+
+THIS IS THE OTHER HALF OF THE PYTHON PARITY GAP. The pre-suite client raised
+``DeviceManagementUnsupportedError`` from ``list_devices``/``deauthorize_device``
+unconditionally — the endpoints existed on the Worker and this SDK simply did not call
+them. They are real calls now; the error survives, but only for its honest meaning: there
+is no credential, so there is no roster to ask for.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Union
+
+from ..core.cache import CacheManager
+from ..core.context import CoreContext
+from ..core.errors import PolarisError
+from ..core.telemetry import build_snapshot, report_snapshot
+from ..core.token import TokenManager
+from .facts import ProbeDeclaration
+from .fingerprint import collect_fingerprint
+
+__all__ = [
+    "AccountDevice",
+    "RegisterOk",
+    "RegisterClosed",
+    "RegisterRateLimited",
+    "RegisterNotConfigured",
+    "RegisterError",
+    "RegisterResult",
+    "DeviceManagementUnsupportedError",
+    "DevicesClient",
+    "REGISTER_PATH",
+    "DEVICES_PATH",
+]
+
+REGISTER_PATH = "devices/register"
+DEVICES_PATH = "devices"
+
+
+@dataclass(frozen=True)
+class AccountDevice:
+    """One device as the server reports it."""
+
+    id: str
+    status: str = "ok"
+    current: bool = False
+    licenseId: Optional[str] = None
+    label: Optional[str] = None
+    firstSeen: Optional[int] = None
+    lastSeen: Optional[int] = None
+    platform: Optional[str] = None
+    arch: Optional[str] = None
+    appVersion: Optional[str] = None
+    sdkName: Optional[str] = None
+    sdkVersion: Optional[str] = None
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "AccountDevice":
+        return AccountDevice(
+            id=str(d.get("id", "")),
+            status=str(d.get("status", "ok")),
+            current=d.get("current") is True,
+            licenseId=d.get("licenseId"),
+            label=d.get("label"),
+            firstSeen=d.get("firstSeen"),
+            lastSeen=d.get("lastSeen"),
+            platform=d.get("platform"),
+            arch=d.get("arch"),
+            appVersion=d.get("appVersion"),
+            sdkName=d.get("sdkName"),
+            sdkVersion=d.get("sdkVersion"),
+        )
+
+
+@dataclass(frozen=True)
+class RegisterOk:
+    token: str
+    deviceId: str
+    kind: str = "ok"
+
+
+@dataclass(frozen=True)
+class RegisterClosed:
+    """The product's policy is ``requires-license`` or ``requires-identity``: activation
+    (or a sign-in) is the mint path, and the endpoint refuses without telling you which."""
+
+    kind: str = "registration-closed"
+
+
+@dataclass(frozen=True)
+class RegisterRateLimited:
+    kind: str = "rate-limited"
+
+
+@dataclass(frozen=True)
+class RegisterNotConfigured:
+    kind: str = "not-configured"
+
+
+@dataclass(frozen=True)
+class RegisterError:
+    message: str
+    kind: str = "error"
+
+
+RegisterResult = Union[
+    RegisterOk,
+    RegisterClosed,
+    RegisterRateLimited,
+    RegisterNotConfigured,
+    RegisterError,
+]
+
+
+class DeviceManagementUnsupportedError(RuntimeError):
+    code = "device-management-unsupported"
+
+
+class DevicesClient:
+    def __init__(
+        self,
+        ctx: CoreContext,
+        cache: CacheManager,
+        tokens: TokenManager,
+        *,
+        probes: Optional[List[ProbeDeclaration]] = None,
+        fingerprint: bool = True,
+    ) -> None:
+        self._ctx = ctx
+        self._cache = cache
+        self._tokens = tokens
+        self._probes: List[ProbeDeclaration] = list(probes or [])
+        self._fingerprint_enabled = fingerprint
+
+    def fingerprint(self) -> Optional[dict]:
+        """This machine's hashed hardware components, or ``None`` when collection is
+        disabled or nothing could be read. Raw hardware values never leave the device."""
+        if not self._fingerprint_enabled:
+            return None
+        try:
+            return collect_fingerprint(self._ctx.product)
+        except Exception:
+            # Best-effort: a host that refuses every probe still registers, and the
+            # server records it as unverified.
+            return None
+
+    # ── Registration (§6) ───────────────────────────────────────────────────────────
+    def register(self) -> RegisterResult:
+        """``POST /<p>/devices/register`` — the keyless mint path.
+
+        No ``Authorization`` header is sent even when a stale token is held: a client
+        re-registering is asking for a FRESH credential, not authenticating with the old
+        one. On success the new token replaces whatever was stored.
+        """
+        fingerprint = self.fingerprint()
+        # Outside the try — a local-only refusal is a configuration error the host can
+        # fix, not a transport outcome to be reported as one.
+        self._ctx.http()
+        try:
+            if fingerprint:
+                res = self._ctx.request(
+                    "POST",
+                    self._ctx.url(REGISTER_PATH),
+                    headers=self._ctx.headers({"content-type": "application/json"}),
+                    json={"fingerprint": fingerprint},
+                )
+            else:
+                res = self._ctx.request(
+                    "POST", self._ctx.url(REGISTER_PATH), headers=self._ctx.headers()
+                )
+        except PolarisError:
+            raise
+        except Exception as e:
+            return RegisterError(message=str(e))
+
+        if res.status_code == 200:
+            body = _json_or_empty(res)
+            token = body.get("token")
+            device_id = body.get("deviceId")
+            if not isinstance(token, str) or not isinstance(device_id, str):
+                return RegisterError(message="registration response was malformed")
+            self._tokens.set(token)
+            return RegisterOk(token=token, deviceId=device_id)
+        if res.status_code == 403:
+            return RegisterClosed()
+        if res.status_code == 429:
+            return RegisterRateLimited()
+        if res.status_code == 404:
+            return RegisterNotConfigured()
+        return RegisterError(message=_text_or_empty(res))
+
+    # ── Roster ──────────────────────────────────────────────────────────────────────
+    def list(self) -> List[AccountDevice]:
+        """``GET /<p>/devices`` — the product's roster for this credential."""
+        token = self._require_token()
+        res = self._ctx.request(
+            "GET",
+            self._ctx.url(DEVICES_PATH),
+            headers=self._ctx.headers({"authorization": f"Bearer {token}"}),
+        )
+        if not res.is_success:
+            raise PolarisError(
+                "device_list_failed", f"device list failed: {res.status_code}"
+            )
+        body = _json_or_empty(res)
+        devices = body.get("devices")
+        if not isinstance(devices, list):
+            return []
+        return [AccountDevice.from_dict(d) for d in devices if isinstance(d, dict)]
+
+    def rename(self, device_id: str, label: Optional[str]) -> None:
+        """``PATCH /<p>/devices/:id`` — rename (self-only, server-enforced)."""
+        token = self._require_token()
+        res = self._ctx.request(
+            "PATCH",
+            self._ctx.url(f"{DEVICES_PATH}/{_quote(device_id)}"),
+            headers=self._ctx.headers(
+                {
+                    "authorization": f"Bearer {token}",
+                    "content-type": "application/json",
+                }
+            ),
+            json={"label": label},
+        )
+        if not res.is_success:
+            raise PolarisError(
+                "device_rename_failed", f"device rename failed: {res.status_code}"
+            )
+
+    def deauthorize(self, device_id: str) -> None:
+        """``DELETE /<p>/devices/:id`` — release another device's seat."""
+        token = self._require_token()
+        res = self._ctx.request(
+            "DELETE",
+            self._ctx.url(f"{DEVICES_PATH}/{_quote(device_id)}"),
+            headers=self._ctx.headers({"authorization": f"Bearer {token}"}),
+        )
+        if not res.is_success:
+            raise PolarisError(
+                "device_deauthorize_failed",
+                f"device deauthorize failed: {res.status_code}",
+            )
+
+    # ── Telemetry ───────────────────────────────────────────────────────────────────
+    def report(self) -> bool:
+        """``POST /<p>/devices/report`` — best-effort telemetry built from re-verified
+        documents."""
+        token = self._tokens.current
+        if not token:
+            return False
+        return report_snapshot(
+            self._ctx, token, build_snapshot(self._cache, self._probes)
+        )
+
+    def _require_token(self) -> str:
+        token = self._tokens.current
+        if not token:
+            raise DeviceManagementUnsupportedError(
+                "Activate or register before managing devices."
+            )
+        return token
+
+
+def _quote(value: str) -> str:
+    from urllib.parse import quote
+
+    return quote(value, safe="")
+
+
+def _json_or_empty(res: Any) -> Dict[str, Any]:
+    try:
+        body = res.json()
+        return body if isinstance(body, dict) else {}
+    except Exception:
+        return {}
+
+
+def _text_or_empty(res: Any) -> str:
+    try:
+        return res.text
+    except Exception:
+        return ""

@@ -1,0 +1,266 @@
+"""The verified cache — wire contract v3 §4.1. Core owns this record; no service module
+ever writes it.
+
+THE LOAD PROCEDURE IS THE SECURITY BOUNDARY
+
+Every load re-verifies EVERYTHING, in this order:
+
+1. a record whose ``v != 3`` is DISCARDED, never migrated — one network round trip is the
+   right price for not carrying poisoned state forward, and an air-gapped install
+   re-imports its bundle;
+2. ``trustJws`` against the PINS only, freshness off → the effective set;
+3. each entry of ``docs`` against THAT set, freshness off, full §3 claim validation
+   including ``aud`` and ``deviceId``;
+4. every derived counter — the per-type anti-replay floors, ``lastVerifiedAt``, the
+   monotonic clock floor — computed from what verified, never read from the file.
+
+Any artifact that fails is treated as ABSENT and dropped from the in-memory record, so a
+failed licence document yields ``needs-activation`` rather than a partial state. That is
+the whole of R2-03/R4-01/R4-02/R4-03: there is no unsigned field left to poison, and
+forging one now requires forging a signature.
+
+WHY WRITES ARE READ-MODIFY-WRITE OF THE WHOLE RECORD
+
+The record has independent slices — two documents, two ETags, a trust manifest, an import
+marker — updated by different call sites at different times. Serialising every mutation
+through :meth:`CacheManager.patch` is what keeps a config write from clobbering a licence
+slice that landed moments earlier in the same sync pass.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, TypeVar
+
+from .models import BlockedState, ConfigDoc, LicenseDoc
+from .store import CacheRecord, ImportedBundle
+from .verify import verify_config_doc, verify_license_doc
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .context import CoreContext
+    from .trust import TrustManager
+
+__all__ = ["CachedDoc", "LoadedCache", "CacheManager"]
+
+T = TypeVar("T")
+
+#: Sentinel distinguishing "leave unchanged" from "clear to None" in :meth:`patch`.
+_UNSET = object()
+
+
+@dataclass(frozen=True)
+class CachedDoc(Generic[T]):
+    """One re-verified document slice: the decoded payload plus the artifact it came
+    from. The host persists the SIGNED artifact, never the decoded object (§4.1)."""
+
+    jws: str
+    doc: T
+
+
+@dataclass
+class LoadedCache:
+    """What a load produced. Every field is DERIVED from a signature checked moments ago."""
+
+    license: Optional[CachedDoc] = None
+    config: Optional[CachedDoc] = None
+    #: Present ⇒ this install was activated (or configured) from an offline bundle (§7).
+    importedBundle: Optional[ImportedBundle] = None
+    lastSyncUnauthorized: bool = False
+    blocked: Optional[BlockedState] = None
+    #: Epoch MILLIseconds of the last verification, derived from the newest document's
+    #: signed ``issuedAt`` — offline, the server's own statement of when it minted is the
+    #: only trustworthy "last checked" signal there is (R4-04).
+    lastVerifiedAt: Optional[int] = None
+
+
+class CacheManager:
+    def __init__(self, ctx: "CoreContext", trust: "TrustManager") -> None:
+        self._ctx = ctx
+        self._trust = trust
+        self._record: Optional[CacheRecord] = None
+        self._loaded = LoadedCache()
+
+    @property
+    def state(self) -> LoadedCache:
+        return self._loaded
+
+    @property
+    def record(self) -> Optional[CacheRecord]:
+        return self._record
+
+    def etag(self, slice_name: str) -> Optional[str]:
+        """The ETag held for one document, or ``None``. Non-security: it is a
+        conditional-request validator, and the worst a forged one achieves is an
+        unnecessary 200."""
+        if self._record is None:
+            return None
+        return self._record.etags.get(slice_name)
+
+    def license_doc(self) -> Optional[LicenseDoc]:
+        return self._loaded.license.doc if self._loaded.license else None
+
+    def config_doc(self) -> Optional[ConfigDoc]:
+        return self._loaded.config.doc if self._loaded.config else None
+
+    # ── Load ────────────────────────────────────────────────────────────────────────
+    def load(self, now: Optional[int] = None) -> LoadedCache:
+        """Re-verify the whole record and derive every counter from it (§4.1)."""
+        self._trust.reset()
+        self._loaded = LoadedCache()
+
+        rec = self._ctx.store.read_cache()
+        # `CacheRecord.from_dict` already refuses a record from another cache version, so
+        # a v1/v2 record arrives here as `None`.
+        if rec is None:
+            self._record = None
+            return self._loaded
+        self._record = rec
+
+        if rec.trustJws and not self._trust.load_cached(rec.trustJws, now=now):
+            # Drop it in memory too, so a later patch cannot write it back.
+            self._record.trustJws = None
+
+        trust = self._trust.effective
+        newest = 0
+
+        license_jws = rec.docs.get("license")
+        if license_jws:
+            doc = verify_license_doc(
+                license_jws,
+                trust,
+                expected_aud=self._ctx.product,
+                device_id=self._ctx.device_id,
+                now=now,
+                # A cached document is EXPECTED to be past its short `expiresAt`; its
+                # signed outer bound is `graceUntil`, which the gate enforces against the
+                # monotonic floor (§4.2). Asserting freshness here would delete offline
+                # grace outright.
+                check_freshness=False,
+            )
+            if doc is None:
+                self._drop_slice("license")
+            else:
+                self._loaded.license = CachedDoc(jws=license_jws, doc=doc)
+                self._ctx.raise_floor(doc.issuedAt)
+                newest = max(newest, doc.issuedAt)
+
+        config_jws = rec.docs.get("config")
+        if config_jws:
+            doc = verify_config_doc(
+                config_jws,
+                trust,
+                expected_aud=self._ctx.product,
+                device_id=self._ctx.device_id,
+                now=now,
+                check_freshness=False,
+            )
+            if doc is None:
+                self._drop_slice("config")
+            else:
+                self._loaded.config = CachedDoc(jws=config_jws, doc=doc)
+                self._ctx.raise_floor(doc.issuedAt)
+                newest = max(newest, doc.issuedAt)
+
+        self._loaded.importedBundle = self._record.importedBundle
+        self._loaded.lastSyncUnauthorized = self._record.lastSyncUnauthorized is True
+        self._loaded.blocked = self._record.blocked
+        self._loaded.lastVerifiedAt = newest * 1000 if newest > 0 else None
+        return self._loaded
+
+    def _drop_slice(self, slice_name: str) -> None:
+        """In-memory only: a slice that failed verification is absent for the rest of this
+        session and is rewritten out on the next patch. Not erased from disk eagerly — a
+        read path that deleted files would turn a transient key-rotation gap into data
+        loss."""
+        if self._record is None:
+            return
+        self._record.docs.pop(slice_name, None)
+        self._record.etags.pop(slice_name, None)
+
+    # ── Apply ───────────────────────────────────────────────────────────────────────
+    def apply_license(
+        self, jws: str, doc: LicenseDoc, etag: Optional[str] = None
+    ) -> None:
+        """Record a freshly verified licence document: artifact + ETag in the record,
+        payload in the derived state, ``issuedAt`` into the floor. In memory only —
+        :meth:`flush` persists."""
+        self._loaded.license = CachedDoc(jws=jws, doc=doc)
+        self._ctx.raise_floor(doc.issuedAt)
+        self._stage("license", jws, etag)
+
+    def apply_config(self, jws: str, doc: ConfigDoc, etag: Optional[str] = None) -> None:
+        self._loaded.config = CachedDoc(jws=jws, doc=doc)
+        self._ctx.raise_floor(doc.issuedAt)
+        self._stage("config", jws, etag)
+
+    def _stage(self, slice_name: str, jws: str, etag: Optional[str]) -> None:
+        rec = self._ensure_record()
+        rec.docs[slice_name] = jws
+        if etag:
+            rec.etags[slice_name] = etag
+        else:
+            rec.etags.pop(slice_name, None)
+
+    def mark_verified(self, at_ms: Optional[int] = None) -> None:
+        """Mark the last verification time from a successful authenticated exchange
+        (including a 304 — content unchanged still means freshness renewed, §5)."""
+        from .context import now_ms
+
+        self._loaded.lastVerifiedAt = now_ms() if at_ms is None else at_ms
+
+    # ── Write ───────────────────────────────────────────────────────────────────────
+    def patch(
+        self,
+        *,
+        trust_jws: Any = _UNSET,
+        blocked: Any = _UNSET,
+        last_sync_unauthorized: Any = _UNSET,
+        imported_bundle: Any = _UNSET,
+    ) -> None:
+        """Read-modify-write the whole record. The ONLY mutation path (§4.1): a service
+        module that wrote the file directly could not be prevented from writing a
+        half-record."""
+        rec = self._ensure_record()
+        if trust_jws is not _UNSET:
+            rec.trustJws = trust_jws
+        if blocked is not _UNSET:
+            rec.blocked = blocked
+            self._loaded.blocked = blocked
+        if last_sync_unauthorized is not _UNSET:
+            rec.lastSyncUnauthorized = last_sync_unauthorized is True
+            self._loaded.lastSyncUnauthorized = last_sync_unauthorized is True
+        if imported_bundle is not _UNSET:
+            rec.importedBundle = imported_bundle
+            self._loaded.importedBundle = imported_bundle
+        self._ctx.store.write_cache(rec)
+
+    def flush(self, **patch: Any) -> None:
+        """Persist whatever ``apply_*`` staged, with an optional patch folded into the
+        same write. Two document outcomes settling in one sync pass share ONE write, so
+        neither can clobber the other's slice."""
+        self.patch(**patch)
+
+    def replace(self, record: CacheRecord) -> None:
+        """Replace the record wholesale, atomically. Only ``import_bundle`` uses this: §7
+        step 5 is an all-or-nothing write of a verified bundle's contents, and merging it
+        into whatever was there before would let a stale slice survive an air-gapped
+        re-provisioning."""
+        self._record = record
+        self._ctx.store.write_cache(record)
+
+    def clear(self) -> None:
+        """Wipe everything, in memory and on disk."""
+        self._record = None
+        self._loaded = LoadedCache()
+        self._trust.reset()
+        self._ctx.reset_floor()
+        self._ctx.store.clear_cache()
+
+    def _ensure_record(self) -> CacheRecord:
+        if self._record is None:
+            self._record = CacheRecord()
+        return self._record
+
+    def snapshot(self) -> Dict[str, Any]:
+        """The on-disk shape, for tests and diagnostics."""
+        return (self._record or CacheRecord()).to_dict()

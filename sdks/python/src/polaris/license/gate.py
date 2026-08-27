@@ -1,113 +1,40 @@
-"""Client license gate + semver/channel helpers.
+"""The client licence gate — wire contract v3 §5.
 
-Mirrors ``gate.ts`` and ``semver.ts`` from the Node SDK. ``license_state`` computes the
-renderable status from the cached signed doc + current time + the last sync outcome; the
-server enforces version/channel (a 403 -> ``blocked``), the client reflects that plus
-offline grace. The semver/channel logic is pinned by the conformance corpus so all SDKs
-agree.
+Mirrors ``@plrs/client-core``'s ``gate.ts``. Computes the renderable status from the
+cached signed licence document + the monotonic clock floor + the last sync outcome. The
+server enforces version/channel on ``GET /<p>/license/document`` (a 403 → ``blocked``);
+the client reflects that plus offline grace.
+
+TWO THINGS ARE NEW IN v3, both consequences of the suite service model:
+
+* ``license_service_enabled=False`` ⇒ ``not-applicable`` (usable TRUE). A config-only or
+  release-only product has no licence to be missing, so it must boot USABLE rather than
+  sitting on ``needs-activation`` forever (D-08).
+* ``activation`` replaces v2's ``has_token`` boolean: a device is activated either by an
+  online-minted ``plrst_`` token or by a verified offline bundle import (§7). Both are
+  activated; only ``None`` is not.
+
+And ONE ordering changed: the activation guard now runs BEFORE the unsigned ``blocked``
+hint, so an unactivated device with a stale build block reports ``needs-activation``
+rather than a version error it cannot act on. The gate matrix pins that row.
+
+Everything below those guards is the v2 state machine, unchanged.
 """
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional, Union
 
-from .models import AllowedRange, BlockReason, LicenseStatus, ManagedConfigDoc
-
-__all__ = [
-    "ParsedSemver",
-    "parse_semver",
-    "compare_semver",
-    "channel_for_version",
-    "is_dev_build",
-    "LicenseState",
-    "BlockedState",
-    "license_state",
-    "is_usable",
-]
-
-_SEMVER_RE = re.compile(
-    r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z\-.]+))?(?:\+[0-9A-Za-z\-.]+)?$"
+from ..core.models import (
+    ActivationSource,
+    AllowedRange,
+    BlockedState,
+    LicenseDoc,
+    LicenseStatus,
 )
-_PR_RE = re.compile(r"^0\.0\.0-pr-?\d+")
-_NUMERIC_RE = re.compile(r"^\d+$")
 
-
-@dataclass(frozen=True)
-class ParsedSemver:
-    major: int
-    minor: int
-    patch: int
-    prerelease: List[str]
-
-
-def parse_semver(v: str) -> Optional[ParsedSemver]:
-    m = _SEMVER_RE.match(v)
-    if not m:
-        return None
-    return ParsedSemver(
-        major=int(m.group(1)),
-        minor=int(m.group(2)),
-        patch=int(m.group(3)),
-        prerelease=m.group(4).split(".") if m.group(4) else [],
-    )
-
-
-def compare_semver(a: str, b: str) -> int:
-    """Return -1, 0, or 1. Unparseable inputs compare equal (0), mirroring Node."""
-    pa = parse_semver(a)
-    pb = parse_semver(b)
-    if pa is None or pb is None:
-        return 0
-    for ka, kb in ((pa.major, pb.major), (pa.minor, pb.minor), (pa.patch, pb.patch)):
-        if ka != kb:
-            return -1 if ka < kb else 1
-    # A version with a prerelease is LOWER than the same without one.
-    if not pa.prerelease and pb.prerelease:
-        return 1
-    if pa.prerelease and not pb.prerelease:
-        return -1
-    n = max(len(pa.prerelease), len(pb.prerelease))
-    for i in range(n):
-        x = pa.prerelease[i] if i < len(pa.prerelease) else None
-        y = pb.prerelease[i] if i < len(pb.prerelease) else None
-        if x is None:
-            return -1
-        if y is None:
-            return 1
-        xn = bool(_NUMERIC_RE.match(x))
-        yn = bool(_NUMERIC_RE.match(y))
-        if xn and yn:
-            d = int(x) - int(y)
-            if d != 0:
-                return -1 if d < 0 else 1
-        elif x != y:
-            return -1 if x < y else 1
-    return 0
-
-
-def channel_for_version(version: str) -> str:
-    """Map a version string to its release channel (stable/staging/pr/dev)."""
-    if version.startswith("0.0.0-dev"):
-        return "dev"
-    if version.startswith("0.0.0-staging"):
-        return "staging"
-    if _PR_RE.match(version):
-        return "pr"
-    return "stable"
-
-
-def is_dev_build(version: str) -> bool:
-    return version.startswith("0.0.0-dev")
-
-
-@dataclass(frozen=True)
-class BlockedState:
-    """A server 403 block: its reason + the allowed version window."""
-
-    reason: BlockReason
-    allowedRange: Optional[AllowedRange] = None
+__all__ = ["LicenseState", "BlockedState", "AllowedRange", "license_state", "is_usable"]
 
 
 @dataclass(frozen=True)
@@ -120,14 +47,13 @@ class LicenseState:
     allowedRange: Optional[AllowedRange] = None
 
 
-def _has_valid_window(doc: ManagedConfigDoc) -> bool:
+def _has_valid_window(doc: LicenseDoc) -> bool:
     """True when the doc's time window is comparable to an int.
 
-    Defence in depth for R4-13: ``license_state`` is the client's hottest read path and
-    a ``TypeError`` escaping it turns every gate check into a crash. Documents now reach
-    here only after ``ManagedConfigDoc.from_dict`` type-checks them, but a caller
-    constructing one by hand (or a future store format) must degrade to "no document",
-    never raise.
+    Defence in depth for R4-13: :func:`license_state` is the client's hottest read path
+    and a ``TypeError`` escaping it turns every gate check into a crash. Documents reach
+    here only after ``LicenseDoc.from_dict`` type-checks them, but a caller constructing
+    one by hand (or a future store format) must degrade to "no document", never raise.
     """
     return all(
         isinstance(v, int) and not isinstance(v, bool)
@@ -137,33 +63,33 @@ def _has_valid_window(doc: ManagedConfigDoc) -> bool:
 
 def license_state(
     *,
-    has_token: bool,
-    doc: Optional[ManagedConfigDoc],
+    license_service_enabled: bool = True,
+    activation: Optional[ActivationSource] = None,
+    doc: Optional[LicenseDoc] = None,
     now: int,
     high_water_mark: int = 0,
     last_sync_unauthorized: bool = False,
     blocked: Optional[BlockedState] = None,
     last_verified_at: Optional[int] = None,
 ) -> LicenseState:
-    """Compute the gate status. Order matches ``gate.ts`` exactly.
+    """Compute the gate status. Order matches ``@plrs/client-core``'s ``gate.ts`` exactly.
 
-    blocked(403) -> that reason; no token -> needs-activation; lastSyncUnauthorized ->
-    revoked; no doc -> needs-activation; now > graceUntil -> expired; now > expiresAt ->
-    grace; else ok.
-
-    ``high_water_mark`` is ``max(configDoc.issuedAt, trustManifest.issuedAt)`` over the
-    signed artifacts the client has re-verified. The gate evaluates at
-    ``max(now, high_water_mark)`` (wire contract v2 §4.3), so winding the system clock
-    back below the newest signed timestamp we have already seen buys nothing — clock
-    rollback (R4-04) is inert without needing a trusted local clock. Both sources are
-    required: derived from the document alone the floor can never exceed that document's
-    own ``graceUntil``, so it would never actually close the window.
+    §4.2 — winding the system clock back below the newest signed ``issuedAt`` we have
+    already verified buys nothing: the gate never sees a time earlier than that floor.
+    Both artifact sources feed it; derived from the document alone the floor can never
+    exceed that document's own ``graceUntil``, so it would never actually close the
+    window (R4-04).
     """
     now = max(now, high_water_mark)
+    # §5 — a product without the licence service has no licence state to report, and must
+    # not be held hostage by one. This precedes every other rule, including `blocked`.
+    if not license_service_enabled:
+        return LicenseState(status="not-applicable")
+    # §5 — neither a token nor an imported bundle: nothing has been granted yet.
+    if activation is None:
+        return LicenseState(status="needs-activation")
     if blocked is not None:
         return LicenseState(status=blocked.reason, allowedRange=blocked.allowedRange)
-    if not has_token:
-        return LicenseState(status="needs-activation")
     if last_sync_unauthorized:
         return LicenseState(status="revoked")
     if doc is None or not _has_valid_window(doc):
@@ -179,6 +105,11 @@ def license_state(
     )
 
 
-def is_usable(status: LicenseStatus) -> bool:
-    """True when the gate permits running (ok or grace)."""
-    return status == "ok" or status == "grace"
+def is_usable(state: Union[LicenseState, LicenseStatus]) -> bool:
+    """True when the gate permits running: ``ok``, ``grace``, or ``not-applicable``.
+
+    Accepts either the whole :class:`LicenseState` or a bare status string, so both
+    ``is_usable(state)`` and the v2 ``is_usable(state.status)`` call shape keep working.
+    """
+    status = state if isinstance(state, str) else state.status
+    return status in ("ok", "grace", "not-applicable")

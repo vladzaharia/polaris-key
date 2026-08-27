@@ -1,12 +1,25 @@
 """Framework-agnostic CLI command core.
 
-Each command takes plain arguments + a :class:`PolarisKeyClient` and returns a
+Each command takes plain arguments + a :class:`polaris.PolarisClient` and returns a
 :class:`CommandResult` (exit code + lines). The argparse / click / typer front ends are
 thin adapters over these, so behavior lives in exactly one place.
 
+v3 GROUPS THE VERBS BY THE SERVICE THAT OWNS THEM, which is the CLI's version of the same
+carve the SDK just went through::
+
+    license  activate · enroll · deactivate · status
+    devices  register
+    config   config <key>
+    core     import-bundle
+
+``register`` is the new one and the reason the grouping matters: it is a DEVICES verb, not
+a licensing one. A config-only product (D-08) has no ``activate`` to run and its whole
+provisioning story is ``polaris register`` — which under a licence-shaped CLI would have
+had nowhere to live.
+
 The trust-set parsing, the common-option bundle (:class:`ClientOptions`), and the
 client-construction + lifecycle helpers also live here so the three adapters never copy
-that logic. A ``client_factory`` (``ClientOptions -> PolarisKeyClient``) lets a consumer
+that logic. A ``client_factory`` (``ClientOptions -> PolarisClient``) lets a consumer
 inject their own pinned trust keys / base URL when mounting the hooks into their CLI.
 """
 
@@ -15,11 +28,18 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, IO, Iterable, List, Mapping, Optional, Tuple
+from typing import Callable, Dict, IO, Iterable, List, Mapping, Optional
 
 from .._version import __version__ as PACKAGE_VERSION
-from ..client import PolarisKeyClient
-from ..endpoints import (
+from ..client import PolarisClient
+from ..core.errors import PolarisError
+from ..devices.client import (
+    RegisterClosed,
+    RegisterNotConfigured,
+    RegisterOk,
+    RegisterRateLimited,
+)
+from ..license.endpoints import (
     ActivationDeviceLimit,
     ActivationEnrollDisabled,
     ActivationFingerprintRequired,
@@ -34,29 +54,42 @@ __all__ = [
     "ClientFactory",
     "DEFAULT_VERSION",
     "KEY_ENV_VAR",
+    "SERVICE_COMMANDS",
     "parse_trust",
+    "parse_services",
     "resolve_activation_key",
     "build_client",
     "default_client_factory",
     "run_command",
     "activate",
+    "enroll",
     "deactivate",
     "status",
+    "register",
     "config",
+    "import_bundle",
+    "read_bundle_file",
 ]
 
 # The version reported to the control plane when the host application doesn't say.
 #
 # This used to be the literal ``"0.0.0-dev"``. The Worker's build gate SHORT-CIRCUITS on a
-# dev version — ``isDevBuild`` returns before either the version window or the channel
-# entitlement is evaluated (``packages/worker/src/gate.ts:69-71,126-127``) — so a
-# vendor-shipped tool's DEFAULT invocation asked for a document that skipped version AND
-# channel enforcement entirely (audit finding R4-07). The installed package version is a
-# truthful answer and gates normally.
+# dev version — `isDevBuild` returns before either the version window or the channel
+# entitlement is evaluated — so a vendor-shipped tool's DEFAULT invocation asked for a
+# document that skipped version AND channel enforcement entirely (R4-07). The installed
+# package version is a truthful answer and gates normally.
 DEFAULT_VERSION = PACKAGE_VERSION
 
 # The documented, non-argv way to hand a licence key to the CLI.
-KEY_ENV_VAR = "POLARIS_KEY_ACTIVATION_KEY"
+KEY_ENV_VAR = "POLARIS_ACTIVATION_KEY"
+
+#: The verb → owning-service grouping the three adapters render in their help output.
+SERVICE_COMMANDS: Dict[str, tuple] = {
+    "license": ("activate", "enroll", "deactivate", "status"),
+    "devices": ("register",),
+    "config": ("config",),
+    "core": ("import-bundle",),
+}
 
 
 @dataclass
@@ -80,12 +113,14 @@ class ClientOptions:
     trust: Dict[str, str] = field(default_factory=dict)
     base_url: Optional[str] = None
     config_dir: Optional[str] = None
+    #: The D-21 capability fallback, when the host build knows what it expects.
+    expected_services: Optional[List[str]] = None
 
 
 # A factory turns the collected options into a ready client. Consumers can supply their
 # own (e.g. with trust keys baked in) when mounting the hooks; the default reads them off
 # the parsed CLI options.
-ClientFactory = Callable[[ClientOptions], PolarisKeyClient]
+ClientFactory = Callable[[ClientOptions], PolarisClient]
 
 
 def parse_trust(pairs: Optional[Iterable[str]]) -> Dict[str, str]:
@@ -103,6 +138,22 @@ def parse_trust(pairs: Optional[Iterable[str]]) -> Dict[str, str]:
     return trust
 
 
+def parse_services(values: Optional[Iterable[str]]) -> Optional[List[str]]:
+    """Parse repeated ``--service <slug>`` flags into the D-21 expectation list.
+
+    No flags at all — which argparse reports as ``None`` and click as ``()`` — means "say
+    nothing", so the client keeps the suite default (licence + config). It is deliberately
+    NOT read as "this build expects no services": that stronger statement turns every
+    sub-client off, and a CLI has no way to distinguish "I passed no flags" from "I meant
+    none", so the safe reading is silence. A host that genuinely wants the empty
+    expectation passes ``expected_services=[]`` to the client directly.
+    """
+    if values is None:
+        return None
+    out = [v for v in values]
+    return out if out else None
+
+
 def resolve_activation_key(
     positional: Optional[str] = None,
     *,
@@ -114,7 +165,7 @@ def resolve_activation_key(
 ) -> str:
     """Resolve the licence key from a NON-ARGV source by default (R12-13 / R4-16).
 
-    A key passed as ``polaris-key activate PKEY-XXXX`` is written verbatim to
+    A key passed as ``polaris activate PLRS-XXXX`` is written verbatim to
     ``~/.zsh_history``, is visible to every user on the box via ``ps auxww`` for the
     duration of the call, and is readable from ``/proc/<pid>/cmdline`` on Linux. The
     positional form still works — scripts depend on it — but it is no longer the
@@ -124,7 +175,7 @@ def resolve_activation_key(
 
     1. ``--key-file <path>`` — read and stripped.
     2. ``--key-stdin`` — one line from stdin.
-    3. ``$POLARIS_KEY_ACTIVATION_KEY``.
+    3. ``$POLARIS_ACTIVATION_KEY``.
     4. The positional argument, with a warning.
     5. An interactive prompt, when stdin is a TTY.
 
@@ -172,14 +223,15 @@ def resolve_activation_key(
     )
 
 
-def build_client(opts: ClientOptions) -> PolarisKeyClient:
+def build_client(opts: ClientOptions) -> PolarisClient:
     """Construct + initialise a client from collected :class:`ClientOptions`."""
-    return PolarisKeyClient.create(
+    return PolarisClient.create(
         product_slug=opts.product,
         version=opts.version,
         trust=opts.trust,
         base_url=opts.base_url,
         config_dir=opts.config_dir,
+        expected_services=opts.expected_services,
     )
 
 
@@ -190,7 +242,7 @@ default_client_factory: ClientFactory = build_client
 def run_command(
     factory: ClientFactory,
     opts: ClientOptions,
-    command: Callable[[PolarisKeyClient], CommandResult],
+    command: Callable[[PolarisClient], CommandResult],
 ) -> CommandResult:
     """Build a client via ``factory``, run ``command``, and always close the client."""
     client = factory(opts)
@@ -204,7 +256,7 @@ def _describe_activation_failure(r: object, verb: str) -> CommandResult:
     """Render a non-ok activation outcome.
 
     Shared by ``activate`` and ``enroll`` so the two can't drift into describing the same
-    server response differently. Mirrors describeFailure() in the Node CLI.
+    server response differently. Mirrors ``describeFailure()`` in the Node CLI.
     """
     if isinstance(r, ActivationDeviceLimit):
         detail = ""
@@ -238,18 +290,19 @@ def _describe_activation_failure(r: object, verb: str) -> CommandResult:
     return CommandResult(1, [f"{verb} failed: {message}"])
 
 
-def activate(client: PolarisKeyClient, key: str) -> CommandResult:
-    """Activate this device with a license ``key`` and pull the first config doc."""
-    r = client.activate_with_key(key)
+# ── license ─────────────────────────────────────────────────────────────────────────
+def activate(client: PolarisClient, key: str) -> CommandResult:
+    """Activate this device with a licence ``key`` and pull the first documents."""
+    r = client.license.activate_with_key(key)
     if isinstance(r, ActivationOk):
         st = client.status()
         return CommandResult(0, [f"Activated. Status: {st.status}"])
     return _describe_activation_failure(r, "Activation")
 
 
-def enroll(client: PolarisKeyClient) -> CommandResult:
-    """Obtain a license with no key and no sign-in, when the product offers a free tier."""
-    r = client.enroll()
+def enroll(client: PolarisClient) -> CommandResult:
+    """Obtain a licence with no key and no sign-in, when the product offers a free tier."""
+    r = client.license.enroll()
     if isinstance(r, ActivationOk):
         st = client.status()
         return CommandResult(0, [f"Enrolled. Status: {st.status}"])
@@ -264,34 +317,102 @@ def enroll(client: PolarisKeyClient) -> CommandResult:
     return _describe_activation_failure(r, "Enrollment")
 
 
-def deactivate(client: PolarisKeyClient) -> CommandResult:
+def deactivate(client: PolarisClient) -> CommandResult:
     """Deauthorize this device and wipe the local token + cache."""
-    client.deactivate()
+    client.license.deactivate()
     return CommandResult(0, ["Deactivated. Local credentials wiped."])
 
 
-def status(client: PolarisKeyClient) -> CommandResult:
-    """Print the current gate status + a short profile/grace summary."""
+def status(client: PolarisClient) -> CommandResult:
+    """Print the current gate status + a short profile/grace summary.
+
+    The exit code reflects whether the gate currently permits running — which for a
+    product with License disabled is 0 on ``not-applicable``, not a failure.
+    """
     st = client.status()
     lines = [f"Status: {st.status}"]
     if st.graceUntil is not None:
         lines.append(f"Grace until (epoch): {st.graceUntil}")
     if st.allowedRange is not None:
         ar = st.allowedRange
-        rng = f"min={ar.min or '-'} max={ar.max or '-'}"
-        lines.append(f"Allowed version range: {rng}")
-    profile = client.get_profile()
+        lines.append(f"Allowed version range: min={ar.min or '-'} max={ar.max or '-'}")
+    profile = client.license.get_profile()
     if profile is not None:
         lines.append(f"Licensed to: {profile.name} <{profile.email}>")
-    lines.append(f"Usable: {client.is_licensed()}")
-    code = 0 if client.is_licensed() else 1
-    return CommandResult(code, lines)
+    usable = client.is_licensed()
+    lines.append(f"Usable: {usable}")
+    return CommandResult(0 if usable else 1, lines)
 
 
+# ── devices ─────────────────────────────────────────────────────────────────────────
+def register(client: PolarisClient) -> CommandResult:
+    """``POST /<p>/devices/register`` — the keyless device mint (§6).
+
+    The provisioning verb for a product whose registration policy is ``open``, and the
+    only one a config-only product has. A ``requires-license`` product answers
+    ``registration_closed``, which is reported as-is rather than being retried against
+    ``activate``: the two are different operator intents and quietly substituting one
+    would hide a misconfigured policy.
+    """
+    r = client.devices.register()
+    if isinstance(r, RegisterOk):
+        client.sync(force=True)
+        st = client.status()
+        return CommandResult(
+            0, [f"Registered device {r.deviceId}. Status: {st.status}"]
+        )
+    if isinstance(r, RegisterClosed):
+        return CommandResult(
+            1,
+            [
+                "Registration failed: this product does not accept keyless registration. "
+                "Activate with a license key instead."
+            ],
+        )
+    if isinstance(r, RegisterRateLimited):
+        return CommandResult(
+            1, ["Registration failed: too many attempts; try again shortly."]
+        )
+    if isinstance(r, RegisterNotConfigured):
+        return CommandResult(1, ["Registration failed: unknown product."])
+    message = getattr(r, "message", "") or "unknown error."
+    return CommandResult(1, [f"Registration failed: {message}"])
+
+
+# ── config ──────────────────────────────────────────────────────────────────────────
 def config(
-    client: PolarisKeyClient, key: str, fallback: Optional[str] = None
+    client: PolarisClient, key: str, fallback: Optional[str] = None
 ) -> CommandResult:
     """Resolve a single layered-config ``key`` and print its value + source."""
-    value = client.get_config(key, fallback)
-    source = client.get_config_source(key)
+    value = client.config.get_config(key, fallback)
+    source = client.config.get_config_source(key)
     return CommandResult(0, [f"{key} = {value!r} (source: {source})"])
+
+
+# ── core ────────────────────────────────────────────────────────────────────────────
+def import_bundle(client: PolarisClient, jws: str) -> CommandResult:
+    """Import an offline activation bundle (§7).
+
+    All-or-nothing: a rejection leaves the install exactly as it was, and the message
+    names the STEP that refused — "get a bundle minted for THIS machine" is a different
+    operator action from "the trust manifest inside it was rejected".
+    """
+    try:
+        r = client.import_bundle(jws)
+    except PolarisError as e:
+        return CommandResult(1, [f"Bundle import failed: {e.message}", f"({e.code})"])
+    st = client.status()
+    imported = "+".join(r.imported) or "nothing"
+    return CommandResult(
+        0, [f"Imported bundle {r.bundleId} ({imported}). Status: {st.status}"]
+    )
+
+
+def read_bundle_file(path: str) -> str:
+    """Read a ``.plrsbundle`` off disk, stripped. Raises ``OSError``/``ValueError``."""
+    with open(path, "r", encoding="utf-8") as f:
+        jws = f.read().strip()
+    if not jws:
+        raise ValueError(f"{path} is empty")
+    return jws
+

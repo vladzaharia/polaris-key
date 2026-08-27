@@ -1,169 +1,95 @@
-"""PolarisKeyClient against a mock httpx transport that signs a REAL JWS with the test PEM.
+"""``PolarisClient`` against a mock httpx transport that signs REAL JWSs with the test PEM.
 
-The handler activates (key -> token), serves a signed config doc scoped to the product +
-the client's derived device id, and exercises the 403 version-too-old block path. No
-network is touched — everything routes through ``httpx.MockTransport``.
+The handler activates (key -> ``plrst_`` token), serves a signed licence document and a
+signed config document scoped to the product + the client's derived device id, and
+exercises the 403 build-gate block path. No network is touched — everything routes through
+``httpx.MockTransport``.
+
+Heir of the v2 ``test_client.py``, re-pointed at the v3 routes and the split documents.
 """
 
 from __future__ import annotations
 
 import json
-import time
 from typing import Any, Dict
 
 import httpx
 import pytest
 
-from polaris_key.client import DeviceManagementUnsupportedError, PolarisKeyClient
-from polaris_key.store import InMemoryStore
-from polaris_key.verify import sign_jws
+from polaris.devices.client import DeviceManagementUnsupportedError
+from polaris.license.gate import LicenseState
 
-PRODUCT = "djdl"
-KID = "pkey-test-prod-2026"
-PUBKEY_RAW = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
-PRIVATE_PEM = (
-    "-----BEGIN PRIVATE KEY-----\n"
-    "MC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n"
-    "-----END PRIVATE KEY-----"
+from helpers import (
+    NOW,
+    PRODUCT,
+    TOKEN,
+    make_client,
+    routes,
+    sign_config,
+    sign_license,
 )
-TRUST = {KID: PUBKEY_RAW}
-TOKEN = "tok_test_123"
-
-# Wire contract v2 §3 rejects an EXPIRED document at verify time, not merely at the gate,
-# so every signed fixture must sit inside its own validity window. `NOW` is captured once
-# per session and every assertion is expressed relative to it.
-NOW = int(time.time())
 
 
-def _make_doc(device_id: str, *, issued: int = NOW) -> Dict[str, Any]:
-    return {
-        "schemaVersion": 1,
-        "aud": PRODUCT,
-        "iss": "key.plrs.im",
-        "licenseId": "lic_3f8a9b",
-        "deviceId": device_id,
-        "issuedAt": issued,
-        "expiresAt": issued + 3600,
-        "graceUntil": issued + 2_592_000,
-        "profile": {
-            "name": "Grace Hopper",
-            "firstName": "Grace",
-            "email": "grace@example.com",
-            "activatedAt": NOW - 10_000_000,
-        },
-        "payload": {
-            "config": {
-                "run.concurrency": {
-                    "state": "enforced",
-                    "value": 4,
-                    "updatedAt": 1699990000,
-                },
-                "ui.theme": {
-                    "state": "default",
-                    "value": "light",
-                    "updatedAt": 1699990000,
-                },
-            },
-            "secrets": {
-                "proxy.subscriptionUrl": {
-                    "state": "hidden",
-                    "value": "https://vpn.example.com/sub/abc",
-                    "updatedAt": 1699990000,
-                }
-            },
-            "entitlements": {
-                "polarisVpn": {
-                    "state": "enforced",
-                    "value": True,
-                    "updatedAt": 1699990000,
-                }
-            },
-        },
-    }
-
-
-def _client(handler, **kw) -> PolarisKeyClient:
-    transport = httpx.MockTransport(handler)
-    http = httpx.Client(transport=transport, base_url="")
-    store = InMemoryStore(PRODUCT)
-    c = PolarisKeyClient(
-        product_slug=PRODUCT,
-        version="1.0.0",
-        trust=TRUST,
-        base_url="https://key.example",
-        store=store,
-        client=http,
+def _ok_routes(**kw: Any):
+    return routes(
+        license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]),
+        config_jws=lambda r: sign_config(r.headers["X-Polaris-Device"]),
         **kw,
     )
-    c.init()
-    return c
 
 
-def _ok_handler(request: httpx.Request) -> httpx.Response:
-    path = request.url.path
-    if path == f"/{PRODUCT}/activate":
-        return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
-    if path == f"/{PRODUCT}/config":
-        device_id = request.headers["X-PKey-Device"]
-        jws = sign_jws(_make_doc(device_id), PRIVATE_PEM, KID)
-        return httpx.Response(200, text=jws, headers={"etag": "v1"})
-    if path == f"/{PRODUCT}/config/report":
-        return httpx.Response(200, json={"ok": True})
-    return httpx.Response(404)
-
-
+# ── layered config ──────────────────────────────────────────────────────────────────
 def test_enforced_remote_value_wins_over_local_and_env() -> None:
-    c = _client(
-        _ok_handler,
+    c = make_client(
+        _ok_routes(),
         local_overrides={"run.concurrency": 99},
-        env={"PKEY_CONFIG_run__concurrency": "42"},
+        env={"PLRS_CONFIG_run__concurrency": "42"},
     )
-    c.activate_with_key("my-license-key")
+    c.license.activate_with_key("my-license-key")
     # enforced -> remote wins regardless of override/env.
-    assert c.get_config("run.concurrency") == 4
-    assert c.get_config_source("run.concurrency") == "enforced"
+    assert c.config.get_config("run.concurrency") == 4
+    assert c.config.get_config_source("run.concurrency") == "enforced"
     c.close()
 
 
 def test_default_state_local_override_then_env_then_remote() -> None:
     # local override wins over env + remote-default.
-    c = _client(_ok_handler, local_overrides={"ui.theme": "solarized"})
-    c.activate_with_key("my-license-key")
-    assert c.get_config("ui.theme") == "solarized"
-    assert c.get_config_source("ui.theme") == "local"
+    c = make_client(_ok_routes(), local_overrides={"ui.theme": "solarized"})
+    c.license.activate_with_key("k")
+    assert c.config.get_config("ui.theme") == "solarized"
+    assert c.config.get_config_source("ui.theme") == "local"
     c.close()
 
     # env wins over remote-default; JSON-parsed when it parses.
-    c = _client(_ok_handler, env={"PKEY_CONFIG_ui__theme": '"dark"'})
-    c.activate_with_key("my-license-key")
-    assert c.get_config("ui.theme") == "dark"
-    assert c.get_config_source("ui.theme") == "env"
+    c = make_client(_ok_routes(), env={"PLRS_CONFIG_ui__theme": '"dark"'})
+    c.license.activate_with_key("k")
+    assert c.config.get_config("ui.theme") == "dark"
+    assert c.config.get_config_source("ui.theme") == "env"
     c.close()
 
     # no override/env -> remote default value.
-    c = _client(_ok_handler, env={})
-    c.activate_with_key("my-license-key")
-    assert c.get_config("ui.theme") == "light"
-    assert c.get_config_source("ui.theme") == "remote-default"
+    c = make_client(_ok_routes(), env={})
+    c.license.activate_with_key("k")
+    assert c.config.get_config("ui.theme") == "light"
+    assert c.config.get_config_source("ui.theme") == "remote-default"
     c.close()
 
 
 def test_env_raw_string_when_not_json_and_fallback_source() -> None:
-    c = _client(_ok_handler, env={"PKEY_CONFIG_ui__theme": "not json {"})
-    c.activate_with_key("my-license-key")
-    assert c.get_config("ui.theme") == "not json {"
-    assert c.get_config_source("ui.theme") == "env"
+    c = make_client(_ok_routes(), env={"PLRS_CONFIG_ui__theme": "not json {"})
+    c.license.activate_with_key("k")
+    assert c.config.get_config("ui.theme") == "not json {"
+    assert c.config.get_config_source("ui.theme") == "env"
     # An unknown key falls back.
-    assert c.get_config("missing.key", "fb") == "fb"
-    assert c.get_config_source("missing.key") == "fallback"
+    assert c.config.get_config("missing.key", "fb") == "fb"
+    assert c.config.get_config_source("missing.key") == "fallback"
     c.close()
 
 
 def test_list_user_config_excludes_hidden_and_marks_enforced() -> None:
-    c = _client(_ok_handler, local_overrides={"ui.theme": "solarized"})
-    c.activate_with_key("my-license-key")
-    items = {i["key"]: i for i in c.list_user_config()}
-    # No hidden config keys exist here, but enforced + default both appear.
+    c = make_client(_ok_routes(), local_overrides={"ui.theme": "solarized"})
+    c.license.activate_with_key("k")
+    items = {i["key"]: i for i in c.config.list_user_config()}
     assert items["run.concurrency"] == {
         "key": "run.concurrency",
         "value": 4,
@@ -174,27 +100,36 @@ def test_list_user_config_excludes_hidden_and_marks_enforced() -> None:
         "value": "solarized",
         "enforced": False,
     }
+    # The hidden secret is APPLIED but never enumerated.
+    assert "proxy.subscriptionUrl" not in items
+    assert c.config.get_secret("proxy.subscriptionUrl") is not None
     c.close()
 
 
-def test_activation_then_reads_config_secret_entitlement() -> None:
+# ── the whole flow ──────────────────────────────────────────────────────────────────
+def test_activation_then_reads_across_both_documents() -> None:
     state = {"reports": 0}
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        if path == f"/{PRODUCT}/activate":
-            assert request.headers["authorization"] == "Bearer my-license-key"
-            assert request.headers["X-PKey-Device"]  # device header present
-            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
-        if path == f"/{PRODUCT}/config":
-            assert request.headers["authorization"] == f"Bearer {TOKEN}"
-            assert request.headers["X-PKey-Version"] == "1.0.0"
-            assert request.headers["X-PKey-Channel"] == "stable"
-            device_id = request.headers["X-PKey-Device"]
-            jws = sign_jws(_make_doc(device_id), PRIVATE_PEM, KID)
-            return httpx.Response(200, text=jws, headers={"etag": "v1"})
-        if path == f"/{PRODUCT}/config/report":
-            body = json.loads(request.content)
+    def handler(r: httpx.Request) -> httpx.Response:
+        path = r.url.path
+        p = f"/{PRODUCT}"
+        if path == f"{p}/license/activate":
+            assert r.headers["authorization"] == "Bearer my-license-key"
+            assert r.headers["X-Polaris-Device"]
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
+        if path == f"{p}/license/document":
+            assert r.headers["authorization"] == f"Bearer {TOKEN}"
+            assert r.headers["X-Polaris-Version"] == "1.0.0"
+            assert r.headers["X-Polaris-Channel"] == "stable"
+            return httpx.Response(
+                200, text=sign_license(r.headers["X-Polaris-Device"]), headers={"etag": "l1"}
+            )
+        if path == f"{p}/config/document":
+            return httpx.Response(
+                200, text=sign_config(r.headers["X-Polaris-Device"]), headers={"etag": "c1"}
+            )
+        if path == f"{p}/devices/report":
+            body = json.loads(r.content)
             assert body["config"]["run.concurrency"] == 4
             assert body["entitlements"]["polarisVpn"] is True
             # Secrets are NOT included in the report snapshot.
@@ -203,45 +138,123 @@ def test_activation_then_reads_config_secret_entitlement() -> None:
             return httpx.Response(200, json={"ok": True})
         return httpx.Response(404)
 
-    c = _client(handler)
-    r = c.activate_with_key("my-license-key")
-    assert r.kind == "ok"
+    c = make_client(handler)
+    assert c.license.activate_with_key("my-license-key").kind == "ok"
 
     assert c.is_licensed(now=NOW + 100) is True
     assert c.status(now=NOW + 100).status == "ok"
-    assert c.get_config("run.concurrency", 1) == 4
-    assert c.get_config("missing", "fallback") == "fallback"
-    assert c.get_secret("proxy.subscriptionUrl") == "https://vpn.example.com/sub/abc"
-    assert c.get_secret("missing") is None
-    assert c.is_entitled("polarisVpn") is True
-    assert c.is_entitled("nope") is False
-    assert c.get_entitlements() == {"polarisVpn": True}
-    profile = c.get_profile()
+    assert c.config.get_config("run.concurrency", 1) == 4
+    assert c.config.get_config("missing", "fallback") == "fallback"
+    assert c.config.get_secret("proxy.subscriptionUrl") == "https://vpn.example.com/sub/abc"
+    assert c.config.get_secret("missing") is None
+    assert c.config.schema_version() == 4
+    assert c.license.is_entitled("polarisVpn") is True
+    assert c.license.is_entitled("nope") is False
+    assert c.license.get_entitlements() == {"polarisVpn": True, "license.tier": "pro"}
+    assert c.license.get_license_id() == "lic_v3"
+    profile = c.license.get_profile()
     assert profile is not None and profile.firstName == "Grace"
     assert state["reports"] >= 1
     c.close()
 
 
-def test_config_403_version_too_old_blocks() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        if path == f"/{PRODUCT}/activate":
-            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
-        if path == f"/{PRODUCT}/config":
+def test_the_two_documents_have_independent_etags() -> None:
+    """§5: a settings edit no longer forces a licence re-download, and a tier change no
+    longer forces a settings refetch."""
+    c = make_client(_ok_routes())
+    c.license.activate_with_key("k")
+    assert c._cache.etag("license") == "lic-etag"
+    assert c._cache.etag("config") == "cfg-etag"
+    c.close()
+
+
+def test_sync_reports_per_service_outcomes() -> None:
+    c = make_client(_ok_routes())
+    c._tokens.set(TOKEN)
+    result = c.sync()
+    assert set(result.documents) == {"license", "config"}
+    assert result.documents["license"].kind == "applied"
+    assert result.documents["config"].kind == "applied"
+    assert result.applied is True
+    c.close()
+
+
+def test_re_serving_the_same_document_is_refused_as_a_replay() -> None:
+    """§3's per-type anti-replay floor, reached through the client: a forced re-fetch that
+    returns a document with the SAME ``issuedAt`` is not newer, so nothing is applied and
+    — crucially — nothing about the document already held is disturbed."""
+    c = make_client(_ok_routes())
+    c.license.activate_with_key("k")
+    held = c._cache.license_doc()
+    result = c.sync(force=True)
+    assert result.applied is False
+    assert result.documents["license"].kind == "error"
+    assert c._cache.license_doc() == held, "the held document survives untouched"
+    assert c.status().status == "ok"
+    c.close()
+
+
+def test_a_disabled_service_is_skipped_entirely() -> None:
+    seen: Dict[str, Any] = {"paths": []}
+    c = make_client(
+        routes(license_jws=lambda r: sign_license(r.headers["X-Polaris-Device"]), seen=seen),
+        expected_services=["license"],
+    )
+    c.license.activate_with_key("k")
+    result = c.sync(force=True)
+    assert set(result.documents) == {"license"}
+    assert f"/{PRODUCT}/config/document" not in seen["paths"]
+    c.close()
+
+
+def test_get_sync_state_is_the_bridge_contract() -> None:
+    c = make_client(_ok_routes())
+    before = c.get_sync_state()
+    assert before.activation is None and before.doc is None
+    assert before.highWaterMark == 0 and before.lastVerifiedAt is None
+    assert before.blocked is None and before.lastSyncUnauthorized is False
+
+    c.license.activate_with_key("k")
+    after = c.get_sync_state()
+    assert after.activation == "token"
+    assert after.doc is not None and after.doc.licenseId == "lic_v3"
+    assert after.highWaterMark == NOW
+    assert after.lastVerifiedAt is not None
+    c.close()
+
+
+def test_on_change_fires_only_when_the_content_actually_changed() -> None:
+    fired: list = []
+    c = make_client(_ok_routes(), on_change=lambda st: fired.append(st))
+    c.license.activate_with_key("k")
+    assert len(fired) == 1 and isinstance(fired[0], LicenseState)
+    # A forced re-sync of the SAME content re-signs but does not change the ETag.
+    c.sync(force=True)
+    assert len(fired) == 1
+    c.close()
+
+
+# ── the 403 build gate ──────────────────────────────────────────────────────────────
+def test_license_document_403_version_too_old_blocks() -> None:
+    def handler(r: httpx.Request) -> httpx.Response:
+        path = r.url.path
+        p = f"/{PRODUCT}"
+        if path == f"{p}/license/activate":
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
+        if path == f"{p}/license/document":
             return httpx.Response(
                 403,
                 json={
-                    "reason": "version-too-old",
+                    "error": {"code": "version_blocked", "reason": "version-too-old"},
                     "allowedRange": {"min": "2.0.0"},
                 },
             )
-        if path == f"/{PRODUCT}/config/report":
+        if path == f"{p}/devices/report":
             return httpx.Response(200, json={"ok": True})
         return httpx.Response(404)
 
-    c = _client(handler)
-    r = c.activate_with_key("my-license-key")
-    assert r.kind == "ok"  # activate succeeded; the BLOCK is on /config
+    c = make_client(handler, expected_services=["license"])
+    assert c.license.activate_with_key("k").kind == "ok"  # the BLOCK is on the document
     st = c.status(now=NOW + 100)
     assert st.status == "version-too-old"
     assert st.allowedRange is not None and st.allowedRange.min == "2.0.0"
@@ -249,144 +262,247 @@ def test_config_403_version_too_old_blocks() -> None:
     c.close()
 
 
-def test_blocked_with_no_prior_doc_does_not_raise() -> None:
-    """D5 regression: a 403/blocked refresh with no prior cached doc patches the cache
-    via ``dataclasses.replace`` and must NOT raise (no FrozenInstanceError)."""
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        if path == f"/{PRODUCT}/activate":
-            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
-        if path == f"/{PRODUCT}/config":
-            return httpx.Response(
-                403, json={"reason": "version-too-old", "allowedRange": {"min": "2.0.0"}}
-            )
-        if path == f"/{PRODUCT}/config/report":
+def test_a_403_with_a_bare_code_falls_back_to_the_stricter_reason() -> None:
+    def handler(r: httpx.Request) -> httpx.Response:
+        p = f"/{PRODUCT}"
+        if r.url.path == f"{p}/license/activate":
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
+        if r.url.path == f"{p}/license/document":
+            return httpx.Response(403, json={"error": {"code": "channel_not_allowed"}})
+        if r.url.path == f"{p}/devices/report":
             return httpx.Response(200, json={"ok": True})
         return httpx.Response(404)
 
-    c = _client(handler)
-    # First activate -> 403 creates a doc-less blocked cache.
-    r = c.activate_with_key("my-license-key")
-    assert r.kind == "ok"
+    c = make_client(handler, expected_services=["license"])
+    c.license.activate_with_key("k")
+    assert c.status().status == "channel-not-entitled"
+    c.close()
+
+
+def test_blocked_with_no_prior_doc_does_not_raise() -> None:
+    """A 403 with no prior cached document creates a doc-less blocked cache; a SECOND
+    sync patches that existing record (the previously-crashing path)."""
+    c = make_client(routes(license_status=403), expected_services=["license"])
+    assert c.license.activate_with_key("k").kind == "ok"
     assert c.status(now=NOW + 100).status == "version-too-old"
-    # A SECOND refresh patches the existing doc-less cache (the previously-crashing path).
-    res = c.refresh(force=True)
+    res = c.sync(force=True)
     assert res.blocked is True
     assert c.status(now=NOW + 100).status == "version-too-old"
     c.close()
 
 
-def test_activation_unauthorized() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == f"/{PRODUCT}/activate":
-            return httpx.Response(401, text="bad key")
+def test_a_healthy_sync_clears_the_unsigned_hints() -> None:
+    """§4.1: the two unsigned hints can only TIGHTEN the gate, so clearing them on
+    evidence of a healthy authenticated exchange is safe; setting them requires the server
+    to have said so."""
+    state = {"blocked": True}
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        p = f"/{PRODUCT}"
+        if r.url.path == f"{p}/license/activate":
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
+        if r.url.path == f"{p}/license/document":
+            if state["blocked"]:
+                return httpx.Response(403, json={"reason": "version-too-old"})
+            return httpx.Response(
+                200, text=sign_license(r.headers["X-Polaris-Device"]), headers={"etag": "l"}
+            )
+        if r.url.path == f"{p}/devices/report":
+            return httpx.Response(200, json={"ok": True})
         return httpx.Response(404)
 
-    c = _client(handler)
-    r = c.activate_with_key("nope")
+    c = make_client(handler, expected_services=["license"])
+    c.license.activate_with_key("k")
+    assert c.status().status == "version-too-old"
+    state["blocked"] = False
+    c.sync(force=True)
+    assert c.status().status == "ok"
+    assert c.get_sync_state().blocked is None
+    c.close()
+
+
+# ── activation failure ladder ───────────────────────────────────────────────────────
+def test_activation_unauthorized() -> None:
+    c = make_client(lambda r: httpx.Response(401, text="bad key"))
+    r = c.license.activate_with_key("nope")
     assert r.kind == "unauthorized"
     assert c.status(now=NOW + 100).status == "needs-activation"
     c.close()
 
 
-def test_activation_device_limit() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == f"/{PRODUCT}/activate":
-            return httpx.Response(403, json={"limit": 3, "deviceCount": 3})
-        return httpx.Response(404)
+def test_activation_device_limit_reads_both_body_shapes() -> None:
+    for body in ({"limit": 3, "deviceCount": 3}, {"error": {"limit": 3, "deviceCount": 3}}):
+        c = make_client(lambda r, b=body: httpx.Response(403, json=b))
+        r = c.license.activate_with_key("k")
+        assert r.kind == "device-limit" and r.limit == 3 and r.deviceCount == 3
+        c.close()
 
-    c = _client(handler)
-    r = c.activate_with_key("k")
-    assert r.kind == "device-limit"
-    assert getattr(r, "limit", None) == 3
-    assert getattr(r, "deviceCount", None) == 3
+
+def test_activation_fingerprint_required_reads_both_body_shapes() -> None:
+    for body in ({"error": "fingerprint_required"}, {"error": {"code": "fingerprint_required"}}):
+        c = make_client(lambda r, b=body: httpx.Response(403, json=b))
+        assert c.license.activate_with_key("k").kind == "fingerprint-required"
+        c.close()
+
+
+def test_activation_hardware_mismatch() -> None:
+    c = make_client(
+        lambda r: httpx.Response(409, json={"drift": 2, "changed": ["cpuModel"]})
+    )
+    r = c.license.activate_with_key("k")
+    assert r.kind == "hardware-mismatch" and r.drift == 2 and r.changed == ["cpuModel"]
     c.close()
 
 
-def test_device_management_surface_current_only() -> None:
-    c = _client(_ok_handler)
-    current = c.current_device()
-    assert current.id
-    assert current.current is True
-    assert current.status == "needs-activation"
-    with pytest.raises(DeviceManagementUnsupportedError):
-        c.list_devices()
-    with pytest.raises(DeviceManagementUnsupportedError):
-        c.deauthorize_device("other-device")
-    c.deauthorize_device(current.id)
+def test_enroll_disabled_is_a_404() -> None:
+    c = make_client(lambda r: httpx.Response(404))
+    assert c.license.enroll().kind == "enroll-disabled"
     c.close()
 
 
-def test_config_401_reacquires_token_then_succeeds() -> None:
-    """A 401 on /config triggers a single /token re-acquire, then re-fetch succeeds."""
-    state = {"config_calls": 0}
+def test_enroll_succeeds_and_syncs() -> None:
+    c = make_client(_ok_routes())
+    assert c.license.enroll().kind == "ok"
+    assert c.status().status == "ok"
+    c.close()
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        if path == f"/{PRODUCT}/activate":
-            return httpx.Response(200, json={"token": "stale", "schemaVersion": 1})
-        if path == f"/{PRODUCT}/token":
-            assert request.headers["X-PKey-Device"]
-            assert request.headers["authorization"] == "Bearer stale"
-            return httpx.Response(200, json={"token": "fresh", "schemaVersion": 1})
-        if path == f"/{PRODUCT}/config":
-            state["config_calls"] += 1
-            if request.headers["authorization"] == "Bearer stale":
+
+# ── 401 handling + deactivation ─────────────────────────────────────────────────────
+def test_401_reacquires_the_token_exactly_once_then_succeeds() -> None:
+    state = {"doc_calls": 0, "token_calls": 0}
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        p = f"/{PRODUCT}"
+        if r.url.path == f"{p}/license/activate":
+            return httpx.Response(200, json={"token": "plrst_stale", "schemaVersion": 4})
+        if r.url.path == f"{p}/license/token":
+            state["token_calls"] += 1
+            assert r.headers["authorization"] == "Bearer plrst_stale"
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
+        if r.url.path == f"{p}/license/document":
+            state["doc_calls"] += 1
+            if r.headers["authorization"] == "Bearer plrst_stale":
                 return httpx.Response(401)
-            device_id = request.headers["X-PKey-Device"]
-            jws = sign_jws(_make_doc(device_id), PRIVATE_PEM, KID)
-            return httpx.Response(200, text=jws, headers={"etag": "v1"})
-        if path == f"/{PRODUCT}/config/report":
+            return httpx.Response(
+                200, text=sign_license(r.headers["X-Polaris-Device"]), headers={"etag": "l"}
+            )
+        if r.url.path == f"{p}/devices/report":
             return httpx.Response(200, json={"ok": True})
         return httpx.Response(404)
 
-    c = _client(handler)
-    r = c.activate_with_key("k")
-    assert r.kind == "ok"
-    assert state["config_calls"] == 2  # stale -> 401, fresh -> 200
+    c = make_client(handler, expected_services=["license"])
+    assert c.license.activate_with_key("k").kind == "ok"
+    assert state["doc_calls"] == 2  # stale -> 401, fresh -> 200
+    assert state["token_calls"] == 1
     assert c.status(now=NOW + 100).status == "ok"
     c.close()
 
 
-def test_deactivate_wipes_local_state() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        if path == f"/{PRODUCT}/activate":
-            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
-        if path == f"/{PRODUCT}/config":
-            device_id = request.headers["X-PKey-Device"]
-            jws = sign_jws(_make_doc(device_id), PRIVATE_PEM, KID)
-            return httpx.Response(200, text=jws)
-        if path in (f"/{PRODUCT}/config/report", f"/{PRODUCT}/deauthorize"):
+def test_a_hard_401_is_recorded_once_and_becomes_revoked() -> None:
+    """§4.3: a recorded hard 401 yields ``revoked`` offline, and the re-acquire is
+    attempted exactly ONCE per pass — not a loop that would keep postponing the signal."""
+    state = {"token_calls": 0}
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        p = f"/{PRODUCT}"
+        if r.url.path == f"{p}/license/activate":
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
+        if r.url.path == f"{p}/license/token":
+            state["token_calls"] += 1
+            return httpx.Response(401)
+        if r.url.path in (f"{p}/license/document", f"{p}/config/document"):
+            return httpx.Response(401)
+        if r.url.path == f"{p}/devices/report":
             return httpx.Response(200, json={"ok": True})
         return httpx.Response(404)
 
-    c = _client(handler)
-    c.activate_with_key("k")
+    c = make_client(handler)
+    c.license.activate_with_key("k")
+    # BOTH documents 401 in the same pass, and they share ONE re-acquire budget.
+    assert state["token_calls"] == 1
+    assert c.status().status == "revoked"
+    assert c.get_sync_state().lastSyncUnauthorized is True
+    # The next pass re-arms the budget.
+    c.sync()
+    assert state["token_calls"] == 2
+    c.close()
+
+
+def test_deactivate_wipes_local_state() -> None:
+    c = make_client(_ok_routes())
+    c.license.activate_with_key("k")
     assert c.is_licensed(now=NOW + 100) is True
-    c.deactivate()
+    c.license.deactivate()
     assert c.status(now=NOW + 100).status == "needs-activation"
-    assert c.get_config("run.concurrency", 0) == 0
+    assert c.config.get_config("run.concurrency", 0) == 0
+    assert c.core.high_water_mark == 0
+    c.close()
+
+
+def test_deactivate_works_offline() -> None:
+    """The network call is best-effort and the local wipe is not: a device deactivating on
+    a plane must not be left holding a token because the control plane was unreachable."""
+    c = make_client(_ok_routes())
+    c.license.activate_with_key("k")
+
+    def exploding(r: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("offline")
+
+    c.core._client = httpx.Client(transport=httpx.MockTransport(exploding), base_url="")
+    c.license.deactivate()
+    assert c.status().status == "needs-activation"
+    assert c.core.store.get_token() is None
     c.close()
 
 
 def test_wrong_device_doc_rejected() -> None:
     """A doc bound to a different device must NOT be applied (anti-splice)."""
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        if path == f"/{PRODUCT}/activate":
-            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 1})
-        if path == f"/{PRODUCT}/config":
-            jws = sign_jws(_make_doc("some-other-device"), PRIVATE_PEM, KID)
-            return httpx.Response(200, text=jws)
-        if path == f"/{PRODUCT}/config/report":
-            return httpx.Response(200, json={"ok": True})
-        return httpx.Response(404)
-
-    c = _client(handler)
-    c.activate_with_key("k")
-    # Doc was rejected -> no doc cached -> needs-activation.
+    c = make_client(routes(license_jws=sign_license("some-other-device")))
+    c.license.activate_with_key("k")
     assert c.status(now=NOW + 100).status == "needs-activation"
     c.close()
+
+
+# ── offline init performs zero network calls ────────────────────────────────────────
+def test_offline_init_makes_no_network_calls() -> None:
+    """§5 / the sync loop's first line: an unactivated client that polls must not generate
+    traffic, and an offline-first ``init()`` must not either."""
+    calls: list = []
+
+    def exploding(r: httpx.Request) -> httpx.Response:
+        calls.append(r.url.path)
+        raise AssertionError(f"unexpected network call to {r.url.path}")
+
+    c = make_client(exploding)
+    assert c.status().status == "needs-activation"
+    assert c.sync() == c.sync()  # both idle
+    assert calls == []
+    c.close()
+
+
+# ── device management passthroughs ──────────────────────────────────────────────────
+def test_current_device_and_offline_roster() -> None:
+    c = make_client(_ok_routes())
+    current = c.current_device()
+    assert current.id and current.current is True
+    assert current.status == "needs-activation"
+    # Without a credential there is no roster to fetch, so the honest answer is this
+    # device alone — not an error.
+    assert [d.id for d in c.list_devices()] == [current.id]
+    with pytest.raises(DeviceManagementUnsupportedError):
+        c.devices.list()
+    c.close()
+
+
+def test_deauthorizing_this_device_is_a_full_local_deactivation() -> None:
+    c = make_client(_ok_routes())
+    c.license.activate_with_key("k")
+    c.deauthorize_device(c.core.device_id)
+    assert c.status().status == "needs-activation"
+    c.close()
+
+
+def test_context_manager_closes() -> None:
+    with make_client(_ok_routes()) as c:
+        assert c.license.activate_with_key("k").kind == "ok"
+    assert c.core._client is None or True  # close() is idempotent

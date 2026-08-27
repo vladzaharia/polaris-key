@@ -1,153 +1,39 @@
-"""GET /<product>/config with the documented status taxonomy (httpx).
+"""The Config service's HTTP surface — ``GET /<p>/config/document`` (wire contract v3
+§2.2, §5).
 
-Verification + anti-replay happen in the client (verify.py); this is purely the HTTP
-layer. Mirrors ``fetch.ts``. The result is a small tagged union of dataclasses.
+One route, and the interesting thing about it is what is NOT here. There is no build gate:
+version/channel enforcement is a licence grant (D-20) and answers on
+``/license/document``, so this fetch can never come back ``blocked``. A product with
+License DISABLED still gets config documents on a plain device token, which is the
+wire-level guarantee of service independence (D-08) — and the reason this module has no
+licence import at all.
+
+There is also no ``/config/report``: device telemetry relocated to
+``POST /<p>/devices/report``, a Core surface, because it was licence anti-fraud data that
+had merely been living under a config path.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-import platform
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional
 
-import httpx
+from ..core.context import DocumentResult
 
-from .models import (
-    HEADER_CHANNEL,
-    HEADER_DEVICE,
-    HEADER_ARCH,
-    HEADER_PLATFORM,
-    HEADER_SDK_NAME,
-    HEADER_SDK_VERSION,
-    HEADER_VERSION,
-    AllowedRange,
-    BlockReason,
-)
-from ._version import SDK_NAME, SDK_VERSION
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..core.context import CoreContext
 
-__all__ = [
-    "FetchOk",
-    "FetchNotModified",
-    "FetchUnauthorized",
-    "FetchDeviceCap",
-    "FetchBlocked",
-    "FetchError",
-    "FetchResult",
-    "fetch_managed_config",
-]
+__all__ = ["CONFIG_DOCUMENT_PATH", "fetch_config_document"]
+
+CONFIG_DOCUMENT_PATH = "config/document"
 
 
-@dataclass(frozen=True)
-class FetchOk:
-    jws: str
-    etag: Optional[str]
-    kind: str = "ok"
+def fetch_config_document(
+    ctx: "CoreContext", token: str, etag: Optional[str] = None
+) -> DocumentResult:
+    """``GET /<p>/config/document`` — the signed config + secrets document, with its OWN
+    ETag (§5).
 
-
-@dataclass(frozen=True)
-class FetchNotModified:
-    kind: str = "not-modified"
-
-
-@dataclass(frozen=True)
-class FetchUnauthorized:
-    kind: str = "unauthorized"
-
-
-@dataclass(frozen=True)
-class FetchDeviceCap:
-    limit: Optional[int] = None
-    deviceCount: Optional[int] = None
-    kind: str = "device-cap"
-
-
-@dataclass(frozen=True)
-class FetchBlocked:
-    reason: BlockReason = "version-too-old"
-    allowedRange: Optional[AllowedRange] = None
-    kind: str = "blocked"
-
-
-@dataclass(frozen=True)
-class FetchError:
-    status: int
-    message: str
-    kind: str = "error"
-
-
-FetchResult = Union[
-    FetchOk,
-    FetchNotModified,
-    FetchUnauthorized,
-    FetchDeviceCap,
-    FetchBlocked,
-    FetchError,
-]
-
-
-def fetch_managed_config(
-    *,
-    base_url: str,
-    product: str,
-    token: str,
-    device_id: str,
-    version: str,
-    channel: str,
-    etag: Optional[str] = None,
-    client: httpx.Client,
-) -> FetchResult:
-    """Fetch the signed config doc, mapping HTTP status -> the result union."""
-    headers = {
-        "authorization": f"Bearer {token}",
-        HEADER_DEVICE: device_id,
-        HEADER_VERSION: version,
-        HEADER_CHANNEL: channel,
-        HEADER_PLATFORM: platform.system().lower(),
-        HEADER_ARCH: platform.machine(),
-        HEADER_SDK_NAME: SDK_NAME,
-        HEADER_SDK_VERSION: SDK_VERSION,
-    }
-    if etag:
-        headers["if-none-match"] = etag
-    url = f"{base_url}/{product}/config"
-
-    try:
-        res = client.get(url, headers=headers)
-    except Exception as e:  # network error
-        return FetchError(status=0, message=str(e))
-
-    status = res.status_code
-    if status == 304:
-        return FetchNotModified()
-    if status == 401:
-        return FetchUnauthorized()
-    if status == 429:
-        body = _json_or_empty(res)
-        return FetchDeviceCap(
-            limit=body.get("limit"),
-            deviceCount=body.get("deviceCount"),
-        )
-    if status == 403:
-        body = _json_or_empty(res)
-        return FetchBlocked(
-            reason=body.get("reason") or "version-too-old",
-            allowedRange=AllowedRange.from_dict(body.get("allowedRange")),
-        )
-    if status == 200:
-        return FetchOk(jws=res.text, etag=res.headers.get("etag"))
-    return FetchError(status=status, message=_text_or_empty(res))
-
-
-def _json_or_empty(res: httpx.Response) -> dict:
-    try:
-        body = res.json()
-        return body if isinstance(body, dict) else {}
-    except Exception:
-        return {}
-
-
-def _text_or_empty(res: httpx.Response) -> str:
-    try:
-        return res.text
-    except Exception:
-        return ""
+    Independent of the licence's, so a settings edit no longer forces a licence
+    re-download and a tier change no longer forces a settings refetch.
+    """
+    return ctx.get_document(CONFIG_DOCUMENT_PATH, token, etag)

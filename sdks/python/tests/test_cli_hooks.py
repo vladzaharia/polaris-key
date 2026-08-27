@@ -1,22 +1,32 @@
 """Tests for the composable CLI command hooks.
 
 The ``core`` commands are exercised against a tiny *fake* client that duck-types only the
-methods the commands call — no network, no real ``PolarisKeyClient``. The argparse / click /
+surface the commands touch — no network, no real ``PolarisClient``. The argparse / click /
 typer hooks are then wired against a factory that returns that fake client, so each
 framework adapter is verified to dispatch into the shared core. click / typer tests skip
 gracefully if the optional extra is missing.
+
+v3 adds two verbs to every adapter — ``register`` (devices) and ``import-bundle`` (core) —
+and the ``--service`` flag that carries the D-21 capability expectation.
 """
 
 from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import pytest
 
-from polaris_key.cli import core
-from polaris_key.endpoints import ActivationDeviceLimit, ActivationOk, ActivationUnauthorized
+from polaris.cli import core
+from polaris.core.errors import PolarisError
+from polaris.core.models import AllowedRange
+from polaris.devices.client import RegisterClosed, RegisterOk
+from polaris.license.endpoints import (
+    ActivationDeviceLimit,
+    ActivationOk,
+    ActivationUnauthorized,
+)
 
 
 # ── A minimal fake client ─────────────────────────────────────────────────────────────
@@ -24,7 +34,7 @@ from polaris_key.endpoints import ActivationDeviceLimit, ActivationOk, Activatio
 class _State:
     status: str = "ok"
     graceUntil: Optional[int] = None
-    allowedRange: Optional[Any] = None
+    allowedRange: Optional[AllowedRange] = None
 
 
 class _FakeProfile:
@@ -33,34 +43,91 @@ class _FakeProfile:
         self.email = email
 
 
+@dataclass
+class _ImportResult:
+    bundleId: str
+    imported: List[str]
+
+
+class _FakeLicense:
+    def __init__(self, owner: "FakeClient") -> None:
+        self._owner = owner
+
+    def activate_with_key(self, key: str) -> Any:
+        self._owner.activated_key = key
+        return self._owner._activation_result
+
+    def enroll(self) -> Any:
+        self._owner.enrolled = True
+        return self._owner._activation_result
+
+    def deactivate(self) -> None:
+        self._owner.deactivated = True
+
+    def get_profile(self):
+        return self._owner._profile
+
+
+class _FakeConfig:
+    def __init__(self, owner: "FakeClient") -> None:
+        self._owner = owner
+
+    def get_config(self, key: str, fallback: Any = None) -> Any:
+        return self._owner._config.get(key, fallback)
+
+    def get_config_source(self, key: str) -> str:
+        return self._owner._sources.get(key, "fallback")
+
+
+class _FakeDevices:
+    def __init__(self, owner: "FakeClient") -> None:
+        self._owner = owner
+
+    def register(self) -> Any:
+        self._owner.registered = True
+        return self._owner._register_result
+
+
 class FakeClient:
-    """Duck-types the subset of ``PolarisKeyClient`` the core commands use."""
+    """Duck-types the subset of ``PolarisClient`` the core commands use."""
 
     def __init__(
         self,
         *,
         activation_result: Any = None,
+        register_result: Any = None,
         state: Optional[_State] = None,
         licensed: bool = True,
         profile: Optional[_FakeProfile] = None,
         config: Optional[Dict[str, Any]] = None,
         sources: Optional[Dict[str, str]] = None,
+        bundle_error: Optional[PolarisError] = None,
     ) -> None:
-        self._activation_result = activation_result if activation_result is not None else ActivationOk(token="t", schemaVersion=1)
+        self._activation_result = (
+            activation_result
+            if activation_result is not None
+            else ActivationOk(token="plrst_t", schemaVersion=4)
+        )
+        self._register_result = (
+            register_result
+            if register_result is not None
+            else RegisterOk(token="plrst_t", deviceId="dev-123")
+        )
         self._state = state or _State()
         self._licensed = licensed
         self._profile = profile
         self._config = config or {}
         self._sources = sources or {}
+        self._bundle_error = bundle_error
         self.closed = False
         self.deactivated = False
-
-    def activate_with_key(self, key: str) -> Any:
-        self.activated_key = key
-        return self._activation_result
-
-    def deactivate(self) -> None:
-        self.deactivated = True
+        self.registered = False
+        self.enrolled = False
+        self.synced = False
+        self.imported: Optional[str] = None
+        self.license = _FakeLicense(self)
+        self.config = _FakeConfig(self)
+        self.devices = _FakeDevices(self)
 
     def status(self, now: Optional[int] = None) -> _State:
         return self._state
@@ -68,14 +135,14 @@ class FakeClient:
     def is_licensed(self, now: Optional[int] = None) -> bool:
         return self._licensed
 
-    def get_profile(self) -> Optional[_FakeProfile]:
-        return self._profile
+    def sync(self, *, force: bool = False) -> None:
+        self.synced = True
 
-    def get_config(self, key: str, fallback: Any = None) -> Any:
-        return self._config.get(key, fallback)
-
-    def get_config_source(self, key: str) -> str:
-        return self._sources.get(key, "fallback")
+    def import_bundle(self, jws: str, now: Optional[int] = None) -> _ImportResult:
+        if self._bundle_error is not None:
+            raise self._bundle_error
+        self.imported = jws
+        return _ImportResult(bundleId="B1", imported=["license"])
 
     def close(self) -> None:
         self.closed = True
@@ -102,10 +169,9 @@ def test_parse_trust_rejects_bad_pair():
 
 # ── core commands ─────────────────────────────────────────────────────────────────────
 def test_activate_ok():
-    c = FakeClient(activation_result=ActivationOk(token="t", schemaVersion=1), state=_State(status="ok"))
+    c = FakeClient(state=_State(status="ok"))
     r = core.activate(c, "KEY-123")
-    assert r.code == 0
-    assert "Activated" in r.lines[0]
+    assert r.code == 0 and "Activated" in r.lines[0]
     assert c.activated_key == "KEY-123"
 
 
@@ -113,15 +179,36 @@ def test_activate_device_limit():
     c = FakeClient(activation_result=ActivationDeviceLimit(limit=3, deviceCount=3))
     r = core.activate(c, "KEY")
     assert r.code == 1
-    assert "device limit reached" in r.lines[0]
-    assert "3/3" in r.lines[0]
+    assert "device limit reached" in r.lines[0] and "3/3" in r.lines[0]
 
 
 def test_activate_unauthorized():
     c = FakeClient(activation_result=ActivationUnauthorized())
     r = core.activate(c, "KEY")
+    assert r.code == 1 and "invalid or revoked" in r.lines[0]
+
+
+def test_enroll_ok():
+    c = FakeClient(state=_State(status="ok"))
+    r = core.enroll(c)
+    assert r.code == 0 and "Enrolled" in r.lines[0]
+    assert c.enrolled is True
+
+
+def test_register_syncs_and_reports():
+    c = FakeClient(state=_State(status="ok"))
+    r = core.register(c)
+    assert r.code == 0
+    assert "Registered device dev-123" in r.lines[0]
+    assert c.registered is True and c.synced is True
+
+
+def test_register_closed_is_reported_not_retried():
+    c = FakeClient(register_result=RegisterClosed())
+    r = core.register(c)
     assert r.code == 1
-    assert "invalid or revoked" in r.lines[0]
+    assert "keyless registration" in r.lines[0]
+    assert c.synced is False, "a refusal must not be retried against activate"
 
 
 def test_status_licensed_with_profile():
@@ -138,40 +225,64 @@ def test_status_licensed_with_profile():
     assert r.lines[-1] == "Usable: True"
 
 
-def test_status_unlicensed_nonzero():
-    c = FakeClient(state=_State(status="expired"), licensed=False)
+def test_status_shows_the_allowed_range_when_blocked():
+    c = FakeClient(
+        state=_State(status="version-too-old", allowedRange=AllowedRange(min="2.0.0")),
+        licensed=False,
+    )
     r = core.status(c)
     assert r.code == 1
+    assert any("min=2.0.0" in ln for ln in r.lines)
+
+
+def test_status_unlicensed_nonzero():
+    c = FakeClient(state=_State(status="expired"), licensed=False)
+    assert core.status(c).code == 1
+
+
+def test_status_not_applicable_is_zero():
+    c = FakeClient(state=_State(status="not-applicable"), licensed=True)
+    r = core.status(c)
+    assert r.code == 0 and r.lines[0] == "Status: not-applicable"
 
 
 def test_config_layered_value():
-    c = FakeClient(
-        config={"run.concurrency": 4},
-        sources={"run.concurrency": "enforced"},
-    )
+    c = FakeClient(config={"run.concurrency": 4}, sources={"run.concurrency": "enforced"})
     r = core.config(c, "run.concurrency")
     assert r.code == 0
-    assert "run.concurrency = 4" in r.lines[0]
-    assert "enforced" in r.lines[0]
+    assert "run.concurrency = 4" in r.lines[0] and "enforced" in r.lines[0]
 
 
 def test_config_fallback():
     c = FakeClient()
     r = core.config(c, "missing.key", "DEFAULT")
-    assert "missing.key = 'DEFAULT'" in r.lines[0]
-    assert "fallback" in r.lines[0]
+    assert "missing.key = 'DEFAULT'" in r.lines[0] and "fallback" in r.lines[0]
+
+
+def test_import_bundle_ok_and_refusal():
+    c = FakeClient(state=_State(status="ok"))
+    r = core.import_bundle(c, "a.b.c")
+    assert r.code == 0 and "Imported bundle B1 (license)" in r.lines[0]
+    assert c.imported == "a.b.c"
+
+    refused = FakeClient(
+        bundle_error=PolarisError("bundle-claims-rejected", "wrong device")
+    )
+    r2 = core.import_bundle(refused, "a.b.c")
+    assert r2.code == 1
+    assert "Bundle import failed: wrong device" in r2.lines[0]
+    assert "bundle-claims-rejected" in r2.lines[1]
 
 
 def test_run_command_always_closes():
     c = FakeClient()
     core.run_command(_factory_for(c), core.ClientOptions(product="djdl"), core.deactivate)
-    assert c.closed is True
-    assert c.deactivated is True
+    assert c.closed is True and c.deactivated is True
 
 
 # ── argparse hook ─────────────────────────────────────────────────────────────────────
 def _argparse_app(client: FakeClient) -> argparse.ArgumentParser:
-    from polaris_key.cli.argparse_cli import register_argparse
+    from polaris.cli.argparse_cli import register_argparse
 
     parser = argparse.ArgumentParser(prog="host")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -179,65 +290,128 @@ def _argparse_app(client: FakeClient) -> argparse.ArgumentParser:
     return parser
 
 
-def test_register_argparse_wires_subcommands():
+def test_register_argparse_wires_every_v3_subcommand():
     parser = _argparse_app(FakeClient())
-    # The four Polaris subcommands are registered on the host's subparsers.
     actions = [a for a in parser._actions if isinstance(a, argparse._SubParsersAction)]
     assert actions, "expected a subparsers action"
     names = set(actions[0].choices)
-    assert {"activate", "deactivate", "status", "config"} <= names
+    expected = {
+        verb for verbs in core.SERVICE_COMMANDS.values() for verb in verbs
+    }
+    assert expected <= names, f"missing {expected - names}"
 
 
 def test_register_argparse_dispatch_activate(capsys):
-    client = FakeClient(activation_result=ActivationOk(token="t", schemaVersion=1))
+    client = FakeClient()
     parser = _argparse_app(client)
     args = parser.parse_args(["activate", "--product", "djdl", "KEY-9"])
-    code = args.func(args)
-    assert code == 0
+    assert args.func(args) == 0
     assert client.activated_key == "KEY-9"
     assert client.closed is True
     assert "Activated" in capsys.readouterr().out
+
+
+def test_register_argparse_dispatch_register(capsys):
+    client = FakeClient()
+    parser = _argparse_app(client)
+    args = parser.parse_args(["register", "--product", "djdl"])
+    assert args.func(args) == 0
+    assert client.registered is True
+    assert "Registered device dev-123" in capsys.readouterr().out
+
+
+def test_register_argparse_dispatch_enroll(capsys):
+    client = FakeClient()
+    parser = _argparse_app(client)
+    args = parser.parse_args(["enroll", "--product", "djdl"])
+    assert args.func(args) == 0
+    assert client.enrolled is True
+    assert "Enrolled" in capsys.readouterr().out
 
 
 def test_register_argparse_dispatch_config(capsys):
     client = FakeClient(config={"ui.theme": "dark"}, sources={"ui.theme": "remote-default"})
     parser = _argparse_app(client)
     args = parser.parse_args(["config", "--product", "djdl", "ui.theme"])
-    code = args.func(args)
-    assert code == 0
+    assert args.func(args) == 0
     out = capsys.readouterr().out
-    assert "ui.theme = 'dark'" in out
-    assert "remote-default" in out
+    assert "ui.theme = 'dark'" in out and "remote-default" in out
 
 
-def test_register_argparse_passes_trust_to_factory():
+def test_register_argparse_dispatch_import_bundle(tmp_path, capsys):
+    client = FakeClient()
+    path = tmp_path / "offline.plrsbundle"
+    path.write_text("a.b.c\n")
+    parser = _argparse_app(client)
+    args = parser.parse_args(["import-bundle", "--product", "djdl", str(path)])
+    assert args.func(args) == 0
+    assert client.imported == "a.b.c"
+    assert "Imported bundle B1" in capsys.readouterr().out
+
+
+def test_register_argparse_import_bundle_reads_stdin(monkeypatch, capsys):
+    import io
+
+    client = FakeClient()
+    parser = _argparse_app(client)
+    monkeypatch.setattr("sys.stdin", io.StringIO("x.y.z\n"))
+    args = parser.parse_args(["import-bundle", "--product", "djdl", "-"])
+    assert args.func(args) == 0
+    assert client.imported == "x.y.z"
+
+
+def test_register_argparse_passes_trust_and_services_to_the_factory():
     client = FakeClient()
     factory = _factory_for(client)
     parser = argparse.ArgumentParser(prog="host")
     sub = parser.add_subparsers(dest="command", required=True)
-    from polaris_key.cli.argparse_cli import register_argparse
+    from polaris.cli.argparse_cli import register_argparse
 
     register_argparse(sub, client_factory=factory)
     args = parser.parse_args(
-        ["status", "--product", "djdl", "--trust", "kid1=raw1", "--trust", "kid2=raw2"]
+        [
+            "status",
+            "--product",
+            "djdl",
+            "--trust",
+            "kid1=raw1",
+            "--trust",
+            "kid2=raw2",
+            "--service",
+            "config",
+            "--service",
+            "release",
+        ]
     )
     args.func(args)
     assert factory.opts.trust == {"kid1": "raw1", "kid2": "raw2"}  # type: ignore[attr-defined]
     assert factory.opts.product == "djdl"  # type: ignore[attr-defined]
+    assert factory.opts.expected_services == ["config", "release"]  # type: ignore[attr-defined]
+
+
+def test_register_argparse_rejects_a_malformed_trust_pair():
+    parser = _argparse_app(FakeClient())
+    args = parser.parse_args(["status", "--product", "djdl", "--trust", "no-equals"])
+    with pytest.raises(SystemExit):
+        args.func(args)
+
+
+def test_the_default_parser_is_named_polaris():
+    from polaris.cli.argparse_cli import build_parser
+
+    assert build_parser().prog == "polaris"
 
 
 # ── click hook ────────────────────────────────────────────────────────────────────────
 def test_polaris_click_group_builds_and_invokes():
     pytest.importorskip("click")
+    import click
     from click.testing import CliRunner
 
-    from polaris_key.cli.click_cli import polaris_click_group
+    from polaris.cli.click_cli import polaris_click_group
 
     client = FakeClient(config={"run.concurrency": 4}, sources={"run.concurrency": "enforced"})
     group = polaris_click_group(client_factory=_factory_for(client))
-
-    # Mountable onto a host app.
-    import click
 
     @click.group()
     def app() -> None:
@@ -246,34 +420,69 @@ def test_polaris_click_group_builds_and_invokes():
     app.add_command(group)
 
     runner = CliRunner()
-    result = runner.invoke(
-        app, ["polaris-key", "config", "--product", "djdl", "run.concurrency"]
-    )
+    result = runner.invoke(app, ["polaris", "config", "--product", "djdl", "run.concurrency"])
     assert result.exit_code == 0, result.output
-    assert "run.concurrency = 4" in result.output
-    assert "enforced" in result.output
+    assert "run.concurrency = 4" in result.output and "enforced" in result.output
 
 
-def test_polaris_click_group_activate_exit_code():
+def test_polaris_click_group_exposes_every_v3_verb():
+    pytest.importorskip("click")
+    from polaris.cli.click_cli import polaris_click_group
+
+    group = polaris_click_group(client_factory=_factory_for(FakeClient()))
+    expected = {verb for verbs in core.SERVICE_COMMANDS.values() for verb in verbs}
+    assert expected <= set(group.commands)
+
+
+def test_polaris_click_group_register_and_activate_exit_codes():
     pytest.importorskip("click")
     from click.testing import CliRunner
 
-    from polaris_key.cli.click_cli import polaris_click_group
+    from polaris.cli.click_cli import polaris_click_group
 
-    client = FakeClient(activation_result=ActivationUnauthorized())
-    group = polaris_click_group(client_factory=_factory_for(client))
     runner = CliRunner()
-    result = runner.invoke(group, ["activate", "--product", "djdl", "BADKEY"])
+    ok = FakeClient(state=_State(status="ok"))
+    result = runner.invoke(
+        polaris_click_group(client_factory=_factory_for(ok)),
+        ["register", "--product", "djdl"],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Registered device dev-123" in result.output
+
+    bad = FakeClient(activation_result=ActivationUnauthorized())
+    result = runner.invoke(
+        polaris_click_group(client_factory=_factory_for(bad)),
+        ["activate", "--product", "djdl", "BADKEY"],
+    )
     assert result.exit_code == 1
     assert "invalid or revoked" in result.output
+
+
+def test_polaris_click_group_import_bundle(tmp_path):
+    pytest.importorskip("click")
+    from click.testing import CliRunner
+
+    from polaris.cli.click_cli import polaris_click_group
+
+    client = FakeClient()
+    path = tmp_path / "offline.plrsbundle"
+    path.write_text("a.b.c")
+    runner = CliRunner()
+    result = runner.invoke(
+        polaris_click_group(client_factory=_factory_for(client)),
+        ["import-bundle", "--product", "djdl", str(path)],
+    )
+    assert result.exit_code == 0, result.output
+    assert client.imported == "a.b.c"
 
 
 # ── typer hook ────────────────────────────────────────────────────────────────────────
 def test_polaris_typer_app_builds_and_invokes():
     pytest.importorskip("typer")
+    import typer
     from typer.testing import CliRunner
 
-    from polaris_key.cli.typer_cli import polaris_typer_app
+    from polaris.cli.typer_cli import polaris_typer_app
 
     client = FakeClient(
         state=_State(status="ok"),
@@ -282,29 +491,61 @@ def test_polaris_typer_app_builds_and_invokes():
     )
     sub = polaris_typer_app(client_factory=_factory_for(client))
 
-    # Mountable onto a host app.
-    import typer
-
     app = typer.Typer()
-    app.add_typer(sub, name="key")
+    app.add_typer(sub, name="polaris")
 
     runner = CliRunner()
-    result = runner.invoke(app, ["key", "status", "--product", "djdl"])
+    result = runner.invoke(app, ["polaris", "status", "--product", "djdl"])
     assert result.exit_code == 0, result.output
-    assert "Status: ok" in result.output
-    assert "Ada Lovelace" in result.output
+    assert "Status: ok" in result.output and "Ada Lovelace" in result.output
 
 
 def test_polaris_typer_app_config():
     pytest.importorskip("typer")
     from typer.testing import CliRunner
 
-    from polaris_key.cli.typer_cli import polaris_typer_app
+    from polaris.cli.typer_cli import polaris_typer_app
 
     client = FakeClient(config={"x": "y"}, sources={"x": "local"})
-    app = polaris_typer_app(client_factory=_factory_for(client))
     runner = CliRunner()
-    result = runner.invoke(app, ["config", "--product", "djdl", "x"])
+    result = runner.invoke(
+        polaris_typer_app(client_factory=_factory_for(client)),
+        ["config", "--product", "djdl", "x"],
+    )
     assert result.exit_code == 0, result.output
-    assert "x = 'y'" in result.output
-    assert "local" in result.output
+    assert "x = 'y'" in result.output and "local" in result.output
+
+
+def test_polaris_typer_app_register_and_import_bundle(tmp_path):
+    pytest.importorskip("typer")
+    from typer.testing import CliRunner
+
+    from polaris.cli.typer_cli import polaris_typer_app
+
+    runner = CliRunner()
+    client = FakeClient(state=_State(status="ok"))
+    result = runner.invoke(
+        polaris_typer_app(client_factory=_factory_for(client)),
+        ["register", "--product", "djdl"],
+    )
+    assert result.exit_code == 0, result.output
+    assert client.registered is True
+
+    other = FakeClient()
+    path = tmp_path / "offline.plrsbundle"
+    path.write_text("a.b.c")
+    result = runner.invoke(
+        polaris_typer_app(client_factory=_factory_for(other)),
+        ["import-bundle", "--product", "djdl", str(path)],
+    )
+    assert result.exit_code == 0, result.output
+    assert other.imported == "a.b.c"
+
+
+def test_the_cli_barrel_re_exports_all_three_adapters():
+    from polaris import cli
+
+    assert callable(cli.register_argparse)
+    assert callable(cli.polaris_click_group)
+    assert callable(cli.polaris_typer_app)
+    assert callable(cli.main)

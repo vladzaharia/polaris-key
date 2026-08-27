@@ -1,10 +1,13 @@
 """Software facts: the OS/runtime/hardware summary and product-declared probe results
-reported through ``POST /<product>/config/report``.
+reported through ``POST /<product>/devices/report``.
 
-Mirrors ``packages/sdk-node/src/facts.ts``. Deliberately narrow — there is no installed-
-application enumeration. A product declares the companion apps it cares about and the client
-answers only those, so the payload stays small and the privacy story stays defensible
-(see docs/PRIVACY.md).
+Mirrors ``packages/sdk-node/src/devices/facts.ts``. The report relocated out of the config
+service in wire contract v3 §6 — it was licence anti-fraud data that had merely been
+living under a config path.
+
+Deliberately narrow — there is no installed-application enumeration. A product declares the
+companion apps it cares about and the client answers only those, so the payload stays small
+and the privacy story stays defensible (see docs/PRIVACY.md).
 """
 
 from __future__ import annotations
@@ -14,7 +17,7 @@ import os
 import platform
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 

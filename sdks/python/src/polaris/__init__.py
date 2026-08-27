@@ -1,165 +1,261 @@
-"""polaris-key — a product-agnostic Python client for the Polaris Key control plane.
+"""``polaris`` — the Polaris suite's Python SDK (dist ``polaris-suite``).
 
-Mirrors the Node SDK (``@plrs/node``) and verifies the SAME cross-language
-conformance corpus byte-for-byte. The frozen wire crypto lives in :mod:`verify`; the
-client facade in :mod:`client`.
+Core plus one sub-client per service, mirroring ``@plrs/node``::
+
+    from polaris import PolarisClient
+
+    client = PolarisClient.create(product_slug="djdl", version="1.2.0", trust=PINS)
+    client.status()                      # the licence gate
+    client.config.get_config("ui.theme") # layered settings
+    client.devices.register()            # keyless device mint (§6)
+    client.release.changelog()           # the truth store
+    client.update.check()                # the feed over it
+
+Every subpackage is importable on its own, so a config-only daemon can
+``from polaris.config import ConfigClient`` without pulling the licence module:
+
+    ``polaris.core``     device principal, credential, trust, cache, clock floor, sync,
+                         telemetry, offline bundles, and the frozen wire crypto
+    ``polaris.license``  activation + the gate
+    ``polaris.config``   the signed config document + layered resolution
+    ``polaris.devices``  registration, the roster, fingerprint/facts/device-id, the stores
+    ``polaris.release``  changelog / install script / artifact URLs
+    ``polaris.update``   version check + the Sparkle appcast URL
+    ``polaris.local``    the transportless profile
+
+This SDK verifies the SAME cross-language conformance corpus (``conformance/corpus/v2``)
+byte-for-byte as the Node, React and Swift SDKs. The normative source is
+``docs/security/WIRE-CONTRACT-V3.md``.
 """
 
 from __future__ import annotations
 
-from .client import (
-    DeviceInfo,
-    DeviceManagementUnsupportedError,
-    PolarisKeyClient,
-    RefreshResult,
+from ._version import DIST_NAME, SDK_NAME, SDK_VERSION, __version__
+from .client import DeviceInfo, PolarisClient, SyncState
+from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
+from .core.bundle import (
+    BUNDLE_CLAIMS_REJECTED,
+    BUNDLE_JWS_REJECTED,
+    BUNDLE_REFUSAL_REASONS,
+    BUNDLE_TRUST_REJECTED,
+    INNER_DOC_REJECTED,
+    MAX_BUNDLE_BYTES,
+    ImportBundleResult,
+    VerifiedBundle,
+    import_bundle,
+    inspect_bundle,
+    verify_bundle,
 )
-from .endpoints import (
-    ActivationDeviceLimit,
-    ActivationError,
-    ActivationOk,
-    ActivationResult,
-    ActivationUnauthorized,
-    deauthorize,
-    activate_with_key,
-    reacquire_token,
-    report_snapshot,
+from .core.cache import CacheManager
+from .core.clock import effective_now, high_water_mark
+from .core.context import (
+    DEFAULT_BASE,
+    DEFAULT_REQUEST_TIMEOUT_SECONDS,
+    CoreContext,
+    normalize_base_url,
 )
-from .fetch import (
-    FetchBlocked,
-    FetchDeviceCap,
-    FetchError,
-    FetchNotModified,
-    FetchOk,
-    FetchResult,
-    FetchUnauthorized,
-    fetch_managed_config,
-)
-from .license import (
+from .core.errors import InsecureBaseUrlError, PolarisError
+from .core.jws import TrustSet, VerifiedJws, sign_jws, verify_jws
+from .core.models import (
+    CLOCK_SKEW_SECONDS,
+    DOC_EXPIRY_SECONDS,
+    HEADER_ARCH,
+    HEADER_CHANNEL,
+    HEADER_DEVICE,
+    HEADER_PLATFORM,
+    HEADER_SDK_NAME,
+    HEADER_SDK_VERSION,
+    HEADER_VERSION,
+    ISSUER,
+    MAX_GRACE_SECONDS,
+    PROTOCOL_VERSION,
+    REFRESH_MARGIN_SECONDS,
+    SECONDS_PER_DAY,
+    TOKEN_PREFIX,
+    TYP_BUNDLE,
+    TYP_CONFIG,
+    TYP_LICENSE,
+    TYP_TRUST,
+    AllowedRange,
     BlockedState,
-    LicenseState,
+    ConfigDoc,
+    DocClaims,
+    DocProfile,
+    LicenseDoc,
+    ManagedEntry,
+)
+from .core.semver import (
     ParsedSemver,
     channel_for_version,
     compare_semver,
     is_dev_build,
-    is_usable,
-    license_state,
     parse_semver,
 )
-from .models import (
-    DOC_EXPIRY_SECONDS,
-    HEADER_CHANNEL,
-    HEADER_DEVICE,
-    HEADER_VERSION,
-    ISSUER,
-    PROTOCOL_VERSION,
-    SECONDS_PER_DAY,
-    AllowedRange,
-    DocProfile,
-    ManagedConfigDoc,
-    ManagedEntry,
-    ManagedPayload,
+from .core.store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle, Store
+from .core.sync import DocOutcome, SyncResult
+from .core.token import TokenManager
+from .core.trust import TrustManager, TrustManifestResult, merge_trust, verify_trust_manifest
+from .core.verify import verify_config_doc, verify_doc, verify_license_doc
+from .devices.client import (
+    AccountDevice,
+    DeviceManagementUnsupportedError,
+    DevicesClient,
+    RegisterResult,
 )
-from .store import (
-    CACHE_FORMAT_VERSION,
+from .devices.deviceid import derive_device_id, device_id_from_raw
+from .devices.facts import ProbeDeclaration
+from .devices.store import (
     SYMLINK_GUARD,
-    CacheRecord,
     FileStore,
     InMemoryStore,
     KeyringStore,
-    Store,
 )
-from .deviceid import derive_device_id
-from .trust import (
-    TrustManifestResult,
-    merge_trust,
-    verify_trust_manifest,
+from .discovery import (
+    DEFAULT_SERVICES,
+    SERVICE_SLUGS,
+    ServicesMap,
+    discover_product,
+    services_from_list,
 )
-from .verify import (
-    CLOCK_SKEW_SECONDS,
-    MAX_GRACE_SECONDS,
-    TYP_CONFIG,
-    TYP_TRUST,
-    TrustSet,
-    VerifiedJws,
-    sign_jws,
-    verify_doc,
-    verify_jws,
-    verify_jws_doc,
+from .license.client import LicenseClient
+from .license.endpoints import (
+    ActivationDeviceLimit,
+    ActivationEnrollDisabled,
+    ActivationError,
+    ActivationFingerprintRequired,
+    ActivationHardwareMismatch,
+    ActivationOk,
+    ActivationResult,
+    ActivationUnauthorized,
 )
-from ._version import __version__
+from .license.gate import LicenseState, is_usable, license_state
+from .release.client import ChangelogEntry, ReleaseClient
+from .update.client import UpdateClient, VersionCheck
 
 __all__ = [
     "__version__",
-    # client
-    "PolarisKeyClient",
-    "RefreshResult",
+    "DIST_NAME",
+    "SDK_NAME",
+    "SDK_VERSION",
+    # facade
+    "PolarisClient",
+    "SyncState",
     "DeviceInfo",
-    "DeviceManagementUnsupportedError",
-    # verify / crypto
+    # sub-clients
+    "LicenseClient",
+    "ConfigClient",
+    "DevicesClient",
+    "ReleaseClient",
+    "UpdateClient",
+    "CoreContext",
+    "CacheManager",
+    "TokenManager",
+    "TrustManager",
+    # wire crypto
     "verify_jws",
-    "verify_jws_doc",
-    "verify_doc",
     "sign_jws",
     "TrustSet",
     "VerifiedJws",
-    "TYP_CONFIG",
-    "TYP_TRUST",
-    "CLOCK_SKEW_SECONDS",
-    "MAX_GRACE_SECONDS",
-    # trust set (§1)
+    "verify_doc",
+    "verify_license_doc",
+    "verify_config_doc",
     "merge_trust",
     "verify_trust_manifest",
     "TrustManifestResult",
-    # license / gate
+    # bundles (§7)
+    "inspect_bundle",
+    "verify_bundle",
+    "import_bundle",
+    "ImportBundleResult",
+    "VerifiedBundle",
+    "MAX_BUNDLE_BYTES",
+    "BUNDLE_JWS_REJECTED",
+    "BUNDLE_CLAIMS_REJECTED",
+    "BUNDLE_TRUST_REJECTED",
+    "INNER_DOC_REJECTED",
+    "BUNDLE_REFUSAL_REASONS",
+    # gate
     "license_state",
     "is_usable",
     "LicenseState",
     "BlockedState",
+    "AllowedRange",
+    "effective_now",
+    "high_water_mark",
+    # semver
     "parse_semver",
     "compare_semver",
     "channel_for_version",
     "is_dev_build",
     "ParsedSemver",
-    # fetch
-    "fetch_managed_config",
-    "FetchResult",
-    "FetchOk",
-    "FetchNotModified",
-    "FetchUnauthorized",
-    "FetchDeviceCap",
-    "FetchBlocked",
-    "FetchError",
-    # endpoints
-    "activate_with_key",
-    "reacquire_token",
-    "deauthorize",
-    "report_snapshot",
+    # activation
     "ActivationResult",
     "ActivationOk",
     "ActivationDeviceLimit",
     "ActivationUnauthorized",
+    "ActivationFingerprintRequired",
+    "ActivationHardwareMismatch",
+    "ActivationEnrollDisabled",
     "ActivationError",
+    # devices
+    "AccountDevice",
+    "RegisterResult",
+    "DeviceManagementUnsupportedError",
+    "derive_device_id",
+    "device_id_from_raw",
+    "ProbeDeclaration",
+    # release / update
+    "ChangelogEntry",
+    "VersionCheck",
+    # discovery
+    "discover_product",
+    "services_from_list",
+    "SERVICE_SLUGS",
+    "DEFAULT_SERVICES",
+    "ServicesMap",
     # store
     "Store",
     "InMemoryStore",
     "FileStore",
     "KeyringStore",
     "CacheRecord",
+    "ImportedBundle",
     "CACHE_FORMAT_VERSION",
     "SYMLINK_GUARD",
-    # device id
-    "derive_device_id",
-    # models
-    "ManagedConfigDoc",
-    "ManagedPayload",
+    # sync
+    "SyncResult",
+    "DocOutcome",
+    # config
+    "DEFAULT_ENV_PREFIX",
+    # errors
+    "PolarisError",
+    "InsecureBaseUrlError",
+    # models + constants
     "ManagedEntry",
     "DocProfile",
-    "AllowedRange",
+    "DocClaims",
+    "LicenseDoc",
+    "ConfigDoc",
     "PROTOCOL_VERSION",
     "ISSUER",
     "DOC_EXPIRY_SECONDS",
     "SECONDS_PER_DAY",
+    "CLOCK_SKEW_SECONDS",
+    "MAX_GRACE_SECONDS",
+    "REFRESH_MARGIN_SECONDS",
+    "TOKEN_PREFIX",
+    "TYP_LICENSE",
+    "TYP_CONFIG",
+    "TYP_TRUST",
+    "TYP_BUNDLE",
     "HEADER_DEVICE",
     "HEADER_VERSION",
     "HEADER_CHANNEL",
+    "HEADER_PLATFORM",
+    "HEADER_ARCH",
+    "HEADER_SDK_NAME",
+    "HEADER_SDK_VERSION",
+    "DEFAULT_BASE",
+    "DEFAULT_REQUEST_TIMEOUT_SECONDS",
+    "normalize_base_url",
 ]

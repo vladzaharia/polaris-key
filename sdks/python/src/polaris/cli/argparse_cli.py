@@ -1,8 +1,16 @@
-"""The dependency-free argparse front end + injectable hook for the polaris-key CLI.
+"""The dependency-free argparse front end + injectable hook for the ``polaris`` CLI.
 
-Exposes ``activate`` / ``deactivate`` / ``status`` / ``config``. Trust keys are passed as
-repeated ``--trust kid=rawBase64url`` pairs so the CLI stays product-agnostic (no pinned
-keys baked in). Used as ``python -m polaris_key`` and the ``polaris-key`` console script.
+Exposes the v3 verb set, grouped by owning service (see
+:data:`polaris.cli.core.SERVICE_COMMANDS`)::
+
+    license  activate · enroll · deactivate · status
+    devices  register
+    config   config <key>
+    core     import-bundle
+
+Trust keys are passed as repeated ``--trust kid=rawBase64url`` pairs so the CLI stays
+product-agnostic (no pinned keys baked in). Used as ``python -m polaris`` and the
+``polaris`` console script.
 
 Consumers can inject the same commands into their own argparse CLI via
 :func:`register_argparse`, passing a ``client_factory`` to control how the client is built.
@@ -32,6 +40,15 @@ def _add_common(p: argparse.ArgumentParser) -> None:
         metavar="kid=rawBase64url",
         help="A trusted signing key (repeatable).",
     )
+    p.add_argument(
+        "--service",
+        action="append",
+        metavar="SLUG",
+        help=(
+            "A service this build expects the product to run (repeatable). The D-21 "
+            "fail-closed fallback used until discovery has been fetched."
+        ),
+    )
 
 
 def _options(args: argparse.Namespace) -> core.ClientOptions:
@@ -45,6 +62,25 @@ def _options(args: argparse.Namespace) -> core.ClientOptions:
         trust=trust,
         base_url=args.base_url,
         config_dir=args.config_dir,
+        expected_services=core.parse_services(getattr(args, "service", None)),
+    )
+
+
+def _add_key_source(p: argparse.ArgumentParser) -> None:
+    """Register the licence-key inputs, non-argv first (R12-13 / R4-16).
+
+    The positional stays for scripting compatibility but is OPTIONAL and warns; the
+    documented path is ``--key-stdin`` / ``--key-file`` / ``$POLARIS_ACTIVATION_KEY``.
+    """
+    p.add_argument(
+        "key",
+        nargs="?",
+        default=None,
+        help="The license key (DISCOURAGED: argv is visible in shell history and `ps`).",
+    )
+    p.add_argument("--key-file", default=None, help="Read the license key from a file.")
+    p.add_argument(
+        "--key-stdin", action="store_true", help="Read the license key from stdin."
     )
 
 
@@ -52,7 +88,7 @@ def register_argparse(
     subparsers: "argparse._SubParsersAction",
     client_factory: Optional[core.ClientFactory] = None,
 ) -> "argparse._SubParsersAction":
-    """Add ``activate``/``deactivate``/``status``/``config`` to an existing subparsers.
+    """Add the Polaris subcommands to an existing subparsers object.
 
     Each registered subcommand gets a ``func(args) -> int`` default so the host CLI can
     dispatch with ``args.func(args)``. ``client_factory`` (default: build from the parsed
@@ -68,44 +104,55 @@ def register_argparse(
 
         return _run
 
-    p_act = subparsers.add_parser("activate", help="Activate this device with a license key.")
+    # ── license ─────────────────────────────────────────────────────────────────────
+    p_act = subparsers.add_parser(
+        "activate", help="[license] Activate this device with a license key."
+    )
     _add_common(p_act)
     _add_key_source(p_act)
     p_act.set_defaults(func=lambda args: _activate(factory, args))
 
-    p_de = subparsers.add_parser("deactivate", help="Deauthorize + wipe local credentials.")
+    p_en = subparsers.add_parser(
+        "enroll", help="[license] Obtain a license with no key and no sign-in."
+    )
+    _add_common(p_en)
+    p_en.set_defaults(func=_dispatch(core.enroll))
+
+    p_de = subparsers.add_parser(
+        "deactivate", help="[license] Deauthorize + wipe local credentials."
+    )
     _add_common(p_de)
     p_de.set_defaults(func=_dispatch(core.deactivate))
 
-    p_st = subparsers.add_parser("status", help="Show the current gate status.")
+    p_st = subparsers.add_parser("status", help="[license] Show the current gate status.")
     _add_common(p_st)
     p_st.set_defaults(func=_dispatch(core.status))
 
-    p_cf = subparsers.add_parser("config", help="Resolve a single layered-config key.")
+    # ── devices ─────────────────────────────────────────────────────────────────────
+    p_reg = subparsers.add_parser(
+        "register", help="[devices] Register this device keylessly (§6)."
+    )
+    _add_common(p_reg)
+    p_reg.set_defaults(func=_dispatch(core.register))
+
+    # ── config ──────────────────────────────────────────────────────────────────────
+    p_cf = subparsers.add_parser(
+        "config", help="[config] Resolve a single layered-config key."
+    )
     _add_common(p_cf)
     p_cf.add_argument("key", help="The config key to resolve.")
     p_cf.add_argument("--fallback", default=None, help="Value if the key is unset.")
     p_cf.set_defaults(func=lambda args: _config(factory, args))
 
+    # ── core ────────────────────────────────────────────────────────────────────────
+    p_bundle = subparsers.add_parser(
+        "import-bundle", help="[core] Import an offline activation bundle (§7)."
+    )
+    _add_common(p_bundle)
+    p_bundle.add_argument("bundle", help="Path to the .plrsbundle file, or - for stdin.")
+    p_bundle.set_defaults(func=lambda args: _import_bundle(factory, args))
+
     return subparsers
-
-
-def _add_key_source(p: argparse.ArgumentParser) -> None:
-    """Register the licence-key inputs, non-argv first (R12-13 / R4-16).
-
-    The positional stays for scripting compatibility but is now OPTIONAL and warns; the
-    documented path is ``--key-stdin`` / ``--key-file`` / ``$POLARIS_KEY_ACTIVATION_KEY``.
-    """
-    p.add_argument(
-        "key",
-        nargs="?",
-        default=None,
-        help="The license key (DISCOURAGED: argv is visible in shell history and `ps`).",
-    )
-    p.add_argument("--key-file", default=None, help="Read the license key from a file.")
-    p.add_argument(
-        "--key-stdin", action="store_true", help="Read the license key from stdin."
-    )
 
 
 def _activate(factory: core.ClientFactory, args: argparse.Namespace) -> int:
@@ -128,8 +175,26 @@ def _config(factory: core.ClientFactory, args: argparse.Namespace) -> int:
     return result.code
 
 
+def _import_bundle(factory: core.ClientFactory, args: argparse.Namespace) -> int:
+    try:
+        jws = (
+            sys.stdin.read().strip()
+            if args.bundle == "-"
+            else core.read_bundle_file(args.bundle)
+        )
+    except (ValueError, OSError) as e:
+        raise SystemExit(str(e))
+    if not jws:
+        raise SystemExit("no bundle supplied on stdin")
+    result = core.run_command(
+        factory, _options(args), lambda c: core.import_bundle(c, jws)
+    )
+    result.emit()
+    return result.code
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="polaris-key", description="Polaris Key client.")
+    parser = argparse.ArgumentParser(prog="polaris", description="Polaris suite client.")
     sub = parser.add_subparsers(dest="command", required=True)
     register_argparse(sub)
     return parser

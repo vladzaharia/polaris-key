@@ -1,9 +1,15 @@
-"""Stable, hashed per-device id.
+"""The device identity formula — wire contract v3 §6, pinned by
+``conformance/corpus/v2/fingerprint.json`` (``fingerprintVersion`` 1, unchanged in v3).
 
-Mirrors ``store.ts``'s ``rawDeviceId`` + ``deriveDeviceId``: read the OS identifier
-(macOS ``ioreg`` / Windows registry / Linux ``/etc/machine-id``), then SHA-256 over
+Mirrors ``packages/sdk-node/src/devices/deviceId.ts``: read the OS identifier (macOS
+``ioreg`` / Windows registry / Linux ``/etc/machine-id``), then SHA-256 over
 ``pkey-device:<product>:<raw>`` and take the first 32 chars of its base64url digest, so
 the raw OS identifier never leaves the device.
+
+NOTE the domain prefix is ``pkey-device:`` and is deliberately NOT rebranded: it is baked
+into every device id already enrolled, and changing it would orphan the fleet. §8 rebrands
+user-visible identifiers, not hash domains — the fingerprint module's ``pkey-hw`` prefix is
+frozen for exactly the same reason.
 """
 
 from __future__ import annotations
@@ -15,7 +21,7 @@ import sys
 import uuid
 from typing import Optional
 
-from .b64url import b64url_encode
+from ..core.b64url import b64url_encode
 
 __all__ = ["derive_device_id", "device_id_from_raw"]
 
@@ -77,7 +83,7 @@ def raw_os_device_id() -> Optional[str]:
 
 def device_id_from_raw(product_slug: str, raw: str) -> str:
     """The device-id formula itself, split out from the hardware read so it can be pinned by
-    ``conformance/corpus/v1/fingerprint.json``. Node, Python, and Swift must agree exactly."""
+    ``conformance/corpus/v2/fingerprint.json``. Node, Python, and Swift must agree exactly."""
     digest = hashlib.sha256(f"pkey-device:{product_slug}:{raw}".encode("utf-8")).digest()
     return b64url_encode(digest)[:32]
 

@@ -1,6 +1,6 @@
 """Cross-SDK gate-parity conformance.
 
-Drives the shared ``conformance/corpus/v1/gate-matrix.json`` fixture through the Python
+Drives the shared ``conformance/corpus/v2/gate-matrix.json`` fixture through the Python
 SDK's gate and asserts every row reaches the decision the fixture pins. The Node, React,
 and Swift suites run the SAME fixture through their own ports, so the four gate matrices
 can't silently diverge.
@@ -8,9 +8,14 @@ can't silently diverge.
 Each row carries two halves: the build-gate inputs (version / channel / compat window /
 entitlements) — which the Worker enforces and the SDK mirrors via ``_check_build_gate``
 below, rebuilt from the SDK's exported semver/channel primitives — and the license-state
-inputs (token / doc window / now / sync outcome). We derive the 403-style ``blocked`` from
-the build gate, feed it into ``license_state``, and compare the resulting status / ok /
-reason / allowedRange to the fixture.
+inputs (``licenseServiceEnabled`` / ``activation`` / doc window / now / sync outcome). We
+derive the 403-style ``blocked`` from the build gate, feed it into ``license_state``, and
+compare the resulting status / usable / reason / allowedRange to the fixture.
+
+gate-matrix v2 adds what v1 could not express: ``not-applicable`` for a product that does
+not enable the licence service (D-08), ``activation: "bundle"`` for an air-gapped install
+(§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned
+``blocked`` hint, so ``expect.reason`` on that row is deliberately NOT the status.
 """
 
 from __future__ import annotations
@@ -21,28 +26,16 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from polaris_key.license import (
-    BlockedState,
-    channel_for_version,
-    compare_semver,
-    is_dev_build,
-    is_usable,
-    license_state,
-)
-from polaris_key.models import (
-    AllowedRange,
-    DocProfile,
-    ManagedConfigDoc,
-    ManagedEntry,
-    ManagedPayload,
-)
+from polaris.core.models import AllowedRange, BlockedState, LicenseDoc, ManagedEntry
+from polaris.core.semver import channel_for_version, compare_semver, is_dev_build
+from polaris.license.gate import is_usable, license_state
 
-# tests/ -> python/ -> sdks/ -> repo root -> conformance/corpus/v1/gate-matrix.json
+# tests/ -> python/ -> sdks/ -> repo root -> conformance/corpus/v2/gate-matrix.json
 _MATRIX_PATH = (
     Path(__file__).resolve().parents[3]
     / "conformance"
     / "corpus"
-    / "v1"
+    / "v2"
     / "gate-matrix.json"
 )
 _MATRIX = json.loads(_MATRIX_PATH.read_text(encoding="utf-8"))
@@ -90,7 +83,7 @@ def _check_build_gate(gate: Dict[str, Any]) -> Optional[BlockedState]:
     version: str = gate["version"]
     if is_dev_build(version):
         return None
-    ents = {k: ManagedEntry.from_dict(v) for k, v in gate.get("entitlements", {}).items()}
+    ents = {k: ManagedEntry.from_any(v) for k, v in gate.get("entitlements", {}).items()}
     min_v = _tighter_min(gate["compatMin"], _str_ent(ents.get("app.minVersion")))
     max_v = _tighter_max(gate["compatMax"], _str_ent(ents.get("app.maxVersion")))
     allowed = AllowedRange(min=min_v, max=max_v)
@@ -106,24 +99,24 @@ def _check_build_gate(gate: Dict[str, Any]) -> Optional[BlockedState]:
     return None
 
 
-def _build_doc(lic: Dict[str, Any]) -> Optional[ManagedConfigDoc]:
-    if "issuedAt" not in lic or "expiresAt" not in lic or "graceUntil" not in lic:
+def _build_doc(lic: Dict[str, Any]) -> Optional[LicenseDoc]:
+    """The gate reads only the three timestamps; the rest is fixture furniture."""
+    if not {"issuedAt", "expiresAt", "graceUntil"} <= set(lic):
         return None
-    return ManagedConfigDoc(
-        schemaVersion=1,
+    return LicenseDoc(
+        iss="plrs.im",
         aud="djdl",
-        iss="key.plrs.im",
-        licenseId="lic_matrix",
         deviceId="dev_matrix",
         issuedAt=lic["issuedAt"],
         expiresAt=lic["expiresAt"],
         graceUntil=lic["graceUntil"],
-        profile=DocProfile(name="M", firstName="M", email="m@x.y", activatedAt=0),
-        payload=ManagedPayload(config={}, secrets={}, entitlements={}),
+        licenseId="lic_matrix",
+        entitlements={},
     )
 
 
-def test_gate_matrix_has_rows() -> None:
+def test_gate_matrix_is_v2_and_has_rows() -> None:
+    assert _MATRIX["gateMatrixVersion"] == 2
     assert len(_ROWS) > 0
 
 
@@ -132,7 +125,8 @@ def test_gate_matrix_row(row: Dict[str, Any]) -> None:
     lic = row["license"]
     blocked = _check_build_gate(row["gate"])
     state = license_state(
-        has_token=lic["hasToken"],
+        license_service_enabled=lic["licenseServiceEnabled"],
+        activation=lic["activation"],
         doc=_build_doc(lic),
         now=lic["now"],
         last_sync_unauthorized=lic.get("lastSyncUnauthorized", False),
@@ -141,8 +135,12 @@ def test_gate_matrix_row(row: Dict[str, Any]) -> None:
     )
     expect = row["expect"]
     assert state.status == expect["status"], row["name"]
-    assert is_usable(state.status) is expect["ok"], f"{row['name']} usable"
+    assert is_usable(state) is expect["ok"], f"{row['name']} usable"
+    # `is_usable` must accept both call shapes across the SDK migration.
+    assert is_usable(state.status) is expect["ok"], f"{row['name']} usable(str)"
 
+    # `reason` describes the DERIVED build-gate hint, which on the unactivated+blocked row
+    # is deliberately not the status — that row is the whole point of v3's ordering.
     if expect.get("reason") is not None:
         assert blocked is not None and blocked.reason == expect["reason"], row["name"]
 
@@ -153,3 +151,15 @@ def test_gate_matrix_row(row: Dict[str, Any]) -> None:
         ), f"{row['name']} allowedRange"
     else:
         assert state.allowedRange is None, f"{row['name']} no allowedRange"
+
+
+def test_matrix_covers_the_v3_additions() -> None:
+    """The three families v1's matrix could not express are all present — a fixture that
+    silently lost them would make this suite green while proving nothing about v3."""
+    names = [r["name"] for r in _ROWS]
+    assert any(r["expect"]["status"] == "not-applicable" for r in _ROWS)
+    assert any(r["license"]["activation"] == "bundle" for r in _ROWS)
+    assert any(
+        r["license"]["activation"] is None and r["expect"].get("reason") is not None
+        for r in _ROWS
+    ), f"the activation-precedes-blocked row is missing from {names}"

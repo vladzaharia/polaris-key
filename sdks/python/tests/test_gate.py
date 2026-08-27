@@ -1,93 +1,144 @@
-"""License-gate transitions + semver/channel helpers (mirrors gate.ts / semver.ts)."""
+"""Licence-gate transitions + semver/channel helpers.
+
+Mirrors ``@plrs/client-core``'s ``gate.test.ts`` / ``semver.ts``. The corpus's gate matrix
+pins the cross-SDK decisions; this suite pins the transitions and boundaries around them,
+including the two guards v3 added.
+"""
 
 from __future__ import annotations
 
-from polaris_key.license import (
-    AllowedRange,
-    BlockedState,
+import pytest
+
+from polaris.core.models import AllowedRange, BlockedState, LicenseDoc
+from polaris.core.semver import (
     channel_for_version,
     compare_semver,
     is_dev_build,
-    is_usable,
-    license_state,
     parse_semver,
 )
-from polaris_key.models import DocProfile, ManagedConfigDoc, ManagedPayload
+from polaris.license.gate import is_usable, license_state
 
 
-def _doc(*, issued: int, expires: int, grace: int) -> ManagedConfigDoc:
-    return ManagedConfigDoc(
-        schemaVersion=1,
+def _doc(*, issued: int, expires: int, grace: int) -> LicenseDoc:
+    return LicenseDoc(
+        iss="plrs.im",
         aud="djdl",
-        iss="key.plrs.im",
-        licenseId="lic_1",
         deviceId="dev_1",
         issuedAt=issued,
         expiresAt=expires,
         graceUntil=grace,
-        profile=DocProfile(name="A", firstName="A", email="a@b.c", activatedAt=0),
-        payload=ManagedPayload(config={}, secrets={}, entitlements={}),
+        licenseId="lic_1",
     )
 
 
-def test_no_token_needs_activation() -> None:
-    st = license_state(has_token=False, doc=None, now=100)
-    assert st.status == "needs-activation"
-    assert not is_usable(st.status)
+# ── the v3 guards ───────────────────────────────────────────────────────────────────
+def test_license_service_disabled_is_not_applicable_and_usable() -> None:
+    """§5 / D-08: a config-only or release-only product has no licence to be missing, so
+    it must boot USABLE rather than sitting on ``needs-activation`` forever."""
+    st = license_state(license_service_enabled=False, activation=None, doc=None, now=100)
+    assert st.status == "not-applicable"
+    assert is_usable(st) and is_usable(st.status)
 
 
-def test_token_but_no_doc_needs_activation() -> None:
-    st = license_state(has_token=True, doc=None, now=100)
+def test_not_applicable_precedes_every_other_rule() -> None:
+    doc = _doc(issued=0, expires=1000, grace=2000)
+    st = license_state(
+        license_service_enabled=False,
+        activation="token",
+        doc=doc,
+        now=999_999,
+        last_sync_unauthorized=True,
+        blocked=BlockedState(reason="version-too-old"),
+    )
+    assert st.status == "not-applicable"
+
+
+@pytest.mark.parametrize("activation", ["token", "bundle"])
+def test_both_activation_sources_gate_identically(activation: str) -> None:
+    """§7: a device is activated either by an online-minted ``plrst_`` token or by a
+    verified offline bundle import. Both are activated; only ``None`` is not."""
+    doc = _doc(issued=0, expires=1000, grace=2000)
+    assert license_state(activation=activation, doc=doc, now=500).status == "ok"
+    assert license_state(activation=activation, doc=doc, now=1500).status == "grace"
+    assert license_state(activation=activation, doc=doc, now=2500).status == "expired"
+
+
+def test_activation_precedes_the_unsigned_blocked_hint() -> None:
+    """The ONE ordering v3 changed: an unactivated device with a stale build block reports
+    ``needs-activation`` rather than a version error it cannot act on."""
+    blocked = BlockedState(reason="version-too-old", allowedRange=AllowedRange(min="1.0.0"))
+    assert (
+        license_state(activation=None, doc=None, now=100, blocked=blocked).status
+        == "needs-activation"
+    )
+    assert (
+        license_state(activation="token", doc=None, now=100, blocked=blocked).status
+        == "version-too-old"
+    )
+
+
+# ── the carried v2 state machine ────────────────────────────────────────────────────
+def test_no_activation_needs_activation() -> None:
+    st = license_state(activation=None, doc=None, now=100)
     assert st.status == "needs-activation"
+    assert not is_usable(st)
+
+
+def test_activated_but_no_doc_needs_activation() -> None:
+    assert license_state(activation="token", doc=None, now=100).status == "needs-activation"
 
 
 def test_unauthorized_is_revoked() -> None:
-    st = license_state(has_token=True, doc=None, now=100, last_sync_unauthorized=True)
+    st = license_state(
+        activation="token", doc=None, now=100, last_sync_unauthorized=True
+    )
     assert st.status == "revoked"
 
 
-def test_blocked_takes_precedence() -> None:
-    blocked = BlockedState(
-        reason="version-too-old", allowedRange=AllowedRange(min="1.0.0")
-    )
-    st = license_state(has_token=True, doc=None, now=100, blocked=blocked)
+def test_blocked_takes_precedence_over_a_valid_doc() -> None:
+    blocked = BlockedState(reason="version-too-old", allowedRange=AllowedRange(min="1.0.0"))
+    doc = _doc(issued=0, expires=1000, grace=2000)
+    st = license_state(activation="token", doc=doc, now=500, blocked=blocked)
     assert st.status == "version-too-old"
-    assert st.allowedRange is not None
-    assert st.allowedRange.min == "1.0.0"
+    assert st.allowedRange is not None and st.allowedRange.min == "1.0.0"
 
 
 def test_ok_within_expiry() -> None:
     doc = _doc(issued=0, expires=1000, grace=2000)
-    st = license_state(has_token=True, doc=doc, now=500, last_verified_at=499)
-    assert st.status == "ok"
-    assert is_usable(st.status)
-    assert st.graceUntil == 2000
-    assert st.lastVerifiedAt == 499
+    st = license_state(activation="token", doc=doc, now=500, last_verified_at=499)
+    assert st.status == "ok" and is_usable(st)
+    assert st.graceUntil == 2000 and st.lastVerifiedAt == 499
 
 
 def test_grace_between_expiry_and_grace() -> None:
     doc = _doc(issued=0, expires=1000, grace=2000)
-    st = license_state(has_token=True, doc=doc, now=1500)
-    assert st.status == "grace"
-    assert is_usable(st.status)
+    st = license_state(activation="token", doc=doc, now=1500)
+    assert st.status == "grace" and is_usable(st)
 
 
 def test_expired_past_grace() -> None:
     doc = _doc(issued=0, expires=1000, grace=2000)
-    st = license_state(has_token=True, doc=doc, now=2500)
-    assert st.status == "expired"
-    assert not is_usable(st.status)
+    st = license_state(activation="token", doc=doc, now=2500)
+    assert st.status == "expired" and not is_usable(st)
 
 
 def test_boundary_equal_not_yet_grace() -> None:
-    # now == expiresAt is NOT > expiresAt, so still ok.
     doc = _doc(issued=0, expires=1000, grace=2000)
-    assert license_state(has_token=True, doc=doc, now=1000).status == "ok"
+    # now == expiresAt is NOT > expiresAt, so still ok.
+    assert license_state(activation="token", doc=doc, now=1000).status == "ok"
     # now == graceUntil is NOT > graceUntil, so still grace.
-    assert license_state(has_token=True, doc=doc, now=2000).status == "grace"
+    assert license_state(activation="token", doc=doc, now=2000).status == "grace"
 
 
-# ── semver ──────────────────────────────────────────────────────────────────────
+def test_the_floor_is_a_minimum_never_a_substitute() -> None:
+    doc = _doc(issued=0, expires=1000, grace=2000)
+    # An honest clock ahead of every artifact costs nothing.
+    assert license_state(activation="token", doc=doc, now=2500, high_water_mark=0).status == "expired"
+    # A wound-back clock is clamped up to the floor.
+    assert license_state(activation="token", doc=doc, now=0, high_water_mark=2500).status == "expired"
+
+
+# ── semver ──────────────────────────────────────────────────────────────────────────
 def test_parse_semver() -> None:
     p = parse_semver("1.2.3-rc.1+build5")
     assert p is not None

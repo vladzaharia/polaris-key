@@ -1,25 +1,25 @@
-"""Activation + lifecycle HTTP calls (key -> token, token re-acquire, deauthorize, report).
+"""The License service's HTTP surface — ``POST /<p>/license/{activate,enroll,token,
+deauthorize}`` and ``GET /<p>/license/document`` (§R1, wire contract v3 §5).
 
-Mirrors ``endpoints.ts``. ``activate_with_key`` and ``reacquire_token`` share the same
-POST-and-classify shape; the result is a small tagged union of dataclasses.
+Pure transport: it builds the request, maps the status taxonomy, and hands back raw bytes.
+Verification, caching and the gate live elsewhere on purpose — an HTTP layer that verified
+would be an HTTP layer that could be talked into not verifying.
+
+Every call carries the seven ``X-Polaris-*`` metadata headers and a deadline, both from
+:meth:`polaris.core.context.CoreContext.headers` / :meth:`~...CoreContext.request`, so a
+new endpoint cannot ship without them (R4-08).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-import platform
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-import httpx
+from ..core.context import DocumentResult
+from ..core.errors import PolarisError
 
-from .models import (
-    HEADER_ARCH,
-    HEADER_DEVICE,
-    HEADER_PLATFORM,
-    HEADER_SDK_NAME,
-    HEADER_SDK_VERSION,
-)
-from ._version import SDK_NAME, SDK_VERSION
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..core.context import CoreContext
 
 __all__ = [
     "ActivationOk",
@@ -34,14 +34,19 @@ __all__ = [
     "enroll",
     "reacquire_token",
     "deauthorize",
-    "report_snapshot",
+    "fetch_license_document",
+    "LICENSE_DOCUMENT_PATH",
 ]
+
+#: ``GET /<p>/license/document`` — the signed grant document. The build gate lives on
+#: THIS route (D-20), so it is the only document fetch that can answer ``blocked``.
+LICENSE_DOCUMENT_PATH = "license/document"
 
 
 @dataclass(frozen=True)
 class ActivationOk:
     token: str
-    schemaVersion: int
+    schemaVersion: int = 0
     kind: str = "ok"
 
 
@@ -77,7 +82,7 @@ class ActivationHardwareMismatch:
     activation re-binds the new hardware and consumes a seat."""
 
     drift: Optional[int] = None
-    changed: Optional[list] = None
+    changed: Optional[List[str]] = None
     kind: str = "hardware-mismatch"
 
 
@@ -98,43 +103,65 @@ ActivationResult = Union[
 ]
 
 
-def _metadata_headers() -> dict:
-    return {
-        HEADER_PLATFORM: platform.system().lower(),
-        HEADER_ARCH: platform.machine(),
-        HEADER_SDK_NAME: SDK_NAME,
-        HEADER_SDK_VERSION: SDK_VERSION,
-    }
-
-
 def _activation_like(
-    url: str,
-    headers: dict,
-    client: httpx.Client,
+    ctx: "CoreContext",
+    path: str,
+    headers: Dict[str, str],
     fingerprint: Optional[dict] = None,
 ) -> ActivationResult:
+    """The three mint/rotate endpoints share a response ladder, so they share a reader.
+
+    Codes are read from BOTH the v3 nested body (``{"error":{"code":…}}``) and the flat v2
+    shape, because a 403 that says "device limit" and a 403 that says "fingerprint
+    required" are different outcomes for the caller and guessing between them would be
+    worse than either.
+    """
+    # Resolving the transport OUTSIDE the try is deliberate: local-only mode raises here,
+    # and that is a CONFIGURATION error the host can fix — not a transport outcome.
+    # Swallowing it into `ActivationError` would make it indistinguishable from a dropped
+    # connection, so the caller could never branch on the one thing it can actually fix.
+    ctx.http()
     try:
         if fingerprint:
-            res = client.post(url, headers=headers, json={"fingerprint": fingerprint})
+            res = ctx.request(
+                "POST", ctx.url(path), headers=headers, json={"fingerprint": fingerprint}
+            )
         else:
-            # No body at all when there is no fingerprint, so the call stays byte-identical
-            # to the pre-fingerprint contract against an older Worker.
-            res = client.post(url, headers=headers)
+            # No body at all when there is no fingerprint, so a host that opted out sends
+            # a byte-identical request to one that has nothing to report.
+            res = ctx.request("POST", ctx.url(path), headers=headers)
+    except PolarisError:
+        raise
     except Exception as e:
         return ActivationError(message=str(e))
+
     if res.status_code == 200:
-        b = res.json()
-        return ActivationOk(token=b["token"], schemaVersion=b["schemaVersion"])
+        b = _json_or_empty(res)
+        token = b.get("token")
+        if not isinstance(token, str):
+            return ActivationError(message="activation response carried no token")
+        schema_version = b.get("schemaVersion")
+        return ActivationOk(
+            token=token,
+            schemaVersion=schema_version if isinstance(schema_version, int) else 0,
+        )
     if res.status_code == 409:
         b = _json_or_empty(res)
-        return ActivationHardwareMismatch(drift=b.get("drift"), changed=b.get("changed"))
+        nested = b.get("error") if isinstance(b.get("error"), dict) else {}
+        return ActivationHardwareMismatch(
+            drift=b.get("drift", nested.get("drift")),
+            changed=b.get("changed", nested.get("changed")),
+        )
     if res.status_code == 403:
         b = _json_or_empty(res)
-        if b.get("error") == "fingerprint_required":
+        raw_error = b.get("error")
+        nested = raw_error if isinstance(raw_error, dict) else {}
+        code = raw_error if isinstance(raw_error, str) else nested.get("code")
+        if code == "fingerprint_required":
             return ActivationFingerprintRequired()
         return ActivationDeviceLimit(
-            limit=b.get("limit"),
-            deviceCount=b.get("deviceCount"),
+            limit=b.get("limit", nested.get("limit")),
+            deviceCount=b.get("deviceCount", nested.get("deviceCount")),
         )
     if res.status_code == 401:
         return ActivationUnauthorized()
@@ -143,85 +170,64 @@ def _activation_like(
     return ActivationError(message=_text_or_empty(res))
 
 
-def activate_with_key(
-    *,
-    base_url: str,
-    product: str,
-    key: str,
-    device_id: str,
-    client: httpx.Client,
-    fingerprint: Optional[dict] = None,
-) -> ActivationResult:
-    return _activation_like(
-        f"{base_url}/{product}/activate",
-        {"authorization": f"Bearer {key}", HEADER_DEVICE: device_id, **_metadata_headers()},
-        client,
-        fingerprint,
-    )
-
-
 def enroll(
-    *,
-    base_url: str,
-    product: str,
-    device_id: str,
-    client: httpx.Client,
-    fingerprint: Optional[dict] = None,
+    ctx: "CoreContext", fingerprint: Optional[dict] = None
 ) -> ActivationResult:
-    """``POST /<product>/enroll`` — obtain a license with no key and no sign-in.
+    """``POST /<p>/license/enroll`` — obtain a licence with no key and no sign-in.
 
-    Returns the same tagged union ``activate_with_key`` does, so callers need no new
-    branching. A product that hasn't opted in answers 404 → ``ActivationEnrollDisabled``.
+    Returns the same shape :func:`activate_with_key` does, so callers need no new
+    branching; a product that has not opted in answers 404 → ``enroll-disabled``.
     """
+    return _activation_like(ctx, "license/enroll", ctx.headers(), fingerprint)
+
+
+def activate_with_key(
+    ctx: "CoreContext", key: str, fingerprint: Optional[dict] = None
+) -> ActivationResult:
+    """``POST /<p>/license/activate`` — exchange a licence key for a per-device ``plrst_``
+    token."""
     return _activation_like(
-        f"{base_url}/{product}/enroll",
-        {HEADER_DEVICE: device_id, **_metadata_headers()},
-        client,
+        ctx,
+        "license/activate",
+        ctx.headers({"authorization": f"Bearer {key}"}),
         fingerprint,
     )
 
 
-def reacquire_token(
-    *, base_url: str, product: str, token: str, device_id: str, client: httpx.Client
-) -> ActivationResult:
+def reacquire_token(ctx: "CoreContext", token: str) -> ActivationResult:
+    """``POST /<p>/license/token`` — rotate the current device token. The §5 single
+    re-acquire."""
     return _activation_like(
-        f"{base_url}/{product}/token",
-        {"authorization": f"Bearer {token}", HEADER_DEVICE: device_id, **_metadata_headers()},
-        client,
+        ctx, "license/token", ctx.headers({"authorization": f"Bearer {token}"})
     )
 
 
-def deauthorize(*, base_url: str, product: str, token: str, client: httpx.Client) -> None:
-    """Best-effort server-side deauthorize; the local wipe is what matters."""
+def deauthorize(ctx: "CoreContext", token: str) -> None:
+    """``POST /<p>/license/deauthorize`` — release this device's seat.
+
+    Best-effort: the LOCAL wipe is what the caller actually depends on, and a device that
+    deactivates on a plane must not be left holding credentials because the server was
+    unreachable.
+    """
     try:
-        client.post(
-            f"{base_url}/{product}/deauthorize",
-            headers={"authorization": f"Bearer {token}"},
+        ctx.request(
+            "POST",
+            ctx.url("license/deauthorize"),
+            headers=ctx.headers({"authorization": f"Bearer {token}"}),
         )
     except Exception:
+        # best-effort; the local wipe is what matters (including local-only mode's refusal)
         pass
 
 
-def report_snapshot(
-    *, base_url: str, product: str, token: str, snapshot: Any, client: httpx.Client
-) -> bool:
-    """POST a non-secret config snapshot. Returns True on a 2xx, False otherwise."""
-    try:
-        res = client.post(
-            f"{base_url}/{product}/config/report",
-            headers={
-                "authorization": f"Bearer {token}",
-                "content-type": "application/json",
-                **_metadata_headers(),
-            },
-            json=snapshot,
-        )
-        return res.is_success
-    except Exception:
-        return False
+def fetch_license_document(
+    ctx: "CoreContext", token: str, etag: Optional[str] = None
+) -> DocumentResult:
+    """``GET /<p>/license/document`` — the signed grant document, with ETag/304 (§5)."""
+    return ctx.get_document(LICENSE_DOCUMENT_PATH, token, etag)
 
 
-def _json_or_empty(res: httpx.Response) -> dict:
+def _json_or_empty(res: Any) -> Dict[str, Any]:
     try:
         body = res.json()
         return body if isinstance(body, dict) else {}
@@ -229,7 +235,7 @@ def _json_or_empty(res: httpx.Response) -> dict:
         return {}
 
 
-def _text_or_empty(res: httpx.Response) -> str:
+def _text_or_empty(res: Any) -> str:
     try:
         return res.text
     except Exception:
