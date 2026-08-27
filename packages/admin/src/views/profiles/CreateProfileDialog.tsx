@@ -10,10 +10,6 @@ import {
   DialogTitle,
   Field,
   Input,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Textarea,
 } from "../../components/ui/index.js";
 
@@ -25,6 +21,15 @@ export interface CreateProfileBody {
   description?: string;
 }
 
+/**
+ * CREATE THEN EDIT. A profile is an id, a name, and a payload — and the payload is the product's
+ * whole catalog, which belongs on the profile's own page, not in a modal. So this dialog asks
+ * for identity only and the caller navigates straight to the editor.
+ *
+ * It used to split three fields across an "Identity"/"Notes" tab pair, which hid the optional
+ * description behind a click and made a two-line form look like a wizard. One pane, three
+ * fields, in reading order.
+ */
 export function CreateProfileDialog({
   open,
   onOpenChange,
@@ -41,14 +46,12 @@ export function CreateProfileDialog({
   const [id, setId] = React.useState("");
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
-  const [activeTab, setActiveTab] = React.useState("identity");
 
   React.useEffect(() => {
     if (open) {
       setId("");
       setName("");
       setDescription("");
-      setActiveTab("identity");
     }
   }, [open]);
 
@@ -64,10 +67,7 @@ export function CreateProfileDialog({
   const canSubmit = trimmedId !== "" && !idError && !saving;
 
   const submit = (): void => {
-    if (!canSubmit) {
-      setActiveTab("identity");
-      return;
-    }
+    if (!canSubmit) return;
     const body: CreateProfileBody = { id: trimmedId };
     if (name.trim()) body.name = name.trim();
     if (description.trim()) body.description = description.trim();
@@ -83,8 +83,8 @@ export function CreateProfileDialog({
         <DialogHeader>
           <DialogTitle>New profile</DialogTitle>
           <DialogDescription>
-            A profile is a named managed payload. Configure its values after
-            it’s created.
+            A profile is a named managed payload. Name it here — its config,
+            secret, and flag values are set on the profile’s own page next.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -95,58 +95,46 @@ export function CreateProfileDialog({
           }}
         >
           <DialogBody>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full">
-                <TabsTrigger value="identity" className="flex-1">
-                  Identity
-                </TabsTrigger>
-                <TabsTrigger value="notes" className="flex-1">
-                  Notes
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="identity" className="space-y-4">
-                <Field
-                  label="Id"
-                  required
-                  error={idError}
-                  help="Stable, immutable identifier."
-                >
-                  <Input
-                    value={id}
-                    onChange={(e) => setId(e.target.value)}
-                    placeholder="default"
-                    autoFocus
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                </Field>
-                <Field
-                  label="Name"
-                  help="Human-friendly name shown in the console."
-                >
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Default profile"
-                  />
-                </Field>
-              </TabsContent>
-
-              <TabsContent value="notes">
-                <Field
-                  label="Description"
-                  help="Optional notes about what this profile is for."
-                >
-                  <Textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Baseline managed configuration for new licenses."
-                    className="font-sans"
-                  />
-                </Field>
-              </TabsContent>
-            </Tabs>
+            <div className="space-y-4">
+              <Field
+                label="Id"
+                required
+                error={idError}
+                help="Stable, immutable identifier."
+              >
+                <Input
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="default"
+                  autoFocus
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="font-mono"
+                />
+              </Field>
+              <Field
+                label="Name"
+                help="Human-friendly name shown in the console."
+              >
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Default profile"
+                />
+              </Field>
+              <Field
+                label="Description"
+                help="Optional notes about what this profile is for."
+              >
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Baseline managed configuration for new licenses."
+                  className="font-sans"
+                  rows={3}
+                />
+              </Field>
+            </div>
           </DialogBody>
 
           <DialogActionBar>
@@ -159,7 +147,7 @@ export function CreateProfileDialog({
               Cancel
             </Button>
             <Button type="submit" loading={saving} disabled={!canSubmit}>
-              Create profile
+              Create &amp; configure
             </Button>
           </DialogActionBar>
         </form>

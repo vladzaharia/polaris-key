@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ArrowLeft, PackageOpen, Pencil } from "lucide-react";
-import { api, type OverrideUpdate } from "../api.js";
+import { api, ApiError, type OverrideUpdate } from "../api.js";
 import { invalidate, useResource } from "../context.js";
 import { hashFor } from "../route.js";
 import {
@@ -28,7 +28,10 @@ import { OfflineBundleDialog } from "./licenses/OfflineBundleDialog.js";
 import { PolicySection } from "./licenses/PolicySection.js";
 import { KeysSection } from "./licenses/KeysSection.js";
 import { DevicesSection } from "./licenses/DevicesSection.js";
-import { OverridesEditor } from "./licenses/OverridesEditor.js";
+import {
+  OverridesEditor,
+  type PayloadLayer,
+} from "./licenses/OverridesEditor.js";
 
 /**
  * The license detail view. Loads the license (with embedded keys, devices, and redacted override
@@ -64,6 +67,45 @@ export function LicenseDetail({
   const [confirmEnable, setConfirmEnable] = React.useState(false);
   const [toggling, setToggling] = React.useState(false);
   const [savingOverrides, setSavingOverrides] = React.useState(false);
+  const [overrideFields, setOverrideFields] = React.useState<
+    string[] | undefined
+  >();
+
+  /**
+   * The profile layers underneath this license's own overrides, lowest first: the tier's
+   * profile, then the license's own profiles in order — the order `core/payload.ts` merges
+   * them in. The admin API exposes no merged payload, so the override tab reconstructs what
+   * the layers below contribute rather than showing "not set" for a key a profile does set.
+   */
+  const profileIds = React.useMemo(() => {
+    const ids: string[] = [];
+    const tierProfile = tierData?.tiers.find(
+      (t) => t.id === license?.tier,
+    )?.profile;
+    if (tierProfile) ids.push(tierProfile);
+    const own =
+      license?.profiles ?? (license?.profile ? [license.profile] : []);
+    for (const id of own) if (id && !ids.includes(id)) ids.push(id);
+    return ids;
+  }, [tierData, license]);
+
+  const stackKey = profileIds.join("|");
+  // One resource for the whole stack: a hook per profile would make the hook count depend on
+  // how many profiles a license happens to carry.
+  const { data: layers } = useResource<PayloadLayer[]>(
+    `profile-stack:${slug}:${stackKey}`,
+    () =>
+      stackKey === ""
+        ? Promise.resolve([])
+        : Promise.all(
+            profileIds.map((profileId) =>
+              api.profile(slug, profileId).then((profile) => ({
+                source: `profile “${profile.name || profile.id}”`,
+                payload: profile.payload,
+              })),
+            ),
+          ),
+  );
 
   const refresh = React.useCallback(() => {
     invalidate(licenseKey);
@@ -93,6 +135,7 @@ export function LicenseDetail({
   const submitOverrides = async (updates: OverrideUpdate[]): Promise<void> => {
     if (updates.length === 0) return;
     setSavingOverrides(true);
+    setOverrideFields(undefined);
     try {
       await api.putLicenseOverrides(slug, id, updates);
       toast.success(
@@ -101,10 +144,20 @@ export function LicenseDetail({
       );
       refresh();
     } catch (err) {
-      toast.error(
-        "Could not save overrides",
-        err instanceof Error ? err.message : undefined,
-      );
+      // A 422 from this endpoint carries catalog-validated `fields`, each prefixed with the
+      // dotted key it concerns — hand them to the editor so they land on the offending row.
+      if (err instanceof ApiError && err.fields?.length) {
+        setOverrideFields(err.fields);
+        toast.error(
+          "Could not save overrides",
+          "Some values were rejected — see the highlighted keys.",
+        );
+      } else {
+        toast.error(
+          "Could not save overrides",
+          err instanceof Error ? err.message : undefined,
+        );
+      }
     } finally {
       setSavingOverrides(false);
     }
@@ -252,9 +305,12 @@ export function LicenseDetail({
         <TabsContent value="overrides">
           {catalog ? (
             <OverridesEditor
+              slug={slug}
               catalog={catalog}
               payload={license.overrides}
+              layers={layers ?? []}
               saving={savingOverrides}
+              serverFields={overrideFields}
               onSubmit={submitOverrides}
             />
           ) : (

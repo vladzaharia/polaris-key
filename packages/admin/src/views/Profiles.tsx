@@ -2,6 +2,7 @@ import * as React from "react";
 import { AlertTriangle, FileCog, Pencil, Plus, Trash2 } from "lucide-react";
 import { api, ApiError, type ProfileSummary } from "../api.js";
 import { invalidate, useResource } from "../context.js";
+import { hashFor, navigate } from "../route.js";
 import { absoluteTime, relativeTime } from "./format.js";
 import {
   Button,
@@ -15,12 +16,17 @@ import {
   CreateProfileDialog,
   type CreateProfileBody,
 } from "./profiles/CreateProfileDialog.js";
-import { ProfileDetailDialog } from "./profiles/ProfileDetailDialog.js";
 
 /**
- * Profiles view: list every profile for a product, create new profiles, open a profile to edit
- * its catalog-driven managed payload (config/secret/flag values + per-key management state), and
- * delete profiles. A profile is the reusable managed payload a tier or license inherits.
+ * Profiles view: list every profile for a product, create new profiles, open one to edit its
+ * catalog-driven managed payload, and delete profiles. A profile is the reusable managed
+ * payload a tier or license inherits.
+ *
+ * Editing happens at `#/p/<slug>/profiles/<id>` — a routed detail page, the same shape as a
+ * license detail — not in a modal. A profile's payload is as large as the product's catalog
+ * (28+ rows is ordinary), which is more than a dialog can show without fighting its own scroll
+ * container, and "the profile that's wrong" is exactly the sort of thing an operator wants to
+ * paste into a ticket.
  */
 export function Profiles({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
@@ -28,19 +34,27 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
   const profiles = res.data?.profiles ?? [];
 
   const [createOpen, setCreateOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<ProfileSummary | null>(null);
   const [deleting, setDeleting] = React.useState<ProfileSummary | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   const refresh = (): void => invalidate(`profiles:${slug}`);
+  const open = (id: string): void =>
+    navigate({ kind: "product", slug, view: "profile", id });
 
+  /**
+   * CREATE THEN EDIT. A new profile has an id, a name, and an empty payload — there is nothing
+   * about the catalog to decide yet, so the dialog collects only identity and hands straight
+   * over to the editor. Asking for values in a modal before the profile exists would mean two
+   * different editors for the same payload.
+   */
   const handleCreate = async (body: CreateProfileBody): Promise<void> => {
     setBusy(true);
     try {
-      await api.createProfile(slug, body);
-      toast.success("Profile created", `“${body.id}” is ready to configure.`);
+      const created = await api.createProfile(slug, body);
+      toast.success("Profile created", `Now configure “${body.id}”.`);
       setCreateOpen(false);
       refresh();
+      open(created?.id ?? body.id);
     } catch (err) {
       toast.error("Could not create profile", describeError(err));
     } finally {
@@ -80,13 +94,12 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
       accessor: (p) => p.name,
       sortable: true,
       cell: (p) => (
-        <button
-          type="button"
-          className="font-medium text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => setEditing(p)}
+        <a
+          href={hashFor({ kind: "product", slug, view: "profile", id: p.id })}
+          className="rounded-sm font-medium text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {p.name || p.id}
-        </button>
+        </a>
       ),
     },
     {
@@ -130,7 +143,7 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
             variant="ghost"
             size="icon"
             aria-label={`Edit ${p.id}`}
-            onClick={() => setEditing(p)}
+            onClick={() => open(p.id)}
           >
             <Pencil aria-hidden />
           </Button>
@@ -204,13 +217,6 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
         existingIds={profiles.map((p) => p.id)}
         saving={busy}
         onCreate={(body) => void handleCreate(body)}
-      />
-
-      <ProfileDetailDialog
-        slug={slug}
-        summary={editing}
-        open={editing !== null}
-        onOpenChange={(open) => !open && setEditing(null)}
       />
 
       {/* `countLicensesUsingProfile` sums `license_profiles` AND `tiers.profile_id`, and a

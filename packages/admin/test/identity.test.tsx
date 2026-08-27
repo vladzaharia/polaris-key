@@ -112,9 +112,11 @@ describe("Identity — the customer portal card", () => {
 
     // Five separate switches, not one "portal on/off": each is a module a customer either can or
     // cannot reach, and collapsing them would make "portal on" mean five different things.
-    expect(
-      checked(await screen.findByRole("switch", { name: "Customer portal" })),
-    ).toBe(true);
+    //
+    // Wait for the SETTLED value, not merely for the switch to exist: the card seeds its form
+    // from the response in an effect, so the switches are briefly in the DOM at their initial
+    // state and `findByRole` can resolve on that one render when the machine is busy.
+    await waitFor(() => expect(checked(toggle("Customer portal"))).toBe(true));
     expect(checked(toggle("OIDC access"))).toBe(false);
     expect(checked(toggle("Email magic links"))).toBe(true);
     expect(checked(toggle("License-key claim"))).toBe(false);
@@ -133,9 +135,7 @@ describe("Identity — the customer portal card", () => {
     });
     renderIdentity();
 
-    expect(
-      checked(await screen.findByRole("switch", { name: "Customer portal" })),
-    ).toBe(true);
+    await waitFor(() => expect(checked(toggle("Customer portal"))).toBe(true));
     expect(checked(toggle("OIDC access"))).toBe(false);
     expect(portalSettings).toHaveBeenCalledWith("djdl");
   });

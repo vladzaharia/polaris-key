@@ -9,6 +9,7 @@
  *   #/p/<slug>/overview                 -> product operational overview
  *   #/p/<slug>/licenses                 -> licenses list for a product
  *   #/p/<slug>/licenses/<id>            -> a license detail
+ *   #/p/<slug>/profiles/<id>            -> a profile detail (the managed-payload editor)
  *   #/p/<slug>/<tab>                    -> any other per-product view
  *
  * Every per-product view carries the slug as the first path segment so deep links + the
@@ -50,8 +51,12 @@ export type Tab =
   // identity
   | "identity";
 
-/** The full set of per-product views (tabs plus the license-detail leaf). */
-export type View = Tab | "license";
+/**
+ * The full set of per-product views: every nav tab plus the two DETAIL LEAVES. A leaf is not a
+ * tab — nothing in the sidebar points at one — but it is a first-class route so an operator can
+ * link to "the license/profile that is misconfigured" and so back/forward work through an edit.
+ */
+export type View = Tab | "license" | "profile";
 
 /**
  * A section's `data-service` token (D-17). License brands as `key` and Identity as `id` per the
@@ -187,8 +192,8 @@ export function isTabEnabled(tab: Tab, services: ServiceState): boolean {
   return isSectionEnabled(sectionOf(tab), services);
 }
 
-export function normalizeView(view: View): Tab | "license" {
-  if (view === "license") return "license";
+export function normalizeView(view: View): Tab | "license" | "profile" {
+  if (view === "license" || view === "profile") return view;
   return view;
 }
 
@@ -196,7 +201,14 @@ export type Route =
   | { kind: "dashboard" }
   | { kind: "products" }
   | { kind: "product"; slug: string; view: Tab }
-  | { kind: "product"; slug: string; view: "license"; id: string };
+  | { kind: "product"; slug: string; view: "license"; id: string }
+  | { kind: "product"; slug: string; view: "profile"; id: string };
+
+/** The list view a detail leaf hangs off, and the URL segment it is nested under. */
+const LEAF_PARENT: Record<"license" | "profile", Tab> = {
+  license: "licenses",
+  profile: "profiles",
+};
 
 const PRODUCT = /^#\/p\/([^/]+)(?:\/([^/]+))?(?:\/([^/?]+))?/;
 
@@ -216,6 +228,14 @@ export function parseRoute(hash: string): Route {
         id: decodeURIComponent(m[3]),
       };
     }
+    if (view === "profiles" && m[3]) {
+      return {
+        kind: "product",
+        slug,
+        view: "profile",
+        id: decodeURIComponent(m[3]),
+      };
+    }
     // An unrecognised segment lands on the overview, not on Licenses: with the nav filtered by
     // enablement, Licenses is a view a config-only product does not have, so it cannot be the
     // fallback for "I don't know what you meant". Overview is in the platform section, which
@@ -228,19 +248,20 @@ export function parseRoute(hash: string): Route {
   return { kind: "dashboard" };
 }
 
-/** The active sidebar tab for a route (license detail maps back to its list). */
+/** The active sidebar tab for a route (a detail leaf maps back to its list). */
 export function tabOf(route: Route): Tab | null {
   if (route.kind !== "product") return null;
   const view = normalizeView(route.view);
-  if (view === "license") return "licenses";
+  if (view === "license" || view === "profile") return LEAF_PARENT[view];
   return view;
 }
 
 export function hashFor(route: Route): string {
   if (route.kind === "dashboard") return "#/";
   if (route.kind === "products") return "#/products";
-  if (route.view === "license") {
-    return `#/p/${encodeURIComponent(route.slug)}/licenses/${encodeURIComponent(route.id)}`;
+  if (route.view === "license" || route.view === "profile") {
+    const parent = LEAF_PARENT[route.view];
+    return `#/p/${encodeURIComponent(route.slug)}/${parent}/${encodeURIComponent(route.id)}`;
   }
   return `#/p/${encodeURIComponent(route.slug)}/${route.view}`;
 }

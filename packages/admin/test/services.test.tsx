@@ -117,9 +117,13 @@ describe("Services — what the product runs", () => {
     renderServices();
 
     // All five of D-15's opt-in services, each showing what the server said — not a default.
-    expect(
-      checked(await screen.findByRole("switch", { name: "License" })),
-    ).toBe(true);
+    //
+    // Wait for the SETTLED value, not merely for the switch to exist. The card seeds its draft
+    // from the response in an effect, so there is exactly one committed render where the five
+    // switches are in the DOM at their initial all-off state; `findByRole` can resolve on that
+    // render when the machine is busy, and this assertion then reads a frame that never reaches
+    // an operator's eye.
+    await waitFor(() => expect(checked(toggle("License"))).toBe(true));
     expect(checked(toggle("Config"))).toBe(false);
     expect(checked(toggle("Release"))).toBe(true);
     expect(checked(toggle("Update"))).toBe(true);

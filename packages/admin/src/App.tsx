@@ -27,6 +27,7 @@ import { FingerprintPolicy } from "./views/FingerprintPolicy.js";
 import { Catalog } from "./views/Catalog.js";
 import { Tiers } from "./views/Tiers.js";
 import { Profiles } from "./views/Profiles.js";
+import { ProfileDetail } from "./views/profiles/ProfileDetail.js";
 import { Releases } from "./views/Releases.js";
 import { UpdateSettings } from "./views/UpdateSettings.js";
 import { Identity } from "./views/Identity.js";
@@ -162,7 +163,8 @@ function ThemeBackdrop({
 
 function routeKey(route: Route): string {
   if (route.kind === "product") {
-    const id = route.view === "license" ? route.id : "";
+    const id =
+      route.view === "license" || route.view === "profile" ? route.id : "";
     return `${route.slug}:${route.view}:${id}`;
   }
   return route.kind;
@@ -225,10 +227,11 @@ function renderRoute(
   }
 
   const view = normalizeView(route.view);
-  // A license detail is not a nav tab, but it is unambiguously License-service surface — gate
-  // it on the tab it belongs under, or a `#/p/x/licenses/<id>` bookmark would sail past the
-  // check that stops `#/p/x/licenses`.
-  const tab: Tab = view === "license" ? "licenses" : view;
+  // A detail leaf is not a nav tab, but it is unambiguously its service's surface — gate it on
+  // the tab it hangs off, or a `#/p/x/licenses/<id>` bookmark would sail past the check that
+  // stops `#/p/x/licenses`.
+  const tab: Tab =
+    view === "license" ? "licenses" : view === "profile" ? "profiles" : view;
   if (!isTabEnabled(tab, services)) {
     return <ServiceDisabled slug={activeSlug} tab={tab} />;
   }
@@ -244,6 +247,19 @@ function renderRoute(
       );
     }
     return <LicenseDetail slug={activeSlug} id={route.id} />;
+  }
+
+  if (view === "profile") {
+    if (route.view !== "profile") {
+      return (
+        <EmptyState
+          icon={<AlertTriangle aria-hidden />}
+          title="Profile not found"
+          description="Choose a profile from the Profiles view."
+        />
+      );
+    }
+    return <ProfileDetail slug={activeSlug} id={route.id} />;
   }
 
   switch (view) {

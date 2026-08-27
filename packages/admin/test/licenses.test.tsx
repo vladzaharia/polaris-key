@@ -10,31 +10,36 @@ import {
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 
-// The licenses views talk to the typed `api` client; mock it wholesale so these tests assert the
-// view behavior (rendering, the one-time key reveal, confirm flows, the override batch) without a
-// network. `vi.mock` is hoisted, so the factory must not close over outer `let`s.
-vi.mock("../src/api.js", () => {
-  const api = {
-    licenses: vi.fn(),
-    license: vi.fn(),
-    schema: vi.fn(),
-    createLicense: vi.fn(),
-    tiers: vi.fn(),
-    profiles: vi.fn(),
-    patchLicense: vi.fn(),
-    setLicenseEnabled: vi.fn(),
-    putLicenseOverrides: vi.fn(),
-    mintKey: vi.fn(),
-    revokeKey: vi.fn(),
-    deauthorizeDevice: vi.fn(),
-    services: vi.fn(),
-    mintBundle: vi.fn(),
+// The licenses views talk to the typed `api` client; mock the CLIENT but keep the module's real
+// exports (`ApiError` in particular — the override editor branches on it to place a 422 on the
+// row that caused it). `vi.mock` is hoisted, so the factory must not close over outer `let`s.
+vi.mock("../src/api.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/api.js")>();
+  return {
+    ...actual,
+    api: {
+      licenses: vi.fn(),
+      license: vi.fn(),
+      schema: vi.fn(),
+      createLicense: vi.fn(),
+      tiers: vi.fn(),
+      profiles: vi.fn(),
+      profile: vi.fn(),
+      patchLicense: vi.fn(),
+      setLicenseEnabled: vi.fn(),
+      putLicenseOverrides: vi.fn(),
+      mintKey: vi.fn(),
+      revokeKey: vi.fn(),
+      deauthorizeDevice: vi.fn(),
+      services: vi.fn(),
+      mintBundle: vi.fn(),
+    },
   };
-  return { api };
 });
 
 import {
   api,
+  ApiError,
   type LicenseDetail as LicenseDetailDto,
   type LicenseSummary,
   type ProductCatalog,
@@ -412,27 +417,109 @@ describe("License detail", () => {
     const user = await renderDetail();
     await user.click(screen.getByRole("tab", { name: "Overrides" }));
 
-    // The catalog-driven editor renders each key with its management-state badge.
+    // The catalog-driven editor leads with the label and carries the dotted key beside it.
     expect(await screen.findByText("feature.timeout")).toBeTruthy();
     expect(screen.getByText("enforced")).toBeTruthy(); // the secret's state
     expect(screen.getByText("hidden")).toBeTruthy(); // the flag's state
 
-    // No pending changes initially → save is disabled.
-    const save = screen.getByRole("button", { name: "Save overrides" });
-    expect((save as HTMLButtonElement).disabled).toBe(true);
+    // Nothing pending ⇒ no action bar at all; a permanently-parked footer stops being read.
+    expect(screen.queryByRole("button", { name: /Save overrides/ })).toBeNull();
 
     // Change the config value; that makes the form dirty and submits a batch.
     const timeout = screen.getByLabelText("Timeout");
     await user.clear(timeout);
     await user.type(timeout, "60");
-    await waitFor(() =>
-      expect((save as HTMLButtonElement).disabled).toBe(false),
-    );
+    const save = await screen.findByRole("button", { name: /Save overrides/ });
+    expect((save as HTMLButtonElement).disabled).toBe(false);
     await user.click(save);
 
     await waitFor(() => expect(mockApi.putLicenseOverrides).toHaveBeenCalled());
     const [, , updates] = mockApi.putLicenseOverrides.mock.calls.at(-1)!;
-    expect(updates).toEqual([{ key: "feature.timeout", value: 60 }]);
+    // The state rides along: `applyOverrides` deletes a value-less update whose state is
+    // `default`, so a set row must never send its state without its value.
+    expect(updates).toEqual([
+      { key: "feature.timeout", state: "default", value: 60 },
+    ]);
+  });
+
+  it("refuses to save a value the catalog rejects, with the server's own wording", async () => {
+    const user = await renderDetail();
+    await user.click(screen.getByRole("tab", { name: "Overrides" }));
+    const timeout = await screen.findByLabelText("Timeout");
+    await user.clear(timeout);
+    await user.type(timeout, "500"); // maximum is 120
+
+    expect(await screen.findByText(/must be <= 120/)).toBeTruthy();
+    const save = (await screen.findByRole("button", {
+      name: /Save overrides/,
+    })) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    expect(mockApi.putLicenseOverrides).not.toHaveBeenCalled();
+  });
+
+  it("places a 422's catalog-validated fields on the rows that caused them", async () => {
+    mockApi.putLicenseOverrides.mockRejectedValue(
+      new ApiError(422, ["feature.timeout must be <= 120"]),
+    );
+    const user = await renderDetail();
+    await user.click(screen.getByRole("tab", { name: "Overrides" }));
+    const timeout = await screen.findByLabelText("Timeout");
+    await user.clear(timeout);
+    await user.type(timeout, "60");
+    await user.click(
+      await screen.findByRole("button", { name: /Save overrides/ }),
+    );
+    expect(await screen.findByText("must be <= 120")).toBeTruthy();
+  });
+
+  it("shows what the profile layer below contributes to a key this license does not override", async () => {
+    // The admin API returns only the license's OWN overrides — no merged view exists — so the
+    // console rebuilds the layers below from the tier's profile and the license's profiles.
+    mockApi.license.mockResolvedValue({ ...DETAIL, profiles: ["base"] });
+    mockApi.profile.mockResolvedValue({
+      id: "base",
+      name: "Base",
+      payload: {
+        config: {},
+        secrets: {},
+        entitlements: {},
+      },
+    });
+    // Give the profile a value for a key the license leaves alone.
+    mockApi.profile.mockResolvedValue({
+      id: "base",
+      name: "Base",
+      payload: {
+        config: {
+          "feature.retries": { state: "default", value: 3, updatedAt: 1 },
+        },
+        secrets: {},
+        entitlements: {},
+      },
+    });
+    mockApi.schema.mockResolvedValue({
+      ...CATALOG,
+      entries: [
+        ...CATALOG.entries,
+        {
+          key: "feature.retries",
+          kind: "config",
+          category: "general",
+          label: "Retries",
+          description: "How many times to retry.",
+          schema: { type: "integer", minimum: 0 },
+        },
+      ],
+    });
+
+    const user = await renderDetail();
+    await user.click(screen.getByRole("tab", { name: "Overrides" }));
+    expect(
+      await screen.findByText(/inherits 3 from profile “Base”/),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(mockApi.profile).toHaveBeenCalledWith("djdl", "base"),
+    );
   });
 
   // ── offline bundles ─────────────────────────────────────────────────────────

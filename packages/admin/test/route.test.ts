@@ -73,6 +73,23 @@ describe("parseRoute", () => {
     });
   });
 
+  it("a profile detail carries the id", () => {
+    // Profile editing is a routed page, not a modal: the payload is as large as the catalog,
+    // and "the profile that's wrong" needs a URL.
+    expect(parseRoute("#/p/djdl/profiles/default")).toEqual({
+      kind: "product",
+      slug: "djdl",
+      view: "profile",
+      id: "default",
+    });
+    // The list route is unaffected.
+    expect(parseRoute("#/p/djdl/profiles")).toEqual({
+      kind: "product",
+      slug: "djdl",
+      view: "profiles",
+    });
+  });
+
   it("an unknown view falls back to the OVERVIEW, not to licenses", () => {
     // Re-baselined by the nav regroup: Licenses is a view a config-only product does not have,
     // so it cannot be where "I don't know what you meant" lands. Overview is in the platform
@@ -133,6 +150,17 @@ describe("hashFor", () => {
     ).toBe("#/p/djdl/licenses/lic_1");
   });
 
+  it("serializes a profile-detail route under its list segment", () => {
+    expect(
+      hashFor({
+        kind: "product",
+        slug: "djdl",
+        view: "profile",
+        id: "default",
+      }),
+    ).toBe("#/p/djdl/profiles/default");
+  });
+
   it("encodes slugs + ids with special characters", () => {
     expect(
       hashFor({ kind: "product", slug: "a/b", view: "license", id: "c d" }),
@@ -149,6 +177,7 @@ describe("parseRoute ∘ hashFor round-trip", () => {
     { kind: "product", slug: "acme", view: "activity" },
     { kind: "product", slug: "djdl", view: "settings" },
     { kind: "product", slug: "djdl", view: "license", id: "lic_99" },
+    { kind: "product", slug: "djdl", view: "profile", id: "default" },
   ];
   for (const route of routes) {
     it(`round-trips ${JSON.stringify(route)}`, () => {
@@ -167,6 +196,14 @@ describe("tabOf", () => {
     expect(
       tabOf({ kind: "product", slug: "djdl", view: "license", id: "x" }),
     ).toBe("licenses");
+  });
+
+  it("a profile detail maps back to the profiles tab", () => {
+    // A detail leaf is not in the sidebar, so it has to name the tab that should light up —
+    // and the tab it names is also the enablement gate the router runs it through.
+    expect(
+      tabOf({ kind: "product", slug: "djdl", view: "profile", id: "x" }),
+    ).toBe("profiles");
   });
 
   it("a tab view maps to itself", () => {
