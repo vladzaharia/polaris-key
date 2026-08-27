@@ -1,0 +1,493 @@
+// The Node conformance runner for corpus v2 / wire contract v3. It drives EVERY vector in
+// `conformance/corpus/v2/` through `@plrs/client-core` — the single isomorphic implementation
+// every JS SDK will consume — and asserts the expected outcome. The Python and Swift runners
+// mirror THIS file against the SAME corpus in P5; that is how four SDKs prove byte-identical
+// verification. `corpus.test.ts` keeps driving v1 through `@plrs/node` until they land.
+//
+// Seven sections, seven layers of the contract:
+//
+//   jwsCases         §1–§2 raw compact-JWS verification    → @plrs/jws verifyJws
+//   licenseDocCases  §3 claim validation, license          → verifyLicenseDoc
+//   configDocCases   §3 claim validation, config           → verifyConfigDoc
+//   trustCases       §1 trust merge / prune / revocation   → verifyTrustManifest + mergeTrust
+//   clockFloorCases  §4.2 monotonic floor over 3 artifacts → the reload path + licenseState
+//   gate-matrix      §5 the gate decision table            → licenseState
+//   bundleCases      §7 offline bundle import              → the order implemented BELOW
+//
+// The bundle section is deliberately different from the others: there is no shipped
+// `verifyBundle` yet (it lands in P4), so §7's numbered order is implemented inline here as
+// the REFERENCE. When P4 ships one, it must reproduce this function's outcomes vector for
+// vector — including which numbered step refuses, not merely that something did.
+
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { verifyJws, type TrustSet } from "@plrs/jws";
+import type { BundleDoc, ManagedEntry } from "@plrs/protocol/core";
+import type {
+  ActivationSource,
+  AllowedRange,
+  BlockReason,
+  LicenseDoc,
+} from "@plrs/protocol/license";
+import {
+  channelForVersion,
+  compareSemver,
+  effectiveNow,
+  highWaterMark,
+  isDevBuild,
+  isUsable,
+  licenseState,
+  mergeTrust,
+  verifyConfigDoc,
+  verifyLicenseDoc,
+  verifyTrustManifest,
+  type BlockedState,
+  type VerifyOptions,
+} from "@plrs/client-core";
+
+type TypV3 =
+  | "plrs-license+jws"
+  | "plrs-config+jws"
+  | "plrs-trust+jws"
+  | "plrs-bundle+jws";
+
+interface JwsCase {
+  id: string;
+  description: string;
+  jws: string;
+  trust: TrustSet;
+  typ?: TypV3;
+  maxPayloadBytes?: number;
+  expect: { verify: "ok" | "fail"; kid?: string; doc?: unknown };
+}
+
+interface DocCase {
+  id: string;
+  description: string;
+  jws: string;
+  trust: TrustSet;
+  typ: TypV3;
+  expectedAud: string;
+  expectedIss: string;
+  deviceId: string;
+  now: number;
+  lastAcceptedIssuedAt?: number;
+  checkFreshness?: boolean;
+  expect: { accept: boolean };
+}
+
+interface TrustCase {
+  id: string;
+  description: string;
+  pinned: TrustSet;
+  before: TrustSet;
+  manifestJws: string;
+  now: number;
+  checkFreshness?: boolean;
+  expect: { accepted: boolean; trust: TrustSet; issuedAt?: number };
+}
+
+interface ClockFloorCase {
+  id: string;
+  description: string;
+  pinned: TrustSet;
+  trustJws?: string;
+  licenseJws?: string;
+  configJws?: string;
+  expectedAud: string;
+  deviceId: string;
+  systemClock: number;
+  expect: { highWaterMark: number; effectiveNow: number; status: string };
+}
+
+type BundleReason =
+  | "bundle-jws-rejected"
+  | "bundle-claims-rejected"
+  | "bundle-trust-rejected"
+  | "inner-doc-rejected";
+
+type ImportOutcome =
+  | { imports: false; reason: BundleReason }
+  | { imports: true; docs: string[] };
+
+interface BundleCase {
+  id: string;
+  description: string;
+  bundleJws: string;
+  pinned: TrustSet;
+  expectedAud: string;
+  deviceId: string;
+  now: number;
+  maxPayloadBytes: number;
+  expect: ImportOutcome;
+}
+
+interface Corpus {
+  corpusVersion: number;
+  keys: { kid: string; publicKeyRaw: string }[];
+  jwsCases: JwsCase[];
+  licenseDocCases: DocCase[];
+  configDocCases: DocCase[];
+  trustCases: TrustCase[];
+  clockFloorCases: ClockFloorCase[];
+  bundleCases: BundleCase[];
+}
+
+interface MatrixRow {
+  name: string;
+  gate: {
+    version: string;
+    channel?: string;
+    compatMin: string;
+    compatMax: string;
+    entitlements: Record<string, ManagedEntry>;
+  };
+  license: {
+    licenseServiceEnabled: boolean;
+    activation: ActivationSource | null;
+    now: number;
+    issuedAt?: number;
+    expiresAt?: number;
+    graceUntil?: number;
+    lastSyncUnauthorized?: boolean;
+    lastVerifiedAt?: number;
+  };
+  expect: {
+    status: string;
+    ok: boolean;
+    reason?: BlockReason;
+    allowedRange?: AllowedRange;
+  };
+}
+
+const here = dirname(fileURLToPath(import.meta.url));
+const v2 = (name: string): string =>
+  join(here, "..", "..", "corpus", "v2", name);
+const corpus = JSON.parse(readFileSync(v2("cases.json"), "utf8")) as Corpus;
+const matrix = JSON.parse(readFileSync(v2("gate-matrix.json"), "utf8")) as {
+  gateMatrixVersion: number;
+  rows: MatrixRow[];
+};
+
+/** §2 — v3 verifiers ALWAYS demand a `typ`. There is no call site that does not. */
+const V3 = { requireTyp: true } as const;
+
+describe(`conformance corpus v${corpus.corpusVersion} — JWS (§1–§2)`, () => {
+  it("has vectors in every section", () => {
+    expect(corpus.corpusVersion).toBe(2);
+    expect(corpus.jwsCases.length).toBeGreaterThan(0);
+    expect(corpus.licenseDocCases.length).toBeGreaterThan(0);
+    expect(corpus.configDocCases.length).toBeGreaterThan(0);
+    expect(corpus.trustCases.length).toBeGreaterThan(0);
+    expect(corpus.clockFloorCases.length).toBeGreaterThan(0);
+    expect(corpus.bundleCases.length).toBeGreaterThan(0);
+  });
+
+  for (const c of corpus.jwsCases) {
+    it(`${c.id} → verify:${c.expect.verify}`, async () => {
+      const result = await verifyJws(c.jws, c.trust, {
+        ...V3,
+        typ: c.typ,
+        // §1 — the raised cap travels with the vector, so a runner cannot accidentally
+        // grant bundle sizes to ordinary documents.
+        maxPayloadBytes: c.maxPayloadBytes,
+      });
+      if (c.expect.verify === "ok") {
+        expect(result, `${c.id} should verify`).not.toBeNull();
+        expect(result!.kid).toBe(c.expect.kid);
+        // Omitted where the payload is a quarter-megabyte of padding (the cap vectors).
+        if (c.expect.doc !== undefined) {
+          expect(result!.payload).toEqual(c.expect.doc);
+        }
+      } else {
+        expect(result, `${c.id} must fail verification`).toBeNull();
+      }
+    });
+  }
+});
+
+// §3 — the claim layer, once per document type. The two share an envelope and nothing else,
+// so both families run against the same expectations through different verifiers.
+const docOpts = (c: DocCase): VerifyOptions => ({
+  trust: c.trust,
+  expectedAud: c.expectedAud,
+  expectedIss: c.expectedIss,
+  deviceId: c.deviceId,
+  now: c.now,
+  lastAcceptedIssuedAt: c.lastAcceptedIssuedAt,
+  checkFreshness: c.checkFreshness,
+});
+
+describe(`conformance corpus v${corpus.corpusVersion} — license documents (§3)`, () => {
+  for (const c of corpus.licenseDocCases) {
+    it(`${c.id} → accept:${c.expect.accept}`, async () => {
+      const doc = await verifyLicenseDoc(c.jws, docOpts(c));
+      expect(doc !== null, `${c.id} — ${c.description}`).toBe(c.expect.accept);
+    });
+  }
+});
+
+describe(`conformance corpus v${corpus.corpusVersion} — config documents (§3)`, () => {
+  for (const c of corpus.configDocCases) {
+    it(`${c.id} → accept:${c.expect.accept}`, async () => {
+      const doc = await verifyConfigDoc(c.jws, docOpts(c));
+      expect(doc !== null, `${c.id} — ${c.description}`).toBe(c.expect.accept);
+    });
+  }
+});
+
+describe(`conformance corpus v${corpus.corpusVersion} — trust set (§1)`, () => {
+  for (const c of corpus.trustCases) {
+    it(`${c.id} → accepted:${c.expect.accepted}`, async () => {
+      const result = await verifyTrustManifest(c.manifestJws, {
+        pinned: c.pinned,
+        expectedAud: "djdl",
+        now: c.now,
+        checkFreshness: c.checkFreshness,
+      });
+      expect(result.doc !== null, `${c.id} acceptance`).toBe(c.expect.accepted);
+      // Accepted ⇒ the discovered set REPLACES what was held; rejected ⇒ it is untouched.
+      const discovered = result.doc ? result.discovered : c.before;
+      expect(mergeTrust(c.pinned, discovered)).toEqual(c.expect.trust);
+      // The accepted manifest's `issuedAt` is what §4.2 folds into the clock floor.
+      if (c.expect.issuedAt !== undefined) {
+        expect(result.doc?.issuedAt, `${c.id} issuedAt`).toBe(
+          c.expect.issuedAt,
+        );
+      }
+    });
+  }
+});
+
+// §4.2 — the monotonic clock floor. Each case replays the cache-RELOAD path as pure data:
+// re-verify the cached manifest against the PINS (freshness off), re-verify each cached
+// document against the resulting effective set (freshness off), fold the `issuedAt` of
+// whatever actually verified, and gate at `max(systemClock, floor)`.
+describe(`conformance corpus v${corpus.corpusVersion} — clock floor (§4.2)`, () => {
+  for (const c of corpus.clockFloorCases) {
+    it(`${c.id} → ${c.expect.status}`, async () => {
+      let trust: TrustSet = c.pinned;
+      const verified: { issuedAt: number }[] = [];
+
+      if (c.trustJws !== undefined) {
+        const manifest = await verifyTrustManifest(c.trustJws, {
+          pinned: c.pinned,
+          expectedAud: c.expectedAud,
+          now: c.systemClock,
+          checkFreshness: false,
+        });
+        if (manifest.doc) {
+          trust = mergeTrust(c.pinned, manifest.discovered);
+          verified.push(manifest.doc);
+        }
+      }
+
+      const reload = {
+        trust,
+        expectedAud: c.expectedAud,
+        deviceId: c.deviceId,
+        now: c.systemClock,
+        checkFreshness: false,
+      };
+      let license: LicenseDoc | null = null;
+      if (c.licenseJws !== undefined) {
+        license = await verifyLicenseDoc(c.licenseJws, reload);
+        if (license) verified.push(license);
+      }
+      if (c.configJws !== undefined) {
+        const config = await verifyConfigDoc(c.configJws, reload);
+        if (config) verified.push(config);
+      }
+
+      const floor = highWaterMark(verified);
+      expect(floor, `${c.id} highWaterMark`).toBe(c.expect.highWaterMark);
+      expect(effectiveNow(c.systemClock, floor), `${c.id} effectiveNow`).toBe(
+        c.expect.effectiveNow,
+      );
+      const state = licenseState({
+        licenseServiceEnabled: true,
+        activation: "token",
+        doc: license,
+        now: c.systemClock,
+        highWaterMark: floor,
+      });
+      expect(state.status, `${c.id} — ${c.description}`).toBe(c.expect.status);
+    });
+  }
+});
+
+// ── The build-gate port (mirrors packages/worker/src/gate.ts `checkBuildGate`) ──────────
+// Rebuilt here from client-core's exported semver/channel primitives rather than imported:
+// that surface is exactly what every SDK must keep in lockstep, and the fixture is the
+// oracle. Python and Swift port these same ~40 lines against the same rows.
+function strEnt(e: ManagedEntry | undefined): string | undefined {
+  return e && typeof e.value === "string" ? e.value : undefined;
+}
+function arrEnt(e: ManagedEntry | undefined): string[] | undefined {
+  return e && Array.isArray(e.value)
+    ? (e.value.filter((v) => typeof v === "string") as string[])
+    : undefined;
+}
+function tighterMin(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return compareSemver(a, b) >= 0 ? a : b;
+}
+function tighterMax(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return compareSemver(a, b) <= 0 ? a : b;
+}
+function normalizeChannel(header: string): "stable" | "staging" | "pr" | "dev" {
+  if (header === "staging") return "staging";
+  if (header === "pr" || /^pr-?\d*/.test(header)) return "pr";
+  if (header === "dev") return "dev";
+  return "stable";
+}
+function checkBuildGate(g: MatrixRow["gate"]): BlockedState | undefined {
+  if (isDevBuild(g.version)) return undefined;
+  const min = tighterMin(g.compatMin, strEnt(g.entitlements["app.minVersion"]));
+  const max = tighterMax(g.compatMax, strEnt(g.entitlements["app.maxVersion"]));
+  const allowedRange: AllowedRange = {};
+  if (min) allowedRange.min = min;
+  if (max) allowedRange.max = max;
+  if (min && compareSemver(g.version, min) < 0)
+    return { reason: "version-too-old", allowedRange };
+  if (max && compareSemver(g.version, max) > 0)
+    return { reason: "version-too-new", allowedRange };
+  const channel = normalizeChannel(g.channel ?? channelForVersion(g.version));
+  if (channel !== "stable" && channel !== "dev") {
+    const allowed = arrEnt(g.entitlements["channels"]) ?? ["stable"];
+    if (!allowed.includes(channel)) return { reason: "channel-not-entitled" };
+  }
+  return undefined;
+}
+
+/** The gate reads only the three timestamps; the rest is fixture furniture. */
+function matrixDoc(l: MatrixRow["license"]): LicenseDoc | null {
+  if (
+    l.issuedAt === undefined ||
+    l.expiresAt === undefined ||
+    l.graceUntil === undefined
+  )
+    return null;
+  return {
+    aud: "djdl",
+    iss: "plrs.im",
+    licenseId: "lic_matrix",
+    deviceId: "dev_matrix",
+    issuedAt: l.issuedAt,
+    expiresAt: l.expiresAt,
+    graceUntil: l.graceUntil,
+    entitlements: {},
+  };
+}
+
+describe(`gate-matrix v${matrix.gateMatrixVersion} (§5)`, () => {
+  for (const row of matrix.rows) {
+    it(row.name, () => {
+      const blocked = checkBuildGate(row.gate);
+      const state = licenseState({
+        licenseServiceEnabled: row.license.licenseServiceEnabled,
+        activation: row.license.activation,
+        doc: matrixDoc(row.license),
+        now: row.license.now,
+        lastSyncUnauthorized: row.license.lastSyncUnauthorized,
+        lastVerifiedAt: row.license.lastVerifiedAt,
+        blocked,
+      });
+      expect(state.status, row.name).toBe(row.expect.status);
+      expect(isUsable(state), `${row.name} usable`).toBe(row.expect.ok);
+      // `reason` describes the DERIVED build-gate hint, which on the unactivated+blocked row
+      // is deliberately not the status — that row is the whole point of v3's ordering.
+      if (row.expect.reason !== undefined) {
+        expect(blocked?.reason, `${row.name} reason`).toBe(row.expect.reason);
+      }
+      expect(state.allowedRange, `${row.name} allowedRange`).toEqual(
+        row.expect.allowedRange,
+      );
+    });
+  }
+});
+
+// ── §7 — offline bundle import, all-or-nothing, in the contract's numbered order ────────
+// This IS the reference implementation. P4's shipped `verifyBundle` must reproduce it.
+async function importBundle(c: BundleCase): Promise<ImportOutcome> {
+  // 1. The bundle JWS against PINNED keys only, `typ` mandatory, payload cap 262 144 (§1).
+  const verified = await verifyJws<BundleDoc>(c.bundleJws, c.pinned, {
+    ...V3,
+    typ: "plrs-bundle+jws",
+    maxPayloadBytes: c.maxPayloadBytes,
+  });
+  if (!verified) return { imports: false, reason: "bundle-jws-rejected" };
+  const bundle = verified.payload;
+
+  // 2. The bundle's own claims, on NETWORK-path freshness: a stale bundle is refused even
+  //    though the documents it carries are validated with the reload profile.
+  const SKEW = 300;
+  if (
+    bundle.aud !== c.expectedAud ||
+    bundle.deviceId !== c.deviceId ||
+    bundle.issuedAt > c.now + SKEW ||
+    c.now > bundle.expiresAt + SKEW
+  ) {
+    return { imports: false, reason: "bundle-claims-rejected" };
+  }
+
+  // 3. The inner trust manifest, against the PINS (reload profile — a bundle minted weeks
+  //    ago carries a manifest whose minutes-long `expiresAt` passed long before import).
+  const manifest = await verifyTrustManifest(bundle.trust, {
+    pinned: c.pinned,
+    expectedAud: c.expectedAud,
+    now: c.now,
+    checkFreshness: false,
+  });
+  if (!manifest.doc) return { imports: false, reason: "bundle-trust-rejected" };
+  const trust = mergeTrust(c.pinned, manifest.discovered);
+
+  // 4. Each inner document against the EFFECTIVE set, reload profile, bound to the LOCAL
+  //    device id — not to the bundle's claim, which step 2 has only proved matches it.
+  const opts = {
+    trust,
+    expectedAud: c.expectedAud,
+    deviceId: c.deviceId,
+    now: c.now,
+    checkFreshness: false,
+  };
+  const docs: string[] = [];
+  if (bundle.docs.license !== undefined) {
+    if (!(await verifyLicenseDoc(bundle.docs.license, opts)))
+      return { imports: false, reason: "inner-doc-rejected" };
+    docs.push("license");
+  }
+  if (bundle.docs.config !== undefined) {
+    if (!(await verifyConfigDoc(bundle.docs.config, opts)))
+      return { imports: false, reason: "inner-doc-rejected" };
+    docs.push("config");
+  }
+
+  // 5. Only now would the cache be written — atomically, with `importedBundle` recorded and
+  //    no token created. Nothing before this point may touch it, which is what makes a
+  //    failure at any step above import NOTHING.
+  return { imports: true, docs };
+}
+
+describe(`conformance corpus v${corpus.corpusVersion} — offline bundles (§7)`, () => {
+  for (const c of corpus.bundleCases) {
+    const label = c.expect.imports
+      ? `imports ${c.expect.docs.join("+")}`
+      : c.expect.reason;
+    it(`${c.id} → ${label}`, async () => {
+      const outcome = await importBundle(c);
+      expect(outcome, `${c.id} — ${c.description}`).toEqual(c.expect);
+    });
+  }
+});

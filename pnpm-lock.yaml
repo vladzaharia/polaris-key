@@ -38,6 +38,9 @@ importers:
 
   conformance/runners/node:
     dependencies:
+      '@plrs/client-core':
+        specifier: workspace:*
+        version: link:../../../packages/client-core
       '@plrs/jws':
         specifier: workspace:*
         version: link:../../../packages/shared-jws

@@ -47,6 +47,20 @@ export interface VerifyOptions {
    * corpus v1 are retired in P8, at which point this becomes the only behavior.
    */
   requireTyp?: boolean;
+  /**
+   * RAISE the decoded-payload cap for this call only, and with it the encoded-length
+   * pre-check derived from it. Exists for exactly one artifact: `plrs-bundle+jws`, whose
+   * payload wraps up to three inner compact JWSs and is capped at 262 144 bytes instead of
+   * 65 536 (WIRE-CONTRACT-V3 §1). The caller passes the cap explicitly for that `typ`;
+   * nothing else in the system may.
+   *
+   * The option can only ever raise: the effective cap is `max(MAX_DOC_BYTES, this)`, so a
+   * value below the frozen 64 KiB default is inert rather than silently tightening one call
+   * site out of step with the wire contract. Absent (or non-finite) ⇒ byte-identical to the
+   * cap-less behavior. The HEADER cap is untouched — moving a blob into the header is R2-04,
+   * and no `typ` widens it.
+   */
+  maxPayloadBytes?: number;
 }
 
 export interface VerifiedJws<T> {
@@ -78,7 +92,18 @@ const MAX_HEADER_BYTES = 1024;
 /** Encoded-form caps, checked BEFORE decoding so an oversized blob is never allocated. */
 const b64Cap = (bytes: number): number => Math.ceil((bytes * 4) / 3) + 4;
 const MAX_HEADER_B64 = b64Cap(MAX_HEADER_BYTES);
-const MAX_PAYLOAD_B64 = b64Cap(MAX_DOC_BYTES);
+
+/**
+ * The decoded-payload cap in force for one `verifyJws` call. `VerifyOptions.maxPayloadBytes`
+ * may only RAISE it (`plrs-bundle+jws` at 262 144, §1); a smaller or non-finite request leaves
+ * the frozen 64 KiB default in place, so no call site can quietly tighten below the contract.
+ */
+function payloadCapFor(requested: number | undefined): number {
+  if (typeof requested !== "number" || !Number.isFinite(requested)) {
+    return MAX_DOC_BYTES;
+  }
+  return Math.max(MAX_DOC_BYTES, Math.floor(requested));
+}
 
 /** The base64url alphabet, unpadded. Nothing else is a valid JWS segment. */
 const B64URL_RE = /^[A-Za-z0-9_-]*$/;
@@ -293,8 +318,9 @@ export async function verifyJws<T = unknown>(
   const [encHeader, encPayload, encSig] = parts as [string, string, string];
 
   // --- 1. Bound the ENCODED segments before decoding anything (R2-04). -------------------
+  const maxPayloadBytes = payloadCapFor(opts.maxPayloadBytes);
   if (encHeader.length > MAX_HEADER_B64) return null;
-  if (encPayload.length > MAX_PAYLOAD_B64) return null;
+  if (encPayload.length > b64Cap(maxPayloadBytes)) return null;
 
   // --- 2. Header: strict decode, bound, parse with duplicate-key rejection. --------------
   const headerBytes = base64UrlDecodeStrict(encHeader);
@@ -352,7 +378,7 @@ export async function verifyJws<T = unknown>(
   // Previously this ran before the signature check, so every caller JSON-parsed attacker
   // bytes for free. Swift already had this ordering; TS and Python did not (R2-04).
   const payloadBytes = base64UrlDecodeStrict(encPayload);
-  if (!payloadBytes || payloadBytes.byteLength > MAX_DOC_BYTES) return null;
+  if (!payloadBytes || payloadBytes.byteLength > maxPayloadBytes) return null;
   const payload = parseStrictJson<T>(payloadBytes);
   if (payload === null) return null;
 

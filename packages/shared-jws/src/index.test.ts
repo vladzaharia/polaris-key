@@ -311,3 +311,45 @@ describe("verifyJws structural failures", () => {
     expect((await verifyJws(okJws, TRUST))?.payload).toEqual(small);
   });
 });
+
+// WIRE-CONTRACT-V3 §1: the payload cap is 65 536 bytes for every artifact EXCEPT
+// `plrs-bundle+jws`, which wraps up to three inner compact JWSs and is capped at 262 144.
+// The bundle verifier passes that cap explicitly, per call — it is not a global relaxation,
+// and it can only ever raise.
+describe("verifyJws — maxPayloadBytes (the plrs-bundle+jws cap, §1)", () => {
+  // 100 KiB: over the 64 KiB default, under the 256 KiB bundle cap. Sizes stay just past the
+  // boundary being proved — the multi-MiB versions of these tests are what timed out CI once.
+  const oversizeDoc = { schemaVersion: 1, blob: "A".repeat(100 * 1024) };
+
+  it("a raised cap accepts a payload the default refuses", async () => {
+    const jws = await signJws(oversizeDoc, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect(
+      (await verifyJws(jws, TRUST, { maxPayloadBytes: 262_144 }))?.payload,
+    ).toEqual(oversizeDoc);
+  });
+
+  it("the SAME jws is still rejected on the default path", async () => {
+    // The option is per call. Nothing about a bundle-sized document leaks into the ordinary
+    // license/config/trust verifiers, which never pass it.
+    const jws = await signJws(oversizeDoc, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect(await verifyJws(jws, TRUST)).toBeNull();
+  });
+
+  it("the raised cap is still a cap — past 262 144 decoded bytes is rejected", async () => {
+    const huge = { schemaVersion: 1, blob: "A".repeat(300 * 1024) };
+    const jws = await signJws(huge, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect(
+      await verifyJws(jws, TRUST, { maxPayloadBytes: 262_144 }),
+    ).toBeNull();
+  });
+
+  it("a value BELOW the default is inert — the option raises, never lowers", async () => {
+    // Otherwise one call site could quietly enforce a stricter bound than the wire contract
+    // and start refusing documents every other implementation accepts.
+    const doc = { schemaVersion: 1, blob: "A".repeat(4096) };
+    const jws = await signJws(doc, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect(
+      (await verifyJws(jws, TRUST, { maxPayloadBytes: 16 }))?.payload,
+    ).toEqual(doc);
+  });
+});
