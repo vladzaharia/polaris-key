@@ -8,14 +8,14 @@ import {
   seedLicenseWithKey,
   seedProduct,
 } from "./seed.js";
-import { loadProduct, type Product } from "../src/product.js";
+import { loadProduct, type Product } from "../src/core/products.js";
 import {
   handleConfig,
   handleDeauthorize,
   handleActivate,
-  handleReport,
   handleToken,
 } from "../src/licensing.js";
+import { handleReport } from "../src/core/devices.js";
 import { getDevice, setKeyStatus } from "../src/repo.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";

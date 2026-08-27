@@ -12,7 +12,7 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import { loadProduct } from "../src/product.js";
+import { loadProduct } from "../src/core/products.js";
 import {
   activateFromIdentity,
   authorizeAndMint,

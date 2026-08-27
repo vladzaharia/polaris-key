@@ -12,11 +12,11 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import { loadProduct } from "../src/product.js";
+import { loadProduct } from "../src/core/products.js";
 import { generateEd25519 } from "../src/keyvault.js";
 import { handleActivate } from "../src/licensing.js";
-import { handleJwks } from "../src/jwks.js";
-import { handleDiscovery } from "../src/discovery.js";
+import { handleJwks } from "../src/core/trust.js";
+import { handleDiscovery } from "../src/core/discovery.js";
 import { handleMintToken } from "../src/edgeMint.js";
 
 const ES_PEM =

@@ -4,7 +4,7 @@
  */
 
 import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../http.js";
+import { ErrorCode } from "../../core/errors.js";
 import { randomId } from "../../crypto.js";
 import {
   countLicensesUsingTier,

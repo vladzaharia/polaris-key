@@ -13,14 +13,14 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import { loadProduct, type Product } from "../src/product.js";
+import { loadProduct, type Product } from "../src/core/products.js";
 import {
   handleAccount,
   handleConfig,
-  handleDevices,
   handleActivate,
   handleToken,
 } from "../src/licensing.js";
+import { handleDevices } from "../src/core/devices.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { hashKey } from "../src/crypto.js";

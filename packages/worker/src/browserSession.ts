@@ -5,15 +5,15 @@ import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol";
 import { Catalog } from "@plrs/catalog";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import type { Product } from "./product.js";
+import type { Product } from "./core/products.js";
+import { bearer } from "./http.js";
 import {
-  bearer,
   errorResponse,
   ErrorCode,
   json,
   methodNotAllowed,
-} from "./http.js";
-import { clientIp, rateLimitOk } from "./rateLimit.js";
+} from "./core/errors.js";
+import { clientIp, rateLimitOk } from "./core/rateLimit.js";
 import { hashKey, mintToken, randomId } from "./crypto.js";
 import {
   getActiveSchema,
@@ -24,12 +24,11 @@ import {
   type LicenseRow,
 } from "./repo.js";
 import { deleteTokenRecord } from "./kv.js";
-import { deviceMetadata } from "./licensing.js";
+import { deviceMetadata, validateDeviceToken } from "./core/devices.js";
 import {
   authorizeDevice,
   docProfile,
   resolveEffective,
-  validateDeviceToken,
 } from "./licenseCore.js";
 import { buildDoc, validatePayload } from "./configDoc.js";
 import { checkBuildGate, tighterMax, tighterMin } from "./gate.js";

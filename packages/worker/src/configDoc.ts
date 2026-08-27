@@ -1,8 +1,11 @@
-// Build, sign, and ETag the managed-config document. The signing uses the FROZEN
-// @plrs/jws encoding (the conformance corpus pins it); the per-product `kid` + key
-// scope each doc to one tenant, and `aud`/`iss` bind it to the product as defense-in-depth.
+// Build and ETag the managed-config document. `aud`/`iss` bind it to the product as
+// defense-in-depth; the per-product `kid` + key that scope each doc to one tenant are applied
+// by `core/signing.ts`, which now owns the signing step for every Polaris document.
+//
+// What remains here is document ASSEMBLY, and it is config-document-shaped on purpose — it
+// moves to `services/config/document.ts` when the documents split (plan Task 1.4).
 
-import { signJws, sha256Base64Url } from "@plrs/jws";
+import { sha256Base64Url } from "@plrs/jws";
 import type { Catalog } from "@plrs/catalog";
 import {
   DOC_EXPIRY_SECONDS,
@@ -74,14 +77,6 @@ export function buildDoc(input: BuildDocInput): ManagedConfigDoc {
     profile: input.profile,
     payload: input.payload,
   };
-}
-
-export async function signDoc(
-  doc: ManagedConfigDoc,
-  signingKeyPem: string,
-  kid: string,
-): Promise<string> {
-  return signJws(doc, signingKeyPem, kid);
 }
 
 /** A strong ETag over the doc content, excluding the per-request timestamps so an

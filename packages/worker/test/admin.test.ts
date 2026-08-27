@@ -25,10 +25,11 @@ import {
   getProductSecret,
   listAudit,
 } from "../src/repo.js";
-import { loadProduct } from "../src/product.js";
+import { loadProduct } from "../src/core/products.js";
 import { handleConfig, handleActivate } from "../src/licensing.js";
 import { handleMintToken } from "../src/edgeMint.js";
-import { buildDoc, signDoc } from "../src/configDoc.js";
+import { buildDoc } from "../src/configDoc.js";
+import { signDoc } from "../src/core/signing.js";
 import { open } from "../src/keyvault.js";
 import { verifyJws } from "@plrs/jws";
 import type {

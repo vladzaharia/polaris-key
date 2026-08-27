@@ -1,54 +1,13 @@
+/**
+ * Request-side HTTP helpers.
+ *
+ * The error taxonomy and the response builders that used to live here (`ErrorCode`, `json`,
+ * `errorResponse`, `notFound`, `methodNotAllowed`) moved to `core/errors.ts` — they are a core
+ * capability every service has to reach. What stays is the reading half: parsing a credential
+ * out of a request and the two guards that decide whether a request is safe to act on.
+ */
+
 /// <reference types="@cloudflare/workers-types" />
-
-/** Stable error codes returned to clients (mirrors the SDK error taxonomy). */
-export const ErrorCode = {
-  Unauthorized: "unauthorized",
-  NotEntitled: "not_entitled",
-  DeviceLimit: "device_limit",
-  BadRequest: "bad_request",
-  NotFound: "not_found",
-  ManagedByAdmin: "managed_by_admin",
-  Forbidden: "forbidden",
-  HardwareMismatch: "hardware_mismatch",
-  FingerprintRequired: "fingerprint_required",
-  EnrollDisabled: "enroll_disabled",
-  /** This machine's auto-issued license exists but now belongs to an identity (R3-05). */
-  EnrollClaimed: "enroll_claimed",
-} as const;
-
-export function json(
-  body: unknown,
-  init?: { status?: number; headers?: Record<string, string> },
-): Response {
-  return new Response(JSON.stringify(body), {
-    status: init?.status ?? 200,
-    headers: {
-      "content-type": "application/json",
-      "cache-control": "no-store",
-      ...(init?.headers ?? {}),
-    },
-  });
-}
-
-export function errorResponse(
-  status: number,
-  code: string,
-  message?: string,
-  extra?: Record<string, unknown>,
-): Response {
-  return json(
-    { error: code, ...(message ? { message } : {}), ...(extra ?? {}) },
-    { status },
-  );
-}
-
-export function notFound(): Response {
-  return errorResponse(404, ErrorCode.NotFound);
-}
-
-export function methodNotAllowed(): Response {
-  return new Response("Method Not Allowed", { status: 405 });
-}
 
 /**
  * True for a literal, already-normalised asset path that is safe to assign into

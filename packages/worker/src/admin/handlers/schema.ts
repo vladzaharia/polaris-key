@@ -6,7 +6,7 @@
 
 import { Catalog } from "@plrs/catalog";
 import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../http.js";
+import { ErrorCode } from "../../core/errors.js";
 import { getActiveSchema, insertSchema } from "../../repo.js";
 import { deactivateSchemas, nextSchemaVersion } from "../repo.js";
 import { audit } from "../audit.js";

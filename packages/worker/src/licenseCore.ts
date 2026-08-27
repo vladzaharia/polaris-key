@@ -2,7 +2,6 @@
 
 import { Catalog } from "@plrs/catalog";
 import {
-  FINGERPRINT_ANCHOR,
   type DocProfile,
   type FingerprintComponent,
   type FingerprintMode,
@@ -11,53 +10,31 @@ import {
 } from "@plrs/protocol";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import type { Product } from "./product.js";
-import { hashKey, mintToken, randomId } from "./crypto.js";
+import type { Product } from "./core/products.js";
 import { mergePayloads } from "./merge.js";
 import { tighterMax, tighterMin } from "./gate.js";
 import {
-  appendAudit,
   claimDeviceSeat,
   countActiveDevices,
   seatActiveSince,
-  findFingerprintByHwid,
   getActiveSchema,
-  getFingerprint,
-  getLicense,
-  getDevice,
-  getDeviceByTokenHash,
   getProfile,
   getTier,
   listLicenseProfiles,
-  setDeviceStatus,
-  upsertDevice,
-  upsertFingerprint,
-  type FingerprintRow,
   type LicenseRow,
   type DeviceRow,
   type TierRow,
 } from "./repo.js";
 import {
-  computeHwid,
-  matchFingerprint,
   resolveFingerprintMode,
-  type ComponentMap,
   type PresentedFingerprint,
-  type StoredFingerprint,
 } from "./fingerprint.js";
 import {
-  deleteTokenRecord,
-  getTokenRecord,
-  putTokenRecord,
-  type TokenRecord,
-} from "./kv.js";
+  bindDevice,
+  licenseUsable,
+  reconcileDeviceHardware,
+} from "./core/devices.js";
 import { openManagedPayload } from "./admin/lib/managedSecrets.js";
-
-export interface ValidDeviceToken {
-  tokenHash: string;
-  license: LicenseRow;
-  device: DeviceRow;
-}
 
 export type AuthzError =
   | { error: "unauthorized" }
@@ -171,15 +148,6 @@ export function tierExpiresAt(
     : null;
 }
 
-export function licenseUsable(
-  license: LicenseRow | null,
-  now: number,
-): license is LicenseRow {
-  if (!license || license.status !== "active") return false;
-  if (license.expires_at !== null && now > license.expires_at) return false;
-  return true;
-}
-
 function resolveDeviceLimit(payload: ManagedPayload, fallback: number): number {
   const e = payload.entitlements["deviceLimit"];
   return e && typeof e.value === "number" ? e.value : fallback;
@@ -275,26 +243,6 @@ export async function resolveEffective(
   return env ? openManagedPayload(env, product, payload) : payload;
 }
 
-/** Rehydrate a stored fingerprint row into the shape the pure matcher takes. */
-function toStoredFingerprint(row: FingerprintRow): StoredFingerprint {
-  let components: ComponentMap = {};
-  try {
-    const parsed: unknown = JSON.parse(row.components_json);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      components = parsed as ComponentMap;
-    }
-  } catch {
-    // A corrupt row must not wedge activation — an empty component map simply matches
-    // nothing that was stored, so the device rebinds on its next attempt.
-  }
-  return {
-    hwid: row.hwid,
-    components,
-    anchorHash: row.anchor_hash,
-    status: row.status === "unverified" ? "unverified" : "verified",
-  };
-}
-
 export async function authorizeDevice(
   env: Env,
   db: Db,
@@ -327,118 +275,25 @@ export async function authorizeDevice(
   const presented = opts.fingerprint ?? null;
 
   // `strict` is the only mode that makes a fingerprint mandatory, so clients that predate
-  // fingerprinting keep working everywhere else (recorded `unverified` below).
+  // fingerprinting keep working everywhere else (recorded `unverified` by `bindDevice`).
   if (mode === "strict" && !presented) return { error: "fingerprint_required" };
 
-  const existing = await getDevice(db, product.slug, deviceId);
-
-  // The hardware check runs BEFORE the seat check so a swapped machine gets a precise
-  // `hardware_mismatch` instead of a confusing `device_limit`.
-  let drift: { count: number; changed: FingerprintComponent[] } | null = null;
-  if (presented && mode !== "off" && existing?.status === "authorized") {
-    const storedRow = await getFingerprint(db, product.slug, deviceId);
-    if (storedRow) {
-      const match = matchFingerprint(
-        toStoredFingerprint(storedRow),
-        presented,
-        mode,
-      );
-      if (match.kind === "mismatch") {
-        // Retire the binding rather than rebinding in place. The old machine is gone, so it
-        // must not keep holding a seat; deauthorizing frees it (and purges the fingerprint
-        // and facts rows via setDeviceStatus). The client's retry then re-authorizes this
-        // same device_id through the normal path — `isNewAuthorization` is now true, so the
-        // seat check runs again and the new hardware binds cleanly.
-        await setDeviceStatus(db, product.slug, deviceId, "deauthorized");
-        if (existing.token_hash) {
-          await deleteTokenRecord(env, product.slug, existing.token_hash);
-        }
-        await appendAudit(db, {
-          product: product.slug,
-          id: randomId("aud"),
-          at: now,
-          actor_sub: null,
-          actor_name: null,
-          actor_email: null,
-          action: "device.fingerprint.mismatch",
-          target_kind: "device",
-          target_id: deviceId,
-          parent_id: license.id,
-          summary: `Hardware mismatch (${match.drift} components changed: ${match.changed.join(", ")}); binding retired`,
-        });
-        return {
-          error: "hardware_mismatch",
-          drift: match.drift,
-          changed: match.changed,
-        };
-      }
-      if (match.kind === "drift") {
-        drift = { count: match.drift, changed: match.changed };
-      }
-    }
-  }
-
-  const isNewAuthorization =
-    !existing ||
-    existing.status !== "authorized" ||
-    existing.license_id !== license.id;
-
-  // `X-PKey-Device` is a client-chosen string with no uniqueness requirement, so before this
-  // the cheapest way to hold N seats was to activate N times with N device ids from ONE
-  // machine — the server computed N identical hwids and never compared them.
-  // `findFingerprintByHwid` existed for exactly this and had zero callers (R3-11).
-  //
-  // POLICY: one machine holds one seat per license, and the NEWEST device id wins. Coalescing
-  // rather than refusing is deliberate — a reinstall or a cleared config legitimately produces
-  // a fresh device id, and refusing would strand the customer on a seat they can no longer
-  // reach. Retiring the stale id frees its seat and purges its fingerprint/facts rows through
-  // the same `setDeviceStatus` path the hardware-mismatch arm above uses.
-  //
-  // Scoped to the SAME license on purpose: one machine may legitimately hold this product's
-  // free enrolled license AND a purchased one, and those are different seat pools.
-  //
-  // Gated on `mode !== "off"` so a product whose customers genuinely run several instances on
-  // one host (containers sharing a machine UUID) has a documented escape hatch: turning
-  // fingerprint enforcement off for the product or the tier restores independent device ids.
-  const hwid = presented ? await computeHwid(presented.components) : null;
-  if (isNewAuthorization && hwid && mode !== "off") {
-    const sibling = await findFingerprintByHwid(db, product.slug, hwid);
-    if (sibling && sibling.device_id !== deviceId) {
-      const siblingDevice = await getDevice(
-        db,
-        product.slug,
-        sibling.device_id,
-      );
-      if (
-        siblingDevice?.status === "authorized" &&
-        siblingDevice.license_id === license.id
-      ) {
-        await setDeviceStatus(
-          db,
-          product.slug,
-          sibling.device_id,
-          "deauthorized",
-        );
-        if (siblingDevice.token_hash) {
-          await deleteTokenRecord(env, product.slug, siblingDevice.token_hash);
-        }
-        await appendAudit(db, {
-          product: product.slug,
-          id: randomId("aud"),
-          at: now,
-          actor_sub: null,
-          actor_name: null,
-          actor_email: null,
-          action: "device.seat.coalesced",
-          target_kind: "device",
-          target_id: sibling.device_id,
-          parent_id: license.id,
-          summary: `Same hardware re-registered as ${deviceId}; retired the stale device id so one machine holds one seat`,
-        });
-      }
-    }
-  }
-
+  // Core owns the hardware reconciliation and the device-row bookkeeping it implies: retiring
+  // a swapped binding, and coalescing a re-registered machine's stale device id. It runs
+  // BEFORE the seat check for two reasons that are both behaviour — a swapped machine gets a
+  // precise `hardware_mismatch` instead of a confusing `device_limit`, and a coalesced sibling
+  // has already released its seat by the time capacity is counted below.
+  const reconciled = await reconcileDeviceHardware(
+    env,
+    db,
+    product,
+    license,
+    deviceId,
+    now,
+    { mode, presented },
+  );
+  if ("error" in reconciled) return reconciled;
+  const { isNewAuthorization } = reconciled;
   if (isNewAuthorization) {
     // Use gate.ts's semver-correct comparators rather than a lexicographic string compare.
     // Only `deviceLimit` is read from this result today, so the old inline version wasn't
@@ -497,159 +352,13 @@ export async function authorizeDevice(
     }
   }
 
-  const token = mintToken();
-  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  if (existing?.token_hash && existing.token_hash !== tokenHash) {
-    await deleteTokenRecord(env, product.slug, existing.token_hash);
-  }
-
-  const device: DeviceRow = {
-    product: product.slug,
-    device_id: deviceId,
-    customer_id: existing?.customer_id ?? null,
-    license_id: license.id,
-    status: "authorized",
-    first_seen: existing?.first_seen ?? now,
-    last_seen: now,
-    ua: opts.userAgent ?? existing?.ua ?? null,
-    label: existing?.label ?? null,
-    overrides_json: existing?.overrides_json ?? null,
-    reported_json: existing?.reported_json ?? null,
-    token_hash: tokenHash,
-    platform: opts.platform ?? existing?.platform ?? null,
-    arch: opts.arch ?? existing?.arch ?? null,
-    app_version: opts.appVersion ?? existing?.app_version ?? null,
-    sdk_name: opts.sdkName ?? existing?.sdk_name ?? null,
-    sdk_version: opts.sdkVersion ?? existing?.sdk_version ?? null,
-  };
-  await upsertDevice(db, device);
-
-  if (presented) {
-    // The client's own hwid is never trusted — recomputing it here is what stops a forged
-    // value from colliding with another device's free-tier dedupe key.
-    const priorRow = await getFingerprint(db, product.slug, deviceId);
-    await upsertFingerprint(db, {
-      product: product.slug,
-      device_id: deviceId,
-      hwid: hwid ?? (await computeHwid(presented.components)),
-      components_json: JSON.stringify(presented.components),
-      anchor_hash: presented.components[FINGERPRINT_ANCHOR] ?? null,
-      status: "verified",
-      first_seen: priorRow?.first_seen ?? now,
-      last_seen: now,
-      last_drift_at: drift ? now : (priorRow?.last_drift_at ?? null),
-      last_drift_count: drift
-        ? drift.count
-        : (priorRow?.last_drift_count ?? null),
-    });
-    if (drift) {
-      await appendAudit(db, {
-        product: product.slug,
-        id: randomId("aud"),
-        at: now,
-        actor_sub: null,
-        actor_name: null,
-        actor_email: null,
-        action: "device.fingerprint.drift",
-        target_kind: "device",
-        target_id: deviceId,
-        parent_id: license.id,
-        summary: `Hardware drift tolerated (${drift.count} changed: ${drift.changed.join(", ")})`,
-      });
-    }
-  } else if (mode !== "off") {
-    // No fingerprint from a client that could have sent one: record the device as unverified
-    // so an operator can tell "predates fingerprinting" from "declined to identify".
-    const priorRow = await getFingerprint(db, product.slug, deviceId);
-    if (!priorRow) {
-      await upsertFingerprint(db, {
-        product: product.slug,
-        device_id: deviceId,
-        hwid: "",
-        components_json: "{}",
-        anchor_hash: null,
-        status: "unverified",
-        first_seen: now,
-        last_seen: now,
-        last_drift_at: null,
-        last_drift_count: null,
-      });
-    }
-  }
-
-  await putTokenRecord(env, product.slug, tokenHash, {
-    product: product.slug,
-    deviceId: deviceId,
-    licenseId: license.id,
+  // Core mints the token and writes every row the binding consists of.
+  return bindDevice(env, db, product, license, deviceId, now, {
+    existing: reconciled.existing,
+    presented,
+    hwid: reconciled.hwid,
+    mode,
+    drift: reconciled.drift,
+    metadata: opts,
   });
-  return { token, device };
-}
-
-export async function validateDeviceToken(
-  env: Env,
-  db: Db,
-  product: Product,
-  token: string | null,
-  now: number,
-  opts: { deviceId?: string | null } = {},
-): Promise<ValidDeviceToken | { error: "unauthorized" }> {
-  if (!token) return { error: "unauthorized" };
-  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const cached = await getTokenRecord(env, product.slug, tokenHash);
-  if (cached && cached.product !== product.slug)
-    return { error: "unauthorized" };
-  const device = cached
-    ? await getDevice(db, product.slug, cached.deviceId)
-    : await getDeviceByTokenHash(db, product.slug, tokenHash);
-  const rec: TokenRecord | null =
-    cached ??
-    (device
-      ? {
-          product: product.slug,
-          deviceId: device.device_id,
-          licenseId: device.license_id,
-        }
-      : null);
-
-  if (opts.deviceId && rec?.deviceId !== opts.deviceId)
-    return { error: "unauthorized" };
-  if (!device || device.status !== "authorized")
-    return { error: "unauthorized" };
-  if (!rec) return { error: "unauthorized" };
-  if (device.license_id !== rec.licenseId || device.token_hash !== tokenHash)
-    return { error: "unauthorized" };
-
-  const license = await getLicense(db, product.slug, rec.licenseId);
-  if (!licenseUsable(license, now)) return { error: "unauthorized" };
-
-  // R10-12 — the cache is back-filled ONLY once every check above has passed. Writing it as
-  // soon as the device row was found (the previous behaviour) meant replaying a token that had
-  // just been revoked — deauthorized device, disabled or expired license — silently recreated
-  // the KV record that `deleteTokenRecord` had purged, so a "revoked" credential kept
-  // re-materialising its own hot-path entry on every attempt.
-  if (!cached) await putTokenRecord(env, product.slug, tokenHash, rec);
-  return { tokenHash, license, device };
-}
-
-export async function rotateDeviceToken(
-  env: Env,
-  db: Db,
-  product: Product,
-  valid: ValidDeviceToken,
-  now: number,
-): Promise<string> {
-  const token = mintToken();
-  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  await deleteTokenRecord(env, product.slug, valid.tokenHash);
-  await upsertDevice(db, {
-    ...valid.device,
-    last_seen: now,
-    token_hash: tokenHash,
-  });
-  await putTokenRecord(env, product.slug, tokenHash, {
-    product: product.slug,
-    deviceId: valid.device.device_id,
-    licenseId: valid.license.id,
-  });
-  return token;
 }

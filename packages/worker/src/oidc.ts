@@ -14,11 +14,11 @@ import {
 } from "@plrs/protocol";
 import { secret, type Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import { openProductSecret, type Product } from "./product.js";
-import { errorResponse, json, methodNotAllowed } from "./http.js";
+import { openProductSecret, type Product } from "./core/products.js";
+import { errorResponse, json, methodNotAllowed } from "./core/errors.js";
 import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
 import { randomId } from "./crypto.js";
-import { clientIp, rateLimitOk, type RateLimit } from "./rateLimit.js";
+import { clientIp, rateLimitOk, type RateLimit } from "./core/rateLimit.js";
 import {
   appendAudit,
   claimEnrolledLicense,
@@ -30,11 +30,8 @@ import {
   moveDevices,
 } from "./repo.js";
 import { allowsOidcDefault } from "./fingerprint.js";
-import {
-  authorizeDevice,
-  licenseUsable,
-  tierExpiresAt,
-} from "./licenseCore.js";
+import { authorizeDevice, tierExpiresAt } from "./licenseCore.js";
+import { licenseUsable } from "./core/devices.js";
 import { createBrowserSession } from "./browserSession.js";
 import { platformOidcConfig } from "./platformOidc.js";
 import { isSafeIssuerUrl } from "./release/manifest.js";

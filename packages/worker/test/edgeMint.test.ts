@@ -9,7 +9,7 @@ import {
   seedProduct,
   seedProductSecret,
 } from "./seed.js";
-import { loadProduct, type Product } from "../src/product.js";
+import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/licensing.js";
 import {
   getEdgeMintConfig,

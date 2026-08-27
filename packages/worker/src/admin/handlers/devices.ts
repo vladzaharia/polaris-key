@@ -6,7 +6,7 @@
 
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../http.js";
+import { ErrorCode } from "../../core/errors.js";
 import { deleteTokenRecord } from "../../kv.js";
 import {
   clearFingerprint,

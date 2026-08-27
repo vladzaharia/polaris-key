@@ -22,7 +22,7 @@ import { Catalog } from "@plrs/catalog";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../http.js";
+import { ErrorCode } from "../../core/errors.js";
 import {
   getProduct,
   getTier,

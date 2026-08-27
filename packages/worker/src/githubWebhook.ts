@@ -2,7 +2,7 @@
 
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import { errorResponse, json } from "./http.js";
+import { errorResponse, json } from "./core/errors.js";
 import { pk } from "./kv.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
 import { getReleaseConfig } from "./release/index.js";

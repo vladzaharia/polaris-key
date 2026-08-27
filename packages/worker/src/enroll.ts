@@ -12,10 +12,15 @@
 
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import type { Product } from "./product.js";
-import { errorResponse, ErrorCode, json, methodNotAllowed } from "./http.js";
+import type { Product } from "./core/products.js";
+import {
+  errorResponse,
+  ErrorCode,
+  json,
+  methodNotAllowed,
+} from "./core/errors.js";
 import { randomId } from "./crypto.js";
-import { clientIp, rateLimitOk } from "./rateLimit.js";
+import { clientIp, rateLimitOk } from "./core/rateLimit.js";
 import { allowsAnonymousEnroll, computeEnrollHwid } from "./fingerprint.js";
 import {
   appendAudit,
@@ -26,13 +31,12 @@ import {
   type LicenseRow,
   type TierRow,
 } from "./repo.js";
+import { authorizationError, shapeLicense } from "./licensing.js";
 import {
-  authorizationError,
   deviceMetadata,
   readFingerprint,
   shapeDevice,
-  shapeLicense,
-} from "./licensing.js";
+} from "./core/devices.js";
 import { authorizeDevice, tierExpiresAt } from "./licenseCore.js";
 import { HEADER_DEVICE } from "@plrs/protocol";
 

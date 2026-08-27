@@ -4,23 +4,23 @@
 // NOT resolved from a Worker secret by name. Fails closed if there is no active product key
 // or it can't be decrypted: a product with no usable key can never sign config.
 
-import type { Env } from "./env.js";
-import type { Db } from "./db/types.js";
+import type { Env } from "../env.js";
+import type { Db } from "../db/types.js";
 import {
   getActiveProductKey,
   getActiveSchema,
   getProduct,
   getProductSecret,
   listVerificationProductKeys,
-} from "./repo.js";
-import { open } from "./keyvault.js";
+} from "../repo.js";
+import { open } from "../keyvault.js";
 import {
   parseAutoIssue,
   parseFingerprintPolicy,
   type AutoIssuePolicy,
   type FingerprintPolicy,
-} from "./fingerprint.js";
-import { parseServices, type ServicesMap } from "./core/services.js";
+} from "../fingerprint.js";
+import { parseServices, type ServicesMap } from "./services.js";
 
 export interface Product {
   slug: string;

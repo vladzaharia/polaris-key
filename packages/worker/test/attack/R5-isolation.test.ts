@@ -24,8 +24,9 @@ import {
 import type { Env } from "../../src/env.js";
 import type { Db } from "../../src/db/types.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
-import { loadProduct, type Product } from "../../src/product.js";
-import { handleActivate, handleDevices } from "../../src/licensing.js";
+import { loadProduct, type Product } from "../../src/core/products.js";
+import { handleActivate } from "../../src/licensing.js";
+import { handleDevices } from "../../src/core/devices.js";
 import { handleMintToken } from "../../src/edgeMint.js";
 import { activateFromIdentity } from "../../src/oidc.js";
 import { handleAdminApi } from "../../src/admin/api.js";

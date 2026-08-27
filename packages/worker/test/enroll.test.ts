@@ -14,7 +14,7 @@ import {
 } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/env.js";
-import { loadProduct, type Product } from "../src/product.js";
+import { loadProduct, type Product } from "../src/core/products.js";
 import { handleEnroll } from "../src/enroll.js";
 import { handleActivate, handleConfig } from "../src/licensing.js";
 import { activateFromIdentity } from "../src/oidc.js";

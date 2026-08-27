@@ -13,10 +13,11 @@
 
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import type { Product } from "../product.js";
-import { bearer, errorResponse, json, notFound } from "../http.js";
-import { validateDeviceToken } from "../licenseCore.js";
-import { clientIp, rateLimitOk } from "../rateLimit.js";
+import type { Product } from "../core/products.js";
+import { bearer } from "../http.js";
+import { errorResponse, json, notFound } from "../core/errors.js";
+import { validateDeviceToken } from "../core/devices.js";
+import { clientIp, rateLimitOk } from "../core/rateLimit.js";
 import { appSecurityHeaders } from "../securityHeaders.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import {

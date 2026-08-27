@@ -1,0 +1,758 @@
+/// <reference types="@cloudflare/workers-types" />
+
+/**
+ * The Device principal — core's always-on substrate for "which machine is this, and is its
+ * credential still live" (design spec §5.1: registration, `plrst_` tokens, list/rename/
+ * deauthorize, fingerprints, facts/telemetry).
+ *
+ * Assembled from the device halves of `licenseCore.ts` (`validateDeviceToken`,
+ * `rotateDeviceToken`, and the device-row bookkeeping inside `authorizeDevice`) and
+ * `licensing.ts` (`/devices` self-service, the report/facts surface, device metadata and the
+ * activation-body fingerprint reader). Nothing here changed behaviour in the move.
+ *
+ * ── THE SEAM WITH LICENSE ────────────────────────────────────────────────────────────────────
+ *
+ * `authorizeDevice` genuinely straddles: it is a SEAT decision (license-owned: is the licence
+ * usable, what does the tier allow, is there capacity) wrapped around DEVICE bookkeeping
+ * (hardware reconciliation, token mint/rotation/purge, the `devices`/`device_fingerprints`
+ * rows, the KV token record). It is split rather than moved:
+ *
+ *   licenseCore.authorizeDevice   licence usability -> tier -> fingerprint MODE -> [core]
+ *                                 reconcileDeviceHardware -> seat limit -> [core] bindDevice
+ *
+ * so the ordering of side effects is byte-for-byte what it was: the hardware check still runs
+ * before the seat check (a swapped machine gets `hardware_mismatch`, not a confusing
+ * `device_limit`), and the rows are still written only after a seat is claimed.
+ *
+ * `licenseUsable` lives here, not with the rest of the licence logic, because Core's own
+ * `validateDeviceToken` depends on it — a device token is live only while the licence behind it
+ * is — and Core must never import a service. It is a pure predicate over a `LicenseRow`; License
+ * imports it back from core.
+ */
+
+import {
+  FINGERPRINT_ANCHOR,
+  HEADER_ARCH,
+  HEADER_PLATFORM,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
+  HEADER_VERSION,
+  MAX_DEVICE_PROBES,
+  type DeviceProbeResult,
+  type FingerprintComponent,
+  type FingerprintMode,
+} from "@plrs/protocol";
+import type { Env } from "../env.js";
+import type { Db } from "../db/types.js";
+import type { Product } from "./products.js";
+import { hashKey, mintToken, randomId } from "../crypto.js";
+import {
+  appendAudit,
+  findFingerprintByHwid,
+  getDevice,
+  getDeviceByTokenHash,
+  getFingerprint,
+  getLicense,
+  listDevicesByLicense,
+  setDeviceLabel,
+  setDeviceReported,
+  setDeviceStatus,
+  upsertDevice,
+  upsertDeviceFacts,
+  upsertFingerprint,
+  type DeviceFactsRow,
+  type DeviceRow,
+  type FingerprintRow,
+  type LicenseRow,
+} from "../repo.js";
+import {
+  computeHwid,
+  matchFingerprint,
+  parseFingerprint,
+  type ComponentMap,
+  type PresentedFingerprint,
+  type StoredFingerprint,
+} from "../fingerprint.js";
+import {
+  deleteTokenRecord,
+  getTokenRecord,
+  putTokenRecord,
+  type TokenRecord,
+} from "../kv.js";
+import { bearer } from "../http.js";
+import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
+
+export interface ValidDeviceToken {
+  tokenHash: string;
+  license: LicenseRow;
+  device: DeviceRow;
+}
+
+/** The hardware-reconciliation outcome that aborts an authorization. Structurally identical to
+ *  `AuthzError`'s `hardware_mismatch` member, which stays license-side with `authorizeDevice`. */
+export interface DeviceHardwareMismatch {
+  error: "hardware_mismatch";
+  drift: number;
+  changed: FingerprintComponent[];
+}
+
+/** Hardware state reconciled against the stored binding, ready for the seat decision. */
+export interface ReconciledDevice {
+  /** The device row as it stands, or null for a first-ever authorization. */
+  existing: DeviceRow | null;
+  /** True when this authorization needs a seat: new device, revoked device, or relicensed. */
+  isNewAuthorization: boolean;
+  /** The SERVER-computed hwid for the presented components (never the client's own). */
+  hwid: string | null;
+  /** Tolerated drift to record on the fingerprint row, when the match was not exact. */
+  drift: { count: number; changed: FingerprintComponent[] } | null;
+}
+
+export function licenseUsable(
+  license: LicenseRow | null,
+  now: number,
+): license is LicenseRow {
+  if (!license || license.status !== "active") return false;
+  if (license.expires_at !== null && now > license.expires_at) return false;
+  return true;
+}
+
+/** Rehydrate a stored fingerprint row into the shape the pure matcher takes. */
+function toStoredFingerprint(row: FingerprintRow): StoredFingerprint {
+  let components: ComponentMap = {};
+  try {
+    const parsed: unknown = JSON.parse(row.components_json);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      components = parsed as ComponentMap;
+    }
+  } catch {
+    // A corrupt row must not wedge activation — an empty component map simply matches
+    // nothing that was stored, so the device rebinds on its next attempt.
+  }
+  return {
+    hwid: row.hwid,
+    components,
+    anchorHash: row.anchor_hash,
+    status: row.status === "unverified" ? "unverified" : "verified",
+  };
+}
+
+/**
+ * Retire a device binding: deauthorize the row (which purges its fingerprint and facts through
+ * `setDeviceStatus`) and evict its cached token record so the credential stops working now
+ * rather than at KV expiry.
+ */
+export async function retireDeviceBinding(
+  env: Env,
+  db: Db,
+  product: string,
+  deviceId: string,
+  tokenHash: string | null,
+): Promise<void> {
+  await setDeviceStatus(db, product, deviceId, "deauthorized");
+  if (tokenHash) {
+    await deleteTokenRecord(env, product, tokenHash);
+  }
+}
+
+/**
+ * Reconcile the presented hardware against what this product already knows, BEFORE any seat
+ * decision is taken (see the seam note at the top of this file).
+ */
+export async function reconcileDeviceHardware(
+  env: Env,
+  db: Db,
+  product: Product,
+  license: LicenseRow,
+  deviceId: string,
+  now: number,
+  opts: { mode: FingerprintMode; presented: PresentedFingerprint | null },
+): Promise<ReconciledDevice | DeviceHardwareMismatch> {
+  const { mode, presented } = opts;
+  const existing = await getDevice(db, product.slug, deviceId);
+
+  // The hardware check runs BEFORE the seat check so a swapped machine gets a precise
+  // `hardware_mismatch` instead of a confusing `device_limit`.
+  let drift: { count: number; changed: FingerprintComponent[] } | null = null;
+  if (presented && mode !== "off" && existing?.status === "authorized") {
+    const storedRow = await getFingerprint(db, product.slug, deviceId);
+    if (storedRow) {
+      const match = matchFingerprint(
+        toStoredFingerprint(storedRow),
+        presented,
+        mode,
+      );
+      if (match.kind === "mismatch") {
+        // Retire the binding rather than rebinding in place. The old machine is gone, so it
+        // must not keep holding a seat; deauthorizing frees it (and purges the fingerprint
+        // and facts rows via setDeviceStatus). The client's retry then re-authorizes this
+        // same device_id through the normal path — `isNewAuthorization` is now true, so the
+        // seat check runs again and the new hardware binds cleanly.
+        await retireDeviceBinding(
+          env,
+          db,
+          product.slug,
+          deviceId,
+          existing.token_hash,
+        );
+        await appendAudit(db, {
+          product: product.slug,
+          id: randomId("aud"),
+          at: now,
+          actor_sub: null,
+          actor_name: null,
+          actor_email: null,
+          action: "device.fingerprint.mismatch",
+          target_kind: "device",
+          target_id: deviceId,
+          parent_id: license.id,
+          summary: `Hardware mismatch (${match.drift} components changed: ${match.changed.join(", ")}); binding retired`,
+        });
+        return {
+          error: "hardware_mismatch",
+          drift: match.drift,
+          changed: match.changed,
+        };
+      }
+      if (match.kind === "drift") {
+        drift = { count: match.drift, changed: match.changed };
+      }
+    }
+  }
+
+  const isNewAuthorization =
+    !existing ||
+    existing.status !== "authorized" ||
+    existing.license_id !== license.id;
+
+  // `X-PKey-Device` is a client-chosen string with no uniqueness requirement, so before this
+  // the cheapest way to hold N seats was to activate N times with N device ids from ONE
+  // machine — the server computed N identical hwids and never compared them.
+  // `findFingerprintByHwid` existed for exactly this and had zero callers (R3-11).
+  //
+  // POLICY: one machine holds one seat per license, and the NEWEST device id wins. Coalescing
+  // rather than refusing is deliberate — a reinstall or a cleared config legitimately produces
+  // a fresh device id, and refusing would strand the customer on a seat they can no longer
+  // reach. Retiring the stale id frees its seat and purges its fingerprint/facts rows through
+  // the same `setDeviceStatus` path the hardware-mismatch arm above uses.
+  //
+  // Scoped to the SAME license on purpose: one machine may legitimately hold this product's
+  // free enrolled license AND a purchased one, and those are different seat pools.
+  //
+  // Gated on `mode !== "off"` so a product whose customers genuinely run several instances on
+  // one host (containers sharing a machine UUID) has a documented escape hatch: turning
+  // fingerprint enforcement off for the product or the tier restores independent device ids.
+  const hwid = presented ? await computeHwid(presented.components) : null;
+  if (isNewAuthorization && hwid && mode !== "off") {
+    const sibling = await findFingerprintByHwid(db, product.slug, hwid);
+    if (sibling && sibling.device_id !== deviceId) {
+      const siblingDevice = await getDevice(
+        db,
+        product.slug,
+        sibling.device_id,
+      );
+      if (
+        siblingDevice?.status === "authorized" &&
+        siblingDevice.license_id === license.id
+      ) {
+        await retireDeviceBinding(
+          env,
+          db,
+          product.slug,
+          sibling.device_id,
+          siblingDevice.token_hash,
+        );
+        await appendAudit(db, {
+          product: product.slug,
+          id: randomId("aud"),
+          at: now,
+          actor_sub: null,
+          actor_name: null,
+          actor_email: null,
+          action: "device.seat.coalesced",
+          target_kind: "device",
+          target_id: sibling.device_id,
+          parent_id: license.id,
+          summary: `Same hardware re-registered as ${deviceId}; retired the stale device id so one machine holds one seat`,
+        });
+      }
+    }
+  }
+
+  return { existing, isNewAuthorization, hwid, drift };
+}
+
+/**
+ * Mint the device's token and write every row the binding consists of: the `devices` row, the
+ * fingerprint row (verified, or `unverified` for a client that could have identified itself and
+ * did not), and the KV token record. Called only once the licence side has granted a seat.
+ */
+export async function bindDevice(
+  env: Env,
+  db: Db,
+  product: Product,
+  license: LicenseRow,
+  deviceId: string,
+  now: number,
+  opts: {
+    existing: DeviceRow | null;
+    presented: PresentedFingerprint | null;
+    hwid: string | null;
+    mode: FingerprintMode;
+    drift: { count: number; changed: FingerprintComponent[] } | null;
+    metadata?: {
+      userAgent?: string | null;
+      platform?: string | null;
+      arch?: string | null;
+      appVersion?: string | null;
+      sdkName?: string | null;
+      sdkVersion?: string | null;
+    };
+  },
+): Promise<{ token: string; device: DeviceRow }> {
+  const { existing, presented, hwid, mode, drift } = opts;
+  const meta = opts.metadata ?? {};
+
+  const token = mintToken();
+  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+  if (existing?.token_hash && existing.token_hash !== tokenHash) {
+    await deleteTokenRecord(env, product.slug, existing.token_hash);
+  }
+
+  const device: DeviceRow = {
+    product: product.slug,
+    device_id: deviceId,
+    customer_id: existing?.customer_id ?? null,
+    license_id: license.id,
+    status: "authorized",
+    first_seen: existing?.first_seen ?? now,
+    last_seen: now,
+    ua: meta.userAgent ?? existing?.ua ?? null,
+    label: existing?.label ?? null,
+    overrides_json: existing?.overrides_json ?? null,
+    reported_json: existing?.reported_json ?? null,
+    token_hash: tokenHash,
+    platform: meta.platform ?? existing?.platform ?? null,
+    arch: meta.arch ?? existing?.arch ?? null,
+    app_version: meta.appVersion ?? existing?.app_version ?? null,
+    sdk_name: meta.sdkName ?? existing?.sdk_name ?? null,
+    sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
+  };
+  await upsertDevice(db, device);
+
+  if (presented) {
+    // The client's own hwid is never trusted — recomputing it here is what stops a forged
+    // value from colliding with another device's free-tier dedupe key.
+    const priorRow = await getFingerprint(db, product.slug, deviceId);
+    await upsertFingerprint(db, {
+      product: product.slug,
+      device_id: deviceId,
+      hwid: hwid ?? (await computeHwid(presented.components)),
+      components_json: JSON.stringify(presented.components),
+      anchor_hash: presented.components[FINGERPRINT_ANCHOR] ?? null,
+      status: "verified",
+      first_seen: priorRow?.first_seen ?? now,
+      last_seen: now,
+      last_drift_at: drift ? now : (priorRow?.last_drift_at ?? null),
+      last_drift_count: drift
+        ? drift.count
+        : (priorRow?.last_drift_count ?? null),
+    });
+    if (drift) {
+      await appendAudit(db, {
+        product: product.slug,
+        id: randomId("aud"),
+        at: now,
+        actor_sub: null,
+        actor_name: null,
+        actor_email: null,
+        action: "device.fingerprint.drift",
+        target_kind: "device",
+        target_id: deviceId,
+        parent_id: license.id,
+        summary: `Hardware drift tolerated (${drift.count} changed: ${drift.changed.join(", ")})`,
+      });
+    }
+  } else if (mode !== "off") {
+    // No fingerprint from a client that could have sent one: record the device as unverified
+    // so an operator can tell "predates fingerprinting" from "declined to identify".
+    const priorRow = await getFingerprint(db, product.slug, deviceId);
+    if (!priorRow) {
+      await upsertFingerprint(db, {
+        product: product.slug,
+        device_id: deviceId,
+        hwid: "",
+        components_json: "{}",
+        anchor_hash: null,
+        status: "unverified",
+        first_seen: now,
+        last_seen: now,
+        last_drift_at: null,
+        last_drift_count: null,
+      });
+    }
+  }
+
+  await putTokenRecord(env, product.slug, tokenHash, {
+    product: product.slug,
+    deviceId: deviceId,
+    licenseId: license.id,
+  });
+  return { token, device };
+}
+
+export async function validateDeviceToken(
+  env: Env,
+  db: Db,
+  product: Product,
+  token: string | null,
+  now: number,
+  opts: { deviceId?: string | null } = {},
+): Promise<ValidDeviceToken | { error: "unauthorized" }> {
+  if (!token) return { error: "unauthorized" };
+  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+  const cached = await getTokenRecord(env, product.slug, tokenHash);
+  if (cached && cached.product !== product.slug)
+    return { error: "unauthorized" };
+  const device = cached
+    ? await getDevice(db, product.slug, cached.deviceId)
+    : await getDeviceByTokenHash(db, product.slug, tokenHash);
+  const rec: TokenRecord | null =
+    cached ??
+    (device
+      ? {
+          product: product.slug,
+          deviceId: device.device_id,
+          licenseId: device.license_id,
+        }
+      : null);
+
+  if (opts.deviceId && rec?.deviceId !== opts.deviceId)
+    return { error: "unauthorized" };
+  if (!device || device.status !== "authorized")
+    return { error: "unauthorized" };
+  if (!rec) return { error: "unauthorized" };
+  if (device.license_id !== rec.licenseId || device.token_hash !== tokenHash)
+    return { error: "unauthorized" };
+
+  const license = await getLicense(db, product.slug, rec.licenseId);
+  if (!licenseUsable(license, now)) return { error: "unauthorized" };
+
+  // R10-12 — the cache is back-filled ONLY once every check above has passed. Writing it as
+  // soon as the device row was found (the previous behaviour) meant replaying a token that had
+  // just been revoked — deauthorized device, disabled or expired license — silently recreated
+  // the KV record that `deleteTokenRecord` had purged, so a "revoked" credential kept
+  // re-materialising its own hot-path entry on every attempt.
+  if (!cached) await putTokenRecord(env, product.slug, tokenHash, rec);
+  return { tokenHash, license, device };
+}
+
+export async function rotateDeviceToken(
+  env: Env,
+  db: Db,
+  product: Product,
+  valid: ValidDeviceToken,
+  now: number,
+): Promise<string> {
+  const token = mintToken();
+  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+  await deleteTokenRecord(env, product.slug, valid.tokenHash);
+  await upsertDevice(db, {
+    ...valid.device,
+    last_seen: now,
+    token_hash: tokenHash,
+  });
+  await putTokenRecord(env, product.slug, tokenHash, {
+    product: product.slug,
+    deviceId: valid.device.device_id,
+    licenseId: valid.license.id,
+  });
+  return token;
+}
+
+export function deviceMetadata(req: Request): {
+  userAgent: string | null;
+  platform: string | null;
+  arch: string | null;
+  appVersion: string | null;
+  sdkName: string | null;
+  sdkVersion: string | null;
+} {
+  return {
+    userAgent: req.headers.get("user-agent"),
+    platform: req.headers.get(HEADER_PLATFORM),
+    arch: req.headers.get(HEADER_ARCH),
+    appVersion: req.headers.get(HEADER_VERSION),
+    sdkName: req.headers.get(HEADER_SDK_NAME),
+    sdkVersion: req.headers.get(HEADER_SDK_VERSION),
+  };
+}
+
+/** Largest activation body we will read. A fingerprint is a handful of short digests; this is
+ *  generous for that and far below the report cap. */
+const MAX_ACTIVATE_BODY = 4 * 1024;
+
+/**
+ * Read the optional activation body's fingerprint.
+ *
+ * `/activate` carried no body before fingerprinting, so an absent, empty, oversized, or
+ * unparseable body means "no fingerprint" and never an error — otherwise every already-shipped
+ * client would start failing the moment this deployed. Whether a missing fingerprint is
+ * actually acceptable is the tier's decision, enforced in `authorizeDevice`.
+ */
+export async function readFingerprint(
+  req: Request,
+): Promise<PresentedFingerprint | null> {
+  const declared = req.headers.get("content-length");
+  if (declared && Number(declared) > MAX_ACTIVATE_BODY) return null;
+  let raw: string;
+  try {
+    raw = await req.text();
+  } catch {
+    return null;
+  }
+  if (!raw.trim() || raw.length > MAX_ACTIVATE_BODY) return null;
+  try {
+    const body = JSON.parse(raw) as Record<string, unknown>;
+    return parseFingerprint(body.fingerprint);
+  } catch {
+    return null;
+  }
+}
+
+export function shapeDevice(device: DeviceRow, currentDeviceId?: string) {
+  return {
+    id: device.device_id,
+    licenseId: device.license_id,
+    label: device.label,
+    status: device.status,
+    current: device.device_id === currentDeviceId,
+    firstSeen: device.first_seen,
+    lastSeen: device.last_seen,
+    userAgent: device.ua,
+    platform: device.platform ?? null,
+    arch: device.arch ?? null,
+    appVersion: device.app_version ?? null,
+    sdkName: device.sdk_name ?? null,
+    sdkVersion: device.sdk_version ?? null,
+  };
+}
+
+/** GET/PATCH/DELETE /<product>/devices[/<id>] — self-service device management. */
+export async function handleDevices(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+  deviceId?: string,
+): Promise<Response> {
+  const token = bearer(req);
+  const valid = await validateDeviceToken(env, db, product, token, now);
+  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+
+  const devices = await listDevicesByLicense(
+    db,
+    product.slug,
+    valid.license.id,
+  );
+  if (req.method === "GET") {
+    return json({
+      currentDeviceId: valid.device.device_id,
+      devices: devices.map((device) =>
+        shapeDevice(device, valid.device.device_id),
+      ),
+    });
+  }
+
+  if (!deviceId)
+    return errorResponse(400, ErrorCode.BadRequest, "missing device id");
+  const target = devices.find((device) => device.device_id === deviceId);
+  if (!target) return errorResponse(404, ErrorCode.NotFound);
+
+  // R3-09: a device token authenticates ONE device, not the licence. Listing siblings is
+  // legitimate self-service (the caller already paid for the seats), but MUTATING one is not:
+  // any device could relabel or deauthorize every other install on the same licence — and the
+  // DELETE arm purges the victim's fingerprint through `setDeviceStatus`, so the eviction is
+  // not even recoverable by re-activating the same hardware. Cross-device management belongs
+  // on the portal, which authenticates the licence OWNER and rate-limits the action.
+  if (deviceId !== valid.device.device_id) {
+    return errorResponse(
+      403,
+      ErrorCode.Forbidden,
+      "a device token may only manage its own device",
+    );
+  }
+
+  if (req.method === "PATCH") {
+    let body: Record<string, unknown>;
+    try {
+      body = (await req.json()) as Record<string, unknown>;
+    } catch {
+      return errorResponse(400, ErrorCode.BadRequest, "invalid json");
+    }
+    const label =
+      typeof body.label === "string" && body.label.trim()
+        ? body.label.trim().slice(0, 120)
+        : null;
+    await setDeviceLabel(db, product.slug, deviceId, label);
+    return json({
+      ok: true,
+      device: { ...shapeDevice(target, valid.device.device_id), label },
+    });
+  }
+
+  if (req.method === "DELETE") {
+    await retireDeviceBinding(
+      env,
+      db,
+      product.slug,
+      deviceId,
+      target.token_hash,
+    );
+    return json({ ok: true });
+  }
+
+  return methodNotAllowed();
+}
+
+// ── Device facts / telemetry ─────────────────────────────────────────────────
+
+// The report allowlist. Anything not named here is DROPPED SILENTLY, so a new client field
+// that isn't added here vanishes without an error anywhere — add the key here and a test in
+// licensingReport.test.ts together. The first six keys are the software-facts additions; the
+// rest are the original v1 set and must stay.
+const REPORT_KEYS = [
+  "os",
+  "hardware",
+  "runtime",
+  "locale",
+  "timezone",
+  "probes",
+  "sdk",
+  "sdkVersion",
+  "appVersion",
+  "platform",
+  "arch",
+  "gate",
+  "config",
+  "entitlements",
+  "timestamp",
+] as const;
+
+function boundedReport(input: unknown): Record<string, unknown> {
+  const src =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? (input as Record<string, unknown>)
+      : {};
+  const out: Record<string, unknown> = {};
+  for (const key of REPORT_KEYS) {
+    if (src[key] !== undefined) out[key] = src[key];
+  }
+  // `probes` is the one open-ended map a client controls, so it gets its own bound on top of
+  // the body-size cap: a truncated inventory must not be able to ride in under 16 KiB.
+  const probes = out.probes;
+  if (probes !== undefined) {
+    out.probes = boundedProbes(probes);
+  }
+  return out;
+}
+
+function boundedProbes(input: unknown): Record<string, DeviceProbeResult> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const out: Record<string, DeviceProbeResult> = {};
+  for (const [id, raw] of Object.entries(input as Record<string, unknown>)) {
+    if (Object.keys(out).length >= MAX_DEVICE_PROBES) break;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const entry = raw as Record<string, unknown>;
+    if (typeof entry.present !== "boolean") continue;
+    out[id.slice(0, 64)] = {
+      present: entry.present,
+      ...(typeof entry.version === "string"
+        ? { version: entry.version.slice(0, 64) }
+        : {}),
+    };
+  }
+  return out;
+}
+
+/** Project the allowlisted report into the flat `device_facts` row shape. */
+function factsFromReport(
+  product: string,
+  deviceId: string,
+  report: Record<string, unknown>,
+  now: number,
+): DeviceFactsRow {
+  const obj = (value: unknown): Record<string, unknown> =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  const str = (value: unknown): string | null =>
+    typeof value === "string" ? value.slice(0, 128) : null;
+  const int = (value: unknown): number | null =>
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.trunc(value)
+      : null;
+
+  const os = obj(report.os);
+  const hardware = obj(report.hardware);
+  const runtime = obj(report.runtime);
+  return {
+    product,
+    device_id: deviceId,
+    os_name: str(os.name),
+    os_version: str(os.version),
+    os_build: str(os.build),
+    kernel: str(os.kernel),
+    cpu_model: str(hardware.cpuModel),
+    cpu_cores: int(hardware.cpuCores),
+    ram_mb: int(hardware.ramMb),
+    machine_model: str(hardware.machineModel),
+    locale: str(report.locale),
+    timezone: str(report.timezone),
+    runtime_name: str(runtime.name),
+    runtime_version: str(runtime.version),
+    probes_json:
+      report.probes === undefined ? null : JSON.stringify(report.probes),
+    updated_at: now,
+  };
+}
+
+/** POST /<product>/config/report — store the device's reported (non-secret) snapshot. */
+export async function handleReport(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "POST") return methodNotAllowed();
+  const token = bearer(req);
+  const valid = await validateDeviceToken(env, db, product, token, now);
+  if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
+  const len = req.headers.get("content-length");
+  if (len && Number(len) > 16 * 1024)
+    return errorResponse(413, "body_too_large", "report body too large");
+  const rawText = await req.text();
+  if (rawText.length > 16 * 1024)
+    return errorResponse(413, "body_too_large", "report body too large");
+  let snapshot: unknown;
+  try {
+    snapshot = rawText.trim() ? (JSON.parse(rawText) as unknown) : {};
+  } catch {
+    return errorResponse(400, ErrorCode.BadRequest, "invalid body");
+  }
+  const report = boundedReport(snapshot);
+  await setDeviceReported(
+    db,
+    product.slug,
+    valid.device.device_id,
+    JSON.stringify(report),
+    now,
+  );
+  await upsertDeviceFacts(
+    db,
+    factsFromReport(product.slug, valid.device.device_id, report, now),
+  );
+  return json({ ok: true });
+}

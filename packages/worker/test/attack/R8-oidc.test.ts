@@ -30,7 +30,7 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "../seed.js";
-import { loadProduct, type Product } from "../../src/product.js";
+import { loadProduct, type Product } from "../../src/core/products.js";
 import {
   activateFromIdentity,
   applyProvisioning,
@@ -42,7 +42,7 @@ import {
   handleAuthStart,
 } from "../../src/oidc.js";
 import { handleConfig } from "../../src/licensing.js";
-import { validateDeviceToken } from "../../src/licenseCore.js";
+import { validateDeviceToken } from "../../src/core/devices.js";
 import { getDevice, getLicense } from "../../src/repo.js";
 import {
   handleMagicStart,

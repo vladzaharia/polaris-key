@@ -17,7 +17,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { hashKey } from "../crypto.js";
-import { clientIp, rateLimitOk } from "../rateLimit.js";
+import { clientIp, rateLimitOk } from "../core/rateLimit.js";
 import { platformOidcConfig } from "../platformOidc.js";
 import { staticHtmlSecurityHeaders } from "../securityHeaders.js";
 import { hasAnyAdminGrant } from "./authz.js";

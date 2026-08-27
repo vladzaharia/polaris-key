@@ -1,9 +1,17 @@
+/**
+ * Trust distribution: the two public surfaces an SDK reads a product's Ed25519 key set from
+ * (design spec §5.1 — "trust & signing" is a core capability, always on).
+ *
+ * Moved verbatim from `src/jwks.ts`. Signing itself — turning a document into a compact JWS
+ * under the product's active key — is `core/signing.ts`; this module only PUBLISHES keys.
+ */
+
 /// <reference types="@cloudflare/workers-types" />
-import type { Product } from "./product.js";
-import type { Db } from "./db/types.js";
+import type { Product } from "./products.js";
+import type { Db } from "../db/types.js";
 import { signJws } from "@plrs/jws";
 import { ISSUER, type TrustManifestDoc } from "@plrs/protocol";
-import { loadPublicSigningKeys } from "./product.js";
+import { loadPublicSigningKeys } from "./products.js";
 
 const TRUST_CACHE_SECONDS = 300;
 

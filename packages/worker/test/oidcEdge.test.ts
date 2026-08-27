@@ -10,7 +10,7 @@ import type { ManagedPayload } from "@plrs/protocol";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";
-import { loadProduct, type Product } from "../src/product.js";
+import { loadProduct, type Product } from "../src/core/products.js";
 import {
   applyProvisioning,
   authorizeAndMint,

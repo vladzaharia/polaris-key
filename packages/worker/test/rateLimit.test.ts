@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientIp, rateLimitOk } from "../src/rateLimit.js";
+import { clientIp, rateLimitOk } from "../src/core/rateLimit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -9,7 +9,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
 } from "./seed.js";
-import { loadProduct } from "../src/product.js";
+import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/licensing.js";
 
 describe("rateLimitOk", () => {

@@ -1,11 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import type { Db } from "./db/types.js";
-import type { Product } from "./product.js";
-import { loadPublicSigningKey, loadPublicSigningKeys } from "./product.js";
-import { methodNotAllowed } from "./http.js";
-import { getProduct } from "./repo.js";
-import { parseManualChannels } from "./release/channels.js";
+import type { Db } from "../db/types.js";
+import type { Product } from "./products.js";
+import { loadPublicSigningKey, loadPublicSigningKeys } from "./products.js";
+import { methodNotAllowed } from "./errors.js";
+import { getProduct } from "../repo.js";
+import { parseManualChannels } from "../release/channels.js";
 
 interface OidcConfigRow {
   product: string;

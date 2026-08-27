@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
-import { loadProduct } from "../src/product.js";
+import { loadProduct } from "../src/core/products.js";
 import {
   handleBrowserLogout,
   handleBrowserSession,

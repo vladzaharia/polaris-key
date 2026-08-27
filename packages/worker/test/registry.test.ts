@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { KvMock } from "./kvMock.js";
 import { makeEnv } from "./seed.js";
 import type { Env } from "../src/env.js";
-import type { Product } from "../src/product.js";
+import type { Product } from "../src/core/products.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,

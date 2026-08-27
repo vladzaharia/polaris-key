@@ -5,7 +5,7 @@
 
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../http.js";
+import { ErrorCode } from "../../core/errors.js";
 import { hashKey, mintLicenseKey } from "../../crypto.js";
 import {
   insertKey,

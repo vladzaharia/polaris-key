@@ -2,7 +2,7 @@ import { Catalog } from "@plrs/catalog";
 import type { ConfigEntry } from "@plrs/catalog";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import { ErrorCode } from "../http.js";
+import { ErrorCode } from "../core/errors.js";
 import { hashKey, productFromKey } from "../crypto.js";
 import {
   getActiveSchema,
@@ -13,9 +13,10 @@ import {
   setDeviceStatus,
 } from "../repo.js";
 import { deleteTokenRecord } from "../kv.js";
-import { licenseUsable, resolveEffective } from "../licenseCore.js";
+import { resolveEffective } from "../licenseCore.js";
+import { licenseUsable } from "../core/devices.js";
 import { tighterMax, tighterMin } from "../gate.js";
-import { clientIp, rateLimitOk } from "../rateLimit.js";
+import { clientIp, rateLimitOk } from "../core/rateLimit.js";
 import {
   getPortalAccount,
   getPortalArtifact,

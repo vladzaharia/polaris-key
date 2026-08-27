@@ -30,7 +30,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
-import { loadProduct } from "../src/product.js";
+import { loadProduct } from "../src/core/products.js";
 import { getProductSecret, listAudit } from "../src/repo.js";
 
 const env = { PLATFORM_KEK: TEST_KEK } as unknown as Env;

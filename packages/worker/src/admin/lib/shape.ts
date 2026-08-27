@@ -15,7 +15,7 @@ import {
   type ProductRow,
   type ProductSyncStateRow,
 } from "../../repo.js";
-import { loadPublicSigningKey } from "../../product.js";
+import { loadPublicSigningKey } from "../../core/products.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,

@@ -9,12 +9,8 @@ import {
   type ManagedConfigDoc,
   type ManagedPayload,
 } from "@plrs/protocol";
-import {
-  buildDoc,
-  computeETag,
-  signDoc,
-  validatePayload,
-} from "../src/configDoc.js";
+import { buildDoc, computeETag, validatePayload } from "../src/configDoc.js";
+import { signDoc } from "../src/core/signing.js";
 import { TEST_KID, TEST_PEM, TEST_PUB, NOW } from "./seed.js";
 
 const profile: DocProfile = {

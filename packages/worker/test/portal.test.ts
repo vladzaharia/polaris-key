@@ -10,7 +10,7 @@ import {
 } from "./seed.js";
 import type { Env } from "../src/env.js";
 import { handleActivate } from "../src/licensing.js";
-import { loadProduct } from "../src/product.js";
+import { loadProduct } from "../src/core/products.js";
 import { hashKey } from "../src/crypto.js";
 import { getTokenRecord } from "../src/kv.js";
 import { getOrCreateAccountByEmail } from "../src/portal/repo.js";

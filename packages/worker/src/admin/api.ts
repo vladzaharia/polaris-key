@@ -29,7 +29,7 @@
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { getProduct } from "../repo.js";
-import { rateLimitOk } from "../rateLimit.js";
+import { rateLimitOk } from "../core/rateLimit.js";
 import { canAdminProduct } from "./authz.js";
 import { audit } from "./audit.js";
 

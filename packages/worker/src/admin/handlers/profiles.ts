@@ -5,7 +5,7 @@
 
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
-import { ErrorCode } from "../../http.js";
+import { ErrorCode } from "../../core/errors.js";
 import { randomId } from "../../crypto.js";
 import {
   countLicensesUsingProfile,

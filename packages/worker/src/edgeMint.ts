@@ -9,12 +9,13 @@
 
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
-import { type Product, openProductSecret } from "./product.js";
-import { bearer, errorResponse } from "./http.js";
-import { clientIp, rateLimitOk } from "./rateLimit.js";
+import { type Product, openProductSecret } from "./core/products.js";
+import { bearer } from "./http.js";
+import { errorResponse } from "./core/errors.js";
+import { clientIp, rateLimitOk } from "./core/rateLimit.js";
 import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
 import { signJws } from "@plrs/jws";
-import { validateDeviceToken } from "./licenseCore.js";
+import { validateDeviceToken } from "./core/devices.js";
 
 interface EdgeMintRow {
   product: string;

@@ -2,10 +2,10 @@
 import type { Env } from "./env.js";
 import { D1Db } from "./db/d1.js";
 import { matchRoute, type Route } from "./router.js";
-import { loadProduct } from "./product.js";
-import { handleDiscovery } from "./discovery.js";
+import { loadProduct } from "./core/products.js";
+import { handleDiscovery } from "./core/discovery.js";
 import { handleSchema } from "./schema.js";
-import { handleJwks, handleTrustManifest } from "./jwks.js";
+import { handleJwks, handleTrustManifest } from "./core/trust.js";
 import { handleMintAuth, handleMintToken } from "./edgeMint.js";
 import {
   handleAuthCallback,
@@ -25,7 +25,7 @@ import type { Arch } from "./release/assets.js";
 import { handleAdmin } from "./admin/index.js";
 import { handlePortal } from "./portal/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
-import { notFound } from "./http.js";
+import { notFound } from "./core/errors.js";
 import { secureResponse } from "./securityHeaders.js";
 import { handleEnroll } from "./enroll.js";
 import { handleScheduled } from "./scheduled.js";
@@ -34,10 +34,9 @@ import {
   handleActivate,
   handleConfig,
   handleDeauthorize,
-  handleDevices,
-  handleReport,
   handleToken,
 } from "./licensing.js";
+import { handleDevices, handleReport } from "./core/devices.js";
 
 export { RateLimitDO } from "./rateLimitDo.js";
 

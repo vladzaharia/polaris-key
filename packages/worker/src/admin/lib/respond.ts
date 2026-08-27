@@ -3,7 +3,7 @@
  * `no-store`; errors are a flat `{ error, message?, ...extra }` JSON shape.
  */
 
-import { ErrorCode } from "../../http.js";
+import { ErrorCode } from "../../core/errors.js";
 import { appSecurityHeaders } from "../../securityHeaders.js";
 
 /** JSON response with the admin defaults (no-store, charset). */

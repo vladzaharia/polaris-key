@@ -1,10 +1,16 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "./env.js";
+import type { Env } from "../env.js";
 
 // Abuse protection on the credential-minting hot paths (activate/token/mint) and admin login.
-// Backed by an atomic per-product Durable Object (see rateLimitDo.ts) so concurrent bursts
+// Backed by an atomic per-product Durable Object (`../rateLimitDo.ts`) so concurrent bursts
 // can't slip past a non-atomic counter. Keyed by (product, bucket, id) — product-scoped like
 // everything else.
+//
+// Only this CLIENT half lives in core. `RateLimitDO` itself stays at `src/rateLimitDo.ts`,
+// re-exported by `src/index.ts`: wrangler binds the class by NAME off the entrypoint's exports
+// (`[[durable_objects.bindings]] class_name = "RateLimitDO"`, `main = "src/index.ts"`), and a
+// deployed Durable Object namespace is keyed to that exported class — so the export is a
+// deployment contract, not an import detail, and it is not worth re-homing for tidiness.
 
 export interface RateLimit {
   bucket: string;

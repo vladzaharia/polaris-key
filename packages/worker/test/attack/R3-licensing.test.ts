@@ -27,14 +27,14 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "../seed.js";
-import { loadProduct, type Product } from "../../src/product.js";
+import { loadProduct, type Product } from "../../src/core/products.js";
 import {
   handleAccount,
   handleActivate,
   handleConfig,
-  handleDevices,
   handleToken,
 } from "../../src/licensing.js";
+import { handleDevices } from "../../src/core/devices.js";
 import { handleEnroll } from "../../src/enroll.js";
 import { handleBrowserSessionLicense } from "../../src/browserSession.js";
 import { activateFromIdentity } from "../../src/oidc.js";

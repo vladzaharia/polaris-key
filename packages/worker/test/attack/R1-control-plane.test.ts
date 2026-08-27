@@ -34,7 +34,7 @@ import { hashKey } from "../../src/crypto.js";
 import { listAudit } from "../../src/repo.js";
 import { handleMintAuth } from "../../src/edgeMint.js";
 import { secureResponse } from "../../src/securityHeaders.js";
-import { loadProduct } from "../../src/product.js";
+import { loadProduct } from "../../src/core/products.js";
 import {
   handleAuthDeviceStart,
   handleAuthDeviceVerify,

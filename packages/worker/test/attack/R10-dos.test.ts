@@ -23,7 +23,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
 } from "../seed.js";
-import { loadProduct, type Product } from "../../src/product.js";
+import { loadProduct, type Product } from "../../src/core/products.js";
 import type { Env } from "../../src/env.js";
 import type { Db } from "../../src/db/types.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
@@ -32,7 +32,7 @@ import { handleActivate, handleConfig } from "../../src/licensing.js";
 import { handleSchema as handleAdminSchema } from "../../src/admin/handlers/schema.js";
 import { handleRelease } from "../../src/release/index.js";
 import { matchRoute } from "../../src/router.js";
-import { rateLimitOk } from "../../src/rateLimit.js";
+import { rateLimitOk } from "../../src/core/rateLimit.js";
 import { RateLimitDO } from "../../src/rateLimitDo.js";
 import { handleGithubWebhook } from "../../src/githubWebhook.js";
 import { handleAuthDeviceStart, handleAuthStart } from "../../src/oidc.js";
@@ -51,7 +51,7 @@ import type { AdminSession } from "../../src/admin/session.js";
 import { getDevice, upsertDevice } from "../../src/repo.js";
 import { hashKey } from "../../src/crypto.js";
 import { getTokenRecord, TOKEN_RECORD_TTL_SECONDS } from "../../src/kv.js";
-import { validateDeviceToken } from "../../src/licenseCore.js";
+import { validateDeviceToken } from "../../src/core/devices.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,

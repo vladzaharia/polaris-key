@@ -16,10 +16,10 @@
 
 import type { ParsedManifest } from "@plrs/manifest";
 import type { Env } from "../env.js";
-import type { Product } from "../product.js";
+import type { Product } from "./products.js";
 import type { DbStatement } from "../db/types.js";
 import type { AdminSession } from "../admin/session.js";
-import { ErrorCode, json } from "../http.js";
+import { ErrorCode, json } from "./errors.js";
 import type { ServiceSlug, ServicesMap } from "./services.js";
 
 /** Everything a service handler is given. `rest` is the path AFTER `/<product>/<service>`,

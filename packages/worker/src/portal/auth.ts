@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import { clientIp, rateLimitOk } from "../rateLimit.js";
+import { clientIp, rateLimitOk } from "../core/rateLimit.js";
 import { platformOidcConfig } from "../platformOidc.js";
 import { randomId } from "../crypto.js";
 import {

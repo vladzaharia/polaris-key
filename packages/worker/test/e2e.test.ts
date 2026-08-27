@@ -27,7 +27,7 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import { loadProduct, type Product } from "../src/product.js";
+import { loadProduct, type Product } from "../src/core/products.js";
 import { handleConfig, handleActivate } from "../src/licensing.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";

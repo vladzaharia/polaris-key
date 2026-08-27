@@ -15,12 +15,9 @@ import {
   seedTier,
   setProductFingerprintPolicy,
 } from "./seed.js";
-import { loadProduct, type Product } from "../src/product.js";
-import {
-  handleActivate,
-  handleDevices,
-  handleReport,
-} from "../src/licensing.js";
+import { loadProduct, type Product } from "../src/core/products.js";
+import { handleActivate } from "../src/licensing.js";
+import { handleDevices, handleReport } from "../src/core/devices.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import {
