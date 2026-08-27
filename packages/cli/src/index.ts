@@ -1,5 +1,12 @@
 import path from "node:path";
 import {
+  ADMIN_COOKIE_ENV,
+  ADMIN_COOKIE_NAME,
+  BUNDLE_USAGE,
+  DEFAULT_BASE_URL,
+  mintBundle,
+} from "./bundle.js";
+import {
   initManifest,
   loadManifest,
   normalizeModules,
@@ -8,6 +15,19 @@ import {
   validateLoadedManifest,
   type ProductModule,
 } from "./manifest.js";
+
+export {
+  ADMIN_COOKIE_ENV,
+  ADMIN_COOKIE_NAME,
+  BUNDLE_USAGE,
+  CSRF_HEADER,
+  DEFAULT_BASE_URL,
+  MAX_GRACE_DAYS,
+  bundleFileName,
+  mintBundle,
+  type MintBundleOptions,
+  type MintBundleResult,
+} from "./bundle.js";
 
 export {
   initManifest,
@@ -55,6 +75,8 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdValidate(cwd, stdout);
       case "doctor":
         return await cmdDoctor(parsed, cwd, stdout);
+      case "bundle":
+        return await cmdBundle(parsed, cwd, stdout);
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
@@ -188,6 +210,51 @@ async function cmdDoctor(
   return localCode;
 }
 
+/**
+ * `pkey bundle` — mint one offline activation bundle. A thin shell over `mintBundle`: it reads
+ * the flags, reads the admin session cookie out of the environment (the module itself never
+ * touches `process.env`, so it stays testable), and prints what came back.
+ */
+async function cmdBundle(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+): Promise<number> {
+  const product = flagString(parsed, "product");
+  const device = flagString(parsed, "device");
+  const graceRaw = flagString(parsed, "grace-days");
+  if (!product || !device || !graceRaw) throw new Error(BUNDLE_USAGE);
+
+  const result = await mintBundle({
+    cwd,
+    product,
+    deviceId: device,
+    graceDays: Number(graceRaw),
+    // `--no-config` is a boolean flag, so it is read with flagBool; see the parseArgs note in
+    // helpText() about passing valueless flags last or with `=`.
+    includeConfig: !flagBool(parsed, "no-config"),
+    licenseId: flagString(parsed, "license"),
+    baseUrl: flagString(parsed, "base-url"),
+    out: flagString(parsed, "out"),
+    force: flagBool(parsed, "force"),
+    cookie: process.env[ADMIN_COOKIE_ENV],
+  });
+
+  const rel = path.relative(cwd, result.file);
+  stdout.write(`Minted bundle ${result.bundleId}\n`);
+  stdout.write(`- File: ${rel}\n`);
+  stdout.write(`- Device: ${result.deviceId}\n`);
+  stdout.write(
+    `- Grace window: ${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline\n`,
+  );
+  // Which documents rode along is decided server-side by the product's enabled services, and
+  // the mint response does not say — so claim nothing rather than guess.
+  stdout.write(
+    "\nNext: transfer this file to the offline machine and import it there.\n",
+  );
+  return 0;
+}
+
 function cmdTrust(
   parsed: ParsedArgs,
   stdout: Pick<NodeJS.WriteStream, "write">,
@@ -245,5 +312,23 @@ Commands:
   pkey doctor [--base-url url --product slug]
   pkey trust --kid kid --public-key key
   pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
+  pkey bundle --product slug --device id --grace-days n [--no-config] [--license id]
+              [--base-url url] [--out file] [--force]
+
+pkey bundle mints one offline activation bundle and writes it to a file (default
+<product>-<first 8 of device id>.plrsbundle; --base-url defaults to ${DEFAULT_BASE_URL}).
+Copy that file to the air-gapped machine and import it there.
+
+Environment:
+  ${ADMIN_COOKIE_ENV}   Required by \`pkey bundle\`. The console's admin session cookie, as
+                      \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too).
+                      The admin API is authenticated by the console's browser session —
+                      there is no API token yet — so copy the cookie from an authenticated
+                      console tab: devtools -> Application -> Cookies -> the console origin.
+                      It is a SHORT-LIVED session credential carrying full admin authority:
+                      do not commit it, and do not export it into a shared shell.
+
+Note: --no-config and --force take no value. A valueless flag swallows the next bare word, so
+pass them last or as --no-config=true / --force=true.
 `;
 }

@@ -107,6 +107,49 @@ describe("api — request shaping", () => {
     expect(url).toContain("beforeId=a1");
   });
 
+  it("services is a plain GET on the product's services route", async () => {
+    setCsrf("tok-s");
+    stubFetch(() =>
+      json({
+        services: { license: { enabled: true }, config: { enabled: false } },
+        registration: null,
+        effectiveRegistration: "requires-license",
+        source: "manifest",
+      }),
+    );
+    const res = await api.services("djdl");
+    const init = calls[0]!.init;
+    expect(calls[0]!.url).toBe("/manage/api/products/djdl/services");
+    expect(init.method).toBeUndefined();
+    expect((init.headers as Headers).get("X-PKey-CSRF")).toBeNull();
+    expect(res.services.config.enabled).toBe(false);
+  });
+
+  it("mintBundle POSTs the exact bundle request with CSRF + Content-Type", async () => {
+    setCsrf("tok-b");
+    stubFetch(() => json({ bundleId: "01JBUNDLE", bundle: "eyJ.e30.sig" }));
+    const deviceId = "AbCdEfGhIjKlMnOpQrStUvWxYz012345";
+    const res = await api.mintBundle("djdl", {
+      deviceId,
+      graceDays: 30,
+      includeConfig: false,
+      licenseId: "lic_1",
+    });
+    const init = calls[0]!.init;
+    const headers = init.headers as Headers;
+    expect(calls[0]!.url).toBe("/manage/api/products/djdl/bundles");
+    expect(init.method).toBe("POST");
+    expect(headers.get("X-PKey-CSRF")).toBe("tok-b");
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(JSON.parse(init.body as string)).toEqual({
+      deviceId,
+      graceDays: 30,
+      includeConfig: false,
+      licenseId: "lic_1",
+    });
+    expect(res.bundleId).toBe("01JBUNDLE");
+  });
+
   it("setLicenseEnabled hits enable/disable per the flag", async () => {
     stubFetch(() => json({ ok: true, id: "l1", status: "disabled" }));
     await api.setLicenseEnabled("djdl", "l1", false);

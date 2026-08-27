@@ -173,6 +173,8 @@ Air-gapped activation (D-12) — classic request-code flow:
 }
 ```
 
+The bundle's import window is `BUNDLE_IMPORT_WINDOW_SECONDS = 2 592 000` (30 days): `expiresAt = issuedAt + 30 d`, deliberately decoupled from and much shorter than `graceDays` — the import window bounds how long a stolen bundle _file_ stays useful, while `graceUntil` bounds how long the imported _install_ runs. Inner documents carry the ordinary `expiresAt = issuedAt + DOC_EXPIRY_SECONDS` (they are validated on the reload profile at import); stretching an inner `expiresAt` instead of `graceUntil` would pass _network_-path freshness for the whole grace period and is refused at mint. **[C]** via `bundleCases`.
+
 `importBundle` validation order (**all-or-nothing**; any failure imports nothing) **[C]** via `bundleCases`:
 
 1. Verify the bundle JWS against **pinned keys only**; `typ` must be `plrs-bundle+jws`; payload cap 262 144.

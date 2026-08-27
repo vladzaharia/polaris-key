@@ -27,12 +27,6 @@
  * DOCUMENT, and a config-only install is entitled to one.
  */
 
-import {
-  DOC_EXPIRY_SECONDS,
-  SECONDS_PER_DAY,
-  type ManagedEntry,
-} from "@plrs/protocol";
-import { ISSUER } from "@plrs/protocol/core";
 import type { ConfigDoc } from "@plrs/protocol/config";
 import { sha256Base64Url } from "@plrs/jws";
 import type { Env, Db } from "../../core/platform.js";
@@ -44,79 +38,20 @@ import {
   touchDeviceMetadata,
   validateDeviceToken,
 } from "../../core/devices.js";
-import {
-  openManagedPayload,
-  prunePayloadAgainstCatalog,
-  resolveMergedPayload,
-} from "../../core/payload.js";
-import type { DeviceRow, LicenseRow } from "../../core/data.js";
 import { signDoc } from "../../core/signing.js";
 
-/** The config-owned slice of the merged payload. */
-export interface ConfigPayload {
-  config: Record<string, ManagedEntry>;
-  secrets: Record<string, ManagedEntry>;
-}
-
-/**
- * Resolve the config + secrets a device should receive, or `null` when the active catalog
- * exists but cannot be interpreted (the fail-closed arm — see `prunePayloadAgainstCatalog`).
- *
- * `env` is REQUIRED, unlike on the entitlement side. `admin/lib/overrides.ts` seals every
- * catalog-declared secret before it reaches `profiles.payload_json` / `licenses.overrides_json`
- * (R12-02), so without opening them here the still-sealed envelope reaches the catalog prune,
- * fails validation and is dropped — silently delivering a document with every managed secret
- * missing. This is the primary delivery surface for those values, so it is the call site that
- * matters most.
- *
- * The opening happens AFTER the merge so a sealed value in a lower layer that a higher layer
- * overrides is never decrypted at all.
- */
-export async function resolveConfigPayload(
-  db: Db,
-  env: Env,
-  product: string,
-  license: LicenseRow | null,
-  device: DeviceRow | null | undefined,
-  now: number,
-): Promise<ConfigPayload | null> {
-  const { payload } = await resolveMergedPayload(
-    db,
-    product,
-    license,
-    device,
-    now,
-  );
-  const opened = await openManagedPayload(env, product, payload);
-  const pruned = await prunePayloadAgainstCatalog(db, product, opened);
-  if (!pruned) return null;
-  return { config: pruned.config, secrets: pruned.secrets };
-}
-
-export interface BuildConfigDocInput {
-  aud: string;
-  deviceId: string;
-  now: number;
-  maxOfflineDays: number;
-  schemaVersion: number;
-  payload: ConfigPayload;
-}
-
-/** Stamp the envelope onto the config fields. Key order matches the conformance corpus's
- *  `configDoc()` fixture. */
-export function buildConfigDoc(input: BuildConfigDocInput): ConfigDoc {
-  return {
-    iss: ISSUER,
-    aud: input.aud,
-    deviceId: input.deviceId,
-    issuedAt: input.now,
-    expiresAt: input.now + DOC_EXPIRY_SECONDS,
-    graceUntil: input.now + input.maxOfflineDays * SECONDS_PER_DAY,
-    schemaVersion: input.schemaVersion,
-    config: input.payload.config,
-    secrets: input.payload.secrets,
-  };
-}
+// The payload resolution and the envelope stamper moved to `core/documents.ts` when offline
+// bundles landed (§7): a bundle carries a config document alongside (or instead of) a license
+// document, so Core has to be able to build one, and Core may not import a service. Re-exported
+// here so this module's own call sites — and `services/config/index.ts`'s barrel — are
+// unchanged.
+export {
+  buildConfigDoc,
+  resolveConfigPayload,
+  type BuildConfigDocInput,
+  type ConfigPayload,
+} from "../../core/documents.js";
+import { buildConfigDoc, resolveConfigPayload } from "../../core/documents.js";
 
 /** A strong ETag over the config content, excluding the per-request timestamps. Independent of
  *  the license document's tag (§5), so a licence change no longer forces a settings refetch. */

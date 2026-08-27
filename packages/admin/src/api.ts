@@ -279,6 +279,36 @@ export interface ResyncResult {
   updated?: unknown;
 }
 
+// ── services (per-product enablement) ─────────────────────────────────────────
+/** The five opt-in services layered over the always-on Core substrate. */
+export type ServiceSlug =
+  | "license"
+  | "config"
+  | "release"
+  | "update"
+  | "identity";
+
+/** How a device may register (spec §2.3). Derived from the enablement set unless declared. */
+export type RegistrationPolicy =
+  | "open"
+  | "requires-identity"
+  | "requires-license";
+
+/**
+ * `GET /manage/api/products/<slug>/services` — the single authority for which services a
+ * product runs. Every console affordance that only makes sense for a running service is a
+ * projection of this, rather than being inferred from the presence of some child row.
+ */
+export interface ServicesResponse {
+  services: Record<ServiceSlug, { enabled: boolean }>;
+  /** As DECLARED — `null` when the product rides the derived default. */
+  registration: RegistrationPolicy | null;
+  /** What the derivation currently produces — what the wire actually enforces. */
+  effectiveRegistration: RegistrationPolicy;
+  /** Who owns the row: `manifest` (a resync may rewrite it) or `admin` (operator-claimed). */
+  source: string;
+}
+
 // ── managed-payload (overrides / profile payloads) ────────────────────────────
 /** A managed value: its state, value, and when an admin last changed it (epoch seconds). */
 export interface ManagedEntry {
@@ -442,6 +472,34 @@ export interface PatchLicenseBody {
   channels?: string[];
   minVersion?: string | null;
   maxVersion?: string | null;
+}
+
+// ── offline bundles ───────────────────────────────────────────────────────────
+/**
+ * What to mint into one offline activation bundle. The server
+ * (`packages/worker/src/core/bundles.ts`) decides what actually rides inside by ENABLEMENT,
+ * so this is a request, not an instruction.
+ */
+export interface MintBundleBody {
+  /** The device's request code, exactly as the app's offline screen shows it: 32 base64url
+   *  characters. A typo is a 400 rather than a bundle no machine can import. */
+  deviceId: string;
+  /** The offline window in days, 1..365 — the same ceiling the importing client enforces. */
+  graceDays: number;
+  /** Defaults to true server-side; forced false when the Config service is disabled. Omit it
+   *  and let enablement decide rather than asserting a preference the operator never made. */
+  includeConfig?: boolean;
+  /** REQUIRED when the License service is enabled — there is no authenticated device here to
+   *  infer a licence from, and guessing would silently mint the wrong grant. */
+  licenseId?: string;
+}
+
+export interface MintBundleResult {
+  /** A ULID, and the audit anchor: the mint is recorded under it and the importing client
+   *  reports it back, so it is the only string tying a support ticket to a row. */
+  bundleId: string;
+  /** The compact `plrs-bundle+jws` — this string IS the file the operator carries across. */
+  bundle: string;
 }
 
 // ── profiles ──────────────────────────────────────────────────────────────────
@@ -627,6 +685,9 @@ export const api = {
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
 
+  // ── services (per-product enablement) ───────────────────────────────────────
+  services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
+
   // ── schema / catalog ──────────────────────────────────────────────────────────
   schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/schema`),
   publishSchema: (slug: string, catalog: ProductCatalog) =>
@@ -704,6 +765,15 @@ export const api = {
       `${p(slug)}/licenses/${enc(id)}/devices/${enc(deviceId)}/fingerprint/reset`,
       { method: "POST" },
     ),
+
+  // ── offline bundles ─────────────────────────────────────────────────────────
+  /** Mint one offline activation bundle for an air-gapped device. Re-minting is cheap — the
+   *  result is a signed artifact, not a secret the server forgets. */
+  mintBundle: (slug: string, body: MintBundleBody) =>
+    call<MintBundleResult>(`${p(slug)}/bundles`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   // ── fingerprint policy ──────────────────────────────────────────────────────
   fingerprintPolicy: (slug: string) =>

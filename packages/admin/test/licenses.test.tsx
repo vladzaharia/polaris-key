@@ -27,6 +27,8 @@ vi.mock("../src/api.js", () => {
     mintKey: vi.fn(),
     revokeKey: vi.fn(),
     deauthorizeDevice: vi.fn(),
+    services: vi.fn(),
+    mintBundle: vi.fn(),
   };
   return { api };
 });
@@ -36,6 +38,7 @@ import {
   type LicenseDetail as LicenseDetailDto,
   type LicenseSummary,
   type ProductCatalog,
+  type ServicesResponse,
 } from "../src/api.js";
 import { AdminProvider, resetCache } from "../src/context.js";
 import { Toaster } from "../src/components/ui/index.js";
@@ -162,6 +165,23 @@ const CATALOG: ProductCatalog = {
   ],
 };
 
+/** Both bundle-carrying services on — the default shape a product ships with. */
+const SERVICES: ServicesResponse = {
+  services: {
+    license: { enabled: true },
+    config: { enabled: true },
+    release: { enabled: false },
+    update: { enabled: false },
+    identity: { enabled: false },
+  },
+  registration: null,
+  effectiveRegistration: "requires-license",
+  source: "manifest",
+};
+
+/** A well-formed request code: 32 base64url characters, as the app's offline screen shows it. */
+const DEVICE_REQUEST_CODE = "AbCdEfGhIjKlMnOpQrStUvWxYz012345";
+
 beforeEach(() => {
   resetCache();
   for (const fn of Object.values(mockApi)) fn.mockReset();
@@ -195,6 +215,11 @@ beforeEach(() => {
   mockApi.deauthorizeDevice.mockResolvedValue({
     ok: true,
     deviceId: "dev_1",
+  });
+  mockApi.services.mockResolvedValue(SERVICES);
+  mockApi.mintBundle.mockResolvedValue({
+    bundleId: "01JBUNDLEID0000000000000A",
+    bundle: "eyJhbGciOiJFZERTQSJ9.e30.sig",
   });
   // jsdom lacks these Radix-needed APIs.
   (
@@ -408,5 +433,97 @@ describe("License detail", () => {
     await waitFor(() => expect(mockApi.putLicenseOverrides).toHaveBeenCalled());
     const [, , updates] = mockApi.putLicenseOverrides.mock.calls.at(-1)!;
     expect(updates).toEqual([{ key: "feature.timeout", value: 60 }]);
+  });
+
+  // ── offline bundles ─────────────────────────────────────────────────────────
+  async function openBundleDialog(): Promise<{
+    user: Awaited<ReturnType<typeof renderDetail>>;
+    dialog: HTMLElement;
+  }> {
+    const user = await renderDetail();
+    await user.click(screen.getByRole("button", { name: "Offline bundle" }));
+    const dialog = await screen.findByRole("dialog");
+    return { user, dialog };
+  }
+
+  it("opens the offline bundle dialog from the header", async () => {
+    const { dialog } = await openBundleDialog();
+    expect(within(dialog).getByText("Mint offline bundle")).toBeTruthy();
+    expect(within(dialog).getByLabelText(/Device ID/)).toBeTruthy();
+    // The grace window defaults to the ceiling.
+    const grace = within(dialog).getByLabelText(
+      /Grace days/,
+    ) as HTMLInputElement;
+    expect(grace.value).toBe("365");
+    // Config is enabled for this product, so the include control is offered.
+    expect(
+      await within(dialog).findByLabelText(/Include configuration/),
+    ).toBeTruthy();
+  });
+
+  it("mints a bundle and shows the bundle id with a download", async () => {
+    const { user, dialog } = await openBundleDialog();
+    await user.type(
+      within(dialog).getByLabelText(/Device ID/),
+      DEVICE_REQUEST_CODE,
+    );
+    await user.clear(within(dialog).getByLabelText(/Grace days/));
+    await user.type(within(dialog).getByLabelText(/Grace days/), "30");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Mint bundle" }),
+    );
+
+    expect(
+      await within(dialog).findByText("01JBUNDLEID0000000000000A"),
+    ).toBeTruthy();
+    expect(mockApi.mintBundle).toHaveBeenCalledWith("djdl", {
+      deviceId: DEVICE_REQUEST_CODE,
+      graceDays: 30,
+      includeConfig: true,
+      licenseId: "lic_1",
+    });
+    expect(
+      within(dialog).getByRole("button", { name: "Copy ID" }),
+    ).toBeTruthy();
+    // jsdom has no `URL.createObjectURL`; the download degrades to a no-op rather than throwing.
+    const download = within(dialog).getByRole("button", { name: /Download/ });
+    expect(() => download.click()).not.toThrow();
+  });
+
+  it("refuses a request code that is not 32 characters", async () => {
+    const { user, dialog } = await openBundleDialog();
+    await user.type(within(dialog).getByLabelText(/Device ID/), "too-short");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Mint bundle" }),
+    );
+    expect(
+      await within(dialog).findByText(/exactly 32 characters/),
+    ).toBeTruthy();
+    expect(mockApi.mintBundle).not.toHaveBeenCalled();
+  });
+
+  it("hides the config control when the Config service is disabled", async () => {
+    mockApi.services.mockResolvedValue({
+      ...SERVICES,
+      services: { ...SERVICES.services, config: { enabled: false } },
+    });
+    const { user, dialog } = await openBundleDialog();
+    expect(within(dialog).queryByLabelText(/Include configuration/)).toBeNull();
+
+    // …and no config preference is asserted on the wire either — enablement decides.
+    await user.type(
+      within(dialog).getByLabelText(/Device ID/),
+      DEVICE_REQUEST_CODE,
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Mint bundle" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.mintBundle).toHaveBeenCalledWith("djdl", {
+        deviceId: DEVICE_REQUEST_CODE,
+        graceDays: 365,
+        licenseId: "lic_1",
+      }),
+    );
   });
 });

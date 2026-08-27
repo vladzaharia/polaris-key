@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, PackageOpen, Pencil } from "lucide-react";
 import { api, type OverrideUpdate } from "../api.js";
 import { invalidate, useResource } from "../context.js";
 import { hashFor } from "../route.js";
@@ -24,6 +24,7 @@ import {
   MetaItem,
 } from "./licenses/shared.js";
 import { EditMetadataDialog } from "./licenses/EditMetadataDialog.js";
+import { OfflineBundleDialog } from "./licenses/OfflineBundleDialog.js";
 import { PolicySection } from "./licenses/PolicySection.js";
 import { KeysSection } from "./licenses/KeysSection.js";
 import { DevicesSection } from "./licenses/DevicesSection.js";
@@ -59,6 +60,7 @@ export function LicenseDetail({
   );
 
   const [editOpen, setEditOpen] = React.useState(false);
+  const [bundleOpen, setBundleOpen] = React.useState(false);
   const [confirmEnable, setConfirmEnable] = React.useState(false);
   const [toggling, setToggling] = React.useState(false);
   const [savingOverrides, setSavingOverrides] = React.useState(false);
@@ -181,6 +183,10 @@ export function LicenseDetail({
             <Pencil aria-hidden />
             Edit
           </Button>
+          <Button variant="outline" onClick={() => setBundleOpen(true)}>
+            <PackageOpen aria-hidden />
+            Offline bundle
+          </Button>
         </div>
       </header>
 
@@ -267,6 +273,13 @@ export function LicenseDetail({
         open={editOpen}
         onOpenChange={setEditOpen}
         onSaved={refresh}
+      />
+
+      <OfflineBundleDialog
+        slug={slug}
+        licenseId={id}
+        open={bundleOpen}
+        onOpenChange={setBundleOpen}
       />
 
       <ConfirmDialog

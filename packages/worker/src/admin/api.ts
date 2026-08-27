@@ -62,6 +62,7 @@ import { handleProfiles } from "./handlers/profiles.js";
 import { handleTiers } from "./handlers/tiers.js";
 import { handleActivity } from "./handlers/activity.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
+import { handleBundleMint } from "../core/bundles.js";
 import { loadProduct } from "../core/products.js";
 import { SERVICES } from "../mount.js";
 import type { ServiceSlug } from "../core/services.js";
@@ -172,6 +173,13 @@ async function handleProductScoped(
   // turned off. `id` carries the single sub-action (`revert`).
   if (resource === "services") {
     return handleServicesAdmin(req, env, db, session, slug, id, now);
+  }
+
+  // Offline activation bundles (wire v3 §7). CORE for the same reason `services` is: one bundle
+  // carries the License document AND the Config document, either of which may be absent, so it
+  // belongs to neither service — a config-only product mints one with no licence in it at all.
+  if (resource === "bundles") {
+    return handleBundleMint(req, env, db, session, slug, id, now);
   }
 
   if (resource === "schema") {

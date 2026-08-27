@@ -22,12 +22,6 @@
  * a document at all.
  */
 
-import {
-  DOC_EXPIRY_SECONDS,
-  SECONDS_PER_DAY,
-  type ManagedEntry,
-} from "@plrs/protocol";
-import { ISSUER } from "@plrs/protocol/core";
 import type { LicenseDoc } from "@plrs/protocol/license";
 import { sha256Base64Url } from "@plrs/jws";
 import type { Env, Db } from "../../core/platform.js";
@@ -42,34 +36,16 @@ import { docProfile } from "./authz.js";
 import { resolveEntitlements } from "./entitlements.js";
 import { checkBuildGate, type GateResult } from "./gate.js";
 
-export interface BuildLicenseDocInput {
-  aud: string;
-  deviceId: string;
-  licenseId: string;
-  now: number;
-  maxOfflineDays: number;
-  profile: LicenseDoc["profile"];
-  entitlements: Record<string, ManagedEntry>;
-}
-
-/**
- * Stamp the envelope onto the grant fields. Key order matches the conformance corpus's
- * `licenseDoc()` fixture — the corpus pins the wire byte-for-byte, and a signer that emits a
- * different order still verifies but stops being comparable to the fixtures.
- */
-export function buildLicenseDoc(input: BuildLicenseDocInput): LicenseDoc {
-  return {
-    iss: ISSUER,
-    aud: input.aud,
-    deviceId: input.deviceId,
-    issuedAt: input.now,
-    expiresAt: input.now + DOC_EXPIRY_SECONDS,
-    graceUntil: input.now + input.maxOfflineDays * SECONDS_PER_DAY,
-    licenseId: input.licenseId,
-    profile: input.profile,
-    entitlements: input.entitlements,
-  };
-}
+// The envelope stamper moved to `core/documents.ts` when offline bundles landed (§7): one bundle
+// carries a license document AND a config document, so Core has to be able to build both, and a
+// service may not import a sibling. Re-exported here so License's own call sites — and anything
+// that already imported it from this module — are unchanged. Same move `injectAdminPolicy` and
+// `resolveEntitlements` made before it.
+export {
+  buildLicenseDoc,
+  type BuildLicenseDocInput,
+} from "../../core/documents.js";
+import { buildLicenseDoc } from "../../core/documents.js";
 
 /**
  * A strong ETag over the document CONTENT, excluding the per-request timestamps, so an
