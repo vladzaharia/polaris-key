@@ -1,10 +1,16 @@
-// Persistence: the per-device token, a stable device id, and the offline-first config
-// cache. The default KeyringStore keeps the token in the OS keyring when available and
-// falls back to explicit 0600 file storage for headless/CI environments; tests use
-// InMemoryStore.
+// Persistence: the per-device `plrst_` token and the Core-owned offline cache record.
+//
+// The SHAPE of what is stored (`Store`, `CacheRecordV3`, `CACHE_VERSION`) is isomorphic and
+// lives in `@plrs/client-core`; only the Node-flavoured implementations are here. The default
+// `KeyringStore` keeps the token in the OS keyring when one is available and falls back to
+// explicit 0600 file storage for headless/CI hosts; tests use `InMemoryStore`.
+//
+// A store is DUMB on purpose: it round-trips bytes and knows nothing about versions, verification
+// or migration. Discarding a `v !== 3` record is `CacheManager`'s decision (§4.1), because that
+// is a security rule, and a security rule that lived in three store implementations would be a
+// security rule with three chances to be wrong.
 
-import { createHash, randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
   closeSync,
   constants as fsc,
@@ -15,106 +21,20 @@ import {
   writeSync,
 } from "node:fs";
 import { join } from "node:path";
-import type { AllowedRange, BlockReason } from "@plrs/protocol";
+import {
+  CACHE_VERSION,
+  type CacheRecordV3,
+  type Store,
+} from "@plrs/client-core";
+import { deriveDeviceId } from "../devices/deviceId.js";
 
-/** On-disk cache format version. A record carrying any other value is DISCARDED, never
- *  migrated (wire contract v2 §7.3) — one network round trip is the correct price for not
- *  carrying poisoned state forward. */
-export const CACHE_VERSION = 2;
-
-/**
- * The offline cache — wire contract v2 §4.1.
- *
- * It stores SIGNED ARTIFACTS ONLY: the compact JWS of the managed-config document and of the
- * trust manifest, both re-verified against the PINNED keys on every load. The v1 record
- * persisted the *decoded* doc, a bare `trustedKeys` map, and three unsigned counters
- * (`lastAcceptedIssuedAt`, `lastTrustIssuedAt`, `lastVerifiedAt`) that security decisions
- * read directly — so one write to a plain JSON file was enough to substitute the key bytes
- * behind a pinned kid (R2-01/R4-02), pin forged state against a live server (R4-03), or
- * invent a licence outright with no signature anywhere (R2-03/R4-01). All three counters are
- * now DERIVED from re-verified content and are never read from disk.
- *
- * `blocked` and `lastSyncUnauthorized` remain unsigned deliberately: they only ever make the
- * gate STRICTER, so clearing them gains an attacker nothing that deleting the file would not.
- */
-export interface CacheRecord {
-  v: typeof CACHE_VERSION;
-  /** The compact JWS of the managed-config document, verbatim. */
-  configJws?: string;
-  /** The compact JWS of the trust manifest, verbatim. */
-  trustJws?: string;
-  /** Non-security hint: the conditional-request validator. */
-  etag?: string;
-  lastSyncUnauthorized?: boolean;
-  blocked?: { reason: BlockReason; allowedRange?: AllowedRange };
-}
-
-export interface Store {
-  getToken(): Promise<string | null>;
-  setToken(token: string): Promise<void>;
-  clearToken(): Promise<void>;
-  getDeviceId(): Promise<string>;
-  readCache(): Promise<CacheRecord | null>;
-  writeCache(rec: CacheRecord): Promise<void>;
-  clearCache(): Promise<void>;
-}
-
-function rawDeviceId(): string | null {
-  try {
-    if (process.platform === "darwin") {
-      const out = execFileSync(
-        "ioreg",
-        ["-rd1", "-c", "IOPlatformExpertDevice"],
-        { encoding: "utf8" },
-      );
-      const m = out.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/);
-      return m?.[1] ?? null;
-    }
-    if (process.platform === "win32") {
-      const out = execFileSync(
-        "reg",
-        [
-          "query",
-          "HKLM\\SOFTWARE\\Microsoft\\Cryptography",
-          "/v",
-          "MachineGuid",
-        ],
-        { encoding: "utf8" },
-      );
-      const m = out.match(/MachineGuid\s+REG_SZ\s+([A-Za-z0-9-]+)/);
-      return m?.[1] ?? null;
-    }
-    const id = readFileSync("/etc/machine-id", "utf8").trim();
-    return id || readFileSync("/var/lib/dbus/machine-id", "utf8").trim();
-  } catch {
-    return null;
-  }
-}
-
-/** The device-id formula itself, split out from the hardware read so it can be pinned by
- *  conformance/corpus/v1/fingerprint.json. Node, Python, and Swift must agree here exactly. */
-export function deviceIdFromRaw(productSlug: string, raw: string): string {
-  return createHash("sha256")
-    .update(`pkey-device:${productSlug}:${raw}`, "utf8")
-    .digest("base64url")
-    .slice(0, 32);
-}
-
-/** Derive a stable, hashed device id so the raw OS identifier never leaves the device. */
-export function deriveDeviceId(
-  productSlug: string,
-  fallback?: string | null,
-): string {
-  return deviceIdFromRaw(
-    productSlug,
-    rawDeviceId() ?? fallback ?? randomUUID(),
-  );
-}
+export { CACHE_VERSION };
+export type { CacheRecordV3, Store };
 
 /** In-memory store for tests. */
 export class InMemoryStore implements Store {
   private token: string | null = null;
-  private cache: CacheRecord | null = null;
+  private cache: CacheRecordV3 | null = null;
   private deviceId: string;
 
   constructor(productSlug = "test") {
@@ -135,7 +55,7 @@ export class InMemoryStore implements Store {
   async readCache() {
     return this.cache;
   }
-  async writeCache(rec: CacheRecord) {
+  async writeCache(rec: CacheRecordV3) {
     this.cache = rec;
   }
   async clearCache() {
@@ -199,16 +119,16 @@ export class FileStore implements Store {
     writeSecure(this.devicePath, id);
     return id;
   }
-  async readCache(): Promise<CacheRecord | null> {
+  async readCache(): Promise<CacheRecordV3 | null> {
     const raw = readMaybe(this.cachePath);
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as CacheRecord;
+      return JSON.parse(raw) as CacheRecordV3;
     } catch {
       return null;
     }
   }
-  async writeCache(rec: CacheRecord) {
+  async writeCache(rec: CacheRecordV3) {
     writeSecure(this.cachePath, JSON.stringify(rec));
   }
   async clearCache() {
@@ -234,7 +154,9 @@ export class KeyringStore implements Store {
 
   constructor(productSlug: string, configDir: string) {
     this.files = new FileStore(productSlug, configDir);
-    this.service = `pkey:${productSlug}`;
+    // Rebranded with the rest of the identifier registry (§8). Pre-launch, so there is no
+    // `pkey:` entry to migrate — a host that somehow has one simply re-activates.
+    this.service = `plrs:${productSlug}`;
   }
 
   async getToken() {
@@ -293,11 +215,17 @@ export class KeyringStore implements Store {
     return this.files.readCache();
   }
 
-  writeCache(rec: CacheRecord) {
+  writeCache(rec: CacheRecordV3) {
     return this.files.writeCache(rec);
   }
 
   clearCache() {
     return this.files.clearCache();
   }
+}
+
+/** A random fallback identity for hosts whose machine id could not be read. Exported so the
+ *  local-only profile can construct a store without touching platform probes. */
+export function randomFallbackId(): string {
+  return randomUUID();
 }

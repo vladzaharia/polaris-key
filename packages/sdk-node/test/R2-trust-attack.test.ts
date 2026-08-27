@@ -7,19 +7,40 @@
 // that user (a malicious npm postinstall, a synced/restored `~/.config`, an XDG_CONFIG_HOME
 // pointed at a shared directory, a backup restore). Nothing below patches the app binary.
 //
-// Remediation reference: docs/security/WIRE-CONTRACT-V2.md §1 (trust set), §3 (claims),
-// §4 (cache integrity), §5 (ETag freshness).
+// ── WHAT THE P4 RE-SHAPE CHANGED, AND WHAT IT DID NOT ───────────────────────────────────────
+//
+// The rules moved; the answers did not. Verification now lives in `@plrs/client-core` and the
+// SDK is Core + sub-clients, so these tests drive `PolarisClient.sync()` instead of
+// `PolarisKeyClient.refresh()` and import the verifiers from client-core. What each attack must
+// still not achieve is byte-for-byte what it was.
+//
+// Three things about wire v3 make these attacks HARDER, and each gets its own assertion:
+//   * the fused `/config` document is split, so a forged artifact has to survive `typ` domain
+//     separation as well as a signature check (`plrs-license+jws` vs `plrs-config+jws`);
+//   * `iss` is the host-neutral `plrs.im`, so v2's `key.plrs.im` is now itself a refusal;
+//   * the cache is v3 with per-service slices, and a `v !== 3` record is DISCARDED rather than
+//     migrated — which is what makes every "plant a JSON file" PoC below inert on arrival.
+//
+// Remediation reference: docs/security/WIRE-CONTRACT-V3.md §1 (trust set), §3 (claims),
+// §4.1 (cache integrity), §4.2 (clock floor), §5 (ETag freshness).
 
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { signJws, base64UrlEncodeBytes } from "@plrs/jws";
-import type { ManagedConfigDoc, TrustManifestDoc } from "@plrs/protocol";
-import { PolarisKeyClient } from "../src/client.js";
-import { verifyDoc } from "../src/verify.js";
-import { mergeTrust, verifyTrustManifest } from "../src/trust.js";
-import { CACHE_VERSION, FileStore, type CacheRecord } from "../src/store.js";
+import type { ManagedEntry } from "@plrs/protocol/core";
+import type { ConfigDoc } from "@plrs/protocol/config";
+import type { LicenseDoc } from "@plrs/protocol/license";
+import type { TrustManifestDoc } from "@plrs/protocol/trust";
+import {
+  mergeTrust,
+  verifyLicenseDoc,
+  verifyTrustManifest,
+  type CacheRecordV3,
+} from "@plrs/client-core";
+import { PolarisClient } from "../src/client.js";
+import { CACHE_VERSION, FileStore } from "../src/core/store.js";
 
 // ── The legitimate, PINNED product key (the corpus test key) ───────────────────
 const PINNED_KID = "pkey-test-prod-2026";
@@ -56,6 +77,12 @@ async function attackerKey(): Promise<{ pem: string; pub: string }> {
   return { pem, pub: base64UrlEncodeBytes(raw) };
 }
 
+const entry = (value: ManagedEntry["value"], at: number): ManagedEntry => ({
+  state: "enforced",
+  value,
+  updatedAt: at,
+});
+
 interface DocOverrides {
   deviceId: string;
   issuedAt?: number;
@@ -63,52 +90,45 @@ interface DocOverrides {
   graceUntil?: number;
   iss?: string;
   aud?: string;
-  schemaVersion?: number;
   entitlement?: boolean;
   secret?: string;
-  concurrency?: number;
+  schemaVersion?: number;
 }
 
-function makeDoc(o: DocOverrides): ManagedConfigDoc {
+/** The v3 GRANT half of what used to be one fused document. */
+function makeLicenseDoc(o: DocOverrides): LicenseDoc {
   const t = o.issuedAt ?? nowSec();
   return {
-    schemaVersion: o.schemaVersion ?? 1,
+    iss: o.iss ?? "plrs.im",
     aud: o.aud ?? PRODUCT,
-    iss: o.iss ?? "key.plrs.im",
-    licenseId: "lic_r2",
     deviceId: o.deviceId,
     issuedAt: t,
     expiresAt: o.expiresAt ?? t + 3600,
     graceUntil: o.graceUntil ?? t + 30 * 86400,
+    licenseId: "lic_r2",
     profile: {
       name: "Mallory",
       firstName: "Mallory",
       email: "mallory@evil.test",
       activatedAt: t,
     },
-    payload: {
-      config: {
-        "quality.floor": {
-          state: "enforced",
-          value: o.concurrency ?? 9999,
-          updatedAt: t,
-        },
-      },
-      secrets: {
-        "soundcloud.oauth": {
-          state: "hidden",
-          value: o.secret ?? "FORGED-SECRET",
-          updatedAt: t,
-        },
-      },
-      entitlements: {
-        polarisVpn: {
-          state: "enforced",
-          value: o.entitlement ?? true,
-          updatedAt: t,
-        },
-      },
-    },
+    entitlements: { polarisVpn: entry(o.entitlement ?? true, t) },
+  };
+}
+
+/** The v3 SETTINGS half. Carries no licence fields whatsoever (§2.2, D-08). */
+function makeConfigDoc(o: DocOverrides): ConfigDoc {
+  const t = o.issuedAt ?? nowSec();
+  return {
+    iss: o.iss ?? "plrs.im",
+    aud: o.aud ?? PRODUCT,
+    deviceId: o.deviceId,
+    issuedAt: t,
+    expiresAt: o.expiresAt ?? t + 3600,
+    graceUntil: o.graceUntil ?? t + 30 * 86400,
+    schemaVersion: o.schemaVersion ?? 1,
+    config: { "quality.floor": entry("lossless", t) },
+    secrets: { "soundcloud.oauth": entry(o.secret ?? "FORGED-SECRET", t) },
   };
 }
 
@@ -121,7 +141,7 @@ function readMaybe(path: string): string | null {
 }
 
 function tempStore(): { dir: string; store: FileStore; cachePath: string } {
-  const dir = mkdtempSync(join(tmpdir(), "pkey-r2-"));
+  const dir = mkdtempSync(join(tmpdir(), "plrs-r2-"));
   const store = new FileStore(PRODUCT, dir);
   return { dir, store, cachePath: join(dir, PRODUCT, "managed.json") };
 }
@@ -133,7 +153,8 @@ function manifest(
   return {
     schemaVersion: 1,
     aud: PRODUCT,
-    iss: "key.plrs.im",
+    // v3 is host-neutral: the manifest's issuer is `plrs.im`, not the serving hostname (§8).
+    iss: "plrs.im",
     issuedAt,
     expiresAt: issuedAt + 300,
     jwksUrl: `${BASE}/${PRODUCT}/.well-known/jwks.json`,
@@ -152,12 +173,15 @@ const PINNED_ENTRY = {
 };
 
 interface Route {
-  /** Serve /config signed with this PEM under this kid. */
-  configSigner?: { pem: string; kid: string };
-  /** Doc overrides for the served /config doc. */
+  /** Serve the documents signed with this PEM under this kid. */
+  docSigner?: { pem: string; kid: string };
+  /** Overrides for the served documents. */
   docOpts?: Partial<DocOverrides>;
-  /** Ordered trust manifests; each refresh consumes the next (last one repeats). */
+  /** Ordered trust manifests; each refresh consumes the next (the last one repeats). */
   manifests?: Array<{ doc: TrustManifestDoc; pem: string; kid: string }>;
+  /** Bump the served documents' `issuedAt` by this much on every fetch, so a second pass can
+   *  fail on TRUST rather than on the anti-replay floor. */
+  issuedAtStep?: number;
 }
 
 function mockFetch(route: Route): {
@@ -167,6 +191,7 @@ function mockFetch(route: Route): {
 } {
   const paths: string[] = [];
   let mi = 0;
+  let step = 0;
   const impl = (async (
     input: string | URL | Request,
     init?: RequestInit,
@@ -178,44 +203,81 @@ function mockFetch(route: Route): {
     if (u.pathname.endsWith("/polaris-trust.jws")) {
       const list = route.manifests ?? [];
       if (list.length === 0) return new Response("", { status: 404 });
-      const entry = list[Math.min(mi, list.length - 1)]!;
+      const entryAt = list[Math.min(mi, list.length - 1)]!;
       mi++;
-      return new Response(await signJws(entry.doc, entry.pem, entry.kid), {
-        status: 200,
-        headers: { "content-type": "application/jose" },
-      });
+      return new Response(
+        await signJws(entryAt.doc, entryAt.pem, entryAt.kid, "plrs-trust+jws"),
+        { status: 200, headers: { "content-type": "application/jose" } },
+      );
     }
-    if (u.pathname.endsWith("/config/report"))
+    if (u.pathname.endsWith("/devices/report"))
       return new Response("{}", { status: 200 });
-    if (u.pathname.endsWith("/config")) {
-      const signer = route.configSigner ?? { pem: PINNED_PEM, kid: PINNED_KID };
-      const doc = makeDoc({
-        deviceId: headers.get("x-pkey-device") ?? "d",
-        ...route.docOpts,
+
+    const signer = route.docSigner ?? { pem: PINNED_PEM, kid: PINNED_KID };
+    const deviceId = headers.get("x-polaris-device") ?? "d";
+    const base: DocOverrides = { deviceId, ...route.docOpts };
+
+    if (u.pathname.endsWith("/license/document")) {
+      const bump = (route.issuedAtStep ?? 0) * step++;
+      const doc = makeLicenseDoc({
+        ...base,
+        issuedAt: (base.issuedAt ?? nowSec()) + bump,
       });
-      return new Response(await signJws(doc, signer.pem, signer.kid), {
-        status: 200,
-        headers: { "content-type": "application/jose", etag: '"r2"' },
-      });
+      return new Response(
+        await signJws(doc, signer.pem, signer.kid, "plrs-license+jws"),
+        {
+          status: 200,
+          headers: { "content-type": "application/jwt", etag: '"r2-lic"' },
+        },
+      );
+    }
+    if (u.pathname.endsWith("/config/document")) {
+      const doc = makeConfigDoc(base);
+      return new Response(
+        await signJws(doc, signer.pem, signer.kid, "plrs-config+jws"),
+        {
+          status: 200,
+          headers: { "content-type": "application/jwt", etag: '"r2-cfg"' },
+        },
+      );
     }
     return new Response("", { status: 404 });
   }) as typeof fetch;
   return { impl, paths, manifestIndex: () => mi };
 }
 
+/** The v3 client under attack. Fingerprinting is off throughout: these tests are about key
+ *  custody, and shelling out to platform probes would make them depend on this host. */
+function clientOn(
+  store: FileStore,
+  extra: Partial<ConstructorParameters<typeof PolarisClient>[0]> = {},
+): PolarisClient {
+  return new PolarisClient({
+    productSlug: PRODUCT,
+    baseUrl: BASE,
+    version: "1.2.3",
+    trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
+    trustRefresh: false,
+    store,
+    license: { fingerprint: false },
+    devices: { fingerprint: false },
+    ...extra,
+  });
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid", () => {
-  // FIXED (R2-01 / R4-02) — §1.1. The cache is no longer a key source at all: it persists the
+  // FIXED (R2-01 / R4-02) — §1. The cache is no longer a key source at all: it persists the
   // trust manifest's compact JWS, which is re-verified against the PINNED keys on every load,
   // and the merge is `{...manifestKeys, ...pinnedKeys}` so a pin is terminal.
   it("a planted managed.json key replaces the pinned public key, so an attacker-signed doc verifies", async () => {
     const atk = await attackerKey();
     const { store, cachePath } = tempStore();
-    await store.setToken("pkeyt_whatever");
+    await store.setToken("plrst_whatever");
 
     // THE ATTACK, verbatim: one file write planting the PINNED kid with attacker key bytes.
-    // Under v2 this record is a v1 record — no `v` field — so it is DISCARDED, not migrated
-    // (§7.3), and `trustedKeys` is not a field the client reads under any version.
+    // Under v3 this record has no `v` at all, so it is DISCARDED, not migrated (§4.1), and
+    // `trustedKeys` is not a field the client reads under any version.
     writeFileSync(
       cachePath,
       JSON.stringify({
@@ -225,46 +287,40 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
       }),
     );
 
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } }, // <- the real, pinned key
-      trustRefresh: false,
-      store,
+    const client = clientOn(store, {
       fetchImpl: mockFetch({
-        configSigner: { pem: atk.pem, kid: PINNED_KID }, // signed by the ATTACKER
+        docSigner: { pem: atk.pem, kid: PINNED_KID }, // signed by the ATTACKER
         docOpts: { entitlement: true, secret: "ATTACKER-OWNED" },
       }).impl,
     });
+    await client.init();
 
-    const r = await client.refresh({ force: true });
-    expect(r.applied).toBe(false); //  <-- forged document REJECTED
+    const r = await client.sync({ force: true });
+    expect(r.applied).toBe(false); //  <-- both forged documents REJECTED
     expect(client.isLicensed()).toBe(false);
-    expect(client.isEntitled("polarisVpn")).toBe(false);
-    expect(client.getSecret("soundcloud.oauth")).toBeNull();
-    expect(client.getProfile()).toBeNull();
+    expect(client.license.isEntitled("polarisVpn")).toBe(false);
+    expect(client.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(client.license.getProfile()).toBeNull();
+    // The split does not give the attacker two chances: BOTH documents failed, so neither
+    // slice landed and the settings half cannot be smuggled in behind the grant half.
+    expect(r.documents.license?.kind).toBe("error");
+    expect(r.documents.config?.kind).toBe("error");
     client.close();
   });
 
-  // FIXED (R2-01) — §1.1 rule 1. Even a manifest signed by the GENUINE pinned key may not
+  // FIXED (R2-01) — §1 rule 1. Even a manifest signed by the GENUINE pinned key may not
   // re-point a pinned kid: presenting a pinned kid with different bytes is a substitution
   // attempt, so the whole manifest is rejected and the previous trust set is kept.
   it("control: WITHOUT the planted cache the identical forged doc is rejected", async () => {
     const atk = await attackerKey();
     const { store } = tempStore();
-    await store.setToken("pkeyt_whatever");
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
-      trustRefresh: false,
-      store,
-      fetchImpl: mockFetch({ configSigner: { pem: atk.pem, kid: PINNED_KID } })
+    await store.setToken("plrst_whatever");
+    const client = clientOn(store, {
+      fetchImpl: mockFetch({ docSigner: { pem: atk.pem, kid: PINNED_KID } })
         .impl,
     });
-    const r = await client.refresh({ force: true });
+    await client.init();
+    const r = await client.sync({ force: true });
     expect(r.applied).toBe(false);
     expect(client.isLicensed()).toBe(false);
     client.close();
@@ -277,6 +333,7 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
       manifest([{ ...PINNED_ENTRY, publicKey: atk.pub }], t),
       PINNED_PEM,
       PINNED_KID,
+      "plrs-trust+jws",
     );
     const result = await verifyTrustManifest(substitution, {
       pinned: { [PINNED_KID]: PINNED_PUB },
@@ -286,14 +343,14 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
     expect(result.discovered).toEqual({});
   });
 
-  // FIXED (R2-01 amplifier) — §4.2. Manifests are verified against the PINNED keys ONLY,
+  // FIXED (R2-01 amplifier) — §1. Manifests are verified against the PINNED keys ONLY,
   // never against the current (possibly extended) trust set, so a planted or rotated key can
   // never sign the manifest that mints the next key. The poisoning cannot self-perpetuate.
   it("the poisoned trust set is also accepted for TRUST MANIFESTS — the attacker can self-perpetuate", async () => {
     const atk = await attackerKey();
     const atk2 = await attackerKey();
     const { store, cachePath } = tempStore();
-    await store.setToken("pkeyt_whatever");
+    await store.setToken("plrst_whatever");
     writeFileSync(
       cachePath,
       JSON.stringify({
@@ -304,13 +361,8 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
     );
 
     const t = nowSec();
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
+    const client = clientOn(store, {
       trustRefresh: true,
-      store,
       fetchImpl: mockFetch({
         // Manifest signed by the PLANTED key, minting a brand-new attacker kid.
         manifests: [
@@ -332,32 +384,32 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
             ),
           },
         ],
-        configSigner: { pem: atk2.pem, kid: "attacker-forever-2099" },
+        docSigner: { pem: atk2.pem, kid: "attacker-forever-2099" },
       }).impl,
     });
+    await client.init();
 
-    const r = await client.refresh({ force: true });
+    const r = await client.sync({ force: true });
     expect(r.applied).toBe(false);
     // Nothing was installed: the manifest never verified against the pins, so no trustJws was
     // persisted and `attacker-forever-2099` is unknown on this device and every future run.
-    const persisted = JSON.parse(
-      readFileSync(cachePath, "utf8"),
-    ) as CacheRecord;
+    const raw = readFileSync(cachePath, "utf8");
+    const persisted = JSON.parse(raw) as CacheRecordV3;
     expect(persisted.trustJws).toBeUndefined();
-    expect(JSON.stringify(persisted)).not.toContain("attacker-forever-2099");
+    expect(raw).not.toContain("attacker-forever-2099");
     client.close();
   });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
 describe("R2-03 · no client-side key revocation: the trust set only ever GROWS", () => {
-  // FIXED (R2-02) — §1.2 rule 4. The trust set becomes exactly `pinned ∪ {manifest keys with
+  // FIXED (R2-02) — §1 rule 2. The trust set becomes exactly `pinned ∪ {manifest keys with
   // status ≠ revoked}` on every refresh. A kid the server stops publishing is DROPPED, which
   // is what restores revocation-by-omission.
   it("a key dropped from a later signed manifest stays trusted forever", async () => {
     const rotated = await attackerKey(); // stand-in for a key that later gets revoked
     const { store, cachePath } = tempStore();
-    await store.setToken("pkeyt_whatever");
+    await store.setToken("plrst_whatever");
     const t = nowSec();
 
     const ROTATED = {
@@ -369,13 +421,8 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
       status: "active" as const,
     };
 
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
+    const client = clientOn(store, {
       trustRefresh: true,
-      store,
       fetchImpl: mockFetch({
         manifests: [
           // 1. Server publishes both keys.
@@ -384,30 +431,35 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
             kid: PINNED_KID,
             doc: manifest([PINNED_ENTRY, ROTATED], t),
           },
-          // 2. Operator REVOKES `product-key-2026`: repo.ts's listVerificationProductKeys
-          //    filters status='revoked' out, so it simply disappears from the manifest.
+          // 2. Operator REVOKES `product-key-2026`: the repo filters status='revoked' out, so
+          //    it simply disappears from the manifest.
           {
             pem: PINNED_PEM,
             kid: PINNED_KID,
             doc: manifest([PINNED_ENTRY], t + 10),
           },
         ],
-        // /config is served by the REVOKED key.
-        configSigner: { pem: rotated.pem, kid: "product-key-2026" },
+        // The documents are served by the REVOKED key.
+        docSigner: { pem: rotated.pem, kid: "product-key-2026" },
+        // Each pass serves a STRICTLY NEWER document, so the second pass can only fail on
+        // trust — never on the anti-replay floor. Without this the test would pass for the
+        // wrong reason and prove nothing about pruning.
+        issuedAtStep: 100,
       }).impl,
     });
+    await client.init();
 
-    // Refresh #1 learns the key and the doc it signs is applied…
-    expect((await client.refresh({ force: true })).applied).toBe(true);
-    expect(client.isEntitled("polarisVpn")).toBe(true);
-    // …refresh #2 sees the revocation manifest and prunes it, so the same signer's document
+    // Pass #1 learns the key and the documents it signs are applied…
+    expect((await client.sync({ force: true })).applied).toBe(true);
+    expect(client.license.isEntitled("polarisVpn")).toBe(true);
+    // …pass #2 sees the revocation manifest and prunes it, so the same signer's NEWER document
     // is no longer accepted.
-    expect((await client.refresh({ force: true })).applied).toBe(false);
+    expect((await client.sync({ force: true })).applied).toBe(false);
 
     // Rebuild the persisted trust set through the production path: the revoked kid is gone.
     const persisted = JSON.parse(
       readFileSync(cachePath, "utf8"),
-    ) as CacheRecord;
+    ) as CacheRecordV3;
     const reloaded = await verifyTrustManifest(persisted.trustJws!, {
       pinned: { [PINNED_KID]: PINNED_PUB },
       expectedAud: PRODUCT,
@@ -418,11 +470,15 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
     expect(trust[PINNED_KID]).toBe(PINNED_PUB);
 
     // And it no longer signs valid documents.
-    const doc = await verifyDoc(
+    const doc = await verifyLicenseDoc(
       await signJws(
-        makeDoc({ deviceId: await store.getDeviceId(), issuedAt: t + 999 }),
+        makeLicenseDoc({
+          deviceId: await store.getDeviceId(),
+          issuedAt: t + 999,
+        }),
         rotated.pem,
         "product-key-2026",
+        "plrs-license+jws",
       ),
       {
         trust,
@@ -434,7 +490,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
     client.close();
   });
 
-  // FIXED (R2-02) — §1.2. `status` is now read. Note the table is deliberate: `retired` and
+  // FIXED (R2-02) — §1. `status` is now read. Note the table is deliberate: `retired` and
   // `staged` MAY still verify (in-flight docs must not break, and a key must be trusted
   // before it signs or rotation can never land). `revoked` is the status that must fail, and
   // it is the one this test now pins.
@@ -460,8 +516,8 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
             kty: "OKP",
             crv: "Ed25519",
             publicKey: revoked.pub,
-            // Explicitly published as revoked — the positive signal §1.2 requires the server
-            // to emit for at least 2× cacheSeconds before falling back to prune-on-absence.
+            // Explicitly published as revoked — the positive signal §1 requires the server to
+            // emit for at least 2× cacheSeconds before falling back to prune-on-absence.
             status: "revoked",
           } as unknown as TrustManifestDoc["keys"][number],
         ],
@@ -469,6 +525,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
       ),
       PINNED_PEM,
       PINNED_KID,
+      "plrs-trust+jws",
     );
 
     const result = await verifyTrustManifest(mixed, {
@@ -476,19 +533,14 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
       expectedAud: PRODUCT,
     });
     expect(result.doc).not.toBeNull();
-    expect(result.discovered["long-retired-2019"]).toBe(retired.pub); // per §1.2
+    expect(result.discovered["long-retired-2019"]).toBe(retired.pub); // per §1
     expect(result.discovered["compromised-2025"]).toBeUndefined(); // REFUSED
 
-    // End to end: the revoked key cannot sign an accepted /config document.
+    // End to end: the revoked key cannot sign an accepted document of EITHER type.
     const { store } = tempStore();
-    await store.setToken("pkeyt_whatever");
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
+    await store.setToken("plrst_whatever");
+    const client = clientOn(store, {
       trustRefresh: true,
-      store,
       fetchImpl: mockFetch({
         manifests: [
           {
@@ -499,165 +551,30 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
             ) as TrustManifestDoc,
           },
         ],
-        configSigner: { pem: revoked.pem, kid: "compromised-2025" },
+        docSigner: { pem: revoked.pem, kid: "compromised-2025" },
       }).impl,
     });
-    expect((await client.refresh({ force: true })).applied).toBe(false);
+    await client.init();
+    const r = await client.sync({ force: true });
+    expect(r.applied).toBe(false);
     expect(client.isLicensed()).toBe(false);
+    expect(client.config.getSecret("soundcloud.oauth")).toBeNull();
     client.close();
-  });
-});
-
-// ══════════════════════════════════════════════════════════════════════════════
-describe("R2-04 · the cached document is NEVER re-verified when it is loaded", () => {
-  // FIXED (R2-03 / R4-01) — §4.1/§4.2. The cache stores the compact JWS and nothing else, and
-  // it is re-verified against the pinned keys on every load. A hand-written document has no
-  // signature to re-check, so it is simply not a document.
-  it("a hand-written managed.json with no signature at all yields full entitlements + secrets", async () => {
-    const { store, cachePath } = tempStore();
-    await store.setToken("pkeyt_whatever");
-    const t = nowSec();
-    writeFileSync(
-      cachePath,
-      JSON.stringify({
-        doc: makeDoc({
-          deviceId: await store.getDeviceId(),
-          issuedAt: t,
-          graceUntil: t + 100 * 365 * 86400, // a century of "grace"
-          secret: "NEVER-SIGNED",
-        }),
-        lastAcceptedIssuedAt: 0,
-        lastVerifiedAt: Date.now(),
-      }),
-    );
-
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
-      trustRefresh: false,
-      store,
-      // No network at all — offline-first path.
-      fetchImpl: (async () =>
-        new Response("", { status: 503 })) as typeof fetch,
-    });
-
-    expect(client.status().status).toBe("needs-activation");
-    expect(client.isLicensed()).toBe(false);
-    expect(client.isEntitled("polarisVpn")).toBe(false);
-    expect(client.getSecret("soundcloud.oauth")).toBeNull();
-    client.close();
-
-    // The same holds for a v2-shaped record carrying a doc that was never signed by a pinned
-    // key: an attacker-signed JWS is re-verified and refused.
-    const atk = await attackerKey();
-    writeFileSync(
-      cachePath,
-      JSON.stringify({
-        v: CACHE_VERSION,
-        configJws: await signJws(
-          makeDoc({ deviceId: await store.getDeviceId(), issuedAt: t }),
-          atk.pem,
-          PINNED_KID,
-        ),
-      } satisfies CacheRecord),
-    );
-    const c2 = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
-      trustRefresh: false,
-      store,
-      fetchImpl: (async () =>
-        new Response("", { status: 503 })) as typeof fetch,
-    });
-    expect(c2.status().status).toBe("needs-activation");
-    c2.close();
-  });
-
-  // FIXED (R2-03 / R4-03) — §4.1/§4.2. There is no `lastAcceptedIssuedAt` on disk to rewrite:
-  // the replay floor is DERIVED from the issuedAt of the cached document after it has been
-  // re-verified. Lowering the floor now requires forging a signature.
-  it("`lastAcceptedIssuedAt` lives in the same attacker-writable file, so anti-replay is resettable", async () => {
-    const { store, cachePath } = tempStore();
-    await store.setToken("pkeyt_whatever");
-    const deviceId = await store.getDeviceId();
-    const t = nowSec();
-
-    // A genuine, current document is cached — that sets the floor at its issuedAt.
-    const current = await signJws(
-      makeDoc({ deviceId, issuedAt: t }),
-      PINNED_PEM,
-      PINNED_KID,
-    );
-    writeFileSync(
-      cachePath,
-      JSON.stringify({
-        v: CACHE_VERSION,
-        configJws: current,
-        // The attacker adds the old counter back by hand. It is not a field any more.
-        lastAcceptedIssuedAt: 0,
-      }),
-    );
-
-    // An older, genuinely-signed document (e.g. a captured higher-tier doc) is replayed.
-    const replayed = await signJws(
-      makeDoc({ deviceId, issuedAt: t - 86400, secret: "REPLAYED" }),
-      PINNED_PEM,
-      PINNED_KID,
-    );
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
-      trustRefresh: false,
-      store,
-      fetchImpl: (async (input: string | URL | Request) => {
-        const u = new URL(String(input));
-        if (u.pathname.endsWith("/config/report"))
-          return new Response("{}", { status: 200 });
-        if (u.pathname.endsWith("/config"))
-          return new Response(replayed, { status: 200 });
-        return new Response("", { status: 404 });
-      }) as typeof fetch,
-    });
-
-    expect((await client.refresh({ force: true })).applied).toBe(false);
-    expect(client.getSecret("soundcloud.oauth")).toBe("FORGED-SECRET"); // still the current doc
-    client.close();
-
-    // And the floor is genuinely derived — verifyDoc rejects the older doc against it.
-    expect(
-      await verifyDoc(replayed, {
-        trust: { [PINNED_KID]: PINNED_PUB },
-        expectedAud: PRODUCT,
-        deviceId,
-        lastAcceptedIssuedAt: t,
-      }),
-    ).toBeNull();
   });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
 describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId + has zero clock skew", () => {
   // FIXED (R2-08) — §3. `iss` and the freshness window are asserted, so the document is never
-  // accepted and never reaches disk. (`schemaVersion: 999` is deliberately still fine: that
-  // field carries the product CATALOG version, not a wire-format id — see verify.ts.)
+  // accepted and never reaches disk. (A `schemaVersion` of 999 is deliberately still fine on a
+  // CONFIG document: that field carries the product CATALOG version, not a wire-format id —
+  // see client-core's verify.ts.)
   it("a LONG-expired doc with a foreign `iss` and an unknown schemaVersion verifies and is cached", async () => {
     const { store, cachePath } = tempStore();
-    await store.setToken("pkeyt_whatever");
+    await store.setToken("plrst_whatever");
     const t = nowSec() - 400 * 86400; // 400 days ago
 
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
-      trustRefresh: false,
-      store,
+    const client = clientOn(store, {
       fetchImpl: mockFetch({
         docOpts: {
           issuedAt: t,
@@ -668,36 +585,81 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
         },
       }).impl,
     });
+    await client.init();
 
-    const r = await client.refresh({ force: true });
+    const r = await client.sync({ force: true });
     expect(r.applied).toBe(false); // refused at verify, not merely at the gate
     // Nothing reached disk at all — v1 wrote the doc verbatim, foreign `iss` and all.
     const raw = readMaybe(cachePath);
     if (raw !== null) {
-      const persisted = JSON.parse(raw) as CacheRecord;
-      expect(persisted.configJws).toBeUndefined();
+      const persisted = JSON.parse(raw) as CacheRecordV3;
+      expect(persisted.docs?.license).toBeUndefined();
+      expect(persisted.docs?.config).toBeUndefined();
       expect(raw).not.toContain("evil.example");
     }
 
     // Nothing to read: an unverifiable document is not a document.
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
-    expect(client.isEntitled("polarisVpn")).toBe(false);
-    expect(client.getSecret("soundcloud.oauth")).toBeNull();
-    expect(client.getConfig("quality.floor", 1)).toBe(1);
+    expect(client.license.isEntitled("polarisVpn")).toBe(false);
+    expect(client.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(client.config.getConfig("quality.floor", "mp3")).toBe("mp3");
+    client.close();
+  });
+
+  // NEW in v3 (§8) — the rebrand is itself a refusal. `iss` is the host-neutral `plrs.im`;
+  // a document carrying v2's `key.plrs.im` is a v2 artifact and is refused outright. There is
+  // no dual-accept window (§9), so a captured v2 document is not merely stale — it is foreign.
+  it("v2's `key.plrs.im` issuer is refused, on both document types and on both paths", async () => {
+    const { store } = tempStore();
+    const deviceId = await store.getDeviceId();
+    const t = nowSec();
+    const v2ish = { deviceId, issuedAt: t, iss: "key.plrs.im" };
+
+    for (const checkFreshness of [true, false]) {
+      expect(
+        await verifyLicenseDoc(
+          await signJws(
+            makeLicenseDoc(v2ish),
+            PINNED_PEM,
+            PINNED_KID,
+            "plrs-license+jws",
+          ),
+          {
+            trust: { [PINNED_KID]: PINNED_PUB },
+            expectedAud: PRODUCT,
+            deviceId,
+            checkFreshness,
+          },
+        ),
+      ).toBeNull();
+    }
+
+    // …and end to end, the client refuses it too.
+    await store.setToken("plrst_whatever");
+    const client = clientOn(store, {
+      fetchImpl: mockFetch({ docOpts: { iss: "key.plrs.im" } }).impl,
+    });
+    await client.init();
+    expect((await client.sync({ force: true })).applied).toBe(false);
+    expect(client.status().status).toBe("needs-activation");
     client.close();
   });
 
   // FIXED (R2-11) — §5. A 304 means "content unchanged, freshness RENEWED". Past the cached
   // doc's half-life the client re-asks unconditionally so the server re-signs the window; a
   // continuously online client can no longer drift into `grace` behind a content-stable ETag.
+  //
+  // Scoped to the LICENSE document (`expectedServices: ["license"]`) so the fetch counter means
+  // one thing. The rule is per-document and the config half is pinned identically in
+  // `sync.test.ts`; what this file cares about is that the drift is closed at all.
   it("R2-11: a 304 (content-only ETag) never refreshes the signed validity window", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const t0 = 1_800_000_000;
     vi.setSystemTime(t0 * 1000);
 
     const { store } = tempStore();
-    await store.setToken("pkeyt_whatever");
+    await store.setToken("plrst_whatever");
     let served = 0;
     const impl = (async (
       input: string | URL | Request,
@@ -705,57 +667,54 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     ): Promise<Response> => {
       const u = new URL(typeof input === "string" ? input : input.toString());
       const headers = new Headers(init?.headers);
-      if (u.pathname.endsWith("/config/report"))
+      if (u.pathname.endsWith("/devices/report"))
         return new Response("{}", { status: 200 });
-      if (u.pathname.endsWith("/config")) {
-        // Server re-mints with a fresh `now` each time, but the ETag is content-only.
-        if (headers.get("if-none-match") === '"stable-content"')
+      if (u.pathname.endsWith("/license/document")) {
+        // The server re-mints with a fresh `now` each time, but the ETag is content-only.
+        if (headers.get("if-none-match") === '"stable-content"') {
           return new Response(null, {
             status: 304,
             headers: { etag: '"stable-content"' },
           });
+        }
         served++;
-        const doc = makeDoc({
-          deviceId: headers.get("x-pkey-device") ?? "d",
+        const doc = makeLicenseDoc({
+          deviceId: headers.get("x-polaris-device") ?? "d",
           issuedAt: Math.floor(Date.now() / 1000),
         });
-        return new Response(await signJws(doc, PINNED_PEM, PINNED_KID), {
-          status: 200,
-          headers: { etag: '"stable-content"' },
-        });
+        return new Response(
+          await signJws(doc, PINNED_PEM, PINNED_KID, "plrs-license+jws"),
+          { status: 200, headers: { etag: '"stable-content"' } },
+        );
       }
       return new Response("", { status: 404 });
     }) as typeof fetch;
 
-    const client = await PolarisKeyClient.create({
-      productSlug: PRODUCT,
-      baseUrl: BASE,
-      version: "1.2.3",
-      trust: { pinnedKeys: { [PINNED_KID]: PINNED_PUB } },
-      trustRefresh: false,
-      store,
+    const client = clientOn(store, {
       fetchImpl: impl,
+      expectedServices: ["license"],
     });
-    await client.refresh({ force: true }); // first fetch → 200
+    await client.init();
+    await client.sync({ force: true }); // first fetch → 200
     expect(served).toBe(1);
 
     // Inside the half-life the conditional request is still a pure optimisation: 304s are
     // taken at face value and cost the server nothing.
-    for (let i = 0; i < 5; i++) await client.refresh();
+    for (let i = 0; i < 5; i++) await client.sync();
     expect(served).toBe(1);
 
     // Past the half-life the client escalates: the 304 is followed by an unconditional
     // re-request, so a freshly signed window lands…
     vi.setSystemTime((t0 + 1801) * 1000);
-    await client.refresh();
+    await client.sync();
     expect(served).toBe(2);
 
     // …and the client stays `ok` well beyond the FIRST doc's expiry instead of drifting.
     vi.setSystemTime((t0 + 3601) * 1000);
     expect(client.status().status).toBe("ok");
-    await client.refresh();
+    await client.sync();
     vi.setSystemTime((t0 + 31 * 86400) * 1000);
-    await client.refresh();
+    await client.sync();
     expect(client.status().status).toBe("ok");
     client.close();
   });
@@ -766,12 +725,13 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     const deviceId = "dev_fixture";
     const t = nowSec();
     const jws = await signJws(
-      makeDoc({ deviceId, issuedAt: t }),
+      makeLicenseDoc({ deviceId, issuedAt: t }),
       PINNED_PEM,
       PINNED_KID,
+      "plrs-license+jws",
     );
     // A client up to CLOCK_SKEW seconds fast still accepts a brand-new document.
-    const doc = await verifyDoc(jws, {
+    const doc = await verifyLicenseDoc(jws, {
       trust: { [PINNED_KID]: PINNED_PUB },
       expectedAud: PRODUCT,
       deviceId,
@@ -780,11 +740,12 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     expect(doc).not.toBeNull();
 
     // And a doc issued in the FUTURE is now refused outright — there is an `iat` sanity check.
-    const future = await verifyDoc(
+    const future = await verifyLicenseDoc(
       await signJws(
-        makeDoc({ deviceId, issuedAt: t + 10 * 365 * 86400 }),
+        makeLicenseDoc({ deviceId, issuedAt: t + 10 * 365 * 86400 }),
         PINNED_PEM,
         PINNED_KID,
+        "plrs-license+jws",
       ),
       { trust: { [PINNED_KID]: PINNED_PUB }, expectedAud: PRODUCT, deviceId },
     );

@@ -9,7 +9,7 @@
 // JWS, never bare `kid → key` JSON, so a file write can neither add a kid nor swap the bytes
 // behind one (R2-01 / R2-02 / R4-02).
 
-import { verifyJws, type TrustSet } from "@plrs/jws";
+import { verifyJws, type JwsTyp, type TrustSet } from "@plrs/jws";
 import { ISSUER } from "@plrs/protocol/core";
 import type { TrustManifestDoc } from "@plrs/protocol/trust";
 import { CLOCK_SKEW_SECONDS } from "./claims.js";
@@ -39,6 +39,19 @@ export interface TrustManifestOptions {
   now?: number;
   /** See `verifyDoc` — freshness is asserted on the network path only. */
   checkFreshness?: boolean;
+  /**
+   * The `typ` this manifest must carry. Defaults to v3's `plrs-trust+jws`, and NO shipping
+   * call site passes anything else — the option exists for exactly one consumer, the Node
+   * conformance runner, which keeps driving `conformance/corpus/v1` (whose manifests are
+   * stamped `pkey-trust+jws`) through this implementation until the Python and Swift runners
+   * move to corpus v2 in P5 and v1 is deleted in P8.
+   *
+   * It cannot loosen anything: `requireTyp` stays on, so a manifest with no `typ` at all is
+   * still refused, and a caller asking for the wrong one simply rejects every manifest the
+   * server actually emits. The alternative was a second copy of §1's substitution/prune rules
+   * living in a test file, which is precisely the drift the corpus exists to prevent.
+   */
+  typ?: JwsTyp;
 }
 
 export interface TrustManifestResult {
@@ -70,7 +83,7 @@ export async function verifyTrustManifest(
   opts: TrustManifestOptions,
 ): Promise<TrustManifestResult> {
   const verified = await verifyJws<TrustManifestDoc>(jws, opts.pinned, {
-    typ: "plrs-trust+jws",
+    typ: opts.typ ?? "plrs-trust+jws",
     requireTyp: true,
   });
   if (!verified) return REJECTED;

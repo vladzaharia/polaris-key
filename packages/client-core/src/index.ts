@@ -31,6 +31,17 @@ export {
 } from "./trust.js";
 
 export {
+  MAX_BUNDLE_BYTES,
+  inspectBundle,
+  verifyBundle,
+  type BundleInspection,
+  type BundleOptions,
+  type BundleRefusalReason,
+  type VerifiedBundle,
+  type VerifiedBundleDoc,
+} from "./bundle.js";
+
+export {
   isUsable,
   licenseState,
   type BlockedState,

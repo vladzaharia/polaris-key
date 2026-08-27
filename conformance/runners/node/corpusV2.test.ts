@@ -12,19 +12,20 @@
 //   trustCases       §1 trust merge / prune / revocation   → verifyTrustManifest + mergeTrust
 //   clockFloorCases  §4.2 monotonic floor over 3 artifacts → the reload path + licenseState
 //   gate-matrix      §5 the gate decision table            → licenseState
-//   bundleCases      §7 offline bundle import              → the order implemented BELOW
+//   bundleCases      §7 offline bundle import              → inspectBundle
 //
-// The bundle section is deliberately different from the others: there is no shipped
-// `verifyBundle` yet (it lands in P4), so §7's numbered order is implemented inline here as
-// the REFERENCE. When P4 ships one, it must reproduce this function's outcomes vector for
-// vector — including which numbered step refuses, not merely that something did.
+// The bundle section used to carry an inline reference implementation of §7's numbered order,
+// because no shipped verifier existed. P4 shipped one — `@plrs/client-core`'s `inspectBundle`
+// — and this file now drives THAT, vector for vector, including which numbered step refuses.
+// The step attribution is the whole point of the section, so the shipped API reports it
+// (`BundleRefusalReason`) rather than collapsing every failure into a bare null.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { verifyJws, type TrustSet } from "@plrs/jws";
-import type { BundleDoc, ManagedEntry } from "@plrs/protocol/core";
+import type { ManagedEntry } from "@plrs/protocol/core";
 import type {
   ActivationSource,
   AllowedRange,
@@ -32,18 +33,22 @@ import type {
   LicenseDoc,
 } from "@plrs/protocol/license";
 import {
+  MAX_BUNDLE_BYTES,
   channelForVersion,
   compareSemver,
   effectiveNow,
   highWaterMark,
+  inspectBundle,
   isDevBuild,
   isUsable,
   licenseState,
   mergeTrust,
+  verifyBundle,
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
   type BlockedState,
+  type BundleRefusalReason,
   type VerifyOptions,
 } from "@plrs/client-core";
 
@@ -102,11 +107,9 @@ interface ClockFloorCase {
   expect: { highWaterMark: number; effectiveNow: number; status: string };
 }
 
-type BundleReason =
-  | "bundle-jws-rejected"
-  | "bundle-claims-rejected"
-  | "bundle-trust-rejected"
-  | "inner-doc-rejected";
+// The fixture's vocabulary IS the shipped `BundleRefusalReason` union — declared as an alias
+// so a rename on either side stops compiling instead of silently un-pinning the attribution.
+type BundleReason = BundleRefusalReason;
 
 type ImportOutcome =
   | { imports: false; reason: BundleReason }
@@ -419,68 +422,41 @@ describe(`gate-matrix v${matrix.gateMatrixVersion} (§5)`, () => {
 });
 
 // ── §7 — offline bundle import, all-or-nothing, in the contract's numbered order ────────
-// This IS the reference implementation. P4's shipped `verifyBundle` must reproduce it.
+// `inspectBundle` walks steps 1–4 and reports the step that refused; step 5 (the atomic cache
+// write) belongs to the host, so what the corpus can pin is exactly what this returns.
+//
+// Note what the runner no longer does: it does not hand the verifier a payload cap. §1's
+// raised bundle cap is a property of the `typ`, not of the caller, so `inspectBundle` takes
+// it from `MAX_BUNDLE_BYTES` and the fixture's value is asserted to agree — which is a
+// STRONGER pin than passing it in, because a runner that supplies the cap cannot catch an
+// implementation that forgot to apply one.
 async function importBundle(c: BundleCase): Promise<ImportOutcome> {
-  // 1. The bundle JWS against PINNED keys only, `typ` mandatory, payload cap 262 144 (§1).
-  const verified = await verifyJws<BundleDoc>(c.bundleJws, c.pinned, {
-    ...V3,
-    typ: "plrs-bundle+jws",
-    maxPayloadBytes: c.maxPayloadBytes,
-  });
-  if (!verified) return { imports: false, reason: "bundle-jws-rejected" };
-  const bundle = verified.payload;
-
-  // 2. The bundle's own claims, on NETWORK-path freshness: a stale bundle is refused even
-  //    though the documents it carries are validated with the reload profile.
-  const SKEW = 300;
-  if (
-    bundle.aud !== c.expectedAud ||
-    bundle.deviceId !== c.deviceId ||
-    bundle.issuedAt > c.now + SKEW ||
-    c.now > bundle.expiresAt + SKEW
-  ) {
-    return { imports: false, reason: "bundle-claims-rejected" };
-  }
-
-  // 3. The inner trust manifest, against the PINS (reload profile — a bundle minted weeks
-  //    ago carries a manifest whose minutes-long `expiresAt` passed long before import).
-  const manifest = await verifyTrustManifest(bundle.trust, {
-    pinned: c.pinned,
-    expectedAud: c.expectedAud,
-    now: c.now,
-    checkFreshness: false,
-  });
-  if (!manifest.doc) return { imports: false, reason: "bundle-trust-rejected" };
-  const trust = mergeTrust(c.pinned, manifest.discovered);
-
-  // 4. Each inner document against the EFFECTIVE set, reload profile, bound to the LOCAL
-  //    device id — not to the bundle's claim, which step 2 has only proved matches it.
   const opts = {
-    trust,
-    expectedAud: c.expectedAud,
+    pinned: c.pinned,
+    product: c.expectedAud,
     deviceId: c.deviceId,
     now: c.now,
-    checkFreshness: false,
   };
+  const result = await inspectBundle(c.bundleJws, opts);
+  if (!result.ok) return { imports: false, reason: result.reason };
+  // The two entry points must never disagree: `verifyBundle` is the same walk with the step
+  // discarded, and a host that uses it has to see exactly what the corpus saw.
+  expect(await verifyBundle(c.bundleJws, opts)).toEqual(result.bundle);
+  // `docs` is reported in §7's order (license, then config) so the fixture's array is a
+  // sequence rather than a set.
   const docs: string[] = [];
-  if (bundle.docs.license !== undefined) {
-    if (!(await verifyLicenseDoc(bundle.docs.license, opts)))
-      return { imports: false, reason: "inner-doc-rejected" };
-    docs.push("license");
-  }
-  if (bundle.docs.config !== undefined) {
-    if (!(await verifyConfigDoc(bundle.docs.config, opts)))
-      return { imports: false, reason: "inner-doc-rejected" };
-    docs.push("config");
-  }
-
-  // 5. Only now would the cache be written — atomically, with `importedBundle` recorded and
-  //    no token created. Nothing before this point may touch it, which is what makes a
-  //    failure at any step above import NOTHING.
+  if (result.bundle.docs.license) docs.push("license");
+  if (result.bundle.docs.config) docs.push("config");
   return { imports: true, docs };
 }
 
 describe(`conformance corpus v${corpus.corpusVersion} — offline bundles (§7)`, () => {
+  it("pins the bundle payload cap against the implementation's own constant", () => {
+    for (const c of corpus.bundleCases) {
+      expect(c.maxPayloadBytes, `${c.id} cap`).toBe(MAX_BUNDLE_BYTES);
+    }
+  });
+
   for (const c of corpus.bundleCases) {
     const label = c.expect.imports
       ? `imports ${c.expect.docs.join("+")}`
@@ -490,4 +466,32 @@ describe(`conformance corpus v${corpus.corpusVersion} — offline bundles (§7)`
       expect(outcome, `${c.id} — ${c.description}`).toEqual(c.expect);
     });
   }
+
+  // A verified bundle hands back everything §7 step 5 needs, and the caller must not have to
+  // re-parse anything to write the cache: the trust manifest's bytes, the effective set the
+  // inner documents were checked against, and each document as BOTH its signed artifact and
+  // its decoded payload.
+  it("bundle-valid-full yields the artifacts the cache write needs", async () => {
+    const c = corpus.bundleCases.find((x) => x.id === "bundle-valid-full")!;
+    const bundle = await verifyBundle(c.bundleJws, {
+      pinned: c.pinned,
+      product: c.expectedAud,
+      deviceId: c.deviceId,
+      now: c.now,
+    });
+    expect(bundle).not.toBeNull();
+    expect(bundle!.bundleId).toEqual(expect.any(String));
+    expect(bundle!.trustJws.split(".")).toHaveLength(3);
+    // Step 3's set, not the bare pins: the config document in this vector is signed by a
+    // rotated key only the inner manifest publishes, so the merge has to have happened.
+    expect(Object.keys(bundle!.effectiveTrust).length).toBeGreaterThan(
+      Object.keys(c.pinned).length,
+    );
+    expect(bundle!.docs.license!.doc.deviceId).toBe(c.deviceId);
+    expect(bundle!.docs.license!.doc.aud).toBe(c.expectedAud);
+    expect(bundle!.docs.config!.doc.deviceId).toBe(c.deviceId);
+    // The artifacts are the exact inner bytes — the host persists these, never the payloads.
+    expect(bundle!.docs.license!.jws.split(".")).toHaveLength(3);
+    expect(bundle!.docs.config!.jws.split(".")).toHaveLength(3);
+  });
 });

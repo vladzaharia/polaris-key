@@ -42,7 +42,9 @@ export interface ResolveContext {
   envPrefix: string;
 }
 
-/** `run.concurrency` → `PKEY_CONFIG_run__concurrency` (dots become double underscores). */
+/** `run.concurrency` → `PLRS_CONFIG_run__concurrency` (dots become double underscores). The
+ *  prefix itself is the HOST's (`@plrs/node` defaults it to `PLRS_CONFIG_`); this module only
+ *  owns the dot→`__` mapping, which every SDK must agree on. */
 function envVarName(envPrefix: string, key: string): string {
   return envPrefix + key.replaceAll(".", "__");
 }

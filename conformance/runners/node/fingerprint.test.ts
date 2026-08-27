@@ -4,13 +4,21 @@
 // vector — Node, Python, and Swift agreed only by code review. Both formulas are now pinned,
 // and the Python (pytest) and Swift (XCTest) runners mirror this file against the SAME
 // corpus/v1/fingerprint.json.
+//
+// P4 re-attribution: these two stay with `@plrs/node`, unlike the verification cases that
+// moved to `@plrs/client-core`. They are the one part of the wire contract that CANNOT be
+// isomorphic — reading a machine UUID means `ioreg`/the registry/`/sys/class/dmi`, and the
+// hashing that follows is only meaningful over what those reads produced. They now live at the
+// `@plrs/node/devices` subpath, together, because they are the same kind of thing (hashed
+// hardware identity, computed on-device so raw serials never cross the wire) and because THIS
+// FILE pins both. `fingerprintVersion` is 1 and unchanged by v3.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
-import type { FingerprintComponent } from "@plrs/protocol";
-import { deviceIdFromRaw, hashComponents } from "@plrs/node";
+import type { FingerprintComponent } from "@plrs/protocol/core";
+import { deviceIdFromRaw, hashComponents } from "@plrs/node/devices";
 
 interface Vector {
   id: string;

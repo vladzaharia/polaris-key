@@ -1,13 +1,26 @@
-// Framework-agnostic CLI command core. Each command takes plain arguments + a
-// `PolarisKeyClient` and returns a `CommandResult` (an outcome flag + a human-readable
-// message + optional structured data). The commander / yargs adapters are thin shells over
-// these, so the behavior lives in exactly one place and is testable with no console /
-// process side-effects. Mirrors sdks/python/src/polaris_key/cli/core.py.
+// Framework-agnostic CLI command core. Each command takes plain arguments + a `PolarisClient`
+// and returns a `CommandResult` (an outcome flag + a human-readable message + optional
+// structured data). The commander / yargs adapters are thin shells over these, so the behavior
+// lives in exactly one place and is testable with no console / process side-effects.
+//
+// v3 groups the verbs by the service that owns them, which is the CLI's version of the same
+// carve the SDK just went through:
+//
+//   license  activate · enroll · deactivate · status
+//   devices  register
+//   config   config <key>
+//   core     import-bundle
+//
+// `register` is the new one and the reason the grouping matters: it is a DEVICES verb, not a
+// licensing one. A config-only product (D-08) has no `activate` to run and its whole
+// provisioning story is `plrs register` — which under a licence-shaped CLI would have had
+// nowhere to live.
 
+import type { JSONValue } from "@plrs/protocol/core";
 import type { TrustSet } from "@plrs/jws";
-import type { JSONValue } from "@plrs/protocol";
-import type { PolarisKeyClient } from "../client.js";
-import type { ActivationResult } from "../endpoints.js";
+import type { PolarisClient } from "../client.js";
+import type { ActivationResult } from "../license/endpoints.js";
+import type { ServiceSlug } from "../discovery.js";
 
 /** A command's outcome: a success flag, a human-readable line, and optional structured
  *  data (e.g. the resolved gate status or a config value) for callers that want JSON. */
@@ -17,8 +30,8 @@ export interface CommandResult {
   data?: unknown;
 }
 
-/** The parsed-flag shape an adapter hands to a `ClientFactory` to build a client. Mirrors
- *  the subset of `PolarisKeyOptions` a CLI front end typically exposes as flags. */
+/** The parsed-flag shape an adapter hands to a `ClientFactory`. Mirrors the subset of
+ *  `PolarisClientOptions` a CLI front end typically exposes as flags. */
 export interface ClientFactoryOptions {
   productSlug: string;
   version: string;
@@ -26,13 +39,15 @@ export interface ClientFactoryOptions {
   pinnedKeys: TrustSet;
   baseUrl?: string;
   configDir?: string;
+  /** The D-21 capability fallback, when the host build knows what it expects. */
+  expectedServices?: ServiceSlug[];
 }
 
-/** Builds (and initializes) a `PolarisKeyClient` from parsed flags. A consumer wires this
- *  once with its product slug + pinned trust, and the adapters call it per-invocation. */
+/** Builds (and initializes) a `PolarisClient` from parsed flags. A consumer wires this once
+ *  with its product slug + pinned trust, and the adapters call it per-invocation. */
 export type ClientFactory = (
   opts: ClientFactoryOptions,
-) => Promise<PolarisKeyClient>;
+) => Promise<PolarisClient>;
 
 /** Render a non-ok activation outcome. Shared by `activate` and `enroll` so the two can't
  *  drift into describing the same server response differently. */
@@ -73,12 +88,13 @@ function describeFailure(
   }
 }
 
-/** Activate this device with a license `key` and pull the first config doc. */
+// ── license ────────────────────────────────────────────────────────────────────────────
+/** Activate this device with a licence `key` and pull the first documents. */
 export async function activate(
-  client: PolarisKeyClient,
+  client: PolarisClient,
   key: string,
 ): Promise<CommandResult> {
-  const r = await client.activateWithKey(key);
+  const r = await client.license.activateWithKey(key);
   if (r.kind === "ok") {
     const st = client.status();
     return { ok: true, message: `Activated. Status: ${st.status}`, data: st };
@@ -86,9 +102,9 @@ export async function activate(
   return describeFailure(r, "Activation");
 }
 
-/** Obtain a license with no key and no sign-in, when the product offers a free tier. */
-export async function enroll(client: PolarisKeyClient): Promise<CommandResult> {
-  const r = await client.enroll();
+/** Obtain a licence with no key and no sign-in, when the product offers a free tier. */
+export async function enroll(client: PolarisClient): Promise<CommandResult> {
+  const r = await client.license.enroll();
   if (r.kind === "ok") {
     const st = client.status();
     return { ok: true, message: `Enrolled. Status: ${st.status}`, data: st };
@@ -98,15 +114,16 @@ export async function enroll(client: PolarisKeyClient): Promise<CommandResult> {
 
 /** Deauthorize this device and wipe the local token + cache. */
 export async function deactivate(
-  client: PolarisKeyClient,
+  client: PolarisClient,
 ): Promise<CommandResult> {
-  await client.deactivate();
+  await client.license.deactivate();
   return { ok: true, message: "Deactivated. Local credentials wiped." };
 }
 
-/** Report the current gate status + a short profile/grace summary. `ok` reflects whether
- *  the gate currently permits running (so an adapter can map it to a process exit code). */
-export function status(client: PolarisKeyClient): CommandResult {
+/** Report the current gate status + a short profile/grace summary. `ok` reflects whether the
+ *  gate currently permits running (so an adapter can map it to a process exit code) — which
+ *  for a product with License disabled is TRUE on `not-applicable`, not a failure. */
+export function status(client: PolarisClient): CommandResult {
   const st = client.status();
   const lines = [`Status: ${st.status}`];
   if (st.graceUntil !== undefined)
@@ -117,7 +134,7 @@ export function status(client: PolarisKeyClient): CommandResult {
       `Allowed version range: min=${ar.min ?? "-"} max=${ar.max ?? "-"}`,
     );
   }
-  const profile = client.getProfile();
+  const profile = client.license.getProfile();
   if (profile !== null)
     lines.push(`Licensed to: ${profile.name} <${profile.email}>`);
   const usable = client.isLicensed();
@@ -125,16 +142,70 @@ export function status(client: PolarisKeyClient): CommandResult {
   return { ok: usable, message: lines.join("\n"), data: st };
 }
 
-/** Resolve the effective value for a config `key` (honoring management state + override
+// ── devices ────────────────────────────────────────────────────────────────────────────
+/**
+ * `POST /<p>/devices/register` — the keyless device mint (§6).
+ *
+ * The provisioning verb for a product whose registration policy is `open`, and the only one a
+ * config-only product has. A `requires-license` product answers `registration_closed`, which
+ * is reported as-is rather than being retried against `activate`: the two are different
+ * operator intents and quietly substituting one would hide a misconfigured policy.
+ */
+export async function register(client: PolarisClient): Promise<CommandResult> {
+  const r = await client.devices.register();
+  switch (r.kind) {
+    case "ok": {
+      await client.sync({ force: true });
+      const st = client.status();
+      return {
+        ok: true,
+        message: `Registered device ${r.deviceId}. Status: ${st.status}`,
+        data: { deviceId: r.deviceId, status: st },
+      };
+    }
+    case "registration-closed":
+      return {
+        ok: false,
+        message:
+          "Registration failed: this product does not accept keyless registration. " +
+          "Activate with a licence key instead.",
+        data: r,
+      };
+    case "rate-limited":
+      return {
+        ok: false,
+        message: "Registration failed: too many attempts; try again shortly.",
+        data: r,
+      };
+    case "not-configured":
+      return {
+        ok: false,
+        message: "Registration failed: unknown product.",
+        data: r,
+      };
+    case "error":
+      return {
+        ok: false,
+        message: `Registration failed: ${r.message || "unknown error."}`,
+        data: r,
+      };
+  }
+}
+
+// ── config ─────────────────────────────────────────────────────────────────────────────
+/** Resolve the effective value for a config `key` (honouring management state + override
  *  layers), reporting its provenance. Returns `ok: false` only when nothing matched and no
  *  `fallback` was provided. */
 export function getConfig(
-  client: PolarisKeyClient,
+  client: PolarisClient,
   key: string,
   fallback?: JSONValue,
 ): CommandResult {
   const sentinel = Symbol("unset");
-  const value = client.getConfig<JSONValue | typeof sentinel>(key, sentinel);
+  const value = client.config.getConfig<JSONValue | typeof sentinel>(
+    key,
+    sentinel,
+  );
   if (value === sentinel) {
     if (fallback === undefined) {
       return {
@@ -148,10 +219,35 @@ export function getConfig(
       data: { key, value: fallback, source: "fallback" as const },
     };
   }
-  const source = client.getConfigSource(key);
+  const source = client.config.getConfigSource(key);
   return {
     ok: true,
     message: `${key} = ${JSON.stringify(value)} (${source})`,
     data: { key, value, source },
   };
+}
+
+// ── core ───────────────────────────────────────────────────────────────────────────────
+/** Import an offline activation bundle (§7). All-or-nothing: a rejection leaves the install
+ *  exactly as it was, and the message names the step that refused. */
+export async function importBundle(
+  client: PolarisClient,
+  jws: string,
+): Promise<CommandResult> {
+  try {
+    const r = await client.importBundle(jws);
+    const st = client.status();
+    return {
+      ok: true,
+      message: `Imported bundle ${r.bundleId} (${r.imported.join("+") || "nothing"}). Status: ${st.status}`,
+      data: { ...r, status: st },
+    };
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    return {
+      ok: false,
+      message: `Bundle import failed: ${err.message ?? "unknown error."}`,
+      data: { code: err.code },
+    };
+  }
 }

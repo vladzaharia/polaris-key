@@ -1,13 +1,19 @@
-// `@plrs/node/cli` — composable CLI command hooks. Consumers inject Polaris Key
-// commands (activate/deactivate/status/config) into their own commander- or yargs-based CLI
-// in a couple of lines. The core (`commands.ts`) is framework-agnostic + side-effect-free;
-// the commander/yargs adapters are thin shells (each an OPTIONAL peer dependency).
+// `@plrs/node/cli` — composable CLI command hooks. Consumers inject Polaris commands into
+// their own commander- or yargs-based CLI in a couple of lines. The core (`commands.ts`) is
+// framework-agnostic + side-effect-free; the commander/yargs adapters are thin shells (each an
+// OPTIONAL peer dependency).
+//
+// Verbs are grouped by owning service — license (activate/enroll/deactivate/status), devices
+// (register), config (config), core (import-bundle) — so the CLI surface matches the SDK's.
 
 export {
   activate,
   deactivate,
-  status,
+  enroll,
   getConfig,
+  importBundle,
+  register,
+  status,
   type CommandResult,
   type ClientFactory,
   type ClientFactoryOptions,

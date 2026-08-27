@@ -1,251 +1,494 @@
-import { describe, expect, it, vi } from "vitest";
+// The License service's HTTP surface — wire contract v3 §5 (`POST /<p>/license/*`) and §6
+// (`POST /<p>/devices/report`).
+//
+// These are the pins on the TRANSPORT, and only the transport. `src/license/endpoints.ts` is
+// deliberately verification-free: it builds a request, reads a status, and hands back bytes.
+// What this file protects is therefore the two things a caller cannot recover if they are
+// wrong — WHERE the request went and WHAT the status meant.
+//
+// ── WHY THE ROUTES ARE ASSERTED LITERALLY ───────────────────────────────────────────────────
+//
+// v3 moved every licensing verb under `/<p>/license/` and relocated telemetry from
+// `POST /<p>/config/report` to `POST /<p>/devices/report` (§6 — it was licence anti-fraud data
+// living under a config path, and a config-only product reports too). A path typo does not fail
+// loudly: it 404s, `activationLike` maps 404 to `enroll-disabled`, and the operator is told
+// their product does not offer keyless enrollment. Spelling the URLs out here is what keeps
+// that from being a silent regression.
+//
+// ── WHY BOTH ERROR-BODY SHAPES ──────────────────────────────────────────────────────────────
+//
+// v3 nests the machine-readable code (`{"error":{"code":…}}`); older/simpler servers answer the
+// flat shape (`{limit,deviceCount}` / `{"error":"fingerprint_required"}`). A 403 that means
+// "device limit" and a 403 that means "fingerprint required" are DIFFERENT operator outcomes,
+// and guessing between them would be worse than either — so both encodings are pinned for both.
+//
+// ── WHY THE HEADERS AND THE DEADLINE ARE PINNED PER VERB ────────────────────────────────────
+//
+// R4-08: Node's `fetch` has no default timeout, so a slowloris on any endpoint stalls `sync()`
+// forever. Both the seven `X-Polaris-*` metadata headers and the deadline come from
+// `CoreContext`, and the table at the bottom asserts EVERY verb goes through it — a new
+// endpoint that assembled its own headers would fail here rather than in production.
+
+import { describe, expect, it } from "vitest";
+import { arch, platform } from "node:os";
+import type { HardwareFingerprint } from "@plrs/protocol/core";
+import { CoreContext } from "../src/core/context.js";
+import { InMemoryStore } from "../src/core/store.js";
 import {
-  deauthorize,
   activateWithKey,
+  deauthorize,
+  enroll,
   reacquireToken,
-  reportSnapshot,
-} from "../src/endpoints.js";
+} from "../src/license/endpoints.js";
+import { reportSnapshot } from "../src/core/telemetry.js";
+import { SDK_NAME, SDK_VERSION } from "../src/version.js";
+
+/** One canned response. `text` (rather than `json`) is how the malformed-body pins are fed. */
+interface Canned {
+  status: number;
+  json?: unknown;
+  text?: string;
+  headers?: Record<string, string>;
+}
 
 /** A fake fetch returning canned Responses in order + capturing the requests. */
-function fakeFetch(responses: Array<{ status: number; body?: unknown }>): {
+function fakeFetch(responses: Canned[]): {
   impl: typeof fetch;
-  calls: Array<{ url: string; init?: RequestInit }>;
+  calls: Array<{ url: string; init: RequestInit }>;
 } {
-  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const calls: Array<{ url: string; init: RequestInit }> = [];
   let i = 0;
-  const impl = (async (url: unknown, init?: RequestInit) => {
+  const impl = (async (url: unknown, init: RequestInit = {}) => {
     calls.push({ url: String(url), init });
     const r = responses[Math.min(i++, responses.length - 1)]!;
-    return new Response(r.body === undefined ? null : JSON.stringify(r.body), {
+    const body =
+      r.text !== undefined
+        ? r.text
+        : r.json === undefined
+          ? null
+          : JSON.stringify(r.json);
+    return new Response(r.status === 304 ? null : body, {
       status: r.status,
+      headers: r.headers,
     });
   }) as unknown as typeof fetch;
   return { impl, calls };
 }
 
-const base = { baseUrl: "https://k.test", product: "djdl", deviceId: "dev-1" };
+/** A transport that always fails, for the "returns error, never throws" pins. */
+function explodingFetch(message = "ECONNREFUSED"): typeof fetch {
+  return (async () => {
+    throw new Error(message);
+  }) as unknown as typeof fetch;
+}
 
-describe("activateWithKey", () => {
-  it("POSTs /activate with Bearer <key> + device header and returns the minted token", async () => {
+/**
+ * A ready-to-use Core. `init()` is what loads the device id off the store, so it must run
+ * before any endpoint call — an un-`init()`ed context sends an empty `X-Polaris-Device`.
+ */
+async function makeCtx(impl: typeof fetch): Promise<CoreContext> {
+  const ctx = new CoreContext({
+    productSlug: "djdl",
+    baseUrl: "https://k.test",
+    version: "1.2.3",
+    trust: { pinnedKeys: {} },
+    store: new InMemoryStore("djdl"),
+    fetchImpl: impl,
+  });
+  await ctx.init();
+  return ctx;
+}
+
+const headersOf = (init: RequestInit): Headers => new Headers(init.headers);
+
+/** A synthetic fingerprint: the endpoint only ever passes it through, so the values are inert. */
+const FINGERPRINT: HardwareFingerprint = {
+  components: { machineUuid: "mu-hash", cpuModel: "cpu-hash" },
+  hwid: "hwid-hash",
+};
+
+describe("activateWithKey — POST /<p>/license/activate", () => {
+  it("POSTs the v3 route with Bearer <key> + the device header and returns the minted token", async () => {
     const { impl, calls } = fakeFetch([
-      { status: 200, body: { token: "pkeyt_minted", schemaVersion: 2 } },
+      { status: 200, json: { token: "plrst_minted", schemaVersion: 3 } },
     ]);
-    const res = await activateWithKey({
-      ...base,
-      key: "pkey_djdl_AAA",
-      fetchImpl: impl,
-    });
+    const ctx = await makeCtx(impl);
+    const res = await activateWithKey(ctx, "plrs_djdl_AAA", null);
+
     expect(res).toEqual({
       kind: "ok",
-      token: "pkeyt_minted",
-      schemaVersion: 2,
+      token: "plrst_minted",
+      schemaVersion: 3,
     });
-    expect(calls[0]?.url).toBe("https://k.test/djdl/activate");
-    expect((calls[0]?.init as RequestInit).method).toBe("POST");
-    const h = new Headers((calls[0]?.init as RequestInit).headers);
-    expect(h.get("authorization")).toBe("Bearer pkey_djdl_AAA");
-    expect(h.get("x-pkey-device")).toBe("dev-1");
+    // The route moved under `/license/` in v3; the old `/djdl/activate` now 404s.
+    expect(calls[0]?.url).toBe("https://k.test/djdl/license/activate");
+    expect(calls[0]?.init.method).toBe("POST");
+    const h = headersOf(calls[0]!.init);
+    // The KEY is the bearer here — the `plrst_` device token does not exist yet.
+    expect(h.get("authorization")).toBe("Bearer plrs_djdl_AAA");
+    expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
   });
 
-  it("surfaces a 403 device-limit distinctly with limit + count", async () => {
+  it("sends the fingerprint as a JSON body when the host produced one", async () => {
+    const { impl, calls } = fakeFetch([
+      { status: 200, json: { token: "plrst_minted", schemaVersion: 3 } },
+    ]);
+    const ctx = await makeCtx(impl);
+    await activateWithKey(ctx, "plrs_djdl_AAA", FINGERPRINT);
+
+    expect(headersOf(calls[0]!.init).get("content-type")).toBe(
+      "application/json",
+    );
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
+      fingerprint: FINGERPRINT,
+    });
+  });
+
+  it("surfaces a 403 device-limit distinctly with limit + count (flat body)", async () => {
     const { impl } = fakeFetch([
-      { status: 403, body: { limit: 3, deviceCount: 3 } },
+      { status: 403, json: { limit: 3, deviceCount: 3 } },
     ]);
     expect(
-      await activateWithKey({ ...base, key: "pkey_x", fetchImpl: impl }),
+      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+    ).toEqual({ kind: "device-limit", limit: 3, deviceCount: 3 });
+  });
+
+  it("reads the same device-limit out of the v3 NESTED error body", async () => {
+    // `{"error":{"code":"device_limit","limit":3,"deviceCount":3}}` — the shape the Worker
+    // actually emits (§5 / PolarisErrorBody). Both encodings must land on one outcome.
+    const { impl } = fakeFetch([
+      {
+        status: 403,
+        json: { error: { code: "device_limit", limit: 3, deviceCount: 3 } },
+      },
+    ]);
+    expect(
+      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+    ).toEqual({ kind: "device-limit", limit: 3, deviceCount: 3 });
+  });
+
+  it("distinguishes fingerprint_required from device-limit (flat body)", async () => {
+    const { impl } = fakeFetch([
+      { status: 403, json: { error: "fingerprint_required" } },
+    ]);
+    expect(
+      (await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null)).kind,
+    ).toBe("fingerprint-required");
+  });
+
+  it("distinguishes fingerprint_required from device-limit (nested body)", async () => {
+    const { impl } = fakeFetch([
+      { status: 403, json: { error: { code: "fingerprint_required" } } },
+    ]);
+    expect(
+      (await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null)).kind,
+    ).toBe("fingerprint-required");
+  });
+
+  it("falls back to device-limit when a 403 says nothing machine-readable", async () => {
+    // Fail-closed on the CALLER's side: an unexplained 403 is reported as the outcome that
+    // tells an operator to free a seat, never as a fingerprint problem they cannot fix.
+    const { impl } = fakeFetch([{ status: 403, text: "not json" }]);
+    expect(
+      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
     ).toEqual({
       kind: "device-limit",
-      limit: 3,
-      deviceCount: 3,
+      limit: undefined,
+      deviceCount: undefined,
+    });
+  });
+
+  it("maps a 409 to hardware-mismatch with drift + changed (flat body)", async () => {
+    // §5: the tier's drift tolerance was exceeded and the binding was RETIRED. Re-running
+    // activation re-binds and consumes a seat, which is why the caller must be told which
+    // components moved rather than just "forbidden".
+    const { impl } = fakeFetch([
+      { status: 409, json: { drift: 3, changed: ["primaryMac", "cpuModel"] } },
+    ]);
+    expect(
+      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+    ).toEqual({
+      kind: "hardware-mismatch",
+      drift: 3,
+      changed: ["primaryMac", "cpuModel"],
+    });
+  });
+
+  it("maps a 409 to hardware-mismatch with drift + changed (nested body)", async () => {
+    const { impl } = fakeFetch([
+      {
+        status: 409,
+        json: {
+          error: {
+            code: "hardware_mismatch",
+            drift: 1,
+            changed: ["boardSerial"],
+          },
+        },
+      },
+    ]);
+    expect(
+      await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null),
+    ).toEqual({
+      kind: "hardware-mismatch",
+      drift: 1,
+      changed: ["boardSerial"],
     });
   });
 
   it("maps a 401 to unauthorized (bad/revoked key)", async () => {
     const { impl } = fakeFetch([{ status: 401 }]);
     expect(
-      (await activateWithKey({ ...base, key: "pkey_bad", fetchImpl: impl }))
-        .kind,
+      (await activateWithKey(await makeCtx(impl), "plrs_bad", null)).kind,
     ).toBe("unauthorized");
   });
 
+  it("maps a 404 to enroll-disabled — the shared ladder, not an enroll-only rule", async () => {
+    const { impl } = fakeFetch([{ status: 404 }]);
+    expect(
+      (await activateWithKey(await makeCtx(impl), "plrs_djdl_AAA", null)).kind,
+    ).toBe("enroll-disabled");
+  });
+
   it("maps other failures to error with the body message", async () => {
-    const { impl } = fakeFetch([{ status: 500, body: "boom" }]);
-    const res = await activateWithKey({
-      ...base,
-      key: "pkey_x",
-      fetchImpl: impl,
-    });
+    const { impl } = fakeFetch([{ status: 500, text: "boom" }]);
+    const res = await activateWithKey(await makeCtx(impl), "plrs_x", null);
     expect(res.kind).toBe("error");
+    expect(res).toMatchObject({ message: "boom" });
   });
 
   it("returns error (not throw) on a network failure", async () => {
-    const impl = (async () => {
-      throw new Error("ECONNREFUSED");
-    }) as unknown as typeof fetch;
-    expect(
-      (await activateWithKey({ ...base, key: "pkey_x", fetchImpl: impl })).kind,
-    ).toBe("error");
+    const res = await activateWithKey(
+      await makeCtx(explodingFetch()),
+      "plrs_x",
+      null,
+    );
+    expect(res).toEqual({ kind: "error", message: "ECONNREFUSED" });
   });
 });
 
-describe("reacquireToken", () => {
-  it("POSTs /token with the current bearer + device header and returns the fresh token", async () => {
+describe("enroll — POST /<p>/license/enroll", () => {
+  it("POSTs the enroll route with NO Authorization header", async () => {
+    // The whole point of §5's keyless tier: there is no credential to present. An
+    // `Authorization` header here would make an unauthenticated mint look authenticated.
     const { impl, calls } = fakeFetch([
-      { status: 200, body: { token: "pkeyt_reacquired", schemaVersion: 1 } },
+      { status: 200, json: { token: "plrst_free", schemaVersion: 3 } },
     ]);
-    const res = await reacquireToken({
-      ...base,
-      token: "pkeyt_current",
-      fetchImpl: impl,
+    const ctx = await makeCtx(impl);
+    const res = await enroll(ctx, null);
+
+    expect(res).toEqual({ kind: "ok", token: "plrst_free", schemaVersion: 3 });
+    expect(calls[0]?.url).toBe("https://k.test/djdl/license/enroll");
+    expect(calls[0]?.init.method).toBe("POST");
+    const h = headersOf(calls[0]!.init);
+    expect(h.get("authorization")).toBeNull();
+    expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
+  });
+
+  it("sends a fingerprint body only when one is given", async () => {
+    const { impl, calls } = fakeFetch([
+      { status: 200, json: { token: "plrst_free", schemaVersion: 3 } },
+    ]);
+    const ctx = await makeCtx(impl);
+    await enroll(ctx, FINGERPRINT);
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
+      fingerprint: FINGERPRINT,
     });
+  });
+
+  it("omits the body ENTIRELY for a null fingerprint (not an empty object)", async () => {
+    // A host that opted out must send a byte-identical request to one that had nothing to
+    // report — `{"fingerprint":null}` would be a distinguishable "I refused" signal.
+    const { impl, calls } = fakeFetch([
+      { status: 200, json: { token: "plrst_free", schemaVersion: 3 } },
+    ]);
+    await enroll(await makeCtx(impl), null);
+    expect(calls[0]!.init.body).toBeUndefined();
+    expect(headersOf(calls[0]!.init).get("content-type")).toBeNull();
+  });
+
+  it("maps a 404 to enroll-disabled (the product never opted in)", async () => {
+    const { impl } = fakeFetch([{ status: 404 }]);
+    expect((await enroll(await makeCtx(impl), null)).kind).toBe(
+      "enroll-disabled",
+    );
+  });
+
+  it("returns error (not throw) on a network failure", async () => {
+    expect((await enroll(await makeCtx(explodingFetch()), null)).kind).toBe(
+      "error",
+    );
+  });
+});
+
+describe("reacquireToken — POST /<p>/license/token", () => {
+  it("POSTs the token route with the CURRENT bearer + device header", async () => {
+    const { impl, calls } = fakeFetch([
+      { status: 200, json: { token: "plrst_reacquired", schemaVersion: 3 } },
+    ]);
+    const ctx = await makeCtx(impl);
+    const res = await reacquireToken(ctx, "plrst_current");
+
     expect(res).toEqual({
       kind: "ok",
-      token: "pkeyt_reacquired",
-      schemaVersion: 1,
+      token: "plrst_reacquired",
+      schemaVersion: 3,
     });
-    expect(calls[0]?.url).toBe("https://k.test/djdl/token");
-    const h = new Headers((calls[0]?.init as RequestInit).headers);
-    expect(h.get("x-pkey-device")).toBe("dev-1");
-    expect(h.get("authorization")).toBe("Bearer pkeyt_current");
+    expect(calls[0]?.url).toBe("https://k.test/djdl/license/token");
+    expect(calls[0]?.init.method).toBe("POST");
+    const h = headersOf(calls[0]!.init);
+    expect(h.get("authorization")).toBe("Bearer plrst_current");
+    expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
+    // Rotation re-presents the credential; it never re-presents hardware.
+    expect(calls[0]!.init.body).toBeUndefined();
   });
 
   it("maps 403 to device-limit", async () => {
     const { impl } = fakeFetch([
-      { status: 403, body: { limit: 2, deviceCount: 2 } },
+      { status: 403, json: { limit: 2, deviceCount: 2 } },
     ]);
     expect(
-      (
-        await reacquireToken({
-          ...base,
-          token: "pkeyt_current",
-          fetchImpl: impl,
-        })
-      ).kind,
+      (await reacquireToken(await makeCtx(impl), "plrst_current")).kind,
     ).toBe("device-limit");
   });
 
   it("maps 401 to unauthorized", async () => {
     const { impl } = fakeFetch([{ status: 401 }]);
     expect(
-      (
-        await reacquireToken({
-          ...base,
-          token: "pkeyt_current",
-          fetchImpl: impl,
-        })
-      ).kind,
+      (await reacquireToken(await makeCtx(impl), "plrst_current")).kind,
     ).toBe("unauthorized");
   });
 
   it("returns error on a network failure", async () => {
-    const impl = (async () => {
-      throw new Error("offline");
-    }) as unknown as typeof fetch;
     expect(
       (
-        await reacquireToken({
-          ...base,
-          token: "pkeyt_current",
-          fetchImpl: impl,
-        })
+        await reacquireToken(
+          await makeCtx(explodingFetch("offline")),
+          "plrst_current",
+        )
       ).kind,
     ).toBe("error");
   });
 });
 
-describe("deauthorize", () => {
-  it("POSTs /deauthorize with the token bearer", async () => {
-    const { impl, calls } = fakeFetch([{ status: 200, body: { ok: true } }]);
-    await deauthorize({
-      baseUrl: base.baseUrl,
-      product: base.product,
-      token: "pkeyt_x",
-      fetchImpl: impl,
-    });
-    expect(calls[0]?.url).toBe("https://k.test/djdl/deauthorize");
-    expect((calls[0]?.init as RequestInit).method).toBe("POST");
-    const h = new Headers((calls[0]?.init as RequestInit).headers);
-    expect(h.get("authorization")).toBe("Bearer pkeyt_x");
+describe("deauthorize — POST /<p>/license/deauthorize", () => {
+  it("POSTs the deauthorize route with the token bearer", async () => {
+    const { impl, calls } = fakeFetch([{ status: 200, json: { ok: true } }]);
+    await deauthorize(await makeCtx(impl), "plrst_x");
+
+    expect(calls[0]?.url).toBe("https://k.test/djdl/license/deauthorize");
+    expect(calls[0]?.init.method).toBe("POST");
+    expect(headersOf(calls[0]!.init).get("authorization")).toBe(
+      "Bearer plrst_x",
+    );
   });
 
   it("is best-effort: swallows a network failure", async () => {
-    const impl = (async () => {
-      throw new Error("ECONNREFUSED");
-    }) as unknown as typeof fetch;
+    // The LOCAL wipe is what `deactivate()` actually depends on. A device deauthorizing on a
+    // plane must not be left holding credentials because the control plane was unreachable.
     await expect(
-      deauthorize({
-        baseUrl: base.baseUrl,
-        product: base.product,
-        token: "pkeyt_x",
-        fetchImpl: impl,
-      }),
+      deauthorize(await makeCtx(explodingFetch()), "plrst_x"),
     ).resolves.toBeUndefined();
   });
 
   it("swallows a non-OK response too (no throw)", async () => {
     const { impl } = fakeFetch([{ status: 401 }]);
     await expect(
-      deauthorize({
-        baseUrl: base.baseUrl,
-        product: base.product,
-        token: "pkeyt_x",
-        fetchImpl: impl,
-      }),
+      deauthorize(await makeCtx(impl), "plrst_x"),
     ).resolves.toBeUndefined();
   });
 });
 
-describe("reportSnapshot", () => {
-  it("POSTs the JSON snapshot to /config/report with the token bearer", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(new Response(null, { status: 200 }));
-    const ok = await reportSnapshot({
-      baseUrl: base.baseUrl,
-      product: base.product,
-      token: "pkeyt_x",
-      snapshot: { config: { a: 1 }, entitlements: {} },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
+describe("reportSnapshot — POST /<p>/devices/report", () => {
+  it("POSTs the JSON snapshot to the DEVICES route, not the retired /config/report", async () => {
+    // §6: telemetry moved off the config service. It is licence anti-fraud data that had been
+    // living under a config path, and a config-only product reports on it too.
+    const { impl, calls } = fakeFetch([{ status: 200, json: {} }]);
+    const ok = await reportSnapshot(await makeCtx(impl), "plrst_x", {
+      config: { a: 1 },
+      entitlements: {},
     });
+
     expect(ok).toBe(true);
-    const [url, init] = fetchImpl.mock.calls[0]!;
-    expect(String(url)).toBe("https://k.test/djdl/config/report");
-    expect(init.method).toBe("POST");
-    expect(new Headers(init.headers).get("authorization")).toBe(
-      "Bearer pkeyt_x",
-    );
-    expect(new Headers(init.headers).get("content-type")).toBe(
-      "application/json",
-    );
-    expect(JSON.parse(init.body)).toEqual({
+    expect(calls[0]?.url).toBe("https://k.test/djdl/devices/report");
+    expect(calls[0]?.init.method).toBe("POST");
+    const h = headersOf(calls[0]!.init);
+    expect(h.get("authorization")).toBe("Bearer plrst_x");
+    expect(h.get("content-type")).toBe("application/json");
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
       config: { a: 1 },
       entitlements: {},
     });
   });
 
   it("returns false on a non-OK response", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(new Response(null, { status: 500 }));
-    const ok = await reportSnapshot({
-      baseUrl: base.baseUrl,
-      product: base.product,
-      token: "pkeyt_x",
-      snapshot: {},
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    });
-    expect(ok).toBe(false);
+    const { impl } = fakeFetch([{ status: 500 }]);
+    expect(await reportSnapshot(await makeCtx(impl), "plrst_x", {})).toBe(
+      false,
+    );
   });
 
   it("swallows a network failure and returns false (best-effort)", async () => {
-    const fetchImpl = vi.fn().mockRejectedValue(new Error("offline"));
-    const ok = await reportSnapshot({
-      baseUrl: base.baseUrl,
-      product: base.product,
-      token: "pkeyt_x",
-      snapshot: {},
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    });
-    expect(ok).toBe(false);
+    expect(
+      await reportSnapshot(
+        await makeCtx(explodingFetch("offline")),
+        "plrst_x",
+        {},
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("every call carries the Core metadata headers + a deadline (R4-08)", () => {
+  /** The seven `X-Polaris-*` headers §5 requires on every product-scoped request. */
+  const METADATA_HEADERS = [
+    "x-polaris-device",
+    "x-polaris-version",
+    "x-polaris-channel",
+    "x-polaris-platform",
+    "x-polaris-arch",
+    "x-polaris-sdk",
+    "x-polaris-sdk-version",
+  ] as const;
+
+  const VERBS: Array<[string, (ctx: CoreContext) => Promise<unknown>]> = [
+    ["activate", (ctx) => activateWithKey(ctx, "plrs_djdl_AAA", null)],
+    ["enroll", (ctx) => enroll(ctx, null)],
+    ["token", (ctx) => reacquireToken(ctx, "plrst_current")],
+    ["deauthorize", (ctx) => deauthorize(ctx, "plrst_x")],
+    ["report", (ctx) => reportSnapshot(ctx, "plrst_x", {})],
+  ];
+
+  it.each(VERBS)(
+    "%s sends all seven X-Polaris-* headers with the right values",
+    async (_name, call) => {
+      const { impl, calls } = fakeFetch([
+        { status: 200, json: { token: "plrst_t", schemaVersion: 3 } },
+      ]);
+      const ctx = await makeCtx(impl);
+      await call(ctx);
+
+      const h = headersOf(calls[0]!.init);
+      for (const name of METADATA_HEADERS) expect(h.get(name)).toBeTruthy();
+      expect(h.get("x-polaris-device")).toBe(ctx.deviceId);
+      expect(h.get("x-polaris-version")).toBe("1.2.3");
+      // Derived from the host version when the caller names no channel.
+      expect(h.get("x-polaris-channel")).toBe("stable");
+      expect(h.get("x-polaris-platform")).toBe(platform());
+      expect(h.get("x-polaris-arch")).toBe(arch());
+      expect(h.get("x-polaris-sdk")).toBe(SDK_NAME);
+      expect(h.get("x-polaris-sdk-version")).toBe(SDK_VERSION);
+    },
+  );
+
+  it.each(VERBS)("%s forwards an AbortSignal deadline", async (_name, call) => {
+    // Node's `fetch` has NO default timeout: without this a slowloris on any one endpoint
+    // stalls `sync()` forever. The signal comes from `CoreContext.deadline()`, so a new
+    // endpoint cannot ship without one.
+    const { impl, calls } = fakeFetch([
+      { status: 200, json: { token: "plrst_t", schemaVersion: 3 } },
+    ]);
+    await call(await makeCtx(impl));
+    expect(calls[0]!.init.signal).toBeInstanceOf(AbortSignal);
   });
 });

@@ -1,28 +1,71 @@
-// The Node conformance runner. It drives EVERY case in the shared corpus through the
-// production verifiers and asserts the expected outcome. The Python (pytest), Swift (XCTest),
-// and React (vitest/WebCrypto) runners mirror this file against the SAME corpus/v1/cases.json
-// — that's how four SDKs prove byte-identical verification.
+// The Node conformance runner for corpus v1 / wire contract v2.
 //
-// Four sections, four layers of the wire contract:
+// v1 is not the live contract any more — `corpusV2.test.ts` is — but it is still the fixture
+// the PYTHON and SWIFT runners consume, and it stays in this repo until P5 moves them and P8
+// deletes it. Keeping a Node runner on it is what makes that safe: v1 is the only shared
+// oracle those two SDKs currently have, and a fixture nothing exercises is a fixture that can
+// rot while three implementations quietly disagree with it.
+//
+// ── WHAT CHANGED IN P4 ──────────────────────────────────────────────────────────────────────
+//
+// These cases used to be driven through `@plrs/node`'s own `verifyDoc` / `verifyTrustManifest`
+// / `licenseState`. Those copies are gone: the Node SDK now CONSUMES `@plrs/client-core`, the
+// single isomorphic implementation React and every future JS host share. So v1 runs through
+// client-core too, with the two smallest possible v2 shims:
+//
+//   * a `DocTypeSpec` naming v2's `pkey-config+jws` and validating the fused document's
+//     `schemaVersion` — `verifyDoc` was always generic over the document type, so this is the
+//     seam being used as designed rather than a new one being cut;
+//   * `verifyTrustManifest`'s `typ` option, for v2's `pkey-trust+jws`.
+//
+// Everything else — the envelope rules, the substitution guard, the prune, the freshness split,
+// the clock floor, the gate — is the SAME CODE corpus v2 runs. That is the point: if v3's
+// implementation ever decides a v2 case differently, it shows up here as a red test rather than
+// as a divergence discovered by a Python SDK a phase later.
 //
 //   cases            raw compact-JWS verification            → @plrs/jws  verifyJws
-//   docCases         §3 claim validation                     → @plrs/node verifyDoc
-//   trustCases       §1 trust-set merge / prune / revocation  → verifyTrustManifest
+//   docCases         §3 claim validation                     → client-core verifyDoc
+//   trustCases       §1 trust-set merge / prune / revocation  → client-core verifyTrustManifest
 //   clockFloorCases  §4.3 monotonic clock floor               → the cache-reload path + gate
+//
+// The fingerprint/device-id half of v1 lives in `fingerprint.test.ts` and stays with
+// `@plrs/node/devices`, because those two formulas ARE Node-only host code.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { verifyJws, type TrustSet } from "@plrs/jws";
+import type { ManagedConfigDoc } from "@plrs/protocol";
+import type { LicenseDoc } from "@plrs/protocol/license";
 import {
+  effectiveNow,
+  highWaterMark,
   licenseState,
   mergeTrust,
   verifyDoc,
   verifyTrustManifest,
-} from "@plrs/node";
+  type DocTypeSpec,
+} from "@plrs/client-core";
 
 type Typ = "pkey-config+jws" | "pkey-trust+jws";
+
+/**
+ * v2's single fused document, expressed as a v3 `DocTypeSpec`.
+ *
+ * The envelope checks (`iss`/`aud`/`deviceId`/the grace ceiling/the anti-replay floor/the
+ * freshness split) are shared and live in `verifyDoc` itself; all that differs is the domain
+ * separator and the one per-document claim v2 had. `schemaVersion` is validated by SHAPE, not
+ * against an allow-list — on a managed-config document that field carries the product CATALOG
+ * version, which is unbounded per product (see client-core's `verify.ts` for the full note).
+ */
+const V2_MANAGED_DOC: DocTypeSpec<ManagedConfigDoc> = {
+  typ: "pkey-config+jws",
+  validate: (doc) =>
+    typeof doc.schemaVersion === "number" &&
+    Number.isInteger(doc.schemaVersion) &&
+    doc.schemaVersion >= 1,
+};
 
 interface CorpusCase {
   id: string;
@@ -84,6 +127,12 @@ const corpus = JSON.parse(
   readFileSync(join(here, "..", "..", "corpus", "v1", "cases.json"), "utf8"),
 ) as Corpus;
 
+/** v2's `iss` and v2's trust `typ`, both supplied explicitly so the v3 defaults (`plrs.im`,
+ *  `plrs-trust+jws`) stay untouched. `JwsTyp` still carries the legacy values until P8, so
+ *  neither of these needs a cast — the frozen crypto layer knows about both contracts. */
+const V2_ISS = "key.plrs.im";
+const V2_TRUST_TYP = "pkey-trust+jws" as const;
+
 describe(`conformance corpus v${corpus.corpusVersion}`, () => {
   it("has cases", () => {
     expect(corpus.cases.length).toBeGreaterThan(0);
@@ -94,6 +143,9 @@ describe(`conformance corpus v${corpus.corpusVersion}`, () => {
 
   for (const c of corpus.cases) {
     it(`${c.id} → verify:${c.expect.verify}`, async () => {
+      // No `requireTyp` here: v2's tolerance window — a header carrying NO `typ` is accepted,
+      // a header carrying a DIFFERENT one is not — is exactly what these vectors pin, and v3
+      // closing that window is corpus v2's business, not this file's.
       const result = await verifyJws(c.jws, c.trust, { typ: c.typ });
       if (c.expect.verify === "ok") {
         expect(result, `${c.id} should verify`).not.toBeNull();
@@ -109,7 +161,7 @@ describe(`conformance corpus v${corpus.corpusVersion}`, () => {
 describe(`conformance corpus v${corpus.corpusVersion} — claim validation (§3)`, () => {
   for (const c of corpus.docCases) {
     it(`${c.id} → accept:${c.expect.accept}`, async () => {
-      const doc = await verifyDoc(c.jws, {
+      const doc = await verifyDoc(c.jws, V2_MANAGED_DOC, {
         trust: c.trust,
         expectedAud: c.expectedAud,
         expectedIss: c.expectedIss,
@@ -118,11 +170,7 @@ describe(`conformance corpus v${corpus.corpusVersion} — claim validation (§3)
         lastAcceptedIssuedAt: c.lastAcceptedIssuedAt,
         checkFreshness: c.checkFreshness,
       });
-      if (c.expect.accept) {
-        expect(doc, `${c.id} should be accepted`).not.toBeNull();
-      } else {
-        expect(doc, `${c.id} must be rejected`).toBeNull();
-      }
+      expect(doc !== null, `${c.id} — ${c.description}`).toBe(c.expect.accept);
     });
   }
 });
@@ -133,6 +181,8 @@ describe(`conformance corpus v${corpus.corpusVersion} — trust set (§1)`, () =
       const result = await verifyTrustManifest(c.manifestJws, {
         pinned: c.pinned,
         expectedAud: "djdl",
+        expectedIss: V2_ISS,
+        typ: V2_TRUST_TYP,
         now: c.now,
         checkFreshness: c.checkFreshness,
       });
@@ -158,43 +208,53 @@ describe(`conformance corpus v${corpus.corpusVersion} — clock floor (§4.3)`, 
   for (const c of corpus.clockFloorCases) {
     it(`${c.id} → ${c.expect.status}`, async () => {
       let trust: TrustSet = c.pinned;
-      let highWaterMark = 0;
+      const verified: { issuedAt: number }[] = [];
 
       if (c.trustJws !== undefined) {
         const manifest = await verifyTrustManifest(c.trustJws, {
           pinned: c.pinned,
           expectedAud: c.expectedAud,
+          expectedIss: V2_ISS,
+          typ: V2_TRUST_TYP,
           now: c.systemClock,
           checkFreshness: false,
         });
         if (manifest.doc) {
           trust = mergeTrust(c.pinned, manifest.discovered);
-          highWaterMark = Math.max(highWaterMark, manifest.doc.issuedAt);
+          verified.push(manifest.doc);
         }
       }
 
-      let doc = null;
+      let doc: ManagedConfigDoc | null = null;
       if (c.configJws !== undefined) {
-        doc = await verifyDoc(c.configJws, {
+        doc = await verifyDoc(c.configJws, V2_MANAGED_DOC, {
           trust,
           expectedAud: c.expectedAud,
+          expectedIss: V2_ISS,
           deviceId: c.deviceId,
           now: c.systemClock,
           checkFreshness: false,
         });
-        if (doc) highWaterMark = Math.max(highWaterMark, doc.issuedAt);
+        if (doc) verified.push(doc);
       }
 
-      expect(highWaterMark, `${c.id} highWaterMark`).toBe(
-        c.expect.highWaterMark,
+      const floor = highWaterMark(verified);
+      expect(floor, `${c.id} highWaterMark`).toBe(c.expect.highWaterMark);
+      expect(effectiveNow(c.systemClock, floor), `${c.id} effectiveNow`).toBe(
+        c.expect.effectiveNow,
       );
-      const effectiveNow = Math.max(c.systemClock, highWaterMark);
-      expect(effectiveNow, `${c.id} effectiveNow`).toBe(c.expect.effectiveNow);
+      // The v2→v3 gate shim, as small as it can be: every v1 product licensed
+      // (`licenseServiceEnabled: true`) and `hasToken: true` ⇒ `activation: "token"`. The gate
+      // reads only the three timestamps off the document, so the fused v2 shape is compatible.
       const state = licenseState({
-        hasToken: true,
-        doc,
+        licenseServiceEnabled: true,
+        activation: "token",
+        // The v2 document is not a `LicenseDoc` (its entitlements are nested under `payload`),
+        // but the gate reads only `issuedAt`/`expiresAt`/`graceUntil`, which the two shapes
+        // share — so the cast is narrow and the assertion below is what proves it holds.
+        doc: doc as unknown as LicenseDoc | null,
         now: c.systemClock,
-        highWaterMark,
+        highWaterMark: floor,
       });
       expect(state.status, `${c.id} — ${c.description}`).toBe(c.expect.status);
     });

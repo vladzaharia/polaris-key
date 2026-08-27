@@ -18,6 +18,10 @@
       "types": "./dist/trust.d.ts",
       "default": "./dist/trust.js"
     },
+    "./bundle": {
+      "types": "./dist/bundle.d.ts",
+      "default": "./dist/bundle.js"
+    },
     "./gate": {
       "types": "./dist/gate.d.ts",
       "default": "./dist/gate.js"

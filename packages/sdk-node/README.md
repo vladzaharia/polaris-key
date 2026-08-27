@@ -1,10 +1,12 @@
 # @plrs/node
 
-The full Node/TypeScript client for **Polaris Key** — product-agnostic licensing +
-remotely-managed config. A small facade over activate → fetch → verify → cache → gate that is
-**offline-first**: `create()` applies the cached signed doc with **no network**; `refresh()`
-re-pulls and re-applies. The frozen wire crypto (Ed25519 compact JWS) is verified locally and
-pinned by the same cross-language conformance corpus as the Python, Swift, and React SDKs.
+The Node/TypeScript client for the **Polaris suite** — an always-on **Core** substrate (device
+principal, credential, trust, verified cache, sync loop) plus one opt-in sub-client per service
+(**License**, **Config**, **Devices**, **Release**, **Update**). **Offline-first**: `init()`
+loads and re-verifies the cached signed documents with **no network**. The frozen wire crypto
+(Ed25519 compact JWS) is verified through [`@plrs/client-core`](../client-core), the isomorphic
+package the React SDK shares, and pinned byte-for-byte by the same cross-language conformance
+corpus the Python and Swift SDKs run.
 
 ## Install
 
@@ -15,145 +17,167 @@ pnpm add @plrs/node
 Node 22+. The OS keyring is an **optional** dependency (`@napi-rs/keyring`); without it the
 token falls back to a `0600` file under the config dir.
 
-## Quick start — gate a feature + read layered config
+## Quick start
 
 ```ts
-import { PolarisKeyClient } from "@plrs/node";
+import { PolarisClient } from "@plrs/node";
 
-// Offline-first: create() loads token + cached doc with no network call.
-const client = await PolarisKeyClient.create({
+// Offline-first: create() loads the token + re-verifies the cached documents, no network.
+const client = await PolarisClient.create({
   productSlug: "djdl",
   version: "1.4.2",
   trust: {
     pinnedKeys: {
-      // kid -> raw Ed25519 public key (base64url). Pinned by the caller; NEVER read
-      // from the document.
-      "pkey-djdl-prod-2026-06":
-        "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
+      // kid -> raw Ed25519 public key (base64url). Pinned by the caller; NEVER read from
+      // the document, and never learnable from the cache.
+      "plrs-djdl-prod-2026-06": "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
     },
   },
 });
 
-// Gate: true only when the cached license is usable (ok or grace).
+// Gate: true for `ok`, `grace`, and `not-applicable` (a product that runs no License service).
 if (!client.isLicensed()) {
-  const r = await client.activateWithKey(userEnteredKey); // exchange key -> token, refresh
+  const r = await client.license.activateWithKey(userEnteredKey);
   if (r.kind !== "ok") throw new Error("activation failed");
 }
 
-// Layered config read: enforced|hidden > local > env > remote-default > fallback.
-const concurrency = client.getConfig<number>("run.concurrency", 3);
-const where = client.getConfigSource("run.concurrency"); // "remote-default" | "env" | ...
+// Layered config: enforced|hidden > local > env > remote-default > fallback.
+const concurrency = client.config.getConfig<number>("run.concurrency", 3);
+const vpnUrl = client.config.getSecret("proxy.subscriptionUrl");
+const hasVpn = client.license.isEntitled("polarisVpn");
 
-// Secrets are delivered redacted-in-UI but usable here; entitlements are boolean flags.
-const vpnUrl = client.getSecret("proxy.subscriptionUrl");
-const hasVpn = client.isEntitled("polarisVpn");
-
-// Re-pull managed config online (single /token re-acquire on 401), then re-apply.
-await client.refresh();
+// One Core pass: trust refresh -> enabled documents in parallel -> verify -> cache -> report.
+await client.sync();
 ```
 
-## Client API
+## Shape
 
-Construct with `PolarisKeyClient.create(opts)` (async; runs `init()`), or `new
-PolarisKeyClient(opts)` then `await client.init()`.
+| Surface           | Subpath              | What it owns                                                                                                 |
+| ----------------- | -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `client.core`     | `@plrs/node/core`    | Device id, `plrst_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import      |
+| `client.license`  | `@plrs/node/license` | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile                              |
+| `client.config`   | `@plrs/node/config`  | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret`                                              |
+| `client.devices`  | `@plrs/node/devices` | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas |
+| `client.release`  | `@plrs/node/release` | `changelog` / `installUrl` / `downloadUrl`                                                                   |
+| `client.update`   | `@plrs/node/update`  | `check` (version) / `appcastUrl` (from discovery)                                                            |
+| —                 | `@plrs/node/local`   | The transportless profile: every network-requiring call refuses                                              |
+| —                 | `@plrs/node/cli`     | Framework-agnostic commands + commander/yargs adapters                                                       |
 
-### `PolarisKeyOptions`
+Pure verification logic is **not** re-exported here. `verifyLicenseDoc`, `licenseState`,
+`mergeTrust`, `verifyBundle`, `compareSemver` and friends live in `@plrs/client-core`; there is
+one implementation, and every JS host consumes it.
 
-| Option             | Notes                                                                                                                        |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `productSlug`      | The product slug; also the doc `aud`. Scopes every route + cache.                                                            |
-| `version`          | This client's semver; sent on `/config` and used to derive the channel.                                                      |
-| `trust.pinnedKeys` | `{ kid -> rawEd25519PubBase64url }`. The verifying key is chosen by the header `kid` from this set, never from the document. |
-| `baseUrl`          | Control-plane origin (default `https://key.plrs.im`).                                                                        |
-| `channel`          | Override the channel (default derived from `version`).                                                                       |
-| `store`            | A `Store` (default `KeyringStore`; `InMemoryStore` for tests).                                                               |
-| `configDir`        | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                                     |
-| `localOverrides`   | User/local config overrides (beat a `default`, never an `enforced`/`hidden`).                                                |
-| `envPrefix`        | Env-var prefix for overrides (default `PKEY_CONFIG_`).                                                                       |
-| `env`              | Env table to read overrides from (default `process.env`).                                                                    |
+### `CoreOptions`
 
-### Reads (no network)
+| Option              | Notes                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `productSlug`       | The product slug; also the document `aud`. Scopes every route + the cache.                                  |
+| `version`           | The **host application's** semver. Sent as `X-Polaris-Version`; the channel derives from it.                |
+| `trust.pinnedKeys`  | `{ kid -> rawEd25519PubBase64url }`. Core-owned: it verifies licence documents, config documents, trust manifests and offline bundles alike. |
+| `baseUrl`           | Control-plane origin (default `https://key.plrs.im`). Must be `https:` or loopback.                          |
+| `channel`           | Override the channel (default derived from `version`).                                                       |
+| `trustRefresh`      | Refresh the trust manifest on Core's own cadence inside `sync()` (default true).                             |
+| `store`             | A `Store` (default `KeyringStore`; `InMemoryStore` for tests).                                                |
+| `configDir`         | Where the file store writes (default `$XDG_CONFIG_HOME` or `~/.config`).                                     |
+| `requestTimeoutMs`  | Per-request deadline (default 15000; `0` disables).                                                          |
+| `expectedServices`  | What this build expects the product to run — the capability fallback when discovery has not been fetched.    |
 
-| Method                        | Returns                                                                                  |
-| ----------------------------- | ---------------------------------------------------------------------------------------- |
-| `status(now?)`                | `LicenseState` — gate status (`ok`/`grace`/`login`/`expired`/`revoked`/version-block/…). |
-| `isLicensed(now?)`            | `boolean` — true iff the status is usable (`ok` or `grace`).                             |
-| `getConfig<T>(key, fallback)` | The effective value per the precedence below.                                            |
-| `getConfigSource(key)`        | Where `getConfig` sourced the value (for settings/diagnostics UIs).                      |
-| `listUserConfig()`            | Catalog entries minus `hidden` ones, each `{ key, value, enforced }`.                    |
-| `getSecret(key)`              | A managed secret string, or `null`.                                                      |
-| `isEntitled(name)`            | `boolean` — true iff the `flag` entitlement is present and `=== true`.                   |
-| `getEntitlements()`           | `Record<string, JSONValue>` of all entitlement values.                                   |
-| `getProfile()`                | The signed `DocProfile` (name/email), or `null`.                                         |
+Per-service inputs ride their own bags: `config: { localOverrides, envPrefix, env }`,
+`license: { fingerprint }`, `devices: { probes, fingerprint }`.
 
-### Activation + refresh (network)
+## Capabilities, fail-closed
 
-| Method                 | Effect                                                                                                                                                                                         |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `activateWithKey(key)` | Exchange a `pkey_…` key → device token, persist it, then `refresh({ force })`. Returns an `ActivationResult` (`ok` / device-limit / unauthorized / error).                                     |
-| `refresh({ force? })`  | Re-pull `/config` (304-aware via ETag; one `/token` re-acquire on 401), verify, re-apply, and best-effort report a usage snapshot. Returns `{ applied, unauthorized?, blocked?, deviceCap? }`. |
-| `deactivate()`         | Best-effort server deauthorize, then wipe the local token + cache.                                                                                                                             |
+`client.capabilities()` resolves **without a network call**, in this precedence:
+
+1. a discovery document loaded this session (`await client.discover()`) — always wins;
+2. `expectedServices`;
+3. the suite default: **License + Config on**, Release/Update/Identity **off**.
+
+A service that is off refuses its sub-client (`PolarisError` code `service-unavailable`), and a
+product with License off reports gate status **`not-applicable`** with `isLicensed() === true` —
+a config-only product boots usable rather than sitting on `needs-activation` forever.
+
+## `sync()`
+
+One Core pass, in order: trust refresh (Core's own cadence, not a side effect of any document
+fetch) → the **enabled** documents fetched **in parallel** with per-document ETag/304 and the
+half-life re-ask → verification through client-core with per-type anti-replay floors → **one**
+read-modify-write of the cache record → the clock floor → best-effort telemetry to
+`POST /<product>/devices/report`. A 401 gets exactly **one** `POST /<product>/license/token`
+re-acquire for the whole pass, then one retry of the failed fetch.
+
+`client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
+lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 
 ## Layered config precedence
 
-The signed remote doc carries, per key, a `ManagedEntry` with a management `state`
-(`default` | `enforced` | `hidden`). The client honors that state and otherwise layers
-local + environment overrides on top of the remote value:
+The signed config document carries, per key, a `ManagedEntry` with a management `state`
+(`default` | `enforced` | `hidden`):
 
 ```
 enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
 ```
 
-- **`enforced` / `hidden`** values are **locked to the server** — `localOverrides` and env
-  vars are ignored for those keys (the remote value still wins). `hidden` additionally means
-  the key is withheld from `listUserConfig()` (but is still applied by `getConfig`).
-- A **`default`** (or an absent) key can be overridden by a local override, then by an env
-  var, then falls back to the remote value, then to the caller's `fallback`.
+- **`enforced` / `hidden`** are **locked to the server** — `localOverrides` and env vars are
+  ignored for those keys. `hidden` additionally withholds the key from `listUserConfig()` (but
+  `getConfig` still applies it).
+- A **`default`** (or absent) key can be overridden locally, then by an env var, then falls back
+  to the remote value, then to the caller's `fallback`.
 
-### The `PKEY_CONFIG_*` env convention
+### The `PLRS_CONFIG_*` env convention
 
-An override env var is `${envPrefix}${key.replaceAll(".", "__")}` (dots → double
-underscores). With the default prefix:
+An override env var is `${envPrefix}${key.replaceAll(".", "__")}` (dots → double underscores):
 
 | Config key        | Env var                        |
 | ----------------- | ------------------------------ |
-| `run.concurrency` | `PKEY_CONFIG_run__concurrency` |
-| `quality.floor`   | `PKEY_CONFIG_quality__floor`   |
-| `outputDir`       | `PKEY_CONFIG_outputDir`        |
+| `run.concurrency` | `PLRS_CONFIG_run__concurrency` |
+| `quality.floor`   | `PLRS_CONFIG_quality__floor`   |
 
-The value is JSON-parsed when it looks like JSON (`4` → number, `true` → boolean, `[…]`/`{…}`
-→ array/object, `"…"` → string); otherwise it is taken as the raw string. Malformed
-JSON-looking values fall back to the raw string.
+The value is JSON-parsed when it looks like JSON (`4` → number, `true` → boolean, `[…]`/`{…}` →
+array/object, `"…"` → string); otherwise it is the raw string. Malformed JSON-looking values fall
+back to the raw string.
+
+## Offline depths
+
+1. **Online with grace** — the default. Documents carry a short `expiresAt` and a long,
+   server-signed `graceUntil`.
+2. **Bundle-activated** — `await client.importBundle(jws)` verifies an operator-minted
+   `plrs-bundle+jws` against the pinned keys, **all-or-nothing**, and writes the cache atomically.
+   No token is created; the gate reads `activation: "bundle"`. A rejection throws a
+   `PolarisError` naming the step that refused.
+3. **Local-only** — `@plrs/node/local`'s `createLocalClient` / `createBundleClient`. There is no
+   transport at all: config resolution, the gate and bundle import work, and every
+   network-requiring call throws `PolarisError` code `local-only`.
 
 ## CLI hooks
 
-`@plrs/node/cli` exposes a framework-agnostic command **core** (`activate` /
-`deactivate` / `status`, each taking a `PolarisKeyClient` and returning a result with an exit
-code + output lines) plus thin **commander** and **yargs** adapters that wrap the same core,
-so the two front ends never diverge. Register the commands onto your own program:
+`@plrs/node/cli` exposes a framework-agnostic command core plus thin **commander** and **yargs**
+adapters over the same core, so the two front ends never diverge. Verbs are grouped by owning
+service — `activate` / `enroll` / `deactivate` / `status` (license), `register` (devices),
+`config <key>` (config), `import-bundle <file>` (core):
 
 ```ts
 import { Command } from "commander";
+import { PolarisClient } from "@plrs/node";
 import { registerPolarisCommands } from "@plrs/node/cli";
 
 const program = new Command();
-// Adds `activate <key>`, `deactivate`, and `status` subcommands. Trust keys are passed as
-// repeatable `--trust kid=rawBase64url` pairs so the CLI stays product-agnostic.
-registerPolarisCommands(program, { product: "djdl", version: "1.4.2" });
+registerPolarisCommands(program, (opts) => PolarisClient.create(opts), {
+  pinnedKeys: { "plrs-djdl-prod-2026-06": "…" },
+  productSlug: "djdl",
+  version: "1.4.2",
+});
 program.parseAsync(process.argv);
 ```
 
-The yargs adapter mirrors the same surface for projects already on yargs. Each subcommand
-constructs a client, runs the shared core command, prints its lines, and exits with its code.
-
 ## The frozen wire contract
 
-The managed-config document is a compact **JWS (EdDSA / Ed25519)**. The verifying key is
-chosen by the header `kid` from the pinned trust set (never the document); `alg` is asserted
-`EdDSA` before any signature math; the payload (`ManagedConfigDoc`) is product-scoped via
-`aud` + `iss`. The encoding is pinned byte-for-byte by `conformance/corpus/v1/cases.json`,
-which this SDK and the worker verify identically. See the root `README.md` and
-`docs/CONCEPTS.md`.
+Documents are compact **JWS (EdDSA / Ed25519)**, domain-separated by `typ`
+(`plrs-license+jws`, `plrs-config+jws`, `plrs-trust+jws`, `plrs-bundle+jws`). The verifying key
+is chosen by the header `kid` from the pinned trust set — never from the document, and never
+from the cache. The encoding and every claim rule are pinned by
+`conformance/corpus/v2/cases.json`, which this SDK, the worker, and the other three SDKs verify
+identically. See `docs/security/WIRE-CONTRACT-V3.md`.
 
 ## Develop
 

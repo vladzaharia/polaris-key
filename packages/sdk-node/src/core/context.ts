@@ -1,0 +1,380 @@
+// The Core substrate's shared state and transport primitives — wire contract v3 §4–§6.
+//
+// Polaris is a suite of opt-in services over an always-on Core. On the client that division is
+// the same one the Worker makes: Core owns the device principal, the credential, the trust set,
+// the verified cache, the monotonic clock floor and the sync loop; a service module owns its
+// own routes and the reads they feed. `CoreContext` is the object every one of them is handed.
+//
+// ── WHY THE OPTIONS SPLIT ───────────────────────────────────────────────────────────────────
+//
+// `CoreOptions` carries what Core needs and ONLY that. The pinned trust set lives here rather
+// than in the license module because it verifies config documents, trust manifests and offline
+// bundles too — a product that has disabled License still needs pins. Conversely `envPrefix` /
+// `env` / `localOverrides` are absent: they are inputs to config RESOLUTION, which is the config
+// service's job, so they ride `ConfigClientOptions`. The pre-suite client fused all of these into
+// one 20-field bag, which is exactly how `trust` ended up looking like a licensing concern.
+//
+// ── WHY THE TRANSPORT LIVES HERE ────────────────────────────────────────────────────────────
+//
+// Every product-scoped request carries the same seven `X-Polaris-*` headers and the same
+// deadline, and gets the same treatment when the network simply fails. Putting that in one
+// place is what keeps a new service from shipping a call with no timeout on it (R4-08).
+
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { arch, platform } from "node:os";
+import type { TrustSet } from "@plrs/jws";
+import {
+  HEADER_ARCH,
+  HEADER_CHANNEL,
+  HEADER_DEVICE,
+  HEADER_PLATFORM,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
+  HEADER_VERSION,
+} from "@plrs/protocol/core";
+import type { AllowedRange, BlockReason } from "@plrs/protocol/license";
+import {
+  PolarisError,
+  channelForVersion,
+  effectiveNow,
+  type Store,
+} from "@plrs/client-core";
+import { SDK_NAME, SDK_VERSION } from "../version.js";
+import { KeyringStore } from "./store.js";
+import {
+  DEFAULT_SERVICES,
+  copyServices,
+  servicesFromList,
+  type ServiceSlug,
+  type ServicesMap,
+} from "../discovery.js";
+
+/** Where the SDK talks to when the host does not say. */
+export const DEFAULT_BASE = "https://key.plrs.im";
+
+/** Node's `fetch` has NO default timeout, so every request needs an explicit deadline or a
+ *  slowloris on any endpoint stalls `sync()` forever (R4-08). */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+
+export const nowSec = (): number => Math.floor(Date.now() / 1000);
+
+/** Thrown at construction for a `baseUrl` that would carry the device bearer token in the
+ *  clear. A plaintext control plane makes trust-set injection (R4-02) a coffee-shop attack
+ *  rather than a local one. */
+export class InsecureBaseUrlError extends Error {
+  readonly code = "insecure-base-url";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "InsecureBaseUrlError";
+  }
+}
+
+/** Loopback hosts keep `http:` usable for `wrangler dev` / integration tests; nothing else
+ *  may carry the bearer token unencrypted. */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+export function normalizeBaseUrl(raw: string): string {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new InsecureBaseUrlError(`baseUrl is not a valid URL: ${raw}`);
+  }
+  const loopback =
+    url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
+  if (url.protocol !== "https:" && !loopback) {
+    throw new InsecureBaseUrlError(
+      `baseUrl must be https: (got ${url.protocol}//${url.host}); ` +
+        "plaintext http:// is only accepted for localhost/127.0.0.1.",
+    );
+  }
+  return raw.replace(/\/+$/, "");
+}
+
+function defaultConfigDir(): string {
+  return process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+}
+
+/** What Core needs. Per-service inputs live in that service's own option bag. */
+export interface CoreOptions {
+  productSlug: string;
+  /** MUST be `https:` — or `http://localhost` / `http://127.0.0.1` for local development. */
+  baseUrl?: string;
+  /** The HOST APPLICATION's version, sent as `X-Polaris-Version` and gated on by the server. */
+  version: string;
+  /** Release channel; derived from `version` when omitted. */
+  channel?: string;
+  /** Pinned trust set (kid → raw Ed25519 pubkey base64url). The ONLY root: keys learned from
+   *  a signed trust manifest extend it but never shadow it. Core-owned because it verifies
+   *  license documents, config documents, trust manifests and offline bundles alike. */
+  trust: { pinnedKeys: TrustSet };
+  /** Refresh the signed trust manifest on Core's own cadence inside `sync()`. Defaults to
+   *  true. §4.2 forbids riding a service's document fetch: a product with ANY service enabled
+   *  must still advance the independent signed clock. */
+  trustRefresh?: boolean;
+  store?: Store;
+  configDir?: string;
+  fetchImpl?: typeof fetch;
+  /** Per-request deadline in milliseconds (default 15000). `0` disables it. */
+  requestTimeoutMs?: number;
+  /**
+   * What this build was compiled expecting the product to run — the D-21 fallback.
+   *
+   * Capability resolution is: a discovery document fetched this session, else this list, else
+   * `DEFAULT_SERVICES` (license + config). It exists because discovery is a NETWORK read and
+   * an offline-first client must not be told it has no license service simply because the
+   * control plane is unreachable. Naming the expectation here is how a config-only or
+   * release-enabled product gets the right answer with no round trip at all.
+   */
+  expectedServices?: ServiceSlug[];
+}
+
+/** The status taxonomy every signed-document GET collapses to (§5). One shape for both
+ *  documents so `sync()` can drive them through identical machinery. */
+export type DocumentResult =
+  | { kind: "ok"; jws: string; etag: string | null }
+  | { kind: "not-modified" }
+  | { kind: "unauthorized" }
+  | { kind: "device-cap"; limit?: number; deviceCount?: number }
+  | { kind: "blocked"; reason: BlockReason; allowedRange?: AllowedRange }
+  | { kind: "error"; status: number; message: string };
+
+/**
+ * Core's live state: identity, credentials-adjacent wiring, transport, and the clock floor.
+ *
+ * Constructed once per client. `init()` reads the device id off the store; nothing in the
+ * constructor touches the disk or the network, so a `new PolarisClient(...)` that throws
+ * `InsecureBaseUrlError` has done nothing else first.
+ */
+export class CoreContext {
+  readonly product: string;
+  readonly baseUrl: string;
+  readonly version: string;
+  readonly channel: string;
+  /** Tier 1 — compiled into the host application, never mutated at runtime. */
+  readonly pinnedTrust: TrustSet;
+  readonly trustRefreshEnabled: boolean;
+  readonly store: Store;
+  readonly requestTimeoutMs: number;
+  /** Set by `./local` — every network-requiring call refuses instead of dialling out. */
+  readonly localOnly: boolean;
+
+  private readonly fetchImpl?: typeof fetch;
+  private readonly expectedServices?: ServiceSlug[];
+  private discovered: ServicesMap | null = null;
+  private deviceIdValue = "";
+
+  /**
+   * §4.2 monotonic time floor: `max(issuedAt)` over EVERY artifact this client has
+   * re-VERIFIED — both documents AND the trust manifest. Recomputed from the cached JWSs at
+   * load, never read from an unsigned field, so there is nothing on disk to edit in either
+   * direction (R4-04).
+   */
+  private floor = 0;
+
+  constructor(opts: CoreOptions & { localOnly?: boolean }) {
+    this.product = opts.productSlug;
+    this.baseUrl = normalizeBaseUrl(opts.baseUrl ?? DEFAULT_BASE);
+    this.version = opts.version;
+    this.channel = opts.channel ?? channelForVersion(opts.version);
+    this.pinnedTrust = { ...opts.trust.pinnedKeys };
+    this.trustRefreshEnabled = opts.trustRefresh !== false;
+    this.store =
+      opts.store ??
+      new KeyringStore(opts.productSlug, opts.configDir ?? defaultConfigDir());
+    this.fetchImpl = opts.fetchImpl;
+    this.requestTimeoutMs = opts.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    this.expectedServices = opts.expectedServices;
+    this.localOnly = opts.localOnly === true;
+  }
+
+  async init(): Promise<void> {
+    this.deviceIdValue = await this.store.getDeviceId();
+  }
+
+  get deviceId(): string {
+    return this.deviceIdValue;
+  }
+
+  get highWaterMark(): number {
+    return this.floor;
+  }
+
+  /** The time every gate comparison runs at: `max(systemClock, floor)`. */
+  now(systemNow = nowSec()): number {
+    return effectiveNow(systemNow, this.floor);
+  }
+
+  /**
+   * Raise the §4.2 floor. Monotonic by construction — it only ever rises, and only from
+   * content whose signature has just been checked against the pins.
+   */
+  raiseFloor(issuedAt: number): void {
+    if (issuedAt > this.floor) this.floor = issuedAt;
+  }
+
+  /** Drop the floor to zero. Only `deactivate()` does this, and only alongside wiping every
+   *  artifact the floor was derived from — a floor without its sources is a bare counter. */
+  resetFloor(): void {
+    this.floor = 0;
+  }
+
+  // ── Capabilities (D-21) ───────────────────────────────────────────────────────────────
+  /**
+   * Which services this product runs, resolved WITHOUT a network call.
+   *
+   * Precedence: a discovery document loaded this session > `expectedServices` > the suite
+   * default (license + config). Release, Update and Identity are OFF in that default, so a
+   * client that has never seen discovery and named no expectation refuses their sub-clients —
+   * that is the fail-closed half of D-21. License and Config are ON, because every product has
+   * run them since before the suite existed and an offline-first client must not lose its
+   * license gate to an unreachable control plane.
+   */
+  services(): ServicesMap {
+    // A fresh map every call: the exported `DEFAULT_SERVICES` is a shared constant, and a
+    // caller that mutated a slice of it would silently change every client in the process.
+    if (this.discovered) return copyServices(this.discovered);
+    if (this.expectedServices) return servicesFromList(this.expectedServices);
+    return copyServices(DEFAULT_SERVICES);
+  }
+
+  /** Install a discovery-derived capability map. Once set it wins over every fallback. */
+  setServices(services: ServicesMap): void {
+    this.discovered = services;
+  }
+
+  enabled(slug: ServiceSlug): boolean {
+    return this.services()[slug].enabled;
+  }
+
+  /** Refuse a sub-client whose service this product does not run (D-21). */
+  requireService(slug: ServiceSlug): void {
+    if (!this.enabled(slug)) {
+      throw new PolarisError(
+        "service-unavailable",
+        `The ${slug} service is not enabled for ${this.product}.`,
+      );
+    }
+  }
+
+  // ── Transport ─────────────────────────────────────────────────────────────────────────
+  /**
+   * The fetch implementation, or a refusal in local-only mode.
+   *
+   * Refusing HERE rather than at each call site is deliberate: a transportless client must
+   * fail on the attempt to dial, before a URL is built or a header is assembled, so there is
+   * no path by which a local-only build performs a request its operator did not sanction.
+   */
+  fetcher(): typeof fetch {
+    if (this.localOnly) {
+      throw new PolarisError(
+        "local-only",
+        "This client is in local-only mode; network calls are refused.",
+      );
+    }
+    return this.fetchImpl ?? fetch;
+  }
+
+  /** A fresh deadline for one request. */
+  deadline(): AbortSignal | undefined {
+    return this.requestTimeoutMs > 0
+      ? AbortSignal.timeout(this.requestTimeoutMs)
+      : undefined;
+  }
+
+  /** The `X-Polaris-*` client metadata every product-scoped call carries (§5). */
+  headers(extra: Record<string, string> = {}): Record<string, string> {
+    return {
+      [HEADER_DEVICE]: this.deviceIdValue,
+      [HEADER_VERSION]: this.version,
+      [HEADER_CHANNEL]: this.channel,
+      [HEADER_PLATFORM]: platform(),
+      [HEADER_ARCH]: arch(),
+      [HEADER_SDK_NAME]: SDK_NAME,
+      [HEADER_SDK_VERSION]: SDK_VERSION,
+      ...extra,
+    };
+  }
+
+  /** `<baseUrl>/<product>/<path>`. */
+  url(path: string): string {
+    return `${this.baseUrl}/${this.product}/${path}`;
+  }
+
+  /**
+   * GET one signed document with conditional-request support, mapping the whole §5 status
+   * taxonomy. Shared verbatim by `/license/document` and `/config/document`, so the two can
+   * never drift on what a 403, a 429 or a dropped connection means — and so that adding a
+   * third signed document later is a route string, not another status ladder.
+   *
+   * Verification is emphatically NOT here: this returns the raw compact JWS and lets `sync()`
+   * hand it to client-core with the right trust set and anti-replay floor. An HTTP layer that
+   * verified would be an HTTP layer that could be talked into not verifying.
+   */
+  async getDocument(
+    path: string,
+    token: string,
+    etag?: string,
+  ): Promise<DocumentResult> {
+    const f = this.fetcher();
+    const headers = this.headers({ authorization: `Bearer ${token}` });
+    if (etag) headers["if-none-match"] = etag;
+
+    let res: Response;
+    try {
+      res = await f(this.url(path), { headers, signal: this.deadline() });
+    } catch (e) {
+      return { kind: "error", status: 0, message: (e as Error).message };
+    }
+
+    switch (res.status) {
+      case 304:
+        return { kind: "not-modified" };
+      case 401:
+        return { kind: "unauthorized" };
+      case 429: {
+        const body = (await res.json().catch(() => ({}))) as {
+          limit?: number;
+          deviceCount?: number;
+        };
+        return {
+          kind: "device-cap",
+          limit: body.limit,
+          deviceCount: body.deviceCount,
+        };
+      }
+      case 403: {
+        // v3 nests the machine-readable code and keeps `allowedRange` at the top level
+        // (§5/R4). `reason` rides inside the error object so a client can still tell too-old
+        // from too-new; a body that predates the nesting is read at the top level too, and a
+        // body that says nothing at all falls back to the stricter of the two.
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: { code?: string; reason?: BlockReason };
+          reason?: BlockReason;
+          allowedRange?: AllowedRange;
+        };
+        const reason =
+          body.error?.reason ??
+          body.reason ??
+          (body.error?.code === "channel_not_allowed"
+            ? "channel-not-entitled"
+            : "version-too-old");
+        return { kind: "blocked", reason, allowedRange: body.allowedRange };
+      }
+      case 200:
+        return {
+          kind: "ok",
+          jws: await res.text(),
+          etag: res.headers.get("etag"),
+        };
+      default:
+        return {
+          kind: "error",
+          status: res.status,
+          message: await res.text().catch(() => ""),
+        };
+    }
+  }
+}
