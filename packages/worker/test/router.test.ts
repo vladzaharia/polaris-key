@@ -47,16 +47,6 @@ describe("matchRoute — product-scoped routes", () => {
     ["/djdl/devices", "devices"],
     ["/djdl/devices/report", "report"],
     ["/djdl/devices/register", "register"],
-    ["/djdl/session", "browserSession"],
-    ["/djdl/session/license", "browserSessionLicense"],
-    ["/djdl/auth/start", "authStart"],
-    ["/djdl/auth/login", "authLogin"],
-    ["/djdl/auth/logout", "authLogout"],
-    ["/djdl/auth/device/start", "authDeviceStart"],
-    ["/djdl/auth/device/verify", "authDeviceVerify"],
-    ["/djdl/auth/device/poll", "authDevicePoll"],
-    ["/djdl/auth/callback", "authCallback"],
-    ["/djdl/auth/poll", "authPoll"],
   ];
 
   it.each(cases)("routes %s -> %s", (path, kind) => {
@@ -72,11 +62,11 @@ describe("matchRoute — product-scoped routes", () => {
   });
 });
 
-// §R1: `/<p>/license/*` and `/<p>/config/*` no longer resolve to a route kind of their own.
-// They resolve to ONE kind carrying the slug and the remaining segments, and the service's
-// descriptor routes them from there — which is what lets a product turn a service off and have
-// its whole surface disappear rather than answer 403 per path.
-describe("matchRoute — service namespaces (license, config, release, update)", () => {
+// §R1: no product-scoped service path resolves to a route kind of its own any more. They all
+// resolve to ONE kind carrying the slug and the remaining segments, and the service's descriptor
+// routes them from there — which is what lets a product turn a service off and have its whole
+// surface disappear rather than answer 403 per path.
+describe("matchRoute — service namespaces (all five)", () => {
   const serviceCases: Array<[string, string, string[]]> = [
     ["/djdl/license/activate", "license", ["activate"]],
     ["/djdl/license/enroll", "license", ["enroll"]],
@@ -110,6 +100,23 @@ describe("matchRoute — service namespaces (license, config, release, update)",
     ["/djdl/update/appcast.xml", "update", ["appcast.xml"]],
     ["/djdl/update/version", "update", ["version"]],
     ["/djdl/update/beta/appcast.xml", "update", ["beta", "appcast.xml"]],
+    ["/djdl/identity/session", "identity", ["session"]],
+    ["/djdl/identity/session/license", "identity", ["session", "license"]],
+    ["/djdl/identity/auth/start", "identity", ["auth", "start"]],
+    ["/djdl/identity/auth/callback", "identity", ["auth", "callback"]],
+    ["/djdl/identity/auth/poll", "identity", ["auth", "poll"]],
+    ["/djdl/identity/auth/logout", "identity", ["auth", "logout"]],
+    [
+      "/djdl/identity/auth/device/start",
+      "identity",
+      ["auth", "device", "start"],
+    ],
+    [
+      "/djdl/identity/auth/device/verify",
+      "identity",
+      ["auth", "device", "verify"],
+    ],
+    ["/djdl/identity/auth/device/poll", "identity", ["auth", "device", "poll"]],
   ];
 
   it.each(serviceCases)("routes %s -> %s %j", (path, slug, rest) => {
@@ -225,6 +232,35 @@ describe("matchRoute — routes removed by wire v3", () => {
     "/djdl/mint/applemusic/auth",
   ])("404s the pre-suite path %s", (path) => {
     expect(matchRoute(path).kind).toBe("notFound");
+  });
+
+  // The identity carve (P3) removes the whole pre-namespace identity surface with NO aliases.
+  // These are the ones most likely to be re-added by reflex — a browser flow is easy to think
+  // of as "a page URL somebody bookmarked" — so they are pinned as dead ends. `/auth/login` is
+  // in the list twice over: it was already a redundant spelling of `/auth/start`.
+  it.each([
+    "/djdl/session",
+    "/djdl/session/license",
+    "/djdl/auth/start",
+    "/djdl/auth/login",
+    "/djdl/auth/logout",
+    "/djdl/auth/callback",
+    "/djdl/auth/poll",
+  ])("404s the pre-namespace identity path %s", (path) => {
+    expect(matchRoute(path).kind).toBe("notFound");
+  });
+
+  // `/djdl/auth/device/*` is three segments deep, so it cannot reach `notFound` the same way:
+  // `auth` is read as a channel-or-namespace head and the path simply matches nothing. What
+  // matters is that it does not resolve to the identity service — an unnamespaced path must not
+  // be dispatched as if it were namespaced.
+  it.each([
+    "/djdl/auth/device/start",
+    "/djdl/auth/device/verify",
+    "/djdl/auth/device/poll",
+  ])("does not dispatch the pre-namespace device path %s", (path) => {
+    const route = matchRoute(path);
+    expect(route.kind).toBe("notFound");
   });
 });
 

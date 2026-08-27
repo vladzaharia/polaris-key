@@ -17,46 +17,15 @@
  *
  * The merge is not duplicated; only the slice differs. `resolveEffective` survives as a legacy
  * shim over exactly these two steps, so the surfaces that still mint a v2 document (identity's
- * `/session`, the portal's entitlement view) are byte-identical to before the split.
+ * `/identity/session`, the portal's entitlement view) are byte-identical to before the split.
  */
-
-import type { ManagedEntry } from "@plrs/protocol";
-import type { Db } from "../../core/platform.js";
-import { resolveMergedPayload } from "../../core/payload.js";
-import type { DeviceRow, LicenseRow } from "../../core/data.js";
-import { injectAdminPolicy } from "../../core/entitlements.js";
-import { tighterMax, tighterMin } from "./gate.js";
 
 // `injectAdminPolicy` moved to `core/entitlements.ts` in P2.T3 so the `entitled` release/update
 // access mode (D-13) computes the SAME entitlement map this document carries, rather than a
 // second row-only derivation that would silently ignore channels authored in a profile or an
-// override. Re-exported here because `licenseCore.resolveEffective` — and through it identity's
-// `/session` and the portal's entitlement view — imports it from this module.
+// override. `resolveEntitlements` followed it into `core/authz.ts` when Identity was carved:
+// Identity's seat check reads the same `deviceLimit` this document publishes, and a service may
+// not import a sibling. Both are re-exported here so License's own call sites — and the
+// `licenseCore.ts` compat shim — are unchanged.
 export { injectAdminPolicy } from "../../core/entitlements.js";
-
-/**
- * The effective entitlement map for one license/device: every stored layer, merged, with the
- * admin policy stamped on top.
- *
- * `env` is deliberately absent. `resolveEffective`'s optional `env` opens sealed managed
- * secrets (R12-02), and entitlements are never sealed — the license document carries no secret
- * material at all, which is the wire-level reason it can be handed to a build gate without
- * decrypting anything.
- */
-export async function resolveEntitlements(
-  db: Db,
-  product: string,
-  license: LicenseRow,
-  device: DeviceRow | null | undefined,
-  now: number,
-): Promise<Record<string, ManagedEntry>> {
-  const { payload, tier } = await resolveMergedPayload(
-    db,
-    product,
-    license,
-    device,
-    now,
-  );
-  injectAdminPolicy(payload, tier, license, tighterMin, tighterMax);
-  return payload.entitlements;
-}
+export { resolveEntitlements } from "../../core/authz.js";

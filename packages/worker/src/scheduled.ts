@@ -35,7 +35,7 @@ import {
 import {
   prunePortalAudit,
   purgeDownloadTokensForProduct,
-} from "./portal/repo.js";
+} from "./services/identity/portal/repo.js";
 
 /**
  * How long an audit record is kept before the sweep deletes it.

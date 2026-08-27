@@ -32,9 +32,17 @@
  * gates every commit. A test runs on the same gate, needs no new dependencies, and can say
  * *why* in its failure message.
  *
- * `src/services/` now holds `license/`, `config/`, `release/` and `update/`; `identity/` lands in
- * P3. The last case in this file is the one that does the work — it walks every file actually
- * present — so the rule stops being hypothetical as each directory appears.
+ * `src/services/` now holds all five: `license/`, `config/`, `release/`, `update/` and
+ * `identity/`. The last case in this file is the one that does the work — it walks every file
+ * actually present — so the rule is exhaustive rather than hypothetical.
+ *
+ * The identity carve (P3) is the one that exercised the rule hardest, because identity genuinely
+ * needs licence-shaped answers: its OIDC sign-in mints and claims licences, its browser session
+ * authorizes a device and enforces the build gate. None of that became an
+ * `identity -> license` import. It became `core/authz.ts` and `core/gate.ts`, with License
+ * re-exporting them — the same move `injectAdminPolicy` and the semver algebra made in P2. That
+ * is what "everything else crosses via core-mediated interfaces" means in practice, and this
+ * suite is what stops the cheaper answer from being taken next time.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -168,13 +176,48 @@ describe("service boundaries", () => {
     expect(() => collectImportSites()).not.toThrow();
   });
 
-  it("is actually policing the four services that exist", () => {
+  it("is actually policing all five services", () => {
     // The guard against this file quietly becoming a no-op: if a service directory stopped being
     // scanned — a rename, a move, a broken walk — the last case below would pass on an empty
     // set and nobody would notice. Naming the expected services makes that failure loud.
     const services = new Set(collectImportSites().map((s) => s.service));
-    for (const slug of ["license", "config", "release", "update"]) {
+    for (const slug of ["license", "config", "release", "update", "identity"]) {
       expect(services, `${slug} should be scanned`).toContain(slug);
+    }
+  });
+
+  it("scans identity's nested portal/ directory, not just its top level", () => {
+    // `identity/` is the only service with a sub-directory, and it is the one holding the files
+    // with the most legacy imports (`portal/api.ts` alone reached six top-level modules before
+    // the carve). A walk that stopped at the service root would pass this file while leaving
+    // exactly those imports unpoliced.
+    const portalFiles = new Set(
+      collectImportSites()
+        .filter((s) => s.service === "identity")
+        .map((s) => s.file),
+    );
+    expect(
+      [...portalFiles].filter((f) => f.includes("identity/portal/")).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("refuses identity -> license, the edge the carve was most likely to introduce", () => {
+    // Identity mints licences, claims enrolled ones and runs the build gate, so `../license/…`
+    // is the import a hurried carve leaves behind. It is not a sanctioned edge: those answers
+    // come from `core/authz.ts` and `core/gate.ts`, which License re-exports.
+    for (const specifier of [
+      "../license/authz.js",
+      "../license/gate.js",
+      "../license/index.js",
+    ]) {
+      expect(
+        violation({
+          service: "identity",
+          file: "src/services/identity/browserSession.ts",
+          specifier,
+        }),
+        `${specifier} should be refused`,
+      ).not.toBeNull();
     }
   });
 

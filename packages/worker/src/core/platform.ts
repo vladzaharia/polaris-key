@@ -11,8 +11,9 @@
  * bearer-token reader, hashing and id minting, the hot token cache, the KEK-sealing vault, the
  * response-hygiene helpers — still physically lives in the top-level modules P1.T1 did not
  * relocate (`../env.js`, `../db/types.js`, `../http.js`, `../crypto.js`, `../kv.js`,
- * `../keyvault.js`, `../securityHeaders.js`). Relocating those is a mechanical change across
- * ~90 import sites in code no service touches, and it is not what Tasks 1.2–1.4 are.
+ * `../keyvault.js`, `../securityHeaders.js`, `../platformOidc.js`). Relocating those is a
+ * mechanical change across ~90 import sites in code no service touches, and it is not what the
+ * service carves are.
  *
  * So Core DECLARES the interface here and owns where the implementation sits. A service binds
  * to `core/platform.js`; the day the implementations physically move under `core/`, this file
@@ -28,15 +29,39 @@ export { secret } from "../env.js";
 
 export type { Db, DbParam, DbStatement } from "../db/types.js";
 
-export { bearer } from "../http.js";
+export {
+  bearer,
+  isAllowedStorageHost,
+  isSafeAssetPath,
+  isSameOriginNavigation,
+} from "../http.js";
 
-export { hashKey, mintDeviceToken, randomId } from "../crypto.js";
+export {
+  hashKey,
+  mintDeviceToken,
+  mintOpaqueToken,
+  productFromKey,
+  randomId,
+} from "../crypto.js";
 
 export {
   deleteTokenRecord,
   ghInstallationTokenKey,
   pk as kvKey,
 } from "../kv.js";
+
+/**
+ * The platform's OWN identity provider — a Worker secret, not repo-supplied config.
+ *
+ * Identity reads it twice: a product whose `oidc_config.provider` is `platform` signs in against
+ * it, and the root customer portal has no other issuer at all. It is a binding reader like every
+ * other export here, which is why it arrives through the platform seam rather than through a
+ * service.
+ */
+export {
+  platformOidcConfig,
+  type PlatformOidcConfig,
+} from "../platformOidc.js";
 
 export {
   generateEd25519,

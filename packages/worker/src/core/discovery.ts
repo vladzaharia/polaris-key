@@ -24,17 +24,14 @@
  *
  * Pre-launch, so this is a clean replacement with no `modules` compatibility alias (§9).
  *
- * ── THE ONE FRAGMENT CORE STILL BUILDS ──────────────────────────────────────────────────────
+ * ── EVERY FRAGMENT IS NOW A DESCRIPTOR'S ────────────────────────────────────────────────────
  *
- * Identity has no descriptor yet — it is carved in P3 — so its fragment is still built HERE,
- * from the same `oidc_config` row the v2 document read, already nested under its service key.
- * The SHAPE lands now so clients can be written against it; the producer moves later, and when
- * it does this file loses a function and gains nothing.
- *
- * Its `enabled` source differs from the other four on purpose, and the difference is temporary:
- * Identity's routes are NOT yet gated by `services_json` (P3 does that), so reporting
- * `services.identity.enabled` would tell every existing OIDC product that its working login is
- * off. The document must describe what answers, so until P3 it describes the row.
+ * Identity was the last service Core still described on its behalf: while its routes answered
+ * for any product with an `oidc_config` row, reporting `services.identity.enabled` would have
+ * told working OIDC products that their login was off, so the fragment was built here, from the
+ * row. The identity carve (P3) gates those routes on `services_json` like every other service,
+ * so that exception is gone with it. This file now knows the shape of NO service: it asks the
+ * registry, or answers `{"enabled":false}`.
  */
 
 import { PROTOCOL_VERSION } from "@plrs/protocol";
@@ -45,11 +42,6 @@ import { loadPublicSigningKey, loadPublicSigningKeys } from "./products.js";
 import { methodNotAllowed } from "./errors.js";
 import type { DiscoveryContext, ServiceRegistry } from "./registry.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./services.js";
-import { getProduct } from "../repo.js";
-
-interface OidcConfigRow {
-  product: string;
-}
 
 /** The one fragment shape a disabled service gets, everywhere. */
 const DISABLED = { enabled: false } as const;
@@ -65,11 +57,6 @@ export async function handleDiscovery(
 
   const url = new URL(req.url);
   const base = `${url.origin}/${product.slug}`;
-  const row = await getProduct(db, product.slug);
-  const oidc = await db.first<OidcConfigRow>(
-    "SELECT product FROM oidc_config WHERE product = ?",
-    product.slug,
-  );
   const activeKey = await loadPublicSigningKey(db, product.slug);
   const verificationKeys = await loadPublicSigningKeys(db, product.slug);
   const signingKid = activeKey?.kid ?? product.signingKid;
@@ -92,7 +79,7 @@ export async function handleDiscovery(
     identity: DISABLED,
   };
   for (const slug of SERVICE_SLUGS) {
-    services[slug] = await fragmentFor(slug, ctx, registry, { row, oidc });
+    services[slug] = await fragmentFor(slug, ctx, registry);
   }
 
   const body = {
@@ -155,54 +142,21 @@ export async function handleDiscovery(
   });
 }
 
-interface LegacyRows {
-  row: { release_source?: string | null } | null;
-  oidc: OidcConfigRow | null;
-}
-
 /**
- * One service's fragment: the descriptor's if it has one, Core's stand-in if it does not, and
- * `{enabled:false}` if the product has not enabled it.
+ * One service's fragment: the descriptor's when the product has enabled it, `{enabled:false}`
+ * otherwise.
  *
- * A slug with no descriptor AND no stand-in cannot happen today, but if it ever does the answer
- * is `{enabled:false}` — a service Core cannot describe is a service a client must not try.
+ * A slug with no descriptor at all answers `{enabled:false}` too — a service Core cannot
+ * describe is a service a client must not try — and it answers that whether or not the flag is
+ * set, so an operator who enables a service this build does not mount sees "off" rather than a
+ * fragment nothing will serve.
  */
 async function fragmentFor(
   slug: ServiceSlug,
   ctx: DiscoveryContext,
   registry: ServiceRegistry,
-  rows: LegacyRows,
 ): Promise<Record<string, unknown>> {
   const descriptor = registry.get(slug);
-  if (descriptor) {
-    return ctx.product.services[slug].enabled
-      ? await descriptor.discoveryFragment(ctx)
-      : DISABLED;
-  }
-  return slug === "identity" && rows.oidc ? identityFragment(ctx) : DISABLED;
-}
-
-/**
- * Identity: product OIDC plus the browser session it establishes.
- *
- * `/auth/login` is gone from the document even though the route still answers — §R1 removes it
- * as a redundant alias of `/auth/start`, and discovery is where a permanent alias stops being
- * advertised first.
- */
-function identityFragment(ctx: DiscoveryContext): Record<string, unknown> {
-  const { base } = ctx;
-  return {
-    enabled: true,
-    endpoints: {
-      session: `${base}/session`,
-      sessionLicense: `${base}/session/license`,
-      authStart: `${base}/auth/start`,
-      authCallback: `${base}/auth/callback`,
-      authPoll: `${base}/auth/poll`,
-      authLogout: `${base}/auth/logout`,
-      authDeviceStart: `${base}/auth/device/start`,
-      authDeviceVerify: `${base}/auth/device/verify`,
-      authDevicePoll: `${base}/auth/device/poll`,
-    },
-  };
+  if (!descriptor || !ctx.product.services[slug].enabled) return DISABLED;
+  return descriptor.discoveryFragment(ctx);
 }

@@ -20,10 +20,12 @@ import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
 import { releaseService } from "./services/release/index.js";
 import { updateService } from "./services/update/index.js";
+import { identityService } from "./services/identity/index.js";
 
 export const SERVICES: ServiceRegistry = new Map([
   [licenseService.slug, licenseService],
   [configService.slug, configService],
   [releaseService.slug, releaseService],
   [updateService.slug, updateService],
+  [identityService.slug, identityService],
 ]);

@@ -7,21 +7,11 @@ import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust.js";
 import { dispatchService } from "./core/registry.js";
 import { SERVICES } from "./mount.js";
-import {
-  handleAuthCallback,
-  handleAuthDevicePoll,
-  handleAuthDeviceStart,
-  handleAuthDeviceVerify,
-  handleAuthPoll,
-  handleAuthStart,
-} from "./oidc.js";
-import {
-  handleBrowserLogout,
-  handleBrowserSession,
-  handleBrowserSessionLicense,
-} from "./browserSession.js";
 import { handleAdmin } from "./admin/index.js";
-import { handlePortal } from "./portal/index.js";
+// The root customer portal is a PLATFORM surface implemented by the Identity service: one
+// account spans every tenant, so there is no product slug to namespace it under and its routes
+// stay reserved ahead of product slugs in `router.ts`. Only the implementation moved (D-14).
+import { handlePortal } from "./services/identity/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { notFound } from "./core/errors.js";
 import { secureResponse } from "./securityHeaders.js";
@@ -39,16 +29,6 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "report",
   "register",
   "service",
-  "browserSession",
-  "browserSessionLicense",
-  "authStart",
-  "authLogin",
-  "authLogout",
-  "authDeviceStart",
-  "authDeviceVerify",
-  "authDevicePoll",
-  "authCallback",
-  "authPoll",
 ]);
 
 export default {
@@ -58,7 +38,7 @@ export default {
     // script-free CSP. Handlers that set a policy themselves (the SPA shells) keep it. This
     // makes "there is no CSP-less HTML on this origin" a property of the dispatcher rather
     // than something each handler has to remember, and it is what currently covers the two
-    // `oidc.ts` pages (device-authorization + "you're signed in"), which set no headers of
+    // identity OIDC pages (device-authorization + "you're signed in"), which set no headers of
     // their own.
     return secureResponse(await dispatch(req, env));
   },
@@ -98,8 +78,7 @@ async function dispatch(req: Request, env: Env): Promise<Response> {
       // Services first: `dispatchService` checks THIS product's enablement before the
       // descriptor is consulted, so a service a product has not enabled never runs a line of
       // its own code and is indistinguishable from one that does not exist (see
-      // `core/registry.ts`). Everything below is a core route or a service that has not been
-      // carved yet (P3).
+      // `core/registry.ts`). Everything below is a core route — all five services are carved.
       if (route.kind === "service") {
         return dispatchService(SERVICES, route.slug, product.services, {
           req,
@@ -120,31 +99,14 @@ async function dispatch(req: Request, env: Env): Promise<Response> {
         case "report":
           return handleReport(req, env, db, product, now);
         case "register":
-          return handleRegister(req, env, db, product, now);
+          // The registry is threaded through because `requires-identity` registration is
+          // authorized by the Identity descriptor (`ServiceDescriptor.authorizeRegistration`);
+          // Core asks the registry rather than importing the service.
+          return handleRegister(req, env, db, product, now, SERVICES);
         case "jwks":
           return handleJwks(db, product);
         case "trustManifest":
           return handleTrustManifest(req, db, product, now);
-        case "browserSession":
-          return handleBrowserSession(req, env, db, product, now);
-        case "browserSessionLicense":
-          return handleBrowserSessionLicense(req, env, db, product, now);
-        case "authStart":
-          return handleAuthStart(req, env, db, product);
-        case "authLogin":
-          return handleAuthStart(req, env, db, product);
-        case "authLogout":
-          return handleBrowserLogout(req, env, db, product);
-        case "authDeviceStart":
-          return handleAuthDeviceStart(req, env, db, product);
-        case "authDeviceVerify":
-          return handleAuthDeviceVerify(req, env, product);
-        case "authDevicePoll":
-          return handleAuthDevicePoll(req, env, db, product, now);
-        case "authCallback":
-          return handleAuthCallback(req, env, db, product, now);
-        case "authPoll":
-          return handleAuthPoll(req, env, db, product, now);
         default:
           return notFound();
       }

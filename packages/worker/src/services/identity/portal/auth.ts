@@ -1,9 +1,11 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import type { Env } from "../env.js";
-import type { Db } from "../db/types.js";
-import { clientIp, rateLimitOk } from "../core/rateLimit.js";
-import { platformOidcConfig } from "../platformOidc.js";
-import { randomId } from "../crypto.js";
+import {
+  platformOidcConfig,
+  randomId,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
+import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   getOrCreateAccountByEmail,
   getOrCreateAccountByIdentity,
@@ -18,7 +20,7 @@ import {
 } from "./session.js";
 import { sendMagicLink } from "./email.js";
 import { portalSecurityHeaders } from "./headers.js";
-import { isSameOriginNavigation } from "../http.js";
+import { isSameOriginNavigation } from "../../../core/platform.js";
 
 const FLOW_TTL_SECONDS = 600;
 const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];

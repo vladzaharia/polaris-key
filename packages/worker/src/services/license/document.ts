@@ -10,7 +10,7 @@
  *
  * ── WHY THE BUILD GATE IS HERE ──────────────────────────────────────────────────────────────
  *
- * Channel/version enforcement lives on this route and on identity's `/session` (§5, D-20), and
+ * Channel/version enforcement lives on this route and on `/<p>/identity/session` (§5, D-20), and
  * nowhere else. It has to be somewhere a grant is being handed out, because the window and the
  * entitled channel set ARE grants — they arrive as enforced entitlements on this very document.
  * Putting it on the config document instead would mean a build outside its window could not

@@ -51,6 +51,24 @@ export function isSameOriginNavigation(req: Request): boolean {
   return true;
 }
 
+/**
+ * True for the GitHub release-asset storage hosts the SSRF guard permits.
+ *
+ * ONE definition, because "which hosts may we fetch from" and "which hosts may we redirect a
+ * signed-in customer to" are the same question about the same upstream, and answering it twice
+ * is how the two drift (R6-12). Two services ask it — Release when it streams an asset, Identity
+ * when the portal redeems a `/download/<token>` — and a service may not import a sibling
+ * (`test/boundaries.test.ts`), so the predicate lives in the platform layer and both bind to
+ * Core's declaration. `services/release/github.ts` re-exports it for its own call sites.
+ */
+export function isAllowedStorageHost(host: string): boolean {
+  return (
+    host === "github.com" ||
+    host === "githubusercontent.com" ||
+    host.endsWith(".githubusercontent.com")
+  );
+}
+
 /** Extract a Bearer credential from the Authorization header. */
 export function bearer(req: Request): string | null {
   const h = req.headers.get("authorization");

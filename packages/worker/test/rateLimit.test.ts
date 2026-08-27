@@ -12,6 +12,7 @@ import {
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleRegister } from "../src/core/register.js";
+import { SERVICES } from "../src/mount.js";
 import { serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 
@@ -105,6 +106,7 @@ describe("register rate limiting", () => {
         db,
         product,
         NOW,
+        SERVICES,
       );
     for (let i = 0; i < 10; i++) expect((await call()).status).toBe(200);
     const blocked = await call();
@@ -130,6 +132,7 @@ describe("register rate limiting", () => {
         db,
         product,
         NOW,
+        SERVICES,
       );
       expect(res.status).toBe(403);
     }

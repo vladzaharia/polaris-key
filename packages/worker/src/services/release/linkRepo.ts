@@ -89,14 +89,16 @@ export function parseRepoUrl(
  * `OIDC_ISSUER_ALLOWLIST` var as a comma/whitespace-separated list of `host[:port]` entries.
  * Returns `null` when the issuer may be persisted, or the operator-facing refusal otherwise.
  *
- * This is the ingest half of R9-01, and — unlike the copy at the sink (`oidc.ts`
- * `issuerHostAllowed`, which treats "unset" as "unenforced") — it **fails closed**: with no
- * allowlist configured, no manifest may introduce a custom issuer at all.
+ * This is the ingest half of R9-01, and — unlike the copy at the sink
+ * (`services/identity/oidc.ts`'s `issuerHostAllowed`, which treats "unset" as "unenforced") —
+ * it **fails closed**: with no allowlist configured, no manifest may introduce a custom issuer
+ * at all.
  *
  * The asymmetry is deliberate and is the whole point of doing this here rather than there.
  * `oidc.issuer` is the base of the token POST that carries the product's OIDC `client_secret`,
  * of the JWKS fetch that decides which keys may sign an ID token, and of the anonymous 302 out
- * of `/<product>/auth/start` — and it arrives from a `.pkey/` file that any repo *writer* can
+ * of `/<product>/identity/auth/start` — and it arrives from a `.pkey/` file that any repo *writer*
+ * can
  * push, not from a platform admin. `isSafeIssuerUrl` bounds that value's *shape* (https, no
  * credentials, no reserved address literal), but nothing at the character level distinguishes
  * `https://id.example` from `https://exfil.attacker.example`; only an operator can. The sink
@@ -107,7 +109,7 @@ export function parseRepoUrl(
  * distinction exists, so they are where the control belongs.
  *
  * Matched on `URL.host` (port included) and lower-cased, identically to the sink: a value
- * accepted here must also survive `oidc.ts` at runtime, or linking would mint a product whose
+ * accepted here must also survive the sink at runtime, or linking would mint a product whose
  * login is dead on arrival. There is deliberately **no** loopback carve-out — the manifest
  * validator's `wrangler dev` exception is about address *shape*, and an operator running
  * against a local IdP sets `OIDC_ISSUER_ALLOWLIST=localhost:8788`, which the sink needs anyway

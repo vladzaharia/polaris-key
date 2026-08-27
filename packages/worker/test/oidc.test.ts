@@ -18,7 +18,7 @@ import {
   activateFromIdentity,
   authorizeAndMint,
   type OidcIdentity,
-} from "../src/oidc.js";
+} from "../src/services/identity/oidc.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 
@@ -30,7 +30,7 @@ async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
     "https://id.example",
     "client-djdl",
     null,
-    JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
+    JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
     JSON.stringify({
       family: { role: "user", tier: "pro" },
       admin: { role: "admin" },

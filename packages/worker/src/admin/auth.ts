@@ -1,7 +1,7 @@
 /**
  * Interactive admin sign-in (browser, cookie-based) — distinct from the SDK/CLI OIDC
- * activation in ../oidc.ts (which mints license tokens). Here we just prove an operator's
- * identity + groups and drop a signed session cookie.
+ * activation in `../services/identity/oidc.ts` (which mints license tokens). Here we just prove
+ * an operator's identity + groups and drop a signed session cookie.
  *
  * - `GET /manage/login`     -> 302 to the IdP authorize endpoint (PKCE, state in KV).
  * - `GET /manage/callback`  -> exchange the code, verify the ID token, gate on a platform
@@ -38,7 +38,7 @@ const ADMIN_FLOW_PREFIX = "admin:flow:";
  * from metadata alone, with the PKCE `verifier` sitting in the value next to it. Hashing under
  * `KEY_HASH_PEPPER` makes the listing inert: a key name is no longer a usable `state`, and
  * without the pepper it cannot be reversed into one. Matches what `kv.ts` (device tokens) and
- * `browserSession.ts` (download tokens) already do.
+ * identity's browser session (download tokens) already do.
  */
 async function adminFlowKey(state: string, env: Env): Promise<string> {
   return `${ADMIN_FLOW_PREFIX}${await hashKey(state, env.KEY_HASH_PEPPER)}`;

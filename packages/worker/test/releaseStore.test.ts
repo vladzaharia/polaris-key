@@ -34,9 +34,9 @@ import {
 import {
   createPortalDownloadToken,
   markPortalDownloadUsed,
-} from "../src/portal/repo.js";
-import { handlePortalDownload } from "../src/portal/api.js";
-import { getOrCreateAccountByEmail } from "../src/portal/repo.js";
+} from "../src/services/identity/portal/repo.js";
+import { handlePortalDownload } from "../src/services/identity/portal/api.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 
 const SLUG = "djdl";

@@ -35,8 +35,8 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 import { handleConfigDocument } from "../../src/services/config/document.js";
 import { handleDevices } from "../../src/core/devices.js";
 import { handleEnroll } from "../../src/services/license/enroll.js";
-import { handleBrowserSessionLicense } from "../../src/browserSession.js";
-import { activateFromIdentity } from "../../src/oidc.js";
+import { handleBrowserSessionLicense } from "../../src/services/identity/browserSession.js";
+import { activateFromIdentity } from "../../src/services/identity/oidc.js";
 import {
   channelForVersion,
   checkBuildGate,

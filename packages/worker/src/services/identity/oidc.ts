@@ -1,21 +1,45 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// OIDC activation. Each product has one server-selected OIDC provider (platform default
-// or custom) plus product-scoped group mapping/provisioning. A browser sign-in
-// mints/locates a license for the identity; generic provisioning hooks turn verified
-// claims into entitlements + secrets. The CLI/loopback flow polls for a per-device token.
-// ID tokens are verified against the issuer JWKS via jose (asymmetric algs only).
+// Product OIDC — the Identity service's sign-in engine (design spec §2.1, D-14).
+//
+// Each product has one server-selected OIDC provider (platform default or custom) plus
+// product-scoped group mapping/provisioning. A browser sign-in mints/locates a license for the
+// identity; generic provisioning hooks turn verified claims into entitlements + secrets. The
+// CLI/loopback flow polls for a per-device token. ID tokens are verified against the issuer
+// JWKS via jose (asymmetric algs only).
+//
+// ── THE ROUTE MOVE (§R1) ────────────────────────────────────────────────────────────────────
+//
+// Every surface here now answers under `/<p>/identity/auth/…`; `routes.ts` is the sub-router.
+// The old top-level spellings are GONE — not aliased. Nothing external ships them: an SDK reads
+// its URLs out of `/.well-known/polaris.json`, and the one place a path was ever pinned is an
+// operator's IdP redirect-URI registration, which is per-product configuration an operator
+// re-registers (`oidc_config.redirect_uris_json` moves with it — see `beginAuthFlow`).
+//
+// The redundant `/<p>/auth/login` spelling of `/auth/start` is deleted outright rather than
+// carried over: a compatibility alias for a path nobody can still be calling is a second code
+// path for free.
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
 import { HEADER_DEVICE } from "@plrs/protocol/core";
-import { secret, type Env } from "./env.js";
-import type { Db } from "./db/types.js";
-import { openProductSecret, type Product } from "./core/products.js";
-import { errorResponse, json, methodNotAllowed } from "./core/errors.js";
-import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
-import { randomId } from "./crypto.js";
-import { clientIp, rateLimitOk, type RateLimit } from "./core/rateLimit.js";
+// R9-01: the manifest validator's issuer rule, applied again at the SINK. Ingest-only
+// validation would leave every `oidc_config` row written before it landed (or by any future
+// writer that bypasses `parseManifest`) able to steer the token POST that carries this
+// product's client secret. Imported from the shared package rather than through Release, whose
+// `manifest.ts` merely re-exports it — a service may not import a sibling.
+import { isSafeIssuerUrl } from "@plrs/manifest";
+import {
+  platformOidcConfig,
+  secret,
+  staticHtmlSecurityHeaders,
+  randomId,
+  type Db,
+  type Env,
+} from "../../core/platform.js";
+import { openProductSecret, type Product } from "../../core/products.js";
+import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
+import { clientIp, rateLimitOk, type RateLimit } from "../../core/rateLimit.js";
 import {
   appendAudit,
   claimEnrolledLicense,
@@ -25,17 +49,15 @@ import {
   getTier,
   insertLicense,
   moveDevices,
-} from "./repo.js";
-import { allowsOidcDefault } from "./fingerprint.js";
-import { authorizeDevice, tierExpiresAt } from "./licenseCore.js";
-import { licenseUsable } from "./core/devices.js";
+} from "../../core/data.js";
+import { allowsOidcDefault } from "../../core/fingerprint.js";
+import { authorizeDevice, tierExpiresAt } from "../../core/authz.js";
+import { licenseUsable } from "../../core/devices.js";
 import { createBrowserSession } from "./browserSession.js";
-import { platformOidcConfig } from "./platformOidc.js";
-import { isSafeIssuerUrl } from "./services/release/manifest.js";
 
 const FLOW_TTL_SECONDS = 600;
 const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];
-/** The poll cadence advertised by `/auth/device/start`, enforced server-side (R8-02). */
+/** The poll cadence advertised by `/identity/auth/device/start`, enforced server-side (R8-02). */
 const DEVICE_POLL_INTERVAL_SECONDS = 2;
 /** Freshness ceiling on the ID token's `iat`. `exp` alone is entirely the IdP's choice, so a
  *  token minted long before this exchange must not be replayable into a sign-in (R8-05d). */
@@ -192,7 +214,7 @@ async function resolveOidcConfig(
     // R9-01/R9-02, at the sink. `oidc_config.issuer` is written from a linked repo's
     // `.pkey/product` manifest, and it is the base of the token POST that carries this
     // product's client secret, of the JWKS fetch that decides which keys may sign an ID
-    // token, and of the anonymous 302 out of `/<product>/auth/start`. The manifest validator
+    // token, and of the anonymous 302 out of `/<product>/identity/auth/start`. The manifest validator
     // now refuses a non-https or private/loopback/link-local/reserved issuer — this repeats
     // that check against what is actually in D1, so a row written before the validator gained
     // it (or by any writer that skips `parseManifest`) still cannot aim those requests.
@@ -644,7 +666,13 @@ async function beginAuthFlow(
   const state = b64url(randomBytes(16));
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
-  const redirectUri = `${new URL(req.url).origin}/${product.slug}/auth/callback`;
+  // §R1: the callback moved under the service namespace with the rest of Identity. This is the
+  // value the IdP must have REGISTERED — `redirectUriAllowed` below refuses anything else the
+  // moment `redirect_uris_json` is set — so an operator upgrading a product with a custom (or
+  // strictly-configured platform) IdP re-registers `…/<p>/identity/auth/callback` and updates
+  // the `oidc.redirectUris` block in its `.polaris/product` manifest. Pre-launch, so there is
+  // no dual-registration window to keep: one spelling, computed in exactly one place.
+  const redirectUri = `${new URL(req.url).origin}/${product.slug}/identity/auth/callback`;
   if (!redirectUriAllowed(oidc.row, redirectUri)) {
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
@@ -670,7 +698,7 @@ async function beginAuthFlow(
   };
 }
 
-/** GET /<product>/auth/start — begin PKCE, redirect to the IdP authorize endpoint. */
+/** GET /<product>/identity/auth/start — begin PKCE, redirect to the IdP authorize endpoint. */
 export async function handleAuthStart(
   req: Request,
   env: Env,
@@ -696,7 +724,7 @@ export async function handleAuthStart(
   });
 }
 
-/** POST /<product>/auth/device/start — begin desktop/CLI sign-in and return a poll handle. */
+/** POST /<product>/identity/auth/device/start — begin desktop/CLI sign-in, return a poll handle. */
 export async function handleAuthDeviceStart(
   req: Request,
   env: Env,
@@ -744,7 +772,7 @@ export async function handleAuthDeviceStart(
     JSON.stringify(deviceRecord),
     { expirationTtl: FLOW_TTL_SECONDS },
   );
-  const verificationUri = `${new URL(req.url).origin}/${product.slug}/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}`;
+  const verificationUri = `${new URL(req.url).origin}/${product.slug}/identity/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}`;
   return json({
     status: "pending",
     deviceCode,
@@ -753,7 +781,7 @@ export async function handleAuthDeviceStart(
     verificationUriComplete: verificationUri,
     expiresIn: FLOW_TTL_SECONDS,
     interval: DEVICE_POLL_INTERVAL_SECONDS,
-    pollUrl: `${new URL(req.url).origin}/${product.slug}/auth/device/poll`,
+    pollUrl: `${new URL(req.url).origin}/${product.slug}/identity/auth/device/poll`,
   });
 }
 
@@ -825,8 +853,8 @@ async function confirmDeviceFlow(
   });
 }
 
-/** GET /<product>/auth/device/verify — render the confirmation page.
- *  POST /<product>/auth/device/verify — confirm it. The GET is deliberately side-effect free:
+/** GET /<product>/identity/auth/device/verify — render the confirmation page.
+ *  POST /<product>/identity/auth/device/verify — confirm it. The GET is deliberately side-effect free:
  *  it used to accept `?confirm=1`, which made an `<img src>` enough to confirm a flow AND
  *  handed the caller `state` + `nonce` in the 302 (R8-02). */
 export async function handleAuthDeviceVerify(
@@ -930,7 +958,7 @@ function mapClaims(payload: Record<string, unknown>): OidcIdentity {
   };
 }
 
-/** GET /<product>/auth/callback — exchange the code, verify the ID token, mint a license. */
+/** GET /<product>/identity/auth/callback — exchange the code, verify the ID token, mint a license. */
 export async function handleAuthCallback(
   req: Request,
   env: Env,
@@ -1151,7 +1179,7 @@ async function pollAuthFlow(
   return json({ status: "ready", token, schemaVersion: product.schemaVersion });
 }
 
-/** GET /<product>/auth/poll?state=&device= — return a token once the flow completes. */
+/** GET /<product>/identity/auth/poll?state=&device= — return a token once the flow completes. */
 export async function handleAuthPoll(
   req: Request,
   env: Env,
@@ -1179,7 +1207,7 @@ export async function handleAuthPoll(
   );
 }
 
-/** POST /<product>/auth/device/poll — poll a confirmed device sign-in flow. */
+/** POST /<product>/identity/auth/device/poll — poll a confirmed device sign-in flow. */
 export async function handleAuthDevicePoll(
   req: Request,
   env: Env,
@@ -1217,7 +1245,7 @@ export async function handleAuthDevicePoll(
   if (!deviceFlow) return json({ status: "timeout" });
   if (deviceFlow.deviceId !== deviceId)
     return errorResponse(401, "unauthorized", "device mismatch");
-  // The `interval` we advertise at /auth/device/start is enforced, not decorative: a client
+  // The `interval` we advertise at /identity/auth/device/start is enforced, not decorative: a client
   // polling faster than the contract is told to slow down instead of being served (R8-02).
   if (
     deviceFlow.lastPollAt !== undefined &&

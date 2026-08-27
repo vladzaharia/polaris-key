@@ -11,7 +11,18 @@
  */
 
 import type { FetchImpl } from "./githubApp.js";
+import { isAllowedStorageHost } from "../../core/platform.js";
 import { MAX_MANIFEST_BYTES } from "./manifest.js";
+
+/**
+ * The storage-host allowlist, re-exported for this module's own callers.
+ *
+ * The definition moved to the platform layer when Identity was carved (P3): the portal's
+ * `/download/<token>` redirect validates against the SAME list (R6-12), and a service may not
+ * import a sibling. Re-exported rather than repointed so every existing importer — and the
+ * suites that pin this predicate — sees an unchanged surface.
+ */
+export { isAllowedStorageHost } from "../../core/platform.js";
 
 const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "polaris-key-release";
@@ -137,22 +148,6 @@ export async function listReleases(
   throwIfRateLimited(res);
   if (!res.ok) throw new NotFoundError(`releases list failed: ${res.status}`);
   return (await res.json()) as Release[];
-}
-
-/**
- * True for GitHub release-asset storage hosts the SSRF guard permits re-fetching.
- *
- * Exported since P2.T2: the portal's `/download/<token>` redirect validates its target against
- * this same allowlist (R6-12). One definition, because "which hosts may we send a user to" and
- * "which hosts may we fetch from" are the same question about the same upstream, and answering
- * it twice is how the two drift.
- */
-export function isAllowedStorageHost(host: string): boolean {
-  return (
-    host === "github.com" ||
-    host === "githubusercontent.com" ||
-    host.endsWith(".githubusercontent.com")
-  );
 }
 
 /** Strip an upstream asset name down to something safe inside a `filename="…"` parameter. */

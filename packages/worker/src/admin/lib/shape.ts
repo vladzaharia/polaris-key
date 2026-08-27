@@ -19,7 +19,7 @@ import { loadPublicSigningKey } from "../../core/products.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
-} from "../../portal/repo.js";
+} from "../../services/identity/portal/repo.js";
 import { countKeysByLicense } from "../repo.js";
 
 interface RequiredSecretStatus {

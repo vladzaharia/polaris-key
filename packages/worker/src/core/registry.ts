@@ -72,6 +72,23 @@ export interface DiscoveryContext {
 }
 
 /**
+ * What a service is asked when Core is deciding whether to mint a device credential.
+ *
+ * Deliberately NOT a `ServiceContext`: there is no route here and no `rest` to route, and
+ * handing a service the shape it answers requests with would invite it to answer this one with
+ * a `Response`. The contract is a predicate — everything about what a refusal looks like
+ * (status, body, whether the reason is disclosed) stays Core's (`core/register.ts`).
+ */
+export interface RegistrationAuthContext {
+  req: Request;
+  env: Env;
+  db: Db;
+  product: Product;
+  /** Epoch seconds for this request — the same value Core will stamp on the binding. */
+  now: number;
+}
+
+/**
  * One service's contract with Core.
  *
  * `handle` returns `null` — not a 404 — when no route inside the service matched. The
@@ -101,6 +118,20 @@ export interface ServiceDescriptor {
    * could not be batched with the rest of the ingest.
    */
   manifestIngest?(parsed: ParsedManifest, product: string): DbStatement[];
+  /**
+   * May this caller be given a device credential? (wire v3 §6, spec §2.3.)
+   *
+   * The one place Core delegates an AUTHORIZATION decision to a service, and it exists because
+   * one of the three registration policies is named after a service: `requires-identity` means
+   * "register, but only behind a product login", and only Identity knows what a product login
+   * looks like. `core/register.ts` may not import a service, so the substrate declares the
+   * predicate and asks the registry for it.
+   *
+   * Implement it to say YES to something. A descriptor that omits it is one Core can never
+   * satisfy a policy with, which is the correct default: an unimplemented hook must not read as
+   * an open door.
+   */
+  authorizeRegistration?(ctx: RegistrationAuthContext): Promise<boolean>;
 }
 
 export type ServiceRegistry = Map<ServiceSlug, ServiceDescriptor>;
@@ -139,4 +170,26 @@ export async function dispatchService(
   if (!descriptor) return serviceNotFound();
   const res = await descriptor.handle(ctx);
   return res ?? serviceNotFound();
+}
+
+/**
+ * Ask a service whether this caller may be given a device credential.
+ *
+ * Fails CLOSED at every step, and the enablement check leads for the same reason it leads in
+ * `dispatchService`: a product whose `services_json` says the service is off must not have that
+ * service's code run, even to say no. `validateServices` already refuses the
+ * `requires-identity` + identity-disabled combination at ingest and in the admin API
+ * (`registration_requires_identity`), so reaching the first `false` below means a row that was
+ * hand-edited past both — exactly the case that must not mint a token.
+ */
+export async function authorizeRegistration(
+  registry: ServiceRegistry,
+  slug: ServiceSlug,
+  services: ServicesMap,
+  ctx: RegistrationAuthContext,
+): Promise<boolean> {
+  if (!services[slug]?.enabled) return false;
+  const descriptor = registry.get(slug);
+  if (!descriptor?.authorizeRegistration) return false;
+  return descriptor.authorizeRegistration(ctx);
 }

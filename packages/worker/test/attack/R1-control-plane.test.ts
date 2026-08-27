@@ -28,7 +28,7 @@ import {
   PORTAL_COOKIE,
   issuePortalSession,
   verifyPortalSession,
-} from "../../src/portal/session.js";
+} from "../../src/services/identity/portal/session.js";
 import { hasAnyAdminGrant } from "../../src/admin/authz.js";
 import { hashKey } from "../../src/crypto.js";
 import { listAudit } from "../../src/repo.js";
@@ -38,7 +38,7 @@ import { loadProduct } from "../../src/core/products.js";
 import {
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
-} from "../../src/oidc.js";
+} from "../../src/services/identity/oidc.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -683,7 +683,7 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
       "https://id.example",
       "client-djdl",
       null,
-      JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
+      JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
       JSON.stringify({ family: { role: "user", tier: "pro" } }),
     );
     const product = (await loadProduct(env, db, "djdl"))!;

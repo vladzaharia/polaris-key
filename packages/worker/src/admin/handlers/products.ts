@@ -49,11 +49,6 @@ import {
 } from "../../keyvault.js";
 import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
 import {
-  getPortalProductSettings,
-  portalProductSettingsView,
-  upsertPortalProductSettings,
-} from "../../portal/repo.js";
-import {
   isAutoIssueMode,
   isFingerprintMode,
   parseAutoIssue,
@@ -810,12 +805,14 @@ async function handleKekKeyring(
 }
 
 /**
- * Product-scoped key/secret/portal operations: PUT a write-only secret, rotate the signing key,
- * or update customer portal module settings. Called from the dispatcher with the product already
+ * Product-scoped key/secret/policy operations: PUT a write-only secret, rotate the signing key,
+ * or edit the fingerprint/auto-issue policy. Called from the dispatcher with the product already
  * authz-checked (product admin OR platform).
  *
- * `release/{health,resync}` used to be here; it moved to the Release service's own `adminHandle`
- * in P2.T1 (§R1), which is why this list is shorter than the module header describes.
+ * Two resources used to be here and are not: `release/{health,resync}` moved to the Release
+ * service's own `adminHandle` in P2.T1, and the customer-portal settings moved to Identity's in
+ * P3 (`identity/portal`, §R1 — `admin/api.ts` rewrites the console's old `portal` spelling onto
+ * it). That is why this list is shorter than the module header describes.
  */
 export async function handleProductScopedResource(
   req: Request,
@@ -833,8 +830,6 @@ export async function handleProductScopedResource(
     return handleSecrets(req, env, db, session, slug, id, now);
   if (resource === "keys")
     return handleKeys(req, env, db, session, slug, id, now);
-  if (resource === "portal")
-    return handlePortalSettings(req, db, session, slug, now);
   if (resource === "policy")
     return handleFingerprintPolicy(req, db, session, slug, id, now);
   return notFound();
@@ -990,67 +985,6 @@ function policyView(row: ProductRow | null): {
     autoIssue: parseAutoIssue(row?.auto_issue_json),
     autoIssueSource: row?.auto_issue_source ?? "manifest",
   };
-}
-
-async function handlePortalSettings(
-  req: Request,
-  db: Db,
-  session: AdminSession,
-  slug: string,
-  now: number,
-): Promise<Response> {
-  if (req.method === "GET") {
-    const settings = await getPortalProductSettings(db, slug);
-    return adminJson({ settings: portalProductSettingsView(settings) });
-  }
-  if (req.method !== "PATCH")
-    return err(405, ErrorCode.BadRequest, "method not allowed");
-
-  const body = await readBody(req);
-  const patch: Parameters<typeof upsertPortalProductSettings>[2] = {};
-  const booleans = [
-    "portalEnabled",
-    "oidcEnabled",
-    "magicEnabled",
-    "licenseKeyClaimEnabled",
-    "releasesEnabled",
-  ] as const;
-  const fields: string[] = [];
-  for (const key of booleans) {
-    if (body[key] === undefined) continue;
-    if (typeof body[key] !== "boolean") fields.push(key);
-    else patch[key] = body[key];
-  }
-  // R5-01/R5-02 — tri-state, so an operator can override the issuer-derived default in either
-  // direction: `null` restores "auto" (on for platform-issuer products, OFF for products on a
-  // tenant-controlled 'custom' issuer, whose email/sub claims are outside the trust boundary).
-  if (body.autoLinkEnabled !== undefined) {
-    if (body.autoLinkEnabled === null) patch.autoLinkEnabled = null;
-    else if (typeof body.autoLinkEnabled === "boolean")
-      patch.autoLinkEnabled = body.autoLinkEnabled;
-    else fields.push("autoLinkEnabled");
-  }
-  if (body.branding !== undefined) patch.branding = body.branding;
-  if (fields.length > 0) {
-    return err(422, ErrorCode.BadRequest, "invalid portal settings", {
-      fields,
-    });
-  }
-
-  const settings = await upsertPortalProductSettings(db, slug, patch, now);
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "portal.settings.update",
-    { kind: "product", id: slug },
-    `Updated portal settings for ${slug}`,
-  );
-  return adminJson({
-    ok: true,
-    settings: portalProductSettingsView(settings),
-  });
 }
 
 /** PUT /api/products/<slug>/secrets/<name> {value} — write-only: seal + store; echo NAME only. */

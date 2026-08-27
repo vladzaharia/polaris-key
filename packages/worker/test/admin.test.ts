@@ -30,7 +30,7 @@ import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleMintToken } from "../src/services/config/mint.js";
-import { buildDoc } from "../src/configDoc.js";
+import { buildDoc } from "../src/services/identity/doc.js";
 import { signDoc } from "../src/core/signing.js";
 import { open } from "../src/keyvault.js";
 import { verifyJws } from "@plrs/jws";

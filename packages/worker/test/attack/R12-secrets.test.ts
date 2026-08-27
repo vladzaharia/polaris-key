@@ -40,8 +40,8 @@ import {
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
 import { open } from "../../src/keyvault.js";
-import { handleMagicStart } from "../../src/portal/auth.js";
-import { upsertPortalProductSettings } from "../../src/portal/repo.js";
+import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
+import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
 import { insertSchema, upsertDevice } from "../../src/repo.js";
 import { deactivateSchemas } from "../../src/admin/repo.js";
 import { verifyJws, signJws } from "@plrs/jws";

@@ -1,4 +1,4 @@
-import type { Env } from "../env.js";
+import type { Env } from "../../../core/platform.js";
 
 /**
  * `__Host-` prefixed for the same reason as the admin cookie (R1-08): it is the only way to

@@ -13,14 +13,17 @@ import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
 import { hashKey } from "../src/crypto.js";
 import { getTokenRecord } from "../src/kv.js";
-import { getOrCreateAccountByEmail } from "../src/portal/repo.js";
-import { handlePortalApi, handlePortalDownload } from "../src/portal/api.js";
-import { handleMagicVerify } from "../src/portal/auth.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+} from "../src/services/identity/portal/api.js";
+import { handleMagicVerify } from "../src/services/identity/portal/auth.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
   issuePortalSession,
-} from "../src/portal/session.js";
+} from "../src/services/identity/portal/session.js";
 
 const PORTAL_SECRET = "test-portal-session-secret";
 

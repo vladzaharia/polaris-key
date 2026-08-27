@@ -1,4 +1,4 @@
-import type { Env } from "../env.js";
+import type { Env } from "../../../core/platform.js";
 
 function fromAddress(env: Env): string {
   return env.PORTAL_EMAIL_FROM ?? "Polaris Key <noreply@plrs.im>";

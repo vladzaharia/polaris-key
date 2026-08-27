@@ -40,7 +40,7 @@ import {
   handleAuthDeviceVerify,
   handleAuthPoll,
   handleAuthStart,
-} from "../../src/oidc.js";
+} from "../../src/services/identity/oidc.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 // Wire v3 split `validateDeviceToken` in two: core answers "is this token a live device row",
 // and `requireLicensedDevice` adds back the licence-usability check core used to apply inline.
@@ -53,7 +53,7 @@ import {
   handleMagicVerify,
   handlePortalCallback,
   handlePortalLogin,
-} from "../../src/portal/auth.js";
+} from "../../src/services/identity/portal/auth.js";
 import { handleAdminCallback, handleAdminLogin } from "../../src/admin/auth.js";
 import { hashKey, randomId } from "../../src/crypto.js";
 import type { Env } from "../../src/env.js";
@@ -78,7 +78,7 @@ vi.mock("jose", async (importOriginal) => {
 const ISSUER = "https://id.example";
 const AUD = "client-djdl";
 const ORIGIN = "https://key.plrs.im";
-const REDIRECT = `${ORIGIN}/djdl/auth/callback`;
+const REDIRECT = `${ORIGIN}/djdl/identity/auth/callback`;
 
 async function seedOidc(db: SqliteDb): Promise<void> {
   await db.run(
@@ -172,7 +172,7 @@ const req = (url: string, init?: RequestInit): Request =>
 
 const callback = (ctx: Ctx, state: string, code = "auth-code") =>
   handleAuthCallback(
-    req(`${ORIGIN}/djdl/auth/callback?code=${code}&state=${state}`),
+    req(`${ORIGIN}/djdl/identity/auth/callback?code=${code}&state=${state}`),
     ctx.env,
     ctx.db,
     ctx.product,
@@ -702,7 +702,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       }),
     );
     const victimBrowser = req(
-      `${ORIGIN}/djdl/auth/callback?code=c&state=${state}`,
+      `${ORIGIN}/djdl/identity/auth/callback?code=c&state=${state}`,
       { headers: { cookie: "unrelated=1", "user-agent": "VictimBrowser/1.0" } },
     );
     const res = await handleAuthCallback(
@@ -1312,7 +1312,7 @@ describe("R8-07 redirect-URI allowlist fail-open", () => {
     expect(res.status).toBe(302); // allow-listed origin check silently skipped
     const authorize = new URL(res.headers.get("location")!);
     expect(authorize.searchParams.get("redirect_uri")).toBe(
-      "https://evil.attacker.test/djdl/auth/callback",
+      "https://evil.attacker.test/djdl/identity/auth/callback",
     );
     // Control: with the column populated it fails closed.
     await ctx.db.run(
@@ -1531,7 +1531,7 @@ describe("R8 refuted", () => {
       ISSUER,
       AUD,
       null,
-      JSON.stringify([`${ORIGIN}/other/auth/callback`]),
+      JSON.stringify([`${ORIGIN}/other/identity/auth/callback`]),
       JSON.stringify({ family: { role: "user" } }),
     );
     const other = (await loadProduct(ctx.env, ctx.db, "other"))!;

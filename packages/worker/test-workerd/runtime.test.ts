@@ -15,7 +15,7 @@ import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
 import type { ConfigDoc } from "@plrs/protocol/config";
 import djdlCatalog from "../../../products/djdl/catalog.json";
 import { D1Db } from "../src/db/d1.js";
-import { validatePayload } from "../src/configDoc.js";
+import { validatePayload } from "../src/core/payload.js";
 import {
   TEST_KID,
   TEST_PEM,

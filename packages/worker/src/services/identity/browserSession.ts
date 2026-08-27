@@ -1,20 +1,45 @@
 /// <reference types="@cloudflare/workers-types" />
 
+/**
+ * The browser session — Identity's cookie-bearing principal (design spec §2.1, D-14).
+ *
+ * A page signs in (OIDC, or by presenting a licence key), gets a `plrs_<slug>_session` cookie
+ * bound to a `browser:<licenseId>` device row, and reads its settings from
+ * `GET /<p>/identity/session`.
+ *
+ * ── WHY THE RESPONSE SHAPE DOES NOT CHANGE HERE ─────────────────────────────────────────────
+ *
+ * That document is still the FUSED v2 shape (`buildDoc`, `./doc.ts`): one payload carrying
+ * config, secrets and entitlements, rather than the two signed documents wire v3 split it into.
+ * The identity carve moves the URL and nothing else. The React SDK migrates against whatever
+ * `/identity/session` serves, in a sibling P5 wave, and changing the path and the body in the
+ * same commit would leave that wave unable to tell a route regression from a shape regression.
+ *
+ * Note what this surface therefore keeps: the build gate (spec §3.2 names `/identity/session`
+ * beside `/license/document` as an enforcement point) and the catalog prune, both applied in
+ * exactly the order and with exactly the fail-closed behaviour they had before the move.
+ */
+
 import type { ManagedConfigDoc } from "@plrs/protocol";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol/core";
 import { Catalog } from "@plrs/catalog";
-import type { Env } from "./env.js";
-import type { Db } from "./db/types.js";
-import type { Product } from "./core/products.js";
-import { bearer } from "./http.js";
+import {
+  bearer,
+  deleteTokenRecord,
+  hashKey,
+  mintOpaqueToken,
+  randomId,
+  type Db,
+  type Env,
+} from "../../core/platform.js";
+import type { Product } from "../../core/products.js";
 import {
   errorResponse,
   ErrorCode,
   json,
   methodNotAllowed,
-} from "./core/errors.js";
-import { clientIp, rateLimitOk } from "./core/rateLimit.js";
-import { hashKey, mintOpaqueToken, randomId } from "./crypto.js";
+} from "../../core/errors.js";
+import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import {
   getActiveSchema,
   getKey,
@@ -22,22 +47,22 @@ import {
   setDeviceStatus,
   touchKey,
   type LicenseRow,
-} from "./repo.js";
-import { deleteTokenRecord } from "./kv.js";
-import { deviceMetadata } from "./core/devices.js";
-// The licence-gated device check. Core's `validateDeviceToken` now answers only "is this token
-// a live device", because a config-only product has devices with no licence at all (D-08); the
-// licence-usability half moved to the License service and is imported here so this surface —
-// which mints a fused v2 document for a browser and moves to `services/identity/` in P3 —
-// behaves byte-identically to before the split.
-import { requireLicensedDevice } from "./services/license/index.js";
+} from "../../core/data.js";
+import { deviceMetadata } from "../../core/devices.js";
+// The seat decision, the licence-gated device check and the fused merge all live in
+// `core/authz.ts`: Core's `validateDeviceToken` answers only "is this token a live device",
+// because a config-only product has devices with no licence at all (D-08), and the
+// licence-usability half is shared with License, Release and Update rather than owned by any
+// of them. This surface therefore behaves byte-identically to before the wire-v3 split.
 import {
   authorizeDevice,
   docProfile,
+  requireLicensedDevice,
   resolveEffective,
-} from "./licenseCore.js";
-import { buildDoc, validatePayload } from "./configDoc.js";
-import { checkBuildGate, tighterMax, tighterMin } from "./gate.js";
+} from "../../core/authz.js";
+import { validatePayload } from "../../core/payload.js";
+import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
+import { buildDoc } from "./doc.js";
 
 interface BrowserSessionRecord {
   token: string;
@@ -144,7 +169,24 @@ export async function createBrowserSession(
   };
 }
 
-async function loadBrowserSession(
+/**
+ * The session behind a request's cookie, or `null`.
+ *
+ * Exported for `registration.ts`, which is the arm of `POST /<p>/devices/register` that a
+ * `requires-identity` product answers with. Deliberately a READ: it resolves the cookie to the
+ * stored record and nothing else — deciding whether that record still authorizes anything is
+ * the caller's, because "may this browser register a device" and "may this browser read its own
+ * settings" are different questions with different answers under D-08.
+ *
+ * A corrupt stored value is treated exactly like a missing one, the same rule `oidc.ts`'s
+ * `parseFlowRecord` applies to flow records (R11-06). Every caller already has a well-defined
+ * answer for "there is no session here", and a truncated or garbled KV value is
+ * indistinguishable from that for any purpose they have — where an uncaught `SyntaxError` would
+ * escape as a 500. That mattered less when only `GET /session` read this; it matters now that
+ * the registration policy does, because a 500 there is a mint path failing open-endedly rather
+ * than refusing.
+ */
+export async function loadBrowserSession(
   req: Request,
   env: Env,
   product: Product,
@@ -154,7 +196,14 @@ async function loadBrowserSession(
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   const raw = await env.HOT.get(sessionKey(product.slug, tokenHash));
   if (!raw) return null;
-  return { tokenHash, record: JSON.parse(raw) as BrowserSessionRecord };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  return { tokenHash, record: parsed as BrowserSessionRecord };
 }
 
 async function browserDoc(
@@ -206,7 +255,7 @@ async function browserDoc(
         new Catalog(JSON.parse(schemaRow.catalog_json)),
       );
     } catch {
-      // FAIL CLOSED, matching `/config` (`licensing.ts` -> 500 `catalog_unavailable`).
+      // FAIL CLOSED, matching `/config/document` (500 `catalog_unavailable`).
       // `validatePayload` is what prunes unknown/invalid keys and stale overrides out of the
       // payload before it is signed; skipping it on a malformed catalog row delivered exactly
       // the payload the catalog exists to refuse. The previous comment claimed this was
@@ -278,11 +327,11 @@ export async function handleBrowserSession(
 }
 
 /**
- * POST /<product>/session/license — exchange a license KEY for a browser session cookie.
+ * POST /<product>/identity/session/license — exchange a license KEY for a browser session cookie.
  *
  * This is a credential-exchange endpoint that takes an attacker-suppliable secret and reports
  * whether it is valid, so it is an online oracle for guessing license keys — and it had no
- * rate limit at all, while `/activate` (which does exactly the same key→credential exchange
+ * rate limit at all, while `/license/activate` (which does exactly the same key→credential exchange
  * for native clients) is capped at 30/min. Same shape, same budget, same fail-closed policy.
  */
 export async function handleBrowserSessionLicense(

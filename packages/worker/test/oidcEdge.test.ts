@@ -22,7 +22,7 @@ import {
   handleAuthPoll,
   handleAuthStart,
   type OidcIdentity,
-} from "../src/oidc.js";
+} from "../src/services/identity/oidc.js";
 import { getLicense, getLicenseBySub } from "../src/repo.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
@@ -61,7 +61,7 @@ async function seedOidc(db: SqliteDb): Promise<void> {
     "https://id.example",
     "client-djdl",
     null,
-    JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
+    JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
     JSON.stringify({
       family: { role: "user", tier: "pro" },
       admin: { role: "admin" },
@@ -245,7 +245,7 @@ describe("handleAuthPoll states", () => {
   const poll = (state: string, device = "dev-1") =>
     handleAuthPoll(
       new Request(
-        `https://key.plrs.im/djdl/auth/poll?state=${state}&device=${device}`,
+        `https://key.plrs.im/djdl/identity/auth/poll?state=${state}&device=${device}`,
       ) as unknown as Request,
       env,
       db,
@@ -281,7 +281,7 @@ describe("handleAuthPoll states", () => {
   it("requires state + device query params", async () => {
     const res = await handleAuthPoll(
       new Request(
-        "https://key.plrs.im/djdl/auth/poll?state=x",
+        "https://key.plrs.im/djdl/identity/auth/poll?state=x",
       ) as unknown as Request,
       env,
       db,
@@ -330,7 +330,7 @@ describe("handleAuthPoll states", () => {
 
   it("starts a JSON device flow with a poll handle", async () => {
     const res = await handleAuthDeviceStart(
-      new Request("https://key.plrs.im/djdl/auth/device/start", {
+      new Request("https://key.plrs.im/djdl/identity/auth/device/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ deviceId: "dev-json" }),
@@ -351,9 +351,11 @@ describe("handleAuthPoll states", () => {
     expect(body.deviceCode).toBeTruthy();
     expect(body.userCode).toMatch(/^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$/);
     expect(body.verificationUri).toContain(
-      "https://key.plrs.im/djdl/auth/device/verify?device_code=",
+      "https://key.plrs.im/djdl/identity/auth/device/verify?device_code=",
     );
-    expect(body.pollUrl).toBe("https://key.plrs.im/djdl/auth/device/poll");
+    expect(body.pollUrl).toBe(
+      "https://key.plrs.im/djdl/identity/auth/device/poll",
+    );
     expect(body.expiresIn).toBe(600);
     expect(body.interval).toBeGreaterThan(0);
     expect(
@@ -379,7 +381,7 @@ describe("handleAuthPoll states", () => {
       }),
     );
     const res = await handleAuthDevicePoll(
-      new Request("https://key.plrs.im/djdl/auth/device/poll", {
+      new Request("https://key.plrs.im/djdl/identity/auth/device/poll", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -411,7 +413,7 @@ describe("handleAuthPoll states", () => {
     );
     const page = await handleAuthDeviceVerify(
       new Request(
-        "https://key.plrs.im/djdl/auth/device/verify?device_code=device-code",
+        "https://key.plrs.im/djdl/identity/auth/device/verify?device_code=device-code",
       ) as unknown as Request,
       env,
       product,
@@ -424,7 +426,7 @@ describe("handleAuthPoll states", () => {
 
     const confirm = await handleAuthDeviceVerify(
       new Request(
-        "https://key.plrs.im/djdl/auth/device/verify?device_code=device-code",
+        "https://key.plrs.im/djdl/identity/auth/device/verify?device_code=device-code",
         {
           method: "POST",
           headers: {
@@ -461,7 +463,7 @@ describe("handleAuthPoll states", () => {
       JSON.stringify({ state: "oauth-state", deviceId: "dev-json" }),
     );
     const res = await handleAuthDevicePoll(
-      new Request("https://key.plrs.im/djdl/auth/device/poll", {
+      new Request("https://key.plrs.im/djdl/identity/auth/device/poll", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -512,13 +514,13 @@ describe("handleAuthStart redirect-URI allowlist (D7)", () => {
     db = makeTestDb();
     env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    await seedOidc(db); // allowlists https://key.plrs.im/djdl/auth/callback
+    await seedOidc(db); // allowlists https://key.plrs.im/djdl/identity/auth/callback
     product = (await loadProduct(env, db, "djdl"))!;
   });
 
   it("starts the flow when the computed redirect URI is allow-listed", async () => {
     const req = new Request(
-      "https://key.plrs.im/djdl/auth/start",
+      "https://key.plrs.im/djdl/identity/auth/start",
     ) as unknown as Request;
     const res = await handleAuthStart(req, env, db, product);
     expect(res.status).toBe(302);
@@ -527,7 +529,7 @@ describe("handleAuthStart redirect-URI allowlist (D7)", () => {
   it("returns 400 when the computed redirect URI is NOT allow-listed", async () => {
     // A request arriving at a different origin computes an off-allowlist redirect URI.
     const req = new Request(
-      "https://evil.example/djdl/auth/start",
+      "https://evil.example/djdl/identity/auth/start",
     ) as unknown as Request;
     const res = await handleAuthStart(req, env, db, product);
     expect(res.status).toBe(400);
@@ -560,7 +562,7 @@ describe("handleAuthStart platform OIDC provider", () => {
       null,
       null,
       null,
-      JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
+      JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
       JSON.stringify({ family: { role: "user", tier: "pro" } }),
     );
     product = (await loadProduct(env, db, "djdl"))!;
@@ -570,7 +572,9 @@ describe("handleAuthStart platform OIDC provider", () => {
     env.PLATFORM_OIDC_ISSUER = "https://platform-id.example";
     env.PLATFORM_OIDC_CLIENT_ID = "platform-client";
     const res = await handleAuthStart(
-      new Request("https://key.plrs.im/djdl/auth/start") as unknown as Request,
+      new Request(
+        "https://key.plrs.im/djdl/identity/auth/start",
+      ) as unknown as Request,
       env,
       db,
       product,
@@ -580,13 +584,15 @@ describe("handleAuthStart platform OIDC provider", () => {
     expect(location.origin).toBe("https://platform-id.example");
     expect(location.searchParams.get("client_id")).toBe("platform-client");
     expect(location.searchParams.get("redirect_uri")).toBe(
-      "https://key.plrs.im/djdl/auth/callback",
+      "https://key.plrs.im/djdl/identity/auth/callback",
     );
   });
 
   it("fails clearly when platform OIDC env is missing", async () => {
     const res = await handleAuthStart(
-      new Request("https://key.plrs.im/djdl/auth/start") as unknown as Request,
+      new Request(
+        "https://key.plrs.im/djdl/identity/auth/start",
+      ) as unknown as Request,
       env,
       db,
       product,
@@ -606,7 +612,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
 
   const ISSUER = "https://id.example";
   const AUD = "client-djdl";
-  const REDIRECT = "https://key.plrs.im/djdl/auth/callback";
+  const REDIRECT = "https://key.plrs.im/djdl/identity/auth/callback";
 
   /** Route globalThis.fetch: the token endpoint returns our signed id_token. (JWKS is
    *  resolved by the mocked `createRemoteJWKSet`, not via fetch.) */
@@ -660,7 +666,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   const callback = (state: string, code = "auth-code") =>
     handleAuthCallback(
       new Request(
-        `https://key.plrs.im/djdl/auth/callback?code=${code}&state=${state}`,
+        `https://key.plrs.im/djdl/identity/auth/callback?code=${code}&state=${state}`,
       ) as unknown as Request,
       env,
       db,
@@ -671,7 +677,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   const poll = (state: string) =>
     handleAuthPoll(
       new Request(
-        `https://key.plrs.im/djdl/auth/poll?state=${state}&device=dev-1`,
+        `https://key.plrs.im/djdl/identity/auth/poll?state=${state}&device=dev-1`,
       ) as unknown as Request,
       env,
       db,

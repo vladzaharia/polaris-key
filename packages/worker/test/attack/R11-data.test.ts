@@ -33,7 +33,7 @@ import {
   listPortalLicenses,
   purgeExpiredDownloadTokens,
   syncAccountLicenseLinks,
-} from "../../src/portal/repo.js";
+} from "../../src/services/identity/portal/repo.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(HERE, "..", "..", "migrations");

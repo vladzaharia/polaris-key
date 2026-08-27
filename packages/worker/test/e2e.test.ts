@@ -66,6 +66,7 @@ import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 import { handleTrustManifest } from "../src/core/trust.js";
 import { handleRegister } from "../src/core/register.js";
+import { SERVICES } from "../src/mount.js";
 import { handleReport } from "../src/core/devices.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
@@ -276,6 +277,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
       w.db,
       w.product,
       NOW,
+      SERVICES,
     );
     expect(refused.status).toBe(403);
     expect(await refused.json()).toEqual({
@@ -694,6 +696,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
       w.db,
       w.product,
       NOW,
+      SERVICES,
     );
     expect(res.status).toBe(200);
     const { token, deviceId } = (await res.json()) as {

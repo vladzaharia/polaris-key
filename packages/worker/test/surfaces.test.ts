@@ -153,7 +153,7 @@ describe("worker surfaces", () => {
       "https://id.example",
       "client-123",
       "OIDC_SECRET",
-      JSON.stringify(["https://key.plrs.im/djdl/auth/callback"]),
+      JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
       "{}",
     );
     await db.run(
@@ -261,14 +261,23 @@ describe("worker surfaces", () => {
       },
       archParameter: ["arm64", "x86_64"],
     });
+    // P3: identity's fragment is the SERVICE's own too, and every URL in it moved under the
+    // namespace. `configured` reports the `oidc_config` row — which is no longer what decides
+    // `enabled`; that is `services_json` and only `services_json`.
     expect(body.services.identity).toMatchObject({
       enabled: true,
+      configured: true,
       endpoints: {
-        session: "https://key.plrs.im/djdl/session",
-        authStart: "https://key.plrs.im/djdl/auth/start",
-        authCallback: "https://key.plrs.im/djdl/auth/callback",
-        authDeviceStart: "https://key.plrs.im/djdl/auth/device/start",
-        authDevicePoll: "https://key.plrs.im/djdl/auth/device/poll",
+        session: "https://key.plrs.im/djdl/identity/session",
+        sessionLicense: "https://key.plrs.im/djdl/identity/session/license",
+        authStart: "https://key.plrs.im/djdl/identity/auth/start",
+        authCallback: "https://key.plrs.im/djdl/identity/auth/callback",
+        authPoll: "https://key.plrs.im/djdl/identity/auth/poll",
+        authLogout: "https://key.plrs.im/djdl/identity/auth/logout",
+        authDeviceStart: "https://key.plrs.im/djdl/identity/auth/device/start",
+        authDeviceVerify:
+          "https://key.plrs.im/djdl/identity/auth/device/verify",
+        authDevicePoll: "https://key.plrs.im/djdl/identity/auth/device/poll",
       },
     });
     // The IdP's own configuration is never published: an anonymous reader learns that login

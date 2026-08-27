@@ -3,11 +3,13 @@
  *
  * `/manage/api/products/<slug>/<service>/…` is dispatched through the same descriptor the public
  * router uses (`ServiceDescriptor.adminHandle`), so a service owns its own console API instead of
- * having a branch in `admin/handlers/products.ts`. Two services have one so far:
+ * having a branch in `admin/handlers/products.ts`. Three services have one so far:
  *
  *   release/{health,resync,releases}   moved verbatim, plus the truth store's new read
  *   update/settings                    NEW — access modes (incl. `entitled`, D-13) and the
  *                                      compatibility window, relocated off the product PATCH
+ *   identity/portal                    moved verbatim from `admin/handlers/products.ts`; the
+ *                                      console's old `portal` spelling is REWRITTEN onto it
  *
  * The session, CSRF, rate-limit and platform-admin gates all run in `admin/api.ts` BEFORE a
  * descriptor is reached; this suite asserts the dispatch and the handlers, not those gates
@@ -418,5 +420,99 @@ describe("service admin dispatch", () => {
       path,
     );
     expect(res.status).toBe(200);
+  });
+});
+
+describe("identity/portal", () => {
+  const CANONICAL = `/api/products/${SLUG}/identity/portal`;
+  const LEGACY = `/api/products/${SLUG}/portal`;
+
+  it("reads and writes the customer-portal settings at the namespaced path", async () => {
+    const { db, env, auth } = await fixture(false);
+
+    const patched = await dispatch(
+      mkReq("PATCH", CANONICAL, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { portalEnabled: true, magicEnabled: false },
+      }),
+      env,
+      db,
+      CANONICAL,
+    );
+    expect(patched.status).toBe(200);
+    expect(
+      ((await patched.json()) as { settings: Record<string, unknown> })
+        .settings,
+    ).toMatchObject({ portalEnabled: true, magicEnabled: false });
+
+    const read = await dispatch(
+      mkReq("GET", CANONICAL, { cookie: auth.cookie }),
+      env,
+      db,
+      CANONICAL,
+    );
+    expect(read.status).toBe(200);
+    expect(
+      ((await read.json()) as { settings: Record<string, unknown> }).settings,
+    ).toMatchObject({ portalEnabled: true, magicEnabled: false });
+  });
+
+  it("answers the console's pre-namespace `portal` path with the SAME handler", async () => {
+    // §R1 regroups `portal` under `identity/`; the console migrates in P7. The old spelling is a
+    // rewrite onto the descriptor, not a second implementation, so a write through one path is
+    // visible through the other and neither can drift.
+    const { db, env, auth } = await fixture(false);
+
+    const viaLegacy = await dispatch(
+      mkReq("PATCH", LEGACY, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { releasesEnabled: true },
+      }),
+      env,
+      db,
+      LEGACY,
+    );
+    expect(viaLegacy.status).toBe(200);
+
+    const viaCanonical = await dispatch(
+      mkReq("GET", CANONICAL, { cookie: auth.cookie }),
+      env,
+      db,
+      CANONICAL,
+    );
+    expect(
+      ((await viaCanonical.json()) as { settings: Record<string, unknown> })
+        .settings,
+    ).toMatchObject({ releasesEnabled: true });
+  });
+
+  it("audits the change against the verified actor", async () => {
+    const { db, env, auth } = await fixture(false);
+    await dispatch(
+      mkReq("PATCH", CANONICAL, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { portalEnabled: true },
+      }),
+      env,
+      db,
+      CANONICAL,
+    );
+    const rows = await listAudit(db, SLUG, { limit: 10 });
+    expect(rows.map((r) => r.action)).toContain("portal.settings.update");
+  });
+
+  it("404s an unknown sub-path inside identity rather than falling through", async () => {
+    const { db, env, auth } = await fixture(false);
+    const path = `/api/products/${SLUG}/identity/oidc`;
+    const res = await dispatch(
+      mkReq("GET", path, { cookie: auth.cookie }),
+      env,
+      db,
+      path,
+    );
+    expect(res.status).toBe(404);
   });
 });

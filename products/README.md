@@ -22,6 +22,18 @@ add a product.
 Both land in the `products.services_json` column, manifest-owned until an operator claims them
 through `PATCH /manage/api/products/<slug>/services`.
 
+> **Identity is now flag-gated.** A product's `/<product>/identity/*` surface answers only when
+> `identity` is enabled — an `oidc_config` row no longer turns it on by itself. A product that
+> declares an `oidc:` block must therefore also enable the module (the legacy `modules.oidc`
+> spelling maps to `identity`, so an existing manifest that declares it is already correct).
+>
+> **Re-register your IdP redirect URI.** The OIDC callback moved with the rest of the service:
+> `https://<host>/<product>/auth/callback` is now
+> `https://<host>/<product>/identity/auth/callback`. Update the registration at the identity
+> provider *and* the `oidc.redirectUris` list in the manifest — the Worker refuses to start a
+> flow whose computed redirect URI is not in that list. Pre-launch, so there is no
+> dual-registration window: the old path is gone, not aliased.
+
 ## Register a product
 
 1. Create the product manifest. Repo-link is preferred because the manifest stays with the

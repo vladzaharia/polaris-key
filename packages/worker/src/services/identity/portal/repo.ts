@@ -1,7 +1,16 @@
-import type { Db } from "../db/types.js";
-import { hashKey, mintOpaqueToken, randomId } from "../crypto.js";
-import type { Env } from "../env.js";
-import type { DeviceRow, KeyRow, LicenseRow, ProductRow } from "../repo.js";
+import {
+  hashKey,
+  mintOpaqueToken,
+  randomId,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
+import type {
+  DeviceRow,
+  KeyRow,
+  LicenseRow,
+  ProductRow,
+} from "../../../core/data.js";
 
 export interface PortalAccountRow {
   id: string;

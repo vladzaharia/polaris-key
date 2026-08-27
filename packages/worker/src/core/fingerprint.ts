@@ -9,12 +9,17 @@
  *
  * Only the license-facing surface is re-exported. The matcher, the hwid digest and the policy
  * parsers stay Core-internal — a service decides nothing about how hardware is compared.
+ *
+ * `allowsOidcDefault` is the auto-issue half Identity reads: it is what decides whether an
+ * authenticated user with no mapped group lands on the product's default tier instead of a 403.
+ * The policy is a `products` column, i.e. Core's row, so both services read it from here.
  */
 
 export type { PresentedFingerprint } from "../fingerprint.js";
 export type { AutoIssuePolicy, FingerprintPolicy } from "../fingerprint.js";
 export {
   allowsAnonymousEnroll,
+  allowsOidcDefault,
   computeEnrollHwid,
   resolveFingerprintMode,
 } from "../fingerprint.js";

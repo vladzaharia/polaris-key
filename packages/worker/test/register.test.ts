@@ -30,6 +30,7 @@ import {
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleRegister } from "../src/core/register.js";
+import { SERVICES } from "../src/mount.js";
 import {
   handleDevices,
   handleReport,
@@ -38,8 +39,13 @@ import {
 import { handleConfigDocument } from "../src/services/config/document.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { getDevice, setServices } from "../src/repo.js";
+import { createBrowserSession } from "../src/services/identity/index.js";
+import {
+  serializeServices,
+  validateServices,
+  type ServicesMap,
+} from "../src/core/services.js";
+import { getDevice, getLicense, setServices } from "../src/repo.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
@@ -121,6 +127,7 @@ async function register(
     w.db,
     w.product,
     NOW,
+    SERVICES,
   );
   const parsed =
     res.status === 200
@@ -155,6 +162,7 @@ describe("POST /<p>/devices/register — policy matrix", () => {
       w.db,
       w.product,
       NOW,
+      SERVICES,
     );
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({
@@ -163,7 +171,7 @@ describe("POST /<p>/devices/register — policy matrix", () => {
     expect(await getDevice(w.db, "djdl", DEVICE)).toBeNull();
   });
 
-  it("requires-identity: the SAME 403 body, until P3 wires the session exchange", async () => {
+  it("requires-identity with no session: the SAME 403 body as requires-license", async () => {
     const w = await world(SET.identity);
     expect(w.product.registration).toBe("requires-identity");
 
@@ -173,6 +181,7 @@ describe("POST /<p>/devices/register — policy matrix", () => {
       w.db,
       w.product,
       NOW,
+      SERVICES,
     );
     expect(res.status).toBe(403);
     // Byte-identical to the `requires-license` refusal: an anonymous caller learns that it may
@@ -180,6 +189,143 @@ describe("POST /<p>/devices/register — policy matrix", () => {
     expect(await res.json()).toEqual({
       error: { code: "registration_closed" },
     });
+    expect(await getDevice(w.db, "djdl", DEVICE)).toBeNull();
+  });
+
+  // ── the requires-identity exchange (P3) ───────────────────────────────────────────────────
+  //
+  // `requires-identity` is the one policy whose answer Core cannot compute. It asks the Identity
+  // descriptor through `ServiceDescriptor.authorizeRegistration`, and what Identity accepts is a
+  // live product browser session — the cookie `POST /<p>/identity/session/license` and the OIDC
+  // callback both mint.
+
+  /** A browser session for `slug`, as the identity surfaces mint it. Returns the cookie header. */
+  async function browserSession(w: World, slug = "djdl"): Promise<string> {
+    const { licenseId } = await seedLicenseWithKey(w.db, slug);
+    const license = (await getLicense(w.db, slug, licenseId))!;
+    const created = await createBrowserSession(
+      w.env,
+      w.db,
+      w.product.slug === slug
+        ? w.product
+        : (await loadProduct(w.env, w.db, slug))!,
+      license,
+      NOW,
+    );
+    if (!created.ok) throw new Error(`session mint failed: ${created.code}`);
+    return created.cookie.split(";")[0]!;
+  }
+
+  it("requires-identity with a valid browser session: mints the token", async () => {
+    const w = await world(SET.identity);
+    expect(w.product.registration).toBe("requires-identity");
+    const cookie = await browserSession(w);
+
+    const res = await register(w, { "x-polaris-device": DEVICE, cookie });
+    expect(res.status).toBe(200);
+    expect(res.token).toMatch(/^plrst_[A-Za-z0-9_-]{43}$/);
+    expect(res.deviceId).toBe(DEVICE);
+
+    // The minted device is the ORDINARY licence-less registration row — the session authorized
+    // the mint, it did not lend the new device its licence.
+    const row = await getDevice(w.db, "djdl", DEVICE);
+    expect(row?.status).toBe("authorized");
+    expect(row?.license_id).toBe(NO_LICENSE_ID);
+  });
+
+  it("requires-identity refuses a session whose device has been deauthorized", async () => {
+    // The cookie alone proves nothing: a KV session record outlives logout and an operator
+    // deauthorization, so the credential behind it has to still validate.
+    const w = await world(SET.identity);
+    const cookie = await browserSession(w);
+    await w.db.run(
+      "UPDATE devices SET status = 'deauthorized' WHERE product = ?",
+      "djdl",
+    );
+
+    const res = await handleRegister(
+      registerReq({ "x-polaris-device": DEVICE, cookie }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+      SERVICES,
+    );
+    expect(res.status).toBe(403);
+    expect(await getDevice(w.db, "djdl", DEVICE)).toBeNull();
+  });
+
+  it("requires-identity refuses another product's session", async () => {
+    // Session keys are product-scoped in KV, so a cookie minted for `other` resolves to nothing
+    // under `djdl`. Pinned because a cross-tenant hit here would mint a real credential.
+    const w = await world(SET.identity);
+    const other = makeTestDb();
+    await seedProduct(other, "other");
+    const otherEnv = w.env; // same KV mock, so a leak would be visible
+    const otherProduct = (await loadProduct(otherEnv, other, "other"))!;
+    const { licenseId } = await seedLicenseWithKey(other, "other");
+    const created = await createBrowserSession(
+      otherEnv,
+      other,
+      otherProduct,
+      (await getLicense(other, "other", licenseId))!,
+      NOW,
+    );
+    if (!created.ok) throw new Error("session mint failed");
+
+    const res = await handleRegister(
+      registerReq({
+        "x-polaris-device": DEVICE,
+        cookie: created.cookie.split(";")[0]!,
+      }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+      SERVICES,
+    );
+    expect(res.status).toBe(403);
+    expect(await getDevice(w.db, "djdl", DEVICE)).toBeNull();
+  });
+
+  it("requires-identity with identity DISABLED is an unreachable configuration", async () => {
+    // `validateServices` refuses the combination at ingest and in the admin API, so it cannot be
+    // written through a supported path…
+    expect(
+      validateServices(
+        { ...SET.configOnly, identity: { enabled: false } },
+        "requires-identity",
+      ),
+    ).toContain("registration_requires_identity");
+
+    // …and if a hand-edited row got there anyway, the exchange fails closed: Identity's code is
+    // never consulted for a service this product has turned off, so a live session in KV does
+    // not open the door.
+    const w = await world(SET.identity, "requires-identity");
+    const cookie = await browserSession(w);
+    await setServices(
+      w.db,
+      "djdl",
+      serializeServices({
+        services: { ...SET.identity, identity: { enabled: false } },
+        registration: "requires-identity",
+      }),
+      "admin",
+      NOW,
+    );
+    const forced = (await loadProduct(w.env, w.db, "djdl"))!;
+    expect(forced.registration).toBe("requires-identity");
+    expect(forced.services.identity.enabled).toBe(false);
+
+    const res = await handleRegister(
+      registerReq({ "x-polaris-device": DEVICE, cookie }),
+      w.env,
+      w.db,
+      forced,
+      NOW,
+      SERVICES,
+    );
+    expect(res.status).toBe(403);
     expect(await getDevice(w.db, "djdl", DEVICE)).toBeNull();
   });
 
@@ -201,6 +347,7 @@ describe("POST /<p>/devices/register — policy matrix", () => {
       w.db,
       w.product,
       NOW,
+      SERVICES,
     );
     expect(res.status).toBe(405);
   });
@@ -226,6 +373,7 @@ describe("POST /<p>/devices/register — the device id", () => {
         w.db,
         w.product,
         NOW,
+        SERVICES,
       );
       expect(res.status, `device id ${JSON.stringify(id)}`).toBe(400);
     }
@@ -242,6 +390,7 @@ describe("POST /<p>/devices/register — the device id", () => {
       w.db,
       w.product,
       NOW + 60,
+      SERVICES,
     );
     expect(second.status).toBe(200);
     const { token: rotated } = (await second.json()) as { token: string };
@@ -290,6 +439,7 @@ describe("POST /<p>/devices/register — the device id", () => {
       w.db,
       w.product,
       NOW + 1,
+      SERVICES,
     );
     expect(res.status).toBe(403);
 

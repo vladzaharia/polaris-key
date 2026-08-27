@@ -34,12 +34,12 @@ import { defaultInstallScript } from "../../src/services/release/install.js";
 import { linkRepo } from "../../src/services/release/linkRepo.js";
 import { handleGithubWebhook } from "../../src/githubWebhook.js";
 import { getReleaseConfig } from "../../src/services/release/index.js";
-import { handlePortalDownload } from "../../src/portal/api.js";
+import { handlePortalDownload } from "../../src/services/identity/portal/api.js";
 import {
   createPortalDownloadToken,
   getOrCreateAccountByEmail,
   syncAccountLicenseLinks,
-} from "../../src/portal/repo.js";
+} from "../../src/services/identity/portal/repo.js";
 
 // ── Shared harness ───────────────────────────────────────────────────────────
 

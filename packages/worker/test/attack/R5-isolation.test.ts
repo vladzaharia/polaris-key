@@ -28,10 +28,10 @@ import { loadProduct, type Product } from "../../src/core/products.js";
 import { handleActivate } from "../../src/services/license/activation.js";
 import { handleDevices } from "../../src/core/devices.js";
 import { handleMintToken } from "../../src/services/config/mint.js";
-import { activateFromIdentity } from "../../src/oidc.js";
+import { activateFromIdentity } from "../../src/services/identity/oidc.js";
 import { handleAdminApi } from "../../src/admin/api.js";
-import { handleMagicStart } from "../../src/portal/auth.js";
-import { handlePortalApi } from "../../src/portal/api.js";
+import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
+import { handlePortalApi } from "../../src/services/identity/portal/api.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
@@ -42,7 +42,7 @@ import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
   issuePortalSession,
-} from "../../src/portal/session.js";
+} from "../../src/services/identity/portal/session.js";
 import {
   createPortalDownloadToken,
   getOrCreateAccountByEmail,
@@ -55,7 +55,7 @@ import {
   portalAuthCapabilities,
   syncAccountLicenseLinks,
   upsertPortalProductSettings,
-} from "../../src/portal/repo.js";
+} from "../../src/services/identity/portal/repo.js";
 import { pk } from "../../src/kv.js";
 import {
   type FetchImpl,
@@ -787,7 +787,8 @@ describe("REFUTED: KV namespace confusion via crafted state / device_code / toke
     const tokenHash = await hashKey(token, e.KEY_HASH_PEPPER);
     expect(kv.keys()).toContain(pk(ACME, "token", tokenHash));
 
-    const { handleAuthPoll } = await import("../../src/oidc.js");
+    const { handleAuthPoll } =
+      await import("../../src/services/identity/oidc.js");
     for (const s of [
       `../token/${tokenHash}`,
       `:token:${tokenHash}`,

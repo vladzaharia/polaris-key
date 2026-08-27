@@ -7,7 +7,7 @@ import {
   handleBrowserLogout,
   handleBrowserSession,
   handleBrowserSessionLicense,
-} from "../src/browserSession.js";
+} from "../src/services/identity/browserSession.js";
 import { getDevice } from "../src/repo.js";
 
 function req(
@@ -142,5 +142,45 @@ describe("browser sessions", () => {
     );
     expect(broken.status).toBe(500);
     expect(await broken.text()).toContain("catalog_unavailable");
+  });
+});
+
+describe("a corrupt session record", () => {
+  it("reads as no session rather than a 500 (R11-06's rule, applied here)", async () => {
+    // `POST /<p>/devices/register` now consults this same resolver for a `requires-identity`
+    // product, so an uncaught SyntaxError here would 500 a credential-mint path. A garbled KV
+    // value is indistinguishable from an absent one for every caller, so it takes that branch.
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = makeEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const { key } = await seedLicenseWithKey(db, "djdl");
+
+    const created = await handleBrowserSessionLicense(
+      req("POST", "/djdl/identity/session/license", { body: { key } }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(created.status).toBe(201);
+    const cookie = created.headers.get("set-cookie")!.split(";")[0]!;
+
+    const sessionKeys = kv
+      .keys()
+      .filter((k) => k.includes(":browser-session:"));
+    expect(sessionKeys).toHaveLength(1);
+    await kv.put(sessionKeys[0]!, "{not json");
+
+    const res = await handleBrowserSession(
+      req("GET", "/djdl/identity/session", { cookie }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ authenticated: false, doc: null });
   });
 });

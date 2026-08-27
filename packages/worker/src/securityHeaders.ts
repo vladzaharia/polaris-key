@@ -77,7 +77,7 @@ export function appSecurityHeaders(headers = new Headers()): Headers {
  * Headers for server-rendered, script-free HTML (sign-in errors, device-authorization page,
  * "you're signed in" page, the edge-mint auth page).
  *
- * NOTE for `oidc.ts` (not editable from this lane): both HTML responses there —
+ * NOTE for `services/identity/oidc.ts`: both HTML responses there —
  * `handleAuthDeviceVerify`'s confirmation page and `handleAuthCallback`'s "You're signed in"
  * page — should build their headers with this helper, e.g.
  *   `headers: staticHtmlSecurityHeaders(new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }))`

@@ -9,7 +9,11 @@ import {
   type ManagedConfigDoc,
   type ManagedPayload,
 } from "@plrs/protocol";
-import { buildDoc, computeETag, validatePayload } from "../src/configDoc.js";
+import { buildDoc, computeETag } from "../src/services/identity/doc.js";
+// The catalog prune is the last gate before signing on all three document paths, so it lives in
+// Core; `services/identity/doc.ts` stopped re-exporting it when the fused builder moved into the
+// service (P3).
+import { validatePayload } from "../src/core/payload.js";
 import { signDoc } from "../src/core/signing.js";
 import { TEST_KID, TEST_PEM, TEST_PUB, NOW } from "./seed.js";
 

@@ -1,5 +1,23 @@
-import type { Env } from "../env.js";
-import type { Db } from "../db/types.js";
+/**
+ * The root customer portal — Identity's PLATFORM-level surface (design spec §2.1, D-14).
+ *
+ * ── WHY THE ROUTES DID NOT MOVE WITH THE FILES ──────────────────────────────────────────────
+ *
+ * `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*` and `/download/<token>` are ROOT
+ * paths, reserved ahead of every product slug by `router.ts`. They stay exactly where they
+ * were, and they must: the portal is one account across every tenant on the deployment — an
+ * account can hold licences for several products at once — so there is no `<product>` to scope
+ * them under. Namespacing them would have to invent one.
+ *
+ * What moved is the IMPLEMENTATION. The portal is identity work (accounts, sign-in, licence
+ * claiming) and owns identity tables (`portal_*`, spec §5.2), so it lives inside the service;
+ * `index.ts` (the composition root) keeps calling `handlePortal` for the platform routes, in
+ * the same position it always did. A platform route implemented by a service is not a
+ * contradiction — it is the same shape as `manifestIngest`, where Core owns the pipeline and a
+ * service owns the rows.
+ */
+
+import { isSafeAssetPath, type Db, type Env } from "../../../core/platform.js";
 import {
   handleMagicVerify,
   handlePortalCallback,
@@ -8,7 +26,6 @@ import {
 } from "./auth.js";
 import { handlePortalApi, handlePortalDownload } from "./api.js";
 import { portalSecurityHeaders } from "./headers.js";
-import { isSafeAssetPath } from "../http.js";
 
 function portalShell(): Response {
   return new Response(

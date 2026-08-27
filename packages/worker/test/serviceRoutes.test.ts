@@ -22,11 +22,14 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
+import { normalizeModules, servicesFromModules } from "@plrs/manifest";
 import { matchRoute } from "../src/router.js";
 import { loadProduct, type Product } from "../src/core/products.js";
+import { handleDiscovery } from "../src/core/discovery.js";
 import { dispatchService, type ServiceRegistry } from "../src/core/registry.js";
 import { licenseService } from "../src/services/license/index.js";
 import { configService } from "../src/services/config/index.js";
+import { identityService } from "../src/services/identity/index.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { hashKey, mintDeviceToken } from "../src/crypto.js";
 import { putTokenRecord } from "../src/kv.js";
@@ -39,6 +42,7 @@ const TRUST = { [TEST_KID]: TEST_PUB };
 const REGISTRY: ServiceRegistry = new Map([
   [licenseService.slug, licenseService],
   [configService.slug, configService],
+  [identityService.slug, identityService],
 ]);
 
 /** Drive a product-scoped path exactly as `index.ts` does: match, then dispatch. */
@@ -67,6 +71,24 @@ async function setServicesJson(
   services: Record<string, { enabled: boolean }>,
 ): Promise<void> {
   await setServices(db, slug, JSON.stringify(services), "admin", NOW);
+}
+
+/** `/<p>/.well-known/polaris.json`, assembled from the same registry the routes dispatch to. */
+async function discovery(
+  env: Env,
+  db: SqliteDb,
+  product: Product,
+): Promise<unknown> {
+  const res = await handleDiscovery(
+    new Request(
+      `https://key.plrs.im/${product.slug}/.well-known/polaris.json`,
+    ) as unknown as Request,
+    env,
+    db,
+    product,
+    REGISTRY,
+  );
+  return res.json();
 }
 
 describe("service routing through the core router", () => {
@@ -339,5 +361,142 @@ describe("a license-only product", () => {
         404,
       );
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// P3 — identity stops inferring enablement from an `oidc_config` row
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+//
+// This is the regression that would be silent and expensive. Before the carve, identity's routes
+// answered for any product with an `oidc_config` row and discovery reported that row; after it,
+// both read `services_json`. A product whose manifest declared OIDC but whose enablement set was
+// written without `identity` would therefore keep its `oidc_config` row and LOSE its login, with
+// nothing in the response to say why.
+//
+// The manifest mapping is what makes that impossible, so it is exercised here rather than
+// asserted about: the enablement set is derived by the same `normalizeModules` →
+// `servicesFromModules` pair that `linkRepo`/`resync` and the seed generator use, from the same
+// `modules:` block a `.polaris/product` file carries.
+
+/** Seed a product OIDC config, as a repo link would write it. */
+async function seedOidcConfig(db: SqliteDb, slug: string): Promise<void> {
+  await db.run(
+    `INSERT INTO oidc_config
+       (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json,
+        group_role_map_json)
+     VALUES (?,?,?,?,?,?,?)`,
+    slug,
+    "custom",
+    "https://id.example",
+    "client-oidcprod",
+    null,
+    JSON.stringify([`https://key.plrs.im/${slug}/identity/auth/callback`]),
+    JSON.stringify({ family: { role: "user" } }),
+  );
+}
+
+const IDENTITY_PATHS = [
+  "/oidcprod/identity/session",
+  "/oidcprod/identity/session/license",
+  "/oidcprod/identity/auth/start",
+  "/oidcprod/identity/auth/callback",
+  "/oidcprod/identity/auth/poll",
+  "/oidcprod/identity/auth/logout",
+  "/oidcprod/identity/auth/device/start",
+  "/oidcprod/identity/auth/device/verify",
+  "/oidcprod/identity/auth/device/poll",
+];
+
+describe("an OIDC product whose manifest declared it", () => {
+  let db: SqliteDb;
+  let env: Env;
+  let product: Product;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = makeEnv(new KvMock(), ["oidcprod"]);
+    await seedProduct(db, "oidcprod");
+    await seedOidcConfig(db, "oidcprod");
+    // The manifest's own words, through the manifest's own translation. `modules.oidc` is the
+    // pre-suite spelling every existing product uses, and it maps to the `identity` slug.
+    const services = servicesFromModules(
+      normalizeModules({
+        licensing: { enabled: true },
+        oidc: { enabled: true },
+      }),
+    );
+    expect(services.identity.enabled).toBe(true);
+    await setServicesJson(db, "oidcprod", services);
+    product = (await loadProduct(env, db, "oidcprod"))!;
+  });
+
+  it("keeps its sign-in working end to end, at the namespaced path", async () => {
+    const res = await call(env, db, product, "/oidcprod/identity/auth/start");
+    expect(res.status).toBe(302);
+    const authorize = new URL(res.headers.get("location")!);
+    expect(authorize.origin).toBe("https://id.example");
+    // The redirect URI the IdP is handed — and the one it must have registered — is the
+    // namespaced callback. This is the operator-visible half of the route move.
+    expect(authorize.searchParams.get("redirect_uri")).toBe(
+      "https://key.plrs.im/oidcprod/identity/auth/callback",
+    );
+    expect(authorize.searchParams.get("client_id")).toBe("client-oidcprod");
+  });
+
+  it("serves the browser-session document at its new URL", async () => {
+    const res = await call(env, db, product, "/oidcprod/identity/session");
+    expect(res.status).toBe(200);
+    // Unauthenticated shape, unchanged by the move: the response BODY is not part of this task
+    // (the React SDK migrates against it in a sibling wave), only the URL is.
+    expect(await res.json()).toEqual({ authenticated: false, doc: null });
+  });
+
+  it("advertises the service in discovery from the flag, not from the row", async () => {
+    const body = (await discovery(env, db, product)) as {
+      services: Record<string, Record<string, unknown>>;
+    };
+    expect(body.services.identity).toMatchObject({
+      enabled: true,
+      configured: true,
+    });
+  });
+});
+
+describe("a product with identity disabled", () => {
+  let db: SqliteDb;
+  let env: Env;
+  let product: Product;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = makeEnv(new KvMock(), ["oidcprod"]);
+    await seedProduct(db, "oidcprod");
+    // The row is PRESENT and the service is OFF. That combination is the whole point: row
+    // presence used to be the enablement signal, and it must now decide nothing.
+    await seedOidcConfig(db, "oidcprod");
+    await setServicesJson(db, "oidcprod", {
+      license: { enabled: true },
+      config: { enabled: true },
+      identity: { enabled: false },
+    });
+    product = (await loadProduct(env, db, "oidcprod"))!;
+  });
+
+  it("404s the whole /identity/* surface with the registry's single shape", async () => {
+    for (const path of IDENTITY_PATHS) {
+      const res = await call(env, db, product, path, { method: "POST" });
+      expect(res.status, path).toBe(404);
+      expect(await res.text(), path).toBe(
+        JSON.stringify({ error: { code: "not_found" } }),
+      );
+    }
+  });
+
+  it("reports `{enabled:false}` and NOTHING else in discovery", async () => {
+    const body = (await discovery(env, db, product)) as {
+      services: Record<string, Record<string, unknown>>;
+    };
+    expect(body.services.identity).toEqual({ enabled: false });
   });
 });

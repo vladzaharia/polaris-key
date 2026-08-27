@@ -22,7 +22,7 @@ import {
   runScheduledMaintenance,
 } from "../src/scheduled.js";
 import { appendAudit, claimDeviceSeat, insertLicense } from "../src/repo.js";
-import { portalAudit } from "../src/portal/repo.js";
+import { portalAudit } from "../src/services/identity/portal/repo.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ASSERTION_SQL = readFileSync(

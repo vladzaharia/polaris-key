@@ -119,7 +119,8 @@ function randomToken(byteLength: number): string {
 /**
  * Domain-separation tag mixed into the signed message (R1-02).
  *
- * The admin and portal realms can be signed by the SAME raw key — `portal/session.ts` falls
+ * The admin and portal realms can be signed by the SAME raw key — identity's
+ * `portal/session.ts` falls
  * back to `ADMIN_SESSION_SECRET` when `PORTAL_SESSION_SECRET` is unset, which `wrangler.toml`
  * documents as a supported deployment. Before this tag, the only thing stopping a portal
  * cookie (obtainable by anyone with an email address) from being replayed as an admin cookie

@@ -12,14 +12,15 @@
     "license": { "enabled": true },
     "config": { "enabled": true },
     "release": { "enabled": true },
-    "update": { "enabled": true }
+    "update": { "enabled": true },
+    "identity": { "enabled": true }
   },
   "devices": {
     "registration": "requires-license"
   },
   "oidc": {
     "provider": "platform",
-    "redirectUris": ["https://key.plrs.im/djdl/auth/callback"],
+    "redirectUris": ["https://key.plrs.im/djdl/identity/auth/callback"],
     "groupRoleMap": {
       "family": { "role": "user", "tier": "standard" },
       "friends": { "role": "user", "tier": "standard" },

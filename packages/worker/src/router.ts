@@ -2,21 +2,22 @@
 // slug can never shadow them; everything else is `/<product>/...` and carries the product
 // slug.
 //
-// ── THE HYBRID STATE ────────────────────────────────────────────────────────────────────────
+// ── ONE SHAPE FOR EVERY SERVICE ─────────────────────────────────────────────────────────────
 //
-// Wire v3 namespaces every product-scoped route under the service that owns it (plan §R1).
-// License, Config, Release and Update have moved: `/<p>/<slug>/…` no longer resolves to a route
-// KIND at all — it resolves to `{kind:"service"}` carrying the slug and the remaining segments,
-// and the service's own descriptor routes them from there. That is what lets a product turn a
-// service off and have its whole surface disappear rather than 403.
+// Wire v3 namespaces every product-scoped route under the service that owns it (plan §R1). All
+// five have now moved: `/<p>/<slug>/…` does not resolve to a route KIND at all — it resolves to
+// `{kind:"service"}` carrying the slug and the remaining segments, and the service's own
+// descriptor routes them from there. That is what lets a product turn a service off and have its
+// whole surface disappear rather than 403.
 //
-// Identity has not moved yet (P3), so its paths keep their existing kinds and their existing
-// dispatch. This file is deliberately readable as "which services have been cut over": the
-// `SERVICE_NAMESPACES` set below is the complete answer, and adding a slug to it is what moves
-// the next one.
+// `SERVICE_NAMESPACES` below is therefore the complete list, and there are no per-service route
+// kinds left in this file. Identity was the last to cut over, and its old top-level spellings
+// (`/<p>/session`, `/<p>/session/license`, `/<p>/auth/…`) are DELETED rather than aliased — see
+// `services/identity/routes.ts` for why that is safe where the four Release/Update aliases below
+// are not.
 //
 // Core routes stay core routes whatever happens to the services: discovery, JWKS, the trust
-// manifest, `/devices[/:id]` and `/devices/report`.
+// manifest, `/devices[/:id]`, `/devices/report` and `/devices/register`.
 //
 // ── THE PERMANENT ALIASES (D-07) ────────────────────────────────────────────────────────────
 //
@@ -42,6 +43,7 @@ const SERVICE_NAMESPACES: ReadonlySet<string> = new Set<ServiceSlug>([
   "config",
   "release",
   "update",
+  "identity",
 ]);
 
 export type Route =
@@ -80,16 +82,6 @@ export type Route =
       rest: string[];
       alias?: true;
     }
-  | { kind: "browserSession"; product: string }
-  | { kind: "browserSessionLicense"; product: string }
-  | { kind: "authStart"; product: string }
-  | { kind: "authLogin"; product: string }
-  | { kind: "authLogout"; product: string }
-  | { kind: "authDeviceStart"; product: string }
-  | { kind: "authDeviceVerify"; product: string }
-  | { kind: "authDevicePoll"; product: string }
-  | { kind: "authCallback"; product: string }
-  | { kind: "authPoll"; product: string }
   | { kind: "notFound" };
 
 /** One alias route: same slug, same segments, marked. */
@@ -153,26 +145,6 @@ export function matchRoute(pathname: string): Route {
       return { kind: "report", product };
     case "/devices/register":
       return { kind: "register", product };
-    case "/session":
-      return { kind: "browserSession", product };
-    case "/session/license":
-      return { kind: "browserSessionLicense", product };
-    case "/auth/start":
-      return { kind: "authStart", product };
-    case "/auth/login":
-      return { kind: "authLogin", product };
-    case "/auth/logout":
-      return { kind: "authLogout", product };
-    case "/auth/device/start":
-      return { kind: "authDeviceStart", product };
-    case "/auth/device/verify":
-      return { kind: "authDeviceVerify", product };
-    case "/auth/device/poll":
-      return { kind: "authDevicePoll", product };
-    case "/auth/callback":
-      return { kind: "authCallback", product };
-    case "/auth/poll":
-      return { kind: "authPoll", product };
     // The permanent aliases (§R1). `/<p>/changelog` is NOT among them: unlike the four below it
     // was never compiled into a shipped binary or a published curl line, so wire v3 moves it to
     // `/<p>/release/changelog` outright.

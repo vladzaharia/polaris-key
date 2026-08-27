@@ -19,7 +19,7 @@ import { handleEnroll } from "../src/services/license/enroll.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
-import { activateFromIdentity } from "../src/oidc.js";
+import { activateFromIdentity } from "../src/services/identity/oidc.js";
 import { countActiveDevices, getLicense, listAudit } from "../src/repo.js";
 
 function hash(seed: string): string {

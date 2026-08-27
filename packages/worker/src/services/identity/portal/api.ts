@@ -1,9 +1,14 @@
 import { Catalog } from "@plrs/catalog";
 import type { ConfigEntry } from "@plrs/catalog";
-import type { Env } from "../env.js";
-import type { Db } from "../db/types.js";
-import { ErrorCode } from "../core/errors.js";
-import { hashKey, productFromKey } from "../crypto.js";
+import {
+  deleteTokenRecord,
+  hashKey,
+  isAllowedStorageHost,
+  productFromKey,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
+import { ErrorCode } from "../../../core/errors.js";
 import {
   getActiveSchema,
   getDevice,
@@ -11,13 +16,11 @@ import {
   getLicense,
   getProduct,
   setDeviceStatus,
-} from "../repo.js";
-import { deleteTokenRecord } from "../kv.js";
-import { resolveEffective } from "../licenseCore.js";
-import { licenseUsable } from "../core/devices.js";
-import { tighterMax, tighterMin } from "../gate.js";
-import { clientIp, rateLimitOk } from "../core/rateLimit.js";
-import { isAllowedStorageHost } from "../services/release/github.js";
+} from "../../../core/data.js";
+import { resolveEffective } from "../../../core/authz.js";
+import { licenseUsable } from "../../../core/devices.js";
+import { tighterMax, tighterMin } from "../../../core/entitlements.js";
+import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   getPortalAccount,
   getPortalArtifact,
@@ -49,7 +52,7 @@ import {
 } from "./session.js";
 import { handleMagicStart } from "./auth.js";
 import { portalEmailConfigured, sendPortalNotice } from "./email.js";
-import { platformOidcConfig } from "../platformOidc.js";
+import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
 
 function portalJson(

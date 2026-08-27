@@ -30,7 +30,10 @@ import {
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/fingerprint.js";
 import { DEFAULT_SERVICES } from "../../src/core/services.js";
-import { handleAuthCallback, handleAuthStart } from "../../src/oidc.js";
+import {
+  handleAuthCallback,
+  handleAuthStart,
+} from "../../src/services/identity/oidc.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
 import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
 import {
@@ -55,14 +58,17 @@ import {
 } from "../../src/services/update/appcast.js";
 import { applyOverrides } from "../../src/admin/lib/overrides.js";
 import { Catalog } from "@plrs/catalog";
-import { handlePortalApi, handlePortalDownload } from "../../src/portal/api.js";
-import { handlePortalLogin } from "../../src/portal/auth.js";
-import { getOrCreateAccountByEmail } from "../../src/portal/repo.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+} from "../../src/services/identity/portal/api.js";
+import { handlePortalLogin } from "../../src/services/identity/portal/auth.js";
+import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
   issuePortalSession,
-} from "../../src/portal/session.js";
+} from "../../src/services/identity/portal/session.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SLUG = "djdl";
@@ -115,7 +121,9 @@ async function seedCustomOidc(
     opts.redirectUris === null
       ? null
       : JSON.stringify(
-          opts.redirectUris ?? [`https://key.plrs.im/${SLUG}/auth/callback`],
+          opts.redirectUris ?? [
+            `https://key.plrs.im/${SLUG}/identity/auth/callback`,
+          ],
         ),
     JSON.stringify({ family: { role: "user" } }),
   );
@@ -605,14 +613,14 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       JSON.stringify({
         verifier: "v",
         nonce: "n",
-        redirectUri: `https://key.plrs.im/${SLUG}/auth/callback`,
+        redirectUri: `https://key.plrs.im/${SLUG}/identity/auth/callback`,
       }),
     );
 
     const calls = recordGlobalFetch();
     const res = await handleAuthCallback(
       req(
-        `https://key.plrs.im/${SLUG}/auth/callback?code=ATTACKER_CODE&state=ATTACKER_STATE`,
+        `https://key.plrs.im/${SLUG}/identity/auth/callback?code=ATTACKER_CODE&state=ATTACKER_STATE`,
       ),
       env,
       db,
@@ -644,13 +652,13 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       JSON.stringify({
         verifier: "v",
         nonce: "n",
-        redirectUri: `https://key.plrs.im/${SLUG}/auth/callback`,
+        redirectUri: `https://key.plrs.im/${SLUG}/identity/auth/callback`,
       }),
     );
 
     const calls = recordGlobalFetch();
     const res = await handleAuthCallback(
-      req(`https://key.plrs.im/${SLUG}/auth/callback?code=c&state=S`),
+      req(`https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S`),
       env,
       db,
       product,
@@ -680,12 +688,14 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
         JSON.stringify({
           verifier: "v",
           nonce: "n",
-          redirectUri: `https://key.plrs.im/${SLUG}/auth/callback`,
+          redirectUri: `https://key.plrs.im/${SLUG}/identity/auth/callback`,
         }),
       );
       const calls = recordGlobalFetch();
       await handleAuthCallback(
-        req(`https://key.plrs.im/${SLUG}/auth/callback?code=c&state=S3`),
+        req(
+          `https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S3`,
+        ),
         env,
         db,
         product,
@@ -705,7 +715,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     // Allowlist is populated and correct — and still irrelevant to the issuer host. This is
     // why the issuer needed its own guard rather than leaning on this one.
     await seedCustomOidc(db, "https://exfil.attacker.example", {
-      redirectUris: [`https://key.plrs.im/${SLUG}/auth/callback`],
+      redirectUris: [`https://key.plrs.im/${SLUG}/identity/auth/callback`],
     });
     const product = (await loadProduct(env, db, SLUG))!;
     await env.HOT.put(
@@ -713,12 +723,12 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       JSON.stringify({
         verifier: "v",
         nonce: "n",
-        redirectUri: `https://key.plrs.im/${SLUG}/auth/callback`,
+        redirectUri: `https://key.plrs.im/${SLUG}/identity/auth/callback`,
       }),
     );
     const calls = recordGlobalFetch();
     await handleAuthCallback(
-      req(`https://key.plrs.im/${SLUG}/auth/callback?code=c&state=S2`),
+      req(`https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S2`),
       env,
       db,
       product,
@@ -1191,7 +1201,16 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
 
     // The UPDATE now carries the precondition that makes it a CAS.
     const repoSrc = readFileSync(
-      join(HERE, "..", "..", "src", "portal", "repo.ts"),
+      join(
+        HERE,
+        "..",
+        "..",
+        "src",
+        "services",
+        "identity",
+        "portal",
+        "repo.ts",
+      ),
       "utf8",
     );
     expect(repoSrc).toContain("used_at IS NULL");
@@ -1481,7 +1500,7 @@ describe("R9-10 KV key construction", () => {
     ]) {
       const res = await handleAuthCallback(
         req(
-          `https://key.plrs.im/${SLUG}/auth/callback?code=c&state=${encodeURIComponent(evil)}`,
+          `https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=${encodeURIComponent(evil)}`,
         ),
         env,
         db,
@@ -1576,7 +1595,10 @@ describe("R9-11 edge-mint auth page", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe("R9-12 escapeHtml coverage", () => {
   it('REFUTED (today): the device-verify page escapes `<>&"` and every sink is a text node or a double-quoted attr', () => {
-    const src = readFileSync(join(HERE, "..", "..", "src", "oidc.ts"), "utf8");
+    const src = readFileSync(
+      join(HERE, "..", "..", "src", "services", "identity", "oidc.ts"),
+      "utf8",
+    );
     expect(src).toContain('.replace(/"/g, "&quot;")');
     expect(src).not.toContain("&#39;");
     // CHANGED by the R8-02 fix: confirmation is no longer a bare `<a href>` GET link. It is
@@ -1591,7 +1613,16 @@ describe("R9-12 escapeHtml coverage", () => {
 
   it("REFUTED (today): portal email escapes into a double-quoted href / text node", () => {
     const src = readFileSync(
-      join(HERE, "..", "..", "src", "portal", "email.ts"),
+      join(
+        HERE,
+        "..",
+        "..",
+        "src",
+        "services",
+        "identity",
+        "portal",
+        "email.ts",
+      ),
       "utf8",
     );
     expect(src).toContain('<a href="${escapeHtml(link)}">');
@@ -1613,7 +1644,8 @@ describe("R9-12 escapeHtml coverage", () => {
         deviceName: "Ada's Mac",
       }),
     );
-    const { handleAuthDeviceVerify } = await import("../../src/oidc.js");
+    const { handleAuthDeviceVerify } =
+      await import("../../src/services/identity/oidc.js");
     const res = await handleAuthDeviceVerify(
       req(`https://key.plrs.im/${SLUG}/auth/device/verify?device_code=DC`),
       env,

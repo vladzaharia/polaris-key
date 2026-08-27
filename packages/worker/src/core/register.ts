@@ -21,15 +21,25 @@
  * `product.registration` (resolved at load from `services_json` + the §6 derivation):
  *
  *   `open`              mint immediately. Rate-limited, fingerprint optional.
- *   `requires-identity` refuse for now — see the note on `registrationClosed` below.
+ *   `requires-identity` mint only for a caller Identity vouches for — see below.
  *   `requires-license`  refuse permanently: activation/enrolment ARE the mint path here, and
  *                       an open second door would hand a free token to anyone who can spell
  *                       the product slug.
  *
- * The two refusals share one body. A caller learns that it may not register, and nothing about
- * WHY — telling `requires-license` from `requires-identity` would let an unauthenticated prober
- * map which products run which services, which is the same reconnaissance `core/registry.ts`
- * refuses for disabled services.
+ * Every refusal shares one body. A caller learns that it may not register, and nothing about
+ * WHY — telling `requires-license` from `requires-identity`, or an unauthenticated
+ * `requires-identity` caller from one whose session has expired, would let a prober map which
+ * products run which services, which is the same reconnaissance `core/registry.ts` refuses for
+ * disabled services.
+ *
+ * ── THE IDENTITY EXCHANGE ───────────────────────────────────────────────────────────────────
+ *
+ * `requires-identity` is the one policy whose answer Core cannot compute: "is there a product
+ * login behind this request" is a question about a session shape only Identity defines. Core
+ * therefore asks the REGISTRY, through `ServiceDescriptor.authorizeRegistration` — a narrow
+ * predicate declared in `core/registry.ts` — rather than importing the service. This file
+ * learns nothing about cookies, and Identity decides nothing about rate limits, device-id
+ * shape, seat rebinding or what a refusal looks like.
  */
 
 import type { Env } from "../env.js";
@@ -39,6 +49,7 @@ import { HEADER_DEVICE } from "@plrs/protocol/core";
 import { getDevice } from "../repo.js";
 import { ErrorCode, methodNotAllowed, wireError } from "./errors.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
+import { authorizeRegistration, type ServiceRegistry } from "./registry.js";
 import {
   deviceMetadata,
   NO_LICENSE_ID,
@@ -64,12 +75,10 @@ const DEVICE_ID = /^[A-Za-z0-9_-]{32}$/;
 /**
  * The single refusal (§R4): `403 {"error":{"code":"registration_closed"}}`.
  *
- * P3 (`services/identity/`) is where `requires-identity` stops sharing this answer: the identity
- * carve lands the session exchange, and this handler grows an arm that verifies a product
- * identity session (`/identity/session`) and mints on success. Until that exists there is no
- * session to verify, so refusing is the only honest response — and it is the SAFE one, because
- * the alternative shape of this bug is minting an unauthenticated token for a product that
- * explicitly asked for authentication.
+ * One body for four different causes — `requires-license`, `requires-identity` with no session,
+ * `requires-identity` on a product whose Identity service is off, and a device id already bound
+ * to a real licence. A caller that could tell them apart could map a product's configuration
+ * and probe whether a given device id is licensed, from an endpoint that takes no credential.
  */
 function registrationClosed(): Response {
   return wireError(403, "registration_closed");
@@ -81,17 +90,25 @@ export async function handleRegister(
   db: Db,
   product: Product,
   now: number,
+  /** The composition root's service table, for the `requires-identity` exchange. */
+  registry: ServiceRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
 
-  // Policy BEFORE the limiter: a closed product must not be able to have its limiter budget
-  // consumed by requests it was never going to answer, and refusing without a DO round-trip
-  // keeps the closed case cheap under exactly the flood that would try it.
-  if (product.registration !== "open") return registrationClosed();
+  // Policy BEFORE the limiter, for the policy that can never say yes: a `requires-license`
+  // product must not be able to have its limiter budget consumed by requests it was never going
+  // to answer, and refusing without a DO round-trip keeps that case cheap under exactly the
+  // flood that would try it.
+  if (product.registration === "requires-license") return registrationClosed();
 
-  // Fail CLOSED (see `rateLimit.ts`'s bucket table): this endpoint mints a credential from
-  // nothing at all — no key, no session, no prior state — so it is the surface where losing the
-  // limiter is least tolerable. Keyed by edge IP, which is the only client identity there is.
+  // Fail CLOSED (see `rateLimit.ts`'s bucket table): this endpoint mints a credential with no
+  // key and no prior state, so it is the surface where losing the limiter is least tolerable.
+  // Keyed by edge IP, which is the only client identity there is.
+  //
+  // It runs BEFORE the identity exchange rather than after, and that ordering is the point: the
+  // exchange reads a cookie, hashes it and touches KV and D1, so gating it on an unauthenticated
+  // budget is what stops a flood of forged cookies from turning a rate-limited endpoint into an
+  // unmetered session-probing oracle.
   if (
     !(await rateLimitOk(
       env,
@@ -101,6 +118,22 @@ export async function handleRegister(
     ))
   ) {
     return wireError(429, "rate_limited");
+  }
+
+  // `requires-identity`: mint only for a caller Identity vouches for. `authorizeRegistration`
+  // checks the product's enablement flag before consulting the descriptor and fails closed on a
+  // missing descriptor or a missing hook, so the only way past here is a real, live session.
+  if (
+    product.registration === "requires-identity" &&
+    !(await authorizeRegistration(registry, "identity", product.services, {
+      req,
+      env,
+      db,
+      product,
+      now,
+    }))
+  ) {
+    return registrationClosed();
   }
 
   // Keyless means keyless: no Authorization header is read here, and presenting one is not an

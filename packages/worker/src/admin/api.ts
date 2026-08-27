@@ -114,7 +114,12 @@ async function handleProductScoped(
     return forbidden("not an admin of this product");
   }
 
-  const [resource, id, sub, subId, action] = rest;
+  // §R1 regroups the customer-portal settings under Identity (`portal` → `identity/portal`).
+  // The console still spells the pre-namespace path (it migrates in P7), so it is REWRITTEN
+  // here onto the canonical segments — same descriptor, same handler — rather than kept as a
+  // second implementation that could drift from the one the service owns.
+  const path = rest[0] === "portal" ? ["identity", ...rest] : rest;
+  const [resource, id, sub, subId, action] = path;
 
   // ── per-SERVICE admin (design spec §4.2) ────────────────────────────────────────────────
   //
@@ -136,7 +141,7 @@ async function handleProductScoped(
         env,
         db,
         product: loaded,
-        rest: rest.slice(1),
+        rest: path.slice(1),
         now,
         session,
       });
@@ -145,18 +150,11 @@ async function handleProductScoped(
     return notFound();
   }
 
-  // New per-product resources: write-only secrets, signing-key rotation, and customer portal
-  // module settings.
+  // New per-product resources: write-only secrets, signing-key rotation, fingerprint policy.
   //   PUT  /products/<slug>/secrets/<name>
   //   POST /products/<slug>/keys/rotate
-  //   PATCH /products/<slug>/portal
   //   GET|PATCH /products/<slug>/policy   ·   POST /products/<slug>/policy/revert
-  if (
-    resource === "secrets" ||
-    resource === "keys" ||
-    resource === "portal" ||
-    resource === "policy"
-  ) {
+  if (resource === "secrets" || resource === "keys" || resource === "policy") {
     return handleProductScopedResource(
       req,
       env,

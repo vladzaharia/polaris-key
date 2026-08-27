@@ -41,7 +41,10 @@ import { matchRoute } from "../../src/router.js";
 import { rateLimitOk } from "../../src/core/rateLimit.js";
 import { RateLimitDO } from "../../src/rateLimitDo.js";
 import { handleGithubWebhook } from "../../src/githubWebhook.js";
-import { handleAuthDeviceStart, handleAuthStart } from "../../src/oidc.js";
+import {
+  handleAuthDeviceStart,
+  handleAuthStart,
+} from "../../src/services/identity/oidc.js";
 import {
   resolveChannel,
   type ChannelSelector,

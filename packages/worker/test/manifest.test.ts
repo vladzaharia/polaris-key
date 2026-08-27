@@ -28,7 +28,7 @@ const PRODUCT = {
     issuer: "https://id.scruffy.spot",
     clientId: "djdl",
     clientSecretSecret: "OIDC_CLIENT_SECRET__DJDL",
-    redirectUris: ["https://key.plrs.im/djdl/auth/callback"],
+    redirectUris: ["https://key.plrs.im/djdl/identity/auth/callback"],
     groupRoleMap: { admin: { role: "admin" } },
   },
   tiers: [

@@ -21,7 +21,9 @@ import {
   type ServiceSlug,
 } from "../src/core/services.js";
 import {
+  authorizeRegistration,
   dispatchService,
+  type RegistrationAuthContext,
   type ServiceContext,
   type ServiceDescriptor,
   type ServiceRegistry,
@@ -263,5 +265,95 @@ describe("dispatchService", () => {
     );
     expect(res.status).toBe(404);
     expect(calls).toHaveLength(0);
+  });
+});
+
+// `ServiceDescriptor.authorizeRegistration` — the one place Core delegates an AUTHORIZATION
+// decision to a service (wire v3 §6, spec §2.3). Every arm here is a fail-closed one: the
+// affirmative path is `register.test.ts`'s business, because it needs a real session.
+describe("authorizeRegistration", () => {
+  function authCtx(env: Env): RegistrationAuthContext {
+    return {
+      req: new Request("https://key.plrs.im/djdl/devices/register", {
+        method: "POST",
+      }) as Request,
+      env,
+      db: null as unknown as RegistrationAuthContext["db"],
+      product: makeProduct(),
+      now: 1_700_000_000,
+    };
+  }
+
+  /** A descriptor that would say yes, and records whether it was asked at all. */
+  function voucher(): { descriptor: ServiceDescriptor; asked: number[] } {
+    const asked: number[] = [];
+    return {
+      asked,
+      descriptor: {
+        slug: "identity",
+        handle: async () => null,
+        discoveryFragment: async () => ({ enabled: true }),
+        authorizeRegistration: async () => {
+          asked.push(1);
+          return true;
+        },
+      },
+    };
+  }
+
+  it("refuses without running the service when the product has it disabled", async () => {
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const { descriptor, asked } = voucher();
+
+    const ok = await authorizeRegistration(
+      registryOf(descriptor),
+      "identity",
+      servicesWith({ identity: { enabled: false } }),
+      authCtx(env),
+    );
+
+    // `validateServices` refuses `requires-identity` + identity-off at ingest and in the admin
+    // API, so reaching here means a hand-edited row. It must not mint, and it must not run the
+    // service's code to decide that.
+    expect(ok).toBe(false);
+    expect(asked).toHaveLength(0);
+  });
+
+  it("refuses when no descriptor is registered for the slug", async () => {
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const ok = await authorizeRegistration(
+      new Map(),
+      "identity",
+      servicesWith({ identity: { enabled: true } }),
+      authCtx(env),
+    );
+    expect(ok).toBe(false);
+  });
+
+  it("refuses when the descriptor implements no hook — an omission is not an open door", async () => {
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const { descriptor } = stub("identity", () => null);
+    expect(descriptor.authorizeRegistration).toBeUndefined();
+
+    const ok = await authorizeRegistration(
+      registryOf(descriptor),
+      "identity",
+      servicesWith({ identity: { enabled: true } }),
+      authCtx(env),
+    );
+    expect(ok).toBe(false);
+  });
+
+  it("returns the descriptor's answer when the service is enabled", async () => {
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const { descriptor, asked } = voucher();
+    const ok = await authorizeRegistration(
+      registryOf(descriptor),
+      "identity",
+      servicesWith({ identity: { enabled: true } }),
+      authCtx(env),
+    );
+    expect(ok).toBe(true);
+    expect(asked).toHaveLength(1);
   });
 });

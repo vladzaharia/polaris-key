@@ -1,15 +1,19 @@
-// Build and ETag the FUSED v2 managed-config document. `aud`/`iss` bind it to the product as
-// defense-in-depth; the per-product `kid` + key that scope each doc to one tenant are applied
-// by `core/signing.ts`, which owns the signing step for every Polaris document.
+// Build and ETag the FUSED v2 managed-config document — Identity's own, and nobody else's.
+//
+// `aud`/`iss` bind it to the product as defense-in-depth; the per-product `kid` + key that scope
+// each doc to one tenant are applied by `core/signing.ts`, which owns the signing step for every
+// Polaris document.
 //
 // Wire v3 split this document in two (`services/license/document.ts` +
-// `services/config/document.ts`), and `GET /<p>/config` is gone. What still assembles a v2
-// document is identity's browser session, which mints one for a page rather than for an SDK
-// and moves in P3 — so this module survives for exactly that caller and takes no new ones.
+// `services/config/document.ts`), and `GET /<p>/config` is gone. The ONE caller that still
+// assembles the fused shape is this service's browser session, which mints a document for a
+// PAGE rather than for an SDK — so the builder moved in here with it (it was `src/configDoc.ts`)
+// and takes no new callers. When the React SDK migrates to the split documents, this file is
+// deleted rather than generalised.
 //
-// `validatePayload` is NOT defined here any more: the catalog prune is the last gate before
-// signing on all THREE document paths, so it lives in `core/payload.ts` and is re-exported
-// below for the browser-session call site.
+// `validatePayload` is not defined here: the catalog prune is the last gate before signing on
+// all THREE document paths, so it lives in `core/payload.ts` and the browser session imports it
+// from there directly.
 
 import { sha256Base64Url } from "@plrs/jws";
 import {
@@ -20,8 +24,6 @@ import {
   type ManagedConfigDoc,
   type ManagedPayload,
 } from "@plrs/protocol";
-
-export { validatePayload } from "./core/payload.js";
 
 export interface BuildDocInput {
   schemaVersion: number;
