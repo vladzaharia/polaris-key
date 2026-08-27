@@ -11,6 +11,9 @@ import {
 } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
+import { handleRegister } from "../src/core/register.js";
+import { serializeServices } from "../src/core/services.js";
+import { setServices } from "../src/repo.js";
 
 describe("rateLimitOk", () => {
   it("allows up to the limit within a window, then blocks", async () => {
@@ -69,6 +72,70 @@ describe("clientIp", () => {
   });
 });
 
+describe("register rate limiting", () => {
+  it("429s once the per-IP register window limit is exceeded", async () => {
+    // The one endpoint that mints a credential from nothing at all, so the limiter is the only
+    // thing between an anonymous caller and unbounded token minting.
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await setServices(
+      db,
+      "djdl",
+      serializeServices({
+        services: {
+          license: { enabled: false },
+          config: { enabled: true },
+          release: { enabled: false },
+          update: { enabled: false },
+          identity: { enabled: false },
+        },
+      }),
+      "manifest",
+      NOW,
+    );
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const call = (): Promise<Response> =>
+      handleRegister(
+        mkReq("POST", {
+          "cf-connecting-ip": "203.0.113.9",
+          "x-polaris-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
+        }),
+        env,
+        db,
+        product,
+        NOW,
+      );
+    for (let i = 0; i < 10; i++) expect((await call()).status).toBe(200);
+    const blocked = await call();
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({ error: { code: "rate_limited" } });
+  });
+
+  it("does not spend the budget on a product whose policy refuses anyway", async () => {
+    // Refusing before the limiter keeps the closed case cheap under exactly the flood that
+    // would try it — and stops a closed product's counter from being exhaustible at all.
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    expect(product.registration).toBe("requires-license");
+    for (let i = 0; i < 50; i++) {
+      const res = await handleRegister(
+        mkReq("POST", {
+          "cf-connecting-ip": "203.0.113.9",
+          "x-polaris-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
+        }),
+        env,
+        db,
+        product,
+        NOW,
+      );
+      expect(res.status).toBe(403);
+    }
+  });
+});
+
 describe("activate rate limiting", () => {
   it("429s once the per-IP activate window limit is exceeded", async () => {
     const db = makeTestDb();
@@ -81,7 +148,7 @@ describe("activate rate limiting", () => {
       const res = await handleActivate(
         mkReq("POST", {
           authorization: `Bearer ${key}`,
-          "x-pkey-device": "dev-1",
+          "x-polaris-device": "dev-1",
         }),
         env,
         db,
@@ -93,7 +160,7 @@ describe("activate rate limiting", () => {
     const blocked = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,

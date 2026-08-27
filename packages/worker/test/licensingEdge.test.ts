@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
+  UNKNOWN_DEVICE_TOKEN,
   makeEnv,
   mkReq,
   NOW,
@@ -28,7 +29,10 @@ async function activate(
   device: string,
 ): Promise<string> {
   const res = await handleActivate(
-    mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": device }),
+    mkReq("POST", {
+      authorization: `Bearer ${key}`,
+      "x-polaris-device": device,
+    }),
     env,
     db,
     product,
@@ -39,7 +43,10 @@ async function activate(
 }
 
 const cfg = (token: string) =>
-  mkReq("GET", { authorization: `Bearer ${token}`, "x-pkey-version": "1.2.3" });
+  mkReq("GET", {
+    authorization: `Bearer ${token}`,
+    "x-polaris-version": "1.2.3",
+  });
 
 describe("licensing edge cases", () => {
   let db: SqliteDb;
@@ -58,7 +65,7 @@ describe("licensing edge cases", () => {
   // ── activate preconditions ─────────────────────────────────────────────────
   it("activate requires a bearer key", async () => {
     const res = await handleActivate(
-      mkReq("POST", { "x-pkey-device": "dev-1" }),
+      mkReq("POST", { "x-polaris-device": "dev-1" }),
       env,
       db,
       product,
@@ -81,7 +88,7 @@ describe("licensing edge cases", () => {
 
   it("activate rejects a non-POST method", async () => {
     const res = await handleActivate(
-      mkReq("GET", { authorization: "Bearer x", "x-pkey-device": "d" }),
+      mkReq("GET", { authorization: "Bearer x", "x-polaris-device": "d" }),
       env,
       db,
       product,
@@ -98,7 +105,7 @@ describe("licensing edge cases", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -117,7 +124,7 @@ describe("licensing edge cases", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -134,7 +141,7 @@ describe("licensing edge cases", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -183,7 +190,7 @@ describe("licensing edge cases", () => {
 
   it("deauthorize rejects an unknown token", async () => {
     const res = await handleDeauthorize(
-      mkReq("POST", { authorization: "Bearer pkeyt_nope" }),
+      mkReq("POST", { authorization: `Bearer ${UNKNOWN_DEVICE_TOKEN}` }),
       env,
       db,
       product,
@@ -226,7 +233,11 @@ describe("licensing edge cases", () => {
     expect(
       (
         await handleReport(
-          mkReq("POST", { authorization: "Bearer pkeyt_x" }, {}),
+          mkReq(
+            "POST",
+            { authorization: `Bearer ${UNKNOWN_DEVICE_TOKEN}` },
+            {},
+          ),
           env,
           db,
           product,
@@ -252,7 +263,7 @@ describe("licensing edge cases", () => {
     const oldToken = await activate(env, db, product, key, "dev-1");
 
     const withoutBearer = await handleToken(
-      mkReq("POST", { "x-pkey-device": "dev-1" }),
+      mkReq("POST", { "x-polaris-device": "dev-1" }),
       env,
       db,
       product,
@@ -263,7 +274,7 @@ describe("licensing edge cases", () => {
     const wrongDevice = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${oldToken}`,
-        "x-pkey-device": "dev-2",
+        "x-polaris-device": "dev-2",
       }),
       env,
       db,
@@ -275,7 +286,7 @@ describe("licensing edge cases", () => {
     const res = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${oldToken}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -300,7 +311,7 @@ describe("licensing edge cases", () => {
   it("token re-acquire requires an authorized device", async () => {
     // Never activated.
     const res = await handleToken(
-      mkReq("POST", { "x-pkey-device": "ghost" }),
+      mkReq("POST", { "x-polaris-device": "ghost" }),
       env,
       db,
       product,
@@ -321,7 +332,7 @@ describe("licensing edge cases", () => {
     const res = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${token}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -347,7 +358,7 @@ describe("licensing edge cases", () => {
     const second = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
         "if-none-match": etag,
       }),
       env,
@@ -371,7 +382,7 @@ describe("licensing edge cases", () => {
     const blocked = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-3",
+        "x-polaris-device": "dev-3",
       }),
       env,
       db,
@@ -400,7 +411,7 @@ describe("licensing edge cases", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "a",
+        "x-polaris-device": "a",
       }),
       env,
       db,
@@ -428,7 +439,7 @@ describe("licensing edge cases", () => {
     const re = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,

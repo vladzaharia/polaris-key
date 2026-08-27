@@ -2,7 +2,7 @@
 // app.min/maxVersion window is intersected with the product's global compat window
 // (tighter wins); pre-release channels (staging/pr/dev) require the `channels` entitlement.
 //
-// R3-01 — this module is fed `X-PKey-Version` / `X-PKey-Channel`, i.e. two strings the caller
+// R3-01 — this module is fed `X-Polaris-Version` / `X-Polaris-Channel`, i.e. two strings the caller
 // chooses. That is tolerable for the CLIENT-side gate an SDK runs against its own compiled-in
 // version; it is not tolerable server-side, where the same values arrive over the wire. So:
 //

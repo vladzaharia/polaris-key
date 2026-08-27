@@ -1,7 +1,7 @@
 // Credential minting + hashing. License keys are self-identifying (`pkey_<product>_…`)
-// so the backend/SDK can route by product from the key alone; per-device tokens are
-// opaque (`pkeyt_…`) and never shown. Keys are stored only as hashes (optionally peppered
-// so a KV/D1 dump can't confirm guessed keys).
+// so the backend/SDK can route by product from the key alone; per-device tokens are the
+// `plrst_` device principal of wire contract v3 §6 and never shown. Keys are stored only as
+// hashes (optionally peppered so a KV/D1 dump can't confirm guessed keys).
 
 function b64url(bytes: Uint8Array): string {
   let bin = "";
@@ -33,9 +33,42 @@ export function mintLicenseKey(product: string): string {
   return `pkey_${product}_${b64url(randomBytes(16))}`;
 }
 
-/** A per-device bearer token: opaque `pkeyt_<256-bit base64url>`, never shown. */
-export function mintToken(): string {
-  return `pkeyt_${b64url(randomBytes(32))}`;
+/**
+ * The device-token prefix (wire contract v3 §6/§8). The pre-suite `pkeyt_` is not accepted:
+ * this is pre-launch, so there is no fleet of live tokens to migrate, and a dual-accept window
+ * would be a permanent tolerance bought for nobody.
+ */
+export const DEVICE_TOKEN_PREFIX = "plrst_";
+
+/** A per-device bearer token: `plrst_` + 43 base64url chars (256 bits), never shown. */
+export function mintDeviceToken(): string {
+  return `${DEVICE_TOKEN_PREFIX}${b64url(randomBytes(32))}`;
+}
+
+/**
+ * Shape gate for a presented device token.
+ *
+ * Cheap, and deliberately BEFORE the hash + KV/D1 lookups in `validateDeviceToken`: without it
+ * "`pkeyt_` is rejected" would only be true by accident (no such hash is stored), which is a
+ * property of the data rather than of the code, and it would quietly stop being true the moment
+ * somebody re-imported old rows. The length is checked as a floor rather than an equality so a
+ * future widening of the entropy is not a wire break.
+ */
+export function isDeviceToken(token: string): boolean {
+  return /^plrst_[A-Za-z0-9_-]{43,}$/.test(token);
+}
+
+/**
+ * An opaque, unguessable 256-bit token with NO prefix: the browser-session cookie value and the
+ * portal's single-use download token.
+ *
+ * Deliberately not `plrst_`: neither is a device principal, and a prefix that says otherwise
+ * would mislead anyone reading a log or a URL. Deliberately not `pkeyt_` either — that name is
+ * retired. These strings identify nothing by themselves; they are looked up in the one store
+ * that owns them.
+ */
+export function mintOpaqueToken(): string {
+  return b64url(randomBytes(32));
 }
 
 /** A short opaque id with a typed prefix (lic_, dev_, flow_, …). */

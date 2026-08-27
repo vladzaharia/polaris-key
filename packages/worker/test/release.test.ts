@@ -119,6 +119,7 @@ function makeProduct(): Product {
     fingerprintPolicy: DEFAULT_FINGERPRINT_POLICY,
     autoIssue: DEFAULT_AUTO_ISSUE,
     services: DEFAULT_SERVICES,
+    registration: "requires-license",
   };
 }
 

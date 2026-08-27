@@ -53,6 +53,9 @@ export type Route =
   | { kind: "devices"; product: string; deviceId?: string }
   /** `POST /<p>/devices/report` — core telemetry, relocated from `/<p>/config/report`. */
   | { kind: "report"; product: string }
+  /** `POST /<p>/devices/register` — the keyless device-token mint (wire v3 §6). A CORE route,
+   *  not a service one: the device principal is substrate, available under every policy. */
+  | { kind: "register"; product: string }
   /** A product-scoped request for a service the core router has cut over. `rest` is the path
    *  after `/<product>/<slug>`, already split; `[]` means the bare namespace. */
   | { kind: "service"; slug: ServiceSlug; product: string; rest: string[] }
@@ -126,10 +129,12 @@ export function matchRoute(pathname: string): Route {
       return { kind: "trustManifest", product };
     case "/devices":
       return { kind: "devices", product };
-    // Ahead of the `/devices/<id>` pattern further down, so `report` can never be read as a
-    // device id.
+    // Ahead of the `/devices/<id>` pattern further down, so `report` and `register` can never
+    // be read as device ids.
     case "/devices/report":
       return { kind: "report", product };
+    case "/devices/register":
+      return { kind: "register", product };
     case "/session":
       return { kind: "browserSession", product };
     case "/session/license":

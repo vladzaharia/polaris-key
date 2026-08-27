@@ -1,14 +1,16 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * GitHub-forward product creation: paste a repo URL, read its `.pkey/` manifest, mint a
- * per-product Ed25519 signing key (sealed under the platform KEK), and register the product
- * atomically. This is the "link a repo" path; the manual path lives in admin/handlers.
+ * GitHub-forward product creation: paste a repo URL, read its `.polaris/` (or `.pkey/`)
+ * manifest, mint a per-product Ed25519 signing key (sealed under the platform KEK), and register
+ * the product atomically. This is the "link a repo" path; the manual path lives in
+ * admin/handlers.
  *
  * The flow:
  *   1. Parse `owner/repo` from the URL.
  *   2. Discover the App installation on that repo, mint an installation token.
- *   3. Read `.pkey/schema.*`, `.pkey/product.*`, `.pkey/release.*` (JSON or YAML), parse them.
+ *   3. Read `schema.*`, `product.*`, `release.*` (JSON or YAML) from `.polaris/`, falling back
+ *      to `.pkey/` per file (`manifestFiles.ts`), and parse them.
  *   4. Generate + seal an Ed25519 key; assemble the products + child rows.
  *   5. Insert everything in ONE `db.batch` so a partial product can never exist.
  *
@@ -42,6 +44,8 @@ import {
 } from "./githubApp.js";
 import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
+import { MANIFEST_FILES } from "./manifestFiles.js";
+import { serializeServices } from "../core/services.js";
 
 export type LinkRepoResult =
   | {
@@ -57,13 +61,6 @@ export type LinkRepoResult =
       remainingSecrets: string[];
     }
   | { ok: false; error: string; errors?: string[] };
-
-/** The `.pkey/` files we look for, in extension-preference order (JSON beats YAML). */
-const PKEY_FILES: Record<"schema" | "product" | "release", string[]> = {
-  schema: [".pkey/schema.json", ".pkey/schema.yaml", ".pkey/schema.yml"],
-  product: [".pkey/product.json", ".pkey/product.yaml", ".pkey/product.yml"],
-  release: [".pkey/release.json", ".pkey/release.yaml", ".pkey/release.yml"],
-};
 
 /** Pull `{owner, repo}` from a GitHub URL or a bare `owner/repo`. Returns null on garbage. */
 export function parseRepoUrl(
@@ -129,8 +126,9 @@ export function manifestIssuerRefusal(env: Env, issuer: string): string | null {
   );
 }
 
-/** Read the first existing variant of a `.pkey/` file (extensions tried in order). */
-async function readPkeyFile(
+/** Read the first existing variant of a manifest document (`.polaris/` then `.pkey/`, JSON
+ *  before YAML — see `manifestFiles.ts`). */
+async function readManifestFile(
   token: string,
   owner: string,
   repo: string,
@@ -186,16 +184,16 @@ export async function linkRepo(
     };
   }
 
-  // Read the `.pkey/` files (schema + product required, release optional). Missing required
+  // Read the manifest files (schema + product required, release optional). Missing required
   // files surface as parseManifest errors below.
   const files: Record<string, string> = {};
   try {
     for (const name of ["schema", "product", "release"] as const) {
-      const text = await readPkeyFile(
+      const text = await readManifestFile(
         token,
         owner,
         repo,
-        PKEY_FILES[name],
+        MANIFEST_FILES[name],
         fetchImpl,
       );
       if (text !== undefined) files[name] = text;
@@ -306,11 +304,17 @@ async function registerFromManifest(
       admin_group: manifest.product.adminGroup,
       branding_json: null,
       release_source: "github",
-      // Which Polaris services this product runs, in the SAME atomic batch as the row itself.
-      // Not applied afterwards like the fingerprint/auto-issue policies: enablement decides
-      // which routes a product has, so there must be no instant where a product row exists
-      // without it. A freshly linked product is always manifest-owned.
-      services_json: JSON.stringify(manifest.services),
+      // Which Polaris services this product runs — and, in the same value, who may register a
+      // device against it (`core/services.ts` explains why the two share a column). In the SAME
+      // atomic batch as the row itself, not applied afterwards like the fingerprint/auto-issue
+      // policies: enablement decides which routes a product has, so there must be no instant
+      // where a product row exists without it. A freshly linked product is manifest-owned.
+      services_json: serializeServices({
+        services: manifest.services,
+        ...(manifest.registration
+          ? { registration: manifest.registration }
+          : {}),
+      }),
       services_source: "manifest",
       created_at: now,
       modified_at: now,

@@ -209,7 +209,7 @@ describe("OIDC activation", () => {
 
     const req = mkReq("GET", {
       authorization: `Bearer ${token}`,
-      "x-pkey-version": "1.2.3",
+      "x-polaris-version": "1.2.3",
     });
     const trust = { [TEST_KID]: TEST_PUB };
 

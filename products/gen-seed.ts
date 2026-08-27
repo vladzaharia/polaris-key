@@ -8,6 +8,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Catalog, type ProductCatalog } from "@plrs/catalog";
+import {
+  normalizeModules,
+  servicesFromModules,
+  SERVICE_SLUGS,
+  REGISTRATION_POLICIES,
+  type RegistrationPolicy,
+} from "@plrs/manifest";
 
 interface Tier {
   id: string;
@@ -46,6 +53,9 @@ interface ProductDef {
   defaultMaxOfflineDays: number;
   defaultDeviceLimit: number;
   adminGroup: string;
+  /** `modules.<name>.enabled` — the same block a `.polaris/product` manifest carries. */
+  modules?: Record<string, { enabled?: boolean }>;
+  devices?: { registration?: string };
   oidc: {
     provider?: "platform" | "custom";
     issuer?: string;
@@ -95,8 +105,31 @@ function main(): void {
     "PRAGMA foreign_keys = OFF;",
   ];
 
+  // Service enablement + registration policy, read through the SAME manifest helpers the
+  // worker's link/resync path uses (`normalizeModules` → `servicesFromModules`), so a fixture
+  // seed and a linked repo can never disagree about what a `modules:` block means. The column
+  // is `services_source = 'manifest'`, which is what a freshly registered product is.
+  const services = servicesFromModules(normalizeModules(product.modules));
+  const registration = product.devices?.registration;
+  if (
+    registration !== undefined &&
+    !(REGISTRATION_POLICIES as readonly string[]).includes(registration)
+  ) {
+    console.error(
+      `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}`,
+    );
+    process.exit(2);
+  }
+  const servicesJson: Record<string, unknown> = {};
+  for (const slug of SERVICE_SLUGS)
+    servicesJson[slug] = { enabled: services[slug].enabled };
+  // Written only when declared — an absent key means "derive from the services" (wire v3 §6),
+  // which is a different thing from a policy nobody chose.
+  if (registration !== undefined)
+    servicesJson.registration = registration as RegistrationPolicy;
+
   out.push(
-    `INSERT INTO products (slug,name,signing_kid,signing_pub,compat_min,compat_max,default_max_offline_days,default_device_limit,admin_group,branding_json,created_at,modified_at) VALUES (${q(p)},${q(product.name)},${q(product.signingKid)},${q(product.signingPub)},${q(product.compatMin)},${q(product.compatMax)},${product.defaultMaxOfflineDays},${product.defaultDeviceLimit},${q(product.adminGroup)},NULL,${now},${now});`,
+    `INSERT INTO products (slug,name,signing_kid,signing_pub,compat_min,compat_max,default_max_offline_days,default_device_limit,admin_group,branding_json,services_json,services_source,created_at,modified_at) VALUES (${q(p)},${q(product.name)},${q(product.signingKid)},${q(product.signingPub)},${q(product.compatMin)},${q(product.compatMax)},${product.defaultMaxOfflineDays},${product.defaultDeviceLimit},${q(product.adminGroup)},NULL,${j(servicesJson)},'manifest',${now},${now});`,
   );
   out.push(
     `INSERT INTO product_schema (product,catalog_version,catalog_json,active,created_at) VALUES (${q(p)},1,${q(catalogRaw)},1,${now});`,

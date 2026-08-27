@@ -162,7 +162,7 @@ describe("GET /<product>/config end to end on workerd", () => {
       method: "POST",
       headers: {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "workerd-smoke-1",
+        "x-polaris-device": "workerd-smoke-1",
       },
     });
     expect(activated.status).toBe(200);
@@ -170,7 +170,10 @@ describe("GET /<product>/config end to end on workerd", () => {
     expect(token).toBeTruthy();
 
     const res = await SELF.fetch(`https://key.plrs.im/${SLUG}/config`, {
-      headers: { authorization: `Bearer ${token}`, "x-pkey-version": "1.2.3" },
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-polaris-version": "1.2.3",
+      },
     });
     // THE R10-01 ASSERTION. Before the interpreting validator this was
     // `500 {"error":"catalog_unavailable"}` on every poll, for every device, warm or cold.

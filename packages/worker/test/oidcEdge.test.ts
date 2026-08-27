@@ -321,7 +321,7 @@ describe("handleAuthPoll states", () => {
       token: string;
     };
     expect(body.status).toBe("ready");
-    expect(body.token.startsWith("pkeyt_")).toBe(true);
+    expect(body.token.startsWith("plrst_")).toBe(true);
     // The flow record is deleted after a ready poll → a second poll times out.
     expect(
       ((await (await poll("s3")).json()) as { status: string }).status,
@@ -394,7 +394,7 @@ describe("handleAuthPoll states", () => {
     );
     const body = (await res.json()) as { status: string; token: string };
     expect(body.status).toBe("ready");
-    expect(body.token.startsWith("pkeyt_")).toBe(true);
+    expect(body.token.startsWith("plrst_")).toBe(true);
   });
 
   it("renders and confirms the JSON device verification page", async () => {
@@ -496,7 +496,7 @@ describe("authorizeAndMint", () => {
       "dev-oidc",
       NOW,
     );
-    expect(token.startsWith("pkeyt_")).toBe(true);
+    expect(token.startsWith("plrst_")).toBe(true);
     // The KV token record is product-scoped.
     expect(kv.keys().some((k) => k.startsWith("p:djdl:token:"))).toBe(true);
   });

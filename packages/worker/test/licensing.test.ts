@@ -6,6 +6,7 @@ import type { ConfigDoc } from "@plrs/protocol/config";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
+  UNKNOWN_DEVICE_TOKEN,
   makeEnv,
   mkReq,
   NOW,
@@ -39,7 +40,10 @@ async function activate(
   device: string,
 ): Promise<string> {
   const res = await handleActivate(
-    mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": device }),
+    mkReq("POST", {
+      authorization: `Bearer ${key}`,
+      "x-polaris-device": device,
+    }),
     env,
     db,
     product,
@@ -81,7 +85,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -234,7 +238,7 @@ describe("licensing", () => {
     const first = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -246,7 +250,7 @@ describe("licensing", () => {
     const second = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
         "if-none-match": etag,
       }),
       env,
@@ -267,7 +271,7 @@ describe("licensing", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-2",
+        "x-polaris-device": "dev-2",
       }),
       env,
       db,
@@ -289,7 +293,7 @@ describe("licensing", () => {
     const first = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -308,7 +312,7 @@ describe("licensing", () => {
     const second = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-2",
+        "x-polaris-device": "dev-2",
       }),
       env,
       db,
@@ -395,7 +399,7 @@ describe("licensing", () => {
     const rejected = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -415,7 +419,7 @@ describe("licensing", () => {
     const again = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -435,7 +439,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.0.0",
+        "x-polaris-version": "1.0.0",
       }),
       env,
       db,
@@ -455,8 +459,8 @@ describe("licensing", () => {
   it("rejects an unknown token", async () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
-        authorization: "Bearer pkeyt_nope",
-        "x-pkey-version": "1.2.3",
+        authorization: `Bearer ${UNKNOWN_DEVICE_TOKEN}`,
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -479,7 +483,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -563,7 +567,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -595,7 +599,7 @@ describe("licensing", () => {
     await activate(env, db, product, key, "dev-1");
 
     const missing = await handleToken(
-      mkReq("POST", { "x-pkey-device": "dev-1" }),
+      mkReq("POST", { "x-polaris-device": "dev-1" }),
       env,
       db,
       product,
@@ -605,8 +609,8 @@ describe("licensing", () => {
 
     const unknown = await handleToken(
       mkReq("POST", {
-        authorization: "Bearer pkeyt_nope",
-        "x-pkey-device": "dev-1",
+        authorization: `Bearer ${UNKNOWN_DEVICE_TOKEN}`,
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -625,7 +629,7 @@ describe("licensing", () => {
     const res = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${oldToken}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -647,7 +651,7 @@ describe("licensing", () => {
     const oldConfig = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${oldToken}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -659,7 +663,7 @@ describe("licensing", () => {
     const newConfig = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${newToken}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -676,7 +680,7 @@ describe("licensing", () => {
     const res = await handleToken(
       mkReq("POST", {
         authorization: `Bearer ${token}`,
-        "x-pkey-device": "dev-2",
+        "x-polaris-device": "dev-2",
       }),
       env,
       db,
@@ -688,7 +692,7 @@ describe("licensing", () => {
     const stillValid = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.2.3",
+        "x-polaris-version": "1.2.3",
       }),
       env,
       db,
@@ -714,8 +718,8 @@ describe("licensing", () => {
     const blockedRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${blockedToken}`,
-        "x-pkey-version": "1.0.0",
-        "x-pkey-channel": "staging",
+        "x-polaris-version": "1.0.0",
+        "x-polaris-channel": "staging",
       }),
       env,
       db,
@@ -742,8 +746,8 @@ describe("licensing", () => {
     const okRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${grantedToken}`,
-        "x-pkey-version": "1.0.0",
-        "x-pkey-channel": "staging",
+        "x-polaris-version": "1.0.0",
+        "x-polaris-channel": "staging",
       }),
       env,
       db,
@@ -762,7 +766,7 @@ describe("licensing", () => {
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "3.0.0",
+        "x-polaris-version": "3.0.0",
       }),
       env,
       db,
@@ -778,7 +782,7 @@ describe("licensing", () => {
     const okRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.5.0",
+        "x-polaris-version": "1.5.0",
       }),
       env,
       db,
@@ -800,8 +804,8 @@ describe("licensing", () => {
     const chanRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.5.0",
-        "x-pkey-channel": "staging",
+        "x-polaris-version": "1.5.0",
+        "x-polaris-channel": "staging",
       }),
       env,
       db,
@@ -814,7 +818,7 @@ describe("licensing", () => {
     const winRes = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "3.0.0",
+        "x-polaris-version": "3.0.0",
       }),
       env,
       db,

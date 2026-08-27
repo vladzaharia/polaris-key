@@ -20,7 +20,12 @@ import {
   type AutoIssuePolicy,
   type FingerprintPolicy,
 } from "../fingerprint.js";
-import { parseServices, type ServicesMap } from "./services.js";
+import {
+  parseServices,
+  resolveRegistration,
+  type RegistrationPolicy,
+  type ServicesMap,
+} from "./services.js";
 
 export interface Product {
   slug: string;
@@ -39,6 +44,9 @@ export interface Product {
   /** Which Polaris services this product runs (design spec §2.2). Always complete: a row that
    *  has never been written reads back as the defaults, i.e. today's behaviour. */
   services: ServicesMap;
+  /** Who may mint a device token here (wire v3 §6). Already RESOLVED — an undeclared policy is
+   *  derived from `services` at load, so no caller re-implements the derivation. */
+  registration: RegistrationPolicy;
 }
 
 export interface PublicSigningKey {
@@ -104,6 +112,7 @@ export async function loadProduct(
       id: keyRow.kid,
     });
     const schema = await getActiveSchema(db, slug);
+    const parsedServices = parseServices(row.services_json);
     return {
       slug: row.slug,
       name: row.name,
@@ -118,7 +127,11 @@ export async function loadProduct(
       schemaVersion: schema?.catalog_version ?? 1,
       fingerprintPolicy: parseFingerprintPolicy(row.fingerprint_policy_json),
       autoIssue: parseAutoIssue(row.auto_issue_json),
-      services: parseServices(row.services_json),
+      services: parsedServices.services,
+      registration: resolveRegistration(
+        parsedServices.services,
+        parsedServices.registration,
+      ),
     };
   } catch {
     return null;

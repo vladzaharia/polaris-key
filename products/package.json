@@ -9,6 +9,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@plrs/catalog": "workspace:*"
+    "@plrs/catalog": "workspace:*",
+    "@plrs/manifest": "workspace:*"
   }
 }

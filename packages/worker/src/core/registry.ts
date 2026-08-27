@@ -40,6 +40,26 @@ export interface ServiceContext {
 }
 
 /**
+ * What a service is given when Core assembles `/.well-known/polaris.json`.
+ *
+ * `base` is the product's absolute URL prefix (`https://host/<slug>`), passed in rather than
+ * derived: a descriptor has no request to read an origin off, and a document that mixed
+ * absolute core URLs with relative service paths would make every consumer implement its own
+ * resolution rule. One shape, absolute throughout, decided by the one caller that knows which
+ * origin the client actually reached.
+ *
+ * `db` is here because a fragment reports CAPABILITY, not just routes — whether this product has
+ * any edge-mint recipes, which channels Release syncs — and every one of those answers is a row.
+ * A descriptor that opened its own connection could not be tested (see `ServiceContext`).
+ */
+export interface DiscoveryContext {
+  product: Product;
+  env: Env;
+  db: Db;
+  base: string;
+}
+
+/**
  * One service's contract with Core.
  *
  * `handle` returns `null` — not a 404 — when no route inside the service matched. The
@@ -51,12 +71,11 @@ export interface ServiceDescriptor {
   slug: ServiceSlug;
   /** Handle a product-scoped request. `null` = no route matched inside this service. */
   handle(ctx: ServiceContext): Promise<Response | null>;
-  /** This service's fragment of `/.well-known/polaris.json`. Only called when enabled — Core
-   *  emits `{enabled:false}` and nothing else for the rest (design spec §4.3). */
-  discoveryFragment(
-    product: Product,
-    env: Env,
-  ): Promise<Record<string, unknown>>;
+  /**
+   * This service's fragment of `/.well-known/polaris.json` (design spec §4.3). Only called when
+   * enabled — Core emits `{enabled:false}` and nothing else for the rest.
+   */
+  discoveryFragment(ctx: DiscoveryContext): Promise<Record<string, unknown>>;
   /** Handle `/manage/api/products/<slug>/<service>/…`. `null` = no route matched. */
   adminHandle?(
     ctx: ServiceContext & { session: AdminSession },

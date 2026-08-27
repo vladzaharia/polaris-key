@@ -36,7 +36,7 @@ describe("matchRoute — platform + manage + portal (matched before product slug
     expect(matchRoute("/callback").kind).toBe("portalCallback");
     expect(matchRoute("/logout").kind).toBe("portalLogout");
     expect(matchRoute("/magic/verify").kind).toBe("portalMagicVerify");
-    expect(matchRoute("/download/pkeyt_abc").kind).toBe("portalDownload");
+    expect(matchRoute("/download/Ab3-_xyz").kind).toBe("portalDownload");
   });
 });
 
@@ -46,6 +46,7 @@ describe("matchRoute — product-scoped routes", () => {
     ["/djdl/.well-known/jwks.json", "jwks"],
     ["/djdl/devices", "devices"],
     ["/djdl/devices/report", "report"],
+    ["/djdl/devices/register", "register"],
     ["/djdl/session", "browserSession"],
     ["/djdl/session/license", "browserSessionLicense"],
     ["/djdl/auth/start", "authStart"],
@@ -217,6 +218,19 @@ describe("matchRoute — cli / dmg / appcast(channel)", () => {
       kind: "devices",
       product: "djdl",
       deviceId: "dev-1",
+    });
+  });
+
+  it("never reads `report` or `register` as a device id", () => {
+    // Both sit under `/devices/`, so the literal cases have to be matched before the
+    // `/devices/<id>` pattern — otherwise a device could be created with the id `register`
+    // and shadow the route.
+    expect(matchRoute("/djdl/devices/register").kind).toBe("register");
+    expect(matchRoute("/djdl/devices/report").kind).toBe("report");
+    // …and a device id that merely resembles one is still a device id.
+    expect(matchRoute("/djdl/devices/registered")).toMatchObject({
+      kind: "devices",
+      deviceId: "registered",
     });
   });
 

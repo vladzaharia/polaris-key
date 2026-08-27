@@ -8,6 +8,15 @@
   "defaultMaxOfflineDays": 30,
   "defaultDeviceLimit": 5,
   "adminGroup": "admins",
+  "modules": {
+    "license": { "enabled": true },
+    "config": { "enabled": true },
+    "release": { "enabled": true },
+    "update": { "enabled": true }
+  },
+  "devices": {
+    "registration": "requires-license"
+  },
   "oidc": {
     "provider": "platform",
     "redirectUris": ["https://key.plrs.im/djdl/auth/callback"],

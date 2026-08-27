@@ -84,7 +84,7 @@ describe("POST /<product>/enroll", () => {
     return handleEnroll(
       mkReq(
         "POST",
-        { "x-pkey-device": device },
+        { "x-polaris-device": device },
         components
           ? { fingerprint: { components, hwid: "ignored" } }
           : undefined,
@@ -103,7 +103,7 @@ describe("POST /<product>/enroll", () => {
       token: string;
       license: { id: string; tierId: string };
     };
-    expect(body.token).toMatch(/^pkeyt_/);
+    expect(body.token).toMatch(/^plrst_/);
     expect(body.license.tierId).toBe("free");
 
     const row = await getLicense(db, "djdl", body.license.id);
@@ -149,7 +149,7 @@ describe("POST /<product>/enroll", () => {
 
   it("FIXED (R3-11): one machine holds exactly one seat however many device ids it presents", async () => {
     // Was: each new device id from the same machine consumed another seat, so this test
-    // asserted that the THIRD enrolment hit the tier's limit of 2. `X-PKey-Device` is a
+    // asserted that the THIRD enrolment hit the tier's limit of 2. `X-Polaris-Device` is a
     // client-chosen string, so that made the seat count a function of how many times the
     // caller cleared its config. `authorizeDevice` now coalesces on the server-computed hwid:
     // the newest device id wins and the stale one is retired.
@@ -180,7 +180,7 @@ describe("POST /<product>/enroll", () => {
       const res = await handleActivate(
         mkReq(
           "POST",
-          { authorization: `Bearer ${key}`, "x-pkey-device": `shared-${i}` },
+          { authorization: `Bearer ${key}`, "x-polaris-device": `shared-${i}` },
           { fingerprint: { components: machine, hwid: "x" } },
         ),
         env,
@@ -193,7 +193,7 @@ describe("POST /<product>/enroll", () => {
     const third = await handleActivate(
       mkReq(
         "POST",
-        { authorization: `Bearer ${key}`, "x-pkey-device": "shared-2" },
+        { authorization: `Bearer ${key}`, "x-polaris-device": "shared-2" },
         { fingerprint: { components: MACHINE_C, hwid: "x" } },
       ),
       env,
@@ -264,7 +264,7 @@ describe("POST /<product>/enroll", () => {
     };
     const req = mkReq("GET", {
       authorization: `Bearer ${body.token}`,
-      "x-pkey-device": "dev-a",
+      "x-polaris-device": "dev-a",
     });
     const p = await product();
     // An enrolled device holds an ordinary licence, so BOTH halves of the split document are
@@ -318,7 +318,7 @@ describe("merge on sign-in", () => {
     const res = await handleEnroll(
       mkReq(
         "POST",
-        { "x-pkey-device": device },
+        { "x-polaris-device": device },
         { fingerprint: { components: MACHINE_A, hwid: "x" } },
       ),
       env,

@@ -65,6 +65,12 @@ const FAIL_MODE: Record<string, FailMode> = {
   token: "closed",
   enroll: "closed",
   mint: "closed",
+  // `POST /<p>/devices/register` (wire v3 §6). The strongest case in this table for failing
+  // closed: it mints a device token from nothing — no key, no session, no prior state — so
+  // with the limiter gone it is an unbounded free-credential faucet, and the seat/telemetry
+  // rows it writes are the DoS amplifier. A 429 tells a real client to back off; an unlimited
+  // mint tells an attacker to keep going.
+  register: "closed",
   browserSessionLicense: "closed",
   authStart: "closed",
   authDeviceStart: "closed",

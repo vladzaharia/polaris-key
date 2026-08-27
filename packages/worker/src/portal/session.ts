@@ -6,7 +6,7 @@ import type { Env } from "../env.js";
  * §5.4 orders ahead of the real one. The portal cookie is already `Path=/` with no `Domain`,
  * so the prefix costs nothing here beyond invalidating sessions issued before the deploy.
  */
-export const PORTAL_COOKIE = "__Host-pkey_portal";
+export const PORTAL_COOKIE = "__Host-plrs_portal";
 export const PORTAL_CSRF_HEADER = "X-PKey-Portal-CSRF";
 
 const SESSION_TTL_SECONDS = 14 * 24 * 60 * 60;
@@ -71,7 +71,7 @@ function safeEqual(a: string, b: string): boolean {
  * realm tag meant the boundary between "anyone with an email address" and "platform
  * administrator" was a coincidence of JSON field names.
  */
-const PORTAL_SESSION_DOMAIN = "pkey.portal.v1|";
+const PORTAL_SESSION_DOMAIN = "plrs.portal.v1|";
 
 function signingInput(body: string): Uint8Array {
   return new TextEncoder().encode(PORTAL_SESSION_DOMAIN + body);

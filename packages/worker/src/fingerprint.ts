@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// Hardware-fingerprint matching. The device id (`X-PKey-Device`) stays the stable primary key
+// Hardware-fingerprint matching. The device id (`X-Polaris-Device`) stays the stable primary key
 // every existing row and signed doc is bound to; the fingerprint is a separate, server-verified
 // signal layered on top, so enabling it can never orphan an existing device.
 //

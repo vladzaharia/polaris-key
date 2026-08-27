@@ -99,7 +99,7 @@ function activateReq(
 ): Request {
   return mkReq(
     "POST",
-    { authorization: `Bearer ${key}`, "x-pkey-device": device },
+    { authorization: `Bearer ${key}`, "x-polaris-device": device },
     components ? { fingerprint: { components, hwid: "forged" } } : undefined,
   );
 }
@@ -178,7 +178,7 @@ describe("R3-01 build gate is attacker-controlled", () => {
     h = await harness();
   });
 
-  it("FIXED (R3-01): X-PKey-Version: 0.0.0-dev no longer defeats the version window", async () => {
+  it("FIXED (R3-01): X-Polaris-Version: 0.0.0-dev no longer defeats the version window", async () => {
     // An operator pins this license to >= 5.0.0 (the remote re-licensing / forced-upgrade
     // control). gate.ts short-circuited on isDevBuild BEFORE the window was evaluated, so the
     // control was defeated by a header any caller can type. The bypass is now opt-in.
@@ -186,14 +186,14 @@ describe("R3-01 build gate is attacker-controlled", () => {
     const { key } = await seedLicenseWithKey(h.db, "djdl", { tierId: "pro" });
     const token = await activate(h, key, "dev-1");
 
-    const honest = await licenseDoc(h, token, { "x-pkey-version": "1.0.0" });
+    const honest = await licenseDoc(h, token, { "x-polaris-version": "1.0.0" });
     expect(honest.status).toBe(403);
     expect(await honest.json()).toMatchObject({
       error: { code: "version_blocked", reason: "version-too-old" },
     });
 
     const bypass = await licenseDoc(h, token, {
-      "x-pkey-version": "0.0.0-dev+abc",
+      "x-polaris-version": "0.0.0-dev+abc",
     });
     expect(bypass.status).toBe(403);
     expect(await bypass.json()).toMatchObject({
@@ -208,8 +208,8 @@ describe("R3-01 build gate is attacker-controlled", () => {
     const token = await activate(h, key, "dev-1");
 
     const honest = await licenseDoc(h, token, {
-      "x-pkey-version": "9.9.9",
-      "x-pkey-channel": "staging",
+      "x-polaris-version": "9.9.9",
+      "x-polaris-channel": "staging",
     });
     expect(honest.status).toBe(403);
     expect(await honest.json()).toMatchObject({
@@ -217,8 +217,8 @@ describe("R3-01 build gate is attacker-controlled", () => {
     });
 
     const bypass = await licenseDoc(h, token, {
-      "x-pkey-version": "0.0.0-dev",
-      "x-pkey-channel": "staging",
+      "x-polaris-version": "0.0.0-dev",
+      "x-polaris-channel": "staging",
     });
     expect(bypass.status).toBe(403);
 
@@ -231,8 +231,8 @@ describe("R3-01 build gate is attacker-controlled", () => {
     expect(
       (
         await licenseDoc(h, devToken, {
-          "x-pkey-version": "0.0.0-dev",
-          "x-pkey-channel": "staging",
+          "x-polaris-version": "0.0.0-dev",
+          "x-polaris-channel": "staging",
         })
       ).status,
     ).toBe(200);
@@ -248,8 +248,8 @@ describe("R3-01 build gate is attacker-controlled", () => {
     // entitlement-checked, so a genuine staging build just declared a word nobody parsed.
     for (const claimed of ["staging-2", "STAGING", "beta"]) {
       const res = await licenseDoc(h, token, {
-        "x-pkey-version": "9.9.9",
-        "x-pkey-channel": claimed,
+        "x-polaris-version": "9.9.9",
+        "x-polaris-channel": claimed,
       });
       expect(res.status).toBe(403);
       expect(await res.json()).toMatchObject({
@@ -261,8 +261,8 @@ describe("R3-01 build gate is attacker-controlled", () => {
     expect(
       (
         await licenseDoc(h, token, {
-          "x-pkey-version": "9.9.9",
-          "x-pkey-channel": "stable",
+          "x-polaris-version": "9.9.9",
+          "x-polaris-channel": "stable",
         })
       ).status,
     ).toBe(200);
@@ -300,11 +300,11 @@ describe("R3-01 build gate is attacker-controlled", () => {
     for (const version of ["0.0.0-pr-42+sha", "0.0.0-pr42+sha"]) {
       const extras: Record<string, string>[] = [
         {},
-        { "x-pkey-channel": "stable" },
+        { "x-polaris-channel": "stable" },
       ];
       for (const extra of extras) {
         const res = await handleLicenseDocument(
-          docReq(token, { "x-pkey-version": version, ...extra }),
+          docReq(token, { "x-polaris-version": version, ...extra }),
           h.env,
           h.db,
           product,
@@ -337,7 +337,7 @@ describe("R3-01 build gate is attacker-controlled", () => {
       expect(
         (
           await handleLicenseDocument(
-            docReq(prToken, { "x-pkey-version": version }),
+            docReq(prToken, { "x-polaris-version": version }),
             h.env,
             h.db,
             product,
@@ -514,7 +514,7 @@ describe("R3-03 free-license farming", () => {
     return handleEnroll(
       mkReq(
         "POST",
-        { "x-pkey-device": device },
+        { "x-polaris-device": device },
         { fingerprint: { components, hwid: "forged" } },
       ),
       h.env,
@@ -689,9 +689,9 @@ describe("R3-05 fingerprint is activation-only", () => {
     // accepts, let alone checks, a fingerprint — matchFingerprint has exactly one call site
     // (core/devices.ts), inside reconcileDeviceHardware.
     const alien = {
-      "x-pkey-device": "victim-mac",
-      "x-pkey-platform": "win32",
-      "x-pkey-arch": "x64",
+      "x-polaris-device": "victim-mac",
+      "x-polaris-platform": "win32",
+      "x-polaris-arch": "x64",
       "user-agent": "attacker/1.0",
     };
 
@@ -739,7 +739,7 @@ describe("R3-05 fingerprint is activation-only", () => {
     });
 
     // Was: five activations from ONE machine took five of the five seats, because the seat
-    // check keys on `X-PKey-Device` — a client-chosen string — and `findFingerprintByHwid`,
+    // check keys on `X-Polaris-Device` — a client-chosen string — and `findFingerprintByHwid`,
     // the only query that would have noticed the five identical server-computed hwids, had
     // zero callers in src/. It is now called: the newest device id wins and the stale ones
     // are retired, so the machine converges on a single seat.
@@ -803,8 +803,8 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
     });
     const token = await activate(h, key, "chan-1");
     const res = await licenseDoc(h, token, {
-      "x-pkey-version": "9.9.9",
-      "x-pkey-channel": "staging",
+      "x-polaris-version": "9.9.9",
+      "x-polaris-channel": "staging",
     });
     expect(res.status).toBe(200);
   });
@@ -828,7 +828,7 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
     // The two halves now ride different documents, so the asymmetry is read off both.
     const cfg = await configDocOf(await configDoc(h, token));
     const lic = await docOf(
-      await licenseDoc(h, token, { "x-pkey-version": "1.0.0" }),
+      await licenseDoc(h, token, { "x-polaris-version": "1.0.0" }),
     );
 
     // core/payload.ts validatePayload — config is pruned against the catalog, entitlements are
@@ -859,7 +859,7 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
 
     // The license document merges the device layer (core/payload.ts) and reports a limit of 1...
     const doc = await docOf(
-      await licenseDoc(h, token, { "x-pkey-version": "1.0.0" }),
+      await licenseDoc(h, token, { "x-polaris-version": "1.0.0" }),
     );
     expect(doc.entitlements.deviceLimit).toMatchObject({ value: 1 });
 

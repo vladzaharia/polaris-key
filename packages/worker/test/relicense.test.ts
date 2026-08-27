@@ -61,7 +61,7 @@ describe("remote re-licensing", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${seeded.key}`,
-        "x-pkey-device": DEVICE,
+        "x-polaris-device": DEVICE,
       }),
       env,
       db,
@@ -75,7 +75,7 @@ describe("remote re-licensing", () => {
     return handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-device": DEVICE,
+        "x-polaris-device": DEVICE,
       }),
       env,
       db,
@@ -172,7 +172,7 @@ describe("remote re-licensing", () => {
     const second = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${secondKey}`,
-        "x-pkey-device": "device-two",
+        "x-polaris-device": "device-two",
       }),
       env,
       db,
@@ -203,7 +203,7 @@ describe("remote re-licensing", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "device-new",
+        "x-polaris-device": "device-new",
       }),
       env,
       db,

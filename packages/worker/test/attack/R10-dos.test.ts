@@ -132,7 +132,7 @@ async function activate(
   const res = await handleActivate(
     mkReq("POST", {
       authorization: `Bearer ${key}`,
-      "x-pkey-device": device,
+      "x-polaris-device": device,
       ...extraHeaders,
     }),
     env,
@@ -477,6 +477,7 @@ function makeReleaseProduct(): Product {
     fingerprintPolicy: DEFAULT_FINGERPRINT_POLICY,
     autoIssue: DEFAULT_AUTO_ISSUE,
     services: DEFAULT_SERVICES,
+    registration: "requires-license",
   };
 }
 
@@ -677,7 +678,7 @@ describe("R10-03 rateLimitOk fail mode", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -1035,11 +1036,11 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "user-agent": big,
-        "x-pkey-platform": big,
-        "x-pkey-arch": big,
-        "x-pkey-version": big,
-        "x-pkey-sdk": big,
-        "x-pkey-sdk-version": big,
+        "x-polaris-platform": big,
+        "x-polaris-arch": big,
+        "x-polaris-version": big,
+        "x-polaris-sdk": big,
+        "x-polaris-sdk-version": big,
       }),
       env,
       db,

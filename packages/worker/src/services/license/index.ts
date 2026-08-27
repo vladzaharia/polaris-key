@@ -12,27 +12,25 @@
  * is what it refuses.
  */
 
-import type { ServiceDescriptor } from "../../core/registry.js";
-import type { Env } from "../../core/platform.js";
-import type { Product } from "../../core/products.js";
+import type {
+  DiscoveryContext,
+  ServiceDescriptor,
+} from "../../core/registry.js";
 import { handleLicenseRoutes } from "./routes.js";
 
 export const licenseService: ServiceDescriptor = {
   slug: "license",
   handle: handleLicenseRoutes,
-  /**
-   * License's slice of `/.well-known/polaris.json`. Core assembles the whole document from the
-   * enabled services' fragments in T1.6; until then it is only reachable through the registry,
-   * so this is the shape that lands there rather than a second discovery implementation.
-   */
-  discoveryFragment: async (product: Product, _env: Env) => ({
+  /** License's slice of `/.well-known/polaris.json` (design spec §4.3): the activation, token
+   *  and document URLs a client needs to obtain and refresh a grant. */
+  discoveryFragment: async ({ base }: DiscoveryContext) => ({
     enabled: true,
     endpoints: {
-      activate: `/${product.slug}/license/activate`,
-      enroll: `/${product.slug}/license/enroll`,
-      token: `/${product.slug}/license/token`,
-      deauthorize: `/${product.slug}/license/deauthorize`,
-      document: `/${product.slug}/license/document`,
+      activate: `${base}/license/activate`,
+      enroll: `${base}/license/enroll`,
+      token: `${base}/license/token`,
+      deauthorize: `${base}/license/deauthorize`,
+      document: `${base}/license/document`,
     },
   }),
 };

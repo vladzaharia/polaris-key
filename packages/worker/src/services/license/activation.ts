@@ -15,7 +15,7 @@
  * signing key is the product's, and the document carries `aud = product`.
  */
 
-import { HEADER_DEVICE } from "@plrs/protocol";
+import { HEADER_DEVICE } from "@plrs/protocol/core";
 import type { Env, Db } from "../../core/platform.js";
 import { bearer, hashKey, deleteTokenRecord } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";

@@ -26,7 +26,7 @@ import type { Env } from "../env.js";
  *
  * `__Host-` is not decoration — it is the only cookie property a *sibling subdomain* cannot
  * defeat. Without it, anyone who controls (or has XSS on) any `*.plrs.im` host can set
- * `pkey_admin=<their token>; Domain=plrs.im; Path=/manage/api`; RFC 6265 §5.4 orders cookies
+ * `plrs_admin=<their token>; Domain=plrs.im; Path=/manage/api`; RFC 6265 §5.4 orders cookies
  * by descending path length, so that shadow is sent FIRST and wins (R1-08). The `__Host-`
  * prefix makes the browser refuse such a cookie outright: a `__Host-` cookie must be
  * `Secure`, must carry no `Domain`, and must be `Path=/`.
@@ -41,7 +41,7 @@ import type { Env } from "../env.js";
  *
  * Renaming invalidates sessions issued before the deploy; admins re-auth with one redirect.
  */
-export const ADMIN_COOKIE = "__Host-pkey_admin";
+export const ADMIN_COOKIE = "__Host-plrs_admin";
 
 /** The CSRF header the SPA must echo on every mutation (double-submit). */
 export const CSRF_HEADER = "X-PKey-CSRF";
@@ -126,12 +126,12 @@ function randomToken(byteLength: number): string {
  * was that the two JSON bodies happened to carry different field names: add a `sub` and a
  * `groups` array to `PortalSession` — both natural next features — and the realms collapse.
  *
- * Signing `"pkey.admin.v1|" + body` instead of `body` makes the realms cryptographically
+ * Signing `"plrs.admin.v1|" + body` instead of `body` makes the realms cryptographically
  * distinct regardless of payload shape: a portal token's signature is over a different
  * message, so it cannot verify here even with an identical key and an identical body. The
  * `.v1` allows a future rotation of the scheme itself.
  */
-const ADMIN_SESSION_DOMAIN = "pkey.admin.v1|";
+const ADMIN_SESSION_DOMAIN = "plrs.admin.v1|";
 
 /** The exact bytes that get HMAC'd: the realm tag followed by the encoded body. */
 function signingInput(body: string): Uint8Array {

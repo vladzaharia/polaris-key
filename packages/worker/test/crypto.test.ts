@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   hashKey,
+  isDeviceToken,
+  mintDeviceToken,
   mintLicenseKey,
-  mintToken,
+  mintOpaqueToken,
   productFromKey,
   randomId,
   sha256Hex,
@@ -25,16 +27,49 @@ describe("mintLicenseKey", () => {
   });
 });
 
-describe("mintToken", () => {
-  it("is an opaque pkeyt_ token", () => {
-    const t = mintToken();
-    expect(t.startsWith("pkeyt_")).toBe(true);
-    // Not product-identifiable.
+describe("mintDeviceToken", () => {
+  it("is the wire v3 §6 device principal: plrst_ + 43 base64url chars", () => {
+    const t = mintDeviceToken();
+    expect(t).toMatch(/^plrst_[A-Za-z0-9_-]{43}$/);
+    // Not product-identifiable — a device token must not leak which product it belongs to.
     expect(productFromKey(t)).toBeNull();
   });
 
   it("is unique across calls", () => {
-    expect(mintToken()).not.toBe(mintToken());
+    expect(mintDeviceToken()).not.toBe(mintDeviceToken());
+  });
+});
+
+describe("isDeviceToken", () => {
+  it("accepts what mintDeviceToken produces", () => {
+    expect(isDeviceToken(mintDeviceToken())).toBe(true);
+  });
+
+  it("REJECTS the retired pkeyt_ prefix (wire v3 §8, no migration window)", () => {
+    expect(
+      isDeviceToken("pkeyt_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+    ).toBe(false);
+  });
+
+  it("rejects other credential shapes presented as a device token", () => {
+    expect(isDeviceToken(mintLicenseKey("djdl"))).toBe(false);
+    expect(isDeviceToken(mintOpaqueToken())).toBe(false);
+    expect(isDeviceToken("plrst_short")).toBe(false);
+    expect(isDeviceToken("plrst_" + "A".repeat(43) + "!")).toBe(false);
+    expect(isDeviceToken("")).toBe(false);
+  });
+});
+
+describe("mintOpaqueToken", () => {
+  it("carries no prefix at all — it names nothing by itself", () => {
+    const t = mintOpaqueToken();
+    expect(t).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(productFromKey(t)).toBeNull();
+    expect(isDeviceToken(t)).toBe(false);
+  });
+
+  it("is unique across calls", () => {
+    expect(mintOpaqueToken()).not.toBe(mintOpaqueToken());
   });
 });
 
@@ -54,7 +89,7 @@ describe("productFromKey", () => {
   });
   it("returns null for non-license strings", () => {
     expect(productFromKey("not-a-key")).toBeNull();
-    expect(productFromKey("pkeyt_opaqueXXXXXXXX")).toBeNull(); // token, not key
+    expect(productFromKey("plrst_opaqueXXXXXXXX")).toBeNull(); // token, not key
     expect(productFromKey("pkey_acme_short")).toBeNull(); // suffix too short (<8)
     expect(productFromKey("pkey__AbCdEfGhIjKl")).toBeNull(); // empty product
     expect(productFromKey("pkey_UPPER_AbCdEfGhIjKl")).toBeNull(); // uppercase slug illegal

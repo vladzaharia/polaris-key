@@ -70,7 +70,7 @@ describe("fingerprinted activation", () => {
     return handleActivate(
       mkReq(
         "POST",
-        { authorization: `Bearer ${key}`, "x-pkey-device": device },
+        { authorization: `Bearer ${key}`, "x-polaris-device": device },
         components
           ? { fingerprint: { components, hwid: "ignored" } }
           : undefined,
@@ -229,7 +229,7 @@ describe("device facts reporting", () => {
     const res = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": DEVICE,
+        "x-polaris-device": DEVICE,
       }),
       env,
       db,

@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import type { ManagedConfigDoc } from "@plrs/protocol";
-import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol";
+import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol/core";
 import { Catalog } from "@plrs/catalog";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
@@ -14,7 +14,7 @@ import {
   methodNotAllowed,
 } from "./core/errors.js";
 import { clientIp, rateLimitOk } from "./core/rateLimit.js";
-import { hashKey, mintToken, randomId } from "./crypto.js";
+import { hashKey, mintOpaqueToken, randomId } from "./crypto.js";
 import {
   getActiveSchema,
   getKey,
@@ -50,7 +50,7 @@ interface BrowserSessionRecord {
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 function cookieName(product: string): string {
-  return `pkey_${product.replace(/-/g, "_")}_session`;
+  return `plrs_${product.replace(/-/g, "_")}_session`;
 }
 
 function sessionKey(product: string, hash: string): string {
@@ -95,7 +95,7 @@ export async function createBrowserSession(
       extra?: Record<string, unknown>;
     }
 > {
-  const sessionToken = mintToken();
+  const sessionToken = mintOpaqueToken();
   const sessionHash = await hashKey(sessionToken, env.KEY_HASH_PEPPER);
   const deviceId = `browser:${license.id}`;
   const meta = req ? deviceMetadata(req) : null;

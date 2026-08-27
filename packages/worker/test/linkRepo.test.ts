@@ -491,7 +491,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
 
       const row = await getProduct(db, "acme");
       expect(row?.services_source).toBe("manifest");
-      expect(parseServices(row?.services_json ?? null)).toEqual({
+      expect(parseServices(row?.services_json ?? null).services).toEqual({
         license: { enabled: true },
         config: { enabled: true },
         release: { enabled: true },
@@ -515,7 +515,8 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ).toBe(true);
 
       expect(
-        parseServices((await getProduct(db, "acme"))?.services_json ?? null),
+        parseServices((await getProduct(db, "acme"))?.services_json ?? null)
+          .services,
       ).toEqual({
         license: { enabled: true },
         config: { enabled: true },
@@ -551,7 +552,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
 
       const services = parseServices(
         (await getProduct(db, "acme"))?.services_json ?? null,
-      );
+      ).services;
       expect(services.release.enabled).toBe(true);
       expect(services.identity.enabled).toBe(true);
     });
@@ -596,10 +597,211 @@ describe("linkRepo (GitHub-forward product creation)", () => {
 
       const row = await getProduct(db, "acme");
       expect(row?.services_source).toBe("admin");
-      const services = parseServices(row?.services_json ?? null);
+      const services = parseServices(row?.services_json ?? null).services;
       expect(services.config.enabled).toBe(false);
       expect(services.release.enabled).toBe(false);
       expect(services.identity.enabled).toBe(false);
+    });
+  });
+
+  // ── `.polaris/` ↔ `.pkey/` dual-read (wire v3 §8, plan §R3) ──────────────────────────────
+  //
+  // The rule is PREFER-NEW, PER FILE. The reason it is per file and not per directory is the
+  // mixed case below: a repo migrated one document at a time must keep resolving, or creating
+  // the first `.polaris/` file silently stops three `.pkey/` ones from being read.
+  describe("manifest directory dual-read", () => {
+    const REGISTRATION_PRODUCT_JSON = JSON.stringify({
+      slug: "acme",
+      name: "Acme",
+      modules: { license: { enabled: false }, config: { enabled: true } },
+      devices: { registration: "open" },
+    });
+
+    it("reads a repo that has fully moved to .polaris/", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      const { fetchImpl, calls } = stubFetch({
+        ".polaris/schema.json": SCHEMA_JSON,
+        ".polaris/product.json": PRODUCT_JSON,
+        ".polaris/release.json": RELEASE_JSON,
+      });
+      const linked = await linkRepo(
+        env,
+        db,
+        "acme-org/acme-app",
+        NOW,
+        fetchImpl,
+      );
+      expect(linked.ok).toBe(true);
+      expect((await getProduct(db, "acme"))?.name).toBe("Acme");
+      // `.polaris/` is tried FIRST — the new directory is not a fallback.
+      const contents = calls.filter((u) => u.includes("/contents/"));
+      expect(contents[0]).toContain(".polaris/schema.json");
+    });
+
+    it("still reads a repo that has not moved at all", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      const { fetchImpl } = stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/product.json": PRODUCT_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+      ).toBe(true);
+      expect((await getProduct(db, "acme"))?.name).toBe("Acme");
+    });
+
+    it("resolves a MIXED repo per file, not all-or-nothing", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      // product has moved; schema and release have not.
+      const { fetchImpl } = stubFetch({
+        ".polaris/product.json": PRODUCT_JSON,
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+      ).toBe(true);
+      // All three documents landed: the catalog came from `.pkey/`, the product from
+      // `.polaris/`, and the release config from `.pkey/`.
+      expect((await getActiveSchema(db, "acme"))?.catalog_version).toBe(1);
+      expect((await getProduct(db, "acme"))?.compat_min).toBe("1.0.0");
+      expect((await getReleaseConfig(db, "acme"))?.gh_owner).toBe("acme-org");
+    });
+
+    it("prefers a .polaris/ YAML over a .pkey/ JSON — the directory decides first", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      const { fetchImpl } = stubFetch({
+        ".polaris/product.yaml": "slug: acme\nname: Polaris Wins\n",
+        ".pkey/product.json": PRODUCT_JSON,
+        ".pkey/schema.json": SCHEMA_JSON,
+      });
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+      ).toBe(true);
+      expect((await getProduct(db, "acme"))?.name).toBe("Polaris Wins");
+    });
+
+    it("resync follows the same per-file preference", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      const link = stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/product.json": PRODUCT_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, link.fetchImpl)).ok,
+      ).toBe(true);
+
+      // The repo then moves `product` to `.polaris/` and declares a registration policy.
+      const { fetchImpl } = stubFetch({
+        ".polaris/product.json": REGISTRATION_PRODUCT_JSON,
+        ".pkey/schema.json": SCHEMA_JSON,
+        ".pkey/release.json": RELEASE_JSON,
+      });
+      const resync = await resyncRepo(env, db, "acme", NOW + 1, fetchImpl);
+      expect(resync.ok).toBe(true);
+
+      const parsed = parseServices(
+        (await getProduct(db, "acme"))?.services_json ?? null,
+      );
+      expect(parsed.services.license.enabled).toBe(false);
+      expect(parsed.registration).toBe("open");
+    });
+
+    it("persists a declared registration policy, and drops it when the manifest stops declaring one", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      const declared = stubFetch({
+        ".polaris/schema.json": SCHEMA_JSON,
+        ".polaris/product.json": REGISTRATION_PRODUCT_JSON,
+      });
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, declared.fetchImpl))
+          .ok,
+      ).toBe(true);
+      expect(
+        parseServices((await getProduct(db, "acme"))?.services_json ?? null)
+          .registration,
+      ).toBe("open");
+
+      // Removing `devices.registration` returns the product to the DERIVED default rather than
+      // freezing whatever it last said — which is why the key is absent, not defaulted, in the
+      // column.
+      const undeclared = stubFetch({
+        ".polaris/schema.json": SCHEMA_JSON,
+        ".polaris/product.json": JSON.stringify({
+          slug: "acme",
+          name: "Acme",
+          modules: { license: { enabled: false }, config: { enabled: true } },
+        }),
+      });
+      expect(
+        (await resyncRepo(env, db, "acme", NOW + 1, undeclared.fetchImpl)).ok,
+      ).toBe(true);
+      expect(
+        parseServices((await getProduct(db, "acme"))?.services_json ?? null)
+          .registration,
+      ).toBeUndefined();
+    });
+
+    it("the webhook path filter triggers on either directory", async () => {
+      const db = makeTestDb();
+      const env = envFor();
+      env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
+      const { fetchImpl } = stubFetch({
+        ".polaris/schema.json": SCHEMA_JSON,
+        ".polaris/product.json": PRODUCT_JSON,
+        ".polaris/release.json": RELEASE_JSON,
+      });
+      expect(
+        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+      ).toBe(true);
+
+      const push = async (
+        paths: string[],
+      ): Promise<{ ok: boolean; ignored?: string }> => {
+        const res = await handleGithubWebhook(
+          await signedWebhookRequest(
+            {
+              ref: "refs/heads/main",
+              repository: {
+                owner: { login: "acme-org" },
+                name: "acme-app",
+                default_branch: "main",
+              },
+              installation: { id: 4242 },
+              head_commit: { modified: paths },
+              commits: [],
+            },
+            env.GITHUB_WEBHOOK_SECRET!,
+          ),
+          env,
+          db,
+          NOW + 10,
+          fetchImpl,
+        );
+        return (await res.json()) as { ok: boolean; ignored?: string };
+      };
+
+      // Both directories are manifest sources…
+      expect((await push([".polaris/product.yaml"])).ignored).toBeUndefined();
+      expect((await push([".pkey/product.yaml"])).ignored).toBeUndefined();
+      // …including the bare directory path GitHub reports for a whole-directory rename, which
+      // is exactly the delivery that must not be ignored.
+      expect((await push([".polaris"])).ignored).toBeUndefined();
+      // …and nothing else is.
+      expect((await push(["src/main.ts", "README.md"])).ignored).toBe(
+        "no-manifest-changes",
+      );
+      expect((await push([".polaris-notes/x.md"])).ignored).toBe(
+        "no-manifest-changes",
+      );
     });
   });
 

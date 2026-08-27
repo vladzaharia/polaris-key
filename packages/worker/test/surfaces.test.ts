@@ -12,12 +12,18 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import { loadProduct } from "../src/core/products.js";
+import { loadProduct, type Product } from "../src/core/products.js";
 import { generateEd25519 } from "../src/keyvault.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleJwks } from "../src/core/trust.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { handleMintToken } from "../src/services/config/mint.js";
+import { licenseService } from "../src/services/license/index.js";
+import { configService } from "../src/services/config/index.js";
+import { serializeServices } from "../src/core/services.js";
+import { setServices } from "../src/repo.js";
+import type { Db } from "../src/db/types.js";
+import type { Env } from "../src/env.js";
 
 const ES_PEM =
   "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgav85fotyJ04AYsKF\nDojZziUJg9TuJamPiszlECztPLuhRANCAATgaZHNpIiLDSEQHY4H4BE5HnA9L8hR\n11WcM/ABvqCnO5CWZyHKWoEnKnKnmQwVibF2w5YwimX7Z1hIqJPHGCTB\n-----END PRIVATE KEY-----";
@@ -52,6 +58,51 @@ async function generateRs256(): Promise<{ pem: string; publicKey: CryptoKey }> {
   return { pem, publicKey: pair.publicKey };
 }
 
+/** The discovery document's shape, as a consumer sees it. */
+interface DiscoveryBody {
+  version: number;
+  protocolVersion: number;
+  product: string;
+  name: string;
+  core: {
+    registration: string;
+    compat: { min: string; max: string };
+    endpoints: Record<string, string>;
+  };
+  trust: {
+    pinnedKeys: Record<string, string>;
+    signingKid: string;
+    signingPub: string;
+    jwksUrl: string;
+    keys: Array<{ kid: string; publicKey: string }>;
+  };
+  services: Record<string, Record<string, unknown>>;
+}
+
+/** Fetch `/.well-known/polaris.json` through the real handler + the real service registry —
+ *  the fragments must come from the descriptors, not from a test double. */
+async function discover(
+  env: Env,
+  db: Db,
+  product: Product,
+): Promise<DiscoveryBody> {
+  const res = await handleDiscovery(
+    new Request(
+      "https://key.plrs.im/djdl/.well-known/polaris.json",
+    ) as unknown as Request,
+    env,
+    db,
+    product,
+    new Map([
+      [licenseService.slug, licenseService],
+      [configService.slug, configService],
+    ]),
+  );
+  expect(res.status).toBe(200);
+  expect(res.headers.get("cache-control")).toContain("max-age=300");
+  return (await res.json()) as DiscoveryBody;
+}
+
 describe("worker surfaces", () => {
   it("jwks exposes the product Ed25519 public key", async () => {
     const db = makeTestDb();
@@ -68,7 +119,7 @@ describe("worker surfaces", () => {
     expect(body.keys[0]?.crv).toBe("Ed25519");
   });
 
-  it("product discovery exposes auth/config/release/signing basics", async () => {
+  it("product discovery is assembled from the enabled services' fragments", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
@@ -76,6 +127,24 @@ describe("worker surfaces", () => {
       "UPDATE products SET release_source = ? WHERE slug = ?",
       "github",
       "djdl",
+    );
+    // Enablement is the single authority (spec §2.2): a `release_config` row is CONFIGURATION,
+    // and no longer doubles as consent. Release/Update must be turned on for the document to
+    // advertise them, however many rows exist.
+    await setServices(
+      db,
+      "djdl",
+      serializeServices({
+        services: {
+          license: { enabled: true },
+          config: { enabled: true },
+          release: { enabled: true },
+          update: { enabled: true },
+          identity: { enabled: true },
+        },
+      }),
+      "manifest",
+      NOW,
     );
     await db.run(
       `INSERT INTO oidc_config
@@ -110,134 +179,169 @@ describe("worker surfaces", () => {
     );
     const product = (await loadProduct(env, db, "djdl"))!;
 
-    const res = await handleDiscovery(
-      new Request(
-        "https://key.plrs.im/djdl/.well-known/polaris.json",
-      ) as unknown as Request,
-      db,
-      product,
-    );
-    expect(res.status).toBe(200);
-    expect(res.headers.get("cache-control")).toContain("max-age=300");
-    const body = (await res.json()) as {
-      product: string;
-      name: string;
-      endpoints: {
-        activate: string;
-        config: string;
-        licenseDocument: string;
-        report: string;
-        jwks: string;
-        authDeviceStart: string;
-        authDevicePoll: string;
-      };
-      trust: {
-        pinnedKeys: Record<string, string>;
-        signingKid: string;
-        signingPub: string;
-      };
-      modules: {
-        auth: {
-          tokenUrl: string;
-          oidc: {
-            enabled: boolean;
-            loginUrl: string;
-            callbackUrl: string;
-            deviceStartUrl: string;
-            devicePollUrl: string;
-          } | null;
-        };
-        license: {
-          activateUrl: string;
-          enrollUrl: string;
-          documentUrl: string;
-          deauthorizeUrl: string;
-        };
-        config: { schemaVersion: number; schemaUrl: string };
-        release: {
-          enabled: boolean;
-          source: string;
-          channels: string[];
-          repository: { owner: string; name: string } | null;
-        };
-        signing: {
-          jwksUrl: string;
-          keys: Array<{ kid: string; publicKey: string }>;
-        };
-      };
-    };
+    const body = await discover(env, db, product);
 
+    expect(body.version).toBe(2);
     expect(body.product).toBe("djdl");
     expect(body.name).toBe("djdl");
-    // §R1: the fused `/djdl/config` is gone. `endpoints.config` names the CONFIG document and
-    // `endpoints.licenseDocument` the other half; the report surface moved to core's
-    // `/devices/report`, and the catalog under the config service.
-    expect(body.endpoints.config).toBe(
-      "https://key.plrs.im/djdl/config/document",
-    );
-    expect(body.endpoints.licenseDocument).toBe(
-      "https://key.plrs.im/djdl/license/document",
-    );
-    expect(body.endpoints.report).toBe(
-      "https://key.plrs.im/djdl/devices/report",
-    );
-    expect(body.endpoints.activate).toBe(
-      "https://key.plrs.im/djdl/license/activate",
-    );
-    expect(body.endpoints.jwks).toBe(
-      "https://key.plrs.im/djdl/.well-known/jwks.json",
-    );
-    expect(body.endpoints.authDeviceStart).toBe(
-      "https://key.plrs.im/djdl/auth/device/start",
-    );
-    expect(body.endpoints.authDevicePoll).toBe(
-      "https://key.plrs.im/djdl/auth/device/poll",
-    );
+
+    // ── Core: the always-on device/trust/platform block ────────────────────────
+    expect(body.core.registration).toBe("requires-license");
+    expect(body.core.compat).toEqual({ min: "0.0.0", max: "99.0.0" });
+    expect(body.core.endpoints).toMatchObject({
+      jwks: "https://key.plrs.im/djdl/.well-known/jwks.json",
+      trustManifest: "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+      devices: "https://key.plrs.im/djdl/devices",
+      report: "https://key.plrs.im/djdl/devices/report",
+    });
+    // A `requires-license` product's register endpoint is defined to refuse everybody, so the
+    // document does not publish a URL that could only ever produce a 403.
+    expect(body.core.endpoints).not.toHaveProperty("register");
     expect(body.trust).toMatchObject({
       signingKid: TEST_KID,
       signingPub: TEST_PUB,
       pinnedKeys: { [TEST_KID]: TEST_PUB },
+      jwksUrl: "https://key.plrs.im/djdl/.well-known/jwks.json",
     });
-    expect(body.modules.auth.tokenUrl).toBe(
-      "https://key.plrs.im/djdl/license/token",
-    );
-    expect(body.modules.license).toMatchObject({
-      activateUrl: "https://key.plrs.im/djdl/license/activate",
-      enrollUrl: "https://key.plrs.im/djdl/license/enroll",
-      documentUrl: "https://key.plrs.im/djdl/license/document",
-      deauthorizeUrl: "https://key.plrs.im/djdl/license/deauthorize",
-    });
-    expect(body.modules.auth.oidc).toMatchObject({
-      enabled: true,
-      loginUrl: "https://key.plrs.im/djdl/auth/login",
-      callbackUrl: "https://key.plrs.im/djdl/auth/callback",
-      deviceStartUrl: "https://key.plrs.im/djdl/auth/device/start",
-      devicePollUrl: "https://key.plrs.im/djdl/auth/device/poll",
-    });
-    expect(body.modules.auth.oidc).not.toHaveProperty("provider");
-    expect(body.modules.auth.oidc).not.toHaveProperty("issuer");
-    expect(body.modules.auth.oidc).not.toHaveProperty("clientId");
-    expect(body.modules.config).toMatchObject({
-      schemaVersion: 1,
-      schemaUrl: "https://key.plrs.im/djdl/config/schema",
-    });
-    expect(body.modules.release).toMatchObject({
-      enabled: true,
-      source: "github",
-      repository: { owner: "acme", name: "djdl" },
-    });
-    expect(body.modules.release.channels).toEqual([
-      "stable",
-      "beta",
-      "nightly",
-    ]);
-    expect(body.modules.signing.jwksUrl).toBe(
-      "https://key.plrs.im/djdl/.well-known/jwks.json",
-    );
-    expect(body.modules.signing.keys[0]).toMatchObject({
+    expect(body.trust.keys[0]).toMatchObject({
       kid: TEST_KID,
       publicKey: TEST_PUB,
     });
+
+    // ── Services: one fragment per slug, contributed by the service that owns it ──
+    expect(Object.keys(body.services)).toEqual([
+      "license",
+      "config",
+      "release",
+      "update",
+      "identity",
+    ]);
+    expect(body.services.license).toEqual({
+      enabled: true,
+      endpoints: {
+        activate: "https://key.plrs.im/djdl/license/activate",
+        enroll: "https://key.plrs.im/djdl/license/enroll",
+        token: "https://key.plrs.im/djdl/license/token",
+        deauthorize: "https://key.plrs.im/djdl/license/deauthorize",
+        document: "https://key.plrs.im/djdl/license/document",
+      },
+    });
+    expect(body.services.config).toEqual({
+      enabled: true,
+      schemaVersion: 1,
+      endpoints: {
+        document: "https://key.plrs.im/djdl/config/document",
+        schema: "https://key.plrs.im/djdl/config/schema",
+      },
+      // No recipes seeded for this product, so the capability reads honestly.
+      mint: { available: false },
+    });
+    expect(body.services.release).toMatchObject({
+      enabled: true,
+      configured: true,
+      source: "github",
+      repository: { owner: "acme", name: "djdl" },
+      channels: ["stable", "beta", "nightly"],
+    });
+    expect(body.services.update).toMatchObject({
+      enabled: true,
+      sparkleEd25519PublicKey: "SPARKLEPUB",
+      endpoints: {
+        version: "https://key.plrs.im/djdl/version",
+        appcast: "https://key.plrs.im/djdl/appcast.xml",
+      },
+    });
+    expect(body.services.identity).toMatchObject({
+      enabled: true,
+      endpoints: {
+        session: "https://key.plrs.im/djdl/session",
+        authStart: "https://key.plrs.im/djdl/auth/start",
+        authCallback: "https://key.plrs.im/djdl/auth/callback",
+        authDeviceStart: "https://key.plrs.im/djdl/auth/device/start",
+        authDevicePoll: "https://key.plrs.im/djdl/auth/device/poll",
+      },
+    });
+    // The IdP's own configuration is never published: an anonymous reader learns that login
+    // exists and where to start it, not who the provider is or which client id it uses.
+    const identity = body.services.identity as Record<string, unknown>;
+    for (const leak of ["provider", "issuer", "clientId"])
+      expect(identity).not.toHaveProperty(leak);
+    // §R1 drops `/auth/login` as a redundant alias of `/auth/start`; discovery is where a
+    // retired alias stops being advertised first.
+    expect(
+      (identity.endpoints as Record<string, unknown>).authLogin,
+    ).toBeUndefined();
+
+    // `modules` is gone outright — pre-launch, no compatibility alias (wire v3 §9).
+    expect(body).not.toHaveProperty("modules");
+  });
+
+  it("a disabled service is `{enabled:false}` and NOTHING else", async () => {
+    // Spec §4.3: the document must not let an anonymous reader recover a disabled service's
+    // configuration, nor let an operator mistake "advertised" for "reachable".
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      `INSERT INTO release_config
+         (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
+          manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      "djdl",
+      "secret-org",
+      "secret-repo",
+      42,
+      "release.yml",
+      "main",
+      null,
+      "djdl",
+      null,
+      "SPARKLEPUB",
+      "pkey:summary",
+    );
+    // Default enablement: license + config on, everything else off — while the release row
+    // above exists and is fully populated.
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const body = await discover(env, db, product);
+
+    for (const slug of ["release", "update", "identity"] as const) {
+      expect(body.services[slug]).toEqual({ enabled: false });
+    }
+    // The repo coordinates are in D1 and must not be anywhere in the document.
+    expect(JSON.stringify(body)).not.toContain("secret-org");
+    expect(JSON.stringify(body)).not.toContain("SPARKLEPUB");
+  });
+
+  it("a config-only product advertises registration and hides License", async () => {
+    // The D-08 shape end-to-end at the discovery layer: no License fragment at all, and the
+    // keyless mint path published because the derived policy can actually say yes.
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await setServices(
+      db,
+      "djdl",
+      serializeServices({
+        services: {
+          license: { enabled: false },
+          config: { enabled: true },
+          release: { enabled: false },
+          update: { enabled: false },
+          identity: { enabled: false },
+        },
+      }),
+      "manifest",
+      NOW,
+    );
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const body = await discover(env, db, product);
+
+    expect(body.services.license).toEqual({ enabled: false });
+    expect(body.services.config).toMatchObject({ enabled: true });
+    expect(body.core.registration).toBe("open");
+    expect(body.core.endpoints.register).toBe(
+      "https://key.plrs.im/djdl/devices/register",
+    );
   });
 
   it("edge-mint signs an ES256 token for a licensed device (key from the KEK store)", async () => {
@@ -252,7 +356,7 @@ describe("worker surfaces", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -305,7 +409,7 @@ describe("worker surfaces", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -368,7 +472,7 @@ describe("worker surfaces", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -429,7 +533,7 @@ describe("worker surfaces", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,

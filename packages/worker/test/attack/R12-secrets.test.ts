@@ -578,8 +578,8 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
   });
 
   it("REFUTED-BY-CONTRAST: device tokens and download tokens ARE hashed before storage", async () => {
-    const hashed = await hashKey("pkeyt_abc", "pepper");
-    expect(hashed).not.toContain("pkeyt_");
+    const hashed = await hashKey("plrst_abc", "pepper");
+    expect(hashed).not.toContain("plrst_");
     expect(hashed).toMatch(/^[0-9a-f]{64}$/);
   });
 });

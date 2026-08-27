@@ -32,6 +32,19 @@ export const TEST_KEK = btoa("\0".repeat(32));
 
 export const NOW = 1_700_000_000;
 
+/**
+ * A WELL-FORMED device token that was never minted (wire v3 §6: `plrst_` + 43 base64url chars).
+ *
+ * Used wherever a suite means "unknown credential". It matters that it is well-formed: since
+ * `validateDeviceToken` now rejects a bad PREFIX before it hashes anything, a malformed string
+ * would 401 without ever reaching the lookup, and every "unknown token" test would silently
+ * become a second test of the shape gate. `RETIRED_DEVICE_TOKEN` is the deliberate opposite.
+ */
+export const UNKNOWN_DEVICE_TOKEN = `plrst_${"u".repeat(43)}`;
+
+/** A v2 `pkeyt_` token, for the tests that pin its refusal (wire v3 §8 — no migration window). */
+export const RETIRED_DEVICE_TOKEN = `pkeyt_${"r".repeat(43)}`;
+
 /** An Env whose KV is the mock, whose PLATFORM_KEK is the test KEK, and whose per-product
  *  signing keys are sealed in D1 under the test KEK. */
 export function makeEnv(kv: KvMock, _slugs: string[]): Env {

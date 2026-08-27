@@ -304,7 +304,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
       req(`${ORIGIN}/djdl/license/document`, {
         headers: {
           authorization: `Bearer ${victim.token}`,
-          "x-pkey-version": "1.2.3",
+          "x-polaris-version": "1.2.3",
         },
       }),
       ctx.env,
@@ -401,7 +401,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
       token: string;
     };
     expect(ok.status).toBe("ready");
-    expect(ok.token.startsWith("pkeyt_")).toBe(true);
+    expect(ok.token.startsWith("plrst_")).toBe(true);
   });
 
   // R8-10 — every oidc.ts handler now consults the Durable-Object limiter.
@@ -714,7 +714,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     );
     expect(res.status).toBe(302);
     // The victim's browser is now logged in as the ATTACKER's license.
-    expect(res.headers.get("set-cookie")).toContain("pkey_djdl_session=");
+    expect(res.headers.get("set-cookie")).toContain("plrs_djdl_session=");
     expect(res.headers.get("location")).toBe(`${ORIGIN}/djdl/app`);
   });
 
@@ -787,7 +787,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       },
     );
     expect(res.status).toBe(302);
-    expect(res.headers.get("set-cookie")).toContain("pkey_admin=");
+    expect(res.headers.get("set-cookie")).toContain("plrs_admin=");
     expect(res.headers.get("location")).toBe("/manage/");
   });
 
@@ -830,7 +830,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       NOW,
     );
     expect(res.status).toBe(302);
-    expect(res.headers.get("set-cookie")).toContain("pkey_portal=");
+    expect(res.headers.get("set-cookie")).toContain("plrs_portal=");
   });
 });
 
@@ -996,7 +996,7 @@ describe("R8-05 claim trust", () => {
       req(`${ORIGIN}/djdl/license/document`, {
         headers: {
           authorization: `Bearer ${token}`,
-          "x-pkey-version": "1.2.3",
+          "x-polaris-version": "1.2.3",
         },
       }),
       ctx.env,
@@ -1379,7 +1379,7 @@ describe("R8-08 portal magic link", () => {
       NOW,
     );
     expect(verified.status).toBe(302);
-    expect(verified.headers.get("set-cookie")).toContain("pkey_portal=");
+    expect(verified.headers.get("set-cookie")).toContain("plrs_portal=");
   });
 
   it("ATTACK: /magic/verify has NO rate limit, unlike /magic/start", async () => {

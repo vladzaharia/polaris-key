@@ -28,7 +28,7 @@ import { dispatchService, type ServiceRegistry } from "../src/core/registry.js";
 import { licenseService } from "../src/services/license/index.js";
 import { configService } from "../src/services/config/index.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { hashKey, mintToken } from "../src/crypto.js";
+import { hashKey, mintDeviceToken } from "../src/crypto.js";
 import { putTokenRecord } from "../src/kv.js";
 import { setServices, upsertDevice } from "../src/repo.js";
 import type { Env } from "../src/env.js";
@@ -112,7 +112,7 @@ describe("service routing through the core router", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -180,7 +180,7 @@ describe("a config-only product (D-08)", () => {
     // the same `devices` row shape registration will write, the same KV record
     // `core/validateDeviceToken` reads, and the real config descriptor answering the request.
     // When registration lands, this fixture collapses into a call to it.
-    token = mintToken();
+    token = mintDeviceToken();
     const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
     await upsertDevice(db, {
       product: "cfgonly",
@@ -262,8 +262,8 @@ describe("a config-only product (D-08)", () => {
     const res = await call(env, db, product, "/cfgonly/config/document", {
       headers: {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "0.0.1",
-        "x-pkey-channel": "staging",
+        "x-polaris-version": "0.0.1",
+        "x-polaris-channel": "staging",
       },
     });
     expect(res.status).toBe(200);
@@ -311,7 +311,7 @@ describe("a license-only product", () => {
     const activateRes = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,

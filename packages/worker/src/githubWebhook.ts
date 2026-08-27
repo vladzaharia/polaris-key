@@ -7,6 +7,7 @@ import { pk } from "./kv.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
 import { getReleaseConfig } from "./release/index.js";
 import { resyncRepo } from "./release/resync.js";
+import { isManifestPath } from "./release/manifestFiles.js";
 import type { FetchImpl } from "./release/githubApp.js";
 
 /** How long a processed `X-GitHub-Delivery` GUID is remembered (7 days). */
@@ -174,8 +175,15 @@ export async function handleGithubWebhook(
   }
 
   const paths = changedPaths(payload);
-  if (!paths.some((path) => path === ".pkey" || path.startsWith(".pkey/"))) {
-    return json({ ok: true, ignored: "no-pkey-changes", changedPaths: paths });
+  // Both manifest directories (`manifestFiles.ts`): a push that ADDS `.polaris/product.yaml` is
+  // the migration itself, and a filter that only knew `.pkey/` would ignore the one delivery
+  // that mattered.
+  if (!paths.some(isManifestPath)) {
+    return json({
+      ok: true,
+      ignored: "no-manifest-changes",
+      changedPaths: paths,
+    });
   }
 
   const coords = repoCoordinates(payload);

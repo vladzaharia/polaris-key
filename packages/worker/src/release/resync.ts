@@ -1,8 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Re-fetch a linked repo's `.pkey/` and re-apply it to an already-registered product. This is
- * the "resync" path: an operator pushes new `.pkey/` files and asks Polaris Key to pick up the
+ * Re-fetch a linked repo's manifest and re-apply it to an already-registered product. This is
+ * the "resync" path: an operator pushes new manifest files and asks Polaris to pick up the
  * changes WITHOUT minting a new product or touching the signing key.
  *
  * Minimal-viable scope (diff-then-update): we re-parse the manifest and update the catalog
@@ -44,18 +44,14 @@ import {
 import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
+import { MANIFEST_FILES } from "./manifestFiles.js";
+import { serializeServices } from "../core/services.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
   | { ok: false; error: string; errors?: string[] };
 
-const PKEY_FILES: Record<"schema" | "product" | "release", string[]> = {
-  schema: [".pkey/schema.json", ".pkey/schema.yaml", ".pkey/schema.yml"],
-  product: [".pkey/product.json", ".pkey/product.yaml", ".pkey/product.yml"],
-  release: [".pkey/release.json", ".pkey/release.yaml", ".pkey/release.yml"],
-};
-
-async function readPkeyFile(
+async function readManifestFile(
   token: string,
   owner: string,
   repo: string,
@@ -122,11 +118,11 @@ export async function resyncRepo(
   const files: Record<string, string> = {};
   try {
     for (const name of ["schema", "product", "release"] as const) {
-      const text = await readPkeyFile(
+      const text = await readManifestFile(
         token,
         owner,
         repo,
-        PKEY_FILES[name],
+        MANIFEST_FILES[name],
         fetchImpl,
       );
       if (text !== undefined) files[name] = text;
@@ -222,15 +218,21 @@ export async function resyncRepo(
     updated.push("autoIssue");
   }
 
-  // Service enablement, under the same ownership rule once more. Unconditional (unlike the two
-  // above) because `services` is always present on a parsed manifest — a manifest that declares
-  // no `modules:` block still means something definite, namely the defaults. The
-  // `services_source = 'admin'` guard lives inside `setServices`, so a push cannot turn a
-  // service back on after an operator has turned it off live.
+  // Service enablement + the device-registration policy, under the same ownership rule once
+  // more. Unconditional (unlike the two above) because `services` is always present on a parsed
+  // manifest — a manifest that declares no `modules:` block still means something definite,
+  // namely the defaults. `registration` rides in the same value and is written only when the
+  // manifest declared it, so dropping the key from `.polaris/product` returns the product to the
+  // derived default rather than freezing whatever it last said. The `services_source = 'admin'`
+  // guard lives inside `setServices`, so a push cannot turn a service back on after an operator
+  // has turned it off live — nor re-open registration after one has closed it.
   await setServices(
     db,
     slug,
-    JSON.stringify(manifest.services),
+    serializeServices({
+      services: manifest.services,
+      ...(manifest.registration ? { registration: manifest.registration } : {}),
+    }),
     "manifest",
     now,
   );

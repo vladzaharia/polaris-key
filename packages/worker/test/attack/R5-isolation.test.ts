@@ -167,7 +167,7 @@ async function activateDevice(
   const res = await handleActivate(
     mkReq("POST", {
       authorization: `Bearer ${key}`,
-      "x-pkey-device": deviceId,
+      "x-polaris-device": deviceId,
     }),
     e,
     db,
@@ -608,7 +608,7 @@ describe("R5-06 edge-mint recipes are not entitlement-gated", () => {
     const act = await handleActivate(
       mkReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-free",
+        "x-polaris-device": "dev-free",
       }),
       e,
       db,

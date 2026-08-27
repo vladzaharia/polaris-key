@@ -11,9 +11,10 @@
  * `typ` is the wire-v3 domain separator (WIRE-CONTRACT-V3 §2). One product key signs the
  * license document, the config document and the trust manifest, so `typ` is the ONLY thing
  * standing between them: without it a config document could be replayed into a call site
- * expecting a license document and verify perfectly. It is optional here only because the
- * trust manifest and the browser-session document still emit their v2 headers until T1.6; a
- * new signer that omits it is a bug, not a compatibility choice.
+ * expecting a license document and verify perfectly. It remains optional in the SIGNATURE only
+ * because the browser-session document still mints the fused v2 artifact until identity is
+ * carved (P3); every v3 signer passes it, and one that omits it is a bug rather than a
+ * compatibility choice.
  *
  * Key MATERIAL is loaded by `core/products.ts` (`loadProduct` opens the sealed `product_keys`
  * row under the KEK; `loadPublicSigningKey(s)` reads the public halves), and published by

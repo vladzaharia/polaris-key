@@ -1,5 +1,5 @@
 import type { Db } from "../db/types.js";
-import { hashKey, mintToken, randomId } from "../crypto.js";
+import { hashKey, mintOpaqueToken, randomId } from "../crypto.js";
 import type { Env } from "../env.js";
 import type { DeviceRow, KeyRow, LicenseRow, ProductRow } from "../repo.js";
 
@@ -680,7 +680,7 @@ export async function createPortalDownloadToken(
     now: number;
   },
 ): Promise<string> {
-  const token = mintToken();
+  const token = mintOpaqueToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   await db.run(
     // R11-13: `customer_id` went with the dead `customers` table (0016_drop_dead_pii) — it was

@@ -30,7 +30,7 @@ export type { Db, DbParam, DbStatement } from "../db/types.js";
 
 export { bearer } from "../http.js";
 
-export { hashKey, mintToken, randomId } from "../crypto.js";
+export { hashKey, mintDeviceToken, randomId } from "../crypto.js";
 
 export { deleteTokenRecord } from "../kv.js";
 

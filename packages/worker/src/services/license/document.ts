@@ -36,7 +36,7 @@ import type { Product } from "../../core/products.js";
 import { ErrorCode, methodNotAllowed, wireError } from "../../core/errors.js";
 import { deviceMetadata, touchDeviceMetadata } from "../../core/devices.js";
 import { signDoc } from "../../core/signing.js";
-import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol";
+import { HEADER_CHANNEL, HEADER_VERSION } from "@plrs/protocol/core";
 import { requireLicensedDevice } from "./auth.js";
 import { docProfile } from "./authz.js";
 import { resolveEntitlements } from "./entitlements.js";

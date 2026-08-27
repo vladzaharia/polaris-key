@@ -7,11 +7,8 @@
 // ID tokens are verified against the issuer JWKS via jose (asymmetric algs only).
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import {
-  HEADER_DEVICE,
-  type ManagedEntry,
-  type ManagedPayload,
-} from "@plrs/protocol";
+import type { ManagedEntry, ManagedPayload } from "@plrs/protocol";
+import { HEADER_DEVICE } from "@plrs/protocol/core";
 import { secret, type Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { openProductSecret, type Product } from "./core/products.js";

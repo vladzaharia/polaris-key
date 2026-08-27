@@ -40,7 +40,7 @@ import {
   shapeDevice,
 } from "../../core/devices.js";
 import { authorizeDevice, tierExpiresAt } from "./authz.js";
-import { HEADER_DEVICE } from "@plrs/protocol";
+import { HEADER_DEVICE } from "@plrs/protocol/core";
 
 /**
  * Locate or mint the free license for this machine.

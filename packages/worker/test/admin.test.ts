@@ -24,6 +24,7 @@ import {
   getActiveProductKey,
   getProductSecret,
   listAudit,
+  setServices,
 } from "../src/repo.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
@@ -619,7 +620,7 @@ describe("admin api", () => {
     const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -872,7 +873,7 @@ describe("admin api", () => {
     const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -884,7 +885,7 @@ describe("admin api", () => {
     const cfgRes = await handleLicenseDocument(
       mkLicReq("GET", {
         authorization: `Bearer ${token}`,
-        "x-pkey-version": "1.0.0",
+        "x-polaris-version": "1.0.0",
       }),
       env,
       db,
@@ -1110,7 +1111,7 @@ describe("admin api", () => {
     const activateRes = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -1159,5 +1160,272 @@ describe("admin api", () => {
       expect(res.status).toBe(302);
     }
     expect(throttled).toBe(true);
+  });
+});
+
+// ── Service enablement (plan §R4, spec §2.2) ────────────────────────────────────────────────
+//
+// The admin half of the single authority. Three properties, and they fail differently:
+//
+//   1. COHERENCE. A PATCH that would produce an unreachable product (Update with no Release, a
+//      registration policy nothing can satisfy) is refused BEFORE it is written — the column
+//      decides which routes exist, so an incoherent value is an outage, not a typo.
+//   2. OWNERSHIP. A PATCH claims the row; a resync then cannot re-open what an operator closed.
+//      `revert` hands it back without changing the live values.
+//   3. AUDIT. Every write names the verified actor.
+describe("admin services enablement", () => {
+  const ALL_OFF = {
+    license: { enabled: false },
+    config: { enabled: false },
+    release: { enabled: false },
+    update: { enabled: false },
+    identity: { enabled: false },
+  };
+
+  async function world(): Promise<{
+    db: Db;
+    env: Env;
+    cookie: string;
+    csrf: string;
+  }> {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    return { db, env, cookie, csrf };
+  }
+
+  const path = (suffix = "") => `/api/products/djdl/services${suffix}`;
+
+  async function call(
+    w: Awaited<ReturnType<typeof world>>,
+    method: string,
+    suffix = "",
+    body?: unknown,
+  ): Promise<{ status: number; body: Record<string, unknown> }> {
+    const p = path(suffix);
+    const res = await dispatch(
+      mkReq(method, p, { cookie: w.cookie, csrf: w.csrf, body }),
+      w.env,
+      w.db,
+      p,
+    );
+    return {
+      status: res.status,
+      body: (await res.json()) as Record<string, unknown>,
+    };
+  }
+
+  it("GET returns the set, the declared policy, the effective one, and the owner", async () => {
+    const w = await world();
+    const { status, body } = await call(w, "GET");
+    expect(status).toBe(200);
+    expect(body.services).toEqual({
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: false },
+      update: { enabled: false },
+      identity: { enabled: false },
+    });
+    // Nothing declared, so the policy is null and the wire enforces the derivation.
+    expect(body.registration).toBeNull();
+    expect(body.effectiveRegistration).toBe("requires-license");
+    expect(body.source).toBe("manifest");
+  });
+
+  it("PATCH merges, claims the row, and is visible to loadProduct", async () => {
+    const w = await world();
+    const { status, body } = await call(w, "PATCH", "", {
+      services: { release: { enabled: true }, update: { enabled: true } },
+    });
+    expect(status).toBe(200);
+    expect(body.source).toBe("admin");
+    // Omitted slugs keep their current values rather than reverting to a default.
+    expect(body.services).toEqual({
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: true },
+      update: { enabled: true },
+      identity: { enabled: false },
+    });
+    const product = await loadProduct(w.env, w.db, "djdl");
+    expect(product?.services.update.enabled).toBe(true);
+  });
+
+  it("PATCH refuses an incoherent set without writing it", async () => {
+    const w = await world();
+    const bad = await call(w, "PATCH", "", {
+      services: { update: { enabled: true } },
+    });
+    expect(bad.status).toBe(422);
+    expect(bad.body.errors).toEqual(["update_requires_release"]);
+    // Nothing was written: the row is still manifest-owned with the defaults.
+    const after = await call(w, "GET");
+    expect(after.body.source).toBe("manifest");
+    expect(after.body.services).toMatchObject({ update: { enabled: false } });
+  });
+
+  it("PATCH refuses a registration policy nothing could satisfy", async () => {
+    const w = await world();
+    const noIdentity = await call(w, "PATCH", "", {
+      registration: "requires-identity",
+    });
+    expect(noIdentity.status).toBe(422);
+    expect(noIdentity.body.errors).toEqual(["registration_requires_identity"]);
+
+    const stranded = await call(w, "PATCH", "", {
+      services: { license: { enabled: false } },
+      registration: "requires-license",
+    });
+    expect(stranded.status).toBe(422);
+    expect(stranded.body.errors).toEqual(["config_without_activation"]);
+  });
+
+  it("PATCH sets and clears the declared policy independently of the set", async () => {
+    const w = await world();
+    const declared = await call(w, "PATCH", "", { registration: "open" });
+    expect(declared.status).toBe(200);
+    expect(declared.body.registration).toBe("open");
+    expect(declared.body.effectiveRegistration).toBe("open");
+    expect((await loadProduct(w.env, w.db, "djdl"))?.registration).toBe("open");
+
+    // `null` CLEARS it — the product goes back to following its services. Omitting the key
+    // would have left `open` in place, which is why the two have to be expressible separately.
+    const cleared = await call(w, "PATCH", "", { registration: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.registration).toBeNull();
+    expect(cleared.body.effectiveRegistration).toBe("requires-license");
+  });
+
+  it("PATCH rejects malformed input by field", async () => {
+    const w = await world();
+    for (const [body, field] of [
+      [{ services: [] }, "services"],
+      [{ services: { telemetry: { enabled: true } } }, "services.telemetry"],
+      [{ services: { license: true } }, "services.license.enabled"],
+      [
+        { services: { license: { enabled: "yes" } } },
+        "services.license.enabled",
+      ],
+      [{ registration: "OPEN" }, "registration"],
+      [{ registration: 1 }, "registration"],
+    ] as Array<[Record<string, unknown>, string]>) {
+      const res = await call(w, "PATCH", "", body);
+      expect(res.status, JSON.stringify(body)).toBe(422);
+      expect(res.body.fields).toContain(field);
+    }
+  });
+
+  it("an admin claim survives a manifest resync; revert hands the row back", async () => {
+    const w = await world();
+    // Operator turns Config off live.
+    expect(
+      (await call(w, "PATCH", "", { services: { config: { enabled: false } } }))
+        .status,
+    ).toBe(200);
+
+    // A push re-applies a manifest that wants everything on. It must not land.
+    await setServices(
+      w.db,
+      "djdl",
+      JSON.stringify({
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: true },
+        update: { enabled: true },
+        identity: { enabled: true },
+      }),
+      "manifest",
+      NOW + 1,
+    );
+    const claimed = await call(w, "GET");
+    expect(claimed.body.source).toBe("admin");
+    expect(claimed.body.services).toMatchObject({ config: { enabled: false } });
+
+    // Revert changes the OWNER and nothing else — the live set is untouched until the next
+    // resync actually re-applies the manifest.
+    const reverted = await call(w, "POST", "/revert");
+    expect(reverted.status).toBe(200);
+    expect(reverted.body.source).toBe("manifest");
+    expect(reverted.body.services).toMatchObject({
+      config: { enabled: false },
+    });
+
+    // …and now a resync is permitted to write again.
+    await setServices(
+      w.db,
+      "djdl",
+      JSON.stringify(ALL_OFF),
+      "manifest",
+      NOW + 2,
+    );
+    expect((await call(w, "GET")).body.services).toEqual(ALL_OFF);
+  });
+
+  it("audits both writes with the verified actor", async () => {
+    const w = await world();
+    await call(w, "PATCH", "", { services: { release: { enabled: true } } });
+    await call(w, "POST", "/revert");
+    const actions = (await listAudit(w.db, "djdl", { limit: 20 })).map(
+      (r) => r.action,
+    );
+    expect(actions).toContain("product.services.update");
+    expect(actions).toContain("product.services.revert");
+    const row = (await listAudit(w.db, "djdl", { limit: 20 })).find(
+      (r) => r.action === "product.services.update",
+    );
+    expect(row?.actor_sub).toBe("u1");
+  });
+
+  it("requires a session, a platform admin, and CSRF on the mutation", async () => {
+    const w = await world();
+    const p = path();
+    // No session at all.
+    expect((await dispatch(mkReq("GET", p), w.env, w.db, p)).status).toBe(401);
+    // Signed in, but not a platform admin.
+    const weak = await sessionCookie(w.env, {
+      sub: "u9",
+      name: "Bob",
+      email: "b@x.io",
+      groups: [],
+    });
+    expect(
+      (await dispatch(mkReq("GET", p, { cookie: weak.cookie }), w.env, w.db, p))
+        .status,
+    ).toBe(403);
+    // Platform admin, mutation, no CSRF token.
+    expect(
+      (
+        await dispatch(
+          mkReq("PATCH", p, { cookie: w.cookie, body: {} }),
+          w.env,
+          w.db,
+          p,
+        )
+      ).status,
+    ).toBe(403);
+  });
+
+  it("404s an unknown product and an unknown sub-action", async () => {
+    const w = await world();
+    const missing = "/api/products/nope/services";
+    expect(
+      (
+        await dispatch(
+          mkReq("GET", missing, { cookie: w.cookie }),
+          w.env,
+          w.db,
+          missing,
+        )
+      ).status,
+    ).toBe(404);
+    expect((await call(w, "GET", "/whatever")).status).toBe(404);
+    expect((await call(w, "DELETE", "")).status).toBe(405);
+    expect((await call(w, "GET", "/revert")).status).toBe(405);
   });
 });

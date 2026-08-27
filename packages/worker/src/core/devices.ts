@@ -32,20 +32,27 @@
 
 import {
   FINGERPRINT_ANCHOR,
-  HEADER_ARCH,
-  HEADER_PLATFORM,
-  HEADER_SDK_NAME,
-  HEADER_SDK_VERSION,
-  HEADER_VERSION,
   MAX_DEVICE_PROBES,
   type DeviceProbeResult,
   type FingerprintComponent,
   type FingerprintMode,
 } from "@plrs/protocol";
+import {
+  HEADER_ARCH,
+  HEADER_PLATFORM,
+  HEADER_SDK_NAME,
+  HEADER_SDK_VERSION,
+  HEADER_VERSION,
+} from "@plrs/protocol/core";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";
-import { hashKey, mintToken, randomId } from "../crypto.js";
+import {
+  hashKey,
+  isDeviceToken,
+  mintDeviceToken,
+  randomId,
+} from "../crypto.js";
 import {
   appendAudit,
   findFingerprintByHwid,
@@ -107,10 +114,10 @@ import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
  *
  * Every surface that was license-gated before still is — `requireLicensedDevice` is what they
  * call, and it applies `licenseUsable` in exactly the position this function used to, so the
- * 401s are the same 401s for the same reasons. Only `GET /<p>/config/document` takes the
- * core-only answer. The two Core surfaces below (`/devices`, `/devices/report`) keep the
- * licence requirement inline for now: relaxing them belongs with device registration (T1.5),
- * which is what creates licence-less devices in the first place.
+ * 401s are the same 401s for the same reasons. `GET /<p>/config/document` takes the core-only
+ * answer outright; Core's own `/devices` and `/devices/report`, and the config service's
+ * edge-mint guard, take it CONDITIONALLY — see `coreDeviceAllowed` below for the rule and why
+ * it is scoped to the enablement flag rather than to the presence of a licence row.
  */
 export interface ValidDeviceToken {
   tokenHash: string;
@@ -145,6 +152,27 @@ export interface ReconciledDevice {
   /** Tolerated drift to record on the fingerprint row, when the match was not exact. */
   drift: { count: number; changed: FingerprintComponent[] } | null;
 }
+
+/**
+ * What `devices.license_id` holds for a device that was REGISTERED rather than activated
+ * (wire v3 §6): the empty string.
+ *
+ * ── WHY A SENTINEL AND NOT NULL ─────────────────────────────────────────────────────────────
+ *
+ * `devices.license_id` is `TEXT NOT NULL` (migrations/0001_init.sql), and SQLite cannot relax a
+ * NOT NULL in place — it takes a full table rebuild, which is a materially riskier migration
+ * than the column it would fix, on the hot table every device row lives in. The empty string is
+ * a value no minted licence id can collide with (`randomId` always emits `lic_…`), it is what
+ * the KV token record carries too, and it reads back through the ONE lookup that matters —
+ * `getLicense(db, product, "")` finds nothing, so `validateDeviceToken` sees `license: null`,
+ * which is precisely the D-08 shape it already handles.
+ *
+ * The one rule it imposes: **never pass this to `listDevicesByLicense`**. That query groups by
+ * licence, and every unlicensed device of a product shares this value — so asking it for "the
+ * seats of licence ''" would hand one customer's device the whole product's device list. The
+ * two call sites below therefore key off `valid.license` being null, not off the id.
+ */
+export const NO_LICENSE_ID = "";
 
 export function licenseUsable(
   license: LicenseRow | null,
@@ -263,7 +291,7 @@ export async function reconcileDeviceHardware(
     existing.status !== "authorized" ||
     existing.license_id !== license.id;
 
-  // `X-PKey-Device` is a client-chosen string with no uniqueness requirement, so before this
+  // `X-Polaris-Device` is a client-chosen string with no uniqueness requirement, so before this
   // the cheapest way to hold N seats was to activate N times with N device ids from ONE
   // machine — the server computed N identical hwids and never compared them.
   // `findFingerprintByHwid` existed for exactly this and had zero callers (R3-11).
@@ -351,7 +379,7 @@ export async function bindDevice(
   const { existing, presented, hwid, mode, drift } = opts;
   const meta = opts.metadata ?? {};
 
-  const token = mintToken();
+  const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   if (existing?.token_hash && existing.token_hash !== tokenHash) {
     await deleteTokenRecord(env, product.slug, existing.token_hash);
@@ -439,6 +467,95 @@ export async function bindDevice(
   return { token, device };
 }
 
+/** What the presented request tells us about the machine, as `deviceMetadata` reads it. */
+export type PresentedDeviceMetadata = ReturnType<typeof deviceMetadata>;
+
+/**
+ * Mint a device token for a device that has NO licence — the `POST /<p>/devices/register` half
+ * of the device principal (wire v3 §6).
+ *
+ * Kept beside `bindDevice` rather than folded into it, because the two do genuinely different
+ * work despite writing the same table. `bindDevice` is the tail of a SEAT decision: it exists to
+ * record which licence granted this machine a place, and everything it does beyond the row —
+ * the drift audit, the `unverified` fingerprint marker, the seat bookkeeping its callers wrap it
+ * in — is about that grant. Registration grants nothing. There is no seat pool to dedupe
+ * against, no tier to demand a fingerprint, and no licence to attribute an audit entry to, so
+ * this is deliberately the shorter function rather than `bindDevice` with four parameters
+ * carrying `null`.
+ *
+ * Fingerprint handling reflects that: a presented fingerprint is stored (recomputing the hwid
+ * server-side, never trusting the client's), and an absent one is simply absent. No `unverified`
+ * row — under an `open` policy declining to identify is the documented normal, not a signal.
+ *
+ * Re-registering an id that already holds a token is a TOKEN ROTATION, which is what a client
+ * that lost its credential needs. The caller (`core/register.ts`) is responsible for refusing
+ * the one case this must never do: taking over an id already bound to a real licence.
+ */
+export async function registerDeviceBinding(
+  env: Env,
+  db: Db,
+  product: Product,
+  deviceId: string,
+  now: number,
+  opts: {
+    existing: DeviceRow | null;
+    presented: PresentedFingerprint | null;
+    metadata: PresentedDeviceMetadata;
+  },
+): Promise<{ token: string; device: DeviceRow }> {
+  const { existing, presented, metadata: meta } = opts;
+
+  const token = mintDeviceToken();
+  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+  if (existing?.token_hash && existing.token_hash !== tokenHash) {
+    await deleteTokenRecord(env, product.slug, existing.token_hash);
+  }
+
+  const device: DeviceRow = {
+    product: product.slug,
+    device_id: deviceId,
+    customer_id: existing?.customer_id ?? null,
+    license_id: NO_LICENSE_ID,
+    status: "authorized",
+    first_seen: existing?.first_seen ?? now,
+    last_seen: now,
+    ua: meta.userAgent ?? existing?.ua ?? null,
+    label: existing?.label ?? null,
+    overrides_json: existing?.overrides_json ?? null,
+    reported_json: existing?.reported_json ?? null,
+    token_hash: tokenHash,
+    platform: meta.platform ?? existing?.platform ?? null,
+    arch: meta.arch ?? existing?.arch ?? null,
+    app_version: meta.appVersion ?? existing?.app_version ?? null,
+    sdk_name: meta.sdkName ?? existing?.sdk_name ?? null,
+    sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
+  };
+  await upsertDevice(db, device);
+
+  if (presented) {
+    const priorRow = await getFingerprint(db, product.slug, deviceId);
+    await upsertFingerprint(db, {
+      product: product.slug,
+      device_id: deviceId,
+      hwid: await computeHwid(presented.components),
+      components_json: JSON.stringify(presented.components),
+      anchor_hash: presented.components[FINGERPRINT_ANCHOR] ?? null,
+      status: "verified",
+      first_seen: priorRow?.first_seen ?? now,
+      last_seen: now,
+      last_drift_at: priorRow?.last_drift_at ?? null,
+      last_drift_count: priorRow?.last_drift_count ?? null,
+    });
+  }
+
+  await putTokenRecord(env, product.slug, tokenHash, {
+    product: product.slug,
+    deviceId,
+    licenseId: NO_LICENSE_ID,
+  });
+  return { token, device };
+}
+
 export async function validateDeviceToken(
   env: Env,
   db: Db,
@@ -448,6 +565,12 @@ export async function validateDeviceToken(
   opts: { deviceId?: string | null } = {},
 ): Promise<ValidDeviceToken | { error: "unauthorized" }> {
   if (!token) return { error: "unauthorized" };
+  // Wire v3 §6/§8: the device principal is `plrst_`. A `pkeyt_` token — or a licence key, or a
+  // session cookie value pasted into the Authorization header — is refused on SHAPE, before the
+  // pepper HMAC and the KV/D1 reads it would otherwise cost. Rejecting the old prefix has to be
+  // an explicit rule and not merely a consequence of no such hash existing, or "pkeyt_ is
+  // rejected" would be a fact about the current contents of a table rather than about this code.
+  if (!isDeviceToken(token)) return { error: "unauthorized" };
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   const cached = await getTokenRecord(env, product.slug, tokenHash);
   if (cached && cached.product !== product.slug)
@@ -499,7 +622,7 @@ export async function rotateDeviceToken(
   valid: ValidDeviceToken,
   now: number,
 ): Promise<string> {
-  const token = mintToken();
+  const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   await deleteTokenRecord(env, product.slug, valid.tokenHash);
   await upsertDevice(db, {
@@ -595,6 +718,35 @@ export async function readFingerprint(
   }
 }
 
+/**
+ * The licence requirement Core's own surfaces apply — `GET/PATCH/DELETE /<p>/devices[/:id]` and
+ * `POST /<p>/devices/report`.
+ *
+ * ── THE RULE (wire v3 §6, D-08) ─────────────────────────────────────────────────────────────
+ *
+ * **The licence check applies if and only if the product runs the License service.**
+ *
+ * These two surfaces are Core's, "available under every policy" (§6), and until registration
+ * existed that cost nothing: every device had a licence, so requiring a usable one was a
+ * distinction without a difference. It is a difference now. A config-only product's devices
+ * hold real `plrst_` tokens and no licence at all, and a Core surface that refused them would
+ * make "Core is always on" false for exactly the products the suite exists to enable — they
+ * could fetch a signed config document but could not rename the device that fetched it.
+ *
+ * The relaxation is scoped to the enablement flag, not to the presence of a licence row, so a
+ * LICENSED product's behaviour is byte-for-byte what it was: an expired, revoked or missing
+ * licence is still a 401 on both surfaces, and no device of such a product gains anything by
+ * arriving without one.
+ */
+function coreDeviceAllowed(
+  product: Product,
+  valid: ValidDeviceToken,
+  now: number,
+): boolean {
+  if (!product.services.license.enabled) return true;
+  return licenseUsable(valid.license, now);
+}
+
 export function shapeDevice(device: DeviceRow, currentDeviceId?: string) {
   return {
     id: device.device_id,
@@ -624,18 +776,20 @@ export async function handleDevices(
 ): Promise<Response> {
   const token = bearer(req);
   const valid = await validateDeviceToken(env, db, product, token, now);
-  // `/devices` lists the SEATS of a licence, so it needs one — and it kept the usability
-  // requirement `validateDeviceToken` used to apply for it, byte for byte. Relaxing this for
-  // registered-without-licence devices belongs with `POST /<p>/devices/register` (T1.5), which
-  // is what creates them; until then this surface behaves exactly as it did.
-  if ("error" in valid || !licenseUsable(valid.license, now))
+  if ("error" in valid || !coreDeviceAllowed(product, valid, now))
     return errorResponse(401, ErrorCode.Unauthorized);
 
-  const devices = await listDevicesByLicense(
-    db,
-    product.slug,
-    valid.license.id,
-  );
+  // WHAT `/devices` LISTS, and why it is not always "the licence's seats".
+  //
+  // For an activated device it is the seat pool: the caller paid for those seats and managing
+  // them is the point of the surface. For a REGISTERED device there is no pool — it is its own
+  // principal — so the list is exactly itself. That distinction is load-bearing rather than
+  // cosmetic: every unlicensed device of a product shares `NO_LICENSE_ID`, so grouping them by
+  // licence id would hand each one the whole product's device list. Keying off `valid.license`
+  // (null for a registered device) instead of off the id is what makes that impossible.
+  const devices = valid.license
+    ? await listDevicesByLicense(db, product.slug, valid.license.id)
+    : [valid.device];
   if (req.method === "GET") {
     return json({
       currentDeviceId: valid.device.device_id,
@@ -802,10 +956,10 @@ function factsFromReport(
  * POST /<product>/devices/report — store the device's reported (non-secret) snapshot.
  *
  * Relocated from `/<product>/config/report` (R1): it was always licence anti-fraud telemetry
- * living under a config path, and wire v3 §6 makes it a Core surface. The handler is unchanged
- * — same allowlist, same caps, same 401 — including the licence-usability requirement, which
- * `validateDeviceToken` used to apply on its behalf and is now explicit. T1.5 revisits it with
- * device registration.
+ * living under a config path, and wire v3 §6 makes it a Core surface. Same allowlist, same
+ * caps, same 401 — with the licence requirement now scoped by `coreDeviceAllowed`, so a
+ * registered device of a config-only product can report its facts and a licensed product's
+ * device still cannot report without a usable licence.
  */
 export async function handleReport(
   req: Request,
@@ -817,7 +971,7 @@ export async function handleReport(
   if (req.method !== "POST") return methodNotAllowed();
   const token = bearer(req);
   const valid = await validateDeviceToken(env, db, product, token, now);
-  if ("error" in valid || !licenseUsable(valid.license, now))
+  if ("error" in valid || !coreDeviceAllowed(product, valid, now))
     return errorResponse(401, ErrorCode.Unauthorized);
   const len = req.headers.get("content-length");
   if (len && Number(len) > 16 * 1024)

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
+  UNKNOWN_DEVICE_TOKEN,
   makeEnv,
   mkReq,
   NOW,
@@ -37,7 +38,10 @@ async function activate(
 ): Promise<string> {
   const { key } = await seedLicenseWithKey(db, "djdl");
   const res = await handleActivate(
-    mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "dev-1" }),
+    mkReq("POST", {
+      authorization: `Bearer ${key}`,
+      "x-polaris-device": "dev-1",
+    }),
     env,
     db,
     product,
@@ -105,7 +109,7 @@ describe("edge-mint token", () => {
   it("rejects an unknown / forged bearer token", async () => {
     await seedRecipe(db);
     const res = await handleMintToken(
-      mkReq("POST", { authorization: "Bearer pkeyt_forged" }),
+      mkReq("POST", { authorization: `Bearer ${UNKNOWN_DEVICE_TOKEN}` }),
       env,
       db,
       product,

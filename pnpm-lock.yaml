@@ -278,6 +278,9 @@ importers:
       '@plrs/catalog':
         specifier: workspace:*
         version: link:../packages/shared-catalog
+      '@plrs/manifest':
+        specifier: workspace:*
+        version: link:../packages/shared-manifest
 
   tools:
     dependencies:

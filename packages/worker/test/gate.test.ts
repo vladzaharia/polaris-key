@@ -269,7 +269,7 @@ describe("checkBuildGate — dev bypass is opt-in (R3-01)", () => {
   };
 
   it("does NOT bypass anything for an unentitled dev build", () => {
-    // `X-PKey-Version` is a header. Short-circuiting on it skipped both the window and the
+    // `X-Polaris-Version` is a header. Short-circuiting on it skipped both the window and the
     // channel entitlement for anyone who typed `0.0.0-dev`.
     const r = checkBuildGate({ ...devBuild, entitlements: {} });
     expect(r.ok).toBe(false);

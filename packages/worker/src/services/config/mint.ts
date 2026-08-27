@@ -153,6 +153,19 @@ export async function getEdgeMintConfig(
   );
 }
 
+/** Whether this product declares ANY edge-mint recipe — the capability bit the discovery
+ *  fragment publishes. Deliberately not the id list: see `configService.discoveryFragment`. */
+export async function hasEdgeMintRecipes(
+  db: Db,
+  product: string,
+): Promise<boolean> {
+  const row = await db.first<{ id: string }>(
+    "SELECT id FROM edge_mint_config WHERE product = ? LIMIT 1",
+    product,
+  );
+  return row !== null;
+}
+
 /**
  * Strip server/recipe-controlled claims from a parsed template so the free-form template can
  * never override them. We drop:
@@ -186,20 +199,23 @@ export async function handleMintToken(
   ) {
     return errorResponse(429, "rate_limited", "too many mint requests");
   }
-  // Confused-deputy guard: only a LICENSED device may mint. This is the one place inside the
-  // config service that still asks a licence question, and it is asked with Core's pure
-  // `licenseUsable` predicate rather than by importing License — a service may not import
-  // another service, and the boundary is not worth spending on a two-line check.
+  // Confused-deputy guard: the caller must be a device of THIS product, and — when the product
+  // runs License — one whose licence is usable. Asked with Core's pure `licenseUsable` predicate
+  // rather than by importing License: a service may not import another service, and the boundary
+  // is not worth spending on a two-line check.
   //
-  // The check is byte-identical to what `validateDeviceToken` used to apply on this handler's
-  // behalf before the split (`services/license/auth.ts`). Its consequence for a config-only
-  // product (D-08) is honest and known: with no licence there is nothing to be licensed by, so
-  // edge minting is unavailable until device registration lands (T1.5) and this guard can be
-  // restated as "a registered device of this product".
+  // For a licensed product this is byte-identical to what `validateDeviceToken` used to apply on
+  // this handler's behalf before the split (`services/license/auth.ts`). The scope — "iff the
+  // License service is enabled", the same rule Core's own `/devices` and `/devices/report` use —
+  // is what makes edge minting reachable at all for a config-only product (D-08): its devices
+  // register, hold real `plrst_` tokens, and have no licence to be licensed by. Edge minting is
+  // how a catalog secret with `delivery: "edgeMint"` reaches a runtime, so a Config service that
+  // could not mint would be Config with a hole in it.
   const token = bearer(req);
   if (!token) return errorResponse(401, "unauthorized");
   const valid = await validateDeviceToken(env, db, product, token, now);
-  if ("error" in valid || !licenseUsable(valid.license, now))
+  if ("error" in valid) return errorResponse(401, "unauthorized");
+  if (product.services.license.enabled && !licenseUsable(valid.license, now))
     return errorResponse(401, "unauthorized");
 
   const cfg = await getEdgeMintConfig(db, product.slug, mintId);

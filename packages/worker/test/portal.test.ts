@@ -232,7 +232,7 @@ describe("customer portal", () => {
     const activated = await handleActivate(
       mkLicReq("POST", {
         authorization: `Bearer ${key}`,
-        "x-pkey-device": "dev-1",
+        "x-polaris-device": "dev-1",
       }),
       env,
       db,
@@ -324,7 +324,7 @@ describe("customer portal", () => {
     );
     expect(tokenRes.status).toBe(201);
     const { url } = (await tokenRes.json()) as { url: string };
-    expect(url).toMatch(/^\/download\/pkeyt_/);
+    expect(url).toMatch(/^\/download\/[A-Za-z0-9_-]{43}$/);
 
     const redirect = await handlePortalDownload(
       req("GET", url),

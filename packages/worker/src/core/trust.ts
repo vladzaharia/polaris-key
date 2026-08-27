@@ -10,7 +10,11 @@
 import type { Product } from "./products.js";
 import type { Db } from "../db/types.js";
 import { signJws } from "@plrs/jws";
-import { ISSUER, type TrustManifestDoc } from "@plrs/protocol";
+import type { TrustManifestDoc } from "@plrs/protocol";
+// The v3 issuer (`plrs.im`, host-neutral — D-09), NOT the barrel's legacy `key.plrs.im`. The
+// two signed documents already moved; the trust manifest is the third artifact the client
+// verifies and has to agree with them, or an SDK that pins one `iss` cannot accept all three.
+import { ISSUER } from "@plrs/protocol/core";
 import { loadPublicSigningKeys } from "./products.js";
 
 const TRUST_CACHE_SECONDS = 300;
@@ -66,7 +70,15 @@ export async function handleTrustManifest(
     })),
   };
   return new Response(
-    await signJws(doc, product.signingKeyPem, product.signingKid),
+    // `typ` is the domain separator, and wire v3 §2 makes it MANDATORY — an untyped manifest is
+    // rejected outright now, so the v2 tolerance window (sign without a typ, verify without
+    // requiring one) has to close on the signing side too or nothing verifies.
+    await signJws(
+      doc,
+      product.signingKeyPem,
+      product.signingKid,
+      "plrs-trust+jws",
+    ),
     {
       status: 200,
       headers: {

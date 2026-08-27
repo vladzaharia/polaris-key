@@ -54,6 +54,11 @@ export const REGISTRATION_POLICIES = [
   "requires-license",
 ] as const;
 
+/** The three policies as a type. Structurally identical to `@plrs/protocol/core`'s
+ *  `RegistrationPolicy` and to the worker's; declared here for the same reason `ServiceSlug`
+ *  is — this package is a dependency of both, so the name has to originate on this side. */
+export type RegistrationPolicy = (typeof REGISTRATION_POLICIES)[number];
+
 export interface ValidationMessage {
   file: "product" | "schema" | "release";
   path: string;
@@ -224,7 +229,7 @@ export interface ParsedManifest {
   services: ManifestServices;
   /** `devices.registration` — who may register a device (§2.3). Undefined = undeclared; the
    *  default is derived from the enabled services at the point of use, not baked in here. */
-  registration?: string;
+  registration?: RegistrationPolicy;
 }
 
 export type ParseManifestResult =
@@ -1283,7 +1288,8 @@ export function parseManifest(
   // Validated above; carried verbatim so the derivation of the default (which depends on the
   // enabled services) stays with the consumer rather than being frozen at ingest.
   const registration = registrationPolicy(productRoot);
-  if (typeof registration === "string") parsed.registration = registration;
+  if (isOneOf(registration, REGISTRATION_POLICIES))
+    parsed.registration = registration;
 
   if (productRoot.oidc !== undefined) {
     const provider = isOneOf(oidcRoot.provider, OIDC_PROVIDER_VALUES)

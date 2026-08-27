@@ -30,6 +30,7 @@ import { notFound } from "./core/errors.js";
 import { secureResponse } from "./securityHeaders.js";
 import { handleScheduled } from "./scheduled.js";
 import { handleDevices, handleReport } from "./core/devices.js";
+import { handleRegister } from "./core/register.js";
 
 export { RateLimitDO } from "./rateLimitDo.js";
 
@@ -52,6 +53,7 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "trustManifest",
   "devices",
   "report",
+  "register",
   "service",
   "browserSession",
   "browserSessionLicense",
@@ -133,11 +135,13 @@ async function dispatch(req: Request, env: Env): Promise<Response> {
 
       switch (route.kind) {
         case "discovery":
-          return handleDiscovery(req, db, product);
+          return handleDiscovery(req, env, db, product, SERVICES);
         case "devices":
           return handleDevices(req, env, db, product, now, route.deviceId);
         case "report":
           return handleReport(req, env, db, product, now);
+        case "register":
+          return handleRegister(req, env, db, product, now);
         case "jwks":
           return handleJwks(db, product);
         case "trustManifest":

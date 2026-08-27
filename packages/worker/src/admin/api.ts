@@ -61,6 +61,7 @@ import { handleLicenses } from "./handlers/licenses.js";
 import { handleProfiles } from "./handlers/profiles.js";
 import { handleTiers } from "./handlers/tiers.js";
 import { handleActivity } from "./handlers/activity.js";
+import { handleServicesAdmin } from "../core/servicesAdmin.js";
 
 // ── per-product routing ────────────────────────────────────────────────────────
 async function handleProductScoped(
@@ -136,6 +137,13 @@ async function handleProductScoped(
       id,
       now,
     );
+  }
+
+  // Which Polaris services this product runs (plan §R4). A CORE resource, not a per-service
+  // one: a service cannot own its own off switch, because it would have to be running to be
+  // turned off. `id` carries the single sub-action (`revert`).
+  if (resource === "services") {
+    return handleServicesAdmin(req, env, db, session, slug, id, now);
   }
 
   if (resource === "schema") {
