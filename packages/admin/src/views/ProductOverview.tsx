@@ -131,7 +131,10 @@ function HealthStrip({
   const signing = signingBundleOf(product);
   const modules = modulesOf(product);
   const setup = setupStateOf(product);
-  const missing = setup?.missing ?? setup?.requiredSecrets ?? [];
+  const missing = [
+    ...(setup?.missing ?? []),
+    ...(setup?.missingSecrets ?? []),
+  ].filter(Boolean);
   const warnings = setup?.warnings ?? [];
   const releaseSource = product.releaseSource ?? "manual";
   return (
@@ -185,7 +188,6 @@ function SetupCard({
 }: {
   product: ProductDetail;
 }): React.ReactElement {
-  const setup = setupStateOf(product);
   const checklist = setupChecklistOf(product);
   const rows = [
     ["Product", product.name],
@@ -278,9 +280,11 @@ interface SetupChecklistItem {
 function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
   const setup = setupStateOf(product);
   const signing = signingBundleOf(product);
+  // `requiredSecrets` is the FULL requirement list (configured or not) — only
+  // `missingSecrets` belongs in the missing line. Folding requiredSecrets in here made
+  // every required secret render as "Missing" forever, even when configured.
   const missing = [
     ...(setup?.missing ?? []),
-    ...(setup?.requiredSecrets ?? []),
     ...(setup?.missingSecrets ?? []),
   ].filter(Boolean);
   const warnings = setup?.warnings ?? [];

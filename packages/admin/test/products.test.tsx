@@ -139,7 +139,10 @@ describe("Products view", () => {
 
     expect(await screen.findByText("Guided checklist")).toBeTruthy();
     expect(screen.getByText("Required secrets")).toBeTruthy();
-    expect(screen.getByText(/WEBHOOK_SECRET/)).toBeTruthy();
+    // The missing secret legitimately renders twice since the metric card and the
+    // checklist both report missingSecrets (it previously appeared once only because
+    // the metric card was reading the wrong field).
+    expect(screen.getAllByText(/WEBHOOK_SECRET/).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Review setup warning")).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /Set secrets/ }).getAttribute("href"),
