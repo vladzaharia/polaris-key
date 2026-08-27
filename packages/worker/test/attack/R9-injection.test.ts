@@ -22,6 +22,7 @@ import {
   seedProductSecret,
 } from "../seed.js";
 import type { Db } from "../../src/db/types.js";
+import { setServices } from "../../src/repo.js";
 import type { Env } from "../../src/env.js";
 import type { Product } from "../../src/core/products.js";
 import { loadProduct } from "../../src/core/products.js";
@@ -29,7 +30,10 @@ import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/fingerprint.js";
-import { DEFAULT_SERVICES } from "../../src/core/services.js";
+import {
+  DEFAULT_SERVICES,
+  serializeServices,
+} from "../../src/core/services.js";
 import {
   handleAuthCallback,
   handleAuthStart,
@@ -941,6 +945,19 @@ describe("R9-04 gh_owner/gh_repo path injection", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe("R9-05 /download/<token> open redirect + single-use race", () => {
   async function seedArtifact(db: Db, sourceUrl: string): Promise<void> {
+    // Task 7.2 made the portal's download flow a projection of `services_json`, and
+    // `DEFAULT_SERVICES` has Release OFF — so seeding release ROWS alone now describes a product
+    // that does not serve them, and every mint below would 404 before reaching the redirect
+    // semantics this suite is actually about.
+    await setServices(
+      db,
+      SLUG,
+      serializeServices({
+        services: { ...DEFAULT_SERVICES, release: { enabled: true } },
+      }),
+      "manifest",
+      NOW,
+    );
     await db.run(
       `INSERT INTO release_metadata
          (product, release_id, version, title, notes, commit_sha, source_url,
@@ -1689,8 +1706,19 @@ describe("R9-13 dynamic `SET ${col} = ?` builders", () => {
       join(HERE, "..", "..", "src", "admin", "handlers", "products.ts"),
       "utf8",
     );
+    // §R1 moved the licence admin handler under the service that owns it
+    // (`license/licenses`); the property this pins is about the CALL SITE, so it follows.
     const licenses = readFileSync(
-      join(HERE, "..", "..", "src", "admin", "handlers", "licenses.ts"),
+      join(
+        HERE,
+        "..",
+        "..",
+        "src",
+        "services",
+        "license",
+        "admin",
+        "licenses.ts",
+      ),
       "utf8",
     );
     // No spread of request data into the field object at either call site.

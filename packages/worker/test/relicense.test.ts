@@ -107,7 +107,7 @@ describe("remote re-licensing", () => {
       ),
       env,
       db,
-      `/api/products/djdl/licenses/${licenseId}`,
+      `/api/products/djdl/license/licenses/${licenseId}`,
       { now: NOW },
     );
   }
@@ -287,7 +287,7 @@ describe("remote re-licensing", () => {
           ),
           env,
           db,
-          "/api/products/djdl/licenses",
+          "/api/products/djdl/license/licenses",
           { now: NOW },
         );
         expect(res.status).toBe(201);

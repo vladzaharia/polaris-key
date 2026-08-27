@@ -3,8 +3,11 @@
  *
  * `/manage/api/products/<slug>/<service>/…` is dispatched through the same descriptor the public
  * router uses (`ServiceDescriptor.adminHandle`), so a service owns its own console API instead of
- * having a branch in `admin/handlers/products.ts`. Three services have one so far:
+ * having a branch in `admin/handlers/products.ts`. All five services have one:
  *
+ *   license/{licenses…,tiers…,policy}  MOVED in P7 off the dispatcher's own destructure; the
+ *                                      pre-suite spellings are GONE, not aliased
+ *   config/{catalog,profiles…}         MOVED in P7 (`schema` → `catalog`, see that module)
  *   release/{health,resync,releases}   moved verbatim, plus the truth store's new read
  *   update/settings                    NEW — access modes (incl. `entitled`, D-13) and the
  *                                      compatibility window, relocated off the product PATCH
@@ -514,5 +517,279 @@ describe("identity/portal", () => {
       path,
     );
     expect(res.status).toBe(404);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// P7 — the product-scoped resources regrouped under their owning service (§R1)
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe("the admin regroup (§R1)", () => {
+  /** old spelling → the service-namespaced path that replaced it. */
+  const MOVED: [string, string][] = [
+    ["licenses", "license/licenses"],
+    ["tiers", "license/tiers"],
+    ["policy", "license/policy"],
+    ["schema", "config/catalog"],
+    ["profiles", "config/profiles"],
+  ];
+
+  it.each(MOVED)("serves %s at its new home: %s", async (_old, moved) => {
+    const { db, env, auth } = await fixture(false);
+    const path = `/api/products/${SLUG}/${moved}`;
+    const res = await dispatch(
+      mkReq("GET", path, { cookie: auth.cookie }),
+      env,
+      db,
+      path,
+    );
+    // 200 for the collections; `config/catalog` 404s only because this fixture publishes no
+    // catalog. Either way it REACHED a handler — what must not happen is the dispatcher
+    // refusing to route the path at all, which is indistinguishable from the 404 below without
+    // asserting on the collection bodies, so those are pinned separately.
+    expect([200, 404]).toContain(res.status);
+  });
+
+  it.each(MOVED)(
+    "the pre-suite spelling %s is gone outright",
+    async (old, _moved) => {
+      // Pre-launch, the console was the only consumer, so a permanent alias would buy nothing
+      // and cost two paths that can answer differently after the next refactor. `portal` is the
+      // one exception and it is a deliberate, dated rewrite (`admin/api.ts`), not an alias.
+      const { db, env, auth } = await fixture(false);
+      const path = `/api/products/${SLUG}/${old}`;
+      const res = await dispatch(
+        mkReq("GET", path, { cookie: auth.cookie }),
+        env,
+        db,
+        path,
+      );
+      expect(res.status).toBe(404);
+    },
+  );
+
+  it("lists licences and tiers through License's descriptor", async () => {
+    const { db, env, auth } = await fixture(false);
+    for (const [resource, key] of [
+      ["license/licenses", "licenses"],
+      ["license/tiers", "tiers"],
+    ] as const) {
+      const path = `/api/products/${SLUG}/${resource}`;
+      const res = await dispatch(
+        mkReq("GET", path, { cookie: auth.cookie }),
+        env,
+        db,
+        path,
+      );
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ [key]: [] });
+    }
+  });
+
+  it("round-trips a licence through create → detail → keys, six segments deep", async () => {
+    // The dispatcher used to destructure exactly five path positions, which capped how deep a
+    // resource could nest. A service routes itself now, so this path — six segments past the
+    // slug — has to work, and it is the one the console's key list actually calls.
+    const { db, env, auth } = await fixture(false);
+    const collection = `/api/products/${SLUG}/license/licenses`;
+    const created = await dispatch(
+      mkReq("POST", collection, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { name: "Ada", email: "ada@x.io" },
+      }),
+      env,
+      db,
+      collection,
+    );
+    expect(created.status).toBe(201);
+    const { licenseId } = (await created.json()) as { licenseId: string };
+
+    const keysPath = `${collection}/${licenseId}/keys`;
+    const keys = await dispatch(
+      mkReq("GET", keysPath, { cookie: auth.cookie }),
+      env,
+      db,
+      keysPath,
+    );
+    expect(keys.status).toBe(200);
+    // Creating a licence mints its first key, so this proves the nested route reached the
+    // handler rather than merely failing to 404.
+    expect((await keys.json()) as { keys: unknown[] }).toMatchObject({
+      keys: [{ label: "Initial key" }],
+    });
+  });
+
+  it("publishes and reads a catalog through Config's descriptor", async () => {
+    const { db, env, auth } = await fixture(false);
+    const path = `/api/products/${SLUG}/config/catalog`;
+    const published = await dispatch(
+      mkReq("PUT", path, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: {
+          catalog: {
+            schemaVersion: 1,
+            entries: [
+              {
+                key: "ui.theme",
+                kind: "config",
+                category: "ui",
+                label: "Theme",
+                description: "",
+                schema: { type: "string" },
+              },
+            ],
+          },
+        },
+      }),
+      env,
+      db,
+      path,
+    );
+    expect(published.status).toBe(200);
+    const read = await dispatch(
+      mkReq("GET", path, { cookie: auth.cookie }),
+      env,
+      db,
+      path,
+    );
+    expect(read.status).toBe(200);
+    expect((await read.json()) as { entries: unknown[] }).toMatchObject({
+      entries: [{ key: "ui.theme" }],
+    });
+  });
+
+  it("edits the fingerprint policy under License and reverts it to the manifest", async () => {
+    const { db, env, auth } = await fixture(false);
+    const path = `/api/products/${SLUG}/license/policy`;
+    const patched = await dispatch(
+      mkReq("PATCH", path, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { enabled: true, defaultMode: "strict" },
+      }),
+      env,
+      db,
+      path,
+    );
+    expect(patched.status).toBe(200);
+    expect(await patched.json()).toMatchObject({
+      policy: { enabled: true, defaultMode: "strict" },
+      source: "admin",
+    });
+
+    const revertPath = `${path}/revert`;
+    const reverted = await dispatch(
+      mkReq("POST", revertPath, { cookie: auth.cookie, csrf: auth.csrf }),
+      env,
+      db,
+      revertPath,
+    );
+    expect(reverted.status).toBe(200);
+    expect(await reverted.json()).toMatchObject({ source: "manifest" });
+  });
+
+  it("reaches a DISABLED service's settings — configure-then-enable has to be possible", async () => {
+    // Unlike the public dispatcher, the admin surface does not check enablement (see the note in
+    // `admin/api.ts`). Hiding a disabled service from an authenticated platform admin would
+    // protect nothing — the console is already behind the platform-admin gate — and would make
+    // it impossible to set a service up before turning it on.
+    const { db, env, auth } = await fixture(false);
+    await db.run(
+      "UPDATE products SET services_json = ?, services_source = 'admin' WHERE slug = ?",
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+      }),
+      SLUG,
+    );
+    const path = `/api/products/${SLUG}/license/tiers`;
+    const res = await dispatch(
+      mkReq("GET", path, { cookie: auth.cookie }),
+      env,
+      db,
+      path,
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("404s an unknown sub-path inside license/config rather than falling through", async () => {
+    const { db, env, auth } = await fixture(false);
+    for (const path of [
+      `/api/products/${SLUG}/license/nope`,
+      `/api/products/${SLUG}/config/nope`,
+      `/api/products/${SLUG}/config/catalog/extra`,
+    ]) {
+      const res = await dispatch(
+        mkReq("GET", path, { cookie: auth.cookie }),
+        env,
+        db,
+        path,
+      );
+      expect(res.status, path).toBe(404);
+    }
+  });
+});
+
+describe("productView carries the enablement set (D-15)", () => {
+  it("reports services, registration and the ownership source on the product row", async () => {
+    // The console's shell filters its nav on this, so it has to arrive with the product rather
+    // than on a second request the sidebar would have to wait for.
+    const { db, env, auth } = await fixture(false);
+    await db.run(
+      "UPDATE products SET services_json = ?, services_source = 'admin' WHERE slug = ?",
+      JSON.stringify({
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: true },
+        update: { enabled: true },
+        identity: { enabled: false },
+        registration: "open",
+      }),
+      SLUG,
+    );
+    const path = `/api/products/${SLUG}`;
+    const res = await dispatch(
+      mkReq("GET", path, { cookie: auth.cookie }),
+      env,
+      db,
+      path,
+    );
+    expect(res.status).toBe(200);
+    const { product } = (await res.json()) as {
+      product: Record<string, unknown>;
+    };
+    expect(product).toMatchObject({
+      services: {
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: true },
+        update: { enabled: true },
+        identity: { enabled: false },
+      },
+      registration: "open",
+      effectiveRegistration: "open",
+      servicesSource: "admin",
+    });
+  });
+
+  it("reports the DERIVED registration as null-declared when the manifest said nothing", async () => {
+    const { db, env, auth } = await fixture(false);
+    const path = `/api/products/${SLUG}`;
+    const res = await dispatch(
+      mkReq("GET", path, { cookie: auth.cookie }),
+      env,
+      db,
+      path,
+    );
+    const { product } = (await res.json()) as {
+      product: Record<string, unknown>;
+    };
+    // Undeclared is not the same as "someone chose requires-license": the console has to be able
+    // to show "derived", or an operator would think a value was set that nobody wrote.
+    expect(product.registration).toBeNull();
+    expect(product.effectiveRegistration).toBe("requires-license");
+    expect(product.servicesSource).toBe("manifest");
   });
 });

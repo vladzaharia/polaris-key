@@ -471,12 +471,16 @@ describe("R1-04 audit-write amplification", () => {
     const N = 25;
     for (let i = 0; i < N; i++) {
       const res = await handleAdmin(
-        req("GET", "https://key.plrs.im/manage/api/products/djdl/licenses", {
-          cookie: `${ADMIN_COOKIE}=${token}`,
-        }),
+        req(
+          "GET",
+          "https://key.plrs.im/manage/api/products/djdl/license/licenses",
+          {
+            cookie: `${ADMIN_COOKIE}=${token}`,
+          },
+        ),
         env,
         db,
-        "/api/products/djdl/licenses",
+        "/api/products/djdl/license/licenses",
         { now: NOW },
       );
       expect(res.status).toBe(403);
@@ -506,10 +510,13 @@ describe("R1-04 audit-write amplification", () => {
     const before = (await listAudit(db, "djdl", {})).length;
     for (let i = 0; i < 5; i++) {
       const res = await handleAdmin(
-        req("GET", "https://key.plrs.im/manage/api/products/djdl/licenses"),
+        req(
+          "GET",
+          "https://key.plrs.im/manage/api/products/djdl/license/licenses",
+        ),
         env,
         db,
-        "/api/products/djdl/licenses",
+        "/api/products/djdl/license/licenses",
         { now: NOW },
       );
       expect(res.status).toBe(401);

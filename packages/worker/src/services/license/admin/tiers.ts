@@ -1,22 +1,25 @@
 /**
- * Tiers (`/api/products/<slug>/tiers/...`): named policy bundles (a profile + expiry/device
- * limits) a license can be assigned. List/create, patch, and delete.
+ * Tiers (`/manage/api/products/<slug>/license/tiers/...`): named policy bundles (a profile +
+ * expiry/device limits) a license can be assigned. List/create, patch, and delete.
  */
 
-import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../core/errors.js";
-import { randomId } from "../../crypto.js";
+import type { Db } from "../../../core/platform.js";
+import { ErrorCode } from "../../../core/errors.js";
+import { randomId } from "../../../core/platform.js";
 import {
+  adminJson,
+  adminNotFound,
+  audit,
   countLicensesUsingTier,
   deleteTier,
+  err,
   listProfiles,
   listTiers,
+  parseJsonList,
+  readBody,
   upsertTier,
-} from "../repo.js";
-import { audit } from "../audit.js";
-import type { AdminSession } from "../session.js";
-import { adminJson, err, notFound, readBody } from "../lib/respond.js";
-import { parseJsonList } from "../lib/shape.js";
+} from "../../../core/adminApi.js";
+import type { LicenseAdminContext } from "./index.js";
 
 /** Normalize a request-body `channels` field into a JSON string array column value, or null. */
 function parseChannels(raw: unknown): string | null {
@@ -49,13 +52,11 @@ async function profileExists(
 }
 
 export async function handleTiers(
-  req: Request,
-  db: Db,
-  session: AdminSession,
-  slug: string,
+  ctx: LicenseAdminContext,
   id: string | undefined,
-  now: number,
 ): Promise<Response> {
+  const { req, db, product, session, now } = ctx;
+  const slug = product.slug;
   if (!id) {
     if (req.method === "GET") {
       const rows = await listTiers(db, slug);
@@ -124,7 +125,7 @@ export async function handleTiers(
   const row = await listTiers(db, slug).then(
     (rows) => rows.find((t) => t.id === id) ?? null,
   );
-  if (!row) return notFound();
+  if (!row) return adminNotFound();
   if (req.method === "PATCH") {
     const body = await readBody(req);
     if ("profile" in body && !(await profileExists(db, slug, body.profile)))

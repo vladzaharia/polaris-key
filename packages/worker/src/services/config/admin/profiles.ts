@@ -1,34 +1,39 @@
 /**
- * Profiles (`/api/products/<slug>/profiles/...`): reusable managed-payload templates. List/
- * create, detail (redacted), catalog-validated payload edits (PUT batch), and delete.
+ * Profiles (`/manage/api/products/<slug>/config/profiles/...`): reusable managed-payload
+ * templates. List/create, detail (redacted), catalog-validated payload edits (PUT batch), and
+ * delete.
+ *
+ * Config's, because a profile IS a bundle of catalog values — the same config/secret/flag keys
+ * the signed config document carries, named once and pointed at from many licences. It is
+ * validated against the catalog on every write by the same compiler that serves the catalog.
  */
 
-import type { Db } from "../../db/types.js";
-import type { Env } from "../../env.js";
-import { ErrorCode } from "../../core/errors.js";
-import { randomId } from "../../crypto.js";
+import { ErrorCode } from "../../../core/errors.js";
+import { randomId } from "../../../core/platform.js";
 import {
+  adminJson,
+  adminNotFound,
+  applyOverrides,
+  audit,
   countLicensesUsingProfile,
   deleteProfile,
+  err,
   listProfiles,
+  loadCatalog,
+  parsePayload,
+  readBody,
+  redactPayload,
   upsertProfile,
-} from "../repo.js";
-import { audit } from "../audit.js";
-import type { AdminSession } from "../session.js";
-import { adminJson, err, notFound, readBody } from "../lib/respond.js";
-import { redactPayload, parsePayload } from "../lib/redact.js";
-import { applyOverrides, type OverrideUpdate } from "../lib/overrides.js";
-import { loadCatalog } from "../lib/shape.js";
+  type OverrideUpdate,
+} from "../../../core/adminApi.js";
+import type { ConfigAdminContext } from "./index.js";
 
 export async function handleProfiles(
-  req: Request,
-  env: Env,
-  db: Db,
-  session: AdminSession,
-  slug: string,
+  ctx: ConfigAdminContext,
   id: string | undefined,
-  now: number,
 ): Promise<Response> {
+  const { req, env, db, product, session, now } = ctx;
+  const slug = product.slug;
   if (!id) {
     if (req.method === "GET") {
       const rows = await listProfiles(db, slug);
@@ -76,7 +81,7 @@ export async function handleProfiles(
   const row = await listProfiles(db, slug).then(
     (rows) => rows.find((p) => p.id === id) ?? null,
   );
-  if (!row) return notFound();
+  if (!row) return adminNotFound();
   if (req.method === "GET") {
     const catalog = await loadCatalog(db, slug);
     return adminJson({

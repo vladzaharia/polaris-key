@@ -1,47 +1,55 @@
 /**
- * Licenses (`/api/products/<slug>/licenses/...`): list/create, detail/patch, enable/disable,
- * catalog-validated override batches, and the keys/devices sub-resources. Creating a license
- * mints its first key (returned ONCE). Override values validate against the active catalog.
+ * Licenses (`/manage/api/products/<slug>/license/licenses/...`): list/create, detail/patch,
+ * enable/disable, catalog-validated override batches, and the keys/devices sub-resources.
+ * Creating a license mints its first key (returned ONCE). Override values validate against the
+ * active catalog.
  */
 
-import type { Env } from "../../env.js";
-import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../core/errors.js";
-import { hashKey, mintLicenseKey, randomId } from "../../crypto.js";
-import { deleteTokenRecord } from "../../kv.js";
+import type { Db } from "../../../core/platform.js";
+import { ErrorCode } from "../../../core/errors.js";
+import {
+  deleteTokenRecord,
+  hashKey,
+  mintLicenseKey,
+  randomId,
+} from "../../../core/platform.js";
 import {
   countActiveDevices,
   getDeviceFacts,
   getFingerprint,
   getLicense,
   getTier,
-  insertLicense,
   insertKey,
+  insertLicense,
+  listDevicesByLicense,
   listKeysByLicense,
   listLicenseProfiles,
-  listDevicesByLicense,
   setLicenseProfiles,
-} from "../../repo.js";
+} from "../../../core/data.js";
 import {
+  adminJson,
+  adminNotFound,
+  applyOverrides,
+  audit,
+  err,
+  licenseSummary,
   listLicenses,
   listProfiles,
   listTiers,
-  patchLicense,
-  setLicenseStatus,
-} from "../repo.js";
-import { tierExpiresAt } from "../../licenseCore.js";
-import { shapeFacts, shapeFingerprint } from "../lib/deviceShape.js";
-import { audit } from "../audit.js";
-import type { AdminSession } from "../session.js";
-import { adminJson, err, notFound, readBody } from "../lib/respond.js";
-import { redactPayload, parsePayload } from "../lib/redact.js";
-import { applyOverrides, type OverrideUpdate } from "../lib/overrides.js";
-import {
-  licenseSummary,
   loadCatalog,
   parseJsonColumn,
   parseJsonList,
-} from "../lib/shape.js";
+  parsePayload,
+  patchLicense,
+  readBody,
+  redactPayload,
+  setLicenseStatus,
+  shapeFacts,
+  shapeFingerprint,
+  type OverrideUpdate,
+} from "../../../core/adminApi.js";
+import { tierExpiresAt } from "../authz.js";
+import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
 import { handleAdminDevices } from "./devices.js";
 
@@ -80,14 +88,11 @@ async function validateRefs(
 }
 
 export async function handleLicenses(
-  req: Request,
-  env: Env,
-  db: Db,
-  session: AdminSession,
-  slug: string,
+  ctx: LicenseAdminContext,
   rest: string[],
-  now: number,
 ): Promise<Response> {
+  const { req, env, db, product, session, now } = ctx;
+  const slug = product.slug;
   const [id, sub, subId, action] = rest;
 
   // /licenses
@@ -188,7 +193,7 @@ export async function handleLicenses(
   }
 
   const license = await getLicense(db, slug, id);
-  if (!license) return notFound();
+  if (!license) return adminNotFound();
   const catalog = await loadCatalog(db, slug);
 
   // /licenses/<id>
@@ -427,23 +432,13 @@ export async function handleLicenses(
 
   // /licenses/<id>/keys ...
   if (sub === "keys") {
-    return handleKeys(req, env, db, session, slug, id, subId, action, now);
+    return handleKeys(ctx, id, subId, action);
   }
 
   // /licenses/<id>/devices[/<deviceId>[/fingerprint/reset]]
   if (sub === "devices") {
-    return handleAdminDevices(
-      req,
-      env,
-      db,
-      session,
-      slug,
-      id,
-      subId,
-      now,
-      action,
-    );
+    return handleAdminDevices(ctx, id, subId, action);
   }
 
-  return notFound();
+  return adminNotFound();
 }

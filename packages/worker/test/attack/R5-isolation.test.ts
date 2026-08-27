@@ -530,12 +530,12 @@ describe("R5-05 no tenant-scoped admin role exists", () => {
       groups: ["acme-admins"],
     });
     const denied = await handleAdminApi(
-      adminReq("GET", "/manage/api/products/acme/licenses", {
+      adminReq("GET", "/manage/api/products/acme/license/licenses", {
         cookie: acmeOp.cookie,
       }),
       e,
       db,
-      "/api/products/acme/licenses",
+      "/api/products/acme/license/licenses",
       NOW,
     );
     // 403 on their OWN product: product-scoped admin is not implemented.
@@ -550,12 +550,12 @@ describe("R5-05 no tenant-scoped admin role exists", () => {
     });
     for (const slug of [ACME, EVILCO]) {
       const res = await handleAdminApi(
-        adminReq("GET", `/manage/api/products/${slug}/licenses`, {
+        adminReq("GET", `/manage/api/products/${slug}/license/licenses`, {
           cookie: platform.cookie,
         }),
         e,
         db,
-        `/api/products/${slug}/licenses`,
+        `/api/products/${slug}/license/licenses`,
         NOW,
       );
       expect(res.status).toBe(200);
@@ -833,7 +833,7 @@ describe("REFUTED: IDOR sweep — ownership predicates hold", () => {
     const dev = await handleAdminApi(
       adminReq(
         "DELETE",
-        "/manage/api/products/acme/licenses/lic_b/devices/dev-a",
+        "/manage/api/products/acme/license/licenses/lic_b/devices/dev-a",
         {
           cookie: platform.cookie,
           csrf: platform.csrf,
@@ -841,7 +841,7 @@ describe("REFUTED: IDOR sweep — ownership predicates hold", () => {
       ),
       e,
       db,
-      "/api/products/acme/licenses/lic_b/devices/dev-a",
+      "/api/products/acme/license/licenses/lic_b/devices/dev-a",
       NOW,
     );
     expect(dev.status).toBe(404);
@@ -854,12 +854,12 @@ describe("REFUTED: IDOR sweep — ownership predicates hold", () => {
     const keyRes = await handleAdminApi(
       adminReq(
         "POST",
-        `/manage/api/products/acme/licenses/lic_b/keys/${keyRow!.key_hash}/revoke`,
+        `/manage/api/products/acme/license/licenses/lic_b/keys/${keyRow!.key_hash}/revoke`,
         { cookie: platform.cookie, csrf: platform.csrf },
       ),
       e,
       db,
-      `/api/products/acme/licenses/lic_b/keys/${keyRow!.key_hash}/revoke`,
+      `/api/products/acme/license/licenses/lic_b/keys/${keyRow!.key_hash}/revoke`,
       NOW,
     );
     expect(keyRes.status).toBe(404);

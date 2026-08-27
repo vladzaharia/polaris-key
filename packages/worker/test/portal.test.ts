@@ -9,6 +9,9 @@ import {
   seedProduct,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
+import type { Db } from "../src/db/types.js";
+import { setServices } from "../src/repo.js";
+import { serializeServices } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
 import { hashKey } from "../src/crypto.js";
@@ -74,6 +77,25 @@ async function portalSession(
 function cookieFromSetCookie(value: string | null): string {
   expect(value).toBeTruthy();
   return value!.split(";")[0]!;
+}
+
+/** Turn the Release service on for a product, the way the manifest writer does. */
+async function enableReleaseService(db: Db, slug: string): Promise<void> {
+  await setServices(
+    db,
+    slug,
+    serializeServices({
+      services: {
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: true },
+        update: { enabled: false },
+        identity: { enabled: false },
+      },
+    }),
+    "manifest",
+    NOW,
+  );
 }
 
 describe("customer portal", () => {
@@ -272,6 +294,12 @@ describe("customer portal", () => {
     await seedProduct(db, "djdl");
     await seedLicenseWithKey(db, "djdl");
     const session = await portalSession(env, db);
+    // Task 7.2 made the portal's download flow a projection of `services_json`, and
+    // `DEFAULT_SERVICES` has Release OFF — so a fixture that only seeds release ROWS now
+    // describes a product that does not serve them. Declaring the service is what this fixture
+    // always meant; it just used to be able to leave it unsaid.
+    await enableReleaseService(db, "djdl");
+
     await db.run(
       `INSERT INTO release_metadata
          (product, release_id, version, title, notes, commit_sha, source_url,
@@ -356,6 +384,12 @@ describe("customer portal", () => {
     const env = portalEnv();
     await seedProduct(db, "djdl");
     const session = await portalSession(env, db, "unlinked@example.com");
+    // Task 7.2 made the portal's download flow a projection of `services_json`, and
+    // `DEFAULT_SERVICES` has Release OFF — so a fixture that only seeds release ROWS now
+    // describes a product that does not serve them. Declaring the service is what this fixture
+    // always meant; it just used to be able to leave it unsaid.
+    await enableReleaseService(db, "djdl");
+
     await db.run(
       `INSERT INTO release_metadata
          (product, release_id, version, title, notes, commit_sha, source_url,
@@ -418,6 +452,12 @@ describe("customer portal", () => {
     await seedProduct(db, "djdl");
     const { licenseId } = await seedLicenseWithKey(db, "djdl");
     const session = await portalSession(env, db);
+    // Task 7.2 made the portal's download flow a projection of `services_json`, and
+    // `DEFAULT_SERVICES` has Release OFF — so a fixture that only seeds release ROWS now
+    // describes a product that does not serve them. Declaring the service is what this fixture
+    // always meant; it just used to be able to leave it unsaid.
+    await enableReleaseService(db, "djdl");
+
     await db.run(
       `INSERT INTO release_metadata
          (product, release_id, version, title, notes, commit_sha, source_url,

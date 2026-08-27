@@ -1,37 +1,37 @@
 /**
- * License devices (`/api/products/<slug>/licenses/<id>/devices`): list, deauthorize (DELETE
- * or POST), and reset a hardware binding. Deauthorizing also evicts the device's session
- * token from KV and purges its fingerprint + software facts.
+ * License devices (`/manage/api/products/<slug>/license/licenses/<id>/devices`): list,
+ * deauthorize (DELETE or POST), and reset a hardware binding. Deauthorizing also evicts the
+ * device's session token from KV and purges its fingerprint + software facts.
  */
 
-import type { Env } from "../../env.js";
-import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../core/errors.js";
-import { deleteTokenRecord } from "../../kv.js";
+import { ErrorCode } from "../../../core/errors.js";
+import { deleteTokenRecord } from "../../../core/platform.js";
 import {
   clearFingerprint,
+  getDevice,
   getDeviceFacts,
   getFingerprint,
   listDevicesByLicense,
   setDeviceStatus,
-  getDevice,
-} from "../../repo.js";
-import { audit } from "../audit.js";
-import type { AdminSession } from "../session.js";
-import { adminJson, err, notFound } from "../lib/respond.js";
-import { shapeFacts, shapeFingerprint } from "../lib/deviceShape.js";
+} from "../../../core/data.js";
+import {
+  adminJson,
+  adminNotFound,
+  audit,
+  err,
+  shapeFacts,
+  shapeFingerprint,
+} from "../../../core/adminApi.js";
+import type { LicenseAdminContext } from "./index.js";
 
 export async function handleAdminDevices(
-  req: Request,
-  env: Env,
-  db: Db,
-  session: AdminSession,
-  slug: string,
+  ctx: LicenseAdminContext,
   licenseId: string,
   deviceId: string | undefined,
-  now: number,
   action?: string,
 ): Promise<Response> {
+  const { req, env, db, product, session, now } = ctx;
+  const slug = product.slug;
   if (!deviceId) {
     if (req.method === "GET") {
       const devices = await listDevicesByLicense(db, slug, licenseId);
@@ -59,7 +59,7 @@ export async function handleAdminDevices(
     return err(405, ErrorCode.BadRequest, "method not allowed");
   }
   const device = await getDevice(db, slug, deviceId);
-  if (!device || device.license_id !== licenseId) return notFound();
+  if (!device || device.license_id !== licenseId) return adminNotFound();
 
   // POST .../devices/<id>/fingerprint/reset — the support escape hatch for a false-positive
   // drift lockout. Clearing the binding lets the device's next check-in re-bind cleanly

@@ -430,14 +430,14 @@ describe("admin api", () => {
     });
 
     const created = await dispatch(
-      mkReq("POST", "/api/products/djdl/licenses", {
+      mkReq("POST", "/api/products/djdl/license/licenses", {
         cookie,
         csrf,
         body: { name: "Grace", email: "g@x.io" },
       }),
       env,
       db,
-      "/api/products/djdl/licenses",
+      "/api/products/djdl/license/licenses",
     );
     expect(created.status).toBe(201);
     const body = (await created.json()) as { licenseId: string; key: string };
@@ -445,10 +445,12 @@ describe("admin api", () => {
 
     // GET the license detail — the raw key is NOT echoed back.
     const detailRes = await dispatch(
-      mkReq("GET", `/api/products/djdl/licenses/${body.licenseId}`, { cookie }),
+      mkReq("GET", `/api/products/djdl/license/licenses/${body.licenseId}`, {
+        cookie,
+      }),
       env,
       db,
-      `/api/products/djdl/licenses/${body.licenseId}`,
+      `/api/products/djdl/license/licenses/${body.licenseId}`,
     );
     const detail = (await detailRes.json()) as { keys: { hash: string }[] };
     expect(detail.keys.length).toBe(1);
@@ -466,13 +468,13 @@ describe("admin api", () => {
       groups: [PLATFORM_GROUP],
     });
     const res = await dispatch(
-      mkReq("POST", "/api/products/djdl/licenses", {
+      mkReq("POST", "/api/products/djdl/license/licenses", {
         cookie,
         body: { name: "X" },
       }),
       env,
       db,
-      "/api/products/djdl/licenses",
+      "/api/products/djdl/license/licenses",
     );
     expect(res.status).toBe(403);
   });
@@ -490,7 +492,7 @@ describe("admin api", () => {
 
     // A malformed catalog (bad schema fragment) is rejected.
     const bad = await dispatch(
-      mkReq("PUT", "/api/products/djdl/schema", {
+      mkReq("PUT", "/api/products/djdl/config/catalog", {
         cookie,
         csrf,
         body: {
@@ -511,13 +513,13 @@ describe("admin api", () => {
       }),
       env,
       db,
-      "/api/products/djdl/schema",
+      "/api/products/djdl/config/catalog",
     );
     expect(bad.status).toBe(422);
 
     // A well-formed catalog publishes.
     const good = await dispatch(
-      mkReq("PUT", "/api/products/djdl/schema", {
+      mkReq("PUT", "/api/products/djdl/config/catalog", {
         cookie,
         csrf,
         body: {
@@ -538,31 +540,35 @@ describe("admin api", () => {
       }),
       env,
       db,
-      "/api/products/djdl/schema",
+      "/api/products/djdl/config/catalog",
     );
     expect(good.status).toBe(200);
 
     // And an override against it is catalog-validated (bad value ⇒ 422).
     const lic = await dispatch(
-      mkReq("POST", "/api/products/djdl/licenses", {
+      mkReq("POST", "/api/products/djdl/license/licenses", {
         cookie,
         csrf,
         body: { name: "Z", email: "z@x.io" },
       }),
       env,
       db,
-      "/api/products/djdl/licenses",
+      "/api/products/djdl/license/licenses",
     );
     const { licenseId } = (await lic.json()) as { licenseId: string };
     const badOverride = await dispatch(
-      mkReq("PUT", `/api/products/djdl/licenses/${licenseId}/overrides`, {
-        cookie,
-        csrf,
-        body: { updates: [{ key: "run.concurrency", value: 0 }] },
-      }),
+      mkReq(
+        "PUT",
+        `/api/products/djdl/license/licenses/${licenseId}/overrides`,
+        {
+          cookie,
+          csrf,
+          body: { updates: [{ key: "run.concurrency", value: 0 }] },
+        },
+      ),
       env,
       db,
-      `/api/products/djdl/licenses/${licenseId}/overrides`,
+      `/api/products/djdl/license/licenses/${licenseId}/overrides`,
     );
     expect(badOverride.status).toBe(422);
   });
@@ -592,18 +598,18 @@ describe("admin api", () => {
       groups: [DJDL_ADMIN_GROUP],
     });
     const okHere = await dispatch(
-      mkReq("GET", "/api/products/djdl/licenses", { cookie }),
+      mkReq("GET", "/api/products/djdl/license/licenses", { cookie }),
       env,
       db,
-      "/api/products/djdl/licenses",
+      "/api/products/djdl/license/licenses",
     );
     expect(okHere.status).toBe(403);
 
     const deniedThere = await dispatch(
-      mkReq("GET", "/api/products/acme/licenses", { cookie }),
+      mkReq("GET", "/api/products/acme/license/licenses", { cookie }),
       env,
       db,
-      "/api/products/acme/licenses",
+      "/api/products/acme/license/licenses",
     );
     expect(deniedThere.status).toBe(403);
   });
@@ -639,13 +645,17 @@ describe("admin api", () => {
       groups: [PLATFORM_GROUP],
     });
     const disabled = await dispatch(
-      mkReq("POST", `/api/products/djdl/licenses/${licenseId}/disable`, {
-        cookie,
-        csrf,
-      }),
+      mkReq(
+        "POST",
+        `/api/products/djdl/license/licenses/${licenseId}/disable`,
+        {
+          cookie,
+          csrf,
+        },
+      ),
       env,
       db,
-      `/api/products/djdl/licenses/${licenseId}/disable`,
+      `/api/products/djdl/license/licenses/${licenseId}/disable`,
     );
     expect(disabled.status).toBe(200);
 
@@ -677,10 +687,10 @@ describe("admin api", () => {
       groups: [DJDL_ADMIN_GROUP],
     });
     const denied = await dispatch(
-      mkReq("GET", "/api/products/acme/licenses", { cookie }),
+      mkReq("GET", "/api/products/acme/license/licenses", { cookie }),
       env,
       db,
-      "/api/products/acme/licenses",
+      "/api/products/acme/license/licenses",
     );
     expect(denied.status).toBe(403);
 
@@ -703,14 +713,14 @@ describe("admin api", () => {
       groups: [PLATFORM_GROUP],
     });
     await dispatch(
-      mkReq("POST", "/api/products/djdl/licenses", {
+      mkReq("POST", "/api/products/djdl/license/licenses", {
         cookie,
         csrf,
         body: { name: "Grace", email: "g@x.io" },
       }),
       env,
       db,
-      "/api/products/djdl/licenses",
+      "/api/products/djdl/license/licenses",
     );
     const rows = await listAudit(db, "djdl", {});
     expect(rows.length).toBeGreaterThan(0);
@@ -785,10 +795,10 @@ describe("admin api", () => {
 
     // The schema it uploaded is the active catalog.
     const schemaRes = await dispatch(
-      mkReq("GET", "/api/products/manualco/schema", { cookie }),
+      mkReq("GET", "/api/products/manualco/config/catalog", { cookie }),
       env,
       db,
-      "/api/products/manualco/schema",
+      "/api/products/manualco/config/catalog",
     );
     expect(await schemaRes.text()).toContain("run.concurrency");
 

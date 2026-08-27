@@ -39,16 +39,12 @@ import type { AdminSession } from "../admin/session.js";
 import { audit } from "../admin/audit.js";
 import { adminJson, err, notFound, readBody } from "../admin/lib/respond.js";
 import { ErrorCode } from "./errors.js";
-import {
-  getProduct,
-  revertServicesToManifest,
-  setServices,
-  type ProductRow,
-} from "../repo.js";
+import { getProduct, revertServicesToManifest, setServices } from "../repo.js";
 import {
   parseServices,
   resolveRegistration,
   REGISTRATION_POLICIES,
+  serviceStateOf,
   SERVICE_SLUGS,
   serializeServices,
   validateServices,
@@ -56,27 +52,6 @@ import {
   type RegistrationPolicy,
   type ServiceSlug,
 } from "./services.js";
-
-/** One projection for GET and for the post-write echo, so the two can never drift. */
-function servicesView(row: ProductRow | null): {
-  services: ProductServices["services"];
-  /** The DECLARED policy, or `null` when the product is riding the derived default. */
-  registration: RegistrationPolicy | null;
-  /** What the derivation currently produces — what the wire actually enforces. */
-  effectiveRegistration: RegistrationPolicy;
-  source: string;
-} {
-  const parsed = parseServices(row?.services_json ?? null);
-  return {
-    services: parsed.services,
-    registration: parsed.registration ?? null,
-    effectiveRegistration: resolveRegistration(
-      parsed.services,
-      parsed.registration,
-    ),
-    source: row?.services_source ?? "manifest",
-  };
-}
 
 function isRegistrationPolicy(value: unknown): value is RegistrationPolicy {
   return (
@@ -110,11 +85,11 @@ export async function handleServicesAdmin(
       { kind: "product", id: slug },
       `Returned service enablement for ${slug} to manifest control; the manifest re-applies on the next resync`,
     );
-    return adminJson(servicesView(await getProduct(db, slug)));
+    return adminJson(serviceStateOf(await getProduct(db, slug)));
   }
   if (action !== undefined) return notFound();
 
-  if (req.method === "GET") return adminJson(servicesView(row));
+  if (req.method === "GET") return adminJson(serviceStateOf(row));
   if (req.method !== "PATCH")
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
@@ -186,5 +161,5 @@ export async function handleServicesAdmin(
     `Set services for ${slug}: ${enabled.length ? enabled.join(", ") : "none"}; ` +
       `registration ${registration ?? `derived (${resolveRegistration(services)})`}`,
   );
-  return adminJson(servicesView(await getProduct(db, slug)));
+  return adminJson(serviceStateOf(await getProduct(db, slug)));
 }

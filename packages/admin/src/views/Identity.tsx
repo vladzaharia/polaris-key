@@ -1,0 +1,387 @@
+import * as React from "react";
+import {
+  AlertTriangle,
+  Download,
+  FileCog,
+  Globe2,
+  KeyRound,
+  Mail,
+  RefreshCw,
+  ShieldCheck,
+  ShieldQuestion,
+} from "lucide-react";
+import {
+  api,
+  type PortalProductSettings,
+  type UpdatePortalSettingsBody,
+} from "../api.js";
+import { invalidate, useResource } from "../context.js";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  Skeleton,
+  Switch,
+  useToast,
+} from "../components/ui/index.js";
+import { releaseSourceOf } from "./products/util.js";
+
+/**
+ * The Identity section (spec §8) — how a HUMAN reaches this product.
+ *
+ * Two things landed here from elsewhere and they belong together: the customer-portal module
+ * toggles (previously the last card in the product Settings grab-bag) and the OIDC explainer
+ * (previously its own top-level tab). Both answer "who can sign in and how", and the portal's
+ * sign-in switches are meaningless without knowing where the OIDC provider is authored — an
+ * operator who turns "OIDC access" on and then cannot find where the provider is configured
+ * has been handed half an answer.
+ *
+ * Each card loads independently rather than sitting behind one gate: a portal-settings failure
+ * should not hide the explainer that tells the operator where identity config actually lives.
+ */
+export function Identity({ slug }: { slug: string }): React.ReactElement {
+  return (
+    <section aria-labelledby="identity-title" className="space-y-6">
+      <header className="space-y-1">
+        <h2
+          id="identity-title"
+          className="text-xl font-semibold tracking-tight"
+        >
+          Sign-in &amp; portal
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          How users sign in to{" "}
+          <span className="font-medium text-foreground">{slug}</span>, and what
+          the customer portal offers them once they have.
+        </p>
+      </header>
+
+      <PortalCard slug={slug} />
+      <OidcCard slug={slug} />
+    </section>
+  );
+}
+
+// ── customer portal ───────────────────────────────────────────────────────────
+
+const DEFAULT_PORTAL_SETTINGS: PortalProductSettings = {
+  portalEnabled: true,
+  oidcEnabled: true,
+  magicEnabled: true,
+  licenseKeyClaimEnabled: true,
+  releasesEnabled: true,
+  branding: null,
+  modifiedAt: 0,
+};
+
+type PortalToggleKey = Exclude<keyof UpdatePortalSettingsBody, "branding">;
+
+const PORTAL_ROWS: {
+  key: PortalToggleKey;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    key: "portalEnabled",
+    label: "Customer portal",
+    description: "Show this product’s licenses to verified customers.",
+    icon: <Globe2 aria-hidden className="size-4 text-primary" />,
+  },
+  {
+    key: "oidcEnabled",
+    label: "OIDC access",
+    description: "Allow portal account linking from the shared OIDC subject.",
+    icon: <ShieldCheck aria-hidden className="size-4 text-primary" />,
+  },
+  {
+    key: "magicEnabled",
+    label: "Email magic links",
+    description: "Allow verified email sign-in to link matching licenses.",
+    icon: <Mail aria-hidden className="size-4 text-primary" />,
+  },
+  {
+    key: "licenseKeyClaimEnabled",
+    label: "License-key claim",
+    description: "Allow customers to add a license by entering a valid key.",
+    icon: <KeyRound aria-hidden className="size-4 text-primary" />,
+  },
+  {
+    key: "releasesEnabled",
+    label: "Release downloads",
+    description: "Expose entitled release artifacts in the customer portal.",
+    icon: <Download aria-hidden className="size-4 text-primary" />,
+  },
+];
+
+function PortalCard({ slug }: { slug: string }): React.ReactElement {
+  const toast = useToast();
+  // Read through Identity's own endpoint rather than the copy embedded in the product row:
+  // `identity/portal` is the table's owner, so it is the value a save round-trips against.
+  const { data, loading, error, reload } = useResource(`portal:${slug}`, () =>
+    api.portalSettings(slug).then((r) => r.settings),
+  );
+  const settings = data ?? DEFAULT_PORTAL_SETTINGS;
+  const [form, setForm] = React.useState<Required<UpdatePortalSettingsBody>>({
+    ...DEFAULT_PORTAL_SETTINGS,
+    branding: null,
+  });
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setForm({
+      portalEnabled: settings.portalEnabled,
+      oidcEnabled: settings.oidcEnabled,
+      magicEnabled: settings.magicEnabled,
+      licenseKeyClaimEnabled: settings.licenseKeyClaimEnabled,
+      releasesEnabled: settings.releasesEnabled,
+      branding: settings.branding ?? null,
+    });
+  }, [settings]);
+
+  const dirty =
+    form.portalEnabled !== settings.portalEnabled ||
+    form.oidcEnabled !== settings.oidcEnabled ||
+    form.magicEnabled !== settings.magicEnabled ||
+    form.licenseKeyClaimEnabled !== settings.licenseKeyClaimEnabled ||
+    form.releasesEnabled !== settings.releasesEnabled;
+
+  const setToggle =
+    (key: PortalToggleKey) =>
+    (checked: boolean): void =>
+      setForm((current) => ({ ...current, [key]: checked }));
+
+  const onSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.updatePortalSettings(slug, {
+        portalEnabled: form.portalEnabled,
+        oidcEnabled: form.oidcEnabled,
+        magicEnabled: form.magicEnabled,
+        licenseKeyClaimEnabled: form.licenseKeyClaimEnabled,
+        releasesEnabled: form.releasesEnabled,
+      });
+      invalidate(`portal:${slug}`);
+      toast.success("Portal settings saved");
+    } catch (err) {
+      toast.error(
+        "Couldn’t save portal settings",
+        err instanceof Error ? err.message : undefined,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading && !data) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle aria-hidden />}
+        title="Couldn’t load portal settings"
+        description={error}
+        action={
+          <Button variant="outline" size="sm" onClick={reload}>
+            Retry
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <Card>
+      <form onSubmit={onSubmit}>
+        <CardHeader>
+          <CardTitle>Customer portal</CardTitle>
+          <CardDescription>
+            Per-product module and access settings for the root customer portal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y divide-border">
+          {PORTAL_ROWS.map((row) => {
+            const id = `portal-${slug}-${row.key}`;
+            return (
+              <div
+                key={row.key}
+                className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+              >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                    {row.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <label
+                      htmlFor={id}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      {row.label}
+                    </label>
+                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                      {row.description}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id={id}
+                  checked={Boolean(form[row.key])}
+                  onCheckedChange={setToggle(row.key)}
+                />
+              </div>
+            );
+          })}
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" loading={saving} disabled={!dirty}>
+            Save portal settings
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  );
+}
+
+// ── OIDC & provisioning ───────────────────────────────────────────────────────
+
+/**
+ * API gap (flagged, unchanged from the standalone OIDC tab this replaces): the admin surface
+ * exposes NO read or write endpoints for a product's OIDC provider selection, custom provider
+ * fields, group→tier map, or provisioning hooks. Those live exclusively in the product's
+ * `.pkey/product` manifest and are applied by re-syncing the repo.
+ *
+ * So this card is, by design, a read-only explainer offering the one action the API does
+ * support. When the worker grows a `GET …/identity/oidc` projection (its admin handler already
+ * has the seam — it routes only `portal` today), wire the forms here; do NOT invent endpoints
+ * in the meantime.
+ */
+function OidcCard({ slug }: { slug: string }): React.ReactElement {
+  const toast = useToast();
+  const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
+    api.product(slug).then((r) => r.product),
+  );
+  const [resyncing, setResyncing] = React.useState(false);
+  // `release/resync.ts` refuses ("product is not linked to a repo" -> 422) for anything whose
+  // `release_source` is not `github`, so for a manually-created product this button could only
+  // ever fail. `Products.tsx` gates its equivalent menu item the same way.
+  const linked = data != null && releaseSourceOf(data) === "github";
+
+  const onResync = React.useCallback(async () => {
+    setResyncing(true);
+    try {
+      await api.resyncProduct(slug);
+      invalidate(`product:${slug}`);
+      toast.success(
+        "Re-sync complete",
+        "Identity config was re-applied from the linked repo.",
+      );
+    } catch (e) {
+      toast.error(
+        "Re-sync failed",
+        e instanceof Error ? e.message : "Could not re-sync from the repo.",
+      );
+    } finally {
+      setResyncing(false);
+    }
+  }, [slug, toast]);
+
+  if (loading && !data) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle aria-hidden />}
+        title="Couldn’t load the product"
+        description={error}
+        action={
+          <Button variant="outline" size="sm" onClick={reload}>
+            Retry
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <FileCog aria-hidden className="size-5 text-primary" />
+          <CardTitle>Identity config is authored in your repo</CardTitle>
+        </div>
+        <CardDescription>
+          The OIDC provider, custom provider fields, group → tier map, and
+          provisioning hooks for{" "}
+          <span className="font-medium text-foreground">
+            {data?.name ?? slug}
+          </span>{" "}
+          live in its{" "}
+          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+            .pkey/product
+          </code>{" "}
+          manifest. Platform OIDC is the default; use{" "}
+          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+            oidc.provider: custom
+          </code>{" "}
+          only when a product needs its own OIDC client. Edit the manifest,
+          commit, then re-sync to apply the change.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div
+          role="note"
+          className="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground"
+        >
+          <ShieldQuestion aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <p>
+            The admin API does not expose OIDC settings for in-place editing.
+            Re-syncing re-reads{" "}
+            <code className="font-mono text-xs">.pkey/</code> and re-applies the
+            manifest (config schema, product metadata, OIDC provider, tiers, and
+            provisioning) without touching licenses.
+          </p>
+        </div>
+        <Button
+          onClick={() => void onResync()}
+          loading={resyncing}
+          disabled={!linked}
+          title={
+            linked ? undefined : "This product is not linked to a GitHub repo."
+          }
+        >
+          <RefreshCw aria-hidden />
+          Re-sync from linked repo
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}

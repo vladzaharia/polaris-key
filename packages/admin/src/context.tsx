@@ -6,7 +6,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { Me } from "./api.js";
+import { api, type Me, type ProductDetail } from "./api.js";
+import type { ServiceState } from "./route.js";
 
 /**
  * App-wide context: the admin identity (`me`) and the currently-selected product slug.
@@ -143,6 +144,35 @@ export function useResource<T>(
   });
 
   return { data: e.data, loading: e.loading, error: e.error, reload };
+}
+
+/**
+ * Which services a product runs (D-15) — the shell's nav filter and the router's
+ * enablement gate.
+ *
+ * Deliberately reads the SAME `product:<slug>` cache entry the views use rather than calling
+ * `GET …/services`: the shell needs the answer before it can draw the sidebar that frames the
+ * view, and a second round-trip would make the nav pop in a beat after the content it wraps.
+ * Sharing the key means the shell's read is free whenever a view has already loaded the product
+ * (and vice versa), and one `invalidate("product:")` after a services PATCH re-renders both.
+ *
+ * `null` means "not loaded, or a product row that predates `services_json`" and every caller
+ * treats it as SHOW EVERYTHING. Fail-open is right here because enablement is an affordance
+ * filter, not an access control — the worker gates each of these endpoints itself, so a
+ * briefly-visible tab leaks nothing. Failing closed would cost real usability: the nav would
+ * jump under the operator's cursor as sections appeared, and a deep link into a section this
+ * product does run would flash a "not enabled" screen before the answer arrived.
+ */
+export function useProductServices(slug: string): ServiceState {
+  // Hooks can't be called conditionally, so an empty slug (no products registered at all) gets
+  // a resolved-null fetcher instead of an early return — same shape, no request to
+  // `/manage/api/products/` that could only 404.
+  const { data } = useResource<ProductDetail | null>(
+    slug ? `product:${slug}` : "product:none",
+    () =>
+      slug ? api.product(slug).then((r) => r.product) : Promise.resolve(null),
+  );
+  return data?.services ?? null;
 }
 
 /** Reset the module cache — used by tests to isolate renders. */

@@ -35,7 +35,7 @@ import { handleActivate } from "../../src/services/license/activation.js";
 // auth + merge + sign work and additionally runs the build gate.
 import { handleConfigDocument } from "../../src/services/config/document.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
-import { handleSchema as handleAdminSchema } from "../../src/admin/handlers/schema.js";
+import { handleCatalog as handleAdminCatalog } from "../../src/services/config/admin/catalog.js";
 import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
 import { matchRoute } from "../../src/router.js";
 import { rateLimitOk } from "../../src/core/rateLimit.js";
@@ -276,8 +276,19 @@ describe("R10-01 catalog validation no longer generates code at request time", (
       body,
     }) as unknown as Request;
 
+    // §R1 moved catalog publishing under Config (`config/catalog`), so the handler now takes the
+    // service context the descriptor is dispatched with. This lane measures the COMPILER, not the
+    // dispatcher, so it is called directly with the two fields it reads.
     const res = await withoutCodegen(() =>
-      handleAdminSchema(req, db, session, "djdl", NOW),
+      handleAdminCatalog({
+        req,
+        env: {} as Env,
+        db,
+        product: { slug: "djdl" } as Product,
+        rest: ["catalog"],
+        now: NOW,
+        session,
+      }),
     );
     expect(res.status).toBe(200); // was 422
   });

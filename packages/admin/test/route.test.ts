@@ -1,8 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { hashFor, parseRoute, tabOf, TABS, type Route } from "../src/route.js";
+import {
+  hashFor,
+  isSectionEnabled,
+  isTabEnabled,
+  parseRoute,
+  SECTIONS,
+  sectionOf,
+  tabOf,
+  TABS,
+  visibleSections,
+  type Route,
+  type ServiceState,
+  type Tab,
+} from "../src/route.js";
+import type { ServiceSlug } from "../src/api.js";
 
 // Hash routing is the only navigation layer (no router dep). These pin the parse/serialize
 // round-trip + the precedence rules so deep links and the product switcher stay in sync.
+//
+// `route.ts` also owns the suite console's NAV MODEL (D-15): a tab belongs to a service section,
+// and a section only exists for a product that runs that service. Three places read that answer
+// — sidebar, router, topbar — so it is pinned here rather than in each of them.
+
+/** Everything on. The starting point for "and now turn exactly one thing off". */
+const ALL_ON: ServiceState = {
+  license: { enabled: true },
+  config: { enabled: true },
+  release: { enabled: true },
+  update: { enabled: true },
+  identity: { enabled: true },
+};
+
+const withOff = (...off: ServiceSlug[]): ServiceState => ({
+  ...ALL_ON!,
+  ...Object.fromEntries(off.map((s) => [s, { enabled: false }])),
+});
 
 describe("parseRoute", () => {
   it("empty hash defaults to the dashboard", () => {
@@ -41,24 +73,29 @@ describe("parseRoute", () => {
     });
   });
 
-  it("an unknown view falls back to licenses", () => {
+  it("an unknown view falls back to the OVERVIEW, not to licenses", () => {
+    // Re-baselined by the nav regroup: Licenses is a view a config-only product does not have,
+    // so it cannot be where "I don't know what you meant" lands. Overview is in the platform
+    // section, which every product has whatever it runs.
     expect(parseRoute("#/p/djdl/bogus")).toEqual({
       kind: "product",
       slug: "djdl",
-      view: "licenses",
+      view: "overview",
     });
   });
 
-  it("unknown product views fall back to licenses", () => {
+  it("unknown product views fall back to the overview", () => {
     expect(parseRoute("#/p/djdl/catalog")).toEqual({
       kind: "product",
       slug: "djdl",
-      view: "licenses",
+      view: "overview",
     });
+    // `oidc` was a real tab before P7; the Identity section replaced it. An old bookmark must
+    // land somewhere sane rather than on a blank screen.
     expect(parseRoute("#/p/djdl/oidc")).toEqual({
       kind: "product",
       slug: "djdl",
-      view: "licenses",
+      view: "overview",
     });
   });
 
@@ -136,5 +173,151 @@ describe("tabOf", () => {
     expect(tabOf({ kind: "product", slug: "djdl", view: "config" })).toBe(
       "config",
     );
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The nav model (D-15 / D-17)
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe("SECTIONS", () => {
+  it("declares every tab exactly once", () => {
+    // `TABS` is derived from `SECTIONS`, so a tab that appeared twice would render twice in the
+    // sidebar and make `sectionOf` return whichever section happened to be first.
+    const tabs = SECTIONS.flatMap((s) => s.items.map((i) => i.tab));
+    expect(new Set(tabs).size).toBe(tabs.length);
+    expect(tabs).toEqual(TABS.map((t) => t.tab));
+  });
+
+  it("groups the tabs under the services that own them", () => {
+    const bySection = Object.fromEntries(
+      SECTIONS.map((s) => [s.key, s.items.map((i) => i.tab)]),
+    );
+    expect(bySection).toEqual({
+      platform: ["overview", "services", "secrets", "activity", "settings"],
+      license: ["licenses", "tiers", "fingerprints"],
+      config: ["config", "profiles"],
+      release: ["releases"],
+      update: ["updates"],
+      identity: ["identity"],
+    });
+  });
+
+  it("carries the D-17 accent tokens, with License as `key` and Identity as `id`", () => {
+    // The brand registry names License `key` and Identity `id`; the other three take their slug
+    // and the always-on substrate gets the new `core` accent. These strings are the CSS contract
+    // (`[data-service="…"]` in styles.css), so a rename here is a silent theming regression.
+    expect(Object.fromEntries(SECTIONS.map((s) => [s.key, s.accent]))).toEqual({
+      platform: "core",
+      license: "key",
+      config: "config",
+      release: "release",
+      update: "update",
+      identity: "id",
+    });
+  });
+
+  it("binds each section to the service that gates it, and the platform to none", () => {
+    expect(Object.fromEntries(SECTIONS.map((s) => [s.key, s.service]))).toEqual(
+      {
+        platform: null,
+        license: "license",
+        config: "config",
+        release: "release",
+        update: "update",
+        identity: "identity",
+      },
+    );
+  });
+});
+
+describe("sectionOf", () => {
+  it("is total over every tab", () => {
+    for (const { tab } of TABS) {
+      expect(sectionOf(tab).items.some((i) => i.tab === tab)).toBe(true);
+    }
+  });
+});
+
+describe("enablement filtering", () => {
+  it("shows every section when everything is on", () => {
+    expect(visibleSections(ALL_ON).map((s) => s.key)).toEqual(
+      SECTIONS.map((s) => s.key),
+    );
+  });
+
+  it("hides exactly the section whose service is off", () => {
+    expect(visibleSections(withOff("release")).map((s) => s.key)).toEqual([
+      "platform",
+      "license",
+      "config",
+      "update",
+      "identity",
+    ]);
+  });
+
+  it("keeps the platform section for a product that runs NOTHING", () => {
+    // The escape hatch: enablement is edited from Platform → Services, so a product with every
+    // service off must still have a nav that can reach it. Hiding the platform section would
+    // make an all-off product unrecoverable from the console.
+    const nothing = withOff(
+      "license",
+      "config",
+      "release",
+      "update",
+      "identity",
+    );
+    expect(visibleSections(nothing).map((s) => s.key)).toEqual(["platform"]);
+    expect(isTabEnabled("services", nothing)).toBe(true);
+  });
+
+  it("shows everything while enablement is still unknown", () => {
+    // Fail-OPEN, deliberately: this is an affordance filter, not an access control — the worker
+    // gates every one of these endpoints itself. Hiding first and revealing on load would make
+    // the nav jump under the operator's cursor and flash a "not enabled" screen on a deep link
+    // that is in fact enabled.
+    expect(visibleSections(null).map((s) => s.key)).toEqual(
+      SECTIONS.map((s) => s.key),
+    );
+    expect(isTabEnabled("licenses", null)).toBe(true);
+  });
+
+  it("treats a service missing from the map as off", () => {
+    // A worker that grew a sixth service would send a map this build has never seen; the
+    // reverse — a map missing a slug we DO know — must not read as enabled.
+    const partial = { license: { enabled: true } } as unknown as ServiceState;
+    expect(isTabEnabled("licenses", partial)).toBe(true);
+    expect(isTabEnabled("releases", partial)).toBe(false);
+  });
+
+  it("gates every tab through its own section", () => {
+    const off = withOff("license");
+    const expected: [Tab, boolean][] = [
+      ["overview", true],
+      ["services", true],
+      ["secrets", true],
+      ["activity", true],
+      ["settings", true],
+      ["licenses", false],
+      ["tiers", false],
+      ["fingerprints", false],
+      ["config", true],
+      ["profiles", true],
+      ["releases", true],
+      ["updates", true],
+      ["identity", true],
+    ];
+    for (const [tab, want] of expected) {
+      expect(isTabEnabled(tab, off), tab).toBe(want);
+    }
+  });
+
+  it("isSectionEnabled agrees with visibleSections", () => {
+    const state = withOff("config", "identity");
+    for (const section of SECTIONS) {
+      expect(isSectionEnabled(section, state), section.key).toBe(
+        visibleSections(state).includes(section),
+      );
+    }
   });
 });

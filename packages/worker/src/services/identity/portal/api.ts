@@ -38,6 +38,7 @@ import {
   portalAuthCapabilities,
   portalAudit,
   purgeExpiredDownloadTokens,
+  releaseServiceEnabled,
   syncAccountLicenseLinks,
   createPortalDownloadToken,
   deletePortalAccount,
@@ -618,7 +619,16 @@ async function handleReleases(
     const enabledProducts: string[] = [];
     for (const row of products) {
       const settings = await getPortalProductSettings(db, row.slug);
-      if (settings.portal_enabled === 1 && settings.releases_enabled === 1) {
+      // Task 7.2: the same conjunction `portalAuthCapabilities` folds for `modules.releases`,
+      // applied to the rows rather than to the tab. Gating only the capability would hide the
+      // Downloads nav item while leaving this endpoint enumerating a non-Release product's
+      // truth store to anyone who deep-links `#/downloads` — the nav is a courtesy, the listing
+      // is the actual disclosure, and `services_json` has to bind both or it binds neither.
+      if (
+        settings.portal_enabled === 1 &&
+        settings.releases_enabled === 1 &&
+        releaseServiceEnabled(row.services_json)
+      ) {
         enabledProducts.push(row.slug);
       }
     }
@@ -683,7 +693,17 @@ async function handleReleases(
   const productRow = await getProduct(db, product);
   if (!productRow) return notFound();
   const settings = await getPortalProductSettings(db, product);
-  if (settings.portal_enabled !== 1 || settings.releases_enabled !== 1) {
+  // The third term is `services_json`, and it is the one that makes Task 7.2's claim true rather
+  // than merely visible: the capability hides the tab and the listing hides the rows, but the
+  // MINT is the only one of the three an attacker reaches without either. Turning Release off
+  // does not delete `release_artifacts`, so a caller holding an artifact id from before the
+  // switch was flipped could still have obtained a signed download URL for a product that no
+  // longer runs the service at all.
+  if (
+    settings.portal_enabled !== 1 ||
+    settings.releases_enabled !== 1 ||
+    !releaseServiceEnabled(productRow.services_json)
+  ) {
     return notFound();
   }
   const artifact = await getPortalArtifact(db, product, releaseId, artifactId);

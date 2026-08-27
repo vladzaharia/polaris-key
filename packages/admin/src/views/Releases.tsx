@@ -9,6 +9,8 @@ import {
 import type {
   ProductDetail,
   ProductSyncState,
+  ReleaseChannelDto,
+  ReleaseDto,
   ReleaseHealth,
   ReleaseHealthCheck,
 } from "../api.js";
@@ -22,15 +24,23 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DataTable,
   EmptyState,
   Skeleton,
+  type ColumnDef,
 } from "../components/ui/index.js";
 import { ResyncButton } from "./releases/ResyncButton.js";
 import { releaseSourceOf } from "./products/util.js";
 
 /**
- * Releases view: manifest-driven release/distribution status. Release config is still edited
- * in `.pkey/release.*`; admin exposes health checks, last sync state, and manual resync.
+ * Releases view: the release TRUTH STORE plus the manifest-driven status around it.
+ *
+ * The store (`release_metadata`/`_artifacts`/`_channels`) is what Polaris believes the linked
+ * repo publishes, and it is what every feed is rendered from — so it leads. Health and sync
+ * describe how that belief was formed and whether it is current; they follow it rather than
+ * standing in for it, which is what this view did while the store had no reader.
+ *
+ * Release config itself is still edited in `.pkey/release.*` and applied by a resync.
  */
 export function Releases({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
@@ -39,6 +49,7 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
   const health = useResource(`release-health:${slug}`, () =>
     api.releaseHealth(slug).then((r) => r.health),
   );
+  const store = useResource(`releases:${slug}`, () => api.releases(slug));
 
   if (loading && !data) return <ReleasesSkeleton />;
 
@@ -75,6 +86,13 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
   return (
     <section className="space-y-6">
       <Header slug={slug} product={data} />
+      <ReleaseStoreCard
+        releases={store.data?.releases ?? []}
+        channels={store.data?.channels ?? []}
+        loading={store.loading && !store.data}
+        error={store.error}
+        onRetry={store.reload}
+      />
       <ManifestNote />
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <ReleaseHealthCard
@@ -87,6 +105,172 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
       </div>
       <DistributionCard product={data} />
     </section>
+  );
+}
+
+/**
+ * The truth store. Every row is what a feed would be rendered from, so it shows the things a
+ * feed decision turns on: the version, whether it is published, how many artifacts were
+ * indexed, and which channels currently point at it.
+ *
+ * The channel map is rendered twice on purpose — as badges on the release each channel points
+ * at, and as a list below. The badges answer "what does this release serve"; the list answers
+ * "what does `beta` currently ship", including the case that made the second view necessary: a
+ * channel pointing at a release id the store no longer holds, which is invisible in a per-row
+ * projection because there is no row to hang it on.
+ */
+function ReleaseStoreCard({
+  releases,
+  channels,
+  loading,
+  error,
+  onRetry,
+}: {
+  releases: ReleaseDto[];
+  channels: ReleaseChannelDto[];
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+}): React.ReactElement {
+  const channelsByRelease = React.useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const c of channels) {
+      map.set(c.releaseId, [...(map.get(c.releaseId) ?? []), c.channel]);
+    }
+    return map;
+  }, [channels]);
+
+  const versionOf = React.useMemo(() => {
+    const map = new Map(releases.map((r) => [r.releaseId, r.version]));
+    return (releaseId: string): string | null => map.get(releaseId) ?? null;
+  }, [releases]);
+
+  const columns: ColumnDef<ReleaseDto>[] = [
+    {
+      id: "version",
+      header: "Version",
+      accessor: (r) => r.version,
+      sortable: true,
+      cell: (r) => <span className="font-mono text-xs">{r.version}</span>,
+    },
+    {
+      id: "title",
+      header: "Title",
+      accessor: (r) => r.title ?? "",
+      sortable: true,
+      cell: (r) =>
+        r.title ? (
+          <span className="font-medium">{r.title}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: "published",
+      header: "Published",
+      accessor: (r) => r.publishedAt ?? 0,
+      sortable: true,
+      cell: (r) => formatStamp(r.publishedAt ?? undefined),
+    },
+    {
+      id: "status",
+      header: "Status",
+      accessor: (r) => r.status,
+      sortable: true,
+      cell: (r) => <StatusBadge status={r.status} />,
+    },
+    {
+      id: "artifacts",
+      header: "Artifacts",
+      accessor: (r) => r.artifacts.length,
+      sortable: true,
+      cell: (r) => String(r.artifacts.length),
+    },
+    {
+      id: "channels",
+      header: "Channels",
+      cell: (r) => {
+        const on = channelsByRelease.get(r.releaseId) ?? [];
+        return on.length ? (
+          <div className="flex flex-wrap gap-1">
+            {on.map((c) => (
+              <Badge key={c} variant="primary">
+                {c}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Package className="size-4 text-muted-foreground" aria-hidden />
+          <CardTitle>Releases</CardTitle>
+        </div>
+        <CardDescription>
+          What Polaris has synced from the linked repo — the store every update
+          feed is rendered from, read without spending a GitHub round-trip.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && !loading ? (
+          <div className="space-y-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+            <p className="font-medium text-warning">
+              Couldn’t load the release store
+            </p>
+            <p className="text-muted-foreground">{error}</p>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <>
+            <DataTable
+              columns={columns}
+              rows={releases}
+              rowKey={(r) => r.releaseId}
+              loading={loading}
+              filterable={releases.length > 8}
+              filterPlaceholder="Filter releases…"
+              empty={
+                <EmptyState
+                  icon={<Package aria-hidden />}
+                  title="Nothing synced yet"
+                  description="Resync from the linked repo, or publish a release there — the store fills from the repo, never by hand."
+                  className="rounded-none border-0"
+                />
+              }
+            />
+            {channels.length ? (
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Channel map
+                </p>
+                <ul className="flex flex-wrap gap-2">
+                  {channels.map((c) => (
+                    <li key={c.channel}>
+                      <Badge variant="outline">
+                        <span className="font-medium">{c.channel}</span>
+                        <span aria-hidden>→</span>
+                        <span className="font-mono">
+                          {versionOf(c.releaseId) ?? c.releaseId}
+                        </span>
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -318,8 +502,10 @@ function SyncList({
 }
 
 /**
- * The release-adjacent product metadata the admin API DOES expose: signing key id, the
- * compatibility version window enforced on update checks, and the per-product defaults.
+ * The release-adjacent product metadata the admin API DOES expose: signing key id and the
+ * per-product defaults. The compatibility window used to be a row here too; it is now editable
+ * under Update settings, and a read-only copy of a value with an editor elsewhere is exactly
+ * the kind of duplicate that goes stale, so this card points at it instead of restating it.
  */
 function DistributionCard({
   product,
@@ -346,13 +532,6 @@ function DistributionCard({
           <Row term="Signing key id" mono>
             {product.signingKid || "—"}
           </Row>
-          <Row term="Compatibility window">
-            <span className="inline-flex items-center gap-1.5">
-              <Badge variant="outline">min {product.compatMin}</Badge>
-              <span aria-hidden>→</span>
-              <Badge variant="outline">max {product.compatMax}</Badge>
-            </span>
-          </Row>
           <Row term="Default max offline days">
             {String(product.defaultMaxOfflineDays)}
           </Row>
@@ -367,6 +546,11 @@ function DistributionCard({
           </Row>
           <Row term="Last modified">{formatStamp(product.modifiedAt)}</Row>
         </dl>
+        <p className="mt-4 text-sm text-muted-foreground">
+          The compatibility window (min / max client version) now lives under{" "}
+          <span className="font-medium">Update → Update settings</span>, beside
+          the feed access modes it is intersected with.
+        </p>
       </CardContent>
     </Card>
   );

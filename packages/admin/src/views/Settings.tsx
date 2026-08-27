@@ -1,20 +1,9 @@
 import * as React from "react";
-import {
-  AlertTriangle,
-  Download,
-  Globe2,
-  KeyRound,
-  Mail,
-  RotateCw,
-  ShieldCheck,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, KeyRound, RotateCw, Trash2 } from "lucide-react";
 import {
   ApiError,
   api,
-  type PortalProductSettings,
   type ProductDetail,
-  type UpdatePortalSettingsBody,
   type UpdateProductBody,
 } from "../api.js";
 import { useAdmin } from "../context.js";
@@ -33,16 +22,19 @@ import {
   Field,
   Input,
   Skeleton,
-  Switch,
   useToast,
 } from "../components/ui/index.js";
 
 /**
- * Product settings. Edits the platform-registry row via the endpoints `api.ts` exposes:
- * `updateProduct` (name / compat window / defaults), `rotateProductKey` (with a
- * confirm, surfacing the new kid + public key), `putProductSecret` (write-only secret), and the
- * destructive `deleteProduct` (ConfirmDialog gated). Every mutation toasts + invalidates the
- * cached product so the form reflects the server.
+ * PLATFORM settings — what is left of this view after spec §8 dissolved the grab-bag.
+ *
+ * The rule the split follows: a setting belongs to the service that enforces it, and only
+ * settings no service owns stay here. The customer-portal toggles moved to Identity (they
+ * describe how a human signs in), and the compatibility window moved to Update settings (it
+ * describes which builds are offered). What remains is genuinely platform-level: the registry
+ * row's name and per-license defaults, the signing keypair every service's documents are signed
+ * with, and the destructive product tombstone. A product running no services at all still has
+ * all three, which is the test for "does this belong to the platform".
  */
 export function Settings({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
@@ -80,7 +72,6 @@ export function Settings({ slug }: { slug: string }): React.ReactElement {
       ) : data ? (
         <div className="space-y-6">
           <GeneralCard slug={slug} product={data} />
-          <PortalCard slug={slug} product={data} />
           <KeyCard slug={slug} product={data} />
           <DangerCard slug={slug} product={data} />
         </div>
@@ -101,8 +92,6 @@ function GeneralCard({
   const toast = useToast();
   const [form, setForm] = React.useState({
     name: product.name,
-    compatMin: product.compatMin,
-    compatMax: product.compatMax,
     defaultMaxOfflineDays: String(product.defaultMaxOfflineDays),
     defaultDeviceLimit: String(product.defaultDeviceLimit),
   });
@@ -115,8 +104,6 @@ function GeneralCard({
   React.useEffect(() => {
     setForm({
       name: product.name,
-      compatMin: product.compatMin,
-      compatMax: product.compatMax,
       defaultMaxOfflineDays: String(product.defaultMaxOfflineDays),
       defaultDeviceLimit: String(product.defaultDeviceLimit),
     });
@@ -124,8 +111,6 @@ function GeneralCard({
 
   const dirty =
     form.name !== product.name ||
-    form.compatMin !== product.compatMin ||
-    form.compatMax !== product.compatMax ||
     form.defaultMaxOfflineDays !== String(product.defaultMaxOfflineDays) ||
     form.defaultDeviceLimit !== String(product.defaultDeviceLimit);
 
@@ -146,10 +131,10 @@ function GeneralCard({
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
+    // No compat window here any more: `PATCH /manage/api/products/<slug>` stopped accepting it
+    // when Update settings took ownership, so sending it would be a field the server ignores.
     const body: UpdateProductBody = {
       name: form.name.trim(),
-      compatMin: form.compatMin.trim(),
-      compatMax: form.compatMax.trim(),
       defaultMaxOfflineDays: offline,
       defaultDeviceLimit: devices,
     };
@@ -179,7 +164,7 @@ function GeneralCard({
         <CardHeader>
           <CardTitle>General</CardTitle>
           <CardDescription>
-            Display name, compatibility window, and per-license defaults.
+            Display name and the per-license defaults new licenses inherit.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -191,28 +176,6 @@ function GeneralCard({
             <Input
               value={form.name}
               onChange={set("name")}
-              autoComplete="off"
-            />
-          </Field>
-          <Field
-            label="Compat min"
-            help="Lowest client version this product supports."
-          >
-            <Input
-              value={form.compatMin}
-              onChange={set("compatMin")}
-              placeholder="0.0.0"
-              autoComplete="off"
-            />
-          </Field>
-          <Field
-            label="Compat max"
-            help="Highest supported version (blank for none)."
-          >
-            <Input
-              value={form.compatMax}
-              onChange={set("compatMax")}
-              placeholder="latest"
               autoComplete="off"
             />
           </Field>
@@ -240,179 +203,17 @@ function GeneralCard({
               onChange={set("defaultDeviceLimit")}
             />
           </Field>
+          {/* Operators looked for the compat window here for as long as it lived here; a note
+              costs one line and saves the "it disappeared" support round-trip. */}
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            The compatibility window (min / max client version) is now edited
+            under <span className="font-medium">Update → Update settings</span>,
+            beside the feed access modes it constrains.
+          </p>
         </CardContent>
         <CardFooter>
           <Button type="submit" loading={saving} disabled={!dirty}>
             Save changes
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
-  );
-}
-
-// ── customer portal ───────────────────────────────────────────────────────────
-
-const DEFAULT_PORTAL_SETTINGS: PortalProductSettings = {
-  portalEnabled: true,
-  oidcEnabled: true,
-  magicEnabled: true,
-  licenseKeyClaimEnabled: true,
-  releasesEnabled: true,
-  branding: null,
-  modifiedAt: 0,
-};
-
-type PortalToggleKey = Exclude<keyof UpdatePortalSettingsBody, "branding">;
-
-function PortalCard({
-  slug,
-  product,
-}: {
-  slug: string;
-  product: ProductDetail;
-}): React.ReactElement {
-  const toast = useToast();
-  const settings = product.portalSettings ?? DEFAULT_PORTAL_SETTINGS;
-  const [form, setForm] = React.useState<Required<UpdatePortalSettingsBody>>({
-    portalEnabled: settings.portalEnabled,
-    oidcEnabled: settings.oidcEnabled,
-    magicEnabled: settings.magicEnabled,
-    licenseKeyClaimEnabled: settings.licenseKeyClaimEnabled,
-    releasesEnabled: settings.releasesEnabled,
-    branding: settings.branding ?? null,
-  });
-  const [saving, setSaving] = React.useState(false);
-
-  React.useEffect(() => {
-    setForm({
-      portalEnabled: settings.portalEnabled,
-      oidcEnabled: settings.oidcEnabled,
-      magicEnabled: settings.magicEnabled,
-      licenseKeyClaimEnabled: settings.licenseKeyClaimEnabled,
-      releasesEnabled: settings.releasesEnabled,
-      branding: settings.branding ?? null,
-    });
-  }, [settings]);
-
-  const dirty =
-    form.portalEnabled !== settings.portalEnabled ||
-    form.oidcEnabled !== settings.oidcEnabled ||
-    form.magicEnabled !== settings.magicEnabled ||
-    form.licenseKeyClaimEnabled !== settings.licenseKeyClaimEnabled ||
-    form.releasesEnabled !== settings.releasesEnabled;
-
-  const setToggle =
-    (key: PortalToggleKey) =>
-    (checked: boolean): void =>
-      setForm((current) => ({ ...current, [key]: checked }));
-
-  const onSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.updatePortalSettings(slug, {
-        portalEnabled: form.portalEnabled,
-        oidcEnabled: form.oidcEnabled,
-        magicEnabled: form.magicEnabled,
-        licenseKeyClaimEnabled: form.licenseKeyClaimEnabled,
-        releasesEnabled: form.releasesEnabled,
-      });
-      invalidate(`product:${slug}`);
-      toast.success("Portal settings saved");
-    } catch (err) {
-      toast.error(
-        "Couldn’t save portal settings",
-        err instanceof Error ? err.message : undefined,
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const rows: Array<{
-    key: PortalToggleKey;
-    label: string;
-    description: string;
-    icon: React.ReactNode;
-  }> = [
-    {
-      key: "portalEnabled",
-      label: "Customer portal",
-      description: "Show this product’s licenses to verified customers.",
-      icon: <Globe2 aria-hidden className="size-4 text-primary" />,
-    },
-    {
-      key: "oidcEnabled",
-      label: "OIDC access",
-      description: "Allow portal account linking from the shared OIDC subject.",
-      icon: <ShieldCheck aria-hidden className="size-4 text-primary" />,
-    },
-    {
-      key: "magicEnabled",
-      label: "Email magic links",
-      description: "Allow verified email sign-in to link matching licenses.",
-      icon: <Mail aria-hidden className="size-4 text-primary" />,
-    },
-    {
-      key: "licenseKeyClaimEnabled",
-      label: "License-key claim",
-      description: "Allow customers to add a license by entering a valid key.",
-      icon: <KeyRound aria-hidden className="size-4 text-primary" />,
-    },
-    {
-      key: "releasesEnabled",
-      label: "Release downloads",
-      description: "Expose entitled release artifacts in the customer portal.",
-      icon: <Download aria-hidden className="size-4 text-primary" />,
-    },
-  ];
-
-  return (
-    <Card>
-      <form onSubmit={onSubmit}>
-        <CardHeader>
-          <CardTitle>Customer portal</CardTitle>
-          <CardDescription>
-            Per-product module and access settings for the root customer portal.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="divide-y divide-border">
-          {rows.map((row) => {
-            const id = `portal-${slug}-${row.key}`;
-            return (
-              <div
-                key={row.key}
-                className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-              >
-                <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                    {row.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <label
-                      htmlFor={id}
-                      className="text-sm font-medium text-foreground"
-                    >
-                      {row.label}
-                    </label>
-                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                      {row.description}
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id={id}
-                  checked={Boolean(form[row.key])}
-                  onCheckedChange={setToggle(row.key)}
-                />
-              </div>
-            );
-          })}
-        </CardContent>
-        <CardFooter>
-          <Button type="submit" loading={saving} disabled={!dirty}>
-            Save portal settings
           </Button>
         </CardFooter>
       </form>
@@ -547,7 +348,7 @@ function DangerCard({
       // Leave the now-defunct product route; head to the next product or the dashboard.
       const next = me.products.find((prod) => prod.slug !== slug);
       window.location.hash = next
-        ? hashFor({ kind: "product", slug: next.slug, view: "licenses" })
+        ? hashFor({ kind: "product", slug: next.slug, view: "overview" })
         : hashFor({ kind: "dashboard" });
     } catch (err) {
       toast.error(

@@ -186,21 +186,21 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
     const { cookie, csrf } = await sessionCookie(env);
 
     const created = await handleAdmin(
-      mkReq("POST", "/api/products/acme/profiles", {
+      mkReq("POST", "/api/products/acme/config/profiles", {
         cookie,
         csrf,
         body: { id: "prof-a", name: "A" },
       }),
       env,
       db,
-      "/api/products/acme/profiles",
+      "/api/products/acme/config/profiles",
       { now: NOW },
     );
     expect(created.status).toBe(201);
 
     // Write a value into the secret-flagged CONFIG key.
     const put = await handleAdmin(
-      mkReq("PUT", "/api/products/acme/profiles/prof-a", {
+      mkReq("PUT", "/api/products/acme/config/profiles/prof-a", {
         cookie,
         csrf,
         body: {
@@ -215,17 +215,17 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
       }),
       env,
       db,
-      "/api/products/acme/profiles/prof-a",
+      "/api/products/acme/config/profiles/prof-a",
       { now: NOW },
     );
     expect(put.status).toBe(200);
 
     // While the catalog is active the value is blanked (the documented behaviour).
     const okRes = await handleAdmin(
-      mkReq("GET", "/api/products/acme/profiles/prof-a", { cookie }),
+      mkReq("GET", "/api/products/acme/config/profiles/prof-a", { cookie }),
       env,
       db,
-      "/api/products/acme/profiles/prof-a",
+      "/api/products/acme/config/profiles/prof-a",
       { now: NOW },
     );
     const okBody = (await okRes.json()) as {
@@ -239,10 +239,10 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
     await deactivateSchemas(db, "acme");
 
     const leakRes = await handleAdmin(
-      mkReq("GET", "/api/products/acme/profiles/prof-a", { cookie }),
+      mkReq("GET", "/api/products/acme/config/profiles/prof-a", { cookie }),
       env,
       db,
-      "/api/products/acme/profiles/prof-a",
+      "/api/products/acme/config/profiles/prof-a",
       { now: NOW },
     );
     const leakBody = (await leakRes.json()) as {
@@ -259,18 +259,18 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
     const { cookie, csrf } = await sessionCookie(env);
 
     await handleAdmin(
-      mkReq("POST", "/api/products/acme/profiles", {
+      mkReq("POST", "/api/products/acme/config/profiles", {
         cookie,
         csrf,
         body: { id: "prof-b", name: "B" },
       }),
       env,
       db,
-      "/api/products/acme/profiles",
+      "/api/products/acme/config/profiles",
       { now: NOW },
     );
     await handleAdmin(
-      mkReq("PUT", "/api/products/acme/profiles/prof-b", {
+      mkReq("PUT", "/api/products/acme/config/profiles/prof-b", {
         cookie,
         csrf,
         body: {
@@ -281,7 +281,7 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
       }),
       env,
       db,
-      "/api/products/acme/profiles/prof-b",
+      "/api/products/acme/config/profiles/prof-b",
       { now: NOW },
     );
 
@@ -296,10 +296,10 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
     });
 
     const res = await handleAdmin(
-      mkReq("GET", "/api/products/acme/profiles/prof-b", { cookie }),
+      mkReq("GET", "/api/products/acme/config/profiles/prof-b", { cookie }),
       env,
       db,
-      "/api/products/acme/profiles/prof-b",
+      "/api/products/acme/config/profiles/prof-b",
       { now: NOW },
     );
     const body = (await res.json()) as {
@@ -336,18 +336,18 @@ describe("R12-02 managed secret values are SEALED at rest in D1", () => {
     const { cookie, csrf } = await sessionCookie(env);
 
     await handleAdmin(
-      mkReq("POST", "/api/products/acme/profiles", {
+      mkReq("POST", "/api/products/acme/config/profiles", {
         cookie,
         csrf,
         body: { id: "prof-c", name: "C" },
       }),
       env,
       db,
-      "/api/products/acme/profiles",
+      "/api/products/acme/config/profiles",
       { now: NOW },
     );
     await handleAdmin(
-      mkReq("PUT", "/api/products/acme/profiles/prof-c", {
+      mkReq("PUT", "/api/products/acme/config/profiles/prof-c", {
         cookie,
         csrf,
         body: {
@@ -367,7 +367,7 @@ describe("R12-02 managed secret values are SEALED at rest in D1", () => {
       }),
       env,
       db,
-      "/api/products/acme/profiles/prof-c",
+      "/api/products/acme/config/profiles/prof-c",
       { now: NOW },
     );
 

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
   api,
+  SERVICE_ERROR_MESSAGES,
   setCsrf,
   setLoginRedirectForTests,
 } from "../src/api.js";
@@ -60,7 +61,7 @@ describe("api — request shaping", () => {
     await api.licenses("djdl");
     const init = calls[0]!.init;
     const headers = init.headers as Headers;
-    expect(calls[0]!.url).toBe("/manage/api/products/djdl/licenses");
+    expect(calls[0]!.url).toBe("/manage/api/products/djdl/license/licenses");
     expect(headers.get("X-PKey-CSRF")).toBeNull();
     expect(headers.get("Content-Type")).toBeNull();
     expect(init.credentials).toBe("same-origin");
@@ -94,7 +95,7 @@ describe("api — request shaping", () => {
     stubFetch(() => json({}));
     await api.license("djdl", "lic/with space");
     expect(calls[0]!.url).toBe(
-      "/manage/api/products/djdl/licenses/lic%2Fwith%20space",
+      "/manage/api/products/djdl/license/licenses/lic%2Fwith%20space",
     );
   });
 
@@ -153,9 +154,13 @@ describe("api — request shaping", () => {
   it("setLicenseEnabled hits enable/disable per the flag", async () => {
     stubFetch(() => json({ ok: true, id: "l1", status: "disabled" }));
     await api.setLicenseEnabled("djdl", "l1", false);
-    expect(calls[0]!.url).toBe("/manage/api/products/djdl/licenses/l1/disable");
+    expect(calls[0]!.url).toBe(
+      "/manage/api/products/djdl/license/licenses/l1/disable",
+    );
     await api.setLicenseEnabled("djdl", "l1", true);
-    expect(calls[1]!.url).toBe("/manage/api/products/djdl/licenses/l1/enable");
+    expect(calls[1]!.url).toBe(
+      "/manage/api/products/djdl/license/licenses/l1/enable",
+    );
   });
 });
 
@@ -203,5 +208,198 @@ describe("api — error handling", () => {
 describe("ApiError", () => {
   it("formats its message from the status by default", () => {
     expect(new ApiError(403).message).toBe("api 403");
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The service-grouped admin surface (plan §R1)
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe("api — every product-scoped resource is under its owning service", () => {
+  /**
+   * The one place the console's half of §R1 is pinned. The worker deleted the pre-suite
+   * spellings outright (pre-launch, this client was their only consumer), so a client method
+   * left on an old path is not a soft mismatch that degrades — it is a 404 the operator meets
+   * as an empty screen. Asserting the URL of every regrouped call is cheap; discovering one by
+   * clicking through the console is not.
+   */
+  const CASES: [string, () => Promise<unknown>, string][] = [
+    ["licenses", () => api.licenses("djdl"), "license/licenses"],
+    ["license", () => api.license("djdl", "l1"), "license/licenses/l1"],
+    [
+      "putLicenseOverrides",
+      () => api.putLicenseOverrides("djdl", "l1", []),
+      "license/licenses/l1/overrides",
+    ],
+    [
+      "licenseKeys",
+      () => api.licenseKeys("djdl", "l1"),
+      "license/licenses/l1/keys",
+    ],
+    ["mintKey", () => api.mintKey("djdl", "l1"), "license/licenses/l1/keys"],
+    [
+      "revokeKey",
+      () => api.revokeKey("djdl", "l1", "h1"),
+      "license/licenses/l1/keys/h1/revoke",
+    ],
+    [
+      "licenseDevices",
+      () => api.licenseDevices("djdl", "l1"),
+      "license/licenses/l1/devices",
+    ],
+    [
+      "deauthorizeDevice",
+      () => api.deauthorizeDevice("djdl", "l1", "d1"),
+      "license/licenses/l1/devices/d1",
+    ],
+    [
+      "resetDeviceFingerprint",
+      () => api.resetDeviceFingerprint("djdl", "l1", "d1"),
+      "license/licenses/l1/devices/d1/fingerprint/reset",
+    ],
+    ["tiers", () => api.tiers("djdl"), "license/tiers"],
+    ["createTier", () => api.createTier("djdl", {}), "license/tiers"],
+    ["patchTier", () => api.patchTier("djdl", "t1", {}), "license/tiers/t1"],
+    ["deleteTier", () => api.deleteTier("djdl", "t1"), "license/tiers/t1"],
+    [
+      "fingerprintPolicy",
+      () => api.fingerprintPolicy("djdl"),
+      "license/policy",
+    ],
+    [
+      "updateFingerprintPolicy",
+      () => api.updateFingerprintPolicy("djdl", {}),
+      "license/policy",
+    ],
+    [
+      "revertFingerprintPolicy",
+      () => api.revertFingerprintPolicy("djdl"),
+      "license/policy/revert",
+    ],
+    ["schema", () => api.schema("djdl"), "config/catalog"],
+    [
+      "publishSchema",
+      () => api.publishSchema("djdl", { schemaVersion: 1, entries: [] }),
+      "config/catalog",
+    ],
+    ["profiles", () => api.profiles("djdl"), "config/profiles"],
+    ["profile", () => api.profile("djdl", "p1"), "config/profiles/p1"],
+    ["createProfile", () => api.createProfile("djdl", {}), "config/profiles"],
+    [
+      "putProfilePayload",
+      () => api.putProfilePayload("djdl", "p1", []),
+      "config/profiles/p1",
+    ],
+    [
+      "deleteProfile",
+      () => api.deleteProfile("djdl", "p1"),
+      "config/profiles/p1",
+    ],
+    ["portalSettings", () => api.portalSettings("djdl"), "identity/portal"],
+    [
+      "updatePortalSettings",
+      () => api.updatePortalSettings("djdl", {}),
+      "identity/portal",
+    ],
+    ["releaseHealth", () => api.releaseHealth("djdl"), "release/health"],
+    ["resyncProduct", () => api.resyncProduct("djdl"), "release/resync"],
+    ["releases", () => api.releases("djdl"), "release/releases"],
+    ["updateSettings", () => api.updateSettings("djdl"), "update/settings"],
+    [
+      "saveUpdateSettings",
+      () => api.saveUpdateSettings("djdl", {}),
+      "update/settings",
+    ],
+  ];
+
+  it.each(CASES)("api.%s → %s", async (_name, call, path) => {
+    setCsrf("tok");
+    stubFetch(() => json({}));
+    await call();
+    expect(calls[0]!.url).toBe(`/manage/api/products/djdl/${path}`);
+  });
+
+  /** Core/platform resources belong to no service and keep their top-level spelling. */
+  const PLATFORM: [string, () => Promise<unknown>, string][] = [
+    ["services", () => api.services("djdl"), "services"],
+    ["updateServices", () => api.updateServices("djdl", {}), "services"],
+    ["revertServices", () => api.revertServices("djdl"), "services/revert"],
+    [
+      "putProductSecret",
+      () => api.putProductSecret("djdl", "S", "v"),
+      "secrets/S",
+    ],
+    ["rotateProductKey", () => api.rotateProductKey("djdl"), "keys/rotate"],
+    [
+      "mintBundle",
+      () =>
+        api.mintBundle("djdl", {
+          deviceId: "AbCdEfGhIjKlMnOpQrStUvWxYz012345",
+          graceDays: 1,
+        }),
+      "bundles",
+    ],
+  ];
+
+  it.each(PLATFORM)(
+    "api.%s stays at the top level → %s",
+    async (_name, call, path) => {
+      setCsrf("tok");
+      stubFetch(() => json({}));
+      await call();
+      expect(calls[0]!.url).toBe(`/manage/api/products/djdl/${path}`);
+    },
+  );
+
+  it("services mutations send the right method and echo CSRF", async () => {
+    setCsrf("tok-p");
+    stubFetch(() => json({}));
+    await api.updateServices("djdl", {
+      services: { update: { enabled: true } },
+    });
+    expect(calls[0]!.init.method).toBe("PATCH");
+    expect((calls[0]!.init.headers as Headers).get("X-PKey-CSRF")).toBe(
+      "tok-p",
+    );
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
+      services: { update: { enabled: true } },
+    });
+
+    await api.revertServices("djdl");
+    expect(calls[1]!.init.method).toBe("POST");
+  });
+
+  it("surfaces the services endpoint's coherence codes as ApiError.errors", async () => {
+    // `errors` is not `fields`: these name a RELATIONSHIP between inputs that are individually
+    // valid, which is why the Services editor renders them beside the toggle that created the
+    // contradiction instead of beside a field that failed to parse.
+    stubFetch(() =>
+      json(
+        {
+          error: {
+            code: "bad_request",
+            message: "incoherent services",
+            errors: ["update_requires_release"],
+          },
+          code: "bad_request",
+          message: "incoherent services",
+          errors: ["update_requires_release"],
+        },
+        422,
+      ),
+    );
+    try {
+      await api.updateServices("djdl", {
+        services: { update: { enabled: true } },
+      });
+      throw new Error("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError);
+      const err = e as ApiError;
+      expect(err.status).toBe(422);
+      expect(err.errors).toEqual(["update_requires_release"]);
+      expect(err.fields).toBeUndefined();
+      expect(SERVICE_ERROR_MESSAGES[err.errors![0]!]).toContain("Release");
+    }
   });
 });

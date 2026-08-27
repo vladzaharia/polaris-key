@@ -15,10 +15,13 @@ import type {
 } from "../../core/registry.js";
 import { handleConfigRoutes } from "./routes.js";
 import { hasEdgeMintRecipes } from "./mint.js";
+import { handleConfigAdmin } from "./admin/index.js";
 
 export const configService: ServiceDescriptor = {
   slug: "config",
   handle: handleConfigRoutes,
+  /** `config/{catalog,profiles}` on the console API (§R1). */
+  adminHandle: handleConfigAdmin,
   /**
    * Config's slice of `/.well-known/polaris.json` (design spec §4.3): the document and catalog
    * URLs, the catalog version a client should expect, and whether edge minting is available.

@@ -1,7 +1,21 @@
 /**
  * Same-origin typed client for the `/manage/api/*` surface. The worker
- * (`packages/worker/src/manage/api.ts` + `handlers/*`) is the source of truth for these
- * shapes. Auth is the HttpOnly session cookie (sent automatically); every state-changing
+ * (`packages/worker/src/admin/api.ts` + each service's `admin.ts`) is the source of truth for
+ * these shapes.
+ *
+ * ── THE ADMIN SURFACE IS SERVICE-GROUPED (plan §R1) ─────────────────────────────────────────
+ *
+ * Every product-scoped resource now lives under the service that owns it, and the pre-suite
+ * spellings are GONE server-side (pre-launch; this client was their only consumer):
+ *
+ *   licenses[/…] → license/licenses[/…]      schema  → config/catalog
+ *   tiers[/…]    → license/tiers[/…]         profiles[/…] → config/profiles[/…]
+ *   policy[…]    → license/policy[…]         portal  → identity/portal
+ *
+ * Core/platform resources keep their top-level spelling because they belong to no service:
+ * `secrets/*`, `keys/rotate`, `activity`, `services[/revert]`, `bundles`.
+ *
+ * Auth is the HttpOnly session cookie (sent automatically); every state-changing
  * call echoes the per-session CSRF token in the `X-PKey-CSRF` header or the server rejects
  * it. A 401 means the session lapsed → bounce to the login redirect to re-authenticate.
  *
@@ -14,36 +28,22 @@
  */
 
 // ── catalog / config shapes ──────────────────────────────────────────────────
-export type ConfigKind = "config" | "secret" | "flag";
-export type ManagementState = "default" | "enforced" | "hidden";
-
-export interface ConfigEntry {
-  key: string;
-  kind: ConfigKind;
-  category: string;
-  label: string;
-  description: string;
-  schema: Record<string, unknown>;
-  examples?: unknown[];
-  default?: unknown;
-  secret?: boolean;
-  managementDefault?: ManagementState;
-  userGrant?: boolean;
-  grantLabel?: string;
-  ui?: {
-    widget?: string;
-    help?: string;
-    placeholder?: string;
-    order?: number;
-    advanced?: boolean;
-  };
-  accessor?: string;
-}
-
-export interface ProductCatalog {
-  schemaVersion: number;
-  entries: ConfigEntry[];
-}
+/**
+ * Re-exported from `@plrs/catalog`, which is the ONE definition the worker validates against,
+ * the SDKs read, and `tools/gen-mirrors.ts` generates from. The console used to re-declare a
+ * hand-copied subset here (`ui.widget` as a bare `string`, no `dependsOn`/`appliesTo`), which is
+ * how a form silently stops rendering a field the catalog gained. Views keep importing these
+ * from `./api.js` — this file is still the console's single import surface, it just no longer
+ * owns the shapes.
+ */
+export type {
+  ConfigEntry,
+  ConfigKind,
+  ManagementState,
+  ProductCatalog,
+  UiHints,
+} from "@plrs/catalog";
+import type { ManagementState, ProductCatalog } from "@plrs/catalog";
 
 // ── identity ──────────────────────────────────────────────────────────────────
 export interface ProductRef {
@@ -201,6 +201,19 @@ export interface ProductDetail {
   portalSettings?: PortalProductSettings;
   setup?: ProductSetupState;
   onboarding?: ProductOnboarding;
+  /**
+   * Which services this product runs (D-15). Carried on the product row itself — not only on
+   * `GET …/services` — because the SHELL needs it to decide which nav sections exist, and the
+   * shell already loads the product. A second round-trip before the sidebar can be drawn would
+   * make the nav pop in after the view it frames.
+   */
+  services?: Record<ServiceSlug, { enabled: boolean }>;
+  /** Declared device-registration policy, or `null` when the product rides the derived default. */
+  registration?: RegistrationPolicy | null;
+  /** What the derivation currently produces — what the wire actually enforces. */
+  effectiveRegistration?: RegistrationPolicy;
+  /** Who owns `services_json`: `manifest` (a resync may rewrite it) or `admin`. */
+  servicesSource?: string;
   compatMin: string;
   compatMax: string;
   defaultMaxOfflineDays: number;
@@ -256,10 +269,14 @@ export interface LinkRepoResult {
   remainingSecrets?: string[];
 }
 
+/**
+ * NOTE what is absent: `compatMin`/`compatMax`. Spec §8 relocated the compatibility window to
+ * `update/settings`, and the worker's product PATCH now DROPS them rather than rejecting them —
+ * so a console that still sent them would appear to save a value that never changed. Removing
+ * them from the type is what makes that unrepresentable instead of merely unused.
+ */
 export interface UpdateProductBody {
   name?: string;
-  compatMin?: string;
-  compatMax?: string;
   defaultMaxOfflineDays?: number;
   defaultDeviceLimit?: number;
   adminGroup?: string;
@@ -307,6 +324,83 @@ export interface ServicesResponse {
   effectiveRegistration: RegistrationPolicy;
   /** Who owns the row: `manifest` (a resync may rewrite it) or `admin` (operator-claimed). */
   source: string;
+}
+
+/** A partial enablement patch: an omitted slug keeps its current value server-side. */
+export interface UpdateServicesBody {
+  services?: Partial<Record<ServiceSlug, { enabled: boolean }>>;
+  /** `null` clears the declaration and returns the product to the derived default. */
+  registration?: RegistrationPolicy | null;
+}
+
+/**
+ * The stable coherence codes `PATCH …/services` returns in `error.errors` (worker
+ * `core/services.ts` `validateServices`). Rendered as inline validation rather than a toast:
+ * they name the exact toggle the operator just moved.
+ */
+export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
+  update_requires_release:
+    "Update is a feed over Release’s truth store — enable Release first, or turn Update off.",
+  registration_requires_identity:
+    "Registration is set to “requires-identity”, but Identity is off; no device could ever register.",
+  config_without_activation:
+    "Config is on without License, but registration is set to “requires-license” — those devices could never obtain a token.",
+};
+
+// ── update settings (feed access + compat window) ─────────────────────────────
+export type ReleaseAccess =
+  | "public"
+  | "authenticated"
+  | "licensed"
+  | "entitled";
+
+export interface UpdateSettings {
+  metadataAccess: ReleaseAccess;
+  artifactsAccess: ReleaseAccess;
+  compatMin: string;
+  compatMax: string;
+  /** False when the product has no release configuration: the access modes are defaults and a
+   *  PATCH of them has nothing to write to (the server 422s). */
+  configured: boolean;
+}
+
+export type UpdateSettingsBody = Partial<
+  Pick<
+    UpdateSettings,
+    "metadataAccess" | "artifactsAccess" | "compatMin" | "compatMax"
+  >
+>;
+
+// ── release truth store ───────────────────────────────────────────────────────
+export interface ReleaseArtifactDto {
+  artifactId: string;
+  name: string;
+  kind: string;
+  platform: string | null;
+  arch: string | null;
+  sizeBytes: number | null;
+  access: string | null;
+}
+
+export interface ReleaseDto {
+  releaseId: string;
+  version: string;
+  title: string | null;
+  publishedAt: number | null;
+  sourceUrl: string | null;
+  status: string;
+  artifacts: ReleaseArtifactDto[];
+}
+
+export interface ReleaseChannelDto {
+  channel: string;
+  releaseId: string;
+  modifiedAt: number | null;
+}
+
+export interface ReleaseStoreResponse {
+  releases: ReleaseDto[];
+  channels: ReleaseChannelDto[];
 }
 
 // ── managed-payload (overrides / profile payloads) ────────────────────────────
@@ -580,6 +674,13 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly fields?: string[],
     public readonly code?: string,
+    /**
+     * Stable COHERENCE codes, distinct from `fields`. A field name says "this input was
+     * malformed"; an `errors` entry says "these inputs are individually fine and jointly
+     * impossible" — `update_requires_release` names no single toggle, it names a relationship.
+     * Only the endpoints that validate a whole object against rules (services, so far) send it.
+     */
+    public readonly errors?: string[],
   ) {
     super(`api ${status}`);
     this.name = "ApiError";
@@ -604,28 +705,39 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   if (!res.ok) {
     let fields: string[] | undefined;
+    let errors: string[] | undefined;
     let code: string | undefined;
     let message: string | undefined;
     try {
       const body = (await res.json()) as {
-        error?: string | { code?: string; message?: string; fields?: string[] };
+        error?:
+          | string
+          | {
+              code?: string;
+              message?: string;
+              fields?: string[];
+              errors?: string[];
+            };
         message?: string;
         fields?: string[];
+        errors?: string[];
         code?: string;
       };
       if (typeof body.error === "object" && body.error) {
         fields = body.error.fields ?? body.fields;
+        errors = body.error.errors ?? body.errors;
         code = body.error.code ?? body.code;
         message = body.error.message ?? body.message;
       } else {
         fields = body.fields;
+        errors = body.errors;
         code = body.error ?? body.code;
         message = body.message;
       }
     } catch {
       // non-JSON error body
     }
-    const error = new ApiError(res.status, fields, code);
+    const error = new ApiError(res.status, fields, code, errors);
     if (message) error.message = message;
     throw error;
   }
@@ -670,13 +782,20 @@ export const api = {
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
   releaseHealth: (slug: string) =>
     call<{ health: ReleaseHealth }>(`${p(slug)}/release/health`),
+  /** The release TRUTH STORE (`release_metadata`/`_artifacts`/`_channels`, P2.T2) — what
+   *  Polaris believes the linked repo publishes, without spending a GitHub round-trip. */
+  releases: (slug: string) =>
+    call<ReleaseStoreResponse>(`${p(slug)}/release/releases`),
   portalSettings: (slug: string) =>
-    call<{ settings: PortalProductSettings }>(`${p(slug)}/portal`),
+    call<{ settings: PortalProductSettings }>(`${p(slug)}/identity/portal`),
   updatePortalSettings: (slug: string, body: UpdatePortalSettingsBody) =>
-    call<{ ok: true; settings: PortalProductSettings }>(`${p(slug)}/portal`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
+    call<{ ok: true; settings: PortalProductSettings }>(
+      `${p(slug)}/identity/portal`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      },
+    ),
   putProductSecret: (slug: string, name: string, value: string) =>
     call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, {
       method: "PUT",
@@ -687,23 +806,41 @@ export const api = {
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
+  updateServices: (slug: string, body: UpdateServicesBody) =>
+    call<ServicesResponse>(`${p(slug)}/services`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** Hand `services_json` back to the manifest. Changes nothing live — the manifest re-applies
+   *  on the NEXT resync (worker `core/servicesAdmin.ts`). */
+  revertServices: (slug: string) =>
+    call<ServicesResponse>(`${p(slug)}/services/revert`, { method: "POST" }),
 
-  // ── schema / catalog ──────────────────────────────────────────────────────────
-  schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/schema`),
+  // ── update settings ─────────────────────────────────────────────────────────
+  updateSettings: (slug: string) =>
+    call<UpdateSettings>(`${p(slug)}/update/settings`),
+  saveUpdateSettings: (slug: string, body: UpdateSettingsBody) =>
+    call<UpdateSettings>(`${p(slug)}/update/settings`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  // ── config: catalog ───────────────────────────────────────────────────────────
+  schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/config/catalog`),
   publishSchema: (slug: string, catalog: ProductCatalog) =>
-    call<{ ok: true; schemaVersion: number }>(`${p(slug)}/schema`, {
+    call<{ ok: true; schemaVersion: number }>(`${p(slug)}/config/catalog`, {
       method: "PUT",
       body: JSON.stringify({ catalog }),
     }),
 
   // ── licenses ────────────────────────────────────────────────────────────────
   licenses: (slug: string) =>
-    call<{ licenses: LicenseSummary[] }>(`${p(slug)}/licenses`),
+    call<{ licenses: LicenseSummary[] }>(`${p(slug)}/license/licenses`),
   license: (slug: string, id: string) =>
-    call<LicenseDetail>(`${p(slug)}/licenses/${enc(id)}`),
+    call<LicenseDetail>(`${p(slug)}/license/licenses/${enc(id)}`),
   createLicense: (slug: string, body: CreateLicenseBody) =>
     call<{ licenseId: string; key: string; license: LicenseSummary }>(
-      `${p(slug)}/licenses`,
+      `${p(slug)}/license/licenses`,
       {
         method: "POST",
         body: JSON.stringify(body),
@@ -716,27 +853,30 @@ export const api = {
       /** Present when a tier change lands below the active device count. Existing devices
        *  are grandfathered; new activations are refused until the count drops. */
       overLimit?: { deviceCount: number; deviceLimit: number };
-    }>(`${p(slug)}/licenses/${enc(id)}`, {
+    }>(`${p(slug)}/license/licenses/${enc(id)}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
   setLicenseEnabled: (slug: string, id: string, enabled: boolean) =>
     call<{ ok: true; id: string; status: LicenseStatus }>(
-      `${p(slug)}/licenses/${enc(id)}/${enabled ? "enable" : "disable"}`,
+      `${p(slug)}/license/licenses/${enc(id)}/${enabled ? "enable" : "disable"}`,
       { method: "POST" },
     ),
   putLicenseOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/licenses/${enc(id)}/overrides`, {
-      method: "PUT",
-      body: JSON.stringify({ updates }),
-    }),
+    call<{ ok: true; id: string }>(
+      `${p(slug)}/license/licenses/${enc(id)}/overrides`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ updates }),
+      },
+    ),
 
   // ── license keys ──────────────────────────────────────────────────────────────
   licenseKeys: (slug: string, id: string) =>
-    call<{ keys: KeyDto[] }>(`${p(slug)}/licenses/${enc(id)}/keys`),
+    call<{ keys: KeyDto[] }>(`${p(slug)}/license/licenses/${enc(id)}/keys`),
   mintKey: (slug: string, id: string, label?: string) =>
     call<{ key: string; hash: string; record: KeyDto }>(
-      `${p(slug)}/licenses/${enc(id)}/keys`,
+      `${p(slug)}/license/licenses/${enc(id)}/keys`,
       {
         method: "POST",
         body: JSON.stringify({ label }),
@@ -744,16 +884,18 @@ export const api = {
     ),
   revokeKey: (slug: string, id: string, keyHash: string) =>
     call<{ ok: true; hash: string; status: KeyStatus }>(
-      `${p(slug)}/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`,
+      `${p(slug)}/license/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`,
       { method: "POST" },
     ),
 
   // ── license devices ───────────────────────────────────────────────────────────
   licenseDevices: (slug: string, id: string) =>
-    call<{ devices: DeviceDto[] }>(`${p(slug)}/licenses/${enc(id)}/devices`),
+    call<{ devices: DeviceDto[] }>(
+      `${p(slug)}/license/licenses/${enc(id)}/devices`,
+    ),
   deauthorizeDevice: (slug: string, id: string, deviceId: string) =>
     call<{ ok: true; deviceId: string }>(
-      `${p(slug)}/licenses/${enc(id)}/devices/${enc(deviceId)}`,
+      `${p(slug)}/license/licenses/${enc(id)}/devices/${enc(deviceId)}`,
       {
         method: "DELETE",
       },
@@ -762,7 +904,7 @@ export const api = {
    *  for a false-positive drift lockout, so the user keeps their seat. */
   resetDeviceFingerprint: (slug: string, id: string, deviceId: string) =>
     call<{ ok: true; deviceId: string }>(
-      `${p(slug)}/licenses/${enc(id)}/devices/${enc(deviceId)}/fingerprint/reset`,
+      `${p(slug)}/license/licenses/${enc(id)}/devices/${enc(deviceId)}/fingerprint/reset`,
       { method: "POST" },
     ),
 
@@ -775,59 +917,60 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  // ── fingerprint policy ──────────────────────────────────────────────────────
+  // ── enrollment & fingerprint policy (License) ───────────────────────────────
   fingerprintPolicy: (slug: string) =>
-    call<FingerprintPolicyResponse>(`${p(slug)}/policy`),
+    call<FingerprintPolicyResponse>(`${p(slug)}/license/policy`),
   updateFingerprintPolicy: (
     slug: string,
     patch: Partial<FingerprintPolicyDto>,
   ) =>
-    call<FingerprintPolicyResponse>(`${p(slug)}/policy`, {
+    call<FingerprintPolicyResponse>(`${p(slug)}/license/policy`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
   revertFingerprintPolicy: (slug: string) =>
-    call<FingerprintPolicyResponse>(`${p(slug)}/policy/revert`, {
+    call<FingerprintPolicyResponse>(`${p(slug)}/license/policy/revert`, {
       method: "POST",
     }),
 
   // ── profiles ────────────────────────────────────────────────────────────────
   profiles: (slug: string) =>
-    call<{ profiles: ProfileSummary[] }>(`${p(slug)}/profiles`),
+    call<{ profiles: ProfileSummary[] }>(`${p(slug)}/config/profiles`),
   profile: (slug: string, id: string) =>
-    call<ProfileDetail>(`${p(slug)}/profiles/${enc(id)}`),
+    call<ProfileDetail>(`${p(slug)}/config/profiles/${enc(id)}`),
   createProfile: (
     slug: string,
     body: { id?: string; name?: string; description?: string },
   ) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/profiles`, {
+    call<{ ok: true; id: string }>(`${p(slug)}/config/profiles`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
   putProfilePayload: (slug: string, id: string, updates: OverrideUpdate[]) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/profiles/${enc(id)}`, {
+    call<{ ok: true; id: string }>(`${p(slug)}/config/profiles/${enc(id)}`, {
       method: "PUT",
       body: JSON.stringify({ updates }),
     }),
   deleteProfile: (slug: string, id: string) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/profiles/${enc(id)}`, {
+    call<{ ok: true; id: string }>(`${p(slug)}/config/profiles/${enc(id)}`, {
       method: "DELETE",
     }),
 
   // ── tiers ─────────────────────────────────────────────────────────────────────
-  tiers: (slug: string) => call<{ tiers: TierSummary[] }>(`${p(slug)}/tiers`),
+  tiers: (slug: string) =>
+    call<{ tiers: TierSummary[] }>(`${p(slug)}/license/tiers`),
   createTier: (slug: string, body: TierBody) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/tiers`, {
+    call<{ ok: true; id: string }>(`${p(slug)}/license/tiers`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
   patchTier: (slug: string, id: string, body: TierBody) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, {
+    call<{ ok: true; id: string }>(`${p(slug)}/license/tiers/${enc(id)}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
   deleteTier: (slug: string, id: string) =>
-    call<{ ok: true; id: string }>(`${p(slug)}/tiers/${enc(id)}`, {
+    call<{ ok: true; id: string }>(`${p(slug)}/license/tiers/${enc(id)}`, {
       method: "DELETE",
     }),
 

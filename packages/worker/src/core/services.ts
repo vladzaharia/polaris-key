@@ -200,6 +200,44 @@ export function resolveRegistration(
 }
 
 /**
+ * The console's view of a product's enablement — ONE projection, used by both readers.
+ *
+ * `GET …/services` serves it directly and `productView` embeds it, because the console needs the
+ * same answer at two different moments: the Services editor asks for it on demand, while the
+ * SHELL needs it before it can decide which nav sections exist at all (D-15). Two independent
+ * derivations of "is Release on for this product" is how a sidebar and the page it frames end up
+ * disagreeing, so there is one.
+ *
+ * Structurally typed on the two columns it reads rather than on `ProductRow`, so `core/` does not
+ * grow an import of `repo.ts` for a projection that needs nothing else from it.
+ */
+export function serviceStateOf(
+  row: {
+    services_json?: string | null;
+    services_source?: string | null;
+  } | null,
+): {
+  services: ServicesMap;
+  /** The DECLARED policy, or `null` when the product is riding the derived default. */
+  registration: RegistrationPolicy | null;
+  /** What the derivation currently produces — what the wire actually enforces. */
+  effectiveRegistration: RegistrationPolicy;
+  /** `manifest` (a resync may rewrite it) or `admin` (operator-claimed). */
+  source: string;
+} {
+  const parsed = parseServices(row?.services_json ?? null);
+  return {
+    services: parsed.services,
+    registration: parsed.registration ?? null,
+    effectiveRegistration: resolveRegistration(
+      parsed.services,
+      parsed.registration,
+    ),
+    source: row?.services_source ?? "manifest",
+  };
+}
+
+/**
  * Coherence rules over an enablement set. Returns stable error CODES (not prose) so the admin
  * API, the manifest validator, and the console can all render them their own way; an empty
  * array means the set is applicable.

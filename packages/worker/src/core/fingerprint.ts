@@ -21,5 +21,9 @@ export {
   allowsAnonymousEnroll,
   allowsOidcDefault,
   computeEnrollHwid,
+  isAutoIssueMode,
+  isFingerprintMode,
+  parseAutoIssue,
+  parseFingerprintPolicy,
   resolveFingerprintMode,
 } from "../fingerprint.js";

@@ -1,23 +1,35 @@
 import * as React from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Blocks } from "lucide-react";
 import { api, setCsrf, type Me } from "./api.js";
-import { AdminProvider } from "./context.js";
+import { AdminProvider, useProductServices } from "./context.js";
 import { ThemeProvider } from "./components/theme.js";
 import { Toaster } from "./components/ui/index.js";
 import { Shell } from "./components/Shell.js";
-import { navigate, normalizeView, parseRoute, type Route } from "./route.js";
-import { Spinner, EmptyState } from "./components/ui/index.js";
+import {
+  isTabEnabled,
+  navigate,
+  normalizeView,
+  parseRoute,
+  sectionOf,
+  type Route,
+  type ServiceState,
+  type Tab,
+} from "./route.js";
+import { Button, Spinner, EmptyState } from "./components/ui/index.js";
 import { LogoMark } from "./components/brand/Logo.js";
 import { Dashboard } from "./views/Dashboard.js";
 import { Products } from "./views/Products.js";
 import { ProductOverview } from "./views/ProductOverview.js";
+import { Services } from "./views/Services.js";
 import { Licenses } from "./views/Licenses.js";
 import { LicenseDetail } from "./views/LicenseDetail.js";
+import { FingerprintPolicy } from "./views/FingerprintPolicy.js";
 import { Catalog } from "./views/Catalog.js";
 import { Tiers } from "./views/Tiers.js";
 import { Profiles } from "./views/Profiles.js";
 import { Releases } from "./views/Releases.js";
-import { Oidc } from "./views/Oidc.js";
+import { UpdateSettings } from "./views/UpdateSettings.js";
+import { Identity } from "./views/Identity.js";
 import { Activity } from "./views/Activity.js";
 import { Secrets } from "./views/Secrets.js";
 import { Settings } from "./views/Settings.js";
@@ -62,6 +74,15 @@ function Boot(): React.ReactElement {
     })();
   }, []);
 
+  const activeSlug =
+    route.kind === "product" ? route.slug : (me?.products[0]?.slug ?? "");
+  // Read ABOVE the boot early-returns — a hook after them would change the hook count the
+  // render `me` lands on. Both the sidebar and the router get the same answer for a render,
+  // which is the point: a nav that hid a section the router still rendered would be worse than
+  // either behaviour on its own. Off a product route the slug is the switcher's default, which
+  // is exactly the product whose sections the sidebar draws, so this is never a wasted read.
+  const services = useProductServices(activeSlug);
+
   if (error) {
     return (
       <BootScreen>
@@ -84,9 +105,6 @@ function Boot(): React.ReactElement {
     );
   }
 
-  const activeSlug =
-    route.kind === "product" ? route.slug : (me.products[0]?.slug ?? "");
-
   return (
     <AdminProvider
       value={{
@@ -100,6 +118,7 @@ function Boot(): React.ReactElement {
         me={me}
         route={route}
         activeSlug={activeSlug}
+        services={services}
         onNavigate={navigate}
         onSignOut={() =>
           void api
@@ -107,7 +126,9 @@ function Boot(): React.ReactElement {
             .finally(() => (window.location.href = "/manage/login"))
         }
       >
-        <div key={routeKey(route)}>{renderRoute(route, me, activeSlug)}</div>
+        <div key={routeKey(route)}>
+          {renderRoute(route, me, activeSlug, services)}
+        </div>
       </Shell>
     </AdminProvider>
   );
@@ -147,10 +168,44 @@ function routeKey(route: Route): string {
   return route.kind;
 }
 
+/**
+ * A deep link into a service this product does not run (D-15).
+ *
+ * The nav has already dropped the section, so the only way here is a bookmark, a shared URL, or
+ * a service someone turned off in another tab. Rendering the view anyway would fire requests the
+ * worker answers with 404/409 and leave the operator staring at a broken table; a bare 404 would
+ * not say WHY. So: name the service, and put the one action that fixes it — Platform → Services
+ * — a click away, since the product itself is not in question, only its enablement.
+ */
+function ServiceDisabled({
+  slug,
+  tab,
+}: {
+  slug: string;
+  tab: Tab;
+}): React.ReactElement {
+  const section = sectionOf(tab);
+  return (
+    <EmptyState
+      icon={<Blocks aria-hidden />}
+      title={`The ${section.label} service isn’t enabled`}
+      description={`This product doesn’t run the ${section.label} service, so there is nothing here to manage. Turn it on under Platform → Services and this view comes back.`}
+      action={
+        <Button
+          onClick={() => navigate({ kind: "product", slug, view: "services" })}
+        >
+          Enable services
+        </Button>
+      }
+    />
+  );
+}
+
 function renderRoute(
   route: Route,
   me: Me,
   activeSlug: string,
+  services: ServiceState,
 ): React.ReactElement {
   if (route.kind === "dashboard") return <Dashboard />;
   if (route.kind === "products") return <Products />;
@@ -170,6 +225,14 @@ function renderRoute(
   }
 
   const view = normalizeView(route.view);
+  // A license detail is not a nav tab, but it is unambiguously License-service surface — gate
+  // it on the tab it belongs under, or a `#/p/x/licenses/<id>` bookmark would sail past the
+  // check that stops `#/p/x/licenses`.
+  const tab: Tab = view === "license" ? "licenses" : view;
+  if (!isTabEnabled(tab, services)) {
+    return <ServiceDisabled slug={activeSlug} tab={tab} />;
+  }
+
   if (view === "license") {
     if (route.view !== "license") {
       return (
@@ -186,23 +249,29 @@ function renderRoute(
   switch (view) {
     case "overview":
       return <ProductOverview slug={activeSlug} />;
-    case "licenses":
-      return <Licenses slug={activeSlug} />;
-    case "config":
-      return <Catalog slug={activeSlug} />;
-    case "tiers":
-      return <Tiers slug={activeSlug} />;
-    case "profiles":
-      return <Profiles slug={activeSlug} />;
-    case "releases":
-      return <Releases slug={activeSlug} />;
-    case "identity":
-      return <Oidc slug={activeSlug} />;
+    case "services":
+      return <Services slug={activeSlug} />;
     case "secrets":
       return <Secrets slug={activeSlug} />;
     case "activity":
       return <Activity slug={activeSlug} />;
     case "settings":
       return <Settings slug={activeSlug} />;
+    case "licenses":
+      return <Licenses slug={activeSlug} />;
+    case "tiers":
+      return <Tiers slug={activeSlug} />;
+    case "fingerprints":
+      return <FingerprintPolicy slug={activeSlug} />;
+    case "config":
+      return <Catalog slug={activeSlug} />;
+    case "profiles":
+      return <Profiles slug={activeSlug} />;
+    case "releases":
+      return <Releases slug={activeSlug} />;
+    case "updates":
+      return <UpdateSettings slug={activeSlug} />;
+    case "identity":
+      return <Identity slug={activeSlug} />;
   }
 }

@@ -7,6 +7,14 @@
  *   /api/products                            — PLATFORM registry CRUD (platform admins only)
  *   /api/products/<slug>/...                 — per-product admin (platform admins only)
  *
+ * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
+ * left at the top level here is core/platform — the things a product has whether or not it runs
+ * any service: `secrets/*`, `keys/rotate`, `activity`, `services[/revert]`, `bundles`. Everything
+ * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
+ *
+ *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
+ *   release/{health,resync,releases}             update/settings        identity/portal
+ *
  * Security posture, enforced on EVERY request (never trusting the SPA):
  *   - **Session-gated**: a valid signed cookie session is required (401 otherwise).
  *   - **Group-gated**: every route — platform and per-product alike — requires
@@ -56,10 +64,6 @@ import {
   handleProducts,
   handleProductScopedResource,
 } from "./handlers/products.js";
-import { handleSchema } from "./handlers/schema.js";
-import { handleLicenses } from "./handlers/licenses.js";
-import { handleProfiles } from "./handlers/profiles.js";
-import { handleTiers } from "./handlers/tiers.js";
 import { handleActivity } from "./handlers/activity.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
@@ -116,11 +120,13 @@ async function handleProductScoped(
   }
 
   // §R1 regroups the customer-portal settings under Identity (`portal` → `identity/portal`).
-  // The console still spells the pre-namespace path (it migrates in P7), so it is REWRITTEN
-  // here onto the canonical segments — same descriptor, same handler — rather than kept as a
-  // second implementation that could drift from the one the service owns.
+  // The console now spells the canonical path; this rewrite survives only until P8's rebrand
+  // sweep removes it, because the P3-era note said it would and deleting an alias is a separate
+  // decision from moving a resource. Everything ELSE in §R1's admin table has moved outright:
+  // `licenses`/`tiers`/`policy` are License's, `schema`/`profiles` are Config's, and the old
+  // spellings are gone rather than aliased.
   const path = rest[0] === "portal" ? ["identity", ...rest] : rest;
-  const [resource, id, sub, subId, action] = path;
+  const [resource, id] = path;
 
   // ── per-SERVICE admin (design spec §4.2) ────────────────────────────────────────────────
   //
@@ -151,11 +157,11 @@ async function handleProductScoped(
     return notFound();
   }
 
-  // New per-product resources: write-only secrets, signing-key rotation, fingerprint policy.
+  // Platform-owned per-product resources — they exist for a product running NO service at all,
+  // which is why they are not under one:
   //   PUT  /products/<slug>/secrets/<name>
   //   POST /products/<slug>/keys/rotate
-  //   GET|PATCH /products/<slug>/policy   ·   POST /products/<slug>/policy/revert
-  if (resource === "secrets" || resource === "keys" || resource === "policy") {
+  if (resource === "secrets" || resource === "keys") {
     return handleProductScopedResource(
       req,
       env,
@@ -180,32 +186,6 @@ async function handleProductScoped(
   // belongs to neither service — a config-only product mints one with no licence in it at all.
   if (resource === "bundles") {
     return handleBundleMint(req, env, db, session, slug, id, now);
-  }
-
-  if (resource === "schema") {
-    return handleSchema(req, db, session, slug, now);
-  }
-
-  if (resource === "licenses") {
-    return handleLicenses(
-      req,
-      env,
-      db,
-      session,
-      slug,
-      [id, sub, subId, action].filter((s): s is string => s != null),
-      now,
-    );
-  }
-
-  if (resource === "profiles") {
-    // `env` threaded for R12-02: the profile payload editor seals catalog-declared secrets
-    // under PLATFORM_KEK before they reach profiles.payload_json.
-    return handleProfiles(req, env, db, session, slug, id, now);
-  }
-
-  if (resource === "tiers") {
-    return handleTiers(req, db, session, slug, id, now);
   }
 
   if (resource === "activity") {

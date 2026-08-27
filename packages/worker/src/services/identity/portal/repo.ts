@@ -11,6 +11,7 @@ import type {
   LicenseRow,
   ProductRow,
 } from "../../../core/data.js";
+import { parseServices } from "../../../core/services.js";
 
 export interface PortalAccountRow {
   id: string;
@@ -571,6 +572,25 @@ export async function upsertPortalProductSettings(
 }
 
 /**
+ * Does this product actually run the Release service (spec §2.2)?
+ *
+ * One predicate for two callers — the capability answer below and the downloads listing in
+ * `api.ts` — because the failure mode being closed here is precisely the two of them disagreeing:
+ * a nav item that is hidden while the endpoint behind it still enumerates the same rows to
+ * anyone who deep-links it. Two `parseServices(...).services.release.enabled` spellings would
+ * read as the same rule and drift the first time only one of them is edited.
+ *
+ * The fail-safe direction is inherited from `parseServices`, and it is the one that matters here:
+ * an absent or unreadable `services_json` lands on `DEFAULT_SERVICES`, where Release is OFF.
+ * A product that has never said it distributes builds does not get a Downloads tab by accident.
+ */
+export function releaseServiceEnabled(
+  servicesJson: string | null | undefined,
+): boolean {
+  return parseServices(servicesJson).services.release.enabled;
+}
+
+/**
  * Which auth methods and modules are available.
  *
  * R5-06 — this used to be an unconditional `SUM(...) > 0` across EVERY tenant, so one tenant
@@ -585,6 +605,30 @@ export async function upsertPortalProductSettings(
  * login page, where the visitor has not yet identified a product. That aggregate is now an
  * explicit, documented choice rather than an accident of a missing predicate, and every
  * product-scoped decision downstream still re-checks `getPortalProductSettings`.
+ *
+ * ── WHY THE FOLD LEFT SQL (task 7.2) ────────────────────────────────────────────────────────
+ *
+ * `releasesEnabled` used to be `portal_product_settings.releases_enabled` and nothing else, so a
+ * product whose RELEASE SERVICE was off still advertised `modules.releases: true` and the portal
+ * put a Downloads tab over an empty truth store. The two switches answer different questions —
+ * the portal flag is "show this tenant's customers the tab", `products.services_json` is "this
+ * product distributes builds at all" — and the second is the stronger one, because a product
+ * that does not run Release has no `release_metadata` for the tab to render. `core/services.ts`
+ * is the single enablement authority, so `modules.releases` becomes a projection of it rather
+ * than a fifth opinion.
+ *
+ * `services_json` is a TEXT blob, which is exactly why this is no longer one aggregate query:
+ * SQLite cannot ask whether `release.enabled` is true, so `SUM(CASE …)` had nowhere to put the
+ * term. The statement therefore returns one row PER surviving product and the ANY/ALL decision
+ * is made here, in TypeScript, where `parseServices` can run. The cost is a handful of small
+ * JSON parses over the live product list, on a route that is already doing a database
+ * round-trip and — in its unscoped form — is only reached by the root login page.
+ *
+ * The `COALESCE(s.x, 1)` defaults stay in SQL rather than moving into the fold: "no settings row
+ * means enabled" is what every other portal read of this table assumes, and stating it once in
+ * the projection keeps the code below a plain conjunction instead of a second place that has to
+ * remember the default. `some` over the empty row set is `false`, which is the same answer the
+ * old `SUM(...) > 0` gave for a deleted or unknown slug.
  */
 export async function portalAuthCapabilities(
   db: Db,
@@ -596,23 +640,21 @@ export async function portalAuthCapabilities(
   licenseKeyClaimEnabled: boolean;
   releasesEnabled: boolean;
 }> {
-  const row = await db.first<{
-    portal_count: number;
-    oidc_count: number;
-    magic_count: number;
-    claim_count: number;
-    release_count: number;
+  const rows = await db.all<{
+    portal_enabled: number;
+    oidc_enabled: number;
+    magic_enabled: number;
+    license_key_claim_enabled: number;
+    releases_enabled: number;
+    services_json: string | null;
   }>(
     `SELECT
-       SUM(CASE WHEN COALESCE(s.portal_enabled, 1) = 1 THEN 1 ELSE 0 END) AS portal_count,
-       SUM(CASE WHEN COALESCE(s.portal_enabled, 1) = 1
-                 AND COALESCE(s.oidc_enabled, 1) = 1 THEN 1 ELSE 0 END) AS oidc_count,
-       SUM(CASE WHEN COALESCE(s.portal_enabled, 1) = 1
-                 AND COALESCE(s.magic_enabled, 1) = 1 THEN 1 ELSE 0 END) AS magic_count,
-       SUM(CASE WHEN COALESCE(s.portal_enabled, 1) = 1
-                 AND COALESCE(s.license_key_claim_enabled, 1) = 1 THEN 1 ELSE 0 END) AS claim_count,
-       SUM(CASE WHEN COALESCE(s.portal_enabled, 1) = 1
-                 AND COALESCE(s.releases_enabled, 1) = 1 THEN 1 ELSE 0 END) AS release_count
+       COALESCE(s.portal_enabled, 1) AS portal_enabled,
+       COALESCE(s.oidc_enabled, 1) AS oidc_enabled,
+       COALESCE(s.magic_enabled, 1) AS magic_enabled,
+       COALESCE(s.license_key_claim_enabled, 1) AS license_key_claim_enabled,
+       COALESCE(s.releases_enabled, 1) AS releases_enabled,
+       p.services_json AS services_json
        FROM products p
        LEFT JOIN portal_product_settings s ON s.product = p.slug
       WHERE COALESCE(p.status, 'active') != 'deleted'
@@ -620,12 +662,22 @@ export async function portalAuthCapabilities(
     product ?? null,
     product ?? null,
   );
+  // Every term is conjoined WITHIN a row before anything is aggregated ACROSS rows — the shape
+  // the old `SUM(CASE WHEN portal AND x …)` had. Tenant A's portal being on must not license
+  // tenant B's magic link, and with `product` set there is at most one row anyway, so the
+  // cross-product reading only ever applies to the deliberate platform aggregate.
+  const live = rows.filter((row) => row.portal_enabled === 1);
   return {
-    portalEnabled: Number(row?.portal_count ?? 0) > 0,
-    oidcEnabled: Number(row?.oidc_count ?? 0) > 0,
-    magicEnabled: Number(row?.magic_count ?? 0) > 0,
-    licenseKeyClaimEnabled: Number(row?.claim_count ?? 0) > 0,
-    releasesEnabled: Number(row?.release_count ?? 0) > 0,
+    portalEnabled: live.length > 0,
+    oidcEnabled: live.some((row) => row.oidc_enabled === 1),
+    magicEnabled: live.some((row) => row.magic_enabled === 1),
+    licenseKeyClaimEnabled: live.some(
+      (row) => row.license_key_claim_enabled === 1,
+    ),
+    releasesEnabled: live.some(
+      (row) =>
+        row.releases_enabled === 1 && releaseServiceEnabled(row.services_json),
+    ),
   };
 }
 

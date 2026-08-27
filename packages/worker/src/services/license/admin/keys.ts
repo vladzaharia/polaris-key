@@ -1,34 +1,33 @@
 /**
- * License keys (`/api/products/<slug>/licenses/<id>/keys`): list, mint (raw key returned
- * ONCE), and revoke.
+ * License keys (`/manage/api/products/<slug>/license/licenses/<id>/keys`): list, mint (raw key
+ * returned ONCE), and revoke.
  */
 
-import type { Env } from "../../env.js";
-import type { Db } from "../../db/types.js";
-import { ErrorCode } from "../../core/errors.js";
-import { hashKey, mintLicenseKey } from "../../crypto.js";
+import { ErrorCode } from "../../../core/errors.js";
+import { hashKey, mintLicenseKey } from "../../../core/platform.js";
 import {
+  getKey,
   insertKey,
   listKeysByLicense,
   setKeyStatus,
-  getKey,
-} from "../../repo.js";
-import { audit } from "../audit.js";
-import type { AdminSession } from "../session.js";
-import { adminJson, err, notFound } from "../lib/respond.js";
-import { readBody } from "../lib/respond.js";
+} from "../../../core/data.js";
+import {
+  adminJson,
+  adminNotFound,
+  audit,
+  err,
+  readBody,
+} from "../../../core/adminApi.js";
+import type { LicenseAdminContext } from "./index.js";
 
 export async function handleKeys(
-  req: Request,
-  env: Env,
-  db: Db,
-  session: AdminSession,
-  slug: string,
+  ctx: LicenseAdminContext,
   licenseId: string,
   keyHash: string | undefined,
   action: string | undefined,
-  now: number,
 ): Promise<Response> {
+  const { req, env, db, product, session, now } = ctx;
+  const slug = product.slug;
   if (!keyHash) {
     if (req.method === "GET") {
       const keys = await listKeysByLicense(db, slug, licenseId);
@@ -85,7 +84,7 @@ export async function handleKeys(
   }
 
   const existing = await getKey(db, slug, keyHash);
-  if (!existing || existing.license_id !== licenseId) return notFound();
+  if (!existing || existing.license_id !== licenseId) return adminNotFound();
 
   if (action === "revoke") {
     if (req.method !== "POST")
@@ -102,5 +101,5 @@ export async function handleKeys(
     );
     return adminJson({ ok: true, hash: keyHash, status: "revoked" });
   }
-  return notFound();
+  return adminNotFound();
 }

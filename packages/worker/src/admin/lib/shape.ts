@@ -16,6 +16,7 @@ import {
   type ProductSyncStateRow,
 } from "../../repo.js";
 import { loadPublicSigningKey } from "../../core/products.js";
+import { serviceStateOf } from "../../core/services.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
@@ -167,6 +168,11 @@ export async function productView(
     Boolean(signingPublicKey),
   );
   const portalSettings = await getPortalProductSettings(db, p.slug);
+  // D-15: the console's nav is a projection of enablement, and the SHELL needs the answer before
+  // it can draw the sidebar that frames the view. Carrying it on the product row the shell
+  // already loads is what keeps the nav from popping in after its own content; a second
+  // round-trip to `…/services` would be a strictly slower way to render the same tree.
+  const services = serviceStateOf(p);
   return {
     slug: p.slug,
     name: p.name,
@@ -176,6 +182,10 @@ export async function productView(
     signing,
     modules: setup.modules,
     portalSettings: portalProductSettingsView(portalSettings),
+    services: services.services,
+    registration: services.registration,
+    effectiveRegistration: services.effectiveRegistration,
+    servicesSource: services.source,
     setup,
     onboarding: {
       setup,

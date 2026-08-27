@@ -27,3 +27,51 @@ export {
   notFound as adminNotFound,
   readBody,
 } from "../admin/lib/respond.js";
+
+/**
+ * ── THE CONSOLE'S SHARED SHAPING + STORAGE, LENT TO A SERVICE ────────────────────────────────
+ *
+ * P7 moved the product-scoped admin resources under the services that own them (plan §R1:
+ * `licenses` → `license/licenses`, `schema` → `config/catalog`, …). Their handlers moved with
+ * them, and those handlers still need three things that are the CONSOLE's, not any one
+ * service's: the redaction rules that keep a secret's value off the wire, the catalog-validated
+ * override applier, and the list/summary projections the SPA's tables are built from.
+ *
+ * All three must have exactly one implementation. A secret redacted one way by License's
+ * override editor and another by Config's profile editor is a leak waiting for the divergence,
+ * and it is precisely the divergence a "quick copy into the service directory" produces. So they
+ * arrive through this seam, like the response envelope above.
+ *
+ * The admin repo queries are here for the same reason `core/data.ts` exists for `repo.ts`: the
+ * per-service split of `admin/repo.ts` is a later phase, and until it happens the reachable set
+ * should be COUNTABLE in one core-owned file rather than spread across new imports inside five
+ * service directories.
+ */
+export {
+  countLicensesUsingProfile,
+  countLicensesUsingTier,
+  deactivateSchemas,
+  deleteProfile,
+  deleteTier,
+  listLicenses,
+  listProfiles,
+  listTiers,
+  nextSchemaVersion,
+  patchLicense,
+  setLicenseStatus,
+  upsertProfile,
+  upsertTier,
+} from "../admin/repo.js";
+
+export { shapeFacts, shapeFingerprint } from "../admin/lib/deviceShape.js";
+
+export { parsePayload, redactPayload } from "../admin/lib/redact.js";
+
+export { applyOverrides, type OverrideUpdate } from "../admin/lib/overrides.js";
+
+export {
+  licenseSummary,
+  loadCatalog,
+  parseJsonColumn,
+  parseJsonList,
+} from "../admin/lib/shape.js";

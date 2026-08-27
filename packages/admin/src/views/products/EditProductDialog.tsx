@@ -21,9 +21,15 @@ import {
 import { errorMessage, intOrUndefined, trimmedOrUndefined } from "./util.js";
 
 /**
- * Edit a product's mutable registry fields (name, compat range, default policy, and the
- * non-authorizing admin-group label) via `updateProduct`. The slug + signing key are immutable
- * here. On success we toast and invalidate so the list + any detail re-fetch.
+ * Edit a product's mutable registry fields (name, default policy, and the non-authorizing
+ * admin-group label) via `updateProduct`. The slug + signing key are immutable here. On success
+ * we toast and invalidate so the list + any detail re-fetch.
+ *
+ * The COMPATIBILITY tab is gone. Spec §8 moved the window to the Update service
+ * (`update/settings`), and the worker's product PATCH now drops `compatMin`/`compatMax` instead
+ * of rejecting them — so this form was still collecting two fields, still reporting "Product
+ * updated", and still leaving both values exactly as they were. A control that cannot fail and
+ * cannot work is worse than a missing one, because the operator has no reason to look further.
  */
 export function EditProductDialog({
   product,
@@ -36,8 +42,6 @@ export function EditProductDialog({
 }): React.ReactElement {
   const toast = useToast();
   const [name, setName] = React.useState(product.name);
-  const [compatMin, setCompatMin] = React.useState(product.compatMin);
-  const [compatMax, setCompatMax] = React.useState(product.compatMax);
   const [maxOfflineDays, setMaxOfflineDays] = React.useState(
     String(product.defaultMaxOfflineDays ?? ""),
   );
@@ -53,8 +57,6 @@ export function EditProductDialog({
   React.useEffect(() => {
     if (open) {
       setName(product.name);
-      setCompatMin(product.compatMin);
-      setCompatMax(product.compatMax);
       setMaxOfflineDays(String(product.defaultMaxOfflineDays ?? ""));
       setDeviceLimit(String(product.defaultDeviceLimit ?? ""));
       setAdminGroup(product.adminGroup ?? "");
@@ -69,8 +71,6 @@ export function EditProductDialog({
     try {
       await api.updateProduct(product.slug, {
         name: trimmedOrUndefined(name),
-        compatMin: trimmedOrUndefined(compatMin),
-        compatMax: trimmedOrUndefined(compatMax),
         defaultMaxOfflineDays: intOrUndefined(maxOfflineDays),
         defaultDeviceLimit: intOrUndefined(deviceLimit),
         adminGroup: trimmedOrUndefined(adminGroup),
@@ -91,8 +91,8 @@ export function EditProductDialog({
         <DialogHeader>
           <DialogTitle>Edit “{product.slug}”</DialogTitle>
           <DialogDescription>
-            Update the product&apos;s name, compatibility range, and default
-            policy.
+            Update the product&apos;s name and default policy. The compatibility
+            window lives under Update settings.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -107,9 +107,6 @@ export function EditProductDialog({
               <TabsList className="w-full">
                 <TabsTrigger value="basics" className="flex-1">
                   Basics
-                </TabsTrigger>
-                <TabsTrigger value="compatibility" className="flex-1">
-                  Compatibility
                 </TabsTrigger>
                 <TabsTrigger value="defaults" className="flex-1">
                   Defaults
@@ -139,26 +136,6 @@ export function EditProductDialog({
                     value={adminGroup}
                     onChange={(e) => setAdminGroup(e.target.value)}
                     placeholder="pkey-admins"
-                  />
-                </Field>
-              </TabsContent>
-
-              <TabsContent
-                value="compatibility"
-                className="grid gap-4 sm:grid-cols-2"
-              >
-                <Field label="Compat min">
-                  <Input
-                    value={compatMin}
-                    onChange={(e) => setCompatMin(e.target.value)}
-                    placeholder="1.0.0"
-                  />
-                </Field>
-                <Field label="Compat max">
-                  <Input
-                    value={compatMax}
-                    onChange={(e) => setCompatMax(e.target.value)}
-                    placeholder="2.0.0"
                   />
                 </Field>
               </TabsContent>

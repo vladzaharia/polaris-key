@@ -171,7 +171,7 @@ describe("admin fingerprint reset", () => {
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
-    const path = `/api/products/djdl/licenses/${licenseId}/devices/${device}/fingerprint/reset`;
+    const path = `/api/products/djdl/license/licenses/${licenseId}/devices/${device}/fingerprint/reset`;
     const res = await handleAdmin(
       mkReq("POST", {
         cookie: `${ADMIN_COOKIE}=${token}`,
@@ -229,7 +229,7 @@ describe("admin fingerprint policy endpoint", () => {
   }
 
   it("reports the manifest-owned defaults for both policies", async () => {
-    const res = await call("GET", "/api/products/djdl/policy");
+    const res = await call("GET", "/api/products/djdl/license/policy");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       policy: { enabled: true, defaultMode: "normal", probes: [] },
@@ -247,7 +247,7 @@ describe("admin fingerprint policy endpoint", () => {
 
   it("enables auto-issue against a real tier", async () => {
     await seedTier(db, "djdl", "free", {});
-    const res = await call("PATCH", "/api/products/djdl/policy", {
+    const res = await call("PATCH", "/api/products/djdl/license/policy", {
       autoIssue: { enabled: true, tierId: "free", mode: "both" },
     });
     expect(res.status).toBe(200);
@@ -259,7 +259,7 @@ describe("admin fingerprint policy endpoint", () => {
 
   it("refuses to enable auto-issue against a tier that does not exist", async () => {
     // Otherwise enrolment would mint licenses whose entitlements nobody configured.
-    const res = await call("PATCH", "/api/products/djdl/policy", {
+    const res = await call("PATCH", "/api/products/djdl/license/policy", {
       autoIssue: { enabled: true, tierId: "ghost" },
     });
     expect(res.status).toBe(422);
@@ -267,7 +267,7 @@ describe("admin fingerprint policy endpoint", () => {
   });
 
   it("refuses to enable auto-issue with no tier at all", async () => {
-    const res = await call("PATCH", "/api/products/djdl/policy", {
+    const res = await call("PATCH", "/api/products/djdl/license/policy", {
       autoIssue: { enabled: true },
     });
     expect(res.status).toBe(422);
@@ -276,7 +276,7 @@ describe("admin fingerprint policy endpoint", () => {
 
   it("rejects an unknown auto-issue mode", async () => {
     await seedTier(db, "djdl", "free", {});
-    const res = await call("PATCH", "/api/products/djdl/policy", {
+    const res = await call("PATCH", "/api/products/djdl/license/policy", {
       autoIssue: { enabled: true, tierId: "free", mode: "everyone" },
     });
     expect(res.status).toBe(422);
@@ -284,7 +284,7 @@ describe("admin fingerprint policy endpoint", () => {
   });
 
   it("takes ownership on PATCH so a later resync can't revert it", async () => {
-    const res = await call("PATCH", "/api/products/djdl/policy", {
+    const res = await call("PATCH", "/api/products/djdl/license/policy", {
       defaultMode: "strict",
       probes: [
         { id: "rekordbox", label: "rekordbox", macos: "/Applications/x.app" },
@@ -303,7 +303,7 @@ describe("admin fingerprint policy endpoint", () => {
       "manifest",
       NOW + 10,
     );
-    const after = await call("GET", "/api/products/djdl/policy");
+    const after = await call("GET", "/api/products/djdl/license/policy");
     expect(await after.json()).toMatchObject({
       policy: { defaultMode: "strict" },
       source: "admin",
@@ -311,7 +311,7 @@ describe("admin fingerprint policy endpoint", () => {
   });
 
   it("rejects an unknown mode with a field list", async () => {
-    const res = await call("PATCH", "/api/products/djdl/policy", {
+    const res = await call("PATCH", "/api/products/djdl/license/policy", {
       defaultMode: "paranoid",
     });
     expect(res.status).toBe(422);
@@ -321,7 +321,7 @@ describe("admin fingerprint policy endpoint", () => {
   it("rejects probes the runtime parser would silently drop", async () => {
     // A probe with no id is discarded by parseFingerprintPolicy; storing it would leave the
     // admin believing they configured something that never runs.
-    const res = await call("PATCH", "/api/products/djdl/policy", {
+    const res = await call("PATCH", "/api/products/djdl/license/policy", {
       probes: [{ label: "no id here" }],
     });
     expect(res.status).toBe(422);
@@ -329,8 +329,10 @@ describe("admin fingerprint policy endpoint", () => {
   });
 
   it("hands ownership back on revert", async () => {
-    await call("PATCH", "/api/products/djdl/policy", { enabled: false });
-    const res = await call("POST", "/api/products/djdl/policy/revert");
+    await call("PATCH", "/api/products/djdl/license/policy", {
+      enabled: false,
+    });
+    const res = await call("POST", "/api/products/djdl/license/policy/revert");
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ source: "manifest" });
 
@@ -341,7 +343,7 @@ describe("admin fingerprint policy endpoint", () => {
       "manifest",
       NOW + 20,
     );
-    const after = await call("GET", "/api/products/djdl/policy");
+    const after = await call("GET", "/api/products/djdl/license/policy");
     expect(await after.json()).toMatchObject({
       policy: { enabled: true, defaultMode: "lenient" },
     });

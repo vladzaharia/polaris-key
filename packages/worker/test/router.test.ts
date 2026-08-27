@@ -13,7 +13,7 @@ describe("matchRoute — platform + manage + portal (matched before product slug
 
   it("matches the products platform routes (more specific than adminApi)", () => {
     expect(matchRoute("/manage/api/products").kind).toBe("products");
-    expect(matchRoute("/manage/api/products/djdl/licenses").kind).toBe(
+    expect(matchRoute("/manage/api/products/djdl/license/licenses").kind).toBe(
       "products",
     );
   });

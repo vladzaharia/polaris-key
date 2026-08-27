@@ -805,14 +805,14 @@ async function handleKekKeyring(
 }
 
 /**
- * Product-scoped key/secret/policy operations: PUT a write-only secret, rotate the signing key,
- * or edit the fingerprint/auto-issue policy. Called from the dispatcher with the product already
- * authz-checked (product admin OR platform).
+ * Product-scoped key/secret operations: PUT a write-only secret, or rotate the signing key.
+ * Called from the dispatcher with the product already authz-checked (product admin OR platform).
  *
- * Two resources used to be here and are not: `release/{health,resync}` moved to the Release
- * service's own `adminHandle` in P2.T1, and the customer-portal settings moved to Identity's in
- * P3 (`identity/portal`, §R1 — `admin/api.ts` rewrites the console's old `portal` spelling onto
- * it). That is why this list is shorter than the module header describes.
+ * Three resources used to be here and are not: `release/{health,resync}` moved to the Release
+ * service's own `adminHandle` in P2.T1, the customer-portal settings moved to Identity's in P3
+ * (`identity/portal`), and the enrollment/fingerprint policy moved to License's in P7
+ * (`license/policy`, §R1). What is left is genuinely platform-owned — a product's KEK-sealed
+ * secrets and its signing keypair exist whether or not the product runs any service at all.
  */
 export async function handleProductScopedResource(
   req: Request,
@@ -830,161 +830,7 @@ export async function handleProductScopedResource(
     return handleSecrets(req, env, db, session, slug, id, now);
   if (resource === "keys")
     return handleKeys(req, env, db, session, slug, id, now);
-  if (resource === "policy")
-    return handleFingerprintPolicy(req, db, session, slug, id, now);
   return notFound();
-}
-
-/**
- * `GET|PATCH /api/products/<slug>/policy` and `POST .../policy/revert`.
- *
- * The fingerprint policy is declared in `.pkey/product` but must also be changeable live,
- * which is only coherent if a resync can't silently undo an operator's change. A PATCH here
- * marks the row `admin`-owned; `revert` hands it back to the manifest and the next resync
- * re-applies it.
- */
-async function handleFingerprintPolicy(
-  req: Request,
-  db: Db,
-  session: AdminSession,
-  slug: string,
-  action: string | undefined,
-  now: number,
-): Promise<Response> {
-  const row = await getProduct(db, slug);
-  if (!row) return notFound();
-
-  if (action === "revert") {
-    if (req.method !== "POST")
-      return err(405, ErrorCode.BadRequest, "method not allowed");
-    await revertFingerprintPolicyToManifest(db, slug, now);
-    await revertAutoIssueToManifest(db, slug, now);
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "product.fingerprint.revert",
-      { kind: "product", id: slug },
-      `Returned the fingerprint policy for ${slug} to manifest control`,
-    );
-    const reverted = await getProduct(db, slug);
-    return adminJson(policyView(reverted));
-  }
-  if (action !== undefined) return notFound();
-
-  if (req.method === "GET") return adminJson(policyView(row));
-  if (req.method !== "PATCH")
-    return err(405, ErrorCode.BadRequest, "method not allowed");
-
-  const body = await readBody(req);
-  const current = parseFingerprintPolicy(row.fingerprint_policy_json);
-  const fields: string[] = [];
-
-  let enabled = current.enabled;
-  if (body.enabled !== undefined) {
-    if (typeof body.enabled !== "boolean") fields.push("enabled");
-    else enabled = body.enabled;
-  }
-
-  let defaultMode = current.defaultMode;
-  if (body.defaultMode !== undefined) {
-    if (!isFingerprintMode(body.defaultMode)) fields.push("defaultMode");
-    else defaultMode = body.defaultMode;
-  }
-
-  let probes = current.probes;
-  if (body.probes !== undefined) {
-    if (!Array.isArray(body.probes)) fields.push("probes");
-    else {
-      // Reuse the same parser the Worker reads policy through, so an admin cannot store a
-      // shape the runtime would silently discard.
-      probes = parseFingerprintPolicy(
-        JSON.stringify({ probes: body.probes }),
-      ).probes;
-      if (probes.length !== body.probes.length) fields.push("probes");
-    }
-  }
-
-  // ── auto-issue ──────────────────────────────────────────────────────────────
-  const currentAuto = parseAutoIssue(row.auto_issue_json);
-  const auto = { ...currentAuto };
-  if (body.autoIssue !== undefined) {
-    if (
-      !body.autoIssue ||
-      typeof body.autoIssue !== "object" ||
-      Array.isArray(body.autoIssue)
-    ) {
-      fields.push("autoIssue");
-    } else {
-      const patch = body.autoIssue as Record<string, unknown>;
-      if (patch.enabled !== undefined) {
-        if (typeof patch.enabled !== "boolean")
-          fields.push("autoIssue.enabled");
-        else auto.enabled = patch.enabled;
-      }
-      if (patch.tierId !== undefined) {
-        if (patch.tierId !== null && typeof patch.tierId !== "string")
-          fields.push("autoIssue.tierId");
-        else auto.tierId = (patch.tierId as string | null) || null;
-      }
-      if (patch.mode !== undefined) {
-        if (!isAutoIssueMode(patch.mode)) fields.push("autoIssue.mode");
-        else auto.mode = patch.mode;
-      }
-      if (patch.rateLimitPerHour !== undefined) {
-        if (
-          typeof patch.rateLimitPerHour !== "number" ||
-          !Number.isFinite(patch.rateLimitPerHour) ||
-          patch.rateLimitPerHour < 0
-        ) {
-          fields.push("autoIssue.rateLimitPerHour");
-        } else auto.rateLimitPerHour = Math.trunc(patch.rateLimitPerHour);
-      }
-      // Enabling with a tier that doesn't exist would mint licenses whose entitlements
-      // nobody configured, so it is rejected here rather than failing silently at enroll.
-      if (auto.enabled) {
-        if (!auto.tierId) fields.push("autoIssue.tierId");
-        else if (!(await getTier(db, slug, auto.tierId)))
-          fields.push("autoIssue.tierId");
-      }
-    }
-  }
-
-  if (fields.length > 0)
-    return err(422, ErrorCode.BadRequest, "invalid policy", { fields });
-
-  const policy = { enabled, defaultMode, probes };
-  await setFingerprintPolicy(db, slug, JSON.stringify(policy), "admin", now);
-  if (body.autoIssue !== undefined) {
-    await setAutoIssuePolicy(db, slug, JSON.stringify(auto), "admin", now);
-  }
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "product.policy.update",
-    { kind: "product", id: slug },
-    `Set the device policy for ${slug}: fingerprint ${enabled ? defaultMode : "disabled"}, ` +
-      `auto-issue ${auto.enabled ? `${auto.mode} → ${auto.tierId}` : "disabled"}`,
-  );
-  return adminJson(await policyView(await getProduct(db, slug)));
-}
-
-/** One projection for both GET and the post-write echo, so they can't drift. */
-function policyView(row: ProductRow | null): {
-  policy: ReturnType<typeof parseFingerprintPolicy>;
-  source: string;
-  autoIssue: ReturnType<typeof parseAutoIssue>;
-  autoIssueSource: string;
-} {
-  return {
-    policy: parseFingerprintPolicy(row?.fingerprint_policy_json),
-    source: row?.fingerprint_policy_source ?? "manifest",
-    autoIssue: parseAutoIssue(row?.auto_issue_json),
-    autoIssueSource: row?.auto_issue_source ?? "manifest",
-  };
 }
 
 /** PUT /api/products/<slug>/secrets/<name> {value} — write-only: seal + store; echo NAME only. */

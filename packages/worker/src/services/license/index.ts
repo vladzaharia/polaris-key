@@ -17,10 +17,13 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import { handleLicenseRoutes } from "./routes.js";
+import { handleLicenseAdmin } from "./admin/index.js";
 
 export const licenseService: ServiceDescriptor = {
   slug: "license",
   handle: handleLicenseRoutes,
+  /** `license/{licenses,tiers,policy}` on the console API (§R1). */
+  adminHandle: handleLicenseAdmin,
   /** License's slice of `/.well-known/polaris.json` (design spec §4.3): the activation, token
    *  and document URLs a client needs to obtain and refresh a grant. */
   discoveryFragment: async ({ base }: DiscoveryContext) => ({

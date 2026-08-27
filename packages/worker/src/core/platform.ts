@@ -39,6 +39,7 @@ export {
 export {
   hashKey,
   mintDeviceToken,
+  mintLicenseKey,
   mintOpaqueToken,
   productFromKey,
   randomId,
