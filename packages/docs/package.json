@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The Polaris Key documentation site — an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
+  "description": "The Polaris Key documentation site \u2014 an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
   "scripts": {
     "build": "node scripts/copy-artifacts.mjs && astro build && node scripts/collect-csp-hashes.mjs && node scripts/emit-slug-manifest.mjs",
     "dev": "node scripts/copy-artifacts.mjs && astro dev",
@@ -12,7 +12,8 @@
     "lint": "prettier --check \"src/**/*.{ts,mdx,css}\" \"scripts/**/*.mjs\"",
     "clean": "rm -rf dist .astro public/schemas public/openapi",
     "gen": "node scripts/gen-reference.mjs",
-    "gen:check": "node scripts/gen-reference.mjs --check"
+    "gen:check": "node scripts/gen-reference.mjs --check",
+    "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.34.3",

@@ -264,8 +264,8 @@ exists.
 For DJDL, confirm:
 
 - `.pkey/product` uses `oidc.provider: platform`.
-- Redirect URI is `https://key.plrs.im/djdl/auth/callback`.
-- Admin group is `admin`.
+- Redirect URI is `https://key.plrs.im/djdl/identity/auth/callback`.
+- Admin group is `admins`.
 - Required product secrets are configured:
   - `EDGE_MINT__DJDL__APPLEMUSIC`
 

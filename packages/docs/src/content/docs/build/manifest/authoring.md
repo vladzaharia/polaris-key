@@ -1,4 +1,7 @@
-# Authoring a product's config — the `.pkey/` convention
+---
+title: "Authoring the manifest"
+description: "The .pkey/ files and the ConfigEntry shape — schema, product, and release — using djdl as the worked example."
+---
 
 A Polaris Key product is **data, not code**. Its catalog, metadata, and release coordinates
 live in a `.pkey/` directory in the product's own repo. The Worker, the admin SPA, and all
@@ -6,8 +9,8 @@ five SDKs read that data;
 adding or changing a product never requires a Worker redeploy.
 
 This doc is the source of truth for the `.pkey/` files and the `ConfigEntry` shape, using
-**djdl** (the first product) as the worked example. The canonical terminology lives in
-`docs/CONCEPTS.md`; the byte-for-byte wire contract lives in
+**djdl** (the first product) as the worked example. The canonical terminology lives at
+[Concepts & terminology](/docs/start/concepts/); the byte-for-byte wire contract lives in
 `docs/security/WIRE-CONTRACT-V3.md`.
 
 ## The `.pkey/` directory
@@ -43,72 +46,42 @@ JSON-Schema fragments fail during import/resync, not during a client request.
 
 The schema file is a `ProductCatalog`: a `schemaVersion` (bumped on incompatible shape
 changes; it matches the signed doc's `schemaVersion`) and an `entries` array. Each entry is a
-`ConfigEntry` (`packages/shared-catalog/src/types.ts`):
-
-| Field                                          | Meaning                                                                                                                                                                                                      |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `key`                                          | Dotted identifier, e.g. `run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`.                                                                                                                            |
-| `kind`                                         | `config` (plaintext client setting) · `secret` (redacted, delivered to the OS keyring) · `flag` (an entitlement).                                                                                            |
-| `category`, `label`, `description`             | Grouping + human copy for settings UIs.                                                                                                                                                                      |
-| `schema`                                       | A Draft-07 JSON-Schema fragment Ajv validates the value against.                                                                                                                                             |
-| `default`                                      | The schema-level default value (the client's last-resort fallback).                                                                                                                                          |
-| `managementDefault`                            | **CONFIG only.** The management state a freshly-minted key gets if the admin doesn't override it: `default` · `enforced` · `hidden`.                                                                         |
-| `secret`                                       | `true` on `secret` kinds (redacted in admin UIs).                                                                                                                                                            |
-| `userGrant` / `grantLabel`                     | A `flag` shown to the user as an included capability ("Included with your license").                                                                                                                         |
-| `ui`                                           | `UiHints` — `widget` (`password`/`select`/`textarea`/`switch`/`stepper`), `placeholder`, `unit`, `scopes` (admin scopes `profile`/`license`/`device`), etc. **Presentation only; never affects validation.** |
-| `dependsOn`                                    | `{ key, equals }` — presentation gating (e.g. show `proxy.select` only when `proxy.enabled === true`). Does not gate value validation.                                                                       |
-| `accessor`                                     | Dotted path into the client's config object (for `config`/`secret`).                                                                                                                                         |
-| `appliesTo`, `examples`, `deprecated`, `since` | Optional metadata.                                                                                                                                                                                           |
-
-### djdl examples
+`ConfigEntry` (`packages/shared-catalog/src/types.ts`) — a dotted `key`, a `kind`
+(`config` plaintext setting · `secret` OS-keyring-delivered · `flag` entitlement),
+grouping/label/description for settings UIs, a Draft-07 JSON-Schema `schema` the value
+validates against, a `default`, and — on `config`/`secret` keys — a `managementDefault`
+(`default` · `enforced` · `hidden`) seeding the state a freshly-minted key gets:
 
 ```jsonc
 // config — overridable by default
 { "key": "run.concurrency", "kind": "config", "category": "Run",
   "label": "Parallel downloads", "schema": { "type": "integer", "minimum": 1, "maximum": 8 },
   "default": 3, "managementDefault": "default", "ui": { "widget": "stepper" } }
-
-// secret — withheld from enumeration, auto-provisioned from the IdP
-{ "key": "proxy.subscriptionUrl", "kind": "secret", "secret": true, "category": "VPN",
-  "label": "VPN subscription URL", "schema": { "type": "string", "format": "uri" },
-  "managementDefault": "hidden", "ui": { "widget": "password" },
-  "dependsOn": { "key": "polarisVpn", "equals": true } }
-
-// flag — an entitlement the user sees as an included capability
-{ "key": "polarisVpn", "kind": "flag", "category": "VPN", "label": "Polaris VPN",
-  "schema": { "type": "boolean" }, "default": false,
-  "userGrant": true, "grantLabel": "Polaris VPN", "ui": { "widget": "switch" } }
 ```
 
-## How `default` / `enforced` / `hidden` behave end-to-end
-
-`managementDefault` seeds the per-key **management state** when a key is minted; an admin can
-override it per tier/license/device. The Worker stamps the effective state onto each
-`ManagedEntry` in the signed doc. On the **client**, the SDKs resolve a value through one
-fixed precedence:
+On the **client**, a value resolves through one fixed precedence, honoring whichever
+management state the signed document carries for that key:
 
 ```
 enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
 ```
 
-| State          | Server doc                | Client behavior                                                                                                                                        |
-| -------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`default`**  | carries a suggested value | the user/local override wins, then an env var, then the remote value, then the SDK `fallback`. **Overridable.**                                        |
-| **`enforced`** | value marked enforced     | the **remote value always wins**; local + env overrides are ignored. Shown **read-only** in settings UIs (`listUserConfig` marks it `enforced: true`). |
-| **`hidden`**   | value marked hidden       | enforced **and** withheld from `listUserConfig`/enumeration — still applied internally by `getConfig`.                                                 |
+`enforced`/`hidden` lock the remote value — local and env overrides never apply, and `hidden`
+additionally withholds the key from `listUserConfig`/enumeration while `getConfig` still
+applies it internally. A `default` (or an absent entry) falls through the rest of the chain to
+the caller's `fallback`. The env override for a key is `PKEY_CONFIG_` + the key with dots →
+`__` (`run.concurrency` → `PKEY_CONFIG_run__concurrency`).
 
-The env override for a key is `PKEY_CONFIG_` + the key with dots → `__`
-(`run.concurrency` → `PKEY_CONFIG_run__concurrency`); the value is JSON-parsed when it
-parses, else taken as a raw string. (See each SDK README for the per-language API.)
-
-> `secret` keys follow the same management states (djdl's `proxy.subscriptionUrl` is
-> `hidden`, auto-provisioned). `flag` keys are not "managed config" in this sense — they are
-> entitlements read via `isEntitled`/`getEntitlements`.
+The full field reference (`ui`/`dependsOn`/`accessor`/`appliesTo` and the rest), worked
+`secret`/`flag` examples, and how management states are set and overridden per
+tier/license/device live at [The config catalog](/docs/services/config/catalog/). The
+`ConfigEntry` type itself, reproduced verbatim, is at
+[ConfigEntry — the catalog item shape](/docs/reference/config-entry/).
 
 ## Enabled services: `modules` + `devices.registration`
 
 Polaris Key is five opt-in services — **license, config, release, update, identity** — over an
-always-on Core substrate (see `docs/CONCEPTS.md`). `.pkey/product` declares which of them the
+always-on Core substrate (see [Concepts & terminology](/docs/start/concepts/)). `.pkey/product` declares which of them the
 product runs, and that declaration is persisted verbatim into `products.services_json`, the
 single authority every other surface projects from. It used to be validated and then thrown
 away, which is how four surfaces each ended up re-deriving enablement from the presence of some
@@ -228,7 +201,7 @@ A tier can tighten fingerprint enforcement for itself:
 { "tiers": [{ "id": "pro", "label": "Pro", "policyFingerprint": "strict" }] }
 ```
 
-See `docs/PRIVACY.md` for exactly what a fingerprint contains and how long it is kept.
+See [Privacy](/docs/users/privacy/) for exactly what a fingerprint contains and how long it is kept.
 
 ## Registering + re-syncing a product
 

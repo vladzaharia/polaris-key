@@ -219,7 +219,8 @@ export const DOC_EXPIRY_SECONDS = 3600;
 /** Seconds per day, for the offline-grace computation. */
 export const SECONDS_PER_DAY = 86_400;
 
-/** Client→Worker request headers (wire contract v3; the `X-PKey-*` names are legacy). */
+/** Client→Worker request headers. The `X-PKey-*` spellings are NORMATIVE for wire contract v3
+ *  (Amendment A1) — not a legacy carry-over — so a client that sends them is current. */
 export const HEADER_DEVICE = "X-PKey-Device";
 export const HEADER_VERSION = "X-PKey-Version";
 export const HEADER_CHANNEL = "X-PKey-Channel";

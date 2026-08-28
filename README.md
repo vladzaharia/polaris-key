@@ -104,3 +104,18 @@ shared-manifest 62, shared-jws 46, cli 33, plus protocol/tools. The worker count
 per-lane attack suites (`packages/worker/test/attack/`), which turn the findings in
 `docs/security/2026-08-26-security-audit.md` into regression tests: a fix that quietly comes
 undone is a red build rather than a rediscovery.
+
+## Documentation
+
+The full docs site (`packages/docs`, Astro Starlight) is served by the worker itself at
+`key.plrs.im/docs`. There is no public docs origin: it is gated behind the same platform-admin
+session as the console, so an unauthenticated visit redirects into sign-in at `/manage` and
+returns you to the page you wanted. It carries the long-form operator and adopter material —
+the runbook, deployment, config authoring, every service in depth, the generated reference
+tables — that this README only summarizes.
+
+`docs/security/` (threat model, the wire contract spec, audit findings) and `SECURITY.md`
+(vulnerability disclosure) are repo-only; they are not published to the gated site.
+
+Agents start at [`AGENTS.md`](AGENTS.md), the canonical, vendor-neutral entrypoint; human
+contributors start at [`CONTRIBUTING.md`](CONTRIBUTING.md).

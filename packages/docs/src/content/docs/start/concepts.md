@@ -1,4 +1,9 @@
-# Polaris Key — concepts & canonical terminology
+---
+title: "Concepts & terminology"
+description: "The canonical glossary for the Worker, the SDKs, the console and the docs — services, devices, documents, trust, and the config model."
+sidebar:
+  order: 2
+---
 
 This is the source of truth for the vocabulary used across the Worker, the SDKs, the admin
 panel, and the docs. When code and this glossary disagree, this glossary wins — open a PR to
@@ -10,24 +15,26 @@ Polaris Key is **five opt-in services** over an always-on **Core** substrate. A 
 only what it needs, and what it left off does not exist for it. That is what lets one app take
 signed settings without taking licensing, and another take a release feed without taking either.
 
-- **Core** — the substrate every product gets and no product can switch off: the product
-  registry, the **Device** principal (registration, `pkeyt_` tokens, list/rename/deauthorize,
-  fingerprints, facts), trust & signing, discovery, rate limiting, the error taxonomy, audit, and
-  manifest-ingest dispatch. Core is not a service and never appears in an enablement set; a
-  product that enables nothing still registers devices and serves its JWKS.
+- **[Core](/docs/services/core/)** — the substrate every product gets and no product can switch
+  off: the product registry, the **Device** principal (registration, `pkeyt_` tokens,
+  list/rename/deauthorize, fingerprints, facts), trust & signing, discovery, rate limiting, the
+  error taxonomy, audit, and manifest-ingest dispatch. Core is not a service and never appears in
+  an enablement set; a product that enables nothing still registers devices and serves its JWKS.
 - **service** — one of exactly five opt-in units, each addressed by a singular **slug**. The slug
   is the worker directory (`packages/worker/src/services/<slug>/`), the route namespace
   (`/<product>/<slug>/…`), the SDK sub-client, and the console section, so there is one word per
   unit everywhere:
-  - **license** — activation and enrollment, the license document, licenses and keys, tiers,
-    fingerprint and auto-issue policy.
-  - **config** — the catalog (schema), the config document, profiles, edge-mint secret delivery.
-  - **release** — GitHub sync, channel resolution, artifacts, changelog, install script: the
-    release truth store.
-  - **update** — the appcast, `/version`, eligibility: the feed rendered _over_ Release's truth
-    store. `update → release` is the only sanctioned cross-service dependency; every other pair
-    talks through Core.
-  - **identity** — product OIDC, browser sessions, the customer portal.
+  - **[license](/docs/services/license/)** — activation and enrollment, the license document,
+    licenses and keys, tiers, fingerprint and auto-issue policy.
+  - **[config](/docs/services/config/)** — the catalog (schema), the config document, profiles,
+    edge-mint secret delivery.
+  - **[release](/docs/services/release/)** — GitHub sync, channel resolution, artifacts,
+    changelog, install script: the release truth store.
+  - **[update](/docs/services/update/)** — the appcast, `/version`, eligibility: the feed
+    rendered _over_ Release's truth store. `update → release` is the only sanctioned
+    cross-service dependency; every other pair talks through Core.
+  - **[identity](/docs/services/identity/)** — product OIDC, browser sessions, the customer
+    portal.
 
 ### Enablement
 
@@ -93,8 +100,9 @@ render them their own way:
 - `config_without_activation` — Config on, License off, and a declared `requires-license` policy.
   That closes the only mint path such a product has, leaving the service enabled and unreachable.
 
-Manifest ingest enforces its own share of these; see `docs/CONFIG-AUTHORING.md` for which are
-errors there and which are warnings.
+Manifest ingest enforces its own share of these; see
+[Authoring the manifest](/docs/build/manifest/) for which are errors there and which are
+warnings, and [The service model](/docs/start/service-model/) for where each rule is applied.
 
 ### Device registration policy
 

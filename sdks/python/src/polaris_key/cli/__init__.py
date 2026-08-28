@@ -1,4 +1,4 @@
-"""The ``polaris`` CLI.
+"""The ``polaris-key`` CLI.
 
 A framework-agnostic command *core* (:mod:`.core`) holds all behavior; the argparse entry
 point (:mod:`.argparse_cli`) is the default, dependency-free front end. Optional

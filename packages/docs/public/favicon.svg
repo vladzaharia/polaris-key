@@ -1,0 +1,9 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- The Polaris Key mark (packages/admin LogoMark), self-colored for favicon use:
+       indigo star, slate key ring — matches the console/site brand tokens. -->
+  <path d="M16 1.5l2.4 9.1 9.1 2.4-9.1 2.4-1.2 4.6a5.2 5.2 0 1 1-4.4 0l-1.2-4.6-9.1-2.4 9.1-2.4L16 1.5z" fill="#5b7cfa" opacity="0.18"/>
+  <path d="M16 2l2.2 8.8L27 13l-8.8 2.2L16 24l-2.2-8.8L5 13l8.8-2.2L16 2z" fill="#5b7cfa"/>
+  <circle cx="16" cy="25" r="4.2" stroke="#aab3c8" stroke-width="1.8"/>
+  <path d="M16 27.6v2.9M16 29h2.2" stroke="#aab3c8" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="16" cy="25" r="1.4" fill="#aab3c8"/>
+</svg>

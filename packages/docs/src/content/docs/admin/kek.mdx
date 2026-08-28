@@ -1,0 +1,23 @@
+---
+title: "Operating: the KEK keyring"
+description: "The full production operations runbook — deploy, secrets, the platform KEK, product operations, CI gates, and troubleshooting — imported verbatim from docs/RUNBOOK.md."
+sidebar:
+  order: 7
+---
+
+import { Content as Runbook } from "../../../../../../docs/RUNBOOK.md";
+
+`PLATFORM_KEK` is the one piece of configuration on this platform whose misconfiguration is
+**silent**: every sealed value — a product's signing key, its secrets — fails to open,
+`loadProduct` returns `null`, and every route for that product serves a plain `404` with no log
+line, indistinguishable from a product that was never registered. The admin console itself does
+not depend on the KEK, so a bad keyring can leave `/manage` looking completely healthy while
+every product's public routes are dark. Read the rotation procedure below before you touch it,
+and if products are 404ing at once with nothing else broken, start at *Troubleshooting* at the
+bottom of this page.
+
+What follows is the operations runbook for an already-deployed instance, rendered here in full
+from `docs/RUNBOOK.md` so it can never drift from what this page says. For first-time production
+bootstrap, see [Deploying to production](/docs/admin/deploy/) instead.
+
+<Runbook />

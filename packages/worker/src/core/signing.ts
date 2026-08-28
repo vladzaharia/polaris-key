@@ -11,10 +11,13 @@
  * `typ` is the wire-v3 domain separator (WIRE-CONTRACT-V3 §2). One product key signs the
  * license document, the config document and the trust manifest, so `typ` is the ONLY thing
  * standing between them: without it a config document could be replayed into a call site
- * expecting a license document and verify perfectly. It remains optional in the SIGNATURE only
- * because the browser-session document still mints the fused v2 artifact until identity is
- * carved (P3); every v3 signer passes it, and one that omits it is a bug rather than a
- * compatibility choice.
+ * expecting a license document and verify perfectly. Every call site here passes one — the
+ * license and config documents, and all three artifacts `core/bundles.ts` mints — so the
+ * optionality is inherited from `signJws`, not exercised: a signer that omits `typ` is a bug
+ * rather than a compatibility choice. The one Polaris Key document with no `typ` is the FUSED
+ * browser-session artifact (`services/identity/doc.ts`), and it never reaches this function:
+ * `/identity/session` serves it as plain JSON to a page, unsigned, so there is nothing to
+ * domain-separate. It gets a `typ` if and when it is ever signed.
  *
  * Key MATERIAL is loaded by `core/products.ts` (`loadProduct` opens the sealed `product_keys`
  * row under the KEK; `loadPublicSigningKey(s)` reads the public halves), and published by

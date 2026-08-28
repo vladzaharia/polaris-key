@@ -1,5 +1,18 @@
 # Polaris Suite Services Implementation Plan
 
+> **⚠️ THE NAMING LAYER IN THIS PLAN WAS INVERTED — DO NOT COPY NAMES FROM IT.**
+> This plan specifies npm scope `@plrs/*`, PyPI dist `polaris-suite`, CLI bin `plrs`, and the
+> manifest directory `.polaris/`. **Amendment A1 (2026-08-27) reverted every one of them.** What
+> actually shipped is `@polaris-key/*`, PyPI `polaris-key`, bin **`pkey`**, and **`.pkey/`** —
+> plus the whole `pkey` identifier family (`pkey_`, `pkeyt_`, `X-PKey-*`, `pkey-*+jws`,
+> `PKEY_CONFIG_*`) and ISSUER `key.plrs.im`. In particular, **Task 8.2's grep-gates assert the
+> opposite of what shipped**: they demand zero `@polaris-key/`, zero `X-PKey-`, zero `pkeyt_`,
+> which are now the correct spellings. The architecture below (Core substrate, five opt-in
+> services, `services_json`, wire v3, `PROTOCOL_VERSION` 3) landed as written; only the names
+> flipped. **For final state read the sibling spec's closeout, not this plan:**
+> `docs/superpowers/specs/2026-08-26-polaris-suite-services-design.md` — "Amendment A1" and
+> "Implementation closeout".
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Reorganize Polaris Key into the Polaris suite — License/Config/Release/Update/Identity services over an always-on Core substrate — per the approved spec `docs/superpowers/specs/2026-08-26-polaris-suite-services-design.md` (all D-numbers below refer to its decision register).

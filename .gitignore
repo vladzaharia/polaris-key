@@ -41,3 +41,8 @@ products/*/seed.sql
 
 # Assembled worker asset root (admin dist + docs dist merged by assemble-assets.mjs)
 packages/worker/assets/
+
+# The docs site's "Build on it" section — a global gitignore with a bare `build/` pattern
+# would silently swallow it (content, not build output).
+!packages/docs/src/content/docs/build/
+!packages/docs/src/content/docs/build/**

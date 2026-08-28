@@ -1,4 +1,9 @@
-# Adopter guide: onboarding a product onto Polaris Key
+---
+title: "Onboarding a product"
+description: "The end-to-end adopter guide — services, registration, the SDK, app changes, updates, cutover, and offline — using djdl as the worked example."
+sidebar:
+  order: 3
+---
 
 This guide is a template for bringing a product onto Polaris Key, using **djdl** — the
 first Polaris Key product — as the worked example throughout. Substitute your own product
@@ -16,8 +21,8 @@ users sign in again or activate with newly issued keys.
 
 ## 1. Stand up Polaris Key (prod)
 
-See `docs/RUNBOOK.md`. In short: create the D1/KV resources with wrangler, set platform
-secrets, apply migrations, `wrangler deploy --env prod`, and confirm
+See [Operating: the KEK keyring](/docs/admin/kek/). In short: create the D1/KV resources with
+wrangler, set platform secrets, apply migrations, `wrangler deploy --env prod`, and confirm
 `https://key.plrs.im` answers.
 
 ## 2. Declare the product's services
@@ -343,7 +348,7 @@ On Swift the same profile is a link-time guarantee rather than a runtime flag: d
 ## 9. Optional: free tier and live re-licensing
 
 **Auto-issued licenses.** Declare an `autoIssue` block in `.pkey/product` (see
-`docs/CONFIG-AUTHORING.md`) and the client can obtain a license with no key and no sign-in:
+[Authoring the manifest](/docs/build/manifest/authoring/)) and the client can obtain a license with no key and no sign-in:
 
 ```ts
 const client = await PolarisKeyClient.create({

@@ -1,4 +1,4 @@
-"""The dependency-free argparse front end + injectable hook for the ``polaris`` CLI.
+"""The dependency-free argparse front end + injectable hook for the ``polaris-key`` CLI.
 
 Exposes the v3 verb set, grouped by owning service (see
 :data:`polaris_key.cli.core.SERVICE_COMMANDS`)::
@@ -10,7 +10,7 @@ Exposes the v3 verb set, grouped by owning service (see
 
 Trust keys are passed as repeated ``--trust kid=rawBase64url`` pairs so the CLI stays
 product-agnostic (no pinned keys baked in). Used as ``python -m polaris_key`` and the
-``polaris`` console script.
+``polaris-key`` console script.
 
 Consumers can inject the same commands into their own argparse CLI via
 :func:`register_argparse`, passing a ``client_factory`` to control how the client is built.

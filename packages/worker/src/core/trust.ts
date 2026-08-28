@@ -11,9 +11,11 @@ import type { Product } from "./products.js";
 import type { Db } from "../db/types.js";
 import { signJws } from "@polaris-key/jws";
 import type { TrustManifestDoc } from "@polaris-key/protocol";
-// The v3 issuer (`key.plrs.im`, host-neutral — D-09), NOT the barrel's legacy `key.plrs.im`. The
-// two signed documents already moved; the trust manifest is the third artifact the client
-// verifies and has to agree with them, or an SDK that pins one `iss` cannot accept all three.
+// The issuer is `key.plrs.im` (Amendment A1 withdrew the host-neutral `plrs.im` spelling), and
+// `@polaris-key/protocol/core` is where that constant lives — the barrel re-exports the SAME
+// string, so this deep import is a provenance choice, not a different value. The trust manifest
+// is the third artifact the client verifies alongside the two signed documents, and all three
+// have to name one `iss` or an SDK that pins it cannot accept all three.
 import { ISSUER } from "@polaris-key/protocol/core";
 import { loadPublicSigningKeys } from "./products.js";
 

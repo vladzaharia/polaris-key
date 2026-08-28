@@ -7,7 +7,7 @@ network dependency for verification. The same cross-language conformance corpus 
 Node/Python/React SDKs is verified here byte-for-byte (`conformance/corpus/v2`, mirrored into
 `Tests/PolarisKeyTests/Resources/v2/`).
 
-Wire contract: [`docs/security/WIRE-CONTRACT-V3.md`](../../docs/security/WIRE-CONTRACT-V3.md).
+Wire contract: `docs/security/WIRE-CONTRACT-V3.md`.
 
 ## Targets
 
@@ -17,7 +17,7 @@ a product with no license service does not carry the gate.
 
 | Product             | Contents                                                                                | Depends on            |
 | ------------------- | --------------------------------------------------------------------------------------- | --------------------- |
-| `Polaris Key`       | `PolarisKeyClient` + `@_exported import` of Core/License/Config — the one-import path   | Core, License, Config |
+| `PolarisKey`        | `PolarisKeyClient` + `@_exported import` of Core/License/Config — the one-import path   | Core, License, Config |
 | `PolarisKeyCore`    | device principal, trust set, verified cache, clock floor, transport, discovery, bundles | —                     |
 | `PolarisKeyLicense` | the gate, activation, entitlements                                                      | Core                  |
 | `PolarisKeyConfig`  | the config document, layered resolution, device facts                                   | Core                  |

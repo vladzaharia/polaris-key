@@ -11,7 +11,7 @@ verifying key is selected by the header `kid` from a caller-supplied **trust set
 from the document, and the `alg` is asserted before any signature math (no `none`/HMAC
 downgrade).
 
-Distribution **`polaris-key`**, import package **`polaris`**, console script
+Distribution **`polaris-key`**, import package **`polaris_key`**, console script
 **`polaris-key`**.
 
 ## Install
@@ -253,7 +253,7 @@ exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter ex
 
 ## Trust, caching, and the offline gate
 
-The SDK follows [wire contract v3](../../docs/security/WIRE-CONTRACT-V3.md):
+The SDK follows wire contract v3 (`docs/security/WIRE-CONTRACT-V3.md`):
 
 - **Pinned keys are terminal.** The `trust=` map you compile into your application is the
   only root. Keys learned from a signed trust manifest are merged _under_ it, and a

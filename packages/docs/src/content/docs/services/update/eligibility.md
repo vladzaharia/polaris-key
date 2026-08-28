@@ -1,0 +1,171 @@
+---
+title: "Eligibility"
+description: "Channel resolution, the version check, and the entitled access mode's per-license channel and version gating."
+---
+
+Two different questions sit behind the word "eligibility." **Access** — covered in full on
+Release's [Artifacts](/docs/services/release/artifacts/) page — asks whether a caller may
+read a surface at all. **Eligibility**, this page, asks the narrower question the feed
+itself is actually built around: given that a caller may read it, which channel and which
+build is *this specific request* asking for, and is *this specific caller* allowed that
+one. Under the three loosest access modes the second question barely matters — every
+caller sees the same feed. Under `entitled`, the two questions become the same question,
+because the channel this page's resolution logic produces is exactly the channel checked
+against the caller's own license.
+
+## The version check
+
+```
+GET /<product>/update/version
+```
+
+Returns the newest build on a channel:
+
+```json
+{ "version": "1.2.3", "tag": "v1.2.3", "url": "https://github.com/…" }
+```
+
+An optional `channel` query parameter selects which channel to check (default: `stable`),
+resolved through the same [selector vocabulary](#channel-resolution) as every other
+version-shaped surface. Its cache policy follows the resolution, too: a pinned version is
+cached as effectively immutable, a moving channel for a couple of minutes. Unlike the
+appcast, the version check is a **metadata** surface — a plain informational read, not a
+pointer to bytes — so it's governed separately; see
+[Appcast](/docs/services/update/appcast/) for why the feed itself is gated under the
+stricter column.
+
+## Channel resolution
+
+The download route, the appcast, and the version check all resolve a channel or version
+selector through one shared vocabulary, so the three can never disagree about what "beta"
+currently means:
+
+| Selector | Resolves to |
+| --- | --- |
+| `stable`, `latest`, or omitted | the newest non-prerelease release |
+| a bare `X.Y.Z` (optionally with a prerelease suffix) | that exact tag, pinned |
+| `beta` | the latest tag from a configured GitHub Actions channel workflow's run on the product's beta branch, falling back to the newest prerelease when no workflow is configured |
+| `pr-<n>` | the same workflow-based resolution, scoped to that pull request's head commit — with no workflow configured, this resolves to nothing |
+| an operator-defined manual channel | the newest release whose tag matches an admin-authored, anchored regular expression |
+
+Anything that matches none of these is passed through **unrecognized** rather than quietly
+treated as `stable` — an unresolvable selector answers `404` visibly instead of silently
+serving the wrong build under a name nobody asked for.
+
+## Access versus eligibility, restated
+
+A request can fail for either reason, and they produce different refusals. A caller who may
+not read the surface at all under the configured access mode never reaches channel or
+version evaluation — that's Release's [Artifacts](/docs/services/release/artifacts/) page.
+A caller who *may* read it, under `entitled`, can still be refused the *specific* channel
+or version being asked for — that's what the rest of this page covers.
+
+## The entitled access mode
+
+### What it closes
+
+Before `entitled` existed, "may this caller download" only ever asked whether *some* usable
+license existed — never whether *that specific license* actually covered the channel or
+version being requested. A customer holding a stable-only license could fetch the beta
+appcast, and the beta DMG behind it, simply by knowing the URL; the license being real and
+usable was the whole check. `entitled` asks the narrower, correct question: does *this*
+license's own grant cover *this* channel, at *this* version.
+
+### Opt-in, per product and per surface
+
+`entitled` is one of the four modes in Release's [access ladder](/docs/services/release/artifacts/#access-modes),
+set independently for metadata and artifacts. `public` stays the default specifically so
+anonymous update-checking keeps working for the products that want it — nothing about
+`entitled` existing forces every product toward it.
+
+### The check itself
+
+Release and Update cannot import the License service directly — services may only reach
+into their own directory, Core, and the one sanctioned `update → release` edge — so the
+entitled decision is asked of Core through a single shared module, `core/entitledAccess`.
+It performs exactly the composition the signed license document's own build gate performs:
+validate the device's bearer token, confirm the license behind it is usable, merge tier,
+license, and admin policy into the same entitlement map the license document itself would
+carry, then read the `channels` entitlement and the version window out of *that* merged
+result. A caller refused a beta license document is refused the beta feed for the same
+reason, off the same rows — there is exactly one entitlement computation in the platform,
+not two that could quietly drift apart.
+
+What gets evaluated, and in this order:
+
+1. **Authentication.** A caller with no usable device token or license learns nothing about
+   the product's channels — just a `401`.
+2. **Channel.** Is the requested channel in the license's entitled set. `stable` is always
+   in it; it's the floor every license holds regardless of what it was ever granted
+   explicitly. A license entitled to the coarser `pr` channel also covers any specific
+   `pr-<n>` selector.
+3. **Version** — evaluated only once the channel passes. Is the concrete version being
+   fetched inside the intersection of the product's global compatibility window and the
+   license's own minimum/maximum version entitlements (the tighter bound wins in both
+   directions).
+
+The order is deliberate, not incidental: a channel refusal never includes the version
+window it would otherwise carry, because handing an unentitled caller the exact shape of
+what they can't see would leak information about a thing they aren't supposed to know
+exists at all.
+
+### The three outcomes
+
+```json
+// 401 — no usable device or license
+{ "error": { "code": "unauthorized" } }
+```
+
+```json
+// 403 — the license doesn't cover this channel
+{ "error": { "code": "channel_not_allowed" } }
+```
+
+```json
+// 403 — the requested version sits outside the license's window
+{ "error": { "code": "version_blocked" }, "allowedRange": { "min": "2.0.0" } }
+```
+
+This is the same nested wire shape the signed license document's own build gate answers
+with — see Release's [Artifacts](/docs/services/release/artifacts/#two-error-grammars) page
+for how it compares to the flat body `authenticated`/`licensed` still use.
+
+## Client-side narrowing is not enforcement
+
+A well-built client may read the same `channels` entitlement off its own license and use it
+to decide which channels to *offer* a user — the Swift SDK does exactly this for Sparkle's
+channel filter, covered on [Swift client & Sparkle](/docs/services/update/sparkle/). That's
+a courtesy, not the enforcement point. If the two ever disagree — a stale cached
+entitlement, a client bug, a hand-edited config — the request that actually reaches the
+server is what wins, and the caller sees a `403` instead of a silent download. Nothing
+client-side is ever trusted to gate what a caller can install; only what a caller is
+*offered* in the first place.
+
+## The console: Update settings
+
+Four fields, edited together because every one of them is intersected on the same
+eligibility decision:
+
+- **Metadata access** — governs the version check (and, on Release's side, the changelog
+  and install script).
+- **Artifact access** — governs the appcast and the download route.
+- **Compat min / Compat max** — the product-wide version window every license's own
+  `entitled` window is intersected against, regardless of what any individual license
+  grants.
+
+A product with no release configuration yet has nowhere to store an access mode, so the
+form disables those two fields and the API answers `422` rather than accepting a value the
+next read wouldn't return — the compatibility window, living on the product row itself,
+stays editable regardless. Saving is a partial patch: an unset field keeps its current
+value, so changing the compat window never requires re-submitting an access mode the form
+never touched.
+
+## See also
+
+- [Appcast](/docs/services/update/appcast/) — where this resolution and this check
+  actually gate a response.
+- [Artifacts, changelog & install](/docs/services/release/artifacts/) — the full access
+  ladder and both error grammars.
+- [Swift client & Sparkle](/docs/services/update/sparkle/) — the client that consumes an
+  entitled feed.
+- [Wire error codes](/docs/reference/error-codes/) for the complete nested error taxonomy.

@@ -44,6 +44,8 @@ jobs:
       # The docs site is built by `pnpm build` (turbo); assembling proves the worker's
       # single [assets] root composes from both frontends before any deploy does it.
       - run: pnpm --filter @polaris-key/worker assemble
+      # Internal-link integrity across the built docs site (paths + anchors).
+      - run: pnpm --filter @polaris-key/docs check:links
 
   # The `js` job above runs every suite under `environment: "node"`. Node permits the runtime
   # code generation workerd forbids, so it is structurally incapable of catching the class of

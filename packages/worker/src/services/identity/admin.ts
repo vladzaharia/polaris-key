@@ -8,10 +8,10 @@
  * They are Identity's because `portal_product_settings` is Identity's table (spec §5.2) and
  * because every switch on the form is a statement about how a HUMAN signs in to this product.
  *
- * Moved here verbatim from `admin/handlers/products.ts` — the console's pre-namespace spelling
- * `/manage/api/products/<slug>/portal` is REWRITTEN onto this handler by `admin/api.ts` rather
- * than kept as a second implementation, so the two paths cannot answer differently while the
- * console catches up (P7).
+ * Moved here verbatim from `admin/handlers/products.ts`. The console's pre-namespace spelling
+ * `/manage/api/products/<slug>/portal` is GONE, not rewritten: the transitional alias was deleted
+ * once the console migrated in P7, and `admin/api.ts` now lets that bare spelling fall through to
+ * the same 404 every other unknown resource gets. `identity/portal` is the only way in.
  *
  * The OIDC half of spec §4.2's `identity/{oidc,portal}` is not here yet: product OIDC has no
  * admin editor today (it is manifest-fed through `linkRepo`/`resync`), so there is nothing to

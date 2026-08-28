@@ -12,7 +12,8 @@
  *   update/settings                    NEW — access modes (incl. `entitled`, D-13) and the
  *                                      compatibility window, relocated off the product PATCH
  *   identity/portal                    moved verbatim from `admin/handlers/products.ts`; the
- *                                      console's old `portal` spelling is REWRITTEN onto it
+ *                                      console's old `portal` spelling is GONE, not rewritten —
+ *                                      it 404s (asserted below)
  *
  * The session, CSRF, rate-limit and platform-admin gates all run in `admin/api.ts` BEFORE a
  * descriptor is reached; this suite asserts the dispatch and the handlers, not those gates

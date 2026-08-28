@@ -1,6 +1,6 @@
 """Framework-agnostic CLI command core.
 
-Each command takes plain arguments + a :class:`polaris.PolarisKeyClient` and returns a
+Each command takes plain arguments + a :class:`polaris_key.PolarisKeyClient` and returns a
 :class:`CommandResult` (exit code + lines). The argparse / click / typer front ends are
 thin adapters over these, so behavior lives in exactly one place.
 
@@ -14,7 +14,7 @@ carve the SDK just went through::
 
 ``register`` is the new one and the reason the grouping matters: it is a DEVICES verb, not
 a licensing one. A config-only product (D-08) has no ``activate`` to run and its whole
-provisioning story is ``polaris register`` — which under a licence-shaped CLI would have
+provisioning story is ``polaris-key register`` — which under a licence-shaped CLI would have
 had nowhere to live.
 
 The trust-set parsing, the common-option bundle (:class:`ClientOptions`), and the
