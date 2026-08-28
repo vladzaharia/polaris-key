@@ -19,8 +19,11 @@ enabled = false
 persist = true
 head_sampling_rate = 1
 
+# The single assets root, ASSEMBLED from the two built frontends (admin SPA + gated docs
+# site) by `scripts/assemble-assets.mjs` — run `pnpm --filter @polaris-key/worker assemble`
+# after building, before `wrangler dev`/`deploy`. The directory is gitignored.
 [assets]
-directory = "../admin/dist"
+directory = "./assets"
 binding = "ASSETS"
 run_worker_first = true
 html_handling = "none"

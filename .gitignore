@@ -33,5 +33,11 @@ __pycache__/
 .DS_Store
 *.log
 
+# Tool scratch
+.playwright-mcp/
+
 # Generated product seeds
 products/*/seed.sql
+
+# Assembled worker asset root (admin dist + docs dist merged by assemble-assets.mjs)
+packages/worker/assets/

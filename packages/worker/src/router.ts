@@ -59,6 +59,10 @@ export type Route =
   | { kind: "portalMagicVerify" }
   | { kind: "portalDownload"; token: string }
   | { kind: "products" }
+  /** `/docs[/*]` — the platform-admin-gated documentation site (docs plan N7). A PLATFORM
+   *  route reserved ahead of product slugs, like `/manage`: the gate + asset serving live in
+   *  `docs.ts`, and the slug `docs` is on the reserved list so a product can never take it. */
+  | { kind: "docs" }
   | { kind: "githubWebhook" }
   | { kind: "discovery"; product: string }
   | { kind: "jwks"; product: string }
@@ -108,6 +112,8 @@ export function matchRoute(pathname: string): Route {
     return { kind: "adminApi" };
   if (path === "/manage" || path.startsWith("/manage/"))
     return { kind: "adminSpa" };
+  // The gated docs site — reserved before product slugs, same as /manage.
+  if (path === "/docs" || path.startsWith("/docs/")) return { kind: "docs" };
 
   // Root customer portal. These are reserved before product slugs.
   if (path === "/" || path === "/index.html" || path.startsWith("/assets/"))

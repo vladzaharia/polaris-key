@@ -48,6 +48,37 @@ interface FlowRecord {
   verifier: string;
   nonce: string;
   redirectUri: string;
+  /** Validated same-origin path to land on after the callback (see `sanitizeReturnTo`). */
+  returnTo?: string;
+}
+
+/**
+ * Where a sign-in may land after the callback. Default (and the fallback for anything
+ * suspicious) is the console itself; the only other destination is the gated docs site,
+ * which is what introduced `returnTo` in the first place (docs plan N7 — an unauthenticated
+ * `/docs/...` hit redirects through `/manage/login` and should come back to the page it
+ * wanted, not the console home).
+ *
+ * The validator is deliberately an allowlist, not an escape:
+ *   - must start with `/docs` or `/manage` as a whole segment (no `/docsevil`),
+ *   - conservative path charset only — no `\`, `%`, `?`, `#`, whitespace or control chars,
+ *     so the value cannot smuggle a scheme, a query, a fragment, or a header break,
+ *   - no `//` anywhere (kills protocol-relative URLs and empty segments),
+ *   - no `.`/`..` segments,
+ *   - bounded length.
+ * The value is carried inside the KV flow record — bound to the OIDC `state`, never
+ * round-tripped through the client — and re-validated when read back (defense in depth
+ * against a poisoned record).
+ */
+const RETURN_TO_MAX_LENGTH = 512;
+const RETURN_TO_RE = /^\/(?:docs|manage)(?:\/[A-Za-z0-9\-._~/]*)?$/;
+
+export function sanitizeReturnTo(raw: string | null): string | null {
+  if (!raw || raw.length > RETURN_TO_MAX_LENGTH) return null;
+  if (!RETURN_TO_RE.test(raw)) return null;
+  if (raw.includes("//")) return null;
+  if (raw.split("/").some((seg) => seg === "." || seg === "..")) return null;
+  return raw;
 }
 
 /** Resolved verified claims from an ID token. */
@@ -189,8 +220,15 @@ export async function handleAdminLogin(
   const state = b64url(randomBytes(16));
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
-  const redirectUri = `${new URL(req.url).origin}/manage/callback`;
-  const flow: FlowRecord = { verifier, nonce, redirectUri };
+  const url = new URL(req.url);
+  const redirectUri = `${url.origin}/manage/callback`;
+  const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));
+  const flow: FlowRecord = {
+    verifier,
+    nonce,
+    redirectUri,
+    ...(returnTo ? { returnTo } : {}),
+  };
   await env.HOT.put(await adminFlowKey(state, env), JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
@@ -259,8 +297,12 @@ export async function handleAdminCallback(
   }
 
   const { token } = await issueSession(env, identity, now);
+  // Re-validated on read: the flow record is server-written, but a defense-in-depth re-check
+  // costs nothing and keeps "the callback only ever redirects to an allowlisted path" a local
+  // property of this function rather than a cross-file invariant.
+  const location = sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/";
   return new Response(null, {
     status: 302,
-    headers: { location: "/manage/", "set-cookie": buildSessionCookie(token) },
+    headers: { location, "set-cookie": buildSessionCookie(token) },
   });
 }

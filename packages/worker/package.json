@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "assemble": "node scripts/assemble-assets.mjs",
     "test": "vitest run",
     "test:workerd": "vitest run --config vitest.workers.config.ts",
     "typecheck:workerd": "tsc -p test-workerd",

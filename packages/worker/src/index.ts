@@ -8,6 +8,7 @@ import { handleJwks, handleTrustManifest } from "./core/trust.js";
 import { dispatchService } from "./core/registry.js";
 import { SERVICES } from "./mount.js";
 import { handleAdmin } from "./admin/index.js";
+import { handleDocs } from "./docs.js";
 // The root customer portal is a PLATFORM surface implemented by the Identity service: one
 // account spans every tenant, so there is no product slug to namespace it under and its routes
 // stay reserved ahead of product slugs in `router.ts`. Only the implementation moved (D-14).
@@ -116,6 +117,10 @@ async function dispatch(req: Request, env: Env): Promise<Response> {
     switch (route.kind) {
       case "githubWebhook":
         return handleGithubWebhook(req, env, db, now);
+      // The gated docs site: session-checked inside the handler (docs.ts), for every path
+      // under the prefix — assets and machine-readable artifacts included.
+      case "docs":
+        return handleDocs(req, env, now);
       case "portalSpa":
       case "portalApi":
       case "portalLogin":
