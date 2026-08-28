@@ -359,6 +359,26 @@ const RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"] as const;
 const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
 const FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"] as const;
 const AUTO_ISSUE_MODE_VALUES = ["anonymous", "oidcDefault", "both"] as const;
+
+/**
+ * Product slugs the platform router reserves ahead of tenant routing. Every one of these is
+ * (or fronts) a root path the worker matches before `/<product>/…` — a product registered
+ * under such a slug would be permanently shadowed. `validateManifestDocuments` refuses them
+ * (`reserved_slug`), and the worker's manual-create admin path checks the same list.
+ */
+export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
+  "docs",
+  "manage",
+  "api",
+  "assets",
+  "login",
+  "logout",
+  "callback",
+  "magic",
+  "download",
+  "webhooks",
+  "well-known",
+];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",
   "clientScoped",
@@ -441,6 +461,18 @@ export function validateManifestDocuments(
       "/product/slug",
       "invalid_slug",
       "product.slug must match ^[a-z0-9-]{1,64}$.",
+    );
+  } else if (RESERVED_PRODUCT_SLUGS.includes(productSlug)) {
+    // The worker's root router reserves these ahead of product slugs (`/manage`, `/docs`,
+    // the portal paths, `/.well-known/*`, …) — a product registered under one of them would
+    // be permanently shadowed, its every route unreachable. Refuse at authoring time; the
+    // admin manual-create path enforces the same list.
+    add(
+      errors,
+      "product",
+      "/product/slug",
+      "reserved_slug",
+      `product.slug "${productSlug}" collides with a reserved platform route.`,
     );
   }
   if (!stringAt(productNode, "name")) {
@@ -684,6 +716,22 @@ export function validateManifestDocuments(
         "invalid_semver",
         SEMVER_RE,
         `Tier ${bound} must be a semver string.`,
+      );
+    }
+    // Enforcement strength is an enum, and a typo'd value must be an authoring error — the
+    // admin PATCH path (services/license/admin/policy.ts) already rejects these, so this
+    // brings the manifest write path up to the same standard instead of silently coercing.
+    if (
+      record.policyFingerprint !== undefined &&
+      record.policyFingerprint !== null &&
+      !isOneOf(record.policyFingerprint, FINGERPRINT_MODE_VALUES)
+    ) {
+      add(
+        errors,
+        "product",
+        `/licensing/tiers/${i}/policyFingerprint`,
+        "invalid_tier_fingerprint_mode",
+        `Tier policyFingerprint must be one of ${FINGERPRINT_MODE_VALUES.join(", ")}.`,
       );
     }
   }
@@ -1087,9 +1135,55 @@ export function validateManifestDocuments(
     }
   }
 
+  // ── Fingerprint + auto-issue policy blocks ──────────────────────────────────────────────
+  //
+  // These are ENFORCEMENT policy, and every enum here used to be silently coerced at the
+  // normalize stage (a typo'd `defaultMode: "stricht"` imported as "normal"; a typo'd
+  // `autoIssue.mode` fell OPEN to "anonymous" — the mode that opens the keyless enroll
+  // endpoint). The admin PATCH path (`services/license/admin/policy.ts`) already validates
+  // all of this strictly; these rules make the manifest write path agree with it, the same
+  // way `invalid_oidc_provider` / `invalid_registration_policy` already treat their enums.
+
+  if (
+    productRoot.fingerprint !== undefined &&
+    !isRecord(productRoot.fingerprint)
+  ) {
+    add(
+      errors,
+      "product",
+      "/fingerprint",
+      "invalid_fingerprint",
+      "fingerprint must be an object.",
+    );
+  }
+  const fingerprint = asRecord(productRoot.fingerprint);
+  if (
+    fingerprint.enabled !== undefined &&
+    typeof fingerprint.enabled !== "boolean"
+  ) {
+    add(
+      errors,
+      "product",
+      "/fingerprint/enabled",
+      "invalid_fingerprint_enabled",
+      "fingerprint.enabled must be a boolean.",
+    );
+  }
+  if (
+    fingerprint.defaultMode !== undefined &&
+    !isOneOf(fingerprint.defaultMode, FINGERPRINT_MODE_VALUES)
+  ) {
+    add(
+      errors,
+      "product",
+      "/fingerprint/defaultMode",
+      "invalid_fingerprint_mode",
+      `fingerprint.defaultMode must be one of ${FINGERPRINT_MODE_VALUES.join(", ")}.`,
+    );
+  }
+
   // Fingerprint probes: `id` becomes a key in the device's reported probe map, and each
   // per-platform target is shipped to every client of this product.
-  const fingerprint = asRecord(productRoot.fingerprint);
   for (const [i, raw] of (arrayAt(fingerprint, "probes") ?? []).entries()) {
     if (!isRecord(raw)) continue;
     constrained(
@@ -1123,16 +1217,83 @@ export function validateManifestDocuments(
     }
   }
 
-  // Auto-issue names a tier that keyless licenses land on.
+  // Auto-issue: names the tier keyless licenses land on, plus its own enums/bounds.
+  if (productRoot.autoIssue !== undefined && !isRecord(productRoot.autoIssue)) {
+    add(
+      errors,
+      "product",
+      "/autoIssue",
+      "invalid_auto_issue",
+      "autoIssue must be an object.",
+    );
+  }
+  const autoIssue = asRecord(productRoot.autoIssue);
+  if (autoIssue.enabled !== undefined && typeof autoIssue.enabled !== "boolean") {
+    add(
+      errors,
+      "product",
+      "/autoIssue/enabled",
+      "invalid_auto_issue",
+      "autoIssue.enabled must be a boolean.",
+    );
+  }
+  if (
+    autoIssue.mode !== undefined &&
+    !isOneOf(autoIssue.mode, AUTO_ISSUE_MODE_VALUES)
+  ) {
+    add(
+      errors,
+      "product",
+      "/autoIssue/mode",
+      "invalid_auto_issue_mode",
+      `autoIssue.mode must be one of ${AUTO_ISSUE_MODE_VALUES.join(", ")}.`,
+    );
+  }
+  if (autoIssue.enabled === true && typeof autoIssue.tierId !== "string") {
+    add(
+      errors,
+      "product",
+      "/autoIssue/tierId",
+      "missing_auto_issue_tier",
+      "autoIssue.tierId is required when autoIssue is enabled — a policy naming no tier cannot issue anything.",
+    );
+  }
   constrained(
     errors,
     "product",
-    asRecord(productRoot.autoIssue).tierId,
+    autoIssue.tierId,
     "/autoIssue/tierId",
     "invalid_tier_ref",
     ID_RE,
     "autoIssue.tierId must be a tier identifier.",
   );
+  // Existence, not just shape — mirrors `unknown_profile_ref` for tier→profile. Without
+  // this, a typo'd tier imports cleanly and the failure surfaces at a user's first enroll.
+  if (
+    typeof autoIssue.tierId === "string" &&
+    ID_RE.test(autoIssue.tierId) &&
+    !tierIds.has(autoIssue.tierId)
+  ) {
+    add(
+      errors,
+      "product",
+      "/autoIssue/tierId",
+      "unknown_auto_issue_tier_ref",
+      `autoIssue.tierId references unknown tier ${autoIssue.tierId}.`,
+    );
+  }
+  if (
+    autoIssue.rateLimitPerHour !== undefined &&
+    !nonNegativeInteger(autoIssue.rateLimitPerHour)
+  ) {
+    add(
+      errors,
+      "product",
+      "/autoIssue/rateLimitPerHour",
+      "invalid_rate_limit",
+      "autoIssue.rateLimitPerHour must be a non-negative integer.",
+    );
+  }
 
   // Declared secret names are looked up in the product's sealed-secret store.
   for (const [i, item] of (arrayAt(secrets, "required") ?? []).entries()) {
@@ -1439,18 +1600,31 @@ function normalizeFingerprint(raw: unknown): ManifestFingerprint {
   };
 }
 
-function normalizeAutoIssue(raw: unknown): ManifestAutoIssue {
+/** Exported so the fail-closed guarantee is directly assertable (and for non-manifest
+ *  callers that normalize a policy without running document validation first). */
+export function normalizeAutoIssue(raw: unknown): ManifestAutoIssue {
   const record = isRecord(raw) ? raw : {};
   const tierId =
     typeof record.tierId === "string" && record.tierId ? record.tierId : null;
+  // An OMITTED mode defaults to "anonymous"; an unrecognized one is null here and disables
+  // the whole policy below. The distinction matters: "anonymous" is the mode that opens the
+  // keyless enroll endpoint, so falling back to it on garbage would fail OPEN. On the
+  // manifest path `validateManifestDocuments` now rejects a bad mode outright
+  // (invalid_auto_issue_mode) before this runs; this guard keeps every other caller of the
+  // normalizer fail-closed too.
+  const mode =
+    record.mode === undefined
+      ? "anonymous"
+      : isOneOf(record.mode, AUTO_ISSUE_MODE_VALUES)
+        ? record.mode
+        : null;
   return {
-    // A policy with no tier can't issue anything coherent, so it counts as disabled rather
-    // than quietly minting tier-less licenses.
-    enabled: record.enabled === true && tierId !== null,
+    // A policy with no tier can't issue anything coherent, and a policy with an
+    // unrecognizable mode can't be honoured coherently either — both count as disabled
+    // rather than quietly minting licenses under a policy nobody wrote.
+    enabled: record.enabled === true && tierId !== null && mode !== null,
     tierId,
-    mode: isOneOf(record.mode, AUTO_ISSUE_MODE_VALUES)
-      ? record.mode
-      : "anonymous",
+    mode: mode ?? "anonymous",
     rateLimitPerHour:
       typeof record.rateLimitPerHour === "number" &&
       record.rateLimitPerHour >= 0

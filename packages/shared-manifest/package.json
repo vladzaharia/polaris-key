@@ -11,7 +11,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "schemas"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
@@ -23,5 +24,9 @@
   "dependencies": {
     "@polaris-key/catalog": "workspace:*",
     "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
   }
 }

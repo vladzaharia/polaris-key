@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/v1/release.schema.json",
+  "title": "Polaris Key release manifest (.pkey/release)",
+  "description": "The release document of a .pkey/ manifest: GitHub provider coordinates, channel/appcast/install settings, artifact policy, access modes, and edge-mint recipes. Required only when the release service is enabled. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
+  "type": "object",
+  "properties": {
+    "release": { "$ref": "#/$defs/releaseBody" },
+    "provider": { "$ref": "#/$defs/provider" },
+    "ghOwner": { "$ref": "#/$defs/ghSlug" },
+    "ghRepo": { "$ref": "#/$defs/ghSlug" },
+    "binaryName": { "$ref": "#/$defs/binaryName" },
+    "channelWorkflow": { "$ref": "#/$defs/channelWorkflow" },
+    "betaBranch": { "$ref": "#/$defs/branch" },
+    "summaryMarker": { "$ref": "#/$defs/summaryMarker" },
+    "sparkleEd25519Pub": { "$ref": "#/$defs/sparklePub" },
+    "artifactPolicy": { "$ref": "#/$defs/artifactPolicy" },
+    "access": { "$ref": "#/$defs/access" },
+    "edgeMint": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edgeMintRecipe" }
+    }
+  },
+  "$defs": {
+    "releaseBody": {
+      "description": "The same fields may be nested under a `release` key instead of flattened at the root.",
+      "type": "object",
+      "properties": {
+        "provider": { "$ref": "#/$defs/provider" },
+        "ghOwner": { "$ref": "#/$defs/ghSlug" },
+        "ghRepo": { "$ref": "#/$defs/ghSlug" },
+        "binaryName": { "$ref": "#/$defs/binaryName" },
+        "channelWorkflow": { "$ref": "#/$defs/channelWorkflow" },
+        "betaBranch": { "$ref": "#/$defs/branch" },
+        "summaryMarker": { "$ref": "#/$defs/summaryMarker" },
+        "sparkleEd25519Pub": { "$ref": "#/$defs/sparklePub" },
+        "artifactPolicy": { "$ref": "#/$defs/artifactPolicy" },
+        "access": { "$ref": "#/$defs/access" },
+        "edgeMint": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/edgeMintRecipe" }
+        }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Only github is implemented (the seam for other providers is designed, not built).",
+          "const": "github"
+        },
+        "owner": { "$ref": "#/$defs/ghSlug" },
+        "repo": { "$ref": "#/$defs/ghSlug" }
+      }
+    },
+    "ghSlug": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+    },
+    "binaryName": {
+      "description": "Interpolated into the published install.sh and artifact filenames.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "channelWorkflow": {
+      "description": "A workflow filename (*.yml/*.yaml) or numeric workflow id.",
+      "type": "string",
+      "pattern": "^(?:[0-9]{1,20}|[A-Za-z0-9._-]{1,100}\\.ya?ml)$"
+    },
+    "branch": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._][A-Za-z0-9._/-]{0,254}$"
+    },
+    "summaryMarker": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$"
+    },
+    "sparklePub": {
+      "description": "The app's Sparkle Ed25519 public key (base64/base64url).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/=_-]{1,512}$"
+    },
+    "artifactPolicy": {
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          }
+        },
+        "architectures": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"
+          }
+        },
+        "requireDmg": { "type": "boolean" },
+        "requireCli": { "type": "boolean" },
+        "allowAmbiguousAssets": { "type": "boolean" }
+      }
+    },
+    "access": {
+      "description": "Who may read release metadata and download artifacts. (The per-product `entitled` feed mode is an admin-set runtime policy, not a manifest value.)",
+      "type": "object",
+      "properties": {
+        "metadata": { "$ref": "#/$defs/accessMode" },
+        "artifacts": { "$ref": "#/$defs/accessMode" }
+      }
+    },
+    "accessMode": { "enum": ["public", "authenticated", "licensed"] },
+    "edgeMintRecipe": {
+      "description": "Edge-mint recipe (identical shape to product.schema.json's — the block is accepted in either document).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+        },
+        "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
+        "signingKeySecret": {
+          "type": "string",
+          "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"
+        },
+        "kid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "claimsTemplate": { "type": "object" },
+        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+        "audience": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["id", "alg", "signingKeySecret"]
+    }
+  }
+}

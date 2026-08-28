@@ -1,4 +1,5 @@
 {
+  "$schema": "../../packages/shared-manifest/schemas/v1/product.schema.json",
   "slug": "djdl",
   "name": "DJDL",
   "signingKid": "djdl-2026",
@@ -9,22 +10,42 @@
   "defaultDeviceLimit": 5,
   "adminGroup": "admins",
   "modules": {
-    "license": { "enabled": true },
-    "config": { "enabled": true },
-    "release": { "enabled": true },
-    "update": { "enabled": true },
-    "identity": { "enabled": true }
+    "license": {
+      "enabled": true
+    },
+    "config": {
+      "enabled": true
+    },
+    "release": {
+      "enabled": true
+    },
+    "update": {
+      "enabled": true
+    },
+    "identity": {
+      "enabled": true
+    }
   },
   "devices": {
     "registration": "requires-license"
   },
   "oidc": {
     "provider": "platform",
-    "redirectUris": ["https://key.plrs.im/djdl/identity/auth/callback"],
+    "redirectUris": [
+      "https://key.plrs.im/djdl/identity/auth/callback"
+    ],
     "groupRoleMap": {
-      "family": { "role": "user", "tier": "standard" },
-      "friends": { "role": "user", "tier": "standard" },
-      "admins": { "role": "admin" }
+      "family": {
+        "role": "user",
+        "tier": "standard"
+      },
+      "friends": {
+        "role": "user",
+        "tier": "standard"
+      },
+      "admins": {
+        "role": "admin"
+      }
     }
   },
   "tiers": [
@@ -46,7 +67,9 @@
       "claim": "remnawaveSub",
       "secretKey": "proxy.subscriptionUrl",
       "secretUrlTemplate": "https://vpn.polaris.rest/{claim}",
-      "allowedHosts": ["vpn.polaris.rest"]
+      "allowedHosts": [
+        "vpn.polaris.rest"
+      ]
     }
   ],
   "edgeMint": [
@@ -55,7 +78,9 @@
       "alg": "ES256",
       "signingKeySecret": "EDGE_MINT__DJDL__APPLEMUSIC",
       "kid": "7L3Q6F68Y4",
-      "claimsTemplate": { "iss": "48H7CLBV8Y" },
+      "claimsTemplate": {
+        "iss": "48H7CLBV8Y"
+      },
       "ttlSeconds": 3600
     }
   ],

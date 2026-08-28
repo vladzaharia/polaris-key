@@ -1,0 +1,38 @@
+{
+  // Manifest authoring: completion + validation for .pkey/ documents and the products/
+  // fixtures, wired to the schemas that ship in packages/shared-manifest/schemas/v1 (the
+  // canonical $id URLs live on the auth-gated docs site, so editors use paths).
+  "json.schemas": [
+    {
+      "fileMatch": ["**/.pkey/product.json", "products/*/product.json"],
+      "url": "./packages/shared-manifest/schemas/v1/product.schema.json"
+    },
+    {
+      "fileMatch": [
+        "**/.pkey/schema.json",
+        "products/*/catalog.json",
+        "products/*/schema.json"
+      ],
+      "url": "./packages/shared-manifest/schemas/v1/schema.schema.json"
+    },
+    {
+      "fileMatch": ["**/.pkey/release.json", "products/*/release.json"],
+      "url": "./packages/shared-manifest/schemas/v1/release.schema.json"
+    }
+  ],
+  // Requires the YAML extension (redhat.vscode-yaml).
+  "yaml.schemas": {
+    "./packages/shared-manifest/schemas/v1/product.schema.json": [
+      "**/.pkey/product.yaml",
+      "**/.pkey/product.yml"
+    ],
+    "./packages/shared-manifest/schemas/v1/schema.schema.json": [
+      "**/.pkey/schema.yaml",
+      "**/.pkey/schema.yml"
+    ],
+    "./packages/shared-manifest/schemas/v1/release.schema.json": [
+      "**/.pkey/release.yaml",
+      "**/.pkey/release.yml"
+    ]
+  }
+}

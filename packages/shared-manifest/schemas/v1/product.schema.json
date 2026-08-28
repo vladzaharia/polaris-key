@@ -1,0 +1,439 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/v1/product.schema.json",
+  "title": "Polaris Key product manifest (.pkey/product)",
+  "description": "The product document of a .pkey/ manifest: product metadata, enabled services, device-registration policy, licensing tiers/profiles, OIDC, provisioning hooks, fingerprint + auto-issue policy, declared secrets, and (optionally, inlined) the release document. Mirrors validateManifestDocuments in @polaris-key/manifest — the TypeScript validator is authoritative; this schema exists for editor autocomplete and machine consumers, and the schema-parity test keeps the two agreeing. Unknown keys are tolerated everywhere, exactly as the validator tolerates them. NOTE: the $id URL is a canonical identifier, not a fetchable locator (the docs site is auth-gated); editors should reference this file by path — it ships inside the @polaris-key/manifest npm package.",
+  "type": "object",
+  "properties": {
+    "apiVersion": {
+      "description": "Optional manifest API marker; the only accepted value is pkey.dev/v1.",
+      "const": "pkey.dev/v1"
+    },
+    "product": { "$ref": "#/$defs/productCore" },
+    "slug": { "$ref": "#/$defs/slug" },
+    "name": { "$ref": "#/$defs/label" },
+    "adminGroup": { "$ref": "#/$defs/groupName" },
+    "compatMin": { "$ref": "#/$defs/semver" },
+    "compatMax": { "$ref": "#/$defs/semver" },
+    "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+    "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
+    "modules": { "$ref": "#/$defs/modules" },
+    "devices": {
+      "type": "object",
+      "properties": {
+        "registration": {
+          "description": "Who may mint a device token via POST /<product>/devices/register. Default is derived from the enabled services: requires-license if License is on, else requires-identity if Identity is on, else open.",
+          "enum": ["open", "requires-identity", "requires-license"]
+        }
+      }
+    },
+    "licensing": {
+      "type": "object",
+      "properties": {
+        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
+        "profiles": { "$ref": "#/$defs/profiles" },
+        "tiers": { "$ref": "#/$defs/tiers" }
+      }
+    },
+    "profiles": { "$ref": "#/$defs/profiles" },
+    "tiers": { "$ref": "#/$defs/tiers" },
+    "oidc": { "$ref": "#/$defs/oidc" },
+    "provisioning": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/provisioningHook" }
+    },
+    "fingerprint": { "$ref": "#/$defs/fingerprint" },
+    "autoIssue": { "$ref": "#/$defs/autoIssue" },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "description": "Secret names the product requires an operator to set (sealed in product_secrets). Plain names or {name} objects.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              { "$ref": "#/$defs/secretRef" },
+              {
+                "type": "object",
+                "properties": { "name": { "$ref": "#/$defs/secretRef" } },
+                "required": ["name"]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edgeMint": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edgeMintRecipe" }
+    },
+    "release": {
+      "description": "The release document may be inlined here instead of living in .pkey/release — same shape (see release.schema.json).",
+      "type": "object"
+    }
+  },
+  "anyOf": [
+    {
+      "required": ["product"],
+      "properties": {
+        "product": { "required": ["slug", "name"] }
+      }
+    },
+    { "required": ["slug", "name"] }
+  ],
+  "allOf": [
+    {
+      "$comment": "update_requires_release: the update service renders a feed over release data. (The legacy `releases` module enables both, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["update"],
+            "properties": {
+              "update": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["release"],
+                "properties": {
+                  "release": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["releases"],
+                "properties": {
+                  "releases": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "slug": {
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known).",
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,64}$",
+      "not": {
+        "enum": [
+          "docs",
+          "manage",
+          "api",
+          "assets",
+          "login",
+          "logout",
+          "callback",
+          "magic",
+          "download",
+          "webhooks",
+          "well-known"
+        ]
+      }
+    },
+    "label": {
+      "description": "Human label: at most 200 chars, no control characters.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+    },
+    "longText": {
+      "description": "Longer human text: at most 2000 chars, no control characters.",
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+    },
+    "identifier": {
+      "description": "Simple identifier: [A-Za-z0-9._:-], 1-64 chars.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+    },
+    "secretRef": {
+      "description": "Stable uppercase secret name: ^[A-Z0-9][A-Z0-9_:-]{1,127}$.",
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "groupName": {
+      "description": "IdP group name: ^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$"
+    },
+    "channel": {
+      "description": "Release channel name (becomes a URL path segment): ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "fingerprintMode": {
+      "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",
+      "enum": ["off", "lenient", "normal", "strict"]
+    },
+    "productCore": {
+      "type": "object",
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "name": { "$ref": "#/$defs/label" },
+        "adminGroup": { "$ref": "#/$defs/groupName" },
+        "compatMin": { "$ref": "#/$defs/semver" },
+        "compatMax": { "$ref": "#/$defs/semver" },
+        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" }
+      }
+    },
+    "modules": {
+      "description": "Per-service enablement. Service slugs (license, config, release, update, identity) are canonical; the legacy module vocabulary (licensing, releases, oidc, edgeMint) is accepted and mapped (releases enables release+update; edgeMint enables config). Undeclared defaults to license+config.",
+      "type": "object",
+      "properties": {
+        "license": { "$ref": "#/$defs/moduleFlag" },
+        "config": { "$ref": "#/$defs/moduleFlag" },
+        "release": { "$ref": "#/$defs/moduleFlag" },
+        "update": { "$ref": "#/$defs/moduleFlag" },
+        "identity": { "$ref": "#/$defs/moduleFlag" },
+        "licensing": { "$ref": "#/$defs/moduleFlag" },
+        "releases": { "$ref": "#/$defs/moduleFlag" },
+        "oidc": { "$ref": "#/$defs/moduleFlag" },
+        "edgeMint": { "$ref": "#/$defs/moduleFlag" }
+      }
+    },
+    "moduleFlag": {
+      "type": "object",
+      "properties": { "enabled": { "type": "boolean" } }
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/$defs/identifier" },
+          "name": { "$ref": "#/$defs/label" },
+          "label": { "$ref": "#/$defs/label" },
+          "description": { "$ref": "#/$defs/longText" },
+          "payload": {
+            "description": "Managed-payload baseline: config/secrets/entitlements maps.",
+            "type": "object"
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    "tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/$defs/identifier" },
+          "label": { "$ref": "#/$defs/label" },
+          "profileId": {
+            "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
+          },
+          "profile": {
+            "description": "Alias of profileId.",
+            "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
+          },
+          "policyExpiryDays": { "type": ["number", "null"] },
+          "expiryDays": {
+            "description": "Alias of policyExpiryDays.",
+            "type": ["number", "null"]
+          },
+          "policyDeviceLimit": {
+            "anyOf": [
+              { "$ref": "#/$defs/nonNegativeInteger" },
+              { "type": "null" }
+            ]
+          },
+          "policyFingerprint": {
+            "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",
+            "anyOf": [{ "$ref": "#/$defs/fingerprintMode" }, { "type": "null" }]
+          },
+          "channels": {
+            "description": "Upgrade channels this tier may follow.",
+            "type": "array",
+            "items": { "$ref": "#/$defs/channel" }
+          },
+          "minVersion": {
+            "anyOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }]
+          },
+          "maxVersion": {
+            "anyOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }]
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    "oidc": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "description": "platform uses the platform IdP (PLATFORM_OIDC_*); custom uses this product's own issuer/client.",
+          "enum": ["platform", "custom"]
+        },
+        "issuer": {
+          "description": "Absolute https URL of the product's OIDC issuer (custom provider only; http is accepted only for localhost; no credentials, query, or fragment; not a private/reserved address).",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https?://[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "clientId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$"
+        },
+        "clientSecretSecret": { "$ref": "#/$defs/secretRef" },
+        "clientSecretRef": {
+          "description": "Alias of clientSecretSecret.",
+          "$ref": "#/$defs/secretRef"
+        },
+        "redirectUris": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^https?://[^\\u0000-\\u001f\\u007f]+$"
+          }
+        },
+        "groupRoleMap": {
+          "description": "IdP group name -> role/entitlement grant map.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$" }
+        }
+      },
+      "if": {
+        "required": ["provider"],
+        "properties": { "provider": { "const": "custom" } }
+      },
+      "then": { "required": ["issuer", "clientId"] }
+    },
+    "provisioningHook": {
+      "type": "object",
+      "properties": {
+        "claim": {
+          "description": "Verified OIDC claim that triggers this hook. Must not be a JS prototype property name.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "not": {
+            "enum": [
+              "__proto__",
+              "constructor",
+              "prototype",
+              "toString",
+              "valueOf",
+              "hasOwnProperty",
+              "isPrototypeOf",
+              "propertyIsEnumerable",
+              "toLocaleString",
+              "__defineGetter__",
+              "__defineSetter__"
+            ]
+          }
+        },
+        "entitlementKey": { "$ref": "#/$defs/identifier" },
+        "entitlementValue": {},
+        "secretKey": { "$ref": "#/$defs/identifier" },
+        "secretUrlTemplate": {
+          "description": "Absolute https URL template ({claim} substituted; never in the host).",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "allowedHosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,253}(?::[0-9]{1,5})?$"
+          }
+        }
+      },
+      "required": ["claim"]
+    },
+    "fingerprint": {
+      "description": "Hardware-fingerprint policy. On by default at normal strength; set enabled:false to collect nothing.",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "defaultMode": { "$ref": "#/$defs/fingerprintMode" },
+        "probes": {
+          "description": "Companion-application probes the client answers present/absent. Omit a platform to skip the probe there.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/$defs/identifier" },
+              "label": { "$ref": "#/$defs/label" },
+              "macos": { "$ref": "#/$defs/probeTarget" },
+              "windows": { "$ref": "#/$defs/probeTarget" },
+              "linux": { "$ref": "#/$defs/probeTarget" }
+            },
+            "required": ["id"]
+          }
+        }
+      }
+    },
+    "probeTarget": {
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+    },
+    "autoIssue": {
+      "description": "Auto-issued (\"always free\") licenses. Off unless enabled; a policy naming no tier cannot issue anything, so tierId is required when enabled.",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "tierId": {
+          "description": "The declared tier auto-issued licenses land on. Must reference an id in tiers[].",
+          "$ref": "#/$defs/identifier"
+        },
+        "mode": {
+          "description": "anonymous opens POST /<product>/license/enroll (keyless, one license per machine); oidcDefault lands group-less authenticated users on the tier; both enables both paths.",
+          "enum": ["anonymous", "oidcDefault", "both"]
+        },
+        "rateLimitPerHour": { "$ref": "#/$defs/nonNegativeInteger" }
+      },
+      "if": {
+        "required": ["enabled"],
+        "properties": { "enabled": { "const": true } }
+      },
+      "then": { "required": ["tierId"] }
+    },
+    "edgeMintRecipe": {
+      "description": "Edge-mint recipe (a Config-service secret-delivery capability, served at /<product>/config/mint/<id>/...). May also live in the release document.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
+        "signingKeySecret": { "$ref": "#/$defs/secretRef" },
+        "kid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "claimsTemplate": { "type": "object" },
+        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+        "audience": {
+          "anyOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]
+        }
+      },
+      "required": ["id", "alg", "signingKeySecret"]
+    }
+  }
+}

@@ -6,6 +6,7 @@ import {
   isSafeIssuerUrl,
   MAX_MANIFEST_BYTES,
   MAX_MANIFEST_DEPTH,
+  normalizeAutoIssue,
   parseManifest,
   validateManifestDocuments,
 } from "./index.js";
@@ -977,5 +978,161 @@ describe("release-block requirement survives the vocabulary change", () => {
     expect(
       validate({ release: { enabled: true } }).errors.map((e) => e.code),
     ).toContain("missing_release");
+  });
+});
+
+// ── Phase 2.0: the fingerprint/autoIssue enum gap is CLOSED, not coerced ──────────────────
+//
+// Every enum below used to be silently coerced at the normalize stage; the admin PATCH path
+// already rejected the same values. These cases pin the manifest path to the same standard,
+// plus the fail-closed normalizer (an unrecognized autoIssue.mode must disable the policy,
+// never fall open to "anonymous" — the mode that opens the keyless enroll endpoint).
+
+function policyCodes(extra: Record<string, unknown>): string[] {
+  return validateManifestDocuments({
+    product: { ...PRODUCT, ...extra },
+    schema: catalogWithSecretDelivery(),
+  }).errors.map((e) => e.code);
+}
+
+describe("fingerprint policy validation", () => {
+  it("rejects a non-object fingerprint block", () => {
+    expect(policyCodes({ fingerprint: "on" })).toContain("invalid_fingerprint");
+  });
+
+  it("rejects a non-boolean enabled", () => {
+    expect(policyCodes({ fingerprint: { enabled: "yes" } })).toContain(
+      "invalid_fingerprint_enabled",
+    );
+  });
+
+  it("rejects an unrecognized defaultMode instead of coercing to normal", () => {
+    expect(policyCodes({ fingerprint: { defaultMode: "stricht" } })).toContain(
+      "invalid_fingerprint_mode",
+    );
+  });
+
+  it("accepts every real mode", () => {
+    for (const mode of ["off", "lenient", "normal", "strict"]) {
+      expect(
+        policyCodes({ fingerprint: { enabled: true, defaultMode: mode } }),
+        mode,
+      ).toEqual([]);
+    }
+  });
+
+  it("rejects an unrecognized tier policyFingerprint", () => {
+    expect(
+      policyCodes({
+        tiers: [{ id: "pro", policyFingerprint: "paranoid" }],
+      }),
+    ).toContain("invalid_tier_fingerprint_mode");
+  });
+
+  it("accepts a null tier policyFingerprint (inherit)", () => {
+    expect(
+      policyCodes({ tiers: [{ id: "pro", policyFingerprint: null }] }),
+    ).toEqual([]);
+  });
+});
+
+describe("autoIssue policy validation", () => {
+  it("rejects a non-object block and a non-boolean enabled", () => {
+    expect(policyCodes({ autoIssue: true })).toContain("invalid_auto_issue");
+    expect(
+      policyCodes({ autoIssue: { enabled: "yes", tierId: "free" } }),
+    ).toContain("invalid_auto_issue");
+  });
+
+  it("rejects an unrecognized mode instead of falling open to anonymous", () => {
+    expect(
+      policyCodes({
+        tiers: [{ id: "free" }],
+        autoIssue: { enabled: true, tierId: "free", mode: "sponsored" },
+      }),
+    ).toContain("invalid_auto_issue_mode");
+  });
+
+  it("requires a tierId when enabled", () => {
+    expect(policyCodes({ autoIssue: { enabled: true } })).toContain(
+      "missing_auto_issue_tier",
+    );
+  });
+
+  it("cross-checks tierId against the declared tiers (mirrors unknown_profile_ref)", () => {
+    expect(
+      policyCodes({
+        tiers: [{ id: "free" }],
+        autoIssue: { enabled: true, tierId: "ghost" },
+      }),
+    ).toContain("unknown_auto_issue_tier_ref");
+    // Even a DISABLED policy naming a phantom tier is an authoring mistake.
+    expect(
+      policyCodes({
+        tiers: [{ id: "free" }],
+        autoIssue: { enabled: false, tierId: "ghost" },
+      }),
+    ).toContain("unknown_auto_issue_tier_ref");
+  });
+
+  it("bounds rateLimitPerHour to non-negative integers", () => {
+    for (const bad of [-1, 1.5, "10"]) {
+      expect(
+        policyCodes({
+          tiers: [{ id: "free" }],
+          autoIssue: { enabled: true, tierId: "free", rateLimitPerHour: bad },
+        }),
+        String(bad),
+      ).toContain("invalid_rate_limit");
+    }
+  });
+
+  it("accepts a coherent policy", () => {
+    expect(
+      policyCodes({
+        tiers: [{ id: "free" }],
+        autoIssue: {
+          enabled: true,
+          tierId: "free",
+          mode: "both",
+          rateLimitPerHour: 10,
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("normalizeAutoIssue fails CLOSED on an unrecognized mode", () => {
+    // Direct assertion on the normalizer: even for callers that bypass validation, a garbage
+    // mode disables the policy rather than resolving to "anonymous".
+    expect(
+      normalizeAutoIssue({ enabled: true, tierId: "free", mode: "sponsored" }),
+    ).toMatchObject({ enabled: false });
+    // An OMITTED mode is a default, not a coercion — the policy stays enabled.
+    expect(
+      normalizeAutoIssue({ enabled: true, tierId: "free" }),
+    ).toMatchObject({ enabled: true, mode: "anonymous" });
+  });
+});
+
+describe("reserved product slugs", () => {
+  it("refuses slugs the platform router owns", () => {
+    for (const slug of ["docs", "manage", "api", "well-known"]) {
+      expect(
+        validateManifestDocuments({
+          product: { slug, name: "X" },
+          schema: catalogWithSecretDelivery(),
+        }).errors.map((e) => e.code),
+        slug,
+      ).toContain("reserved_slug");
+    }
+  });
+
+  it("does not over-match near misses", () => {
+    expect(
+      validateManifestDocuments({
+        product: { slug: "docsy", name: "X" },
+        schema: catalogWithSecretDelivery(),
+      }).errors.map((e) => e.code),
+    ).toEqual([]);
   });
 });

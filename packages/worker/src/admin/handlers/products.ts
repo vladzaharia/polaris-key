@@ -18,6 +18,7 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
+import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
@@ -285,6 +286,14 @@ async function manualCreate(
   const slug = String(body.slug ?? "").trim();
   if (!/^[a-z0-9-]+$/.test(slug))
     return err(422, ErrorCode.BadRequest, "invalid slug", { fields: ["slug"] });
+  // Same list `validateManifestDocuments` enforces (reserved_slug): these are root paths the
+  // router matches before `/<product>/…`, so a product created under one would be permanently
+  // shadowed — every one of its routes unreachable. The link-repo path gets this for free via
+  // manifest validation; manual create must check explicitly.
+  if (RESERVED_PRODUCT_SLUGS.includes(slug))
+    return err(422, ErrorCode.BadRequest, "reserved slug", {
+      fields: ["slug"],
+    });
   if (await getProduct(db, slug))
     return err(409, ErrorCode.BadRequest, "product exists", {
       fields: ["slug"],

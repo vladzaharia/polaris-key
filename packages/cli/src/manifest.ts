@@ -58,6 +58,15 @@ export interface InitResult {
   files: string[];
 }
 
+/**
+ * Where scaffolded manifests point their editor schema headers. A PATH, not a URL: the
+ * canonical $id URLs live on the auth-gated docs site, which editors cannot fetch — the
+ * schemas ship inside the @polaris-key/manifest npm package instead, and `.pkey/` sits one
+ * level below the repo root where node_modules lives.
+ */
+const SCHEMA_BASE =
+  "../node_modules/@polaris-key/manifest/schemas/v1";
+
 const PRODUCT_FILES = ["product.json", "product.yaml", "product.yml"];
 const SCHEMA_FILES = ["schema.json", "schema.yaml", "schema.yml"];
 const RELEASE_FILES = ["release.json", "release.yaml", "release.yml"];
@@ -200,7 +209,8 @@ function productYaml(opts: InitOptions): string {
   const oidc = opts.modules.includes("oidc")
     ? `\noidc:\n  provider: platform\n  groupRoleMap: {}\n`
     : "";
-  return `apiVersion: pkey.dev/v1
+  return `# yaml-language-server: $schema=${SCHEMA_BASE}/product.schema.json
+apiVersion: pkey.dev/v1
 product:
   slug: ${quoteYaml(opts.slug)}
   name: ${quoteYaml(opts.name)}
@@ -233,7 +243,8 @@ secrets:
 }
 
 function schemaYaml(): string {
-  return `apiVersion: pkey.dev/v1
+  return `# yaml-language-server: $schema=${SCHEMA_BASE}/schema.schema.json
+apiVersion: pkey.dev/v1
 schemaVersion: 1
 catalog:
   - key: feature.example
@@ -257,7 +268,8 @@ catalog:
 }
 
 function releaseYaml(opts: InitOptions): string {
-  return `apiVersion: pkey.dev/v1
+  return `# yaml-language-server: $schema=${SCHEMA_BASE}/release.schema.json
+apiVersion: pkey.dev/v1
 release:
   provider:
     type: github

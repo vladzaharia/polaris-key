@@ -1,4 +1,5 @@
 {
+  "$schema": "../../packages/shared-manifest/schemas/v1/schema.schema.json",
   "schemaVersion": 1,
   "entries": [
     {
@@ -41,10 +42,19 @@
       "label": "Minimum quality",
       "description": "Candidates below this floor are dropped.",
       "accessor": "quality.floor",
-      "schema": { "type": "string", "enum": ["flac", "mp3-320", "any"] },
+      "schema": {
+        "type": "string",
+        "enum": [
+          "flac",
+          "mp3-320",
+          "any"
+        ]
+      },
       "default": "any",
       "managementDefault": "default",
-      "ui": { "widget": "select" }
+      "ui": {
+        "widget": "select"
+      }
     },
     {
       "key": "quality.losslessOnly",
@@ -53,10 +63,14 @@
       "label": "Lossless only",
       "description": "Keep only genuinely lossless results (FLAC/ALAC).",
       "accessor": "quality.losslessOnly",
-      "schema": { "type": "boolean" },
+      "schema": {
+        "type": "boolean"
+      },
       "default": false,
       "managementDefault": "default",
-      "ui": { "widget": "switch" }
+      "ui": {
+        "widget": "switch"
+      }
     },
     {
       "key": "quality.bestQuality",
@@ -65,10 +79,14 @@
       "label": "Try for best quality",
       "description": "Keep trying better sources even after a success.",
       "accessor": "quality.bestQuality",
-      "schema": { "type": "boolean" },
+      "schema": {
+        "type": "boolean"
+      },
       "default": true,
       "managementDefault": "default",
-      "ui": { "widget": "switch" }
+      "ui": {
+        "widget": "switch"
+      }
     },
     {
       "key": "quality.upgrade.enabled",
@@ -77,10 +95,14 @@
       "label": "Upgrade existing files",
       "description": "Re-fetch existing files when a strictly-better source appears.",
       "accessor": "quality.upgrade.enabled",
-      "schema": { "type": "boolean" },
+      "schema": {
+        "type": "boolean"
+      },
       "default": false,
       "managementDefault": "default",
-      "ui": { "widget": "switch" }
+      "ui": {
+        "widget": "switch"
+      }
     },
     {
       "key": "run.searchCount",
@@ -89,10 +111,16 @@
       "label": "Results per source",
       "description": "How many candidates to consider per source per track.",
       "accessor": "run.searchCount",
-      "schema": { "type": "integer", "minimum": 1, "maximum": 50 },
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50
+      },
       "default": 5,
       "managementDefault": "default",
-      "ui": { "widget": "stepper" }
+      "ui": {
+        "widget": "stepper"
+      }
     },
     {
       "key": "run.concurrency",
@@ -101,10 +129,16 @@
       "label": "Parallel downloads",
       "description": "Songs downloaded in parallel within a playlist.",
       "accessor": "run.concurrency",
-      "schema": { "type": "integer", "minimum": 1, "maximum": 8 },
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 8
+      },
       "default": 3,
       "managementDefault": "default",
-      "ui": { "widget": "stepper" }
+      "ui": {
+        "widget": "stepper"
+      }
     },
     {
       "key": "run.toleranceSec",
@@ -113,7 +147,11 @@
       "label": "Duration tolerance (s)",
       "description": "Allowed runtime difference for a confident match.",
       "accessor": "run.toleranceSec",
-      "schema": { "type": "number", "minimum": 0, "maximum": 120 },
+      "schema": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 120
+      },
       "default": 15,
       "managementDefault": "default"
     },
@@ -124,7 +162,11 @@
       "label": "Per-source timeout (s)",
       "description": "Max seconds to wait for one source's search.",
       "accessor": "run.searchTimeoutSec",
-      "schema": { "type": "integer", "minimum": 1, "maximum": 300 },
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 300
+      },
       "default": 30,
       "managementDefault": "default"
     },
@@ -135,7 +177,11 @@
       "label": "Failed-track cool-off (h)",
       "description": "Hours to wait before retrying a failed track. 0 = always retry.",
       "accessor": "run.cooloffHours",
-      "schema": { "type": "number", "minimum": 0, "maximum": 8760 },
+      "schema": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 8760
+      },
       "default": 24,
       "managementDefault": "default"
     },
@@ -146,10 +192,18 @@
       "label": "Theme",
       "description": "Dashboard color theme.",
       "accessor": "ui.theme",
-      "schema": { "type": "string", "enum": ["dark", "light"] },
+      "schema": {
+        "type": "string",
+        "enum": [
+          "dark",
+          "light"
+        ]
+      },
       "default": "dark",
       "managementDefault": "default",
-      "ui": { "widget": "select" }
+      "ui": {
+        "widget": "select"
+      }
     },
     {
       "key": "outputDir",
@@ -158,9 +212,15 @@
       "label": "Download folder",
       "description": "Default output location. A managed value must be an absolute path.",
       "accessor": "outputDir",
-      "schema": { "type": "string", "minLength": 1, "maxLength": 1024 },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024
+      },
       "managementDefault": "default",
-      "ui": { "placeholder": "~/Music/DjayImport" }
+      "ui": {
+        "placeholder": "~/Music/DjayImport"
+      }
     },
     {
       "key": "identity.enabled",
@@ -169,10 +229,14 @@
       "label": "Identity enrichment",
       "description": "Enable MusicBrainz enrichment + AcoustID verification.",
       "accessor": "identity.enabled",
-      "schema": { "type": "boolean" },
+      "schema": {
+        "type": "boolean"
+      },
       "default": false,
       "managementDefault": "default",
-      "ui": { "widget": "switch" }
+      "ui": {
+        "widget": "switch"
+      }
     },
     {
       "key": "identity.strict",
@@ -181,11 +245,18 @@
       "label": "Strict identity",
       "description": "Reject downloads AcoustID flags as a different recording.",
       "accessor": "identity.strict",
-      "schema": { "type": "boolean" },
+      "schema": {
+        "type": "boolean"
+      },
       "default": false,
       "managementDefault": "default",
-      "dependsOn": { "key": "identity.enabled", "equals": true },
-      "ui": { "widget": "switch" }
+      "dependsOn": {
+        "key": "identity.enabled",
+        "equals": true
+      },
+      "ui": {
+        "widget": "switch"
+      }
     },
     {
       "key": "proxy.enabled",
@@ -194,11 +265,18 @@
       "label": "Route through VPN",
       "description": "Tunnel downloads + Soulseek through the Polaris VPN.",
       "accessor": "proxy.enabled",
-      "schema": { "type": "boolean" },
+      "schema": {
+        "type": "boolean"
+      },
       "default": false,
       "managementDefault": "default",
-      "dependsOn": { "key": "polarisVpn", "equals": true },
-      "ui": { "widget": "switch" }
+      "dependsOn": {
+        "key": "polarisVpn",
+        "equals": true
+      },
+      "ui": {
+        "widget": "switch"
+      }
     },
     {
       "key": "proxy.select",
@@ -207,10 +285,17 @@
       "label": "Exit node",
       "description": "\"auto\" picks the fastest exit; otherwise a specific node tag.",
       "accessor": "proxy.select",
-      "schema": { "type": "string", "minLength": 1, "maxLength": 128 },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
       "default": "auto",
       "managementDefault": "default",
-      "dependsOn": { "key": "proxy.enabled", "equals": true }
+      "dependsOn": {
+        "key": "proxy.enabled",
+        "equals": true
+      }
     },
     {
       "key": "proxy.refreshHours",
@@ -219,10 +304,17 @@
       "label": "Subscription refresh (h)",
       "description": "Hours to cache the fetched subscription before re-fetching.",
       "accessor": "proxy.refreshHours",
-      "schema": { "type": "number", "minimum": 0, "maximum": 8760 },
+      "schema": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 8760
+      },
       "default": 24,
       "managementDefault": "default",
-      "dependsOn": { "key": "proxy.enabled", "equals": true }
+      "dependsOn": {
+        "key": "proxy.enabled",
+        "equals": true
+      }
     },
     {
       "key": "proxy.subscriptionUrl",
@@ -232,10 +324,19 @@
       "label": "VPN subscription URL",
       "description": "Polaris/Remnawave subscription URL. Usually auto-provisioned from the IdP.",
       "accessor": "proxy.subscriptionUrl",
-      "schema": { "type": "string", "format": "uri", "maxLength": 2048 },
+      "schema": {
+        "type": "string",
+        "format": "uri",
+        "maxLength": 2048
+      },
       "managementDefault": "hidden",
-      "ui": { "widget": "password" },
-      "dependsOn": { "key": "polarisVpn", "equals": true }
+      "ui": {
+        "widget": "password"
+      },
+      "dependsOn": {
+        "key": "polarisVpn",
+        "equals": true
+      }
     },
     {
       "key": "soundcloud.oauth",
@@ -245,9 +346,15 @@
       "label": "SoundCloud OAuth token",
       "description": "Improves SoundCloud bitrate when present.",
       "accessor": "soundcloud.oauth",
-      "schema": { "type": "string", "minLength": 1, "maxLength": 4096 },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
       "managementDefault": "default",
-      "ui": { "widget": "password" }
+      "ui": {
+        "widget": "password"
+      }
     },
     {
       "key": "spotify.clientId",
@@ -257,9 +364,15 @@
       "label": "Spotify client ID",
       "description": "Custom Spotify app client id (optional).",
       "accessor": "spotify.clientId",
-      "schema": { "type": "string", "minLength": 1, "maxLength": 256 },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
       "managementDefault": "default",
-      "ui": { "widget": "password" }
+      "ui": {
+        "widget": "password"
+      }
     },
     {
       "key": "spotify.refreshToken",
@@ -269,9 +382,15 @@
       "label": "Spotify refresh token",
       "description": "OAuth refresh token for the Spotify Web API.",
       "accessor": "spotify.refreshToken",
-      "schema": { "type": "string", "minLength": 1, "maxLength": 4096 },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
       "managementDefault": "default",
-      "ui": { "widget": "password" }
+      "ui": {
+        "widget": "password"
+      }
     },
     {
       "key": "identity.acoustidKey",
@@ -281,10 +400,19 @@
       "label": "AcoustID API key",
       "description": "Enables AcoustID fingerprint verification.",
       "accessor": "identity.acoustidKey",
-      "schema": { "type": "string", "minLength": 1, "maxLength": 256 },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
       "managementDefault": "default",
-      "ui": { "widget": "password" },
-      "dependsOn": { "key": "identity.strict", "equals": true }
+      "ui": {
+        "widget": "password"
+      },
+      "dependsOn": {
+        "key": "identity.strict",
+        "equals": true
+      }
     },
     {
       "key": "appleMusic.userToken",
@@ -294,9 +422,15 @@
       "label": "Apple Music user token",
       "description": "MusicKit Music User Token for the official Apple Music API.",
       "accessor": "appleMusic.userToken",
-      "schema": { "type": "string", "minLength": 1, "maxLength": 4096 },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
       "managementDefault": "default",
-      "ui": { "widget": "password" }
+      "ui": {
+        "widget": "password"
+      }
     },
     {
       "key": "polarisVpn",
@@ -304,11 +438,15 @@
       "category": "VPN",
       "label": "Polaris VPN",
       "description": "Master switch for VPN support. Auto-enabled when the IdP grants remnawaveAccess.",
-      "schema": { "type": "boolean" },
+      "schema": {
+        "type": "boolean"
+      },
       "default": false,
       "userGrant": true,
       "grantLabel": "Polaris VPN",
-      "ui": { "widget": "switch" }
+      "ui": {
+        "widget": "switch"
+      }
     },
     {
       "key": "channels",
@@ -318,13 +456,24 @@
       "description": "Release channels this license may run. `stable` is always allowed.",
       "schema": {
         "type": "array",
-        "items": { "type": "string", "enum": ["stable", "staging", "pr"] },
+        "items": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "staging",
+            "pr"
+          ]
+        },
         "uniqueItems": true
       },
-      "default": ["stable"],
+      "default": [
+        "stable"
+      ],
       "userGrant": true,
       "grantLabel": "Pre-release builds",
-      "ui": { "widget": "select" }
+      "ui": {
+        "widget": "select"
+      }
     },
     {
       "key": "app.minVersion",
@@ -354,10 +503,17 @@
       "category": "Compatibility",
       "label": "Device limit",
       "description": "Maximum concurrently-authorized devices. Absent => default cap; 0 => unlimited.",
-      "schema": { "type": "integer", "minimum": 0, "maximum": 100 },
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100
+      },
       "ui": {
         "widget": "stepper",
-        "scopes": ["profile", "license"],
+        "scopes": [
+          "profile",
+          "license"
+        ],
         "unit": "devices"
       }
     }

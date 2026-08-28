@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/v1/schema.schema.json",
+  "title": "Polaris Key config catalog (.pkey/schema)",
+  "description": "The schema document of a .pkey/ manifest: the product's config catalog — a schemaVersion plus one ConfigEntry per declarable key. Each entry's own `schema` field is a nested JSON-Schema fragment (the Draft-07 subset @polaris-key/catalog validates values against) — do not confuse the two layers. Mirrors validateCatalogShape in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "description": "The catalog's shape version; bumped on incompatible changes and echoed in the signed config document.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/configEntry" }
+    },
+    "catalog": {
+      "description": "Alias of entries (accepted by normalizeCatalog).",
+      "type": "array",
+      "items": { "$ref": "#/$defs/configEntry" }
+    }
+  },
+  "anyOf": [{ "required": ["entries"] }, { "required": ["catalog"] }],
+  "$defs": {
+    "configEntry": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+        },
+        "kind": {
+          "description": "config = plaintext client setting · secret = redacted, delivered to the OS keyring · flag = an entitlement.",
+          "enum": ["config", "secret", "flag"]
+        },
+        "category": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "schema": {
+          "description": "A JSON-Schema fragment (the Draft-07 subset @polaris-key/catalog supports — unsupported keywords are rejected at publish time, never silently ignored) that values of this key must satisfy.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "anyOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            }
+          }
+        },
+        "examples": { "type": "array" },
+        "default": {
+          "description": "Schema-level default — the client's last-resort fallback."
+        },
+        "secret": { "type": "boolean" },
+        "managementDefault": {
+          "description": "CONFIG kinds only: the management state a freshly-minted key gets — default (overridable) · enforced (server wins) · hidden (enforced + withheld from enumeration).",
+          "enum": ["default", "enforced", "hidden"]
+        },
+        "delivery": {
+          "description": "SECRET kinds only: serverOnly (never leaves the worker) · clientScoped (delivered to the device keyring) · edgeMint (minted on demand at /<product>/config/mint/*).",
+          "enum": ["serverOnly", "clientScoped", "edgeMint"]
+        },
+        "userGrant": {
+          "description": "FLAG kinds: surfaced to the user as an included capability.",
+          "type": "boolean"
+        },
+        "grantLabel": { "type": "string" },
+        "ui": {
+          "description": "Rendering hints only — never affect validation.",
+          "type": "object",
+          "properties": {
+            "widget": {
+              "enum": ["password", "select", "textarea", "switch", "stepper"]
+            },
+            "help": { "type": "string" },
+            "placeholder": { "type": "string" },
+            "order": { "type": "number" },
+            "scopes": {
+              "type": "array",
+              "items": { "enum": ["profile", "license", "device"] }
+            },
+            "advanced": { "type": "boolean" },
+            "unit": { "type": "string" },
+            "optionLabels": { "type": "object" },
+            "adminSection": { "type": "string" }
+          }
+        },
+        "dependsOn": {
+          "description": "Presentation gating: show this entry only when another key equals a value.",
+          "type": "object",
+          "properties": {
+            "key": { "type": "string" },
+            "equals": {}
+          },
+          "required": ["key"]
+        },
+        "appliesTo": {
+          "type": "array",
+          "items": { "enum": ["cli", "app"] }
+        },
+        "accessor": {
+          "description": "Dotted path into the client's config object (config/secret kinds).",
+          "type": "string"
+        },
+        "deprecated": { "type": "boolean" },
+        "since": { "type": "string" }
+      },
+      "required": ["key", "kind", "category", "label", "description", "schema"],
+      "allOf": [
+        {
+          "$comment": "delivery is only valid for secret entries.",
+          "if": { "required": ["delivery"] },
+          "then": {
+            "properties": { "kind": { "const": "secret" } },
+            "required": ["kind"]
+          }
+        }
+      ]
+    }
+  }
+}
