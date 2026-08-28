@@ -1,0 +1,85 @@
+---
+title: "Manifest validation codes"
+description: "Every error and warning validateManifestDocuments can emit, extracted from the validator source."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
+stopping at the first; `pkey validate` and the console's link/resync surfaces show these
+codes with their JSON-pointer paths. 68 distinct emit sites.
+
+Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
+the offending value, or the allowed set.
+
+| Code | Severity | Document | Path | Message |
+| --- | --- | --- | --- | --- |
+| `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
+| `duplicate_profile_id` | error | product | `/licensing/profiles/${i}/id` | Profile ids must be unique. |
+| `duplicate_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be unique. |
+| `invalid_admin_group` | error | product | `/product/adminGroup` | product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
+| `invalid_allowed_host` | error | product | `/provisioning/${i}/allowedHosts` | allowedHosts entries must be a host, optionally with a port. |
+| `invalid_api_version` | error | product | `/apiVersion` | apiVersion must be pkey.dev/v1 when present. |
+| `invalid_architecture` | error | release | `/release/artifactPolicy/architectures` | artifactPolicy.architectures must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
+| `invalid_auto_issue_mode` | error | product | `/autoIssue/mode` | autoIssue.mode must be one of $\{AUTO_ISSUE_MODE_VALUES.join(", ")\}. |
+| `invalid_auto_issue` | error | product | `/autoIssue/enabled` | autoIssue.enabled must be a boolean. |
+| `invalid_auto_issue` | error | product | `/autoIssue` | autoIssue must be an object. |
+| `invalid_channel` | error | product | `/licensing/tiers/${i}/channels` | Tier channels must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
+| `invalid_channel` | error | release | `/release/artifactPolicy/channels` | artifactPolicy.channels must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
+| `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning hooks require claim. |
+| `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning claim names must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
+| `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer. |
+| `invalid_edge_mint_alg` | error | release | `/edgeMint/${i}/alg` | Edge mint alg must be ES256, RS256, or EdDSA. |
+| `invalid_edge_mint_audience` | error | release | `/edgeMint/${i}/audience` | Edge mint audience |
+| `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint recipes require id. |
+| `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint ids must match ^[A-Za-z0-9._:-]\{1,64\}$. |
+| `invalid_edge_mint_kid` | error | release | `/edgeMint/${i}/kid` | Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
+| `invalid_entitlement_key` | error | product | `/provisioning/${i}/entitlementKey` | Provisioned entitlement keys must be catalog identifiers. |
+| `invalid_fingerprint_enabled` | error | product | `/fingerprint/enabled` | fingerprint.enabled must be a boolean. |
+| `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
+| `invalid_fingerprint` | error | product | `/fingerprint` | fingerprint must be an object. |
+| `invalid_group_name` | error | product | `/oidc/groupRoleMap/${group}` | oidc.groupRoleMap keys must be plain group names (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
+| `invalid_name` | error | product | `/product/name` | product.name |
+| `invalid_oidc_client_id` | error | product | `/oidc/clientId` | oidc.clientId must match ^[A-Za-z0-9][A-Za-z0-9._:@/~-]\{0,255\}$. |
+| `invalid_oidc_issuer` | error | product | `/oidc/issuer` | oidc.issuer $\{issuerProblem\}. It is the base of the token request that carries this product's OIDC client secret. |
+| `invalid_oidc_provider` | error | product | `/oidc/provider` | oidc.provider must be platform or custom. |
+| `invalid_oidc` | error | product | `/oidc` | oidc must be an object. |
+| `invalid_payload` | error | product | `/licensing/profiles/${i}/payload` | Profile payload must be an object. |
+| `invalid_probe_id` | error | product | `/fingerprint/probes/${i}/id` | Probe ids must match ^[A-Za-z0-9._:-]\{1,64\}$. |
+| `invalid_probe_label` | error | product | `/fingerprint/probes/${i}/label` | Probe label |
+| `invalid_probe_target` | error | product | `/fingerprint/probes/${i}/${platform}` | Probe $\{platform\} target |
+| `invalid_profile_description` | error | product | `/licensing/profiles/${i}/description` | Profile description |
+| `invalid_profile_id` | error | product | `/licensing/profiles/${i}/id` | Profile ids must be non-empty simple identifiers. |
+| `invalid_profile_name` | error | product | `/licensing/profiles/${i}/name` | Profile name |
+| `invalid_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier profile must be a string profile id. |
+| `invalid_rate_limit` | error | product | `/autoIssue/rateLimitPerHour` | autoIssue.rateLimitPerHour must be a non-negative integer. |
+| `invalid_redirect_uri` | error | product | `/oidc/redirectUris/${i}` | Redirect URIs $\{problem\}. |
+| `invalid_registration_policy` | error | product | `/devices/registration` | devices.registration must be one of $\{REGISTRATION_POLICIES.join(", ")\}. |
+| `invalid_release_access` | error | release | `/release/access/${key}` | release.access values must be public, authenticated, or licensed. |
+| `invalid_release_access` | error | release | `/release/access` | release.access must be an object when present. |
+| `invalid_schema` | error | schema | `/` | Schema must be a ProductCatalog object with entries[]. |
+| `invalid_secret_key` | error | product | `/provisioning/${i}/secretKey` | Provisioned secret keys must be catalog identifiers. |
+| `invalid_secret_ref` | error | release | `/edgeMint/${i}/signingKeySecret` | Edge mint signing key refs must be stable uppercase names. |
+| `invalid_secret_ref` | error | product | `/oidc/clientSecretRef` | Secret refs must be stable uppercase names. |
+| `invalid_secret_ref` | error | product | `/secrets/required/${i}` | Secret refs must be stable uppercase names. |
+| `invalid_secret_url_template` | error | product | `/provisioning/${i}/secretUrlTemplate` | provisioning.secretUrlTemplate $\{problem\}. |
+| `invalid_semver` | error | product | `/licensing/tiers/${i}/${bound}` | Tier $\{bound\} must be a semver string. |
+| `invalid_slug` | error | product | `/product/slug` | product.slug must match ^[a-z0-9-]\{1,64\}$. |
+| `invalid_tier_fingerprint_mode` | error | product | `/licensing/tiers/${i}/policyFingerprint` | Tier policyFingerprint must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
+| `invalid_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be non-empty simple identifiers. |
+| `invalid_tier_label` | error | product | `/licensing/tiers/${i}/label` | Tier label |
+| `invalid_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId must be a tier identifier. |
+| `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer. |
+| `missing_auto_issue_tier` | error | product | `/autoIssue/tierId` | autoIssue.tierId is required when autoIssue is enabled — a policy naming no tier cannot issue anything. |
+| `missing_github_repo` | error | release | `/release/provider` | GitHub releases require owner and repo. |
+| `missing_name` | error | product | `/product/name` | Add product.name. |
+| `missing_oidc_client_id` | error | product | `/oidc/clientId` | OIDC clientId is required for custom OIDC. |
+| `missing_release` | error | release | `/` | Releases are enabled, so .pkey/release.yaml or release.json is required. |
+| `missing_schema` | error | schema | `/` | Config is enabled, so .pkey/schema.yaml or schema.json is required. |
+| `reserved_slug` | error | product | `/product/slug` | product.slug "$\{productSlug\}" collides with a reserved platform route. |
+| `too_many_redirect_uris` | error | product | `/oidc/redirectUris` | At most $\{MAX_REDIRECT_URIS\} redirect URIs are allowed. |
+| `unknown_auto_issue_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId references unknown tier $\{autoIssue.tierId\}. |
+| `unknown_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier references unknown profile $\{profile\}. |
+| `unsupported_release_provider` | error | release | `/release/provider/type` | Only github is implemented. |
+| `update_requires_release` | error | product | `/modules/update` | The update service renders a feed over release data, so release must be enabled too. |

@@ -1,0 +1,32 @@
+---
+title: "Wire error codes"
+description: "The PolarisErrorCode taxonomy (protocol) and the worker's ErrorCode enum."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+Wire-v3 errors are nested — `{"error":{"code":…}}` — and the not-found body is ONE
+shape for "no such product", "service not enabled", and "no such route" (hide-don't-reveal).
+14 protocol codes; the worker enum maps each to its response site.
+
+## Protocol codes (`@polaris-key/protocol/core`)
+
+- `unauthorized`
+- `device_limit`
+- `license_disabled`
+- `license_expired`
+- `version_blocked`
+- `channel_not_allowed`
+- `rate_limited`
+- `not_found`
+- `bad_request`
+- `forbidden`
+- `hardware_mismatch`
+- `fingerprint_required`
+- `enroll_disabled`
+- `registration_closed`
+
+## Worker enum (`packages/worker/src/core/errors.ts`)
+
+_(enum not found)_

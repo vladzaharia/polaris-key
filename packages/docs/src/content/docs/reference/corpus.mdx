@@ -1,0 +1,28 @@
+---
+title: "Conformance corpus v2"
+description: "The case families every SDK verifies identically, generated from the corpus files themselves."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+One generator (`tools/sign-corpus.ts`) signs every vector; four language runners verify
+them; `pnpm gen:corpus -- --check` is the CI drift gate (source AND the Swift test-resource
+mirror). Corpus v1 is deleted — v2 is the only corpus. `corpusVersion 2`,
+`gateMatrixVersion 2`, `fingerprintVersion 1`.
+
+## Case families (`cases.json`)
+
+| Family | Cases |
+| --- | --- |
+| `keys` | 2 |
+| `jwsCases` | 36 |
+| `licenseDocCases` | 16 |
+| `configDocCases` | 18 |
+| `trustCases` | 11 |
+| `clockFloorCases` | 7 |
+| `bundleCases` | 9 |
+
+## Gate matrix (`gate-matrix.json`): 21 rows
+
+## Fingerprint corpus (`fingerprint.json`): 6 vectors, 4 device-id derivations, component order `machineUuid` → `boardSerial` → `cpuModel` → `primaryMac` → `bootVolumeUuid` → `ramBucket` → `machineModel`

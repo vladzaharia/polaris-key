@@ -1,0 +1,54 @@
+---
+title: "Public route table"
+description: "Every public wire route by owning service, generated from the OpenAPI spec (which the route-coverage test pins to the router)."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+The public API, one row per operation. The `aliases` rows are the four permanent
+pre-namespace spellings — exact rewrites of their canonical routes, kept forever because
+they are compiled into shipped app bundles and published curl lines. Removed v2 spellings
+(`/activate`, `/config`, `/auth/*`, `/cli/*`, `/dmg/*`, …) 404 outright.
+
+| Method | Path | Service | Summary |
+| --- | --- | --- | --- |
+| GET | `/{product}/{channel}/appcast.xml` | aliases | Alias → /\{product\}/update/\{channel\}/appcast.xml |
+| GET | `/{product}/appcast.xml` | aliases | Alias → /\{product\}/update/appcast.xml |
+| GET | `/{product}/install.sh` | aliases | Alias → /\{product\}/release/install.sh |
+| GET | `/{product}/version` | aliases | Alias → /\{product\}/update/version |
+| GET | `/{product}/config/document` | config | The signed config document (pkey-config+jws) |
+| GET | `/{product}/config/mint/{mintId}/auth` | config | The edge-mint auth page (HTML) |
+| GET | `/{product}/config/mint/{mintId}/token` | config | Mint a third-party token (edge-mint) |
+| POST | `/{product}/config/mint/{mintId}/token` | config | Mint a third-party token (edge-mint) |
+| GET | `/{product}/config/schema` | config | The public config catalog |
+| GET | `/{product}/.well-known/jwks.json` | core | Product signing keys (JWKS) |
+| GET | `/{product}/.well-known/polaris-trust.jws` | core | Signed trust manifest (pkey-trust+jws) |
+| GET | `/{product}/.well-known/polaris.json` | core | Product discovery document |
+| GET | `/{product}/devices/{deviceId}` | core | Read one device (self-service scope) |
+| PATCH | `/{product}/devices/{deviceId}` | core | Rename a device |
+| DELETE | `/{product}/devices/{deviceId}` | core | Deauthorize a device |
+| POST | `/{product}/devices/register` | core | Keyless device registration (policy-gated) |
+| POST | `/{product}/devices/report` | core | Report device facts (software snapshot + declared probes) |
+| GET | `/{product}/devices` | core | List the devices sharing this device's seat pool |
+| GET | `/{product}/identity/auth/callback` | identity | OIDC redirect URI |
+| POST | `/{product}/identity/auth/device/poll` | identity | Poll the device-code flow |
+| POST | `/{product}/identity/auth/device/start` | identity | Begin the device-code flow |
+| GET | `/{product}/identity/auth/device/verify` | identity | The device-authorization page (side-effect-free GET) |
+| POST | `/{product}/identity/auth/device/verify` | identity | Confirm the device authorization (CSRF from the GET) |
+| POST | `/{product}/identity/auth/logout` | identity | End the browser session |
+| GET | `/{product}/identity/auth/poll` | identity | Poll a browser sign-in flow |
+| GET | `/{product}/identity/auth/start` | identity | Begin browser OIDC (PKCE) — 302 to the IdP |
+| POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
+| GET | `/{product}/identity/session` | identity | The browser session's fused document |
+| POST | `/{product}/license/activate` | license | Redeem a license key for a device token |
+| POST | `/{product}/license/deauthorize` | license | Self-deauthorize this device |
+| GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
+| POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
+| POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| GET | `/{product}/release/changelog` | release | Release changelog |
+| GET | `/{product}/release/dl/{version}/{asset}` | release | Download a release artifact |
+| GET | `/{product}/release/install.sh` | release | The curl-pipe install script |
+| GET | `/{product}/update/{channel}/appcast.xml` | update | The Sparkle appcast for a channel |
+| GET | `/{product}/update/appcast.xml` | update | The Sparkle appcast (default channel) |
+| GET | `/{product}/update/version` | update | Latest-version check |

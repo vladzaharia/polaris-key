@@ -10,14 +10,17 @@
     "typecheck": "astro check",
     "test": "vitest run --passWithNoTests",
     "lint": "prettier --check \"src/**/*.{ts,mdx,css}\" \"scripts/**/*.mjs\"",
-    "clean": "rm -rf dist .astro public/schemas public/openapi"
+    "clean": "rm -rf dist .astro public/schemas public/openapi",
+    "gen": "node scripts/gen-reference.mjs",
+    "gen:check": "node scripts/gen-reference.mjs --check"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.34.3",
     "@astrojs/starlight-tailwind": "^4.0.1",
     "@tailwindcss/vite": "^4.1.4",
     "astro": "^5.7.10",
-    "tailwindcss": "^4.1.4"
+    "tailwindcss": "^4.1.4",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.4",

@@ -76,6 +76,11 @@ export default defineConfig({
           autogenerate: { directory: "agents" },
         },
         {
+          label: "Reference",
+          collapsed: true,
+          autogenerate: { directory: "reference" },
+        },
+        {
           label: "Contribute",
           collapsed: true,
           autogenerate: { directory: "contribute" },

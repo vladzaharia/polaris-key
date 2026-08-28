@@ -1,0 +1,67 @@
+---
+title: "D1 data model"
+description: "Every table with its columns, generated from the migrations, grouped by owning service (logical ownership — no physical separation)."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+Ownership is LOGICAL (suite spec §5.2): tables live in one database; a service may only
+touch another's tables through Core-mediated seams, enforced by the worker's boundary test.
+Column lists come straight from `packages/worker/migrations/`; a new migration regenerates
+this page or fails the freshness gate.
+
+## core
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `products` | 0001_init.sql | `slug`, `name`, `signing_kid`, `signing_pub`, `compat_min`, `compat_max`, `default_max_offline_days`, `default_device_limit`, `admin_group`, `branding_json`, `created_at`, `modified_at`, `release_source (0003)`, `status (0006)`, `deleted_at (0006)`, `fingerprint_policy_json (0010)`, `fingerprint_policy_source (0010)`, `auto_issue_json (0011)`, `auto_issue_source (0011)`, `services_json (0019)`, `services_source (0020)` |
+| `product_keys` | 0003_keyvault.sql | `product`, `kid`, `alg`, `public_b64url`, `enc_private_json`, `status`, `created_at`, `rotated_at` |
+| `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at` |
+| `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)` |
+| `device_fingerprints` | 0010_fingerprint.sql | `product`, `device_id`, `hwid`, `components_json`, `anchor_hash`, `status`, `first_seen`, `last_seen`, `last_drift_at`, `last_drift_count` |
+| `device_facts` | 0010_fingerprint.sql | `product`, `device_id`, `os_name`, `os_version`, `os_build`, `kernel`, `cpu_model`, `cpu_cores`, `ram_mb`, `machine_model`, `locale`, `timezone`, `runtime_name`, `runtime_version`, `probes_json`, `updated_at` |
+| `audit` | 0001_init.sql | `product`, `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `parent_id`, `summary` |
+| `product_sync_state` | 0005_product_sync_state.sql | `product`, `source`, `status`, `last_checked_at`, `last_synced_at`, `commit_sha`, `changed_paths_json`, `updated_json`, `errors_json`, `message` |
+| `schema_index_assertion` | 0018_index_assertion.sql | `id`, `expected`, `found`, `missing` |
+
+## license
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)` |
+| `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
+| `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)` |
+| `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
+
+## config
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `product_schema` | 0001_init.sql | `product`, `catalog_version`, `catalog_json`, `active`, `created_at` |
+| `profiles` | 0001_init.sql | `product`, `id`, `name`, `description`, `payload_json`, `modified_by`, `modified_at` |
+| `edge_mint_config` | 0001_init.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `auth_page_template`, `audience (0003)` |
+
+## release
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `release_config` | 0001_init.sql | `product`, `gh_owner`, `gh_repo`, `gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`, `artifact_policy_json (0006)`, `metadata_access (0007)`, `artifacts_access (0007)` |
+| `release_metadata` | 0007_backend_contracts.sql | `product`, `release_id`, `version`, `title`, `notes`, `commit_sha`, `source_url`, `metadata_access`, `artifacts_access`, `published_at`, `metadata_json`, `created_at`, `modified_at` |
+| `release_artifacts` | 0007_backend_contracts.sql | `product`, `release_id`, `artifact_id`, `name`, `kind`, `platform`, `arch`, `content_type`, `size_bytes`, `sha256`, `source_url`, `storage_key`, `sparkle_signature`, `access`, `metadata_json`, `created_at` |
+| `release_channels` | 0007_backend_contracts.sql | `product`, `channel`, `release_id`, `policy_json`, `created_at`, `modified_at` |
+| `release_health` | 0007_backend_contracts.sql | `product`, `subject_kind`, `subject_id`, `status`, `details_json` |
+| `release_download_tokens` | 0016_drop_dead_pii.sql (rebuilt 0016) | `product`, `token_hash`, `release_id`, `artifact_id`, `device_id`, `scope_json`, `expires_at`, `used_at`, `created_at`, `REFERENCES` |
+
+## identity
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `oidc_config` | 0001_init.sql | `product`, `issuer`, `client_id`, `client_secret_secret`, `redirect_uris_json`, `group_role_map_json`, `provider (0009)` |
+| `provisioning_config` | 0001_init.sql | `product`, `claim`, `entitlement_key`, `entitlement_value_json`, `secret_key`, `secret_url_template`, `allowed_hosts_json` |
+| `portal_accounts` | 0008_portal.sql | `id`, `status`, `display_name`, `primary_email`, `created_at`, `modified_at` |
+| `portal_account_emails` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `email`, `account_id`, `verified_at`, `created_at` |
+| `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at` |
+| `portal_license_links` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `account_id`, `product`, `license_id`, `source`, `created_at`, `last_seen_at` |
+| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled` |
+| `portal_audit` | 0008_portal.sql | `id`, `account_id`, `at`, `action`, `product`, `target_kind`, `target_id`, `summary` |

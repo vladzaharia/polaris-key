@@ -1,0 +1,39 @@
+---
+title: "Fingerprint constants"
+description: "The frozen hardware-fingerprint formulas — component order, hash domains, digest lengths, drift tolerances."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+These constants are pinned by the conformance corpus (`fingerprint.json`,
+`fingerprintVersion 1`) across the worker and all three native SDKs — the hash domains are
+frozen FOREVER (rebranding them would orphan every stored fingerprint). Every SDK iterates
+`FINGERPRINT_COMPONENTS` in this canonical order; a language-native map ordering is a
+conformance failure.
+
+| Constant | Value |
+| --- | --- |
+| `FINGERPRINT_HASH_PREFIX` | `pkey-hw` |
+| `FINGERPRINT_ANCHOR` | `machineUuid` (a matching anchor widens a non-zero tolerance by one) |
+| `FINGERPRINT_COMPONENT_LENGTH` | 22 |
+| `FINGERPRINT_HWID_LENGTH` | 32 |
+
+## Canonical component order
+
+1. `machineUuid`
+2. `boardSerial`
+3. `cpuModel`
+4. `primaryMac`
+5. `bootVolumeUuid`
+6. `ramBucket`
+7. `machineModel`
+
+## Drift tolerance per mode
+
+| Mode | Tolerated drift (before the anchor bonus) |
+| --- | --- |
+| `off` | ∞ (never enforces) |
+| `lenient` | 4 |
+| `normal` | 2 |
+| `strict` | 0 |
