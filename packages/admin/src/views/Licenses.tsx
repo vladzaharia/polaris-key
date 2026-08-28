@@ -7,6 +7,7 @@ import {
   type ProfileSummary,
 } from "../api.js";
 import { invalidate, useResource } from "../context.js";
+import { docsUrl } from "../lib/docsLinks.js";
 import { navigate } from "../route.js";
 import {
   Badge,
@@ -172,10 +173,20 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
           title="No licenses yet"
           description="Create the first license to mint a key and authorize devices."
           action={
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus aria-hidden />
-              Create license
-            </Button>
+            <div className="flex flex-col items-center gap-2">
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus aria-hidden />
+                Create license
+              </Button>
+              <a
+                className="text-xs underline underline-offset-2 text-muted-foreground hover:text-foreground"
+                href={docsUrl("createLicense")}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Learn more
+              </a>
+            </div>
           }
         />
       ) : (
@@ -314,7 +325,15 @@ function CreateLicenseDialog({
           <DialogDescription>
             {mintedKey
               ? "The license is created. Copy its key now — it is shown only once."
-              : "Add a license holder, policy overrides, and their first key."}
+              : "Add a license holder, policy overrides, and their first key."}{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("createLicense")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
 

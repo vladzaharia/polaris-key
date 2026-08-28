@@ -7,6 +7,7 @@ import {
   type UpdateSettingsBody,
 } from "../api.js";
 import { invalidate, useResource } from "../context.js";
+import { docsUrl } from "../lib/docsLinks.js";
 import {
   Button,
   Card,
@@ -230,7 +231,15 @@ function SettingsForm({
                 modes below are the defaults the feed serves. Link a repo with a{" "}
                 <code className="font-mono text-xs">.pkey/release</code> block
                 (or resync one) and they become editable. The compatibility
-                window lives on the product itself and can still be changed.
+                window lives on the product itself and can still be changed.{" "}
+                <a
+                  className="underline underline-offset-2 hover:text-foreground"
+                  href={docsUrl("updateAccessNote")}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Learn more
+                </a>
               </p>
             </div>
           ) : null}

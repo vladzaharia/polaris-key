@@ -6,6 +6,7 @@ import {
   type LinkRepoResult,
 } from "../../api.js";
 import { invalidate } from "../../context.js";
+import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Badge,
   Button,
@@ -506,7 +507,15 @@ export function CreateProductDialog({
           <DialogTitle>New product</DialogTitle>
           <DialogDescription>
             Register a product manually or link a GitHub repository the platform
-            App can read.
+            App can read.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("createProduct")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="manual" className="contents">

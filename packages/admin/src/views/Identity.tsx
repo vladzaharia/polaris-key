@@ -17,6 +17,7 @@ import {
   type UpdatePortalSettingsBody,
 } from "../api.js";
 import { invalidate, useResource } from "../context.js";
+import { docsUrl } from "../lib/docsLinks.js";
 import {
   Button,
   Card,
@@ -472,7 +473,15 @@ function OidcCard({ slug }: { slug: string }): React.ReactElement {
             Re-syncing re-reads{" "}
             <code className="font-mono text-xs">.pkey/</code> and re-applies the
             manifest (config schema, product metadata, OIDC provider, tiers, and
-            provisioning) without touching licenses.
+            provisioning) without touching licenses.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("identityOidcNote")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </p>
         </div>
         <Button

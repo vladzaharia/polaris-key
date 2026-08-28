@@ -2,6 +2,7 @@ import * as React from "react";
 import { Download } from "lucide-react";
 import { api, type MintBundleBody } from "../../api.js";
 import { useResource } from "../../context.js";
+import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
   Checkbox,
@@ -147,7 +148,15 @@ export function OfflineBundleDialog({
           <DialogDescription>
             {minted
               ? "Download the file and carry it to the device. Minting another is free if this one is lost."
-              : "Sign the documents an air-gapped device cannot fetch for itself."}
+              : "Sign the documents an air-gapped device cannot fetch for itself."}{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("mintBundle")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         {minted ? (

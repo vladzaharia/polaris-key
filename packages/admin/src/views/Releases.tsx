@@ -16,6 +16,7 @@ import type {
 } from "../api.js";
 import { api } from "../api.js";
 import { useResource } from "../context.js";
+import { docsUrl } from "../lib/docsLinks.js";
 import {
   Badge,
   Button,
@@ -324,7 +325,15 @@ function ManifestNote(): React.ReactElement {
             there, then use{" "}
             <span className="font-medium">Resync from repo</span> above to
             re-apply. These values are not editable directly from the admin
-            panel.
+            panel.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("manifestNote")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </p>
         </div>
       </CardContent>

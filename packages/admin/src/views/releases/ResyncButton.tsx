@@ -2,6 +2,7 @@ import * as React from "react";
 import { RefreshCw } from "lucide-react";
 import { api } from "../../api.js";
 import { invalidate } from "../../context.js";
+import { docsUrl } from "../../lib/docsLinks.js";
 import { Button, ConfirmDialog, useToast } from "../../components/ui/index.js";
 
 /**
@@ -66,7 +67,21 @@ export function ResyncButton({
         open={open}
         onOpenChange={(next) => !busy && setOpen(next)}
         title="Resync from the linked repo?"
-        description="Re-fetches `.pkey/` and re-applies release config, the catalog, and minters. Server values are overwritten by what is in the repo."
+        description={
+          <>
+            Re-fetches `.pkey/` and re-applies release config, the catalog,
+            and minters. Server values are overwritten by what is in the
+            repo.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("resync")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
+          </>
+        }
         confirmLabel="Resync"
         confirmVariant="primary"
         loading={busy}

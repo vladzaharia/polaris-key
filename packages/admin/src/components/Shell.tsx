@@ -3,6 +3,7 @@ import {
   Activity,
   Blocks,
   Boxes,
+  CircleHelp,
   ClipboardList,
   FileStack,
   Fingerprint,
@@ -23,6 +24,7 @@ import {
 import { cn } from "../lib/cn.js";
 import type { Me } from "../api.js";
 import {
+  docsFor,
   sectionOf,
   tabOf,
   visibleSections,
@@ -350,10 +352,35 @@ function Topbar({
       <LogoMark className="size-5 lg:hidden" />
       <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
       <div className="ml-auto flex items-center gap-1.5">
+        <HelpLink activeTab={activeTab} />
         <ThemeToggle />
         <UserMenu me={me} onSignOut={onSignOut} />
       </div>
     </header>
+  );
+}
+
+/**
+ * The contextual docs link: every view gets one, resolved from the SAME nav table the
+ * sidebar renders (`NavItem.docs` via `docsFor`), so the link and the navigation cannot
+ * disagree about what a view is. Views outside any section (dashboard, the registry, a
+ * license detail) land on the docs home. Same-origin and behind the same session — it opens
+ * in a new tab without a second sign-in.
+ */
+function HelpLink({ activeTab }: { activeTab: Tab | null }): React.ReactElement {
+  const href = activeTab ? docsFor(activeTab) : "/docs/";
+  return (
+    <Button variant="ghost" size="icon" asChild>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Open documentation for this view"
+        title="Documentation"
+      >
+        <CircleHelp />
+      </a>
+    </Button>
   );
 }
 

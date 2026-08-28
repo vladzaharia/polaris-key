@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
-import { RotateCcw, X } from "lucide-react";
+import { CircleHelp, RotateCcw, X } from "lucide-react";
 import type { ConfigEntry, ManagementState } from "./api.js";
 import { cn } from "./lib/cn.js";
+import { docsUrl } from "./lib/docsLinks.js";
 import {
   Badge,
   Button,
@@ -557,49 +558,61 @@ export function ManagementStateControl({
     refs.current[next]?.focus();
   };
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className="inline-flex rounded-md border border-input bg-background p-0.5"
-    >
-      {MANAGEMENT_STATES.map((option, index) => {
-        const selected = option.value === value;
-        return (
-          <button
-            key={option.value}
-            ref={(node) => {
-              refs.current[index] = node;
-            }}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
-            disabled={disabled}
-            title={option.help}
-            onClick={() => onChange(option.value)}
-            onKeyDown={(ev) => {
-              if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
-                ev.preventDefault();
-                move(index, 1);
-              } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") {
-                ev.preventDefault();
-                move(index, -1);
-              }
-            }}
-            className={cn(
-              "rounded-[calc(var(--pk-radius)-6px)] px-2.5 py-1 text-xs font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-              selected
-                ? "bg-primary text-primary-foreground shadow-pk-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
+    <span className="inline-flex items-center gap-1.5">
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="inline-flex rounded-md border border-input bg-background p-0.5"
+      >
+        {MANAGEMENT_STATES.map((option, index) => {
+          const selected = option.value === value;
+          return (
+            <button
+              key={option.value}
+              ref={(node) => {
+                refs.current[index] = node;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
+              disabled={disabled}
+              title={option.help}
+              onClick={() => onChange(option.value)}
+              onKeyDown={(ev) => {
+                if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
+                  ev.preventDefault();
+                  move(index, 1);
+                } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") {
+                  ev.preventDefault();
+                  move(index, -1);
+                }
+              }}
+              className={cn(
+                "rounded-[calc(var(--pk-radius)-6px)] px-2.5 py-1 text-xs font-medium transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                selected
+                  ? "bg-primary text-primary-foreground shadow-pk-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      <a
+        href={docsUrl("managementStates")}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Learn more about management states"
+        title="Learn more about management states"
+        className="text-muted-foreground hover:text-foreground"
+      >
+        <CircleHelp aria-hidden className="size-3.5" />
+      </a>
+    </span>
   );
 }
 

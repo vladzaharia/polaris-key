@@ -2,6 +2,7 @@ import * as React from "react";
 import type { ProductCatalog } from "../../api.js";
 import { api } from "../../api.js";
 import { invalidate } from "../../context.js";
+import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
   Dialog,
@@ -90,7 +91,15 @@ export function PublishDialog({
           <DialogTitle>Publish new catalog version</DialogTitle>
           <DialogDescription>
             Edit the catalog JSON below. It is validated locally before
-            publishing; the worker re-validates every fragment with Ajv on save.
+            publishing; the worker re-validates every fragment with Ajv on save.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("publishCatalog")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
 

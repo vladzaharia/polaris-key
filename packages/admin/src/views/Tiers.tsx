@@ -8,6 +8,7 @@ import {
   type TierSummary,
 } from "../api.js";
 import { invalidate, useResource } from "../context.js";
+import { docsUrl } from "../lib/docsLinks.js";
 import {
   Badge,
   Button,
@@ -239,10 +240,20 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
               title="No tiers yet"
               description="Create a tier to template the profile, policies, and channels licenses inherit."
               action={
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus aria-hidden />
-                  New tier
-                </Button>
+                <div className="flex flex-col items-center gap-2">
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus aria-hidden />
+                    New tier
+                  </Button>
+                  <a
+                    className="text-xs underline underline-offset-2 text-muted-foreground hover:text-foreground"
+                    href={docsUrl("tierEditor")}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Learn more
+                  </a>
+                </div>
               }
             />
           }

@@ -11,6 +11,7 @@ import type {
 } from "./api.js";
 import { hashFor } from "./route.js";
 import { cn } from "./lib/cn.js";
+import { docsUrl } from "./lib/docsLinks.js";
 import {
   ManagedField,
   initialValueFor,
@@ -396,6 +397,14 @@ export function ManagedPayloadEditor({
             ? `${matches.length} of ${entries.length} entries`
             : `${setCount} of ${entries.length} entries set`}
         </p>
+        <a
+          className="text-sm underline underline-offset-2 text-muted-foreground hover:text-foreground"
+          href={docsUrl("managedPayloads")}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Learn more
+        </a>
       </div>
 
       {matches.length === 0 ? (

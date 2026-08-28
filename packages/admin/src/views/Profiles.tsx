@@ -2,6 +2,7 @@ import * as React from "react";
 import { AlertTriangle, FileCog, Pencil, Plus, Trash2 } from "lucide-react";
 import { api, ApiError, type ProfileSummary } from "../api.js";
 import { invalidate, useResource } from "../context.js";
+import { docsUrl } from "../lib/docsLinks.js";
 import { hashFor, navigate } from "../route.js";
 import { absoluteTime, relativeTime } from "./format.js";
 import {
@@ -201,10 +202,20 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
               title="No profiles yet"
               description="Create a profile to define the managed config, secrets, and flags licenses inherit."
               action={
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus aria-hidden />
-                  New profile
-                </Button>
+                <div className="flex flex-col items-center gap-2">
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus aria-hidden />
+                    New profile
+                  </Button>
+                  <a
+                    className="text-xs underline underline-offset-2 text-muted-foreground hover:text-foreground"
+                    href={docsUrl("createProfile")}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Learn more
+                  </a>
+                </div>
               }
             />
           }

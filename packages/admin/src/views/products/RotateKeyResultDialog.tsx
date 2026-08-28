@@ -1,6 +1,7 @@
 import * as React from "react";
 import { KeyRound } from "lucide-react";
 import type { RotateKeyResult } from "../../api.js";
+import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
   Dialog,
@@ -36,7 +37,15 @@ export function RotateKeyResultDialog({
           </DialogTitle>
           <DialogDescription>
             “{slug}” has a staged signing key. Record the kid and public key,
-            then activate it after clients have had a trust-refresh window.
+            then activate it after clients have had a trust-refresh window.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("rotateKey")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         <DialogBody>

@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { TierBody, TierSummary } from "../../api.js";
+import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Badge,
   Button,
@@ -243,7 +244,15 @@ export function CreateTierDialog({
         <DialogHeader>
           <DialogTitle>New tier</DialogTitle>
           <DialogDescription>
-            Tiers bundle a profile and license policies under a stable id.
+            Tiers bundle a profile and license policies under a stable id.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("tierEditor")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         <form
@@ -439,6 +448,14 @@ export function EditTierDialog({
           <DialogDescription className="flex items-center gap-2">
             <Badge variant="outline">{tier.id}</Badge>
             <span>The id is immutable.</span>
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("tierEditor")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         <form

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
   Dialog,
@@ -84,7 +85,15 @@ export function CreateProfileDialog({
           <DialogTitle>New profile</DialogTitle>
           <DialogDescription>
             A profile is a named managed payload. Name it here — its config,
-            secret, and flag values are set on the profile’s own page next.
+            secret, and flag values are set on the profile’s own page next.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("createProfile")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         <form

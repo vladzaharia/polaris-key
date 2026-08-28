@@ -1,6 +1,7 @@
 import * as React from "react";
 import { KeyRound, Plus } from "lucide-react";
 import { api, type KeyDto } from "../../api.js";
+import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
   ConfirmDialog,
@@ -207,7 +208,15 @@ function MintKeyDialog({
           <DialogDescription>
             {minted
               ? "Copy the key now — it is shown only once."
-              : "Issue a new key for this license."}
+              : "Issue a new key for this license."}{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("mintKey")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         {minted ? (

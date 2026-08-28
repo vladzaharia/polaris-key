@@ -2,6 +2,7 @@ import * as React from "react";
 import { AlertTriangle, Fingerprint, Undo2 } from "lucide-react";
 import { api, type FingerprintMode, type FingerprintProbeDto } from "../api.js";
 import { invalidate, useResource } from "../context.js";
+import { docsUrl } from "../lib/docsLinks.js";
 import {
   Badge,
   Button,
@@ -352,7 +353,21 @@ function PolicyCard({
         open={confirmRevert}
         onOpenChange={(next) => !reverting && setConfirmRevert(next)}
         title="Return the fingerprint policy to the manifest?"
-        description="Ownership goes back to the repo manifest. The live policy is unchanged until the next resync re-applies the manifest's values — which also returns the auto-issue policy to manifest control."
+        description={
+          <>
+            Ownership goes back to the repo manifest. The live policy is
+            unchanged until the next resync re-applies the manifest's values
+            — which also returns the auto-issue policy to manifest control.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("fingerprintRevert")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
+          </>
+        }
         confirmLabel="Return to manifest"
         confirmVariant="primary"
         loading={reverting}
@@ -430,6 +445,16 @@ function ProbesCard({
               icon={<Fingerprint aria-hidden />}
               title="No probes declared"
               description="Add a probes list to the product manifest and resync to collect companion-app facts."
+              action={
+                <a
+                  className="text-xs underline underline-offset-2 text-muted-foreground hover:text-foreground"
+                  href={docsUrl("deviceFingerprints")}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Learn more
+                </a>
+              }
               className="rounded-none border-0"
             />
           }

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { api, type ProductDetail } from "../../api.js";
+import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
   Dialog,
@@ -73,7 +74,15 @@ export function SecretDialog({
           <DialogTitle>Set a secret for “{product.slug}”</DialogTitle>
           <DialogDescription>
             Secret values are write-only — they are stored encrypted and never
-            read back.
+            read back.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("setSecret")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         <form

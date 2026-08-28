@@ -73,6 +73,14 @@ export type ServiceAccent =
 export interface NavItem {
   tab: Tab;
   label: string;
+  /**
+   * The docs page for this view, as a site-absolute path (`/docs/...`, trailing slash). The
+   * topbar's help link reads it via `docsFor()`; the worker's docsLinks test asserts every
+   * declared path exists in the built site's slug manifest, so a help link cannot silently
+   * point at a page that stopped existing. Declared HERE — in the same table the sidebar and
+   * router read — per this file's principle: one declaration, not conditionals that disagree.
+   */
+  docs?: string;
 }
 
 export interface NavSection {
@@ -87,6 +95,8 @@ export interface NavSection {
    * every service is off.
    */
   service: ServiceSlug | null;
+  /** Section-level docs fallback for tabs that don't declare their own. */
+  docs?: string;
   items: NavItem[];
 }
 
@@ -96,12 +106,21 @@ export const SECTIONS: NavSection[] = [
     label: "Platform",
     accent: "core",
     service: null,
+    docs: "/docs/admin/",
     items: [
-      { tab: "overview", label: "Overview" },
-      { tab: "services", label: "Services" },
-      { tab: "secrets", label: "Secrets" },
-      { tab: "activity", label: "Activity" },
-      { tab: "settings", label: "Settings" },
+      { tab: "overview", label: "Overview", docs: "/docs/admin/products/" },
+      {
+        tab: "services",
+        label: "Services",
+        docs: "/docs/admin/services-enablement/",
+      },
+      {
+        tab: "secrets",
+        label: "Secrets",
+        docs: "/docs/admin/secrets-and-keys/",
+      },
+      { tab: "activity", label: "Activity", docs: "/docs/admin/activity/" },
+      { tab: "settings", label: "Settings", docs: "/docs/admin/products/" },
     ],
   },
   {
@@ -109,10 +128,19 @@ export const SECTIONS: NavSection[] = [
     label: "License",
     accent: "key",
     service: "license",
+    docs: "/docs/services/license/",
     items: [
-      { tab: "licenses", label: "Licenses" },
-      { tab: "tiers", label: "Tiers" },
-      { tab: "fingerprints", label: "Enrollment & fingerprints" },
+      {
+        tab: "licenses",
+        label: "Licenses",
+        docs: "/docs/admin/licenses-and-devices/",
+      },
+      { tab: "tiers", label: "Tiers", docs: "/docs/services/license/model/" },
+      {
+        tab: "fingerprints",
+        label: "Enrollment & fingerprints",
+        docs: "/docs/services/license/policy/",
+      },
     ],
   },
   {
@@ -120,9 +148,18 @@ export const SECTIONS: NavSection[] = [
     label: "Config",
     accent: "config",
     service: "config",
+    docs: "/docs/services/config/",
     items: [
-      { tab: "config", label: "Catalog" },
-      { tab: "profiles", label: "Profiles" },
+      {
+        tab: "config",
+        label: "Catalog",
+        docs: "/docs/services/config/catalog/",
+      },
+      {
+        tab: "profiles",
+        label: "Profiles",
+        docs: "/docs/services/config/profiles/",
+      },
     ],
   },
   {
@@ -130,23 +167,52 @@ export const SECTIONS: NavSection[] = [
     label: "Release",
     accent: "release",
     service: "release",
-    items: [{ tab: "releases", label: "Releases" }],
+    docs: "/docs/services/release/",
+    items: [
+      {
+        tab: "releases",
+        label: "Releases",
+        docs: "/docs/services/release/truth-store/",
+      },
+    ],
   },
   {
     key: "update",
     label: "Update",
     accent: "update",
     service: "update",
-    items: [{ tab: "updates", label: "Update settings" }],
+    docs: "/docs/services/update/",
+    items: [
+      {
+        tab: "updates",
+        label: "Update settings",
+        docs: "/docs/services/update/eligibility/",
+      },
+    ],
   },
   {
     key: "identity",
     label: "Identity",
     accent: "id",
     service: "identity",
-    items: [{ tab: "identity", label: "Sign-in & portal" }],
+    docs: "/docs/services/identity/",
+    items: [
+      {
+        tab: "identity",
+        label: "Sign-in & portal",
+        docs: "/docs/services/identity/oidc/",
+      },
+    ],
   },
 ];
+
+/** The docs page for a tab: its own declaration, else its section's, else the site root. */
+export function docsFor(tab: Tab): string {
+  const item = TABS.find((t) => t.tab === tab);
+  if (item?.docs) return item.docs;
+  const section = sectionOf(tab);
+  return section.docs ?? "/docs/";
+}
 
 /** Every tab, flattened in nav order. */
 export const TABS: NavItem[] = SECTIONS.flatMap((s) => s.items);
