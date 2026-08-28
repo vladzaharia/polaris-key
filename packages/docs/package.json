@@ -1,0 +1,27 @@
+{
+  "name": "@polaris-key/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Polaris Key documentation site — an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
+  "scripts": {
+    "build": "node scripts/copy-artifacts.mjs && astro build && node scripts/collect-csp-hashes.mjs && node scripts/emit-slug-manifest.mjs",
+    "dev": "node scripts/copy-artifacts.mjs && astro dev",
+    "typecheck": "astro check",
+    "test": "vitest run --passWithNoTests",
+    "lint": "prettier --check \"src/**/*.{ts,mdx,css}\" \"scripts/**/*.mjs\"",
+    "clean": "rm -rf dist .astro public/schemas public/openapi"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.34.3",
+    "@astrojs/starlight-tailwind": "^4.0.1",
+    "@tailwindcss/vite": "^4.1.4",
+    "astro": "^5.7.10",
+    "tailwindcss": "^4.1.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
+  }
+}

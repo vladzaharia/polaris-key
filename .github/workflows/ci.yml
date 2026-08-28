@@ -41,6 +41,9 @@ jobs:
       #   pnpm gen:mirrors -- --catalog products/<slug>/catalog.json \
       #     --out-dir <mirror-dir> --lang ts,python,swift --check
       - run: pnpm --filter @polaris-key/admin build
+      # The docs site is built by `pnpm build` (turbo); assembling proves the worker's
+      # single [assets] root composes from both frontends before any deploy does it.
+      - run: pnpm --filter @polaris-key/worker assemble
 
   # The `js` job above runs every suite under `environment: "node"`. Node permits the runtime
   # code generation workerd forbids, so it is structurally incapable of catching the class of

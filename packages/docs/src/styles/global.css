@@ -1,0 +1,50 @@
+/**
+ * Docs-site theme: brand tokens ported from the console (packages/admin/src/styles.css) —
+ * dark-default #0c0f17 surfaces on the 225° slate ramp, #5b7cfa indigo accent. No dependency
+ * on the (private) brand package: the values are compiled in, per docs-plan D6.
+ */
+
+@layer base, starlight, theme, components, utilities;
+
+@import "@astrojs/starlight-tailwind";
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  /* Accent — the console's indigo (hsl(232 92% 68%) ≈ #5b7cfa) as a Tailwind-style scale. */
+  --color-accent-50: oklch(97% 0.013 275);
+  --color-accent-100: oklch(94% 0.027 275);
+  --color-accent-200: oklch(88% 0.055 275);
+  --color-accent-300: oklch(80% 0.096 275);
+  --color-accent-400: oklch(71% 0.143 275);
+  --color-accent-500: oklch(64% 0.175 275);
+  --color-accent-600: oklch(58% 0.191 275);
+  --color-accent-700: oklch(51% 0.185 275);
+  --color-accent-800: oklch(44% 0.155 275);
+  --color-accent-900: oklch(38% 0.121 275);
+  --color-accent-950: oklch(26% 0.078 275);
+
+  /* Grays — the console's 225° slate, darkest step matching the #0c0f17 page. */
+  --color-gray-50: oklch(97% 0.004 260);
+  --color-gray-100: oklch(93% 0.007 260);
+  --color-gray-200: oklch(86% 0.011 260);
+  --color-gray-300: oklch(76% 0.015 260);
+  --color-gray-400: oklch(62% 0.018 260);
+  --color-gray-500: oklch(50% 0.019 260);
+  --color-gray-600: oklch(41% 0.019 260);
+  --color-gray-700: oklch(33% 0.018 260);
+  --color-gray-800: oklch(25% 0.016 260);
+  --color-gray-900: oklch(19% 0.014 260);
+  --color-gray-950: oklch(15% 0.013 260);
+}
+
+/* Per-service accents, mirroring the console's [data-service] contract — service landing
+ * pages set `data-service` on their hero via component markup (Wave 1 content). */
+:root {
+  --pk-service-core: var(--color-gray-300);
+  --pk-service-license: var(--color-accent-400);
+  --pk-service-config: oklch(75% 0.13 165); /* teal */
+  --pk-service-release: oklch(76% 0.14 85); /* amber */
+  --pk-service-update: oklch(74% 0.12 45); /* orange */
+  --pk-service-identity: oklch(74% 0.14 330); /* magenta */
+}

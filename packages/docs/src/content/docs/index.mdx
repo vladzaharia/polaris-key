@@ -1,0 +1,35 @@
+---
+title: Polaris Key
+description: Licensing, managed config, releases, updates, and identity — one worker, five services, four SDKs.
+template: splash
+hero:
+  tagline: One always-on Core, five per-product services — License, Config, Release, Update, Identity — with signed documents a client can verify offline.
+  actions:
+    - text: What is Polaris Key?
+      link: /docs/start/overview/
+      icon: right-arrow
+    - text: The service model
+      link: /docs/start/service-model/
+      variant: minimal
+---
+
+import { CardGrid, Card } from "@astrojs/starlight/components";
+
+<CardGrid stagger>
+  <Card title="Start here" icon="rocket">
+    The mental model: products as data, per-service signed documents, and the
+    trust chain from pinned keys to a verified offline cache.
+  </Card>
+  <Card title="Services" icon="puzzle">
+    Core, License, Config, Release, Update, Identity — what each owns, its
+    endpoints, its documents, and its policies.
+  </Card>
+  <Card title="Build on it" icon="seti:json">
+    Author a `.pkey/` manifest with editor validation, integrate an SDK, go
+    offline with signed bundles, read the wire contract.
+  </Card>
+  <Card title="Administer" icon="setting">
+    The console, service enablement, secrets, signing keys, the KEK keyring,
+    releases, and the production runbook — real values, behind this gate.
+  </Card>
+</CardGrid>

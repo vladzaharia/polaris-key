@@ -1,0 +1,12 @@
+---
+title: "License"
+description: "Licenses, keys, tiers, entitlements, activation and enrollment, and the signed license document."
+sidebar:
+  order: 1
+---
+
+:::note[Placeholder]
+This section is scaffolded; its content lands in the writing wave. The page
+exists so the information architecture, sidebar, and help-link slugs are real
+from the first build.
+:::

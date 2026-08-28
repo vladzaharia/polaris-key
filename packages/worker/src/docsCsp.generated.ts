@@ -10,7 +10,17 @@
 // the policy can never silently drift into blocking the site or allowing unhashed script.
 
 /** CSP source expressions (e.g. `'sha256-…'`) for every inline <script> the docs build emits. */
-export const DOCS_SCRIPT_HASHES: readonly string[] = [];
+export const DOCS_SCRIPT_HASHES: readonly string[] = [
+  "'sha256-7eCV4jtsr4t4knb3c4FCRPeu7GGZeOUGE3XvWix0XOQ='",
+  "'sha256-8JLcQFZQruxl3jMUwogr3y5/GMmZPAc+j2mNi7gywmw='",
+  "'sha256-9YPKRPlDWSzDLTFd2ymgbR36hwtVSzb6TjfD00W5B3Y='",
+  "'sha256-GkZBRnvSuhtx/cvzvukVkX2JJZW+DdPlVr7BX8Tefqo='",
+  "'sha256-VWo5Wp4aqSj6nSgMpeAp9cKieaoIfwFUAunAVugI5gA='",
+  "'sha256-f/zAUE74ucc3JYp4r4QQvkJofoQdkOIhHYK+jeZ6eko='",
+  "'sha256-ijttFDel9I45Iy4QIFEAjeSz8jIoT+BkBu2/ERAo6DY='",
+  "'sha256-w78n7W12c94ck4KhBCBA4NrjqkbDvSutqee+u+no0Tg='",
+  "'sha256-wX2yOADeV+NMngflD5uYi3vl50SHC4sfM1EmylVjlX4='"
+];
 
 /** CSP source expressions for every inline <style> the docs build emits. */
 export const DOCS_STYLE_HASHES: readonly string[] = [];

@@ -79,6 +79,8 @@ jobs:
           # vanished" into a failed deploy instead of a latent correctness bug.
           npx wrangler d1 execute "$DATABASE" --env "$ENV" --remote \
             --file migrations/0018_index_assertion.sql
+      - name: Assemble static assets (admin SPA + docs site)
+        run: pnpm --filter @polaris-key/worker assemble
       - name: Deploy worker + admin assets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -98,4 +100,12 @@ jobs:
             echo "$BODY" | head -c 400 >&2
             exit 1
           }
+          # The gated docs site: unauthenticated must be a redirect INTO sign-in — a 200
+          # would mean the gate is off, a 5xx that the assembled assets are broken.
+          ORIGIN=$(echo "$SMOKE_URL" | sed -E 's#^(https://[^/]+).*#\1#')
+          DOCS_LOCATION=$(curl --silent --output /dev/null --write-out '%{http_code} %{redirect_url}' "$ORIGIN/docs/")
+          case "$DOCS_LOCATION" in
+            302\ */manage/login*) echo "Docs gate OK: $DOCS_LOCATION" ;;
+            *) echo "Smoke check failed: /docs/ unauthenticated returned: $DOCS_LOCATION" >&2; exit 1 ;;
+          esac
           echo "Smoke check OK: data plane is serving a non-empty JWKS."

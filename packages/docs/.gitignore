@@ -1,0 +1,5 @@
+dist/
+.astro/
+# build-generated copies (copy-artifacts.mjs) — sources live in shared-manifest/worker
+public/schemas/
+public/openapi/
