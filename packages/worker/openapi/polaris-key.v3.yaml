@@ -1,0 +1,627 @@
+# Polaris Key — public wire, OpenAPI 3.1.
+#
+# Scope: the PUBLIC product-scoped API (wire contract v3) — Core routes plus the five service
+# namespaces and the four permanent aliases. The admin (/manage/api/*) and portal (/api/*)
+# APIs are session-authenticated browser surfaces and are documented narratively on the docs
+# site instead (they are not "wire" — no SDK speaks them).
+#
+# Authority: docs/security/WIRE-CONTRACT-V3.md is the normative contract; the worker's
+# services/*/routes.ts are the routing truth; test/route-coverage.test.ts pins this file
+# against the router so a route can be added but not silently undocumented.
+#
+# Operations marked `x-polaris-status: skeleton` carry correct paths/methods/auth but not yet
+# their full request/response schemas + examples — those are lifted from the worker's own
+# test payloads in the content wave (the marker is how that wave finds its work, and the
+# coverage test refuses to count an operation that has been REMOVED, so paths only advance).
+
+openapi: 3.1.0
+info:
+  title: Polaris Key public API
+  version: "3.0.0"
+  description: >
+    Per-product licensing, managed config, releases, updates, and identity over wire
+    contract v3 (PROTOCOL_VERSION 3). Every route is scoped by a product slug; signed
+    documents are compact EdDSA JWS with typ-separated document kinds; clients verify
+    against pinned keys plus a signed trust manifest.
+  contact:
+    name: Polaris Key
+    url: https://key.plrs.im/docs/
+servers:
+  - url: https://key.plrs.im
+    description: Production (the ISSUER; host and wire issuer are deliberately identical).
+
+tags:
+  - name: core
+    description: >
+      Always-on substrate — discovery, trust (JWKS + signed trust manifest), and the device
+      principal (registration, roster, telemetry). Available for every product regardless of
+      which services it enables.
+  - name: license
+    description: Activation, enrollment, tokens, and the signed license document.
+  - name: config
+    description: The catalog, the signed config document, and edge-mint secret delivery.
+  - name: release
+    description: Release truth — changelog, install script, artifact downloads.
+  - name: update
+    description: Update feed — Sparkle appcasts (per-arch), version checks, eligibility.
+  - name: identity
+    description: Product OIDC (browser + device flow) and browser sessions.
+  - name: aliases
+    description: >
+      The four permanent pre-namespace spellings (SUFeedURL values compiled into shipped
+      bundles; curl lines in published docs). Each is an exact rewrite of its canonical
+      route — same handler, same response — and is excluded from any future deprecation.
+
+paths:
+  # ── core ──────────────────────────────────────────────────────────────────────
+  /{product}/.well-known/polaris.json:
+    get:
+      operationId: getDiscovery
+      tags: [core]
+      summary: Product discovery document
+      description: >
+        Registry-assembled capability document: Core emits trust/device/platform info and
+        each ENABLED service contributes a fragment with `enabled: true` and its endpoints;
+        disabled services appear with `enabled: false` and nothing else. This is the SDK
+        capability-negotiation source. Unsigned — clients take trust ONLY from their pinned
+        keys, never from this file.
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The discovery document.
+          content: { application/json: { schema: { type: object } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/.well-known/jwks.json:
+    get:
+      operationId: getJwks
+      tags: [core]
+      summary: Product signing keys (JWKS)
+      description: >
+        The product's active Ed25519 verification keys. Operators pin from here once over
+        TLS; SDKs then treat pins as terminal and learn rotations from the signed trust
+        manifest, not from re-fetching this.
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: JWKS.
+          content: { application/json: { schema: { type: object } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/.well-known/polaris-trust.jws:
+    get:
+      operationId: getTrustManifest
+      tags: [core]
+      summary: Signed trust manifest (pkey-trust+jws)
+      description: >
+        The key set as a signed document — verified against PINNED keys only; the discovered
+        set is replaced wholesale on each verification (absence is revocation; `revoked`
+        keys are pruned positively). Cacheable ~300s.
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: Compact JWS, `application/jose`.
+          content: { application/jose: { schema: { $ref: "#/components/schemas/CompactJws" } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/devices:
+    get:
+      operationId: listDevices
+      tags: [core]
+      summary: List the devices sharing this device's seat pool
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The device roster.
+          content: { application/json: { schema: { type: object } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/devices/{deviceId}:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+      - name: deviceId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getDevice
+      tags: [core]
+      summary: Read one device (self-service scope)
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      responses:
+        "200": { description: The device., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    patch:
+      operationId: renameDevice
+      tags: [core]
+      summary: Rename a device
+      description: A device token may only mutate ITSELF (R3-09).
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      responses:
+        "200": { description: Updated., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      operationId: deauthorizeDevice
+      tags: [core]
+      summary: Deauthorize a device
+      description: Purges the device's fingerprint and facts rows in the same operation.
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      responses:
+        "200": { description: Deauthorized., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/devices/report:
+    post:
+      operationId: reportDeviceFacts
+      tags: [core]
+      summary: Report device facts (software snapshot + declared probes)
+      description: >
+        Relocated from the v2 `/config/report` — this is device telemetry, not config.
+        Bounded and allowlisted: 16 KiB body cap, ≤32 probe entries, unknown keys dropped;
+        only product-DECLARED probes are answered (no installed-app enumeration). Overwritten
+        per report; deleted with the device.
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Recorded., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/devices/register:
+    post:
+      operationId: registerDevice
+      tags: [core]
+      summary: Keyless device registration (policy-gated)
+      description: >
+        Mints a `pkeyt_` device token under the product's registration policy: `open` mints
+        directly; `requires-identity` needs an identity exchange (the Identity service
+        authorizes it); `requires-license` refuses uniformly (`registration_closed`) —
+        tokens then come only from license activation/enrollment.
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Registered., content: { application/json: { schema: { type: object } } } }
+        "403":
+          description: Registration closed under the product's policy.
+          content: { application/json: { schema: { $ref: "#/components/schemas/WireError" } } }
+
+  # ── license ───────────────────────────────────────────────────────────────────
+  /{product}/license/activate:
+    post:
+      operationId: activate
+      tags: [license]
+      summary: Redeem a license key for a device token
+      description: >
+        `pkey_<product>_…` key + device identity (and, from native SDKs, the hashed hardware
+        fingerprint) → per-device `pkeyt_` bearer token. Rate-limited. Fingerprint policy is
+        tier-resolved; only `strict` makes a fingerprint mandatory here.
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Activation result., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/license/enroll:
+    post:
+      operationId: enroll
+      tags: [license]
+      summary: Keyless enrollment (auto-issue policy)
+      description: >
+        Auto-issues a license bound to the machine (one per machine, deduped on the ANCHOR
+        component's hash alone — R3-03) and returns the same shape as activate. 404 when the
+        product's auto-issue policy is off (SDKs surface `enroll-disabled`). A fingerprint is
+        required REGARDLESS of tier mode — dedupe is impossible without one.
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Activation result., content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/license/token:
+    post:
+      operationId: reacquireToken
+      tags: [license]
+      summary: Rotate/re-acquire the device token
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: New token., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/license/deauthorize:
+    post:
+      operationId: deauthorizeSelf
+      tags: [license]
+      summary: Self-deauthorize this device
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Deauthorized., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/license/document:
+    get:
+      operationId: getLicenseDocument
+      tags: [license]
+      summary: The signed license document (pkey-license+jws)
+      description: >
+        Requires a device token whose license is USABLE. Carries licenseId, profile, and the
+        entitlements map (incl. `license.tier`, `channels`, version windows, `deviceLimit`).
+        License STATE is never in the document — the client gate derives it. Strong per-doc
+        ETag/304 (content-only: a tier change moves it, a re-sign does not). The build gate
+        enforces channel/version windows HERE with 403 + `allowedRange`.
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: Compact JWS, `application/jwt`.
+          content: { application/jwt: { schema: { $ref: "#/components/schemas/CompactJws" } } }
+        "304": { description: Not modified (If-None-Match). }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Build gate — version_blocked / channel_not_allowed, with allowedRange.
+          content: { application/json: { schema: { $ref: "#/components/schemas/WireError" } } }
+
+  # ── config ────────────────────────────────────────────────────────────────────
+  /{product}/config/document:
+    get:
+      operationId: getConfigDocument
+      tags: [config]
+      summary: The signed config document (pkey-config+jws)
+      description: >
+        Device-token auth ONLY — no license required (D-08: a config-only product serves
+        signed settings to any registered device). Carries catalog schemaVersion + config +
+        secrets maps. No build gate. Strong per-doc ETag/304, independent of the license
+        document's.
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: Compact JWS, `application/jwt`.
+          content: { application/jwt: { schema: { $ref: "#/components/schemas/CompactJws" } } }
+        "304": { description: Not modified (If-None-Match). }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/config/schema:
+    get:
+      operationId: getCatalog
+      tags: [config]
+      summary: The public config catalog
+      description: The ProductCatalog (schemaVersion + entries). Public; `max-age=60`.
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: The catalog., content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/config/mint/{mintId}/token:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+      - { $ref: "#/components/parameters/MintId" }
+    get:
+      operationId: mintTokenGet
+      tags: [config]
+      summary: Mint a third-party token (edge-mint)
+      description: >
+        Short-lived third-party token (e.g. Apple MusicKit developer token) from the
+        product's recipe. Device-token auth; when the License service is enabled the license
+        must additionally be usable (confused-deputy guard). Rate-limited.
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      responses:
+        "200": { description: The minted token., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: mintTokenPost
+      tags: [config]
+      summary: Mint a third-party token (edge-mint)
+      security: [{ deviceToken: [] }]
+      x-polaris-status: skeleton
+      responses:
+        "200": { description: The minted token., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/config/mint/{mintId}/auth:
+    get:
+      operationId: mintAuthPage
+      tags: [config]
+      summary: The edge-mint auth page (HTML)
+      description: Public HTML helper page for recipes that need a user-facing auth step; 404 when the recipe declares no template.
+      x-polaris-status: skeleton
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/MintId" }
+      responses:
+        "200": { description: HTML., content: { text/html: { schema: { type: string } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── release ───────────────────────────────────────────────────────────────────
+  /{product}/release/changelog:
+    get:
+      operationId: getChangelog
+      tags: [release]
+      summary: Release changelog
+      description: Access-mode gated (metadata mode; `entitled` adds per-license channel/version gating).
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: The changelog., content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/release/install.sh:
+    get:
+      operationId: getInstallScript
+      tags: [release]
+      summary: The curl-pipe install script
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Shell script., content: { text/x-shellscript: { schema: { type: string } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/release/dl/{version}/{asset}:
+    get:
+      operationId: downloadArtifact
+      tags: [release]
+      summary: Download a release artifact
+      description: >
+        Unifies the v2 `/cli/*` and `/dmg/*` families: `{asset}` is `<binary>-<arch>` or
+        `<binary>-<arch>.dmg` (arch ∈ arm64|aarch64|x86_64|amd64). Access-mode gated
+        (artifacts mode); `entitled` returns nested v3 errors (401 unauthorized /
+        403 channel_not_allowed / 403 version_blocked + allowedRange).
+      x-polaris-status: skeleton
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+        - name: asset
+          in: path
+          required: true
+          schema: { type: string, pattern: "^.+-(arm64|aarch64|x86_64|amd64)(\\.dmg)?$" }
+      responses:
+        "302": { description: Redirect to the artifact. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── update ────────────────────────────────────────────────────────────────────
+  /{product}/update/appcast.xml:
+    get:
+      operationId: getAppcast
+      tags: [update]
+      summary: The Sparkle appcast (default channel)
+      x-polaris-status: skeleton
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Arch" }
+      responses:
+        "200": { description: Appcast XML., content: { application/xml: { schema: { type: string } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/update/{channel}/appcast.xml:
+    get:
+      operationId: getChannelAppcast
+      tags: [update]
+      summary: The Sparkle appcast for a channel
+      x-polaris-status: skeleton
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - { $ref: "#/components/parameters/Arch" }
+      responses:
+        "200": { description: Appcast XML., content: { application/xml: { schema: { type: string } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{product}/update/version:
+    get:
+      operationId: getLatestVersion
+      tags: [update]
+      summary: Latest-version check
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Version info., content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── identity ──────────────────────────────────────────────────────────────────
+  /{product}/identity/session:
+    get:
+      operationId: getBrowserSession
+      tags: [identity]
+      summary: The browser session's fused document
+      description: Cookie-authenticated (`pkey_<product>_session`); the build gate also enforces here.
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Session document., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/identity/session/license:
+    post:
+      operationId: sessionFromLicenseKey
+      tags: [identity]
+      summary: Mint a browser session from a license key
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Session established., content: { application/json: { schema: { type: object } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /{product}/identity/auth/start:
+    get:
+      operationId: authStart
+      tags: [identity]
+      summary: Begin browser OIDC (PKCE) — 302 to the IdP
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "302": { description: Redirect to the IdP authorize endpoint. }
+  /{product}/identity/auth/callback:
+    get:
+      operationId: authCallback
+      tags: [identity]
+      summary: OIDC redirect URI
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Signed-in page (HTML)., content: { text/html: { schema: { type: string } } } }
+  /{product}/identity/auth/poll:
+    get:
+      operationId: authPoll
+      tags: [identity]
+      summary: Poll a browser sign-in flow
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Flow state., content: { application/json: { schema: { type: object } } } }
+  /{product}/identity/auth/logout:
+    post:
+      operationId: authLogout
+      tags: [identity]
+      summary: End the browser session
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Logged out., content: { application/json: { schema: { type: object } } } }
+  /{product}/identity/auth/device/start:
+    post:
+      operationId: deviceAuthStart
+      tags: [identity]
+      summary: Begin the device-code flow
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Device code + verification URI., content: { application/json: { schema: { type: object } } } }
+  /{product}/identity/auth/device/verify:
+    get:
+      operationId: deviceAuthVerifyPage
+      tags: [identity]
+      summary: The device-authorization page (side-effect-free GET)
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: HTML confirmation page., content: { text/html: { schema: { type: string } } } }
+    post:
+      operationId: deviceAuthVerify
+      tags: [identity]
+      summary: Confirm the device authorization (CSRF from the GET)
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Confirmed (HTML)., content: { text/html: { schema: { type: string } } } }
+  /{product}/identity/auth/device/poll:
+    post:
+      operationId: deviceAuthPoll
+      tags: [identity]
+      summary: Poll the device-code flow
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Flow state / activation result., content: { application/json: { schema: { type: object } } } }
+
+  # ── permanent aliases ─────────────────────────────────────────────────────────
+  /{product}/appcast.xml:
+    get:
+      operationId: aliasAppcast
+      tags: [aliases]
+      summary: "Alias → /{product}/update/appcast.xml"
+      description: Exact rewrite of the canonical route (same handler, same segments). Permanent.
+      x-polaris-status: skeleton
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Arch" }
+      responses:
+        "200": { description: Appcast XML., content: { application/xml: { schema: { type: string } } } }
+  /{product}/{channel}/appcast.xml:
+    get:
+      operationId: aliasChannelAppcast
+      tags: [aliases]
+      summary: "Alias → /{product}/update/{channel}/appcast.xml"
+      x-polaris-status: skeleton
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - { $ref: "#/components/parameters/Arch" }
+      responses:
+        "200": { description: Appcast XML., content: { application/xml: { schema: { type: string } } } }
+  /{product}/install.sh:
+    get:
+      operationId: aliasInstall
+      tags: [aliases]
+      summary: "Alias → /{product}/release/install.sh"
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Shell script., content: { text/x-shellscript: { schema: { type: string } } } }
+  /{product}/version:
+    get:
+      operationId: aliasVersion
+      tags: [aliases]
+      summary: "Alias → /{product}/update/version"
+      x-polaris-status: skeleton
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200": { description: Version info., content: { application/json: { schema: { type: object } } } }
+
+components:
+  securitySchemes:
+    deviceToken:
+      type: http
+      scheme: bearer
+      bearerFormat: pkeyt_
+      description: >
+        The per-device bearer token (`pkeyt_…`), minted by activation, enrollment, or
+        policy-gated registration. Never a signing key; rotated via /license/token.
+  parameters:
+    Product:
+      name: product
+      in: path
+      required: true
+      description: The product slug (tenant).
+      schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    MintId:
+      name: mintId
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z0-9-]+$" }
+    Channel:
+      name: channel
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z0-9-]+$" }
+    Arch:
+      name: arch
+      in: query
+      required: false
+      description: Artifact architecture for dual-enclosure appcasts. Default arm64.
+      schema: { type: string, enum: [arm64, x86_64] }
+  responses:
+    NotFound:
+      description: >
+        Not found — including "the product does not exist", "the service is not enabled for
+        this product", and "no such route inside the namespace", which are DELIBERATELY
+        indistinguishable (hide-don't-reveal; one body for all three).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/WireError" }
+    Unauthorized:
+      description: Missing/invalid credential. One /license/token re-acquire then retry is the SDK convention.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/WireError" }
+  schemas:
+    CompactJws:
+      type: string
+      description: A compact EdDSA JWS (header.payload.signature, base64url).
+      pattern: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+    WireError:
+      type: object
+      description: The nested wire-v3 error body.
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code]
+          properties:
+            code: { type: string }
+            message: { type: string }
+        allowedRange:
+          type: object
+          description: Present on build-gate 403s.
+          properties:
+            minVersion: { type: [string, "null"] }
+            maxVersion: { type: [string, "null"] }
+            channels: { type: array, items: { type: string } }
