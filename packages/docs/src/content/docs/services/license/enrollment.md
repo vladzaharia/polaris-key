@@ -177,8 +177,14 @@ somebody's identity and, post-claim, their tier. Clearing the key instead would 
 machine enroll again immediately and be claimed by a second identity, without limit. So the
 binding is permanent, and the caller signs in to reach it.
 
-The handler's test for "still claimable" is precise: `origin = 'enroll'` **and** `sub is null`
-**and** `status = 'active'`.
+The handler's test for "still claimable" is precise — `origin = 'enroll'` **and** `sub is
+null` **and** `status = 'active'` — and it is one shared predicate, applied identically on the
+first read and on the re-read after a lost insert race, so the two arms cannot drift.
+
+A row that fails only on `status` gets its own refusal: a still-anonymous enrolled license an
+operator **disabled** answers `403` with code `license_disabled`. It is deliberately distinct
+from `enroll_claimed` because the guidance differs — signing in will not reach a disabled
+anonymous row, and re-enrolling around it would bypass the operator's deliberate refusal.
 
 ## Claim and migrate
 

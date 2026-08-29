@@ -21,6 +21,11 @@
 // path for free.
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import {
+  ALLOWED_ID_TOKEN_ALGS,
+  ID_TOKEN_CLOCK_TOLERANCE,
+  ID_TOKEN_MAX_AGE,
+} from "./idToken.js";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { ManagedPayload } from "../../core/payload.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
@@ -57,13 +62,8 @@ import { licenseUsable } from "../../core/devices.js";
 import { createBrowserSession } from "./browserSession.js";
 
 const FLOW_TTL_SECONDS = 600;
-const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];
 /** The poll cadence advertised by `/identity/auth/device/start`, enforced server-side (R8-02). */
 const DEVICE_POLL_INTERVAL_SECONDS = 2;
-/** Freshness ceiling on the ID token's `iat`. `exp` alone is entirely the IdP's choice, so a
- *  token minted long before this exchange must not be replayable into a sign-in (R8-05d). */
-const ID_TOKEN_MAX_AGE = "5m";
-const ID_TOKEN_CLOCK_TOLERANCE = 300;
 
 interface OidcConfigRow {
   product: string;

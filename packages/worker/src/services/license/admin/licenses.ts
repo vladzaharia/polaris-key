@@ -15,6 +15,7 @@ import {
 } from "../../../core/platform.js";
 import {
   countActiveDevices,
+  seatActiveSince,
   getDeviceFacts,
   getFingerprint,
   getLicense,
@@ -352,7 +353,15 @@ export async function handleLicenses(
           : undefined;
         const limit = nextTier?.policy_device_limit;
         if (typeof limit === "number" && limit > 0) {
-          const deviceCount = await countActiveDevices(db, slug, id);
+          // Counted with the SAME dormancy cutoff `authorizeDevice` applies: this warning
+          // exists to predict activation outcomes, and a seat the check would reclaim is
+          // not one the operator needs warning about.
+          const deviceCount = await countActiveDevices(
+            db,
+            slug,
+            id,
+            seatActiveSince(now),
+          );
           if (deviceCount > limit) {
             overLimit = { deviceCount, deviceLimit: limit };
           }

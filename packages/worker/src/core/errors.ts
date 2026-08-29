@@ -24,6 +24,10 @@ export const ErrorCode = {
   EnrollDisabled: "enroll_disabled",
   /** This machine's auto-issued license exists but now belongs to an identity (R3-05). */
   EnrollClaimed: "enroll_claimed",
+  /** This machine's auto-issued license exists but an operator disabled it. Distinct from
+   *  `enroll_claimed` because the guidance differs: signing in will not reach it, and
+   *  re-enrolling around the disable would bypass a deliberate refusal. */
+  LicenseDisabled: "license_disabled",
 } as const;
 
 export function json(

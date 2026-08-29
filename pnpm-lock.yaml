@@ -265,6 +265,9 @@ importers:
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog
+      '@polaris-key/protocol':
+        specifier: workspace:*
+        version: link:../shared-protocol
       yaml:
         specifier: ^2.6.1
         version: 2.9.0

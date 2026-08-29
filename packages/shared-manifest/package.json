@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@polaris-key/catalog": "workspace:*",
+    "@polaris-key/protocol": "workspace:*",
     "yaml": "^2.6.1"
   },
   "devDependencies": {

@@ -109,12 +109,10 @@ a positive `policy_device_limit`, and the license's active device count exceeds 
 field is absent. It exists so the console can tell the operator what they have just done rather
 than leaving them to discover it from a support ticket.
 
-:::caution[Two different counts]
-The `deviceCount` reported here counts **every** authorized device on the license. The seat check
-that actually refuses an activation applies a 90-day dormancy floor and ignores devices that have
-stopped checking in. So a license whose devices have gone dark can report `overLimit` and still
-admit a new activation.
-:::
+The `deviceCount` reported here is computed with the **same 90-day dormancy floor** the seat
+check applies when it refuses an activation, so the warning predicts exactly what activation
+will do: a license whose extra devices have gone dark reports no `overLimit`, because the next
+activation will reclaim those dormant seats anyway.
 
 The client is told about the new limit immediately, too: `deviceLimit` in the license document is
 the new tier's number from the next fetch onward, even while more devices than that remain

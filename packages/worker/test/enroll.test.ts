@@ -137,6 +137,78 @@ describe("POST /<product>/enroll", () => {
     expect(licenses).toHaveLength(1);
   });
 
+  it("refuses re-enrolment when the machine's license was disabled by an operator", async () => {
+    const first = (await (await enroll(MACHINE_A, "dev-a")).json()) as {
+      license: { id: string };
+    };
+    await db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+      "djdl",
+      first.license.id,
+    );
+
+    // Disabling is deliberate; handing the row back would resurrect it, and "claimed"'s
+    // sign-in guidance would be a lie — no identity holds this license.
+    const res = await enroll(MACHINE_A, "dev-a2");
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "license_disabled",
+    );
+
+    // …and no second row was minted around the disable.
+    const rows = await db.all(
+      "SELECT id FROM licenses WHERE product = 'djdl' AND origin = 'enroll'",
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it("the race arm applies the same fate as the first read (disabled winner refused)", async () => {
+    const first = (await (await enroll(MACHINE_A, "dev-a")).json()) as {
+      license: { id: string };
+    };
+    await db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+      "djdl",
+      first.license.id,
+    );
+
+    // Simulate the LOSER of an enrolment race: its pre-INSERT read misses (the winner's row
+    // is not visible to it yet), the INSERT then violates idx_licenses_enroll_hwid, and the
+    // catch arm re-reads the winner — which must face exactly the first read's predicate.
+    let missed = false;
+    const racedDb = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === "first") {
+          return async (...args: Parameters<SqliteDb["first"]>) => {
+            if (!missed && args[0].includes("enroll_hwid = ?")) {
+              missed = true;
+              return null;
+            }
+            return target.first(...args);
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    }) as SqliteDb;
+
+    const res = await handleEnroll(
+      mkReq(
+        "POST",
+        { "x-pkey-device": "dev-a3" },
+        { fingerprint: { components: MACHINE_A, hwid: "ignored" } },
+      ),
+      env,
+      racedDb,
+      await product(),
+      NOW,
+    );
+    expect(missed).toBe(true);
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "license_disabled",
+    );
+  });
+
   it("mints separate licenses for genuinely different machines", async () => {
     const a = (await (await enroll(MACHINE_A, "dev-a")).json()) as {
       license: { id: string };

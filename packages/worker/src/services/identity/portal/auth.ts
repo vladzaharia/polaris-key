@@ -1,5 +1,10 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
+  ALLOWED_ID_TOKEN_ALGS,
+  ID_TOKEN_CLOCK_TOLERANCE,
+  ID_TOKEN_MAX_AGE,
+} from "../idToken.js";
+import {
   platformOidcConfig,
   randomId,
   type Db,
@@ -23,7 +28,6 @@ import { portalSecurityHeaders } from "./headers.js";
 import { isSameOriginNavigation } from "../../../core/platform.js";
 
 const FLOW_TTL_SECONDS = 600;
-const ALLOWED_ID_TOKEN_ALGS = ["RS256", "ES256", "EdDSA"];
 const FLOW_PREFIX = "portal:oidc-flow:";
 const MAGIC_PREFIX = "portal:magic:";
 
@@ -270,6 +274,10 @@ export async function handlePortalCallback(
       issuer: cfg.issuer,
       audience: cfg.clientId,
       algorithms: ALLOWED_ID_TOKEN_ALGS,
+      // Freshness is ours to enforce: `exp` is entirely the IdP's choice, so a token minted
+      // long before this exchange must not be replayable into a sign-in (R8-05d).
+      clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
+      maxTokenAge: ID_TOKEN_MAX_AGE,
     });
     claims = verified.payload as Record<string, unknown>;
     if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce) {

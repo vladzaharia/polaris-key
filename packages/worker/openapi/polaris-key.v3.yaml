@@ -769,9 +769,11 @@ paths:
         No `Authorization` header is read: this IS the keyless path. Two distinct refusals
         share the code `fingerprint_required` and differ only in message — no fingerprint at
         all, and a fingerprint without the `machineUuid` anchor. `enroll_claimed` is the
-        R3-05 case where this machine's free license now belongs to an identity. The
-        rate-limit window is an HOUR (the product's `rateLimitPerHour`; 0 disables it), not
-        the minute activation uses.
+        R3-05 case where this machine's free license now belongs to an identity;
+        `license_disabled` is the machine whose still-anonymous free license an operator
+        disabled (signing in will not reach it, and re-enrolling around it would bypass the
+        disable). The rate-limit window is an HOUR (the product's `rateLimitPerHour`; 0
+        disables it), not the minute activation uses.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - { $ref: "#/components/parameters/DeviceHeader" }
@@ -855,6 +857,9 @@ paths:
                   value: { error: fingerprint_required, message: enrollment requires a machine anchor in the hardware fingerprint }
                 claimed:
                   value: { error: enroll_claimed, message: "this machine's free license has been claimed; sign in to use it" }
+                disabled:
+                  summary: Operator-disabled anonymous row
+                  value: { error: license_disabled, message: "this machine's free license has been disabled" }
         "404":
           description: >
             Auto-issue is off for this product, or its configured tier is missing — LEGACY

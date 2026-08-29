@@ -43,6 +43,23 @@ import { authorizeDevice, tierExpiresAt } from "./authz.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 
 /**
+ * The fate of an EXISTING row for this machine — one predicate, shared verbatim by the first
+ * read and the post-race re-read so the two arms cannot drift.
+ *
+ * R3-05 — the machine's free license is bound for good: `claimEnrolledLicense` and the OIDC
+ * merge arm no longer clear `enroll_hwid`, so this row may be one that has since been claimed
+ * by an identity or retired by a merge. Returning it would hand an ANONYMOUS caller a license
+ * that now carries somebody's identity and (post-claim) their tier — so those are "claimed";
+ * the caller signs in to reach it. A still-anonymous row an operator DISABLED is different:
+ * signing in will not reach it, and handing it back (or minting around it) would bypass a
+ * deliberate refusal — that is "disabled", its own 403.
+ */
+function enrollFate(row: LicenseRow): LicenseRow | "claimed" | "disabled" {
+  if (row.origin !== "enroll" || row.sub !== null) return "claimed";
+  return row.status === "active" ? row : "disabled";
+}
+
+/**
  * Locate or mint the free license for this machine.
  *
  * The uniqueness of one-license-per-machine is enforced by `idx_licenses_enroll_hwid`, not by
@@ -56,21 +73,9 @@ async function locateOrMintLicense(
   hwid: string,
   tier: TierRow,
   now: number,
-): Promise<LicenseRow | "claimed" | null> {
+): Promise<LicenseRow | "claimed" | "disabled" | null> {
   const existing = await getLicenseByEnrollHwid(db, product.slug, hwid);
-  if (existing) {
-    // R3-05 — the machine's free license is now bound for good: `claimEnrolledLicense` and the
-    // OIDC merge arm no longer clear `enroll_hwid`, so this row may be one that has since been
-    // claimed by an identity or retired by a merge. Returning it would hand an ANONYMOUS
-    // caller a license that now carries somebody's identity and (post-claim) their tier, which
-    // is a strictly worse outcome than the re-enrolment loop R3-05 describes. This machine has
-    // had its free license; the caller signs in to reach it.
-    const stillAnonymous =
-      existing.origin === "enroll" &&
-      existing.sub === null &&
-      existing.status === "active";
-    return stillAnonymous ? existing : "claimed";
-  }
+  if (existing) return enrollFate(existing);
 
   const licenseId = randomId("lic");
   // R3-06 — the tier's expiry policy applies here exactly as it does on every other path
@@ -109,12 +114,10 @@ async function locateOrMintLicense(
   } catch {
     // Almost certainly the unique-index violation above. Re-read rather than surfacing a
     // 500: the caller's intent ("give me the license for this machine") is satisfiable — but
-    // only if the winner of the race is still an anonymous enrolled row (R3-05).
+    // only under exactly the fate the first read would have applied (R3-05).
     const winner = await getLicenseByEnrollHwid(db, product.slug, hwid);
     if (!winner) return null;
-    return winner.origin === "enroll" && winner.sub === null
-      ? winner
-      : "claimed";
+    return enrollFate(winner);
   }
 
   await appendAudit(db, {
@@ -218,6 +221,15 @@ export async function handleEnroll(
       403,
       ErrorCode.EnrollClaimed,
       "this machine's free license has been claimed; sign in to use it",
+    );
+  }
+  if (license === "disabled") {
+    // Disabling is deliberate; re-enrolling around it would bypass the operator's refusal,
+    // and `enroll_claimed`'s sign-in guidance would be a lie — no identity holds this row.
+    return errorResponse(
+      403,
+      ErrorCode.LicenseDisabled,
+      "this machine's free license has been disabled",
     );
   }
   if (!license)

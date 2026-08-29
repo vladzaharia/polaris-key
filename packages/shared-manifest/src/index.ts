@@ -1,4 +1,5 @@
 import { type ProductCatalog } from "@polaris-key/catalog";
+import { type SecretDelivery } from "@polaris-key/protocol/config";
 import { parse as parseYaml } from "yaml";
 
 /**
@@ -188,7 +189,9 @@ export interface ManifestRelease {
   access: ManifestReleaseAccessPolicy;
 }
 
-export type ManifestSecretDelivery = "serverOnly" | "clientScoped" | "edgeMint";
+/** The protocol's `SecretDelivery`, re-exported under the manifest's historical name — one
+ *  source of truth for the three delivery modes (the audit's A6). */
+export type ManifestSecretDelivery = SecretDelivery;
 
 export type ManifestCatalogEntry = ProductCatalog["entries"][number] & {
   delivery?: ManifestSecretDelivery;

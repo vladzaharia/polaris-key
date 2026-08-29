@@ -32,7 +32,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
-import { listAudit } from "../src/repo.js";
+import { listAudit, SEAT_DORMANCY_SECONDS } from "../src/repo.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 const PLATFORM_GROUP = "admins";
@@ -195,6 +195,37 @@ describe("remote re-licensing", () => {
       licenseId,
     );
     expect(rows[0]?.n).toBe(2);
+  });
+
+  it("overLimit ignores dormant seats, exactly as the seat check will", async () => {
+    const secondKey = await seedKeyForLicense(db, "djdl", licenseId);
+    const second = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${secondKey}`,
+        "x-pkey-device": "device-two",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(second.status).toBe(200);
+
+    // The first device has been dormant past SEAT_DORMANCY_SECONDS. `authorizeDevice`
+    // reclaims that seat on the next activation, so the downgrade warning counting it too
+    // would predict a refusal that will not happen — the warning exists to predict
+    // activation outcomes, not to report raw rows.
+    await db.run(
+      "UPDATE devices SET last_seen = ? WHERE product = ? AND device_id = ?",
+      NOW - SEAT_DORMANCY_SECONDS - 10,
+      "djdl",
+      DEVICE,
+    );
+
+    const res = await adminPatch({ tier: "solo" });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { overLimit?: unknown };
+    expect(body.overLimit).toBeUndefined();
   });
 
   it("refuses a NEW activation once over the downgraded limit", async () => {
