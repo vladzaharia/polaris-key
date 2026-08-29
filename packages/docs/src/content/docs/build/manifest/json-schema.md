@@ -1,4 +1,6 @@
 ---
+sidebar:
+  order: 3
 title: "JSON Schema & editor setup"
 description: "Machine-readable schemas for the .pkey/ manifest — editor completion, validation, and how the schemas stay honest."
 ---
@@ -8,10 +10,10 @@ Schema](https://json-schema.org/) documents — one per file, Draft 2020-12 — 
 offer completion and inline errors while you type, before `pkey validate` or a resync ever
 runs. They ship inside the `@polaris-key/manifest` npm package:
 
-| File | Schema |
-| --- | --- |
+| File              | Schema                           |
+| ----------------- | -------------------------------- |
 | `.pkey/product.*` | `schemas/v1/product.schema.json` |
-| `.pkey/schema.*` | `schemas/v1/schema.schema.json` |
+| `.pkey/schema.*`  | `schemas/v1/schema.schema.json`  |
 | `.pkey/release.*` | `schemas/v1/release.schema.json` |
 
 `@polaris-key/manifest`'s `package.json` lists `schemas` alongside `dist` in its published
@@ -91,10 +93,10 @@ nothing stops the two from drifting apart on their own. `packages/shared-manifes
 is the drift gate, and it pins three properties on every CI run:
 
 1. **Valid stays valid.** Every valid fixture — including the real `products/djdl/product.json`
-   and `products/djdl/catalog.json` — passes *both* the TypeScript validator and Ajv against
+   and `products/djdl/catalog.json` — passes _both_ the TypeScript validator and Ajv against
    the schemas.
 2. **Every error code has a case.** A completeness sweep extracts every error code the
-   validator's *source* can emit and asserts a mutation-table entry exists for each one — a new
+   validator's _source_ can emit and asserts a mutation-table entry exists for each one — a new
    validation rule added without a corresponding test case fails CI, not a future bug report.
 3. **The schema catches what it claims to.** Each mutation is tagged `schema: "rejects"` (Ajv
    must also reject the mutated document) or `schema: "accepts"` (a validator-only rule — a

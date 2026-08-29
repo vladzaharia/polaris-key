@@ -4,7 +4,7 @@
 //
 // An `enforced`/`hidden` key is LOCKED: overriding it via `localOverrides` or an env var has no
 // effect and the remote value still wins. That is the whole point of the management state —
-// see docs/CONCEPTS.md.
+// see packages/docs/src/content/docs/start/concepts.md.
 //
 // The OVERRIDE LAYERS are config-side options rather than Core ones for a reason: `envPrefix`,
 // the environment table and `localOverrides` are inputs to THIS resolution and to nothing else,

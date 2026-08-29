@@ -30,14 +30,14 @@ These exist under every registration policy and every enablement set. They are m
 `packages/worker/src/router.ts` before the service namespaces, so a service slug can never
 shadow them.
 
-| Route | What it is |
-| --- | --- |
-| `GET /<p>/.well-known/polaris.json` | The [discovery document](/docs/services/core/discovery/) |
-| `GET /<p>/.well-known/jwks.json` | The product's public signing keys |
-| `GET /<p>/.well-known/polaris-trust.jws` | The signed [trust manifest](/docs/services/core/trust/) |
-| `POST /<p>/devices/register` | Keyless [device registration](/docs/services/core/device-principal/), policy-gated |
-| `GET /<p>/devices` · `GET/PATCH/DELETE /<p>/devices/<id>` | The device roster; mutations are self-only |
-| `POST /<p>/devices/report` | Device facts and probe telemetry |
+| Route                                                     | What it is                                                                         |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `GET /<p>/.well-known/polaris.json`                       | The [discovery document](/docs/services/core/discovery/)                           |
+| `GET /<p>/.well-known/jwks.json`                          | The product's public signing keys                                                  |
+| `GET /<p>/.well-known/polaris-trust.jws`                  | The signed [trust manifest](/docs/services/core/trust/)                            |
+| `POST /<p>/devices/register`                              | Keyless [device registration](/docs/services/core/device-principal/), policy-gated |
+| `GET /<p>/devices` · `GET/PATCH/DELETE /<p>/devices/<id>` | The device roster; mutations are self-only                                         |
+| `POST /<p>/devices/report`                                | Device facts and probe telemetry                                                   |
 
 `/manage/*`, `/docs/*`, and the root customer portal are platform surfaces, reserved ahead of
 product slugs in the same matcher. The full public route table — every service included — is
@@ -73,7 +73,7 @@ The degenerate case is the useful test of "always on". With all five flags off, 
 - lists, renames, and deauthorizes devices, and accepts facts reports;
 - is rate-limited, audited, and answers the same error taxonomy as any other product.
 
-What it does not get is any signed *service* document — there is nothing to put in one. That is
+What it does not get is any signed _service_ document — there is nothing to put in one. That is
 why a client's license gate reports `not-applicable` rather than `needs-activation` for a product
 with License off: a config-only or release-only product boots usable rather than claiming it
 needs an activation it will never have.
@@ -96,7 +96,7 @@ registry for it:
   to ask, not what the answer looks like.
 - `authorizeRegistration(ctx)` — "may this caller be given a device credential?" This is the
   one authorization decision Core delegates, and it exists because one registration policy is
-  named after a service. Everything about what a *refusal* looks like stays Core's.
+  named after a service. Everything about what a _refusal_ looks like stays Core's.
 - `manifestIngest(parsed, product)` — the rows a service wants written when a `.pkey/` manifest
   is ingested.
 - `handle(ctx)` returns `null`, never a 404, when nothing inside the service matched — only
@@ -130,5 +130,6 @@ See [Errors and limits](/docs/services/core/errors/) for the exact bodies.
 - **[Errors and limits](/docs/services/core/errors/)** — the two wire error shapes, the 404
   policy, and rate limiting.
 
-Terminology throughout follows `docs/CONCEPTS.md` in the repo; the normative wire rules are
-`docs/security/WIRE-CONTRACT-V3.md`, cited here as "the wire contract (§N)".
+Terminology throughout follows [Concepts & terminology](/docs/start/concepts/); the normative
+wire rules are `docs/security/WIRE-CONTRACT-V3.md` in the repo, cited here as "the wire contract
+(§N)".

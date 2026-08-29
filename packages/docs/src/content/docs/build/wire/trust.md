@@ -126,11 +126,13 @@ The `status` field layers a positive signal on top of it:
 | `retired` | Trusted for verification — documents signed by it are still in caches               |
 | `revoked` | **Dropped.** Never enters the discovered set                                        |
 
-The contract asks the server to keep emitting explicitly `revoked` entries for at least
+The contract asks a server to keep emitting explicitly `revoked` entries for at least
 `2 × cacheSeconds` after a revocation, so a client that refreshes on its cache cadence receives
 a positive prune signal rather than only an absence (spec §2.3). A client must nonetheless
 **not depend on ever seeing one** — wholesale replacement already prunes an absent key, and
-that is the guarantee the contract rests on.
+that is the guarantee the contract rests on. That is not theoretical: the Worker publishes
+`active`, `staged` and `retired` keys and nothing else, so today a revocation reaches clients
+purely as an absence.
 
 Two more rules on the key list:
 

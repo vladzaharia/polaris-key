@@ -4,7 +4,7 @@ The Node/TypeScript client for **Polaris Key** — an always-on **Core** substra
 principal, credential, trust, verified cache, sync loop) plus one opt-in sub-client per service
 (**License**, **Config**, **Devices**, **Release**, **Update**). **Offline-first**: `init()`
 loads and re-verifies the cached signed documents with **no network**. The frozen wire crypto
-(Ed25519 compact JWS) is verified through [`@polaris-key/client-core`](../client-core), the isomorphic
+(Ed25519 compact JWS) is verified through `@polaris-key/client-core`, the isomorphic
 package the React SDK shares, and pinned byte-for-byte by the same cross-language conformance
 corpus the Python and Swift SDKs run.
 

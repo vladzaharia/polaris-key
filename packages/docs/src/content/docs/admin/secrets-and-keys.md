@@ -20,12 +20,12 @@ is right, rotate it rather than trying to recover it.
 Typical secret names are an OIDC client secret (custom OIDC providers only — the platform
 provider needs none) and an edge-mint signing key, one per recipe the product's manifest
 declares (`EDGE_MINT__DJDL__APPLEMUSIC` is the production example — see [Operating: the KEK
-keyring](/docs/admin/kek/) → *Product operations*).
+keyring](/docs/admin/kek/) → _Product operations_).
 
 :::note[A different, related mechanism]
 Catalog-declared **managed secrets** — a config entry with `kind: "secret"`, or `secret: true` —
 are a different thing sealed a different way: they live nested inside a profile's or license's
-managed-payload JSON, under a per-key AAD that binds each value to the product *and* to the
+managed-payload JSON, under a per-key AAD that binds each value to the product _and_ to the
 catalog key it was written under. They're set through the license/profile override editor, not
 here. Both mechanisms end up under `PLATFORM_KEK`, but a plain product secret and a
 catalog-declared managed secret are stored in different tables and read through different code
@@ -66,12 +66,12 @@ lifecycle has four actions; today only the first has a console button — the re
 calls, the same authenticated pattern [Offline bundles](/docs/admin/bundles/) describes for the
 `pkey` CLI (a session cookie plus the echoed CSRF token):
 
-| Action | Endpoint | Effect |
-| --- | --- | --- |
-| **Prepare** (console: *Prepare signing key*) | `POST .../keys/rotate` or `.../keys/prepare` | Mints and stages a new key. |
-| **Activate** | `POST .../keys/activate` | Retires the current active key and promotes the staged one, in one batch. Refused (`409`) before the trust-cache window elapses unless `breakGlass: true` is passed. |
-| **Retire** | `POST .../keys/retire` | Marks a non-active key retired. |
-| **Revoke** | `POST .../keys/revoke` | Marks a non-active key revoked (compromise response). |
+| Action                                       | Endpoint                                     | Effect                                                                                                                                                               |
+| -------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Prepare** (console: _Prepare signing key_) | `POST .../keys/rotate` or `.../keys/prepare` | Mints and stages a new key.                                                                                                                                          |
+| **Activate**                                 | `POST .../keys/activate`                     | Retires the current active key and promotes the staged one, in one batch. Refused (`409`) before the trust-cache window elapses unless `breakGlass: true` is passed. |
+| **Retire**                                   | `POST .../keys/retire`                       | Marks a non-active key retired.                                                                                                                                      |
+| **Revoke**                                   | `POST .../keys/revoke`                       | Marks a non-active key revoked (compromise response).                                                                                                                |
 
 Retire and revoke both refuse (`409`) on the **currently active** key — stage and activate a
 replacement first. A product must always have exactly one active key; this guard is what stops
@@ -80,7 +80,7 @@ an operator from accidentally leaving it with zero.
 :::caution[If you suspect a key was compromised]
 Prepare a new key, wait out (or break-glass through) the trust window, activate it, then revoke
 the old one — the same shape as a `PLATFORM_KEK` compromise response in [Operating: the KEK
-keyring](/docs/admin/kek/) → *KEK compromise (containment)*, one level down: that runbook
+keyring](/docs/admin/kek/) → _KEK compromise (containment)_, one level down: that runbook
 rotates the KEK that seals every product's keys; this rotates one product's own signing key.
 :::
 

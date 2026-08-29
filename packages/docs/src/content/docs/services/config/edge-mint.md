@@ -5,7 +5,7 @@ sidebar:
   order: 6
 ---
 
-Some catalog secrets aren't meant to be *held* by a client at all — a third-party API key that
+Some catalog secrets aren't meant to be _held_ by a client at all — a third-party API key that
 should only ever exist as a short-lived, purpose-scoped token. **Edge-mint** is Config's answer: a
 product declares a **recipe**, and the Worker mints a fresh token on request instead of ever
 shipping the underlying key material anywhere near a device. Apple MusicKit's ES256 developer
@@ -17,16 +17,16 @@ routes.
 
 ## The recipe
 
-| Field | Meaning |
-| --- | --- |
-| `id` | The recipe's identifier; also the path segment in `/config/mint/<id>/…`. Constrained to `^[a-z0-9-]+$` at the router, before any lookup happens. |
-| `alg` | `ES256`, `RS256`, or `EdDSA`. Anything else is `500 misconfigured` at mint time. |
-| `signingKeySecret` | Not the key material — the **name** of a sealed row in `product_secrets`, opened per request. |
-| `kid` | Optional; carried into the minted JWT's header when present. |
-| `claimsTemplate` | A free-form JSON object merged into the minted claims. |
-| `ttlSeconds` | The minted token's lifetime; the Worker stamps `exp = now + ttlSeconds`. |
-| `audience` | Optional, trusted `aud` — server/recipe-controlled, never settable from the template. |
-| `authPageTemplate` | Optional operator HTML served verbatim at the `/auth` route. |
+| Field              | Meaning                                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`               | The recipe's identifier; also the path segment in `/config/mint/<id>/…`. Constrained to `^[a-z0-9-]+$` at the router, before any lookup happens. |
+| `alg`              | `ES256`, `RS256`, or `EdDSA`. Anything else is `500 misconfigured` at mint time.                                                                 |
+| `signingKeySecret` | Not the key material — the **name** of a sealed row in `product_secrets`, opened per request.                                                    |
+| `kid`              | Optional; carried into the minted JWT's header when present.                                                                                     |
+| `claimsTemplate`   | A free-form JSON object merged into the minted claims.                                                                                           |
+| `ttlSeconds`       | The minted token's lifetime; the Worker stamps `exp = now + ttlSeconds`.                                                                         |
+| `audience`         | Optional, trusted `aud` — server/recipe-controlled, never settable from the template.                                                            |
+| `authPageTemplate` | Optional operator HTML served verbatim at the `/auth` route.                                                                                     |
 
 Authored via `.pkey/release`'s `edgeMint[]` array at manifest ingest, or directly in admin.
 `signingKeySecret` names a row the operator still has to configure in admin's product secrets —
@@ -42,7 +42,7 @@ A worked recipe, in the shape of `.pkey/release`'s `edgeMint[]` entry:
   "signingKeySecret": "MUSICKIT_PRIVATE_KEY",
   "kid": "ABC123DEFG",
   "claimsTemplate": { "iss": "TEAMID1234" },
-  "ttlSeconds": 3600
+  "ttlSeconds": 3600,
 }
 ```
 
@@ -78,10 +78,10 @@ non-reserved claim; it may never set `iat`, `exp`, `nbf`, or `aud`.
 
 ## The routes
 
-| Route | Auth | Behaviour |
-| --- | --- | --- |
-| `/<product>/config/mint/<id>/token` | Device token + the confused-deputy guard below. | Mints and returns `{ token, expiresAt }`. Both `GET` and `POST` work. |
-| `GET /<product>/config/mint/<id>/auth` | None. | Serves `authPageTemplate` verbatim as HTML, or `404` if the recipe has none. |
+| Route                                  | Auth                                            | Behaviour                                                                    |
+| -------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| `/<product>/config/mint/<id>/token`    | Device token + the confused-deputy guard below. | Mints and returns `{ token, expiresAt }`. Both `GET` and `POST` work.        |
+| `GET /<product>/config/mint/<id>/auth` | None.                                           | Serves `authPageTemplate` verbatim as HTML, or `404` if the recipe has none. |
 
 ## Minting: the confused-deputy guard
 
@@ -106,12 +106,12 @@ on this route's behalf before the license/config split moved the check here expl
 
 ### Responses at a glance
 
-| Status | When |
-| --- | --- |
-| `200` | Minted. `{ token, expiresAt }`. |
-| `401 unauthorized` | Missing/invalid device token, or (License enabled) an unusable license. |
-| `404 not_found` | No recipe with that `id` for this product. |
-| `429 rate_limited` | Over 60 requests/60s for this client IP. |
+| Status              | When                                                                             |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `200`               | Minted. `{ token, expiresAt }`.                                                  |
+| `401 unauthorized`  | Missing/invalid device token, or (License enabled) an unusable license.          |
+| `404 not_found`     | No recipe with that `id` for this product.                                       |
+| `429 rate_limited`  | Over 60 requests/60s for this client IP.                                         |
 | `500 misconfigured` | Unsupported `alg`, missing/unopenable signing key, or a corrupt claims template. |
 
 A success is `200`:

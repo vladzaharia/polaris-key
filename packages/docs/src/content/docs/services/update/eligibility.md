@@ -7,7 +7,7 @@ Two different questions sit behind the word "eligibility." **Access** — covere
 Release's [Artifacts](/docs/services/release/artifacts/) page — asks whether a caller may
 read a surface at all. **Eligibility**, this page, asks the narrower question the feed
 itself is actually built around: given that a caller may read it, which channel and which
-build is *this specific request* asking for, and is *this specific caller* allowed that
+build is _this specific request_ asking for, and is _this specific caller_ allowed that
 one. Under the three loosest access modes the second question barely matters — every
 caller sees the same feed. Under `entitled`, the two questions become the same question,
 because the channel this page's resolution logic produces is exactly the channel checked
@@ -25,10 +25,12 @@ Returns the newest build on a channel:
 { "version": "1.2.3", "tag": "v1.2.3", "url": "https://github.com/…" }
 ```
 
-An optional `channel` query parameter selects which channel to check (default: `stable`),
-resolved through the same [selector vocabulary](#channel-resolution) as every other
-version-shaped surface. Its cache policy follows the resolution, too: a pinned version is
-cached as effectively immutable, a moving channel for a couple of minutes. Unlike the
+It takes **no query parameters at all**. There is one answer per product — the newest
+non-prerelease release, the same thing `stable` and `latest` resolve to — whatever the asking
+machine, so an `?arch=` is accepted and discarded rather than honoured, and there is no
+`channel` selector on this route. A host that wants a different release line polls that
+channel's appcast. The response carries `max-age=120`, the cache policy every moving
+selector gets. Unlike the
 appcast, the version check is a **metadata** surface — a plain informational read, not a
 pointer to bytes — so it's governed separately; see
 [Appcast](/docs/services/update/appcast/) for why the feed itself is gated under the
@@ -40,36 +42,42 @@ The download route, the appcast, and the version check all resolve a channel or 
 selector through one shared vocabulary, so the three can never disagree about what "beta"
 currently means:
 
-| Selector | Resolves to |
-| --- | --- |
-| `stable`, `latest`, or omitted | the newest non-prerelease release |
-| a bare `X.Y.Z` (optionally with a prerelease suffix) | that exact tag, pinned |
-| `beta` | the latest tag from a configured GitHub Actions channel workflow's run on the product's beta branch, falling back to the newest prerelease when no workflow is configured |
-| `pr-<n>` | the same workflow-based resolution, scoped to that pull request's head commit — with no workflow configured, this resolves to nothing |
-| an operator-defined manual channel | the newest release whose tag matches an admin-authored, anchored regular expression |
+| Selector                                             | Resolves to                                                                                                                                                               |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stable`, `latest`, or omitted                       | the newest non-prerelease release                                                                                                                                         |
+| a bare `X.Y.Z` (optionally with a prerelease suffix) | that exact tag, pinned                                                                                                                                                    |
+| `beta`                                               | the latest tag from a configured GitHub Actions channel workflow's run on the product's beta branch, falling back to the newest prerelease when no workflow is configured |
+| `pr-<n>`                                             | the same workflow-based resolution, scoped to that pull request's head commit — with no workflow configured, this resolves to nothing                                     |
+| an operator-defined manual channel                   | the newest release whose tag matches an admin-authored, anchored regular expression                                                                                       |
 
 Anything that matches none of these is passed through **unrecognized** rather than quietly
 treated as `stable` — an unresolvable selector answers `404` visibly instead of silently
 serving the wrong build under a name nobody asked for.
+
+Manual channels are read and resolved everywhere in that table, but no configuration surface
+writes one yet — neither `.pkey/release` nor the admin API — so in practice the last row is
+reserved capacity rather than something a product can use today. The built-in names are
+matched first regardless, so a manual channel could never be called `stable`, `beta`,
+`latest` or `pr-<n>`.
 
 ## Access versus eligibility, restated
 
 A request can fail for either reason, and they produce different refusals. A caller who may
 not read the surface at all under the configured access mode never reaches channel or
 version evaluation — that's Release's [Artifacts](/docs/services/release/artifacts/) page.
-A caller who *may* read it, under `entitled`, can still be refused the *specific* channel
+A caller who _may_ read it, under `entitled`, can still be refused the _specific_ channel
 or version being asked for — that's what the rest of this page covers.
 
 ## The entitled access mode
 
 ### What it closes
 
-Before `entitled` existed, "may this caller download" only ever asked whether *some* usable
-license existed — never whether *that specific license* actually covered the channel or
+Before `entitled` existed, "may this caller download" only ever asked whether _some_ usable
+license existed — never whether _that specific license_ actually covered the channel or
 version being requested. A customer holding a stable-only license could fetch the beta
 appcast, and the beta DMG behind it, simply by knowing the URL; the license being real and
-usable was the whole check. `entitled` asks the narrower, correct question: does *this*
-license's own grant cover *this* channel, at *this* version.
+usable was the whole check. `entitled` asks the narrower, correct question: does _this_
+license's own grant cover _this_ channel, at _this_ version.
 
 ### Opt-in, per product and per surface
 
@@ -86,7 +94,7 @@ entitled decision is asked of Core through a single shared module, `core/entitle
 It performs exactly the composition the signed license document's own build gate performs:
 validate the device's bearer token, confirm the license behind it is usable, merge tier,
 license, and admin policy into the same entitlement map the license document itself would
-carry, then read the `channels` entitlement and the version window out of *that* merged
+carry, then read the `channels` entitlement and the version window out of _that_ merged
 result. A caller refused a beta license document is refused the beta feed for the same
 reason, off the same rows — there is exactly one entitlement computation in the platform,
 not two that could quietly drift apart.
@@ -133,13 +141,13 @@ for how it compares to the flat body `authenticated`/`licensed` still use.
 ## Client-side narrowing is not enforcement
 
 A well-built client may read the same `channels` entitlement off its own license and use it
-to decide which channels to *offer* a user — the Swift SDK does exactly this for Sparkle's
+to decide which channels to _offer_ a user — the Swift SDK does exactly this for Sparkle's
 channel filter, covered on [Swift client & Sparkle](/docs/services/update/sparkle/). That's
 a courtesy, not the enforcement point. If the two ever disagree — a stale cached
 entitlement, a client bug, a hand-edited config — the request that actually reaches the
 server is what wins, and the caller sees a `403` instead of a silent download. Nothing
 client-side is ever trusted to gate what a caller can install; only what a caller is
-*offered* in the first place.
+_offered_ in the first place.
 
 ## The console: Update settings
 

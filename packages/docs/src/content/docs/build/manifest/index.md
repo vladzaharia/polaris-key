@@ -14,11 +14,11 @@ could disagree with it.
 
 ## The three files
 
-| File | Base name | Required when | Carries |
-| --- | --- | --- | --- |
-| **schema** | `schema.{json,yaml,yml}` | Config is enabled | the config catalog: `{ schemaVersion, entries[] }` |
-| **product** | `product.{json,yaml,yml}` | always | metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks |
-| **release** | `release.{json,yaml,yml}` | Release is enabled | provider coordinates + channel/install/appcast/edge-mint settings |
+| File        | Base name                 | Required when                                          | Carries                                                                                           |
+| ----------- | ------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| **schema**  | `schema.{json,yaml,yml}`  | always (content validated only when Config is enabled) | the config catalog: `{ schemaVersion, entries[] }`                                                |
+| **product** | `product.{json,yaml,yml}` | always                                                 | metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks |
+| **release** | `release.{json,yaml,yml}` | Release is enabled                                     | provider coordinates + channel/install/appcast/edge-mint settings                                 |
 
 Each file's **base name** selects its role; the **extension** is a pure format preference,
 resolved independently per file in the fixed order `.json`, then `.yaml`, then `.yml` — so a
@@ -42,12 +42,12 @@ not truncated.
 current one is the five service slugs; the pre-suite names are translated to slugs at ingest,
 so only slugs are ever stored:
 
-| Declared (legacy) | Enables | Note |
-| --- | --- | --- |
-| `licensing` | `license` | rename |
-| `releases` | `release` + `update` | the legacy module meant "distributes software", which the suite splits into the truth store (`release`) and the feed over it (`update`) |
-| `oidc` | `identity` | rename |
-| `edgeMint` | `config` | edge-minting is a secret-**delivery** capability of Config, not a service of its own |
+| Declared (legacy) | Enables              | Note                                                                                                                                    |
+| ----------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `licensing`       | `license`            | rename                                                                                                                                  |
+| `releases`        | `release` + `update` | the legacy module meant "distributes software", which the suite splits into the truth store (`release`) and the feed over it (`update`) |
+| `oidc`            | `identity`           | rename                                                                                                                                  |
+| `edgeMint`        | `config`             | edge-minting is a secret-**delivery** capability of Config, not a service of its own                                                    |
 
 The current names — `license`, `config`, `release`, `update`, `identity` — need no translation
 and may appear in the same block alongside legacy ones.
@@ -61,6 +61,10 @@ genuinely unreachable). The full list, with JSON-pointer paths, is at
 [Manifest validation codes](/docs/reference/validation-codes/).
 
 ## Resync vs. admin ownership
+
+> The full ownership model — claim-on-PATCH, revert-hands-back, and the four projections —
+> is specified once on [The service model](/docs/start/service-model/); this is the manifest
+> author's view of it.
 
 The files are a **baseline**, not the live state. A resync (re-link, or a signed GitHub push
 webhook) updates product metadata, service enablement, fingerprint and auto-issue policy,

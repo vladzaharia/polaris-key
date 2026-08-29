@@ -84,3 +84,13 @@ section, gated to platform admins (sign in at `/manage`; see the [README](README
   four runners, the Swift mirror, and how to add a case.
 - [Releasing](https://key.plrs.im/docs/contribute/releasing/) — the Changesets flow, the
   Python/Swift tag releases, and how the worker deploys.
+
+## Pull-request checklist
+
+- [ ] Green gate passes, including the workerd smoke job (`test:workerd`), not just `pnpm test`.
+- [ ] Wire-affecting? Corpus regenerated (`pnpm gen:corpus -- --check` green) — never hand-edited.
+- [ ] New manifest validation rule? Add its entry to the schema-parity mutation table.
+- [ ] New route? Added to the OpenAPI spec and the route-coverage table.
+- [ ] Reference sources changed (migrations, routes, protocol constants)? Regenerate docs:
+      `pnpm --filter @polaris-key/docs gen`.
+- [ ] Naming matches the canonical glossary (`/docs/start/concepts/`).

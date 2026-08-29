@@ -37,7 +37,9 @@ import { releaseSourceOf } from "./products/util.js";
  * Releases view: the release TRUTH STORE plus the manifest-driven status around it.
  *
  * The store (`release_metadata`/`_artifacts`/`_channels`) is what Polaris Key believes the linked
- * repo publishes, and it is what every feed is rendered from — so it leads. Health and sync
+ * repo publishes. Live feeds (appcast, version, changelog, install, downloads) resolve straight
+ * against GitHub and never consult it; what reads it instead is the customer portal's releases
+ * view and this console's admin API — so it leads for those two surfaces. Health and sync
  * describe how that belief was formed and whether it is current; they follow it rather than
  * standing in for it, which is what this view did while the store had no reader.
  *

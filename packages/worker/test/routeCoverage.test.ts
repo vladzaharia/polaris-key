@@ -22,10 +22,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
   readFileSync(join(here, "..", "openapi", "polaris-key.v3.yaml"), "utf8"),
 ) as { paths: Record<string, Record<string, unknown>> };
-const routerSource = readFileSync(
-  join(here, "..", "src", "router.ts"),
-  "utf8",
-);
+const routerSource = readFileSync(join(here, "..", "src", "router.ts"), "utf8");
 
 /** Browser/admin surfaces documented narratively on the docs site, not in the wire spec. */
 const NARRATIVE_ONLY = new Set([
@@ -152,9 +149,11 @@ describe("router → spec", () => {
 describe("spec → router", () => {
   it("the spec documents no path that does not exist", () => {
     const expected = new Set(
-      [...Object.values(CORE_KIND_PATHS).flat(), ...SERVICE_PATHS, ...ALIAS_PATHS].map(
-        ([path]) => path,
-      ),
+      [
+        ...Object.values(CORE_KIND_PATHS).flat(),
+        ...SERVICE_PATHS,
+        ...ALIAS_PATHS,
+      ].map(([path]) => path),
     );
     const phantom = Object.keys(spec.paths).filter(
       (path) => !expected.has(path),

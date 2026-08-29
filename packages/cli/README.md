@@ -4,7 +4,7 @@
 scaffold it, validate it, sanity-check it against a live deployment, generate copy-paste trust
 and SDK snippets, and mint offline activation bundles. It is not a client library: an end
 user's app activates a license through a language SDK (`@polaris-key/node`, `polaris-key` on
-PyPI, …), not through this tool. `pkey` is what the *product's* repo runs in CI and what an
+PyPI, …), not through this tool. `pkey` is what the _product's_ repo runs in CI and what an
 operator runs from a terminal.
 
 ## Install
@@ -71,8 +71,11 @@ keeps `.pkey/` somewhere other than one level under `node_modules`.
 
 Reads `.pkey/` from the current directory (`product.{json,yaml,yml}` required; `schema` and
 `release` read if present) and runs it through `@polaris-key/manifest`'s
-`validateManifestDocuments` — the same validator the Worker runs on repo-link and resync, so a
-green `pkey validate` and a green webhook sync are the same check. Prints the resolved
+`validateManifestDocuments` — the same validator the Worker runs on repo-link and resync. One
+gap: repo-link and resync also require a `.pkey/schema` file to exist on disk even when Config
+is off (an empty catalog is enough), while `pkey validate` only requires the file once `config`
+is among the enabled modules — so a Config-less manifest can validate clean locally and still be
+refused on push. Prints the resolved
 service-slug vocabulary regardless of which vocabulary the manifest wrote in, any required
 secret names, then every warning and error with its file and JSON-pointer path:
 
@@ -92,7 +95,7 @@ Runs `validate` first, always. Pass **both** `--base-url` and `--product` to add
 fetch `GET <base-url>/<product>/.well-known/polaris.json` and report whether discovery
 answers and which signing keys it exposes — a fast way to confirm a repo-linked product is
 actually live before wiring an SDK to it. Omit either flag and the remote check is skipped
-with a note, and `doctor`'s exit code is `validate`'s; a failed *remote* check (a non-2xx
+with a note, and `doctor`'s exit code is `validate`'s; a failed _remote_ check (a non-2xx
 response) overrides that and exits `1` on its own, since "the product isn't answering" is a
 harder failure than any local warning.
 
@@ -139,9 +142,10 @@ PKEY_ADMIN_COOKIE='__Host-pkey_admin=<console session cookie>' \
 ```
 
 `--grace-days` is capped at 365 (`MAX_GRACE_DAYS`), enforced both here and again by the
-verifier; `--no-config` omits the config document even when Config is enabled; `--license`
-selects which license the bundle is minted against when the product has more than one
-candidate; `--base-url` defaults to `https://key.plrs.im`; `--out` defaults to
+verifier; `--no-config` omits the config document even when Config is enabled; `--license` is
+required whenever the product's License service is enabled — the server has no authenticated
+device to infer a licence from, so it never guesses even when there is only one candidate;
+`--base-url` defaults to `https://key.plrs.im`; `--out` defaults to
 `<product>-<first 8 of device id>.pkeybundle`, resolved against the current directory.
 
 #### `PKEY_ADMIN_COOKIE`
@@ -166,7 +170,7 @@ stale relative to the CSRF token `/manage/api/me` handed back for it.
 
 ### The valueless-flag gotcha
 
-`--no-config` and `--force` take no value. The argument parser hands a *valueless* flag the
+`--no-config` and `--force` take no value. The argument parser hands a _valueless_ flag the
 next bare word as its value if that word doesn't itself start with `--`, so placing one of
 these immediately before a positional argument would swallow it. None of today's commands
 takes a positional after these flags, so the trap cannot spring in practice — but the safe

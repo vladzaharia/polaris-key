@@ -23,7 +23,10 @@ function* htmlFiles(dir) {
 
 /** dist file for a /docs/... path: directory routes -> index.html, files -> themselves. */
 function distFileFor(path) {
-  const rel = path.replace(/^\/docs\//, "").split("/").join(sep);
+  const rel = path
+    .replace(/^\/docs\//, "")
+    .split("/")
+    .join(sep);
   if (path.endsWith("/")) return join(dist, rel, "index.html");
   const last = path.slice(path.lastIndexOf("/") + 1);
   if (!last.includes(".")) return join(dist, rel, "index.html");
@@ -54,7 +57,9 @@ for (const file of htmlFiles(dist)) {
     const [path, fragment] = href.split("#");
     const target = distFileFor(path);
     if (!existsSync(target)) {
-      failures.push(`${page}: broken link ${href} (no ${relative(dist, target)})`);
+      failures.push(
+        `${page}: broken link ${href} (no ${relative(dist, target)})`,
+      );
       continue;
     }
     if (fragment && target.endsWith(".html") && !idsOf(target).has(fragment)) {
@@ -64,7 +69,9 @@ for (const file of htmlFiles(dist)) {
 }
 
 if (failures.length) {
-  console.error(`check-links: ${failures.length} broken of ${checked} internal links:`);
+  console.error(
+    `check-links: ${failures.length} broken of ${checked} internal links:`,
+  );
   for (const failure of failures) console.error(`  ${failure}`);
   process.exit(1);
 }

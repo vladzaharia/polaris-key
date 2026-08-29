@@ -5,8 +5,9 @@ sidebar:
   order: 2
 ---
 
-Six nouns carry the whole service. They are the vocabulary of `docs/CONCEPTS.md`, which is the
-source of truth when code and glossary disagree.
+Six nouns carry the whole service. They are the vocabulary of [Concepts &
+terminology](/docs/start/concepts/), which is the source of truth when code and glossary
+disagree.
 
 ## The nouns
 
@@ -52,14 +53,14 @@ pool.
 
 A named plan. A tier row is a profile reference plus policy:
 
-| Column | Meaning |
-| --- | --- |
-| `profile_id` | The managed-payload baseline every license on the tier inherits. |
-| `policy_expiry_days` | Time-boxes the tier. Re-derived onto a license whenever the tier is assigned. |
-| `policy_device_limit` | Seats per license. `NULL` inherits the product default. |
-| `policy_fingerprint` | Per-tier fingerprint enforcement mode, overriding the product default. |
-| `channels_json` | Release channels this tier's licenses are entitled to. |
-| `min_version` / `max_version` | The tier's half of the version window. |
+| Column                        | Meaning                                                                       |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| `profile_id`                  | The managed-payload baseline every license on the tier inherits.              |
+| `policy_expiry_days`          | Time-boxes the tier. Re-derived onto a license whenever the tier is assigned. |
+| `policy_device_limit`         | Seats per license. `NULL` inherits the product default.                       |
+| `policy_fingerprint`          | Per-tier fingerprint enforcement mode, overriding the product default.        |
+| `channels_json`               | Release channels this tier's licenses are entitled to.                        |
+| `min_version` / `max_version` | The tier's half of the version window.                                        |
 
 `policy_device_limit` must be a **positive integer**. A `0` or a `-1` used to mean "unlimited"
 because the seat check was gated on `limit > 0`, which is the core commercial control removed by
@@ -102,14 +103,14 @@ The merge is Core's (`core/payload.ts`) because both signed documents are assemb
 License then takes the `entitlements` slice and stamps admin/tier policy on top as **enforced**
 entries:
 
-| Injected entitlement | Source |
-| --- | --- |
-| `license.tier` | `licenses.tier_id`, when set |
-| `license.tierLabel` | `tiers.label`, when the tier has one |
-| `channels` | The union of the tier's and the license's `channels_json` |
-| `deviceLimit` | `tiers.policy_device_limit`, when numeric |
-| `app.minVersion` | The tighter (higher) of the tier's and license's `min_version` |
-| `app.maxVersion` | The tighter (lower) of the tier's and license's `max_version` |
+| Injected entitlement | Source                                                         |
+| -------------------- | -------------------------------------------------------------- |
+| `license.tier`       | `licenses.tier_id`, when set                                   |
+| `license.tierLabel`  | `tiers.label`, when the tier has one                           |
+| `channels`           | The union of the tier's and the license's `channels_json`      |
+| `deviceLimit`        | `tiers.policy_device_limit`, when numeric                      |
+| `app.minVersion`     | The tighter (higher) of the tier's and license's `min_version` |
+| `app.maxVersion`     | The tighter (lower) of the tier's and license's `max_version`  |
 
 Every injected entry carries `updatedAt = licenses.modified_at`. That is what makes
 [re-licensing](/docs/services/license/relicensing/) visible without changing the document's
@@ -124,11 +125,11 @@ license document can be handed to a build gate without decrypting anything.
 `licenses.origin` records how a license came into existence. It is not decorative — the
 enrollment path reads it to decide whether a machine's free license is still claimable.
 
-| Origin | Created by | Identity | Key minted |
-| --- | --- | --- | --- |
-| `admin` | An operator, through the console or the admin API | Optional `name`/`email`, no `sub` | Yes — the first key, returned once |
-| `oidc` | Product sign-in, via Identity | `sub` from the IdP | No |
-| `enroll` | Keyless auto-issue at `/license/enroll` | None — `sub`, `name` and `email` are all null | No |
+| Origin   | Created by                                        | Identity                                      | Key minted                         |
+| -------- | ------------------------------------------------- | --------------------------------------------- | ---------------------------------- |
+| `admin`  | An operator, through the console or the admin API | Optional `name`/`email`, no `sub`             | Yes — the first key, returned once |
+| `oidc`   | Product sign-in, via Identity                     | `sub` from the IdP                            | No                                 |
+| `enroll` | Keyless auto-issue at `/license/enroll`           | None — `sub`, `name` and `email` are all null | No                                 |
 
 Existing rows predating the column are `admin` by definition.
 
@@ -166,7 +167,7 @@ A few consequences worth stating plainly:
   usability check, rather than riding a warm cache entry.
 - **Revocation is not instant on the client.** A client already holding a verified document runs
   until its `expiresAt`, then on `graceUntil`. Wire contract v3 §4.3 is explicit that for an
-  offline install the grace bound *is* the revocation lever.
+  offline install the grace bound _is_ the revocation lever.
 
 Devices have their own two-value status — `authorized` and `deauthorized`. Deauthorizing purges
 the device's fingerprint and facts rows and frees its seat.
@@ -232,7 +233,7 @@ can no longer reach.
 Two scopes matter:
 
 - It is scoped to the **same license**, because one machine may legitimately hold a product's
-  free enrolled license *and* a purchased one, and those are different seat pools.
+  free enrolled license _and_ a purchased one, and those are different seat pools.
 - It is gated on fingerprint enforcement being on. A product whose customers genuinely run
   several instances on one host — containers sharing a machine UUID — turns enforcement off for
   the product or the tier and gets independent device ids back.

@@ -451,10 +451,10 @@ export function ServicesCard({ slug }: { slug: string }): React.ReactElement {
         description={
           <>
             This changes NOTHING live. It hands ownership of this product's
-            service set back to its repo manifest: the services stay exactly
-            as they are now, and the manifest's values re-apply on the next
-            resync (a push, or Resync from repo). Nothing is re-fetched from
-            GitHub right now.{" "}
+            service set back to its repo manifest: the services stay exactly as
+            they are now, and the manifest's values re-apply on the next resync
+            (a push, or Resync from repo). Nothing is re-fetched from GitHub
+            right now.{" "}
             <a
               className="underline underline-offset-2 hover:text-foreground"
               href={docsUrl("servicesRevert")}

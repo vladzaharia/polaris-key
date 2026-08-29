@@ -12,13 +12,13 @@ SDKs, and a CLI built from the same core as a fifth. Whichever one your product 
 it verifies the identical signed documents, exposes the identical `core` +
 per-service-sub-client shape, and fails closed the same way when a capability is not on.
 
-| Surface | Package | Page |
-| --- | --- | --- |
-| Node | `@polaris-key/node` | [Node](/docs/build/sdks/node/) |
-| React | `@polaris-key/react` | [React](/docs/build/sdks/react/) |
-| Python | `polaris-key` (PyPI) | [Python](/docs/build/sdks/python/) |
-| Swift | `PolarisKey` (SwiftPM) | [Swift](/docs/build/sdks/swift/) |
-| CLI | `@polaris-key/node/cli`, `polaris-key`'s console script | shipped inside the Node and Python pages above |
+| Surface | Package                                                 | Page                                           |
+| ------- | ------------------------------------------------------- | ---------------------------------------------- |
+| Node    | `@polaris-key/node`                                     | [Node](/docs/build/sdks/node/)                 |
+| React   | `@polaris-key/react`                                    | [React](/docs/build/sdks/react/)               |
+| Python  | `polaris-key` (PyPI)                                    | [Python](/docs/build/sdks/python/)             |
+| Swift   | `PolarisKey` (SwiftPM)                                  | [Swift](/docs/build/sdks/swift/)               |
+| CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script | shipped inside the Node and Python pages above |
 
 Node and React additionally share one isomorphic implementation of the verification, gate,
 trust and config-resolution logic, `@polaris-key/client-core`, rather than each reimplementing
@@ -31,18 +31,18 @@ conformance corpus. See `packages/client-core/README.md` for why that split exis
 Every SDK composes one always-on **Core** (device id, credential, trust, the offline cache,
 `sync()`) with one **sub-client per enabled service**, addressed as `client.<service>.<verb>`:
 
-| Sub-client | Owns |
-| --- | --- |
-| `client.license` | activation, enrollment, deactivation, status, entitlements, profile |
-| `client.config` | the signed config document + layered resolution (`getConfig`, `getSecret`) |
-| `client.devices` | registration, the roster, fingerprint/facts |
-| `client.release` | changelog, install script, artifact URLs |
-| `client.update` | version check, the Sparkle appcast URL |
+| Sub-client       | Owns                                                                       |
+| ---------------- | -------------------------------------------------------------------------- |
+| `client.license` | activation, enrollment, deactivation, status, entitlements, profile        |
+| `client.config`  | the signed config document + layered resolution (`getConfig`, `getSecret`) |
+| `client.devices` | registration, the roster, fingerprint/facts                                |
+| `client.release` | changelog, install script, artifact URLs                                   |
+| `client.update`  | version check, the Sparkle appcast URL                                     |
 
 A handful of calls — `status`/`isLicensed`, `getConfig`, `sync`, `importBundle` — are also kept
 on the top-level client, for the code a host writes before it knows which service it's talking
 to. Verbs and field names follow each language's own convention (`activateWithKey` in
-TypeScript, `activate_with_key` in Python, `activate(key:)` in Swift), but the *shape* —
+TypeScript, `activate_with_key` in Python, `activate(key:)` in Swift), but the _shape_ —
 Core plus one sub-client per service, the same five services in the same order — never
 changes, which is what makes the SDK READMEs on the following pages readable as one document
 in four dialects rather than four unrelated APIs.
@@ -75,10 +75,10 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 A key's env var is the prefix (default `PKEY_CONFIG_`) plus the key with every `.` replaced by
 `__`:
 
-| Config key | Env var |
-| --- | --- |
+| Config key        | Env var                        |
+| ----------------- | ------------------------------ |
 | `run.concurrency` | `PKEY_CONFIG_run__concurrency` |
-| `quality.floor` | `PKEY_CONFIG_quality__floor` |
+| `quality.floor`   | `PKEY_CONFIG_quality__floor`   |
 
 The value is JSON-parsed when it looks like JSON (`4` → number, `true` → boolean, `[…]`/`{…}` →
 array/object, anything else → string); a value that looks like JSON but fails to parse falls

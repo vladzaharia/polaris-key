@@ -1,4 +1,6 @@
 ---
+sidebar:
+  order: 2
 title: "Authoring the manifest"
 description: "The .pkey/ files and the ConfigEntry shape — schema, product, and release — using djdl as the worked example."
 ---
@@ -54,9 +56,16 @@ validates against, a `default`, and — on `config`/`secret` keys — a `managem
 
 ```jsonc
 // config — overridable by default
-{ "key": "run.concurrency", "kind": "config", "category": "Run",
-  "label": "Parallel downloads", "schema": { "type": "integer", "minimum": 1, "maximum": 8 },
-  "default": 3, "managementDefault": "default", "ui": { "widget": "stepper" } }
+{
+  "key": "run.concurrency",
+  "kind": "config",
+  "category": "Run",
+  "label": "Parallel downloads",
+  "schema": { "type": "integer", "minimum": 1, "maximum": 8 },
+  "default": 3,
+  "managementDefault": "default",
+  "ui": { "widget": "stepper" },
+}
 ```
 
 On the **client**, a value resolves through one fixed precedence, honoring whichever

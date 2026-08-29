@@ -24,28 +24,28 @@ out of scope for now. A product that does not enable Identity has none of this: 
 
 ## In this section
 
-| Page | What it covers |
-| --- | --- |
-| [Product OIDC](/docs/services/identity/oidc/) | The platform-vs-custom provider choice, the PKCE browser flow, `groupRoleMap`, `activateFromIdentity`, the `oidcDefault` auto-issue fallback, provisioning hooks, and the issuer allowlist. |
-| [The device-code flow](/docs/services/identity/device-flow/) | The device-code start, verify, and poll routes — sign-in for a client that cannot receive a browser redirect. |
-| [Browser sessions](/docs/services/identity/sessions/) | The session cookie, the fused session document and its build gate, key-to-session exchange, logout, and how `requires-identity` device registration is authorized without a license. |
-| [Customer portal](/docs/services/identity/portal/) | The root-level, cross-tenant account surface: sign-in, account erasure, license claiming, device management, and gated release downloads. |
+| Page                                                         | What it covers                                                                                                                                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Product OIDC](/docs/services/identity/oidc/)                | The platform-vs-custom provider choice, the PKCE browser flow, `groupRoleMap`, `activateFromIdentity`, the `oidcDefault` auto-issue fallback, provisioning hooks, and the issuer allowlist. |
+| [The device-code flow](/docs/services/identity/device-flow/) | The device-code start, verify, and poll routes — sign-in for a client that cannot receive a browser redirect.                                                                               |
+| [Browser sessions](/docs/services/identity/sessions/)        | The session cookie, the fused session document and its build gate, key-to-session exchange, logout, and how `requires-identity` device registration is authorized without a license.        |
+| [Customer portal](/docs/services/identity/portal/)           | The root-level, cross-tenant account surface: sign-in, account erasure, license claiming, device management, and gated release downloads.                                                   |
 
 ## The public surface
 
 Nine product-scoped routes, all under `/<product>/identity`:
 
-| Route | What it is |
-| --- | --- |
-| `GET /<p>/identity/session` | The browser session's fused document |
-| `POST /<p>/identity/session/license` | Mint a browser session from a license key |
-| `GET /<p>/identity/auth/start` | Begin browser OIDC (PKCE) — 302 to the IdP |
-| `GET /<p>/identity/auth/callback` | The OIDC redirect URI |
-| `GET /<p>/identity/auth/poll` | Poll a browser sign-in flow |
-| `POST /<p>/identity/auth/logout` | End the browser session |
-| `POST /<p>/identity/auth/device/start` | Begin the device-code flow |
+| Route                                         | What it is                                                                  |
+| --------------------------------------------- | --------------------------------------------------------------------------- |
+| `GET /<p>/identity/session`                   | The browser session's fused document                                        |
+| `POST /<p>/identity/session/license`          | Mint a browser session from a license key                                   |
+| `GET /<p>/identity/auth/start`                | Begin browser OIDC (PKCE) — 302 to the IdP                                  |
+| `GET /<p>/identity/auth/callback`             | The OIDC redirect URI                                                       |
+| `GET /<p>/identity/auth/poll`                 | Poll a browser sign-in flow                                                 |
+| `POST /<p>/identity/auth/logout`              | End the browser session                                                     |
+| `POST /<p>/identity/auth/device/start`        | Begin the device-code flow                                                  |
 | `GET`/`POST /<p>/identity/auth/device/verify` | The device-authorization page — side-effect-free `GET`, CSRF-checked `POST` |
-| `POST /<p>/identity/auth/device/poll` | Poll the device-code flow |
+| `POST /<p>/identity/auth/device/poll`         | Poll the device-code flow                                                   |
 
 The full generated table — every service, every method — is at
 [Public route table](/docs/reference/routes/).
@@ -71,7 +71,7 @@ operator re-registers, not a shipped binary.
 ## Turning it on
 
 Identity follows the same single-authority enablement every service does: `products.services_json`
-carries an `identity` key with a boolean `enabled`, and Core checks that flag *before* consulting
+carries an `identity` key with a boolean `enabled`, and Core checks that flag _before_ consulting
 this service's descriptor — a disabled product's `/identity/*` routes 404 exactly like an
 unregistered slug or a bad path, and no handler ever runs to tell the two apart.
 
@@ -101,7 +101,7 @@ mint-or-locate-a-license step (`activateFromIdentity`, covered in
   license sitting on the flow record for a poller to redeem into a raw device **token** instead.
   See [The device-code flow](/docs/services/identity/device-flow/).
 
-Both paths authorize the *same* device principal Core defines; they just hand the result back in
+Both paths authorize the _same_ device principal Core defines; they just hand the result back in
 the shape their caller can actually use — a page can hold a cookie, a headless client cannot.
 Neither path is available to a product that skips Identity entirely: a `requires-license`
 product still mints tokens exclusively through activation and enrollment, and an `open` product
@@ -128,7 +128,7 @@ only, written by `.pkey/product`'s `oidc:` and `provisioning:` blocks through re
 resync. Adding a live editor is one more branch in `services/identity/admin.ts`, not a redesign.
 
 :::note[Terminology]
-This section follows `docs/CONCEPTS.md`, which wins over code when the two disagree. In
+This section follows [Concepts & terminology](/docs/start/concepts/), which wins over code when the two disagree. In
 particular: **license** (never "account" on its own), **claim** and **migrate** for the two ways
 a signed-in identity meets an auto-issued license, and **customer portal** (never "dashboard" or
 "account portal") for the cross-tenant surface in

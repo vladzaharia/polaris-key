@@ -1228,7 +1228,10 @@ export function validateManifestDocuments(
     );
   }
   const autoIssue = asRecord(productRoot.autoIssue);
-  if (autoIssue.enabled !== undefined && typeof autoIssue.enabled !== "boolean") {
+  if (
+    autoIssue.enabled !== undefined &&
+    typeof autoIssue.enabled !== "boolean"
+  ) {
     add(
       errors,
       "product",
@@ -1249,7 +1252,13 @@ export function validateManifestDocuments(
       `autoIssue.mode must be one of ${AUTO_ISSUE_MODE_VALUES.join(", ")}.`,
     );
   }
-  if (autoIssue.enabled === true && typeof autoIssue.tierId !== "string") {
+  // `stringAt`-style non-empty check, matching oidc.clientId's idiom: `typeof !== "string"`
+  // alone lets `tierId: ""` sail through every later gate (`constrained` treats "" as unset;
+  // ID_RE requires ≥1 char) and pass validation while the policy is silently inert.
+  if (
+    autoIssue.enabled === true &&
+    (typeof autoIssue.tierId !== "string" || autoIssue.tierId.length === 0)
+  ) {
     add(
       errors,
       "product",

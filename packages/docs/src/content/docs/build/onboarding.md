@@ -21,7 +21,7 @@ users sign in again or activate with newly issued keys.
 
 ## 1. Stand up Polaris Key (prod)
 
-See [Operating: the KEK keyring](/docs/admin/kek/). In short: create the D1/KV resources with
+See [Deploying to production](/docs/admin/deploy/). In short: create the D1/KV resources with
 wrangler, set platform secrets, apply migrations, `wrangler deploy --env prod`, and confirm
 `https://key.plrs.im` answers.
 
@@ -213,12 +213,10 @@ Four paths predate the namespacing and are compiled into artefacts nobody can re
 implemented by rewriting in the core router, so an alias and its canonical spelling resolve to
 the same route with the same segments and cannot answer differently:
 
-| Alias                        | Canonical                           | Service |
-| ---------------------------- | ----------------------------------- | ------- |
-| `/<p>/appcast.xml`           | `/<p>/update/appcast.xml`           | update  |
-| `/<p>/<channel>/appcast.xml` | `/<p>/update/<channel>/appcast.xml` | update  |
-| `/<p>/version`               | `/<p>/update/version`               | update  |
-| `/<p>/install.sh`            | `/<p>/release/install.sh`           | release |
+The four pre-namespace spellings (`appcast.xml`, `<channel>/appcast.xml`, `install.sh`,
+`version`) are permanent aliases of their canonical `update`/`release` routes — the full
+table and the reasons they are kept forever live on
+[the appcast page](/docs/services/update/appcast/).
 
 `/<p>/changelog` is deliberately **not** on that list — it was never baked into a binary or a
 published command, so it moved to `/<p>/release/changelog` outright. Both appcast spellings take
@@ -253,14 +251,14 @@ updaterController.updater.delegate = delegate // RETAIN it: `delegate` is weak
 
 It carries the feed URL (from discovery, `?arch=` applied), `httpHeaders` — Sparkle makes its own
 HTTP requests, so the device token has to travel on them — and `allowedChannels` from the
-licence's `channels` entitlement, so a stable-only customer is not offered a beta the server will
+license's `channels` entitlement, so a stable-only customer is not offered a beta the server will
 then refuse. That last is a UX narrowing, not an enforcement point. It does **not** verify updates:
 `SUPublicEDKey` in the code-signed `Info.plist` is the terminal anchor, and `PolarisKeyUpdate`
 only asserts it is present, loudly, because an app shipping Sparkle without it shows no symptom
 until it installs an unsigned payload.
 
 The `entitled` feed access mode makes the server enforce the same grant. `licensed` asks whether
-there is a usable licence; `entitled` also asks whether _this_ licence holds _this_ channel at
+there is a usable license; `entitled` also asks whether _this_ license holds _this_ channel at
 _this_ version, closing the gap where a stable-only key could fetch `/djdl/beta/appcast.xml` and
 the build behind it. It is **operator-set, not manifest-declarable** — `.pkey/release`'s
 `access` accepts only `public`, `authenticated` and `licensed`:
@@ -298,7 +296,7 @@ PKEY_ADMIN_COOKIE='__Host-pkey_admin=<console session cookie>' \
 # -> djdl-<first 8 of device id>.pkeybundle
 ```
 
-The mint (`POST /manage/api/products/djdl/bundles`) signs the licence document, the config
+The mint (`POST /manage/api/products/djdl/bundles`) signs the license document, the config
 document if Config is enabled, and the current trust manifest into one envelope. `--grace-days`
 is capped at 365 and enforced at both mint and verify; the bundle **file** has its own, much
 shorter 30-day import window, so a stolen file stops being useful long before the install it
@@ -383,7 +381,7 @@ client.close(); // stops the timer
 
 `onChange` fires only when a document actually changed — it keys off the per-document ETags,
 which exclude the per-request timestamps, so a pure re-sign does not wake the app. The current
-plan is readable as the `license.tier` / `license.tierLabel` entitlements, which ride the licence
+tier is readable as the `license.tier` / `license.tierLabel` entitlements, which ride the license
 document alongside `channels`, `app.minVersion`/`maxVersion` and `deviceLimit`.
 
 **Downgrades grandfather.** Moving a license to a tier with fewer seats never evicts a device:

@@ -34,7 +34,7 @@ success panel lists **remaining secrets**: names the manifest declared but that 
 yet (an OIDC client secret, an edge-mint signing key). Set each one from
 [Secrets & keys](/docs/admin/secrets-and-keys/) — they're write-only and never echoed back.
 This is also the path DJDL uses in production; see [Operating: the KEK
-keyring](/docs/admin/kek/) → *Product operations* for its specific checklist.
+keyring](/docs/admin/kek/) → _Product operations_ for its specific checklist.
 
 ### Reserved slugs
 
@@ -51,12 +51,12 @@ list explicitly.
 
 ### The `adminGroup` field is metadata, not a grant
 
-Both dialogs, and Settings, carry an "Admin group" field labeled *metadata only*. It's recorded
+Both dialogs, and Settings, carry an "Admin group" field labeled _metadata only_. It's recorded
 on the product row and shown back to you, and it authorizes **nothing**: there is no
 per-product admin tier. The console authorizes every request on the platform-wide
-`PLATFORM_ADMIN_GROUP` alone (see [Operating: the KEK keyring](/docs/admin/kek/) → *Secrets*).
+`PLATFORM_ADMIN_GROUP` alone (see [Operating: the KEK keyring](/docs/admin/kek/) → _Secrets_).
 The field exists because a product's own OIDC configuration (`.pkey/product`'s `oidc.groupRoleMap`)
-often names a group with a similar-looking purpose for a *different* system — that product's own
+often names a group with a similar-looking purpose for a _different_ system — that product's own
 customer-facing sign-in — and the two are easy to conflate. If you're setting this to grant
 someone console access, it won't: add them to the platform OIDC provider's admin group instead.
 
@@ -64,13 +64,13 @@ someone console access, it won't: add them to the platform OIDC provider's admin
 
 From the registry row menu or the product's own Settings page:
 
-| Action | What it does |
-| --- | --- |
-| **Edit** | Updates name and per-license defaults. The compatibility window isn't here — it moved to [Update settings](/docs/admin/console-tour/#update). |
-| **Set secret** | Shortcut into [Secrets & keys](/docs/admin/secrets-and-keys/). |
-| **Resync from GitHub** | GitHub-linked products only (greyed out otherwise). Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below. |
-| **Prepare signing key** | Stages a new Ed25519 keypair. See [Secrets & keys](/docs/admin/secrets-and-keys/#rotating-the-signing-key). |
-| **Delete** (Danger zone on Settings) | Tombstones the product. See below. |
+| Action                               | What it does                                                                                                                                  |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Edit**                             | Updates name and per-license defaults. The compatibility window isn't here — it moved to [Update settings](/docs/admin/console-tour/#update). |
+| **Set secret**                       | Shortcut into [Secrets & keys](/docs/admin/secrets-and-keys/).                                                                                |
+| **Resync from GitHub**               | GitHub-linked products only (greyed out otherwise). Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below.         |
+| **Prepare signing key**              | Stages a new Ed25519 keypair. See [Secrets & keys](/docs/admin/secrets-and-keys/#rotating-the-signing-key).                                   |
+| **Delete** (Danger zone on Settings) | Tombstones the product. See below.                                                                                                            |
 
 ### What resync actually re-applies
 
@@ -115,14 +115,14 @@ The Overview tab's "needs attention" strip and guided checklist are both project
 server-computed setup state, recomputed on every product read rather than cached. It checks six
 things:
 
-| Module | Healthy when |
-| --- | --- |
-| **Signing key** | An active signing key exists. |
-| **OIDC** | Platform provider: `PLATFORM_OIDC_ISSUER`/`PLATFORM_OIDC_CLIENT_ID` are configured worker-wide. Custom provider: the product's own issuer, client id and client-secret product-secret are all set. |
-| **Release** | (Linked products only) A GitHub repo, an installation id, and a binary name are all present. |
-| **Customer portal** | Always "configured" — this module reports its enabled/disabled state, not a completeness check. |
-| **Manifest sync** | The most recent resync attempt didn't error. |
-| **Edge mint** | Every edge-mint recipe's declared signing-key secret has a value. |
+| Module              | Healthy when                                                                                                                                                                                       |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Signing key**     | An active signing key exists.                                                                                                                                                                      |
+| **OIDC**            | Platform provider: `PLATFORM_OIDC_ISSUER`/`PLATFORM_OIDC_CLIENT_ID` are configured worker-wide. Custom provider: the product's own issuer, client id and client-secret product-secret are all set. |
+| **Release**         | (Linked products only) A GitHub repo, an installation id, and a binary name are all present.                                                                                                       |
+| **Customer portal** | Always "configured" — this module reports its enabled/disabled state, not a completeness check.                                                                                                    |
+| **Manifest sync**   | The most recent resync attempt didn't error.                                                                                                                                                       |
+| **Edge mint**       | Every edge-mint recipe's declared signing-key secret has a value.                                                                                                                                  |
 
 Anything incomplete surfaces two ways: as a plain-language entry in the "needs attention" strip,
 and as an actionable row in the checklist (a direct link to Secrets, Settings, or Releases,

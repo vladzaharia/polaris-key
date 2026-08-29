@@ -51,8 +51,8 @@ The response, and the shape a `PATCH` body partially updates:
 
 The Services card collects every toggle and the registration select into one form behind a
 single **Save services** button, rather than writing on each flip. That's a direct consequence
-of how the server validates: it checks the **set**, not each flag in isolation (see *Coherence
-errors* below). Turning Release off while Update is also on is a coherent two-step change, and a
+of how the server validates: it checks the **set**, not each flag in isolation (see _Coherence
+errors_ below). Turning Release off while Update is also on is a coherent two-step change, and a
 card that PATCHed on every flip would reject the first step and never let you reach the second.
 
 ## Manifest vs admin ownership
@@ -65,7 +65,7 @@ policies do:
   silently undone by the next manifest sync.
 - **`Revert to manifest`** flips `services_source` back to `manifest` and changes **nothing
   else**. It does not re-fetch the repo, does not re-derive a set, and does not touch the live
-  enablement — the values stay exactly as you left them until the *next* resync re-applies the
+  enablement — the values stay exactly as you left them until the _next_ resync re-applies the
   manifest through the normal sync path, which is now allowed to write again. The confirm dialog
   says this in as many words, because "revert" reads like an instant undo and this one is a
   hand-back, not a rollback.
@@ -81,11 +81,11 @@ jointly impossible returns `422` with a stable code per problem in `error.errors
 beside the control it names, not as a toast, and the same codes appear if a manifest push would
 produce the same incoherent state:
 
-| Code | Meaning | Rendered against |
-| --- | --- | --- |
-| `update_requires_release` | Update is a feed rendered over Release's truth store; Update can't be on with Release off. | The Update toggle |
-| `registration_requires_identity` | Registration is declared `requires-identity`, but Identity is off — there is no login to stand behind it, so no device could ever register. | Identity toggle + the registration select |
-| `config_without_activation` | Config is on, License is off, and registration is declared `requires-license` — that closes the only mint path such a product has, so its devices could never obtain a token at all. | Config toggle + the registration select |
+| Code                             | Meaning                                                                                                                                                                              | Rendered against                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| `update_requires_release`        | Update is a feed rendered over Release's truth store; Update can't be on with Release off.                                                                                           | The Update toggle                         |
+| `registration_requires_identity` | Registration is declared `requires-identity`, but Identity is off — there is no login to stand behind it, so no device could ever register.                                          | Identity toggle + the registration select |
+| `config_without_activation`      | Config is on, License is off, and registration is declared `requires-license` — that closes the only mint path such a product has, so its devices could never obtain a token at all. | Config toggle + the registration select   |
 
 Leaving `registration` **derived** rather than explicitly declared sidesteps the second and third
 of these by construction: a derived value is read off the very enablement set being validated,

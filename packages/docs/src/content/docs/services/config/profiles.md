@@ -19,7 +19,7 @@ the [license document](/docs/services/license/document/). They are unrelated. Do
 word a third time.
 :::
 
-A **profile is not a tier**. A tier is a named plan — a profile reference *plus* policy (expiry,
+A **profile is not a tier**. A tier is a named plan — a profile reference _plus_ policy (expiry,
 device limit, channels, version window); a profile alone grants none of that. Attaching the same
 profile to two tiers gives both tiers identical settings while leaving their policies free to
 differ, which is the point of keeping the two separate.
@@ -32,28 +32,36 @@ store:
 ```json
 {
   "config": {
-    "run.concurrency": { "state": "enforced", "value": 6, "updatedAt": 1756252800 }
+    "run.concurrency": {
+      "state": "enforced",
+      "value": 6,
+      "updatedAt": 1756252800
+    }
   },
   "secrets": {},
   "entitlements": {
-    "polarisVpn": { "state": "enforced", "value": true, "updatedAt": 1756252800 }
+    "polarisVpn": {
+      "state": "enforced",
+      "value": true,
+      "updatedAt": 1756252800
+    }
   }
 }
 ```
 
-`GET .../config/profiles/pro` returns exactly this, redacted — which for a profile with no
-`secrets` entries is a no-op; `secrets: {}` stays `secrets: {}`. Only when a profile actually holds
+`GET .../config/profiles/pro` returns exactly this as its `payload`, redacted — which for a
+profile with no `secrets` entries is a no-op; `secrets: {}` stays `secrets: {}`. Only when a profile actually holds
 a `kind: "secret"` value does redaction change the response shape.
 
 ## The admin surface
 
-| Route | Behaviour |
-| --- | --- |
-| `GET .../config/profiles` | List: `id`, `name`, `description`, `modifiedBy`, `modifiedAt`. No payload. |
-| `POST .../config/profiles` | Create: an empty payload (`{ config: {}, secrets: {}, entitlements: {} }`), an operator- or server-chosen id. |
-| `GET .../config/profiles/<id>` | Detail: the full payload, redacted (below). |
-| `PUT .../config/profiles/<id>` | Batch-edit: `{ updates: OverrideUpdate[] }`, validated against the active catalog. |
-| `DELETE .../config/profiles/<id>` | Refused `409` with a reference count while any license still uses the profile. |
+| Route                             | Behaviour                                                                                                     |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `GET .../config/profiles`         | List: `id`, `name`, `description`, `modifiedBy`, `modifiedAt`. No payload.                                    |
+| `POST .../config/profiles`        | Create: an empty payload (`{ config: {}, secrets: {}, entitlements: {} }`), an operator- or server-chosen id. |
+| `GET .../config/profiles/<id>`    | Detail: the full payload, redacted (below).                                                                   |
+| `PUT .../config/profiles/<id>`    | Batch-edit: `{ updates: OverrideUpdate[] }`, validated against the active catalog.                            |
+| `DELETE .../config/profiles/<id>` | Refused `409` with a reference count while any license still uses the profile.                                |
 
 `PUT` answers `409` with no active catalog to validate against, and `422` with a `fields` array on
 any invalid update in the batch — the whole write is all-or-nothing. A successful write re-stores
@@ -71,19 +79,19 @@ the active catalog flags `secret: true` too. It fails **closed**: an entry it ca
 classify as non-secret — because the catalog is momentarily unavailable between a schema swap, or
 because a newer catalog silently dropped a key's `secret` flag — is redacted anyway. A value that
 was ever sealed as a secret (its stored JSON carries the sealed-envelope shape) stays redacted
-regardless of what the *current* catalog says about that key.
+regardless of what the _current_ catalog says about that key.
 
 ## Set-vs-blank: the batch semantics
 
 An override batch is a list of `{ key, state?, value? }`. Presence and absence of each field
-carry meaning independently of what they are set *to*:
+carry meaning independently of what they are set _to_:
 
-| `value` | `state` | Result |
-| --- | --- | --- |
-| absent | absent, or `"default"` | **Clear.** The key is deleted from the bucket entirely — not set to the catalog default, genuinely absent, falling through to whatever the next layer down (or nothing) provides. |
-| present | absent | **Set, enforced.** Validated against the catalog; `state` defaults to `"enforced"` — supplying a bare value is read as "this wins", not as a suggestion. |
-| present | `"default"` / `"enforced"` / `"hidden"` | **Set, with an explicit state.** Validated against the catalog; stored with exactly the state given. |
-| absent | `"enforced"` / `"hidden"` | **State-only change.** The currently stored value (already sealed, if it's a secret) carries forward untouched — never re-validated, never re-sealed. |
+| `value` | `state`                                 | Result                                                                                                                                                                            |
+| ------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| absent  | absent, or `"default"`                  | **Clear.** The key is deleted from the bucket entirely — not set to the catalog default, genuinely absent, falling through to whatever the next layer down (or nothing) provides. |
+| present | absent                                  | **Set, enforced.** Validated against the catalog; `state` defaults to `"enforced"` — supplying a bare value is read as "this wins", not as a suggestion.                          |
+| present | `"default"` / `"enforced"` / `"hidden"` | **Set, with an explicit state.** Validated against the catalog; stored with exactly the state given.                                                                              |
+| absent  | `"enforced"` / `"hidden"`               | **State-only change.** The currently stored value (already sealed, if it's a secret) carries forward untouched — never re-validated, never re-sealed.                             |
 
 The state-only row is how an operator flips a key's enforcement without needing to know, or
 re-supply, an underlying secret they cannot read back.
@@ -120,7 +128,7 @@ catalog default -> tier's profile -> license's profiles (in order) -> license ov
 
 A tier names at most one `profile_id`. A license, independently, can carry its own ordered list of
 profiles (`license_profiles`) — attached and reordered via the license's `profiles` field, layered
-*after* the tier's profile and *before* the license's own `overrides_json`.
+_after_ the tier's profile and _before_ the license's own `overrides_json`.
 
 ## What `scopes` means for a profile
 
@@ -135,7 +143,7 @@ takes effect once a tier or a license attaches it.
 ## What the console shows for "not set"
 
 No admin endpoint returns the fully merged, effective payload — that assembly only happens at
-document-signing time. So the per-license override editor rebuilds the layers *below* the license
+document-signing time. So the per-license override editor rebuilds the layers _below_ the license
 row itself — the catalog default, the tier's profile, the license's own profiles in order —
 client-side, in the server's own precedence, including the rule that a lower `enforced`/`hidden`
 entry is not demoted by a higher `default` one, from data it can already fetch. That is

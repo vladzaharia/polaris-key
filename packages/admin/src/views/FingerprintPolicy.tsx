@@ -356,8 +356,8 @@ function PolicyCard({
         description={
           <>
             Ownership goes back to the repo manifest. The live policy is
-            unchanged until the next resync re-applies the manifest's values
-            — which also returns the auto-issue policy to manifest control.{" "}
+            unchanged until the next resync re-applies the manifest's values —
+            which also returns the auto-issue policy to manifest control.{" "}
             <a
               className="underline underline-offset-2 hover:text-foreground"
               href={docsUrl("fingerprintRevert")}

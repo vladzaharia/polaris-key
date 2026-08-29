@@ -26,7 +26,7 @@ opt-in — it's what every activated install already does.
 An install that will **never** reach the control plane activates from a signed
 `pkey-bundle+jws` file instead of a network round trip — the classic request-code flow. The app
 shows its request code (product slug + device id); an operator mints a bundle against it on a
-machine that *can* reach the console; the file crosses the air gap however it needs to (USB
+machine that _can_ reach the console; the file crosses the air gap however it needs to (USB
 stick, ticket attachment). The protocol-level shape — the envelope, its three time bounds, and
 the four ordered refusal steps a verifier walks — is [Offline bundles](/docs/build/wire/bundles/);
 this page is the two human sides of that flow.
@@ -45,11 +45,11 @@ document, unless `--no-config`/its UI equivalent says otherwise) alongside the c
 manifest, into one envelope. See [Offline bundles](/docs/admin/bundles/) in Administer for the
 console-side walkthrough. Three time bounds ride in one bundle, deliberately different:
 
-| Bound | Length | What it limits |
-| --- | --- | --- |
-| inner document `expiresAt` | 1 hour, same as an online document | nothing bundle-specific — it's what makes an imported bundle indistinguishable from a cache written by a device that synced and immediately went offline |
-| inner document `graceUntil` | up to 365 days (`--grace-days`) | how long the **install** keeps working before it needs re-provisioning |
-| bundle `expiresAt` | a fixed 30 days, not operator-configurable | how long the **file itself** may sit unimported before the mint is wasted |
+| Bound                       | Length                                     | What it limits                                                                                                                                           |
+| --------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| inner document `expiresAt`  | 1 hour, same as an online document         | nothing bundle-specific — it's what makes an imported bundle indistinguishable from a cache written by a device that synced and immediately went offline |
+| inner document `graceUntil` | up to 365 days (`--grace-days`)            | how long the **install** keeps working before it needs re-provisioning                                                                                   |
+| bundle `expiresAt`          | a fixed 30 days, not operator-configurable | how long the **file itself** may sit unimported before the mint is wasted                                                                                |
 
 The file's 30-day window is deliberately decoupled from — and much shorter than — the grace
 window it grants: it bounds how long a stolen bundle is useful to someone who didn't have it at
@@ -67,7 +67,9 @@ from "the trust manifest inside it was rejected":
 // Node
 import { createBundleClient } from "@polaris-key/node/local";
 const { client, imported } = await createBundleClient({
-  productSlug: "djdl", version, trust: { pinnedKeys },
+  productSlug: "djdl",
+  version,
+  trust: { pinnedKeys },
   bundle: await readFile(bundlePath, "utf8"),
 });
 ```
@@ -99,11 +101,11 @@ There is still exactly one client type; a host never has to branch on which one 
 
 Two construction routes, both fully offline:
 
-| | Already provisioned / config-only | Fresh air-gapped install |
-| --- | --- | --- |
-| Node | `createLocalClient()` (`@polaris-key/node/local`) | `createBundleClient()` |
-| Python | `create_local_client()` (`polaris_key.local`) | `create_bundle_client()` |
-| Swift | `PolarisKeyClient.createLocal(options:)` | `PolarisKeyClient.createFromBundle(options:bundle:)` |
+|        | Already provisioned / config-only                 | Fresh air-gapped install                                 |
+| ------ | ------------------------------------------------- | -------------------------------------------------------- |
+| Node   | `createLocalClient()` (`@polaris-key/node/local`) | `createBundleClient()`                                   |
+| Python | `create_local_client()` (`polaris_key.local`)     | `create_bundle_client()`                                 |
+| Swift  | `PolarisKeyClient.createLocal(options:)`          | `PolarisKeyClient.createFromBundle(options:bundle:now:)` |
 
 `createLocalClient` reads whatever the cache already holds (from a prior bundle import, or —
 for a config-only product — nothing to activate at all); `createBundleClient` does the import

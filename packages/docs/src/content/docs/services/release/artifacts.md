@@ -1,12 +1,16 @@
 ---
+sidebar:
+  order: 4
 title: "Artifacts, changelog & install"
 description: "The unified download route, architecture matching, the four access modes, and the curl-pipe installer."
 ---
 
 Three things make up what a human or an install script actually touches: downloading a
 binary (as a bare CLI executable or a macOS disk image — two content types behind one
-route), reading the changelog, and running the installer. All of them stream or render
-live against GitHub on every request that misses the edge cache — none of them read the
+route), reading the changelog, and running the installer. The first two resolve live against
+GitHub on every request — the changelog is the only one of the three the edge cache will
+hold, and a download is streamed through every time — while the installer is rendered from
+stored configuration and touches GitHub not at all. What none of them read is the
 [truth store](/docs/services/release/truth-store/), which exists for the portal and the
 console, not for these routes.
 
@@ -22,32 +26,33 @@ They were always the same handler wearing two content types and two asset matche
 file extension now carries the whole distinction, and the old paths are removed outright
 rather than aliased — nothing ever shipped a `.dmg` URL as a standalone published
 reference the way it did for the appcast and install-script URLs (see
-[Appcast](/docs/services/update/appcast/) for the paths that *were* kept forever, and why
+[Appcast](/docs/services/update/appcast/) for the paths that _were_ kept forever, and why
 this one wasn't).
 
 - **`<version>`** is a channel selector: `latest`, `stable`, a pinned `X.Y.Z` tag, `beta`,
   `pr-<n>`, or an operator's manual channel name — the identical vocabulary
   [Eligibility](/docs/services/update/eligibility/) documents in full, since the download
   route, the appcast, and the version check all resolve it through the same logic.
-- **`<binary>-<arch>`** matches an asset by convention. An exact filename hit
-  (`<binaryName>-<arch>`, or `<binaryName>-<channel>-<arch>` for a non-stable channel)
-  always wins. Failing that, matching falls back to scoring candidates by file extension,
-  architecture token, binary name, and channel suffix — real projects aren't always
-  perfectly consistent about naming, so this is deliberately fuzzy. An **exact** name match
-  always wins over a fuzzy one, and when fuzzy matching leaves two equally good candidates
-  the route answers `404` rather than guessing.
+- **`<binary>-<arch>`** matches an asset by convention. On the bare-binary path an exact
+  filename hit (`<binaryName>-<arch>`, or `<binaryName>-<channel>-<arch>` for a non-stable
+  channel) short-circuits everything else. Failing that — and always, for a DMG — matching
+  scores candidates by file extension, architecture token, binary name, and channel suffix.
+  Real projects aren't always perfectly consistent about naming, so this is deliberately
+  fuzzy; when it leaves two equally good candidates the route answers `404` rather than
+  guessing.
 - **`[.dmg]`** — presence of the extension selects the macOS disk image path; its absence
-  selects the bare CLI binary. Same handler, same matcher logic, two different `Content-Type`
-  values on the way out.
+  selects the bare CLI binary. Same handler and the same scoring function, two different
+  `Content-Type` values on the way out; only the CLI path carries the exact-name
+  short-circuit above.
 
 ### Architecture
 
 Four spellings are accepted on the wire and normalized to two canonical values:
 
-| Accepted | Canonical |
-| --- | --- |
-| `arm64`, `aarch64` | `arm64` |
-| `x86_64`, `amd64` | `x86_64` |
+| Accepted           | Canonical |
+| ------------------ | --------- |
+| `arm64`, `aarch64` | `arm64`   |
+| `x86_64`, `amd64`  | `x86_64`  |
 
 An unrecognized architecture token answers `404`, not a server error — every arch value
 passes through one normalizing function before it reaches anything that keys a lookup
@@ -76,20 +81,20 @@ before it will make anything executable.
 ## Access modes
 
 Every surface in Release answers under one of four modes, set independently for the
-*metadata* surfaces (changelog, install script) and the *artifact* surfaces (the download
+_metadata_ surfaces (changelog, install script) and the _artifact_ surfaces (the download
 route itself):
 
-| Mode | Who | Notes |
-| --- | --- | --- |
-| `public` | anyone | The default — keeps anonymous installs and anonymous update checks working. |
-| `authenticated` | a device with a valid token | The license behind it doesn't have to be usable. |
-| `licensed` | a device whose license is usable | Behaves identically to `authenticated` today. |
-| `entitled` | a device whose *own license* covers the requested channel and version | The only mode that can offer two licensed devices different builds. |
+| Mode            | Who                                                                   | Notes                                                                       |
+| --------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `public`        | anyone                                                                | The default — keeps anonymous installs and anonymous update checks working. |
+| `authenticated` | a device with a valid token                                           | The license behind it doesn't have to be usable.                            |
+| `licensed`      | a device whose license is usable                                      | Behaves identically to `authenticated` today.                               |
+| `entitled`      | a device whose _own license_ covers the requested channel and version | The only mode that can offer two licensed devices different builds.         |
 
 `licensed` and `authenticated` are kept as two distinct names on purpose, even though
 nothing currently distinguishes their enforcement — a product's stated posture should
 survive even when today's behavior happens to coincide. `entitled` is genuinely different:
-it evaluates the *caller's own* channel and version entitlements, not merely whether some
+it evaluates the _caller's own_ channel and version entitlements, not merely whether some
 usable license exists. The full mechanics — channel resolution, the version window, and
 the exact 401/403 outcomes — are covered on Update's
 [Eligibility](/docs/services/update/eligibility/) page, since the identical check governs
@@ -108,7 +113,7 @@ surfaces have always answered with:
 { "error": "download_auth_required" }
 ```
 
-That shape is unchanged deliberately — these paths *moved* to their current namespace, they
+That shape is unchanged deliberately — these paths _moved_ to their current namespace, they
 did not change behavior, and a client written against the old routes shouldn't have to
 learn a new refusal shape just because the URL did. `entitled` has no such history. It
 speaks the newer nested shape throughout, matching the same grammar the signed license

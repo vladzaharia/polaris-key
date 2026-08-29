@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The Polaris Key documentation site \u2014 an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
+  "description": "The Polaris Key documentation site — an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
   "scripts": {
     "build": "node scripts/copy-artifacts.mjs && astro build && node scripts/collect-csp-hashes.mjs && node scripts/emit-slug-manifest.mjs",
     "dev": "node scripts/copy-artifacts.mjs && astro dev",

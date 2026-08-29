@@ -15,22 +15,22 @@ Every row carries an action string, an optional target (`kind` + `id`), a human 
 verified actor from the session that caused it — never a value the request body could spoof.
 Grouped by what triggers them:
 
-| Group | Example actions |
-| --- | --- |
-| Registry | `product.create`, `product.link`, `product.update`, `product.delete` |
-| Secrets & KEK | `secret.set`, `kek.reseal` |
-| Services & policy | `product.services.update`, `product.services.revert`, `product.policy.update`, `product.fingerprint.revert` |
-| Signing keys | `key.prepare`, `key.activate` (or `key.activate.break_glass`), `key.retire`, `key.revoke` |
-| Licenses | `license.create`, `license.update`, `license.tier.change`, `license.overrides`, `license.enable`, `license.disable` |
-| License keys | `key.create`, `key.revoke` — see the note below |
-| Devices (operator-driven) | `device.deauthorize`, `device.fingerprint.reset` |
-| Config | `schema.publish`, `profile.create`, `profile.delete`, `profile.overrides` |
-| Tiers | `tier.create`, `tier.update`, `tier.delete` |
-| Release | `release.resync` |
-| Update | `update.settings.update` |
-| Identity | `portal.settings.update` |
-| Offline bundles | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row) |
-| Access | `access.denied` |
+| Group                     | Example actions                                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Registry                  | `product.create`, `product.link`, `product.update`, `product.delete`                                                |
+| Secrets & KEK             | `secret.set`, `kek.reseal`                                                                                          |
+| Services & policy         | `product.services.update`, `product.services.revert`, `product.policy.update`, `product.fingerprint.revert`         |
+| Signing keys              | `key.prepare`, `key.activate` (or `key.activate.break_glass`), `key.retire`, `key.revoke`                           |
+| Licenses                  | `license.create`, `license.update`, `license.tier.change`, `license.overrides`, `license.enable`, `license.disable` |
+| License keys              | `key.create`, `key.revoke` — see the note below                                                                     |
+| Devices (operator-driven) | `device.deauthorize`, `device.fingerprint.reset`                                                                    |
+| Config                    | `schema.publish`, `profile.create`, `profile.delete`, `profile.overrides`                                           |
+| Tiers                     | `tier.create`, `tier.update`, `tier.delete`                                                                         |
+| Release                   | `release.resync`                                                                                                    |
+| Update                    | `update.settings.update`                                                                                            |
+| Identity                  | `portal.settings.update`                                                                                            |
+| Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                   |
+| Access                    | `access.denied`                                                                                                     |
 
 :::note[`key.create` / `key.revoke` name two different things]
 Those two action strings are written by **both** the license-key lifecycle and the
@@ -70,7 +70,7 @@ is not.
 Customer-facing portal events — a magic-link or OIDC sign-in, a license claimed by key, a device
 disconnected from the portal — are audited too, but into a **separate** table (`portal_audit`,
 keyed by the customer's account rather than an admin session) that this tab does not read. The
-one portal-related action that *does* show up here is `portal.settings.update` — an operator
+one portal-related action that _does_ show up here is `portal.settings.update` — an operator
 changing the module toggles on [Identity](/docs/admin/console-tour/#identity), which is a console
 mutation like any other.
 

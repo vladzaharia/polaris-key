@@ -29,10 +29,7 @@ import type { Env } from "./env.js";
 import { sessionFromRequest } from "./admin/session.js";
 import { isSafeAssetPath } from "./http.js";
 import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
-import {
-  DOCS_SCRIPT_HASHES,
-  DOCS_STYLE_HASHES,
-} from "./docsCsp.generated.js";
+import { DOCS_SCRIPT_HASHES, DOCS_STYLE_HASHES } from "./docsCsp.generated.js";
 
 /**
  * The docs CSP: the same strict shape as `appSecurityHeaders`' policy, plus the SHA-256
@@ -114,11 +111,21 @@ export function docsAssetPath(pathname: string): string | null {
   return isSafeAssetPath(candidate) ? candidate : null;
 }
 
-/** True for the content-hashed asset families the build emits (immutable by construction). */
+/**
+ * True for the content-hashed asset families the build emits (immutable by construction).
+ *
+ * Deliberately NARROW for Pagefind: only its `fragment/` and `index/` shards carry content
+ * hashes in their filenames. The loader files (`pagefind.js`, `pagefind-ui.js`,
+ * `pagefind-entry.json`, …) have STABLE names — `pagefind-entry.json` is the rotating
+ * pointer that names which hashed shards to fetch — so caching them immutable would strand
+ * a browser on a deleted shard set after the next deploy and silently break search for up
+ * to a year.
+ */
 function isImmutableAsset(assetPath: string): boolean {
   return (
     assetPath.startsWith("/docs/_astro/") ||
-    assetPath.startsWith("/docs/pagefind/")
+    assetPath.startsWith("/docs/pagefind/fragment/") ||
+    assetPath.startsWith("/docs/pagefind/index/")
   );
 }
 

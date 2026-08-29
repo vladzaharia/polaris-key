@@ -1,4 +1,6 @@
 ---
+sidebar:
+  order: 2
 title: "GitHub sync"
 description: "Linking a repository, the GitHub App installation, the .pkey/ manifest, and the push-webhook resync pipeline."
 ---
@@ -41,10 +43,10 @@ directory: `.pkey/`. Three documents, each independently JSON, YAML, or YML — 
 tries `.json` first, then `.yaml`, then `.yml`, per document, so a repo may mix formats
 freely:
 
-| Document | Purpose |
-| --- | --- |
-| `.pkey/schema.*` | the config catalog |
-| `.pkey/product.*` | product metadata, enabled services, registration policy, OIDC, tiers |
+| Document          | Purpose                                                                       |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `.pkey/schema.*`  | the config catalog                                                            |
+| `.pkey/product.*` | product metadata, enabled services, registration policy, OIDC, tiers          |
 | `.pkey/release.*` | GitHub distribution: binary name, channel workflow, Sparkle key, access modes |
 
 There is no fallback directory and no dual-read of an alternate location — one directory,
@@ -95,7 +97,7 @@ From there the pipeline narrows the delivery down before it does any real work:
 - **The right installation.** The delivery names an installation id, and it must match the
   id recorded when the repository was linked. One webhook secret covers every installation
   on the platform, so without this check a single secret compromise would let an attacker
-  forge a delivery for *any* linked product, not just the repository they control.
+  forge a delivery for _any_ linked product, not just the repository they control.
 
 A delivery that clears all three triggers a resync for every product linked to that
 repository (a single repo can back more than one product).
@@ -150,7 +152,7 @@ left it until the next resync re-applies whatever the repository currently says.
 Everything else described above has no such flag: release configuration, the catalog,
 OIDC, tiers, profiles, provisioning, and edge-mint recipes are always manifest-owned. There
 is no per-field release API in the admin surface — editing `.pkey/release` and resyncing
-*is* the edit path.
+_is_ the edit path.
 
 ## Sync state & changed paths in the console
 
@@ -175,7 +177,7 @@ landed without waiting on a webhook delivery.
 
 A product's binary name is repository-controlled, and it is interpolated into the curl-pipe
 install script every user of that product pipes straight into `sh`. It is validated against
-a strict character class at *every* point it can enter the system — both ingest paths
+a strict character class at _every_ point it can enter the system — both ingest paths
 (link and resync) and the installer renderer itself — so a manifest cannot smuggle a value
 the renderer would later refuse. See
 [Artifacts, changelog & install](/docs/services/release/artifacts/) for how the installer

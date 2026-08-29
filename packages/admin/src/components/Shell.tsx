@@ -367,7 +367,11 @@ function Topbar({
  * license detail) land on the docs home. Same-origin and behind the same session — it opens
  * in a new tab without a second sign-in.
  */
-function HelpLink({ activeTab }: { activeTab: Tab | null }): React.ReactElement {
+function HelpLink({
+  activeTab,
+}: {
+  activeTab: Tab | null;
+}): React.ReactElement {
   const href = activeTab ? docsFor(activeTab) : "/docs/";
   return (
     <Button variant="ghost" size="icon" asChild>

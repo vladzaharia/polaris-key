@@ -1,4 +1,6 @@
 ---
+sidebar:
+  order: 3
 title: "The truth store"
 description: "release_metadata, release_artifacts, release_channels, and release_health — populated by resync, read by the portal and entitled gating."
 ---
@@ -20,12 +22,12 @@ independent paths to it, not one reading from the other.
 
 ## The four tables, plus one
 
-| Table | One row per | Written by |
-| --- | --- | --- |
-| `release_metadata` | published GitHub release | resync |
-| `release_artifacts` | release asset | resync |
-| `release_channels` | channel name | resync |
-| `release_health` | release or channel, as a health subject | resync |
+| Table               | One row per                             | Written by |
+| ------------------- | --------------------------------------- | ---------- |
+| `release_metadata`  | published GitHub release                | resync     |
+| `release_artifacts` | release asset                           | resync     |
+| `release_channels`  | channel name                            | resync     |
+| `release_health`    | release or channel, as a health subject | resync     |
 
 A fifth table, `release_config`, anchors all four — it is the one row per product carrying
 the linked repository's coordinates, binary name, Sparkle key, and access modes, and it is
@@ -42,7 +44,7 @@ all — see [Release](/docs/services/release/#draft-releases-are-invisible) for 
 ### `release_artifacts`
 
 One row per release asset, classified two ways on ingest so every reader agrees on what an
-asset *is* without re-deriving it: a **kind** (`dmg`, `pkg`, `archive`, `checksum`,
+asset _is_ without re-deriving it: a **kind** (`dmg`, `pkg`, `archive`, `checksum`,
 `signature`, `cli`, or `other`, read from the filename) and an **architecture** (`arm64` or
 `x86_64`, read through the exact same name-matching logic the download route itself uses —
 so the store can never claim an asset is available in a shape the download route would
@@ -62,7 +64,7 @@ out.
 
 ### `release_health`
 
-A status snapshot — `healthy`, `degraded`, or `unknown` — per health *subject*, where a
+A status snapshot — `healthy`, `degraded`, or `unknown` — per health _subject_, where a
 subject is either a specific release (do its assets look complete) or a channel (does it
 currently resolve to anything at all). This is the coarse, always-on signal written on
 every sync; the richer, on-demand checklist described in
@@ -103,12 +105,12 @@ that redirect from being something a request could steer.
 
 `release_metadata` and `release_artifacts` each carry an access-mode column, copied from
 `release_config` at sync time — with one deliberate narrowing: an effective mode of
-`entitled` is stored as `licensed` instead of copied verbatim. The reason is *who reads
-these particular columns*: the customer portal, which authenticates a human through a
+`entitled` is stored as `licensed` instead of copied verbatim. The reason is _who reads
+these particular columns_: the customer portal, which authenticates a human through a
 portal session, not a device through a bearer token. There is no per-device license grant
 to evaluate on that path, so an `entitled` decision — which depends on a specific device's
 channel and version entitlements — isn't expressible there at all. `licensed` is the
-strictest thing the portal *can* honestly enforce (does this account hold any usable
+strictest thing the portal _can_ honestly enforce (does this account hold any usable
 license), which makes the substitution a tightening, never a downgrade.
 
 The full `entitled` check — channel membership and version-window enforcement against a
@@ -127,14 +129,15 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
    failure: a product may not ship Sparkle updates at all).
 3. **GitHub access** — can the installation token actually list releases right now.
 4. **Latest release** — is there a published, non-draft release to evaluate.
-5. **macOS arm64 DMG** — present or not (missing is an error: every macOS product is
-   expected to ship one).
-6. **macOS x86_64 DMG** — present or not (missing is a warning unless the product's
-   artifact policy explicitly requires one).
-7. **Sparkle signature** — when a public key is configured, is the sibling `.sig` asset for
-   the arm64 DMG actually present (this check confirms presence; the appcast itself
-   additionally *verifies* it — see
-   [Appcast](/docs/services/update/appcast/)).
+5. **macOS arm64 DMG** — present or not. Absence counts as _missing_, unconditionally:
+   every macOS product is expected to ship one.
+6. **macOS x86_64 DMG** — present or not. Also _missing_ by default; it softens to a warning
+   only for a product whose artifact policy turns `requireDmg` off.
+7. **Sparkle signature** — either the policy requires signed appcasts and no public key is
+   configured at all (_missing_), or a key is configured and the question is whether the
+   sibling `.sig` asset for the arm64 DMG is actually present. This check confirms presence;
+   the appcast itself additionally _verifies_ it — see
+   [Appcast](/docs/services/update/appcast/).
 8. **CLI assets** — arm64 and x86_64 bare-binary assets, present or not (each a warning
    unless the artifact policy requires it).
 

@@ -80,9 +80,11 @@ rewritten out on the next patch.
 
 ### `lastVerifiedAt` is derived too
 
-The "last checked" timestamp a UI renders is derived from the newest verified document's signed
-`issuedAt` — not from a local write time. Offline, the server's own statement of when it minted
-is the only trustworthy answer available.
+On load, the "last checked" timestamp a UI renders is derived from the newest verified
+document's signed `issuedAt` — not from a local write time. Offline, the server's own statement
+of when it minted is the only trustworthy answer available. A successful authenticated exchange
+then re-marks it against the local clock, `200` and `304` alike: at that instant the client has
+just been told, so its own reading of "now" is as good as the server's.
 
 ### Writes are read-modify-write of the whole record
 

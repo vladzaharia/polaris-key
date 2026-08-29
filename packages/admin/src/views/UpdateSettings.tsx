@@ -248,7 +248,7 @@ function SettingsForm({
             <AccessField
               id={`update-${slug}-metadata`}
               label="Metadata access"
-              help="Who may read the appcast / version feed."
+              help="Who may read the changelog and the version-check endpoint (not the appcast — see Artifact access)."
               value={form.metadataAccess}
               disabled={!settings.configured}
               error={fieldErrors.metadataAccess}
@@ -259,7 +259,7 @@ function SettingsForm({
             <AccessField
               id={`update-${slug}-artifacts`}
               label="Artifact access"
-              help="Who may download the binaries the feed points at."
+              help="Who may read the appcast feed and download the binaries it points at."
               value={form.artifactsAccess}
               disabled={!settings.configured}
               error={fieldErrors.artifactsAccess}

@@ -29,7 +29,7 @@ new entitlements the next time it fetches its license document, not instantly.
 ### The over-limit warning
 
 A tier carries its own `policyDeviceLimit`. Moving a license to a tier with a **lower** limit
-than its current active device count doesn't evict anyone — the seat check only runs on a *new*
+than its current active device count doesn't evict anyone — the seat check only runs on a _new_
 authorization — but it does mean no new device can activate until the count drops back under the
 limit. The edit dialog warns about this before you save, computed from the tiers already loaded;
 the `PATCH` response carries the authoritative version as `overLimit: { deviceCount,
@@ -68,7 +68,7 @@ all of this; this section is only what the panel shows and what its two actions 
 - **Unverified** carries a tooltip explaining why: the device activated without sending a
   fingerprint at all, either because it predates fingerprinting or the product has it disabled.
 - A **Drifted** badge appears when the device's last check-in changed some components but stayed
-  within tolerance. Its tooltip gives the count and the date. This is the *last* drift only — the
+  within tolerance. Its tooltip gives the count and the date. This is the _last_ drift only — the
   full history is in [Activity](/docs/admin/activity/) as `device.fingerprint.drift` entries, one
   per tolerated drift event.
 
@@ -80,15 +80,15 @@ device reported present, with versions in the tooltip.
 
 Two different actions, for two different problems:
 
-| Action | Effect | Use it when |
-| --- | --- | --- |
-| **Deauthorize** | The device is marked deauthorized, its token evicted. It must re-activate — with a key — to use the license again. **Frees the seat.** | The device shouldn't have access at all: lost, decommissioned, offboarded. |
+| Action            | Effect                                                                                                                                                           | Use it when                                                                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Deauthorize**   | The device is marked deauthorized, its token evicted. It must re-activate — with a key — to use the license again. **Frees the seat.**                           | The device shouldn't have access at all: lost, decommissioned, offboarded.                                                            |
 | **Reset binding** | Clears the stored hardware fingerprint only. The device **stays authorized and keeps its seat**; its next check-in re-binds to whatever hardware it now reports. | A legitimate hardware change tripped `hardware_mismatch` and locked the user out, and you don't want to burn a seat re-issuing a key. |
 
 Reset binding is `POST .../devices/<id>/fingerprint/reset`, audited as
 `device.fingerprint.reset`. It exists specifically as the support escape hatch for a
 false-positive drift lockout — a mismatch normally retires the binding and forces a fresh
-authorization on its own, but reset does the same clearing *proactively*, before the user hits
+authorization on its own, but reset does the same clearing _proactively_, before the user hits
 the wall, without spending a re-activation.
 
 ## Fingerprint policy

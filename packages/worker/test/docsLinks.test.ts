@@ -41,9 +41,8 @@ describe.skipIf(!existsSync(slugManifest))(
   "console help links resolve in the built docs site",
   () => {
     const routes = new Set<string>(
-      (
-        JSON.parse(readFileSync(slugManifest, "utf8")) as { routes: string[] }
-      ).routes,
+      (JSON.parse(readFileSync(slugManifest, "utf8")) as { routes: string[] })
+        .routes,
     );
 
     it("the slug manifest is non-trivial", () => {

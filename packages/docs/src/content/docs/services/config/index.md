@@ -29,39 +29,42 @@ off — gets `license` and `config` on and the rest off, which is exactly how ev
 before the column existed. Config with License off and a declared `requires-license` registration
 policy is the one combination the enablement API refuses outright
 (`config_without_activation`): it would close the product's only device-mint path, leaving Config
-enabled and permanently unreachable. See `docs/CONCEPTS.md` for the full enablement model, shared
-across all five services.
+enabled and permanently unreachable. See [Concepts &
+terminology](/docs/start/concepts/) for the full enablement model, shared across all five
+services.
 
 ## The pages in this section
 
-| Page | What it covers |
-| --- | --- |
-| [The catalog](/docs/services/config/catalog/) | Authoring `ConfigEntry` items: kinds, the per-entry JSON-Schema fragment, categories and UI hints, `dependsOn`, `accessor`, and secret `delivery`. |
-| [Management states](/docs/services/config/management-states/) | `default` / `enforced` / `hidden`: how `managementDefault` seeds a fresh key, how admin layers merge, and how a client resolves a value. |
-| [The config document](/docs/services/config/document/) | `GET /<product>/config/document` — the `pkey-config+jws` envelope, its ETag, its grace window, and why it has no build gate. |
-| [Profiles](/docs/services/config/profiles/) | Reusable managed-payload baselines, how they layer under a tier or a license, and the set-vs-blank rules an override batch applies. |
-| [Edge-mint](/docs/services/config/edge-mint/) | Minting short-lived third-party tokens from a sealed product secret: recipes, claims templates, and the confused-deputy guard. |
+| Page                                                          | What it covers                                                                                                                                     |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [The catalog](/docs/services/config/catalog/)                 | Authoring `ConfigEntry` items: kinds, the per-entry JSON-Schema fragment, categories and UI hints, `dependsOn`, `accessor`, and secret `delivery`. |
+| [Management states](/docs/services/config/management-states/) | `default` / `enforced` / `hidden`: how `managementDefault` seeds a fresh key, how admin layers merge, and how a client resolves a value.           |
+| [The config document](/docs/services/config/document/)        | `GET /<product>/config/document` — the `pkey-config+jws` envelope, its ETag, its grace window, and why it has no build gate.                       |
+| [Profiles](/docs/services/config/profiles/)                   | Reusable managed-payload baselines, how they layer under a tier or a license, and the set-vs-blank rules an override batch applies.                |
+| [Edge-mint](/docs/services/config/edge-mint/)                 | Minting short-lived third-party tokens from a sealed product secret: recipes, claims templates, and the confused-deputy guard.                     |
 
 ## The public surface
 
 Four routes, all under `/<product>/config`. The full generated table — every service included —
 is at [Public route table](/docs/reference/routes/).
 
-| Route | Purpose |
-| --- | --- |
-| `GET /<product>/config/document` | The signed config document. Device-token auth only. |
-| `GET /<product>/config/schema` | The public catalog — the same JSON the admin catalog editor and every SDK read. |
-| `/<product>/config/mint/<id>/token` | Mint a short-lived third-party token. Both `GET` and `POST` work. |
-| `GET /<product>/config/mint/<id>/auth` | The recipe's operator-authored HTML auth page, if it declares one. |
+| Route                                  | Purpose                                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------------- |
+| `GET /<product>/config/document`       | The signed config document. Device-token auth only.                             |
+| `GET /<product>/config/schema`         | The public catalog — the same JSON the admin catalog editor and every SDK read. |
+| `/<product>/config/mint/<id>/token`    | Mint a short-lived third-party token. Both `GET` and `POST` work.               |
+| `GET /<product>/config/mint/<id>/auth` | The recipe's operator-authored HTML auth page, if it declares one.              |
 
 There is deliberately no bare `GET /<product>/config`. The v2 fused document is gone, split into
 this service's `/config/document` and License's `/license/document` — a route that used to return
 a signed document must not quietly start returning half of one, so the old spelling 404s like any
 other unmatched path.
 
-All four appear in the product's discovery document at `/<product>/.well-known/polaris.json`,
-under `services.config`, alongside `schemaVersion` and `mint.available` — a capability bit, never
-a recipe list. A product with Config disabled contributes `enabled: false` and nothing else.
+The discovery document at `/<product>/.well-known/polaris.json` describes this service under
+`services.config`: the `document` and `schema` URLs in `endpoints`, the product's
+`schemaVersion`, and `mint.available` — a capability bit, never a recipe list, so the two mint
+routes are never published as URLs. A product with Config disabled contributes `enabled: false`
+and nothing else.
 
 ## The admin surface
 
@@ -83,15 +86,15 @@ Config logically owns three D1 tables (see [D1 data model](/docs/reference/data-
 Ownership is logical: the tables live in one database, and a service may only reach another's
 rows through a Core-mediated seam.
 
-| Table | Carries |
-| --- | --- |
-| `product_schema` | The catalog, versioned — `catalog_version`, `catalog_json`, `active`. Only one row is active per product. |
-| `profiles` | Reusable managed-payload baselines — `id`, `name`, `description`, `payload_json`. |
+| Table              | Carries                                                                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `product_schema`   | The catalog, versioned — `catalog_version`, `catalog_json`, `active`. Only one row is active per product.                              |
+| `profiles`         | Reusable managed-payload baselines — `id`, `name`, `description`, `payload_json`.                                                      |
 | `edge_mint_config` | Edge-mint recipes — `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `auth_page_template`. |
 
 The layered merge that turns a catalog, a tier's profile, a license's profiles, license overrides,
 and device overrides into one effective payload lives in **Core** (`core/payload.ts`), not here —
-License's entitlements and Config's `config` + `secrets` maps are sliced from the *same* merged
+License's entitlements and Config's `config` + `secrets` maps are sliced from the _same_ merged
 result, by different services, so the walk has to happen once or the two documents could quietly
 disagree about precedence. Document **assembly** — stamping the envelope onto that slice — lives
 in Core too (`core/documents.ts`), for the same reason offline bundles exist: a bundle may carry a
@@ -99,7 +102,8 @@ config document with no license anywhere near it, and Core is the one place allo
 without either service importing the other.
 
 :::note[Terminology]
-This section uses the vocabulary in `docs/CONCEPTS.md`, which wins over code when the two
+This section uses the vocabulary in [Concepts &
+terminology](/docs/start/concepts/), which wins over code when the two
 disagree. In particular: **kind** for `config`/`secret`/`flag` (never "type", which the JSON
 Schema fragment already uses for something else), **management state** for
 `default`/`enforced`/`hidden`, and **profile** for the reusable payload baseline — a word this
@@ -129,13 +133,13 @@ whole story.
 The two services sign structurally similar documents from the same merged payload, but they
 disagree on purpose everywhere it matters:
 
-| | Config (`pkey-config+jws`) | License (`pkey-license+jws`) |
-| --- | --- | --- |
-| Auth | Device token only | Device token, and the license must be usable |
-| Carries | `schemaVersion`, `config`, `secrets` | `licenseId`, `profile`, `entitlements` |
-| Build gate | None | Version/channel enforcement (D-20) |
-| ETag | Content-only, independent of License's | Content-only, independent of Config's |
-| Works with the other service disabled | Yes — this is D-08 | Yes |
+|                                       | Config (`pkey-config+jws`)             | License (`pkey-license+jws`)                 |
+| ------------------------------------- | -------------------------------------- | -------------------------------------------- |
+| Auth                                  | Device token only                      | Device token, and the license must be usable |
+| Carries                               | `schemaVersion`, `config`, `secrets`   | `licenseId`, `profile`, `entitlements`       |
+| Build gate                            | None                                   | Version/channel enforcement (D-20)           |
+| ETag                                  | Content-only, independent of License's | Content-only, independent of Config's        |
+| Works with the other service disabled | Yes — this is D-08                     | Yes                                          |
 
 Neither document references the other, and a client that wants both simply fetches both. See
 [The config document](/docs/services/config/document/) for the full shape.
@@ -148,6 +152,6 @@ Prose is not the contract. Three places are:
   (§2.2), claim validation and grace (§3), and gate placement (§5).
 - `packages/shared-catalog/src/{catalog,validate,regex}.test.ts` — pin the fail-closed schema
   policy, the format table, and the linear-time pattern engine's refusal list byte-for-byte.
-- The worker's test suite — `test/configDoc.test.ts`, `test/edgeMint.test.ts`, and
-  `test/merge.test.ts` pin the document shape, the mint guards, and the layer-merge precedence
-  these pages describe.
+- The worker's test suite — `test/licensing.test.ts`, `test/edgeMint.test.ts`, and
+  `test/merge.test.ts` pin the document shape and its independent ETag, the mint guards, and the
+  layer-merge precedence these pages describe.

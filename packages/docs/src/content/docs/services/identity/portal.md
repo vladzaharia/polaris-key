@@ -16,7 +16,7 @@ this section.
 
 `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, and `/download/<token>` are reserved
 ahead of every product slug and dispatched from the composition root, not from this service's
-product-scoped sub-router. That is a consequence of what the portal *is*: one account can hold
+product-scoped sub-router. That is a consequence of what the portal _is_: one account can hold
 licenses for several products at once, so there is no single `<product>` to hang these paths
 under without inventing one and defeating the point of a cross-tenant view.
 
@@ -27,13 +27,13 @@ exactly where they were.
 
 ## Signing in
 
-| Route | What it does |
-| --- | --- |
-| `GET /login` | Begins platform OIDC and 302s to the IdP. |
-| `GET /callback` | The OIDC redirect URI: exchanges the code, verifies the ID token, signs in. |
-| `POST /api/magic/start` | Emails a one-time sign-in link. |
-| `GET /magic/verify` | Redeems that link. |
-| `POST /logout` | Ends the portal session. |
+| Route                   | What it does                                                                |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `GET /login`            | Begins platform OIDC and 302s to the IdP.                                   |
+| `GET /callback`         | The OIDC redirect URI: exchanges the code, verifies the ID token, signs in. |
+| `POST /api/magic/start` | Emails a one-time sign-in link.                                             |
+| `GET /magic/verify`     | Redeems that link.                                                          |
+| `POST /logout`          | Ends the portal session.                                                    |
 
 **OIDC.** `/login` uses the same `platformOidcConfig` a `platform`-provider product uses (see
 [Product OIDC](/docs/services/identity/oidc/)) — the portal and every platform-issuer product
@@ -69,7 +69,7 @@ planting a `Domain=`-scoped cookie of the same name that a browser would prefer 
 
 The cookie's value is not opaque: it is a signed token — a base64url JSON body plus an
 HMAC-SHA256 signature — verified on every request rather than merely looked up. The signing key
-may, in practice, be the *same* raw secret the admin console's session cookie uses
+may, in practice, be the _same_ raw secret the admin console's session cookie uses
 (`PORTAL_SESSION_SECRET`, falling back to `ADMIN_SESSION_SECRET` when unset); what keeps the two
 realms from being interchangeable is a domain-separation tag mixed into the signed material
 before the signature is computed, so a token signed for one realm never verifies in the other
@@ -106,13 +106,13 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   to the account, across every product, with visible entitlements folded in; detail adds keys and
   devices.
 - **`DELETE /api/licenses/<product>/<licenseId>/devices/<deviceId>`** — disconnect one of the
-  account's own devices. Ownership is checked *before* the rate-limit charge is spent, so a
+  account's own devices. Ownership is checked _before_ the rate-limit charge is spent, so a
   caller who owns nothing on that product cannot spend a budget at all, and the budget it does
   spend is scoped to that one product rather than shared platform-wide (`R5-05`).
 - **`POST /api/claim/license-key`** — link a license by presenting a typed `pkey_…` key,
   rate-limited to 10 per minute on the account's budget.
 - **`GET /api/releases`** and **`POST /api/releases/<product>/<releaseId>/artifacts/<artifactId>/token`**
-  — the downloads surface, gated by *three* independent things at once: the portal's own
+  — the downloads surface, gated by _three_ independent things at once: the portal's own
   `releasesEnabled` toggle, whether the product runs the Release service at all
   (`services_json`), and — for a `licensed`-access artifact — whether the account holds a usable
   license for that product. Minting a token is refused up front if the artifact's stored source
@@ -134,13 +134,13 @@ Five plain booleans, all defaulting **on** for a product that has never written 
 `portalEnabled`, `oidcEnabled`, `magicEnabled`, `licenseKeyClaimEnabled`, `releasesEnabled`.
 
 `autoLinkEnabled` is **tri-state**, not boolean — `true`/`false` is an explicit operator
-override; `null` ("auto") derives from the product's *own* OIDC provider: on for a
+override; `null` ("auto") derives from the product's _own_ OIDC provider: on for a
 `platform`-issuer product, **off** for a `custom`-issuer one. A tenant-controlled IdP's `email`
 and `sub` claims are outside the platform's trust boundary, so a tenant that stands up its own
 IdP is opted out of auto-linking automatically, by the same default rule, rather than by an
 operator remembering to flip a switch.
 
-This is what decides whether a *verified* email or OIDC subject may silently fold a product's
+This is what decides whether a _verified_ email or OIDC subject may silently fold a product's
 license into the account requesting it — verified in two senses at once: only email addresses
 the portal itself proved (a magic link it sent, or an `email_verified: true` claim from the
 **platform** issuer specifically) can drive a link at all, and only a platform-issuer subject may
@@ -161,6 +161,6 @@ across products (`docs/security/findings/R5-isolation.md`, `R5-01` and `R5-02`).
   download-token redemption and redirect allowlist.
 - `docs/security/findings/R11-data.md` — `R11-09` (account erasure) and `R11-05` (download-token
   retention).
-- [Public route table](/docs/reference/routes/) — every *product-scoped* wire route. The
+- [Public route table](/docs/reference/routes/) — every _product-scoped_ wire route. The
   portal's root-level paths on this page are not part of that table; they are platform routes,
   not per-product API surface.

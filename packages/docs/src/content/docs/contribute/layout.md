@@ -30,8 +30,9 @@ sdks/
 conformance/          corpus/v2 ONLY (one signer's golden vectors) + the Node runner
 tools/                sign-corpus.ts · gen-mirrors.ts
 products/             per-product data (catalog.json + product.json) + gen-seed
-docs/                 long-form operator/adopter material — ADOPTER-GUIDE, CONFIG-AUTHORING,
-                      RUNBOOK, DEPLOYMENT, PRIVACY — plus security/ and superpowers/ (historical)
+docs/                 repo-only operator material — RUNBOOK, DEPLOYMENT, PRIVACY — plus
+                      security/ and superpowers/ (historical); the adopter/config/concepts
+                      guides moved into this site (see the AGENTS.md mapping table)
 ```
 
 Two directories are both called `docs` and are not the same thing: `packages/docs/` is this
@@ -65,7 +66,7 @@ service answers, never a direct import between services.
 `packages/worker/test/boundaries.test.ts` walks every file actually present under
 `src/services/` and asserts the rule above holds — exhaustively, not on a sample. It is a test
 rather than an ESLint rule because this repo has no ESLint installed (`pnpm lint` is Prettier);
-a test runs on the same gate everything else does, needs no new dependency, and can say *why*
+a test runs on the same gate everything else does, needs no new dependency, and can say _why_
 in its failure message.
 
 The identity service is the one that exercised the rule hardest: its OIDC sign-in mints and

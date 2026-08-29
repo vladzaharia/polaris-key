@@ -10,8 +10,8 @@ behind a license key or a sign-in. **Enrollment** is the keyless path: the serve
 license bound to the machine, authorizes the device, and hands back the same body
 [activation](/docs/services/license/activation/) returns.
 
-Enrollment is distinct from activation. Activation *redeems* a `pkey_…` key; enrollment
-*creates* the license it then authorizes against.
+Enrollment is distinct from activation. Activation _redeems_ a `pkey_…` key; enrollment
+_creates_ the license it then authorizes against.
 
 ## `POST /<product>/license/enroll`
 
@@ -31,23 +31,23 @@ No `Authorization` header — that is the point. The response is byte-compatible
 Enrollment exists only for products that opt in. The policy lives in `products.auto_issue_json`
 and has four fields:
 
-| Field | Meaning |
-| --- | --- |
-| `enabled` | The opt-in. Off by default — issuing licenses is never a silent default. |
-| `tierId` | The tier an auto-issued license lands on. Required. |
-| `mode` | `anonymous`, `oidcDefault`, or `both`. |
-| `rateLimitPerHour` | Per-IP enrollment ceiling. `0` disables the limit. Defaults to 10. |
+| Field              | Meaning                                                                  |
+| ------------------ | ------------------------------------------------------------------------ |
+| `enabled`          | The opt-in. Off by default — issuing licenses is never a silent default. |
+| `tierId`           | The tier an auto-issued license lands on. Required.                      |
+| `mode`             | `anonymous`, `oidcDefault`, or `both`.                                   |
+| `rateLimitPerHour` | Per-IP enrollment ceiling. `0` disables the limit. Defaults to 10.       |
 
 The three modes open different doors:
 
 - **`anonymous`** opens `POST /<product>/license/enroll` — this page.
-- **`oidcDefault`** does not open the route at all. It makes an *authenticated* user who matches
+- **`oidcDefault`** does not open the route at all. It makes an _authenticated_ user who matches
   no IdP group land on the named tier instead of a hard refusal. That path belongs to
   [Identity](/docs/services/identity/).
 - **`both`** opens both.
 
 The parser is fail-closed in a specific way that matters: `enabled: true` **with no `tierId`** is
-read as *disabled*, because a policy naming no tier cannot issue anything coherent. Unparseable
+read as _disabled_, because a policy naming no tier cannot issue anything coherent. Unparseable
 JSON is likewise read as off. (The fingerprint policy takes the opposite fallback — see
 [Policy](/docs/services/license/policy/) for why the asymmetry is right.)
 
@@ -99,9 +99,9 @@ policy exists to bound.
 
 The requirement is really two:
 
-| Refusal | Message | Cause |
-| --- | --- | --- |
-| `403 fingerprint_required` | "enrollment requires a hardware fingerprint" | No usable fingerprint in the body. |
+| Refusal                    | Message                                                            | Cause                                                      |
+| -------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `403 fingerprint_required` | "enrollment requires a hardware fingerprint"                       | No usable fingerprint in the body.                         |
 | `403 fingerprint_required` | "enrollment requires a machine anchor in the hardware fingerprint" | A fingerprint was sent, but it omits the anchor component. |
 
 ## One license per machine
@@ -138,16 +138,16 @@ machine, and that genuinely different machines get genuinely different licenses.
 
 ### The minted row
 
-| Column | Value |
-| --- | --- |
-| `status` | `active` |
-| `sub`, `name`, `email` | `null` — deliberately anonymous |
-| `tier_id` | The policy's tier |
-| `expires_at` | Derived from the tier's `policy_expiry_days`, or null |
-| `overrides_json` | Empty config, secrets, and entitlements |
-| `origin` | `enroll` |
-| `enroll_hwid` | The anchor-derived key |
-| `modified_by` | `enroll` |
+| Column                 | Value                                                 |
+| ---------------------- | ----------------------------------------------------- |
+| `status`               | `active`                                              |
+| `sub`, `name`, `email` | `null` — deliberately anonymous                       |
+| `tier_id`              | The policy's tier                                     |
+| `expires_at`           | Derived from the tier's `policy_expiry_days`, or null |
+| `overrides_json`       | Empty config, secrets, and entitlements               |
+| `origin`               | `enroll`                                              |
+| `enroll_hwid`          | The anchor-derived key                                |
+| `modified_by`          | `enroll`                                              |
 
 The expiry derivation matters: a tier configured as a time-boxed trial used to issue
 **permanent** licenses through this route — the one path where the license is free and

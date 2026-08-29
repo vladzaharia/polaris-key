@@ -31,9 +31,7 @@
   },
   "oidc": {
     "provider": "platform",
-    "redirectUris": [
-      "https://key.plrs.im/djdl/identity/auth/callback"
-    ],
+    "redirectUris": ["https://key.plrs.im/djdl/identity/auth/callback"],
     "groupRoleMap": {
       "family": {
         "role": "user",
@@ -67,9 +65,7 @@
       "claim": "remnawaveSub",
       "secretKey": "proxy.subscriptionUrl",
       "secretUrlTemplate": "https://vpn.polaris.rest/{claim}",
-      "allowedHosts": [
-        "vpn.polaris.rest"
-      ]
+      "allowedHosts": ["vpn.polaris.rest"]
     }
   ],
   "edgeMint": [

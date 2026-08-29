@@ -10,7 +10,7 @@
 //
 // An `enforced`/`hidden` key is LOCKED: overriding it via `localOverrides` or an env var has no
 // effect, and the remote value still wins. That is the whole point of the management state —
-// see docs/CONCEPTS.md.
+// see packages/docs/src/content/docs/start/concepts.md.
 
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";

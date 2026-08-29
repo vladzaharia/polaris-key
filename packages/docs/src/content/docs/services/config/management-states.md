@@ -13,11 +13,11 @@ sense.
 
 ## The three states
 
-| State | On the wire | Client behaviour |
-| --- | --- | --- |
-| `default` | A suggested value. | The user/local override wins, then an environment variable, then this remote value, then the SDK's own fallback. Overridable. |
+| State      | On the wire                 | Client behaviour                                                                                                                                          |
+| ---------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default`  | A suggested value.          | The user/local override wins, then an environment variable, then this remote value, then the SDK's own fallback. Overridable.                             |
 | `enforced` | The value, marked enforced. | The remote value always wins; local and environment overrides are ignored. Shown read-only in a settings UI (`listUserConfig` marks it `enforced: true`). |
-| `hidden` | The value, marked hidden. | Enforced, **and** withheld from `listUserConfig`/any user-facing enumeration — still applied internally by `getConfig`. |
+| `hidden`   | The value, marked hidden.   | Enforced, **and** withheld from `listUserConfig`/any user-facing enumeration — still applied internally by `getConfig`.                                   |
 
 ## `managementDefault`: seeding a fresh key
 
@@ -63,25 +63,25 @@ catalog default  ->  tier's profile  ->  license's profiles (in order)  ->  lice
   the merge is complete.
 
 `resolveMergedPayload` (`core/payload.ts`) walks exactly this list — `mergePayloads`
-(`core/merge.ts`) — key by key, independently for `config`, `secrets`, and `entitlements`. When
+(`src/merge.ts`) — key by key, independently for `config`, `secrets`, and `entitlements`. When
 `license` is `null` — a Config-only device under D-08 — the tier, the profile layers, and the
 license-override layer simply contribute nothing; the catalog default and the device's own
 overrides are exactly the right answer, not a special case.
 
 ### The one exception: `default` cannot demote `enforced`/`hidden`
 
-A later layer wins outright *except* when it would downgrade an already-`enforced`-or-`hidden`
+A later layer wins outright _except_ when it would downgrade an already-`enforced`-or-`hidden`
 value to a plain `default`. In that one case the lower layer's value and state survive unchanged,
 and only `updatedAt` advances to the newer of the two timestamps — so a client watching for change
 still notices, without silently un-enforcing something an operator locked down higher up the
 stack.
 
-| Lower layer | Higher layer | Result |
-| --- | --- | --- |
-| `enforced` (tier's profile) | `default` (license override) | Tier's `enforced` value survives; `updatedAt` bumps. |
-| `default` (tier's profile) | `enforced` (license override) | License override wins outright. |
-| `hidden` (license override) | `default` (device override) | License's `hidden` value survives. |
-| `default` (license override) | `hidden` (device override) | Device override wins outright. |
+| Lower layer                  | Higher layer                  | Result                                               |
+| ---------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `enforced` (tier's profile)  | `default` (license override)  | Tier's `enforced` value survives; `updatedAt` bumps. |
+| `default` (tier's profile)   | `enforced` (license override) | License override wins outright.                      |
+| `hidden` (license override)  | `default` (device override)   | License's `hidden` value survives.                   |
+| `default` (license override) | `hidden` (device override)    | Device override wins outright.                       |
 
 Every other combination — including a higher layer explicitly re-`enforcing` or re-`hiding` — is a
 plain override: the higher layer's value and state replace the lower one's.
@@ -121,21 +121,21 @@ same stack, to make the merge concrete.
 
 **No overrides anywhere.** Only the catalog layer contributes:
 
-| Layer | Contributes |
-| --- | --- |
-| catalog default | `state: "default"`, `value: 3` |
-| tier's profile, license's profiles, license overrides, device overrides | nothing |
-| **Effective** | `state: "default"`, `value: 3` — a user override, then env, then this value wins, in that order |
+| Layer                                                                   | Contributes                                                                                     |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| catalog default                                                         | `state: "default"`, `value: 3`                                                                  |
+| tier's profile, license's profiles, license overrides, device overrides | nothing                                                                                         |
+| **Effective**                                                           | `state: "default"`, `value: 3` — a user override, then env, then this value wins, in that order |
 
 **An operator locks it down on a "pro" tier, then a lower layer tries to loosen it:**
 
-| Layer | Contributes | After merge |
-| --- | --- | --- |
-| catalog default | `default`, `3` | `default`, `3` |
-| tier "pro" profile | `enforced`, `8` | `enforced`, `8` (replaces the catalog layer outright) |
-| license's own profiles | `default`, `2` (an operator meant this as a suggestion) | still `enforced`, `8` — a `default` layer cannot demote an `enforced` one; only `updatedAt` advances |
-| license overrides, device overrides | nothing | `enforced`, `8` |
-| **Effective** | | `state: "enforced"`, `value: 8` — the client cannot override it |
+| Layer                               | Contributes                                             | After merge                                                                                          |
+| ----------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| catalog default                     | `default`, `3`                                          | `default`, `3`                                                                                       |
+| tier "pro" profile                  | `enforced`, `8`                                         | `enforced`, `8` (replaces the catalog layer outright)                                                |
+| license's own profiles              | `default`, `2` (an operator meant this as a suggestion) | still `enforced`, `8` — a `default` layer cannot demote an `enforced` one; only `updatedAt` advances |
+| license overrides, device overrides | nothing                                                 | `enforced`, `8`                                                                                      |
+| **Effective**                       |                                                         | `state: "enforced"`, `value: 8` — the client cannot override it                                      |
 
 Had that license-profile layer instead written `state: "enforced", value: 5`, the result would be
 `enforced`/`5` — an explicit `enforced` at a higher layer always replaces a lower one; only a bare

@@ -5,7 +5,8 @@
 //   enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
 //
 // `enforced`/`hidden` always win (the value is locked to the server); a `default` (or an
-// absent entry) can be overridden locally or via an env var. See docs/CONCEPTS.md.
+// absent entry) can be overridden locally or via an env var. See
+// packages/docs/src/content/docs/start/concepts.md.
 //
 // Isomorphic: the environment is an injected lookup table, never `process.env` read here, so
 // this module runs unchanged in a browser bundle.

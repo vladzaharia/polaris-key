@@ -3,7 +3,7 @@
 One React hook API over **two transports**, plus brandable drop-in UIs for Polaris Key
 services.
 
-- **Desktop** (Electron/Tauri): wraps [`@polaris-key/node`](../sdk-node) through an injected
+- **Desktop** (Electron/Tauri): wraps `@polaris-key/node` through an injected
   `PolarisBridge` (default `window.polarisKey`). The privileged process owns the token,
   keyring, and loopback-OIDC; the renderer is a thin proxy.
 - **Browser**: cookie-session OIDC against `key.plrs.im` over `fetch(..., { credentials:
@@ -11,7 +11,7 @@ services.
 
 Both adapters satisfy the **same `PolarisAdapter`** and the hooks return the **same shapes**,
 so a component renders identically in either mode (mode-parity). The gate itself is
-[`@polaris-key/client-core`](../client-core)'s — the one implementation every JS SDK and the
+`@polaris-key/client-core`'s — the one implementation every JS SDK and the
 conformance corpus run, clock floor included.
 
 ## Install

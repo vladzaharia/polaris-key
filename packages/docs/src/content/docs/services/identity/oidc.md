@@ -39,11 +39,11 @@ must expose exactly those three paths at those exact suffixes.
 
 Three routes, all under `/<product>/identity/auth`:
 
-| Route | What it does |
-| --- | --- |
-| `GET /<p>/identity/auth/start` | Begins PKCE and 302s to the IdP's `/authorize`. |
+| Route                             | What it does                                                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `GET /<p>/identity/auth/start`    | Begins PKCE and 302s to the IdP's `/authorize`.                                                       |
 | `GET /<p>/identity/auth/callback` | The registered redirect URI: exchanges the code, verifies the ID token, mints or locates the license. |
-| `GET /<p>/identity/auth/poll` | Polls a flow that is bound to a device id, returning `pending`/`ready`/`error`/`timeout`. |
+| `GET /<p>/identity/auth/poll`     | Polls a flow that is bound to a device id, returning `pending`/`ready`/`error`/`timeout`.             |
 
 **`/auth/start`** generates `state` and `nonce` (16 random bytes each, base64url) and a PKCE pair
 — a 32-byte random `verifier` and its SHA-256 `challenge`, method `S256` — and stores them in a
@@ -88,7 +88,7 @@ identifies the flow (`state` versus `deviceCode`) and in whether the advertised 
 enforced.
 
 :::note[No aliases]
-These three routes, plus `/auth/logout` and the three `/auth/device/*` routes, are the *only*
+These three routes, plus `/auth/logout` and the three `/auth/device/*` routes, are the _only_
 spellings. The pre-namespace paths (`/<p>/auth/…`, `/<p>/session`) are deleted outright, and
 `/auth/login` — a second spelling of `/auth/start` — is gone the same way. See
 [Identity](/docs/services/identity/) for why no compatibility alias was kept.
@@ -153,9 +153,9 @@ matching provisioning hook (below) into a payload of overrides.
 
 If the device presenting this sign-in is already running on a **claimable** enrolled license — an
 anonymous, keyless one with no identity attached yet (`origin: "enroll"`, `sub: null`) — two
-merge outcomes are possible, using the vocabulary from `docs/CONCEPTS.md`:
+merge outcomes are possible, using the vocabulary from [the concepts page](/docs/start/concepts/):
 
-- **Claim.** No license exists yet for this identity: the identity is attached to the *same* row.
+- **Claim.** No license exists yet for this identity: the identity is attached to the _same_ row.
   Its devices, keys, and overrides all survive; the person simply becomes known.
 - **Migrate.** The identity already has its own license: the enrolled license's devices move onto
   it, and the enrolled row is retired (`disabled`). Its `enroll_hwid` is deliberately **not**
@@ -178,7 +178,7 @@ string that is not `"false"`, `"0"`, or `"null"` — an IdP that emits any of th
 strings must not grant anything, so truthiness alone is not enough.
 
 - **Entitlement.** Written into the payload as `state: "enforced"`. A malformed
-  `entitlement_value_json` skips the *whole* hook rather than guessing a value.
+  `entitlement_value_json` skips the _whole_ hook rather than guessing a value.
 - **Secret.** `secret_url_template` has every `{claim}` occurrence — there may be more than one —
   replaced with the URL-encoded claim value, then checked against `allowed_hosts_json`: the
   resulting URL's host must be a member, or the secret is dropped entirely. A missing or

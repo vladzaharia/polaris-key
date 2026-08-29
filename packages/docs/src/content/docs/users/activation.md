@@ -1,5 +1,5 @@
 ---
-title: "Activation"
+title: "Activating your product"
 description: "The four ways to get a Polaris Key product running: a license key, signing in, free enrollment, or an offline bundle."
 sidebar:
   order: 2

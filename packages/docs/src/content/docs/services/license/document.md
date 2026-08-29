@@ -77,25 +77,27 @@ byte-identical, and the surfaces v3 introduced speak the nested shape from their
     "name": "Ada Lovelace",
     "firstName": "Ada",
     "email": "ada@example.com",
-    "activatedAt": 1750000000
+    "activatedAt": 1750000000,
   },
-  "entitlements": { "…": { "state": "enforced", "value": "…", "updatedAt": 0 } }
+  "entitlements": {
+    "…": { "state": "enforced", "value": "…", "updatedAt": 0 },
+  },
 }
 ```
 
 ### The envelope
 
-| Claim | Value |
-| --- | --- |
-| `iss` | A **fixed** string, never derived from the request's base URL. |
-| `aud` | The product slug. Product isolation is structural: every read is product-scoped and the signing key is the product's. |
-| `deviceId` | The device the token belongs to. A client rejects a document minted for another device. |
-| `issuedAt` | Issue time, in unix seconds. |
-| `expiresAt` | `issuedAt` plus the document TTL — one hour, on the online path. |
-| `graceUntil` | `issuedAt` plus `maxOfflineDays × 86400`, where `maxOfflineDays` is the license's override or the product default. |
+| Claim        | Value                                                                                                                 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `iss`        | A **fixed** string, never derived from the request's base URL.                                                        |
+| `aud`        | The product slug. Product isolation is structural: every read is product-scoped and the signing key is the product's. |
+| `deviceId`   | The device the token belongs to. A client rejects a document minted for another device.                               |
+| `issuedAt`   | Issue time, in unix seconds.                                                                                          |
+| `expiresAt`  | `issuedAt` plus the document TTL — one hour, on the online path.                                                      |
+| `graceUntil` | `issuedAt` plus `maxOfflineDays × 86400`, where `maxOfflineDays` is the license's override or the product default.    |
 
 The short `expiresAt` and the long `graceUntil` are two different clocks. `expiresAt` governs
-whether a freshly-fetched document is acceptable; `graceUntil` governs how long an *offline*
+whether a freshly-fetched document is acceptable; `graceUntil` governs how long an _offline_
 install keeps running. A verifier enforces a 365-day ceiling on grace at verify time, not merely
 in the gate, so a hostile signer cannot grant a century of it.
 
@@ -112,14 +114,14 @@ This is `DocProfile`, and it is **not** the reusable managed-payload profile a t
 
 Catalog-declared `flag` entries, plus the policy the server injects as **enforced** entries:
 
-| Key | Value |
-| --- | --- |
-| `license.tier` | The license's tier id. Absent when the license has no tier. |
-| `license.tierLabel` | The tier's human label, when it has one. |
-| `channels` | The union of the tier's and the license's entitled release channels. |
-| `app.minVersion` | The tighter (higher) of the tier's and the license's minimum. |
-| `app.maxVersion` | The tighter (lower) of the tier's and the license's maximum. |
-| `deviceLimit` | The tier's seat count. The same number the seat check enforces. |
+| Key                 | Value                                                                |
+| ------------------- | -------------------------------------------------------------------- |
+| `license.tier`      | The license's tier id. Absent when the license has no tier.          |
+| `license.tierLabel` | The tier's human label, when it has one.                             |
+| `channels`          | The union of the tier's and the license's entitled release channels. |
+| `app.minVersion`    | The tighter (higher) of the tier's and the license's minimum.        |
+| `app.maxVersion`    | The tighter (lower) of the tier's and the license's maximum.         |
+| `deviceLimit`       | The tier's seat count. The same number the seat check enforces.      |
 
 Every injected entry is `state: "enforced"` and carries `updatedAt` from the license row's
 `modified_at`, which is what makes [re-licensing](/docs/services/license/relicensing/) detectable
@@ -133,7 +135,7 @@ Managed secrets ride the config document instead.
 
 **License state is never in the document.** There is no `status`, no `ok`, no `grace`, no
 `expired` field. The client's gate derives the state from the verified document, its clock, and
-two unsigned local hints that can only *tighten* the outcome:
+two unsigned local hints that can only _tighten_ the outcome:
 
 `ok` · `grace` · `expired` · `revoked` · `needs-activation` · `version-too-old` ·
 `version-too-new` · `channel-not-entitled` · `not-applicable`
@@ -174,11 +176,11 @@ Channel and version enforcement lives on **this route** and on identity's
 ### Why here
 
 It has to be somewhere a grant is being handed out, because the version window and the entitled
-channel set *are* grants — they arrive as enforced entitlements on this very document.
+channel set _are_ grants — they arrive as enforced entitlements on this very document.
 
 Putting it on the config document instead would mean a build outside its window could not read
 its settings, which is a **support incident** rather than a security control. The point of
-blocking an out-of-window build is to stop it *claiming a license*, not to blind it.
+blocking an out-of-window build is to stop it _claiming a license_, not to blind it.
 
 ### The refusal
 
@@ -186,7 +188,7 @@ blocking an out-of-window build is to stop it *claiming a license*, not to blind
 // 403, Content-Type: application/json, Cache-Control: no-store
 {
   "error": { "code": "version_blocked", "reason": "version-too-old" },
-  "allowedRange": { "min": "2.0.0", "max": "3.4.9" }
+  "allowedRange": { "min": "2.0.0", "max": "3.4.9" },
 }
 ```
 
@@ -204,7 +206,7 @@ Inputs are the `X-PKey-Version` header (defaulting to `0.0.0` when absent), the 
 `X-PKey-Channel` header, the resolved entitlements, and the product's own compatibility window.
 
 1. **Dev-build bypass — opt-in only.** A `0.0.0-dev…` version short-circuits the whole gate
-   *only* if the license is positively entitled to the `dev` channel. It defaults to **off**.
+   _only_ if the license is positively entitled to the `dev` channel. It defaults to **off**.
    The gate accepts a per-product override too, but there is no `products` column feeding it
    today, so the channel entitlement is the live lever. The bypass used to fire on a version
    string the caller types into a header, which is a self-signed exemption.
@@ -227,7 +229,7 @@ Inputs are the `X-PKey-Version` header (defaulting to `0.0.0` when absent), the 
 
 A verified document is written to the client's cache alongside the trust manifest it was verified
 against, and the cache is **never** a key source. Reloading it uses a different validation
-profile: the document is *expected* to be past `expiresAt` — that is what offline operation is —
+profile: the document is _expected_ to be past `expiresAt` — that is what offline operation is —
 and only `graceUntil` bounds it.
 
 Air-gapped installs get the same document by a different route. An operator-minted offline bundle

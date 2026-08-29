@@ -67,7 +67,7 @@ operator carries to an air-gapped machine.
 The full route table, including every non-document surface, is at
 [Routes](/docs/reference/routes/).
 
-## The four pages in this section
+## The five pages in this section
 
 | Page                                                 | What it covers                                                                                                                              | Spec sections |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |

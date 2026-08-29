@@ -18,9 +18,9 @@ unused device dropping off on its own after a few months of inactivity. See
 [Seat pools and deviceLimit](/docs/services/license/model/#seat-pools-and-devicelimit) for
 exactly how the count is worked out.
 
-## If your plan changes
+## If your tier changes
 
-Moving a license to a plan with a smaller device limit than the number of devices already
+Moving a license to a tier with a smaller device limit than the number of devices already
 running on it doesn't disconnect anything — every device already active keeps working exactly
 as before. What changes is forward-looking only: activating a **new** device is refused until
 the count drops back under the new limit.

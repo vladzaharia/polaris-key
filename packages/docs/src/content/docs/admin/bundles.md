@@ -1,5 +1,5 @@
 ---
-title: "Offline bundles"
+title: "Minting offline bundles"
 description: "When to mint one, the console dialog, the pkey bundle CLI, and the import-window vs. grace-days distinction."
 sidebar:
   order: 9
@@ -8,9 +8,9 @@ sidebar:
 An offline activation bundle is a single signed `pkey-bundle+jws` file that lets a machine which
 **never touches the network at all** get the same license and config documents it would
 otherwise have fetched. This is the deepest of the three offline modes Polaris Key supports (see
-[What is Polaris Key?](/docs/start/) → *Five implementations*): a normal client is
-offline-*tolerant* — it activates online once, then runs from a verified cache with grace — but a
-bundle exists for the machine that can't do even that first activation.
+[What is Polaris Key?](/docs/start/) → _Four SDKs, one corpus, and it works offline_): a normal
+client is offline-_tolerant_ — it activates online once, then runs from a verified cache with
+grace — but a bundle exists for the machine that can't do even that first activation.
 
 ## When to reach for this
 
@@ -26,12 +26,12 @@ to the machine.
 
 From a license's detail page, **Offline bundle**:
 
-| Field | Notes |
-| --- | --- |
-| Device ID | The 32-character request code, pasted exactly. A mistyped code is refused locally as a form error rather than becoming a bundle no machine can import. |
-| Grace days | 1–365, defaulting to the ceiling (365) — this is for the machine least able to come back for a fresh one. |
+| Field                 | Notes                                                                                                                                                                                                                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Device ID             | The 32-character request code, pasted exactly. A mistyped code is refused locally as a form error rather than becoming a bundle no machine can import.                                                                                                                                                |
+| Grace days            | 1–365, defaulting to the ceiling (365) — this is for the machine least able to come back for a fresh one.                                                                                                                                                                                             |
 | Include configuration | Shown only when the product runs Config; ships the signed config document alongside the license document. The checkbox disappears rather than greying out on a product without Config — there's no "reachable but off" state to represent, because the product has no config document to ship at all. |
-| License | Implicit — whichever license's detail page you opened the dialog from. There's no authenticated device on this path to infer one from, so the server requires it explicitly whenever License is enabled. |
+| License               | Implicit — whichever license's detail page you opened the dialog from. There's no authenticated device on this path to infer one from, so the server requires it explicitly whenever License is enabled.                                                                                              |
 
 The result is shown once, but **without** the "never again" ceremony a minted key gets. That's
 deliberate: a key is shown once because the server keeps only its hash and truly cannot show it
@@ -67,7 +67,7 @@ or export it into a shell other people share.
 Everything checkable locally is checked before either network call: the device id against the
 same 32-character shape the server enforces, grace-days against the same 1–365 range, and the
 output path against an existing file (a mint is an audited, non-free server-side event, so
-discovering a name collision *after* minting would waste one). The default output filename is
+discovering a name collision _after_ minting would waste one). The default output filename is
 `<product>-<first 8 chars of device id>.pkeybundle`; the file **is** the JWS with no trailing
 newline, so a naive read hands it straight to a verifier.
 
@@ -76,13 +76,13 @@ newline, so a naive read hands it straight to a verifier.
 A minted bundle carries two independent time bounds, and conflating them is the most common way
 to misconfigure this flow:
 
-| Bound | Set by | Meaning |
-| --- | --- | --- |
-| The bundle's own `expiresAt` | The server, always **30 days** from mint, not operator-configurable | The **import deadline** — how long the file itself may sit on a USB stick before an import is refused outright. |
-| The inner documents' `graceUntil` | The operator's **Grace days** field, 1–365 | The **offline window** the resulting install actually runs on, once imported. |
+| Bound                             | Set by                                                              | Meaning                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| The bundle's own `expiresAt`      | The server, always **30 days** from mint, not operator-configurable | The **import deadline** — how long the file itself may sit on a USB stick before an import is refused outright. |
+| The inner documents' `graceUntil` | The operator's **Grace days** field, 1–365                          | The **offline window** the resulting install actually runs on, once imported.                                   |
 
 These are deliberately decoupled, and much of the gap is intentional: the 30-day import window
-bounds how long a *stolen bundle file* is useful to someone who didn't have it at mint time,
+bounds how long a _stolen bundle file_ is useful to someone who didn't have it at mint time,
 while grace days bounds how long the install it creates keeps working once it lands. Making them
 equal would mean every 365-day grace also handed out a 365-day replay window for the file itself.
 The inner documents' own `expiresAt` (about an hour, same as an online fetch) is correct and

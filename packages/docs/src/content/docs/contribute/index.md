@@ -21,10 +21,10 @@ the glossary disagree, the glossary wins.
 
 ## In this section
 
-| Page | What it covers |
-| --- | --- |
-| [Setup](/docs/contribute/setup/) | Installing the JS workspace, the Python SDK, and the Swift toolchain; why Node must be 22; the green-gate commands; pre-commit hooks. |
-| [Monorepo layout](/docs/contribute/layout/) | The full package map, the Worker's `core/` + `services/<slug>/` split, the boundary test that enforces it, and `mount.ts` as the composition root. |
-| [The contract-first wave model](/docs/contribute/waves/) | The contract → catalog → corpus → SDKs ordering, a five-language walkthrough for a wire-visible field, and the full drift-gate inventory. |
-| [The conformance corpus](/docs/contribute/corpus/) | How one generator and four runners keep five implementations byte-identical, and how to add a case. |
-| [Releasing](/docs/contribute/releasing/) | The Changesets flow for the JS SDKs, the Python and Swift tag releases, and how the worker deploys. |
+| Page                                                     | What it covers                                                                                                                                     |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Setup](/docs/contribute/setup/)                         | Installing the JS workspace, the Python SDK, and the Swift toolchain; why Node must be 22; the green-gate commands; pre-commit hooks.              |
+| [Monorepo layout](/docs/contribute/layout/)              | The full package map, the Worker's `core/` + `services/<slug>/` split, the boundary test that enforces it, and `mount.ts` as the composition root. |
+| [The contract-first wave model](/docs/contribute/waves/) | The contract → catalog → corpus → SDKs ordering, a five-language walkthrough for a wire-visible field, and the full drift-gate inventory.          |
+| [The conformance corpus](/docs/contribute/corpus/)       | How one generator and four runners keep five implementations byte-identical, and how to add a case.                                                |
+| [Releasing](/docs/contribute/releasing/)                 | The Changesets flow for the JS SDKs, the Python and Swift tag releases, and how the worker deploys.                                                |

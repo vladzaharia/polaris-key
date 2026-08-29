@@ -1108,9 +1108,9 @@ describe("autoIssue policy validation", () => {
       normalizeAutoIssue({ enabled: true, tierId: "free", mode: "sponsored" }),
     ).toMatchObject({ enabled: false });
     // An OMITTED mode is a default, not a coercion — the policy stays enabled.
-    expect(
-      normalizeAutoIssue({ enabled: true, tierId: "free" }),
-    ).toMatchObject({ enabled: true, mode: "anonymous" });
+    expect(normalizeAutoIssue({ enabled: true, tierId: "free" })).toMatchObject(
+      { enabled: true, mode: "anonymous" },
+    );
   });
 });
 

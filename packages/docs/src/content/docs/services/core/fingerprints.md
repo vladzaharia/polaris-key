@@ -9,21 +9,21 @@ A **fingerprint** is the set of per-component hashes a device reports about its 
 hardware values are hashed on-device and never transmitted — the server only ever compares
 opaque digests, and a database dump yields no serial numbers.
 
-The fingerprint is layered *on top of* the device id, which stays the stable primary key every
+The fingerprint is layered _on top of_ the device id, which stays the stable primary key every
 row and signed document is bound to. Turning fingerprinting on can therefore never orphan an
 existing device.
 
 ## The seven components
 
-| Component | What it covers |
-| --- | --- |
-| `machineUuid` | The platform machine identifier — **the anchor** |
-| `boardSerial` | Mainboard / chassis serial |
-| `cpuModel` | CPU brand plus core count (they change together) |
-| `primaryMac` | The lowest non-internal, non-zero MAC address |
-| `bootVolumeUuid` | The boot volume identifier |
-| `ramBucket` | Total RAM rounded down to a power of two in GiB |
-| `machineModel` | The model identifier |
+| Component        | What it covers                                   |
+| ---------------- | ------------------------------------------------ |
+| `machineUuid`    | The platform machine identifier — **the anchor** |
+| `boardSerial`    | Mainboard / chassis serial                       |
+| `cpuModel`       | CPU brand plus core count (they change together) |
+| `primaryMac`     | The lowest non-internal, non-zero MAC address    |
+| `bootVolumeUuid` | The boot volume identifier                       |
+| `ramBucket`      | Total RAM rounded down to a power of two in GiB  |
+| `machineModel`   | The model identifier                             |
 
 Two of those deserve their reasoning. `ramBucket` is bucketed so a BIOS or OS reporting 15.9
 versus 16.0 GiB does not read as a hardware change. `primaryMac` is selected by **address**
@@ -54,7 +54,7 @@ hwid = base64url(sha256(join("\n", ["<component>=<hash>", …])))[0..32]
 ```
 
 Only components that are present contribute, so losing one changes the hwid. That is why the
-hwid is the *coarse* dedupe key and component-wise matching is the authority.
+hwid is the _coarse_ dedupe key and component-wise matching is the authority.
 
 Every SDK must iterate the canonical order rather than a language-native map ordering; a
 different order is a conformance failure. The exact constants and the canonical order live at
@@ -87,7 +87,7 @@ component the matcher treats as privileged. It does two jobs.
 
 **It widens tolerance by one when it still matches.** A machine whose platform UUID is intact is
 very likely the same machine that had a disk and a NIC replaced. The bonus only ever widens an
-*existing* tolerance — it never creates one — so `strict` really does mean zero drift rather
+_existing_ tolerance — it never creates one — so `strict` really does mean zero drift rather
 than quietly becoming one.
 
 **It is the entire enroll-dedupe key.** See below.
@@ -108,12 +108,12 @@ tolerance for the effective mode, plus the anchor bonus.
 
 ## Modes and tolerances
 
-| Mode | Tolerated drift | Notes |
-| --- | --- | --- |
-| `off` | ∞ | Collect, never enforce |
-| `lenient` | 4 | |
-| `normal` | 2 | The default |
-| `strict` | 0 | A fingerprint additionally becomes **mandatory** |
+| Mode      | Tolerated drift | Notes                                            |
+| --------- | --------------- | ------------------------------------------------ |
+| `off`     | ∞               | Collect, never enforce                           |
+| `lenient` | 4               |                                                  |
+| `normal`  | 2               | The default                                      |
+| `strict`  | 0               | A fingerprint additionally becomes **mandatory** |
 
 Plus **+1 when the anchor still matches**, and only when the base tolerance is non-zero.
 

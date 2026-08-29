@@ -28,28 +28,30 @@ than escape as an unhandled error.
 
 Unlike `/license/document` and `/config/document`, this route mints **one fused document** —
 license claims, config, and entitlements together — rather than the split pair wire v3 uses
-elsewhere. That is deliberate: it is minted for a *page*, not an SDK, and it is the one caller
+elsewhere. That is deliberate: it is minted for a _page_, not an SDK, and it is the one caller
 still using the pre-split shape until the React SDK migrates to the split documents. `secrets` is
 always stripped to an empty object before the response is built — a browser session is never
 handed secret material.
 
 The response shape depends on how far the request gets:
 
-| Situation | Response |
-| --- | --- |
-| No session cookie, or its record is missing/corrupt | `200 { "authenticated": false, "doc": null }` |
-| Session valid, but the device token or license fails Core's usability check | `200 { "authenticated": false, "doc": null }` — identical to no session at all |
-| Session valid, but the active catalog can't validate the payload | `500 catalog_unavailable` — fails closed, matching `/config/document` |
+| Situation                                                                                | Response                                                                                                            |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| No session cookie, or its record is missing/corrupt                                      | `200 { "authenticated": false, "doc": null }`                                                                       |
+| Session valid, but the device token or license fails Core's usability check              | `200 { "authenticated": false, "doc": null }` — identical to no session at all                                      |
+| Session valid, but the active catalog can't validate the payload                         | `500 catalog_unavailable` — fails closed, matching `/config/document`                                               |
 | Session valid, device/license usable, but the **build gate** blocks this version/channel | `200 { "authenticated": true, "doc": null, "blocked": { "reason": "…", "allowedRange": {...} }, "csrfToken": "…" }` |
-| Session valid and nothing blocks it | `200 { "authenticated": true, "doc": {...}, "csrfToken": "…" }` |
+| Session valid and nothing blocks it                                                      | `200 { "authenticated": true, "doc": {...}, "csrfToken": "…" }`                                                     |
 
 A session that exists but no longer authorizes anything is indistinguishable from having no
 session — a client cannot tell "never signed in" from "signed in, but the license expired"
 without inspecting further, which is the same hide-the-reason posture the rest of this service
 takes.
 
-The `doc` itself, when present, carries the envelope every signed document shares plus the fused
-license/config payload:
+The `doc` itself, when present, mirrors the claim envelope the signed documents carry, plus the
+fused license/config payload. It is delivered as **plain JSON inside this response**, not as a
+compact JWS — the page is already talking to the origin over an authenticated session, so there
+is no cache or disk boundary here for a signature to survive:
 
 ```json
 {
@@ -58,13 +60,16 @@ license/config payload:
   "iss": "key.plrs.im",
   "licenseId": "lic_…",
   "deviceId": "browser:lic_…",
-  "issuedAt": 0,
-  "expiresAt": 0,
-  "graceUntil": 0,
+  "issuedAt": 1756252800,
+  "expiresAt": 1756256400,
+  "graceUntil": 1758844800,
   "profile": {},
   "payload": { "config": {}, "secrets": {}, "entitlements": {} }
 }
 ```
+
+`expiresAt` is `issuedAt + 3600` and `graceUntil` is `issuedAt + maxOfflineDays × 86 400`, the
+same arithmetic the signed documents use.
 
 `secrets` is always the empty object shown above — never omitted, never populated. A browser
 session's whole point is to drive a page's UI off config and entitlements; secret material stays
@@ -85,7 +90,7 @@ likely to make next: logout, below.
 
 Exchanges a license key for a session cookie, for a page that has a key rather than an existing
 sign-in: body `{ "key": "pkey_…" }`, or a bearer `Authorization` header. The key is hashed,
-looked up, and must be `active`; its license is loaded and run through the *same*
+looked up, and must be `active`; its license is loaded and run through the _same_
 seat-authorization step activation uses, binding the synthetic `browser:<licenseId>` device the
 same way a native install's device id would be bound. A seat conflict answers `403 device_limit`
 with the same `{ "limit": …, "deviceCount": … }` detail activation's device-limit refusal
@@ -100,7 +105,7 @@ exactly the same key-redemption shape. Success is `201` with `Set-Cookie`, and t
 ## Logout — `POST /identity/auth/logout`
 
 Requires the `X-CSRF-Token` header to equal the session's stored CSRF value, or `403 forbidden`.
-This is the one mutating browser-session surface that *does* check CSRF: unlike registering a
+This is the one mutating browser-session surface that _does_ check CSRF: unlike registering a
 device below, logout's effect is visible without reading the response, so a cross-site POST with
 no token attached must not be able to trigger it.
 
@@ -125,7 +130,7 @@ What that hook checks is deliberately **one step short** of what `/identity/sess
 
 1. Load the session from the cookie — a pure read, resolving to the stored KV record and nothing
    more.
-2. Validate the device token *by itself* — Core's `validateDeviceToken`, not
+2. Validate the device token _by itself_ — Core's `validateDeviceToken`, not
    `requireLicensedDevice`. It asks only "is this a live device," never "does it hold a usable
    license."
 
@@ -133,7 +138,7 @@ That second point is load-bearing. `requires-identity` is precisely the policy a
 when it does **not** run License at all (a Config-only or Release-only product with sign-in but
 no seats) — demanding a usable license here would make the policy unsatisfiable for the very
 products it exists to serve. Contrast this with `/identity/session` above, which upgrades to the
-full license-usability check because a browser asking for its config document *is* asking a
+full license-usability check because a browser asking for its config document _is_ asking a
 licensing question.
 
 One more gate sits in front of both: the registry-level `authorizeRegistration` first confirms
@@ -142,7 +147,7 @@ the flag is off or no hook is registered. A product cannot declare `requires-ide
 Identity disabled and have registration fall open — see [Identity](/docs/services/identity/) for
 the enablement rule that closes that combination off at the admin API.
 
-No CSRF check applies to this exchange, unlike logout: it authorizes minting a *new* credential
+No CSRF check applies to this exchange, unlike logout: it authorizes minting a _new_ credential
 that is returned only in the response body, so a cross-site caller that forced the request could
 never read what it produced.
 

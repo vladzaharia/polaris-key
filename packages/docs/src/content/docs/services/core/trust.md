@@ -20,7 +20,7 @@ A verifier holds exactly two tiers of keys, in strictly decreasing authority, an
 They merge with the pins spread **last**:
 
 ```ts
-mergeTrust(pinned, discovered) === { ...discovered, ...pinned }
+mergeTrust(pinned, discovered) === { ...discovered, ...pinned };
 ```
 
 so a manifest can never shadow a pin. Spreading these the other way round was a real
@@ -36,7 +36,7 @@ The product's public key set in ordinary JWKS shape — one entry per verificati
 `kty: "OKP"`, `crv: "Ed25519"`, `use: "sig"`, `alg: "EdDSA"`, with `kid` and `x`. Served with
 `cache-control: public, max-age=300`.
 
-This exists so SDKs can *optionally* discover keys during rotation. It is unsigned, so it is a
+This exists so SDKs can _optionally_ discover keys during rotation. It is unsigned, so it is a
 convenience, not an authority: clients still pin a trust set by default, and nothing in the
 verification path treats a JWKS response as a key source.
 
@@ -51,13 +51,19 @@ with `cache-control: public, max-age=300`. Its payload:
   "aud": "<product-slug>",
   "iss": "key.plrs.im",
   "issuedAt": 1756252800,
-  "expiresAt": 1756253100,     // issuedAt + TRUST_CACHE_SECONDS
+  "expiresAt": 1756253100, // issuedAt + TRUST_CACHE_SECONDS
   "jwksUrl": "https://<host>/<product>/.well-known/jwks.json",
   "cacheSeconds": 300,
   "keys": [
-    { "kid": "…", "alg": "EdDSA", "kty": "OKP", "crv": "Ed25519",
-      "publicKey": "…", "status": "active" }
-  ]
+    {
+      "kid": "…",
+      "alg": "EdDSA",
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "publicKey": "…",
+      "status": "active",
+    },
+  ],
 }
 ```
 

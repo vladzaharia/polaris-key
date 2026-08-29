@@ -2,7 +2,7 @@
 title: "Registering a product"
 description: "Products are data: the .pkey/ manifest, the modules and devices.registration switches, and how a product reaches the registry."
 sidebar:
-  order: 3
+  order: 3.5
 ---
 
 Each product that adopts Polaris Key is registered as **data**. The preferred shape is a

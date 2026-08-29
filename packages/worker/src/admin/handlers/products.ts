@@ -11,7 +11,8 @@
  *   - `POST /api/products/kek`              — re-seal a bounded batch of rows under the active
  *                                             KEK (the rotation sweep; idempotent + resumable).
  *   - `PUT  /api/products/<slug>/secrets/<name>` — write-only sealed secret (never echoed).
- *   - `POST /api/products/<slug>/keys/rotate`    — retire the active key, mint a new active one.
+ *   - `POST /api/products/<slug>/keys/rotate`    — mint a STAGED key (the active key is
+ *                                             untouched until the separate `activate` action).
  *
  * Platform admin gates the registry + link-repo + manual create; product admin (or platform)
  * gates the per-product key/secret/release operations.

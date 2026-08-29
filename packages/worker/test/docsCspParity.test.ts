@@ -40,25 +40,28 @@ function cspHash(body: string): string {
   return `'sha256-${createHash("sha256").update(body, "utf8").digest("base64")}'`;
 }
 
-describe.skipIf(!existsSync(dist))("docsCsp.generated.ts ↔ docs dist parity", () => {
-  it("the committed hash sets equal a fresh sweep of the built HTML", () => {
-    const scripts = new Set<string>();
-    const styles = new Set<string>();
-    for (const file of htmlFiles(dist)) {
-      const html = readFileSync(file, "utf8");
-      for (const match of html.matchAll(SCRIPT_RE)) {
-        const attrs = match.groups?.attrs ?? "";
-        const body = match.groups?.body ?? "";
-        if (/\ssrc\s*=/i.test(attrs) || body.length === 0) continue;
-        scripts.add(cspHash(body));
+describe.skipIf(!existsSync(dist))(
+  "docsCsp.generated.ts ↔ docs dist parity",
+  () => {
+    it("the committed hash sets equal a fresh sweep of the built HTML", () => {
+      const scripts = new Set<string>();
+      const styles = new Set<string>();
+      for (const file of htmlFiles(dist)) {
+        const html = readFileSync(file, "utf8");
+        for (const match of html.matchAll(SCRIPT_RE)) {
+          const attrs = match.groups?.attrs ?? "";
+          const body = match.groups?.body ?? "";
+          if (/\ssrc\s*=/i.test(attrs) || body.length === 0) continue;
+          scripts.add(cspHash(body));
+        }
+        for (const match of html.matchAll(STYLE_RE)) {
+          const body = match.groups?.body ?? "";
+          if (body.length === 0) continue;
+          styles.add(cspHash(body));
+        }
       }
-      for (const match of html.matchAll(STYLE_RE)) {
-        const body = match.groups?.body ?? "";
-        if (body.length === 0) continue;
-        styles.add(cspHash(body));
-      }
-    }
-    expect([...scripts].sort()).toEqual([...DOCS_SCRIPT_HASHES]);
-    expect([...styles].sort()).toEqual([...DOCS_STYLE_HASHES]);
-  });
-});
+      expect([...scripts].sort()).toEqual([...DOCS_SCRIPT_HASHES]);
+      expect([...styles].sort()).toEqual([...DOCS_STYLE_HASHES]);
+    });
+  },
+);

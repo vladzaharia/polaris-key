@@ -5,10 +5,10 @@ sidebar:
   order: 1
 ---
 
-Update renders a live feed *over* [Release](/docs/services/release/)'s truth. It owns no
+Update renders a live feed _over_ [Release](/docs/services/release/)'s truth. It owns no
 tables of its own — every row it reads belongs to Release — and it answers exactly two
-questions: what is the newest build on a given channel, and which build is *this specific
-caller* allowed to be offered. The Sparkle appcast, the plain version check, and the
+questions: what is the newest build on a given channel, and which build is _this specific
+caller_ allowed to be offered. The Sparkle appcast, the plain version check, and the
 per-license `entitled` access mode are all different framings of those same two questions.
 
 ## Truth and feed, split on purpose
@@ -76,7 +76,7 @@ product gets a working feed the moment it links a repository, with no separate p
 step and no baked-at-build-time XML file to keep in sync by hand. Sparkle's own signature
 verification — the part that actually decides whether an update is safe to install — is
 untouched by any of this; Update's server-side EdDSA check (covered on
-[Appcast](/docs/services/update/appcast/)) is a *publishing* gate, not a substitute for it.
+[Appcast](/docs/services/update/appcast/)) is a _publishing_ gate, not a substitute for it.
 
 Sparkle itself has no opinion about channels — a host either points at one `SUFeedURL` or
 it doesn't. Update's channel model (`stable`, `beta`, `pr-<n>`, and any operator-defined
@@ -131,8 +131,8 @@ resolves, and its Sparkle key all come from Release's own `.pkey/release` config
 
 ## Informing versus enforcing
 
-The version check only ever *informs* — it reports the newest build on a channel and lets
-a caller decide what to do about it, the same way the appcast only ever *offers*. Neither
+The version check only ever _informs_ — it reports the newest build on a channel and lets
+a caller decide what to do about it, the same way the appcast only ever _offers_. Neither
 one blocks an out-of-date client from continuing to run. The actual build gate — the
 `403` a client gets for running a version a license no longer permits — lives on the
 signed license document, a different service entirely. A product can run Update with no

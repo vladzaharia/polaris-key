@@ -93,7 +93,7 @@ Run the JS suites on **Node 22** (`mise exec node@22 -- pnpm test`), the version
 worker suite drives D1 through the native `better-sqlite3`, so a newer Node major leaves it
 unbuildable and the whole worker package fails to collect.
 
-Operations: `docs/RUNBOOK.md`. Onboarding a product: `docs/ADOPTER-GUIDE.md`.
+Operations: `docs/RUNBOOK.md`. Onboarding a product: `the docs site (`/docs/build/onboarding/`)`.
 Production bootstrap: `docs/DEPLOYMENT.md`.
 
 ## Tests

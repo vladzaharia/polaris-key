@@ -43,11 +43,11 @@ free of separators.
 `devices.registration` is one of three values, stored inside `products.services_json` beside
 the enablement flags.
 
-| Policy | `POST /<p>/devices/register` behaviour |
-| --- | --- |
-| `open` | Mint for any caller. Rate-limited by edge IP; fingerprint optional. |
+| Policy              | `POST /<p>/devices/register` behaviour                                        |
+| ------------------- | ----------------------------------------------------------------------------- |
+| `open`              | Mint for any caller. Rate-limited by edge IP; fingerprint optional.           |
 | `requires-identity` | Same endpoint, but only for a caller carrying a live product browser session. |
-| `requires-license` | Refuse permanently. Activation and enrollment are the only mint paths. |
+| `requires-license`  | Refuse permanently. Activation and enrollment are the only mint paths.        |
 
 ### The derived default
 
@@ -71,8 +71,9 @@ wrote. The policy lives in the same column as the enablement set precisely becau
 is a function of that set — reading a policy from one place while deriving its default from
 another is how the two drift.
 
-Two coherence rules reject incoherent combinations at the enablement API
-(`PATCH /manage/api/products/<slug>/services`), by stable code:
+Two of the coherence rules the enablement API applies
+(`PATCH /manage/api/products/<slug>/services`) turn on the registration policy, and both reject
+by stable code:
 
 - `registration_requires_identity` — a declared `requires-identity` with Identity off. There is
   no login to stand behind, so the product has taken registration away rather than restricted
@@ -102,7 +103,7 @@ The order of operations is load-bearing:
    answer, and refusing without a Durable Object round-trip keeps that case cheap under exactly
    the flood that would try it.
 3. **Rate limit**, bucket `register`, keyed by edge IP, **10 requests per 60 seconds**, failing
-   **closed**. It runs *before* the identity exchange: the exchange reads a cookie, hashes it,
+   **closed**. It runs _before_ the identity exchange: the exchange reads a cookie, hashes it,
    and touches KV and D1, so gating it on an unauthenticated budget is what stops a flood of
    forged cookies from turning a rate-limited endpoint into an unmetered session-probing
    oracle. Over-limit is `429 rate_limited`.
@@ -111,7 +112,7 @@ The order of operations is load-bearing:
    checked behind the enablement flag and fails closed on a missing descriptor or a missing
    implementation.
 5. **Device id.** Missing or malformed is `400 bad_request`.
-6. **The takeover guard.** Re-registering an id that is already *registered* rotates its token,
+6. **The takeover guard.** Re-registering an id that is already _registered_ rotates its token,
    which is what a client that lost its credential needs — including one whose row was
    deauthorized, since an unlicensed device holds no seat. Re-registering an id bound to a real
    **license** must never work: registration rewrites `license_id`, so allowing it would let
@@ -197,10 +198,19 @@ recreated the record that revocation had purged.
   "currentDeviceId": "…",
   "devices": [
     {
-      "id": "…", "licenseId": "…", "label": null, "status": "authorized",
-      "current": true, "firstSeen": 0, "lastSeen": 0,
-      "userAgent": null, "platform": null, "arch": null,
-      "appVersion": null, "sdkName": null, "sdkVersion": null
+      "id": "…",
+      "licenseId": "…",
+      "label": null,
+      "status": "authorized",
+      "current": true,
+      "firstSeen": 0,
+      "lastSeen": 0,
+      "userAgent": null,
+      "platform": null,
+      "arch": null,
+      "appVersion": null,
+      "sdkName": null,
+      "sdkVersion": null
     }
   ]
 }
@@ -216,7 +226,7 @@ a GET.
 ### Mutations are self-only
 
 `PATCH` and `DELETE` need a path id — a bare `/<p>/devices` is `400 bad_request`. An id that is
-not in the caller's roster at all is a `404`. An id that *is* in the roster but is not the
+not in the caller's roster at all is a `404`. An id that _is_ in the roster but is not the
 caller's own device is `403 forbidden`, with the message "a device token may only manage its own
 device".
 
@@ -224,7 +234,7 @@ A device token authenticates **one device**, not the license. Listing siblings i
 self-service; mutating one is not — any device could otherwise relabel or deauthorize every
 other install on the same license, and the DELETE arm purges the victim's fingerprint, so the
 eviction would not even be recoverable by re-activating the same hardware. Cross-device
-management belongs on the portal, which authenticates the license *owner*.
+management belongs on the portal, which authenticates the license _owner_.
 
 - **`PATCH`** sets the label: a non-empty string, trimmed and truncated to 120 characters, or
   `null`. Invalid JSON is `400 bad_request`.
@@ -257,8 +267,7 @@ The bounds, in order:
   `entitlements`, `timestamp`. Anything else is dropped **silently** — a new client field that
   is not added to the list vanishes without an error anywhere.
 - **Probes.** At most **32** entries. Each must be an object with a boolean `present`; anything
-  else is skipped. Probe ids are truncated to 64 characters and the optional `version` string to
-  64. `probes` is the one open-ended map a client controls, so it carries its own bound on top of
+  else is skipped. Probe ids are truncated to 64 characters and the optional `version` string to 64. `probes` is the one open-ended map a client controls, so it carries its own bound on top of
   the body cap: a truncated inventory must not be able to ride in under 16 KiB.
 
 The accepted report is stored twice — verbatim on `devices.reported_json`, and projected into

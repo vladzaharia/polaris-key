@@ -16,24 +16,24 @@ It is assembled by Core from the service registry, and it is **unsigned**.
 ```jsonc
 {
   "version": 2,
-  "protocolVersion": 3,          // PROTOCOL_VERSION — the wire contract
-  "schemaVersion": 4,            // the PRODUCT's active config catalog version
+  "protocolVersion": 3, // PROTOCOL_VERSION — the wire contract
+  "schemaVersion": 4, // the PRODUCT's active config catalog version
   "product": "<slug>",
   "slug": "<slug>",
   "name": "…",
   "baseUrl": "https://<host>",
 
   "core": {
-    "registration": "open",      // the EFFECTIVE policy, derived or declared
+    "registration": "open", // the EFFECTIVE policy, derived or declared
     "compat": { "min": "…", "max": "…" },
     "endpoints": {
-      "discovery":     "https://<host>/<slug>/.well-known/polaris.json",
-      "jwks":          "https://<host>/<slug>/.well-known/jwks.json",
+      "discovery": "https://<host>/<slug>/.well-known/polaris.json",
+      "jwks": "https://<host>/<slug>/.well-known/jwks.json",
       "trustManifest": "https://<host>/<slug>/.well-known/polaris-trust.jws",
-      "devices":       "https://<host>/<slug>/devices",
-      "report":        "https://<host>/<slug>/devices/report",
-      "register":      "https://<host>/<slug>/devices/register"   // conditional
-    }
+      "devices": "https://<host>/<slug>/devices",
+      "report": "https://<host>/<slug>/devices/report",
+      "register": "https://<host>/<slug>/devices/register", // conditional
+    },
   },
 
   "trust": {
@@ -43,16 +43,20 @@ It is assembled by Core from the service registry, and it is **unsigned**.
     "pinnedKeys": { "<kid>": "<base64url public key>" },
     "signingKid": "…",
     "signingPub": "…",
-    "keys": [ /* kid, alg, kty, crv, publicKey, status, active */ ]
+    "keys": [
+      /* kid, alg, kty, crv, publicKey, status, active */
+    ],
   },
 
   "services": {
-    "license":  { /* the service's own fragment, or just the enabled flag */ },
-    "config":   { "enabled": false },
-    "release":  { "enabled": false },
-    "update":   { "enabled": false },
-    "identity": { "enabled": false }
-  }
+    "license": {
+      /* the service's own fragment, or just the enabled flag */
+    },
+    "config": { "enabled": false },
+    "release": { "enabled": false },
+    "update": { "enabled": false },
+    "identity": { "enabled": false },
+  },
 }
 ```
 
@@ -133,7 +137,7 @@ in the trust module. If one is ever retuned, both have to move.
 
 ## See also
 
-- [Trust and signing](/docs/services/core/trust/) — the signed artifact that *is* a trust root.
+- [Trust and signing](/docs/services/core/trust/) — the signed artifact that _is_ a trust root.
 - [The device principal](/docs/services/core/device-principal/) — the registration policy this
   document reports.
 - [Public route table](/docs/reference/routes/) — every route, generated from the OpenAPI spec

@@ -6,7 +6,7 @@ sidebar:
 ---
 
 **Re-licensing** is changing a license's `tier_id`: a trial converts to paid, a customer upgrades
-to a plan with more seats, a lapsed subscription drops back to free.
+to a tier with more seats, a lapsed subscription drops back to free.
 
 The mechanism is deliberately boring. There is **no push channel**, no websocket, no
 invalidation broadcast. Entitlements are re-merged from scratch on every document request, so a
@@ -82,7 +82,7 @@ does not do this, and is not meant to.
 
 ## Downgrades grandfather
 
-Lowering a tier's seat count does **not** evict anyone. The seat check runs only on a *new*
+Lowering a tier's seat count does **not** evict anyone. The seat check runs only on a _new_
 authorization, so:
 
 - Existing authorized devices keep their seats and keep being served documents.
@@ -97,7 +97,11 @@ document still answers `200` — while a third activation attempt is `403 device
 Because grandfathering is silent, the `PATCH` response says so explicitly:
 
 ```json
-{ "ok": true, "id": "lic_…", "overLimit": { "deviceCount": 2, "deviceLimit": 1 } }
+{
+  "ok": true,
+  "id": "lic_…",
+  "overLimit": { "deviceCount": 2, "deviceLimit": 1 }
+}
 ```
 
 `overLimit` appears only when all of these hold: the tier actually changed, the new tier declares
@@ -121,17 +125,17 @@ authorized. A client that renders "2 of 1 devices" is reading the situation corr
 A tier's `policy_expiry_days` is a property of the **tier**, so it is re-derived whenever a tier
 is assigned — not copied once at creation.
 
-| Situation | Result |
-| --- | --- |
-| Tier moves, no `expiresAt` in the body | `expires_at` is re-derived from the new tier's policy. |
-| Tier moves to a tier with no expiry policy | `expires_at` becomes `null` — no expiry. |
-| Body states `expiresAt` as a number | That number wins. |
-| Body states `expiresAt` as `null` | "Never" wins. |
-| Body does not move the tier | `expires_at` is left exactly as it was. |
+| Situation                                  | Result                                                 |
+| ------------------------------------------ | ------------------------------------------------------ |
+| Tier moves, no `expiresAt` in the body     | `expires_at` is re-derived from the new tier's policy. |
+| Tier moves to a tier with no expiry policy | `expires_at` becomes `null` — no expiry.               |
+| Body states `expiresAt` as a number        | That number wins.                                      |
+| Body states `expiresAt` as `null`          | "Never" wins.                                          |
+| Body does not move the tier                | `expires_at` is left exactly as it was.                |
 
 This exists because both directions were expensive:
 
-- **trial to paid** kept the trial's `expires_at` and killed the license days *after* the
+- **trial to paid** kept the trial's `expires_at` and killed the license days _after_ the
   customer paid.
 - **paid to trial** left a time-boxed tier perpetual.
 
@@ -146,7 +150,7 @@ sign-in, so all four paths that assign a tier agree.
 
 ## Removing a tier
 
-Setting `"tier": null` drops the license's plan. The injected entitlements go with it —
+Setting `"tier": null` drops the license's tier. The injected entitlements go with it —
 `license.tier` and `license.tierLabel` are simply **absent** from the next document rather than
 present-and-empty, which the test asserts directly.
 

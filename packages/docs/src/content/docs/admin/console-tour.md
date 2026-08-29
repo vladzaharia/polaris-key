@@ -28,37 +28,37 @@ one you're currently viewing. See [Products](/docs/admin/products/).
 Accent `core`. Unlike every other section, Platform has no owning service and is never hidden:
 an operator has to be able to reach **Services** even for a product that runs nothing at all.
 
-| Tab | What it's for |
-| --- | --- |
+| Tab          | What it's for                                                                                                                                                                                                                                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Overview** | The product's setup health at a glance — a "needs attention" strip when something required is missing, a guided checklist (trust key, required secrets, license defaults, "issue a test license"), the SDK trust key + trust set JSON, and a starter snippet. See [Products](/docs/admin/products/#setup-health). |
-| **Services** | Which of the five services this product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/). |
-| **Secrets** | Write-only product secrets, plus the required-secrets checklist the setup health strip is drawn from. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
-| **Activity** | The product's audit log, keyset-paginated. See [Activity](/docs/admin/activity/). |
-| **Settings** | Registry fields: display name, per-license defaults (offline days, device limit), the `adminGroup` metadata field, signing-key rotation, and the destructive "disable product" action. See [Products](/docs/admin/products/) and [Secrets & keys](/docs/admin/secrets-and-keys/). |
+| **Services** | Which of the five services this product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                                                                                                                                  |
+| **Secrets**  | Write-only product secrets, plus the required-secrets checklist the setup health strip is drawn from. See [Secrets & keys](/docs/admin/secrets-and-keys/).                                                                                                                                                        |
+| **Activity** | The product's audit log, keyset-paginated. See [Activity](/docs/admin/activity/).                                                                                                                                                                                                                                 |
+| **Settings** | Registry fields: display name, per-license defaults (offline days, device limit), the `adminGroup` metadata field, signing-key rotation, and the destructive "disable product" action. See [Products](/docs/admin/products/) and [Secrets & keys](/docs/admin/secrets-and-keys/).                                 |
 
 ## License
 
 Accent `key`. Shown only when the product's **License** service is on. Three tabs answer one question at
 different distances: on what terms does a machine get a seat.
 
-| Tab | What it's for |
-| --- | --- |
-| **Licenses** | The list of license holders; opens each into a detail page with policy, keys, devices and catalog-validated overrides. Creating one mints its first key, shown exactly once. See [Licenses & devices](/docs/admin/licenses-and-devices/). |
-| **Tiers** | Reusable templates — a profile plus policy, channel and version-window defaults — a license can be assigned. Delete is refused (409) while any license still references the tier. |
+| Tab                           | What it's for                                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Licenses**                  | The list of license holders; opens each into a detail page with policy, keys, devices and catalog-validated overrides. Creating one mints its first key, shown exactly once. See [Licenses & devices](/docs/admin/licenses-and-devices/).                                                                               |
+| **Tiers**                     | Reusable templates — a profile plus policy, channel and version-window defaults — a license can be assigned. Delete is refused (409) while any license still references the tier.                                                                                                                                       |
 | **Enrollment & fingerprints** | The device-registration policy (read-only here — it's edited under Services) and the fingerprint policy: enforcement mode, drift tolerance, and the manifest-declared probe list. See [Licenses & devices](/docs/admin/licenses-and-devices/#fingerprint-policy) and [Fingerprints](/docs/services/core/fingerprints/). |
 
 ## Config
 
 Accent `config`. Shown only when **Config** is on.
 
-| Tab | What it's for |
-| --- | --- |
-| **Catalog** | The product's config schema — every `ConfigEntry` (config / secret / flag), grouped by category, read-heavy, with a "Publish new version" flow for a new `schemaVersion`. |
+| Tab          | What it's for                                                                                                                                                                                                                                        |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catalog**  | The product's config schema — every `ConfigEntry` (config / secret / flag), grouped by category, read-heavy, with a "Publish new version" flow for a new `schemaVersion`.                                                                            |
 | **Profiles** | Named, reusable managed payloads a tier or license inherits. Editing happens on a routed detail page rather than a modal — a payload can be as large as the whole catalog. Delete is refused while any tier or license still references the profile. |
 
 ## Release
 
-Accent `release`. Shown only when **Release** is on. One tab: **Releases** — the release *truth store*
+Accent `release`. Shown only when **Release** is on. One tab: **Releases** — the release _truth store_
 (`release_metadata` / `_artifacts` / `_channels`), what Polaris Key believes the linked repo
 publishes, read without spending a GitHub round-trip. It shows the synced releases and which
 channel points at which, release health (GitHub App access, published assets, Sparkle key
@@ -91,7 +91,7 @@ Accent `id`. Shown only when **Identity** is on. One tab: **Sign-in & portal**, 
 
 ## When a service is disabled
 
-Every one of the sections above except Platform only *exists* when its service is on — the nav
+Every one of the sections above except Platform only _exists_ when its service is on — the nav
 does not grey a row out, it drops it (D-15). But a bookmark, a shared URL, or a service someone
 turned off in another tab can still point a hash route at a section the current product doesn't
 run. Rather than firing requests the worker would answer with `404`/`409` and leaving you

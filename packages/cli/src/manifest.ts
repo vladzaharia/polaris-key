@@ -64,8 +64,7 @@ export interface InitResult {
  * schemas ship inside the @polaris-key/manifest npm package instead, and `.pkey/` sits one
  * level below the repo root where node_modules lives.
  */
-const SCHEMA_BASE =
-  "../node_modules/@polaris-key/manifest/schemas/v1";
+const SCHEMA_BASE = "../node_modules/@polaris-key/manifest/schemas/v1";
 
 const PRODUCT_FILES = ["product.json", "product.yaml", "product.yml"];
 const SCHEMA_FILES = ["schema.json", "schema.yaml", "schema.yml"];
@@ -172,7 +171,9 @@ export function trustSnippet(kid: string, publicKey: string): string {
     `trusted_keys = ${trust}`,
     "",
     "Swift:",
-    `let trustedKeys = ${trust}`,
+    // Swift dictionary literals use square brackets — emitting the JSON `{…}` form here
+    // produced a snippet that did not compile.
+    `let trustedKeys = [${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}]`,
   ].join("\n");
 }
 

@@ -25,5 +25,5 @@ the failure will not look like the change you made.
 Enter plan mode before any wire-touching change — `shared-protocol`, `shared-jws`, `client-core`,
 a signed document shape, `PROTOCOL_VERSION`, or the conformance corpus. Such a change is an
 all-languages event (contract → catalog → corpus → SDKs) and the plan must name the corpus
-regeneration and every SDK that has to follow. Adding a validator rule, a route, or a docs page
-also has a drift gate attached (`AGENTS.md` rules 9–11) — say which one you will run.
+regeneration and every SDK that has to follow. Adding a validator rule, a route, or a generated
+docs page also has a drift gate attached (`AGENTS.md` rules 3, 9–10) — say which one you will run.

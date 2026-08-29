@@ -26,12 +26,12 @@ The key rides in `Authorization`, not the body. `X-PKey-Device` is **required**;
 
 A success is `200` with four fields:
 
-| Field | Contents |
-| --- | --- |
-| `token` | The minted `pkeyt_` device token. Never shown again. |
-| `schemaVersion` | The product's active catalog version — not the wire version. |
-| `device` | The device as the server now sees it: id, status, labels, platform/arch, SDK name and version, first and last seen. |
-| `license` | Id, status, name, email, tier id, activation time, expiry, `maxOfflineDays`, channels, and the version window. |
+| Field           | Contents                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `token`         | The minted `pkeyt_` device token. Never shown again.                                                                |
+| `schemaVersion` | The product's active catalog version — not the wire version.                                                        |
+| `device`        | The device as the server now sees it: id, status, labels, platform/arch, SDK name and version, first and last seen. |
+| `license`       | Id, status, name, email, tier id, activation time, expiry, `maxOfflineDays`, channels, and the version window.      |
 
 [Enrollment](/docs/services/license/enrollment/) returns this **exact** shape, which is why an
 SDK reuses one activation result type for both paths with no new client plumbing.
@@ -110,7 +110,7 @@ Core reconciles the presented hardware against what this product already knows, 
 seat decision. Two things can happen:
 
 - **Mismatch.** The presented components differ from the stored ones by more than the mode
-  tolerates. The existing binding is *retired* — the device is deauthorized, its fingerprint and
+  tolerates. The existing binding is _retired_ — the device is deauthorized, its fingerprint and
   facts rows are purged, its cached token record is evicted — an audit entry
   (`device.fingerprint.mismatch`) is written, and the call answers
   `409 hardware_mismatch` with `drift` and `changed`.
@@ -120,7 +120,7 @@ seat decision. Two things can happen:
   work". Retiring rather than rebinding in place is also deliberate — the old machine is gone
   and must not keep holding a seat.
 
-- **Coalescing.** For a *new* authorization presenting hardware that already has an authorized
+- **Coalescing.** For a _new_ authorization presenting hardware that already has an authorized
   sibling device id on the same license, the stale id is retired (audit
   `device.seat.coalesced`) so one machine holds one seat. See
   [Seat pools](/docs/services/license/model/#seat-pools-and-devicelimit).
@@ -169,7 +169,7 @@ The rows the binding consists of, written only once a seat is granted:
 `/activate` carried no body before fingerprinting existed, so the reader is deliberately
 forgiving. An absent, empty, oversized (over 4 KiB), or unparseable body means **"no
 fingerprint"** and never an error — otherwise every already-shipped client would have started
-failing the day fingerprinting deployed. Whether a missing fingerprint is *acceptable* is the
+failing the day fingerprinting deployed. Whether a missing fingerprint is _acceptable_ is the
 tier's decision, taken at step 4.
 
 Validation of what is present is strict, though:
@@ -229,7 +229,7 @@ Two asymmetries with `/token` are worth knowing:
   on `/token` exists to make rotation refuse a mismatched pairing.
 - There is no rate limit bucket on this route. It destroys a credential rather than minting one.
 
-A device token authenticates **one** device, not the license. Deauthorizing a *sibling* device is
+A device token authenticates **one** device, not the license. Deauthorizing a _sibling_ device is
 refused on Core's `/devices/<id>` surface with `403`, because any device could otherwise evict
 every other install on the same license — and the eviction purges the victim's fingerprint, so
 it is not even recoverable by re-activating the same hardware. Cross-device management belongs on

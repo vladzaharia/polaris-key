@@ -37,4 +37,6 @@ writeFileSync(
   join(dist, "docs-slugs.json"),
   JSON.stringify({ routes: sorted }, null, 2) + "\n",
 );
-console.log(`emit-slug-manifest: ${sorted.length} routes -> dist/docs-slugs.json`);
+console.log(
+  `emit-slug-manifest: ${sorted.length} routes -> dist/docs-slugs.json`,
+);

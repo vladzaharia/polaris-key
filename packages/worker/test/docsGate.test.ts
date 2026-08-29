@@ -50,6 +50,10 @@ const ASSET_FILES: Record<string, { body: string; type: string }> = {
   },
   "/docs/_astro/app.abc123.css": { body: "body{}", type: "text/css" },
   "/docs/pagefind/pagefind.js": { body: "export{}", type: "text/javascript" },
+  "/docs/pagefind/index/en_abc123.pf_index": {
+    body: "shard",
+    type: "application/octet-stream",
+  },
   "/docs/schemas/v1/product.schema.json": {
     body: "{}",
     type: "application/json",
@@ -118,7 +122,11 @@ describe("router: /docs is a reserved platform route", () => {
 
 describe("handleDocs: the platform-admin gate", () => {
   it("redirects an unauthenticated page hit into sign-in with returnTo", async () => {
-    const res = await handleDocs(get("/docs/services/license/"), docsEnv(), NOW);
+    const res = await handleDocs(
+      get("/docs/services/license/"),
+      docsEnv(),
+      NOW,
+    );
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe(
       `/manage/login?returnTo=${encodeURIComponent("/docs/services/license/")}`,
@@ -155,7 +163,11 @@ describe("handleDocs: the platform-admin gate", () => {
 
   it("serves a signed-in operator with no-store HTML and the hash-carrying CSP", async () => {
     const env = docsEnv();
-    const res = await handleDocs(get("/docs/", await adminCookie(env)), env, NOW);
+    const res = await handleDocs(
+      get("/docs/", await adminCookie(env)),
+      env,
+      NOW,
+    );
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("docs home");
     expect(res.headers.get("cache-control")).toBe("no-store");
@@ -196,9 +208,29 @@ describe("handleDocs: asset resolution", () => {
   it("marks content-hashed assets private+immutable, never shared-cacheable", async () => {
     const env = docsEnv();
     const cookie = await adminCookie(env);
-    const res = await handleDocs(get("/docs/_astro/app.abc123.css", cookie), env, NOW);
+    const res = await handleDocs(
+      get("/docs/_astro/app.abc123.css", cookie),
+      env,
+      NOW,
+    );
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe(
+      "private, max-age=31536000, immutable",
+    );
+    // Pagefind's LOADER files have stable names — the rotating entry/loader set must
+    // revalidate, or a deploy strands cached browsers on deleted shards (search breaks).
+    const loader = await handleDocs(
+      get("/docs/pagefind/pagefind.js", cookie),
+      env,
+      NOW,
+    );
+    expect(loader.headers.get("cache-control")).toBe("private, no-cache");
+    const shard = await handleDocs(
+      get("/docs/pagefind/index/en_abc123.pf_index", cookie),
+      env,
+      NOW,
+    );
+    expect(shard.headers.get("cache-control")).toBe(
       "private, max-age=31536000, immutable",
     );
   });
@@ -218,7 +250,11 @@ describe("handleDocs: asset resolution", () => {
     const env = docsEnv({ assets: false });
     const anon = await handleDocs(get("/docs/"), env, NOW);
     expect(anon.status).toBe(302);
-    const authed = await handleDocs(get("/docs/", await adminCookie(env)), env, NOW);
+    const authed = await handleDocs(
+      get("/docs/", await adminCookie(env)),
+      env,
+      NOW,
+    );
     expect(authed.status).toBe(200);
     expect(await authed.text()).toContain("has not been built");
   });
@@ -238,7 +274,9 @@ describe("handleDocs: asset resolution", () => {
     const headers = docsSecurityHeaders();
     expect(headers.get("x-content-type-options")).toBe("nosniff");
     expect(headers.get("x-frame-options")).toBe("DENY");
-    expect(headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(headers.get("content-security-policy")).toContain(
+      "frame-ancestors 'none'",
+    );
   });
 });
 
@@ -276,7 +314,10 @@ describe("sanitizeReturnTo", () => {
       "/docs/" + "a".repeat(600),
     ];
     for (const value of bad) {
-      expect(sanitizeReturnTo(value as string | null), String(value)).toBeNull();
+      expect(
+        sanitizeReturnTo(value as string | null),
+        String(value),
+      ).toBeNull();
     }
   });
 });
@@ -290,10 +331,7 @@ const stubVerifier: IdTokenVerifier = {
 /** Drive /manage/login and pull the `state` the flow was stored under. */
 async function startLogin(env: Env, returnTo?: string): Promise<string> {
   const query = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
-  const res = await handleAdminLogin(
-    get(`/manage/login${query}`),
-    env,
-  );
+  const res = await handleAdminLogin(get(`/manage/login${query}`), env);
   expect(res.status).toBe(302);
   const authorize = new URL(res.headers.get("location")!);
   const state = authorize.searchParams.get("state");

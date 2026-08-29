@@ -3,7 +3,7 @@
 // signer) and Node 22 (SDKs/tools). The cross-language conformance corpus pins this
 // byte-for-byte; the Swift/Python SDKs re-implement the identical construction natively.
 //
-//   protected header = {"alg":"EdDSA","kid":<kid>}            (key order fixed)
+//   protected header = {"alg":"EdDSA","typ":<typ>,"kid":<kid>}   (key order fixed: alg, typ, kid)
 //   signingInput     = base64url(utf8(JSON(header))) "." base64url(utf8(JSON(payload)))
 //   signature        = Ed25519 over the ASCII bytes of signingInput
 //   compact JWS      = signingInput "." base64url(signature)

@@ -32,22 +32,25 @@ Both are `200`-style JSON responses with `content-type: application/json` and
 
 Which surface emits which, for the Core routes:
 
-| Surface | Shape |
-| --- | --- |
-| `POST /<p>/devices/register` | Nested |
-| The service-dispatch not-found | Nested |
-| `GET/PATCH/DELETE /<p>/devices[/<id>]` | Flat |
-| `POST /<p>/devices/report` | Flat |
-| Unknown product, unmatched route | Flat |
+| Surface                                | Shape  |
+| -------------------------------------- | ------ |
+| `POST /<p>/devices/register`           | Nested |
+| The service-dispatch not-found         | Nested |
+| `GET/PATCH/DELETE /<p>/devices[/<id>]` | Flat   |
+| `POST /<p>/devices/report`             | Flat   |
+| Unknown product, unmatched route       | Flat   |
 
-Mixing the two *inside one handler* is the thing to avoid.
+Mixing the two _inside one handler_ is the thing to avoid.
 
 On the nested helper, any extra fields ride at the **top level**, beside `error`, not inside it —
 that is where the contract puts `allowedRange` on the 403 build block, and it is also where the
 registration 400's `message` lands:
 
 ```json
-{ "error": { "code": "bad_request" }, "message": "missing or malformed device id" }
+{
+  "error": { "code": "bad_request" },
+  "message": "missing or malformed device id"
+}
 ```
 
 `405` is the exception to all of the above: it is a plain-text `Method Not Allowed` body with no
@@ -96,9 +99,10 @@ a given device id is licensed — from an endpoint that takes no credential.
 ### One 401 for every device-auth failure
 
 `validateDeviceToken` returns a single `unauthorized` for a missing token, a wrong-prefix token,
-a token whose hash is unknown, a deauthorized device row, a device/token/license disagreement,
-and — on a License-enabled product — an unusable license. Core's own surfaces return
-`401 unauthorized` for all of them.
+a token whose hash is unknown, a deauthorized device row, and a device/token/license
+disagreement. Core's own surfaces add one more cause behind the same answer — on a
+License-enabled product, a license that is not usable — and return `401 unauthorized` for all of
+them.
 
 ## Rate limiting
 
@@ -116,16 +120,16 @@ Over-limit is a `429`. On `POST /<p>/devices/register` it is the nested
 
 ### Buckets on the product-scoped wire
 
-| Bucket | Surface | Limit | Fail mode |
-| --- | --- | --- | --- |
-| `register` | `POST /<p>/devices/register` | 10 / 60 s per IP | closed |
-| `activate` | `POST /<p>/license/activate` | 30 / 60 s per IP | closed |
-| `token` | `POST /<p>/license/token` | 30 / 60 s per IP | closed |
-| `enroll` | `POST /<p>/license/enroll` | policy `rateLimitPerHour` / 3600 s per IP | closed |
-| `mint` | `/<p>/config/mint/<id>/token` | 60 / 60 s per IP | closed |
-| `browserSessionLicense` | `POST /<p>/identity/session/license` | 30 / 60 s per IP | closed |
-| `release` | Release metadata surfaces | 30 / 60 s per IP | open |
-| `releaseArtifact` | Artifact downloads | 120 / 60 s per IP | open |
+| Bucket                  | Surface                              | Limit                                     | Fail mode |
+| ----------------------- | ------------------------------------ | ----------------------------------------- | --------- |
+| `register`              | `POST /<p>/devices/register`         | 10 / 60 s per IP                          | closed    |
+| `activate`              | `POST /<p>/license/activate`         | 30 / 60 s per IP                          | closed    |
+| `token`                 | `POST /<p>/license/token`            | 30 / 60 s per IP                          | closed    |
+| `enroll`                | `POST /<p>/license/enroll`           | policy `rateLimitPerHour` / 3600 s per IP | closed    |
+| `mint`                  | `/<p>/config/mint/<id>/token`        | 60 / 60 s per IP                          | closed    |
+| `browserSessionLicense` | `POST /<p>/identity/session/license` | 30 / 60 s per IP                          | closed    |
+| `release`               | Release metadata surfaces            | 30 / 60 s per IP                          | open      |
+| `releaseArtifact`       | Artifact downloads                   | 120 / 60 s per IP                         | open      |
 
 The OIDC legs, both interactive logins, the portal surfaces, and the admin API have their own
 buckets; the authoritative table is the fail-mode map in `packages/worker/src/core/rateLimit.ts`.
@@ -168,9 +172,9 @@ Every response leaving the worker passes through one hardening step that adds HS
 CSP-less HTML on this origin" is therefore a property of the dispatcher rather than something
 each handler has to remember.
 
-JSON error and success bodies from the Core helpers always carry `cache-control: no-store`; the
-three public read surfaces that are meant to be cached (discovery, JWKS, the trust manifest) set
-`public, max-age=300` explicitly.
+JSON error and success bodies from the Core helpers always carry `cache-control: no-store`;
+Core's three public read surfaces that are meant to be cached (discovery, JWKS, the trust
+manifest) set `public, max-age=300` explicitly.
 
 ## See also
 

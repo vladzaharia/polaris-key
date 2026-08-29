@@ -14,13 +14,13 @@ thing Sparkle already does correctly.
 The Swift package ships five targets, and the split is a **link-time** guarantee, not just
 a runtime flag:
 
-| Target | Depends on | Platforms |
-| --- | --- | --- |
-| `PolarisKeyCore` | — | macOS, iOS |
-| `PolarisKeyLicense` | Core | macOS, iOS |
-| `PolarisKeyConfig` | Core | macOS, iOS |
-| `PolarisKeyUpdate` | Core, Sparkle | macOS only |
-| `PolarisKeyUI` | Core, License, Config | macOS, iOS |
+| Target              | Depends on            | Platforms  |
+| ------------------- | --------------------- | ---------- |
+| `PolarisKeyCore`    | —                     | macOS, iOS |
+| `PolarisKeyLicense` | Core                  | macOS, iOS |
+| `PolarisKeyConfig`  | Core                  | macOS, iOS |
+| `PolarisKeyUpdate`  | Core, Sparkle         | macOS only |
+| `PolarisKeyUI`      | Core, License, Config | macOS, iOS |
 
 A sixth target, the `PolarisKey` umbrella, re-exports Core, License, and Config for a
 one-import adopter — but not Update. Pulling in the umbrella still never links Sparkle; a
@@ -31,7 +31,7 @@ itself is unreachable on iOS regardless, since Sparkle only exists for macOS.
 
 A product that doesn't ship auto-updates never links `PolarisKeyUpdate`, which means it
 never links Sparkle at all — "no update traffic" becomes a fact about the compiled binary,
-not a promise about a code path nobody happened to call. `PolarisKeyUpdate` is the *only*
+not a promise about a code path nobody happened to call. `PolarisKeyUpdate` is the _only_
 target in the whole package that touches Sparkle, and the conditioning is applied in both
 of the two places it needs to be:
 
@@ -111,8 +111,8 @@ whatever channel list a host happened to hard-code, which is exactly the gap tha
 stable-only customer get offered a beta build in the first place.
 
 :::note[A narrowing, not the enforcement point]
-This filter decides what a user is *offered*; it decides nothing about what they're allowed
-to *install*. If it and the server ever disagree — a stale cached entitlement, a bug — the
+This filter decides what a user is _offered_; it decides nothing about what they're allowed
+to _install_. If it and the server ever disagree — a stale cached entitlement, a bug — the
 request Sparkle actually sends is what gets enforced, and the user sees a refusal instead of
 a silent download. Treating a client-side filter as the security boundary is precisely the
 mistake a well-built system avoids: the client narrows for UX, the server decides for real.
@@ -122,7 +122,7 @@ mistake a well-built system avoids: the client narrows for UX, the server decide
 
 `UpdateClient`'s plain version check (`GET /<product>/update/version`) has nothing to do
 with Sparkle — it's an ordinary HTTP call a host can make on its own schedule, and it
-answers using the *same* semver comparison the server's own build gate uses, so this check
+answers using the _same_ semver comparison the server's own build gate uses, so this check
 and the server can never disagree about what counts as newer. It refuses immediately,
 before opening a socket, when the product doesn't run Update at all — a disabled service
 and a missing route answer with the same refusal server-side, so there's nothing this call

@@ -389,7 +389,7 @@ capability is not
  likewise stay unbuilt —  
  the modular monolith is split-ready, not split.
 
-*Closeout correction:* §5.1's "lint-enforced boundaries (ESLint `no-restricted-imports`)" is
+_Closeout correction:_ §5.1's "lint-enforced boundaries (ESLint `no-restricted-imports`)" is
 implemented as `packages/worker/test/boundaries.test.ts` (a static import-walk over
 `src/services/`), not ESLint — the repo has no ESLint toolchain and `lint` is prettier. The
 enforcement is equivalent and CI-gated; the mechanism differs from the spec's wording. Separately

@@ -3,3 +3,6 @@ packages:
   - "tools"
   - "conformance/runners/node"
   - "products"
+overrides:
+  "@types/node": ^22.14.0
+  jiti: ^2.7.0

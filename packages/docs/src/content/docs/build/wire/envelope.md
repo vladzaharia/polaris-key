@@ -39,12 +39,13 @@ emits the same three members in a different order produces a different artifact.
 
 Nothing else belongs in the header. A legitimate header is roughly 60 bytes.
 
-:::caution[Header order: trust the corpus]
-The spec's §1 prose lists the order as `alg`, `kid`, `typ`. Every shipping signer and every
-signed vector in `conformance/corpus/v2/` emits `alg`, `typ`, `kid` — for example
+:::note[Header order, if you are writing a signer]
+Spec §1 fixes the order as `alg`, `typ`, `kid` — the order `signJws` emits and every signed
+vector in `conformance/corpus/v2/` pins. For example
 `eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0`
-decodes to `alg`/`typ`/`kid`. The corpus is byte-level and is what four runners assert
-against, so it is the operative answer for anyone writing a signer.
+decodes to `alg`/`typ`/`kid`. An earlier draft of §1 listed `alg`, `kid`, `typ`; it never
+matched a single artifact and has been corrected. The corpus is byte-level and is what four
+runners assert against, so it is the check that settles the question either way.
 :::
 
 ### `typ` is mandatory

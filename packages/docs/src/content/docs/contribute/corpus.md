@@ -12,7 +12,9 @@ byte-for-byte. It is how five languages agree on the wire without five interpret
 same prose.
 
 One generator, `tools/sign-corpus.ts` (run via `pnpm gen:corpus`), signs every vector from a
-fixed keypair and a fixed case list. Four runners verify against it:
+fixed keypair and a fixed case list. The runner set is taxonomized in full on
+[the wire-contract corpus page](/docs/build/wire/corpus/) (which also counts React's
+gate-matrix-only runner); the ones a contributor touches most:
 
 - **Node** — `conformance/runners/node`: `corpusV2.test.ts` covers the JWS, document, trust,
   and bundle cases plus the gate matrix; `fingerprint.test.ts` covers the fingerprint vectors.
@@ -34,11 +36,11 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 Three files, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
-| File | Contents |
-| --- | --- |
-| `cases.json` | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles. |
-| `gate-matrix.json` | The client gate's decision table — every input combination and the state it must produce. |
-| `fingerprint.json` | Hardware-fingerprint and device-id derivation vectors. |
+| File               | Contents                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| `cases.json`       | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles. |
+| `gate-matrix.json` | The client gate's decision table — every input combination and the state it must produce.     |
+| `fingerprint.json` | Hardware-fingerprint and device-id derivation vectors.                                        |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the

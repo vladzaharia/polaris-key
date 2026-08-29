@@ -21,14 +21,14 @@ document — and boots `not-applicable` rather than `needs-activation`. See
 
 ## The pages in this section
 
-| Page | What it covers |
-| --- | --- |
-| [Model](/docs/services/license/model/) | The nouns: license, key, device, tier, profile, entitlement. Origins, the status lifecycle, seat pools, and where `deviceLimit` comes from. |
-| [Activation](/docs/services/license/activation/) | `POST /<product>/license/activate` key redemption, the authorization pipeline in order, token rotation, self-deauthorize. |
-| [Enrollment](/docs/services/license/enrollment/) | The keyless auto-issue path, one-license-per-machine dedupe, and the claim/migrate merge on later sign-in. |
-| [License document](/docs/services/license/document/) | The `pkey-license+jws` envelope, the entitlement map, the content-only ETag, and the build gate that lives on this route. |
-| [Policy](/docs/services/license/policy/) | Fingerprint and auto-issue policy: manifest blocks, live admin edits, ownership and revert. |
-| [Re-licensing](/docs/services/license/relicensing/) | Changing a tier and having running clients notice, without a push channel. |
+| Page                                                 | What it covers                                                                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Model](/docs/services/license/model/)               | The nouns: license, key, device, tier, profile, entitlement. Origins, the status lifecycle, seat pools, and where `deviceLimit` comes from. |
+| [Activation](/docs/services/license/activation/)     | `POST /<product>/license/activate` key redemption, the authorization pipeline in order, token rotation, self-deauthorize.                   |
+| [Enrollment](/docs/services/license/enrollment/)     | The keyless auto-issue path, one-license-per-machine dedupe, and the claim/migrate merge on later sign-in.                                  |
+| [License document](/docs/services/license/document/) | The `pkey-license+jws` envelope, the entitlement map, the content-only ETag, and the build gate that lives on this route.                   |
+| [Policy](/docs/services/license/policy/)             | Fingerprint and auto-issue policy: manifest blocks, live admin edits, ownership and revert.                                                 |
+| [Re-licensing](/docs/services/license/relicensing/)  | Changing a tier and having running clients notice, without a push channel.                                                                  |
 
 ## The public surface
 
@@ -36,13 +36,13 @@ Five routes, all under `/<product>/license`. The full generated table — with m
 and every other service's routes — is at [Public route
 table](/docs/reference/routes/).
 
-| Route | Purpose |
-| --- | --- |
-| `POST /<product>/license/activate` | Redeem a `pkey_…` key for a per-device `pkeyt_` token. |
-| `POST /<product>/license/enroll` | Keyless auto-issue, when the product's policy opens it. |
-| `POST /<product>/license/token` | Rotate or re-acquire an already-authorized device's token. |
-| `POST /<product>/license/deauthorize` | Self-deauthorize the bearer token's own device. |
-| `GET /<product>/license/document` | The signed license document, and the build gate. |
+| Route                                 | Purpose                                                    |
+| ------------------------------------- | ---------------------------------------------------------- |
+| `POST /<product>/license/activate`    | Redeem a `pkey_…` key for a per-device `pkeyt_` token.     |
+| `POST /<product>/license/enroll`      | Keyless auto-issue, when the product's policy opens it.    |
+| `POST /<product>/license/token`       | Rotate or re-acquire an already-authorized device's token. |
+| `POST /<product>/license/deauthorize` | Self-deauthorize the bearer token's own device.            |
+| `GET /<product>/license/document`     | The signed license document, and the build gate.           |
 
 All five appear in the product's discovery document at
 `/<product>/.well-known/polaris.json`, under `services.license.endpoints`, keyed
@@ -107,7 +107,7 @@ one operator action:
 
 The three converge: whatever minted it, the license is an ordinary row, and every downstream
 behaviour — seat limits, fingerprint drift, re-licensing, the build gate — applies identically.
-An enrolled license that a user later signs in against is *merged* into their identity rather
+An enrolled license that a user later signs in against is _merged_ into their identity rather
 than abandoned, so their devices and local state survive.
 
 ## How a client uses it
@@ -132,8 +132,8 @@ documents are per-service by construction: a config edit does not force a licens
 and a product may take either without the other.
 
 :::note[Terminology]
-This section uses the vocabulary in `docs/CONCEPTS.md`, which wins over code when the two
-disagree. In particular: **device** (never "machine slot" or "install"), **tier** (never
+This section uses the vocabulary in [Concepts & terminology](/docs/start/concepts/), which wins
+over code when the two disagree. In particular: **device** (never "machine slot" or "install"), **tier** (never
 "plan"), **enrollment** (keyless auto-issue) as distinct from **activation** (redeeming a key),
 and **entitlement** for anything delivered as a grant.
 :::

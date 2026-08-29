@@ -23,11 +23,11 @@ Core's `products` row.
 
 Stored in `products.fingerprint_policy_json`, declared in the manifest as a `fingerprint` block.
 
-| Field | Meaning |
-| --- | --- |
-| `enabled` | Per-product opt-out. When false, clients are told not to collect hardware components, and every tier resolves to mode `off`. |
-| `defaultMode` | `off`, `lenient`, `normal`, or `strict`. The fallback for tiers that declare none. |
-| `probes` | Product-declared companion-application checks the client answers present or absent. |
+| Field         | Meaning                                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`     | Per-product opt-out. When false, clients are told not to collect hardware components, and every tier resolves to mode `off`. |
+| `defaultMode` | `off`, `lenient`, `normal`, or `strict`. The fallback for tiers that declare none.                                           |
+| `probes`      | Product-declared companion-application checks the client answers present or absent.                                          |
 
 The default for a product that has never declared one is **enabled, `normal`, no probes**. A
 product with no policy row still gets drift-tolerant binding, and clients that predate
@@ -42,11 +42,11 @@ widens a non-zero tolerance by one — are in
 
 Stored in `products.auto_issue_json`, declared in the manifest as an `autoIssue` block.
 
-| Field | Meaning |
-| --- | --- |
-| `enabled` | The opt-in. **Off** by default. |
-| `tierId` | The tier auto-issued licenses land on. Required when enabled. |
-| `mode` | `anonymous`, `oidcDefault`, or `both`. |
+| Field              | Meaning                                                            |
+| ------------------ | ------------------------------------------------------------------ |
+| `enabled`          | The opt-in. **Off** by default.                                    |
+| `tierId`           | The tier auto-issued licenses land on. Required when enabled.      |
+| `mode`             | `anonymous`, `oidcDefault`, or `both`.                             |
 | `rateLimitPerHour` | Per-IP enrollment ceiling; `0` disables the limit. Defaults to 10. |
 
 See [Enrollment](/docs/services/license/enrollment/) for what each mode opens.
@@ -55,10 +55,10 @@ See [Enrollment](/docs/services/license/enrollment/) for what each mode opens.
 
 A malformed or absent policy JSON blob degrades differently for each:
 
-| Policy | Fallback | Why |
-| --- | --- | --- |
-| Fingerprint | The **default** (enabled, `normal`) | A malformed policy must never take a product's licensing offline. |
-| Auto-issue | **Off** | Fail closed: never mint free licenses because a JSON blob was unreadable. |
+| Policy      | Fallback                            | Why                                                                       |
+| ----------- | ----------------------------------- | ------------------------------------------------------------------------- |
+| Fingerprint | The **default** (enabled, `normal`) | A malformed policy must never take a product's licensing offline.         |
+| Auto-issue  | **Off**                             | Fail closed: never mint free licenses because a JSON blob was unreadable. |
 
 `test/fingerprintPolicy.test.ts` pins the fingerprint half directly, writing `{not json` into the
 column and asserting the effective mode is still `normal`.
@@ -73,10 +73,10 @@ manifest-only.
 
 So each policy carries an **owner** column beside its value:
 
-| Value column | Owner column |
-| --- | --- |
+| Value column                       | Owner column                         |
+| ---------------------------------- | ------------------------------------ |
 | `products.fingerprint_policy_json` | `products.fingerprint_policy_source` |
-| `products.auto_issue_json` | `products.auto_issue_source` |
+| `products.auto_issue_json`         | `products.auto_issue_source`         |
 
 Both are `manifest` or `admin`, defaulting to `manifest`.
 
@@ -171,16 +171,16 @@ Every field is validated and **all** failures are collected before anything is w
 request reports every problem rather than the first — and a request that fails validation writes
 nothing at all, including the ownership flag.
 
-| Field in `fields` | Rejected because |
-| --- | --- |
-| `enabled` | Not a boolean. |
-| `defaultMode` | Not one of `off`, `lenient`, `normal`, `strict`. |
-| `probes` | Not an array — **or** the runtime parser would silently drop an entry. |
-| `autoIssue` | Not a plain object. |
-| `autoIssue.enabled` | Not a boolean. |
-| `autoIssue.tierId` | Not a string or null; or enabling with no tier; or enabling against a tier that does not exist. |
-| `autoIssue.mode` | Not one of `anonymous`, `oidcDefault`, `both`. |
-| `autoIssue.rateLimitPerHour` | Not a finite number, or negative. |
+| Field in `fields`            | Rejected because                                                                                |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `enabled`                    | Not a boolean.                                                                                  |
+| `defaultMode`                | Not one of `off`, `lenient`, `normal`, `strict`.                                                |
+| `probes`                     | Not an array — **or** the runtime parser would silently drop an entry.                          |
+| `autoIssue`                  | Not a plain object.                                                                             |
+| `autoIssue.enabled`          | Not a boolean.                                                                                  |
+| `autoIssue.tierId`           | Not a string or null; or enabling with no tier; or enabling against a tier that does not exist. |
+| `autoIssue.mode`             | Not one of `anonymous`, `oidcDefault`, `both`.                                                  |
+| `autoIssue.rateLimitPerHour` | Not a finite number, or negative.                                                               |
 
 Two of these deserve their reason spelled out.
 
@@ -201,13 +201,13 @@ The `.pkey/` validator aggregates every problem rather than stopping at the firs
 validate` and the console's link and resync surfaces show these codes with their JSON-pointer
 paths. The License-relevant ones:
 
-| Area | Codes |
-| --- | --- |
-| Fingerprint block | `invalid_fingerprint`, `invalid_fingerprint_enabled`, `invalid_fingerprint_mode` |
-| Probes | `invalid_probe_id`, `invalid_probe_label`, `invalid_probe_target` |
-| Auto-issue | `invalid_auto_issue`, `invalid_auto_issue_mode`, `invalid_rate_limit`, `invalid_tier_ref`, `missing_auto_issue_tier`, `unknown_auto_issue_tier_ref` |
-| Tiers | `invalid_tier_id`, `duplicate_tier_id`, `invalid_tier_label`, `invalid_tier_fingerprint_mode`, `invalid_device_limit`, `invalid_semver`, `invalid_channel`, `invalid_profile_ref`, `unknown_profile_ref` |
-| Profiles | `invalid_profile_id`, `duplicate_profile_id`, `invalid_profile_name`, `invalid_profile_description`, `invalid_payload` |
+| Area              | Codes                                                                                                                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fingerprint block | `invalid_fingerprint`, `invalid_fingerprint_enabled`, `invalid_fingerprint_mode`                                                                                                                         |
+| Probes            | `invalid_probe_id`, `invalid_probe_label`, `invalid_probe_target`                                                                                                                                        |
+| Auto-issue        | `invalid_auto_issue`, `invalid_auto_issue_mode`, `invalid_rate_limit`, `invalid_tier_ref`, `missing_auto_issue_tier`, `unknown_auto_issue_tier_ref`                                                      |
+| Tiers             | `invalid_tier_id`, `duplicate_tier_id`, `invalid_tier_label`, `invalid_tier_fingerprint_mode`, `invalid_device_limit`, `invalid_semver`, `invalid_channel`, `invalid_profile_ref`, `unknown_profile_ref` |
+| Profiles          | `invalid_profile_id`, `duplicate_profile_id`, `invalid_profile_name`, `invalid_profile_description`, `invalid_payload`                                                                                   |
 
 Full text, severity, and JSON pointer for each: [Manifest validation
 codes](/docs/reference/validation-codes/).

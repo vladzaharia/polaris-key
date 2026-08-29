@@ -9,7 +9,7 @@ The browser PKCE flow in [Product OIDC](/docs/services/identity/oidc/) assumes t
 receive a redirect — either directly, or by capturing one from a loopback. The device-code flow
 is for the client that cannot: a CLI running over SSH, inside a container, or in any other
 environment with no browser of its own. It shows the human a short code and a URL, the human
-completes sign-in on *any* other device, and the original client polls until a credential is
+completes sign-in on _any_ other device, and the original client polls until a credential is
 ready.
 
 Three routes, all under `/<product>/identity/auth/device`, sharing the same PKCE machinery
@@ -88,7 +88,7 @@ different device identity than the one that opened the flow.
 The advertised `interval` (2 seconds) is enforced server-side, not merely suggested: a second
 poll inside that window gets `429` with `{ "status": "slow_down", "interval": 2 }` rather than
 being served. Before confirmation, the answer is `{ "status": "pending" }`. Once the human has
-confirmed *and* the OIDC callback has completed, the response becomes:
+confirmed _and_ the OIDC callback has completed, the response becomes:
 
 ```json
 { "status": "ready", "token": "pkeyt_…", "schemaVersion": 1 }
@@ -98,7 +98,7 @@ confirmed *and* the OIDC callback has completed, the response becomes:
 flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is only ever
 handed out once. An IdP failure or a stale/expired code answers `{ "status": "error" }` or
 `{ "status": "timeout" }` — the same generic shapes throughout this service, deliberately: a
-poller must not be able to learn *why* a flow failed, only that it did.
+poller must not be able to learn _why_ a flow failed, only that it did.
 
 Minting the token at `ready` runs through the same seat-authorization step activation and the
 browser session both use — the same device can only hold one seat's worth of authorization
@@ -110,14 +110,14 @@ computation rather than three copies of it.
 A device code lives for 600 seconds (10 minutes) from `/device/start`, matching the `expiresIn`
 it advertises — after that, every surface below answers `{ "status": "timeout" }` rather than
 resurrecting it. All three routes are rate-limited per client IP, and the two polling-adjacent
-ones carry a *second* budget keyed on the device code itself, so a single flow cannot be hammered
+ones carry a _second_ budget keyed on the device code itself, so a single flow cannot be hammered
 from a botnet even if the per-IP budget is spread across many addresses:
 
-| Route | Per-IP budget | Per-flow budget |
-| --- | --- | --- |
-| `POST /device/start` | 60 / 60s | — |
-| `GET`/`POST /device/verify` | 60 / 60s | — |
-| `POST /device/poll` | 120 / 60s | 40 / 60s |
+| Route                       | Per-IP budget | Per-flow budget |
+| --------------------------- | ------------- | --------------- |
+| `POST /device/start`        | 60 / 60s      | —               |
+| `GET`/`POST /device/verify` | 60 / 60s      | —               |
+| `POST /device/poll`         | 120 / 60s     | 40 / 60s        |
 
 Every one of these is a refusal, `429 rate_limited` (or, for the poll interval specifically,
 `429 slow_down`) — never a silent drop, so a well-behaved client can tell "back off" from "the
@@ -127,7 +127,7 @@ network ate my request."
 
 Use it wherever a client cannot receive a browser redirect at all — a headless CLI, a build
 agent, a device with no embedded or system browser reachable from the process doing the polling.
-A client that *can* open (or already captured a redirect into) a local browser is better served
+A client that _can_ open (or already captured a redirect into) a local browser is better served
 by the loopback `/identity/auth/poll` surface in
 [Product OIDC](/docs/services/identity/oidc/), which skips the human-facing confirmation page
 entirely.
@@ -147,7 +147,7 @@ centrally).
 - [Product OIDC](/docs/services/identity/oidc/) — the PKCE mechanics, provider selection, and
   license minting this flow shares.
 - [Browser sessions](/docs/services/identity/sessions/) — the cookie-issuing counterpart, for a
-  client that *can* hold a session.
+  client that _can_ hold a session.
 - `docs/security/findings/R8-oidc.md` — `R8-01` (device-id binding on the poll surfaces) and
   `R8-02` (this page's confirmation hardening) in full.
 - [Public route table](/docs/reference/routes/) — every route with its owning service.

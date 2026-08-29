@@ -44,11 +44,7 @@
       "accessor": "quality.floor",
       "schema": {
         "type": "string",
-        "enum": [
-          "flac",
-          "mp3-320",
-          "any"
-        ]
+        "enum": ["flac", "mp3-320", "any"]
       },
       "default": "any",
       "managementDefault": "default",
@@ -194,10 +190,7 @@
       "accessor": "ui.theme",
       "schema": {
         "type": "string",
-        "enum": [
-          "dark",
-          "light"
-        ]
+        "enum": ["dark", "light"]
       },
       "default": "dark",
       "managementDefault": "default",
@@ -458,17 +451,11 @@
         "type": "array",
         "items": {
           "type": "string",
-          "enum": [
-            "stable",
-            "staging",
-            "pr"
-          ]
+          "enum": ["stable", "staging", "pr"]
         },
         "uniqueItems": true
       },
-      "default": [
-        "stable"
-      ],
+      "default": ["stable"],
       "userGrant": true,
       "grantLabel": "Pre-release builds",
       "ui": {
@@ -510,10 +497,7 @@
       },
       "ui": {
         "widget": "stepper",
-        "scopes": [
-          "profile",
-          "license"
-        ],
+        "scopes": ["profile", "license"],
         "unit": "devices"
       }
     }

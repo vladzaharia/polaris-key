@@ -41,7 +41,7 @@ A channel isn't one build — it's (up to) two, one per architecture, and `?arch
 which DMG the item's enclosure points at. Leaving it off, or sending a value this build
 doesn't recognize, serves `arm64`. That default exists because every appcast URL compiled
 into an app bundle before per-architecture support existed has always meant the arm64
-build, and quietly repointing the *unparameterized* feed at a different architecture would
+build, and quietly repointing the _unparameterized_ feed at a different architecture would
 be a silent downgrade for every install that never sends the parameter — an Intel Mac that
 omits it would start checking the wrong feed. `arch` is part of the edge-cache key
 alongside the channel and version, so the two architectures' responses can never collide in
@@ -58,8 +58,10 @@ a host that has no arm64/x86_64 distinction to make; anything else should send i
 
 Each rendered `<item>` carries:
 
-- **`title`** and **`pubDate`** — the release's name (or its version) and its GitHub
-  publish timestamp, RFC-1123 formatted.
+- **`title`** and **`pubDate`** — the product's binary name followed by the version
+  (`myapp 1.2.3`; the GitHub release's own title is not used), and its GitHub publish
+  timestamp, RFC-1123 formatted. A release GitHub never stamped falls back to the Unix epoch
+  rather than omitting the element.
 - **`sparkle:version`** and **`sparkle:shortVersionString`** — both taken from the release
   tag. Polaris Key doesn't distinguish a marketing version from a separate build number;
   the tag is the version, in both fields.
@@ -109,13 +111,13 @@ verdict.
 :::caution[This is a publishing gate, not the trust boundary]
 This check happens once, server-side, before an item is ever offered. It is what keeps a
 misconfigured or tampered sidecar from reaching users at all — but Sparkle's own signature
-check, against the key baked into the *client* app bundle, is what actually decides whether
+check, against the key baked into the _client_ app bundle, is what actually decides whether
 an individual install trusts an individual update. Polaris Key never touches that boundary;
 see [Swift client & Sparkle](/docs/services/update/sparkle/) for why.
 :::
 
 Whether a product requires a signature at all is an operator-only setting — a `.pkey/`
-manifest push can declare a Sparkle public key, but it can never turn the *requirement* off.
+manifest push can declare a Sparkle public key, but it can never turn the _requirement_ off.
 A product with no key configured and no requirement set ships an unsigned appcast item on
 purpose; that combination has to be chosen deliberately by whoever configures the release,
 not by whatever the repository happens to contain.
@@ -132,9 +134,11 @@ unchanged either way; only what a parser does with the surrounding bytes is.
 
 ## Caching
 
-Appcast responses (and the version check, and the changelog) are cached at Cloudflare's
-edge for five minutes, but only when the effective access mode for that request is
-`public` — a cache entry is only ever written for a request that already cleared its own
+Appcast responses carry `max-age=300` — five minutes — and so does the changelog. The
+version check is the exception: it follows its own resolution instead, which in practice
+means `max-age=120` (see [Eligibility](/docs/services/update/eligibility/)). All three are
+eligible for Cloudflare's edge cache, but only when the effective access mode for that
+request is `public` — a cache entry is only ever written for a request that already cleared its own
 access check, so a hit can never bypass one. The cache key is built from the product,
 surface, version or channel, and architecture — never the raw query string — so an
 attacker probing with distinct, meaningless query values can't mint unbounded cache entries
@@ -145,18 +149,18 @@ that all miss.
 Four URLs predate the current `/<product>/<service>/…` namespace, and they are kept
 **forever**:
 
-| Alias | Canonical |
-| --- | --- |
-| `/<product>/appcast.xml` | `/<product>/update/appcast.xml` |
+| Alias                              | Canonical                                 |
+| ---------------------------------- | ----------------------------------------- |
+| `/<product>/appcast.xml`           | `/<product>/update/appcast.xml`           |
 | `/<product>/<channel>/appcast.xml` | `/<product>/update/<channel>/appcast.xml` |
-| `/<product>/install.sh` | `/<product>/release/install.sh` |
-| `/<product>/version` | `/<product>/update/version` |
+| `/<product>/install.sh`            | `/<product>/release/install.sh`           |
+| `/<product>/version`               | `/<product>/update/version`               |
 
 The router recognizes these exact path shapes and rewrites them to precisely the same
 route — same service, same segments — that their canonical spelling produces, before
 anything downstream ever sees a difference. There is exactly one code path per surface,
 not two implementations kept in sync by hand, which is what makes the two spellings
-*provably* identical rather than identical by coincidence.
+_provably_ identical rather than identical by coincidence.
 
 ### Why forever
 
@@ -166,7 +170,7 @@ already-distributed, code-signed app bundles, and `curl … | sh` one-liners pub
 READMEs and release notes that realistically never get updated once copied around. An
 alias is the only way an already-shipped binary — or a two-year-old blog post — keeps
 working without asking every downstream owner to do something. Discovery only ever
-advertises the canonical URLs; the alias exists so *old* configuration keeps resolving, not
+advertises the canonical URLs; the alias exists so _old_ configuration keeps resolving, not
 so anything new is told to use it.
 
 `/<product>/changelog` — the pre-service-split spelling for what is now

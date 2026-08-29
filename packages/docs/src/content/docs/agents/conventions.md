@@ -32,6 +32,8 @@ pnpm typecheck
 pnpm test
 pnpm lint
 pnpm --filter @polaris-key/admin build
+pnpm --filter @polaris-key/worker assemble
+pnpm --filter @polaris-key/docs check:links
 pnpm --filter @polaris-key/worker typecheck:workerd
 pnpm --filter @polaris-key/worker test:workerd
 ( cd sdks/python && .venv/bin/python -m pytest -q )

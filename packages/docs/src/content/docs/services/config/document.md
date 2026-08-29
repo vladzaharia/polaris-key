@@ -44,21 +44,33 @@ The envelope shared with every other signed document, plus Config's own two maps
   "graceUntil": 1758844800,
 
   "schemaVersion": 4,
-  "config":  { "run.concurrency": { "state": "default", "value": 3, "updatedAt": 1756252800 } },
-  "secrets": { "proxy.subscriptionUrl": { "state": "hidden", "value": "…", "updatedAt": 1756252800 } }
+  "config": {
+    "run.concurrency": {
+      "state": "default",
+      "value": 3,
+      "updatedAt": 1756252800,
+    },
+  },
+  "secrets": {
+    "proxy.subscriptionUrl": {
+      "state": "hidden",
+      "value": "…",
+      "updatedAt": 1756252800,
+    },
+  },
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `iss` | Always `key.plrs.im` — a fixed string, never derived from the request's base URL. |
-| `aud` | The product slug this document is scoped to. |
-| `deviceId` | The caller's device id, matched against the local device on verify. |
-| `issuedAt` / `expiresAt` | `expiresAt = issuedAt + DOC_EXPIRY_SECONDS` (3600s) on the network path. |
-| `graceUntil` | `issuedAt + maxOfflineDays × 86400` — see below. |
-| `schemaVersion` | The product's active **catalog** version. |
-| `config` | Dotted catalog key → `ManagedEntry` for every resolved `config`-kind key. |
-| `secrets` | Dotted catalog key → `ManagedEntry` for every resolved `secret`-kind key. |
+| Field                    | Meaning                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `iss`                    | Always `key.plrs.im` — a fixed string, never derived from the request's base URL. |
+| `aud`                    | The product slug this document is scoped to.                                      |
+| `deviceId`               | The caller's device id, matched against the local device on verify.               |
+| `issuedAt` / `expiresAt` | `expiresAt = issuedAt + DOC_EXPIRY_SECONDS` (3600s) on the network path.          |
+| `graceUntil`             | `issuedAt + maxOfflineDays × 86400` — see below.                                  |
+| `schemaVersion`          | The product's active **catalog** version.                                         |
+| `config`                 | Dotted catalog key → `ManagedEntry` for every resolved `config`-kind key.         |
+| `secrets`                | Dotted catalog key → `ManagedEntry` for every resolved `secret`-kind key.         |
 
 `schemaVersion` is the product's **catalog** version — bumped on an incompatible shape change —
 never the wire protocol version. `config` and `secrets` are both maps of dotted catalog key to a
@@ -99,7 +111,7 @@ which source set the day count.
 
 `configDocETag` hashes a canonical JSON of `{ iss, aud, deviceId, schemaVersion, config, secrets }`
 — deliberately excluding `issuedAt`/`expiresAt`/`graceUntil`, the per-request timestamps, so the
-tag only changes when the *content* does. It is computed independently of the license document's
+tag only changes when the _content_ does. It is computed independently of the license document's
 tag, so:
 
 - a re-tier or a re-licensing never forces a settings re-fetch, and
@@ -120,8 +132,10 @@ schema simply passes the merged payload through unpruned, since there is nothing
 The unparseable case answers:
 
 ```json
-{ "error": { "code": "catalog_unavailable" },
-  "message": "active catalog could not validate the config payload" }
+{
+  "error": { "code": "catalog_unavailable" },
+  "message": "active catalog could not validate the config payload"
+}
 ```
 
 with status `500`, and it answers **before** the document is assembled or signed. There is no code
@@ -130,13 +144,13 @@ catalog behind it.
 
 ## Responses at a glance
 
-| Status | When |
-| --- | --- |
-| `200` | A fresh `pkey-config+jws`, `content-type: application/jwt`. |
-| `304` | `If-None-Match` matched the current ETag. No body. |
-| `401 unauthorized` | Missing or invalid device token. |
-| `405` | Anything but `GET`. |
-| `500 catalog_unavailable` | An active catalog row exists but could not be parsed. |
+| Status                    | When                                                        |
+| ------------------------- | ----------------------------------------------------------- |
+| `200`                     | A fresh `pkey-config+jws`, `content-type: application/jwt`. |
+| `304`                     | `If-None-Match` matched the current ETag. No body.          |
+| `401 unauthorized`        | Missing or invalid device token.                            |
+| `405`                     | Anything but `GET`.                                         |
+| `500 catalog_unavailable` | An active catalog row exists but could not be parsed.       |
 
 ## Discovery
 
@@ -160,5 +174,5 @@ data that had merely been living under a config path. See
   in this document were resolved before signing.
 - [Edge-mint](/docs/services/config/edge-mint/) — the delivery path for a secret whose value
   should never appear in this document at all.
-- `packages/worker/test/configDoc.test.ts` — pins the envelope fields, the conformance-corpus
-  field order, and that the ETag is content-only and independent of the license document's.
+- `packages/worker/test/licensing.test.ts` — pins that this document carries settings and no
+  license fields at all, and that its ETag is independent of the license document's.

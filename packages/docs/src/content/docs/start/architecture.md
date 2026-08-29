@@ -126,8 +126,8 @@ hard dependency by design. The test does not merely _permit_ the edge, it proves
 **live**: if Update ever stopped importing Release the exception should be deleted rather than left
 standing as a hole nothing needs. It also asserts nothing crosses back the other way.
 
-Identity was the case that exercised the rule hardest, because it genuinely needs licence-shaped
-answers: its OIDC sign-in mints and claims licences, and its browser session authorizes a device and
+Identity was the case that exercised the rule hardest, because it genuinely needs license-shaped
+answers: its OIDC sign-in mints and claims licenses, and its browser session authorizes a device and
 enforces the build gate. None of that became an `identity → license` import. It became
 `core/authz.ts` and `core/gate.ts`, with License re-exporting them. That is what "everything else
 crosses via core-mediated interfaces" means in practice.

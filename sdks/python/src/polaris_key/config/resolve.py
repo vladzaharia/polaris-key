@@ -7,7 +7,8 @@ otherwise layers local + environment overrides on top of the remote default::
     enforced | hidden (remote) > local override > environment > remote default > fallback
 
 ``enforced``/``hidden`` always win (the value is locked to the server); a ``default`` (or
-an absent entry) can be overridden locally or via an env var. See docs/CONCEPTS.md.
+an absent entry) can be overridden locally or via an env var. See
+packages/docs/src/content/docs/start/concepts.md.
 
 The environment is an injected lookup table, never ``os.environ`` read here, so a host can
 resolve against a table it controls.

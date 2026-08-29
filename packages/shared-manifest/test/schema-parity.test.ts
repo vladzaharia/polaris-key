@@ -104,7 +104,13 @@ function base(): Docs {
       fingerprint: {
         enabled: true,
         defaultMode: "normal",
-        probes: [{ id: "companion", label: "Companion app", macos: "/Applications/Companion.app" }],
+        probes: [
+          {
+            id: "companion",
+            label: "Companion app",
+            macos: "/Applications/Companion.app",
+          },
+        ],
       },
       autoIssue: {
         enabled: true,
@@ -195,7 +201,8 @@ function schemaAccepts(docs: Docs): {
 } {
   return {
     product: validateProduct(docs.product) === true,
-    schema: docs.schema === undefined || validateSchemaDoc(docs.schema) === true,
+    schema:
+      docs.schema === undefined || validateSchemaDoc(docs.schema) === true,
     release:
       docs.release === undefined || validateRelease(docs.release) === true,
   };
@@ -216,76 +223,441 @@ const mint = (d: Docs) => (d.release as Record<string, any>).edgeMint[0];
 
 /** One entry per validator error code (asserted complete against the source below). */
 const MUTATIONS: Mutation[] = [
-  { code: "invalid_api_version", file: "product", schema: "rejects", mutate: (d) => (p(d).apiVersion = "pkey.dev/v2") },
-  { code: "invalid_slug", file: "product", schema: "rejects", mutate: (d) => (p(d).product.slug = "Bad Slug!") },
-  { code: "reserved_slug", file: "product", schema: "rejects", mutate: (d) => (p(d).product.slug = "docs") },
-  { code: "missing_name", file: "product", schema: "rejects", mutate: (d) => delete p(d).product.name },
-  { code: "invalid_name", file: "product", schema: "rejects", mutate: (d) => (p(d).product.name = "x".repeat(300)) },
-  { code: "invalid_admin_group", file: "product", schema: "rejects", mutate: (d) => (p(d).product.adminGroup = "bad group") },
-  { code: "invalid_semver", file: "product", schema: "rejects", mutate: (d) => (p(d).product.compatMin = "one.two") },
-  { code: "invalid_number", file: "product", schema: "rejects", mutate: (d) => (p(d).product.defaultDeviceLimit = -1) },
-  { code: "missing_schema", file: "product", schema: "accepts", mutate: (d) => delete d.schema },
-  { code: "invalid_schema", file: "schema", schema: "rejects", mutate: (d) => (d.schema = { schemaVersion: 1 }) },
-  { code: "invalid_catalog_shape", file: "schema", schema: "rejects", mutate: (d) => ((d.schema as any).entries[0].kind = "toggle") },
-  { code: "invalid_profile_id", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.profiles[0].id = "bad id!") },
-  { code: "duplicate_profile_id", file: "product", schema: "accepts", mutate: (d) => p(d).licensing.profiles.push({ id: "base" }) },
-  { code: "invalid_profile_name", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.profiles[0].name = "x".repeat(300)) },
-  { code: "invalid_profile_description", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.profiles[0].description = "x".repeat(2100)) },
-  { code: "invalid_payload", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.profiles[0].payload = "not-an-object") },
-  { code: "invalid_tier_id", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.tiers[0].id = "bad id!") },
-  { code: "duplicate_tier_id", file: "product", schema: "accepts", mutate: (d) => p(d).licensing.tiers.push({ id: "free" }) },
-  { code: "invalid_profile_ref", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.tiers[0].profileId = 42) },
-  { code: "unknown_profile_ref", file: "product", schema: "accepts", mutate: (d) => (p(d).licensing.tiers[0].profileId = "ghost") },
-  { code: "invalid_device_limit", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.tiers[0].policyDeviceLimit = 1.5) },
-  { code: "invalid_tier_label", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.tiers[0].label = "x".repeat(300)) },
-  { code: "invalid_channel", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.tiers[0].channels = ["bad channel!"]) },
-  { code: "invalid_tier_fingerprint_mode", file: "product", schema: "rejects", mutate: (d) => (p(d).licensing.tiers[0].policyFingerprint = "paranoid") },
-  { code: "invalid_oidc", file: "product", schema: "rejects", mutate: (d) => (p(d).oidc = "custom") },
-  { code: "invalid_oidc_provider", file: "product", schema: "rejects", mutate: (d) => (p(d).oidc.provider = "github") },
-  { code: "invalid_oidc_issuer", file: "product", schema: "accepts", mutate: (d) => (p(d).oidc.issuer = "https://10.0.0.1/oidc") },
-  { code: "missing_oidc_client_id", file: "product", schema: "rejects", mutate: (d) => delete p(d).oidc.clientId },
-  { code: "invalid_oidc_client_id", file: "product", schema: "rejects", mutate: (d) => (p(d).oidc.clientId = "bad client id!") },
-  { code: "invalid_group_name", file: "product", schema: "rejects", mutate: (d) => (p(d).oidc.groupRoleMap = { "bad group": {} }) },
-  { code: "invalid_secret_ref", file: "product", schema: "rejects", mutate: (d) => (p(d).oidc.clientSecretSecret = "lowercase") },
-  { code: "too_many_redirect_uris", file: "product", schema: "rejects", mutate: (d) => (p(d).oidc.redirectUris = Array(21).fill("https://a.example/cb")) },
-  { code: "invalid_redirect_uri", file: "product", schema: "rejects", mutate: (d) => (p(d).oidc.redirectUris = ["not-a-url"]) },
-  { code: "invalid_claim", file: "product", schema: "rejects", mutate: (d) => (p(d).provisioning[0].claim = "__proto__") },
-  { code: "invalid_entitlement_key", file: "product", schema: "rejects", mutate: (d) => (p(d).provisioning[0].entitlementKey = "bad key!") },
-  { code: "invalid_secret_key", file: "product", schema: "rejects", mutate: (d) => (p(d).provisioning[0].secretKey = "bad key!") },
-  { code: "invalid_secret_url_template", file: "product", schema: "rejects", mutate: (d) => (p(d).provisioning[0].secretUrlTemplate = "ftp://x/{claim}") },
-  { code: "invalid_allowed_host", file: "product", schema: "rejects", mutate: (d) => (p(d).provisioning[0].allowedHosts = ["bad host!"]) },
-  { code: "invalid_fingerprint", file: "product", schema: "rejects", mutate: (d) => (p(d).fingerprint = "on") },
-  { code: "invalid_fingerprint_enabled", file: "product", schema: "rejects", mutate: (d) => (p(d).fingerprint.enabled = "yes") },
-  { code: "invalid_fingerprint_mode", file: "product", schema: "rejects", mutate: (d) => (p(d).fingerprint.defaultMode = "stricht") },
-  { code: "invalid_probe_id", file: "product", schema: "rejects", mutate: (d) => (p(d).fingerprint.probes[0].id = "bad id!") },
-  { code: "invalid_probe_label", file: "product", schema: "rejects", mutate: (d) => (p(d).fingerprint.probes[0].label = "x".repeat(300)) },
-  { code: "invalid_probe_target", file: "product", schema: "rejects", mutate: (d) => (p(d).fingerprint.probes[0].macos = "x".repeat(600)) },
-  { code: "invalid_auto_issue", file: "product", schema: "rejects", mutate: (d) => (p(d).autoIssue.enabled = "yes") },
-  { code: "invalid_auto_issue_mode", file: "product", schema: "rejects", mutate: (d) => (p(d).autoIssue.mode = "sponsored") },
-  { code: "missing_auto_issue_tier", file: "product", schema: "rejects", mutate: (d) => delete p(d).autoIssue.tierId },
-  { code: "unknown_auto_issue_tier_ref", file: "product", schema: "accepts", mutate: (d) => (p(d).autoIssue.tierId = "ghost") },
-  { code: "invalid_tier_ref", file: "product", schema: "rejects", mutate: (d) => (p(d).autoIssue.tierId = "bad tier!") },
-  { code: "invalid_rate_limit", file: "product", schema: "rejects", mutate: (d) => (p(d).autoIssue.rateLimitPerHour = -5) },
-  { code: "update_requires_release", file: "product", schema: "rejects", mutate: (d) => { p(d).modules = { update: { enabled: true } }; delete d.release; } },
-  { code: "invalid_registration_policy", file: "product", schema: "rejects", mutate: (d) => (p(d).devices.registration = "invite-only") },
-  { code: "config_without_activation", file: "product", schema: "accepts", mutate: (d) => { p(d).modules = { config: { enabled: true } }; delete d.release; } },
-  { code: "missing_release", file: "release", schema: "accepts", mutate: (d) => delete d.release },
-  { code: "unsupported_release_provider", file: "release", schema: "rejects", mutate: (d) => (rel(d).provider.type = "gitlab") },
-  { code: "missing_github_repo", file: "release", schema: "accepts", mutate: (d) => delete rel(d).provider.repo },
-  { code: "invalid_github_owner", file: "release", schema: "rejects", mutate: (d) => (rel(d).provider.owner = "bad owner!") },
-  { code: "invalid_github_repo", file: "release", schema: "rejects", mutate: (d) => (rel(d).provider.repo = "bad repo!") },
-  { code: "invalid_binary_name", file: "release", schema: "rejects", mutate: (d) => (rel(d).binaryName = "bad binary!") },
-  { code: "invalid_channel_workflow", file: "release", schema: "rejects", mutate: (d) => (rel(d).channelWorkflow = "not-a-workflow.txt") },
-  { code: "invalid_beta_branch", file: "release", schema: "rejects", mutate: (d) => (rel(d).betaBranch = "-bad") },
-  { code: "invalid_summary_marker", file: "release", schema: "rejects", mutate: (d) => (rel(d).summaryMarker = "bad marker!") },
-  { code: "invalid_sparkle_pub", file: "release", schema: "rejects", mutate: (d) => (rel(d).sparkleEd25519Pub = "not base64!!") },
-  { code: "invalid_architecture", file: "release", schema: "rejects", mutate: (d) => (rel(d).artifactPolicy.architectures = ["bad arch!"]) },
-  { code: "invalid_release_access", file: "release", schema: "rejects", mutate: (d) => (rel(d).access.artifacts = "entitled") },
-  { code: "invalid_edge_mint_id", file: "release", schema: "rejects", mutate: (d) => (mint(d).id = "bad id!") },
-  { code: "invalid_edge_mint_kid", file: "release", schema: "rejects", mutate: (d) => (mint(d).kid = "bad kid!") },
-  { code: "invalid_edge_mint_audience", file: "release", schema: "rejects", mutate: (d) => (mint(d).audience = "x".repeat(300)) },
-  { code: "invalid_edge_mint_alg", file: "release", schema: "rejects", mutate: (d) => (mint(d).alg = "HS256") },
-  { code: "invalid_ttl", file: "release", schema: "rejects", mutate: (d) => (mint(d).ttlSeconds = 0) },
+  {
+    code: "invalid_api_version",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).apiVersion = "pkey.dev/v2"),
+  },
+  {
+    code: "invalid_slug",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.slug = "Bad Slug!"),
+  },
+  {
+    code: "reserved_slug",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.slug = "docs"),
+  },
+  {
+    code: "missing_name",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => delete p(d).product.name,
+  },
+  {
+    code: "invalid_name",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.name = "x".repeat(300)),
+  },
+  {
+    code: "invalid_admin_group",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.adminGroup = "bad group"),
+  },
+  {
+    code: "invalid_semver",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.compatMin = "one.two"),
+  },
+  {
+    code: "invalid_number",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.defaultDeviceLimit = -1),
+  },
+  {
+    code: "missing_schema",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => delete d.schema,
+  },
+  {
+    code: "invalid_schema",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (d.schema = { schemaVersion: 1 }),
+  },
+  {
+    code: "invalid_catalog_shape",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => ((d.schema as any).entries[0].kind = "toggle"),
+  },
+  {
+    code: "invalid_profile_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.profiles[0].id = "bad id!"),
+  },
+  {
+    code: "duplicate_profile_id",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => p(d).licensing.profiles.push({ id: "base" }),
+  },
+  {
+    code: "invalid_profile_name",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.profiles[0].name = "x".repeat(300)),
+  },
+  {
+    code: "invalid_profile_description",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.profiles[0].description = "x".repeat(2100)),
+  },
+  {
+    code: "invalid_payload",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.profiles[0].payload = "not-an-object"),
+  },
+  {
+    code: "invalid_tier_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].id = "bad id!"),
+  },
+  {
+    code: "duplicate_tier_id",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => p(d).licensing.tiers.push({ id: "free" }),
+  },
+  {
+    code: "invalid_profile_ref",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].profileId = 42),
+  },
+  {
+    code: "unknown_profile_ref",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).licensing.tiers[0].profileId = "ghost"),
+  },
+  {
+    code: "invalid_device_limit",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].policyDeviceLimit = 1.5),
+  },
+  {
+    code: "invalid_tier_label",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].label = "x".repeat(300)),
+  },
+  {
+    code: "invalid_channel",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].channels = ["bad channel!"]),
+  },
+  {
+    code: "invalid_tier_fingerprint_mode",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].policyFingerprint = "paranoid"),
+  },
+  {
+    code: "invalid_oidc",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).oidc = "custom"),
+  },
+  {
+    code: "invalid_oidc_provider",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).oidc.provider = "github"),
+  },
+  {
+    code: "invalid_oidc_issuer",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).oidc.issuer = "https://10.0.0.1/oidc"),
+  },
+  {
+    code: "missing_oidc_client_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => delete p(d).oidc.clientId,
+  },
+  {
+    code: "invalid_oidc_client_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).oidc.clientId = "bad client id!"),
+  },
+  {
+    code: "invalid_group_name",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).oidc.groupRoleMap = { "bad group": {} }),
+  },
+  {
+    code: "invalid_secret_ref",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).oidc.clientSecretSecret = "lowercase"),
+  },
+  {
+    code: "too_many_redirect_uris",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).oidc.redirectUris = Array(21).fill("https://a.example/cb")),
+  },
+  {
+    code: "invalid_redirect_uri",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).oidc.redirectUris = ["not-a-url"]),
+  },
+  {
+    code: "invalid_claim",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).provisioning[0].claim = "__proto__"),
+  },
+  {
+    code: "invalid_entitlement_key",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).provisioning[0].entitlementKey = "bad key!"),
+  },
+  {
+    code: "invalid_secret_key",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).provisioning[0].secretKey = "bad key!"),
+  },
+  {
+    code: "invalid_secret_url_template",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).provisioning[0].secretUrlTemplate = "ftp://x/{claim}"),
+  },
+  {
+    code: "invalid_allowed_host",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).provisioning[0].allowedHosts = ["bad host!"]),
+  },
+  {
+    code: "invalid_fingerprint",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).fingerprint = "on"),
+  },
+  {
+    code: "invalid_fingerprint_enabled",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).fingerprint.enabled = "yes"),
+  },
+  {
+    code: "invalid_fingerprint_mode",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).fingerprint.defaultMode = "stricht"),
+  },
+  {
+    code: "invalid_probe_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).fingerprint.probes[0].id = "bad id!"),
+  },
+  {
+    code: "invalid_probe_label",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).fingerprint.probes[0].label = "x".repeat(300)),
+  },
+  {
+    code: "invalid_probe_target",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).fingerprint.probes[0].macos = "x".repeat(600)),
+  },
+  {
+    code: "invalid_auto_issue",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).autoIssue.enabled = "yes"),
+  },
+  {
+    code: "invalid_auto_issue_mode",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).autoIssue.mode = "sponsored"),
+  },
+  {
+    code: "missing_auto_issue_tier",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => delete p(d).autoIssue.tierId,
+  },
+  // The empty-string arm specifically: `typeof` alone passes "", every later gate skips it,
+  // and Ajv rejects it via the identifier pattern — the parity break the code review caught.
+  {
+    code: "missing_auto_issue_tier",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).autoIssue.tierId = ""),
+  },
+  {
+    code: "unknown_auto_issue_tier_ref",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).autoIssue.tierId = "ghost"),
+  },
+  {
+    code: "invalid_tier_ref",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).autoIssue.tierId = "bad tier!"),
+  },
+  {
+    code: "invalid_rate_limit",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).autoIssue.rateLimitPerHour = -5),
+  },
+  {
+    code: "update_requires_release",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => {
+      p(d).modules = { update: { enabled: true } };
+      delete d.release;
+    },
+  },
+  {
+    code: "invalid_registration_policy",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).devices.registration = "invite-only"),
+  },
+  {
+    code: "config_without_activation",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => {
+      p(d).modules = { config: { enabled: true } };
+      delete d.release;
+    },
+  },
+  {
+    code: "missing_release",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => delete d.release,
+  },
+  {
+    code: "unsupported_release_provider",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).provider.type = "gitlab"),
+  },
+  {
+    code: "missing_github_repo",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => delete rel(d).provider.repo,
+  },
+  {
+    code: "invalid_github_owner",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).provider.owner = "bad owner!"),
+  },
+  {
+    code: "invalid_github_repo",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).provider.repo = "bad repo!"),
+  },
+  {
+    code: "invalid_binary_name",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).binaryName = "bad binary!"),
+  },
+  {
+    code: "invalid_channel_workflow",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).channelWorkflow = "not-a-workflow.txt"),
+  },
+  {
+    code: "invalid_beta_branch",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).betaBranch = "-bad"),
+  },
+  {
+    code: "invalid_summary_marker",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).summaryMarker = "bad marker!"),
+  },
+  {
+    code: "invalid_sparkle_pub",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).sparkleEd25519Pub = "not base64!!"),
+  },
+  {
+    code: "invalid_architecture",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).artifactPolicy.architectures = ["bad arch!"]),
+  },
+  {
+    code: "invalid_release_access",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).access.artifacts = "entitled"),
+  },
+  {
+    code: "invalid_edge_mint_id",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (mint(d).id = "bad id!"),
+  },
+  {
+    code: "invalid_edge_mint_kid",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (mint(d).kid = "bad kid!"),
+  },
+  {
+    code: "invalid_edge_mint_audience",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (mint(d).audience = "x".repeat(300)),
+  },
+  {
+    code: "invalid_edge_mint_alg",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (mint(d).alg = "HS256"),
+  },
+  {
+    code: "invalid_ttl",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (mint(d).ttlSeconds = 0),
+  },
 ];
 
 describe("valid manifests pass both validators", () => {
@@ -330,8 +702,14 @@ describe("valid manifests pass both validators", () => {
     const catalog = JSON.parse(
       readFileSync(join(repoRoot, "products", "djdl", "catalog.json"), "utf8"),
     );
-    expect(validateProduct(product), JSON.stringify(validateProduct.errors)).toBe(true);
-    expect(validateSchemaDoc(catalog), JSON.stringify(validateSchemaDoc.errors)).toBe(true);
+    expect(
+      validateProduct(product),
+      JSON.stringify(validateProduct.errors),
+    ).toBe(true);
+    expect(
+      validateSchemaDoc(catalog),
+      JSON.stringify(validateSchemaDoc.errors),
+    ).toBe(true);
     const res = validateManifestDocuments({ product, schema: catalog });
     expect(res.errors).toEqual([]);
   });
@@ -350,17 +728,19 @@ describe("every validator code has a mutation, and the schemas catch what they c
     );
     const covered = new Set(MUTATIONS.map((m) => m.code));
     const missing = [...emitted].filter((code) => !covered.has(code));
-    expect(missing, `validator codes without a mutation: ${missing.join(", ")}`).toEqual([]);
+    expect(
+      missing,
+      `validator codes without a mutation: ${missing.join(", ")}`,
+    ).toEqual([]);
   });
 
   for (const mutation of MUTATIONS) {
     it(`${mutation.code} (schema ${mutation.schema})`, () => {
       const docs = base();
       mutation.mutate(docs);
-      expect(
-        tsCodes(docs),
-        "TS validator must emit the code",
-      ).toContain(mutation.code);
+      expect(tsCodes(docs), "TS validator must emit the code").toContain(
+        mutation.code,
+      );
 
       const accepted = schemaAccepts(docs);
       if (mutation.schema === "rejects") {

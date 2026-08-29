@@ -69,9 +69,8 @@ export function ResyncButton({
         title="Resync from the linked repo?"
         description={
           <>
-            Re-fetches `.pkey/` and re-applies release config, the catalog,
-            and minters. Server values are overwritten by what is in the
-            repo.{" "}
+            Re-fetches `.pkey/` and re-applies release config, the catalog, and
+            minters. Server values are overwritten by what is in the repo.{" "}
             <a
               className="underline underline-offset-2 hover:text-foreground"
               href={docsUrl("resync")}

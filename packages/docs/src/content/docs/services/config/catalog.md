@@ -17,14 +17,14 @@ source so these pages don't have to keep a second copy honest.
 
 ## The three kinds
 
-| Kind | Holds | Delivered via |
-| --- | --- | --- |
-| `config` | A plaintext client setting. | This service's config document, `config` map, addressed by `accessor`. |
+| Kind     | Holds                                     | Delivered via                                                                                           |
+| -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `config` | A plaintext client setting.               | This service's config document, `config` map, addressed by `accessor`.                                  |
 | `secret` | A value the admin surface always redacts. | This document's `secrets` map, or a runtime token via edge-mint — never plaintext in an admin response. |
-| `flag` | An entitlement. | Not this document at all. |
+| `flag`   | An entitlement.                           | Not this document at all.                                                                               |
 
-`flag` is the odd one out. Config owns the *schema* for a flag exactly as it does for the other
-two kinds, but a flag's resolved *value* never appears in this service's document — it rides the
+`flag` is the odd one out. Config owns the _schema_ for a flag exactly as it does for the other
+two kinds, but a flag's resolved _value_ never appears in this service's document — it rides the
 license document's `entitlements` map instead, read client-side via `isEntitled`/`getEntitlements`
 rather than through the config accessor. A product with Config enabled and License disabled can
 still declare `flag` entries in its catalog; it simply has no document to deliver their resolved
@@ -35,17 +35,17 @@ values on, since entitlements ride the one document Config doesn't own.
 The reference page has the exact TypeScript shape. These are the fields with authoring rules
 worth stating explicitly:
 
-| Field | Notes |
-| --- | --- |
-| `key` | A dotted identifier, unique within the catalog — e.g. `run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`. |
-| `category`, `label`, `description` | Grouping and copy for the admin surface and any generated settings UI. |
-| `examples` | Sample values shown in a generated form. Never validated against `schema`. |
-| `default` | The schema-level fallback. Also the value `managementDefault` seeding uses — see [Management states](/docs/services/config/management-states/). |
-| `secret` | `true` on a `config`-kind entry whose value should be redacted like a `secret`-kind one. |
-| `managementDefault` | **`config` kind only.** The state a freshly-minted key gets until an admin overrides it. |
-| `userGrant` / `grantLabel` | `flag`-only. Surfaces the entitlement to the user as an included capability, e.g. "Included with your license". |
-| `appliesTo` | Optional `cli`/`app` narrowing, for a catalog one schema shares across client shapes. |
-| `deprecated`, `since` | Optional metadata. Never affects validation. |
+| Field                              | Notes                                                                                                                                           |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                              | A dotted identifier, unique within the catalog — e.g. `run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`.                                 |
+| `category`, `label`, `description` | Grouping and copy for the admin surface and any generated settings UI.                                                                          |
+| `examples`                         | Sample values shown in a generated form. Never validated against `schema`.                                                                      |
+| `default`                          | The schema-level fallback. Also the value `managementDefault` seeding uses — see [Management states](/docs/services/config/management-states/). |
+| `secret`                           | `true` on a `config`-kind entry whose value should be redacted like a `secret`-kind one.                                                        |
+| `managementDefault`                | **`config` kind only.** The state a freshly-minted key gets until an admin overrides it.                                                        |
+| `userGrant` / `grantLabel`         | `flag`-only. Surfaces the entitlement to the user as an included capability, e.g. "Included with your license".                                 |
+| `appliesTo`                        | Optional `cli`/`app` narrowing, for a catalog one schema shares across client shapes.                                                           |
+| `deprecated`, `since`              | Optional metadata. Never affects validation.                                                                                                    |
 
 ## `ui`: presentation hints that never validate
 
@@ -53,20 +53,20 @@ worth stating explicitly:
 `select` widget with the wrong `optionLabels` still takes whatever `schema` allows; the hint only
 changes how the value is rendered and edited.
 
-| Field | Meaning |
-| --- | --- |
-| `widget` | `password` \| `select` \| `textarea` \| `switch` \| `stepper`. |
-| `help`, `placeholder` | Copy for the generated field. |
-| `order` | Sort position within the entry's `category`. |
-| `scopes` | Which admin surfaces the key is meaningful at: `profile`, `license`, `device` — omitted means all. |
-| `advanced` | Hint to collapse the field behind an "advanced" toggle. |
-| `unit` | A unit label, e.g. `"seconds"`, rendered beside the value. |
-| `optionLabels` | Human labels for an `enum`'s raw values. |
-| `adminSection` | Groups the field within a larger admin form independently of `category`. |
+| Field                 | Meaning                                                                                            |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| `widget`              | `password` \| `select` \| `textarea` \| `switch` \| `stepper`.                                     |
+| `help`, `placeholder` | Copy for the generated field.                                                                      |
+| `order`               | Sort position within the entry's `category`.                                                       |
+| `scopes`              | Which admin surfaces the key is meaningful at: `profile`, `license`, `device` — omitted means all. |
+| `advanced`            | Hint to collapse the field behind an "advanced" toggle.                                            |
+| `unit`                | A unit label, e.g. `"seconds"`, rendered beside the value.                                         |
+| `optionLabels`        | Human labels for an `enum`'s raw values.                                                           |
+| `adminSection`        | Groups the field within a larger admin form independently of `category`.                           |
 
 ## `dependsOn`: presentation gating, not validation gating
 
-`dependsOn: { key, equals }` hides an entry in a rendered form until another key's *current*
+`dependsOn: { key, equals }` hides an entry in a rendered form until another key's _current_
 value equals a given one — e.g. show `proxy.select` only once `proxy.enabled` is `true`. It is
 read by the admin SPA and by SDK-side settings UIs; `validateKeyValue` and the document-signing
 prune never consult it. An admin can set and enforce `proxy.select` even while `proxy.enabled` is
@@ -80,10 +80,12 @@ value lives in the entitlements map, addressed by `key` alone.
 
 ## `delivery`: how a secret reaches a runtime
 
-A `secret`-kind entry may declare `delivery`, one of `serverOnly` \| `clientScoped` \| `edgeMint`
-(`SecretDelivery`, `@polaris-key/protocol/config`). The manifest validator enforces two things
-about it at ingest: it is only meaningful on a `kind: "secret"` entry, and it must be one of the
-three values — anything else, or a `delivery` on a `config`/`flag` entry, fails validation.
+A `secret`-kind entry may declare `delivery`, one of `serverOnly` \| `clientScoped` \| `edgeMint`.
+It is a manifest-level extension to the catalog item — `ManifestCatalogEntry.delivery`, typed
+`ManifestSecretDelivery` in `@polaris-key/manifest` — so it does not appear on the verbatim
+`ConfigEntry` the reference page reproduces. The manifest validator enforces two things about it
+at ingest: it is only meaningful on a `kind: "secret"` entry, and it must be one of the three
+values — anything else, or a `delivery` on a `config`/`flag` entry, fails validation.
 
 - **`clientScoped`** is the shape every catalog secret has by default: the value travels in the
   config document's `secrets` map, redacted everywhere in the admin surface, decrypted
@@ -91,7 +93,7 @@ three values — anything else, or a `delivery` on a `config`/`flag` entry, fail
 - **`serverOnly`** documents that the value is meant for the Worker's own use rather than the
   client's. Treat it as authoring intent to be enforced by how the value is actually populated —
   the annotation itself does not change what the document-signing prune delivers.
-- **`edgeMint`** marks that the entry's *value* is not the thing delivered at all. It is the
+- **`edgeMint`** marks that the entry's _value_ is not the thing delivered at all. It is the
   client's cue to call the paired [edge-mint recipe](/docs/services/config/edge-mint/) — via
   `/<product>/config/mint/<id>/token` — instead of reading a value from this document.
 
@@ -146,12 +148,12 @@ backtracking**, for every pattern including adversarial ones. What that engine c
 without backtracking is refused at compile time rather than run anyway: backreferences,
 lookahead and lookbehind, and `\b`/`\B` word boundaries. Budgets bound the rest:
 
-| Limit | Value | Bounds |
-| --- | --- | --- |
-| `MAX_PATTERN_SOURCE` | 300 characters | The `pattern` string itself. |
-| `MAX_PATTERN_PROGRAM` | 2000 instructions | The compiled NFA — what bounds `{n,m}` expansion. |
-| `MAX_PATTERN_REPEAT` | 100 | The largest `{n,m}` bound a pattern may declare. |
-| `MAX_PATTERN_INPUT` | 4096 characters | The longest value ever matched; longer values fail closed — `test()` returns `false`, never an error. |
+| Limit                 | Value             | Bounds                                                                                                |
+| --------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `MAX_PATTERN_SOURCE`  | 300 characters    | The `pattern` string itself.                                                                          |
+| `MAX_PATTERN_PROGRAM` | 2000 instructions | The compiled NFA — what bounds `{n,m}` expansion.                                                     |
+| `MAX_PATTERN_REPEAT`  | 100               | The largest `{n,m}` bound a pattern may declare.                                                      |
+| `MAX_PATTERN_INPUT`   | 4096 characters   | The longest value ever matched; longer values fail closed — `test()` returns `false`, never an error. |
 
 ### Budgets around the fragment, and around a value
 
@@ -161,7 +163,7 @@ value budgets, spent on every validation call.
 - `MAX_SCHEMA_DEPTH` = 12 — deepest nesting a fragment may declare.
 - `MAX_SCHEMA_NODES` = 500 — total subschemas (properties, items, `allOf` branches, …) in one
   fragment.
-- `MAX_VALIDATION_STEPS` = 100,000 — the work budget for validating one *value*. A value that
+- `MAX_VALIDATION_STEPS` = 100,000 — the work budget for validating one _value_. A value that
   blows it comes back as an ordinary failure, never a throw, so a hostile value gets pruned rather
   than 500-ing the document route.
 - `MAX_UNIQUE_ITEMS` = 1,000 — the largest array `uniqueItems` will scan; past it, `uniqueItems`
@@ -178,8 +180,8 @@ PUT .../config/catalog
     throws  -> 422 { fields: ["<key>: <reason>"] }, nothing written
 ```
 
-`compileAll()` turns "a malformed, oversized, or ReDoS-shaped fragment" from a problem the *next
-device to poll* discovers into a problem the *publishing operator* discovers, with the offending
+`compileAll()` turns "a malformed, oversized, or ReDoS-shaped fragment" from a problem the _next
+device to poll_ discovers into a problem the _publishing operator_ discovers, with the offending
 key named. Request-time validation (`validateKeyValue`, used by every override write and by the
 document-signing prune) never throws for the same reason in reverse: an uninterpretable fragment
 there just marks the value invalid, so a stale or corrupt catalog can't turn a routine config

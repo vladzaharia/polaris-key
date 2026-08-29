@@ -42,6 +42,8 @@ pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
 pnpm lint                        # per-package prettier check
 pnpm --filter @polaris-key/admin build
+pnpm --filter @polaris-key/worker assemble  # admin + docs built into the worker's [assets] root
+pnpm --filter @polaris-key/docs check:links # internal link + anchor integrity on the built site
 
 # The workerd smoke job. Node permits the runtime code generation workerd forbids, so a green
 # `pnpm test` cannot prove the Worker runs in the runtime it ships to.
