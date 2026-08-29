@@ -36,7 +36,7 @@ import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { fetchLicenseDocument } from "../license/endpoints.js";
 import { fetchConfigDocument } from "../config/fetch.js";
 import type { CacheManager } from "./cache.js";
-import { nowSec, type CoreContext, type DocumentResult } from "./context.js";
+import type { CoreContext, DocumentResult } from "./context.js";
 import type { TokenManager } from "./token.js";
 import type { TrustManager } from "./trust.js";
 
@@ -197,12 +197,14 @@ async function syncDocument(
       // excludes the timestamps, so a content-stable document 304s forever; left alone a
       // continuously online, continuously authenticated client coasts into `grace` at
       // `expiresAt` and `expired` at `graceUntil` (R2-11). Past the half-life we re-ask
-      // UNCONDITIONALLY so the server re-signs the validity window.
+      // UNCONDITIONALLY so the server re-signs the validity window. The boundary runs at
+      // `effectiveNow` — the same clock every gate comparison uses — so a system-clock
+      // rollback below the floor cannot also disable the defense.
       const expiresAt = currentExpiresAt();
       if (
         !force &&
         expiresAt !== undefined &&
-        nowSec() > expiresAt - REFRESH_MARGIN_SECONDS
+        deps.ctx.now() > expiresAt - REFRESH_MARGIN_SECONDS
       ) {
         return syncDocument(
           deps,

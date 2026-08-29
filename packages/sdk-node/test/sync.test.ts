@@ -717,3 +717,98 @@ describe("sync — the per-document result shape", () => {
     client.close();
   });
 });
+
+describe("sync — the §5 escalation runs at effectiveNow, not the system clock", () => {
+  it("re-asks on a 304 when the floor is past the half-life even after a clock rollback", async () => {
+    // §5's boundary is `effectiveNow > expiresAt − REFRESH_MARGIN_SECONDS`, and §4.2 defines
+    // effectiveNow over the monotonic floor. After a system-clock ROLLBACK — the exact
+    // condition the floor exists for — the escalation must keep firing on the floor;
+    // otherwise the rollback also disables the half-life defense and the client coasts into
+    // `grace` behind a content-stable ETag.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const t0 = 1_800_000_000;
+    vi.setSystemTime(t0 * 1000);
+
+    const store = new InMemoryStore(PRODUCT);
+    const deviceId = await store.getDeviceId();
+    // Content-stable documents: the SAME bytes are served on every 200, so issuedAt stays
+    // t0 and the license's escalation boundary stays fixed at t0 + 1800 for the whole test.
+    // Config gets the longer window (t0 + 5400) to pin that the escalation is PER DOCUMENT.
+    const licenseJws = await signJws(
+      licenseDoc(deviceId, t0, "free", 3600),
+      TEST_PEM,
+      TEST_KID,
+      "pkey-license+jws",
+    );
+    const configJws = await signJws(
+      configDoc(deviceId, t0, 7200),
+      TEST_PEM,
+      TEST_KID,
+      "pkey-config+jws",
+    );
+    let manifestIssuedAt = t0;
+    const served = { license: 0, config: 0 };
+
+    const fetchImpl = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ): Promise<Response> => {
+      const p = new URL(typeof input === "string" ? input : input.toString())
+        .pathname;
+      const validator = new Headers(init?.headers).get("if-none-match");
+      if (p.endsWith("/license/activate"))
+        return jsonRes({ token: "pkeyt_floor", schemaVersion: 1 });
+      if (p.endsWith("/devices/report")) return jsonRes({});
+      if (p.endsWith(TRUST_PATH))
+        return new Response(
+          await signJws(
+            trustManifest(manifestIssuedAt),
+            TEST_PEM,
+            TEST_KID,
+            "pkey-trust+jws",
+          ),
+          { status: 200, headers: { "content-type": "application/jose" } },
+        );
+      if (p.endsWith("/license/document")) {
+        if (validator === '"lic"') return new Response(null, { status: 304 });
+        served.license += 1;
+        return jwsRes(licenseJws, '"lic"');
+      }
+      if (p.endsWith("/config/document")) {
+        if (validator === '"cfg"') return new Response(null, { status: 304 });
+        served.config += 1;
+        return jwsRes(configJws, '"cfg"');
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+
+    const client = await PolarisKeyClient.create({
+      ...base,
+      store,
+      fetchImpl,
+    });
+    await client.license.activateWithKey(KEY);
+    expect(served.license).toBe(1);
+
+    // Raise the floor past the license boundary: at t0 + 2500 a fresh trust manifest is
+    // verifiable (issuedAt = now), and refresh() raises the floor to its issuedAt.
+    manifestIssuedAt = t0 + 2500;
+    vi.setSystemTime((t0 + 2500) * 1000);
+    await client.sync();
+    expect(client.core.highWaterMark).toBe(t0 + 2500);
+    const servedAfterRaise = served.license;
+
+    // ROLLBACK: system clock back inside the license half-life window. The floor stays at
+    // t0 + 2500 — past the license boundary (t0 + 1800), inside the config one (t0 + 5400).
+    vi.setSystemTime((t0 + 600) * 1000);
+    const configServedBefore = served.config;
+    await client.sync();
+    expect(
+      served.license,
+      "a 304 with effectiveNow past the half-life must re-ask unconditionally",
+    ).toBeGreaterThan(servedAfterRaise);
+    expect(served.config, "the other document's window is untouched").toBe(
+      configServedBefore,
+    );
+  });
+});

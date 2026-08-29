@@ -43,7 +43,6 @@ from .context import (
     DocumentOk,
     DocumentResult,
     DocumentUnauthorized,
-    now_sec,
 )
 from .models import REFRESH_MARGIN_SECONDS, BlockedState
 from .token import TokenManager
@@ -199,7 +198,9 @@ def _sync_document(
         # excludes the timestamps, so a content-stable document 304s forever; left alone a
         # continuously online, continuously authenticated client coasts into `grace` at
         # `expiresAt` and `expired` at `graceUntil` (R2-11). Past the half-life we re-ask
-        # UNCONDITIONALLY so the server re-signs the validity window.
+        # UNCONDITIONALLY so the server re-signs the validity window. The boundary runs at
+        # `effectiveNow` — the same clock every gate comparison uses — so a system-clock
+        # rollback below the floor cannot also disable the defense.
         # A 304 with NO document held is unreachable by construction — a slice that failed
         # verification drops its ETag with it, so no conditional request is sent for a
         # document we do not have. It is spelled out rather than escalated on so this
@@ -208,7 +209,7 @@ def _sync_document(
         if (
             not force
             and expires_at is not None
-            and now_sec() > expires_at - REFRESH_MARGIN_SECONDS
+            and deps.ctx.now() > expires_at - REFRESH_MARGIN_SECONDS
         ):
             return _sync_document(
                 deps,

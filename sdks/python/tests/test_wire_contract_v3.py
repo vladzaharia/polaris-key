@@ -995,6 +995,65 @@ def test_r2_11_a_304_inside_the_window_does_not_re_request(monkeypatch) -> None:
     c.close()
 
 
+def test_r2_11_the_half_life_boundary_runs_at_effective_now(monkeypatch) -> None:
+    """§5 × §4.2 — the escalation boundary compares EFFECTIVE now (the monotonic floor),
+    so a system-clock rollback — the exact condition the floor exists for — cannot also
+    disable the half-life defense and leave the client coasting into grace behind a
+    content-stable ETag."""
+    clock = {"t": NOW}
+    monkeypatch.setattr(time, "time", lambda: float(clock["t"]))
+    served = {"n": 0}
+    manifest = {"issued": NOW}
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        path = r.url.path
+        p = f"/{PRODUCT}"
+        if path == f"{p}/license/activate":
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
+        if path == f"{p}/.well-known/polaris-trust.jws":
+            return httpx.Response(
+                200,
+                text=sign_manifest(
+                    [key_entry(KID, PUBKEY_RAW)], issued=manifest["issued"]
+                ),
+            )
+        if path == f"{p}/license/document":
+            if r.headers.get("if-none-match") == "stable-etag":
+                return httpx.Response(304, headers={"etag": "stable-etag"})
+            served["n"] += 1
+            # Content-stable: issuedAt pinned to NOW, so the escalation boundary stays
+            # fixed at NOW + 1800 for the whole test.
+            return httpx.Response(
+                200,
+                text=sign_license(r.headers["X-PKey-Device"], issued=NOW),
+                headers={"etag": "stable-etag"},
+            )
+        if path == f"{p}/devices/report":
+            return httpx.Response(200, json={"ok": True})
+        return httpx.Response(404)
+
+    c = make_client(handler, expected_services=["license"])
+    c.license.activate_with_key("k")
+    assert served["n"] == 1
+
+    # Raise the floor past the boundary: a manifest issued at NOW + 2500 is verifiable
+    # AT NOW + 2500, and refresh() lifts the floor to its issuedAt.
+    clock["t"] = NOW + 2500
+    manifest["issued"] = NOW + 2500
+    c.sync()
+    assert c.core.high_water_mark == NOW + 2500
+    after_raise = served["n"]
+
+    # ROLLBACK inside the window (NOW + 600 < boundary NOW + 1800). The floor still says
+    # the half-life has passed, so the 304 must escalate to a full re-request.
+    clock["t"] = NOW + 600
+    c.sync()
+    assert served["n"] > after_raise, (
+        "the escalation must run at effective now, not the wall clock"
+    )
+    c.close()
+
+
 def test_r2_11_the_half_life_rule_is_applied_PER_DOCUMENT(monkeypatch) -> None:
     """NEW IN v3 (§5): licence and config carry independent ETags, so each escalates on
     its OWN half-life. A shared rule would make one document's staleness force the
