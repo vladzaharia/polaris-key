@@ -166,6 +166,11 @@ export function validatePayload(
     for (const [key, entry] of Object.entries(entries)) {
       const catalogEntry = catalog.entryByKey(key);
       if (!catalogEntry || catalogEntry.kind !== kind) continue;
+      // `delivery: "serverOnly"` — the value exists for the WORKER to consume; it is never
+      // signed into a device document. Every document path funnels through this prune
+      // (config document and the bundles that reuse buildConfigDoc), so enforcing it here
+      // is what makes the catalog declaration true rather than descriptive.
+      if (kind === "secret" && catalogEntry.delivery === "serverOnly") continue;
       if (!catalog.validateKeyValue(key, entry.value).ok) continue;
       out[key] = entry;
     }

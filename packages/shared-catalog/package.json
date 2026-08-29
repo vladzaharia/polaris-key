@@ -20,5 +20,7 @@
     "lint": "prettier --check \"src/**/*.ts\"",
     "clean": "rm -rf dist"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@polaris-key/protocol": "workspace:*"
+  }
 }

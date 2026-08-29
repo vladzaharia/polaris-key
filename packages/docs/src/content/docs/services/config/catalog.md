@@ -80,19 +80,18 @@ value lives in the entitlements map, addressed by `key` alone.
 
 ## `delivery`: how a secret reaches a runtime
 
-A `secret`-kind entry may declare `delivery`, one of `serverOnly` \| `clientScoped` \| `edgeMint`.
-It is a manifest-level extension to the catalog item — `ManifestCatalogEntry.delivery`, typed
-`ManifestSecretDelivery` in `@polaris-key/manifest` — so it does not appear on the verbatim
-`ConfigEntry` the reference page reproduces. The manifest validator enforces two things about it
-at ingest: it is only meaningful on a `kind: "secret"` entry, and it must be one of the three
-values — anything else, or a `delivery` on a `config`/`flag` entry, fails validation.
+A `secret`-kind entry may declare `delivery`, one of `serverOnly` \| `clientScoped` \| `edgeMint`
+(the protocol's `SecretDelivery` union, carried on `ConfigEntry` and re-exported by
+`@polaris-key/manifest` as `ManifestSecretDelivery`). The manifest validator enforces two things
+about it at ingest: it is only meaningful on a `kind: "secret"` entry, and it must be one of the
+three values — anything else, or a `delivery` on a `config`/`flag` entry, fails validation.
 
 - **`clientScoped`** is the shape every catalog secret has by default: the value travels in the
   config document's `secrets` map, redacted everywhere in the admin surface, decrypted
   client-side into the OS keyring.
-- **`serverOnly`** documents that the value is meant for the Worker's own use rather than the
-  client's. Treat it as authoring intent to be enforced by how the value is actually populated —
-  the annotation itself does not change what the document-signing prune delivers.
+- **`serverOnly`** means the value exists for the Worker's own use and **never leaves it**: the
+  document-signing prune drops the entry from every device-facing document — the config
+  document, and bundles, which reuse the same builder — however the value was populated.
 - **`edgeMint`** marks that the entry's _value_ is not the thing delivered at all. It is the
   client's cue to call the paired [edge-mint recipe](/docs/services/config/edge-mint/) — via
   `/<product>/config/mint/<id>/token` — instead of reading a value from this document.

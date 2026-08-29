@@ -18,6 +18,8 @@ fail-closed validator supports); do not confuse the two schema layers.
 // mirrors. This is the generalized shape of djdl's `src/core/configSchema.ts` — no
 // product-specific keys live in code anymore.
 
+import type { SecretDelivery } from "@polaris-key/protocol/config";
+
 export type ConfigKind = "config" | "secret" | "flag";
 
 /** Per-key MDM-style management state — applies to `config` keys only.
@@ -54,6 +56,10 @@ export interface ConfigEntry {
   examples?: unknown[];
   default?: unknown;
   secret?: boolean;
+  /** How a SECRET reaches a runtime (default `clientScoped`). `serverOnly` values are
+   *  consumed by the worker and never signed into a device document; `edgeMint` marks the
+   *  Config-service capability that mints short-lived third-party tokens (D-19). */
+  delivery?: SecretDelivery;
   /** State a freshly-minted key gets if the admin doesn't override it. CONFIG only. */
   managementDefault?: ManagementState;
   /** A `flag` surfaced to the user as an included capability ("Included with your license"). */
