@@ -35,6 +35,7 @@ import { handleActivate } from "../src/services/license/activation.js";
 import { handleUpdate } from "../src/services/update/index.js";
 import { handleRelease } from "../src/services/release/index.js";
 import { updateParams } from "../src/services/update/eligibility.js";
+import { handleUpdateRoutes } from "../src/services/update/routes.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 
 const SLUG = "djdl";
@@ -298,6 +299,75 @@ describe("entitled feeds (D-13) — the R3 gap", () => {
       );
       expect(res.status).toBe(200);
     }
+  });
+
+  it("resolves ?channel= on the version surface (B4)", async () => {
+    // Both SDKs send `?channel=` on `/update/version`; the server used to discard it and
+    // answer for stable regardless. `updateParams` is the unit that changed — compose it
+    // with the same request, exactly as the route does.
+    const { db, env, product } = await fixture();
+    const versionFor = async (url: string): Promise<Response> =>
+      handleUpdate(
+        feedReq(url),
+        env,
+        db,
+        product,
+        "version",
+        updateParams(feedReq(url), "version"),
+        stubFetch([BETA, DUAL_ARCH]),
+      );
+
+    const beta = await versionFor(
+      "https://key.plrs.im/djdl/update/version?channel=beta",
+    );
+    expect(beta.status).toBe(200);
+    expect(await beta.json()).toMatchObject({ version: "2.0.0-beta.1" });
+    // A moving selector answers with the short cache, exactly like its appcast.
+    expect(beta.headers.get("cache-control")).toContain("max-age=120");
+
+    const stable = await versionFor("https://key.plrs.im/djdl/update/version");
+    expect(await stable.json()).toMatchObject({ version: "1.2.3" });
+
+    // A well-formed but unknown channel 404s like an unknown channel appcast.
+    const bogus = await versionFor(
+      "https://key.plrs.im/djdl/update/version?channel=bogus",
+    );
+    expect(bogus.status).toBe(404);
+  });
+
+  it("404s a ?channel= value the path form could not express (B4)", async () => {
+    // The query spelling is held to the router's path-channel alphabet, refused at the
+    // ROUTE (null → the registry's 404) before any resolution or network work.
+    const { db, env, product } = await fixture();
+    const res = await handleUpdateRoutes({
+      req: feedReq("https://key.plrs.im/djdl/update/version?channel=Beta%2F1"),
+      env,
+      db,
+      product,
+      rest: ["version"],
+      now: NOW,
+      viaAlias: false,
+    } as unknown as Parameters<typeof handleUpdateRoutes>[0]);
+    expect(res).toBeNull();
+  });
+
+  it("holds the entitled gate on a query channel exactly as on a path channel (B4)", async () => {
+    const { db, env, product } = await fixture({ metadata_access: "entitled" });
+    const token = await deviceToken(env, db, product, { channels: ["stable"] });
+    const url = "https://key.plrs.im/djdl/update/version?channel=beta";
+    const res = await handleUpdate(
+      feedReq(url, { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      "version",
+      updateParams(feedReq(url), "version"),
+      stubFetch([BETA, DUAL_ARCH]),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: { code: "channel_not_allowed" },
+    });
   });
 
   it("requires a token at all, in the v3 shape", async () => {

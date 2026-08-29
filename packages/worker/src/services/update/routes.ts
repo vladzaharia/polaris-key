@@ -36,6 +36,10 @@ export async function handleUpdateRoutes(
       );
     }
     if (rest[0] === "version") {
+      // `?channel=` is held to the same alphabet as a PATH channel; a value the path form
+      // could not express is refused here (→ the registry's 404) before any resolution.
+      const channel = new URL(req.url).searchParams.get("channel");
+      if (channel !== null && !CHANNEL.test(channel)) return null;
       return handleUpdate(
         req,
         env,

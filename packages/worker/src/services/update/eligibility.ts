@@ -30,17 +30,24 @@ import { appcastArch, type UpdateSurfaceKind } from "./feed.js";
 /**
  * The parameters an Update request resolves to.
  *
- * `channel` is only ever a path segment the core router matched against `[a-z0-9-]`, so it
- * cannot carry a traversal or a separator; `arch` is a query hint, normalised to one of two
- * values by `appcastArch`. Everything downstream — asset matching, the entitled check, the
- * cache key — reads these, never the raw request.
+ * `channel` is either a path segment the core router matched against `[a-z0-9-]`, or — on
+ * the version surface — a `?channel=` query held to the SAME alphabet here (and refused at
+ * the route when it violates it), so neither spelling can carry a traversal or a separator;
+ * `arch` is a query hint, normalised to one of two values by `appcastArch`. Everything
+ * downstream — asset matching, the entitled check, the cache key — reads these, never the
+ * raw request.
  */
 export function updateParams(
   req: Request,
   kind: UpdateSurfaceKind,
   channel?: string,
 ): ReleaseParams {
-  if (kind === "version") return {};
+  if (kind === "version") {
+    // Both SDKs send `?channel=` for the per-channel version check; resolution and the
+    // entitled gate read `params.channel`, so parsing it here is the whole feature.
+    const q = new URL(req.url).searchParams.get("channel");
+    return q && /^[a-z0-9-]+$/.test(q) ? { channel: q } : {};
+  }
   const arch: UpdateArch = appcastArch(req);
   return kind === "channelAppcast" && channel ? { channel, arch } : { arch };
 }

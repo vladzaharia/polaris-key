@@ -25,12 +25,15 @@ Returns the newest build on a channel:
 { "version": "1.2.3", "tag": "v1.2.3", "url": "https://github.com/…" }
 ```
 
-It takes **no query parameters at all**. There is one answer per product — the newest
-non-prerelease release, the same thing `stable` and `latest` resolve to — whatever the asking
-machine, so an `?arch=` is accepted and discarded rather than honoured, and there is no
-`channel` selector on this route. A host that wants a different release line polls that
-channel's appcast. The response carries `max-age=120`, the cache policy every moving
-selector gets. Unlike the
+It takes one query parameter: `?channel=`, defaulting to `stable`. The value speaks the same
+selector vocabulary as a channel appcast's path segment — `stable`, `beta`, `pr-<n>`, a
+manifest-declared manual channel, or a pinned `X.Y.Z` — held to the same `[a-z0-9-]` alphabet
+(anything beyond it answers `404` before resolution, and a well-formed unknown name `404`s
+exactly like an unknown channel appcast). Under `entitled`, the gate evaluates the query
+channel precisely as it would the path spelling, so `?channel=beta` from a stable-only
+license answers `403 channel_not_allowed`. `?arch=` is accepted and discarded — the answer
+names a release, not an asset. The response carries `max-age=120`, the cache policy every
+moving selector gets. Unlike the
 appcast, the version check is a **metadata** surface — a plain informational read, not a
 pointer to bytes — so it's governed separately; see
 [Appcast](/docs/services/update/appcast/) for why the feed itself is gated under the
