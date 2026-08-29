@@ -322,7 +322,6 @@
         "format": "uri",
         "maxLength": 2048
       },
-      "managementDefault": "hidden",
       "ui": {
         "widget": "password"
       },
@@ -344,7 +343,6 @@
         "minLength": 1,
         "maxLength": 4096
       },
-      "managementDefault": "default",
       "ui": {
         "widget": "password"
       }
@@ -362,7 +360,6 @@
         "minLength": 1,
         "maxLength": 256
       },
-      "managementDefault": "default",
       "ui": {
         "widget": "password"
       }
@@ -380,7 +377,6 @@
         "minLength": 1,
         "maxLength": 4096
       },
-      "managementDefault": "default",
       "ui": {
         "widget": "password"
       }
@@ -398,7 +394,6 @@
         "minLength": 1,
         "maxLength": 256
       },
-      "managementDefault": "default",
       "ui": {
         "widget": "password"
       },
@@ -420,7 +415,6 @@
         "minLength": 1,
         "maxLength": 4096
       },
-      "managementDefault": "default",
       "ui": {
         "widget": "password"
       }

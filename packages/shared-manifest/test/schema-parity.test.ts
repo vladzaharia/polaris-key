@@ -291,6 +291,13 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => ((d.schema as any).entries[0].kind = "toggle"),
   },
   {
+    code: "invalid_catalog_shape",
+    file: "schema",
+    schema: "rejects",
+    // managementDefault is CONFIG-only; entries[1] is the secret entry.
+    mutate: (d) => ((d.schema as any).entries[1].managementDefault = "default"),
+  },
+  {
     code: "invalid_profile_id",
     file: "product",
     schema: "rejects",

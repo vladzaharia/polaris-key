@@ -69,7 +69,7 @@ KEY_HASH_PEPPER
 ADMIN_SESSION_SECRET
 PORTAL_SESSION_SECRET
 PLATFORM_KEK                 # or the keyring pair below, never both
-PLATFORM_ADMIN_GROUP=admin
+PLATFORM_ADMIN_GROUP=admins
 PLATFORM_OIDC_ISSUER=https://id.plrs.im
 PLATFORM_OIDC_CLIENT_ID
 PLATFORM_OIDC_CLIENT_SECRET
@@ -306,7 +306,7 @@ Admin login succeeds but access is denied:
 
 - Confirm the ID token includes a string-array `groups` claim.
 - Confirm your PocketID user belongs to `admins`.
-- Confirm `PLATFORM_ADMIN_GROUP=admin`.
+- Confirm `PLATFORM_ADMIN_GROUP=admins`.
 
 Portal magic links are hidden:
 

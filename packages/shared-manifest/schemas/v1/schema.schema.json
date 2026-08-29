@@ -116,6 +116,14 @@
             "properties": { "kind": { "const": "secret" } },
             "required": ["kind"]
           }
+        },
+        {
+          "$comment": "managementDefault is only valid for config entries.",
+          "if": { "required": ["managementDefault"] },
+          "then": {
+            "properties": { "kind": { "const": "config" } },
+            "required": ["kind"]
+          }
         }
       ]
     }

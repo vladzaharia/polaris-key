@@ -414,6 +414,7 @@ const SECRET_DELIVERY_VALUES = [
   "clientScoped",
   "edgeMint",
 ] as const;
+const MANAGEMENT_STATE_VALUES = ["default", "enforced", "hidden"] as const;
 const DEFAULT_RELEASE_ACCESS: ManifestReleaseAccessPolicy = {
   metadata: "public",
   artifacts: "public",
@@ -1922,6 +1923,19 @@ function validateCatalogShape(catalog: ProductCatalog): string[] {
       } else if (!isOneOf(entry.delivery, SECRET_DELIVERY_VALUES)) {
         issues.push(
           `entries[${i}].delivery must be serverOnly, clientScoped, or edgeMint.`,
+        );
+      }
+    }
+    // Documented CONFIG-only from day one; on any other kind the worker ignores it, so a
+    // manifest carrying one is declaring an intent nothing will honour.
+    if (entry.managementDefault !== undefined) {
+      if (entry.kind !== "config") {
+        issues.push(
+          `entries[${i}].managementDefault is only valid for config entries.`,
+        );
+      } else if (!isOneOf(entry.managementDefault, MANAGEMENT_STATE_VALUES)) {
+        issues.push(
+          `entries[${i}].managementDefault must be default, enforced, or hidden.`,
         );
       }
     }
