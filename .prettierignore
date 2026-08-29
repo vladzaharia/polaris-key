@@ -1,0 +1,7 @@
+# Generated artifacts — byte-compared against their emitters (docsCspParity, the docs
+# freshness suite), so prettier must never rewrite them.
+packages/worker/src/docsCsp.generated.ts
+packages/docs/src/content/docs/reference/
+
+# Build caches.
+packages/docs/.astro/
