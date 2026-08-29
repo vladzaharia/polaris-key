@@ -9,6 +9,7 @@ import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { linkRepo, parseRepoUrl } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
+import { parseManualChannels } from "../src/services/release/channels.js";
 import { handleGithubWebhook } from "../src/githubWebhook.js";
 import { open } from "../src/keyvault.js";
 import {
@@ -257,6 +258,57 @@ describe("parseRepoUrl", () => {
 });
 
 describe("linkRepo (GitHub-forward product creation)", () => {
+  it("persists manifest-declared manual channels, and resync updates them", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    const releaseWith = (channels: Array<{ name: string; regex: string }>) =>
+      JSON.stringify({
+        release: {
+          ghOwner: "acme-org",
+          ghRepo: "acme-app",
+          binaryName: "acme",
+          channelWorkflow: "channel.yml",
+          betaBranch: "main",
+          summaryMarker: "pkey:summary",
+          sparkleEd25519Pub: "PUBKEY==",
+          manualChannels: channels,
+        },
+      });
+    const nightly = { name: "nightly", regex: "v.*-nightly\\..*" };
+    const { fetchImpl } = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": releaseWith([nightly]),
+    });
+
+    const result = await linkRepo(
+      env,
+      db,
+      "https://github.com/acme-org/acme-app",
+      NOW,
+      fetchImpl,
+    );
+    expect(result.ok).toBe(true);
+
+    // Ingest → persist → the runtime reader: one shape end to end. `parseManualChannels`
+    // is the SAME function the feed resolves channels with, so this round-trip is the
+    // proof the manifest key and the resolver agree.
+    const rel = await getReleaseConfig(db, "acme");
+    expect(parseManualChannels(rel?.manual_channels_json)).toEqual([nightly]);
+
+    // A repo edit moves them on resync (products-as-data: the manifest stays the owner).
+    const canary = { name: "canary", regex: "v.*-canary" };
+    const { fetchImpl: fetchImpl2 } = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": releaseWith([canary]),
+    });
+    const resynced = await resyncRepo(env, db, "acme", NOW + 60, fetchImpl2);
+    expect(resynced.ok).toBe(true);
+    const after = await getReleaseConfig(db, "acme");
+    expect(parseManualChannels(after?.manual_channels_json)).toEqual([canary]);
+  });
+
   it("discovers the install + imports a JSON .pkey/ → product + schema + release + sealed key", async () => {
     const db = makeTestDb();
     const env = envFor();

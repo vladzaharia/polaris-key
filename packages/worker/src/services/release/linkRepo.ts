@@ -408,6 +408,9 @@ async function registerFromManifest(
       binaryName,
       sparkleEd25519Pub: rel?.sparkleEd25519Pub || null,
       summaryMarker,
+      manualChannelsJson: rel?.manualChannels.length
+        ? JSON.stringify(rel.manualChannels)
+        : null,
       artifactPolicyJson: rel?.artifactPolicy
         ? JSON.stringify(rel.artifactPolicy)
         : null,

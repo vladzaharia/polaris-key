@@ -5,20 +5,47 @@
   "description": "The release document of a .pkey/ manifest: GitHub provider coordinates, channel/appcast/install settings, artifact policy, access modes, and edge-mint recipes. Required only when the release service is enabled. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
   "type": "object",
   "properties": {
-    "release": { "$ref": "#/$defs/releaseBody" },
-    "provider": { "$ref": "#/$defs/provider" },
-    "ghOwner": { "$ref": "#/$defs/ghSlug" },
-    "ghRepo": { "$ref": "#/$defs/ghSlug" },
-    "binaryName": { "$ref": "#/$defs/binaryName" },
-    "channelWorkflow": { "$ref": "#/$defs/channelWorkflow" },
-    "betaBranch": { "$ref": "#/$defs/branch" },
-    "summaryMarker": { "$ref": "#/$defs/summaryMarker" },
-    "sparkleEd25519Pub": { "$ref": "#/$defs/sparklePub" },
-    "artifactPolicy": { "$ref": "#/$defs/artifactPolicy" },
-    "access": { "$ref": "#/$defs/access" },
+    "release": {
+      "$ref": "#/$defs/releaseBody"
+    },
+    "provider": {
+      "$ref": "#/$defs/provider"
+    },
+    "ghOwner": {
+      "$ref": "#/$defs/ghSlug"
+    },
+    "ghRepo": {
+      "$ref": "#/$defs/ghSlug"
+    },
+    "binaryName": {
+      "$ref": "#/$defs/binaryName"
+    },
+    "channelWorkflow": {
+      "$ref": "#/$defs/channelWorkflow"
+    },
+    "betaBranch": {
+      "$ref": "#/$defs/branch"
+    },
+    "summaryMarker": {
+      "$ref": "#/$defs/summaryMarker"
+    },
+    "sparkleEd25519Pub": {
+      "$ref": "#/$defs/sparklePub"
+    },
+    "manualChannels": {
+      "$ref": "#/$defs/manualChannels"
+    },
+    "artifactPolicy": {
+      "$ref": "#/$defs/artifactPolicy"
+    },
+    "access": {
+      "$ref": "#/$defs/access"
+    },
     "edgeMint": {
       "type": "array",
-      "items": { "$ref": "#/$defs/edgeMintRecipe" }
+      "items": {
+        "$ref": "#/$defs/edgeMintRecipe"
+      }
     }
   },
   "$defs": {
@@ -26,19 +53,44 @@
       "description": "The same fields may be nested under a `release` key instead of flattened at the root.",
       "type": "object",
       "properties": {
-        "provider": { "$ref": "#/$defs/provider" },
-        "ghOwner": { "$ref": "#/$defs/ghSlug" },
-        "ghRepo": { "$ref": "#/$defs/ghSlug" },
-        "binaryName": { "$ref": "#/$defs/binaryName" },
-        "channelWorkflow": { "$ref": "#/$defs/channelWorkflow" },
-        "betaBranch": { "$ref": "#/$defs/branch" },
-        "summaryMarker": { "$ref": "#/$defs/summaryMarker" },
-        "sparkleEd25519Pub": { "$ref": "#/$defs/sparklePub" },
-        "artifactPolicy": { "$ref": "#/$defs/artifactPolicy" },
-        "access": { "$ref": "#/$defs/access" },
+        "provider": {
+          "$ref": "#/$defs/provider"
+        },
+        "ghOwner": {
+          "$ref": "#/$defs/ghSlug"
+        },
+        "ghRepo": {
+          "$ref": "#/$defs/ghSlug"
+        },
+        "binaryName": {
+          "$ref": "#/$defs/binaryName"
+        },
+        "channelWorkflow": {
+          "$ref": "#/$defs/channelWorkflow"
+        },
+        "betaBranch": {
+          "$ref": "#/$defs/branch"
+        },
+        "summaryMarker": {
+          "$ref": "#/$defs/summaryMarker"
+        },
+        "sparkleEd25519Pub": {
+          "$ref": "#/$defs/sparklePub"
+        },
+        "manualChannels": {
+          "$ref": "#/$defs/manualChannels"
+        },
+        "artifactPolicy": {
+          "$ref": "#/$defs/artifactPolicy"
+        },
+        "access": {
+          "$ref": "#/$defs/access"
+        },
         "edgeMint": {
           "type": "array",
-          "items": { "$ref": "#/$defs/edgeMintRecipe" }
+          "items": {
+            "$ref": "#/$defs/edgeMintRecipe"
+          }
         }
       }
     },
@@ -49,8 +101,12 @@
           "description": "Only github is implemented (the seam for other providers is designed, not built).",
           "const": "github"
         },
-        "owner": { "$ref": "#/$defs/ghSlug" },
-        "repo": { "$ref": "#/$defs/ghSlug" }
+        "owner": {
+          "$ref": "#/$defs/ghSlug"
+        },
+        "repo": {
+          "$ref": "#/$defs/ghSlug"
+        }
       }
     },
     "ghSlug": {
@@ -97,20 +153,32 @@
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"
           }
         },
-        "requireDmg": { "type": "boolean" },
-        "requireCli": { "type": "boolean" },
-        "allowAmbiguousAssets": { "type": "boolean" }
+        "requireDmg": {
+          "type": "boolean"
+        },
+        "requireCli": {
+          "type": "boolean"
+        },
+        "allowAmbiguousAssets": {
+          "type": "boolean"
+        }
       }
     },
     "access": {
       "description": "Who may read release metadata and download artifacts. (The per-product `entitled` feed mode is an admin-set runtime policy, not a manifest value.)",
       "type": "object",
       "properties": {
-        "metadata": { "$ref": "#/$defs/accessMode" },
-        "artifacts": { "$ref": "#/$defs/accessMode" }
+        "metadata": {
+          "$ref": "#/$defs/accessMode"
+        },
+        "artifacts": {
+          "$ref": "#/$defs/accessMode"
+        }
       }
     },
-    "accessMode": { "enum": ["public", "authenticated", "licensed"] },
+    "accessMode": {
+      "enum": ["public", "authenticated", "licensed"]
+    },
     "edgeMintRecipe": {
       "description": "Edge-mint recipe (identical shape to product.schema.json's — the block is accepted in either document).",
       "type": "object",
@@ -119,7 +187,9 @@
           "type": "string",
           "pattern": "^[A-Za-z0-9._:-]{1,64}$"
         },
-        "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
+        "alg": {
+          "enum": ["ES256", "RS256", "EdDSA"]
+        },
         "signingKeySecret": {
           "type": "string",
           "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"
@@ -128,8 +198,13 @@
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
         },
-        "claimsTemplate": { "type": "object" },
-        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+        "claimsTemplate": {
+          "type": "object"
+        },
+        "ttlSeconds": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
         "audience": {
           "anyOf": [
             {
@@ -137,11 +212,33 @@
               "maxLength": 200,
               "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
             },
-            { "type": "null" }
+            {
+              "type": "null"
+            }
           ]
         }
       },
       "required": ["id", "alg", "signingKeySecret"]
+    },
+    "manualChannels": {
+      "description": "Named channels beyond the built-in stable/beta, matched by anchored tag regex. Persisted verbatim to release_config.manual_channels_json. The validator additionally requires each regex to COMPILE, which JSON Schema cannot express.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Becomes a URL path segment on the release/update routes.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "regex": {
+            "description": "Matched anchored (^(?:...)$) against release tags.",
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": ["name", "regex"]
+      }
     }
   }
 }

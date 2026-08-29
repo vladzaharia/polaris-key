@@ -276,13 +276,15 @@ export async function resyncRepo(
     }
     await db.run(
       `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
-         sparkle_ed25519_pub = ?, summary_marker = ?, artifact_policy_json = ?,
-         metadata_access = ?, artifacts_access = ? WHERE product = ?`,
+         sparkle_ed25519_pub = ?, summary_marker = ?, manual_channels_json = ?,
+         artifact_policy_json = ?, metadata_access = ?, artifacts_access = ?
+         WHERE product = ?`,
       rel.channelWorkflow || null,
       rel.betaBranch || "main",
       binaryName,
       rel.sparkleEd25519Pub || null,
       rel.summaryMarker || "pkey:summary",
+      rel.manualChannels.length ? JSON.stringify(rel.manualChannels) : null,
       rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,
       rel.access.metadata,
       rel.access.artifacts,

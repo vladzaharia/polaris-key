@@ -571,6 +571,7 @@ export interface ReleaseConfigInput {
   binaryName: string;
   sparkleEd25519Pub: string | null;
   summaryMarker: string;
+  manualChannelsJson?: string | null;
   artifactPolicyJson?: string | null;
   metadataAccess?: string;
   artifactsAccess?: string;
@@ -580,7 +581,7 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
     sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
             manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json,
             metadata_access, artifacts_access)
-          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
     params: [
       r.product,
       r.ghOwner,
@@ -588,6 +589,7 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
       r.ghInstallationId,
       r.channelWorkflow,
       r.betaBranch,
+      r.manualChannelsJson ?? null,
       r.binaryName,
       r.sparkleEd25519Pub,
       r.summaryMarker,

@@ -163,6 +163,7 @@ function base(): Docs {
         betaBranch: "main",
         summaryMarker: "pkey:summary",
         sparkleEd25519Pub: "AbCd1234",
+        manualChannels: [{ name: "nightly", regex: "v.*-nightly\\..*" }],
         artifactPolicy: {
           channels: ["stable", "beta"],
           architectures: ["arm64", "x86_64"],
@@ -621,6 +622,20 @@ const MUTATIONS: Mutation[] = [
     file: "release",
     schema: "rejects",
     mutate: (d) => (rel(d).artifactPolicy.architectures = ["bad arch!"]),
+  },
+  {
+    code: "invalid_manual_channel",
+    file: "release",
+    schema: "rejects",
+    // The schema-expressible half: the regex source-length cap (maxLength 80).
+    mutate: (d) => (rel(d).manualChannels[0].regex = "a".repeat(81)),
+  },
+  {
+    code: "invalid_manual_channel",
+    file: "release",
+    schema: "accepts",
+    // The validator-only half: JSON Schema cannot test that a regex COMPILES.
+    mutate: (d) => (rel(d).manualChannels[0].regex = "(unclosed"),
   },
   {
     code: "invalid_release_access",

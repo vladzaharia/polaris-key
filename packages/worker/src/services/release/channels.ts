@@ -8,13 +8,15 @@
  *  - `beta`/`latest`— the latest tag built from the configured `beta_branch` head via a
  *                     successful run of `channel_workflow`.
  *  - `pr-<n>`       — auto: the latest tag from PR #n's head SHA via `channel_workflow`.
- *  - admin manual   — operator-defined `{name, regex}` rules in `manual_channels_json`;
- *                     the newest release whose tag matches the (anchored, capped) regex.
+ *  - manual         — manifest-declared `{name, regex}` rules in `manual_channels_json`
+ *                     (`release.manualChannels`, persisted by linkRepo/resync); the newest
+ *                     release whose tag matches the (anchored, capped) regex.
  *
  * Selector parsing is pure. Resolution takes the release list + (for beta/pr) workflow
  * runs, both supplied by the caller, so this module never touches the network itself.
  */
 
+import { compileManualChannelRegex } from "@polaris-key/manifest";
 import type { Release } from "./github.js";
 
 export type ChannelKind = "stable" | "beta" | "pr" | "manual";
@@ -33,9 +35,6 @@ export interface ChannelSelector {
   /** The compiled rule (manual only). */
   manual?: ManualChannel;
 }
-
-/** Max source length of an admin regex (ReDoS guard — short patterns can't catastrophically backtrack). */
-const MAX_REGEX_SOURCE = 80;
 
 /**
  * Classify a `:version`/channel segment. `stable`/`latest`/`X.Y.Z` → stable; `beta` →
@@ -73,20 +72,9 @@ export function isMovingSelector(sel: ChannelSelector): boolean {
   );
 }
 
-/**
- * Compile a manual-channel regex safely: anchor it (so `beta` can't match `beta-old`
- * unless the author wrote it), cap its source length, and reject anything that fails
- * to compile. Returns `null` for an unsafe/invalid pattern rather than throwing.
- */
-function compileChannelRegex(source: string): RegExp | null {
-  if (source.length > MAX_REGEX_SOURCE) return null;
-  const anchored = `^(?:${source})$`;
-  try {
-    return new RegExp(anchored);
-  } catch {
-    return null;
-  }
-}
+// The anchored/capped/must-compile safety rule lives in @polaris-key/manifest
+// (`compileManualChannelRegex`) so ingest validation and this runtime reader are one rule,
+// not two copies — the validator refuses exactly what this parser would drop.
 
 /** Parse `manual_channels_json` into validated rules (drops malformed/unsafe entries). */
 export function parseManualChannels(
@@ -112,7 +100,7 @@ export function parseManualChannels(
       if (
         typeof name === "string" &&
         typeof regex === "string" &&
-        compileChannelRegex(regex)
+        compileManualChannelRegex(regex)
       ) {
         out.push({ name, regex });
       }
@@ -161,7 +149,9 @@ export function resolveChannel(
         return newest(releases, (r) => channelTags.has(r.tag_name));
       return null;
     case "manual": {
-      const re = sel.manual ? compileChannelRegex(sel.manual.regex) : null;
+      const re = sel.manual
+        ? compileManualChannelRegex(sel.manual.regex)
+        : null;
       if (!re) return null;
       return newest(releases, (r) => re.test(r.tag_name));
     }

@@ -48,17 +48,18 @@ currently means:
 | a bare `X.Y.Z` (optionally with a prerelease suffix) | that exact tag, pinned                                                                                                                                                    |
 | `beta`                                               | the latest tag from a configured GitHub Actions channel workflow's run on the product's beta branch, falling back to the newest prerelease when no workflow is configured |
 | `pr-<n>`                                             | the same workflow-based resolution, scoped to that pull request's head commit — with no workflow configured, this resolves to nothing                                     |
-| an operator-defined manual channel                   | the newest release whose tag matches an admin-authored, anchored regular expression                                                                                       |
+| a manifest-declared manual channel                   | the newest release whose tag matches the channel's anchored regular expression                                                                                            |
 
 Anything that matches none of these is passed through **unrecognized** rather than quietly
 treated as `stable` — an unresolvable selector answers `404` visibly instead of silently
 serving the wrong build under a name nobody asked for.
 
-Manual channels are read and resolved everywhere in that table, but no configuration surface
-writes one yet — neither `.pkey/release` nor the admin API — so in practice the last row is
-reserved capacity rather than something a product can use today. The built-in names are
-matched first regardless, so a manual channel could never be called `stable`, `beta`,
-`latest` or `pr-<n>`.
+Manual channels are declared in `.pkey/release` as `release.manualChannels` — an array of
+`{ name, regex }` entries persisted by linkRepo/resync — and resolved everywhere in that
+table. The regex is compiled anchored (`^(?:…)$`), capped at 80 characters, and refused at
+manifest validation if it does not compile; the runtime reader applies the same rule, so an
+ingested channel is always a resolvable one. The built-in names are matched first, so a
+manual channel could never be called `stable`, `beta`, `latest` or `pr-<n>`.
 
 ## Access versus eligibility, restated
 

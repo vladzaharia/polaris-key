@@ -276,11 +276,11 @@ release:
     type: github
     owner: ${quoteYaml(opts.releaseOwner ?? "OWNER")}
     repo: ${quoteYaml(opts.releaseRepo ?? opts.slug)}
-  channels:
-    stable:
-      selector: latest
-    beta:
-      selector: prerelease
+  # stable and beta are built in and need no declaration. Named channels beyond them are
+  # optional, matched by anchored regex against release tags:
+  # manualChannels:
+  #   - name: nightly
+  #     regex: v.*-nightly\\..*
 `;
 }
 

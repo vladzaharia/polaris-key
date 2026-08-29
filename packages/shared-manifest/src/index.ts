@@ -177,6 +177,14 @@ export interface ManifestReleaseAccessPolicy {
   artifacts: ManifestReleaseAccess;
 }
 
+/** A named release channel beyond the built-in stable/beta, matched by tag regex. Persisted
+ *  to `release_config.manual_channels_json` in exactly this shape — the worker's
+ *  `parseManualChannels` reads it back. */
+export interface ManifestManualChannel {
+  name: string;
+  regex: string;
+}
+
 export interface ManifestRelease {
   ghOwner: string;
   ghRepo: string;
@@ -185,6 +193,7 @@ export interface ManifestRelease {
   betaBranch: string;
   summaryMarker: string;
   sparkleEd25519Pub: string;
+  manualChannels: ManifestManualChannel[];
   artifactPolicy: ManifestReleaseArtifactPolicy | null;
   access: ManifestReleaseAccessPolicy;
 }
@@ -330,6 +339,24 @@ const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$/;
 const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 /** Channel / architecture names — they reach URL path segments and asset-match patterns. */
 const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+/** `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`). */
+export const MANUAL_CHANNEL_REGEX_MAX = 80;
+/**
+ * Compile a manual-channel tag regex under the SAME safety rules the worker's runtime
+ * `parseManualChannels` applies: anchor it (so `beta` can't match `beta-old` unless the
+ * author wrote it), cap its source length, and reject anything that fails to compile.
+ * Returns `null` rather than throwing. Exported so ingest validation and the runtime reader
+ * are one rule, not two copies (the audit's B1).
+ */
+export function compileManualChannelRegex(source: string): RegExp | null {
+  if (source.length > MANUAL_CHANNEL_REGEX_MAX) return null;
+  const anchored = `^(?:${source})$`;
+  try {
+    return new RegExp(anchored);
+  } catch {
+    return null;
+  }
+}
 /** `provisioning[].allowedHosts` entries — a host, optionally with a port. */
 const HOST_RE = /^[A-Za-z0-9._-]{1,253}(?::[0-9]{1,5})?$/;
 /** Any C0 control character or DEL: never legitimate in a manifest string, and the cheapest
@@ -953,6 +980,55 @@ export function validateManifestDocuments(
         CHANNEL_RE,
         "artifactPolicy.architectures must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.",
       );
+      if (relRoot.manualChannels !== undefined) {
+        if (!Array.isArray(relRoot.manualChannels)) {
+          add(
+            errors,
+            "release",
+            "/release/manualChannels",
+            "invalid_manual_channel",
+            "release.manualChannels must be an array of { name, regex } entries.",
+          );
+        } else {
+          for (const [i, raw] of relRoot.manualChannels.entries()) {
+            const at = `/release/manualChannels/${i}`;
+            if (!isRecord(raw)) {
+              add(
+                errors,
+                "release",
+                at,
+                "invalid_manual_channel",
+                "Each manual channel must be a { name, regex } object.",
+              );
+              continue;
+            }
+            // The name becomes a URL path segment on the release/update routes, exactly
+            // like a tier channel; the regex is compiled under the runtime reader's safety
+            // rules so a manifest the validator accepts is one `parseManualChannels` keeps.
+            if (typeof raw.name !== "string" || !CHANNEL_RE.test(raw.name)) {
+              add(
+                errors,
+                "release",
+                `${at}/name`,
+                "invalid_manual_channel",
+                "manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.",
+              );
+            }
+            if (
+              typeof raw.regex !== "string" ||
+              compileManualChannelRegex(raw.regex) === null
+            ) {
+              add(
+                errors,
+                "release",
+                `${at}/regex`,
+                "invalid_manual_channel",
+                `manualChannels[].regex must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+              );
+            }
+          }
+        }
+      }
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
         add(
           errors,
@@ -1499,9 +1575,30 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     betaBranch: String(rel.betaBranch ?? "main"),
     summaryMarker: String(rel.summaryMarker ?? "pkey:summary"),
     sparkleEd25519Pub: String(rel.sparkleEd25519Pub ?? ""),
+    manualChannels: normalizeManualChannels(rel.manualChannels),
     artifactPolicy: normalizeArtifactPolicy(rel.artifactPolicy),
     access: normalizeReleaseAccess(rel.access),
   };
+}
+
+/** Keep exactly the entries the runtime reader would: valid name, safe compilable regex.
+ *  Drop-the-malformed mirrors `parseManualChannels` (validation has already reported them). */
+function normalizeManualChannels(raw: unknown): ManifestManualChannel[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ManifestManualChannel[] = [];
+  for (const entry of raw) {
+    if (!isRecord(entry)) continue;
+    const { name, regex } = entry;
+    if (
+      typeof name === "string" &&
+      CHANNEL_RE.test(name) &&
+      typeof regex === "string" &&
+      compileManualChannelRegex(regex) !== null
+    ) {
+      out.push({ name, regex });
+    }
+  }
+  return out;
 }
 
 function normalizeReleaseAccess(raw: unknown): ManifestReleaseAccessPolicy {
