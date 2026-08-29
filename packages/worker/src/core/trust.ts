@@ -61,7 +61,15 @@ export async function signTrustManifest(
   now: number,
   origin: string,
 ): Promise<string> {
-  const keyRows = await loadPublicSigningKeys(db, product.slug);
+  // §2.3 — keys revoked within 2× the cache window are still LISTED, with status
+  // "revoked": every client that could hold the key cached reads a positive removal
+  // instead of inferring it from absence. Older revocations age out and absence takes
+  // over, exactly as the merge semantics already handle.
+  const keyRows = await loadPublicSigningKeys(
+    db,
+    product.slug,
+    now - 2 * TRUST_CACHE_SECONDS,
+  );
   const doc: TrustManifestDoc = {
     schemaVersion: 1,
     aud: product.slug,
@@ -77,7 +85,9 @@ export async function signTrustManifest(
       crv: "Ed25519",
       publicKey: key.publicKey,
       status:
-        key.status === "active" || key.status === "staged"
+        key.status === "active" ||
+        key.status === "staged" ||
+        key.status === "revoked"
           ? key.status
           : "retired",
     })),

@@ -154,9 +154,9 @@ def verify_trust_manifest(
     for key in keys:
         if not isinstance(key, dict):
             return _REJECTED
-        # `status` is typed as the non-revoked subset on the wire type, but the server
-        # emits revoked entries EXPLICITLY for at least 2x cacheSeconds (§1) so clients
-        # get a positive signal to prune on.
+        # The server emits revoked entries EXPLICITLY for at least 2x cacheSeconds (§1)
+        # so clients get a positive signal to prune on. Read the raw value — an unknown
+        # future status must degrade gracefully, not break parsing.
         status = key.get("status")
         kid = key.get("kid")
         public_key = key.get("publicKey")

@@ -97,9 +97,9 @@ export async function verifyTrustManifest(
   const discovered: TrustSet = {};
   for (const key of doc.keys) {
     if (!key || typeof key !== "object") return REJECTED;
-    // `status` is typed as the non-revoked subset on the wire type, but the server emits
-    // revoked entries EXPLICITLY for at least 2× cacheSeconds (§1) so clients get a positive
-    // signal to prune on. Read it from the raw value, not the narrowed type.
+    // The server emits revoked entries EXPLICITLY for at least 2× cacheSeconds (§1) so
+    // clients get a positive signal to prune on. Read it from the raw value — an unknown
+    // future status must degrade gracefully, not break parsing.
     const status = (key as { status?: unknown }).status;
     if (typeof key.kid !== "string" || typeof key.publicKey !== "string")
       return REJECTED;

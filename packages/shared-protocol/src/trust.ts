@@ -10,7 +10,10 @@ export interface TrustManifestKey {
   kty: "OKP";
   crv: "Ed25519";
   publicKey: string;
-  status: Exclude<SigningKeyStatus, "revoked">;
+  /** `revoked` entries are emitted for at least 2× `cacheSeconds` after revocation (§2.3) —
+   *  a positive removal signal for clients that could still hold the key cached. Clients
+   *  drop them on merge; absence remains revocation after the window. */
+  status: SigningKeyStatus;
 }
 
 /** Signed by the currently trusted active product key and used by SDKs to refresh their

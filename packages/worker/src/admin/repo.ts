@@ -91,8 +91,8 @@ export async function deleteProduct(
       params: [slug],
     },
     {
-      sql: "UPDATE product_keys SET status = 'revoked', rotated_at = ? WHERE product = ?",
-      params: [now, slug],
+      sql: "UPDATE product_keys SET status = 'revoked', rotated_at = ?, revoked_at = ? WHERE product = ?",
+      params: [now, now, slug],
     },
   ]);
 }

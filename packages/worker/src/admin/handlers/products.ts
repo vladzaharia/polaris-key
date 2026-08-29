@@ -351,6 +351,7 @@ async function manualCreate(
       status: "active",
       created_at: now,
       rotated_at: null,
+      revoked_at: null,
     }),
     stmtInsertSchema({
       product: slug,
@@ -923,6 +924,7 @@ async function handleKeys(
         status: "staged",
         created_at: now,
         rotated_at: null,
+        revoked_at: null,
       }),
     ]);
     await audit(
@@ -1012,10 +1014,13 @@ async function handleKeys(
       );
     }
     const status = action === "retire" ? "retired" : "revoked";
+    // `revoked_at` opens the §2.3 explicit-revocation window: the trust manifest keeps
+    // listing the key with status "revoked" for 2× cacheSeconds from this moment.
     await db.run(
-      "UPDATE product_keys SET status = ?, rotated_at = ? WHERE product = ? AND kid = ?",
+      "UPDATE product_keys SET status = ?, rotated_at = ?, revoked_at = ? WHERE product = ? AND kid = ?",
       status,
       now,
+      status === "revoked" ? now : null,
       slug,
       kid,
     );

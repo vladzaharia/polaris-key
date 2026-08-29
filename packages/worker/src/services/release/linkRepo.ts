@@ -344,6 +344,7 @@ async function registerFromManifest(
       status: "active",
       created_at: now,
       rotated_at: null,
+      revoked_at: null,
     }),
   ];
 

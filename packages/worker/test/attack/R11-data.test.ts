@@ -284,6 +284,7 @@ describe("R11-02 status vocabulary drift", () => {
         status: "retiredd", // typo
         created_at: NOW,
         rotated_at: null,
+        revoked_at: null,
       }),
     ).rejects.toThrow(/product_keys.status/);
     const rows = await listVerificationProductKeys(db, "acme");
@@ -307,6 +308,7 @@ describe("R11-02 status vocabulary drift", () => {
         status,
         created_at: NOW,
         rotated_at: null,
+        revoked_at: null,
       });
     }
     const kids = (await listVerificationProductKeys(db, "acme")).map(

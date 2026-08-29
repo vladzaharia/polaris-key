@@ -81,7 +81,7 @@ Contains no license fields. A product with `config` enabled and `license` disabl
 
 ### 2.3 Trust manifest (`pkey-trust+jws`)
 
-Unchanged from v2 in shape and semantics (`schemaVersion`, `aud`, `issuedAt`, `expiresAt`, `keys[{kid,publicKey,status}]`, `cacheSeconds`). Servers SHOULD emit revoked keys explicitly for ≥ 2 × cacheSeconds as a positive prune signal; clients MUST honour an explicit `revoked` entry but MUST NOT depend on ever seeing one — wholesale replacement (absence-is-revocation) is the mechanism that always applies. (As of this revision the worker's `listVerificationProductKeys` publishes only `active`/`staged`/`retired`, so explicit `revoked` entries are specified but not yet emitted.)
+Unchanged from v2 in shape and semantics (`schemaVersion`, `aud`, `issuedAt`, `expiresAt`, `keys[{kid,publicKey,status}]`, `cacheSeconds`). Servers SHOULD emit revoked keys explicitly for ≥ 2 × cacheSeconds as a positive prune signal; clients MUST honour an explicit `revoked` entry but MUST NOT depend on ever seeing one — wholesale replacement (absence-is-revocation) is the mechanism that always applies. (The worker emits them: `product_keys.revoked_at` is stamped on revocation and `listVerificationProductKeys` includes keys revoked within the 2 × cacheSeconds window, listed with `status: "revoked"`, for the trust manifest only — JWKS and discovery never include a revoked key.)
 
 ## 3. Claim validation
 

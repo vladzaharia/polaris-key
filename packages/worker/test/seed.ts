@@ -94,6 +94,7 @@ export async function seedProduct(
     status: "active",
     created_at: NOW,
     rotated_at: null,
+    revoked_at: null,
   });
   const catalog = opts.catalog ?? { schemaVersion: 1, entries: [] };
   await insertSchema(db, {

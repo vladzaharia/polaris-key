@@ -45,6 +45,8 @@ export interface ProductKeyRow {
   status: string;
   created_at: number;
   rotated_at: number | null;
+  /** Stamped by the revoke action (0021); NULL for keys revoked before the column existed. */
+  revoked_at: number | null;
 }
 
 // Sealed per-product secret (OIDC client secret, edge-mint key material, …).
@@ -346,12 +348,26 @@ export async function getActiveProductKey(
 export async function listVerificationProductKeys(
   db: Db,
   product: string,
+  /** Also include keys REVOKED at or after this time (wire §2.3's explicit-revocation
+   *  window — the trust manifest passes `now − 2×cacheSeconds`). Omit for surfaces that
+   *  build TRUSTED key sets (JWKS, discovery): a revoked key never belongs there. */
+  revokedSince?: number,
 ): Promise<ProductKeyRow[]> {
+  if (revokedSince === undefined) {
+    return db.all<ProductKeyRow>(
+      `SELECT * FROM product_keys
+       WHERE product = ? AND status IN ('active', 'staged', 'retired')
+       ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'staged' THEN 1 ELSE 2 END, created_at DESC`,
+      product,
+    );
+  }
   return db.all<ProductKeyRow>(
     `SELECT * FROM product_keys
-     WHERE product = ? AND status IN ('active', 'staged', 'retired')
-     ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'staged' THEN 1 ELSE 2 END, created_at DESC`,
+     WHERE product = ? AND (status IN ('active', 'staged', 'retired')
+        OR (status = 'revoked' AND revoked_at IS NOT NULL AND revoked_at >= ?))
+     ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'staged' THEN 1 WHEN 'retired' THEN 2 ELSE 3 END, created_at DESC`,
     product,
+    revokedSince,
   );
 }
 

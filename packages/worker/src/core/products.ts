@@ -79,9 +79,12 @@ export async function loadPublicSigningKey(
 export async function loadPublicSigningKeys(
   db: Db,
   slug: string,
+  /** Also include keys revoked at/after this time (§2.3's explicit-revocation window).
+   *  ONLY the trust manifest passes this — JWKS and discovery build trusted sets. */
+  revokedSince?: number,
 ): Promise<PublicSigningKey[]> {
   try {
-    const rows = await listVerificationProductKeys(db, slug);
+    const rows = await listVerificationProductKeys(db, slug, revokedSince);
     return rows.map((row) => ({
       kid: row.kid,
       alg: row.alg,

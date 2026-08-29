@@ -128,11 +128,11 @@ The `status` field layers a positive signal on top of it:
 
 The contract asks a server to keep emitting explicitly `revoked` entries for at least
 `2 × cacheSeconds` after a revocation, so a client that refreshes on its cache cadence receives
-a positive prune signal rather than only an absence (spec §2.3). A client must nonetheless
-**not depend on ever seeing one** — wholesale replacement already prunes an absent key, and
-that is the guarantee the contract rests on. That is not theoretical: the Worker publishes
-`active`, `staged` and `retired` keys and nothing else, so today a revocation reaches clients
-purely as an absence.
+a positive prune signal rather than only an absence (spec §2.3), and the Worker does exactly
+that: `product_keys.revoked_at` is stamped by the revoke action, and the manifest lists keys
+revoked within the window with `status: "revoked"` before absence takes over. A client must
+nonetheless **not depend on ever seeing one** — wholesale replacement already prunes an absent
+key, and that is the guarantee the contract rests on.
 
 Two more rules on the key list:
 
