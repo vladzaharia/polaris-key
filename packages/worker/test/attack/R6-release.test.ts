@@ -37,8 +37,13 @@ import type {
   ReleaseAsset,
 } from "../../src/services/release/github.js";
 import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
+import { UPSTREAM_RATE_LIMIT } from "../../src/services/release/gateway.js";
 import { renderAppcast } from "../../src/services/update/appcast.js";
-import { defaultInstallScript } from "../../src/services/release/install.js";
+import {
+  defaultInstallScript,
+  deriveVersionEnv,
+  validateInstallContext,
+} from "../../src/services/release/install.js";
 import { linkRepo } from "../../src/services/release/linkRepo.js";
 import { handleGithubWebhook } from "../../src/githubWebhook.js";
 import { getReleaseConfig } from "../../src/services/release/index.js";
@@ -88,8 +93,8 @@ CqdInXm4wm+73vbwAiBFA15GG6beB/01LBhX9jiVAoGBAM2aHdDaIHzO71WMB7Qi
 d+RKUGe97dQXkny7eE7qJPbg
 -----END PRIVATE KEY-----`;
 
-function envFor(): Env {
-  const env = makeEnv(new KvMock(), [SLUG]);
+function envFor(kv: KvMock = new KvMock()): Env {
+  const env = makeEnv(kv, [SLUG]);
   env.GITHUB_APP_ID = "12345";
   env.GITHUB_APP_PRIVATE_KEY = TEST_RSA_PKCS8;
   return env;
@@ -124,7 +129,8 @@ function makeProduct(slug = SLUG): Product {
     slug,
     name: slug,
     signingKid: "kid",
-    signingKeyPem: "pem",
+    // B5-12: the unseal is lazy — a fixture Product supplies the accessor, not a field.
+    signingKey: async () => "pem",
     signingPub: null,
     compatMin: "0.0.0",
     compatMax: "99.0.0",
@@ -274,7 +280,17 @@ const PRODUCT_JSON = JSON.stringify({
   tiers: [{ id: "pro", label: "Pro" }],
 });
 
-/** The same manifest as a repo *writer* would rewrite it: new IdP, new admin group, fat tier. */
+/**
+ * The same manifest as a repo *writer* would rewrite it: new IdP, new admin group, fat tier.
+ *
+ * `policyDeviceLimit` is 999 and not the 100,000 it used to be. A7-05 put a ceiling of
+ * `MAX_DEVICE_LIMIT` (1,000) on every seat-cap write path, and this manifest is applied as ONE
+ * document — so a six-figure limit now makes ingest reject the whole thing, and these tests
+ * would pass for the wrong reason: not because the R6-05 gate held, but because the manifest
+ * never parsed. 999 keeps the fixture hostile in the dimension these tests are about (a repo
+ * push rewriting operator-owned policy) while staying inside the ceiling, so the R6-05 gap they
+ * document stays visible. The ceiling itself is covered separately, below.
+ */
 const ATTACKER_PRODUCT_JSON = JSON.stringify({
   slug: "acme",
   name: "Acme",
@@ -289,7 +305,18 @@ const ATTACKER_PRODUCT_JSON = JSON.stringify({
     redirectUris: ["https://attacker.example/cb"],
     groupRoleMap: { everyone: { role: "admin" } },
   },
-  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100000 }],
+  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 999 }],
+});
+
+/** The seat cap A7-05 refuses: `claimDeviceSeat`'s recursive CTE is O(limit) inside ONE
+ *  statement, so this is a repo push that turns every later activation into a hang. */
+const OVERSIZED_LIMIT_PRODUCT_JSON = JSON.stringify({
+  slug: "acme",
+  name: "Acme",
+  compatMin: "1.0.0",
+  compatMax: "9.0.0",
+  adminGroup: "acme-admins",
+  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100_000 }],
 });
 
 function releaseJson(over: Record<string, unknown> = {}): string {
@@ -1175,7 +1202,7 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       "acme",
       "pro",
     );
-    expect(tier?.policy_device_limit).not.toBe(100000);
+    expect(tier?.policy_device_limit).not.toBe(999);
   });
 
   // STILL NOT FIXED (R6-05 proper): once the issuer host IS operator-blessed, everything else
@@ -1221,6 +1248,58 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       "acme",
     );
     expect(product?.admin_group).toBe("attacker-controlled-group");
+  });
+
+  // A7-05. The same push is also the delivery vehicle for an unbounded seat cap: a tier's
+  // `policyDeviceLimit` feeds `claimDeviceSeat`'s recursive CTE, which is O(limit) inside a
+  // SINGLE statement — so a six-figure limit is not a big number, it is a statement that never
+  // returns, on every subsequent activation for that product.
+  it("FIXED (A7-05): a repo push cannot raise a tier's seat cap past the ceiling", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
+    const stub = pkeyFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": releaseJson(),
+    });
+    expect(
+      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+    ).toBe(true);
+
+    stub.files[".pkey/product.json"] = OVERSIZED_LIMIT_PRODUCT_JSON;
+    const res = await handleGithubWebhook(
+      deliveryRequest(
+        await signedPush(
+          pushPayload({ head_commit: { modified: [".pkey/product.json"] } }),
+          "webhook-secret",
+        ),
+      ),
+      env,
+      db,
+      NOW + 10,
+      stub.fetchImpl,
+    );
+    // The webhook still ACKs (it always does); the resync inside it reports the refusal.
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      products: Array<{ ok: boolean; errors?: string[] }>;
+    };
+    expect(body.products[0]?.ok).toBe(false);
+    // The operator has to be able to see WHY their push did not apply, so the refusal names
+    // the offending path and the ceiling, not just "invalid".
+    const errors = JSON.stringify(body.products[0]?.errors ?? []);
+    expect(errors).toContain("policyDeviceLimit");
+    expect(errors).toContain("1000");
+
+    // Reject, never coerce: nothing from the document landed, so there is no clamped-but-
+    // applied row to reason about later.
+    const tier = await db.first<{ policy_device_limit: number | null }>(
+      "SELECT policy_device_limit FROM tiers WHERE product = ? AND id = ?",
+      "acme",
+      "pro",
+    );
+    expect(tier?.policy_device_limit ?? 0).toBeLessThan(100_000);
   });
 });
 
@@ -2163,5 +2242,643 @@ describe("A5-03 entitled skips the version window on an unpinned selector", () =
       releaseListFetch(),
     );
     expect(res.status).toBe(200);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// B5-02 — the per-IP budgets sat ABOVE the upstream quota they exist to defend
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// R10-05 metered the release surface PER IP and sized the lanes as if a request were one GitHub
+// subrequest. An artifact request is two — `resolveSelector` (`/releases/tags/…`) then
+// `streamAsset` (`/releases/assets/<id>`) — so the 120/min artifact lane licensed 14,400 calls
+// an hour from ONE address against an installation quota of 5,000. And because every lane was
+// keyed on the caller, the whole defence cost an attacker exactly one thing to defeat: more
+// source addresses. Nothing anywhere counted what the PRODUCT was spending, which is the only
+// number the quota cares about, and exhausting it 404s (now 503s) every download, every appcast
+// and `install.sh` for every product sharing that installation.
+//
+// GREEN when the flood cannot spend more than the product's own budget, no matter how many
+// addresses it comes from.
+
+describe("B5-02 an artifact flood drains the product's whole GitHub quota", () => {
+  /** A release fetch stub that counts the calls GitHub actually bills — `api.github.com` only. */
+  function meteredStub(rel: Release): {
+    fetchImpl: FetchImpl;
+    apiCalls: () => number;
+  } {
+    let apiCalls = 0;
+    const fetchImpl: FetchImpl = async (input) => {
+      const url = String(input);
+      // The storage redirect (`objects.githubusercontent.com`) is a signed CDN URL and is not
+      // billed to the App's REST quota, so it is deliberately not counted here either.
+      if (new URL(url).hostname === "api.github.com") apiCalls += 1;
+      if (url.includes("/access_tokens")) {
+        return new Response(
+          JSON.stringify({ token: "ghs_installation_token" }),
+          {
+            status: 200,
+          },
+        );
+      }
+      if (url.includes("/releases/tags/"))
+        return new Response(JSON.stringify(rel), { status: 200 });
+      if (url.includes("/releases/assets/"))
+        return new Response("BINARY", { status: 200 });
+      return new Response("not found", { status: 404 });
+    };
+    return { fetchImpl, apiCalls: () => apiCalls };
+  }
+
+  /** One artifact request, attributed to `ip` — `cf-connecting-ip` is what `clientIp` reads. */
+  function fromIp(ip: string): Request {
+    return new Request("https://key.plrs.im/djdl/release/dl/1.2.3/djdl-arm64", {
+      headers: { "cf-connecting-ip": ip },
+    }) as unknown as Request;
+  }
+
+  it("an unauthenticated artifact flood cannot exceed the per-product upstream budget", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { channel_workflow: null });
+    const env = envFor();
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64", 777)],
+    });
+    const { fetchImpl, apiCalls } = meteredStub(rel);
+
+    // Two GitHub calls per request, so this flood is worth ~10% MORE than the budget: without
+    // a per-product charge it would land ~4,200 calls on a 4,000-call allowance. Every request
+    // comes from a different address, which is what defeats a purely per-IP defence — and is
+    // free for anyone with a routed /64 or a botnet.
+    const flood = Math.ceil(UPSTREAM_RATE_LIMIT.limit / 2) + 100;
+    const statuses: number[] = [];
+    for (let i = 0; i < flood; i++) {
+      const res = await handleRelease(
+        fromIp(`198.51.100.${i % 250}`),
+        env,
+        db,
+        makeProduct(),
+        "cli",
+        { version: "1.2.3", arch: "arm64" },
+        fetchImpl,
+      );
+      statuses.push(res.status);
+    }
+
+    // THE ASSERTION THAT MATTERS: a count of GitHub calls, not a wall-clock measurement.
+    // The budget is charged once per call and checked BEFORE the call leaves, so it is an
+    // exact ceiling, not an approximation.
+    expect(apiCalls()).toBeLessThanOrEqual(UPSTREAM_RATE_LIMIT.limit);
+    expect(apiCalls()).toBe(UPSTREAM_RATE_LIMIT.limit);
+    // …and the flood really did try to spend more than that.
+    expect(flood * 2).toBeGreaterThan(UPSTREAM_RATE_LIMIT.limit);
+
+    // No 429 anywhere: the per-IP lanes never fired, so the bound above is the PRODUCT budget
+    // and nothing else. (This is the same reason the old defence failed.)
+    expect(statuses.filter((s) => s === 429)).toEqual([]);
+    // The requests past the budget are refused, and the last one certainly is.
+    expect(statuses.filter((s) => s === 503).length).toBeGreaterThan(0);
+    expect(statuses.at(-1)).toBe(503);
+    // Serving the early ones is the point — this is a delivery path, not a tarpit.
+    expect(statuses.filter((s) => s === 200).length).toBeGreaterThan(1000);
+
+    // An exhausted quota is a PLATFORM condition, so it wears the same 503 shape GitHub's own
+    // refusal maps to — never a 404, which is indistinguishable from a withdrawn release and
+    // silently stops every auto-updater on the product.
+    const refused = await handleRelease(
+      fromIp("203.0.113.9"),
+      env,
+      db,
+      makeProduct(),
+      "cli",
+      { version: "1.2.3", arch: "arm64" },
+      fetchImpl,
+    );
+    expect(refused.status).toBe(503);
+    expect(refused.headers.get("cache-control")).toBe("no-store");
+    expect(Number(refused.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(await refused.json()).toMatchObject({
+      error: "upstream_rate_limited",
+    });
+    // Still no further spend: the budget cannot be re-borrowed by asking again.
+    expect(apiCalls()).toBe(UPSTREAM_RATE_LIMIT.limit);
+  }, 120_000);
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// B5-03 / B7-05 — Sparkle verification allocated past the isolate ceiling, and
+//                 only ever remembered the verdicts that succeeded
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// `MAX_VERIFY_BYTES` was 256 MiB, directly beneath a comment saying anything larger was not
+// verifiable inside a Worker isolate — which has a 128 MB memory limit, so the cap was exactly
+// twice the ceiling it claimed to enforce. `fetchAssetBytes` then checked the declared
+// `Content-Length` and called `res.arrayBuffer()`, so a 200 MB DMG (or ANY size at all, with the
+// header simply omitted) was pulled into the isolate whole: workerd error 1102, taking every
+// co-tenant request with it. And since the verdict never became `true`, nothing was memoised, so
+// the next appcast request did it again. Forever.
+
+/** A response that declares `bytes` and BOOBY-TRAPS every way of reading its body. */
+function oversizeTrap(bytes: number, onBodyTouched: () => void): Response {
+  const boom = (): never => {
+    onBodyTouched();
+    throw new Error("the over-size artifact was allocated");
+  };
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ "content-length": String(bytes) }),
+    get body(): never {
+      return boom();
+    },
+    arrayBuffer: boom,
+    text: boom,
+    json: boom,
+    blob: boom,
+  } as unknown as Response;
+}
+
+/** A real Ed25519 public key (base64) plus a well-formed 64-byte signature that is not one. */
+async function bogusSparkleMaterial(): Promise<{
+  publicKey: string;
+  signature: string;
+}> {
+  const b64 = (bytes: Uint8Array): string =>
+    btoa(String.fromCharCode(...bytes));
+  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
+  const raw = new Uint8Array(
+    (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
+  );
+  return {
+    publicKey: b64(raw),
+    // Structurally valid (64 bytes, decodable) so verification is actually attempted — the
+    // point is the DOWNLOAD, and a malformed signature would be rejected before one happens.
+    signature: b64(crypto.getRandomValues(new Uint8Array(64))),
+  };
+}
+
+/** The single `sparkle-sig` memo this product wrote, if any. */
+function sparkleMemoKey(kv: KvMock): string | undefined {
+  return kv.keys().find((k) => k.includes(":sparkle-sig:"));
+}
+
+describe("B5-03 an over-size DMG is allocated into a 128 MB isolate to verify it", () => {
+  it("an over-size artifact is refused without allocating it, and the refusal is memoised", async () => {
+    const db = makeTestDb();
+    const { publicKey, signature } = await bogusSparkleMaterial();
+    await seedReleaseConfig(db, { sparkle_ed25519_pub: publicKey });
+    const kv = new KvMock();
+    const env = envFor(kv);
+    const rel = release({
+      assets: [
+        asset("djdl-arm64.dmg", 100, 4096),
+        asset("djdl-arm64.dmg.sig", 101),
+      ],
+    });
+
+    let bodyTouched = 0;
+    let dmgFetches = 0;
+    const fetchImpl: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens")) {
+        return new Response(
+          JSON.stringify({ token: "ghs_installation_token" }),
+          {
+            status: 200,
+          },
+        );
+      }
+      if (url.includes("/releases?per_page"))
+        return new Response(JSON.stringify([rel]), { status: 200 });
+      if (url.includes("/releases/assets/101"))
+        return new Response(signature, { status: 200 });
+      if (url.includes("/releases/assets/100")) {
+        dmgFetches += 1;
+        // 200 MB — over the 64 MiB verification cap and over the isolate's own ceiling.
+        return oversizeTrap(200 * 1024 * 1024, () => {
+          bodyTouched += 1;
+        });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const first = await handleRelease(
+      req("https://key.plrs.im/djdl/appcast.xml"),
+      env,
+      db,
+      makeProduct(),
+      "appcast",
+      {},
+      fetchImpl,
+    );
+    // Fails closed — an unverifiable enclosure never enters the feed…
+    expect(first.status).toBe(404);
+    // …and NOTHING read the body. The declared length is consulted before the stream is
+    // touched, so the refusal costs one header read, not 200 MB of isolate memory.
+    expect(bodyTouched).toBe(0);
+    expect(dmgFetches).toBe(1);
+
+    // The refusal is remembered, so the next appcast request does not repeat the attempt. This
+    // is the half that made the bug self-sustaining: a `false` verdict was never written, so
+    // every single request re-ran it.
+    const memo = sparkleMemoKey(kv);
+    expect(memo).toBeDefined();
+    expect(await kv.get(memo!)).toBe("0");
+
+    const second = await handleRelease(
+      req("https://key.plrs.im/djdl/appcast.xml"),
+      env,
+      db,
+      makeProduct(),
+      "appcast",
+      {},
+      fetchImpl,
+    );
+    expect(second.status).toBe(404);
+    expect(dmgFetches).toBe(1);
+    expect(bodyTouched).toBe(0);
+  });
+
+  it("an ABSENT Content-Length cannot smuggle the artifact past the cap either", async () => {
+    // The declared length is a cheap first rejection, not the bound. With no header at all the
+    // old code read `0`, sailed through the check and called `arrayBuffer()` on the lot.
+    const db = makeTestDb();
+    const { publicKey, signature } = await bogusSparkleMaterial();
+    await seedReleaseConfig(db, { sparkle_ed25519_pub: publicKey });
+    const env = envFor();
+    const rel = release({
+      assets: [
+        asset("djdl-arm64.dmg", 100, 4096),
+        asset("djdl-arm64.dmg.sig", 101),
+      ],
+    });
+
+    // 128 MiB of 1 MiB chunks, offered without a Content-Length. Counts what is actually pulled.
+    let pulled = 0;
+    const hugeBody = (): ReadableStream<Uint8Array> =>
+      new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (pulled >= 128) {
+            controller.close();
+            return;
+          }
+          pulled += 1;
+          controller.enqueue(new Uint8Array(1024 * 1024));
+        },
+      });
+
+    const fetchImpl: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens")) {
+        return new Response(
+          JSON.stringify({ token: "ghs_installation_token" }),
+          {
+            status: 200,
+          },
+        );
+      }
+      if (url.includes("/releases?per_page"))
+        return new Response(JSON.stringify([rel]), { status: 200 });
+      if (url.includes("/releases/assets/101"))
+        return new Response(signature, { status: 200 });
+      if (url.includes("/releases/assets/100"))
+        return new Response(hugeBody(), { status: 200 });
+      return new Response("not found", { status: 404 });
+    };
+
+    const res = await handleRelease(
+      req("https://key.plrs.im/djdl/appcast.xml"),
+      env,
+      db,
+      makeProduct(),
+      "appcast",
+      {},
+      fetchImpl,
+    );
+    expect(res.status).toBe(404);
+    // Cancelled a chunk past the 64 MiB cap rather than buffering all 128 MiB.
+    expect(pulled).toBeLessThanOrEqual(66);
+    expect(pulled).toBeLessThan(128);
+  });
+});
+
+describe("B7-05 only successful Sparkle verdicts are memoised", () => {
+  it("a failing sidecar downloads once per TTL, not once per request", async () => {
+    const db = makeTestDb();
+    const { publicKey, signature } = await bogusSparkleMaterial();
+    await seedReleaseConfig(db, { sparkle_ed25519_pub: publicKey });
+    const kv = new KvMock();
+    const env = envFor(kv);
+    // A small DMG, so this test is purely about HOW OFTEN it is downloaded — not about size.
+    const dmgBytes = new TextEncoder().encode("REAL-DMG-BYTES");
+    const rel = release({
+      assets: [
+        asset("djdl-arm64.dmg", 100, dmgBytes.byteLength),
+        asset("djdl-arm64.dmg.sig", 101),
+      ],
+    });
+
+    let dmgFetches = 0;
+    const fetchImpl: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.includes("/access_tokens")) {
+        return new Response(
+          JSON.stringify({ token: "ghs_installation_token" }),
+          {
+            status: 200,
+          },
+        );
+      }
+      if (url.includes("/releases?per_page"))
+        return new Response(JSON.stringify([rel]), { status: 200 });
+      if (url.includes("/releases/assets/101"))
+        return new Response(signature, { status: 200 });
+      if (url.includes("/releases/assets/100")) {
+        dmgFetches += 1;
+        return new Response(dmgBytes as unknown as BodyInit, { status: 200 });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    // Five appcast renders — a Sparkle fleet checking in, or one attacker in a loop. Before
+    // this, EACH of them re-downloaded the whole artifact because only `true` was ever cached.
+    for (let i = 0; i < 5; i++) {
+      const res = await handleRelease(
+        req("https://key.plrs.im/djdl/appcast.xml"),
+        env,
+        db,
+        makeProduct(),
+        "appcast",
+        {},
+        fetchImpl,
+      );
+      expect(res.status).toBe(404);
+    }
+    expect(dmgFetches).toBe(1);
+
+    // The memo is unambiguous — a stored "0" is a cached REFUSAL, not the absence of an entry.
+    const memo = sparkleMemoKey(kv);
+    expect(memo).toBeDefined();
+    expect(await kv.get(memo!)).toBe("0");
+    // …and it is deliberately short-lived: a refusal can be a transient truth (a half-uploaded
+    // sidecar, a key not yet rotated), so it expires in minutes where a success lasts a day.
+    expect(kv.ttlOf(memo!)).toBe(300);
+  });
+
+  it("CONTRAST: a verdict that VERIFIES is memoised for a day, not five minutes", async () => {
+    const db = makeTestDb();
+    const dmgBytes = new TextEncoder().encode("REAL-DMG-BYTES");
+    const b64 = (bytes: Uint8Array): string =>
+      btoa(String.fromCharCode(...bytes));
+    const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+      "sign",
+      "verify",
+    ])) as CryptoKeyPair;
+    const pub = b64(
+      new Uint8Array(
+        (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
+      ),
+    );
+    const sigB64 = b64(
+      new Uint8Array(
+        await crypto.subtle.sign(
+          { name: "Ed25519" },
+          pair.privateKey,
+          dmgBytes as BufferSource,
+        ),
+      ),
+    );
+    await seedReleaseConfig(db, { sparkle_ed25519_pub: pub });
+    const kv = new KvMock();
+    const env = envFor(kv);
+    const rel = release({
+      assets: [
+        asset("djdl-arm64.dmg", 100, dmgBytes.byteLength),
+        asset("djdl-arm64.dmg.sig", 101),
+      ],
+    });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+      ["/releases/assets/101", () => new Response(sigB64)],
+      [
+        "/releases/assets/100",
+        () => new Response(dmgBytes as unknown as BodyInit),
+      ],
+    ]);
+
+    const res = await handleRelease(
+      req("https://key.plrs.im/djdl/appcast.xml"),
+      env,
+      db,
+      makeProduct(),
+      "appcast",
+      {},
+      fetchImpl,
+    );
+    expect(res.status).toBe(200);
+    const memo = sparkleMemoKey(kv);
+    expect(memo).toBeDefined();
+    expect(await kv.get(memo!)).toBe("1");
+    expect(kv.ttlOf(memo!)).toBe(86_400);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// A5-05 — a refused request was unmetered, so refusals were free to enumerate
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe("A5-05 access enforcement runs before the limiter, so refusals cost nothing", () => {
+  it("an unauthenticated caller cannot enumerate a licensed surface for free", async () => {
+    const db = makeTestDb();
+    // `licensed` metadata: an anonymous caller gets 401 for every selector it names.
+    await seedReleaseConfig(db, { metadata_access: "licensed" });
+    const env = envFor();
+    const { fetchImpl, calls } = stubFetch([]);
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      const res = await handleRelease(
+        req(`https://key.plrs.im/djdl/update/version?v=${i}`),
+        env,
+        db,
+        makeProduct(),
+        "version",
+        { version: `1.2.${i}` },
+        fetchImpl,
+      );
+      statuses.push(res.status);
+    }
+
+    // The first 30 are refused on their merits; past the metadata budget the limiter takes
+    // over, because being turned away is work the platform did on a stranger's behalf.
+    expect(statuses.slice(0, 30).every((s) => s === 401)).toBe(true);
+    expect(statuses[30]).toBe(429);
+    expect(statuses.at(-1)).toBe(429);
+    // Nothing ever reached GitHub — enforcement still precedes every byte of release state.
+    expect(calls).toEqual([]);
+  });
+
+  it("REGRESSION GUARD: the cache lookup stays ahead of the limiter", async () => {
+    // A hit costs zero GitHub subrequests and zero limiter round-trips, so it must never be
+    // metered — that is the availability half of R10-05 and the reason the order is
+    // cache → limit → enforce and not limit → cache.
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const env = envFor();
+    const rel = release({ tag_name: "v1.2.3" });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+    const cache = new Map<string, Response>();
+    const g = globalThis as { caches?: unknown };
+    const prior = g.caches;
+    g.caches = {
+      default: {
+        match: async (r: Request) => cache.get(r.url)?.clone(),
+        put: async (r: Request, res: Response) => {
+          cache.set(r.url, res);
+        },
+      },
+    };
+    try {
+      const hit = async (): Promise<number> =>
+        (
+          await handleRelease(
+            req("https://key.plrs.im/djdl/update/version"),
+            env,
+            db,
+            makeProduct(),
+            "version",
+            { version: "latest" },
+            fetchImpl,
+          )
+        ).status;
+      expect(await hit()).toBe(200);
+      // Burn the whole per-IP metadata budget on misses…
+      for (let i = 0; i < 40; i++) {
+        await handleRelease(
+          req("https://key.plrs.im/djdl/update/version"),
+          env,
+          db,
+          makeProduct(),
+          "version",
+          { version: `9.9.${i}` },
+          fetchImpl,
+        );
+      }
+      // …and the cached selector still serves.
+      expect(await hit()).toBe(200);
+    } finally {
+      if (prior === undefined) delete g.caches;
+      else g.caches = prior;
+    }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// A5-06 — two regexes disagreed, so a legal binary name 404'd install.sh forever
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// `install.ts` bounded `binaryName` with exactly the manifest validator's class, then bounded the
+// DERIVED `versionEnv` with a shell-identifier class — but the derivation lived in `surfaces.ts`
+// and satisfied neither bound. Two axes:
+//   (a) a LEADING DIGIT. `7zip` is a legal binaryName; `7ZIP_VERSION` is not a legal shell
+//       identifier, so `validateInstallContext` failed and the surface 404'd.
+//   (b) LENGTH. `binaryName` may be 64 characters; `<NAME>_VERSION` is 8 longer, over the old
+//       64-character bound. Every name of 57-64 characters 404'd.
+// Both were permanent: nothing about the request changed the answer.
+
+describe("A5-06 a manifest-legal binaryName permanently 404s install.sh", () => {
+  /** The manifest validator's rule, verbatim from `shared-manifest/src/index.ts`. */
+  const MANIFEST_BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
+  async function installFor(binaryName: string): Promise<Response> {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { binary_name: binaryName });
+    const { fetchImpl } = stubFetch([]);
+    return handleRelease(
+      req("https://key.plrs.im/djdl/install.sh"),
+      envFor(),
+      db,
+      makeProduct(),
+      "install",
+      {},
+      fetchImpl,
+    );
+  }
+
+  // AXIS (a). A leading digit is genuinely not a POSIX shell identifier, so the regex was
+  // right and the derivation was wrong: the fix prefixes `_` rather than loosening the class.
+  it("a binaryName starting with a digit serves an installer instead of a 404", async () => {
+    const name = "7zip";
+    expect(MANIFEST_BINARY_NAME_RE.test(name)).toBe(true);
+    const res = await installFor(name);
+    expect(res.status).toBe(200);
+    const script = await res.text();
+    expect(script).toContain("_7ZIP_VERSION");
+    // Never the un-prefixed form ANYWHERE: `7ZIP_VERSION=1.2.3 sh` is a COMMAND named
+    // `7ZIP_VERSION=…`, not an assignment, so an installer that emitted it would be quietly
+    // broken even if the renderer had agreed to emit it.
+    expect(script).not.toMatch(/(?:^|[^A-Za-z0-9_])7ZIP_VERSION/m);
+    expect(script).toContain('VERSION="${_7ZIP_VERSION:-latest}"');
+  });
+
+  // AXIS (b). 64 characters is exactly what the manifest admits; the derived name is 72.
+  it("a maximum-length binaryName serves an installer instead of a 404", async () => {
+    const name = "a".repeat(64);
+    expect(MANIFEST_BINARY_NAME_RE.test(name)).toBe(true);
+    const res = await installFor(name);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain(`${"A".repeat(64)}_VERSION`);
+  });
+
+  // The two rules are now one rule, so the property holds for the WHOLE class rather than for
+  // the cases someone remembered: every string the manifest admits derives a name the installer
+  // admits. The boundaries above are the two that used to fail; these are the rest of the class.
+  it("EVERY manifest-legal binaryName derives an installer-legal versionEnv", () => {
+    const names = [
+      "a",
+      "Z",
+      "0",
+      "9",
+      "7zip",
+      "djdl",
+      "my.tool",
+      "my-tool",
+      "my_tool",
+      "0-._-.0",
+      "a".repeat(64),
+      `9${"b".repeat(63)}`,
+      `${"x".repeat(63)}9`,
+    ];
+    for (const name of names) {
+      expect(MANIFEST_BINARY_NAME_RE.test(name), name).toBe(true);
+      const env = deriveVersionEnv(name);
+      // The shell-identifier rule, verbatim from `install.ts`.
+      expect(
+        /^[A-Za-z_][A-Za-z0-9_]{0,72}$/.test(env),
+        `${name} -> ${env}`,
+      ).toBe(true);
+      expect(
+        validateInstallContext({
+          origin: "https://key.plrs.im",
+          cliBase: "/djdl/release/dl",
+          installPath: "/djdl/release/install.sh",
+          binaryName: name,
+          channels: ["staging", "beta"],
+          versionEnv: env,
+        }),
+      ).toBeNull();
+    }
   });
 });

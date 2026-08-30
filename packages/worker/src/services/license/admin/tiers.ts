@@ -12,7 +12,9 @@ import {
   audit,
   countLicensesUsingTier,
   deleteTier,
+  deviceLimitMessage,
   err,
+  invalidDeviceLimit,
   listProfiles,
   listTiers,
   parseJsonList,
@@ -28,17 +30,19 @@ function parseChannels(raw: unknown): string | null {
 }
 
 /**
- * R11-02 part 2 — a tier's device limit must be a real seat count.
+ * R11-02 part 2 — a tier's device limit must be a real seat count — and A7-05, its other end.
  *
  * `licenseCore.ts` gates the whole seat check on `limit > 0`, so `PATCH {"policyDeviceLimit":
  * 0}` (or `-1`) did not mean "zero seats", it meant "UNLIMITED seats" for every license on the
  * tier — the core commercial control removed by one mistyped or fuzzed admin field. NULL still
  * means "inherit the product default". 0015_data_integrity.sql enforces the same rule at the
  * database; this returns 422 instead of letting an operator hit a constraint error.
+ *
+ * The UPPER bound (`MAX_DEVICE_LIMIT`) is the same rule and the same number the platform product
+ * registry applies to `defaultDeviceLimit`, so it comes through the `core/adminApi.js` seam
+ * rather than being spelled a second time here — a tier limit and a product default both end up
+ * as the `deviceLimit` entitlement that sizes `claimDeviceSeat`'s recursive CTE.
  */
-function invalidDeviceLimit(raw: unknown): boolean {
-  return typeof raw === "number" && (!Number.isInteger(raw) || raw <= 0);
-}
 
 async function profileExists(
   db: Db,
@@ -85,7 +89,7 @@ export async function handleTiers(
         return err(
           422,
           ErrorCode.BadRequest,
-          "policyDeviceLimit must be a positive integer",
+          deviceLimitMessage("policyDeviceLimit"),
           { fields: ["policyDeviceLimit"] },
         );
       await upsertTier(db, {
@@ -136,7 +140,7 @@ export async function handleTiers(
       return err(
         422,
         ErrorCode.BadRequest,
-        "policyDeviceLimit must be a positive integer",
+        deviceLimitMessage("policyDeviceLimit"),
         { fields: ["policyDeviceLimit"] },
       );
     await upsertTier(db, {

@@ -68,6 +68,7 @@ import {
 } from "../lib/respond.js";
 import { productView } from "../lib/shape.js";
 import { resealManagedValue } from "../lib/managedSecrets.js";
+import { deviceLimitMessage, invalidDeviceLimit } from "../lib/deviceLimit.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
  *  an error message. Reuses the catalog compiler so manual schema is validated like a publish. */
@@ -199,15 +200,12 @@ export async function handleProducts(
   if (req.method === "PATCH") {
     const body = await readBody(req);
     // R11-02 part 2: `limit > 0` in licenseCore means a 0/negative limit reads as UNLIMITED.
-    if (
-      typeof body.defaultDeviceLimit === "number" &&
-      (!Number.isInteger(body.defaultDeviceLimit) ||
-        body.defaultDeviceLimit <= 0)
-    ) {
+    // A7-05: and an unbounded one is a `claimDeviceSeat` recursive CTE that never returns.
+    if (invalidDeviceLimit(body.defaultDeviceLimit)) {
       return err(
         422,
         ErrorCode.BadRequest,
-        "defaultDeviceLimit must be a positive integer",
+        deviceLimitMessage("defaultDeviceLimit"),
         { fields: ["defaultDeviceLimit"] },
       );
     }
@@ -301,6 +299,21 @@ async function manualCreate(
       fields: ["slug"],
     });
 
+  // A7-05. `Number(body.defaultDeviceLimit ?? 5)` was the ENTIRE validation on this path: the
+  // PATCH above bounded the field and CREATE bounded nothing, so a ceiling enforced only on the
+  // update was one POST away from being irrelevant. The coercion stays (this endpoint has always
+  // taken a numeric string) but it is the RESULT that is checked — `Number("1e9")` is a number
+  // like any other, and `invalidDeviceLimit` rejects NaN and Infinity along with the ceiling.
+  const deviceLimit = Number(body.defaultDeviceLimit ?? 5);
+  if (invalidDeviceLimit(deviceLimit)) {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      deviceLimitMessage("defaultDeviceLimit"),
+      { fields: ["defaultDeviceLimit"] },
+    );
+  }
+
   // A schema is now required so the product gets a real, usable catalog. If none is supplied,
   // seed the empty catalog (still mints a signing key).
   const supplied = body.schema;
@@ -336,7 +349,7 @@ async function manualCreate(
       compat_min: String(body.compatMin ?? "0.0.0"),
       compat_max: String(body.compatMax ?? "99.0.0"),
       default_max_offline_days: Number(body.defaultMaxOfflineDays ?? 30),
-      default_device_limit: Number(body.defaultDeviceLimit ?? 5),
+      default_device_limit: deviceLimit,
       admin_group: typeof body.adminGroup === "string" ? body.adminGroup : null,
       branding_json: null,
       release_source: null,
@@ -456,7 +469,35 @@ const NESTED_KEK_MARK = '\\"kekId\\":\\"';
 const RESEAL_DEFAULT_LIMIT = 50;
 const RESEAL_MAX_LIMIT = 200;
 
+/**
+ * How many managed-payload rows ONE keyring status call will pull into the isolate and parse,
+ * per table.
+ *
+ * A7-07: the two envelope-column tables are counted by a `GROUP BY` aggregate — SQLite does the
+ * work and hands back one row per kid — but the nested envelopes have to be found by parsing the
+ * payload, and that pass had no `LIMIT`. `GET /api/products/kek` therefore selected every
+ * `profiles` and `licenses` row containing the substring `kekId`, streamed all of them into the
+ * Worker, and ran `JSON.parse` on each: an admin GET whose cost grew without bound with the size
+ * of the deployment, on the one endpoint an operator hits repeatedly during a rotation.
+ *
+ * 500 rows per table is far above any real deployment and far below anything that costs an
+ * isolate its memory. What matters much more than the number is that exceeding it is REPORTED —
+ * see `KekScan.partial`.
+ */
+export const MANAGED_SCAN_ROWS = 500;
+
 type KekCounts = Record<string, Record<string, number>>;
+
+/** The result of one keyring count, and whether it is the whole truth. */
+interface KekScan {
+  counts: KekCounts;
+  /**
+   * Managed-payload tables whose scan stopped at `MANAGED_SCAN_ROWS`. Empty means every sealed
+   * value in the deployment was counted; non-empty means `counts.managed` — and therefore
+   * `remaining` and `unopenable` — are FLOORS, not totals.
+   */
+  partial: string[];
+}
 
 /** The kid inside a sealed envelope string, or null if the value is not one. */
 function envelopeKekId(value: unknown): string | null {
@@ -532,7 +573,7 @@ function managedNeedsWorkParams(
 
 /** `{ keys: {k1:3,k2:12}, secrets: {k1:1}, managed: {k1:2} }` — sealed values per kid: whole
  *  rows for the two envelope columns, individual leaves for the managed payloads. */
-async function kekCounts(db: Db): Promise<KekCounts> {
+async function kekCounts(db: Db): Promise<KekScan> {
   const counts: KekCounts = {};
   for (const t of SEALED_TABLES) {
     const rows = await db.all<{ kek_id: string | null; n: number }>(
@@ -544,45 +585,72 @@ async function kekCounts(db: Db): Promise<KekCounts> {
       perKid[row.kek_id ?? UNREADABLE_KEK] = Number(row.n);
     counts[t.label] = perKid;
   }
-  // Only rows that actually carry an envelope are parsed; the rest never leave SQLite.
+  // Only rows that actually carry an envelope are parsed; the rest never leave SQLite. A7-07:
+  // and at most `MANAGED_SCAN_ROWS` of THOSE do. One row over the cap is fetched on purpose —
+  // it is the cheapest possible proof that more exist, and it is what `partial` reports.
   const managed: Record<string, number> = {};
+  const partial: string[] = [];
   for (const t of MANAGED_PAYLOAD_TABLES) {
     const rows = await db.all<{ blob: string }>(
-      `SELECT ${t.column} AS blob FROM ${t.table} WHERE ${t.column} LIKE '%kekId%'`,
+      `SELECT ${t.column} AS blob FROM ${t.table}
+        WHERE ${t.column} LIKE '%kekId%'
+        ORDER BY product, id
+        LIMIT ?`,
+      MANAGED_SCAN_ROWS + 1,
     );
-    for (const row of rows) {
+    if (rows.length > MANAGED_SCAN_ROWS) partial.push(t.table);
+    for (const row of rows.slice(0, MANAGED_SCAN_ROWS)) {
       for (const leaf of managedLeaves(row.blob).leaves)
         managed[leaf.kekId] = (managed[leaf.kekId] ?? 0) + 1;
     }
   }
   counts.managed = managed;
-  return counts;
+  return { counts, partial };
 }
 
 /**
- * Two different numbers an operator must not conflate:
+ * Two different numbers an operator must not conflate, and one flag saying whether to trust them:
  *
  *  - `remaining`  — rows not yet re-sealed under the active kid. Reaching 0 is the gate for
  *                   retiring the old KEK; without it a rotation ends in a guess.
  *  - `unopenable` — rows whose kid is not in the ring AT ALL. These are already dark: their
  *                   product's routes are 404ing right now. Non-zero means a key was dropped
  *                   from `PLATFORM_KEK_KEYS` too early — put it back.
+ *  - `countsComplete` — false when the managed-payload scan hit `MANAGED_SCAN_ROWS` (A7-07).
+ *
+ * That last flag exists because of what `remaining` is FOR. It is not a progress bar; it is the
+ * precondition an operator checks before deleting a key, and a key deleted while something is
+ * still sealed under it is unrecoverable data. A bounded scan that reported `remaining: 0`
+ * because it stopped counting would be the most dangerous possible output of this endpoint — so
+ * a partial scan is not merely labelled, it is prevented from ever producing the number that
+ * says "safe to delete". The floor is honest: past the cap there are rows nobody looked at.
  */
 function progressOf(
-  counts: KekCounts,
+  scan: KekScan,
   active: string,
   kids: string[],
-): { remaining: number; unopenable: number } {
+): {
+  remaining: number;
+  unopenable: number;
+  countsComplete: boolean;
+  countsTruncated: string[];
+} {
   let remaining = 0;
   let unopenable = 0;
-  for (const perKid of Object.values(counts)) {
+  for (const perKid of Object.values(scan.counts)) {
     for (const [kid, n] of Object.entries(perKid)) {
       if (kid === active) continue;
       remaining += n;
       if (!kids.includes(kid)) unopenable += n;
     }
   }
-  return { remaining, unopenable };
+  const countsComplete = scan.partial.length === 0;
+  return {
+    remaining: countsComplete ? remaining : Math.max(remaining, 1),
+    unopenable,
+    countsComplete,
+    countsTruncated: scan.partial,
+  };
 }
 
 interface ResealFailure {
@@ -762,13 +830,13 @@ async function handleKekKeyring(
   }
 
   if (req.method === "GET") {
-    const counts = await kekCounts(db);
+    const scan = await kekCounts(db);
     return adminJson({
       ok: true,
       active,
       kids,
-      counts,
-      ...progressOf(counts, active, kids),
+      counts: scan.counts,
+      ...progressOf(scan, active, kids),
     });
   }
 
@@ -803,7 +871,7 @@ async function handleKekKeyring(
       `Re-sealed ${count} value(s) for ${product} under KEK ${active}`,
     );
   }
-  const counts = await kekCounts(db);
+  const scan = await kekCounts(db);
   return adminJson({
     ok: true,
     active,
@@ -812,8 +880,8 @@ async function handleKekKeyring(
     skipped: sweep.skipped,
     failed: sweep.failures.length,
     failures: sweep.failures,
-    counts,
-    ...progressOf(counts, active, kids),
+    counts: scan.counts,
+    ...progressOf(scan, active, kids),
   });
 }
 

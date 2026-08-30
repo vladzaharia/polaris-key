@@ -52,8 +52,47 @@ const ORIGIN_RE = /^https?:\/\/[A-Za-z0-9._-]+(?::[0-9]{1,5})?$/;
  * work — and the bound stays finite so no caller-derived value can grow a path arbitrarily.
  */
 const PRODUCT_PATH_RE = /^\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+){1,3}$/;
-/** Shell env-var name, so it must be a shell-legal identifier. */
-const VERSION_ENV_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+/**
+ * Shell env-var name, so it must be a shell-legal identifier: a leading letter or underscore,
+ * then letters, digits and underscores.
+ *
+ * A5-06. The BOUND is 73 characters, not 64, because this value is DERIVED rather than supplied.
+ * `deriveVersionEnv` appends `_VERSION` (8 characters) to a `binaryName` the manifest validator
+ * admits at up to 64, and prepends `_` when the name starts with a digit: 64 + 8 + 1 = 73 is the
+ * longest legal derived name. The old 64-character bound meant every binary name of 57-64
+ * characters produced a `versionEnv` this rejected, which made `validateInstallContext` fail,
+ * `renderInstallScript` return `null`, and the install surface serve a PERMANENT 404 for a name
+ * ingest had accepted.
+ */
+const VERSION_ENV_RE = /^[A-Za-z_][A-Za-z0-9_]{0,72}$/;
+
+/** The `_VERSION` suffix every derived env var carries. */
+const VERSION_ENV_SUFFIX = "_VERSION";
+
+/**
+ * The env var the installer reads for an explicit version, derived from the binary name.
+ *
+ * ONE RULE, IN ONE PLACE (A5-06). The derivation used to live in `surfaces.ts` and the character
+ * class that judges it lived here, and the two did not agree: `BINARY_NAME_RE` permits a LEADING
+ * DIGIT (`7zip` is a legal binary name, and a real one), the old derivation turned that into
+ * `7ZIP_VERSION`, and `VERSION_ENV_RE` correctly refuses it — `7ZIP_VERSION=1.2.3 sh` is not a
+ * variable assignment to any POSIX shell, it is a command named `7ZIP_VERSION=1.2.3`. The regex
+ * was right and the derivation was wrong, so the derivation moved here, next to the rule it has
+ * to satisfy, and `surfaces.ts` calls it.
+ *
+ * The contract is total: EVERY string matching `BINARY_NAME_RE` maps to a string matching
+ * `VERSION_ENV_RE`.
+ *   - uppercased, with every run of non-alphanumerics collapsed to a single `_` (so `.`, `-`
+ *     and `_` — the three punctuation characters a binary name may contain — all become `_`);
+ *   - prefixed with `_` when the first character is a digit, which is the only way a
+ *     manifest-legal name can start with something a shell identifier may not;
+ *   - bounded at 73 characters (`_` + 64 + `_VERSION`), which `VERSION_ENV_RE` now admits.
+ */
+export function deriveVersionEnv(binaryName: string): string {
+  const upper = binaryName.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  const shellSafe = /^[0-9]/.test(upper) ? `_${upper}` : upper;
+  return `${shellSafe}${VERSION_ENV_SUFFIX}`;
+}
 
 /**
  * POSIX single-quote a value so a shell reads it as one literal token: wrap in `'…'` and

@@ -106,14 +106,30 @@ them.
 
 ## Rate limiting
 
-Abuse protection on the credential-minting hot paths, backed by an atomic per-product Durable
-Object so concurrent bursts cannot slip past a non-atomic counter. Limits are keyed by
+Abuse protection on the credential-minting hot paths, backed by an atomic Durable Object so
+concurrent bursts cannot slip past a non-atomic counter. Limits are keyed by
 `(product, bucket, id)`, product-scoped like everything else.
+
+The counter is **sharded**. The Durable Object is named `${product}:${bucket}:${hash(id) % 32}`
+rather than by product alone, because `_admin` and `_portal` are literal scope names: a single
+object per scope meant interactive sign-in for the entire platform — every tenant, every
+operator — serialized through exactly two objects reachable with no credentials at all.
+Sharding splits contention, never a counter: the shard is a pure function of
+`(product, bucket, id)`, so one id lands in exactly one object and no caller can gain extra
+allowance by being routed elsewhere.
 
 The client identity is the **edge IP** from `cf-connecting-ip`, which Cloudflare sets and a
 client cannot spoof. The client-controlled `x-forwarded-for` is deliberately not consulted — it
 would let an attacker rotate the limit key freely. Requests with no edge IP share one `unknown`
 bucket.
+
+**IPv6 is aggregated to its /64.** Every residential and hosting IPv6 assignment is at least a
+/64, so keying on the full 128-bit address handed one attacker 2^64 free identities and made
+every per-IP budget on this page bypassable at zero cost. The /64 is the smallest unit an
+operator is actually assigned, so it is the smallest unit that costs something to rotate. IPv4
+is used whole — one address is one host's worth of allowance, which is the intent. This applies
+to **limiter keys only**; anything recorded for an operator or an auditor keeps the full
+address, because a /64 prefix does not identify a host.
 
 Over-limit is a `429`. On `POST /<p>/devices/register` it is the nested
 `{"error":{"code":"rate_limited"}}`; the older surfaces answer the flat shape.
@@ -129,10 +145,33 @@ Over-limit is a `429`. On `POST /<p>/devices/register` it is the nested
 | `mint`                  | `/<p>/config/mint/<id>/token`        | 60 / 60 s per IP                          | closed    |
 | `browserSessionLicense` | `POST /<p>/identity/session/license` | 30 / 60 s per IP                          | closed    |
 | `release`               | Release metadata surfaces            | 30 / 60 s per IP                          | open      |
-| `releaseArtifact`       | Artifact downloads                   | 120 / 60 s per IP                         | open      |
+| `releaseArtifact`       | Artifact downloads                   | 60 / 120 s per IP                         | open      |
+| `releaseUpstream`       | GitHub API calls, **per product**    | 4000 / 3600 s per product                 | open      |
+| `configDocument`        | `GET /<p>/config/document`           | 120 / 60 s per IP                         | open      |
+| `portalMagicTarget`     | `POST /api/magic/start`, per target  | 3 / 3600 s per target address             | closed    |
 
 The OIDC legs, both interactive logins, the portal surfaces, and the admin API have their own
 buckets; the authoritative table is the fail-mode map in `packages/worker/src/core/rateLimit.ts`.
+
+Two of those buckets are not keyed on the caller, because the caller is not the thing being
+protected:
+
+- **`releaseUpstream`** is keyed on the **product slug alone** and charged once per
+  `api.github.com` call rather than once per request. A per-IP budget cannot bound a shared
+  quota: an artifact request costs _two_ GitHub calls (selector resolution, then the asset), so
+  sizing a per-client lane as if a request were one call is how the per-IP limits ended up
+  above the 5,000/hour installation quota they were meant to protect. Exhaustion surfaces as
+  `503 upstream_rate_limited` with `retry-after`, never as a 404 — a spent quota is a platform
+  condition, not a withdrawn release.
+- **`portalMagicTarget`** is keyed on a hash of the **normalised target address**. The per-IP
+  `portalMagic` budget bounds how fast one client can ask; only a per-target budget bounds how
+  much platform-signed mail one third party's inbox can be made to receive from rotating
+  sources.
+
+The release pipeline runs `edge cache → rate limit → access enforcement → compute → cache put`.
+The limiter precedes enforcement deliberately: a refusal that costs nothing is an enumeration
+oracle. A cache **hit** is still served before either, and is never metered — it issues no
+subrequest, so serving it is the most available thing the gateway can do.
 
 ### Why the fail mode is per surface
 

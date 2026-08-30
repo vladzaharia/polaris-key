@@ -18,6 +18,7 @@ import type { TrustManifestDoc } from "@polaris-key/protocol";
 // have to name one `iss` or an SDK that pins it cannot accept all three.
 import { ISSUER } from "@polaris-key/protocol/core";
 import { loadPublicSigningKeys } from "./products.js";
+import { notFound } from "./errors.js";
 
 const TRUST_CACHE_SECONDS = 300;
 
@@ -54,13 +55,18 @@ export async function handleJwks(db: Db, product: Product): Promise<Response> {
  *
  * `origin` is the scheme+host the `jwksUrl` should point at; callers pass their own request's
  * origin so the manifest advertises the host it was fetched from.
+ *
+ * `null` when the product's sealed signing key cannot be opened (B5-12). Both callers turn that
+ * into the 404 the whole product used to return when `loadProduct` did the unseal itself — an
+ * unsigned or partially-signed manifest is never an option, because a manifest IS the key set a
+ * client pins against.
  */
 export async function signTrustManifest(
   db: Db,
   product: Product,
   now: number,
   origin: string,
-): Promise<string> {
+): Promise<string | null> {
   // §2.3 — keys revoked within 2× the cache window are still LISTED, with status
   // "revoked": every client that could hold the key cached reads a positive removal
   // instead of inferring it from absence. Older revocations age out and absence takes
@@ -92,15 +98,12 @@ export async function signTrustManifest(
           : "retired",
     })),
   };
+  const pem = await product.signingKey();
+  if (!pem) return null;
   // `typ` is the domain separator, and wire v3 §2 makes it MANDATORY — an untyped manifest is
   // rejected outright now, so the v2 tolerance window (sign without a typ, verify without
   // requiring one) has to close on the signing side too or nothing verifies.
-  return signJws(
-    doc,
-    product.signingKeyPem,
-    product.signingKid,
-    "pkey-trust+jws",
-  );
+  return signJws(doc, pem, product.signingKid, "pkey-trust+jws");
 }
 
 export async function handleTrustManifest(
@@ -110,7 +113,12 @@ export async function handleTrustManifest(
   now: number,
 ): Promise<Response> {
   const url = new URL(req.url);
-  return new Response(await signTrustManifest(db, product, now, url.origin), {
+  const jws = await signTrustManifest(db, product, now, url.origin);
+  // Fail closed, and closed means INVISIBLE: an unopenable signing key used to take the whole
+  // product to 404 from `loadProduct`, and this route keeps that answer rather than inventing a
+  // new one that would tell a stranger the product exists but its custody is broken.
+  if (jws === null) return notFound();
+  return new Response(jws, {
     status: 200,
     headers: {
       "content-type": "application/jose",

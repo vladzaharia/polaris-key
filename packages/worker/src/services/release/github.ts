@@ -50,6 +50,18 @@ export interface Release {
 export class NotFoundError extends Error {}
 
 /**
+ * A body that exceeded its read budget (R7-02, R10-15, B5-03).
+ *
+ * A subclass of `NotFoundError` so every existing caller keeps mapping it to the same clean 404
+ * — "too large to serve" and "not there" are the same answer to a client, and distinguishing
+ * them on the wire would leak the artifact's size. It exists as its own type for the one caller
+ * that must tell them apart INTERNALLY: `sparkle.ts` memoises an over-size refusal (the asset
+ * cannot get smaller, so re-downloading it on every appcast request is pure waste), while a
+ * plain not-found may simply be a race with an upload.
+ */
+export class AssetTooLargeError extends NotFoundError {}
+
+/**
  * Thrown when GitHub itself is refusing us for quota reasons (R10-05).
  *
  * Every other auth/visibility failure is deliberately flattened to `NotFoundError` so this
@@ -343,25 +355,25 @@ async function fetchAsset(
 export const MAX_TEXT_ASSET_BYTES = 4096;
 
 /**
- * Read at most `maxBytes` of a response body as UTF-8, cancelling the stream the moment the
- * cap is passed. The declared `Content-Length` is checked first (cheap rejection), but the
- * streamed accounting is what actually enforces the cap — an absent or lying `Content-Length`
- * must not be able to bypass it.
+ * Read at most `maxBytes` of a response body, cancelling the stream the moment the cap is
+ * passed. The declared `Content-Length` is checked first (cheap rejection, and the only branch
+ * that costs nothing at all), but the streamed accounting is what actually enforces the cap —
+ * an absent or lying `Content-Length` must not be able to bypass it.
  *
- * Shared by the sidecar-asset reads (R10-15) and the `.pkey/` manifest reads (R7-02); `what`
- * only names the thing in the error text.
+ * Shared by the sidecar-asset reads (R10-15), the `.pkey/` manifest reads (R7-02) and the
+ * Sparkle verification read (B5-03); `what` only names the thing in the error text.
  */
-async function readCapped(
+async function readCappedBytes(
   res: Response,
   maxBytes: number,
   what = "asset",
-): Promise<string> {
+): Promise<Uint8Array> {
   const declared = Number(res.headers.get("Content-Length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new NotFoundError(`${what} too large: ${declared} bytes`);
+    throw new AssetTooLargeError(`${what} too large: ${declared} bytes`);
   }
   const body = res.body;
-  if (!body) return "";
+  if (!body) return new Uint8Array(0);
   const reader = body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -371,7 +383,7 @@ async function readCapped(
       if (done) break;
       total += value.byteLength;
       if (total > maxBytes) {
-        throw new NotFoundError(`${what} too large: >${maxBytes} bytes`);
+        throw new AssetTooLargeError(`${what} too large: >${maxBytes} bytes`);
       }
       chunks.push(value);
     }
@@ -384,7 +396,16 @@ async function readCapped(
     buf.set(c, off);
     off += c.byteLength;
   }
-  return new TextDecoder().decode(buf);
+  return buf;
+}
+
+/** `readCappedBytes`, decoded as UTF-8. */
+async function readCapped(
+  res: Response,
+  maxBytes: number,
+  what = "asset",
+): Promise<string> {
+  return new TextDecoder().decode(await readCappedBytes(res, maxBytes, what));
 }
 
 /**
@@ -407,6 +428,14 @@ export async function fetchTextAsset(
 /**
  * Fetch a release asset's raw bytes into memory, for signature verification (R6-03).
  * `maxBytes` bounds the read so a huge artifact can't blow the isolate's memory budget.
+ *
+ * B5-03. This used to check the declared `Content-Length` and then call `res.arrayBuffer()`,
+ * which is the one operation the cap exists to prevent: an ABSENT header read as `0`, sailed
+ * past the check, and buffered the entire body — a 2 GB release asset materialised inside a
+ * 128 MB isolate, reachable from an unauthenticated `GET /<p>/appcast.xml`. It now goes through
+ * the same `readCappedBytes` the sidecar reads use, so the header is a cheap first rejection and
+ * the streamed accounting is the actual bound: the body is cancelled a chunk past the cap, never
+ * allocated whole. Over-size raises `AssetTooLargeError`, which the Sparkle path memoises.
  */
 export async function fetchAssetBytes(
   token: string,
@@ -417,13 +446,5 @@ export async function fetchAssetBytes(
   fetchImpl: FetchImpl = fetch,
 ): Promise<Uint8Array> {
   const res = await fetchAsset(token, owner, repo, assetId, fetchImpl);
-  const declared = Number(res.headers.get("Content-Length") ?? "0");
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new NotFoundError(`asset too large to verify: ${declared} bytes`);
-  }
-  const buf = new Uint8Array(await res.arrayBuffer());
-  if (buf.byteLength > maxBytes) {
-    throw new NotFoundError(`asset too large to verify: ${buf.byteLength}`);
-  }
-  return buf;
+  return readCappedBytes(res, maxBytes, "verification asset");
 }

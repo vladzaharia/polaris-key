@@ -10,7 +10,8 @@
  *  - `pr-<n>`       — auto: the latest tag from PR #n's head SHA via `channel_workflow`.
  *  - manual         — manifest-declared `{name, regex}` rules in `manual_channels_json`
  *                     (`release.manualChannels`, persisted by linkRepo/resync); the newest
- *                     release whose tag matches the (anchored, capped) regex.
+ *                     release whose tag matches the (anchored, capped, backtracking-free)
+ *                     regex.
  *
  * Selector parsing is pure. Resolution takes the release list + (for beta/pr) workflow
  * runs, both supplied by the caller, so this module never touches the network itself.
@@ -75,6 +76,11 @@ export function isMovingSelector(sel: ChannelSelector): boolean {
 // The anchored/capped/must-compile safety rule lives in @polaris-key/manifest
 // (`compileManualChannelRegex`) so ingest validation and this runtime reader are one rule,
 // not two copies — the validator refuses exactly what this parser would drop.
+//
+// B7-04 / A5-04: "compile" there is `compileLinearPattern`, a backtracking-free NFA, not
+// `new RegExp`. It matters most HERE: `resolveChannel` runs the pattern against up to 100
+// tags per request, so a backtracking engine multiplied an eight-character ReDoS pattern by
+// the release list. The returned matcher exposes the same `.test(string)` a `RegExp` did.
 
 /** Parse `manual_channels_json` into validated rules (drops malformed/unsafe entries). */
 export function parseManualChannels(

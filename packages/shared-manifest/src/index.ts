@@ -1,4 +1,8 @@
-import { type ProductCatalog } from "@polaris-key/catalog";
+import {
+  compileLinearPattern,
+  type LinearPattern,
+  type ProductCatalog,
+} from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import { parse as parseYaml } from "yaml";
 
@@ -383,20 +387,46 @@ const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const MINT_ID_RE = /^[a-z0-9-]{1,64}$/;
 /** Channel / architecture names — they reach URL path segments and asset-match patterns. */
 const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-/** `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`). */
+/**
+ * `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`).
+ *
+ * Deliberately NOT reconciled away against the catalog engine's `MAX_PATTERN_SOURCE` (300).
+ * They are two bounds on the same matcher and this is the tighter one, so it is always the
+ * binding check: the anchored form this function compiles is at most 86 characters, well
+ * inside the engine's own limit. It stays because it is the bound the field DOCUMENTS — a
+ * channel rule is a tag shape, not a grammar (the longest in this repo is 26 characters) —
+ * and because `release.schema.json` publishes it verbatim as `maxLength: 80`. Neither number
+ * was ever the ReDoS control; see below for the one that is.
+ */
 export const MANUAL_CHANNEL_REGEX_MAX = 80;
 /**
  * Compile a manual-channel tag regex under the SAME safety rules the worker's runtime
  * `parseManualChannels` applies: anchor it (so `beta` can't match `beta-old` unless the
- * author wrote it), cap its source length, and reject anything that fails to compile.
+ * author wrote it), cap its source length, and reject anything the matcher will not take.
  * Returns `null` rather than throwing. Exported so ingest validation and the runtime reader
  * are one rule, not two copies (the audit's B1).
+ *
+ * B7-04 / A5-04: this used to hand the anchored source to `new RegExp`. V8 backtracks, and
+ * the source is attacker-chosen — `.pkey/release` in any linked repo reaches here through a
+ * push webhook (`githubWebhook.ts` → `release/resync.ts`), and `resolveChannel` then matches
+ * the compiled pattern against up to 100 release tags per request. The eight-character
+ * `(x+x+)+y` cost ~2.6 s against a 28-character tag and doubled per extra character. A
+ * source-length cap is not a mitigation, because the pathological patterns are short.
+ *
+ * `compileLinearPattern` is the Thompson/Pike NFA that closed the identical finding for
+ * catalog `pattern` values (R7-03 / R10-09). It cannot backtrack, so every pattern — hostile
+ * ones included — matches in O(program x tag), and the constructs that genuinely require
+ * backtracking (backreferences, lookaround, `\b`) are refused at compile time instead of
+ * being handed to an engine that would. `LinearPattern.test` is an unanchored "contains a
+ * match", so the anchors have to live in the source; the engine supports `^`/`$` and `(?:…)`,
+ * which is what keeps this identical to the old `^(?:…)$` wrapping.
  */
-export function compileManualChannelRegex(source: string): RegExp | null {
+export function compileManualChannelRegex(
+  source: string,
+): LinearPattern | null {
   if (source.length > MANUAL_CHANNEL_REGEX_MAX) return null;
-  const anchored = `^(?:${source})$`;
   try {
-    return new RegExp(anchored);
+    return compileLinearPattern(`^(?:${source})$`);
   } catch {
     return null;
   }
@@ -440,6 +470,23 @@ const MAX_YAML_ALIASES = 100;
  * always defaulted to, so nothing that did not deliberately raise it is affected.
  */
 export const MAX_EDGE_MINT_TTL_SECONDS = 3600;
+
+/**
+ * Ceiling on every manifest-declared device seat cap — `product.defaultDeviceLimit` (in all
+ * three of its accepted spellings) and `licensing.tiers[].policyDeviceLimit` — A7-05.
+ *
+ * The number does not stay a number: it becomes `claimDeviceSeat`'s `limit`, which materialises
+ * one row per seat in a recursive CTE INSIDE a single D1 statement, and which the seat loop
+ * re-runs up to `limit + 1` times. Nothing downstream bounds it, so `defaultDeviceLimit:
+ * 100000000` in a `.pkey/product` a third party pushes converts one ordinary activation into a
+ * statement that never returns. A thousand seats is orders of magnitude past any real
+ * per-licence fleet (this repo's own product declares 5) and keeps the worst case bounded.
+ *
+ * Rejected, never clamped — the file's convention throughout. A manifest that asks for a
+ * hundred million seats is a mistake or an attack, and quietly applying 1000 would hide both.
+ * The admin API write path applies the SAME ceiling, so the two agree on what a legal cap is.
+ */
+export const MAX_DEVICE_LIMIT = 1000;
 
 const RELEASE_ACCESS_VALUES = [
   "public",
@@ -635,13 +682,12 @@ export function validateManifestDocuments(
       );
     }
   }
+  const declaredDeviceLimit =
+    productNode.defaultDeviceLimit ??
+    productRoot.defaultDeviceLimit ??
+    licensing.defaultDeviceLimit;
   for (const [key, path] of [
-    [
-      productNode.defaultDeviceLimit ??
-        productRoot.defaultDeviceLimit ??
-        licensing.defaultDeviceLimit,
-      "/licensing/defaultDeviceLimit",
-    ],
+    [declaredDeviceLimit, "/licensing/defaultDeviceLimit"],
     [
       productNode.defaultMaxOfflineDays ??
         productRoot.defaultMaxOfflineDays ??
@@ -658,6 +704,18 @@ export function validateManifestDocuments(
         "Value must be a non-negative integer.",
       );
     }
+  }
+  // A7-05. A seat cap is not just a number: it is the bound on the per-seat recursive scan
+  // every activation runs (`MAX_DEVICE_LIMIT`). `defaultMaxOfflineDays` above needs no such
+  // ceiling — it is compared against, never counted through.
+  if (overDeviceLimit(declaredDeviceLimit)) {
+    add(
+      errors,
+      "product",
+      "/licensing/defaultDeviceLimit",
+      "invalid_device_limit",
+      `defaultDeviceLimit must be at most ${MAX_DEVICE_LIMIT}.`,
+    );
   }
 
   if (modules.includes("config")) {
@@ -790,16 +848,19 @@ export function validateManifestDocuments(
         `Tier references unknown profile ${profile}.`,
       );
     }
+    // The ceiling arm is A7-05, same reasoning as `defaultDeviceLimit`: a tier's cap is what
+    // reaches `claimDeviceSeat` whenever the tier publishes a `deviceLimit` entitlement.
     if (
       record.policyDeviceLimit !== undefined &&
-      !nonNegativeInteger(record.policyDeviceLimit)
+      (!nonNegativeInteger(record.policyDeviceLimit) ||
+        overDeviceLimit(record.policyDeviceLimit))
     ) {
       add(
         errors,
         "product",
         `/licensing/tiers/${i}/policyDeviceLimit`,
         "invalid_device_limit",
-        "policyDeviceLimit must be a non-negative integer.",
+        `policyDeviceLimit must be a non-negative integer of at most ${MAX_DEVICE_LIMIT}.`,
       );
     }
     boundedText(
@@ -1107,7 +1168,7 @@ export function validateManifestDocuments(
                 "release",
                 `${at}/regex`,
                 "invalid_manual_channel",
-                `manualChannels[].regex must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+                `manualChannels[].regex must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`,
               );
             }
           }
@@ -2429,6 +2490,12 @@ function positiveInteger(v: unknown): boolean {
 
 function nonNegativeInteger(v: unknown): boolean {
   return typeof v === "number" && Number.isInteger(v) && v >= 0;
+}
+
+/** True when a declared seat cap is past `MAX_DEVICE_LIMIT` (A7-05). Non-numbers are false:
+ *  their own type rule reports them, and one bad value should not raise two errors. */
+function overDeviceLimit(v: unknown): boolean {
+  return typeof v === "number" && v > MAX_DEVICE_LIMIT;
 }
 
 function isString(v: unknown): v is string {

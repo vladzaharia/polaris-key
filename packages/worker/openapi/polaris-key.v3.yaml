@@ -1032,6 +1032,17 @@ paths:
                   value:
                     error: { code: channel_not_allowed, reason: channel-not-entitled }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "503":
+          description: >
+            The product's sealed signing key could not be opened — NESTED, fails closed. A
+            platform KEK-custody fault, not a client error: the document is withheld rather
+            than served unsigned. B5-12 made the unseal lazy, so this arrives here instead of
+            taking the whole product to 404.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                signingUnavailable: { value: { error: { code: signing_unavailable } } }
 
   # ── config ────────────────────────────────────────────────────────────────────
   /{product}/config/document:
@@ -1078,6 +1089,18 @@ paths:
             ETag: { $ref: "#/components/headers/ETag" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: >
+            120 requests per 60 s per client IP, fail-OPEN — NESTED. Charged BEFORE
+            authentication, because the cost it bounds (a full-row device read plus a device
+            row write, on 304s too) is incurred before it. It shapes poll frequency rather than
+            guarding a secret, so a limiter outage lets the request through instead of blocking
+            a licensed client's refresh.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
         "500":
           description: The active catalog could not validate the payload — NESTED, fails closed.
           content:
@@ -1088,6 +1111,17 @@ paths:
                   value:
                     error: { code: catalog_unavailable }
                     message: active catalog could not validate the config payload
+        "503":
+          description: >
+            The product's sealed signing key could not be opened — NESTED, fails closed. A
+            platform KEK-custody fault, not a client error: the document is withheld rather
+            than served unsigned. B5-12 made the unseal lazy, so this arrives here instead of
+            taking the whole product to 404.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                signingUnavailable: { value: { error: { code: signing_unavailable } } }
   /{product}/config/schema:
     get:
       operationId: getCatalog

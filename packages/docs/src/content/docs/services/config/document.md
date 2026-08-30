@@ -150,7 +150,19 @@ catalog behind it.
 | `304`                     | `If-None-Match` matched the current ETag. No body.          |
 | `401 unauthorized`        | Missing or invalid device token.                            |
 | `405`                     | Anything but `GET`.                                         |
+| `429 rate_limited`        | Over 120 requests in 60 seconds from one client address.    |
 | `500 catalog_unavailable` | An active catalog row exists but could not be parsed.       |
+| `503 signing_unavailable` | The product's sealed signing key could not be opened.       |
+
+The `429` is charged **before** authentication, because the cost it bounds is incurred before it:
+every request on this route — including one that ends in a `304` — reads the device row in full and
+writes it back. The budget shapes poll frequency rather than guarding a secret, so it fails **open**:
+if the rate limiter itself is unavailable the request is served, because a limiter outage must not
+stop a licensed client refreshing its configuration.
+
+The `503` is a platform-side custody fault, not a client error — the sealed signing key is opened
+lazily, on the requests that actually sign, and a key that will not open withholds the document
+rather than producing an unsigned one.
 
 ## Discovery
 

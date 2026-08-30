@@ -432,10 +432,11 @@ describe("R5-02 cross-issuer OIDC subject collision", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
-// R5-03 — The `_portal` rate-limit bucket carries no product dimension and lives in one
-// global Durable Object shard (rateLimit.ts:23 idFromName("_portal"),
-// portal/api.ts:264-285). One tenant's traffic 429s every other tenant for that account.
-// It is also consumed by requests that never pass authorization.
+// R5-03 — The `_portal` rate-limit bucket carried no product dimension and lived in one
+// global Durable Object shard (`rateLimit.ts`, `idFromName("_portal")`). One tenant's traffic
+// 429s every other tenant for that account. It was also consumed by requests that never pass
+// authorization. (The remaining single-shard half of this was closed separately by B2-03,
+// which names the object `${scope}:${bucket}:${hash(id) % RL_SHARDS}`; see R10-04.)
 // ───────────────────────────────────────────────────────────────────────────────
 describe("R5-03 cross-tenant rate-limit bucket sharing", () => {
   // FIXED (R5-05): the bucket id carries the product and the counter lives in that product's

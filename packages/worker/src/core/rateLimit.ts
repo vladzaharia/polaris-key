@@ -101,6 +101,14 @@ const FAIL_MODE: Record<string, FailMode> = {
   portalDeviceDisconnect: "open",
   portalDownloadToken: "open",
 
+  // A magic link is a credential the platform MINTS and mails, so the per-target budget that
+  // stops one address being flooded is credential-minting by any other name (B5-06). The
+  // per-IP `portalMagic` bucket above already fails closed; a target bucket that failed OPEN
+  // would leave the whole defence bypassable by rotating source addresses during a DO blip,
+  // which is precisely the attack it exists to stop. A 429 here costs a legitimate user one
+  // retry; failing open costs a third party an inbox full of platform-signed mail.
+  portalMagicTarget: "closed",
+
   // ── public read surfaces — fail open ───────────────────────────────────────
   // The release surface (R10-05) is a *delivery* path: appcasts, version checks and binary
   // downloads. The limiter there guards a cost budget (GitHub's 5,000 req/hr installation
@@ -109,10 +117,67 @@ const FAIL_MODE: Record<string, FailMode> = {
   // metadata reads and multi-hundred-MB artifact streams have different legitimate rates.
   release: "open",
   releaseArtifact: "open",
+  // B5-02. The per-PRODUCT upstream budget: one charge per GitHub subrequest, keyed on the
+  // product slug alone rather than the caller, so it bounds the installation quota itself
+  // instead of bounding one client's share of it. Same reasoning as its two per-IP siblings —
+  // it guards a cost budget, and a limiter outage must not stop software distribution.
+  releaseUpstream: "open",
+  // A6-05. `GET /<p>/config/document` is an authenticated read (the caller already holds a
+  // device token) whose cost is a full-row device read plus a signature. The limiter is
+  // shaping poll frequency, not guarding a secret, so a DO blip must not stop a licensed
+  // client from refreshing its configuration.
+  configDocument: "open",
 };
 
 function failModeFor(bucket: string): FailMode {
   return FAIL_MODE[bucket] ?? "closed";
+}
+
+/**
+ * How many Durable Objects one (product, bucket) pair spreads across (B2-03 / R10-04a).
+ *
+ * Before this, `RL.idFromName(product)` meant ONE object per product — and because `_admin`
+ * and `_portal` are literal scope names, interactive sign-in for the entire platform
+ * serialized through exactly two Durable Objects. Those two objects are reachable with no
+ * credentials at all, which made them the cheapest DoS target in the system: a single
+ * global lock in front of every operator's and every customer's login.
+ *
+ * 32 is chosen rather than a larger number because each shard is a separate object with its
+ * own storage and its own alarm, so the sweep cost and the cold-start surface both scale with
+ * N; 32 removes ~97% of the contention on the hot scopes while keeping an idle deployment
+ * cheap.
+ *
+ * COUNTING SEMANTICS ARE UNCHANGED. The shard is a pure function of `(scope, bucket, id)`, so
+ * one id lands in exactly one object for a given bucket, and the object's own storage key is
+ * still `${bucket}:${id}`. Sharding splits *contention*, never a counter: no caller can gain
+ * extra allowance by being routed to a second shard, because there is no second shard for it.
+ */
+export const RL_SHARDS = 32;
+
+/**
+ * FNV-1a (32-bit). Synchronous and allocation-free — this runs on every limited request, and
+ * `crypto.subtle.digest` is async, which would turn every call site into an extra await for
+ * no security benefit: the shard index is a load-spreading decision, not a secret. Collisions
+ * are not merely tolerable but irrelevant, since two ids sharing a shard still keep separate
+ * storage keys inside it.
+ */
+function fnv1a(value: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash >>> 0;
+}
+
+/** The Durable Object name for one (scope, bucket, id) triple. Exported for the DoS tests,
+ *  which assert that the hot pre-auth scopes really do spread across distinct objects. */
+export function rateLimitShardName(
+  scope: string,
+  bucket: string,
+  id: string,
+): string {
+  return `${scope}:${bucket}:${fnv1a(id) % RL_SHARDS}`;
 }
 
 /** Returns true if the call is within the limit (and counts it), false if it should 429. */
@@ -123,7 +188,9 @@ export async function rateLimitOk(
   now: number,
 ): Promise<boolean> {
   try {
-    const stub = env.RL.get(env.RL.idFromName(product));
+    const stub = env.RL.get(
+      env.RL.idFromName(rateLimitShardName(product, rl.bucket, rl.id)),
+    );
     const res = await stub.fetch("https://rl/check", {
       method: "POST",
       body: JSON.stringify({
@@ -153,11 +220,64 @@ export async function rateLimitOk(
 }
 
 /**
- * The caller's IP, for per-client limiting. Cloudflare sets `cf-connecting-ip` at the edge
- * and it cannot be spoofed by the client; we deliberately do NOT fall back to the
- * client-controlled `x-forwarded-for` header (which would let an attacker rotate the limit
- * key freely). Requests with no edge IP share the `unknown` bucket.
+ * The caller's IP, verbatim. Cloudflare sets `cf-connecting-ip` at the edge and it cannot be
+ * spoofed by the client; we deliberately do NOT fall back to the client-controlled
+ * `x-forwarded-for` header (which would let an attacker rotate the value freely). Requests
+ * with no edge IP read as `unknown`.
+ *
+ * This is the ADDRESS — the thing you record when you need to say which host did something.
+ * For a rate-limit key use `clientIp`, which aggregates IPv6 (see below); for anything an
+ * operator or an auditor will read back, use this, because a /64 prefix does not identify a
+ * host and is not what happened.
+ */
+export function clientAddress(req: Request): string {
+  return req.headers.get("cf-connecting-ip") ?? "unknown";
+}
+
+/**
+ * Expand an IPv6 address to its eight hextets, or `null` if it is not one.
+ *
+ * Deliberately strict about shape but lenient about the rest: this feeds a rate-limit key, so
+ * an address we cannot parse must fall back to "use the whole string" (a smaller aggregate,
+ * never a larger one). Returning a wrong prefix would merge unrelated clients into one bucket.
+ */
+function expandIpv6(value: string): string[] | null {
+  if (!value.includes(":")) return null;
+  // An IPv4-mapped tail (`::ffff:203.0.113.7`) is a v4 client; leave it to the v4 path.
+  if (value.includes(".")) return null;
+  const halves = value.split("::");
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const groups = halves.length === 2 ? head.length + tail.length : head.length;
+  if (halves.length === 1 ? groups !== 8 : groups > 7) return null;
+  for (const part of [...head, ...tail]) {
+    if (!/^[0-9A-Fa-f]{1,4}$/.test(part)) return null;
+  }
+  const fill = new Array<string>(8 - groups).fill("0");
+  return halves.length === 2 ? [...head, ...fill, ...tail] : head;
+}
+
+/**
+ * The caller's rate-limit identity (B5-05).
+ *
+ * IPv4 is used whole: one address is one host's worth of allowance, which is the intent.
+ *
+ * IPv6 is TRUNCATED TO ITS /64. Every residential and hosting IPv6 assignment hands out at
+ * least a /64, so keying on the full 128-bit address gave one attacker 2^64 free identities:
+ * every per-IP budget in this file — activation, enrollment, login, magic links, the release
+ * surface — was bypassable at zero cost simply by picking a new suffix per request, and every
+ * one of those requests also minted a permanent counter key inside the Durable Object. The /64
+ * is the smallest unit an operator is actually assigned, so it is the smallest unit that
+ * costs an attacker something to rotate.
+ *
+ * The rendered form (`2001:db8:1:2::/64`) can never collide with a literal address, so a
+ * client cannot spoof its way into another network's bucket by sending that string — and in
+ * any case the value comes from the edge, not from the request.
  */
 export function clientIp(req: Request): string {
-  return req.headers.get("cf-connecting-ip") ?? "unknown";
+  const raw = clientAddress(req);
+  const groups = expandIpv6(raw);
+  if (!groups) return raw;
+  return `${groups.slice(0, 4).join(":")}::/64`;
 }

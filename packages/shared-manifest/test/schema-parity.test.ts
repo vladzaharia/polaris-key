@@ -369,6 +369,23 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).licensing.tiers[0].policyDeviceLimit = 1.5),
   },
   {
+    code: "invalid_device_limit",
+    file: "product",
+    schema: "rejects",
+    // The CEILING arm on a TIER (MAX_DEVICE_LIMIT). A7-05: the cap becomes the bound on
+    // `claimDeviceSeat`'s per-seat recursive CTE, so an unbounded one is a statement that
+    // never returns. The schema expresses it as `maximum: 1000`.
+    mutate: (d) => (p(d).licensing.tiers[0].policyDeviceLimit = 100_000_000),
+  },
+  {
+    code: "invalid_device_limit",
+    file: "product",
+    schema: "rejects",
+    // The same ceiling on the PRODUCT default — the value every licence without a tier cap
+    // falls back to, and the one a `.pkey/product` push sets directly.
+    mutate: (d) => (p(d).product.defaultDeviceLimit = 100_000_000),
+  },
+  {
     code: "invalid_tier_label",
     file: "product",
     schema: "rejects",
@@ -654,6 +671,16 @@ const MUTATIONS: Mutation[] = [
     schema: "accepts",
     // The validator-only half: JSON Schema cannot test that a regex COMPILES.
     mutate: (d) => (rel(d).manualChannels[0].regex = "(unclosed"),
+  },
+  {
+    code: "invalid_manual_channel",
+    file: "release",
+    schema: "accepts",
+    // B7-04: "compiles" now means "compiles for a matcher that cannot backtrack". A
+    // backreference is valid ECMAScript and would have been accepted before; it is refused
+    // here because it cannot be evaluated in linear time. JSON Schema cannot express that
+    // either, so this stays an `accepts` row.
+    mutate: (d) => (rel(d).manualChannels[0].regex = "(v\\d+)-\\1"),
   },
   {
     code: "invalid_release_access",

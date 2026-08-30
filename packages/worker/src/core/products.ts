@@ -1,8 +1,13 @@
 // Product context — assembled from the `products` row + active schema version + the
 // per-product signing key. The signing key is now KEK-custodied: it lives sealed in the
-// `product_keys` table and is opened per request under `env.PLATFORM_KEK` (src/keyvault.ts),
-// NOT resolved from a Worker secret by name. Fails closed if there is no active product key
-// or it can't be decrypted: a product with no usable key can never sign config.
+// `product_keys` table and is opened under `env.PLATFORM_KEK` (src/keyvault.ts), NOT resolved
+// from a Worker secret by name. Fails closed if there is no active product key or it can't be
+// decrypted: a product with no usable key can never sign config.
+//
+// The unseal is LAZY (B5-12): `loadProduct` runs before dispatch on every product-scoped
+// request, and the overwhelming majority of routes never sign anything, so opening the private
+// key eagerly made an AES-GCM decrypt the price of admission to `/jwks`, `/discovery`,
+// `/devices`, `/config/schema` and the whole release surface. See `Product.signingKey`.
 
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
@@ -31,7 +36,25 @@ export interface Product {
   slug: string;
   name: string;
   signingKid: string;
-  signingKeyPem: string;
+  /**
+   * Open the product's sealed signing key (PEM), or `null` if it cannot be opened (B5-12).
+   *
+   * A FUNCTION, not a field, because unsealing is the single most expensive thing a
+   * product-scoped request used to do and almost no route needs it: `loadProduct` runs before
+   * dispatch and before rate limiting, so every `/jwks`, `/discovery`, `/devices`, `/register`,
+   * `/config/schema` and `/release/*` request paid one AES-GCM open of the private key it was
+   * never going to use — an unauthenticated CPU amplifier reachable by URL alone. The unseal now
+   * happens on first call and is MEMOISED, so the routes that do sign (and the bundle mint,
+   * which signs three times) pay for exactly one.
+   *
+   * `null` rather than a throw, so the type forces every caller to answer "what do I do when
+   * this product cannot sign?" — the answer is always the same as it was when `loadProduct`
+   * itself returned null: refuse. What did NOT move is the `getActiveProductKey` lookup, which
+   * is a cheap indexed read and is what keeps "no active key ⇒ no Product ⇒ 404" true for every
+   * route, signing or not. Only the "the row exists but the KEK cannot open it" case is
+   * deferred, and every signing site below turns that into the same refusal it produced before.
+   */
+  signingKey: () => Promise<string | null>;
   signingPub: string | null;
   compatMin: string;
   compatMax: string;
@@ -96,9 +119,9 @@ export async function loadPublicSigningKeys(
   }
 }
 
-/** Load a product + its signing key from the sealed `product_keys` table. Returns null for
- *  an unknown product, a product with no active key, or one whose sealed key fails to open
- *  (fail-closed: no plaintext key ⇒ no Product ⇒ no signed config). */
+/** Load a product + a lazy handle on its signing key. Returns null for an unknown product or a
+ *  product with no ACTIVE key row (fail-closed: no key ⇒ no Product ⇒ no route at all). A key
+ *  that exists but cannot be decrypted is fail-closed too, one level down — see `signingKey`. */
 export async function loadProduct(
   env: Env,
   db: Db,
@@ -109,18 +132,25 @@ export async function loadProduct(
   const keyRow = await getActiveProductKey(db, slug);
   if (!keyRow) return null;
   try {
-    const pem = await open(env, keyRow.enc_private_json, {
-      product: slug,
-      kind: "signing-key",
-      id: keyRow.kid,
-    });
+    // Deferred and memoised (B5-12). `.catch(() => null)` is attached HERE, at construction, so
+    // the memoised promise can never be an unhandled rejection no matter how many callers (or
+    // none) await it, and every caller sees the same `null` for "this product cannot sign".
+    let opened: Promise<string | null> | undefined;
+    const signingKey = (): Promise<string | null> => {
+      opened ??= open(env, keyRow.enc_private_json, {
+        product: slug,
+        kind: "signing-key",
+        id: keyRow.kid,
+      }).catch(() => null);
+      return opened;
+    };
     const schema = await getActiveSchema(db, slug);
     const parsedServices = parseServices(row.services_json);
     return {
       slug: row.slug,
       name: row.name,
       signingKid: keyRow.kid,
-      signingKeyPem: pem,
+      signingKey,
       signingPub: keyRow.public_b64url,
       compatMin: row.compat_min,
       compatMax: row.compat_max,

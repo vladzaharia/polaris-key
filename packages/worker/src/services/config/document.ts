@@ -38,6 +38,7 @@ import {
   touchDeviceMetadata,
   validateDeviceToken,
 } from "../../core/devices.js";
+import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signDoc } from "../../core/signing.js";
 
 // The payload resolution and the envelope stamper moved to `core/documents.ts` when offline
@@ -68,6 +69,24 @@ export async function configDocETag(doc: ConfigDoc): Promise<string> {
   return `"${tag}"`;
 }
 
+/**
+ * How many config-document requests one client IP may make per minute (A6-05).
+ *
+ * 120/60s. The route was the last unmetered per-request D1 WRITE on the platform: every call —
+ * including the ones that end in a 304 — does a full-row device read and a full-row
+ * `upsertDevice`, because `touchDeviceMetadata` runs before the ETag comparison, so a poll loop
+ * costs the same whether or not anything changed.
+ *
+ * The number is deliberately far above any legitimate client and far below a flood. Real clients
+ * refresh on the order of MINUTES (`REFRESH_MARGIN_SECONDS` is 1800, and the SDKs' periodic
+ * refresh is opt-in), so 2 requests/second is ~3 orders of magnitude of headroom for a single
+ * machine — the reason it is not tighter is NAT: `clientIp` aggregates a whole IPv6 /64 and a
+ * corporate egress address can front thousands of devices, and cutting off a licensed office is
+ * a worse outcome than the abuse this bounds. At 120/min the amplifier is capped at 2 D1 writes
+ * per second per address instead of "as fast as the network allows".
+ */
+const CONFIG_DOCUMENT_RATE_LIMIT = { limit: 120, windowSec: 60 };
+
 export async function handleConfigDocument(
   req: Request,
   env: Env,
@@ -76,6 +95,25 @@ export async function handleConfigDocument(
   now: number,
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
+
+  // A6-05 — charged BEFORE authentication, because the cost this bounds is incurred before it
+  // too: validating the token is itself the full-row device read. Fails OPEN (`configDocument`
+  // in `core/rateLimit.ts`): this budget shapes poll frequency, it does not guard a secret, so
+  // a Durable Object blip must not stop a licensed client refreshing its configuration.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      {
+        bucket: "configDocument",
+        id: clientIp(req),
+        ...CONFIG_DOCUMENT_RATE_LIMIT,
+      },
+      now,
+    ))
+  ) {
+    return wireError(429, "rate_limited");
+  }
 
   // Device authentication ONLY — see the D-08 note at the top of this file.
   const valid = await validateDeviceToken(env, db, product, bearer(req), now);
@@ -111,12 +149,13 @@ export async function handleConfigDocument(
   if (req.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers: { etag } });
   }
-  const jws = await signDoc(
-    doc,
-    product.signingKeyPem,
-    product.signingKid,
-    "pkey-config+jws",
-  );
+  // B5-12 — the unseal is lazy now, so "this product's sealed key will not open" surfaces here
+  // rather than at `loadProduct`. Fail closed, identically to the catalog arm above: withhold
+  // the document. 503 because the caller is an AUTHENTICATED device of a product that
+  // demonstrably exists, and a KEK-custody fault is a platform-side outage, not a 404.
+  const pem = await product.signingKey();
+  if (!pem) return wireError(503, "signing_unavailable");
+  const jws = await signDoc(doc, pem, product.signingKid, "pkey-config+jws");
   return new Response(jws, {
     status: 200,
     headers: {

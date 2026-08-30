@@ -120,9 +120,18 @@ Check the live state at any time (platform admin):
 curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" | jq .
 # { "active": "k2", "kids": ["k1","k2"],
 #   "counts": { "keys": {"k1":3,"k2":12}, "secrets": {"k1":1}, "managed": {"k1":2} },
-#   "remaining": 6,        ← sealed values not yet re-sealed under the active kid
-#   "unopenable": 0 }      ← values under a kid the ring does NOT hold: these are DARK right now
+#   "remaining": 6,          ← sealed values not yet re-sealed under the active kid
+#   "unopenable": 0,         ← values under a kid the ring does NOT hold: these are DARK right now
+#   "countsComplete": true,  ← false ⇒ the numbers above are FLOORS, not totals (see below)
+#   "countsTruncated": [] }  ← the tables whose scan was cut short
 ```
+
+`countsComplete` is the one field to read before acting on `remaining`. The `managed` bucket is
+counted by parsing payload rows, so that pass is capped (A7-07); if a deployment ever exceeds the
+cap, `countsComplete` goes `false`, `countsTruncated` names the table, and `remaining` is reported
+as a floor that can never be 0. **A `false` here means the rotation gate in step 8 cannot be
+evaluated at all** — finish the sweep until `countsTruncated` is empty rather than reading
+`remaining` as a total.
 
 Three classes of value are covered, and all three are counted and swept together:
 
@@ -217,12 +226,17 @@ migration). Do not skip step 6.
 
    ```sh
    curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" | jq .
-   # counts must show ZERO rows under any kid other than the active one
+   # counts must show ZERO rows under any kid other than the active one,
+   # AND "countsComplete": true — otherwise the count stopped early and proves nothing
    ```
 
 7. Soak for **24 hours** with both keys in the ring. Nothing should reference the old kid.
 
-8. **Drop the old key.** Only after `remaining` is 0.
+8. **Drop the old key.** Only after `remaining` is 0 **and** `countsComplete` is `true`. Both,
+   not either: `remaining: 0` from a truncated scan would be a count that stopped rather than a
+   rotation that finished, and a key dropped while values are still sealed under it is
+   unrecoverable data. (The endpoint will not emit that combination — `remaining` is floored
+   above 0 whenever `countsComplete` is `false` — but check the flag, not the absence of a bug.)
 
    ```jsonc
    {

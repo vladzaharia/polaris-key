@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments can emit, extrac
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 73 distinct emit sites.
+codes with their JSON-pointer paths. 74 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -29,7 +29,8 @@ the offending value, or the allowed set.
 | `invalid_channel` | error | release | `/release/artifactPolicy/channels` | artifactPolicy.channels must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning hooks require claim. |
 | `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning claim names must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
-| `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer. |
+| `invalid_device_limit` | error | product | `/licensing/defaultDeviceLimit` | defaultDeviceLimit must be at most $\{MAX_DEVICE_LIMIT\}. |
+| `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer of at most $\{MAX_DEVICE_LIMIT\}. |
 | `invalid_edge_mint_alg` | error | release | `/edgeMint/${i}/alg` | Edge mint alg must be ES256, RS256, or EdDSA. |
 | `invalid_edge_mint_audience` | error | release | `/edgeMint/${i}/audience` | Edge mint audience |
 | `invalid_edge_mint_entitlement` | error | release | `/edgeMint/${i}/requiredEntitlement` | Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]\{1,64\}$. |
@@ -44,7 +45,7 @@ the offending value, or the allowed set.
 | `invalid_group_name` | error | product | `/oidc/groupRoleMap/${group}` | oidc.groupRoleMap keys must be plain group names (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
 | `invalid_manual_channel` | error | release | `/release/manualChannels` | release.manualChannels must be an array of \{ name, regex \} entries. |
 | `invalid_manual_channel` | error | release | `${at}/name` | manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
-| `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
+| `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a backtracking-free regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time). |
 | `invalid_name` | error | product | `/product/name` | product.name |
 | `invalid_oidc_client_id` | error | product | `/oidc/clientId` | oidc.clientId must match ^[A-Za-z0-9][A-Za-z0-9._:@/~-]\{0,255\}$. |
 | `invalid_oidc_issuer` | error | product | `/oidc/issuer` | oidc.issuer $\{issuerProblem\}. It is the base of the token request that carries this product's OIDC client secret. |

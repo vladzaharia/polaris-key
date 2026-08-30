@@ -109,7 +109,8 @@ function makeProduct(): Product {
     slug: SLUG,
     name: "djdl",
     signingKid: "kid",
-    signingKeyPem: "pem",
+    // B5-12: the unseal is lazy — a fixture Product supplies the accessor, not a field.
+    signingKey: async () => "pem",
     signingPub: null,
     compatMin: "0.0.0",
     compatMax: "99.0.0",

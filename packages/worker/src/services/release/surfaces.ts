@@ -25,7 +25,11 @@ import {
 } from "./github.js";
 import { findBinaryAsset, matchAsset, normalizeArch } from "./assets.js";
 import { type ChangelogEntry, extractSummary } from "./changelog.js";
-import { type InstallContext, renderInstallScript } from "./install.js";
+import {
+  deriveVersionEnv,
+  type InstallContext,
+  renderInstallScript,
+} from "./install.js";
 import { type ChannelSelector, versionFromTag } from "./channels.js";
 import {
   isResolved,
@@ -95,7 +99,12 @@ function handleInstall({ cfg, product, origin }: SurfaceContext): Response {
     installPath: `/${product.slug}/release/install.sh`,
     binaryName,
     channels: ["staging", "beta"],
-    versionEnv: `${binaryName.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_VERSION`,
+    // A5-06. The derivation lives in `install.ts`, next to the character class that judges it.
+    // Inlined here it disagreed with that class on two axes — a leading digit (`7zip` is a legal
+    // binaryName; `7ZIP_VERSION` is not a legal shell identifier) and length (64 + `_VERSION`
+    // overflowed a 64-character bound) — and both disagreements 404'd this surface permanently
+    // for a name the manifest validator had already accepted.
+    versionEnv: deriveVersionEnv(binaryName),
   };
   // Null means a field (repo-owned `binary_name`, or the request-derived origin) fell outside
   // the installer's safe character classes. Serving a script we cannot prove safe is how

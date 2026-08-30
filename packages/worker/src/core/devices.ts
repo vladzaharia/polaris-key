@@ -668,6 +668,26 @@ export async function touchDeviceMetadata(
   });
 }
 
+/**
+ * Longest metadata value persisted to a `devices` row (B5-07).
+ *
+ * All six values below are attacker-controlled REQUEST HEADERS, and they were written into D1
+ * verbatim — six columns × whatever the edge accepts, on routes a client polls, with the write
+ * happening on every poll. `factsFromReport` in this same file had capped its strings at 128 for
+ * exactly this reason since `/devices/report` was written; the document routes simply never
+ * inherited the convention. 128 characters is past the longest real value any of these carries
+ * (a user agent, a platform name, an arch token, a semver, an SDK name, an SDK version) and is
+ * the same number, so there is one cap in this file rather than two.
+ *
+ * Applied inside `deviceMetadata` rather than at each call site so that every consumer —
+ * `/activate`, `/enroll`, `/register`, the browser session and both document routes — is covered
+ * by construction, including any added later.
+ */
+export const MAX_DEVICE_METADATA_CHARS = 128;
+
+const capMetadata = (value: string | null): string | null =>
+  value === null ? null : value.slice(0, MAX_DEVICE_METADATA_CHARS);
+
 export function deviceMetadata(req: Request): {
   userAgent: string | null;
   platform: string | null;
@@ -677,12 +697,12 @@ export function deviceMetadata(req: Request): {
   sdkVersion: string | null;
 } {
   return {
-    userAgent: req.headers.get("user-agent"),
-    platform: req.headers.get(HEADER_PLATFORM),
-    arch: req.headers.get(HEADER_ARCH),
-    appVersion: req.headers.get(HEADER_VERSION),
-    sdkName: req.headers.get(HEADER_SDK_NAME),
-    sdkVersion: req.headers.get(HEADER_SDK_VERSION),
+    userAgent: capMetadata(req.headers.get("user-agent")),
+    platform: capMetadata(req.headers.get(HEADER_PLATFORM)),
+    arch: capMetadata(req.headers.get(HEADER_ARCH)),
+    appVersion: capMetadata(req.headers.get(HEADER_VERSION)),
+    sdkName: capMetadata(req.headers.get(HEADER_SDK_NAME)),
+    sdkVersion: capMetadata(req.headers.get(HEADER_SDK_VERSION)),
   };
 }
 

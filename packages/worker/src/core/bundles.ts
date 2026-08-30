@@ -182,10 +182,17 @@ export async function handleBundleMint(
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
   // The full product, not the row: minting needs the opened signing key, and `loadProduct`
-  // fails closed when there is no active key or it cannot be decrypted. A product that cannot
-  // sign cannot mint, and saying so as a 404 keeps this identical to every other signing path.
+  // fails closed when there is no active key. A product that cannot sign cannot mint, and
+  // saying so as a 404 keeps this identical to every other signing path.
   const product = await loadProduct(env, db, slug);
   if (!product) return notFound();
+  // …and the second half of that fail-closed, now that the unseal is lazy (B5-12). This handler
+  // signs FOUR artifacts (licence, config, trust manifest, bundle) off one key, so it resolves
+  // the key once, up front, and refuses identically to the no-active-key case above. Doing it
+  // here rather than at each `signDoc` also means a broken KEK cannot produce a half-built
+  // bundle whose failure is discovered after the audit row is written.
+  const signingKeyPem = await product.signingKey();
+  if (!signingKeyPem) return notFound();
 
   const body = await readBody(req);
   const fields: string[] = [];
@@ -279,7 +286,7 @@ export async function handleBundleMint(
     });
     docs.license = await signDoc(
       doc,
-      product.signingKeyPem,
+      signingKeyPem,
       product.signingKid,
       "pkey-license+jws",
     );
@@ -314,13 +321,25 @@ export async function handleBundleMint(
     });
     docs.config = await signDoc(
       doc,
-      product.signingKeyPem,
+      signingKeyPem,
       product.signingKid,
       "pkey-config+jws",
     );
   }
 
   const bundleId = ulid(now);
+  // The manifest the SERVED route would emit, byte-identical (`signTrustManifest` is shared).
+  // It is verified against PINS at import, so this cannot introduce a key the host app has not
+  // already agreed to trust — it only saves the air-gapped machine a fetch it can never make.
+  // Non-null by construction here (the key opened above), but checked rather than asserted: the
+  // one artifact a bundle cannot ship without is the key set it is verified against.
+  const trust = await signTrustManifest(
+    db,
+    product,
+    now,
+    new URL(req.url).origin,
+  );
+  if (trust === null) return notFound();
   const bundle: BundleDoc = {
     bundleId,
     aud: slug,
@@ -328,15 +347,11 @@ export async function handleBundleMint(
     issuedAt: now,
     expiresAt: now + BUNDLE_IMPORT_WINDOW_SECONDS,
     docs,
-    // The manifest the SERVED route would emit, byte-identical (`signTrustManifest` is shared).
-    // It is verified against PINS at import, so this cannot introduce a key the host app has
-    // not already agreed to trust — it only saves the air-gapped machine a fetch it can never
-    // make.
-    trust: await signTrustManifest(db, product, now, new URL(req.url).origin),
+    trust,
   };
   const jws = await signDoc(
     bundle,
-    product.signingKeyPem,
+    signingKeyPem,
     product.signingKid,
     "pkey-bundle+jws",
   );

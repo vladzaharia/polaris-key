@@ -143,12 +143,14 @@ export async function handleLicenseDocument(
   if (req.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers: { etag } });
   }
-  const jws = await signDoc(
-    doc,
-    product.signingKeyPem,
-    product.signingKid,
-    "pkey-license+jws",
-  );
+  // B5-12 — the unseal is lazy now, so "this product's sealed key will not open" arrives here
+  // instead of at `loadProduct`. Same fail-closed answer it produced there: no key, no document.
+  // 503 rather than the old 404 because the caller is an AUTHENTICATED device of a product that
+  // demonstrably exists — it just told us so with a valid token — and telling it "gone" would
+  // make an operator-side custody fault look like a withdrawn licence to every client at once.
+  const pem = await product.signingKey();
+  if (!pem) return wireError(503, "signing_unavailable");
+  const jws = await signDoc(doc, pem, product.signingKid, "pkey-license+jws");
   return new Response(jws, {
     status: 200,
     headers: {

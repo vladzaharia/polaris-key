@@ -10,7 +10,7 @@ import {
   seedProductSecret,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
-import type { Db } from "../src/db/types.js";
+import type { Db, DbParam } from "../src/db/types.js";
 import { handleAdmin } from "../src/admin/index.js";
 import { handleAdminLogin } from "../src/admin/auth.js";
 import {
@@ -22,10 +22,18 @@ import {
 } from "../src/admin/session.js";
 import {
   getActiveProductKey,
+  getProduct,
   getProductSecret,
   listAudit,
   setServices,
 } from "../src/repo.js";
+import { MAX_DEVICE_LIMIT } from "../src/admin/lib/deviceLimit.js";
+import { sealManagedValue } from "../src/admin/lib/managedSecrets.js";
+import { MANAGED_SCAN_ROWS } from "../src/admin/handlers/products.js";
+// A7-05's other half. The ceiling has two ways in — this console API and the `.pkey/` manifest
+// the release sync ingests — and the two numbers are asserted equal below, because a ceiling
+// enforced on one of two doors is not a ceiling.
+import { MAX_DEVICE_LIMIT as MANIFEST_MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
@@ -786,10 +794,11 @@ describe("admin api", () => {
     expect(body.slug).toBe("manualco");
     expect(typeof body.kid).toBe("string");
 
-    // The product loads with a real, KEK-sealed signing key.
+    // The product loads with a real, KEK-sealed signing key. `signingKey()` opens it lazily
+    // (B5-12) — the assertion is that the sealed row really does open, as it always was.
     const product = await loadProduct(env, db, "manualco");
     expect(product).not.toBeNull();
-    expect(product!.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+    expect(await product!.signingKey()).toContain("BEGIN PRIVATE KEY");
 
     // The schema it uploaded is the active catalog.
     const schemaRes = await dispatch(
@@ -822,7 +831,11 @@ describe("admin api", () => {
       profile,
       payload,
     });
-    const jws = await signDoc(doc, product!.signingKeyPem, product!.signingKid);
+    const jws = await signDoc(
+      doc,
+      (await product!.signingKey())!,
+      product!.signingKid,
+    );
     const verified = await verifyJws<FusedSessionDoc>(jws, {
       [product!.signingKid]: product!.signingPub!,
     });
@@ -876,7 +889,7 @@ describe("admin api", () => {
 
     // 3) The pair is usable: loadProduct opens the sealed key + /config signs a verifiable doc.
     const product = (await loadProduct(env, db, "atomicco"))!;
-    expect(product.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+    expect(await product.signingKey()).toContain("BEGIN PRIVATE KEY");
     const { key } = await seedLicenseWithKey(db, "atomicco");
     const activateRes = await handleActivate(
       mkLicReq("POST", {
@@ -1435,5 +1448,276 @@ describe("admin services enablement", () => {
     expect((await call(w, "GET", "/whatever")).status).toBe(404);
     expect((await call(w, "DELETE", "")).status).toBe(405);
     expect((await call(w, "GET", "/revert")).status).toBe(405);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// A7-05 — the device-limit CEILING, on every admin path that can set one.
+//
+// `claimDeviceSeat` finds the lowest free seat with a recursive CTE that enumerates 1..limit
+// inside ONE statement, so the cost of an activation is O(deviceLimit). Every write path
+// checked the lower bound (R11-02 part 2: `limit > 0` reads as UNLIMITED) and none checked the
+// upper one, which made `deviceLimit: 100000000` a legal admin write and a permanently wedged
+// activation route for that product.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+
+describe("device-limit ceiling on the product registry", () => {
+  async function platform(): Promise<{
+    db: Db;
+    env: Env;
+    cookie: string;
+    csrf: string;
+  }> {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    return { db, env, cookie, csrf };
+  }
+
+  it("REFUTED: POST /api/products accepts a device limit no activation could survive", async () => {
+    // Create checked NOTHING — `Number(body.defaultDeviceLimit ?? 5)` was the whole of it — so a
+    // ceiling on the PATCH alone would have been one POST away from irrelevant.
+    const { db, env, cookie, csrf } = await platform();
+    for (const bad of [MAX_DEVICE_LIMIT + 1, 100000000, 2.5, 0, -1]) {
+      const res = await dispatch(
+        mkReq("POST", "/api/products", {
+          cookie,
+          csrf,
+          body: { slug: "acme", name: "Acme", defaultDeviceLimit: bad },
+        }),
+        env,
+        db,
+        "/api/products",
+      );
+      expect(`${bad}=${res.status}`).toBe(`${bad}=422`);
+      const body = (await res.json()) as { message: string; fields: string[] };
+      expect(body.fields).toEqual(["defaultDeviceLimit"]);
+      expect(body.message).toContain(String(MAX_DEVICE_LIMIT));
+    }
+    // Nothing was written on the way to any of those rejections.
+    expect(await getProduct(db, "acme")).toBeNull();
+
+    // …and the ceiling itself is a legal value, not an off-by-one.
+    const ok = await dispatch(
+      mkReq("POST", "/api/products", {
+        cookie,
+        csrf,
+        body: {
+          slug: "acme",
+          name: "Acme",
+          defaultDeviceLimit: MAX_DEVICE_LIMIT,
+        },
+      }),
+      env,
+      db,
+      "/api/products",
+    );
+    expect(ok.status).toBe(201);
+    expect((await getProduct(db, "acme"))?.default_device_limit).toBe(
+      MAX_DEVICE_LIMIT,
+    );
+  });
+
+  it("REFUTED: the numeric coercion on create smuggles a string past the ceiling", async () => {
+    // `Number(body.defaultDeviceLimit ?? 5)` accepts `"1e9"` and `"100000000"` as readily as the
+    // numbers, so the check has to run on the COERCED value, not on the raw field.
+    const { db, env, cookie, csrf } = await platform();
+    for (const bad of ["1e9", "100000000", "abc"]) {
+      const res = await dispatch(
+        mkReq("POST", "/api/products", {
+          cookie,
+          csrf,
+          body: { slug: "acme", name: "Acme", defaultDeviceLimit: bad },
+        }),
+        env,
+        db,
+        "/api/products",
+      );
+      expect(`${bad}=${res.status}`).toBe(`${bad}=422`);
+    }
+    expect(await getProduct(db, "acme")).toBeNull();
+  });
+
+  it("REFUTED: PATCH /api/products/<slug> accepts an unbounded device limit", async () => {
+    const { db, env, cookie, csrf } = await platform();
+    await seedProduct(db, "acme");
+    const path = "/api/products/acme";
+
+    const rejected = await dispatch(
+      mkReq("PATCH", path, {
+        cookie,
+        csrf,
+        body: { defaultDeviceLimit: MAX_DEVICE_LIMIT + 1 },
+      }),
+      env,
+      db,
+      path,
+    );
+    expect(rejected.status).toBe(422);
+    expect((await getProduct(db, "acme"))?.default_device_limit).toBe(5);
+
+    // A legal write still lands — the ceiling rejects, it does not silently clamp, and it does
+    // not get in the way of a real seat count.
+    const accepted = await dispatch(
+      mkReq("PATCH", path, {
+        cookie,
+        csrf,
+        body: { defaultDeviceLimit: MAX_DEVICE_LIMIT },
+      }),
+      env,
+      db,
+      path,
+    );
+    expect(accepted.status).toBe(200);
+    expect((await getProduct(db, "acme"))?.default_device_limit).toBe(
+      MAX_DEVICE_LIMIT,
+    );
+  });
+
+  it("agrees with the manifest ingest ceiling, which is the other way in", async () => {
+    // `.pkey/product` can declare `defaultDeviceLimit` and each tier's `policyDeviceLimit`, and
+    // that path is validated by `@polaris-key/manifest`. A ceiling enforced on one of the two
+    // ways in is not a ceiling; it is a detour.
+    expect(MAX_DEVICE_LIMIT).toBe(MANIFEST_MAX_DEVICE_LIMIT);
+    expect(MAX_DEVICE_LIMIT).toBe(1000);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// A7-07 — the KEK keyring count is BOUNDED, and a bounded count says so.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+
+describe("KEK keyring count is bounded and honest about it", () => {
+  /** `n` profiles for `slug`, each carrying one sealed managed secret under the test KEK. */
+  async function seedManagedProfiles(
+    db: Db,
+    env: Env,
+    slug: string,
+    n: number,
+  ): Promise<void> {
+    const value = await sealManagedValue(env, slug, "TOKEN", "plaintext");
+    for (let i = 0; i < n; i++) {
+      await db.run(
+        `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
+         VALUES (?, ?, ?, NULL, ?, NULL, ?)`,
+        slug,
+        `profile-${String(i).padStart(5, "0")}`,
+        `Profile ${i}`,
+        JSON.stringify({
+          config: {},
+          secrets: { TOKEN: { state: "enforced", value, updatedAt: NOW } },
+          entitlements: {},
+        }),
+        NOW,
+      );
+    }
+  }
+
+  async function keyring(
+    db: Db,
+    env: Env,
+    cookie: string,
+  ): Promise<{
+    status: number;
+    body: {
+      counts: { managed: Record<string, number> };
+      remaining: number;
+      countsComplete: boolean;
+      countsTruncated: string[];
+    };
+  }> {
+    const path = "/api/products/kek";
+    const res = await dispatch(mkReq("GET", path, { cookie }), env, db, path);
+    return {
+      status: res.status,
+      body: (await res.json()) as never,
+    };
+  }
+
+  it("REFUTED: the keyring endpoint parses every managed-payload row in the deployment", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    await seedProduct(db, "acme");
+    await seedManagedProfiles(db, env, "acme", MANAGED_SCAN_ROWS + 25);
+
+    // Every SELECT the request issues is counted; none of them may be the unbounded one.
+    const seen: string[] = [];
+    const watched: Db = {
+      all<T = Record<string, unknown>>(sql: string, ...params: DbParam[]) {
+        seen.push(sql);
+        return db.all<T>(sql, ...params);
+      },
+      first<T = Record<string, unknown>>(sql: string, ...params: DbParam[]) {
+        return db.first<T>(sql, ...params);
+      },
+      run: db.run.bind(db),
+      batch: db.batch.bind(db),
+      runChanges: db.runChanges.bind(db),
+    };
+
+    const { status, body } = await keyring(watched, env, cookie);
+
+    expect(status).toBe(200);
+    const payloadScans = seen.filter((s) => s.includes("payload_json"));
+    expect(payloadScans.length).toBeGreaterThan(0);
+    for (const sql of payloadScans) expect(sql).toContain("LIMIT");
+    // The cap held: the count stopped at the cap rather than at the end of the table.
+    expect(body.counts.managed.default).toBe(MANAGED_SCAN_ROWS);
+  });
+
+  it("REFUTED: a truncated count can report `remaining: 0` and green-light a KEK deletion", async () => {
+    // This is the trap the bound creates and the reason `countsComplete` exists. `remaining`
+    // is not a progress bar — it is the precondition an operator checks before DELETING a key,
+    // and a key deleted while values are still sealed under it is unrecoverable data. A scan
+    // that stopped counting must never be able to produce the number that says "safe".
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    await seedProduct(db, "acme");
+    // Everything sealed under the ACTIVE kid, so the counted portion contributes 0 to
+    // `remaining` — exactly the shape that used to read as "rotation finished".
+    await seedManagedProfiles(db, env, "acme", MANAGED_SCAN_ROWS + 1);
+
+    const { body } = await keyring(db, env, cookie);
+
+    expect(body.countsComplete).toBe(false);
+    expect(body.countsTruncated).toEqual(["profiles"]);
+    expect(body.remaining).toBeGreaterThan(0);
+  });
+
+  it("reports a complete count as complete, and still reaches remaining 0", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    await seedProduct(db, "acme");
+    await seedManagedProfiles(db, env, "acme", 3);
+
+    const { body } = await keyring(db, env, cookie);
+
+    expect(body.countsComplete).toBe(true);
+    expect(body.countsTruncated).toEqual([]);
+    expect(body.counts.managed).toEqual({ default: 3 });
+    expect(body.remaining).toBe(0);
   });
 });

@@ -64,6 +64,14 @@ manifest validation if it does not compile; the runtime reader applies the same 
 ingested channel is always a resolvable one. The built-in names are matched first, so a
 manual channel could never be called `stable`, `beta`, `latest` or `pr-<n>`.
 
+"Compiles" means the same backtracking-free matcher that backs catalog `pattern` values, not
+the host `RegExp` — one pattern is run against up to 100 release tags per request, so a
+tag regex may never be able to cost more than a linear scan of the tag. The character
+classes, quantifiers, groups, alternation and anchors a tag shape needs are all supported;
+backreferences, lookahead/lookbehind and `\b` are refused, because they cannot be decided
+without backtracking. A rejected pattern fails the whole manifest rather than being dropped
+silently.
+
 ## Access versus eligibility, restated
 
 A request can fail for either reason, and they produce different refusals. A caller who may

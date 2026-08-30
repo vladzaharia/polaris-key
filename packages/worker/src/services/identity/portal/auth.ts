@@ -384,6 +384,22 @@ export async function handlePortalCallback(
   return issueRedirectSession(env, db, account, now, flow.returnTo ?? "/");
 }
 
+/**
+ * The per-TARGET magic-link budget (B5-06): 3 links per address per hour.
+ *
+ * The per-IP budget next door bounds one SENDER; this bounds one RECIPIENT, and only the second
+ * one is a bound on the thing that actually leaves the platform. Without it, `POST
+ * /api/magic/start` sent a platform-signed email to any address on earth, metered solely per
+ * source IP — so an attacker rotating source addresses (trivially, and after B5-05 at the cost
+ * of one IPv6 /64 per 8 sends) could fill a chosen victim's inbox with mail that authentically
+ * comes from us. That is a spam-reputation and harassment vector aimed at a third party who
+ * never had an account, and no amount of per-IP tightening reaches it.
+ *
+ * 3/hour because a legitimate user asks for one link, occasionally two (typo, or the first went
+ * to spam); the fourth request inside an hour is not a person signing in.
+ */
+const MAGIC_TARGET_RATE_LIMIT = { limit: 3, windowSec: 3600 };
+
 export async function handleMagicStart(
   req: Request,
   env: Env,
@@ -391,11 +407,12 @@ export async function handleMagicStart(
 ): Promise<Response> {
   if (req.method !== "POST")
     return authJson({ error: "method_not_allowed" }, 405);
+  const now = Math.floor(Date.now() / 1000);
   const ok = await rateLimitOk(
     env,
     "_portal",
     { bucket: "portalMagic", id: clientIp(req), limit: 8, windowSec: 60 },
-    Math.floor(Date.now() / 1000),
+    now,
   );
   if (!ok) return authJson({ error: "rate_limited" }, 429);
   const caps = await portalAuthCapabilities(db);
@@ -420,6 +437,26 @@ export async function handleMagicStart(
       422,
     );
   }
+  // B5-06 — charged IN ADDITION to the per-IP budget above, and charged here: after the address
+  // has been normalised (`trim().toLowerCase()`, the same normalisation the seal, the mail and
+  // `getOrCreateAccountByEmail` use, so `Ada@Example.com ` cannot buy a second budget) and
+  // before any of the work a send costs — the seal, the KV write and the outbound email.
+  //
+  // HASHED, not raw: the id becomes a key inside a Durable Object's storage, and that storage
+  // outlives the request. A raw address there would turn the limiter into a durable list of
+  // everyone who has ever asked for a link — exactly the record B7-03 removed from KV. `hashKey`
+  // is HMAC under `KEY_HASH_PEPPER`, so the mapping is not even confirmable without the pepper.
+  const targetOk = await rateLimitOk(
+    env,
+    "_portal",
+    {
+      bucket: "portalMagicTarget",
+      id: await hashKey(email, env.KEY_HASH_PEPPER),
+      ...MAGIC_TARGET_RATE_LIMIT,
+    },
+    now,
+  );
+  if (!targetOk) return authJson({ error: "rate_limited" }, 429);
   const returnTo =
     typeof body.returnTo === "string"
       ? safeReturnUrl(req, body.returnTo)

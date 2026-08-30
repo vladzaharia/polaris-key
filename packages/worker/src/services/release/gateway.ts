@@ -5,10 +5,17 @@
  *
  * One request pipeline, in this order, for all seven surfaces:
  *
- *     edge cache (public surfaces only) → access enforcement → rate limit → compute → cache put
+ *     edge cache (public surfaces only) → rate limit → access enforcement → compute → cache put
  *
  * and, wrapped around the compute step, the two upstream error mappings (a withdrawn release is
  * a 404, an exhausted GitHub quota is a 503) plus `harden`.
+ *
+ * A5-05. The limiter runs BEFORE access enforcement, not after. Enforcement first meant a caller
+ * the platform refuses paid nothing for being refused: on a `licensed` or `entitled` product an
+ * unauthenticated client could issue 401s and 403s forever, at whatever rate it liked, and
+ * enumerate selectors (which versions exist, which channels a grant covers) for free. The
+ * budget's job is to bound work done on behalf of a stranger, and deciding to refuse a stranger
+ * is work. The cache lookup stays ahead of both — a hit costs nothing and must never be metered.
  *
  * ── WHY IT IS SHARED, AND WHY BY CALLBACK ───────────────────────────────────────────────────
  *
@@ -69,10 +76,17 @@ export const APPCAST_CACHE = "public, max-age=300";
 /**
  * Per-IP budgets for release requests that MISS the edge cache (R10-05).
  *
- * The release surface is public by default and every miss costs 1-3 GitHub subrequests
- * against an installation quota of 5,000/hour, so before this an unauthenticated client at
- * ~1 req/s could exhaust the product's entire quota in ~20 minutes and 404 every download and
- * auto-update on the platform.
+ * The release surface is public by default and every miss costs GitHub subrequests against an
+ * installation quota of 5,000/hour, so before this an unauthenticated client at ~1 req/s could
+ * exhaust the product's entire quota in ~20 minutes and 404 every download and auto-update on
+ * the platform.
+ *
+ * COUNT THE SUBREQUESTS, NOT THE REQUESTS (B5-02). This comment used to model one GitHub call
+ * per request. An ARTIFACT request makes **two**: `resolveSelector` (→ `/releases/tags/…`, or
+ * `/releases?per_page=…` plus the channel-workflow lookups for a moving selector) and then
+ * `streamAsset` (→ `/releases/assets/<id>`). A metadata miss makes one to three. Sizing a
+ * per-IP budget as if a request were one call is how the per-IP lane ended up ABOVE the quota
+ * it was introduced to protect.
  *
  * Two budgets, because the two surfaces have very different legitimate shapes:
  *
@@ -80,14 +94,103 @@ export const APPCAST_CACHE = "public, max-age=300";
  *   are cached, so only a client walking distinct selectors (i.e. probing) misses repeatedly;
  *   a Sparkle updater makes one call per check and `install.sh` three in total.
  *
- *   ARTIFACTS (dl) — 120/min. Not cached (they stream bodies up to 2 GB), and the legitimate
- *   shape is bursty: a NAT'd office on release day, or one client issuing parallel Range
- *   requests for a resumable download. Too tight a cap here would 429 real downloads, which is
- *   the outage this finding is about, so the artifact lane is deliberately loose — GitHub's own
- *   storage host, not our quota, absorbs the bytes.
+ *   ARTIFACTS (dl) — 60 per 2 minutes. Not cached (they stream bodies up to 2 GB), and the
+ *   legitimate shape is bursty: a NAT'd office on release day, or one client issuing parallel
+ *   Range requests for a resumable download. Too tight a cap would 429 real downloads, which is
+ *   the outage this finding is about — so the window is widened rather than the rate raised.
+ *   A 60-request burst still clears in one window, but the SUSTAINED ceiling is 30/min ⇒
+ *   1,800 requests/hour ⇒ 3,600 GitHub calls/hour from one address, which sits under
+ *   `UPSTREAM_RATE_LIMIT` and therefore under the installation quota. The previous 120/min was
+ *   7,200 requests/hour ⇒ 14,400 calls/hour: one unauthenticated IP, inside its own budget,
+ *   could drain a 5,000/hour quota nearly three times over.
  */
 const METADATA_RATE_LIMIT = { limit: 30, windowSec: 60 } as const;
-const ARTIFACT_RATE_LIMIT = { limit: 120, windowSec: 60 } as const;
+const ARTIFACT_RATE_LIMIT = { limit: 60, windowSec: 120 } as const;
+
+/**
+ * The per-PRODUCT upstream budget (B5-02) — the thing every other budget here is a proxy for.
+ *
+ * The two per-IP lanes bound what ONE caller costs. Nothing bounded what the product costs in
+ * total, so the defence was bypassable by the cheapest possible means: more source addresses.
+ * A GitHub App installation gets ~5,000 requests/hour, shared by every product on it, and the
+ * consequence of exhausting it is not a slow appcast — it is `install.sh`, every artifact
+ * download and every auto-update 503ing for all of them at once.
+ *
+ * So this is charged ONCE PER GITHUB CALL (see `meterUpstreamCalls`), not once per request, and
+ * keyed on the product slug alone — never on the caller — because it is the QUOTA it is
+ * measuring, not anybody's share of it. 4,000/hour leaves ~20% of the real quota as headroom
+ * for the paths that do not run through this gateway (repo linking, `.pkey/` resync, the
+ * webhook, the release health check).
+ *
+ * FAIL MODE: `open`, registered in `core/rateLimit.ts`'s `FAIL_MODE` alongside its two per-IP
+ * siblings. This budget guards a cost, not a secret, and the failure it exists to prevent is a
+ * software-distribution outage — so a Durable Object blip must not itself become one.
+ */
+export const UPSTREAM_RATE_LIMIT = { limit: 4000, windowSec: 3600 } as const;
+
+/**
+ * The host whose requests are charged against the installation quota.
+ *
+ * Only `api.github.com` counts: `streamAsset` and `fetchAsset` follow GitHub's 302 into
+ * `objects.githubusercontent.com` (SSRF-guarded), and that second hop is a signed CDN URL which
+ * carries no Authorization and is not billed to the App's REST quota. Charging it would meter
+ * the one call that does not cost anything.
+ */
+const UPSTREAM_METERED_HOST = "api.github.com";
+
+function isUpstreamApiCall(url: string): boolean {
+  try {
+    return new URL(url).hostname === UPSTREAM_METERED_HOST;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Wrap a `FetchImpl` so every GitHub REST call it issues is charged to the product's upstream
+ * budget before it leaves the isolate (B5-02).
+ *
+ * The seam is the injected fetch, deliberately. Charging inside `resolveSelector` (or any other
+ * helper) would meter the call sites that exist TODAY and silently under-count the next one —
+ * `installationToken`'s mint on a cold KV cache and `channelTagsFor`'s two Actions lookups are
+ * exactly the calls a per-request charge forgets. Everything under `release/` reaches GitHub
+ * through this function value, so there is no call site to forget.
+ *
+ * Exhaustion throws `UpstreamRateLimitedError`, which `runSurface` already maps to the 503
+ * `upstream_rate_limited` body: an exhausted quota is a platform condition, identical in kind to
+ * GitHub answering 403 with `X-RateLimit-Remaining: 0`, and must not be reported as "no such
+ * release" — that is the confusion R10-05 removed and this must not re-introduce.
+ */
+export function meterUpstreamCalls(
+  env: Env,
+  product: string,
+  now: number,
+  fetchImpl: FetchImpl,
+): FetchImpl {
+  return async (input, init) => {
+    if (isUpstreamApiCall(String(input))) {
+      const ok = await rateLimitOk(
+        env,
+        product,
+        {
+          bucket: "releaseUpstream",
+          id: product,
+          ...UPSTREAM_RATE_LIMIT,
+        },
+        now,
+      );
+      if (!ok) {
+        // The fixed window rolls at the next multiple of `windowSec`, so this is the real wait.
+        const { windowSec } = UPSTREAM_RATE_LIMIT;
+        throw new UpstreamRateLimitedError(
+          "product upstream budget exhausted",
+          windowSec - (now % windowSec),
+        );
+      }
+    }
+    return fetchImpl(input, init);
+  };
+}
 
 /**
  * The surfaces whose responses are small, deterministic for a given selector, and pure
@@ -202,21 +305,14 @@ export async function serveReleaseSurface(
     if (hit) return hit;
   }
 
-  const denied = await enforceReleaseAccess(
-    req,
-    env,
-    db,
-    product,
-    cfg,
-    kind,
-    params,
-    now,
-  );
-  if (denied) return harden(denied);
-
   // Only cache MISSES are metered: the budget exists to bound GitHub subrequests, and a hit
   // issues none. `install` is included even though it makes no GitHub call — it is the entry
   // point of the download flow and shares the same public surface.
+  //
+  // A5-05. This precedes `enforceReleaseAccess` on purpose. A refusal is not free — it is a
+  // token validation, a licence read and an entitlement merge — and charging for it only after
+  // it has been decided means the callers the platform turns away are the only ones that never
+  // pay. Access is still enforced before a single byte of release state is computed.
   const isArtifact = kind === "cli" || kind === "dmg";
   if (
     !(await rateLimitOk(
@@ -235,6 +331,18 @@ export async function serveReleaseSurface(
     );
   }
 
+  const denied = await enforceReleaseAccess(
+    req,
+    env,
+    db,
+    product,
+    cfg,
+    kind,
+    params,
+    now,
+  );
+  if (denied) return harden(denied);
+
   const res = await runSurface(compute, {
     req,
     env,
@@ -244,7 +352,9 @@ export async function serveReleaseSurface(
     params,
     origin,
     now,
-    fetchImpl,
+    // B5-02. The surface handlers never see the raw fetch: every GitHub REST call they make,
+    // directly or through a helper, is charged to this product's upstream budget first.
+    fetchImpl: meterUpstreamCalls(env, product.slug, now, fetchImpl),
   });
   if (cache && cacheKey && res.status === 200) {
     // `put` consumes a body, so store the clone and return the original. A cache failure is

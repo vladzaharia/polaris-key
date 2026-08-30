@@ -38,8 +38,14 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 import { handleCatalog as handleAdminCatalog } from "../../src/services/config/admin/catalog.js";
 import { handleReleaseSurface as handleRelease } from "../releaseSurface.js";
 import { matchRoute } from "../../src/router.js";
-import { rateLimitOk } from "../../src/core/rateLimit.js";
+import {
+  clientIp,
+  rateLimitOk,
+  rateLimitShardName,
+  RL_SHARDS,
+} from "../../src/core/rateLimit.js";
 import { RateLimitDO } from "../../src/rateLimitDo.js";
+import { makeRlNamespace } from "../rlMock.js";
 import { handleGithubWebhook } from "../../src/githubWebhook.js";
 import {
   handleAuthDeviceStart,
@@ -60,7 +66,11 @@ import type { AdminSession } from "../../src/admin/session.js";
 import { getDevice, upsertDevice } from "../../src/repo.js";
 import { hashKey } from "../../src/crypto.js";
 import { getTokenRecord, TOKEN_RECORD_TTL_SECONDS } from "../../src/kv.js";
-import { validateDeviceToken } from "../../src/core/devices.js";
+import {
+  MAX_DEVICE_METADATA_CHARS,
+  validateDeviceToken,
+} from "../../src/core/devices.js";
+import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
@@ -480,7 +490,8 @@ function makeReleaseProduct(): Product {
     slug: "djdl",
     name: "djdl",
     signingKid: "kid",
-    signingKeyPem: "pem",
+    // B5-12: the unseal is lazy — a fixture Product supplies the accessor, not a field.
+    signingKey: async () => "pem",
     signingPub: null,
     compatMin: "0.0.0",
     compatMax: "99.0.0",
@@ -724,11 +735,18 @@ class CountingStorage {
     this.putCount++;
     this.m.set(key, value);
   }
-  async list<T>(opts?: { limit?: number }): Promise<Map<string, T>> {
+  /** Lexicographic, like the real thing — which is the whole point of `startAfter`: without
+   *  a defined order a resume cursor means nothing. */
+  async list<T>(opts?: {
+    limit?: number;
+    startAfter?: string;
+  }): Promise<Map<string, T>> {
     const out = new Map<string, T>();
-    for (const [k, v] of this.m) {
+    const keys = [...this.m.keys()].sort();
+    for (const k of keys) {
+      if (opts?.startAfter !== undefined && k <= opts.startAfter) continue;
       if (opts?.limit !== undefined && out.size >= opts.limit) break;
-      out.set(k, v as T);
+      out.set(k, this.m.get(k) as T);
     }
     return out;
   }
@@ -869,8 +887,147 @@ describe("R10-04 RateLimitDO storage growth is now reclaimed by an alarm sweep",
       { bucket: "mint", id: "3", limit: 1, windowSec: 1 },
       NOW,
     );
-    // Every bucket, every client, every colo → the same single object.
-    expect(new Set(names)).toEqual(new Set(["djdl"]));
+    // FIXED (B2-03). It is no longer one object: the name is `${scope}:${bucket}:${shard}`,
+    // so three different buckets can never collide onto one hot object, and the slug alone is
+    // never a Durable Object name again.
+    expect(names).toHaveLength(3);
+    expect(new Set(names).size).toBe(3);
+    expect(names).not.toContain("djdl");
+    for (const name of names) expect(name.startsWith("djdl:")).toBe(true);
+  });
+
+  it("FIXED (B2-03): `_admin` — the platform's whole pre-auth login lane — spreads across shards", async () => {
+    const names = new Set<string>();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    env.RL = {
+      idFromName: (n: string) => {
+        names.add(n);
+        return { name: n } as unknown as DurableObjectId;
+      },
+      get: () => ({
+        fetch: async () => new Response(JSON.stringify({ ok: true })),
+      }),
+    } as unknown as DurableObjectNamespace;
+
+    // 400 distinct clients hitting the single most attractive unauthenticated target in the
+    // system. Before this they all serialized through exactly one Durable Object.
+    for (let i = 0; i < 400; i++) {
+      await rateLimitOk(
+        env,
+        "_admin",
+        {
+          bucket: "adminLogin",
+          id: `203.0.113.${i % 256}`,
+          limit: 20,
+          windowSec: 60,
+        },
+        NOW,
+      );
+    }
+    expect(names.size).toBeGreaterThan(RL_SHARDS / 2);
+    expect(names.size).toBeLessThanOrEqual(RL_SHARDS);
+  });
+
+  it("FIXED (B2-03): sharding splits contention, never a counter — one id lands in exactly one shard", () => {
+    // The property that makes this safe: a client cannot win extra allowance by being routed
+    // somewhere else, because there is nowhere else for it to be routed to.
+    const seen = new Set<string>();
+    for (let i = 0; i < 50; i++) {
+      seen.add(rateLimitShardName("_portal", "portalLogin", "198.51.100.7"));
+    }
+    expect(seen.size).toBe(1);
+    // …and the bucket is part of the name, so two buckets never share a counter either.
+    expect(
+      rateLimitShardName("_portal", "portalLogin", "198.51.100.7"),
+    ).not.toBe(rateLimitShardName("_portal", "portalMagic", "198.51.100.7"));
+  });
+
+  it("FIXED (B5-05): two addresses in the same IPv6 /64 share a bucket; two IPv4 addresses do not", async () => {
+    const ip = (address: string) =>
+      clientIp(
+        new Request("https://key.plrs.im/", {
+          headers: { "cf-connecting-ip": address },
+        }) as unknown as Request,
+      );
+
+    // Every residential and hosting IPv6 assignment is at least a /64, so keying on the full
+    // 128-bit address handed one attacker 2^64 free identities — every per-IP budget in the
+    // platform was bypassable at zero cost, and every request minted a permanent counter key.
+    expect(ip("2001:db8:1:2:3:4:5:6")).toBe(
+      ip("2001:db8:1:2:ffff:ffff:ffff:ffff"),
+    );
+    expect(ip("2001:db8:1:2::1")).toBe(ip("2001:db8:1:2:3:4:5:6"));
+    // A DIFFERENT /64 is a different bucket — the aggregation is the network, not the world.
+    expect(ip("2001:db8:1:2::1")).not.toBe(ip("2001:db8:1:3::1"));
+
+    // IPv4 is untouched: one address is one host's worth of allowance, which is the intent.
+    expect(ip("203.0.113.7")).toBe("203.0.113.7");
+    expect(ip("203.0.113.7")).not.toBe(ip("203.0.113.8"));
+    // …and a client with no edge IP still shares the one `unknown` bucket.
+    expect(
+      clientIp(new Request("https://key.plrs.im/") as unknown as Request),
+    ).toBe("unknown");
+
+    // End to end: two hosts in one /64 spend ONE budget on a real limited surface.
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    env.RL = makeRlNamespace();
+    const charge = (address: string) =>
+      rateLimitOk(
+        env,
+        "djdl",
+        {
+          bucket: "activate",
+          id: ip(address),
+          limit: 2,
+          windowSec: 60,
+        },
+        NOW,
+      );
+    expect(await charge("2001:db8:9:9::1")).toBe(true);
+    expect(await charge("2001:db8:9:9::2")).toBe(true);
+    // The third address in the same /64 is over the budget its two siblings already spent.
+    expect(await charge("2001:db8:9:9::3")).toBe(false);
+    // A host in a different /64 still has its own.
+    expect(await charge("2001:db8:9:a::1")).toBe(true);
+  });
+
+  it("FIXED (B5-09/B2-04): the sweep makes progress PAST the first batch instead of re-reading it", async () => {
+    const storage = new CountingStorage();
+    const doInstance = new RateLimitDO(
+      { storage } as unknown as DurableObjectState,
+      {} as Env,
+    );
+
+    // More stale counters than one sweep may examine. Before the resume cursor, `list()`
+    // returned the same lexicographic prefix on every tick, so everything past the first
+    // batch was structurally unreachable — an attacker minting keys faster than one batch
+    // could drain simply grew the object for ever.
+    const TOTAL = 2600; // > SWEEP_BATCH (2000)
+    const staleWindow = { window: 1, count: 1, expiresAt: 1 };
+    for (let i = 0; i < TOTAL; i++) {
+      await storage.put(`activate:${String(i).padStart(6, "0")}`, {
+        ...staleWindow,
+      });
+    }
+    expect(storage.m.size).toBe(TOTAL);
+
+    // Tick one: the batch cap leaves a remainder, so the sweep records where it stopped.
+    storage.alarmAt = null;
+    await doInstance.alarm();
+    const afterFirst = storage.m.size;
+    expect(afterFirst).toBeLessThan(TOTAL);
+    // Still work to do ⇒ re-armed rather than going idle on a half-swept object.
+    expect(storage.alarmAt).not.toBeNull();
+
+    // Tick two: the whole point. With no cursor this deleted nothing, because the keys it
+    // re-listed had already been collected and the survivors were never looked at.
+    storage.alarmAt = null;
+    await doInstance.alarm();
+    expect(storage.m.size).toBeLessThan(afterFirst);
+
+    // A bounded number of further ticks finishes the backlog and the object goes idle.
+    for (let i = 0; i < 6 && storage.m.size > 0; i++) await doInstance.alarm();
+    expect(storage.m.size).toBe(0);
   });
 });
 
@@ -944,6 +1101,52 @@ describe("R10-05 /<p>/auth/* is unauthenticated, unrate-limited and writes KV", 
 // R10-06 — /webhooks/github buffers the whole body before authenticating it
 // ═════════════════════════════════════════════════════════════════════════════
 
+// FIXED (B5-04). `handleGithubWebhook` now caps the body at MAX_WEBHOOK_BODY_BYTES (1 MiB),
+// with the `content-length` precheck first and a post-read byte-length check behind it, exactly
+// as `admin/lib/respond.ts`'s `readBody` does. Both `it`s below are the originals INVERTED: an
+// oversized delivery is refused with 413 BEFORE the body is buffered, so no unauthenticated
+// stranger can make this route hold megabytes in isolate memory or HMAC them.
+//
+// The third test is the other half of the fix and the reason the cap may never become a
+// truncation: the bytes that are read ARE the HMAC input, so a legitimate, correctly-signed
+// delivery must still verify byte-for-byte.
+
+/** A Request stand-in exposing exactly what `handleGithubWebhook` touches, so the test can
+ *  DECLARE a `content-length` the runtime would otherwise recompute — and can observe whether
+ *  the body was buffered at all. */
+function webhookReq(
+  headers: Record<string, string>,
+  body: Uint8Array,
+): { req: Request; reads: () => number } {
+  let reads = 0;
+  const req = {
+    method: "POST",
+    headers: new Headers(headers),
+    arrayBuffer: async (): Promise<ArrayBuffer> => {
+      reads++;
+      return body.buffer.slice(
+        body.byteOffset,
+        body.byteOffset + body.byteLength,
+      ) as ArrayBuffer;
+    },
+  };
+  return { req: req as unknown as Request, reads: () => reads };
+}
+
+async function hubSignature(secret: string, body: Uint8Array): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, body as BufferSource),
+  );
+  return `sha256=${[...mac].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
 describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () => {
   it("a multi-megabyte unsigned body is fully read + HMAC'd before the 401", async () => {
     const db = makeTestDb();
@@ -952,13 +1155,30 @@ describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () =
 
     const MB = 4;
     const body = "A".repeat(MB * 1024 * 1024);
+
+    // Arm 1 — what Cloudflare actually delivers: 4 MiB WITH a truthful `content-length`. The
+    // precheck fires and the body is never buffered at all.
+    const declared = webhookReq(
+      {
+        "x-github-event": "push",
+        "content-length": String(MB * 1024 * 1024),
+      },
+      new TextEncoder().encode(body),
+    );
+    const prechecked = await handleGithubWebhook(declared.req, env, db, NOW);
+    expect(prechecked.status).toBe(413);
+    expect(declared.reads()).toBe(0);
+
+    // Arm 2 — the original request object, which carries no `content-length` at all, so the
+    // precheck cannot fire. The post-read byte check does. `consumed` is still the whole body
+    // (a Request cannot be un-read), but the 413 in place of the old 401 is the proof that the
+    // handler returned BEFORE `verifySignature` — nothing HMAC'd 4 MiB to earn a rejection.
     let consumed = 0;
     const req = new Request("https://k/webhooks/github", {
       method: "POST",
       body,
       headers: { "x-github-event": "push" },
     }) as unknown as Request;
-    // Wrap arrayBuffer so we can observe the full read the handler performs.
     const orig = req.arrayBuffer.bind(req);
     (
       req as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
@@ -969,8 +1189,11 @@ describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () =
     };
 
     const res = await handleGithubWebhook(req, env, db, NOW);
-    expect(res.status).toBe(401);
-    // The whole body was resident in isolate memory before any auth decision.
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({
+      error: "body_too_large",
+      message: "request body too large",
+    });
     expect(consumed).toBe(MB * 1024 * 1024);
   });
 
@@ -978,25 +1201,71 @@ describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () =
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), []);
     env.GITHUB_WEBHOOK_SECRET = "s3cret";
-    const req = new Request("https://k/webhooks/github", {
-      method: "POST",
-      body: "x".repeat(1024),
-      headers: {
+    // A 1 KiB body that CLAIMS half a gigabyte — the shape a streaming flood arrives in. The
+    // declared length alone is enough: there is now a precheck, and it refuses before reading.
+    const { req, reads } = webhookReq(
+      {
         "x-github-event": "push",
-        "x-declared-length": String(500 * 1024 * 1024),
+        "content-length": String(500 * 1024 * 1024),
       },
-    }) as unknown as Request;
+      new TextEncoder().encode("x".repeat(1024)),
+    );
     const res = await handleGithubWebhook(req, env, db, NOW);
-    // A 413 would prove a size gate exists. It is a 401 — the body was read regardless.
-    expect(res.status).toBe(401);
+    // Was 401 — "the body was read regardless". The 413 IS the size gate.
+    expect(res.status).toBe(413);
+    expect(reads()).toBe(0);
+  });
+
+  it("the cap refuses, never truncates: a legitimate signed delivery still verifies", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), []);
+    env.GITHUB_WEBHOOK_SECRET = "s3cret";
+
+    // Multi-byte UTF-8 in the payload on purpose: if anything decoded, re-encoded or sliced the
+    // bytes between the read and `verifySignature`, the HMAC over them would stop matching.
+    const bytes = new TextEncoder().encode(
+      JSON.stringify({ ref: "refs/tags/v1.0.0-ünïcøde", after: "deadbeef" }),
+    );
+    const { req, reads } = webhookReq(
+      {
+        "x-github-event": "push",
+        "x-github-delivery": "delivery-guid-1",
+        "x-hub-signature-256": await hubSignature("s3cret", bytes),
+        "content-length": String(bytes.byteLength),
+      },
+      bytes,
+    );
+    const res = await handleGithubWebhook(req, env, db, NOW);
+    // Past the HMAC, past replay protection, and into the handler's own structural gate.
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ignored: "non-branch-ref" });
+    expect(reads()).toBe(1);
+
+    // …and a single flipped byte still fails, so the 200 above is the signature verifying and
+    // not a cap that stopped checking.
+    const tampered = new TextEncoder().encode(
+      JSON.stringify({ ref: "refs/tags/v1.0.0-ünïcødf", after: "deadbeef" }),
+    );
+    const forged = webhookReq(
+      {
+        "x-github-event": "push",
+        "x-github-delivery": "delivery-guid-2",
+        "x-hub-signature-256": await hubSignature("s3cret", bytes),
+        "content-length": String(tampered.byteLength),
+      },
+      tampered,
+    );
+    expect((await handleGithubWebhook(forged.req, env, db, NOW)).status).toBe(
+      401,
+    );
   });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// R10-07 — 80-char cap does not stop catastrophic regex backtracking
+// R10-07 — the 80-char cap never was the guard; the backtracking-free matcher is
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guard)", () => {
+describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 was never the guard)", () => {
   const EVIL = "(x+x+)+y"; // 8 chars, far below the 80-char cap
 
   /** Time `resolveChannel` against `count` releases whose tag is `len` x's. */
@@ -1016,30 +1285,98 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
     return Date.now() - t0;
   }
 
-  it("an 8-character pattern under the cap backtracks catastrophically", () => {
+  // FIXED (B7-04 / A5-04). `compileManualChannelRegex` no longer calls `new RegExp`; it calls
+  // `compileLinearPattern`, the Thompson NFA that closed the same finding for catalog
+  // `pattern` (R10-01's knock-on block above). Two consequences, and this block pins both:
+  //
+  //  1. Patterns that CANNOT be matched without backtracking — backreferences, lookaround,
+  //     `\b` — are refused at ingest. The manifest validator emits `invalid_manual_channel`
+  //     and `parseManualChannels` drops the row, so they never reach `resolveChannel`.
+  //  2. `(x+x+)+y` is NOT one of them. It is perfectly expressible in a non-backtracking
+  //     engine; it was only ever expensive because V8 backtracks. So it stays ACCEPTED and is
+  //     DEFUSED instead — which is why the three timing assertions below are the original
+  //     three, inverted in place rather than deleted. Rejecting it would be the static
+  //     "nested quantifier" heuristic `shared-catalog/src/regex.ts` explicitly refuses to
+  //     rely on, because it leaks (`(a|a)*` has star height 1 and backtracks just as badly).
+
+  it("the constructs that need backtracking are refused at ingest", async () => {
+    const { compileManualChannelRegex, validateManifestDocuments } =
+      await import("@polaris-key/manifest");
+
+    for (const regex of ["(v\\d+)-\\1", "(?=(a+)+b)a", "(?<=aa)b", "\\bv1"]) {
+      // The shared rule says no…
+      expect(compileManualChannelRegex(regex), regex).toBeNull();
+
+      // …so a repo push carrying one is rejected, not stored (githubWebhook → resync → here).
+      const res = validateManifestDocuments({
+        product: { slug: "acme", name: "Acme" },
+        release: {
+          release: {
+            provider: { type: "github", owner: "acme", repo: "desktop" },
+            manualChannels: [{ name: "nightly", regex }],
+          },
+        },
+      });
+      expect(
+        res.errors.map((e) => e.code),
+        regex,
+      ).toContain("invalid_manual_channel");
+
+      // …and even a row that predates the fix cannot be revived by the runtime reader.
+      const { parseManualChannels } =
+        await import("../../src/services/release/channels.js");
+      expect(
+        parseManualChannels(JSON.stringify([{ name: "nightly", regex }])),
+      ).toEqual([]);
+    }
+  });
+
+  it("an 8-character pattern under the cap no longer backtracks catastrophically", () => {
     expect(EVIL.length).toBeLessThanOrEqual(80);
-    // Non-pathological matching is sub-millisecond; past 250ms is catastrophic backtracking.
-    // Cost doubles per extra character: a 40-char tag is ~4 minutes of CPU on one request.
-    expect(timeMatch(28, 1)).toBeGreaterThan(250);
+    // This assertion is the finding, inverted: it used to REQUIRE > 250ms. A 28-character
+    // tag was ~2.6s of worker CPU under V8's engine; the NFA walks it in about a microsecond.
+    expect(timeMatch(28, 1)).toBeLessThan(250);
   }, 20_000);
 
-  it("runtime doubles per extra input character (exponential, not linear)", () => {
-    const short = Math.max(timeMatch(22, 1), 1);
-    const longer = timeMatch(27, 1); // +5 chars ⇒ ~32x
-    expect(longer).toBeGreaterThan(short * 8);
+  it("runtime grows linearly, not exponentially, with the input character count", () => {
+    // +5 characters used to mean ~32x. 40 characters used to mean ~4 minutes of CPU on one
+    // request; 4000 was unreachable. All three are now a flat scan.
+    expect(timeMatch(22, 1)).toBeLessThan(250);
+    expect(timeMatch(27, 1)).toBeLessThan(250);
+    expect(timeMatch(40, 1)).toBeLessThan(250);
+    expect(timeMatch(4000, 1)).toBeLessThan(250);
   }, 20_000);
 
-  it("cost is multiplied by the release list length (up to 100 per request)", () => {
-    const single = Math.max(timeMatch(24, 1), 1);
-    const batch = timeMatch(24, 10);
-    expect(batch).toBeGreaterThan(single * 5);
+  it("a full 100-release page costs no more than a linear scan", () => {
+    // The multiplier is still there — `resolveChannel` really does run the pattern against
+    // every release — but it now multiplies microseconds. 100 is the GitHub page size, i.e.
+    // the most one request can be made to match.
+    expect(timeMatch(24, 100)).toBeLessThan(250);
   }, 20_000);
+
+  it("the anchoring the old RegExp gave is preserved, so no channel widens", async () => {
+    const { compileManualChannelRegex } = await import("@polaris-key/manifest");
+    // `^(?:…)$` still wraps the manifest source: `beta` must not answer for `beta-old`.
+    const re = compileManualChannelRegex("v.*-nightly\\..*");
+    expect(re).not.toBeNull();
+    expect(re!.test("v1.3.0-nightly.7")).toBe(true);
+    expect(re!.test("v1.3.0-nightly.7-suffix")).toBe(true); // the author's own `.*`
+    expect(re!.test("prefix-v1.3.0-nightly.7")).toBe(false); // but not an unanchored hit
+    expect(re!.test("v1.3.0")).toBe(false);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
 // R10-08 — uncapped request headers are written straight into D1
 // ═════════════════════════════════════════════════════════════════════════════
 
+// FIXED (B5-07). `deviceMetadata` now truncates every one of the six attacker-controlled
+// headers at `MAX_DEVICE_METADATA_CHARS` (128) — the SAME cap `factsFromReport` in the same file
+// had applied to `/devices/report` all along. The cap lives inside the helper, not at the call
+// sites, so all six consumers (`/activate`, `/enroll`, `/register`, the browser session and both
+// document routes) inherit it; the two `it`s below are the originals inverted and cover the two
+// ends of that range. The values are still WRITTEN — a truncated user agent is still useful
+// inventory — they just cannot be used to inflate a row.
 describe("R10-08 device metadata headers are persisted with no length cap", () => {
   it("GET /license/document writes 16 KiB header values verbatim into `devices`", async () => {
     const db = makeTestDb();
@@ -1069,13 +1406,21 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     expect(res.status).toBe(200);
 
     const row = await getDevice(db, "djdl", "dev-1");
-    // Six columns × 16 KiB, versus the 128-char cap the /devices/report path applies.
-    expect(row?.ua?.length).toBe(16 * 1024);
-    expect(row?.platform?.length).toBe(16 * 1024);
-    expect(row?.arch?.length).toBe(16 * 1024);
-    expect(row?.app_version?.length).toBe(16 * 1024);
-    expect(row?.sdk_name?.length).toBe(16 * 1024);
-    expect(row?.sdk_version?.length).toBe(16 * 1024);
+    // Was six columns × 16 KiB. Now six columns × the documented 128-char cap — the same one
+    // `/devices/report` has always applied, so the two paths finally agree.
+    expect(MAX_DEVICE_METADATA_CHARS).toBe(128);
+    for (const value of [
+      row?.ua,
+      row?.platform,
+      row?.arch,
+      row?.app_version,
+      row?.sdk_name,
+      row?.sdk_version,
+    ]) {
+      expect(value?.length).toBe(MAX_DEVICE_METADATA_CHARS);
+    }
+    // Truncated at the front, not hashed or dropped: the first 128 characters are preserved.
+    expect(row?.ua).toBe(big.slice(0, MAX_DEVICE_METADATA_CHARS));
   });
 
   it("/activate has the same unbounded write, gated only by 30/min/IP", async () => {
@@ -1086,7 +1431,18 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     const { key } = await seedLicenseWithKey(db, "djdl");
     const big = "A".repeat(8 * 1024);
     await activate(env, db, product, key, "dev-big", { "user-agent": big });
-    expect((await getDevice(db, "djdl", "dev-big"))?.ua?.length).toBe(8 * 1024);
+    // Was 8 KiB. The cap is inside `deviceMetadata`, so the mint path inherits it too — the
+    // limiter is no longer the only thing bounding what one activation can store.
+    expect((await getDevice(db, "djdl", "dev-big"))?.ua?.length).toBe(
+      MAX_DEVICE_METADATA_CHARS,
+    );
+    // A value already under the cap is untouched — this truncates, it does not normalise.
+    await activate(env, db, product, key, "dev-small", {
+      "user-agent": "pkey-node/1.2.3",
+    });
+    expect((await getDevice(db, "djdl", "dev-small"))?.ua).toBe(
+      "pkey-node/1.2.3",
+    );
   });
 });
 
@@ -1159,22 +1515,53 @@ describe("R10-10 GET /<p>/{license,config}/document: no rate limit, one D1 write
     );
   });
 
+  // FIXED (A6-05), for `/config/document`. The original polled `/license/document`, but A6-05's
+  // scope is the config half — so this is inverted where the fix landed and the licence half is
+  // measured alongside it rather than quietly dropped, because the residual matters: the two
+  // routes have the same per-poll D1 cost and only one of them is now metered.
   it("200 consecutive polls from one IP are all served — there is no 429 path", async () => {
     const { db, env, product } = await seedRealCatalogProduct();
     const { key } = await seedLicenseWithKey(db, "djdl");
     const token = await activate(env, db, product, key, "dev-1");
-    for (let i = 0; i < 200; i++) {
-      const res = await handleLicenseDocument(
+    const poll = (
+      handler: typeof handleConfigDocument,
+      ip: string,
+    ): Promise<Response> =>
+      handler(
         mkReq("GET", {
           authorization: `Bearer ${token}`,
-          "cf-connecting-ip": "203.0.113.9",
+          "cf-connecting-ip": ip,
         }),
         env,
         db,
         product,
         NOW,
       );
-      expect(res.status).toBe(200);
+
+    // Was: 200 consecutive polls, 200 × HTTP 200, no limiter anywhere. There is now a
+    // `configDocument` budget of 120/60s per client, so the loop runs out of allowance.
+    const statuses: number[] = [];
+    for (let i = 0; i < 200; i++) {
+      statuses.push((await poll(handleConfigDocument, "203.0.113.9")).status);
+    }
+    expect(statuses.filter((s) => s === 200)).toHaveLength(120);
+    expect(statuses.slice(120).every((s) => s === 429)).toBe(true);
+
+    // The standard nested 429 body, not a bare status.
+    const blocked = await poll(handleConfigDocument, "203.0.113.9");
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({ error: { code: "rate_limited" } });
+
+    // Per CLIENT, not global: a different address still gets served, so one noisy machine
+    // cannot deny every other device its configuration.
+    expect((await poll(handleConfigDocument, "198.51.100.4")).status).toBe(200);
+
+    // RESIDUAL, pinned deliberately: A6-05 covered `/config/document` only. The same 200 polls
+    // against `/license/document` are still all served — that route has no limiter of its own.
+    for (let i = 0; i < 200; i++) {
+      expect((await poll(handleLicenseDocument, "203.0.113.9")).status).toBe(
+        200,
+      );
     }
   });
 });
@@ -1735,5 +2122,132 @@ describe("R10-15 sidecar text assets are size-capped", () => {
     );
     // 404, not a 500 and not an isolate OOM: the feed refuses to ship an unverifiable item.
     expect(res.status).toBe(404);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// B5-06 — outbound email amplification: one victim's inbox, many source addresses
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// `POST /api/magic/start` mails a platform-signed sign-in link to any address supplied in the
+// body. It was metered per SOURCE IP only (8/min), which bounds one sender and says nothing
+// about one RECIPIENT — so rotating the source address turned the endpoint into a mailer aimed
+// at a third party who never had an account. FIXED with a second charge on the `portalMagicTarget`
+// bucket, keyed on a HASH of the normalised address, 3/hour, registered fail-CLOSED so a Durable
+// Object blip cannot reopen the exact hole this closes.
+
+/** A portal env whose EMAIL binding records every message instead of sending it. */
+function magicEnv(sent: Array<{ to: string }>): { env: Env; kv: KvMock } {
+  const kv = new KvMock();
+  const env = makeEnv(kv, []);
+  env.EMAIL = {
+    send: async (message: { to: string }) => {
+      sent.push(message);
+    },
+  } as unknown as Env["EMAIL"];
+  return { env, kv };
+}
+
+/** `POST /api/magic/start` for `email`, from `ip`. */
+function magicStart(env: Env, db: Db, email: string, ip: string) {
+  return handleMagicStart(
+    mkReq(
+      "POST",
+      { "content-type": "application/json", "cf-connecting-ip": ip },
+      { email },
+    ),
+    env,
+    db,
+  );
+}
+
+describe("B5-06 magic-link start: platform-signed mail to any address, per-IP budget only", () => {
+  it("one target cannot be flooded from rotating source IPs", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "djdl");
+    const sent: Array<{ to: string }> = [];
+    const { env, kv } = magicEnv(sent);
+
+    // Twenty DISTINCT source addresses, each well inside the 8/min per-IP budget — the whole
+    // point of the attack is that the per-IP limiter never fires. Each of them is also a
+    // separate IPv6 /64, so B5-05's aggregation does not do this job either.
+    const statuses: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const res = await magicStart(
+        env,
+        db,
+        "victim@example.com",
+        `2001:db8:${i}:1::9`,
+      );
+      statuses.push(res.status);
+    }
+
+    // Was: 20 × 200, 20 emails delivered to a stranger. Now the per-target budget is 3/hour.
+    expect(statuses.filter((s) => s === 200)).toHaveLength(3);
+    expect(statuses.slice(3).every((s) => s === 429)).toBe(true);
+    expect(sent).toHaveLength(3);
+    expect(sent.every((m) => m.to === "victim@example.com")).toBe(true);
+
+    // The refusal happens BEFORE the KV record is written, so a flood cannot fill HOT either.
+    expect(kv.keys().filter((k) => k.startsWith("portal:magic:"))).toHaveLength(
+      3,
+    );
+  });
+
+  it("case and whitespace cannot buy a second budget", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "djdl");
+    const sent: Array<{ to: string }> = [];
+    const { env } = magicEnv(sent);
+
+    // The bucket id is a hash of the address AFTER `trim().toLowerCase()` — the same
+    // normalisation the seal, the mail and `getOrCreateAccountByEmail` use — so these four
+    // spellings are one target, not four.
+    for (const spelling of [
+      "victim@example.com",
+      "Victim@Example.com",
+      "  VICTIM@EXAMPLE.COM  ",
+      "vIcTiM@eXaMpLe.CoM",
+    ]) {
+      await magicStart(env, db, spelling, "203.0.113.7");
+    }
+    expect(sent).toHaveLength(3);
+
+    // …and it really is per-target, not a global cap: a different address still gets its link.
+    const other = await magicStart(env, db, "ada@example.com", "203.0.113.7");
+    expect(other.status).toBe(200);
+    expect(sent.map((m) => m.to)).toEqual([
+      "victim@example.com",
+      "victim@example.com",
+      "victim@example.com",
+      "ada@example.com",
+    ]);
+  });
+
+  it("the target address never reaches the limiter's durable storage in the clear", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "djdl");
+    const { env } = magicEnv([]);
+    // Capture the Durable Object names the limiter routes to — they are derived from the id,
+    // and the DO's own storage keys embed the id verbatim (`${bucket}:${id}`).
+    const names: string[] = [];
+    const inner = env.RL;
+    env.RL = {
+      idFromName: (name: string) => {
+        names.push(name);
+        return inner.idFromName(name);
+      },
+      get: (id: DurableObjectId) => inner.get(id),
+    } as unknown as Env["RL"];
+
+    await magicStart(env, db, "victim@example.com", "203.0.113.7");
+
+    const target = names.filter((n) => n.includes("portalMagicTarget"));
+    expect(target).toHaveLength(1);
+    expect(names.join(" ")).not.toContain("victim@example.com");
+    expect(names.join(" ")).not.toContain("victim");
+    // The id is a `hashKey` digest, so the shard name ends in a plain shard index and nothing
+    // in it is reversible to an address.
+    expect(target[0]).toMatch(/^_portal:portalMagicTarget:\d{1,2}$/);
   });
 });

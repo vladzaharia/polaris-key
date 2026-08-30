@@ -14,6 +14,26 @@ import {
 
 /** How long a processed `X-GitHub-Delivery` GUID is remembered (7 days). */
 const DELIVERY_TTL_SECONDS = 604_800;
+
+/**
+ * Largest webhook body this endpoint will hold in memory (B5-04).
+ *
+ * The route is UNAUTHENTICATED until the HMAC is checked, and the HMAC cannot be checked without
+ * the whole body — so before this cap, `POST /webhooks/github` with a multi-hundred-megabyte
+ * payload and a junk signature made a stranger's single request buffer the whole thing into
+ * isolate memory and then HMAC every byte of it, purely to earn a 401. Every sibling body reader
+ * in the worker already had a cap (`admin/lib/respond.ts`'s 64 KiB, `/activate`'s 4 KiB); this
+ * one did not.
+ *
+ * 1 MiB is generous rather than tight: GitHub itself refuses to deliver a webhook payload over
+ * 25 MB, and a push event's `commits[]` — the only part that grows — is a list of changed paths.
+ *
+ * THE CAP MUST NEVER BECOME A TRANSFORM. The bytes read here are the exact HMAC input, so an
+ * over-cap request is REFUSED, never truncated-and-verified: truncating would hand an attacker a
+ * body whose signature is computed over material we chose, which is a signature-forgery oracle,
+ * not a size limit.
+ */
+const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024;
 /** KV scope for delivery GUIDs. Not a legal product slug (`^[a-z0-9-]+$`), so it can't collide. */
 const PLATFORM_SCOPE = "_platform";
 
@@ -126,7 +146,19 @@ export async function handleGithubWebhook(
     );
   }
 
+  // B5-04, both halves, modelled on `admin/lib/respond.ts`'s `readBody`. The declared length is
+  // checked FIRST so an oversized delivery is refused without the body ever being buffered; the
+  // post-read check then covers the cases the header cannot (absent `content-length`, a chunked
+  // body, or a header that lies low). Neither one alters `raw` — see `MAX_WEBHOOK_BODY_BYTES`.
+  const declared = req.headers.get("content-length");
+  if (declared && Number(declared) > MAX_WEBHOOK_BODY_BYTES) {
+    return errorResponse(413, "body_too_large", "request body too large");
+  }
   const raw = new Uint8Array(await req.arrayBuffer());
+  if (raw.byteLength > MAX_WEBHOOK_BODY_BYTES) {
+    return errorResponse(413, "body_too_large", "request body too large");
+  }
+
   const ok = await verifySignature(
     secret,
     raw,

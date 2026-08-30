@@ -67,6 +67,16 @@ export { shapeFacts, shapeFingerprint } from "../admin/lib/deviceShape.js";
 
 export { parsePayload, redactPayload } from "../admin/lib/redact.js";
 
+// A7-05. The device-limit ceiling is one number with two admin writers — the platform product
+// registry (`defaultDeviceLimit`) and License's tier editor (`policyDeviceLimit`) — and a
+// ceiling that holds on one of them is not a ceiling. It arrives through this seam for the same
+// reason the redaction rules do: a second copy in the service directory is how the two drift.
+export {
+  MAX_DEVICE_LIMIT,
+  deviceLimitMessage,
+  invalidDeviceLimit,
+} from "../admin/lib/deviceLimit.js";
+
 export { applyOverrides, type OverrideUpdate } from "../admin/lib/overrides.js";
 
 export {
