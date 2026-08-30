@@ -97,6 +97,7 @@ export {
 export {
   browserAdapter,
   BrowserAdapter,
+  InsecureBaseUrlError,
   splitSessionDoc,
   type BrowserAdapterOptions,
 } from "./browser/browserAdapter.js";
@@ -115,6 +116,7 @@ export {
 } from "./desktop/desktopAdapter.js";
 export {
   BRIDGE_VERSION,
+  DESKTOP_BRIDGE_METHODS,
   resolveBridge,
   type PolarisBridge,
   type PolarisBridgeWindow,
@@ -122,6 +124,9 @@ export {
   type BridgeOidcBegin,
   type BridgeOidcPoll,
   type BridgeActivation,
+  type BridgeInvokeService,
+  type BridgeInvokeMethod,
+  type DesktopBridgeMethod,
 } from "./desktop/bridge.js";
 
 // ── Core (mode-agnostic types + helpers) ─────────────────────────────────────
@@ -140,6 +145,7 @@ export {
   configSource,
   currentDeviceFromState,
   listUserConfig,
+  isSecureTransportUrl,
   PolarisError,
   initialState,
   SERVICE_SLUGS,

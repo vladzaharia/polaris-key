@@ -2,6 +2,7 @@
 
 export {
   BrowserAdapter,
+  InsecureBaseUrlError,
   browserAdapter,
   splitSessionDoc,
   type BrowserAdapterOptions,

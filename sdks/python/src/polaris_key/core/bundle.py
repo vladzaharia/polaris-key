@@ -34,6 +34,7 @@ from .models import (
     TYP_BUNDLE,
     ConfigDoc,
     LicenseDoc,
+    is_timestamp,
 )
 from .store import CacheRecord, ImportedBundle
 from .trust import merge_trust, verify_trust_manifest
@@ -187,9 +188,10 @@ def inspect_bundle(
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
     if bundle.get("deviceId") != device_id:
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
-    if isinstance(issued_at, bool) or not isinstance(issued_at, int):
-        return BundleRefused(BUNDLE_CLAIMS_REJECTED)
-    if isinstance(expires_at, bool) or not isinstance(expires_at, int):
+    # The same one timestamp rule the document envelope uses (§3, A1-04): an integer in
+    # ``[0, MAX_TIMESTAMP_SECONDS]``, so the import deadline is the same deadline in
+    # every implementation.
+    if not is_timestamp(issued_at) or not is_timestamp(expires_at):
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
     if issued_at > now + CLOCK_SKEW_SECONDS:
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
@@ -199,11 +201,17 @@ def inspect_bundle(
     docs_raw = bundle.get("docs")
     if not isinstance(docs_raw, dict):
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
+    # A slice that is PRESENT must be a compact JWS. ``"license": null`` is not "absent":
+    # no mint emits it (the Worker omits the key), so the only producer of one is
+    # something that got the shape wrong or is probing for a lenient reader. This SDK and
+    # Swift used to read ``null`` as absent and import the bundle config-only, while TS
+    # refused it — the same bytes, two outcomes (A2-04). Refusing is the reading that adds
+    # no accepted artifacts.
     license_jws = docs_raw.get("license")
     config_jws = docs_raw.get("config")
-    if license_jws is not None and not isinstance(license_jws, str):
+    if "license" in docs_raw and not isinstance(license_jws, str):
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
-    if config_jws is not None and not isinstance(config_jws, str):
+    if "config" in docs_raw and not isinstance(config_jws, str):
         return BundleRefused(BUNDLE_CLAIMS_REJECTED)
     # A bundle carrying NEITHER document is vacuous (§7): it can grant nothing and
     # configure nothing, so importing it would write an `importedBundle` marker with no
@@ -314,7 +322,14 @@ def import_bundle(
     """
     from .context import now_sec
 
-    when = now_sec() if now is None else now
+    # §7.2 checks the bundle's own import deadline on NETWORK-path freshness, and every
+    # other freshness decision in this client runs at ``max(system_clock, floor)`` — the
+    # §4.2 monotonic floor, which exists so a rolled-back clock buys nothing. This one
+    # call passed the RAW wall clock, so winding the machine back inside a lapsed 30-day
+    # import window made an expired bundle importable again (B1-05). The floor only ever
+    # rises, and only from content whose signature has been checked, so using it here can
+    # extend no window — only refuse one a tampered clock was reopening.
+    when = ctx.now(now_sec() if now is None else now)
     result = inspect_bundle(
         jws,
         pinned=ctx.pinned_trust,

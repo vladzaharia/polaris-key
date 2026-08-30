@@ -12,7 +12,7 @@
 import { verifyJws, type TrustSet } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
 import type { TrustManifestDoc } from "@polaris-key/protocol/trust";
-import { CLOCK_SKEW_SECONDS } from "./claims.js";
+import { CLOCK_SKEW_SECONDS, isTimestamp } from "./claims.js";
 
 /** Trust-manifest schema versions this client understands. Unknown ⇒ fail closed. */
 const SUPPORTED_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1]);
@@ -80,7 +80,10 @@ export async function verifyTrustManifest(
   if (!SUPPORTED_SCHEMA_VERSIONS.has(doc.schemaVersion)) return REJECTED;
   if (doc.aud !== opts.expectedAud) return REJECTED;
   if (doc.iss !== (opts.expectedIss ?? ISSUER)) return REJECTED;
-  if (typeof doc.issuedAt !== "number" || typeof doc.expiresAt !== "number")
+  // The same one timestamp rule the document envelope uses (§3, A1-04): an integer in
+  // `[0, MAX_TIMESTAMP_SECONDS]`. The manifest's `issuedAt` feeds the monotonic floor, so a
+  // float or an out-of-range value here is a floor three languages would compute differently.
+  if (!isTimestamp(doc.issuedAt) || !isTimestamp(doc.expiresAt))
     return REJECTED;
   if (
     opts.lastTrustIssuedAt !== undefined &&
@@ -94,17 +97,37 @@ export async function verifyTrustManifest(
   }
   if (!Array.isArray(doc.keys)) return REJECTED;
 
-  const discovered: TrustSet = {};
+  // A null-prototype map, so a manifest publishing a kid of `__proto__` (or `constructor`)
+  // STORES a key under that name instead of writing the object's prototype and dropping it
+  // (A1-08). Python and Swift store it — their maps have no such names — and a set that
+  // silently loses an entry in one language only is a trust set the corpus cannot pin.
+  const discovered: TrustSet = Object.create(null) as TrustSet;
   for (const key of doc.keys) {
     if (!key || typeof key !== "object") return REJECTED;
     // The server emits revoked entries EXPLICITLY for at least 2× cacheSeconds (§1) so
     // clients get a positive signal to prune on. Read it from the raw value — an unknown
     // future status must degrade gracefully, not break parsing.
     const status = (key as { status?: unknown }).status;
+    // §1 distinguishes two failures that look alike and are not (A1-06):
+    //
+    //   * `kid` / `publicKey` missing or not a string ⇒ the WHOLE manifest is rejected. They
+    //     are the entry's identity and its key material; an entry without them is not a
+    //     forward-compatible key this verifier happens not to understand, it is a malformed
+    //     manifest, and the pinned-substitution rule cannot even be evaluated against it.
+    //   * `alg` / `kty` / `crv` not the Ed25519 triple — INCLUDING absent — ⇒ that ENTRY is
+    //     skipped and the manifest still stands. That is §1's "skipped, not fatal": a
+    //     future-alg key must never brick a current verifier, and an entry that omits the
+    //     field is no more comprehensible to us than one that names an algorithm we lack.
     if (typeof key.kid !== "string" || typeof key.publicKey !== "string")
       return REJECTED;
     // Substitution attempt — reject the manifest, keep the previous trust set (§1 rule 1).
-    const pinnedBytes = opts.pinned[key.kid];
+    // `Object.hasOwn` before the read, because a plain `pinned[kid]` for `kid === "__proto__"`
+    // answers `Object.prototype` — an object that is neither `undefined` nor the published
+    // bytes, so the manifest was refused as a substitution attempt against a pin that does not
+    // exist. Python's dict and Swift's Dictionary simply miss (A1-08).
+    const pinnedBytes = Object.hasOwn(opts.pinned, key.kid)
+      ? opts.pinned[key.kid]
+      : undefined;
     if (pinnedBytes !== undefined && pinnedBytes !== key.publicKey)
       return REJECTED;
     if (status === "revoked") continue;

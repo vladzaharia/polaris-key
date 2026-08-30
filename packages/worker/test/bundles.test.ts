@@ -284,6 +284,14 @@ describe("bundle mint — the artifact a client actually imports", () => {
     // profile, where `expiresAt` is EXPECTED to be in the past and `graceUntil` is the bound
     // that matters. Stretching `expiresAt` instead would mint a document that passes the
     // network profile for a year.
+    //
+    // The `graceUntil` assertion is INVERTED from what it was (A2-01). It used to read
+    // `NOW + 200 * DAY` — the operator's `graceDays`, taken alone. This was the one path that
+    // could exceed the licence's own `max_offline_days`: a licence sold with a 30-day offline
+    // allowance handed a 200-day bundle by an admin typing 200 into a form, and the resulting
+    // install outliving its own terms with a valid signature on it. The mint now takes the
+    // MINIMUM, and the seed licence carries `max_offline_days: null` ⇒ the product default of
+    // 30. `graceDays` can still tighten; it can no longer widen.
     const world = await fixture();
     const { inspection } = await mintAndInspect(world, {
       deviceId: DEVICE,
@@ -298,8 +306,23 @@ describe("bundle mint — the artifact a client actually imports", () => {
     ]) {
       expect(doc.issuedAt).toBe(NOW);
       expect(doc.expiresAt).toBe(NOW + 3600);
-      expect(doc.graceUntil).toBe(NOW + 200 * DAY);
+      expect(doc.graceUntil).toBe(NOW + 30 * DAY);
     }
+  });
+
+  it("lets graceDays TIGHTEN the licence bound, just never widen it", async () => {
+    // The other side of the clamp: an operator minting a deliberately short-lived bundle is a
+    // real request, and the minimum is a minimum rather than an override. Without this pair a
+    // mint that ignored `graceDays` entirely would pass the test above.
+    const world = await fixture();
+    const { inspection } = await mintAndInspect(world, {
+      deviceId: DEVICE,
+      graceDays: 7,
+      licenseId: world.licenseId,
+    });
+    expect(inspection.ok).toBe(true);
+    if (!inspection.ok) return;
+    expect(inspection.bundle.docs.license!.doc.graceUntil).toBe(NOW + 7 * DAY);
   });
 
   it("mints at the 365-day ceiling, which the client's verifier accepts inclusively", async () => {
@@ -311,11 +334,14 @@ describe("bundle mint — the artifact a client actually imports", () => {
     });
     // §3.3's ceiling is inclusive and applied at VERIFY time as well as at mint, so a bundle
     // sitting exactly on it must still import. `ok: true` here is the assertion.
+    //
+    // The `graceUntil` assertion is INVERTED (A2-01): it read `NOW + 365 * DAY`, which is the
+    // request rather than the grant. A licensed bundle is now clamped to the licence's own
+    // bound, so 365 is what the OPERATOR may ask for and 30 is what this licence gives. The
+    // 365-day ceiling itself is unchanged and still refused past — see the `refusals` block.
     expect(inspection.ok).toBe(true);
     if (!inspection.ok) return;
-    expect(inspection.bundle.docs.license!.doc.graceUntil).toBe(
-      NOW + 365 * DAY,
-    );
+    expect(inspection.bundle.docs.license!.doc.graceUntil).toBe(NOW + 30 * DAY);
   });
 
   it("gives the bundle itself a 30-day import window, independent of the grace", async () => {
@@ -671,7 +697,10 @@ describe("bundle mint — audit", () => {
     // the artifact itself is not stored anywhere and this row is all an operator will have.
     expect(row?.summary).toContain(bundleId);
     expect(row?.summary).toContain(DEVICE);
-    expect(row?.summary).toContain("120-day grace");
+    // INVERTED from `"120-day grace"` (A2-01): the summary now names the EFFECTIVE window,
+    // not the requested one, so an operator who asked for 120 and got the licence's 30 can
+    // see that from the audit row rather than from the artifact they cannot inspect.
+    expect(row?.summary).toContain("30-day grace");
   });
 
   it("targets the DEVICE when there is no licence to point at", async () => {

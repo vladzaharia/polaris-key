@@ -12,8 +12,19 @@
 // It renders NOTHING when there is no update, when the product runs no Update service, or
 // after the user dismisses it — an empty banner reserving layout for an event that has not
 // happened is its own bug.
+//
+// ── THE DEFAULT ACTION IS A NAVIGATION ──────────────────────────────────────────────────────
+//
+// `latest.url` arrives from the Update service (browser: an HTTP response body; desktop: the
+// privileged process's answer to `invoke("update", "check")`), and the default action hands it
+// straight to `window.open`. That makes an update feed an open-redirect primitive unless the
+// scheme is checked, and `javascript:` in particular is script execution in the host page. So
+// the URL goes through `isSecureTransportUrl` — the SAME https-or-loopback rule `BrowserAdapter`
+// applies to its `baseUrl` — and a refusal renders in place of the navigation rather than
+// falling through to it.
 
 import { useState, type ReactNode } from "react";
+import { isSecureTransportUrl } from "../core/index.js";
 import { usePolarisTheme } from "../react/hooks.js";
 import {
   useLatestVersion,
@@ -22,7 +33,7 @@ import {
 } from "../update/useLatestVersion.js";
 import { Button } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
-import { mutedText } from "./primitives/card.js";
+import { dangerText, mutedText } from "./primitives/card.js";
 
 export interface UpdatePromptSlots {
   /** Replace the whole prompt. Receives the live check plus a dismiss callback. */
@@ -52,6 +63,7 @@ export function UpdatePrompt(props: UpdatePromptProps): JSX.Element | null {
   } = props;
   const check = useLatestVersion(pollOptions);
   const [dismissed, setDismissed] = useState(false);
+  const [refused, setRefused] = useState(false);
 
   if (!check.enabled || dismissed) return null;
   if (!check.updateAvailable && !showWhenCurrent) return null;
@@ -76,17 +88,37 @@ export function UpdatePrompt(props: UpdatePromptProps): JSX.Element | null {
 
   const act = (): void => {
     if (onUpdate) {
+      // The host took the action over; it owns the URL and any policy about it.
       onUpdate(check);
       return;
     }
-    if (check.latest?.url && typeof window !== "undefined") {
-      window.open(check.latest.url, "_blank", "noopener,noreferrer");
+    const url = check.latest?.url;
+    // Fail safe: refuse first, navigate second. Nothing opens on a rejected URL.
+    if (!url || !isSecureTransportUrl(url)) {
+      setRefused(true);
+      return;
+    }
+    setRefused(false);
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   };
 
   const body = check.latest
     ? `${theme.copy.updateBody} (${check.latest.version})`
     : theme.copy.updateBody;
+
+  /** The refusal, rendered the way this suite renders every other failure a user can act on:
+   *  `role="alert"` in the danger colour, alongside the control that produced it. */
+  const refusal = refused ? (
+    <p
+      style={{ ...dangerText, margin: 0 }}
+      role="alert"
+      data-polaris-update-refused=""
+    >
+      {theme.copy.updateUnsafeUrlBody}
+    </p>
+  ) : null;
 
   if (variant === "dialog") {
     return (
@@ -99,6 +131,7 @@ export function UpdatePrompt(props: UpdatePromptProps): JSX.Element | null {
         retryLabel={theme.copy.updateActionLabel}
         extra={
           <div style={{ marginTop: "8px" }}>
+            {refusal}
             <Button
               variant="ghost"
               style={{ fontSize: "13px" }}
@@ -135,6 +168,7 @@ export function UpdatePrompt(props: UpdatePromptProps): JSX.Element | null {
       <span>
         {theme.copy.updateTitle} — {body}
       </span>
+      {refusal}
       <Button
         variant="secondary"
         style={{ padding: "6px 12px", fontSize: "13px" }}

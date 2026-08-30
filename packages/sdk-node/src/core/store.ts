@@ -9,14 +9,21 @@
 // or migration. Discarding a `v !== 3` record is `CacheManager`'s decision (§4.1), because that
 // is a security rule, and a security rule that lived in three store implementations would be a
 // security rule with three chances to be wrong.
+//
+// What the store DOES own is the file handle. `writeSecure`/`readSecure` open with `O_NOFOLLOW`
+// and bound the read at `MAX_STATE_FILE_BYTES`, because mode 0600 at creation says nothing about
+// what is at the path on the NEXT run (B1-04/B1-07). Swift's `KeychainStore` has the same pair.
 
 import { randomUUID } from "node:crypto";
 import {
   closeSync,
   constants as fsc,
+  fchmodSync,
+  fstatSync,
+  lstatSync,
   mkdirSync,
   openSync,
-  readFileSync,
+  readSync,
   rmSync,
   writeSync,
 } from "node:fs";
@@ -63,25 +70,121 @@ export class InMemoryStore implements Store {
   }
 }
 
+/** Largest on-disk state file this store will read, in bytes.
+ *
+ *  Mode 0600 was applied only AT CREATION, and the read was a plain `readFileSync` — so a
+ *  symlink planted at the path redirected the read to a file the attacker chose, and a huge
+ *  file at the path was slurped whole into this process (B1-04/B1-07). The cap bounds the
+ *  second half of that.
+ *
+ *  Three files live under the product directory: the `pkeyt_` token, a 32-char device id, and
+ *  `managed.json`. The record is at most three compact JWSs plus a few unsigned hints — a
+ *  signed document's payload is capped at `MAX_DOC_BYTES` (64 KiB) and base64url-encodes to
+ *  ~87 KiB, so a legitimate record sits comfortably under 300 KiB even with trust, license and
+ *  config all at the cap. (`MAX_BUNDLE_BYTES`, 256 KiB, does NOT apply: `importedBundle`
+ *  persists a marker — `bundleId` plus a timestamp — never the bundle JWS.) 1 MiB is the same
+ *  number Swift's `KeychainStore.maxCacheBytes` uses, chosen the same way: several times any
+ *  legitimate record, and nowhere near "read the attacker's 8 GiB file". */
+export const MAX_STATE_FILE_BYTES = 1024 * 1024;
+
+/** How the symlink refusal is enforced on this platform.
+ *
+ *  `"O_NOFOLLOW"`     — the kernel refuses the `open(2)` atomically. POSIX; verified present
+ *    in `fs.constants` on Node 22 for darwin and linux.
+ *  `"lstat-precheck"` — `fs.constants.O_NOFOLLOW` is undefined (Windows). We `lstat` the
+ *    target and refuse a link before opening. Best-effort and TOCTOU-racy rather than the
+ *    atomic guarantee POSIX gives, but an explicit, documented degradation instead of
+ *    `| undefined` silently OR-ing a zero into the flags and leaving the comment promising a
+ *    protection that was not there. Mirrors `SYMLINK_GUARD` in the Python SDK.
+ *
+ *  There is deliberately no `O_CLOEXEC` here: Node does not expose the constant at all
+ *  (it is absent from `fs.constants` and from `@types/node`) because libuv opens EVERY
+ *  descriptor close-on-exec already. The flag Swift has to pass explicitly is unconditional
+ *  in this runtime. */
+export const SYMLINK_GUARD: "O_NOFOLLOW" | "lstat-precheck" =
+  typeof fsc.O_NOFOLLOW === "number" ? "O_NOFOLLOW" : "lstat-precheck";
+
+const NOFOLLOW = SYMLINK_GUARD === "O_NOFOLLOW" ? fsc.O_NOFOLLOW : 0;
+
+/** Refuse a symlinked target on a platform without `O_NOFOLLOW`. No-op where the kernel
+ *  already answers the question atomically. */
+function refuseLinkedPath(path: string): void {
+  if (SYMLINK_GUARD === "O_NOFOLLOW") return;
+  let linked = false;
+  try {
+    linked = lstatSync(path).isSymbolicLink();
+  } catch {
+    return; // Absent is fine; `openSync` decides.
+  }
+  if (linked) {
+    throw Object.assign(new Error(`refusing to follow a symlink at ${path}`), {
+      code: "ELOOP",
+      path,
+    });
+  }
+}
+
 function writeSecure(path: string, data: string): void {
   // O_NOFOLLOW refuses to follow a planted symlink at the target.
+  refuseLinkedPath(path);
   const fd = openSync(
     path,
-    fsc.O_WRONLY | fsc.O_CREAT | fsc.O_TRUNC | fsc.O_NOFOLLOW,
+    fsc.O_WRONLY | fsc.O_CREAT | fsc.O_TRUNC | NOFOLLOW,
     0o600,
   );
   try {
+    // The creation mode applies only to a NEW file; repair a pre-existing loose one, exactly
+    // as Swift's `writeSecure` does with `fchmod`.
+    fchmodSyncSafe(fd);
     writeSync(fd, data);
   } finally {
     closeSync(fd);
   }
 }
 
-function readMaybe(path: string): string | null {
+/** `fchmod` is unimplemented on some Windows/network filesystems; a failure to TIGHTEN a mode
+ *  must not fail the write that was already going to happen. */
+function fchmodSyncSafe(fd: number): void {
   try {
-    return readFileSync(path, "utf8");
+    fchmodSync(fd, 0o600);
+  } catch {
+    /* best effort */
+  }
+}
+
+/** Read `path` refusing to follow a symlink and bounding the read at
+ *  `MAX_STATE_FILE_BYTES`.
+ *
+ *  Every refusal — absent, symlinked (`ELOOP`/`EMLINK`), not a regular file, over the cap,
+ *  unreadable — returns `null`, which is this store's single spelling of ABSENT. That is the
+ *  codebase's standing convention for a failed artifact (§4.1: a missing, unreadable or
+ *  unparseable cache is "no cache", which Core treats as needs-activation) and it is what
+ *  keeps a planted file from being either trusted OR fatal. */
+function readSecure(path: string): string | null {
+  let fd: number;
+  try {
+    refuseLinkedPath(path);
+    fd = openSync(path, fsc.O_RDONLY | NOFOLLOW);
   } catch {
     return null;
+  }
+  try {
+    const st = fstatSync(fd);
+    // A directory, FIFO or device node at this path is not the file we wrote.
+    if (!st.isFile()) return null;
+    if (st.size > MAX_STATE_FILE_BYTES) return null;
+    const buf = Buffer.allocUnsafe(st.size);
+    let off = 0;
+    while (off < st.size) {
+      const n = readSync(fd, buf, off, st.size - off, off);
+      if (n === 0) break; // Truncated under us; use what we got.
+      off += n;
+    }
+    return buf.subarray(0, off).toString("utf8");
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
   }
 }
 
@@ -104,7 +207,7 @@ export class FileStore implements Store {
   }
 
   async getToken() {
-    return readMaybe(this.tokenPath)?.trim() || null;
+    return readSecure(this.tokenPath)?.trim() || null;
   }
   async setToken(t: string) {
     writeSecure(this.tokenPath, t);
@@ -113,14 +216,14 @@ export class FileStore implements Store {
     rmSync(this.tokenPath, { force: true });
   }
   async getDeviceId() {
-    const existing = readMaybe(this.devicePath)?.trim();
+    const existing = readSecure(this.devicePath)?.trim();
     if (existing) return existing;
     const id = deriveDeviceId(this.productSlug);
     writeSecure(this.devicePath, id);
     return id;
   }
   async readCache(): Promise<CacheRecordV3 | null> {
-    const raw = readMaybe(this.cachePath);
+    const raw = readSecure(this.cachePath);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as CacheRecordV3;

@@ -43,11 +43,47 @@ function rawDeviceId(): string | null {
       const m = out.match(/MachineGuid\s+REG_SZ\s+([A-Za-z0-9-]+)/);
       return m?.[1] ?? null;
     }
-    const id = readFileSync("/etc/machine-id", "utf8").trim();
-    return id || readFileSync("/var/lib/dbus/machine-id", "utf8").trim();
+    return linuxMachineId();
   } catch {
     return null;
   }
+}
+
+/** The Linux machine-id sources, in the order every SDK reads them: systemd's
+ *  `/etc/machine-id` first, then the D-Bus file for hosts that never had systemd (and for
+ *  images where `/etc/machine-id` is a deliberately empty first-boot marker).
+ *
+ *  Exported so the order is assertable rather than a comment. It matches
+ *  `sdks/python/src/polaris_key/devices/deviceid.py`; Swift has no Linux branch at all
+ *  (`DeviceID.rawDeviceId()` returns nil off macOS/iOS), so Python is the canonical spelling
+ *  and this is Node catching back up to it. */
+export const LINUX_MACHINE_ID_PATHS: readonly string[] = [
+  "/etc/machine-id",
+  "/var/lib/dbus/machine-id",
+];
+
+/** First non-empty machine-id file, or null.
+ *
+ *  Each source is tried INDEPENDENTLY. The previous spelling was
+ *  `readFileSync("/etc/machine-id").trim() || readFileSync("/var/lib/dbus/machine-id")` under
+ *  one `try`, so an ABSENT `/etc/machine-id` threw and the D-Bus fallback became unreachable on
+ *  exactly the hosts that need it — `deriveDeviceId` then fell through to `randomUUID()` and
+ *  minted a FRESH device id on EVERY call, burning a seat per run (the same failure Swift's
+ *  R4-12 fixed from the other end).
+ *
+ *  `read` is injectable only so that regression is testable off a Linux host. */
+export function linuxMachineId(
+  read: (path: string) => string = (path) => readFileSync(path, "utf8"),
+): string | null {
+  for (const path of LINUX_MACHINE_ID_PATHS) {
+    try {
+      const id = read(path).trim();
+      if (id) return id;
+    } catch {
+      // Absent or unreadable: try the next source, never abandon the ladder.
+    }
+  }
+  return null;
 }
 
 /** The device-id formula itself, split out from the hardware read so it can be pinned by the

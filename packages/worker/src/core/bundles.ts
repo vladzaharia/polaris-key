@@ -32,7 +32,7 @@
  * ── THE THREE TIME BOUNDS, AND WHY THEY DIFFER ──────────────────────────────────────────────
  *
  *   inner `expiresAt`   `issuedAt + DOC_EXPIRY_SECONDS` — one hour, exactly as online.
- *   inner `graceUntil`  `issuedAt + graceDays × 86 400` — the operator's offline window.
+ *   inner `graceUntil`  `issuedAt + min(graceDays, licence bound) × 86 400` — the offline window.
  *   bundle `expiresAt`  `issuedAt + BUNDLE_IMPORT_WINDOW_SECONDS` — the IMPORT deadline.
  *
  * The first two are not a mistake. §7 step 4 verifies inner documents on the RELOAD profile
@@ -261,6 +261,34 @@ export async function handleBundleMint(
   // which every payload layer already tolerates.
   const device = await getDevice(db, slug, deviceId);
 
+  // ── The offline window the inner documents actually get (A2-01) ─────────────────────────
+  //
+  // `graceDays` is the OPERATOR's request. The licence carries its own bound —
+  // `max_offline_days`, falling back to the product default — and that is the number every
+  // network route mints against (`services/license/document.ts`, `services/config/document.ts`,
+  // `services/identity/browserSession.ts`). Taking the operator's figure alone made this the
+  // one path that could exceed it: a licence sold with a 7-day offline allowance could be
+  // handed a 365-day bundle by an admin typing 365 into a form, and the resulting install would
+  // outlive its own terms with a perfectly valid signature on it.
+  //
+  // The minimum, not the maximum: `graceDays` may still TIGHTEN the window (an operator minting
+  // a deliberately short-lived bundle for a contractor is a real request), it just cannot widen
+  // it past what the licence itself grants.
+  //
+  // A licence-LESS bundle (config-only, D-08) is NOT clamped, and that is not an oversight:
+  // there is no licence term to exceed, and `defaultMaxOfflineDays` is a default rather than a
+  // grant. The clamp exists to stop a bundle outliving the agreement behind it; where there is
+  // no agreement it would only be taking flexibility away for the shape of it.
+  //
+  // The effective figure — not the requested one — is what lands in the audit line, so an
+  // operator who asked for 365 and got 30 can see that from the record.
+  const effectiveGraceDays = license
+    ? Math.min(
+        graceDays,
+        license.max_offline_days ?? product.defaultMaxOfflineDays,
+      )
+    : graceDays;
+
   const docs: BundleDoc["docs"] = {};
 
   if (license) {
@@ -273,14 +301,16 @@ export async function handleBundleMint(
     );
     // No build gate. `/license/document` gates on the CLIENT's version/channel headers, and
     // there is no client here — the machine this is for has never spoken to us. Minting is an
-    // operator decision; the window still rides along as enforced entitlements, so the gate
-    // that matters (the client's) still applies to whatever build eventually imports this.
+    // operator decision, and the compat window is not lost: `app.minVersion`/`app.maxVersion`
+    // ride along inside `entitlements`, which the CLIENT's own build gate reads (§5, D-20) and
+    // folds into `checkBuildGate` exactly as it does for a document fetched online. So the
+    // window is enforced — by the importing build, at the only place it can be.
     const doc = buildLicenseDoc({
       aud: slug,
       deviceId,
       licenseId: license.id,
       now,
-      maxOfflineDays: graceDays,
+      maxOfflineDays: effectiveGraceDays,
       profile: docProfile(license),
       entitlements,
     });
@@ -315,7 +345,7 @@ export async function handleBundleMint(
       aud: slug,
       deviceId,
       now,
-      maxOfflineDays: graceDays,
+      maxOfflineDays: effectiveGraceDays,
       schemaVersion: product.schemaVersion,
       payload,
     });
@@ -376,7 +406,7 @@ export async function handleBundleMint(
     // happened, so it names the bundle, the machine, what went in it and for how long.
     `Minted offline bundle ${bundleId} for device ${deviceId}` +
       `${license ? ` on licence ${license.id}` : ""}: ` +
-      `${carried.join(" + ")}, ${graceDays}-day grace`,
+      `${carried.join(" + ")}, ${effectiveGraceDays}-day grace`,
   );
 
   return adminJson({ bundleId, bundle: jws });

@@ -44,7 +44,36 @@ export type PolarisErrorCode =
   | "refresh-failed"
   | "network"
   | "bridge-missing"
+  | "insecure-base-url"
   | "unknown";
+
+/** Loopback hosts keep `http:` usable for `wrangler dev` and integration tests; nothing else
+ *  may carry a session cookie — or receive a user the SDK sent there. Mirrors
+ *  `@polaris-key/node`'s `LOOPBACK_HOSTS` verbatim: four SDKs, one rule. */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+/**
+ * The one transport-security predicate this package enforces: `https:`, or `http:` on
+ * loopback. Everything the SDK talks to (`BrowserAdapter`'s `baseUrl`) and everything it
+ * hands the browser (`<UpdatePrompt>`'s download URL) is checked against it, so a plaintext
+ * origin and a `javascript:` update link are refused by the SAME rule rather than by two
+ * that can drift.
+ *
+ * A malformed URL is not secure — `new URL()` throwing is a refusal, not an exception to
+ * propagate.
+ */
+export function isSecureTransportUrl(raw: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (url.protocol === "https:") return true;
+  return (
+    url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname.toLowerCase())
+  );
+}
 
 /** One user-facing config row for a settings UI: `hidden` keys are excluded entirely, and
  *  `enforced` flags whether the row should render read-only (server value wins). */

@@ -26,6 +26,10 @@ export const CACHE_VERSION = 3;
  *
  * `blocked` and `lastSyncUnauthorized` remain unsigned deliberately: they only ever make the
  * gate STRICTER, so clearing them gains an attacker nothing that deleting the file would not.
+ * That is a claim about the VOCABULARY, and it is now CHECKED rather than assumed — the
+ * reason is returned by the gate as the `LicenseStatus`, so an out-of-vocabulary
+ * `{"reason":"ok"}` used to license the client with no signature anywhere (A1-01). Membership
+ * is asserted at the reload edge and again inside `licenseState`; see `isBlockReason`.
  *
  * v3 change: `configJws`/`etag` become per-service SLICES (`docs`/`etags`), because license
  * and config are now two independently-fetched, independently-ETagged documents; and

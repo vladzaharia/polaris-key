@@ -1,6 +1,6 @@
 ---
 title: "Browser sessions"
-description: "The session cookie, the fused session document and its build gate, key-to-session exchange, logout, and keyless requires-identity registration."
+description: "The session cookie, the fused session document and its build gate, the same-origin trust model it implies, key-to-session exchange, logout, and keyless requires-identity registration."
 sidebar:
   order: 4
 ---
@@ -74,6 +74,36 @@ same arithmetic the signed documents use.
 `secrets` is always the empty object shown above — never omitted, never populated. A browser
 session's whole point is to drive a page's UI off config and entitlements; secret material stays
 behind the SDK/keyring path native clients use.
+
+### The trust model: TLS plus a first-party cookie
+
+Because this route answers with plain JSON, **a browser client has nothing to verify** — and
+`@polaris-key/react`'s browser adapter accordingly performs **no signature verification**. That is
+a deliberate property of this route, not a missing check in the SDK: every other document surface
+in the suite hands out a compact JWS precisely because it will be cached, written to disk, or
+replayed offline, and none of those apply to a response a page reads once inside a live
+authenticated session.
+
+What authenticity there is rests on exactly two things:
+
+1. **TLS to this origin.** The browser adapter refuses a non-`https:` `baseUrl` at construction —
+   the same https-or-loopback rule the Node, Python and Swift SDKs apply to theirs — so the
+   response cannot arrive over a channel an attacker on the path can rewrite.
+2. **The first-party session cookie described above** — `HttpOnly`, `Secure`, `SameSite=Lax`,
+   scoped `Path=/<product>` and set by this origin. Possession of it is the whole credential.
+
+The `SameSite=Lax` attribute is what makes this **same-origin only**. A browser does not attach a
+Lax cookie to a cross-site subresource request, so a `fetch` with `credentials: "include"` issued
+by a page on some _other_ origin carries no session at all and gets
+`200 { "authenticated": false, "doc": null }` — the same answer as never having signed in. A
+third-party app therefore cannot drive its UI off this route by pointing an SDK at
+`key.plrs.im`; it gets an unauthenticated session rather than a quietly weaker one. Products that
+need an offline-verifiable, cross-origin credential use the signed license/config pair and a
+native SDK instead — see [License](/docs/services/license/).
+
+Note what this does _not_ weaken: both transports still run the identical
+`@polaris-key/client-core` gate. Mode-parity is a statement about the gate, not about how the
+document was authenticated.
 
 ### The build gate lives here too
 
@@ -161,4 +191,6 @@ never read what it produced.
   the seat-authorization step both key-to-session and activation share.
 - [The device principal](/docs/services/core/device-principal/) — `validateDeviceToken`,
   registration policies, and why a device is a Core concept rather than a licensing one.
+- [React](/docs/build/sdks/react/) — the browser adapter that consumes this route, and the
+  same-origin trust model above stated from the client's side.
 - [Public route table](/docs/reference/routes/) — every route with its owning service.

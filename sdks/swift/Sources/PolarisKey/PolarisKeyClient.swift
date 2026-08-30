@@ -373,9 +373,16 @@ public actor PolarisKeyClient {
         guard let seconds = refreshIntervalSeconds, seconds > 0, refreshTask == nil,
             !core.localOnly
         else { return }
+        // `UInt64(_:)` on a `Double` TRAPS rather than throwing, so an interval of `.infinity`
+        // — or merely anything past ~584 years, which is where seconds×1e9 leaves `UInt64` —
+        // would kill the process inside the timer instead of being ignored. This is a host-
+        // supplied number rather than a wire one, but a host reading it out of its own plist is
+        // still not a source we get to assume is in range. Clamped once, here, where it enters,
+        // and loop-invariant anyway.
+        let nanos = UInt64(exactly: (seconds * 1_000_000_000).rounded()) ?? UInt64.max
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: nanos)
                 if Task.isCancelled { return }
                 _ = await self?.sync()
             }

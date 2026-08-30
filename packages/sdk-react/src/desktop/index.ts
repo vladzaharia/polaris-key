@@ -9,6 +9,7 @@ export {
 } from "./desktopAdapter.js";
 export {
   BRIDGE_VERSION,
+  DESKTOP_BRIDGE_METHODS,
   resolveBridge,
   type PolarisBridge,
   type PolarisBridgeWindow,
@@ -16,4 +17,7 @@ export {
   type BridgeOidcBegin,
   type BridgeOidcPoll,
   type BridgeActivation,
+  type BridgeInvokeService,
+  type BridgeInvokeMethod,
+  type DesktopBridgeMethod,
 } from "./bridge.js";

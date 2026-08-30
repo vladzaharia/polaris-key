@@ -14,7 +14,11 @@ import type {
   LicenseDoc,
 } from "@polaris-key/protocol/license";
 import type { BlockedState } from "@polaris-key/client-core";
-import { BRIDGE_VERSION, resolveBridge } from "../src/desktop/bridge.js";
+import {
+  BRIDGE_VERSION,
+  DESKTOP_BRIDGE_METHODS,
+  resolveBridge,
+} from "../src/desktop/bridge.js";
 import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import {
@@ -213,6 +217,34 @@ describe("the invoke() escape hatch", () => {
     adapter.dispose();
   });
 
+  it("invoke stays OPTIONAL: every allow-listed verb reports unsupported when it is absent", async () => {
+    // Narrowing the SIGNATURE must not make the METHOD required — a host shipped before these
+    // verbs existed still satisfies the contract, and its users get a capability refusal.
+    const bridge = makeFakeBridge(
+      okBridgeState({ capabilities: services("license", "config", "update") }),
+    );
+    expect(bridge.invoke).toBeUndefined();
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(adapter);
+
+    await expect(adapter.listDevices()).rejects.toMatchObject({
+      code: "device-management-unsupported",
+    });
+    await expect(adapter.renameDevice("dev-9", "x")).rejects.toMatchObject({
+      code: "device-management-unsupported",
+    });
+    // Another device — deauthorizing THIS one is a local sign-out and never reaches invoke.
+    await expect(adapter.deauthorizeDevice("dev-9")).rejects.toMatchObject({
+      code: "device-management-unsupported",
+    });
+    // Update is enabled for the product, so the refusal is about the BRIDGE, not the service.
+    await expect(adapter.checkUpdate()).rejects.toMatchObject({
+      code: "service-disabled",
+      message: "This desktop bridge does not expose update checks.",
+    });
+    adapter.dispose();
+  });
+
   it("deauthorizing THIS device is a local sign-out, never an invoke", async () => {
     const bridge = makeFakeBridge(okBridgeState());
     const invoke = vi.fn(async () => undefined);
@@ -224,6 +256,68 @@ describe("the invoke() escape hatch", () => {
     expect(signOut).toHaveBeenCalledTimes(1);
     expect(invoke).not.toHaveBeenCalled();
     adapter.dispose();
+  });
+});
+
+describe("the invoke() allow-list (B1-01)", () => {
+  it("is exactly the four verbs the desktop adapter calls — no config, no license", () => {
+    expect(
+      DESKTOP_BRIDGE_METHODS.map((m) => `${m.service}.${m.method}`),
+    ).toEqual([
+      "devices.list",
+      "devices.rename",
+      "devices.deauthorize",
+      "update.check",
+    ]);
+    // The two verbs this finding is about: `config.getSecret` returns the PLAINTEXT managed
+    // secret, and `license.deactivate` wipes the install. Neither service is reachable at all.
+    const reachable = new Set<string>(
+      DESKTOP_BRIDGE_METHODS.map((m) => m.service),
+    );
+    expect([...reachable].sort()).toEqual(["devices", "update"]);
+    expect(reachable.has("config")).toBe(false);
+    expect(reachable.has("license")).toBe(false);
+  });
+
+  it("dispatches every allow-listed pair, and only those pairs, to the host", async () => {
+    const seen: string[] = [];
+    const bridge = makeFakeBridge(
+      okBridgeState({ capabilities: services("license", "config", "update") }),
+    );
+    bridge.invoke = (async (service: string, method: string) => {
+      seen.push(`${service}.${method}`);
+      return method === "list" ? [] : undefined;
+    }) as PolarisBridge["invoke"];
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(adapter);
+
+    await adapter.listDevices();
+    await adapter.renameDevice("dev-9", "Studio");
+    await adapter.deauthorizeDevice("dev-9");
+    await adapter.checkUpdate().catch(() => undefined);
+
+    expect(seen).toEqual(
+      DESKTOP_BRIDGE_METHODS.map((m) => `${m.service}.${m.method}`),
+    );
+    adapter.dispose();
+  });
+
+  it("refuses an off-list (service, method) pair at COMPILE time", async () => {
+    const bridge = makeFakeBridge(okBridgeState());
+    bridge.invoke = (async () => undefined) as PolarisBridge["invoke"];
+    const invoke = bridge.invoke as NonNullable<PolarisBridge["invoke"]>;
+
+    // The positive control: an allow-listed pair still type-checks and still runs.
+    await expect(invoke("devices", "list")).resolves.toBeUndefined();
+
+    // @ts-expect-error `config.getSecret` returns the plaintext managed secret — off-list.
+    await invoke("config", "getSecret", { key: "api.token" });
+    // @ts-expect-error `license.deactivate` wipes the install from the renderer — off-list.
+    await invoke("license", "deactivate");
+    // @ts-expect-error the PAIRING is enforced, not just the service: update has no `list`.
+    await invoke("update", "list");
+    // @ts-expect-error ...and devices has no `check`.
+    await invoke("devices", "check");
   });
 });
 

@@ -109,6 +109,30 @@ public struct BundleOptions: Sendable {
 /// Nothing is returned until every step has passed, which is the mechanical form of
 /// all-or-nothing: a caller physically cannot write half a bundle, because a failure at step 4
 /// hands back no documents at all.
+/// The bundle payload as it arrives: every claim optional and untyped, so that DECODING can
+/// only fail for the reasons §7 step 1 owns.
+///
+/// ── WHY THIS EXISTS (A1-07) ─────────────────────────────────────────────────────────────────
+///
+/// `inspectBundle` used to decode straight into `BundleDoc`, whose fields are all required and
+/// strongly typed. `Codable` therefore threw on a bundle missing `trust`, or carrying
+/// `issuedAt` as a string, or writing `docs.license: null` — and every one of those came back
+/// as `bundleJwsRejected`, step 1, while TS and Python attributed the identical bytes to step
+/// 2. The corpus pins WHICH STEP refuses precisely because the step is the operator's remedy,
+/// so a whole class of malformed bundles was being reported differently in one SDK.
+///
+/// Step 1 owns the signature, the `typ` and the 262 144-byte cap. Everything about the SHAPE of
+/// the claims is step 2's, and it can only be step 2's if decoding gets that far.
+private struct RawBundleDoc: Decodable {
+    let bundleId: JSONValue?
+    let aud: JSONValue?
+    let deviceId: JSONValue?
+    let issuedAt: JSONValue?
+    let expiresAt: JSONValue?
+    let docs: JSONValue?
+    let trust: JSONValue?
+}
+
 public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspection {
     // ── 1. The bundle JWS against PINNED keys only ───────────────────────────────────────
     // `requireTyp` closes the replay this artifact would otherwise open: the raised cap travels
@@ -117,7 +141,7 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     // caller — no host gets to choose how big a bundle may be.
     guard
         let bundle = JWSVerifier.verifyDecoding(
-            BundleDoc.self, jws, trust: options.pinned, typ: .bundle, requireTyp: true,
+            RawBundleDoc.self, jws, trust: options.pinned, typ: .bundle, requireTyp: true,
             maxPayloadBytes: MAX_BUNDLE_BYTES)
     else { return .refused(.bundleJwsRejected) }
 
@@ -126,18 +150,44 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     // the reload profile. The two windows mean different things — `expiresAt` here is the
     // operator's import deadline, while the inner documents' long bound is `graceUntil`.
     let skew = options.clockSkewSeconds
-    guard !bundle.bundleId.isEmpty else { return .refused(.bundleClaimsRejected) }
-    guard bundle.aud == options.product else { return .refused(.bundleClaimsRejected) }
-    guard bundle.deviceId == options.deviceId else { return .refused(.bundleClaimsRejected) }
-    guard bundle.issuedAt <= saturatingAdd(options.now, skew)
+    guard let bundleId = bundle.bundleId?.stringValue, !bundleId.isEmpty
     else { return .refused(.bundleClaimsRejected) }
-    guard options.now <= saturatingAdd(bundle.expiresAt, skew)
+    guard let trustJws = bundle.trust?.stringValue
+    else { return .refused(.bundleClaimsRejected) }
+    guard bundle.aud?.stringValue == options.product
+    else { return .refused(.bundleClaimsRejected) }
+    guard bundle.deviceId?.stringValue == options.deviceId
+    else { return .refused(.bundleClaimsRejected) }
+    // The same one timestamp rule the document envelope uses (§3, A1-04). `intValue` refuses a
+    // float, a string and anything past `Int.max`; `isTimestamp` refuses the range.
+    guard let issuedAt = bundle.issuedAt?.intValue, isTimestamp(issuedAt),
+        let expiresAt = bundle.expiresAt?.intValue, isTimestamp(expiresAt)
+    else { return .refused(.bundleClaimsRejected) }
+    guard issuedAt <= saturatingAdd(options.now, skew)
+    else { return .refused(.bundleClaimsRejected) }
+    guard options.now <= saturatingAdd(expiresAt, skew)
+    else { return .refused(.bundleClaimsRejected) }
+
+    guard let docsMap = bundle.docs?.objectValue else { return .refused(.bundleClaimsRejected) }
+    // A slice that is PRESENT must be a compact JWS. `docs.license: null` is not "absent": no
+    // mint emits it (the Worker omits the key), so the only producer of one is something that
+    // got the shape wrong or is probing for a lenient reader. `BundleDocs`'s `String?` used to
+    // read `null` as absent and import the bundle config-only, while TS refused it — the same
+    // bytes, two outcomes (A2-04). Refusing adds no accepted artifacts.
+    // `.some(.none)` = the key is absent; `.some(.some(s))` = a well-formed slice; `.none` =
+    // present and not a string, which is the refusal.
+    func slice(_ key: String) -> String?? {
+        guard let raw = docsMap[key] else { return .some(nil) }
+        guard let s = raw.stringValue else { return nil }
+        return .some(s)
+    }
+    guard let licenseJws = slice("license"), let configJws = slice("config")
     else { return .refused(.bundleClaimsRejected) }
     // A bundle carrying NEITHER document is vacuous (§7): it can grant nothing and configure
     // nothing, so importing it would write an `importedBundle` marker with no content behind
     // it — an install that looks provisioned and is not. Refused here, at the claims step, for
     // the same reason the addressing failures are.
-    guard bundle.docs.license != nil || bundle.docs.config != nil
+    guard licenseJws != nil || configJws != nil
     else { return .refused(.bundleClaimsRejected) }
 
     // ── 3. The inner trust manifest, against the PINS, on the RELOAD profile ─────────────
@@ -146,7 +196,7 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     // the manifest still applies — the signature, the `aud`/`iss`/`typ` binding, and above all
     // the pinned-substitution rule, which is what stops a bundle from shipping its own roots.
     let manifest = verifyTrustManifest(
-        bundle.trust,
+        trustJws,
         options: VerifyTrustManifestOptions(
             pinned: options.pinned, expectedAud: options.product, now: options.now,
             checkFreshness: false))
@@ -166,13 +216,13 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     }
 
     var license: VerifiedBundleDoc<LicenseDoc>?
-    if let licenseJws = bundle.docs.license {
+    if let licenseJws {
         guard let doc = verifyLicenseDoc(licenseJws, options: reload())
         else { return .refused(.innerDocRejected) }
         license = VerifiedBundleDoc(jws: licenseJws, doc: doc)
     }
     var config: VerifiedBundleDoc<ConfigDoc>?
-    if let configJws = bundle.docs.config {
+    if let configJws {
         guard let doc = verifyConfigDoc(configJws, options: reload())
         else { return .refused(.innerDocRejected) }
         config = VerifiedBundleDoc(jws: configJws, doc: doc)
@@ -184,7 +234,7 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     // bundle-activated install has no credential and never talks to the server.
     return .ok(
         VerifiedBundle(
-            bundleId: bundle.bundleId, trustJws: bundle.trust, effectiveTrust: effectiveTrust,
+            bundleId: bundleId, trustJws: trustJws, effectiveTrust: effectiveTrust,
             license: license, config: config))
 }
 

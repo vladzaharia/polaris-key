@@ -147,8 +147,7 @@ const bridge: PolarisBridge = {
   pollSignIn: (flowId) => /* poll it */,
   submitKey: (key) => /* client.license.activate(key) */,
   signOut: () => client.license.deactivate(),
-  // The versioned escape hatch: any sub-client verb, without growing this interface for it.
-  invoke: (service, method, args) => /* dispatch to client[service][method](args) */,
+  invoke: dispatch, // see below — an explicit switch, NEVER a reflective lookup
   on: (event, cb) => /* subscribe to host-side state changes */,
 };
 // expose via contextBridge as window.polarisKey
@@ -157,6 +156,96 @@ const bridge: PolarisBridge = {
 `BridgeState` additionally carries `capabilities` (the product's `services` map) and `config`
 (the config document's entries — v3 split them off the license document). Omit `invoke` and the
 device/update capabilities simply report as unsupported.
+
+### Wiring `invoke` — the allow-list
+
+`invoke` is the versioned escape hatch that keeps every new service capability from becoming a
+breaking change to a contract shipped inside somebody else's Electron app. It accepts **exactly
+four `(service, method)` pairs**, exported as a runtime value so your host can validate against
+the same list the renderer is typed against:
+
+```ts
+import { DESKTOP_BRIDGE_METHODS } from "@polaris-key/react/desktop";
+// [ { service: "devices", method: "list" },
+//   { service: "devices", method: "rename" },
+//   { service: "devices", method: "deauthorize" },
+//   { service: "update",  method: "check" } ]
+```
+
+Dispatch them with an **explicit switch**. Every branch names one verb, so the set of things the
+renderer can reach is the set of things you wrote down:
+
+```ts
+const dispatch: PolarisBridge["invoke"] = async (service, method, args) => {
+  switch (`${service}.${method}`) {
+    case "devices.list":
+      return client.devices.list();
+    case "devices.rename": {
+      const { deviceId, label } = args as {
+        deviceId: string;
+        label: string | null;
+      };
+      return client.devices.rename(deviceId, label);
+    }
+    case "devices.deauthorize": {
+      const { deviceId } = args as { deviceId: string };
+      return client.devices.deauthorize(deviceId);
+    }
+    case "update.check":
+      return client.update.check(args as { channel?: string });
+    default:
+      // Fail closed. A renderer asking for anything else is not a version skew to paper over.
+      throw new Error(`polaris bridge: refused ${service}.${method}`);
+  }
+};
+```
+
+**Never implement `invoke` reflectively.** A `client[service][method](args)` lookup hands
+**every script running in the renderer** — your own code, a third-party bundle, anything that
+lands there through an XSS — the privileged process's entire sub-client surface. That includes
+`client.config.getSecret(key)`, which returns the **plaintext managed secret** that both the
+desktop and browser adapters deliberately return `null` for, and `client.license.deactivate()`,
+which wipes the install. The TypeScript signature refuses an off-list pair at compile time, but
+**types are not present in the renderer at runtime** — the `switch` and its `default` are what
+actually enforce the boundary.
+
+The same reasoning is why `getSecret()` returns `null` on the desktop adapter: if a renderer
+genuinely needs one secret, expose a purpose-built bridge method for that one key rather than
+widening `invoke`.
+
+## Browser transport: the trust model
+
+The browser adapter performs **no signature verification**, and that is a property of the
+server rather than a gap in this package. `GET /<product>/identity/session` deliberately answers
+with the fused session document as **plain JSON inside the response body**, never as a compact
+JWS: the Worker mints it for a _page_, not for an SDK, and a page has no cache or disk boundary
+for a signature to survive across. There is nothing here to verify.
+
+Authenticity therefore rests on exactly two things:
+
+1. **TLS to the control-plane origin.** `baseUrl` must be `https:` — or `http:` on
+   `localhost` / `127.0.0.1` / `::1` for local development. Anything else throws
+   `InsecureBaseUrlError` (a `PolarisError` with `code: "insecure-base-url"`) **at construction**,
+   the same https-or-loopback rule the Node, Python and Swift SDKs enforce.
+2. **A first-party session cookie set by that origin** — `HttpOnly; Secure; SameSite=Lax`,
+   scoped `Path=/<product>`.
+
+`SameSite=Lax` is the consequential part: a browser does not attach a Lax cookie to a
+**cross-site** subresource request, so `fetch(..., { credentials: "include" })` from a page on
+some other origin carries no session at all. **The browser adapter is same-origin only** — it
+works from a page served by the control plane itself, and a third-party origin pointing
+`baseUrl` at `key.plrs.im` gets an unauthenticated session rather than a silently weaker one.
+
+If you need an offline-verifiable, cross-origin credential, that is what the signed
+license/config document pair and `@polaris-key/node` (or the desktop bridge above) are for. Both
+transports still run the identical `@polaris-key/client-core` gate — mode-parity is about the gate,
+not about how the documents were authenticated.
+
+One rule follows the same predicate outward: `<UpdatePrompt>`'s default action refuses to
+`window.open` an update URL that is not `https:` (or `http:` on loopback), because `latest.url`
+comes off an update feed and `javascript:` there is script execution in your window. A refused
+URL is not opened and the component says so in place of navigating. Supply `onUpdate` to take
+the action — and the policy — over yourself.
 
 ## Theming
 

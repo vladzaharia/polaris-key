@@ -18,7 +18,8 @@
 //     configured `expectServices` belief; it never assumes all-true.
 //   * `config` — the CONFIG document's entries. v3 split the fused document, so grants arrive
 //     on `doc` (a `LicenseDoc`) and settings arrive here.
-//   * `getSyncState()` and a versioned `invoke(service, method, args)` escape hatch.
+//   * `getSyncState()` and a versioned, ALLOW-LISTED `invoke(service, method, args)` escape
+//     hatch. See `DESKTOP_BRIDGE_METHODS` below for why it is a closed set and not `string`.
 //
 // ── THE @polaris-key/node MIRROR ───────────────────────────────────────────────────────────────────
 //
@@ -93,6 +94,41 @@ export type BridgeActivation =
 export const BRIDGE_VERSION = 2;
 
 /**
+ * The ALLOW-LIST for `invoke` — every `(service, method)` pair `DesktopAdapter` actually calls,
+ * and therefore the only ones a host is ever asked to dispatch.
+ *
+ * It is a closed set because `invoke` crosses the contextBridge into the RENDERER. Typed as two
+ * bare `string`s it is a reflective escape hatch, and a host that implements it as
+ * `client[service][method](args)` has handed every script running in the renderer — including
+ * anything that reaches it through an XSS or a third-party bundle — the privileged process's
+ * whole sub-client surface. That includes `config.getSecret` (which returns the PLAINTEXT
+ * managed secret both adapters deliberately answer `null` for) and `license.deactivate`.
+ *
+ * Exported as a runtime value so a host can validate against exactly what the renderer is
+ * allowed to ask for, and so the accepted types below are DERIVED from that same list rather
+ * than restated beside it.
+ */
+export const DESKTOP_BRIDGE_METHODS = [
+  { service: "devices", method: "list" },
+  { service: "devices", method: "rename" },
+  { service: "devices", method: "deauthorize" },
+  { service: "update", method: "check" },
+] as const;
+
+/** One allow-listed pair, as a discriminated union derived from `DESKTOP_BRIDGE_METHODS`. */
+export type DesktopBridgeMethod = (typeof DESKTOP_BRIDGE_METHODS)[number];
+
+/** The sub-clients `invoke` may address. Note what is NOT here: `config` and `license`. */
+export type BridgeInvokeService = DesktopBridgeMethod["service"];
+
+/** The verbs `invoke` may address ON a given service — the pairing is what is enforced, so
+ *  `invoke("update", "list")` is as much an error as `invoke("config", "getSecret")`. */
+export type BridgeInvokeMethod<S extends BridgeInvokeService> = Extract<
+  DesktopBridgeMethod,
+  { service: S }
+>["method"];
+
+/**
  * The contract the native side implements and the renderer calls. Every method is async
  * (it crosses the IPC boundary). `on("stateChanged", …)` lets the privileged process push
  * state updates up to the renderer.
@@ -114,16 +150,25 @@ export interface PolarisBridge {
   /** Deauthorize + wipe local state. */
   signOut(): Promise<void>;
   /**
-   * The versioned escape hatch: call any sub-client verb the privileged process exposes
-   * without growing this interface for it. `service` is the sub-client name as `@polaris-key/node`
-   * spells it (`"devices"`, `"update"`, `"release"`, `"config"`, `"license"`), `method` the
-   * verb, `args` a single serialisable bag.
+   * The versioned escape hatch: call one of the ALLOW-LISTED sub-client verbs the privileged
+   * process exposes, without growing this interface once per verb. `service` and `method` are
+   * spelled as `@polaris-key/node` spells them, and the accepted pairs are exactly
+   * `DESKTOP_BRIDGE_METHODS`; `args` is a single serialisable bag.
    *
    * It exists because the alternative — a bridge method per verb — makes every new service
    * capability a breaking change to a contract shipped inside somebody else's Electron app.
-   * A host that omits `invoke` simply has those capabilities reported as unsupported.
+   * It stays OPTIONAL for the same reason: a host that omits `invoke` simply has the device
+   * and update capabilities reported as unsupported instead of failing to satisfy the contract.
+   *
+   * Dispatch it with an explicit `switch` over those pairs, never reflectively — see this
+   * package's README. A reflective `client[service][method](args)` implementation reaches
+   * `config.getSecret` and `license.deactivate` from the renderer.
    */
-  invoke?(service: string, method: string, args?: unknown): Promise<unknown>;
+  invoke?<S extends BridgeInvokeService>(
+    service: S,
+    method: BridgeInvokeMethod<S>,
+    args?: unknown,
+  ): Promise<unknown>;
   /** Optionally let the renderer fetch the product config schema/catalog. */
   fetchSchema?(): Promise<JSONValue>;
   /** Subscribe to pushed state changes; returns an unsubscribe. */

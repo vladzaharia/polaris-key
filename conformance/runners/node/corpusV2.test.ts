@@ -65,6 +65,9 @@ interface JwsCase {
   trust: TrustSet;
   typ?: TypV3;
   maxPayloadBytes?: number;
+  /** Drive this vector through a call site that names NO `typ`. `typ` above still records
+   *  what the ARTIFACT is; this says what the CALLER asked for (A1-05). */
+  callSiteOmitsTyp?: boolean;
   expect: { verify: "ok" | "fail"; kid?: string; doc?: unknown };
 }
 
@@ -156,6 +159,13 @@ interface MatrixRow {
     graceUntil?: number;
     lastSyncUnauthorized?: boolean;
     lastVerifiedAt?: number;
+    /**
+     * The unsigned hint supplied DIRECTLY, replacing whatever the build gate would derive.
+     * A poisoned cache record is exactly a hint no build gate produced, so the vocabulary
+     * rows (A1-01) cannot be expressed through `gate` at all. `reason` is typed `string`,
+     * not `BlockReason`, because the whole point of those rows is a value outside the union.
+     */
+    blocked?: { reason: string; allowedRange?: AllowedRange };
   };
   expect: {
     status: string;
@@ -189,8 +199,10 @@ describe(`conformance corpus v${corpus.corpusVersion} — JWS (§1–§2)`, () =
     it(`${c.id} → verify:${c.expect.verify}`, async () => {
       const result = await verifyJws(c.jws, c.trust, {
         // §2 — every vector names its `typ`; a verifier that did not would be asking for
-        // no domain separation at all, which no shipping call site does.
-        typ: c.typ,
+        // no domain separation at all, which no shipping call site does. The one exception
+        // is `callSiteOmitsTyp`, which exists to prove that asking for §1's raised cap
+        // WITHOUT the type it is granted to is refused (A1-05).
+        typ: c.callSiteOmitsTyp === true ? undefined : c.typ,
         // §1 — the raised cap travels with the vector, so a runner cannot accidentally
         // grant bundle sizes to ordinary documents.
         maxPayloadBytes: c.maxPayloadBytes,
@@ -395,7 +407,11 @@ function matrixDoc(l: MatrixRow["license"]): LicenseDoc | null {
 describe(`gate-matrix v${matrix.gateMatrixVersion} (§5)`, () => {
   for (const row of matrix.rows) {
     it(row.name, () => {
-      const blocked = checkBuildGate(row.gate);
+      // A fixture-supplied hint WINS over the derived one: it models the unsigned value
+      // read back off disk, which is what `blocked` is at every real call site.
+      const blocked = (row.license.blocked ?? checkBuildGate(row.gate)) as
+        | BlockedState
+        | undefined;
       const state = licenseState({
         licenseServiceEnabled: row.license.licenseServiceEnabled,
         activation: row.license.activation,
@@ -410,7 +426,9 @@ describe(`gate-matrix v${matrix.gateMatrixVersion} (§5)`, () => {
       // `reason` describes the DERIVED build-gate hint, which on the unactivated+blocked row
       // is deliberately not the status — that row is the whole point of v3's ordering.
       if (row.expect.reason !== undefined) {
-        expect(blocked?.reason, `${row.name} reason`).toBe(row.expect.reason);
+        expect(checkBuildGate(row.gate)?.reason, `${row.name} reason`).toBe(
+          row.expect.reason,
+        );
       }
       expect(state.allowedRange, `${row.name} allowedRange`).toEqual(
         row.expect.allowedRange,

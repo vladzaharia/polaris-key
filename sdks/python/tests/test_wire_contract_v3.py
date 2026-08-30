@@ -266,13 +266,25 @@ def test_r2_04_the_raised_bundle_cap_is_raise_only() -> None:
     payload = {"blob": "x" * (MAX_DOC_BYTES + 1024)}
     jws = sign_jws(payload, PRIVATE_PEM, KID, TYP_BUNDLE)
     # Default cap: refused.
-    assert verify_jws(jws, TRUST, require_typ=True) is None
-    # Raised: accepted.
+    assert verify_jws(jws, TRUST, typ=TYP_BUNDLE, require_typ=True) is None
+    # Raised, WITH the type it is granted to: accepted.
     assert (
-        verify_jws(jws, TRUST, require_typ=True, max_payload_bytes=MAX_BUNDLE_BYTES)
+        verify_jws(
+            jws,
+            TRUST,
+            typ=TYP_BUNDLE,
+            require_typ=True,
+            max_payload_bytes=MAX_BUNDLE_BYTES,
+        )
         is not None
     )
-    # A downward "cap" is ignored — a small document still verifies.
+    # The raise is COUPLED to the type (A1-05): asking for 256 KiB without naming the
+    # bundle type is refused outright, not silently downgraded. Swift always refused this
+    # combination; this SDK and TS used to allow it, so identical bytes were accepted here
+    # and rejected there.
+    assert verify_jws(jws, TRUST, require_typ=True, max_payload_bytes=MAX_BUNDLE_BYTES) is None
+    # A downward "cap" is ignored — a small document still verifies, and because it is not
+    # a raise it needs no type.
     small = sign_jws({"a": 1}, PRIVATE_PEM, KID, TYP_LICENSE)
     assert verify_jws(small, TRUST, require_typ=True, max_payload_bytes=8) is not None
 

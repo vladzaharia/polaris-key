@@ -45,6 +45,8 @@ import {
 } from "../core/services.js";
 import {
   resolveBridge,
+  type BridgeInvokeMethod,
+  type BridgeInvokeService,
   type BridgeState,
   type PolarisBridge,
 } from "./bridge.js";
@@ -178,19 +180,23 @@ export class DesktopAdapter implements PolarisAdapter {
     return err;
   }
 
-  /** Call a sub-client verb through the bridge's escape hatch, mapping an absent `invoke` to
-   *  the honest capability refusal rather than a mysterious TypeError. */
-  private async invoke<T>(
-    service: string,
-    method: string,
+  /** Call one of the ALLOW-LISTED sub-client verbs through the bridge's escape hatch, mapping
+   *  an absent `invoke` to the honest capability refusal rather than a mysterious TypeError.
+   *
+   *  The `(service, method)` pair is closed (`DESKTOP_BRIDGE_METHODS`), so this method is the
+   *  only shape the renderer can ask a host to dispatch. It returns `unknown` deliberately: the
+   *  bridge answer is untrusted IPC data, and every caller has to say what it expects. */
+  private async invoke<S extends BridgeInvokeService>(
+    service: S,
+    method: BridgeInvokeMethod<S>,
     args?: unknown,
     unsupported = new PolarisError(
       "device-management-unsupported",
       "This desktop bridge does not expose that capability.",
     ),
-  ): Promise<T> {
+  ): Promise<unknown> {
     if (!this.bridge.invoke) throw unsupported;
-    return (await this.bridge.invoke(service, method, args)) as T;
+    return await this.bridge.invoke(service, method, args);
   }
 
   async refresh(): Promise<void> {
@@ -331,7 +337,7 @@ export class DesktopAdapter implements PolarisAdapter {
   async listDevices(): Promise<DeviceInfo[]> {
     this.setBusy("license", true);
     try {
-      const rows = await this.invoke<DeviceInfo[]>("devices", "list");
+      const rows = (await this.invoke("devices", "list")) as DeviceInfo[];
       this.setBusy("license", false);
       return Array.isArray(rows) ? rows : [];
     } catch (e) {
@@ -380,7 +386,7 @@ export class DesktopAdapter implements PolarisAdapter {
     }
     this.setBusy("update", true);
     try {
-      const result = await this.invoke<VersionCheck>(
+      const result = (await this.invoke(
         "update",
         "check",
         opts,
@@ -388,7 +394,7 @@ export class DesktopAdapter implements PolarisAdapter {
           "service-disabled",
           "This desktop bridge does not expose update checks.",
         ),
-      );
+      )) as VersionCheck;
       this.patch((prev) => ({
         busy: withBusy(prev.busy, "update", false),
         error: withError(prev.error, "update", null),

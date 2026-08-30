@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   browserAdapter,
   BrowserAdapter,
+  InsecureBaseUrlError,
   splitSessionDoc,
 } from "../src/browser/browserAdapter.js";
+import { PolarisError, isSecureTransportUrl } from "../src/core/index.js";
 import {
   discoveryBody,
   fuse,
@@ -167,6 +169,91 @@ describe("BrowserAdapter — construction + first load", () => {
       code: "device-management-unsupported",
     });
     adapter.dispose();
+  });
+});
+
+describe("BrowserAdapter — baseUrl scheme enforcement (B1-02)", () => {
+  const build = (baseUrl: string): ReturnType<typeof browserAdapter> =>
+    browserAdapter({
+      productSlug: "acme",
+      baseUrl,
+      fetchImpl: makeFakeFetch(null),
+      now: () => NOW_SEC,
+    });
+
+  it("refuses a plaintext base URL at CONSTRUCTION, not on the first request", () => {
+    // The session cookie is `Secure`, so a plaintext control plane is either a cleartext
+    // credential or (in a real browser) no credential at all. Neither is worth discovering
+    // asynchronously — the same rule `@polaris-key/node`'s normalizeBaseUrl enforces.
+    let caught: unknown;
+    try {
+      build("http://evil.example");
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(InsecureBaseUrlError);
+    // It is a PolarisError too, so `e instanceof PolarisError` / `.code` still work.
+    expect(caught).toBeInstanceOf(PolarisError);
+    expect((caught as PolarisError).code).toBe("insecure-base-url");
+    expect((caught as Error).message).toContain("must be https:");
+  });
+
+  it("refuses every other non-https scheme, and anything that is not a URL at all", () => {
+    for (const bad of [
+      "http://evil.example",
+      "http://key.plrs.im.evil.example",
+      "http://localhost.evil.example",
+      "ftp://key.plrs.im",
+      "javascript:fetch('/acme/identity/session')",
+      "data:text/html,<script>1</script>",
+      "//key.plrs.im",
+      "key.plrs.im",
+      "",
+    ]) {
+      expect(() => build(bad), bad).toThrow(InsecureBaseUrlError);
+    }
+  });
+
+  it("accepts https:, and http: on loopback for wrangler dev", async () => {
+    for (const good of [
+      "https://key.plrs.im",
+      "https://example.test",
+      "http://localhost:8787",
+      "http://127.0.0.1:8787",
+      "http://[::1]:8787",
+    ]) {
+      const adapter = build(good);
+      await ready(adapter);
+      expect(adapter.mode, good).toBe("browser");
+      adapter.dispose();
+    }
+  });
+
+  it("still strips the trailing slash off an accepted loopback base", async () => {
+    const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      baseUrl: "http://localhost:8787//",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      now: () => NOW_SEC,
+    });
+    await ready(adapter);
+    const urls = fetchImpl.mock.calls.map((c) => String(c[0]));
+    expect(urls).toContain("http://localhost:8787/acme/identity/session");
+    adapter.dispose();
+  });
+
+  it("shares ONE https-or-loopback rule with <UpdatePrompt> (B1-09)", () => {
+    // `isSecureTransportUrl` is the single predicate both surfaces call, so the base URL a
+    // session rides over and the download URL a user is sent to cannot drift apart.
+    expect(isSecureTransportUrl("https://dl.example/app.dmg")).toBe(true);
+    expect(isSecureTransportUrl("http://localhost:8787/app.dmg")).toBe(true);
+    expect(isSecureTransportUrl("http://127.0.0.1/app.dmg")).toBe(true);
+    expect(isSecureTransportUrl("http://[::1]/app.dmg")).toBe(true);
+    expect(isSecureTransportUrl("http://evil.example/app.dmg")).toBe(false);
+    expect(isSecureTransportUrl("javascript:alert(1)")).toBe(false);
+    expect(isSecureTransportUrl("file:///etc/passwd")).toBe(false);
+    expect(isSecureTransportUrl("not a url")).toBe(false);
   });
 });
 

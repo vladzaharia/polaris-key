@@ -30,7 +30,7 @@ import { verifyJws, type TrustSet } from "@polaris-key/jws";
 import { MAX_BUNDLE_BYTES, type BundleDoc } from "@polaris-key/protocol/core";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
-import { CLOCK_SKEW_SECONDS } from "./claims.js";
+import { CLOCK_SKEW_SECONDS, isTimestamp } from "./claims.js";
 import { verifyConfigDoc, verifyLicenseDoc } from "./verify.js";
 import { mergeTrust, verifyTrustManifest } from "./trust.js";
 
@@ -141,10 +141,8 @@ export async function inspectBundle(
   if (bundle.aud !== opts.product) return refuse("bundle-claims-rejected");
   if (bundle.deviceId !== opts.deviceId)
     return refuse("bundle-claims-rejected");
-  if (
-    typeof bundle.issuedAt !== "number" ||
-    typeof bundle.expiresAt !== "number"
-  ) {
+  // The same one timestamp rule the document envelope uses (§3, A1-04).
+  if (!isTimestamp(bundle.issuedAt) || !isTimestamp(bundle.expiresAt)) {
     return refuse("bundle-claims-rejected");
   }
   if (bundle.issuedAt > opts.now + CLOCK_SKEW_SECONDS)
@@ -153,11 +151,18 @@ export async function inspectBundle(
     return refuse("bundle-claims-rejected");
 
   if (!isPlainObject(bundle.docs)) return refuse("bundle-claims-rejected");
-  const licenseJws = bundle.docs.license;
-  const configJws = bundle.docs.config;
-  if (licenseJws !== undefined && typeof licenseJws !== "string")
+  // A slice that is PRESENT must be a compact JWS. `docs.license: null` is not "absent":
+  // no mint emits it (the Worker omits the key), so the only producer of one is something
+  // that got the shape wrong or is probing for a lenient reader. Python and Swift used to
+  // read `null` as absent and import the bundle config-only, while TS refused it — the same
+  // bytes, two outcomes (A2-04). Refusing is the reading that adds no accepted artifacts,
+  // and it matches how the license document treats a present-but-wrong `profile`.
+  const slices = bundle.docs;
+  const licenseJws = slices.license;
+  const configJws = slices.config;
+  if ("license" in slices && typeof licenseJws !== "string")
     return refuse("bundle-claims-rejected");
-  if (configJws !== undefined && typeof configJws !== "string")
+  if ("config" in slices && typeof configJws !== "string")
     return refuse("bundle-claims-rejected");
   // A bundle carrying NEITHER document is vacuous (§7): it can grant nothing and configure
   // nothing, so importing it would write an `importedBundle` marker with no content behind

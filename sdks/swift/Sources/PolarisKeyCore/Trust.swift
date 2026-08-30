@@ -84,6 +84,10 @@ public func verifyTrustManifest(
     // genuine wire version, so an unknown one fails closed.
     guard SUPPORTED_TRUST_SCHEMA_VERSIONS.contains(doc.schemaVersion) else { return rejected }
     guard doc.aud == options.expectedAud, doc.iss == options.expectedIss else { return rejected }
+    // The same one timestamp rule the document envelope uses (§3, A1-04): the manifest's
+    // `issuedAt` feeds the monotonic floor, so an out-of-range value here is a floor three
+    // languages would compute differently.
+    guard isTimestamp(doc.issuedAt), isTimestamp(doc.expiresAt) else { return rejected }
     // Anti-replay: a manifest older than the one already applied is not an update.
     if let last = options.lastTrustIssuedAt, doc.issuedAt <= last { return rejected }
     if options.checkFreshness {

@@ -164,6 +164,11 @@ const MAX_GRACE_SECONDS = 31536000;
 /** §1 — the bundle payload cap, the one artifact that is not 65 536. */
 const MAX_BUNDLE_BYTES = 262144;
 
+/** §3's shared timestamp ceiling: 23:59:59 on 9999-12-31 UTC. Restated here rather than
+ *  imported — a golden corpus that shares a constant with the implementation it checks cannot
+ *  catch a change to that constant. */
+const MAX_TIMESTAMP_SECONDS = 253402300799;
+
 /** A `pkey-license+jws` payload (§2.1): the shared envelope + grants. `entitlements` is the
  *  sole carrier of grant data (D-20) — tier, channels and the version window ride here. */
 function licenseDoc(
@@ -285,6 +290,14 @@ interface JwsCaseV2 {
   /** §1 — present ONLY on the `pkey-bundle+jws` vectors, which is the one artifact allowed
    *  past 65 536 bytes. Runners must not pass it anywhere else. */
   maxPayloadBytes?: number;
+  /**
+   * Drive this vector through a call site that names NO `typ` — the one thing every shipping
+   * verifier does the opposite of. `typ` above still records what the ARTIFACT is; this says
+   * what the CALLER asked for. It exists for A1-05: §1's raised payload cap is granted to a
+   * type, so a runner has to be able to ask for the cap without the type to prove that the
+   * combination is refused.
+   */
+  callSiteOmitsTyp?: boolean;
   /** `doc` is omitted where the payload is a quarter-megabyte of padding: the vector pins
    *  the size boundary, and the id already says which side of it. */
   expect: VerifyExpect;
@@ -776,6 +789,21 @@ async function buildJwsCases(): Promise<JwsCaseV2[]> {
     expect: { verify: "ok", kid: PIN_KID },
   });
   cases.push({
+    id: "bundle-payload-raised-cap-without-typ",
+    description:
+      "The at-cap bundle payload again, with the SAME raised cap but NO `typ` demanded. §1 grants the 262 144-byte exception to `pkey-bundle+jws` alone, and the cap and the type are one grant: a quarter-megabyte payload accepted with no type demanded could be re-presented at an ordinary document call site with the raised cap already in force. Swift always refused this combination; TS and Python left the two decoupled and accepted it (A1-05). Refused outright rather than silently downgraded to 64 KiB — a caller asking for the bundle cap without naming the bundle type has made a mistake worth surfacing.",
+    jws: await signAs(
+      docOfExactBytes(MAX_BUNDLE_BYTES, bundleCapBase),
+      PIN_KID,
+      "pkey-bundle+jws",
+    ),
+    trust: TRUST,
+    typ: "pkey-bundle+jws",
+    callSiteOmitsTyp: true,
+    maxPayloadBytes: MAX_BUNDLE_BYTES,
+    expect: { verify: "fail" },
+  });
+  cases.push({
     id: "bundle-payload-over-cap",
     description:
       "The same bundle one decoded byte past the cap (262 145) with the same raised cap — rejected. The raised cap is a CAP, not a licence to be unbounded.",
@@ -970,6 +998,49 @@ async function envelopeCases(
     },
     {
       ...common,
+      id: `${prefix}-issuedAt-non-integer`,
+      description:
+        "`issuedAt` with a fractional part. §3's timestamp rule is ONE rule in every implementation — an integer in [0, MAX_TIMESTAMP_SECONDS] — because `typeof x === \"number\"` is not the same test in three languages: TS accepted this, Swift's `Codable` `Int` refused it, and Python's `int` check refused it too (A1-04). Neither truncated nor tolerated: refused.",
+      jws: await sign({ issuedAt: V3_ISSUED + 0.5 }),
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: `${prefix}-issuedAt-past-timestamp-ceiling`,
+      description:
+        "`issuedAt` one second past `MAX_TIMESTAMP_SECONDS` (23:59:59 on 9999-12-31 UTC). Evaluated on the RELOAD profile so freshness is off and the RANGE rule is the only thing that can refuse it — which is exactly the half TS and Python had no bound for at all (A1-04).",
+      jws: await sign({
+        issuedAt: MAX_TIMESTAMP_SECONDS + 1,
+        expiresAt: MAX_TIMESTAMP_SECONDS + 1,
+        graceUntil: MAX_TIMESTAMP_SECONDS + 1,
+      }),
+      checkFreshness: false,
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: `${prefix}-issuedAt-negative`,
+      description:
+        "A negative `issuedAt`. Reload profile again, so only the range rule applies. There is no epoch-seconds claim before 1970 in this protocol, and a signed negative timestamp is a floor that would read as `0` in one implementation and as itself in another.",
+      jws: await sign({ issuedAt: -1, expiresAt: 0, graceUntil: 0 }),
+      checkFreshness: false,
+      expect: { accept: false },
+    },
+    {
+      ...common,
+      id: `${prefix}-timestamps-at-ceiling-accepted`,
+      description:
+        "The ceiling is INCLUSIVE: `graceUntil` exactly at `MAX_TIMESTAMP_SECONDS`, with `issuedAt` a year below it so the 365-day grace bound is satisfied too. Without this pair an implementation that rejected every large timestamp would pass the two above.",
+      jws: await sign({
+        issuedAt: MAX_TIMESTAMP_SECONDS - MAX_GRACE_SECONDS,
+        expiresAt: MAX_TIMESTAMP_SECONDS - MAX_GRACE_SECONDS + 3600,
+        graceUntil: MAX_TIMESTAMP_SECONDS,
+      }),
+      checkFreshness: false,
+      expect: { accept: true },
+    },
+    {
+      ...common,
       id: `${prefix}-device-mismatch`,
       description:
         "A document bound to another device — a document lifted from a colleague's machine (§3).",
@@ -1117,6 +1188,116 @@ async function buildTrustCasesV2(): Promise<TrustCaseV2[]> {
         trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
         issuedAt: V3_ISSUED,
       },
+    },
+    {
+      id: "trust-key-missing-alg-is-skipped-not-fatal",
+      description:
+        "One entry OMITS `alg` entirely. §1 says an entry that is not the Ed25519 triple is SKIPPED, not fatal — a future-alg key must never brick a current verifier — and an entry that omits the field is no more comprehensible than one naming an algorithm we lack, so it takes the same path. Swift used to reject the WHOLE manifest here, because `Codable` threw on the missing field, while TS and Python skipped just that entry: the same signed bytes, two trust sets (A1-06).",
+      pinned,
+      before: {},
+      manifestJws: await manifest([
+        keyEntry(PIN_KID, pub(PIN_KID), "active"),
+        {
+          kid: ALT_KID,
+          kty: "OKP",
+          crv: "Ed25519",
+          publicKey: pub(ALT_KID),
+          status: "active",
+        },
+      ]),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN_KID]: pub(PIN_KID) },
+        issuedAt: V3_ISSUED,
+      },
+    },
+    {
+      id: "trust-key-wrong-typed-alg-is-skipped-not-fatal",
+      description:
+        'The same rule for a MISTYPED `alg` (a number, not a string). Optionality alone would not cover this — a strict decoder still throws on `alg: 7` — so the entry is read leniently and skipped, exactly as `alg: "RS256"` is.',
+      pinned,
+      before: {},
+      manifestJws: await manifest([
+        keyEntry(PIN_KID, pub(PIN_KID), "active"),
+        {
+          kid: ALT_KID,
+          alg: 7,
+          kty: "OKP",
+          crv: "Ed25519",
+          publicKey: pub(ALT_KID),
+          status: "active",
+        },
+      ]),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN_KID]: pub(PIN_KID) },
+        issuedAt: V3_ISSUED,
+      },
+    },
+    {
+      id: "trust-key-missing-kid-is-fatal",
+      description:
+        "The OTHER half of A1-06, and the reason the two cases have to be pinned together: an entry with no `kid` is not a forward-compatible key, it is a malformed manifest — the entry has no identity, so the pinned-substitution rule cannot even be evaluated against it. The WHOLE manifest is rejected and the previous trust set is kept. `publicKey` is the same case.",
+      pinned,
+      before: { [ALT_KID]: pub(ALT_KID) },
+      manifestJws: await manifest([
+        keyEntry(PIN_KID, pub(PIN_KID), "active"),
+        {
+          alg: "EdDSA",
+          kty: "OKP",
+          crv: "Ed25519",
+          publicKey: pub(ALT_KID),
+          status: "active",
+        },
+      ]),
+      now,
+      expect: {
+        accepted: false,
+        trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+      },
+    },
+    {
+      id: "trust-kid-proto-is-stored-not-dropped",
+      description:
+        "A published kid of `__proto__`. Python's dict and Swift's Dictionary store it; TS's object literal wrote the prototype instead and the entry silently vanished, so one implementation held a smaller trust set than the other two for identical signed bytes (A1-08). The discovered set is built on a null-prototype map, so the key is a key. Nothing is granted by this — the kid still has to be named in a header before it verifies anything, and the pins still spread last.",
+      pinned,
+      before: {},
+      manifestJws: await manifest([
+        keyEntry(PIN_KID, pub(PIN_KID), "active"),
+        keyEntry("__proto__", pub(ALT_KID), "active"),
+      ]),
+      now,
+      expect: {
+        accepted: true,
+        // A COMPUTED key, not the literal `__proto__:` form. The literal sets the object's
+        // prototype and creates no own property at all — which is the very bug this vector
+        // exists to pin, and it would have silently emitted a fixture missing the key.
+        trust: {
+          [PIN_KID]: pub(PIN_KID),
+          ["__proto__"]: pub(ALT_KID),
+        },
+        issuedAt: V3_ISSUED,
+      },
+    },
+    {
+      id: "trust-issuedAt-past-timestamp-ceiling",
+      description:
+        "The manifest's own `issuedAt` one second past `MAX_TIMESTAMP_SECONDS`. The manifest's `issuedAt` is what makes the §4.2 floor bite, so an out-of-range value here is a floor three languages would compute differently — the same one timestamp rule the document envelope uses (A1-04).",
+      pinned,
+      before: {},
+      manifestJws: await signAs(
+        trustManifestV3({
+          issuedAt: MAX_TIMESTAMP_SECONDS + 1,
+          keys: [keyEntry(PIN_KID, pub(PIN_KID), "active")],
+        }),
+        PIN_KID,
+        "pkey-trust+jws",
+      ),
+      now,
+      checkFreshness: false,
+      expect: { accepted: false, trust: { [PIN_KID]: pub(PIN_KID) } },
     },
     {
       id: "trust-prune-on-absence",
@@ -1599,6 +1780,32 @@ async function buildBundleCases(): Promise<BundleCase[]> {
     },
     {
       ...common,
+      id: "bundle-missing-trust-claim",
+      description:
+        "A bundle with NO `trust` field at all. §7 numbers step 1 as the signature, the `typ` and the 262 144-byte cap, and step 2 as the CLAIMS — so a missing claim is step 2, and the corpus pins the step because the step is the operator's remedy. Swift decoded straight into a strongly-typed `BundleDoc`, so `Codable` threw and reported step 1 for identical bytes TS and Python reported as step 2 (A1-07).",
+      bundleJws: await sign(bundle({ trust: undefined })),
+      expect: { imports: false, reason: "bundle-claims-rejected" },
+    },
+    {
+      ...common,
+      id: "bundle-issuedAt-wrong-type",
+      description:
+        "`issuedAt` as a STRING. The same step-attribution rule as above — a claim of the wrong shape is a claims failure, not a JWS failure — and the same one timestamp rule §3 applies to documents (A1-04, A1-07).",
+      bundleJws: await sign(bundle({ issuedAt: String(V3_ISSUED) })),
+      expect: { imports: false, reason: "bundle-claims-rejected" },
+    },
+    {
+      ...common,
+      id: "bundle-docs-license-explicit-null",
+      description:
+        "`docs.license: null` alongside a perfectly good config document. Present-and-null is NOT absent: no mint emits the key at all when there is no licence, so the only producer of an explicit null is something that got the shape wrong or is probing for a lenient reader. Python and Swift used to read it as absent and import config-only while TS refused — the same bytes, two outcomes (A2-04). Refusing adds no accepted artifacts.",
+      bundleJws: await sign(
+        bundle({ docs: { license: null, config: innerConfig } }),
+      ),
+      expect: { imports: false, reason: "bundle-claims-rejected" },
+    },
+    {
+      ...common,
       id: "bundle-typ-missing",
       description:
         "A correctly-signed bundle with no `typ` in its header. §7.1 demands `pkey-bundle+jws`; without the type check the same bytes could be replayed at a document call site with the raised 262 144 cap in force.",
@@ -2035,7 +2242,7 @@ function buildGateMatrixV2(): unknown {
   return {
     gateMatrixVersion: 2,
     description:
-      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. Rows 1-15 are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here. The remaining rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on that last row is deliberately NOT the status. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.',
+      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. Rows 1-15 are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here. The remaining rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on that row is deliberately NOT the status. The final five rows supply `license.blocked` DIRECTLY instead of deriving it from the build gate — a poisoned cache record is exactly a hint no build gate produced — and pin the unsigned hint\'s VOCABULARY: an out-of-vocabulary `blocked.reason` coerces to the stricter `version-too-old` and never to a usable status (A1-01), an in-vocabulary one is still honoured verbatim, and neither outranks the `licenseServiceEnabled` and `activation` guards that precede it. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.',
     rows: [
       ...CARRIED_MATRIX_ROWS,
       {
@@ -2109,6 +2316,90 @@ function buildGateMatrixV2(): unknown {
           ok: false,
           reason: "version-too-new",
         },
+      },
+      // ── The unsigned hint's VOCABULARY (A1-01) ─────────────────────────────────────────
+      // §4.1 keeps `blocked` unsigned on the argument that it can only ever make the gate
+      // STRICTER. That is a claim about the vocabulary, and it was not checked anywhere: the
+      // gate returned `blocked.reason` verbatim AS the `LicenseStatus`, and `isUsable` says
+      // yes to `ok`/`grace`/`not-applicable`. So writing `{"v":3,"blocked":{"reason":"ok"}}`
+      // into the cache file licensed the client with no document and no signature anywhere.
+      //
+      // These rows supply the hint DIRECTLY rather than deriving it from the build gate,
+      // because a poisoned cache record is exactly a hint no build gate produced.
+      {
+        name: "version-too-old — an out-of-vocabulary blocked.reason coerces to the STRICTER reason",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: true,
+          activation: "token",
+          ...MATRIX_DOC,
+          now: 1500,
+          blocked: { reason: "ok" },
+        },
+        expect: { status: "version-too-old", ok: false },
+      },
+      {
+        name: "version-too-old — `not-applicable` as a blocked.reason is coerced too, allowedRange kept",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: true,
+          activation: "token",
+          ...MATRIX_DOC,
+          now: 1500,
+          blocked: {
+            reason: "not-applicable",
+            allowedRange: { min: "1.0.0", max: "3.0.0" },
+          },
+        },
+        // The RANGE is display furniture and survives; only the reason is coerced. A gate
+        // that dropped the range would still be safe, and one that honoured the reason
+        // would not, which is why the assertion is on both.
+        expect: {
+          status: "version-too-old",
+          ok: false,
+          allowedRange: { min: "1.0.0", max: "3.0.0" },
+        },
+      },
+      {
+        name: "channel-not-entitled — an IN-vocabulary blocked.reason is still honoured verbatim",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: true,
+          activation: "token",
+          ...MATRIX_DOC,
+          now: 1500,
+          blocked: { reason: "channel-not-entitled" },
+        },
+        // Without this row an implementation that coerced EVERY reason to `version-too-old`
+        // would pass the two above while destroying the hint's only useful property.
+        expect: { status: "channel-not-entitled", ok: false },
+      },
+      {
+        name: "needs-activation — a poisoned blocked.reason does not outrank the activation guard",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: true,
+          activation: null,
+          now: 1500,
+          blocked: { reason: "ok" },
+        },
+        // The documented ordering (row 21) holds for a poisoned hint too: coercion happens
+        // where the hint is READ, not by reordering the machine around it.
+        expect: { status: "needs-activation", ok: false },
+      },
+      {
+        name: "not-applicable — a poisoned blocked.reason cannot be used to gate an unlicensed product either",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: false,
+          activation: null,
+          now: 1500,
+          blocked: { reason: "version-too-new" },
+        },
+        // The mirror of the row above, with a LEGITIMATE reason: `licenseServiceEnabled:
+        // false` precedes `blocked`, so a product that runs no licence service stays usable
+        // rather than being blocked by a hint that cannot apply to it (D-08).
+        expect: { status: "not-applicable", ok: true },
       },
     ],
   };

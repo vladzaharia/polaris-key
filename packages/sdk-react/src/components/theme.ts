@@ -75,6 +75,9 @@ export interface PolarisThemeCopy {
   updateActionLabel: string;
   updateDismissLabel: string;
   updateUpToDateLabel: string;
+  /** Shown instead of opening a download the SDK refuses to send a user to — an update URL
+   *  that is neither `https:` nor `http:` on loopback. */
+  updateUnsafeUrlBody: string;
   // ── DeviceManager (./license) ────────────────────────────────────────────
   devicesTitle: string;
   devicesSubtitle: string;
@@ -162,6 +165,8 @@ export const defaultTheme: PolarisTheme = {
     updateActionLabel: "Get the update",
     updateDismissLabel: "Not now",
     updateUpToDateLabel: "You're up to date.",
+    updateUnsafeUrlBody:
+      "This update link isn't a secure download address, so it wasn't opened. Get the update from your vendor directly.",
     devicesTitle: "Your devices",
     devicesSubtitle: "Devices signed in with this license.",
     devicesEmpty: "No devices are registered to this license yet.",

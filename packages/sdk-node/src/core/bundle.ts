@@ -61,11 +61,19 @@ export async function importBundle(
   jws: string,
   now: number = nowSec(),
 ): Promise<ImportBundleResult> {
+  // §7.2 checks the bundle's own import deadline on NETWORK-path freshness, and every other
+  // freshness decision in this client runs at `max(systemClock, floor)` — the §4.2 monotonic
+  // floor, which exists so a rolled-back clock buys nothing. This one call was passing the RAW
+  // wall clock, so winding the machine back inside a lapsed 30-day import window made an
+  // expired bundle importable again (B1-05). The floor only ever rises, and only from content
+  // whose signature has been checked, so using it here can extend no window — it can only
+  // refuse one that a tampered clock was reopening.
+  const at = ctx.now(now);
   const result = await inspectBundle(jws, {
     pinned: ctx.pinnedTrust,
     product: ctx.product,
     deviceId: ctx.deviceId,
-    now,
+    now: at,
   });
   if (!result.ok) {
     throw new PolarisError(result.reason, MESSAGES[result.reason]);
@@ -81,7 +89,7 @@ export async function importBundle(
     },
     // No ETags: these documents did not come from a conditional GET, and inventing validators
     // for them would make the next online sync send an `If-None-Match` the server never issued.
-    importedBundle: { bundleId: bundle.bundleId, importedAt: now },
+    importedBundle: { bundleId: bundle.bundleId, importedAt: at },
   };
   await cache.replace(record);
   // Re-run the normal load path over what we just wrote rather than trusting the in-memory

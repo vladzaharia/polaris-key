@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Optional
 
 from .jws import TrustSet, verify_jws
-from .models import CLOCK_SKEW_SECONDS, ISSUER, TYP_TRUST
+from .models import CLOCK_SKEW_SECONDS, ISSUER, TYP_TRUST, is_timestamp
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .context import CoreContext
@@ -137,7 +137,10 @@ def verify_trust_manifest(
         return _REJECTED
     issued_at = _int_or_none(doc.get("issuedAt"))
     expires_at = _int_or_none(doc.get("expiresAt"))
-    if issued_at is None or expires_at is None:
+    # The same one timestamp rule the document envelope uses (§3, A1-04): an integer in
+    # ``[0, MAX_TIMESTAMP_SECONDS]``. The manifest's ``issuedAt`` feeds the monotonic
+    # floor, so an out-of-range value here is a floor three languages would differ on.
+    if not is_timestamp(issued_at) or not is_timestamp(expires_at):
         return _REJECTED
     if last_trust_issued_at is not None and issued_at <= last_trust_issued_at:
         return _REJECTED

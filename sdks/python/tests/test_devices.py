@@ -9,14 +9,18 @@ credential, so no roster to ask for.
 
 from __future__ import annotations
 
+import io
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from unittest import mock
 
 import httpx
 import pytest
 
 from polaris_key.core.errors import PolarisError
+from polaris_key.devices import deviceid as deviceid_mod
 from polaris_key.devices.client import DeviceManagementUnsupportedError
+from polaris_key.devices.deviceid import derive_device_id, device_id_from_raw
 
 from helpers import (
     PRODUCT,
@@ -43,6 +47,68 @@ ROSTER = [
     },
     {"id": "dev-other", "status": "ok", "current": False, "label": None},
 ]
+
+
+ETC_MACHINE_ID = "/etc/machine-id"
+DBUS_MACHINE_ID = "/var/lib/dbus/machine-id"
+
+
+def _only_these_files(present: Dict[str, str]):
+    """A ``builtins.open`` that serves ``present`` and raises ``FileNotFoundError`` for
+    everything else — the machine-id ladder without a Linux host."""
+
+    def _open(path, *_args, **_kwargs):
+        if path in present:
+            return io.StringIO(present[path])
+        raise FileNotFoundError(path)
+
+    return _open
+
+
+# ── the device-id source ladder (§6) ────────────────────────────────────────────────
+def test_the_linux_machine_id_ladder_is_etc_then_dbus(monkeypatch) -> None:
+    """systemd's ``/etc/machine-id`` first, then the D-Bus file for hosts that never had
+    systemd. Each source is tried INDEPENDENTLY, which is the whole point: an ABSENT
+    ``/etc/machine-id`` must not abandon the ladder.
+
+    This is the canonical order — Swift has no Linux branch at all
+    (``DeviceID.rawDeviceId()`` returns nil off macOS/iOS), and the conformance corpus pins
+    only the FORMULA (``fingerprint.json``'s ``deviceIds``), not the source. Node's
+    ``LINUX_MACHINE_ID_PATHS`` mirrors this list.
+    """
+    monkeypatch.setattr(deviceid_mod.sys, "platform", "linux")
+
+    with mock.patch(
+        "builtins.open",
+        _only_these_files({ETC_MACHINE_ID: "systemd-id\n", DBUS_MACHINE_ID: "dbus-id\n"}),
+    ):
+        assert deviceid_mod.raw_os_device_id() == "systemd-id"
+
+    # /etc absent => the dbus rung, and the derived id is STABLE across calls. A ladder that
+    # gave up here would fall through to `uuid4()` and mint a FRESH device id per call,
+    # burning a seat on every run.
+    with mock.patch(
+        "builtins.open", _only_these_files({DBUS_MACHINE_ID: "dbus-only-host\n"})
+    ):
+        assert deviceid_mod.raw_os_device_id() == "dbus-only-host"
+        first = derive_device_id(PRODUCT)
+        assert derive_device_id(PRODUCT) == first
+        assert first == device_id_from_raw(PRODUCT, "dbus-only-host")
+
+    # /etc present but EMPTY — a deliberate first-boot marker on some images.
+    with mock.patch(
+        "builtins.open",
+        _only_these_files({ETC_MACHINE_ID: "\n", DBUS_MACHINE_ID: "dbus-id\n"}),
+    ):
+        assert deviceid_mod.raw_os_device_id() == "dbus-id"
+
+    # Both absent => the last-resort path: the caller's fallback, else a random UUID.
+    with mock.patch("builtins.open", _only_these_files({})):
+        assert deviceid_mod.raw_os_device_id() is None
+        assert derive_device_id(PRODUCT, "host-supplied-seed") == device_id_from_raw(
+            PRODUCT, "host-supplied-seed"
+        )
+        assert derive_device_id(PRODUCT) != derive_device_id(PRODUCT)
 
 
 # ── registration (§6) ───────────────────────────────────────────────────────────────

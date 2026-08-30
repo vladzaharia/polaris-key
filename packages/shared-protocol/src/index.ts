@@ -43,6 +43,12 @@ export type {
   PolarisErrorBody,
 } from "./core.js";
 
+export {
+  BLOCK_REASONS,
+  STRICTEST_BLOCK_REASON,
+  coerceBlockReason,
+  isBlockReason,
+} from "./license.js";
 export type {
   DocProfile,
   LicenseDoc,

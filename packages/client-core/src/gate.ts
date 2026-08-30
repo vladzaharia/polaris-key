@@ -14,6 +14,7 @@
 //
 // Everything below those two guards is the v2 state machine, unchanged.
 
+import { coerceBlockReason } from "@polaris-key/protocol/license";
 import type {
   ActivationSource,
   AllowedRange,
@@ -23,7 +24,8 @@ import type {
 } from "@polaris-key/protocol/license";
 
 /** The unsigned 403 hint recorded from the last `/license/document` fetch. Unsigned is safe
- *  because it can only ever make the gate STRICTER (§4.1). */
+ *  because it can only ever make the gate STRICTER (§4.1) — see `licenseState` for why that
+ *  claim needs a runtime check to actually hold. */
 export interface BlockedState {
   reason: BlockReason;
   allowedRange?: AllowedRange;
@@ -78,8 +80,15 @@ export function licenseState(input: GateInput): LicenseState {
   // §5 — neither a token nor an imported bundle: nothing has been granted yet.
   if (input.activation === null) return { status: "needs-activation" };
   if (input.blocked) {
+    // §4.1's "the unsigned hints can only ever make the gate STRICTER" is a claim about the
+    // VOCABULARY, and `BlockReason` is a TypeScript type — erased at runtime. Without this
+    // coercion the reason string is returned verbatim as the status, so an unsigned
+    // `{"reason":"ok"}` on disk (or in a 403 body) walked straight through `isUsable` and
+    // licensed the client with no signature anywhere (A1-01). The edges validate too; this
+    // is here so the invariant holds at the DECISION point rather than only where the value
+    // was last handled.
     return {
-      status: input.blocked.reason,
+      status: coerceBlockReason(input.blocked.reason),
       allowedRange: input.blocked.allowedRange,
     };
   }

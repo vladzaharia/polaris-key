@@ -39,11 +39,49 @@ export type LicenseStatus =
   | "channel-not-entitled"
   | "not-applicable";
 
+/**
+ * The 403 block reasons `GET /<product>/license/document` may return — as a RUNTIME value,
+ * not only a type.
+ *
+ * `BlockReason` used to be a bare `type`, which TypeScript erases at compile time. The
+ * reason string is then returned verbatim BY the gate AS the `LicenseStatus`, and
+ * `isUsable` answers true for `ok` / `grace` / `not-applicable`. So the erased type was the
+ * only thing standing between an unsigned, attacker-writable hint and the gate: writing
+ * `{"v":3,"blocked":{"reason":"ok"}}` into the cache file made the client licensed with no
+ * signature anywhere (A1-01). The invariant the code asserts in four places — that the
+ * unsigned hints can only ever make the gate STRICTER — is only true if membership is
+ * checked at runtime, so it is checked here, at the ingress, at the reload edge, and inside
+ * the gate itself.
+ */
+export const BLOCK_REASONS = [
+  "version-too-old",
+  "version-too-new",
+  "channel-not-entitled",
+] as const;
+
 /** A 403 block reason returned by `GET /<product>/license/document`. */
-export type BlockReason =
-  | "version-too-old"
-  | "version-too-new"
-  | "channel-not-entitled";
+export type BlockReason = (typeof BLOCK_REASONS)[number];
+
+/**
+ * The reason to fall back to when a value is not a `BlockReason`. `version-too-old` is the
+ * STRICTEST of the three: every one of them is a non-usable status, and this one names the
+ * remedy (upgrade) that is always available to the user. Never default to a permissive
+ * status — the whole point is that an unrecognised hint cannot loosen anything.
+ */
+export const STRICTEST_BLOCK_REASON: BlockReason = "version-too-old";
+
+/** Runtime membership test for `BlockReason`. */
+export function isBlockReason(value: unknown): value is BlockReason {
+  return (
+    typeof value === "string" &&
+    (BLOCK_REASONS as readonly string[]).includes(value)
+  );
+}
+
+/** A `BlockReason`, or the strictest one when `value` is out of vocabulary. */
+export function coerceBlockReason(value: unknown): BlockReason {
+  return isBlockReason(value) ? value : STRICTEST_BLOCK_REASON;
+}
 
 /** The version window a blocked client may run within. */
 export interface AllowedRange {

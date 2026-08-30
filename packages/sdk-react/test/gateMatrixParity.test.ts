@@ -20,7 +20,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { isUsable, licenseState } from "@polaris-key/client-core";
+import {
+  isUsable,
+  licenseState,
+  type BlockedState,
+} from "@polaris-key/client-core";
 import type {
   ActivationSource,
   AllowedRange,
@@ -39,6 +43,10 @@ interface LicenseInputs {
   graceUntil?: number;
   lastSyncUnauthorized?: boolean;
   lastVerifiedAt?: number;
+  /** The unsigned hint supplied DIRECTLY, replacing whatever the build gate would derive.
+   *  `reason` is `string`, not `BlockReason`: the A1-01 rows carry a value outside the union
+   *  on purpose. */
+  blocked?: { reason: string; allowedRange?: AllowedRange };
 }
 interface ExpectDecision {
   status: string;
@@ -109,10 +117,21 @@ describe(`gate-matrix v${matrix.gateMatrixVersion} (React)`, () => {
     it(row.name, () => {
       // A build-gated row carries a 403-style block reason; the React transport surfaces it
       // as `blocked`. Non-build-gated rows have no reason → no block.
+      //
+      // A row may instead supply `license.blocked` DIRECTLY, which WINS: that models the
+      // unsigned hint read straight off the wire (or off disk), which is what `blocked` is at
+      // every real call site, and it is the only way to express a reason OUTSIDE the
+      // `BlockReason` union — the A1-01 rows. `reason` is cast, not typed, precisely because
+      // the value under test is not a member.
       const blocked =
-        row.expect.reason !== undefined
-          ? { reason: row.expect.reason, allowedRange: row.expect.allowedRange }
-          : null;
+        row.license.blocked !== undefined
+          ? (row.license.blocked as BlockedState)
+          : row.expect.reason !== undefined
+            ? {
+                reason: row.expect.reason,
+                allowedRange: row.expect.allowedRange,
+              }
+            : null;
       const input = {
         licenseServiceEnabled: row.license.licenseServiceEnabled,
         activation: row.license.activation,

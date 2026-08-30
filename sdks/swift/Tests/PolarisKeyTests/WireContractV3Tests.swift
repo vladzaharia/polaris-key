@@ -359,37 +359,53 @@ final class WireContractV3Tests: XCTestCase {
     /// signed doc carrying `Int.max` would crash the host application inside the claim
     /// arithmetic — a remote DoS reachable by anyone holding a signing key.
     ///
-    /// Every one of these is refused on the NETWORK path. On the RELOAD path the far-future
-    /// guard is deliberately absent — `checkFreshness: false` turns off both halves of the
-    /// freshness window, exactly as `@polaris-key/client-core` does, because a cached document is
-    /// expected to be outside it. The bound that still applies there is
-    /// `CoreContext.verifyCached`'s explicit `issuedAt <= effectiveNow + MAX_GRACE_SECONDS`,
-    /// which is what stops one artifact from dragging the clock floor decades forward; see
-    /// `TrustAndCacheTests.testCachedDocIsReVerifiedOnLoad`.
+    /// Every one of these is refused on BOTH paths. The last assertion is INVERTED from what it
+    /// used to be, deliberately: it asserted that a fully saturated document was ACCEPTED on the
+    /// reload path (having merely survived the arithmetic), with the far-future bound left to
+    /// `CoreContext.verifyCached`'s local `issuedAt <= effectiveNow + MAX_GRACE_SECONDS`. Both
+    /// halves of that arrangement are gone:
+    ///
+    ///   * A1-04 gives all three cores ONE timestamp rule — an integer in
+    ///     `[0, MAX_TIMESTAMP_SECONDS]` — enforced in the envelope, on both profiles. `Int.max`
+    ///     and `Int.min` are outside it, so the document is not a document anywhere now.
+    ///   * B1-06 removed `verifyCached`'s local rule, which was a tolerance §3 does not state
+    ///     and which decided against the SYSTEM clock — the one thing §4.2 exists to avoid.
+    ///
+    /// The property the test was written for is unchanged and still asserted: nothing here
+    /// TRAPS. `saturatingAdd` is why, and a regression would kill the runner rather than fail.
     func testExtremeTimestampsAreRejectedWithoutTrapping() {
         let t = issued
         let saturated = Fixtures.license(
             issuedAt: Int.max, expiresAt: Int.max, graceUntil: Int.max)
-        let graceBeyondCeiling = [
+        let extreme = [
+            saturated,
             Fixtures.license(issuedAt: Int.min, expiresAt: Int.min, graceUntil: Int.max),
             Fixtures.license(issuedAt: t, expiresAt: Int.max, graceUntil: Int.max),
+            // One second past the shared ceiling — the boundary the three cores agree on.
+            Fixtures.license(
+                issuedAt: MAX_TIMESTAMP_SECONDS + 1, expiresAt: MAX_TIMESTAMP_SECONDS + 1,
+                graceUntil: MAX_TIMESTAMP_SECONDS + 1),
         ]
 
-        // The network path refuses all three, and — the actual point — none of them trap.
-        for doc in [saturated] + graceBeyondCeiling {
+        // Refused on the network path, and — the original point — none of them trap.
+        for doc in extreme {
             XCTAssertNil(verifyLicenseDoc(signer.sign(doc), options: options(now: t)))
         }
-        // On the reload path the grace ceiling still bites, because it is a claim invariant
-        // rather than a freshness one.
-        for doc in graceBeyondCeiling {
+        // And refused on the RELOAD path too: the range rule is a claim invariant, not a
+        // freshness one, so turning freshness off does not turn it off.
+        for doc in extreme {
             XCTAssertNil(
                 verifyLicenseDoc(
                     signer.sign(doc), options: options(now: t, checkFreshness: false)))
         }
-        // …and the fully saturated document survives the arithmetic rather than trapping on it.
+        // The boundary itself is still a document — the ceiling is inclusive.
+        let atCeiling = Fixtures.license(
+            issuedAt: MAX_TIMESTAMP_SECONDS - MAX_GRACE_SECONDS,
+            expiresAt: MAX_TIMESTAMP_SECONDS - MAX_GRACE_SECONDS + DOC_EXPIRY_SECONDS,
+            graceUntil: MAX_TIMESTAMP_SECONDS)
         XCTAssertNotNil(
             verifyLicenseDoc(
-                signer.sign(saturated), options: options(now: t, checkFreshness: false)))
+                signer.sign(atCeiling), options: options(now: t, checkFreshness: false)))
     }
 
     /// The trust set is consulted for the key, never the document — and an unknown or pruned kid

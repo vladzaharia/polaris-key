@@ -45,6 +45,16 @@ final class GateMatrixTests: XCTestCase {
         let now: Int
         let lastSyncUnauthorized: Bool?
         let lastVerifiedAt: Int?
+        /// The unsigned hint supplied DIRECTLY, replacing whatever the build gate would
+        /// derive. A poisoned cache record is exactly a hint no build gate produced, so the
+        /// vocabulary rows (A1-01) cannot be expressed through `gate` at all.
+        let blocked: RawBlocked?
+    }
+    /// `reason` is a raw `String`, not a `BlockReason` — the whole point of those rows is a
+    /// value OUTSIDE the union, which a closed enum cannot even hold.
+    private struct RawBlocked: Decodable {
+        let reason: String
+        let allowedRange: AllowedRange?
     }
     private struct ExpectDecision: Decodable {
         let status: String
@@ -119,7 +129,18 @@ final class GateMatrixTests: XCTestCase {
 
     func testGateMatrixParityAcrossEveryRow() throws {
         for row in try loadMatrix().rows {
-            let blocked = checkBuildGate(row.gate)
+            let derived = checkBuildGate(row.gate)
+            // Swift is the one implementation where the A1-01 value is UNREPRESENTABLE:
+            // `BlockReason` is a closed `String` enum, so an out-of-vocabulary reason cannot
+            // be constructed at all and `init(rawValue:)` answers nil. Falling back to the
+            // strictest reason here is the same coercion TS and Python now apply inside the
+            // gate — which is exactly what the rows assert the three of us agree on.
+            let blocked =
+                row.license.blocked.map { raw in
+                    BlockInfo(
+                        reason: BlockReason(rawValue: raw.reason) ?? .versionTooOld,
+                        allowedRange: raw.allowedRange)
+                } ?? derived
             let state = licenseState(
                 GateInput(
                     licenseServiceEnabled: row.license.licenseServiceEnabled,
@@ -133,9 +154,11 @@ final class GateMatrixTests: XCTestCase {
             XCTAssertEqual(state.status.rawValue, row.expect.status, row.name)
             XCTAssertEqual(isUsable(state), row.expect.ok, "\(row.name) usable")
             if let reason = row.expect.reason {
-                // `expect.reason` names the build-gate hint that was DERIVED, which on the last
-                // row is deliberately NOT the status — that is the ordering v3 changed.
-                XCTAssertEqual(blocked?.reason, reason, "\(row.name) reason")
+                // `expect.reason` names the build-gate hint that was DERIVED, which on the
+                // activation-precedes-blocked row is deliberately NOT the status — that is the
+                // ordering v3 changed. Asserted against `derived`, never against a
+                // fixture-supplied override.
+                XCTAssertEqual(derived?.reason, reason, "\(row.name) reason")
             }
             XCTAssertEqual(
                 state.allowedRange, row.expect.allowedRange, "\(row.name) allowedRange")

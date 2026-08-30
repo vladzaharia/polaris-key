@@ -34,6 +34,7 @@ import {
   type CacheRecordV3,
 } from "@polaris-key/client-core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
+import { isBlockReason } from "@polaris-key/protocol/license";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { CoreContext } from "./context.js";
 import type { TrustManager } from "./trust.js";
@@ -143,10 +144,33 @@ export class CacheManager {
     this.loaded.importedBundle = this.record.importedBundle;
     this.loaded.lastSyncUnauthorized =
       this.record.lastSyncUnauthorized === true;
-    this.loaded.blocked = this.record.blocked ?? null;
+    this.loaded.blocked = this.readBlocked();
     this.loaded.lastVerifiedAt =
       newestIssuedAt > 0 ? newestIssuedAt * 1000 : null;
     return this.loaded;
+  }
+
+  /**
+   * The `blocked` hint off the record, or null when the file's copy is not one.
+   *
+   * §4.1 keeps `blocked` unsigned on the argument that it can only ever make the gate
+   * STRICTER. That argument holds only for the three reasons in `BLOCK_REASONS`: the gate
+   * returns the reason AS the `LicenseStatus`, and `isUsable` says yes to `ok`, `grace` and
+   * `not-applicable`, so `{"v":3,"blocked":{"reason":"ok"}}` written into the cache file used
+   * to license the client outright — no document, no signature, and evaluated before the
+   * `!doc` check so it did not even need one (A1-01).
+   *
+   * A non-member is DROPPED rather than coerced. Coercion is right at the network ingress,
+   * where a real 403 whose body we could not parse still means blocked; here the record is
+   * simply not one this client wrote, and the honest reading of an unparseable hint is that
+   * there is no hint — which is the weaker, not the stronger, of the two states it could
+   * name, so nothing is gained by inventing one.
+   */
+  private readBlocked(): BlockedState | null {
+    const raw = this.record?.blocked;
+    if (!raw || typeof raw !== "object") return null;
+    if (!isBlockReason((raw as { reason?: unknown }).reason)) return null;
+    return raw;
   }
 
   /** In-memory only: a slice that failed verification is absent for the rest of this session

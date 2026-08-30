@@ -32,14 +32,14 @@ never re-serialised, so cross-language verification is byte-stable.
 
 WHAT v3 ADDED
 
-* ``require_typ``: a header carrying NO ``typ`` is REJECTED (§2). Every shipping call
-  site in this SDK sets it; the option exists so the rule is stated once rather than
-  duplicated at each verifier.
+* ``require_typ``: a header carrying NO ``typ`` is REJECTED (§2), and it DEFAULTS TO TRUE.
+  The option exists so the rule is stated once rather than duplicated at each verifier.
 * ``max_payload_bytes``: a RAISE-ONLY cap for ``pkey-bundle+jws`` alone (262 144 bytes,
   §1). It can only ever raise — the effective cap is ``max(MAX_DOC_BYTES, requested)`` —
   so a value below the frozen 64 KiB is inert rather than quietly tightening one call
-  site out of step with the contract. The HEADER cap is untouched: moving a blob into
-  the header is R2-04, and no ``typ`` widens it.
+  site out of step with the contract. It is also COUPLED to a required ``typ``: asking
+  for the raise without naming the type is refused. The HEADER cap is untouched: moving a
+  blob into the header is R2-04, and no ``typ`` widens it.
 """
 
 from __future__ import annotations
@@ -139,7 +139,7 @@ def verify_jws(
     trusted_keys: TrustSet,
     *,
     typ: Optional[str] = None,
-    require_typ: bool = False,
+    require_typ: bool = True,
     max_payload_bytes: Optional[int] = None,
 ) -> Optional[VerifiedJws]:
     """Verify a compact JWS against a trust set, in the §1 order.
@@ -147,6 +147,13 @@ def verify_jws(
     Returns the decoded ``kid`` + payload, or ``None`` on ANY failure (malformed,
     oversized, duplicate JSON keys, out-of-alphabet base64url, unknown ``kid``, wrong
     ``alg``, wrong or missing ``typ``, bad signature). Never raises.
+
+    ``require_typ`` defaults to **True** (B1-08/B3-09). It used to default to ``False``,
+    so this public entry point accepted a typeless header that the JS and Swift verifiers
+    reject — the one artifact that is replayable at whichever call site an attacker
+    prefers, admitted by exactly one of the five implementations. Every shipping call site
+    in this SDK already passed ``require_typ=True``; only the default was wrong, which is
+    the worst place for it to be wrong.
     """
     if not isinstance(jws, str):
         return None
@@ -157,6 +164,14 @@ def verify_jws(
 
     # 2-3. Bound the ENCODED segments before decoding anything (R2-04).
     max_payload = _payload_cap_for(max_payload_bytes)
+    # §1's raised cap is an exception granted to ONE ``typ``, and the cap and the type
+    # travel together: a 256 KiB payload accepted with no ``typ`` demanded could be
+    # re-presented at an ordinary document call site with the raised cap already in force.
+    # Swift has always refused that combination; TS and Python left the two decoupled, so
+    # the same call was accepted here and rejected there (A1-05). Refused outright rather
+    # than silently downgraded to 64 KiB.
+    if max_payload > MAX_DOC_BYTES and (typ is None or not require_typ):
+        return None
     if len(enc_header) > MAX_HEADER_B64:
         return None
     if len(enc_payload) > b64_cap(max_payload):

@@ -211,16 +211,35 @@ public struct BundleDocs: Sendable, Codable, Equatable {
 
 // ── Trust manifest (§2.3) ───────────────────────────────────────────────────────────────────
 
+/// One key entry in a trust manifest.
+///
+/// ── WHY THE DESCRIPTIVE FIELDS ARE OPTIONAL (A1-06) ─────────────────────────────────────────
+///
+/// §1 draws a line between two failures that look alike and are not:
+///
+///   * `kid` / `publicKey` — the entry's IDENTITY and its KEY MATERIAL. An entry without them
+///     is not a forward-compatible key this verifier happens not to understand; it is a
+///     malformed manifest, and the pinned-substitution rule cannot even be evaluated against
+///     it. Missing ⇒ the WHOLE manifest is rejected, which `Codable` gives us by throwing.
+///   * `alg` / `kty` / `crv` / `status` — DESCRIPTIVE. §1 says an entry that is not the Ed25519
+///     triple is "skipped, not fatal", so a future-alg key never bricks a current verifier. An
+///     entry that OMITS `alg` is no more comprehensible to us than one naming an algorithm we
+///     lack, so it takes the same path.
+///
+/// These four used to be non-optional, so a manifest with one field-light entry threw during
+/// decode and Swift rejected the whole thing while TS and Python skipped just that entry — the
+/// same signed bytes, two trust sets. Optional here, and `verifyTrustManifest` skips any entry
+/// that does not present the full Ed25519 triple, which is the same test either way round.
 public struct TrustManifestKey: Sendable, Codable, Equatable {
     public let kid: String
-    public let alg: String
-    public let kty: String
-    public let crv: String
+    public let alg: String?
+    public let kty: String?
+    public let crv: String?
     public let publicKey: String
-    public let status: String
+    public let status: String?
 
     public init(
-        kid: String, alg: String, kty: String, crv: String, publicKey: String, status: String
+        kid: String, alg: String?, kty: String?, crv: String?, publicKey: String, status: String?
     ) {
         self.kid = kid
         self.alg = alg
@@ -228,6 +247,20 @@ public struct TrustManifestKey: Sendable, Codable, Equatable {
         self.crv = crv
         self.publicKey = publicKey
         self.status = status
+    }
+
+    /// Decodes the descriptive fields LENIENTLY: a wrong-typed `alg` (a number, an object)
+    /// reads as absent and skips the entry, exactly as a wrong-VALUED one does. Without this,
+    /// `alg: 7` would still throw and still reject the whole manifest — optionality alone only
+    /// covers the missing case, not the mistyped one.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kid = try c.decode(String.self, forKey: .kid)
+        publicKey = try c.decode(String.self, forKey: .publicKey)
+        alg = try? c.decodeIfPresent(String.self, forKey: .alg)
+        kty = try? c.decodeIfPresent(String.self, forKey: .kty)
+        crv = try? c.decodeIfPresent(String.self, forKey: .crv)
+        status = try? c.decodeIfPresent(String.self, forKey: .status)
     }
 }
 
@@ -290,6 +323,24 @@ public let REFRESH_MARGIN_SECONDS = DOC_EXPIRY_SECONDS / 2
 /// a call site that does not expect a bundle never grants it.
 public let MAX_BUNDLE_BYTES = 262_144
 
+/// Inclusive upper bound on any epoch-seconds claim: 23:59:59 on 9999-12-31 UTC.
+///
+/// Chosen so the SAME bound is expressible in every implementation without rounding — far below
+/// JS's `Number.MAX_SAFE_INTEGER` and far below `Int.max`, with headroom for
+/// `issuedAt + MAX_GRACE_SECONDS`.
+public let MAX_TIMESTAMP_SECONDS = 253_402_300_799
+
+/// Is `value` a timestamp claim this contract accepts? (A1-04.)
+///
+/// "It is a number" is not the same test in three languages, which is how the envelope check
+/// drifted apart: TS accepted `1700000000.5` and `2**53 + 1`, Python accepted a negative and an
+/// unbounded `int`, and `Codable`'s `Int` here refused the float and accepted anything up to
+/// `Int.max`. Three implementations, three answers, for identical signed bytes. `Codable` still
+/// does the integer half; this is the RANGE half, which nothing in Swift was doing.
+public func isTimestamp(_ value: Int) -> Bool {
+    value >= 0 && value <= MAX_TIMESTAMP_SECONDS
+}
+
 /// TRUST MANIFEST wire versions this SDK understands. An unknown version fails CLOSED — a newer
 /// manifest shape may carry key attributes whose enforcement this build lacks.
 ///
@@ -322,7 +373,7 @@ public let DEVICE_TOKEN_PREFIX = "pkeyt_"
 // ── Gate vocabulary (§5) ────────────────────────────────────────────────────────────────────
 
 /// A 403 block reason returned by `GET /<product>/license/document`.
-public enum BlockReason: String, Sendable, Codable, Equatable {
+public enum BlockReason: String, Sendable, Codable, Equatable, CaseIterable {
     case versionTooOld = "version-too-old"
     case versionTooNew = "version-too-new"
     case channelNotEntitled = "channel-not-entitled"

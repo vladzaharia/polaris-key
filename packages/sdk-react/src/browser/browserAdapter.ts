@@ -19,6 +19,29 @@
 // Mode-parity: the adapter reduces the authenticated session read to the SAME `client-core`
 // `GateInput` the desktop bridge produces and runs the SAME `licenseState`, so a browser
 // snapshot is shape-identical to a desktop one.
+//
+// ── THE TRUST MODEL (say it out loud) ───────────────────────────────────────────────────────
+//
+// This adapter runs NO signature verification, and that is a property of the SERVER, not a gap
+// here: `GET /<p>/identity/session` deliberately answers with the fused document as PLAIN JSON
+// inside the response body, never as a compact JWS. There is nothing to verify. The Worker
+// mints that document for a page rather than for an SDK, and a page has no cache or disk
+// boundary for a signature to survive across.
+//
+// So authenticity here rests on exactly two things:
+//
+//   1. TLS to the control-plane origin — enforced at construction by `normalizeBaseUrl` below
+//      (`https:`, or `http:` on loopback for `wrangler dev`); and
+//   2. a first-party `HttpOnly; Secure; SameSite=Lax` session cookie the Worker set on that
+//      same origin.
+//
+// `SameSite=Lax` is not incidental: a browser does not attach a Lax cookie to a CROSS-SITE
+// subresource request, so `fetch(..., { credentials: "include" })` from a page on some other
+// origin carries no session at all. This adapter is therefore SAME-ORIGIN ONLY — it works from
+// a page served by the control plane itself, and a third-party origin pointing `baseUrl` at
+// `key.plrs.im` gets an unauthenticated session rather than a silently weaker one. A product
+// that needs an offline-verifiable, cross-origin credential wants the signed document pair and
+// `@polaris-key/node`, not this transport.
 
 import type { ManagedEntry } from "@polaris-key/protocol/core";
 import {
@@ -27,6 +50,7 @@ import {
   HEADER_SDK_VERSION,
   HEADER_VERSION,
 } from "@polaris-key/protocol/core";
+import { isBlockReason } from "@polaris-key/protocol/license";
 import type {
   BlockReason,
   DocProfile,
@@ -46,6 +70,7 @@ import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
   initialState,
+  isSecureTransportUrl,
   type ConfigSource,
   type DeviceInfo,
   type JSONValue,
@@ -70,10 +95,39 @@ import { discoverProduct } from "./discovery.js";
 
 const DEFAULT_BASE = "https://key.plrs.im";
 
+/**
+ * Thrown at construction for a `baseUrl` that would carry the session cookie in the clear.
+ * The other three SDKs refuse the same URLs with the same class name (`@polaris-key/node`'s
+ * `InsecureBaseUrlError`); it extends `PolarisError` so this package's one
+ * `e instanceof PolarisError` convention — and `.code` — keep working for callers.
+ */
+export class InsecureBaseUrlError extends PolarisError {
+  constructor(message: string) {
+    super("insecure-base-url", message);
+    this.name = "InsecureBaseUrlError";
+  }
+}
+
+/** Strip the trailing slash, but only after refusing a base URL the cookie cannot be sent to
+ *  safely. A plaintext control plane makes session theft a coffee-shop attack rather than a
+ *  local one, and `Secure` cookies are not even sent over `http:` off loopback — so an
+ *  unenforced scheme is a silent, permanently-signed-out client at best. */
+function normalizeBaseUrl(raw: string): string {
+  if (!isSecureTransportUrl(raw)) {
+    throw new InsecureBaseUrlError(
+      `baseUrl must be https: (got ${raw}); ` +
+        "plaintext http:// is only accepted for localhost/127.0.0.1.",
+    );
+  }
+  return raw.replace(/\/+$/, "");
+}
+
 export interface BrowserAdapterOptions {
   /** The product slug — path-scopes every request (`/<product>/...`). */
   productSlug: string;
-  /** The control-plane origin. Defaults to `https://key.plrs.im`. */
+  /** The control-plane origin, and the origin the page itself must be served from (the session
+   *  cookie is `SameSite=Lax`). MUST be `https:` — or `http://localhost` / `http://127.0.0.1`
+   *  for local development. Defaults to `https://key.plrs.im`. */
   baseUrl?: string;
   /** Injectable fetch (tests). Defaults to global `fetch`. */
   fetchImpl?: typeof fetch;
@@ -168,7 +222,11 @@ export class BrowserAdapter implements PolarisAdapter {
 
   constructor(opts: BrowserAdapterOptions) {
     this.product = opts.productSlug;
-    this.base = (opts.baseUrl ?? DEFAULT_BASE).replace(/\/+$/, "");
+    // Throws before anything else is wired up: an insecure control plane is a construction
+    // error, not a per-request one to discover on the first 4xx.
+    // Throws before anything else is wired up: an insecure control plane is a construction
+    // error, not a per-request one to discover on the first 4xx.
+    this.base = normalizeBaseUrl(opts.baseUrl ?? DEFAULT_BASE);
     this.fetchImpl = opts.fetchImpl ?? ((...a) => fetch(...a));
     this.navigate =
       opts.navigate ??
@@ -236,7 +294,13 @@ export class BrowserAdapter implements PolarisAdapter {
           // fold in and no offline window for a rolled-back clock to buy time inside.
           highWaterMark: highWaterMark(docs.license ? [docs.license] : []),
           lastSyncUnauthorized: false,
-          blocked: s.blocked ?? null,
+          // The reason is lifted from the session JSON, which this adapter deliberately does
+          // not verify (see the trust-model note above), and the gate returns it AS the
+          // `LicenseStatus`. `isBlockReason` is the membership check the erased `BlockReason`
+          // type could never perform: a response claiming `{"blocked":{"reason":"ok"}}` must
+          // not license the client (A1-01). Out of vocabulary ⇒ no hint at all, which is the
+          // weaker of the two states it could name.
+          blocked: isBlockReason(s.blocked?.reason) ? s.blocked : null,
           lastVerifiedAt: docs.license ? this.clock() : null,
         },
         {

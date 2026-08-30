@@ -56,6 +56,9 @@ export interface VerifyOptions {
    * site out of step with the wire contract. Absent (or non-finite) ⇒ byte-identical to the
    * cap-less behavior. The HEADER cap is untouched — moving a blob into the header is R2-04,
    * and no `typ` widens it.
+   *
+   * A raise is only honoured alongside a `typ`: `verifyJws(jws, trust, {maxPayloadBytes})`
+   * with no type is REFUSED (A1-05). The cap and the domain separator are one grant.
    */
   maxPayloadBytes?: number;
 }
@@ -316,6 +319,14 @@ export async function verifyJws<T = unknown>(
 
   // --- 1. Bound the ENCODED segments before decoding anything (R2-04). -------------------
   const maxPayloadBytes = payloadCapFor(opts.maxPayloadBytes);
+  // §1's raised cap is an exception granted to ONE `typ`, and the cap and the type travel
+  // together: a 256 KiB payload accepted with no `typ` demanded could be re-presented at an
+  // ordinary document call site with the raised cap already in force. Swift has always
+  // refused that combination; TS and Python left the two decoupled, so the same call was
+  // accepted here and rejected there (A1-05). Refused outright rather than silently
+  // downgraded to 64 KiB — a caller asking for the bundle cap without naming the bundle type
+  // has made a mistake worth surfacing, not one worth papering over.
+  if (maxPayloadBytes > MAX_DOC_BYTES && opts.typ === undefined) return null;
   if (encHeader.length > MAX_HEADER_B64) return null;
   if (encPayload.length > b64Cap(maxPayloadBytes)) return null;
 
@@ -339,8 +350,15 @@ export async function verifyJws<T = unknown>(
   if (opts.typ !== undefined && header.typ !== opts.typ) return null;
   if (header.typ !== undefined && typeof header.typ !== "string") return null;
   if (typeof header.kid !== "string") return null;
-  const rawKey = trustedKeys[header.kid];
-  if (!rawKey) return null;
+  // `Object.hasOwn` + a string check, not a bare index. A plain `trustedKeys["__proto__"]`
+  // answers `Object.prototype` — truthy, and not a key — where Python's dict and Swift's
+  // Dictionary simply miss. It failed closed further down (the import throws and is caught),
+  // but "fails closed by accident, two statements later" is not the same property as "is not
+  // in the trust set", and only the second one is what §1 says (A1-08).
+  const rawKey = Object.hasOwn(trustedKeys, header.kid)
+    ? trustedKeys[header.kid]
+    : undefined;
+  if (typeof rawKey !== "string" || rawKey === "") return null;
 
   let key: CryptoKey;
   try {

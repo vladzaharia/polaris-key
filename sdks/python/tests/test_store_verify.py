@@ -18,7 +18,13 @@ from polaris_key.core.models import (
 )
 from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle
 from polaris_key.devices.deviceid import derive_device_id
-from polaris_key.devices.store import FileStore, InMemoryStore, KeyringStore
+from polaris_key.devices.store import (
+    MAX_STATE_FILE_BYTES,
+    SYMLINK_GUARD,
+    FileStore,
+    InMemoryStore,
+    KeyringStore,
+)
 
 KID = "pkey-test-prod-2026"
 PUBKEY_RAW = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
@@ -231,6 +237,145 @@ def test_filestore_ignores_an_unreadable_cache(tmp_path) -> None:
     ) as f:
         f.write("{not json")
     assert store.read_cache() is None
+
+
+# ── hostile filesystem: O_NOFOLLOW + a size cap on the READ (B1-04/B1-07) ───────────
+#
+# Mode 0600 was applied only AT CREATION and the read was a plain ``open()``, so a symlink
+# planted at ``managed.json``/``token``/``device`` redirected the read to a file the attacker
+# chose, and a huge file at the path was read whole into the process. Every refusal must land
+# as **ABSENT** (``None``) — this store's one spelling of a failed artifact (§4.1) — never as
+# a crash and never as the attacker's bytes. Mirrors
+# ``packages/sdk-node/test/storeSecurity.test.ts`` and Swift's ``readSecure``.
+
+
+def _cache_json(padding: str = "") -> str:
+    rec: dict = {
+        "v": CACHE_FORMAT_VERSION,
+        "docs": {"license": "a.b.c"},
+        "etags": {"license": "lic-1"},
+        "lastSyncUnauthorized": False,
+    }
+    if padding:
+        rec["pad"] = padding
+    return json.dumps(rec)
+
+
+def _cache_json_of_size(size: int) -> str:
+    """All-ASCII JSON of EXACTLY ``size`` bytes, so the cap is pinned on both sides."""
+    body = _cache_json("x" * (size - len(_cache_json()) - len(', "pad": ""')))
+    assert len(body.encode("utf-8")) == size, f"fixture is {len(body)} bytes"
+    return body
+
+
+def test_the_symlink_guard_is_declared_and_covers_the_read() -> None:
+    """The strength of the refusal is a value a host can read, not a comment promising
+    something the platform may not give (R4-10). It now guards the READ as well."""
+    assert SYMLINK_GUARD in ("O_NOFOLLOW", "lstat-precheck")
+    if hasattr(os, "O_NOFOLLOW"):
+        assert SYMLINK_GUARD == "O_NOFOLLOW"
+
+
+def test_a_symlinked_cache_path_reads_as_absent(tmp_path) -> None:
+    """The target is a perfectly parseable v3 record; the only reason the read is ``None``
+    is the refusal to follow the link."""
+    store = FileStore("djdl", str(tmp_path))
+    outside = tmp_path / "attacker-owned"
+    outside.write_text(_cache_json(), encoding="utf-8")
+    cache_path = os.path.join(str(tmp_path), "djdl", "managed.json")
+    if os.path.exists(cache_path):
+        os.remove(cache_path)
+    os.symlink(str(outside), cache_path)
+
+    assert CacheRecord.from_dict(json.loads(outside.read_text())).docs["license"] == "a.b.c"
+    assert store.read_cache() is None
+    assert outside.read_text(encoding="utf-8") == _cache_json()
+
+
+def test_a_symlinked_token_path_reads_as_absent(tmp_path) -> None:
+    store = FileStore("djdl", str(tmp_path))
+    outside = tmp_path / "attacker-token"
+    outside.write_text("pkeyt_attacker-chose-this\n", encoding="utf-8")
+    os.symlink(str(outside), os.path.join(str(tmp_path), "djdl", "token"))
+    assert store.get_token() is None
+
+
+def test_a_symlinked_device_path_refuses_rather_than_adopting_the_id(tmp_path) -> None:
+    """The device id is the Device principal's NAME (§6). Reading one through a link would
+    let a local attacker rename this install; writing the freshly-minted replacement through
+    the same link would let them place it. So the read is absent and the write refuses."""
+    store = FileStore("djdl", str(tmp_path))
+    outside = tmp_path / "attacker-device"
+    outside.write_text("attacker-chosen-device-id", encoding="utf-8")
+    os.symlink(str(outside), os.path.join(str(tmp_path), "djdl", "device"))
+
+    with pytest.raises(OSError):
+        store.get_device_id()
+    assert outside.read_text(encoding="utf-8") == "attacker-chosen-device-id"
+
+
+def test_the_read_cap_is_named_and_generous() -> None:
+    # Three compact JWSs plus hints; a document payload is capped at 64 KiB and base64url
+    # encodes to ~87 KiB. Same number Swift's `KeychainStore.maxCacheBytes` uses.
+    assert MAX_STATE_FILE_BYTES == 1024 * 1024
+
+
+def test_a_cache_file_exactly_at_the_cap_still_reads(tmp_path) -> None:
+    store = FileStore("djdl", str(tmp_path))
+    path = os.path.join(str(tmp_path), "djdl", "managed.json")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(_cache_json_of_size(MAX_STATE_FILE_BYTES))
+    loaded = store.read_cache()
+    assert loaded is not None and loaded.docs["license"] == "a.b.c"
+
+
+def test_a_cache_file_one_byte_over_the_cap_reads_as_absent(tmp_path) -> None:
+    """Byte-for-byte the same shape as the case above; only the size differs."""
+    store = FileStore("djdl", str(tmp_path))
+    path = os.path.join(str(tmp_path), "djdl", "managed.json")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(_cache_json_of_size(MAX_STATE_FILE_BYTES + 1))
+    assert store.read_cache() is None
+
+
+def test_a_directory_planted_at_the_cache_path_reads_as_absent(tmp_path) -> None:
+    """Not a regular file => not the file we wrote. ``EISDIR`` must degrade to "re-fetch",
+    not to a client that cannot boot."""
+    store = FileStore("djdl", str(tmp_path))
+    os.mkdir(os.path.join(str(tmp_path), "djdl", "managed.json"))
+    assert store.read_cache() is None
+
+
+def test_the_hardened_read_still_round_trips_and_stays_0600(tmp_path) -> None:
+    store = FileStore("djdl", str(tmp_path))
+    store.set_token("pkeyt_roundtrip")
+    rec = CacheRecord(docs={"license": "a.b.c"}, etags={"license": "lic-1"})
+    store.write_cache(rec)
+    device_id = store.get_device_id()
+
+    fresh = FileStore("djdl", str(tmp_path))
+    assert fresh.get_token() == "pkeyt_roundtrip"
+    assert fresh.read_cache() == rec
+    assert fresh.get_device_id() == device_id
+
+    for name in ("token", "managed.json", "device"):
+        mode = stat.S_IMODE(os.stat(os.path.join(str(tmp_path), "djdl", name)).st_mode)
+        assert mode == 0o600, f"{name} must be 0600"
+
+
+def test_a_pre_existing_loose_mode_is_repaired_on_write(tmp_path) -> None:
+    """0600 applies AT CREATION only, so a record left world-readable by an older build (or
+    by a first write that died between ``open`` and ``chmod``) is tightened by the next
+    write rather than inherited."""
+    store = FileStore("djdl", str(tmp_path))
+    path = os.path.join(str(tmp_path), "djdl", "managed.json")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(_cache_json())
+    os.chmod(path, 0o644)
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o644
+
+    store.write_cache(CacheRecord(docs={"license": "a.b.c"}))
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
 
 
 def test_keyring_store_falls_back_to_files_and_uses_the_pkey_tag(tmp_path) -> None:

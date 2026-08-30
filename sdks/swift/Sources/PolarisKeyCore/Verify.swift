@@ -98,6 +98,10 @@ private func validateEnvelope<T: DocClaims>(_ doc: T, _ opts: VerifyOptions, _ n
     // attacker-controlled host must not be able to name its own issuer (§8).
     guard doc.iss == opts.expectedIss else { return false }
     guard doc.deviceId == opts.deviceId else { return false }
+    // §3 — one timestamp rule, identical in all three cores. `Codable` already refused a
+    // float or a string; this is the RANGE half, which nothing here was doing (A1-04).
+    guard isTimestamp(doc.issuedAt), isTimestamp(doc.expiresAt), isTimestamp(doc.graceUntil)
+    else { return false }
     // Anti-replay: strictly newer than the last document accepted FOR THIS TYPE.
     if let last = opts.lastAcceptedIssuedAt, doc.issuedAt <= last { return false }
     // A grace window shorter than the expiry, or longer than a year, is not a document this

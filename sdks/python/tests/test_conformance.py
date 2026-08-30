@@ -36,6 +36,7 @@ from polaris_key.core.bundle import (
 )
 from polaris_key.core.clock import effective_now, high_water_mark
 from polaris_key.core.jws import sign_jws, verify_jws
+from polaris_key.core.models import TYP_LICENSE
 from polaris_key.core.trust import merge_trust, verify_trust_manifest
 from polaris_key.core.verify import verify_config_doc, verify_license_doc
 from polaris_key.license.gate import license_state
@@ -77,11 +78,15 @@ def test_jws_case(case: Dict[str, Any]) -> None:
     # the runner does not have a mode where it is off. The raised payload cap travels
     # WITH the vector, so a runner cannot accidentally grant bundle sizes to ordinary
     # documents.
+    # ...with ONE exception: `callSiteOmitsTyp` drives the vector through a call site that
+    # names no type at all, which is how §1's raised payload cap is proved to be granted to
+    # a `typ` rather than to a caller (A1-05).
+    omits_typ = case.get("callSiteOmitsTyp") is True
     result = verify_jws(
         case["jws"],
         case["trust"],
-        typ=case.get("typ"),
-        require_typ=True,
+        typ=None if omits_typ else case.get("typ"),
+        require_typ=not omits_typ,
         max_payload_bytes=case.get("maxPayloadBytes"),
     )
     expect = case["expect"]
@@ -281,10 +286,17 @@ def test_sign_roundtrips_against_the_corpus_key() -> None:
     keys = {k["kid"]: k for k in _CORPUS["keys"]}
     entry = keys["pkey-test-prod-2026"]
     payload = {"hello": "world", "n": 7}
-    jws = sign_jws(payload, entry["privateKeyPkcs8Pem"], "pkey-test-prod-2026")
     trust = {"pkey-test-prod-2026": entry["publicKeyRaw"]}
-    v = verify_jws(jws, trust)
+    jws = sign_jws(payload, entry["privateKeyPkcs8Pem"], "pkey-test-prod-2026", TYP_LICENSE)
+    v = verify_jws(jws, trust, typ=TYP_LICENSE)
     assert v is not None and v.kid == "pkey-test-prod-2026" and v.payload == payload
+    # The round trip now carries a `typ`, because ``require_typ`` DEFAULTS TO TRUE
+    # (B1-08/B3-09). It used to default to False, so this public entry point accepted the
+    # typeless header the JS and Swift verifiers reject — one artifact, replayable at
+    # whichever call site an attacker prefers, admitted by exactly one of five
+    # implementations. The same untyped signature is now refused by default:
+    untyped = sign_jws(payload, entry["privateKeyPkcs8Pem"], "pkey-test-prod-2026")
+    assert verify_jws(untyped, trust) is None
     # And the published valid-stable JWS must re-verify under the same key.
     valid = next(c for c in _JWS_CASES if c["id"] == "valid-stable")
     assert verify_jws(valid["jws"], valid["trust"], require_typ=True) is not None

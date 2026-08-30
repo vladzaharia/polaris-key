@@ -120,10 +120,26 @@ def test_gate_matrix_is_v2_and_has_rows() -> None:
     assert len(_ROWS) > 0
 
 
+def _row_blocked(lic: Dict[str, Any], gate: Dict[str, Any]) -> Optional[BlockedState]:
+    """A fixture-supplied hint WINS over the derived one.
+
+    It models the unsigned value read back off disk, which is what ``blocked`` is at every
+    real call site — and a poisoned cache record is exactly a hint no build gate produced,
+    so the vocabulary rows (A1-01) cannot be expressed through ``gate`` at all.
+    """
+    raw = lic.get("blocked")
+    if raw is None:
+        return _check_build_gate(gate)
+    return BlockedState(
+        reason=raw["reason"],
+        allowedRange=AllowedRange.from_dict(raw.get("allowedRange")),
+    )
+
+
 @pytest.mark.parametrize("row", _ROWS, ids=[r["name"] for r in _ROWS])
 def test_gate_matrix_row(row: Dict[str, Any]) -> None:
     lic = row["license"]
-    blocked = _check_build_gate(row["gate"])
+    blocked = _row_blocked(lic, row["gate"])
     state = license_state(
         license_service_enabled=lic["licenseServiceEnabled"],
         activation=lic["activation"],
@@ -142,7 +158,8 @@ def test_gate_matrix_row(row: Dict[str, Any]) -> None:
     # `reason` describes the DERIVED build-gate hint, which on the unactivated+blocked row
     # is deliberately not the status — that row is the whole point of v3's ordering.
     if expect.get("reason") is not None:
-        assert blocked is not None and blocked.reason == expect["reason"], row["name"]
+        derived = _check_build_gate(row["gate"])
+        assert derived is not None and derived.reason == expect["reason"], row["name"]
 
     expected_range = expect.get("allowedRange")
     if expected_range is not None:

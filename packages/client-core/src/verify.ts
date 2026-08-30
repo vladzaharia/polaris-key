@@ -15,7 +15,11 @@ import { verifyJws, type JwsTyp, type TrustSet } from "@polaris-key/jws";
 import { ISSUER, type DocClaims } from "@polaris-key/protocol/core";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
-import { CLOCK_SKEW_SECONDS, MAX_GRACE_SECONDS } from "./claims.js";
+import {
+  CLOCK_SKEW_SECONDS,
+  MAX_GRACE_SECONDS,
+  isTimestamp,
+} from "./claims.js";
 
 /** A JSON object — not an array, not null. Managed maps must be exactly this. */
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -109,10 +113,13 @@ function validateEnvelope(
   // an attacker-controlled base URL must not be able to name its own issuer (§8).
   if (doc.iss !== (opts.expectedIss ?? ISSUER)) return false;
   if (doc.deviceId !== opts.deviceId) return false;
+  // §3 — one timestamp rule, identical in all three cores. `typeof === "number"` used to be
+  // the whole check here, which let `1700000000.5` and `2**53 + 1` through in TS while Swift's
+  // `Codable` refused the first and Python's `int` check refused neither (A1-04).
   if (
-    typeof doc.issuedAt !== "number" ||
-    typeof doc.expiresAt !== "number" ||
-    typeof doc.graceUntil !== "number"
+    !isTimestamp(doc.issuedAt) ||
+    !isTimestamp(doc.expiresAt) ||
+    !isTimestamp(doc.graceUntil)
   ) {
     return false;
   }

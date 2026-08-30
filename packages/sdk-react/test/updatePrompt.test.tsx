@@ -4,7 +4,7 @@
 // (D-21, and a 404 loop is the failure mode), and the banner does NOT steal focus — an
 // available update is information, not a blocker.
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import {
   act,
   cleanup,
@@ -250,6 +250,103 @@ describe("UpdatePrompt", () => {
     // A blocking screen moves focus to its action (WCAG 2.4.3).
     await waitFor(() => expect(document.activeElement).toBe(action));
     adapter.dispose();
+  });
+
+  describe("the default action refuses an unsafe update URL (B1-09)", () => {
+    // One spy for the block: jsdom's `window.open` is unimplemented, and what is being asserted
+    // is whether the navigation is REACHED at all.
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    afterAll(() => open.mockRestore());
+
+    /** Render a prompt whose newest build carries `url`, then click "Get the update". */
+    async function clickUpdate(url: string): Promise<{
+      container: HTMLElement;
+      adapter: PolarisAdapter;
+    }> {
+      open.mockClear();
+      const { container, adapter } = renderPrompt(withUpdate, async () => ({
+        ...newer,
+        url,
+      }));
+      const action = await findEl<HTMLButtonElement>(
+        container,
+        "[data-polaris-update-action]",
+      );
+      fireEvent.click(action);
+      return { container, adapter };
+    }
+
+    it.each([
+      ["javascript:alert(document.cookie)"],
+      ["http://evil.example/app.dmg"],
+      ["data:text/html,<script>1</script>"],
+      ["file:///Applications/Calculator.app"],
+    ])("never opens %s, and says so", async (url) => {
+      const { container, adapter } = await clickUpdate(url);
+      expect(open).not.toHaveBeenCalled();
+      // Fail safe, and visibly: the refusal renders where the failure happened.
+      const refusal = await findEl<HTMLElement>(
+        container,
+        "[data-polaris-update-refused]",
+      );
+      expect(refusal.getAttribute("role")).toBe("alert");
+      expect(refusal.textContent).toContain("wasn't opened");
+      adapter.dispose();
+    });
+
+    it.each([["https://dl.example/2.0.0"], ["http://localhost:8787/app.dmg"]])(
+      "opens %s with noopener,noreferrer",
+      async (url) => {
+        const { container, adapter } = await clickUpdate(url);
+        expect(open).toHaveBeenCalledWith(url, "_blank", "noopener,noreferrer");
+        expect(
+          container.querySelector("[data-polaris-update-refused]"),
+        ).toBeNull();
+        adapter.dispose();
+      },
+    );
+
+    it("an onUpdate host keeps full control — the URL is handed over, never opened", async () => {
+      open.mockClear();
+      const onUpdate = vi.fn();
+      const { container, adapter } = renderPrompt(
+        withUpdate,
+        async () => ({ ...newer, url: "javascript:alert(1)" }),
+        { onUpdate },
+      );
+      const action = await findEl<HTMLButtonElement>(
+        container,
+        "[data-polaris-update-action]",
+      );
+      fireEvent.click(action);
+      expect(onUpdate).toHaveBeenCalledTimes(1);
+      expect(onUpdate.mock.calls[0]?.[0]?.latest?.url).toBe(
+        "javascript:alert(1)",
+      );
+      expect(open).not.toHaveBeenCalled();
+      expect(
+        container.querySelector("[data-polaris-update-refused]"),
+      ).toBeNull();
+      adapter.dispose();
+    });
+
+    it("the dialog variant refuses too", async () => {
+      open.mockClear();
+      const { container, adapter } = renderPrompt(
+        withUpdate,
+        async () => ({ ...newer, url: "http://evil.example/app.dmg" }),
+        { variant: "dialog" },
+      );
+      const dialog = await waitFor(() =>
+        within(container).getByRole("alertdialog"),
+      );
+      fireEvent.click(
+        within(dialog).getByRole("button", { name: /get the update/i }),
+      );
+      expect(open).not.toHaveBeenCalled();
+      await findEl<HTMLElement>(container, "[data-polaris-update-refused]");
+      adapter.dispose();
+    });
   });
 
   it("a prompt slot fully replaces the UI", async () => {

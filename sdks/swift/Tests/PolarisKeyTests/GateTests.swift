@@ -119,6 +119,39 @@ final class GateTests: XCTestCase {
         }
     }
 
+    /// A1-01, from the one side Swift can express it.
+    ///
+    /// `BlockReason` is a closed `String` enum, so the out-of-vocabulary value that licensed
+    /// the TS and Python clients (`{"v":3,"blocked":{"reason":"ok"}}` on disk, no document and
+    /// no signature anywhere) is UNREPRESENTABLE here — which is why Swift was never
+    /// vulnerable. What Swift owns is the decode edge, and it was too harsh rather than too
+    /// lax: a throwing decode discarded the WHOLE verified cache record over a poisoned
+    /// two-field hint. It now drops just the hint, which is what the other two do.
+    func testAPoisonedBlockedReasonDropsTheHintNotTheWholeRecord() throws {
+        let poisoned = Data(
+            #"{"v":3,"trustJws":"a.b.c","blocked":{"reason":"ok"}}"#.utf8)
+        let record = try JSONDecoder().decode(CacheRecord.self, from: poisoned)
+        XCTAssertNil(record.blocked, "an unknown reason is not a hint")
+        XCTAssertEqual(record.trustJws, "a.b.c", "the rest of the record survives")
+
+        // …and an IN-vocabulary reason still round-trips, so the drop is a narrowing rather
+        // than a deletion.
+        let kept = try JSONDecoder().decode(
+            CacheRecord.self,
+            from: Data(#"{"v":3,"blocked":{"reason":"version-too-new"}}"#.utf8))
+        XCTAssertEqual(kept.blocked?.reason, .versionTooNew)
+    }
+
+    /// The gate half of A1-01: every reason it CAN hold is a non-usable status, so a hint can
+    /// only ever tighten. The corpus's gate-matrix rows drive the same assertion through all
+    /// three cores against a value none of them may honour.
+    func testEveryRepresentableBlockReasonIsNonUsable() {
+        for reason in BlockReason.allCases {
+            let state = gate(now: 1, blocked: BlockInfo(reason: reason))
+            XCTAssertFalse(isUsable(state), "reason \(reason) must never be usable")
+        }
+    }
+
     func testExpiryLadderWithExactBoundaries() {
         let doc = makeDoc(issuedAt: 100, expiresAt: 200, graceUntil: 300)
         let at = { (n: Int) in self.gate(doc: doc, now: n).status }

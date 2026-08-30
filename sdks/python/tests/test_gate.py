@@ -103,6 +103,61 @@ def test_blocked_takes_precedence_over_a_valid_doc() -> None:
     assert st.allowedRange is not None and st.allowedRange.min == "1.0.0"
 
 
+# ── A1-01: the unsigned hint's VOCABULARY ───────────────────────────────────────────
+@pytest.mark.parametrize(
+    "reason", ["ok", "grace", "not-applicable", "definitely-fine", ""]
+)
+def test_an_out_of_vocabulary_blocked_reason_never_makes_the_gate_usable(
+    reason: str,
+) -> None:
+    """§4.1 keeps ``blocked`` unsigned on the argument that it can only ever make the gate
+    STRICTER. That is a claim about the VOCABULARY, and ``BlockReason`` is just ``str``:
+    the gate returned the reason verbatim AS the status, and ``is_usable`` answers True for
+    ``ok``/``grace``/``not-applicable``. So ``{"v": 3, "blocked": {"reason": "ok"}}`` in the
+    cache file licensed the client with no document and no signature anywhere (A1-01) — and
+    ``blocked`` is read BEFORE the ``doc is None`` check, so it needed neither."""
+    st = license_state(
+        activation="token",
+        doc=_doc(issued=1000, expires=4600, grace=2593000),
+        now=1500,
+        blocked=BlockedState(reason=reason),
+    )
+    assert st.status == "version-too-old"
+    assert not is_usable(st)
+    assert not is_usable(st.status)
+
+
+def test_an_in_vocabulary_blocked_reason_is_still_honoured_verbatim() -> None:
+    """The fix narrows the hint; it does not delete it. Without this an implementation that
+    coerced EVERY reason would pass the case above while destroying the feature."""
+    st = license_state(
+        activation="token",
+        doc=_doc(issued=1000, expires=4600, grace=2593000),
+        now=1500,
+        blocked=BlockedState(
+            reason="channel-not-entitled", allowedRange=AllowedRange(min="1.0.0")
+        ),
+    )
+    assert st.status == "channel-not-entitled"
+    assert st.allowedRange == AllowedRange(min="1.0.0")
+
+
+def test_a_poisoned_blocked_reason_is_dropped_at_the_reload_edge(tmp_path) -> None:
+    """The record edge, not just the gate: a hint whose reason is not a member is treated as
+    NO hint. Coercion is right at the network ingress, where a real 403 with an unreadable
+    body still means blocked; here the record is simply not one this client wrote."""
+    from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord
+
+    poisoned = CacheRecord.from_dict(
+        {"v": CACHE_FORMAT_VERSION, "blocked": {"reason": "ok"}}
+    )
+    assert poisoned.blocked is None
+    kept = CacheRecord.from_dict(
+        {"v": CACHE_FORMAT_VERSION, "blocked": {"reason": "version-too-new"}}
+    )
+    assert kept.blocked is not None and kept.blocked.reason == "version-too-new"
+
+
 def test_ok_within_expiry() -> None:
     doc = _doc(issued=0, expires=1000, grace=2000)
     st = license_state(activation="token", doc=doc, now=500, last_verified_at=499)

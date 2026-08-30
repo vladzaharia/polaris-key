@@ -34,6 +34,7 @@ from .models import (
     ConfigDoc,
     DocClaims,
     LicenseDoc,
+    is_timestamp,
 )
 
 __all__ = [
@@ -66,6 +67,15 @@ def validate_envelope(
     if claims.iss != expected_iss:
         return False
     if claims.deviceId != device_id:
+        return False
+    # §3 — one timestamp rule, identical in all three cores. ``DocClaims.parse`` already
+    # refused a float or a string; this is the RANGE half, which Python alone left open
+    # (an ``int`` here is unbounded, and a negative one passed) — A1-04.
+    if not (
+        is_timestamp(claims.issuedAt)
+        and is_timestamp(claims.expiresAt)
+        and is_timestamp(claims.graceUntil)
+    ):
         return False
     # Per-TYPE anti-replay floor (§3): license and config carry INDEPENDENT floors, so a
     # settings refresh can never be blocked by a newer licence document (or vice versa).

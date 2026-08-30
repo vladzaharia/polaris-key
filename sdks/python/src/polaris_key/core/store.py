@@ -15,7 +15,10 @@ licence outright with no signature anywhere). Those counters are now DERIVED.
 
 ``blocked`` and ``lastSyncUnauthorized`` remain unsigned deliberately: they can only ever
 make the gate STRICTER, so clearing them gains an attacker nothing that deleting the file
-would not.
+would not. That is a claim about the VOCABULARY, and it is now CHECKED rather than
+assumed — the gate returns the reason AS the status, so an out-of-vocabulary
+``{"reason": "ok"}`` used to licence the client with no signature anywhere (A1-01).
+Membership is asserted here, at the network ingress, and again inside ``license_state``.
 
 WHAT v3 CHANGED FROM v2
 
@@ -32,7 +35,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
-from .models import AllowedRange, BlockedState
+from .models import AllowedRange, BlockedState, is_block_reason
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
@@ -117,9 +120,22 @@ class CacheRecord:
                 if k in ("license", "config") and isinstance(v, str)
             }
 
+        # §4.1 keeps ``blocked`` unsigned on the argument that it can only ever make the
+        # gate STRICTER. That holds only for the three reasons in ``BLOCK_REASONS``: the
+        # gate returns the reason AS the status, and ``is_usable`` says yes to ``ok``,
+        # ``grace`` and ``not-applicable``, so ``{"v": 3, "blocked": {"reason": "ok"}}``
+        # written into this file used to license the client outright — no document, no
+        # signature, and read before the ``doc is None`` check so it needed neither
+        # (A1-01).
+        #
+        # A non-member is DROPPED rather than coerced. Coercion is right at the network
+        # ingress, where a real 403 with an unreadable body still means blocked; here the
+        # record is simply not one this client wrote, and the honest reading of an
+        # unparseable hint is that there is no hint — the weaker of the two states it could
+        # name, so nothing is gained by inventing one.
         blocked_raw = d.get("blocked")
         blocked = None
-        if isinstance(blocked_raw, dict) and blocked_raw.get("reason"):
+        if isinstance(blocked_raw, dict) and is_block_reason(blocked_raw.get("reason")):
             blocked = BlockedState(
                 reason=blocked_raw["reason"],
                 allowedRange=AllowedRange.from_dict(blocked_raw.get("allowedRange")),
