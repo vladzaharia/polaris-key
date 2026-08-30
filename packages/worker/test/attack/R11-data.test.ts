@@ -319,6 +319,99 @@ describe("R11-02 status vocabulary drift", () => {
     expect(kids).not.toContain("k-revoked"); // revocation DOES work server-side
   });
 
+  // ── 0026 — the key ROLE column and its two partial unique indexes (B3-01) ───
+  it("product_keys.role rejects a value that is in no code path", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "acme");
+    await expect(
+      db.run(
+        `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, role)
+         VALUES ('acme', 'weird-role', 'Ed25519', 'AAAA', '{}', 'staged', ?, 'root')`,
+        NOW,
+      ),
+    ).rejects.toThrow(/CHECK constraint failed: role/);
+  });
+
+  it("role defaults to 'document', so nothing accidentally mints a trust anchor", async () => {
+    // The anchor is the key clients PIN, and rotating one costs an application release. A writer
+    // that has not thought about §1.1 must not be able to create one by omission.
+    const db = makeTestDb();
+    await seedProduct(db, "acme");
+    await db.run(
+      `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at)
+       VALUES ('acme', 'defaulted', 'Ed25519', 'AAAA', '{}', 'staged', ?)`,
+      NOW,
+    );
+    const row = await db.first<{ role: string }>(
+      "SELECT role FROM product_keys WHERE product='acme' AND kid='defaulted'",
+    );
+    expect(row?.role).toBe("document");
+  });
+
+  it("at most one ACTIVE key per role — and the two roles do not collide with each other", async () => {
+    // `idx_product_keys_one_active` was `UNIQUE(product) WHERE status='active'`, which a product
+    // holding an active anchor AND an active document key violates by construction. 0026
+    // redefines it per-role and adds the anchor twin. Both halves matter: without the redefine
+    // the split cannot exist at all; without the twin a product could have two keys able to sign
+    // a trust manifest, i.e. two answers to "what do I pin?".
+    const db = makeTestDb();
+    await seedProduct(db, "acme"); // seeds one ACTIVE document key
+    const add = (kid: string, role: string, status = "active"): Promise<void> =>
+      db.run(
+        `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, role)
+         VALUES ('acme', ?, 'Ed25519', ?, '{}', ?, ?, ?)`,
+        kid,
+        `pub-${kid}`,
+        status,
+        NOW,
+        role,
+      );
+
+    // An active ANCHOR alongside the active document key is exactly the intended shape.
+    await add("anchor-1", "anchor");
+    // A SECOND active key of either role is refused.
+    await expect(add("anchor-2", "anchor")).rejects.toThrow();
+    await expect(add("doc-2", "document")).rejects.toThrow();
+    // Staged keys are unconstrained, as before — that is what staging is for.
+    await add("anchor-next", "anchor", "staged");
+    await add("doc-next", "document", "staged");
+
+    const active = await db.all<{ kid: string; role: string }>(
+      "SELECT kid, role FROM product_keys WHERE product='acme' AND status='active' ORDER BY role",
+    );
+    expect(active.map((r) => r.role)).toEqual(["anchor", "document"]);
+  });
+
+  it("0026 promotes each product's existing active key to be its anchor", () => {
+    // The migration cannot mint a keypair (no Ed25519, no AES-GCM in SQLite), so it promotes the
+    // key clients have ALREADY pinned. Any other choice would move the manifest signer out from
+    // under every installed client on deploy — the exact failure being fixed.
+    const { handle, runScript } = rawSqlite();
+    for (const f of MIGRATION_FILES) {
+      if (f.startsWith("0026")) break;
+      runScript(sqlFor(f));
+    }
+    runScript(
+      `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
+         default_max_offline_days, default_device_limit, created_at, modified_at)
+       VALUES ('legacy', 'Legacy', 'legacy-2025', 'pub', '0.0.0', '99.0.0', 30, 5, 1, 1);
+       INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at)
+       VALUES ('legacy', 'legacy-2025', 'Ed25519', 'pub', '{}', 'active', 1),
+              ('legacy', 'legacy-2024', 'Ed25519', 'old', '{}', 'retired', 1);`,
+    );
+
+    runScript(sqlFor("0026_trust_anchor_keys.sql"));
+
+    const roles = handle
+      .prepare("SELECT kid, role FROM product_keys ORDER BY kid")
+      .all() as { kid: string; role: string }[];
+    expect(roles).toEqual([
+      // The RETIRED key is not promoted: it cannot sign, so anointing it would be noise.
+      { kid: "legacy-2024", role: "document" },
+      { kid: "legacy-2025", role: "anchor" },
+    ]);
+  });
+
   it("retiring/revoking the ACTIVE key bricks the product: no constraint keeps one active", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");

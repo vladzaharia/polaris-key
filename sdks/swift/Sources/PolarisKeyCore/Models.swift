@@ -237,9 +237,25 @@ public struct TrustManifestKey: Sendable, Codable, Equatable {
     public let crv: String?
     public let publicKey: String
     public let status: String?
+    /// §1.1 / §2.3 — `"anchor"` or `"document"`, and **ADVISORY ONLY**.
+    ///
+    /// It says which key class the server considers this to be: the ANCHOR signs trust manifests
+    /// and is what a host application pins; DOCUMENT keys sign licence/config/bundle documents
+    /// and rotate underneath it. Surfaced so a provisioning tool can answer "which of these do I
+    /// pin?" from the artifact.
+    ///
+    /// **Never read this in a verification decision.** Not to decide what may sign a manifest,
+    /// not to decide what may sign a document, not to prune. A manifest that could name its own
+    /// signer's authority would be introducing the key that verifies it — R2-01. What actually
+    /// constrains manifest signing is that clients pin the anchor and manifests verify against
+    /// pins only; `verifyTrustManifest` below never touches this field, and the corpus pins that
+    /// (`trust-role-claim-does-not-grant-manifest-signing`,
+    /// `trust-role-is-advisory-not-a-filter`).
+    public let role: String?
 
     public init(
-        kid: String, alg: String?, kty: String?, crv: String?, publicKey: String, status: String?
+        kid: String, alg: String?, kty: String?, crv: String?, publicKey: String, status: String?,
+        role: String? = nil
     ) {
         self.kid = kid
         self.alg = alg
@@ -247,12 +263,14 @@ public struct TrustManifestKey: Sendable, Codable, Equatable {
         self.crv = crv
         self.publicKey = publicKey
         self.status = status
+        self.role = role
     }
 
     /// Decodes the descriptive fields LENIENTLY: a wrong-typed `alg` (a number, an object)
     /// reads as absent and skips the entry, exactly as a wrong-VALUED one does. Without this,
     /// `alg: 7` would still throw and still reject the whole manifest — optionality alone only
-    /// covers the missing case, not the mistyped one.
+    /// covers the missing case, not the mistyped one. `role` takes the same lenient path for the
+    /// same reason, one step further: it is advisory, so a mistyped one cannot be an error.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         kid = try c.decode(String.self, forKey: .kid)
@@ -261,6 +279,7 @@ public struct TrustManifestKey: Sendable, Codable, Equatable {
         kty = try? c.decodeIfPresent(String.self, forKey: .kty)
         crv = try? c.decodeIfPresent(String.self, forKey: .crv)
         status = try? c.decodeIfPresent(String.self, forKey: .status)
+        role = try? c.decodeIfPresent(String.self, forKey: .role)
     }
 }
 

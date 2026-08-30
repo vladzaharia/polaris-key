@@ -112,11 +112,11 @@ enum Fixtures {
     }
 
     static func manifestKey(
-        kid: String, publicKey: String, status: String = "active"
+        kid: String, publicKey: String, status: String = "active", role: String? = nil
     ) -> TrustManifestKey {
         TrustManifestKey(
             kid: kid, alg: "EdDSA", kty: "OKP", crv: "Ed25519", publicKey: publicKey,
-            status: status)
+            status: status, role: role)
     }
 
     static func bundle(

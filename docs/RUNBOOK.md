@@ -295,6 +295,95 @@ curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 Use the Releases view to inspect GitHub sync status, changed `.pkey/` paths, manifest
 validation errors, and release health. Use manual resync there when a webhook was missed.
 
+### Rotating a product signing key
+
+A product has **two classes** of Ed25519 key (wire contract v3 §1.1), and which one you are
+rotating decides whether this is a five-minute operation or a release.
+
+| Class        | Signs                                                   | Clients pin it? | Rotating it costs           |
+| ------------ | ------------------------------------------------------- | --------------- | --------------------------- |
+| **document** | license, config and bundle documents                    | No              | Nothing. Routine.           |
+| **anchor**   | the trust manifest (`pkey-trust+jws`), and nothing else | **Yes**         | **An application release.** |
+
+The reason the split exists: a client verifies a trust manifest against its **pinned** keys and
+nothing else — that is what stops a manifest introducing the key that verifies it. Before the
+split the manifest was signed by the same key that signed documents, so rotating it moved the
+manifest signer out from under every installed client at once. Those clients then rejected every
+later manifest, stopped advancing their signed clock, and — the part that matters — stopped
+receiving revocations. Rotation was, in effect, an application release you could trigger by
+accident. It no longer is, provided you rotate the right class.
+
+**Check which you are about to touch before you start:**
+
+```sh
+curl -fsS https://key.plrs.im/<slug>/.well-known/polaris.json \
+  | jq '{anchor: .trust.anchorKid, pin: .trust.pinnedKeys, document: .trust.signingKid}'
+```
+
+`trust.pinnedKeys` is what an adopter should have compiled into their app. It is the anchor.
+
+#### Routine: rotating a DOCUMENT key
+
+No client action, no release, no user impact. All four calls are authenticated admin API
+(session cookie + echoed CSRF token); **Prepare signing key** in the console does step 1.
+
+1. **Prepare.** `POST /manage/api/products/<slug>/keys/prepare` (`{"role":"document"}`, the
+   default). Mints and stages a keypair, sealed under the platform KEK, and returns the new
+   `kid` + public key. Nothing is signed with it yet.
+2. **Wait out the trust-cache window** — 300 s. The staged key is published in the trust
+   manifest immediately, so this is the interval in which clients learn it. Activating early
+   means clients meet documents signed by a `kid` they have not seen.
+3. **Activate.** `POST .../keys/activate` `{"kid":"…"}`. Retires the outgoing _document_ key and
+   promotes the staged one in one batch. Returns `409` before the window elapses unless you pass
+   `"breakGlass": true`. **The anchor is not touched** — the manifest signer is identical before
+   and after, which is why installed clients follow the rotation with no action.
+4. **Revoke the old key** if this is a compromise response: `POST .../keys/revoke` `{"kid":"…"}`.
+   It stays listed in the trust manifest with `status: "revoked"` for 2× the cache window (600 s)
+   as a positive prune signal, then ages out. Retire instead if the key is merely old.
+
+Verify: the manifest's header `kid` must be unchanged, and the new document key must be present.
+
+```sh
+curl -fsS https://key.plrs.im/<slug>/.well-known/polaris-trust.jws \
+  | cut -d. -f1 | base64 -d | jq .kid          # must equal trust.anchorKid, before AND after
+```
+
+#### Exceptional: rotating the ANCHOR
+
+Only when the anchor key itself is compromised, or you are deliberately migrating pins. **This
+requires shipping an application release**, and no console action can substitute for it: the
+anchor is compiled into the client, so a client that has not been updated cannot verify anything
+the new anchor signs.
+
+1. **Prepare** with `{"role":"anchor"}`. The response carries `requiresApplicationRelease: true`
+   and the new public key. Record it. Nothing changes yet — the staged anchor signs nothing.
+2. **Ship a release that pins BOTH** the current anchor and the new one. Adopters' `pinnedKeys`
+   must contain the two entries for the whole overlap. A manifest signed by either verifies for
+   a client that pins both, which is what makes the switch atomic from the client's side.
+3. **Wait for adoption.** This is the long pole and there is no way to shorten it. Until an
+   install runs a build that pins the new anchor, activating it takes that install dark: it will
+   refuse every trust manifest, stop advancing its clock floor, and stop learning revocations —
+   while continuing to run on its cached documents until `graceUntil`. Use the update service's
+   version telemetry to decide.
+4. **Activate.** `POST .../keys/activate` `{"kid":"…"}` on the staged anchor. Retires the
+   outgoing anchor; document keys are untouched.
+5. **Revoke the old anchor** once the trust-cache window has passed, and **ship a second release**
+   that drops it from `pinnedKeys`.
+
+If you cannot wait — an anchor compromise where the attacker can mint manifests — activate
+immediately and accept that unupdated installs go dark. They keep running on cached documents to
+`graceUntil` and recover on update. That is the trade the pinning rule buys: an attacker holding
+the anchor cannot be locked out without also locking out clients that trust it.
+
+**Retire and revoke both refuse (`409`) on an active key of either class.** A product must always
+have one active anchor and one active document key; that guard is what stops an operator leaving
+it with zero of either. For an anchor the refusal message says so explicitly.
+
+**Products predating the anchor split** (migration `0026`) have their original key promoted to
+be the anchor, and no separate document key yet — so that one key still signs everything, exactly
+as before. The first document-key rotation splits them for real and is safe to run at any time;
+until then the product is no worse off than it was, but it also has not yet gained anything.
+
 ## CI gates
 
 `.github/workflows/ci.yml` runs on PRs and `main` pushes:

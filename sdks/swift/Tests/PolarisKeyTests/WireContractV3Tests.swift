@@ -445,6 +445,125 @@ final class WireContractV3Tests: XCTestCase {
         XCTAssertTrue(refused.discovered.isEmpty)
     }
 
+    // ── §1.1 the trust anchor / document-key split (B3-01) ─────────────────────────
+
+    /// The anchor is a SEPARATE, longer-lived pinned key — never a relaxation of "manifests
+    /// verify against pins only". A manifest signed by the product's DOCUMENT key is refused
+    /// however plausible it looks, and the previously discovered set is kept untouched.
+    func testManifestSignedByADocumentKeyIsRefused() {
+        let anchor = TestSigner(kid: "acme-anchor-2026")
+        let document = TestSigner(kid: "acme-2026")
+        let keys = [
+            Fixtures.manifestKey(
+                kid: anchor.kid, publicKey: anchor.publicKeyB64, role: "anchor"),
+            Fixtures.manifestKey(
+                kid: document.kid, publicKey: document.publicKeyB64, role: "document"),
+        ]
+        let manifest = Fixtures.manifest(issuedAt: issued, keys: keys)
+
+        // Anchor-signed: accepted, and the document key is learned.
+        let ok = verifyTrustManifest(
+            anchor.sign(manifest),
+            options: VerifyTrustManifestOptions(
+                pinned: anchor.trust, expectedAud: "djdl", now: issued))
+        XCTAssertNotNil(ok.doc)
+        XCTAssertEqual(ok.discovered[document.kid], document.publicKeyB64)
+
+        // The same payload signed by the DOCUMENT key: refused outright.
+        let refused = verifyTrustManifest(
+            document.sign(manifest),
+            options: VerifyTrustManifestOptions(
+                pinned: anchor.trust, expectedAud: "djdl", now: issued))
+        XCTAssertNil(refused.doc, "a manifest signed by a document key must be refused")
+        XCTAssertTrue(refused.discovered.isEmpty)
+    }
+
+    /// `role` is ADVISORY. A manifest that declares its own signer `role: "anchor"` gains
+    /// nothing by saying so: a verifier that read the field as authority would be letting the
+    /// manifest introduce the key that verifies it, which is R2-01 through a new door.
+    func testRoleClaimGrantsNoAuthority() {
+        let anchor = TestSigner(kid: "acme-anchor-2026")
+        let impostor = TestSigner(kid: "acme-2026")
+        let manifest = Fixtures.manifest(
+            issuedAt: issued,
+            keys: [
+                Fixtures.manifestKey(
+                    kid: impostor.kid, publicKey: impostor.publicKeyB64, role: "anchor"),
+                Fixtures.manifestKey(
+                    kid: anchor.kid, publicKey: anchor.publicKeyB64, status: "retired",
+                    role: "document"),
+            ])
+
+        let result = verifyTrustManifest(
+            impostor.sign(manifest),
+            options: VerifyTrustManifestOptions(
+                pinned: anchor.trust, expectedAud: "djdl", now: issued))
+        XCTAssertNil(result.doc, "role is advisory — claiming to be the anchor grants nothing")
+
+        // …and in the benign direction it is equally inert: an anchor-signed manifest whose
+        // entries carry a wrong, unknown or absent role still yields every non-revoked key.
+        let mislabelled = Fixtures.manifest(
+            issuedAt: issued,
+            keys: [
+                Fixtures.manifestKey(
+                    kid: anchor.kid, publicKey: anchor.publicKeyB64, role: "document"),
+                Fixtures.manifestKey(
+                    kid: impostor.kid, publicKey: impostor.publicKeyB64, role: "future"),
+            ])
+        let advisory = verifyTrustManifest(
+            anchor.sign(mislabelled),
+            options: VerifyTrustManifestOptions(
+                pinned: anchor.trust, expectedAud: "djdl", now: issued))
+        XCTAssertNotNil(advisory.doc)
+        XCTAssertEqual(advisory.discovered[impostor.kid], impostor.publicKeyB64)
+        // The field is parsed and surfaced, so a provisioning tool can read it — it is simply
+        // never consulted by the verifier.
+        XCTAssertEqual(advisory.doc?.keys.first?.role, "document")
+    }
+
+    /// The regression the split exists to prevent: an already-provisioned client, pinning only
+    /// the anchor, survives a DOCUMENT-key rotation — it verifies the new manifest, learns the
+    /// incoming key, drops the outgoing one, and verifies a document signed by the new key.
+    /// Before the split the manifest was signed by the key that had just rotated away from the
+    /// pin, so this refresh failed on every install and took revocation with it.
+    func testDocumentKeyRotationKeepsAPinnedClientWorking() {
+        let anchor = TestSigner(kid: "acme-anchor-2026")
+        let outgoing = TestSigner(kid: "acme-2026")
+        let incoming = TestSigner(kid: "acme-2027")
+
+        let manifest = Fixtures.manifest(
+            issuedAt: issued,
+            keys: [
+                Fixtures.manifestKey(
+                    kid: anchor.kid, publicKey: anchor.publicKeyB64, role: "anchor"),
+                Fixtures.manifestKey(
+                    kid: incoming.kid, publicKey: incoming.publicKeyB64, role: "document"),
+            ])
+        let result = verifyTrustManifest(
+            anchor.sign(manifest),
+            options: VerifyTrustManifestOptions(
+                pinned: anchor.trust, expectedAud: "djdl", now: issued))
+        XCTAssertNotNil(result.doc)
+
+        let effective = mergeTrust(anchor.trust, result.discovered)
+        XCTAssertEqual(effective[incoming.kid], incoming.publicKeyB64)
+        XCTAssertNil(effective[outgoing.kid], "the outgoing key is pruned by absence")
+
+        // A licence document signed by the ROTATED key verifies against that set.
+        let doc = incoming.sign(Fixtures.license(issuedAt: issued))
+        XCTAssertNotNil(
+            verifyLicenseDoc(
+                doc,
+                options: VerifyOptions(
+                    trust: effective, expectedAud: "djdl", deviceId: "dev", now: issued)))
+        // And one signed by the OUTGOING key no longer does — rotation actually rotated.
+        XCTAssertNil(
+            verifyLicenseDoc(
+                outgoing.sign(Fixtures.license(issuedAt: issued)),
+                options: VerifyOptions(
+                    trust: effective, expectedAud: "djdl", deviceId: "dev", now: issued)))
+    }
+
     /// §8 — the identifier registry, asserted rather than assumed. Every one of these is a value
     /// the Worker and the other three SDKs also hardcode, so a typo here is a silent
     /// cross-language break rather than a local bug.

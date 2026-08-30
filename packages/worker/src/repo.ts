@@ -47,6 +47,29 @@ export interface ProductKeyRow {
   rotated_at: number | null;
   /** Stamped by the revoke action (0021); NULL for keys revoked before the column existed. */
   revoked_at: number | null;
+  /**
+   * `'anchor' | 'document'` (0026, wire v3 §1.1). The ANCHOR signs `pkey-trust+jws` and nothing
+   * else and is the key host applications PIN; DOCUMENT keys sign license/config/bundle
+   * documents and rotate underneath it. Splitting them is what makes rotation an operation
+   * instead of an application release (B3-01) — the manifest signer stops moving, so an
+   * already-installed client keeps verifying manifests, and therefore keeps learning about
+   * revocations, across any number of document-key rotations.
+   *
+   * Optional on the TYPE, not in the schema: the column is `NOT NULL DEFAULT 'document'`, but a
+   * row read back through a `SELECT` written before 0026 (or from a test fixture built by hand)
+   * would carry `undefined`, and every reader below treats absent as `'document'` — the value
+   * every pre-0026 row had in effect.
+   */
+  role?: string;
+}
+
+/** The two key roles (wire v3 §1.1). `'document'` is the default for any row that predates 0026. */
+export type ProductKeyRole = "anchor" | "document";
+
+/** A row's role, defaulting an absent/unknown value to `'document'`. Never widens: a row that
+ *  says something this build does not understand is emphatically NOT treated as an anchor. */
+export function productKeyRole(row: { role?: string | null }): ProductKeyRole {
+  return row.role === "anchor" ? "anchor" : "document";
 }
 
 // Sealed per-product secret (OIDC client secret, edge-mint key material, …).
@@ -341,14 +364,58 @@ export async function upsertProductSyncState(
 }
 
 // ── Sealed key custody (envelope-encrypted under the platform KEK; see src/keyvault.ts) ──
+
+/**
+ * Every ACTIVE key for a product — at most one per role (0026's two partial unique indexes).
+ *
+ * One query rather than two, because `loadProduct` needs both halves on every product-scoped
+ * request and this is on the hot path for every route the platform serves.
+ */
+export async function getActiveProductKeys(
+  db: Db,
+  product: string,
+): Promise<{ document: ProductKeyRow | null; anchor: ProductKeyRow | null }> {
+  const rows = await db.all<ProductKeyRow>(
+    "SELECT * FROM product_keys WHERE product = ? AND status = 'active' ORDER BY created_at DESC",
+    product,
+  );
+  return {
+    document: rows.find((r) => productKeyRole(r) === "document") ?? null,
+    anchor: rows.find((r) => productKeyRole(r) === "anchor") ?? null,
+  };
+}
+
+/**
+ * The active DOCUMENT signing key — what signs license, config and bundle documents, and what
+ * every "the product's signing key" display surface means.
+ *
+ * Falls back to the active anchor, which is the 0026 transitional state: that migration promotes
+ * each existing product's one active key to be its anchor (it cannot mint a second keypair in
+ * SQL), so until the first document-key rotation the anchor is also the document signer — which
+ * is precisely the behaviour those products had before 0026. `loadProduct` documents the same
+ * fallback from the other side.
+ */
 export async function getActiveProductKey(
   db: Db,
   product: string,
 ): Promise<ProductKeyRow | null> {
-  return db.first<ProductKeyRow>(
-    "SELECT * FROM product_keys WHERE product = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
-    product,
-  );
+  const { document, anchor } = await getActiveProductKeys(db, product);
+  return document ?? anchor;
+}
+
+/**
+ * The active TRUST ANCHOR — the ONLY key that may sign a `pkey-trust+jws` (wire v3 §1.1).
+ *
+ * No fallback, deliberately. If a product has no active anchor, it has no key its clients have
+ * pinned, and signing a manifest with a document key instead would produce an artifact every
+ * correctly-pinned client refuses — the exact B3-01 failure, re-created by a convenience.
+ * Fail closed and let `loadProduct` refuse the product.
+ */
+export async function getActiveAnchorKey(
+  db: Db,
+  product: string,
+): Promise<ProductKeyRow | null> {
+  return (await getActiveProductKeys(db, product)).anchor;
 }
 
 export async function listVerificationProductKeys(
@@ -382,8 +449,8 @@ export async function insertProductKey(
   row: ProductKeyRow,
 ): Promise<void> {
   await db.run(
-    `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at, role)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.product,
     row.kid,
     row.alg,
@@ -392,16 +459,63 @@ export async function insertProductKey(
     row.status,
     row.created_at,
     row.rotated_at,
+    productKeyRole(row),
   );
 }
 
+/**
+ * Insert a key and say whether the `kid` was already taken (B3-08).
+ *
+ * The rotation `kid` used to be derived from `now % 100000` and inserted with a bare `INSERT`,
+ * so two rotations 100000 seconds apart (or, with a coarse clock, in the same second) collided
+ * on `PRIMARY KEY (product, kid)` and surfaced as an undiagnosable 500 with nothing naming the
+ * cause. `ON CONFLICT DO NOTHING` plus a `changes` read turns that into a fact the caller can
+ * report: `false` means "that kid exists", not "something went wrong".
+ *
+ * Not a batch, because the caller needs the answer. Key preparation is a single-row insert of a
+ * STAGED key — it has nothing to be atomic with.
+ */
+export async function insertProductKeyIfAbsent(
+  db: Db,
+  row: ProductKeyRow,
+): Promise<boolean> {
+  const changes = await db.runChanges(
+    `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at, role)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(product, kid) DO NOTHING`,
+    row.product,
+    row.kid,
+    row.alg,
+    row.public_b64url,
+    row.enc_private_json,
+    row.status,
+    row.created_at,
+    row.rotated_at,
+    productKeyRole(row),
+  );
+  return changes > 0;
+}
+
+/**
+ * Retire the product's active key OF ONE ROLE.
+ *
+ * Role-scoped since 0026, and that scope is load-bearing: this statement runs inside the
+ * `activate` batch, and an unscoped version would retire the trust ANCHOR every time an operator
+ * activated a new document key — taking the manifest signer away in the very batch whose purpose
+ * is to leave it alone, and reproducing B3-01 exactly.
+ *
+ * A row written before 0026 has `role = 'document'` (the column default), so `IS NULL` is not a
+ * case that can occur; the explicit comparison is still written against the stored value rather
+ * than against a coalesce, because 0026 backfilled every row.
+ */
 export function stmtRetireProductKeys(
   product: string,
   at: number,
+  role: ProductKeyRole = "document",
 ): DbStatement {
   return {
-    sql: "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active'",
-    params: [at, product],
+    sql: "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active' AND role = ?",
+    params: [at, product, role],
   };
 }
 
@@ -708,11 +822,13 @@ export function stmtInsertSchema(row: SchemaRow): DbStatement {
   };
 }
 
-/** Build the sealed product-key INSERT as a statement (for atomic batch). */
+/** Build the sealed product-key INSERT as a statement (for atomic batch). `role` defaults to
+ *  `'document'`, so a caller that has not thought about §1.1 cannot accidentally mint an
+ *  anchor — the key class that costs an application release to rotate. */
 export function stmtInsertProductKey(row: ProductKeyRow): DbStatement {
   return {
-    sql: `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at, role)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.product,
       row.kid,
@@ -722,6 +838,7 @@ export function stmtInsertProductKey(row: ProductKeyRow): DbStatement {
       row.status,
       row.created_at,
       row.rotated_at,
+      productKeyRole(row),
     ],
   };
 }

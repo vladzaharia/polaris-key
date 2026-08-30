@@ -100,6 +100,7 @@ from helpers import (
     license_payload,
     make_client,
     manifest_payload,
+    new_keypair,
     routes,
     sign_bundle,
     sign_config,
@@ -446,6 +447,109 @@ def test_c2_cache_is_no_longer_a_key_source(tmp_path) -> None:
     assert c.status().status == "needs-activation"
     assert c.license.is_entitled("polarisVpn") is False
     assert c.config.get_secret("proxy.subscriptionUrl") is None
+    c.close()
+
+
+# ── §1.1 the trust anchor / document-key split (B3-01) ──────────────────────────────
+def test_b3_01_manifest_signed_by_a_document_key_is_refused() -> None:
+    """The anchor is a SEPARATE pinned key, never a relaxation of "pins only".
+
+    ``KID`` is the pinned ANCHOR here; ``rot`` is the rotating document key. A manifest
+    signed by the document key is refused however plausible its contents, which is the
+    R2-01 guard restated for §1.1 — and it has to be, because the rotating key is exactly
+    the one a compromise obtains and a revocation is meant to remove.
+    """
+    keys = [
+        key_entry(KID, PUBKEY_RAW, role="anchor"),
+        key_entry("rot", ROTATED_PUB, role="document"),
+    ]
+    # Anchor-signed: accepted, and the document key is learned.
+    ok = verify_trust_manifest(
+        sign_manifest(keys), pinned=TRUST, expected_aud=PRODUCT, now=NOW
+    )
+    assert ok.doc is not None
+    assert ok.discovered["rot"] == ROTATED_PUB
+
+    # The same payload signed by the DOCUMENT key: refused outright, nothing learned.
+    refused = verify_trust_manifest(
+        sign_manifest(keys, pem=ROTATED_PEM, kid="rot"),
+        pinned=TRUST,
+        expected_aud=PRODUCT,
+        now=NOW,
+    )
+    assert refused.doc is None and refused.discovered == {}
+
+
+def test_b3_01_role_claim_grants_no_authority() -> None:
+    """``role`` is ADVISORY: a manifest declaring its own signer the anchor gains nothing.
+
+    A verifier that read the field as authority would be letting the manifest introduce the
+    key that verifies it — R2-01 through a new door, and one that any holder of any document
+    key could walk through.
+    """
+    hostile = sign_manifest(
+        [
+            key_entry("rot", ROTATED_PUB, role="anchor"),
+            key_entry(KID, PUBKEY_RAW, "retired", role="document"),
+        ],
+        pem=ROTATED_PEM,
+        kid="rot",
+    )
+    assert verify_trust_manifest(
+        hostile, pinned=TRUST, expected_aud=PRODUCT, now=NOW
+    ).doc is None
+
+    # Inert in the benign direction too: a correctly anchor-signed manifest whose entries
+    # carry a wrong, an unknown, and no role at all still yields every non-revoked key. An
+    # implementation that filtered on `role` would build a smaller trust set than its
+    # siblings from identical signed bytes.
+    advisory = verify_trust_manifest(
+        sign_manifest(
+            [
+                key_entry(KID, PUBKEY_RAW, role="document"),
+                key_entry("rot", ROTATED_PUB, role="future"),
+                key_entry("plain", ATTACKER_PUB),
+            ]
+        ),
+        pinned=TRUST,
+        expected_aud=PRODUCT,
+        now=NOW,
+    )
+    assert advisory.doc is not None
+    assert advisory.discovered == {
+        KID: PUBKEY_RAW,
+        "rot": ROTATED_PUB,
+        "plain": ATTACKER_PUB,
+    }
+
+
+def test_b3_01_document_key_rotation_keeps_a_pinned_client_working() -> None:
+    """The regression the split exists to prevent, end to end.
+
+    A provisioned client pins only the anchor and currently trusts the outgoing document
+    key. The post-rotation manifest is signed by the SAME anchor, publishes the incoming key
+    and omits the outgoing one — so it verifies, the new key is learned, the old one is
+    pruned, and a document signed by the new key verifies. Before the split the manifest was
+    signed by the key that had just rotated away from the pin, so this refresh failed on
+    every installed client and took revocation with it.
+    """
+    incoming_pem, incoming_pub = new_keypair()
+    manifest = sign_manifest(
+        [
+            key_entry(KID, PUBKEY_RAW, role="anchor"),
+            key_entry("acme-2027", incoming_pub, role="document"),
+        ]
+    )
+    c = make_client(routes(trust_jws=manifest))
+    assert c._trust.refresh() is not None
+    assert c._trust.effective["acme-2027"] == incoming_pub
+    assert "rot" not in c._trust.effective, "the outgoing key is pruned by absence"
+
+    doc = sign_license(c.core.device_id, pem=incoming_pem, kid="acme-2027")
+    assert _verify_lic(doc, c._trust.effective, device_id=c.core.device_id) is not None
+    # …and one signed by the OUTGOING key no longer verifies: rotation actually rotated.
+    stale = sign_license(c.core.device_id, pem=ROTATED_PEM, kid="rot")
+    assert _verify_lic(stale, c._trust.effective, device_id=c.core.device_id) is None
     c.close()
 
 

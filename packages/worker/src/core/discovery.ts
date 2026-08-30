@@ -64,11 +64,22 @@ export async function handleDiscovery(
   const jwksUrl = `${base}/.well-known/jwks.json`;
   const trustManifestUrl = `${base}/.well-known/polaris-trust.jws`;
 
-  const trustKeys = Object.fromEntries(
-    verificationKeys.map((key) => [key.kid, key.publicKey]),
+  // WHAT TO PIN — the ANCHOR, and only the anchor (§1.1). This field used to publish every
+  // verification key the product had, which is the advice that walks straight into B3-01: pin a
+  // document key and your install stops verifying manifests the first time that key rotates.
+  // The anchor is the one key rotation does not move, so it is the one honest answer here.
+  // `keys` below still lists the whole set — that is the verification set, a different question.
+  const anchors = verificationKeys.filter(
+    (key) => key.role === "anchor" && key.status === "active",
   );
+  const trustKeys = Object.fromEntries(
+    anchors.map((key) => [key.kid, key.publicKey]),
+  );
+  // A product whose anchor cannot be read (an unopenable key row, a partially-applied 0026)
+  // still gets a non-empty answer rather than an empty object that reads as "pin nothing".
   if (signingPublicKey && Object.keys(trustKeys).length === 0)
     trustKeys[signingKid] = signingPublicKey;
+  const anchorKid = anchors[0]?.kid ?? product.trustAnchorKid;
 
   const ctx: DiscoveryContext = { product, env, db, base };
   const services: Record<ServiceSlug, Record<string, unknown>> = {
@@ -116,6 +127,8 @@ export async function handleDiscovery(
       trustManifestUrl,
       cacheSeconds: 300,
       pinnedKeys: trustKeys,
+      /** §1.1 — the key that signs every trust manifest, and the one an SDK should pin. */
+      anchorKid,
       signingKid,
       signingPub: signingPublicKey,
       keys: signingPublicKey
@@ -127,6 +140,9 @@ export async function handleDiscovery(
             publicKey: key.publicKey,
             status: key.status,
             active: key.status === "active",
+            // Advisory, exactly as in the signed manifest (§2.3) — never an input to
+            // verification. Discovery is UNSIGNED (R2-17), so nothing here may be authority.
+            role: key.role,
           }))
         : [],
     },

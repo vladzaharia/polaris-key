@@ -148,7 +148,12 @@ function resolveKeyring(env: Env): {
       throw new Error("PLATFORM_KEK_KEYS is empty");
     }
     const active = env.PLATFORM_KEK_ACTIVE;
-    if (typeof active !== "string" || !(active in raw)) {
+    // B3-10 — `Object.hasOwn`, not `in`. `raw` is an object literal, so `in` also answers true
+    // for every `Object.prototype` member name: `PLATFORM_KEK_ACTIVE=toString` passed this guard
+    // and only failed one step later, when the "key" turned out to be a function. That is a
+    // fail-closed outcome reached by accident rather than by the check that exists to reach it,
+    // and the accident is one refactor away from becoming a fail-open.
+    if (typeof active !== "string" || !Object.hasOwn(raw, active)) {
       throw new Error("PLATFORM_KEK_ACTIVE is not in PLATFORM_KEK_KEYS");
     }
     return { active, raw, legacy: false };

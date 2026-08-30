@@ -43,10 +43,28 @@ for exactly which manifest fields feed it.
 
 ## Rotating the signing key
 
-Every product signs everything it hands a client — license documents, config documents, trust
-manifests, offline bundles — with one Ed25519 keypair, sealed the same way a product secret is.
+A product has **two** Ed25519 keypairs, each sealed the same way a product secret is, and which
+one you are rotating decides what the operation costs:
+
+| Class        | Signs                                                   | Clients pin it? | Rotating it costs           |
+| ------------ | ------------------------------------------------------- | --------------- | --------------------------- |
+| **document** | license documents, config documents, offline bundles    | No              | Nothing. Routine.           |
+| **anchor**   | the trust manifest (`pkey-trust+jws`), and nothing else | **Yes**         | **An application release.** |
+
+A client verifies a trust manifest against its **pinned** keys and nothing else — that is what
+stops a manifest from introducing the key that verifies it. So whichever key signs the manifest
+is the key every install has compiled in, and moving it moves the ground under all of them at
+once: they would reject every later manifest, stop advancing their signed clock, and stop
+receiving revocations. Splitting the anchor out is what makes a document-key rotation a routine
+operation instead of a release, because the manifest signer does not move.
+
+**The anchor is what an adopter pins.** It is what `signing.trustKeys` returns at product
+creation and what `trust.pinnedKeys` advertises in discovery. `signingKid` — the `kid` you will
+see in the header of every license and config document — is the _document_ key, and pinning it is
+the mistake this split exists to prevent.
+
 **Prepare signing key**, available from both the product registry row menu and the Settings page,
-is `POST /manage/api/products/<slug>/keys/rotate`:
+is `POST /manage/api/products/<slug>/keys/rotate` and stages a **document** key by default:
 
 1. A new Ed25519 keypair is generated and sealed under the active KEK.
 2. It's inserted as **`staged`** — published for trust discovery, but not yet the key anything
@@ -66,20 +84,39 @@ lifecycle has four actions; today only the first has a console button — the re
 calls, the same authenticated pattern [Offline bundles](/docs/admin/bundles/) describes for the
 `pkey` CLI (a session cookie plus the echoed CSRF token):
 
-| Action                                       | Endpoint                                     | Effect                                                                                                                                                               |
-| -------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Prepare** (console: _Prepare signing key_) | `POST .../keys/rotate` or `.../keys/prepare` | Mints and stages a new key.                                                                                                                                          |
-| **Activate**                                 | `POST .../keys/activate`                     | Retires the current active key and promotes the staged one, in one batch. Refused (`409`) before the trust-cache window elapses unless `breakGlass: true` is passed. |
-| **Retire**                                   | `POST .../keys/retire`                       | Marks a non-active key retired.                                                                                                                                      |
-| **Revoke**                                   | `POST .../keys/revoke`                       | Marks a non-active key revoked (compromise response).                                                                                                                |
+| Action                                       | Endpoint                                     | Effect                                                                                                                                                                                   |
+| -------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Prepare** (console: _Prepare signing key_) | `POST .../keys/rotate` or `.../keys/prepare` | Mints and stages a new key. Body `{"role":"document"}` (default) or `{"role":"anchor"}`.                                                                                                 |
+| **Activate**                                 | `POST .../keys/activate`                     | Retires the current active key **of the staged key's class** and promotes the staged one, in one batch. Refused (`409`) before the trust-cache window elapses unless `breakGlass: true`. |
+| **Retire**                                   | `POST .../keys/retire`                       | Marks a non-active key retired.                                                                                                                                                          |
+| **Revoke**                                   | `POST .../keys/revoke`                       | Marks a non-active key revoked (compromise response).                                                                                                                                    |
 
-Retire and revoke both refuse (`409`) on the **currently active** key — stage and activate a
-replacement first. A product must always have exactly one active key; this guard is what stops
-an operator from accidentally leaving it with zero.
+Retire and revoke both refuse (`409`) on the **currently active** key of either class — stage and
+activate a replacement first. A product must always have one active anchor and one active
+document key; this guard is what stops an operator from accidentally leaving it with zero.
+
+Activating a document key leaves the anchor exactly where it was: that is the point, and it is
+why an installed client follows a document-key rotation without noticing.
+
+:::caution[Rotating the anchor is an application release]
+Preparing an anchor returns `requiresApplicationRelease: true`, and it means it. Clients pin the
+anchor, so you must ship a build that pins **both** the outgoing and the incoming anchor, wait for
+adoption, and only then activate. Activating before adoption takes every un-updated install dark:
+it will refuse every trust manifest and stop receiving revocations, while running on its cached
+documents until `graceUntil`. The full procedure is in `docs/RUNBOOK.md` → _Rotating a product
+signing key_.
+:::
 
 :::caution[If you suspect a key was compromised]
-Prepare a new key, wait out (or break-glass through) the trust window, activate it, then revoke
-the old one — the same shape as a `PLATFORM_KEK` compromise response in [Operating: the KEK
+For a **document** key: prepare, wait out (or break-glass through) the trust window, activate,
+then revoke the old one. No client action at all.
+
+For the **anchor**: same shape, but the wait is for application adoption rather than a 300-second
+cache window — see the note above. If the attacker can mint manifests, activate immediately and
+accept that un-updated installs go dark until they update; that is the trade the pinning rule
+buys.
+
+Either is the same shape as a `PLATFORM_KEK` compromise response in [Operating: the KEK
 keyring](/docs/admin/kek/) → _KEK compromise (containment)_, one level down: that runbook
 rotates the KEK that seals every product's keys; this rotates one product's own signing key.
 :::

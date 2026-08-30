@@ -247,8 +247,23 @@ function keyEntry(
   kid: string,
   publicKey: string,
   status: string,
+  /**
+   * §2.3's ADVISORY `role`. Omitted unless a vector is specifically about it, so every case
+   * that predates the anchor split keeps its exact bytes — and so the corpus covers both
+   * shapes, a manifest that carries the field and one that does not (a server older than the
+   * split emits the latter, and that is not an error).
+   */
+  role?: string,
 ): Record<string, unknown> {
-  return { kid, alg: "EdDSA", kty: "OKP", crv: "Ed25519", publicKey, status };
+  return {
+    kid,
+    alg: "EdDSA",
+    kty: "OKP",
+    crv: "Ed25519",
+    publicKey,
+    status,
+    ...(role === undefined ? {} : { role }),
+  };
 }
 
 /** A `pkey-trust+jws` payload (§2.3). Shape unchanged from v2; only `iss` and `typ` moved. */
@@ -1418,6 +1433,107 @@ async function buildTrustCasesV2(): Promise<TrustCaseV2[]> {
         trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
       },
     },
+
+    // ── §1.1 — the trust anchor / document-key split (B3-01) ─────────────────
+    //
+    // `PIN_KID` is the ANCHOR here (it is what `pinned` holds, which is the definition), and
+    // `ALT_KID` is the rotating DOCUMENT key. The four vectors below pin, in order: the control,
+    // the R2-01 guard restated for the split, the same guard against a manifest that LIES about
+    // its signer's role, and the rule that `role` is advisory in the benign direction too.
+    {
+      id: "trust-anchor-signed-manifest-verifies-against-pinned-anchor",
+      description:
+        "The §1.1 control. The manifest is signed by the ANCHOR — the key the host application pins — and publishes both key classes with their advisory `role`. It verifies, and the document key it publishes joins the trust set. This is the shape every server emits after the anchor split, and the fact that it verifies identically to a pre-split manifest is why the split needs no PROTOCOL_VERSION bump.",
+      pinned,
+      before: {},
+      manifestJws: await manifest([
+        keyEntry(PIN_KID, pub(PIN_KID), "active", "anchor"),
+        keyEntry(ALT_KID, pub(ALT_KID), "active", "document"),
+      ]),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+        issuedAt: V3_ISSUED,
+      },
+    },
+    {
+      id: "trust-manifest-signed-by-document-key-rejected",
+      description:
+        "A manifest signed by the product's DOCUMENT key rather than its anchor. Refused, and the previous trust set is kept. This is the R2-01 guard in the vocabulary of §1.1: the anchor is a SEPARATE, longer-lived pinned key, never a relaxation of 'manifests verify against pins only'. A verifier that accepted this would be trusting a manifest signed by a key that rotates — which is both halves of the bug B3-01 describes, since it is precisely the rotating key that a compromise obtains and that a revocation is supposed to remove.",
+      pinned,
+      before: { [ALT_KID]: pub(ALT_KID) },
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active", "anchor"),
+          keyEntry(ALT_KID, pub(ALT_KID), "active", "document"),
+        ],
+        ALT_KID,
+      ),
+      now,
+      expect: {
+        accepted: false,
+        trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+      },
+    },
+    {
+      id: "trust-role-claim-does-not-grant-manifest-signing",
+      description:
+        'The same forgery, dressed up: the manifest is signed by the document key AND declares that key `role: "anchor"`. Still refused. `role` is ADVISORY (§1.1) — a verifier that read it as authority would be letting a manifest name the key that verifies it, which is R2-01 through a new door, and the door would be one an attacker holding any document key could walk through. What constrains manifest signing is the pin, and only the pin.',
+      pinned,
+      before: { [ALT_KID]: pub(ALT_KID) },
+      manifestJws: await manifest(
+        [
+          keyEntry(ALT_KID, pub(ALT_KID), "active", "anchor"),
+          keyEntry(PIN_KID, pub(PIN_KID), "retired", "document"),
+        ],
+        ALT_KID,
+      ),
+      now,
+      expect: {
+        accepted: false,
+        trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+      },
+    },
+    {
+      id: "trust-role-is-advisory-not-a-filter",
+      description:
+        '`role` changes NOTHING about a manifest that is otherwise valid — the other direction of the same rule. This one is anchor-signed and correct, but its entries carry roles that are wrong (the anchor calls itself a document key), unknown (`role: "future"`) and absent. Every non-revoked entry still lands in the discovered set. An implementation that filtered on `role` would build a smaller trust set than its siblings from identical signed bytes — a cross-language divergence of exactly the kind A1-06 and A1-08 were.',
+      pinned,
+      before: {},
+      manifestJws: await manifest([
+        keyEntry(PIN_KID, pub(PIN_KID), "active", "document"),
+        keyEntry(ALT_KID, pub(ALT_KID), "active", "future"),
+        keyEntry("no-role-declared", FOREIGN_PUB, "active"),
+      ]),
+      now,
+      expect: {
+        accepted: true,
+        trust: {
+          [PIN_KID]: pub(PIN_KID),
+          [ALT_KID]: pub(ALT_KID),
+          "no-role-declared": FOREIGN_PUB,
+        },
+        issuedAt: V3_ISSUED,
+      },
+    },
+    {
+      id: "trust-document-key-rotation-keeps-client-working",
+      description:
+        "A document-key rotation seen from an ALREADY-PROVISIONED client: it pins the anchor and currently trusts the outgoing document key. The new manifest is signed by the SAME anchor (rotation does not move it), publishes the incoming document key, and omits the outgoing one — so it verifies, the new key is learned and the old one is pruned. This is the whole point of §1.1. Before the split the manifest was signed by the key that just rotated, so this exact refresh failed on every installed client, and with it every revocation the manifest would have carried.",
+      pinned,
+      before: { "djdl-2026-outgoing": FOREIGN_PUB },
+      manifestJws: await manifest([
+        keyEntry(PIN_KID, pub(PIN_KID), "active", "anchor"),
+        keyEntry(ALT_KID, pub(ALT_KID), "active", "document"),
+      ]),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+        issuedAt: V3_ISSUED,
+      },
+    },
   ];
 }
 
@@ -1465,6 +1581,10 @@ async function buildClockFloorCasesV2(): Promise<ClockFloorCaseV2[]> {
   /** A manifest refreshed a week in — between the two documents, so it is the MIDDLE value
    *  of the three and cannot be mistaken for the max. */
   const MANIFEST_MIDDLE = V3_ISSUED + 7 * DAY;
+  /** A trust refresh ten minutes after the documents were issued — the ordinary cadence, and
+   *  early enough that the licence document is still inside its own one-hour window, so the
+   *  rotation case below can assert the strongest outcome (`ok`) rather than `grace`. */
+  const MANIFEST_AFTER_ROTATION = V3_ISSUED + 600;
   /** A config document that kept refreshing for 399 days while the license document did
    *  not. The two services fetch independently in v3 (separate ETags, separate cadence),
    *  so this is the ordinary shape of a config-enabled product, not a contrivance. */
@@ -1610,6 +1730,27 @@ async function buildClockFloorCasesV2(): Promise<ClockFloorCaseV2[]> {
         highWaterMark: CONFIG_LATEST,
         effectiveNow: CONFIG_LATEST,
         status: "expired",
+      },
+    },
+    {
+      ...common,
+      id: "floor-document-key-rotation-keeps-client-working",
+      description:
+        "§1.1 end to end, on the path that matters: a client that pins ONLY the anchor, reloading after a document-key rotation. The manifest is anchor-signed (rotation did not move the signer) and publishes the incoming document key; the cached licence document is signed by that incoming key and therefore verifies against the set the manifest just built — so the gate reads `ok` and the install keeps running. Before the anchor split this is the exact point at which an installed client went dark: the manifest was signed by the key that had just rotated away from the pin, so step 2 refused it, no rotated key was ever learned, the licence document failed at step 3, and the client fell to `needs-activation` with no user action able to recover it.",
+      licenseJws: await license(ALT_KID),
+      trustJws: await manifest(
+        MANIFEST_AFTER_ROTATION,
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active", "anchor"),
+          keyEntry(ALT_KID, pub(ALT_KID), "active", "document"),
+        ],
+        PIN_KID,
+      ),
+      systemClock: ROLLED_BACK,
+      expect: {
+        highWaterMark: MANIFEST_AFTER_ROTATION,
+        effectiveNow: MANIFEST_AFTER_ROTATION,
+        status: "ok",
       },
     },
   ];

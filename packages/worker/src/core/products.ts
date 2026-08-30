@@ -12,11 +12,15 @@
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import {
+  getActiveAnchorKey,
   getActiveProductKey,
+  getActiveProductKeys,
   getActiveSchema,
   getProduct,
   getProductSecret,
   listVerificationProductKeys,
+  productKeyRole,
+  type ProductKeyRow,
 } from "../repo.js";
 import { open } from "../keyvault.js";
 import {
@@ -56,6 +60,25 @@ export interface Product {
    */
   signingKey: () => Promise<string | null>;
   signingPub: string | null;
+  /**
+   * The product's TRUST ANCHOR (wire v3 §1.1) — the only key that may sign a `pkey-trust+jws`,
+   * and the key host applications pin.
+   *
+   * Separate from `signingKid`/`signingKey` above, and that separation is the whole of B3-01:
+   * the manifest used to be signed by the same rotating active key that signs documents, while
+   * clients verify a manifest against PINNED keys only, so the first rotation made every
+   * installed client refuse every later manifest — and with it every revocation. The anchor is a
+   * longer-lived key that rotation does not touch, NOT a relaxation of the pinning rule.
+   *
+   * Same lazy+memoised open as `signingKey`, and the SAME promise when the two are the same row:
+   * migration 0026 promotes each existing product's active key to be its anchor, because minting
+   * a second keypair needs Ed25519 keygen and a KEK seal that SQL cannot do. Until that product's
+   * first document-key rotation the anchor signs documents too — exactly what it did before —
+   * and the split becomes real the moment a document key is activated.
+   */
+  trustAnchorKid: string;
+  trustAnchorKey: () => Promise<string | null>;
+  trustAnchorPub: string | null;
   compatMin: string;
   compatMax: string;
   defaultMaxOfflineDays: number;
@@ -77,6 +100,9 @@ export interface PublicSigningKey {
   alg: string;
   publicKey: string;
   status: string;
+  /** `'anchor' | 'document'` (wire v3 §1.1). Published as ADVISORY metadata — it tells an
+   *  operator which key to pin and is never an input to any verification decision. */
+  role: "anchor" | "document";
 }
 
 /** Best-effort public signing-key lookup. This never opens private key material and returns
@@ -93,6 +119,28 @@ export async function loadPublicSigningKey(
       alg: keyRow.alg,
       publicKey: keyRow.public_b64url,
       status: keyRow.status,
+      role: productKeyRole(keyRow),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** The product's active TRUST ANCHOR, public half only (§1.1) — what an adopter pins. Same
+ *  degrade-safely contract as `loadPublicSigningKey`: null rather than a throw. */
+export async function loadPublicAnchorKey(
+  db: Db,
+  slug: string,
+): Promise<PublicSigningKey | null> {
+  try {
+    const keyRow = await getActiveAnchorKey(db, slug);
+    if (!keyRow) return null;
+    return {
+      kid: keyRow.kid,
+      alg: keyRow.alg,
+      publicKey: keyRow.public_b64url,
+      status: keyRow.status,
+      role: productKeyRole(keyRow),
     };
   } catch {
     return null;
@@ -113,6 +161,7 @@ export async function loadPublicSigningKeys(
       alg: row.alg,
       publicKey: row.public_b64url,
       status: row.status,
+      role: productKeyRole(row),
     }));
   } catch {
     return [];
@@ -120,7 +169,7 @@ export async function loadPublicSigningKeys(
 }
 
 /** Load a product + a lazy handle on its signing key. Returns null for an unknown product or a
- *  product with no ACTIVE key row (fail-closed: no key ⇒ no Product ⇒ no route at all). A key
+ *  product with no ACTIVE ANCHOR row (fail-closed: no key ⇒ no Product ⇒ no route at all). A key
  *  that exists but cannot be decrypted is fail-closed too, one level down — see `signingKey`. */
 export async function loadProduct(
   env: Env,
@@ -129,21 +178,46 @@ export async function loadProduct(
 ): Promise<Product | null> {
   const row = await getProduct(db, slug);
   if (!row) return null;
-  const keyRow = await getActiveProductKey(db, slug);
-  if (!keyRow) return null;
+  const active = await getActiveProductKeys(db, slug);
+  // TWO roles, ONE fail-closed condition — still "no active key ⇒ no Product ⇒ 404", exactly as
+  // before. Neither role introduces a NEW way for a product to disappear, and that is a
+  // deliberate choice rather than an oversight:
+  //
+  //   * anchor missing  ⇒ fall back to the document key. Post-0026 this is unreachable (the
+  //     migration promotes every product's active key to anchor, both create paths mint one, and
+  //     retiring or revoking an active key is refused with a 409). It exists for the one shape
+  //     that IS reachable in this repo's history: a migration that dies part way, which R11-04
+  //     documents as a real event. In that state the fallback reproduces exactly the behaviour
+  //     the product had before 0026 — B3-01, i.e. rotation does not yet help it — while the
+  //     alternative, refusing the product outright, would take every route it has to 404,
+  //     revocation included. A degraded rotation story beats a total outage.
+  //   * document missing ⇒ fall back to the anchor. This is the ORDINARY 0026 state for an
+  //     existing product: no keypair can be minted in SQL, so the promoted key is both until the
+  //     first document-key rotation splits them for real.
+  const anchorRow = active.anchor ?? active.document;
+  const keyRow = active.document ?? active.anchor;
+  if (!anchorRow || !keyRow) return null;
   try {
     // Deferred and memoised (B5-12). `.catch(() => null)` is attached HERE, at construction, so
     // the memoised promise can never be an unhandled rejection no matter how many callers (or
     // none) await it, and every caller sees the same `null` for "this product cannot sign".
-    let opened: Promise<string | null> | undefined;
-    const signingKey = (): Promise<string | null> => {
-      opened ??= open(env, keyRow.enc_private_json, {
-        product: slug,
-        kind: "signing-key",
-        id: keyRow.kid,
-      }).catch(() => null);
-      return opened;
+    const opener = (keyRow: ProductKeyRow): (() => Promise<string | null>) => {
+      let opened: Promise<string | null> | undefined;
+      return () => {
+        opened ??= open(env, keyRow.enc_private_json, {
+          product: slug,
+          kind: "signing-key",
+          id: keyRow.kid,
+        }).catch(() => null);
+        return opened;
+      };
     };
+    const signingKey = opener(keyRow);
+    // ONE memoised open when the two roles are the same row (the 0026 transitional state), so a
+    // bundle mint — which signs a licence, a config document and a manifest — still pays for a
+    // single AES-GCM open rather than two.
+    const trustAnchorKey =
+      anchorRow.kid === keyRow.kid ? signingKey : opener(anchorRow);
     const schema = await getActiveSchema(db, slug);
     const parsedServices = parseServices(row.services_json);
     return {
@@ -152,6 +226,9 @@ export async function loadProduct(
       signingKid: keyRow.kid,
       signingKey,
       signingPub: keyRow.public_b64url,
+      trustAnchorKid: anchorRow.kid,
+      trustAnchorKey,
+      trustAnchorPub: anchorRow.public_b64url,
       compatMin: row.compat_min,
       compatMax: row.compat_max,
       defaultMaxOfflineDays: row.default_max_offline_days,

@@ -113,10 +113,14 @@ export const SWEEP_MAX_PRODUCTS = 100;
  * Every name is an invariant whose absence is silent. `idx_licenses_enroll_hwid` is
  * one-free-licence-per-machine; `idx_devices_seat` is the UNIQUE arbiter that makes
  * `claimDeviceSeat` atomic instead of check-then-act; `idx_product_keys_one_active` is one active
- * signing key per product; `idx_release_download_tokens_hash` is what makes a download token
- * globally unambiguous. Without them nothing errors — the constraint simply stops being enforced.
+ * DOCUMENT signing key per product and `idx_product_keys_one_active_anchor` its twin for the
+ * trust anchor (0026, wire v3 §1.1 — two active anchors would mean two keys able to sign a trust
+ * manifest, i.e. two answers to "what do I pin?"); `idx_release_download_tokens_hash` is what
+ * makes a download token globally unambiguous. Without them nothing errors — the constraint
+ * simply stops being enforced.
  *
- * A test asserts this list and 0018's are the same set, so the two cannot drift apart.
+ * A test asserts this list and the NEWEST migration-time assertion (0026, which supersedes
+ * 0018's list) name the same set, so the two cannot drift apart.
  */
 export const REQUIRED_INDEXES: readonly string[] = [
   "idx_audit_time",
@@ -133,6 +137,7 @@ export const REQUIRED_INDEXES: readonly string[] = [
   "idx_portal_audit_product_at",
   "idx_portal_license_links_license",
   "idx_product_keys_one_active",
+  "idx_product_keys_one_active_anchor",
   "idx_product_keys_verify",
   "idx_release_download_tokens_expiry",
   "idx_release_download_tokens_hash",

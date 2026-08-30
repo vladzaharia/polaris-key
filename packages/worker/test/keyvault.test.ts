@@ -210,6 +210,25 @@ describe("keyvault KEK keyring (R2-09)", () => {
           PLATFORM_KEK_ACTIVE: "k1",
         },
       ],
+      // B3-10 — the ring guard used `active in raw`, and `raw` is an object literal, so every
+      // `Object.prototype` member name answered true and sailed past the check that exists to
+      // stop exactly this. It failed one step later, when the "KEK" turned out to be a function
+      // — fail-closed by accident rather than by the guard, and one refactor from fail-open.
+      // `Object.hasOwn` makes the refusal happen where it is written.
+      [
+        "active kid is an Object.prototype member name",
+        {
+          PLATFORM_KEK_KEYS: JSON.stringify({ k1: KEK_OLD }),
+          PLATFORM_KEK_ACTIVE: "toString",
+        },
+      ],
+      [
+        "active kid is __proto__",
+        {
+          PLATFORM_KEK_KEYS: JSON.stringify({ k1: KEK_OLD }),
+          PLATFORM_KEK_ACTIVE: "__proto__",
+        },
+      ],
     ];
     for (const [label, vars] of broken) {
       // PLATFORM_KEK is present and valid in every case: a half-parsed ring must NOT quietly

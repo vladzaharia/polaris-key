@@ -125,8 +125,13 @@ def manifest_payload(
     return d
 
 
-def key_entry(kid: str, pub: str, status: str = "active") -> Dict[str, Any]:
-    return {
+def key_entry(
+    kid: str, pub: str, status: str = "active", role: Optional[str] = None
+) -> Dict[str, Any]:
+    """A manifest key entry. ``role`` (§1.1/§2.3) is ADVISORY and omitted unless a test is
+    specifically about it — a manifest without it is what a pre-split server emits, and that
+    is not an error."""
+    entry: Dict[str, Any] = {
         "kid": kid,
         "alg": "EdDSA",
         "kty": "OKP",
@@ -134,6 +139,9 @@ def key_entry(kid: str, pub: str, status: str = "active") -> Dict[str, Any]:
         "publicKey": pub,
         "status": status,
     }
+    if role is not None:
+        entry["role"] = role
+    return entry
 
 
 def sign_license(device_id: str, *, issued: int = NOW, pem: str = PRIVATE_PEM,

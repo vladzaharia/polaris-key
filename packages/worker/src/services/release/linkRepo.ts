@@ -55,14 +55,19 @@ import {
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
 import { serializeServices } from "../../core/services.js";
+import { invalidSigningKid, mintKid } from "../../core/keys.js";
 
 export type LinkRepoResult =
   | {
       ok: true;
       slug: string;
       kid: string;
-      /** Raw Ed25519 public key (base64url) for SDK trust sets. */
+      /** Raw Ed25519 public key (base64url) of the DOCUMENT signing key. */
       publicKey: string;
+      /** The TRUST ANCHOR (§1.1) — the key that signs trust manifests and the key an adopter
+       *  pins. It is what `trustKeys` carries; the document key above rotates underneath it. */
+      anchorKid: string;
+      anchorPublicKey: string;
       trustKeys: Record<string, string>;
       /** Operator guidance for any post-link configuration (e.g. secrets to supply). */
       install: string;
@@ -268,13 +273,31 @@ async function registerFromManifest(
 ): Promise<LinkRepoResult> {
   const slug = manifest.product.slug;
   const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}`;
+  // Wire v3 §1.1 — a linked product gets BOTH key classes at creation, exactly like the console
+  // path: a long-lived ANCHOR that signs trust manifests and is what the adopter pins, and a
+  // DOCUMENT key that signs licence/config/bundle documents and rotates underneath it. Minting
+  // only one is what made rotation an application release (B3-01).
+  const anchorKid = mintKid(slug, "anchor", now);
+  const kidProblem = invalidSigningKid(kid);
+  if (kidProblem !== null || anchorKid === null || anchorKid === kid) {
+    return {
+      ok: false,
+      error: `cannot derive usable signing key ids for product ${slug}: ${kidProblem ?? "the derived anchor kid collides with the signing kid"}`,
+    };
+  }
 
-  // Mint + seal the per-product Ed25519 signing key under the platform KEK.
+  // Mint + seal the per-product Ed25519 signing keys under the platform KEK.
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
   const encPrivate = await seal(env, privatePkcs8Pem, {
     product: slug,
     kind: "signing-key",
     id: kid,
+  });
+  const anchor = await generateEd25519();
+  const encAnchorPrivate = await seal(env, anchor.privatePkcs8Pem, {
+    product: slug,
+    kind: "signing-key",
+    id: anchorKid,
   });
 
   // Defaults: binary name = repo name; summary marker = the parser default.
@@ -383,6 +406,19 @@ async function registerFromManifest(
       created_at: now,
       rotated_at: null,
       revoked_at: null,
+      role: "document",
+    }),
+    stmtInsertProductKey({
+      product: slug,
+      kid: anchorKid,
+      alg: "Ed25519",
+      public_b64url: anchor.publicRawB64url,
+      enc_private_json: encAnchorPrivate,
+      status: "active",
+      created_at: now,
+      rotated_at: null,
+      revoked_at: null,
+      role: "anchor",
     }),
   ];
 
@@ -522,7 +558,11 @@ async function registerFromManifest(
     slug,
     kid,
     publicKey: publicRawB64url,
-    trustKeys: { [kid]: publicRawB64url },
+    anchorKid,
+    anchorPublicKey: anchor.publicRawB64url,
+    // The ANCHOR is what a client pins (§1.1). Returning the document key here would hand the
+    // adopter a pin that works until the first rotation and then refuses every trust manifest.
+    trustKeys: { [anchorKid]: anchor.publicRawB64url },
     install,
     remainingSecrets,
   };

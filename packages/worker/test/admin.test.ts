@@ -5,9 +5,11 @@ import {
   makeEnv,
   mkReq as mkLicReq,
   NOW,
+  seedAnchorKey,
   seedLicenseWithKey,
   seedProduct,
   seedProductSecret,
+  TEST_ANCHOR_KID,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db, DbParam } from "../src/db/types.js";
@@ -21,8 +23,10 @@ import {
   type SessionIdentity,
 } from "../src/admin/session.js";
 import {
+  getActiveAnchorKey,
   getActiveProductKey,
   getProduct,
+  insertProductKeyIfAbsent,
   getProductSecret,
   listAudit,
   setServices,
@@ -1102,6 +1106,283 @@ describe("admin api", () => {
     // loadProduct now signs under the rotated key.
     const product = await loadProduct(env, db, "djdl");
     expect(product!.signingKid).toBe(body.kid);
+  });
+
+  // ── B3-01 / B3-07 / B3-08 — the key lifecycle after the anchor split (§1.1) ──
+
+  it("creating a product mints BOTH an anchor and a document key, and pins the anchor", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const created = await dispatch(
+      mkReq("POST", "/api/products", {
+        cookie,
+        csrf,
+        body: { slug: "acme", name: "Acme" },
+      }),
+      env,
+      db,
+      "/api/products",
+    );
+    expect(created.status).toBe(201);
+    const body = (await created.json()) as {
+      kid: string;
+      signing: {
+        kid: string;
+        publicKey: string;
+        anchorKid: string;
+        anchorPublicKey: string;
+        trustKeys: Record<string, string>;
+      };
+    };
+
+    // Two ACTIVE keys, one per role — which is only legal because 0026 redefined
+    // `idx_product_keys_one_active` to be per-role.
+    const rows = await db.all<{ kid: string; role: string; status: string }>(
+      "SELECT kid, role, status FROM product_keys WHERE product = 'acme' ORDER BY role",
+    );
+    expect(rows.map((r) => `${r.role}:${r.status}`)).toEqual([
+      "anchor:active",
+      "document:active",
+    ]);
+    expect(rows[0]!.kid).toBe(body.signing.anchorKid);
+    expect(rows[1]!.kid).toBe(body.kid);
+    expect(body.signing.anchorKid).not.toBe(body.kid);
+
+    // `trustKeys` is the block an adopter pastes in as `pinnedKeys`. It must name the ANCHOR:
+    // pinning the document key is the B3-01 trap — it works right up until the first rotation.
+    expect(body.signing.trustKeys).toEqual({
+      [body.signing.anchorKid]: body.signing.anchorPublicKey,
+    });
+
+    // And the trust manifest really is signed by that pinned key.
+    const product = (await loadProduct(env, db, "acme"))!;
+    expect(product.trustAnchorKid).toBe(body.signing.anchorKid);
+    expect(product.signingKid).toBe(body.kid);
+  });
+
+  it("rejects a signingKid that would make every document unverifiable (B3-07)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    // `signingKid` becomes the JWS header `kid` on every document this product ever signs, and
+    // the verifier caps the protected header at 1024 bytes while the signer caps nothing. An
+    // over-long kid used to be accepted here, producing a product whose documents nothing in any
+    // language could verify — discovered weeks later, at a client, with no trace back to here.
+    const rejected: [string, unknown][] = [
+      ["over the length cap", "k".repeat(129)],
+      ["header-breaking length", "k".repeat(4000)],
+      ["empty", ""],
+      ["characters that do not survive a JSON header", 'a"b'],
+      ["whitespace", "kid with spaces"],
+      ["newline", "kid\nwith-newline"],
+    ];
+    for (const [label, signingKid] of rejected) {
+      const res = await dispatch(
+        mkReq("POST", "/api/products", {
+          cookie,
+          csrf,
+          body: {
+            slug: `p${rejected.indexOf([label, signingKid])}x`,
+            name: "X",
+            signingKid,
+          },
+        }),
+        env,
+        db,
+        "/api/products",
+      );
+      expect(res.status, label).toBe(422);
+      const body = (await res.json()) as { error: { fields?: string[] } };
+      expect(body.error.fields, label).toContain("signingKid");
+    }
+    // Nothing was created by any of them.
+    expect(await db.all("SELECT slug FROM products")).toHaveLength(0);
+  });
+
+  it("accepts an ordinary explicit signingKid and uses it for documents only", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const res = await dispatch(
+      mkReq("POST", "/api/products", {
+        cookie,
+        csrf,
+        body: { slug: "acme", name: "Acme", signingKid: "acme-prod-2026" },
+      }),
+      env,
+      db,
+      "/api/products",
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as {
+      kid: string;
+      signing: { anchorKid: string };
+    };
+    expect(body.kid).toBe("acme-prod-2026");
+    expect(body.signing.anchorKid).not.toBe("acme-prod-2026");
+  });
+
+  it("two rotations in the same second mint DISTINCT kids (B3-08)", async () => {
+    // The kid used to end in `(now % 100000).toString(36)` — a value that repeats every ~28
+    // hours and is CONSTANT within a second — so two rotations collided on
+    // `PRIMARY KEY (product, kid)` and surfaced as an opaque 500 naming neither kid nor cause.
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const rotate = async (): Promise<{ status: number; kid?: string }> => {
+      const res = await dispatch(
+        mkReq("POST", "/api/products/djdl/keys/rotate", { cookie, csrf }),
+        env,
+        db,
+        "/api/products/djdl/keys/rotate",
+      );
+      const body = (await res.json()) as { kid?: string };
+      return { status: res.status, kid: body.kid };
+    };
+    const first = await rotate();
+    const second = await rotate();
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(first.kid).not.toBe(second.kid);
+
+    // …and the residual collision is REPORTED, not thrown: pre-insert the next kid's row and the
+    // handler answers 409 naming it rather than a 500.
+    const taken = "djdl-2023-collision";
+    await db.run(
+      `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at, rotated_at, role)
+       VALUES ('djdl', ?, 'Ed25519', 'pub', '{}', 'staged', 0, NULL, 'document')`,
+      taken,
+    );
+    const collided = await insertProductKeyIfAbsent(db, {
+      product: "djdl",
+      kid: taken,
+      alg: "Ed25519",
+      public_b64url: "other-pub",
+      enc_private_json: "{}",
+      status: "staged",
+      created_at: 1,
+      rotated_at: null,
+      revoked_at: null,
+      role: "document",
+    });
+    expect(collided).toBe(false);
+    // The existing row is untouched — a reported collision is not a silent overwrite.
+    const row = await db.first<{ public_b64url: string }>(
+      "SELECT public_b64url FROM product_keys WHERE product='djdl' AND kid=?",
+      taken,
+    );
+    expect(row?.public_b64url).toBe("pub");
+  });
+
+  it("staging an anchor is a separate, louder operation than staging a document key", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedAnchorKey(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const prepare = async (
+      body: Record<string, unknown>,
+    ): Promise<{ status: number; body: Record<string, unknown> }> => {
+      const res = await dispatch(
+        mkReq("POST", "/api/products/djdl/keys/prepare", {
+          cookie,
+          csrf,
+          body,
+        }),
+        env,
+        db,
+        "/api/products/djdl/keys/prepare",
+      );
+      return { status: res.status, body: (await res.json()) as never };
+    };
+
+    const doc = await prepare({});
+    expect(doc.status).toBe(200);
+    expect(doc.body.role).toBe("document");
+    expect(doc.body.requiresApplicationRelease).toBeUndefined();
+
+    const anchor = await prepare({ role: "anchor" });
+    expect(anchor.status).toBe(200);
+    expect(anchor.body.role).toBe("anchor");
+    // Clients PIN the anchor, so activating a new one without shipping a release that pins it
+    // breaks every install. The response says so rather than leaving it to a runbook.
+    expect(anchor.body.requiresApplicationRelease).toBe(true);
+
+    const bad = await prepare({ role: "nonsense" });
+    expect(bad.status).toBe(422);
+
+    // Activating the staged DOCUMENT key leaves the anchor exactly where it was.
+    const activate = await dispatch(
+      mkReq("POST", "/api/products/djdl/keys/activate", {
+        cookie,
+        csrf,
+        body: { kid: doc.body.kid, breakGlass: true },
+      }),
+      env,
+      db,
+      "/api/products/djdl/keys/activate",
+    );
+    expect(activate.status).toBe(200);
+    const product = (await loadProduct(env, db, "djdl"))!;
+    expect(product.signingKid).toBe(doc.body.kid);
+    expect(product.trustAnchorKid).toBe(TEST_ANCHOR_KID);
+  });
+
+  it("refuses to revoke the ACTIVE anchor, and says why", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedAnchorKey(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const res = await dispatch(
+      mkReq("POST", "/api/products/djdl/keys/revoke", {
+        cookie,
+        csrf,
+        body: { kid: TEST_ANCHOR_KID },
+      }),
+      env,
+      db,
+      "/api/products/djdl/keys/revoke",
+    );
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as {
+      error: { message: string; role?: string };
+    };
+    expect(body.error.message).toContain("trust anchor");
+    // Still active: a refused revoke changes nothing.
+    expect((await getActiveAnchorKey(db, "djdl"))?.kid).toBe(TEST_ANCHOR_KID);
   });
 
   it("a manual product has NO release/mint capability (mint route 404s)", async () => {

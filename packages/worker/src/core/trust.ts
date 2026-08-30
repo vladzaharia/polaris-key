@@ -96,14 +96,26 @@ export async function signTrustManifest(
         key.status === "revoked"
           ? key.status
           : "retired",
+      // §1.1 / §2.3 — ADVISORY. It answers "which of these do I pin?" for an operator or a
+      // provisioning tool and is explicitly NOT an input to any verification decision: a
+      // verifier that let this field decide which key may sign a manifest would be letting the
+      // manifest introduce the key that verifies it, which is R2-01 through a new door. The
+      // property is enforced structurally instead — only the anchor is pinned, and manifests
+      // verify against pins only.
+      role: key.role,
     })),
   };
-  const pem = await product.signingKey();
+  // §1.1 — the ANCHOR signs the manifest, never the rotating document key. This one line is
+  // B3-01: signing with `product.signingKey()` meant the manifest signer moved on every
+  // rotation, while clients verify a manifest against PINNED keys only, so every installed
+  // client refused every manifest issued after the first rotation — and stopped learning about
+  // revocations at exactly the moment revocation matters.
+  const pem = await product.trustAnchorKey();
   if (!pem) return null;
   // `typ` is the domain separator, and wire v3 §2 makes it MANDATORY — an untyped manifest is
   // rejected outright now, so the v2 tolerance window (sign without a typ, verify without
   // requiring one) has to close on the signing side too or nothing verifies.
-  return signJws(doc, pem, product.signingKid, "pkey-trust+jws");
+  return signJws(doc, pem, product.trustAnchorKid, "pkey-trust+jws");
 }
 
 export async function handleTrustManifest(

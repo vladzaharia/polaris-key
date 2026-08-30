@@ -187,12 +187,26 @@ export async function handleBundleMint(
   const product = await loadProduct(env, db, slug);
   if (!product) return notFound();
   // …and the second half of that fail-closed, now that the unseal is lazy (B5-12). This handler
-  // signs FOUR artifacts (licence, config, trust manifest, bundle) off one key, so it resolves
-  // the key once, up front, and refuses identically to the no-active-key case above. Doing it
+  // signs FOUR artifacts, and since the anchor split (§1.1) they no longer all use one key, so
+  // BOTH are resolved up front and refuse identically to the no-active-key case above. Doing it
   // here rather than at each `signDoc` also means a broken KEK cannot produce a half-built
   // bundle whose failure is discovered after the audit row is written.
+  //
+  // WHICH KEY SIGNS WHAT, and why it is not "documents get the document key":
+  //
+  //   licence + config   →  DOCUMENT key. §7 step 4 verifies these against the EFFECTIVE set,
+  //                         built from the inner manifest, so a rotated key is fine.
+  //   trust manifest     →  ANCHOR (inside `signTrustManifest`). §7 step 3, pins only.
+  //   the BUNDLE itself  →  ANCHOR. §7 step 1 verifies the envelope against PINNED keys only,
+  //                         exactly like a manifest — so signing it with the rotating document
+  //                         key would make every bundle unimportable on any client that pins the
+  //                         anchor, i.e. every correctly-configured client. The rule is not
+  //                         "documents get the document key"; it is "whatever is verified against
+  //                         pins is signed by the pinned key".
   const signingKeyPem = await product.signingKey();
   if (!signingKeyPem) return notFound();
+  const anchorKeyPem = await product.trustAnchorKey();
+  if (!anchorKeyPem) return notFound();
 
   const body = await readBody(req);
   const fields: string[] = [];
@@ -379,10 +393,12 @@ export async function handleBundleMint(
     docs,
     trust,
   };
+  // The ANCHOR — see the key-assignment note above. §7 step 1 checks this signature against the
+  // importing device's PINS, so it is the same class of artifact as the trust manifest.
   const jws = await signDoc(
     bundle,
-    signingKeyPem,
-    product.signingKid,
+    anchorKeyPem,
+    product.trustAnchorKid,
     "pkey-bundle+jws",
   );
 

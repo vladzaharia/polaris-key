@@ -13,7 +13,10 @@ import {
   type ProductRow,
   type ProductSyncStateRow,
 } from "../../repo.js";
-import { loadPublicSigningKey } from "../../core/products.js";
+import {
+  loadPublicAnchorKey,
+  loadPublicSigningKey,
+} from "../../core/products.js";
 import { serviceStateOf } from "../../core/services.js";
 import {
   getPortalProductSettings,
@@ -139,17 +142,27 @@ export async function productView(
   p: ProductRow,
 ): Promise<Record<string, unknown>> {
   const activeKey = await loadPublicSigningKey(db, p.slug);
+  const anchorKey = await loadPublicAnchorKey(db, p.slug);
   const signingKid = activeKey?.kid ?? p.signing_kid;
   const signingPublicKey = activeKey?.publicKey ?? p.signing_pub;
   const signingAlg = activeKey?.alg ?? "Ed25519";
   const jwksUrl = `/${p.slug}/.well-known/jwks.json`;
+  // `trustKeys` is the copy-paste block an adopter drops into their app as `pinnedKeys`, so it
+  // must name the ANCHOR (§1.1) and not the document key: pinning a document key is exactly the
+  // B3-01 trap — it works until the first rotation and then refuses every manifest for ever.
+  // `kid`/`publicKey` still describe the DOCUMENT key, which is what the console labels "signing
+  // key" and what appears in the header of every document the product issues.
+  const anchorKid = anchorKey?.kid ?? signingKid;
+  const anchorPublicKey = anchorKey?.publicKey ?? signingPublicKey;
   const signing = signingPublicKey
     ? {
         kid: signingKid,
         alg: signingAlg,
         publicKey: signingPublicKey,
         jwksUrl,
-        trustKeys: { [signingKid]: signingPublicKey },
+        anchorKid,
+        anchorPublicKey,
+        trustKeys: anchorPublicKey ? { [anchorKid]: anchorPublicKey } : {},
       }
     : null;
   const setup = await productSetupView(

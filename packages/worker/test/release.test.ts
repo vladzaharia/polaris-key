@@ -112,6 +112,11 @@ function makeProduct(): Product {
     // B5-12: the unseal is lazy — a fixture Product supplies the accessor, not a field.
     signingKey: async () => "pem",
     signingPub: null,
+    // §1.1 — the anchor is a separate key from the document signer; a fixture that omits it
+    // would exercise a Product shape `loadProduct` can no longer produce.
+    trustAnchorKid: "anchor-kid",
+    trustAnchorKey: async () => "pem",
+    trustAnchorPub: null,
     compatMin: "0.0.0",
     compatMax: "99.0.0",
     defaultMaxOfflineDays: 30,

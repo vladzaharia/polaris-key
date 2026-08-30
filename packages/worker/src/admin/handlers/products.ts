@@ -27,10 +27,13 @@ import { ErrorCode } from "../../core/errors.js";
 import {
   getProduct,
   getTier,
+  insertProductKeyIfAbsent,
+  productKeyRole,
   revertAutoIssueToManifest,
   revertFingerprintPolicyToManifest,
   setAutoIssuePolicy,
   setFingerprintPolicy,
+  type ProductKeyRole,
   type ProductRow,
   listProducts,
   stmtInsertProduct,
@@ -40,6 +43,7 @@ import {
   stmtInsertSchema,
   upsertProductSecret,
 } from "../../repo.js";
+import { invalidSigningKid, mintKid } from "../../core/keys.js";
 import { deleteTokenRecord } from "../../kv.js";
 import { deleteProduct, listDevicesByProduct, updateProduct } from "../repo.js";
 import {
@@ -327,18 +331,46 @@ async function manualCreate(
     catalogObj = { schemaVersion: 1, entries: compiled.catalog.entries };
   }
 
-  // Mint + seal the per-product Ed25519 signing key under the platform KEK.
+  // Mint + seal the per-product Ed25519 signing keys under the platform KEK. TWO keys, not one
+  // (wire v3 §1.1): a long-lived ANCHOR that signs trust manifests and is what the adopter pins,
+  // and a DOCUMENT key that signs licence/config/bundle documents and rotates underneath it. A
+  // product created here is split from its first second and never needs 0026's transitional
+  // fallback.
   const kid = String(
     body.signingKid ?? `${slug}-${new Date(now * 1000).getUTCFullYear()}`,
   );
+  // B3-07 — this string becomes the JWS header `kid` on every document this product will ever
+  // sign, and the verifier caps the header at 1024 bytes while the signer caps nothing. An
+  // over-long kid used to be accepted here and produce a product whose documents nothing could
+  // verify, discovered weeks later at a client with no trace back to this field.
+  const kidProblem = invalidSigningKid(kid);
+  if (kidProblem)
+    return err(422, ErrorCode.BadRequest, kidProblem, {
+      fields: ["signingKid"],
+    });
+  const anchorKid = mintKid(slug, "anchor", now);
+  if (anchorKid === null || anchorKid === kid) {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "cannot derive a distinct trust-anchor kid for this product; choose a shorter slug or a different signingKid",
+      { fields: ["slug", "signingKid"] },
+    );
+  }
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
   const encPrivate = await seal(env, privatePkcs8Pem, {
     product: slug,
     kind: "signing-key",
     id: kid,
   });
+  const anchor = await generateEd25519();
+  const encAnchorPrivate = await seal(env, anchor.privatePkcs8Pem, {
+    product: slug,
+    kind: "signing-key",
+    id: anchorKid,
+  });
 
-  // Atomic: product + signing key + active catalog in ONE batch, so a product can never
+  // Atomic: product + signing keys + active catalog in ONE batch, so a product can never
   // exist without a usable signing key (matches the link-repo invariant).
   await db.batch([
     stmtInsertProduct({
@@ -366,6 +398,19 @@ async function manualCreate(
       created_at: now,
       rotated_at: null,
       revoked_at: null,
+      role: "document",
+    }),
+    stmtInsertProductKey({
+      product: slug,
+      kid: anchorKid,
+      alg: "Ed25519",
+      public_b64url: anchor.publicRawB64url,
+      enc_private_json: encAnchorPrivate,
+      status: "active",
+      created_at: now,
+      rotated_at: null,
+      revoked_at: null,
+      role: "anchor",
     }),
     stmtInsertSchema({
       product: slug,
@@ -395,7 +440,11 @@ async function manualCreate(
         alg: "Ed25519",
         publicKey: publicRawB64url,
         jwksUrl: `/${slug}/.well-known/jwks.json`,
-        trustKeys: { [kid]: publicRawB64url },
+        anchorKid,
+        anchorPublicKey: anchor.publicRawB64url,
+        // What the adopter pastes into their client as `pinnedKeys`: the ANCHOR (§1.1). Handing
+        // back the document key here would hand back a pin that dies at the first rotation.
+        trustKeys: { [anchorKid]: anchor.publicRawB64url },
       },
       product: created ? await productView(env, db, created) : null,
     },
@@ -976,7 +1025,35 @@ async function handleKeys(
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
   if (action === "prepare" || action === "rotate") {
-    const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}-${(now % 100000).toString(36)}`;
+    const body = await readBody(req);
+    // §1.1 — which key CLASS to stage. Defaults to `document`, the routine rotation: it changes
+    // the key that signs licence/config/bundle documents and leaves the manifest signer alone, so
+    // every installed client follows it with no user action. Staging an `anchor` is the operation
+    // that costs an application release, because the anchor is what clients PIN — the runbook
+    // says so at the point of use, and nothing here can make that cheaper.
+    const roleInput = body.role ?? "document";
+    if (roleInput !== "anchor" && roleInput !== "document") {
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "role must be 'anchor' or 'document'",
+        {
+          fields: ["role"],
+        },
+      );
+    }
+    const role: ProductKeyRole = roleInput;
+    // B3-08 — a RANDOM suffix, not `now % 100000`. The old derivation repeated every ~28 hours,
+    // so two rotations a day apart minted the same kid and collided on the primary key.
+    const kid = mintKid(slug, role, now);
+    if (kid === null) {
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "cannot derive a usable kid for this product; its slug is too long",
+        { fields: ["slug"] },
+      );
+    }
     const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
     const encPrivate = await seal(env, privatePkcs8Pem, {
       product: slug,
@@ -984,19 +1061,28 @@ async function handleKeys(
       id: kid,
     });
 
-    await db.batch([
-      stmtInsertProductKey({
-        product: slug,
-        kid,
-        alg: "Ed25519",
-        public_b64url: publicRawB64url,
-        enc_private_json: encPrivate,
-        status: "staged",
-        created_at: now,
-        rotated_at: null,
-        revoked_at: null,
-      }),
-    ]);
+    // …and the residual collision is REPORTED rather than thrown. A bare INSERT turned "that kid
+    // exists" into an opaque 500 that named neither the kid nor the cause.
+    const inserted = await insertProductKeyIfAbsent(db, {
+      product: slug,
+      kid,
+      alg: "Ed25519",
+      public_b64url: publicRawB64url,
+      enc_private_json: encPrivate,
+      status: "staged",
+      created_at: now,
+      rotated_at: null,
+      revoked_at: null,
+      role,
+    });
+    if (!inserted) {
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        `signing key ${kid} already exists for this product; retry to mint a different kid`,
+        { kid },
+      );
+    }
     await audit(
       db,
       slug,
@@ -1004,7 +1090,7 @@ async function handleKeys(
       now,
       "key.prepare",
       { kind: "key", id: kid },
-      `Prepared signing key ${kid}`,
+      `Prepared ${role === "anchor" ? "trust anchor" : "signing"} key ${kid}`,
     );
     // Respond with the new kid + PUBLIC key only — the private key never leaves the KEK store.
     return adminJson({
@@ -1012,7 +1098,17 @@ async function handleKeys(
       kid,
       publicKey: publicRawB64url,
       status: "staged",
+      role,
       activateAfter: now + TRUST_CACHE_SECONDS,
+      // An anchor rotation is not complete when it is activated: it is complete when every
+      // install runs a build that pins the new anchor. Say so in the response, not only in a
+      // runbook the operator may not be reading.
+      ...(role === "anchor"
+        ? {
+            requiresApplicationRelease: true,
+            note: "Clients PIN the anchor. Ship a release that pins this public key — and keeps the outgoing one pinned through the overlap — before activating it, or every installed client will refuse every trust manifest.",
+          }
+        : {}),
     });
   }
 
@@ -1026,12 +1122,14 @@ async function handleKeys(
     kid: string;
     status: string;
     created_at: number;
+    role?: string;
   }>(
-    "SELECT kid, status, created_at FROM product_keys WHERE product = ? AND kid = ?",
+    "SELECT kid, status, created_at, role FROM product_keys WHERE product = ? AND kid = ?",
     slug,
     kid,
   );
   if (!row) return notFound();
+  const role = productKeyRole(row);
 
   if (action === "activate") {
     const breakGlass = body.breakGlass === true;
@@ -1052,8 +1150,12 @@ async function handleKeys(
         },
       );
     }
+    // Retire the outgoing key OF THE SAME ROLE, and only that one. Unscoped, this statement
+    // retired every active key the product had — so activating a new document key would have
+    // retired the trust ANCHOR in the same batch, leaving the product with no key its clients
+    // have pinned and reproducing B3-01 from inside the fix for it.
     await db.batch([
-      stmtRetireProductKeys(slug, now),
+      stmtRetireProductKeys(slug, now, role),
       stmtSetProductKeyStatus(slug, kid, "active", now),
     ]);
     await audit(
@@ -1063,9 +1165,9 @@ async function handleKeys(
       now,
       breakGlass ? "key.activate.break_glass" : "key.activate",
       { kind: "key", id: kid },
-      `Activated signing key ${kid}`,
+      `Activated ${role === "anchor" ? "trust anchor" : "signing"} key ${kid}`,
     );
-    return adminJson({ ok: true, kid, status: "active" });
+    return adminJson({ ok: true, kid, status: "active", role });
   }
 
   if (action === "retire" || action === "revoke") {
@@ -1079,8 +1181,10 @@ async function handleKeys(
       return err(
         409,
         ErrorCode.BadRequest,
-        "cannot retire or revoke the active signing key; stage and activate a replacement first",
-        { kid, status: row.status },
+        role === "anchor"
+          ? "cannot retire or revoke the active trust anchor; clients pin it, so stage a new anchor, ship a release that pins it, and activate it first"
+          : "cannot retire or revoke the active signing key; stage and activate a replacement first",
+        { kid, status: row.status, role },
       );
     }
     const status = action === "retire" ? "retired" : "revoked";
@@ -1101,9 +1205,9 @@ async function handleKeys(
       now,
       `key.${action}`,
       { kind: "key", id: kid },
-      `${action === "retire" ? "Retired" : "Revoked"} signing key ${kid}`,
+      `${action === "retire" ? "Retired" : "Revoked"} ${role === "anchor" ? "trust anchor" : "signing"} key ${kid}`,
     );
-    return adminJson({ ok: true, kid, status });
+    return adminJson({ ok: true, kid, status, role });
   }
 
   return notFound();

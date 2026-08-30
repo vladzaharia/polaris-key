@@ -30,7 +30,19 @@ import { appendAudit, claimDeviceSeat, insertLicense } from "../src/repo.js";
 import { portalAudit } from "../src/services/identity/portal/repo.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+/**
+ * The migration-time index assertion, read from the NEWEST migration that carries one.
+ *
+ * 0018 introduced the mechanism; 0026 re-asserts with `idx_product_keys_one_active_anchor` added.
+ * The re-assertion has to be a new file rather than an edit to 0018 because D1 records 0018 as
+ * applied and will never re-run it — editing it would assert the new index on fresh databases
+ * only, which is everywhere except production.
+ */
 const ASSERTION_SQL = readFileSync(
+  join(HERE, "..", "migrations", "0026_trust_anchor_keys.sql"),
+  "utf8",
+);
+const ORIGINAL_ASSERTION_SQL = readFileSync(
   join(HERE, "..", "migrations", "0018_index_assertion.sql"),
   "utf8",
 );
@@ -723,14 +735,21 @@ describe("required-index assertion", () => {
   });
 
   // The runtime list and the migration list are the same claim in two languages, so the only
-  // way they stay true is if nothing can change one without the other.
+  // way they stay true is if nothing can change one without the other. The migration side is now
+  // 0026's re-assertion (0018's is the historical original, checked below to be a strict subset —
+  // the assertion may only ever GROW, because every name in it is a security invariant).
   it("REQUIRED_INDEXES and 0018_index_assertion.sql name the same set", () => {
     // Statements only — the file's header carries a worked example of the same VALUES list.
-    const statements = ASSERTION_SQL.replace(/--[^\n]*/g, "");
-    const inSql = [...statements.matchAll(/\('(idx_[a-z0-9_]+)'\)/g)].map(
-      (m) => m[1],
-    );
+    const namesIn = (sql: string): string[] =>
+      [...sql.replace(/--[^\n]*/g, "").matchAll(/\('(idx_[a-z0-9_]+)'\)/g)]
+        .map((m) => m[1])
+        .filter((name): name is string => name !== undefined);
+    const inSql = namesIn(ASSERTION_SQL);
     expect(inSql.length).toBeGreaterThan(0);
     expect([...inSql].sort()).toEqual([...REQUIRED_INDEXES].sort());
+
+    const original = namesIn(ORIGINAL_ASSERTION_SQL);
+    expect(original.length).toBeGreaterThan(0);
+    expect(original.every((name) => inSql.includes(name))).toBe(true);
   });
 });

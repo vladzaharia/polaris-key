@@ -26,6 +26,16 @@ export const TEST_PUB = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI";
 export const TEST_PEM =
   "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----";
 
+// The OTHER committed corpus keypair (djdl-test-2026), used as a product's TRUST ANCHOR (wire
+// v3 §1.1) wherever a test needs the anchor and the document key to be genuinely different keys.
+// `seedProduct` deliberately does NOT install one by default: the shape it seeds — one active
+// key, no anchor row — is exactly a product carried across migration 0026, so the whole suite
+// keeps exercising that path. `seedAnchorKey` opts a test into the split.
+export const TEST_ANCHOR_KID = "djdl-test-2026";
+export const TEST_ANCHOR_PUB = "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U";
+export const TEST_ANCHOR_PEM =
+  "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIIXpeKmxx2+0A+lz89t+5fp5PPjd2vFGhXqwTpWYeL5O\n-----END PRIVATE KEY-----";
+
 // The test platform KEK: base64 of 32 zero bytes. Imports as a raw AES-256-GCM key; used to
 // seal TEST_PEM into the product_keys row that loadProduct now opens.
 export const TEST_KEK = btoa("\0".repeat(32));
@@ -104,6 +114,37 @@ export async function seedProduct(
     active: 1,
     created_at: NOW,
   });
+}
+
+/**
+ * Give a seeded product a real, DISTINCT trust anchor (wire v3 §1.1) — the shape every product
+ * created after migration 0026 has. `seedProduct` alone leaves the pre-0026 shape (one active
+ * key that is both), so a test that wants to observe the split has to ask for it.
+ */
+export async function seedAnchorKey(
+  db: Db,
+  slug: string,
+  opts: { kid?: string; pem?: string; pub?: string; status?: string } = {},
+): Promise<string> {
+  const kid = opts.kid ?? TEST_ANCHOR_KID;
+  const encPrivate = await seal(
+    { PLATFORM_KEK: TEST_KEK } as Env,
+    opts.pem ?? TEST_ANCHOR_PEM,
+    { product: slug, kind: "signing-key", id: kid },
+  );
+  await insertProductKey(db, {
+    product: slug,
+    kid,
+    alg: "Ed25519",
+    public_b64url: opts.pub ?? TEST_ANCHOR_PUB,
+    enc_private_json: encPrivate,
+    status: opts.status ?? "active",
+    created_at: NOW,
+    rotated_at: null,
+    revoked_at: null,
+    role: "anchor",
+  });
+  return kid;
 }
 
 /** Seal `value` under the test KEK and upsert it into product_secrets as `name`. Used by
