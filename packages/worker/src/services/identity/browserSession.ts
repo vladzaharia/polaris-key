@@ -28,6 +28,7 @@ import {
   mintOpaqueToken,
   open,
   randomId,
+  readSingleCookie,
   seal,
   type Db,
   type Env,
@@ -114,14 +115,25 @@ function sessionSealContext(product: string, tokenHash: string): SealContext {
   };
 }
 
+/**
+ * Read the product session cookie, failing CLOSED on a duplicate (A3-02).
+ *
+ * This used to take the FIRST match, which is precisely the shape RFC 6265 §5.4 hands to an
+ * attacker: cookies are sent in descending `Path`-length order, so a value planted at
+ * `Path=/<product>/deeper`, or by any sibling subdomain with `Domain=plrs.im`, arrives ahead of
+ * the genuine one and silently wins — the browser is then reading somebody else's session. It is
+ * the same defect `admin/session.ts` closed as R1-08, and this cookie was left behind.
+ *
+ * Why the guard has to carry the whole weight here: `__Host-` (which is what actually stops a
+ * sibling subdomain WRITING the cookie) requires `Path=/`, and this cookie is deliberately
+ * `Path=/<product>` — one browser legitimately holds a separate session per product on this
+ * origin, and collapsing them to one path would make each product's cookie readable on every
+ * other product's requests. The path scoping stays and the ambiguity is refused instead: two
+ * different values for one product's session cookie is never a legitimate state.
+ */
 function readCookie(req: Request, name: string): string | null {
-  const raw = req.headers.get("cookie");
-  if (!raw) return null;
-  for (const part of raw.split(";")) {
-    const [k, ...v] = part.trim().split("=");
-    if (k === name) return decodeURIComponent(v.join("="));
-  }
-  return null;
+  const raw = readSingleCookie(req.headers.get("cookie"), name);
+  return raw === null ? null : decodeURIComponent(raw);
 }
 
 function setCookieHeader(product: string, token: string): string {

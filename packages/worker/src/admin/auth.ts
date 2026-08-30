@@ -18,6 +18,12 @@ import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { hashKey } from "../crypto.js";
 import { clientIp, rateLimitOk } from "../core/rateLimit.js";
+import {
+  clearFlowCookie,
+  flowBindingMatches,
+  mintFlowBinding,
+} from "../core/oidcFlow.js";
+import { sanitizeReturnTo } from "../core/returnTo.js";
 import { platformOidcConfig } from "../platformOidc.js";
 import { staticHtmlSecurityHeaders } from "../securityHeaders.js";
 import { hasAnyAdminGrant } from "./authz.js";
@@ -50,6 +56,9 @@ interface FlowRecord {
   redirectUri: string;
   /** Validated same-origin path to land on after the callback (see `sanitizeReturnTo`). */
   returnTo?: string;
+  /** `hashKey` of the `__Host-pkey_flow` cookie handed to the browser that started this flow
+   *  (A3-06). See `core/oidcFlow.ts`. */
+  flowHash?: string;
 }
 
 /**
@@ -59,27 +68,17 @@ interface FlowRecord {
  * `/docs/...` hit redirects through `/manage/login` and should come back to the page it
  * wanted, not the console home).
  *
- * The validator is deliberately an allowlist, not an escape:
- *   - must start with `/docs` or `/manage` as a whole segment (no `/docsevil`),
- *   - conservative path charset only — no `\`, `%`, `?`, `#`, whitespace or control chars,
- *     so the value cannot smuggle a scheme, a query, a fragment, or a header break,
- *   - no `//` anywhere (kills protocol-relative URLs and empty segments),
- *   - no `.`/`..` segments,
- *   - bounded length.
+ * The validator is deliberately an allowlist, not an escape, and it now lives in
+ * `core/returnTo.ts` alongside the customer-realm one (A3-04): four near-identical
+ * origin/prefix checks in four files is how the product flow ended up with the weakest of them.
+ * The rules this realm keeps are unchanged — `/docs` or `/manage` as a whole segment, a
+ * conservative path charset, no query or fragment, no `//`, no `.`/`..`, bounded length.
+ *
  * The value is carried inside the KV flow record — bound to the OIDC `state`, never
  * round-tripped through the client — and re-validated when read back (defense in depth
  * against a poisoned record).
  */
-const RETURN_TO_MAX_LENGTH = 512;
-const RETURN_TO_RE = /^\/(?:docs|manage)(?:\/[A-Za-z0-9\-._~/]*)?$/;
-
-export function sanitizeReturnTo(raw: string | null): string | null {
-  if (!raw || raw.length > RETURN_TO_MAX_LENGTH) return null;
-  if (!RETURN_TO_RE.test(raw)) return null;
-  if (raw.includes("//")) return null;
-  if (raw.split("/").some((seg) => seg === "." || seg === "..")) return null;
-  return raw;
-}
+export { sanitizeReturnTo } from "../core/returnTo.js";
 
 /** Resolved verified claims from an ID token. */
 export interface IdTokenVerifier {
@@ -223,11 +222,14 @@ export async function handleAdminLogin(
   const url = new URL(req.url);
   const redirectUri = `${url.origin}/manage/callback`;
   const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));
+  // A3-06 — bind the flow to THIS browser; the admin realm has no cross-browser arm at all.
+  const binding = await mintFlowBinding(env);
   const flow: FlowRecord = {
     verifier,
     nonce,
     redirectUri,
     ...(returnTo ? { returnTo } : {}),
+    flowHash: binding.hash,
   };
   await env.HOT.put(await adminFlowKey(state, env), JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
@@ -244,7 +246,10 @@ export async function handleAdminLogin(
   authorize.searchParams.set("code_challenge_method", "S256");
   return new Response(null, {
     status: 302,
-    headers: { location: authorize.toString() },
+    headers: {
+      location: authorize.toString(),
+      "set-cookie": binding.cookie,
+    },
   });
 }
 
@@ -282,6 +287,13 @@ export async function handleAdminCallback(
     return htmlError(400, "This sign-in link has expired. Try again.");
   }
   await env.HOT.delete(flowKey);
+  // A3-06 — only the browser that started this flow may finish it. Without this an attacker
+  // completed the IdP leg under their own (admin-grouped) account and handed the resulting
+  // callback URL to a victim, whose browser then held a working console session it never asked
+  // for. Same message the expired arm returns, so this adds no oracle.
+  if (!(await flowBindingMatches(req, env, flow.flowHash))) {
+    return htmlError(400, "This sign-in link has expired. Try again.");
+  }
 
   const identity = await verifier.verify({ code, flow, env });
   if (!identity || !identity.sub)
@@ -301,8 +313,9 @@ export async function handleAdminCallback(
   // costs nothing and keeps "the callback only ever redirects to an allowlisted path" a local
   // property of this function rather than a cross-file invariant.
   const location = sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/";
-  return new Response(null, {
-    status: 302,
-    headers: { location, "set-cookie": buildSessionCookie(token) },
-  });
+  const headers = new Headers({ location });
+  headers.append("set-cookie", buildSessionCookie(token));
+  // Retire the single-use flow binding alongside issuing the session (A3-06).
+  headers.append("set-cookie", clearFlowCookie());
+  return new Response(null, { status: 302, headers });
 }

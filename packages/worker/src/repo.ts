@@ -79,6 +79,12 @@ export interface LicenseRow {
   origin?: string;
   /** The hwid an enrolled license is bound to; NULL for every other origin. */
   enroll_hwid?: string | null;
+  /**
+   * Which issuer class actually produced `email` on this row: `'platform'` or `'custom'`
+   * (0023_license_email_issuer.sql, B2-01). Stamped at WRITE time from the provider that was
+   * resolved for the sign-in, so it cannot be re-decided later by editing the product.
+   */
+  email_issuer_class?: string | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -740,8 +746,8 @@ export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
   await db.run(
     `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
        activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
-       origin, enroll_hwid, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       origin, enroll_hwid, email_issuer_class, modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.product,
     row.id,
     row.status,
@@ -759,6 +765,12 @@ export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
     row.max_version,
     row.origin ?? "admin",
     row.enroll_hwid ?? null,
+    // B2-01. Only a writer that actually knows which issuer produced `email` sets this — today
+    // that is the OIDC lane alone (`activateFromIdentity`). NULL means "nobody recorded one",
+    // and `syncAccountLicenseLinks` then falls back to the product's live provider, i.e. the
+    // pre-B2-01 rule; an operator-entered address on an admin-minted licence keeps behaving
+    // exactly as it did.
+    row.email_issuer_class ?? null,
     row.modified_by,
     row.modified_at,
   );
@@ -799,12 +811,14 @@ export async function claimEnrolledLicense(
     groupsJson: string | null;
     tierId: string | null;
     expiresAt: number | null;
+    /** B2-01 — the issuer class that produced `email`, written in the same statement. */
+    emailIssuerClass: string;
   },
   at: number,
 ): Promise<void> {
   await db.run(
     `UPDATE licenses SET sub = ?, name = ?, email = ?, groups_json = ?, tier_id = ?,
-       expires_at = ?, origin = 'oidc', modified_by = 'oidc',
+       expires_at = ?, origin = 'oidc', email_issuer_class = ?, modified_by = 'oidc',
        modified_at = ? WHERE product = ? AND id = ?`,
     identity.sub,
     identity.name,
@@ -812,6 +826,7 @@ export async function claimEnrolledLicense(
     identity.groupsJson,
     identity.tierId,
     identity.expiresAt,
+    identity.emailIssuerClass,
     at,
     product,
     licenseId,

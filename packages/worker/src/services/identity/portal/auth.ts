@@ -5,11 +5,21 @@ import {
   ID_TOKEN_MAX_AGE,
 } from "../idToken.js";
 import {
+  hashKey,
+  mintOpaqueToken,
+  open,
   platformOidcConfig,
-  randomId,
+  seal,
   type Db,
   type Env,
+  type SealContext,
 } from "../../../core/platform.js";
+import {
+  clearFlowCookie,
+  flowBindingMatches,
+  mintFlowBinding,
+} from "../../../core/oidcFlow.js";
+import { safeReturnUrl } from "../../../core/returnTo.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   getOrCreateAccountByEmail,
@@ -31,14 +41,64 @@ const FLOW_TTL_SECONDS = 600;
 const FLOW_PREFIX = "portal:oidc-flow:";
 const MAGIC_PREFIX = "portal:magic:";
 
+/**
+ * KV keys for the portal's two sign-in credentials (B7-03 / A3-B1).
+ *
+ * `portal:oidc-flow:<state>` and `portal:magic:<token>` used to name the credential itself, so a
+ * read-only listing of the HOT namespace was a working set of sign-in tokens — for the magic
+ * link, a *bearer* one, redeemable straight into a session. R12-04 hashed exactly one of the
+ * five sites it was filed against (`admin/auth.ts`); these are two more, hashed the same way:
+ * `hashKey(credential, KEY_HASH_PEPPER)`, which is HMAC, so the mapping is not reversible or
+ * even confirmable without the pepper.
+ */
+async function flowKey(state: string, env: Env): Promise<string> {
+  return `${FLOW_PREFIX}${await hashKey(state, env.KEY_HASH_PEPPER)}`;
+}
+
+async function magicKey(token: string, env: Env): Promise<string> {
+  return `${MAGIC_PREFIX}${await hashKey(token, env.KEY_HASH_PEPPER)}`;
+}
+
+/**
+ * The AAD binding a stored magic record to the ONE token it was written for (B7-03).
+ *
+ * Hashing the key name stops a KV listing from yielding usable tokens; it does not stop a dump
+ * of the VALUES from yielding "these addresses were sent a sign-in link", which is the second
+ * half of what made this record an account-takeover primitive rather than merely a credential.
+ * The address is therefore sealed under the platform KEK, exactly as identity's browser session
+ * seals its device bearer, and bound to the token hash — so a blob lifted out of one record and
+ * pasted into another fails the auth tag instead of redirecting an attacker's link at somebody
+ * else's account.
+ *
+ * `_portal` as the product: the portal is platform-level and names no tenant, matching the
+ * `_portal` shard the portal's own rate limits already use.
+ */
+function magicSealContext(tokenHash: string): SealContext {
+  return {
+    product: "_portal",
+    kind: "product-secret",
+    id: `portal-magic:${tokenHash}`,
+  };
+}
+
 interface FlowRecord {
   verifier: string;
   nonce: string;
   redirectUri: string;
   returnTo?: string;
+  /** `hashKey` of the `__Host-pkey_flow` cookie handed to the browser that started this flow
+   *  (A3-06). See `core/oidcFlow.ts`. */
+  flowHash?: string;
 }
 
+/** The magic record as CODE sees it. */
 interface MagicRecord {
+  email: string;
+  returnTo?: string;
+}
+
+/** The magic record as KV sees it: `email` holds a `seal()` envelope, never the address. */
+interface StoredMagicRecord {
   email: string;
   returnTo?: string;
 }
@@ -98,19 +158,6 @@ async function pkce(): Promise<{ verifier: string; challenge: string }> {
   return { verifier, challenge: b64url(new Uint8Array(digest)) };
 }
 
-function safeReturnTo(req: Request, raw: string | null): string | undefined {
-  if (!raw) return undefined;
-  try {
-    const parsed = new URL(raw);
-    const here = new URL(req.url);
-    if (parsed.origin !== here.origin) return undefined;
-    if (parsed.pathname.startsWith("/manage")) return undefined;
-    return parsed.toString();
-  } catch {
-    return undefined;
-  }
-}
-
 function mapClaims(payload: Record<string, unknown>): {
   sub: string;
   email?: string;
@@ -155,20 +202,15 @@ async function issueRedirectSession(
     },
     now,
   );
-  return new Response(null, {
-    status: 302,
-    headers: {
-      ...Object.fromEntries(
-        portalSecurityHeaders(
-          new Headers({
-            location,
-            "set-cookie": buildPortalSessionCookie(token),
-            "cache-control": "no-store",
-          }),
-        ),
-      ),
-    },
-  });
+  const headers = portalSecurityHeaders(
+    new Headers({ location, "cache-control": "no-store" }),
+  );
+  headers.append("set-cookie", buildPortalSessionCookie(token));
+  // The single-use flow binding has done its job by the time a session exists; retire it so a
+  // stale `__Host-pkey_flow` cannot linger in the browser (A3-06). A no-op on the magic-link
+  // path, which never set one.
+  headers.append("set-cookie", clearFlowCookie());
+  return new Response(null, { status: 302, headers });
 }
 
 export async function handlePortalLogin(
@@ -192,15 +234,24 @@ export async function handlePortalLogin(
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
-  const returnTo = safeReturnTo(req, rawReturnTo);
+  const returnTo = safeReturnUrl(req, rawReturnTo);
   if (rawReturnTo && !returnTo) return htmlError(400, "Invalid return URL.");
 
   const state = b64url(randomBytes(16));
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
   const redirectUri = `${url.origin}/callback`;
-  const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo };
-  await env.HOT.put(`${FLOW_PREFIX}${state}`, JSON.stringify(flow), {
+  // A3-06 — bind the flow to THIS browser. Every portal flow is a browser redirect (there is no
+  // device/loopback arm here), so the binding is unconditional.
+  const binding = await mintFlowBinding(env);
+  const flow: FlowRecord = {
+    verifier,
+    nonce,
+    redirectUri,
+    returnTo,
+    flowHash: binding.hash,
+  };
+  await env.HOT.put(await flowKey(state, env), JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
 
@@ -218,6 +269,7 @@ export async function handlePortalLogin(
     headers: portalSecurityHeaders(
       new Headers({
         location: authorize.toString(),
+        "set-cookie": binding.cookie,
         "cache-control": "no-store",
       }),
     ),
@@ -234,14 +286,36 @@ export async function handlePortalCallback(
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state) return htmlError(400, "Missing authorization code.");
+  // A3-09 — the callback runs a token exchange and an ID-token verification for anyone who
+  // names a `state`, and had no budget at all while `/login` next door did. Fails CLOSED
+  // (`core/rateLimit.ts`): losing the limiter must not silently unmeter a session-minting leg.
+  const ok = await rateLimitOk(
+    env,
+    "_portal",
+    { bucket: "portalCallback", id: clientIp(req), limit: 20, windowSec: 60 },
+    now,
+  );
+  if (!ok) return htmlError(429, "Too many sign-in attempts.");
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.oidcEnabled) {
     return htmlError(404, "OIDC sign-in is disabled.");
   }
-  const raw = await env.HOT.get(`${FLOW_PREFIX}${state}`);
+  const key = await flowKey(state, env);
+  const raw = await env.HOT.get(key);
   if (!raw) return htmlError(400, "This sign-in link has expired.");
-  const flow = JSON.parse(raw) as FlowRecord;
-  await env.HOT.delete(`${FLOW_PREFIX}${state}`);
+  let flow: FlowRecord;
+  try {
+    flow = JSON.parse(raw) as FlowRecord;
+  } catch {
+    await env.HOT.delete(key);
+    return htmlError(400, "This sign-in link has expired.");
+  }
+  await env.HOT.delete(key);
+  // A3-06 — only the browser that started this flow may finish it. Same message the expired
+  // arm returns, so a probe cannot tell "no such flow" from "not your flow".
+  if (!(await flowBindingMatches(req, env, flow.flowHash))) {
+    return htmlError(400, "This sign-in link has expired.");
+  }
 
   const cfg = platformOidcConfig(env);
   if (!cfg) return htmlError(500, "Portal OIDC is not configured.");
@@ -348,7 +422,7 @@ export async function handleMagicStart(
   }
   const returnTo =
     typeof body.returnTo === "string"
-      ? safeReturnTo(req, body.returnTo)
+      ? safeReturnUrl(req, body.returnTo)
       : undefined;
   if (typeof body.returnTo === "string" && !returnTo) {
     return authJson(
@@ -356,17 +430,40 @@ export async function handleMagicStart(
       400,
     );
   }
-  const token = randomId("magic");
+  // B3-06: `mintOpaqueToken` (256 bits), not `randomId` (9 bytes = 72). This value is a BEARER
+  // credential — presenting it is signing in as whoever the record names — and every sibling
+  // credential on the platform is 256-bit: device tokens, browser-session cookies, the portal's
+  // own download tokens. `randomId` keeps its job of minting IDs (`lic_`, `dev_`), which is what
+  // 72 bits is adequate for.
+  const token = mintOpaqueToken();
+  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
   const verifyUrl = new URL("/magic/verify", new URL(req.url).origin);
   verifyUrl.searchParams.set("token", token);
   if (returnTo) verifyUrl.searchParams.set("return_to", returnTo);
-  const record: MagicRecord = { email, returnTo };
-  await env.HOT.put(`${MAGIC_PREFIX}${token}`, JSON.stringify(record), {
+  let stored: StoredMagicRecord;
+  try {
+    stored = {
+      email: await seal(env, email, magicSealContext(tokenHash)),
+      returnTo,
+    };
+  } catch {
+    // No usable KEK. `seal` throws rather than degrading, and the whole point is that the
+    // target address is never written in the clear — so no link is minted at all.
+    return authJson(
+      {
+        error: "misconfigured",
+        message: "magic-link storage is unavailable",
+      },
+      503,
+    );
+  }
+  const key = `${MAGIC_PREFIX}${tokenHash}`;
+  await env.HOT.put(key, JSON.stringify(stored), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
   const sent = await sendMagicLink(env, email, verifyUrl.toString());
   if (!sent) {
-    await env.HOT.delete(`${MAGIC_PREFIX}${token}`);
+    await env.HOT.delete(key);
     return authJson(
       {
         error: "email_not_configured",
@@ -387,14 +484,45 @@ export async function handleMagicVerify(
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   if (!token) return htmlError(400, "Missing magic-link token.");
+  // B5-11 / MG-01 — a bearer-token REDEMPTION endpoint with no budget at all, while the start
+  // surface that merely sends the mail was capped at 8/min. That is the wrong way round: this
+  // is the online oracle. Fails CLOSED like every other credential leg.
+  const ok = await rateLimitOk(
+    env,
+    "_portal",
+    {
+      bucket: "portalMagicVerify",
+      id: clientIp(req),
+      limit: 20,
+      windowSec: 60,
+    },
+    now,
+  );
+  if (!ok) return htmlError(429, "Too many sign-in attempts.");
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.magicEnabled) {
     return htmlError(404, "Email sign-in is disabled.");
   }
-  const raw = await env.HOT.get(`${MAGIC_PREFIX}${token}`);
+  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+  const key = `${MAGIC_PREFIX}${tokenHash}`;
+  const raw = await env.HOT.get(key);
   if (!raw) return htmlError(400, "This magic link has expired.");
-  await env.HOT.delete(`${MAGIC_PREFIX}${token}`);
-  const record = JSON.parse(raw) as MagicRecord;
+  // Delete-on-consume, unchanged: single use, whatever happens below.
+  await env.HOT.delete(key);
+  let record: MagicRecord;
+  try {
+    const stored = JSON.parse(raw) as StoredMagicRecord;
+    if (typeof stored.email !== "string") throw new Error("bad record");
+    // Unsealed under the IDENTICAL context the write used. Any failure — a rotated-away KEK, a
+    // blob transplanted from another record — is "this link does not resolve", which is the
+    // same answer an expired one gets.
+    record = {
+      email: await open(env, stored.email, magicSealContext(tokenHash)),
+      returnTo: stored.returnTo,
+    };
+  } catch {
+    return htmlError(400, "This magic link has expired.");
+  }
   const account = await getOrCreateAccountByEmail(db, record.email, now);
   if (account.status !== "active") return htmlError(403, "Account disabled.");
   await syncAccountLicenseLinks(db, account.id, now);

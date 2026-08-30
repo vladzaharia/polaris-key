@@ -372,15 +372,58 @@ describe("R5-02 cross-issuer OIDC subject collision", () => {
     await syncAccountLicenseLinks(db, victim.id, NOW);
     expect(await listPortalLicenses(db, victim.id)).toEqual([]);
 
-    // Control: the same subject on a PLATFORM-issuer product still links, so idempotent
-    // re-sign-in for first-party products is unaffected.
+    // INVERTED (B2-01). This used to read as a control — "the same subject on a PLATFORM-issuer
+    // product still links" — but the way it gets there is the attack: it flips the LIVE provider
+    // AFTER the licence was minted, which is exactly the `.pkey/product` push a malicious tenant
+    // would make. The containment used to be evaluated at read time from the product's current
+    // provider, so this one UPDATE retroactively re-enabled every licence evilco had already
+    // minted under its own issuer.
+    //
+    // `licenses.email_issuer_class` (0023) records the provider that was actually resolved when
+    // the row was written, so the answer no longer moves.
     await db.run(
       "UPDATE oidc_config SET provider = 'platform' WHERE product = ?",
       EVILCO,
     );
     await syncAccountLicenseLinks(db, victim.id, NOW);
+    expect(await listPortalLicenses(db, victim.id)).toEqual([]);
+    expect(
+      (await db.first<{ email_issuer_class: string }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        injectedId,
+      ))!.email_issuer_class,
+    ).toBe("custom");
+
+    // The real control: a sign-in that happens WHILE the product authenticates against the
+    // platform issuer stamps `platform` and links, so idempotent re-sign-in for a first-party
+    // product is unaffected. (It lands on the same row, because `sub` is what identifies a
+    // licence — but by then the PLATFORM IdP has vouched for that subject, which is the whole
+    // question, and the row's `name`/`email` are overwritten from those claims.)
+    const honest = await activateFromIdentity(
+      e,
+      db,
+      (await loadProduct(e, db, EVILCO))!,
+      {
+        sub: "1000",
+        email: "victim@corp.example",
+        name: "Victim",
+        groups: ["staff"],
+        claims: {},
+      },
+      NOW,
+    );
+    if (!("licenseId" in honest)) throw new Error("expected a licence");
+    expect(
+      (await db.first<{ email_issuer_class: string }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        honest.licenseId,
+      ))!.email_issuer_class,
+    ).toBe("platform");
+    await syncAccountLicenseLinks(db, victim.id, NOW);
     expect((await listPortalLicenses(db, victim.id)).map((r) => r.id)).toEqual([
-      injectedId,
+      honest.licenseId,
     ]);
   });
 });
@@ -741,6 +784,333 @@ describe("R5-07 download-token lookup is not product-scoped", () => {
       hash,
     );
     expect(plan.map((p) => p.detail).join(" ")).toMatch(/SEARCH/);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// B2-01 — the portal auto-link decision was a READ-TIME read of the product's CURRENT provider.
+//
+// `AUTO_LINK_ENABLED_SQL` derived "may this licence auto-link?" from `oidc_config.provider` at
+// query time, and nothing on the licence row recorded which issuer had actually vouched for its
+// email. So the containment R5-01 established was reversible by editing the product: mint
+// licences for a victim's address under your own custom issuer — where `email_verified: true` is
+// yours to assert — then push a `.pkey/product` lowering `oidc.provider` from `custom` to
+// `platform`, and every one of those rows became linkable retroactively, permanently, with no
+// self-service removal.
+// ───────────────────────────────────────────────────────────────────────────────
+describe("B2-01 retroactive auto-link by flipping oidc.provider", () => {
+  it("a licence minted under a CUSTOM issuer never auto-links, even after the product flips to platform", async () => {
+    const db = makeTestDb();
+    const e = env();
+    await seedProduct(db, EVILCO);
+    await seedOidcConfig(db, EVILCO); // provider = 'custom'
+    const evilco = (await loadProduct(e, db, EVILCO))!;
+
+    // The victim's portal account, proven by a magic link the PORTAL itself delivered — the
+    // only kind of address `syncAccountLicenseLinks` will act on since R5-01.
+    const victimEmail = "ceo@victim-corp.example";
+    const victim = await getOrCreateAccountByEmail(db, victimEmail, NOW);
+    await linkEmail(db, victim.id, victimEmail, NOW);
+
+    // evilco's tenant-controlled IdP asserts the victim's address as verified.
+    const minted = await activateFromIdentity(
+      e,
+      db,
+      evilco,
+      {
+        sub: "evil-1",
+        email: victimEmail,
+        name: "Totally The CEO",
+        groups: ["staff"],
+        claims: {},
+      },
+      NOW,
+    );
+    if (!("licenseId" in minted)) throw new Error("expected a licence");
+
+    // Contained today, as R5-01/R5-02 established.
+    await syncAccountLicenseLinks(db, victim.id, NOW);
+    expect(await listPortalLicenses(db, victim.id)).toEqual([]);
+
+    // THE ATTACK: the tenant re-points its own manifest at the platform IdP. Nothing about the
+    // already-minted row changes — only the product's live provider does.
+    await db.run(
+      "UPDATE oidc_config SET provider = 'platform' WHERE product = ?",
+      EVILCO,
+    );
+    await syncAccountLicenseLinks(db, victim.id, NOW);
+    // FIXED: the licence carries the class that was resolved when its email was written.
+    expect(await listPortalLicenses(db, victim.id)).toEqual([]);
+    expect(
+      (await db.first<{ email_issuer_class: string }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        minted.licenseId,
+      ))!.email_issuer_class,
+    ).toBe("custom");
+
+    // What B2-01 does NOT change: `portal_product_settings.auto_link_enabled` is still an
+    // operator override of the derived default, in either direction. That is deliberate and it
+    // is the whole point of the fix — the derived default is now a fact about the ROW that the
+    // tenant cannot re-decide by pushing a manifest, while the override remains a decision only
+    // a platform admin can make, through the console, on the record. Different actor, different
+    // audit trail. Asserted here so the distinction is pinned rather than assumed.
+    await upsertPortalProductSettings(
+      db,
+      EVILCO,
+      { autoLinkEnabled: true },
+      NOW,
+    );
+    await syncAccountLicenseLinks(db, victim.id, NOW);
+    expect((await listPortalLicenses(db, victim.id)).map((r) => r.id)).toEqual([
+      minted.licenseId,
+    ]);
+    // …and turning it back off re-contains it, since nothing about the row changed.
+    await upsertPortalProductSettings(
+      db,
+      EVILCO,
+      { autoLinkEnabled: false },
+      NOW,
+    );
+    await db.run(
+      "DELETE FROM portal_license_links WHERE account_id = ?",
+      victim.id,
+    );
+    await syncAccountLicenseLinks(db, victim.id, NOW);
+    expect(await listPortalLicenses(db, victim.id)).toEqual([]);
+    await upsertPortalProductSettings(
+      db,
+      EVILCO,
+      { autoLinkEnabled: null },
+      NOW,
+    );
+
+    // Control: a platform-issuer product's licence for the same verified address DOES link, so
+    // the containment is about the issuer and not about the address.
+    await seedProduct(db, ACME);
+    const acme = (await loadProduct(e, db, ACME))!;
+    await db.run(
+      `INSERT INTO oidc_config (product, provider, issuer, client_id,
+         client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?, 'platform', NULL, NULL, NULL, NULL, ?)`,
+      ACME,
+      JSON.stringify({ staff: { role: "user" } }),
+    );
+    const honest = await activateFromIdentity(
+      e,
+      db,
+      acme,
+      {
+        sub: "platform-1",
+        email: victimEmail,
+        name: "The CEO",
+        groups: ["staff"],
+        claims: {},
+      },
+      NOW,
+    );
+    if (!("licenseId" in honest)) throw new Error("expected a licence");
+    await syncAccountLicenseLinks(db, victim.id, NOW);
+    expect((await listPortalLicenses(db, victim.id)).map((r) => r.id)).toEqual([
+      honest.licenseId,
+    ]);
+  });
+
+  it("B2-05b / B4-MG-01: the self-service mint and the auto-link each leave an audit row, exactly once", async () => {
+    const db = makeTestDb();
+    const e = env();
+    await seedProduct(db, ACME);
+    await db.run(
+      `INSERT INTO oidc_config (product, provider, issuer, client_id,
+         client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?, 'platform', NULL, NULL, NULL, NULL, ?)`,
+      ACME,
+      JSON.stringify({ staff: { role: "user" } }),
+    );
+    const acme = (await loadProduct(e, db, ACME))!;
+    const minted = await activateFromIdentity(
+      e,
+      db,
+      acme,
+      {
+        sub: "ada",
+        email: "ada@corp.example",
+        name: "Ada",
+        groups: ["staff"],
+        claims: {},
+      },
+      NOW,
+    );
+    if (!("licenseId" in minted)) throw new Error("expected a licence");
+
+    // The MINT. A stranger turning a verified claim into a brand-new licence row used to write
+    // nothing at all — only the two merge arms audited — so the first link of the B2-01 chain
+    // was invisible.
+    const mint = await db.all<{ action: string; target_id: string }>(
+      "SELECT action, target_id FROM audit WHERE product = ? AND action = 'license.mint.oidc'",
+      ACME,
+    );
+    expect(mint).toHaveLength(1);
+    expect(mint[0]!.target_id).toBe(minted.licenseId);
+
+    // The AUTO-LINK. A licence silently appearing in somebody's portal account is a privilege
+    // grant and wrote nothing either.
+    const account = await getOrCreateAccountByEmail(
+      db,
+      "ada@corp.example",
+      NOW,
+    );
+    await linkEmail(db, account.id, "ada@corp.example", NOW);
+    await syncAccountLicenseLinks(db, account.id, NOW);
+    const links = await db.all<{ action: string; target_id: string }>(
+      "SELECT action, target_id FROM portal_audit WHERE action = 'portal.license.autolink'",
+    );
+    expect(links).toHaveLength(1);
+    expect(links[0]!.target_id).toBe(minted.licenseId);
+
+    // …written ONCE per link, not once per request. `syncAccountLicenseLinks` runs on every
+    // portal API call, so an unconditional row would bury the one event that matters.
+    for (let i = 0; i < 5; i++)
+      await syncAccountLicenseLinks(db, account.id, NOW);
+    expect(
+      await db.all(
+        "SELECT id FROM portal_audit WHERE action = 'portal.license.autolink'",
+      ),
+    ).toHaveLength(1);
+    // The link's own `last_seen_at` is still refreshed by those re-syncs.
+    expect(
+      await db.first(
+        "SELECT last_seen_at FROM portal_license_links WHERE account_id = ?",
+        account.id,
+      ),
+    ).toBeTruthy();
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// B7-03 / A3-B1 — a KV LIST was a credential dump.
+//
+// R12-04 was filed against five sites and closed against one (`admin/auth.ts`). The other four
+// still named the credential itself as the key — `portal:magic:<token>`, whose VALUE also held
+// the target email in plaintext, `portal:oidc-flow:<state>`, and the product flow's `state` and
+// device code. A read-only listing of the HOT namespace therefore yielded working sign-in
+// tokens from metadata alone, and a dump of the values yielded who each one belonged to.
+// ───────────────────────────────────────────────────────────────────────────────
+describe("B7-03 a KV dump yields no usable credential and no plaintext email", () => {
+  it("every in-flight sign-in credential is stored under its peppered hash, and no key name is redeemable", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const e = env(kv);
+    e.PORTAL_SESSION_SECRET = "portal-secret";
+    e.ADMIN_SESSION_SECRET = "admin-secret";
+    e.PLATFORM_OIDC_ISSUER = "https://id.example";
+    e.PLATFORM_OIDC_CLIENT_ID = "client-1";
+    await seedProduct(db, ACME);
+    await seedOidcConfig(db, ACME);
+    const acme = (await loadProduct(e, db, ACME))!;
+
+    const emails: string[] = [];
+    e.EMAIL = {
+      send: async (m: { to: string; text: string }) => {
+        emails.push(m.text);
+      },
+    } as unknown as Env["EMAIL"];
+
+    // Drive every surface that writes an in-flight credential to KV.
+    const { handleAuthStart, handleAuthDeviceStart } =
+      await import("../../src/services/identity/oidc.js");
+    const { handlePortalLogin } =
+      await import("../../src/services/identity/portal/auth.js");
+    const { handleAdminLogin } = await import("../../src/admin/auth.js");
+
+    const productStart = await handleAuthStart(
+      new Request(
+        `https://key.plrs.im/${ACME}/identity/auth/start`,
+      ) as unknown as Request,
+      e,
+      db,
+      acme,
+    );
+    const productState = new URL(
+      productStart.headers.get("location")!,
+    ).searchParams.get("state")!;
+    const deviceStart = await handleAuthDeviceStart(
+      new Request(`https://key.plrs.im/${ACME}/identity/auth/device/start`, {
+        method: "POST",
+        body: JSON.stringify({ deviceId: "cli-1" }),
+      }) as unknown as Request,
+      e,
+      db,
+      acme,
+    );
+    const { deviceCode } = (await deviceStart.json()) as { deviceCode: string };
+    const portalLogin = await handlePortalLogin(
+      new Request("https://key.plrs.im/login") as unknown as Request,
+      e,
+      db,
+    );
+    const portalState = new URL(
+      portalLogin.headers.get("location")!,
+    ).searchParams.get("state")!;
+    const adminLogin = await handleAdminLogin(
+      new Request("https://key.plrs.im/manage/login") as unknown as Request,
+      e,
+    );
+    const adminState = new URL(
+      adminLogin.headers.get("location")!,
+    ).searchParams.get("state")!;
+    await handleMagicStart(
+      new Request("https://key.plrs.im/api/magic/start", {
+        method: "POST",
+        body: JSON.stringify({ email: "victim@corp.example" }),
+      }) as unknown as Request,
+      e,
+      db,
+    );
+    const magicToken = new URL(
+      emails[0]!.split(/\s+/).find((w) => w.startsWith("https://"))!,
+    ).searchParams.get("token")!;
+
+    // 1. The dump: no key NAME contains a live credential, anywhere.
+    const keys = kv.keys();
+    expect(keys.length).toBeGreaterThan(0);
+    const credentials = [
+      productState,
+      deviceCode,
+      portalState,
+      adminState,
+      magicToken,
+    ];
+    for (const key of keys) {
+      for (const credential of credentials) {
+        expect(key, `${key} names a live credential`).not.toContain(credential);
+      }
+    }
+
+    // 2. …and every one of them IS findable under its peppered hash, so the mapping is a
+    // deliberate hash rather than an accident of the value having moved somewhere else.
+    for (const [key, credential] of [
+      [`p:${ACME}:flow:`, productState],
+      [`p:${ACME}:device-flow:`, deviceCode],
+      ["portal:oidc-flow:", portalState],
+      ["admin:flow:", adminState],
+      ["portal:magic:", magicToken],
+    ] as const) {
+      const hashed = `${key}${await hashKey(credential, e.KEY_HASH_PEPPER)}`;
+      expect(keys, `${key} is not hashed`).toContain(hashed);
+      expect(hashed.slice(key.length)).toMatch(/^[0-9a-f]{64}$/);
+    }
+
+    // 3. The values: no plaintext email anywhere in the namespace. The magic record's address
+    //    was the datum that turned a KV dump from a list of hashes into an account-takeover
+    //    primitive; it is sealed under the platform KEK now.
+    for (const key of keys) {
+      const value = (await kv.get(key)) ?? "";
+      expect(value, `${key} leaks an address`).not.toContain(
+        "victim@corp.example",
+      );
+      expect(value, `${key} leaks a local-part`).not.toContain("victim");
+    }
   });
 });
 

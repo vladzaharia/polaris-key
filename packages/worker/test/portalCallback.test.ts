@@ -9,12 +9,23 @@
 // Signature checks, claim validation, and the freshness options under test all run real.
 // jose reads the REAL system clock, so the token's `iat`/`exp` are built from `Date.now()`
 // while the handler's `now` parameter (session stamping only) stays the seed constant.
+//
+// The hand-planted flow record carries two things the fixture used to be able to leave unsaid,
+// both of which are now preconditions of reaching the ID-token verification at all:
+//  - B7-03 / A3-B1 — the KV key is `portal:oidc-flow:<hashKey(state, KEY_HASH_PEPPER)>`, not the
+//    `state` verbatim, so the key name is derived through `portalFlowKey` rather than pasted.
+//  - A3-06 — the callback refuses any request that does not present the `__Host-pkey_flow`
+//    cookie the start handler minted, so the record stores `flowHash` and the request carries
+//    the matching `flowId`. Without it every case below would 400 on the binding check and
+//    never exercise R8-05d's freshness ceiling — which is precisely the point of a fail-closed
+//    binding, and precisely why the control case is here to prove the fixture is honest.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { makeTestDb } from "./helpers.js";
+import { makeTestDb, portalFlowKey } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { mintFlowBinding } from "../src/core/oidcFlow.js";
 import { handlePortalCallback } from "../src/services/identity/portal/auth.js";
 
 const idp = vi.hoisted(() => ({ jwks: { keys: [] as unknown[] } }));
@@ -62,12 +73,14 @@ async function callbackWith(
   env.PLATFORM_OIDC_CLIENT_ID = CLIENT_ID;
   env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
 
+  const binding = await mintFlowBinding(env);
   await kv.put(
-    `portal:oidc-flow:${STATE}`,
+    await portalFlowKey(env, STATE),
     JSON.stringify({
       verifier: "v".repeat(43),
       nonce: "nonce-1",
       redirectUri: "https://key.plrs.im/portal/auth/callback",
+      flowHash: binding.hash,
     }),
   );
 
@@ -104,6 +117,7 @@ async function callbackWith(
   return handlePortalCallback(
     new Request(
       `https://key.plrs.im/portal/auth/callback?code=abc&state=${STATE}`,
+      { headers: { cookie: `__Host-pkey_flow=${binding.flowId}` } },
     ),
     env,
     db,

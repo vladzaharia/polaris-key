@@ -12,7 +12,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { makeTestDb } from "../helpers.js";
+import {
+  makeTestDb,
+  productDeviceFlowKey,
+  productFlowKey,
+} from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
   makeEnv,
@@ -611,9 +615,12 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     await seedCustomOidc(db, "https://exfil.attacker.example");
     const product = (await loadProduct(env, db, SLUG))!;
 
-    // A flow record is all the attacker needs; GET /djdl/auth/start hands them one.
+    // A flow record is all the attacker needs; GET /djdl/auth/start hands them one. B7-03 /
+    // A3-B1 hashed the key name, so the record is filed through the shared helper — and note
+    // what it does NOT carry: no `flowHash`, no `returnTo`, which is the device/loopback shape
+    // A3-06 deliberately exempts from the browser binding. This PoC needs no cookie.
     await env.HOT.put(
-      `p:${SLUG}:flow:ATTACKER_STATE`,
+      await productFlowKey(env, SLUG, "ATTACKER_STATE"),
       JSON.stringify({
         verifier: "v",
         nonce: "n",
@@ -652,7 +659,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     await seedCustomOidc(db, "http://169.254.169.254/latest/meta-data");
     const product = (await loadProduct(env, db, SLUG))!;
     await env.HOT.put(
-      `p:${SLUG}:flow:S`,
+      await productFlowKey(env, SLUG, "S"),
       JSON.stringify({
         verifier: "v",
         nonce: "n",
@@ -688,7 +695,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       await seedCustomOidc(db, "https://exfil.attacker.example");
       const product = (await loadProduct(env, db, SLUG))!;
       await env.HOT.put(
-        `p:${SLUG}:flow:S3`,
+        await productFlowKey(env, SLUG, "S3"),
         JSON.stringify({
           verifier: "v",
           nonce: "n",
@@ -723,7 +730,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     });
     const product = (await loadProduct(env, db, SLUG))!;
     await env.HOT.put(
-      `p:${SLUG}:flow:S2`,
+      await productFlowKey(env, SLUG, "S2"),
       JSON.stringify({
         verifier: "v",
         nonce: "n",
@@ -1263,12 +1270,23 @@ describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on 
       db,
       product,
     );
-    expect(res.status).toBe(302); // accepted
-    const stored = kv.keys().find((k) => k.startsWith(`p:${SLUG}:flow:`))!;
-    const flow = JSON.parse((await kv.get(stored))!) as { returnTo?: string };
-    expect(flow.returnTo).toBe("https://key.plrs.im/manage/api/products");
+    // INVERTED (A3-04). The `it` name is the finding, and the finding is closed. "Where may a
+    // completed sign-in land the browser?" used to be answered four times in four files; the
+    // product copy checked the ORIGIN and nothing else, so it happily parked a CUSTOMER sign-in
+    // on `/manage/…` — the one surface that reads an operator's session — while its portal twin
+    // refused the identical value by name. `core/returnTo.ts` is now the single validator and
+    // the customer realms take the STRICTER of the two rules (`CUSTOMER_RETURN_TO_DENY =
+    // ["/manage"]`), so the divergence this test was named after no longer exists. The admin
+    // realm still reaches `/manage`, through its own allowlist, not through this one.
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toBe("bad_request");
+    // The refusal lands before `beginAuthFlow` writes anything, so a rejected `return_to`
+    // cannot even burn a KV row.
+    expect(kv.keys().filter((k) => k.startsWith(`p:${SLUG}:flow:`))).toEqual(
+      [],
+    );
 
-    // The portal twin (portal/auth.ts:100) refuses the same value.
+    // The portal twin refuses the same value, as it always did — the two are now the same code.
     const portal = await handlePortalLogin(
       req(
         `https://key.plrs.im/login?return_to=${encodeURIComponent(
@@ -1279,6 +1297,28 @@ describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on 
       db,
     );
     expect(portal.status).toBe(400);
+
+    // CONTROL: `/manage` is a DENY-LIST entry, not a ban on `return_to`. An ordinary
+    // same-origin target is still accepted and still round-trips onto the flow record, query
+    // string intact — the property the React SDK depends on, since `window.location.href` is
+    // literally what it sends. A fix that refused everything would pass the assertions above.
+    const allowed = "https://key.plrs.im/djdl/welcome?tab=account";
+    const ok = await handleAuthStart(
+      req(
+        `https://key.plrs.im/${SLUG}/auth/start?return_to=${encodeURIComponent(allowed)}`,
+      ),
+      env,
+      db,
+      product,
+    );
+    expect(ok.status).toBe(302);
+    const state = new URL(ok.headers.get("location")!).searchParams.get(
+      "state",
+    )!;
+    const flow = JSON.parse(
+      (await kv.get(await productFlowKey(env, SLUG, state)))!,
+    ) as { returnTo?: string };
+    expect(flow.returnTo).toBe(allowed);
   });
 
   it("REFUTED: cross-origin return_to is rejected by both (origin comparison is sound)", async () => {
@@ -1655,8 +1695,10 @@ describe("R9-12 escapeHtml coverage", () => {
     const kv = new KvMock();
     const env = makeEnv(kv, [SLUG]);
     await seedProduct(db, SLUG);
+    // B7-03 / A3-B1 — the device-flow key name is the HASHED code, so the planted record goes
+    // in through the shared helper or the handler looks somewhere else and 404s.
     await kv.put(
-      `p:${SLUG}:device-flow:DC`,
+      await productDeviceFlowKey(env, SLUG, "DC"),
       JSON.stringify({
         state: "s",
         deviceId: "dev-1",

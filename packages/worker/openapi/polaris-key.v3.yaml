@@ -2043,8 +2043,22 @@ paths:
         is no `device_code`/`user_code`/`expires_in` anywhere on the wire — the one snake_case
         survivor is the `device_code` QUERY parameter inside `verificationUri`. Two extra
         fields RFC 8628 does not have: `status`, always `"pending"`, and `pollUrl`, the
-        absolute URL of `/identity/auth/device/poll`. `verificationUriComplete` is currently
-        the identical string to `verificationUri`.
+        absolute URL of `/identity/auth/device/poll`. `verificationUriComplete` is
+        `verificationUri` plus a `user_code` query parameter (RFC 8628 §3.3.1); it used to be
+        emitted byte-equal to `verificationUri`, which told a client nothing (A3-03).
+
+
+        `userCode` carries its OWN entropy — it used to be a case-folded prefix of
+        `deviceCode`, i.e. the value a human reads aloud disclosed 48 bits of the secret that
+        redeems the flow. Its alphabet omits the characters that are ambiguous when read or
+        typed.
+
+
+        An already-enrolled client MAY present its `pkeyt_` device token (either as
+        `Authorization: Bearer` or as `deviceToken` in the body). Doing so is what allows the
+        completed sign-in to CLAIM the auto-issued licence that device is already running on;
+        without it the sign-in gets an ordinary new or existing licence of its own. A start with
+        no token is not refused — that is the new-device case (A3-01).
 
 
         The device id may come from the body, the `X-PKey-Device` header, or a `?device=`
@@ -2082,9 +2096,9 @@ paths:
                   value:
                     status: pending
                     deviceCode: Zk8LqR8nT0sYp2vcEgHj6A
-                    userCode: ZK8L-QR8N
+                    userCode: QHDK-72WN
                     verificationUri: https://key.plrs.im/djdl/identity/auth/device/verify?device_code=Zk8LqR8nT0sYp2vcEgHj6A
-                    verificationUriComplete: https://key.plrs.im/djdl/identity/auth/device/verify?device_code=Zk8LqR8nT0sYp2vcEgHj6A
+                    verificationUriComplete: https://key.plrs.im/djdl/identity/auth/device/verify?device_code=Zk8LqR8nT0sYp2vcEgHj6A&user_code=QHDK-72WN
                     expiresIn: 600
                     interval: 2
                     pollUrl: https://key.plrs.im/djdl/identity/auth/device/poll
@@ -3478,14 +3492,19 @@ components:
     DeviceAuthStartResult:
       type: object
       description: >
-        RFC 8628 in shape, camelCase in spelling. `verificationUriComplete` is currently the
-        identical string to `verificationUri`. `pollUrl` and `status` are additions RFC 8628
-        does not define.
+        RFC 8628 in shape, camelCase in spelling. `verificationUriComplete` is
+        `verificationUri` with the user code appended as a `user_code` query parameter, per RFC
+        8628 §3.3.1. `pollUrl` and `status` are additions RFC 8628 does not define.
       required: [status, deviceCode, userCode, verificationUri, verificationUriComplete, expiresIn, interval, pollUrl]
       properties:
         status: { type: string, const: pending }
         deviceCode: { type: string }
-        userCode: { type: string, pattern: "^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$" }
+        userCode:
+          type: string
+          description: >
+            Independently minted (A3-03), never derived from `deviceCode`. The alphabet omits
+            the glyphs that are ambiguous when read aloud or typed — no I/O/S/B/U/V, no 0/1/5.
+          pattern: "^[ACDEFGHJKLMNPQRTWXYZ2346789]{4}-[ACDEFGHJKLMNPQRTWXYZ2346789]{4}$"
         verificationUri: { type: string, format: uri }
         verificationUriComplete: { type: string, format: uri }
         expiresIn: { type: integer, description: Seconds — 600. }

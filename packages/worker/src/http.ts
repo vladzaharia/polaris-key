@@ -76,3 +76,31 @@ export function bearer(req: Request): string | null {
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m ? (m[1] ?? null) : null;
 }
+
+/**
+ * Read exactly ONE cookie of a given name out of a Cookie header, failing CLOSED on ambiguity.
+ *
+ * A first-match parser is the readable half of R1-08 / A3-02: RFC 6265 §5.4 orders cookies by
+ * descending `Path` length, so a duplicate planted by a sibling subdomain (`Domain=plrs.im`) or
+ * at a longer path is sent FIRST and silently wins. Two different values for one credential
+ * cookie is never a legitimate state, so the ambiguity is resolved by refusing rather than by
+ * picking a winner. Duplicates that agree byte-for-byte are harmless and still resolve.
+ *
+ * ONE definition, because every cookie-bearing realm has the same question and answering it
+ * per-file is exactly how `admin/session.ts` came to be hardened while identity's product
+ * session cookie was not. The raw (still percent-encoded) value is returned — decoding is the
+ * caller's, since only some realms encode on write.
+ */
+export function readSingleCookie(
+  cookieHeader: string | null,
+  name: string,
+): string | null {
+  if (!cookieHeader) return null;
+  const values = new Set<string>();
+  for (const part of cookieHeader.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) values.add(rest.join("="));
+  }
+  if (values.size !== 1) return null;
+  return values.values().next().value ?? null;
+}

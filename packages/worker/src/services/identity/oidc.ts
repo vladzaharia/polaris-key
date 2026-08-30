@@ -42,6 +42,8 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // `manifest.ts` merely re-exports it — a service may not import a sibling.
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import {
+  bearer,
+  hashKey,
   platformOidcConfig,
   secret,
   staticHtmlSecurityHeaders,
@@ -55,7 +57,7 @@ import { clientIp, rateLimitOk, type RateLimit } from "../../core/rateLimit.js";
 import {
   appendAudit,
   claimEnrolledLicense,
-  getDevice,
+  getDeviceByTokenHash,
   getLicense,
   getLicenseBySub,
   getTier,
@@ -64,7 +66,13 @@ import {
 } from "../../core/data.js";
 import { allowsOidcDefault } from "../../core/fingerprint.js";
 import { authorizeDevice, tierExpiresAt } from "../../core/authz.js";
-import { licenseUsable } from "../../core/devices.js";
+import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
+import {
+  clearFlowCookie,
+  flowBindingMatches,
+  mintFlowBinding,
+} from "../../core/oidcFlow.js";
+import { safeReturnUrl } from "../../core/returnTo.js";
 import { createBrowserSession } from "./browserSession.js";
 
 const FLOW_TTL_SECONDS = 600;
@@ -111,9 +119,24 @@ interface FlowRecord {
   nonce: string;
   redirectUri: string;
   returnTo?: string;
+  /** `hashKey` of the `__Host-pkey_flow` cookie value handed to the browser that STARTED this
+   *  flow (A3-06). Present on the browser-redirect flow only — a device/loopback flow is
+   *  legitimately finished in a different browser. See `core/oidcFlow.ts`. */
+  flowHash?: string;
   /** The device that started a device-code/loopback flow. Carried so sign-in can see which
    *  license that device is already running on and claim it if it's an auto-issued one. */
   deviceId?: string;
+  /**
+   * `hashKey` of the device token that PROVED ownership of `deviceId` at start (A3-01).
+   *
+   * `deviceId` is `X-PKey-Device`, "a client-chosen string with no uniqueness requirement"
+   * (`core/devices.ts`), disclosed to every portal co-owner and to the console, and for the
+   * browser realm literally derivable (`browser:<licenseId>`). It is an IDENTIFIER, never
+   * evidence of a relationship to a licence — so the claim/migrate path in
+   * `activateFromIdentity` keys off this hash instead, and a start that could not prove itself
+   * simply carries none.
+   */
+  deviceTokenHash?: string;
   licenseId?: string;
   error?: string;
   /** Stamped when the human confirms the device-code flow. A device flow may only mint after
@@ -298,31 +321,58 @@ async function getProvisioning(
   );
 }
 
-function flowKey(product: string, state: string): string {
-  return `p:${product}:flow:${state}`;
+/**
+ * KV keys for an in-flight product sign-in (B7-03 / A3-B1).
+ *
+ * The `state` and the device code used to BE the key names, so listing the HOT namespace handed
+ * over live credentials from metadata alone — with the PKCE `verifier` and the flow's bound
+ * licence sitting in the value next to them. R12-04 fixed exactly one of the five named sites
+ * (`admin/auth.ts`); these are two more, and they take the same treatment: the key is
+ * `hashKey(credential, KEY_HASH_PEPPER)`, so a key name is no longer a usable `state` (or device
+ * code) and cannot be reversed into one without the pepper. The product prefix stays in front of
+ * the hash — tenant isolation is a property of the key SHAPE (R5), not of the credential.
+ */
+async function flowKey(
+  env: Env,
+  product: string,
+  state: string,
+): Promise<string> {
+  return `p:${product}:flow:${await hashKey(state, env.KEY_HASH_PEPPER)}`;
 }
 
-function deviceFlowKey(product: string, code: string): string {
-  return `p:${product}:device-flow:${code}`;
+async function deviceFlowKey(
+  env: Env,
+  product: string,
+  code: string,
+): Promise<string> {
+  return `p:${product}:device-flow:${await hashKey(code, env.KEY_HASH_PEPPER)}`;
 }
 
-function deviceUserCode(state: string): string {
-  return state
-    .slice(0, 8)
-    .toUpperCase()
-    .replace(/(.{4})/, "$1-");
-}
+/**
+ * The human-readable code shown on the confirmation page — minted with its OWN entropy (A3-03).
+ *
+ * It used to be `deviceCode.slice(0, 8).toUpperCase()`, i.e. a case-folded prefix of the secret
+ * device code. Anyone who could see the code a user was asked to read aloud (a shoulder, a
+ * screenshot, a support ticket) held 48 bits of the credential that redeems the flow. The two
+ * values answer different questions and now have independent lifetimes: `deviceCode` is a
+ * secret, `userCode` is a display string.
+ *
+ * The alphabet drops the characters that are ambiguous when read or typed (`I`/`1`, `O`/`0`,
+ * `S`/`5`, `B`/`8`, `U`/`V`), which is the whole reason RFC 8628 §6.1 asks for a distinct user
+ * code. 8 characters over 27 symbols is ~38 bits, against a flow that lives 600 seconds behind a
+ * rate-limited verification surface — and the user code is not the redemption credential in any
+ * case, `deviceCode` is.
+ */
+const USER_CODE_ALPHABET = "ACDEFGHJKLMNPQRTWXYZ2346789";
 
-function safeReturnTo(req: Request, raw: string | null): string | undefined {
-  if (!raw) return undefined;
-  try {
-    const parsed = new URL(raw);
-    const here = new URL(req.url);
-    if (parsed.origin !== here.origin) return undefined;
-    return parsed.toString();
-  } catch {
-    return undefined;
+function mintUserCode(): string {
+  const bytes = randomBytes(8);
+  let out = "";
+  for (let i = 0; i < 8; i++) {
+    if (i === 4) out += "-";
+    out += USER_CODE_ALPHABET[bytes[i]! % USER_CODE_ALPHABET.length];
   }
+  return out;
 }
 
 /**
@@ -518,16 +568,23 @@ export async function activateFromIdentity(
 > {
   const oidc = await getOidcConfig(db, product.slug);
   // A malformed map grants nothing (fail closed) instead of throwing out of sign-in (R8-06).
-  const map =
+  const parsedMap =
     parseJsonColumn<Record<string, { role: string; tier?: string }>>(
       oidc?.group_role_map_json,
     ) ?? {};
+  // B4-02: a MAP, not the plain object. `map[g]` walked the prototype chain, so an IdP that
+  // asserted a group literally named `constructor`, `toString`, `valueOf` or `__proto__`
+  // matched `Object.prototype` and came out ENTITLED against a `group_role_map_json` that
+  // named no such group. `new Map(Object.entries(...))` sees own enumerable keys only, so the
+  // lookup answers about the operator's configuration and nothing else. (`m.tier` is then read
+  // off a value the operator wrote, not off `Object.prototype`.)
+  const map = new Map(Object.entries(parsedMap));
 
   let entitled = false;
   let tierId: string | null = null;
   for (const g of identity.groups) {
-    const m = map[g];
-    if (m) {
+    const m = map.get(g);
+    if (m && typeof m === "object") {
       entitled = true;
       if (m.tier && !tierId) tierId = m.tier;
     }
@@ -556,6 +613,23 @@ export async function activateFromIdentity(
   };
   await applyProvisioning(env, db, product.slug, identity, provisioned, now);
 
+  /**
+   * B2-01 — the issuer class that is producing `identity.email` on THIS sign-in, stamped onto
+   * the row in the same statements that write the address.
+   *
+   * `AUTO_LINK_ENABLED_SQL` used to answer "may this licence auto-link into a portal account?"
+   * at READ time, from the product's CURRENT `oidc_config.provider`. Nothing on the row recorded
+   * which issuer had actually vouched for the address, so the containment was reversible by
+   * editing the product: mint licences for a victim's address under your own custom issuer
+   * (`email_verified: true` is yours to assert), then push a `.pkey/product` that lowers
+   * `oidc.provider` from `custom` to `platform`, and every one of those rows retroactively
+   * became auto-linkable — permanently, with no self-service removal. Recording the resolved
+   * provider at WRITE time makes the decision a fact about the sign-in that happened rather than
+   * about the manifest as it stands today.
+   */
+  const emailIssuerClass =
+    (oidc?.provider ?? "platform") === "custom" ? "custom" : "platform";
+
   // The enrolled license this device is currently on, if it is genuinely a claimable
   // anonymous one. Anything else (an admin or OIDC license) is left alone.
   const enrolled = opts.enrolledLicenseId
@@ -583,6 +657,7 @@ export async function activateFromIdentity(
         groupsJson: JSON.stringify(identity.groups),
         tierId,
         expiresAt,
+        emailIssuerClass,
       },
       now,
     );
@@ -645,7 +720,8 @@ export async function activateFromIdentity(
     if (!licenseUsable(existing, now)) return { error: "license-unusable" };
     await db.run(
       `UPDATE licenses SET name = ?, email = ?, groups_json = ?, tier_id = ?,
-         expires_at = ?, overrides_json = ?, modified_by = ?, modified_at = ?
+         expires_at = ?, overrides_json = ?, email_issuer_class = ?,
+         modified_by = ?, modified_at = ?
        WHERE product = ? AND id = ?`,
       identity.name ?? null,
       identity.email ?? null,
@@ -655,6 +731,9 @@ export async function activateFromIdentity(
       JSON.stringify(
         overlayProvisioned(parsePayload(existing.overrides_json), provisioned),
       ),
+      // Rewritten with `email`, not merely on insert: the address on this row is whatever the
+      // LATEST sign-in asserted, so the class that vouches for it has to move with it (B2-01).
+      emailIssuerClass,
       "oidc",
       now,
       product.slug,
@@ -684,8 +763,29 @@ export async function activateFromIdentity(
     channels_json: null,
     min_version: null,
     max_version: null,
+    email_issuer_class: emailIssuerClass,
     modified_by: "oidc",
     modified_at: now,
+  });
+  // B2-05b — the SELF-SERVICE mint gets an audit row, like every other way a licence comes into
+  // existence. The two merge arms above have written `license.merge` since they landed, and
+  // `enroll.ts` audits its auto-issue; the one path where a stranger turns a verified claim into
+  // a brand-new licence row wrote nothing at all. That is the first link of the B2-01 chain
+  // (mint under a tenant issuer, then auto-link into a victim's portal account), and with no row
+  // here the chain had no trace anywhere in the platform. `emailIssuerClass` is recorded in the
+  // summary because it is the fact that decides the second link.
+  await appendAudit(db, {
+    product: product.slug,
+    id: randomId("aud"),
+    at: now,
+    actor_sub: identity.sub,
+    actor_name: identity.name ?? null,
+    actor_email: identity.email ?? null,
+    action: "license.mint.oidc",
+    target_kind: "license",
+    target_id: licenseId,
+    parent_id: null,
+    summary: `Minted a license for ${identity.email ?? identity.sub} via ${emailIssuerClass} OIDC`,
   });
   return { licenseId };
 }
@@ -712,17 +812,26 @@ async function beginAuthFlow(
   env: Env,
   db: Db,
   product: Product,
-  returnTo?: string,
-  deviceId?: string,
+  opts: {
+    returnTo?: string;
+    deviceId?: string;
+    deviceTokenHash?: string;
+    /** Bind the flow to THIS browser (A3-06). Off for the device/loopback flow, which is
+     *  legitimately finished somewhere else. */
+    bindBrowser?: boolean;
+  } = {},
 ): Promise<
   | {
       ok: true;
       state: string;
       authorizeUrl: string;
       redirectUri: string;
+      /** The `Set-Cookie` that carries the browser binding, when one was minted. */
+      bindingCookie?: string;
     }
   | Response
 > {
+  const { returnTo, deviceId, deviceTokenHash, bindBrowser } = opts;
   const oidc = await resolveOidcConfig(env, db, product);
   if (oidc instanceof Response) return oidc;
   const state = b64url(randomBytes(16));
@@ -738,10 +847,21 @@ async function beginAuthFlow(
   if (!redirectUriAllowed(oidc.row, redirectUri)) {
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
-  const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo, deviceId };
-  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
-    expirationTtl: FLOW_TTL_SECONDS,
-  });
+  const binding = bindBrowser ? await mintFlowBinding(env) : null;
+  const flow: FlowRecord = {
+    verifier,
+    nonce,
+    redirectUri,
+    returnTo,
+    deviceId,
+    deviceTokenHash,
+    ...(binding ? { flowHash: binding.hash } : {}),
+  };
+  await env.HOT.put(
+    await flowKey(env, product.slug, state),
+    JSON.stringify(flow),
+    { expirationTtl: FLOW_TTL_SECONDS },
+  );
 
   const authorize = new URL(`${oidc.issuer.replace(/\/$/, "")}/authorize`);
   authorize.searchParams.set("response_type", "code");
@@ -757,6 +877,7 @@ async function beginAuthFlow(
     state,
     authorizeUrl: authorize.toString(),
     redirectUri,
+    ...(binding ? { bindingCookie: binding.cookie } : {}),
   };
 }
 
@@ -775,14 +896,22 @@ export async function handleAuthStart(
   );
   if (limited) return limited;
   const rawReturnTo = new URL(req.url).searchParams.get("return_to");
-  const returnTo = safeReturnTo(req, rawReturnTo);
+  const returnTo = safeReturnUrl(req, rawReturnTo);
   if (rawReturnTo && !returnTo)
     return errorResponse(400, "bad_request", "return_to not allowed");
-  const flow = await beginAuthFlow(req, env, db, product, returnTo);
+  const flow = await beginAuthFlow(req, env, db, product, {
+    returnTo,
+    // A3-06 — this is THE browser-redirect entry point, so the flow it writes is bound to the
+    // browser that asked for it and the callback will not accept it from any other.
+    bindBrowser: true,
+  });
   if (flow instanceof Response) return flow;
   return new Response(null, {
     status: 302,
-    headers: { location: flow.authorizeUrl },
+    headers: {
+      location: flow.authorizeUrl,
+      ...(flow.bindingCookie ? { "set-cookie": flow.bindingCookie } : {}),
+    },
   });
 }
 
@@ -818,10 +947,58 @@ export async function handleAuthDeviceStart(
     typeof body.deviceName === "string" && body.deviceName.trim()
       ? body.deviceName.trim().slice(0, 120)
       : undefined;
-  const flow = await beginAuthFlow(req, env, db, product, undefined, deviceId);
+
+  /**
+   * A3-01 — the ONLY thing that turns `deviceId` into an authorization input.
+   *
+   * `deviceId` arrives unauthenticated and is not a credential: `core/devices.ts` calls
+   * `X-PKey-Device` "a client-chosen string with no uniqueness requirement", the portal lists
+   * every device id to every co-owner of a licence, the console shows it, and in the browser
+   * realm it is literally `browser:<licenseId>`. Downstream, `handleAuthCallback` used it to
+   * look up a device row and hand its `license_id` to `activateFromIdentity` as
+   * `enrolledLicenseId` — so anyone who could complete an OIDC sign-in and land entitled, while
+   * naming ONE victim device id, took over the victim's licence row outright: `sub`, `name`,
+   * `email`, `groups_json`, `tier_id` and `origin` all overwritten onto themselves, the victim's
+   * live device token revoked, and — because `enroll_hwid` is deliberately retained (R3-05) —
+   * the victim's machine permanently unable to re-enrol.
+   *
+   * So the device must PROVE the id. An already-enrolled client holds a `pkeyt_` device token;
+   * presenting it (Authorization: Bearer, or `deviceToken` in the body) resolves through the
+   * ordinary `validateDeviceToken` path, which also asserts the token belongs to exactly this
+   * `deviceId`. Only then is a proof hash recorded on the flow.
+   *
+   * A start with no token, or with one that does not resolve, is NOT refused — that is the
+   * genuinely-new-device case and it is the common one. It simply carries no proof, so the
+   * callback contributes `enrolledLicenseId: null` and the sign-in gets an ordinary new or
+   * existing licence of its own.
+   */
+  const presentedToken =
+    (typeof body.deviceToken === "string" && body.deviceToken) || bearer(req);
+  let deviceTokenHash: string | undefined;
+  if (presentedToken) {
+    const proof = await validateDeviceToken(
+      env,
+      db,
+      product,
+      presentedToken,
+      Math.floor(Date.now() / 1000),
+      { deviceId },
+    );
+    if (!("error" in proof)) deviceTokenHash = proof.tokenHash;
+  }
+
+  const flow = await beginAuthFlow(req, env, db, product, {
+    deviceId,
+    deviceTokenHash,
+    // Deliberately NOT browser-bound: the device flow prints a URL a human may legitimately
+    // open on a different machine entirely (A3-06). Its guards are the device binding and the
+    // human confirmation `pollAuthFlow` enforces.
+  });
   if (flow instanceof Response) return flow;
   const deviceCode = b64url(randomBytes(16));
-  const userCode = deviceUserCode(deviceCode);
+  // A3-03: independent entropy, so the code the user reads aloud is not a prefix of the secret
+  // one that redeems the flow.
+  const userCode = mintUserCode();
   const deviceRecord: DeviceFlowRecord = {
     state: flow.state,
     deviceId,
@@ -830,20 +1007,26 @@ export async function handleAuthDeviceStart(
     deviceName,
   };
   await env.HOT.put(
-    deviceFlowKey(product.slug, deviceCode),
+    await deviceFlowKey(env, product.slug, deviceCode),
     JSON.stringify(deviceRecord),
     { expirationTtl: FLOW_TTL_SECONDS },
   );
-  const verificationUri = `${new URL(req.url).origin}/${product.slug}/identity/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}`;
+  const origin = new URL(req.url).origin;
+  const verificationUri = `${origin}/${product.slug}/identity/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}`;
   return json({
     status: "pending",
     deviceCode,
     userCode,
     verificationUri,
-    verificationUriComplete: verificationUri,
+    // A3-03: RFC 8628 §3.3.1 defines this as the verification URI **with the user code
+    // included**, so the human does not have to transcribe it. It used to be emitted equal to
+    // `verificationUri`, which made it a field that told the client nothing and told a reader
+    // something false. Now it carries `user_code`, which the confirmation page displays back so
+    // the user can check the two agree.
+    verificationUriComplete: `${verificationUri}&user_code=${encodeURIComponent(userCode)}`,
     expiresIn: FLOW_TTL_SECONDS,
     interval: DEVICE_POLL_INTERVAL_SECONDS,
-    pollUrl: `${new URL(req.url).origin}/${product.slug}/identity/auth/device/poll`,
+    pollUrl: `${origin}/${product.slug}/identity/auth/device/poll`,
   });
 }
 
@@ -888,18 +1071,19 @@ async function confirmDeviceFlow(
 
   // The confirmation is an authorization input for the poll surfaces, so it is recorded on
   // the flow the pollers actually read, not only on the device record (R8-01).
-  const flowRaw = await env.HOT.get(flowKey(product.slug, record.state));
+  const stateKey = await flowKey(env, product.slug, record.state);
+  const flowRaw = await env.HOT.get(stateKey);
   if (!flowRaw) return errorResponse(404, "not_found", "device code expired");
   const flow = parseFlowRecord<FlowRecord>(flowRaw);
   if (!flow) return errorResponse(404, "not_found", "device code expired");
   flow.confirmedAt = now;
-  await env.HOT.put(flowKey(product.slug, record.state), JSON.stringify(flow), {
+  await env.HOT.put(stateKey, JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
   record.confirmedAt = now;
   delete record.csrf; // single-use
   await env.HOT.put(
-    deviceFlowKey(product.slug, deviceCode),
+    await deviceFlowKey(env, product.slug, deviceCode),
     JSON.stringify(record),
     { expirationTtl: FLOW_TTL_SECONDS },
   );
@@ -936,7 +1120,8 @@ export async function handleAuthDeviceVerify(
   const url = new URL(req.url);
   const deviceCode = url.searchParams.get("device_code");
   if (!deviceCode) return errorResponse(400, "bad_request", "missing code");
-  const raw = await env.HOT.get(deviceFlowKey(product.slug, deviceCode));
+  const codeKey = await deviceFlowKey(env, product.slug, deviceCode);
+  const raw = await env.HOT.get(codeKey);
   if (!raw) return errorResponse(404, "not_found", "device code expired");
   const record = parseFlowRecord<DeviceFlowRecord>(raw);
   if (!record) return errorResponse(404, "not_found", "device code expired");
@@ -946,11 +1131,9 @@ export async function handleAuthDeviceVerify(
 
   const csrf = b64url(randomBytes(16));
   record.csrf = csrf;
-  await env.HOT.put(
-    deviceFlowKey(product.slug, deviceCode),
-    JSON.stringify(record),
-    { expirationTtl: FLOW_TTL_SECONDS },
-  );
+  await env.HOT.put(codeKey, JSON.stringify(record), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
   const deviceLabel = record.deviceName || record.deviceId;
   const html = `<!doctype html>
 <meta charset="utf-8">
@@ -1020,6 +1203,31 @@ function mapClaims(payload: Record<string, unknown>): OidcIdentity {
   };
 }
 
+/**
+ * The licence a flow's device has PROVEN it holds, or null (A3-01).
+ *
+ * Three conditions, all required: the flow recorded a device-token proof at start; that hash
+ * still resolves to a device row on this product; and that row is the very `deviceId` the flow
+ * names and is still authorized. Anything else — no proof, a revoked token, a device that has
+ * since been re-bound to another licence, a `deviceId` that never proved itself — is `null`, and
+ * `activateFromIdentity` then does what it does for any first-time sign-in.
+ */
+async function provenEnrolledLicense(
+  db: Db,
+  product: Product,
+  flow: FlowRecord,
+): Promise<string | null> {
+  if (!flow.deviceId || !flow.deviceTokenHash) return null;
+  const device = await getDeviceByTokenHash(
+    db,
+    product.slug,
+    flow.deviceTokenHash,
+  );
+  if (!device || device.device_id !== flow.deviceId) return null;
+  if (device.status !== "authorized") return null;
+  return device.license_id || null;
+}
+
 /** GET /<product>/identity/auth/callback — exchange the code, verify the ID token, mint a license. */
 export async function handleAuthCallback(
   req: Request,
@@ -1041,27 +1249,39 @@ export async function handleAuthCallback(
     { bucket: "authCallbackState", id: state, limit: 5, windowSec: 60 },
   );
   if (limited) return limited;
-  const raw = await env.HOT.get(flowKey(product.slug, state));
+  const key = await flowKey(env, product.slug, state);
+  const raw = await env.HOT.get(key);
   if (!raw) return errorResponse(400, "bad_request", "unknown state");
   const flow = parseFlowRecord<FlowRecord>(raw);
   if (!flow) return errorResponse(400, "bad_request", "unknown state");
+  // A3-06 — a flow that was started in a browser may only be finished in THAT browser. The
+  // device/loopback flow is deliberately exempt (it carries no `flowHash` and never ends in a
+  // `Set-Cookie`); a flow that WILL set a cookie has to be bound, so `flow.returnTo` forces the
+  // check on even if the record somehow arrived without a hash. The answer is the same generic
+  // "unknown state" the missing/replayed arms already return, so this adds no oracle.
+  if (
+    (flow.flowHash || flow.returnTo) &&
+    !(await flowBindingMatches(req, env, flow.flowHash))
+  ) {
+    return errorResponse(400, "bad_request", "unknown state");
+  }
   // Single-use state (R8-04). Claim the flow before any outbound call so a second callback
   // can never overwrite the license a poller is already waiting on; a replay gets exactly the
   // same generic answer as an unknown state.
   if (flow.consumedAt)
     return errorResponse(400, "bad_request", "unknown state");
   flow.consumedAt = now;
-  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
+  await env.HOT.put(key, JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
   const oidc = await resolveOidcConfig(env, db, product);
   if (oidc instanceof Response) {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     return oidc;
   }
   // Defense in depth: the stored flow's redirect_uri must still be allow-listed.
   if (!redirectUriAllowed(oidc.row, flow.redirectUri)) {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
 
@@ -1083,18 +1303,18 @@ export async function handleAuthCallback(
   if (!tokenRes.ok) {
     // Delete the flow rather than recording a reason — pollers must not be able to
     // enumerate IdP failure modes (D8). The poll surface returns a generic error.
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     return errorResponse(502, "oidc_error", "token exchange failed");
   }
   let tokens: { id_token?: string };
   try {
     tokens = (await tokenRes.json()) as { id_token?: string };
   } catch {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     return errorResponse(502, "oidc_error", "token response invalid");
   }
   if (!tokens.id_token) {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     return errorResponse(502, "oidc_error", "no id_token");
   }
 
@@ -1118,7 +1338,7 @@ export async function handleAuthCallback(
     if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce)
       throw new Error("nonce mismatch");
   } catch {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
@@ -1128,30 +1348,35 @@ export async function handleAuthCallback(
   // (R8-05a). Same generic 401 as any other bad ID token.
   const identity = mapClaims(claims);
   if (!identity.sub) {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
-  // A device-code/loopback flow carries the device id that started it. If that device is
-  // already running on an auto-issued license, sign-in claims that license in place rather
-  // than stranding the user's existing devices and local state on an orphan.
-  const enrolledLicenseId = flow.deviceId
-    ? ((await getDevice(db, product.slug, flow.deviceId))?.license_id ?? null)
-    : null;
+  // A3-01 — the enrolled licence a sign-in may claim, and the ONLY way to name one.
+  //
+  // A device-code/loopback flow carries the device id that started it, so that a device already
+  // running on an auto-issued licence keeps its devices and local state instead of being
+  // stranded on an orphan row. What it may NOT do is take that at the caller's word: this used
+  // to be `getDevice(db, product, flow.deviceId).license_id`, with `flow.deviceId` a string the
+  // unauthenticated start handler copied out of the request body. The licence a device holds is
+  // resolved from the PROOF instead — the hash of a device token that `handleAuthDeviceStart`
+  // watched `validateDeviceToken` resolve to this exact device id — and re-checked here, so a
+  // device deauthorized or re-bound in between contributes nothing either.
+  const enrolledLicenseId = await provenEnrolledLicense(db, product, flow);
 
   const result = await activateFromIdentity(env, db, product, identity, now, {
     enrolledLicenseId,
   });
   if ("error" in result) {
     // Failed activation: drop the flow so the poller gets a generic error, not the reason.
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     return errorResponse(403, "forbidden", "not entitled");
   }
   flow.licenseId = result.licenseId;
   if (flow.returnTo) {
     const license = await getLicense(db, product.slug, result.licenseId);
     if (!license) {
-      await env.HOT.delete(flowKey(product.slug, state));
+      await env.HOT.delete(key);
       return errorResponse(401, "unauthorized", "license unavailable");
     }
     const session = await createBrowserSession(
@@ -1162,7 +1387,7 @@ export async function handleAuthCallback(
       now,
       req,
     );
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(key);
     if (!session.ok) {
       return errorResponse(
         session.status,
@@ -1171,15 +1396,15 @@ export async function handleAuthCallback(
         session.extra,
       );
     }
-    return new Response(null, {
-      status: 302,
-      headers: {
-        location: flow.returnTo,
-        "set-cookie": session.cookie,
-      },
-    });
+    // Two `Set-Cookie`s: the session the sign-in just earned, and the retirement of the
+    // single-use flow binding it consumed. `Headers.append` is required — assigning the second
+    // one would overwrite the first.
+    const headers = new Headers({ location: flow.returnTo });
+    headers.append("set-cookie", session.cookie);
+    headers.append("set-cookie", clearFlowCookie());
+    return new Response(null, { status: 302, headers });
   }
-  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
+  await env.HOT.put(key, JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
   return new Response(
@@ -1208,7 +1433,8 @@ async function pollAuthFlow(
 ): Promise<Response> {
   if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing state/device");
-  const raw = await env.HOT.get(flowKey(product.slug, state));
+  const key = await flowKey(env, product.slug, state);
+  const raw = await env.HOT.get(key);
   if (!raw) return json({ status: "timeout" });
   const flow = parseFlowRecord<FlowRecord>(raw);
   if (!flow) return json({ status: "timeout" });
@@ -1237,7 +1463,7 @@ async function pollAuthFlow(
   } catch {
     return json({ status: "error" });
   }
-  await env.HOT.delete(flowKey(product.slug, state));
+  await env.HOT.delete(key);
   return json({ status: "ready", token, schemaVersion: product.schemaVersion });
 }
 
@@ -1301,7 +1527,8 @@ export async function handleAuthDevicePoll(
     { bucket: "authDevicePollCode", id: state, limit: 40, windowSec: 60 },
   );
   if (limited) return limited;
-  const raw = await env.HOT.get(deviceFlowKey(product.slug, state));
+  const codeKey = await deviceFlowKey(env, product.slug, state);
+  const raw = await env.HOT.get(codeKey);
   if (!raw) return json({ status: "timeout" });
   const deviceFlow = parseFlowRecord<DeviceFlowRecord>(raw);
   if (!deviceFlow) return json({ status: "timeout" });
@@ -1319,11 +1546,9 @@ export async function handleAuthDevicePoll(
     );
   }
   deviceFlow.lastPollAt = now;
-  await env.HOT.put(
-    deviceFlowKey(product.slug, state),
-    JSON.stringify(deviceFlow),
-    { expirationTtl: FLOW_TTL_SECONDS },
-  );
+  await env.HOT.put(codeKey, JSON.stringify(deviceFlow), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
   if (!deviceFlow.confirmedAt) return json({ status: "pending" });
   const res = await pollAuthFlow(
     env,
@@ -1338,7 +1563,7 @@ export async function handleAuthDevicePoll(
     .json()
     .catch(() => null)) as { status?: string } | null;
   if (bodyOut?.status === "ready" || bodyOut?.status === "timeout") {
-    await env.HOT.delete(deviceFlowKey(product.slug, state));
+    await env.HOT.delete(codeKey);
   }
   return res;
 }

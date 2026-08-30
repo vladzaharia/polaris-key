@@ -20,6 +20,7 @@
  */
 
 import type { Env } from "../env.js";
+import { readSingleCookie } from "../http.js";
 
 /**
  * Cookie name for the admin session.
@@ -217,16 +218,13 @@ export async function verifySession(
  * first-match parser picks up. Two different values for one session cookie is never a
  * legitimate state — with `__Host-` the browser will not even produce one — so ambiguity is
  * resolved by failing closed rather than by choosing a winner.
+ *
+ * The parser itself moved to `http.ts` when A3-02 found identity's product session cookie still
+ * doing the first-match thing: the rule is the same in every cookie-bearing realm, and stating
+ * it once is what keeps a second realm from being hardened three findings later.
  */
 function readSessionCookie(cookieHeader: string | null): string | null {
-  if (!cookieHeader) return null;
-  const values = new Set<string>();
-  for (const part of cookieHeader.split(";")) {
-    const [name, ...rest] = part.trim().split("=");
-    if (name === ADMIN_COOKIE) values.add(rest.join("="));
-  }
-  if (values.size !== 1) return null;
-  return values.values().next().value ?? null;
+  return readSingleCookie(cookieHeader, ADMIN_COOKIE);
 }
 
 /** The attributes `__Host-` requires (`Secure`, no `Domain`, `Path=/`) plus SameSite/HttpOnly. */

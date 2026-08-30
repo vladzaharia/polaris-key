@@ -86,6 +86,14 @@ const FAIL_MODE: Record<string, FailMode> = {
   portalLogin: "closed",
   portalMagic: "closed",
   portalClaimKey: "closed",
+  // A3-09 / B5-11 / MG-01 — the three unmetered legs of the portal's own sign-in. Every one of
+  // them is credential-adjacent and none had a limiter at all: `/callback` runs a token
+  // exchange and an ID-token verification for anyone who names a `state`, and `/magic/verify`
+  // is a bearer-token redemption endpoint, i.e. the exact shape a guessing loop wants. The
+  // START surfaces were limited and these were not, which meant the budget guarded the cheap
+  // half of each flow and left the half that mints a session unbounded.
+  portalCallback: "closed",
+  portalMagicVerify: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

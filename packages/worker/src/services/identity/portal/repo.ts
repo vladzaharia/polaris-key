@@ -252,6 +252,16 @@ export async function linkEmail(
   );
 }
 
+/**
+ * Attach a licence to a portal account. Returns TRUE when the link is NEW.
+ *
+ * B4-MG-01 wanted an audit row for an auto-link, and "did this call create a link?" is the only
+ * thing that makes such a row usable: `syncAccountLicenseLinks` runs on every portal API
+ * request, so auditing unconditionally would bury the one event that matters under a thousand
+ * re-affirmations of it per session. `DO NOTHING` reports zero changes on conflict — which
+ * `DO UPDATE` cannot, it always reports one — so the insert itself answers the question, and the
+ * `last_seen_at` refresh becomes a second statement only on the path that needed it anyway.
+ */
 export async function linkLicense(
   db: Db,
   accountId: string,
@@ -259,13 +269,12 @@ export async function linkLicense(
   licenseId: string,
   source: "email" | "oidc" | "license-key" | "admin",
   now: number,
-): Promise<void> {
-  await db.run(
+): Promise<boolean> {
+  const inserted = await db.runChanges(
     `INSERT INTO portal_license_links
        (account_id, product, license_id, source, created_at, last_seen_at)
      VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(account_id, product, license_id) DO UPDATE SET
-       last_seen_at = excluded.last_seen_at`,
+     ON CONFLICT(account_id, product, license_id) DO NOTHING`,
     accountId,
     product,
     licenseId,
@@ -273,6 +282,16 @@ export async function linkLicense(
     now,
     now,
   );
+  if (inserted > 0) return true;
+  await db.run(
+    `UPDATE portal_license_links SET last_seen_at = ?
+      WHERE account_id = ? AND product = ? AND license_id = ?`,
+    now,
+    accountId,
+    product,
+    licenseId,
+  );
+  return false;
 }
 
 /**
@@ -284,11 +303,27 @@ export async function linkLicense(
  * platform-issuer products, off for custom-issuer products", so a tenant that stands up its own
  * Keycloak/Authentik after this migration is opted out automatically rather than by an
  * operator remembering to. An explicit 1/0 is an operator override in either direction.
+ *
+ * ── B2-01: THE DERIVED HALF IS A WRITE-TIME FACT NOW ────────────────────────────────────────
+ *
+ * The operator override is unchanged. What moved is the DEFAULT underneath it: it used to read
+ * the product's provider as it stands at the moment of the query, so the containment was
+ * reversible by editing the product. Mint licences for a victim's address under your own custom
+ * issuer, then push a `.pkey/product` lowering `oidc.provider` from `custom` to `platform`, and
+ * every one of those rows became auto-linkable RETROACTIVELY — permanently, with no self-service
+ * removal. `licenses.email_issuer_class` (0023) records the provider that was actually resolved
+ * when the address was written, so a later manifest push cannot re-decide it.
+ *
+ * The fallback to `o.provider` is not a hole, it is the pre-B2-01 rule kept for the rows that
+ * genuinely have no issuer: an admin-created or enrolled licence carries an operator-entered
+ * address that no IdP asserted, and those rows must keep behaving exactly as they did.
  */
+const ISSUER_CLASS_SQL = `COALESCE(l.email_issuer_class, COALESCE(o.provider, 'platform'))`;
+
 const AUTO_LINK_ENABLED_SQL = `
   COALESCE(
     s.auto_link_enabled,
-    CASE WHEN COALESCE(o.provider, 'platform') = 'custom' THEN 0 ELSE 1 END
+    CASE WHEN ${ISSUER_CLASS_SQL} = 'custom' THEN 0 ELSE 1 END
   ) = 1`;
 
 /**
@@ -339,7 +374,7 @@ export async function syncAccountLicenseLinks(
       row.email,
     );
     for (const license of matches) {
-      await linkLicense(
+      const created = await linkLicense(
         db,
         accountId,
         license.product,
@@ -347,6 +382,7 @@ export async function syncAccountLicenseLinks(
         "email",
         now,
       );
+      if (created) await auditAutoLink(db, accountId, license, "email", now);
     }
   }
 
@@ -362,11 +398,12 @@ export async function syncAccountLicenseLinks(
          LEFT JOIN oidc_config o ON o.product = l.product
         WHERE l.sub = ?
           AND COALESCE(o.provider, 'platform') = 'platform'
+          AND ${ISSUER_CLASS_SQL} = 'platform'
           AND ${AUTO_LINK_ENABLED_SQL}`,
       identity.subject,
     );
     for (const license of matches) {
-      await linkLicense(
+      const created = await linkLicense(
         db,
         accountId,
         license.product,
@@ -374,8 +411,37 @@ export async function syncAccountLicenseLinks(
         "oidc",
         now,
       );
+      if (created) await auditAutoLink(db, accountId, license, "oidc", now);
     }
   }
+}
+
+/**
+ * B4-MG-01 — an auto-link is a privilege GRANT and it left no trace anywhere.
+ *
+ * `handleClaimKey` has always audited the explicit "I typed a licence key" path, but the
+ * implicit one — a licence silently appearing in somebody's portal account because an address or
+ * a subject matched — wrote nothing. That is the second link of the B2-01 chain (mint under a
+ * tenant issuer, then auto-link into a victim's account), and with no row here the whole chain
+ * was invisible: neither the account holder nor an operator could see that it had happened, let
+ * alone when or on what basis. Written once per link, not once per request — see `linkLicense`.
+ */
+async function auditAutoLink(
+  db: Db,
+  accountId: string,
+  license: { product: string; id: string },
+  source: "email" | "oidc",
+  now: number,
+): Promise<void> {
+  await portalAudit(db, {
+    accountId,
+    action: "portal.license.autolink",
+    product: license.product,
+    targetKind: "license",
+    targetId: license.id,
+    summary: `Linked license ${license.id} automatically by verified ${source}`,
+    now,
+  });
 }
 
 export async function listPortalLicenses(

@@ -6,9 +6,23 @@
  * survives, but each body now asserts the attack FAILS: this file is the regression suite for
  * the R8 fixes in src/oidc.ts. Each block names the finding id it locks down.
  *
- * Two findings are deliberately NOT fixed and their tests still assert the (unchanged)
- * behaviour: R8-03 (no browser binding on any of the three flows) and R8-07
- * (`redirect_uris_json` fails open on NULL). See the Remediation section of the finding doc.
+ * ── WHAT THE A3 LANE CHANGED HERE ───────────────────────────────────────────────────────────
+ *
+ * R8-03 used to be one of two deliberately-unfixed findings, and its four tests asserted the
+ * unbound behaviour. A3-06 fixed it on all three realms, so those four are inverted in place:
+ * same names, and each now proves the victim's browser is REFUSED while the originating browser
+ * still completes. R8-02's "the user code is a prefix of the device code" and R8-08's "the magic
+ * token is 72 bits, unhashed, with the email in the value" residuals went the same way, under
+ * A3-03 and B3-06/B7-03.
+ *
+ * R8-07 (`redirect_uris_json` fails open on NULL) remains the one finding here that is
+ * deliberately not fixed; its test still asserts the unchanged behaviour.
+ *
+ * ── WHY SO MANY `productFlowKey(...)` CALLS ─────────────────────────────────────────────────
+ *
+ * B7-03 hashed the KV key names for the product flow `state` and the device code, so a test can
+ * no longer plant a flow record by pasting the credential into the key. `test/helpers.ts` states
+ * the mapping once and every suite reads it from there.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -20,7 +34,14 @@ import {
 } from "jose";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { verifyJws } from "@polaris-key/jws";
-import { makeTestDb } from "../helpers.js";
+import {
+  flowCookie,
+  makeTestDb,
+  portalFlowKey,
+  portalMagicKey,
+  productDeviceFlowKey,
+  productFlowKey,
+} from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
   makeEnv,
@@ -42,6 +63,11 @@ import {
   handleAuthStart,
 } from "../../src/services/identity/oidc.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
+import { authorizeDevice } from "../../src/core/authz.js";
+import {
+  createBrowserSession,
+  handleBrowserSession,
+} from "../../src/services/identity/browserSession.js";
 // Wire v3 split `validateDeviceToken` in two: core answers "is this token a live device row",
 // and `requireLicensedDevice` adds back the licence-usability check core used to apply inline.
 // The latter is the exact behavioural equivalent of the pre-split core function, so it is what
@@ -55,7 +81,9 @@ import {
   handlePortalLogin,
 } from "../../src/services/identity/portal/auth.js";
 import { handleAdminCallback, handleAdminLogin } from "../../src/admin/auth.js";
-import { hashKey, randomId } from "../../src/crypto.js";
+import { sessionFromRequest } from "../../src/admin/session.js";
+import { handlePortalApi } from "../../src/services/identity/portal/api.js";
+import { hashKey, mintOpaqueToken } from "../../src/crypto.js";
 import type { Env } from "../../src/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 
@@ -170,14 +198,55 @@ function installFetchMock(idToken: string): void {
 const req = (url: string, init?: RequestInit): Request =>
   new Request(url, init) as unknown as Request;
 
-const callback = (ctx: Ctx, state: string, code = "auth-code") =>
+/**
+ * Every `Set-Cookie` on a response, as a list.
+ *
+ * A3-06 made several responses emit TWO of them (the session it just issued, and the retirement
+ * of the flow binding it consumed), and `headers.get("set-cookie")` folds those into one comma-
+ * joined string. `getSetCookie` is the undici method that keeps them apart; the cast is because
+ * this package types `Headers` from `@cloudflare/workers-types`, which does not declare it.
+ */
+const setCookies = (res: Response): string[] =>
+  (res.headers as unknown as { getSetCookie: () => string[] }).getSetCookie();
+
+/** Drive the product callback. `cookie` carries the A3-06 browser binding when the flow under
+ *  test has one; a hand-planted device/loopback flow has none and needs no cookie. */
+const callback = (
+  ctx: Ctx,
+  state: string,
+  code = "auth-code",
+  cookie?: string,
+) =>
   handleAuthCallback(
-    req(`${ORIGIN}/djdl/identity/auth/callback?code=${code}&state=${state}`),
+    req(`${ORIGIN}/djdl/identity/auth/callback?code=${code}&state=${state}`, {
+      ...(cookie ? { headers: { cookie } } : {}),
+    }),
     ctx.env,
     ctx.db,
     ctx.product,
     NOW,
   );
+
+/** Plant a flow record the way the handlers would store it (B7-03: hashed key name). */
+const putFlow = async (
+  ctx: Ctx,
+  state: string,
+  flow: Record<string, unknown>,
+): Promise<void> => {
+  await ctx.env.HOT.put(
+    await productFlowKey(ctx.env, "djdl", state),
+    JSON.stringify(flow),
+  );
+};
+
+const getFlow = async (ctx: Ctx, state: string): Promise<string | null> =>
+  ctx.env.HOT.get(await productFlowKey(ctx.env, "djdl", state));
+
+const getDeviceFlow = async (
+  ctx: Ctx,
+  deviceCode: string,
+): Promise<string | null> =>
+  ctx.env.HOT.get(await productDeviceFlowKey(ctx.env, "djdl", deviceCode));
 
 const poll = (ctx: Ctx, state: string, device: string) =>
   handleAuthPoll(
@@ -323,7 +392,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
   it("ATTACK: /auth/poll is an unauthenticated bypass of BOTH guards /auth/device/poll enforces (device binding AND user confirmation)", async () => {
     // Seed a device flow that the user has NOT confirmed.
     await ctx.env.HOT.put(
-      "p:djdl:device-flow:DC",
+      await productDeviceFlowKey(ctx.env, "djdl", "DC"),
       JSON.stringify({
         state: "S",
         deviceId: "victim-cli",
@@ -346,7 +415,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
       deviceId: "victim-cli",
       licenseId: r.licenseId,
     };
-    await ctx.env.HOT.put("p:djdl:flow:S", JSON.stringify(flow));
+    await putFlow(ctx, "S", flow);
 
     // The hardened surface refuses a foreign device id (oidc.ts:903-904)…
     const guarded = await handleAuthDevicePoll(
@@ -393,10 +462,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
     expect(early.token).toBeUndefined();
 
     // Once the human confirms, the bound device — and only it — completes.
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({ ...flow, confirmedAt: NOW }),
-    );
+    await putFlow(ctx, "S", { ...flow, confirmedAt: NOW });
     const ok = (await (await poll(ctx, "S", "victim-cli")).json()) as {
       status: string;
       token: string;
@@ -488,16 +554,21 @@ describe("R8-02 device-code flow weaknesses", () => {
       ctx.db,
       ctx.product,
     );
-    const { deviceCode, verificationUri, verificationUriComplete } =
+    const { deviceCode, userCode, verificationUri, verificationUriComplete } =
       (await start.json()) as {
         deviceCode: string;
+        userCode: string;
         verificationUri: string;
         verificationUriComplete: string;
       };
-    // NOT FIXED (documented residual): the "show the user a URL" value is still the secret
-    // device code — splitting it into an independent user code is an RFC 8628 redesign that
-    // would change the public device-flow contract.
-    expect(verificationUri).toBe(verificationUriComplete);
+    // FIXED (A3-03): `verificationUriComplete` used to be emitted BYTE-EQUAL to
+    // `verificationUri`, which made it a field that told a client nothing and told a reader
+    // something false. RFC 8628 §3.3.1 defines it as the verification URI with the user code
+    // included, and it now carries one.
+    expect(verificationUriComplete).not.toBe(verificationUri);
+    expect(verificationUriComplete).toContain(
+      `user_code=${encodeURIComponent(userCode)}`,
+    );
     expect(verificationUri).toContain(encodeURIComponent(deviceCode));
 
     // FIXED: `?confirm=1` on a GET no longer mutates anything and no longer hands back a
@@ -511,9 +582,9 @@ describe("R8-02 device-code flow weaknesses", () => {
     expect(res.headers.get("location")).toBeNull();
     const html = await res.text();
     expect(html).not.toContain("nonce=");
-    const stored = JSON.parse(
-      (await ctx.env.HOT.get(`p:djdl:device-flow:${deviceCode}`))!,
-    ) as { confirmedAt?: number };
+    const stored = JSON.parse((await getDeviceFlow(ctx, deviceCode))!) as {
+      confirmedAt?: number;
+    };
     expect(stored.confirmedAt).toBeUndefined();
 
     // A POST with no CSRF token — the blind cross-site form submission — is refused…
@@ -550,16 +621,16 @@ describe("R8-02 device-code flow weaknesses", () => {
     expect(ok.status).toBe(303);
     expect(ok.headers.get("referrer-policy")).toBe("no-referrer");
     expect(ok.headers.get("cache-control")).toBe("no-store");
-    const after = JSON.parse(
-      (await ctx.env.HOT.get(`p:djdl:device-flow:${deviceCode}`))!,
-    ) as { confirmedAt?: number };
+    const after = JSON.parse((await getDeviceFlow(ctx, deviceCode))!) as {
+      confirmedAt?: number;
+    };
     expect(after.confirmedAt).toBeTruthy();
   });
 
   // R8-02 — the confirmation page no longer leaks the device code through the Referer chain.
   it("ATTACK: the confirmation page ships no security headers and no referrer policy while the URL holds the device code", async () => {
     await ctx.env.HOT.put(
-      "p:djdl:device-flow:DC",
+      await productDeviceFlowKey(ctx.env, "djdl", "DC"),
       JSON.stringify({
         state: "S",
         deviceId: "d",
@@ -602,15 +673,30 @@ describe("R8-02 device-code flow weaknesses", () => {
       userCode: string;
       interval: number;
     };
-    // NOT FIXED (documented residual): the user code is still derived from the device code.
-    //
-    // Assert against the exact construction rather than stripping dashes. `deviceCode` is
-    // base64url, whose alphabet INCLUDES `-`, so `userCode.replace("-", "")` removed whichever
-    // dash came first — sometimes one belonging to the code itself rather than the separator.
-    // That made this test fail roughly whenever the first 8 characters happened to contain a
-    // dash: a real flake, not a real regression.
+    // FIXED (A3-03): the user code has its OWN entropy. It used to be
+    // `deviceCode.slice(0, 8).toUpperCase()` with a dash inserted, so the value a user is asked
+    // to read aloud — onto a support call, into a screenshot, over a shoulder — was 48 bits of
+    // the secret that redeems the flow. The two answer different questions and now have
+    // independent lifetimes.
     const head = body.deviceCode.slice(0, 8).toUpperCase();
-    expect(body.userCode).toBe(`${head.slice(0, 4)}-${head.slice(4, 8)}`);
+    expect(body.userCode).not.toBe(`${head.slice(0, 4)}-${head.slice(4, 8)}`);
+    // Shape: `XXXX-XXXX` over the read-aloud alphabet (no I/O/S/B/U/V, no 0/1/5).
+    const alphabet = "[ACDEFGHJKLMNPQRTWXYZ2346789]";
+    expect(body.userCode).toMatch(
+      new RegExp(`^${alphabet}{4}-${alphabet}{4}$`),
+    );
+    // Two starts with the same inputs must not produce the same code either.
+    const second = await handleAuthDeviceStart(
+      req(`${ORIGIN}/djdl/auth/device/start`, {
+        method: "POST",
+        body: JSON.stringify({ deviceId: "d" }),
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    const other = (await second.json()) as { userCode: string };
+    expect(other.userCode).not.toBe(body.userCode);
     expect(body.interval).toBe(2);
 
     // FIXED: a second poll inside the advertised interval is told to slow down.
@@ -660,7 +746,13 @@ describe("R8-02 device-code flow weaknesses", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// R8-03 — login CSRF: no flow is bound to the visitor's browser
+// R8-03 — login CSRF: no flow is bound to the visitor's browser. **FIXED (A3-06).**
+//
+// These four were the file's standing "documented residual": every `it()` below asserted that a
+// flow record was a bearer credential keyed on `state`, so an attacker who ran the IdP leg under
+// their own account could hand the resulting callback URL to a victim and plant a session in the
+// victim's browser. All four are inverted in place — same names, and each now proves the
+// victim's browser is refused AND that the originating browser still completes.
 // ═══════════════════════════════════════════════════════════════════════════════
 describe("R8-03 login CSRF / flow-fixation", () => {
   let ctx: Ctx;
@@ -682,16 +774,27 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     const state = authorize.searchParams.get("state")!;
     const nonce = authorize.searchParams.get("nonce")!;
 
-    // Nothing browser-derived was persisted: no cookie, no IP, no UA, no CSRF nonce.
-    const flow = JSON.parse(
-      (await ctx.env.HOT.get(`p:djdl:flow:${state}`))!,
-    ) as Record<string, unknown>;
+    // FIXED: the 302 now carries a `__Host-` binding cookie, and the flow record holds its
+    // HASH — never the value handed to the browser.
+    const setCookie = startRes.headers.get("set-cookie")!;
+    expect(setCookie).toContain("__Host-pkey_flow=");
+    expect(setCookie).toContain("Path=/");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=Lax");
+    const flow = JSON.parse((await getFlow(ctx, state))!) as Record<
+      string,
+      unknown
+    >;
     expect(Object.keys(flow).sort()).toEqual([
+      "flowHash",
       "nonce",
       "redirectUri",
       "returnTo",
       "verifier",
     ]);
+    const bound = flowCookie(startRes);
+    expect(bound).not.toContain(String(flow.flowHash));
 
     // The attacker finishes the IdP leg, then feeds the resulting callback URL to a victim.
     installFetchMock(
@@ -713,13 +816,37 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       ctx.product,
       NOW,
     );
-    expect(res.status).toBe(302);
-    // The victim's browser is now logged in as the ATTACKER's license.
-    expect(res.headers.get("set-cookie")).toContain("pkey_djdl_session=");
-    expect(res.headers.get("location")).toBe(`${ORIGIN}/djdl/app`);
+    // FIXED: the victim's browser holds no binding, so it gets the same generic answer an
+    // unknown state gets — and no session cookie at all.
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("unknown state");
+    expect(res.headers.get("set-cookie")).toBeNull();
+    // Nothing was minted on the attacker's identity either: the callback refused before the
+    // token exchange.
+    expect(
+      await ctx.db.first("SELECT id FROM licenses WHERE sub = 'attacker-sub'"),
+    ).toBeNull();
+
+    // Control: the browser that STARTED the flow still completes it end to end.
+    const ok = await handleAuthCallback(
+      req(`${ORIGIN}/djdl/identity/auth/callback?code=c&state=${state}`, {
+        headers: { cookie: bound },
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      NOW,
+    );
+    expect(ok.status).toBe(302);
+    expect(setCookies(ok).join("; ")).toContain("pkey_djdl_session=");
+    expect(ok.headers.get("location")).toBe(`${ORIGIN}/djdl/app`);
   });
 
   it("ATTACK: safeReturnTo lets the PRODUCT flow land on /manage paths that the portal twin explicitly forbids", async () => {
+    // FIXED (A3-04): one `safeReturnTo` in `core/returnTo.ts`, taking the strictest union of
+    // the four that existed. The product copy checked the origin and nothing else, so a product
+    // sign-in could be aimed at the admin console; the portal copy already refused `/manage` by
+    // name. Both customer realms refuse it now.
     const res = await handleAuthStart(
       req(
         `${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(`${ORIGIN}/manage/products/djdl`)}`,
@@ -728,16 +855,28 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       ctx.db,
       ctx.product,
     );
-    expect(res.status).toBe(302); // portal/auth.ts:100 would have rejected this
-    const state = new URL(res.headers.get("location")!).searchParams.get(
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("return_to not allowed");
+    // No flow was written at all, so there is nothing to complete against.
+    expect(ctx.kv.keys().filter((k) => k.includes(":flow:"))).toHaveLength(0);
+
+    // Control: an ordinary same-origin target is still accepted and still round-trips —
+    // including its query and fragment, which the portal SPA legitimately sends.
+    const target = `${ORIGIN}/djdl/app?tab=settings#/downloads`;
+    const good = await handleAuthStart(
+      req(`${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(target)}`),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    expect(good.status).toBe(302);
+    const state = new URL(good.headers.get("location")!).searchParams.get(
       "state",
     )!;
-    const flow = JSON.parse(
-      (await ctx.env.HOT.get(`p:djdl:flow:${state}`))!,
-    ) as {
+    const flow = JSON.parse((await getFlow(ctx, state))!) as {
       returnTo: string;
     };
-    expect(flow.returnTo).toBe(`${ORIGIN}/manage/products/djdl`);
+    expect(flow.returnTo).toBe(target);
   });
 
   it("ATTACK: the ADMIN flow (/manage/callback) is equally unbound — an attacker-supplied state+code hands the victim's browser an admin cookie", async () => {
@@ -759,18 +898,29 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     const flowKey = `admin:flow:${await hashKey(state, ctx.env.KEY_HASH_PEPPER)}`;
     expect(flowKey).not.toContain(state);
 
-    // The admin flow record holds only PKCE material — nothing tied to the browser.
+    // FIXED (A3-06): the record now carries a browser binding beside the PKCE material.
     const flow = JSON.parse((await ctx.env.HOT.get(flowKey))!) as Record<
       string,
       unknown
     >;
     expect(Object.keys(flow).sort()).toEqual([
+      "flowHash",
       "nonce",
       "redirectUri",
       "verifier",
     ]);
+    expect(login.headers.get("set-cookie")).toContain("__Host-pkey_flow=");
 
-    // Replaying the attacker's callback from a DIFFERENT browser still issues the cookie.
+    const asAdmin = {
+      verify: async () => ({
+        sub: "attacker-admin",
+        email: "attacker@evil.test",
+        name: "Mallory",
+        groups: ["platform-admins"],
+      }),
+    };
+    // Replaying the attacker's callback from a DIFFERENT browser is refused, with the same
+    // message an expired flow gets — and no console session is planted.
     const res = await handleAdminCallback(
       req(`${ORIGIN}/manage/callback?code=c&state=${state}`, {
         headers: { cookie: "unrelated=1", "user-agent": "VictimBrowser/1.0" },
@@ -778,18 +928,32 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       ctx.env,
       ctx.db,
       NOW,
-      {
-        verify: async () => ({
-          sub: "attacker-admin",
-          email: "attacker@evil.test",
-          name: "Mallory",
-          groups: ["platform-admins"],
-        }),
-      },
+      asAdmin,
     );
-    expect(res.status).toBe(302);
-    expect(res.headers.get("set-cookie")).toContain("pkey_admin=");
-    expect(res.headers.get("location")).toBe("/manage/");
+    expect(res.status).toBe(400);
+    expect(res.headers.get("set-cookie")).toBeNull();
+
+    // Control: the originating browser still signs in. (A fresh flow, because the refused
+    // callback consumed the first one — the single-use property is unchanged.)
+    const login2 = await handleAdminLogin(
+      req(`${ORIGIN}/manage/login`),
+      ctx.env,
+    );
+    const state2 = new URL(login2.headers.get("location")!).searchParams.get(
+      "state",
+    )!;
+    const ok = await handleAdminCallback(
+      req(`${ORIGIN}/manage/callback?code=c&state=${state2}`, {
+        headers: { cookie: flowCookie(login2) },
+      }),
+      ctx.env,
+      ctx.db,
+      NOW,
+      asAdmin,
+    );
+    expect(ok.status).toBe(302);
+    expect(setCookies(ok).join("; ")).toContain("__Host-pkey_admin=");
+    expect(ok.headers.get("location")).toBe("/manage/");
   });
 
   it("ATTACK: the PORTAL flow (/callback) is equally unbound", async () => {
@@ -805,14 +969,20 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     const authorize = new URL(login.headers.get("location")!);
     const state = authorize.searchParams.get("state")!;
     const nonce = authorize.searchParams.get("nonce")!;
+    // FIXED (B7-03): the portal flow key is hashed too, so `portal:oidc-flow:<state>` is not a
+    // key that exists any more.
+    expect(await ctx.env.HOT.get(`portal:oidc-flow:${state}`)).toBeNull();
     const flow = JSON.parse(
-      (await ctx.env.HOT.get(`portal:oidc-flow:${state}`))!,
+      (await ctx.env.HOT.get(await portalFlowKey(ctx.env, state)))!,
     ) as Record<string, unknown>;
+    // FIXED (A3-06): browser-bound, like the other two realms.
     expect(Object.keys(flow).sort()).toEqual([
+      "flowHash",
       "nonce",
       "redirectUri",
       "verifier",
     ]);
+    expect(login.headers.get("set-cookie")).toContain("__Host-pkey_flow=");
 
     installFetchMock(
       await signIdToken(ctx, {
@@ -830,8 +1000,46 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       ctx.db,
       NOW,
     );
-    expect(res.status).toBe(302);
-    expect(res.headers.get("set-cookie")).toContain("pkey_portal=");
+    expect(res.status).toBe(400);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    // No portal account was created for the attacker's identity out of the refused callback.
+    expect(
+      await ctx.db.first(
+        "SELECT account_id FROM portal_account_identities WHERE subject = 'attacker-portal'",
+      ),
+    ).toBeNull();
+
+    // Control: the originating browser still signs in.
+    const login2 = await handlePortalLogin(
+      req(`${ORIGIN}/login`),
+      ctx.env,
+      ctx.db,
+    );
+    const state2 = new URL(login2.headers.get("location")!).searchParams.get(
+      "state",
+    )!;
+    const nonce2 = new URL(login2.headers.get("location")!).searchParams.get(
+      "nonce",
+    )!;
+    vi.restoreAllMocks();
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "honest-portal",
+        email: "ada@corp.example",
+        email_verified: true,
+        nonce: nonce2,
+      }),
+    );
+    const ok = await handlePortalCallback(
+      req(`${ORIGIN}/callback?code=c&state=${state2}`, {
+        headers: { cookie: flowCookie(login2) },
+      }),
+      ctx.env,
+      ctx.db,
+      NOW,
+    );
+    expect(ok.status).toBe(302);
+    expect(setCookies(ok).join("; ")).toContain("pkey_portal=");
   });
 });
 
@@ -922,10 +1130,11 @@ describe("R8-05 claim trust", () => {
       ["s-alice", "alice@corp.com"],
       ["s-mallory", "mallory@evil.test"],
     ] as const) {
-      await ctx.env.HOT.put(
-        `p:djdl:flow:${state}`,
-        JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-      );
+      await putFlow(ctx, state, {
+        verifier: "v",
+        nonce: "N",
+        redirectUri: REDIRECT,
+      });
       vi.restoreAllMocks();
       installFetchMock(
         await signIdToken(ctx, { email, groups: ["family"], nonce: "N" }), // no `sub`
@@ -935,7 +1144,7 @@ describe("R8-05 claim trust", () => {
       const res = await callback(ctx, state);
       expect(res.status).toBe(401);
       // The flow is consumed on failure, so the poller cannot learn the reason either.
-      expect(await ctx.env.HOT.get(`p:djdl:flow:${state}`)).toBeNull();
+      expect(await getFlow(ctx, state)).toBeNull();
     }
     const rows = await ctx.db.all<{ id: string; sub: string; email: string }>(
       "SELECT id, sub, email FROM licenses WHERE product = 'djdl'",
@@ -943,10 +1152,11 @@ describe("R8-05 claim trust", () => {
     expect(rows).toHaveLength(0);
 
     // A non-string `sub` is not coerced into one either (123 must not collide with "123").
-    await ctx.env.HOT.put(
-      "p:djdl:flow:s-typed",
-      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-    );
+    await putFlow(ctx, "s-typed", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+    });
     vi.restoreAllMocks();
     installFetchMock(
       await signIdToken(ctx, { sub: 123, groups: ["family"], nonce: "N" }),
@@ -956,10 +1166,11 @@ describe("R8-05 claim trust", () => {
 
   // R8-05b — only a verified email is persisted or signed.
   it("ATTACK: an UNVERIFIED `email` claim is signed into the config document's identity profile", async () => {
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-    );
+    await putFlow(ctx, "S", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+    });
     installFetchMock(
       await signIdToken(ctx, {
         sub: "mallory",
@@ -979,17 +1190,14 @@ describe("R8-05 claim trust", () => {
 
     // …so it cannot reach the SIGNED doc that products authorize on. Wire v3 moved the
     // identity profile onto the LICENSE document; the title keeps the finding-doc mapping.
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S2",
-      JSON.stringify({
-        verifier: "v",
-        nonce: "N",
-        redirectUri: REDIRECT,
-        deviceId: "dev-1",
-        confirmedAt: NOW,
-        licenseId: lic!.id,
-      }),
-    );
+    await putFlow(ctx, "S2", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+      deviceId: "dev-1",
+      confirmedAt: NOW,
+      licenseId: lic!.id,
+    });
     const { token } = (await (await poll(ctx, "S2", "dev-1")).json()) as {
       token: string;
     };
@@ -1018,10 +1226,11 @@ describe("R8-05 claim trust", () => {
     expect(matches).toHaveLength(0);
 
     // Control: the SAME address with email_verified = true is persisted as before.
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S3",
-      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-    );
+    await putFlow(ctx, "S3", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+    });
     vi.restoreAllMocks();
     installFetchMock(
       await signIdToken(ctx, {
@@ -1101,10 +1310,11 @@ describe("R8-05 claim trust", () => {
 
   // R8-05d — maxTokenAge + clockTolerance are enforced. azp/at_hash/hd remain unchecked.
   it("ATTACK: no maxTokenAge/clockTolerance/azp/at_hash/hd check — an ID token minted long ago still activates", async () => {
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-    );
+    await putFlow(ctx, "S", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+    });
     const stale = await new SignJWT({
       sub: "stale-user",
       groups: ["family"],
@@ -1127,10 +1337,11 @@ describe("R8-05 claim trust", () => {
 
     // Control: the same claims minted now (azp/hd still unchecked — see the finding doc) are
     // accepted, so the age check is what rejected the stale one.
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S-fresh",
-      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-    );
+    await putFlow(ctx, "S-fresh", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+    });
     vi.restoreAllMocks();
     installFetchMock(
       await signIdToken(ctx, {
@@ -1168,10 +1379,11 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
       "https://vpn.example/{claim}",
       "not-json",
     );
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-    );
+    await putFlow(ctx, "S", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+    });
     installFetchMock(
       await signIdToken(ctx, {
         sub: "u",
@@ -1337,7 +1549,8 @@ describe("R8-07 redirect-URI allowlist fail-open", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// R8-08 — magic link: 72-bit token, unhashed KV key, no verify rate limit
+// R8-08 — magic link: 72-bit token, unhashed KV key, no verify rate limit.
+// **FIXED (B3-06 / B7-03 / B5-11).** Both tests are inverted in place.
 // ═══════════════════════════════════════════════════════════════════════════════
 describe("R8-08 portal magic link", () => {
   it("ATTACK: the magic token is 72 bits, stored UNHASHED as its own KV key with the email as the value", async () => {
@@ -1365,18 +1578,35 @@ describe("R8-08 portal magic link", () => {
     );
     expect(res.status).toBe(200);
 
-    // The secret is in the QUERY STRING of the emailed link.
+    // The secret is still in the QUERY STRING of the emailed link — that is the design of a
+    // magic link. What changed is everything about the value itself.
     const token = new URL(sent.link!).searchParams.get("token")!;
-    expect(token.startsWith("magic_")).toBe(true);
-    // randomId => 9 random bytes = 72 bits (crypto.ts:42-44). Compare: browser-session and
-    // download tokens are 256-bit AND peppered-hashed at rest.
-    expect(token.slice("magic_".length).length).toBe(12); // 9 bytes b64url
+    // FIXED (B3-06): `mintOpaqueToken`, not `randomId("magic")`. 256 bits, matching every
+    // sibling credential (device tokens, browser-session cookies, download tokens) instead of
+    // the 72 that made an offline guess plausible.
+    expect(token.startsWith("magic_")).toBe(false);
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
-    // Stored VERBATIM as the KV key; the value is the target email in plaintext.
-    expect(kv.keys()).toContain(`portal:magic:${token}`);
-    expect(await kv.get(`portal:magic:${token}`)).toContain("victim@corp.com");
+    // FIXED (B7-03): the KV key is the peppered hash, so a namespace listing yields nothing
+    // redeemable — R12-04 was marked "Fixed" while covering only `admin/auth.ts`, and this is
+    // one of the four sites it missed.
+    const keys = kv.keys().filter((k) => k.startsWith("portal:magic:"));
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).not.toContain(token);
+    expect(keys[0]).toBe(await portalMagicKey(env, token));
+    expect(keys[0]!.slice("portal:magic:".length)).toMatch(/^[0-9a-f]{64}$/);
 
-    // Anyone holding that KV key string is that user.
+    // FIXED (B7-03): and the VALUE no longer names the target. The plaintext address was what
+    // turned a KV dump from "a list of hashes" into an account-takeover primitive; it is now
+    // sealed under the platform KEK, bound by AAD to this one token hash.
+    const value = (await kv.get(keys[0]!))!;
+    expect(value).not.toContain("victim@corp.com");
+    expect(value).not.toContain("victim");
+    expect(JSON.parse(value)).toMatchObject({
+      email: expect.stringContaining('"ct"') as string,
+    });
+
+    // Control: the real link still works, so none of the above cost the feature anything.
     const verified = await handleMagicVerify(
       req(
         `https://key.plrs.im/magic/verify?token=${encodeURIComponent(token)}`,
@@ -1386,7 +1616,17 @@ describe("R8-08 portal magic link", () => {
       NOW,
     );
     expect(verified.status).toBe(302);
-    expect(verified.headers.get("set-cookie")).toContain("pkey_portal=");
+    expect(setCookies(verified).join("; ")).toContain("pkey_portal=");
+    // …and exactly once: delete-on-consume is unchanged.
+    expect(kv.keys().filter((k) => k.startsWith("portal:magic:"))).toHaveLength(
+      0,
+    );
+    expect(
+      await db.first(
+        "SELECT email FROM portal_account_emails WHERE email = ?",
+        "victim@corp.com",
+      ),
+    ).toBeTruthy();
   });
 
   it("ATTACK: /magic/verify has NO rate limit, unlike /magic/start", async () => {
@@ -1395,18 +1635,24 @@ describe("R8-08 portal magic link", () => {
     env.PORTAL_SESSION_SECRET = "s";
     await seedProduct(db, "djdl");
     const rlSpy = vi.spyOn(env.RL, "get");
+    // FIXED (B5-11 / MG-01): the REDEMPTION surface is the online oracle, and it is the one
+    // that had no budget while the surface that merely sends the mail was capped at 8/min.
+    let throttled = 0;
     for (let i = 0; i < 100; i++) {
       const res = await handleMagicVerify(
-        req(`https://key.plrs.im/magic/verify?token=${randomId("magic")}`),
+        req(`https://key.plrs.im/magic/verify?token=${mintOpaqueToken()}`),
         env,
         db,
         NOW,
       );
-      expect(res.status).toBe(400); // "expired", never 429
+      if (res.status === 429) throttled++;
+      else expect(res.status).toBe(400);
     }
-    expect(rlSpy).not.toHaveBeenCalled();
+    expect(rlSpy).toHaveBeenCalled();
+    expect(throttled).toBeGreaterThan(0);
 
-    // Control: the START surface IS limited.
+    // Control: the START surface is still limited too.
+    const before = rlSpy.mock.calls.length;
     for (let i = 0; i < 12; i++) {
       await handleMagicStart(
         req("https://key.plrs.im/api/auth/magic", {
@@ -1417,7 +1663,564 @@ describe("R8-08 portal magic link", () => {
         db,
       );
     }
-    expect(rlSpy).toHaveBeenCalled();
+    expect(rlSpy.mock.calls.length).toBeGreaterThan(before);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// A3-01 (HIGH) — device-flow `deviceId` was an AUTHORIZATION input
+//
+// `handleAuthDeviceStart` takes `deviceId` from an unauthenticated request body and the callback
+// used it to look up a device row and hand its `license_id` to `activateFromIdentity` as
+// `enrolledLicenseId`. But `X-PKey-Device` is, in `core/devices.ts`'s own words, "a client-chosen
+// string with no uniqueness requirement" — and it is DISCLOSED: the portal lists it to every
+// co-owner of a licence, the console shows it, and for the browser realm it is literally
+// `browser:<licenseId>`. Naming one victim device id was therefore enough to have the victim's
+// licence row rewritten onto the attacker's identity.
+// ═══════════════════════════════════════════════════════════════════════════════
+describe("A3-01 device-flow deviceId is not a credential", () => {
+  let ctx: Ctx;
+  /** The victim's auto-issued licence and the live token their CLI holds for it. */
+  let victim: { licenseId: string; token: string };
+
+  beforeEach(async () => {
+    ctx = await makeCtx();
+    const licenseId = "lic_victim_enrolled";
+    await ctx.db.run(
+      `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
+         activated_at, expires_at, max_offline_days, overrides_json, channels_json,
+         min_version, max_version, origin, enroll_hwid, modified_by, modified_at)
+       VALUES ('djdl', ?, 'active', NULL, NULL, NULL, NULL, 'pro', ?, NULL, NULL, NULL,
+               NULL, NULL, NULL, 'enroll', 'HW-VICTIM', 'enroll', ?)`,
+      licenseId,
+      NOW,
+      NOW,
+    );
+    const license = (await getLicense(ctx.db, "djdl", licenseId))!;
+    const auth = await authorizeDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      license,
+      "victim-cli",
+      NOW,
+    );
+    if ("error" in auth) throw new Error("expected the victim device to bind");
+    victim = { licenseId, token: auth.token };
+  });
+
+  /** Run a whole device flow for `deviceId`, optionally presenting a device token at start. */
+  const runDeviceFlow = async (
+    deviceId: string,
+    identity: { sub: string; email: string },
+    deviceToken?: string,
+  ): Promise<void> => {
+    const start = await handleAuthDeviceStart(
+      req(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        ...(deviceToken
+          ? { headers: { authorization: `Bearer ${deviceToken}` } }
+          : {}),
+        body: JSON.stringify({ deviceId }),
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    const { deviceCode } = (await start.json()) as { deviceCode: string };
+    const confirm = await confirmDevice(ctx, deviceCode);
+    const authorize = new URL(confirm.headers.get("location")!);
+    vi.restoreAllMocks();
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: identity.sub,
+        email: identity.email,
+        email_verified: true,
+        groups: ["family"],
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    expect(
+      (await callback(ctx, authorize.searchParams.get("state")!)).status,
+    ).toBe(200);
+  };
+
+  it("ATTACK: naming the victim's device id at device-flow start transfers the victim's licence to the attacker", async () => {
+    // The attacker knows only `victim-cli` — a string the portal would have shown them, or that
+    // they guessed. They hold no device token for it and never touch the victim's machine.
+    await runDeviceFlow("victim-cli", {
+      sub: "attacker-sub",
+      email: "attacker@evil.test",
+    });
+
+    // FIXED: the victim's licence row is untouched. Every column the takeover used to overwrite
+    // still holds its pre-attack value.
+    const after = (await getLicense(ctx.db, "djdl", victim.licenseId))!;
+    expect(after.sub).toBeNull();
+    expect(after.email).toBeNull();
+    expect(after.origin).toBe("enroll");
+    expect(after.status).toBe("active");
+    expect(after.modified_by).toBe("enroll");
+
+    // The victim's live device token still works, so their machine was not silently revoked.
+    const stillValid = await requireLicensedDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      victim.token,
+      NOW,
+    );
+    if ("error" in stillValid) throw new Error("victim token was revoked");
+    expect(stillValid.license.id).toBe(victim.licenseId);
+
+    // The attacker did land entitled — that is allowed, anyone who can sign in may have a
+    // licence — but on a licence OF THEIR OWN, not the victim's.
+    const mine = await ctx.db.first<{ id: string }>(
+      "SELECT id FROM licenses WHERE product = 'djdl' AND sub = 'attacker-sub'",
+    );
+    expect(mine).toBeTruthy();
+    expect(mine!.id).not.toBe(victim.licenseId);
+    // …and the victim's device did not move onto it.
+    expect((await getDevice(ctx.db, "djdl", "victim-cli"))!.license_id).toBe(
+      victim.licenseId,
+    );
+  });
+
+  it("REGRESSION: the victim's OWN client, presenting its device token, still claims its enrolled licence in place", async () => {
+    await runDeviceFlow(
+      "victim-cli",
+      { sub: "victim-sub", email: "ada@corp.example" },
+      victim.token,
+    );
+
+    // The whole point of the claim path: the SAME row becomes the identity's licence, so the
+    // user's devices, overrides and local state survive.
+    const claimed = (await getLicense(ctx.db, "djdl", victim.licenseId))!;
+    expect(claimed.sub).toBe("victim-sub");
+    expect(claimed.email).toBe("ada@corp.example");
+    expect(claimed.origin).toBe("oidc");
+    // No second licence was minted for the identity.
+    expect(
+      await ctx.db.all(
+        "SELECT id FROM licenses WHERE product = 'djdl' AND sub = 'victim-sub'",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("ATTACK: a device token for a DIFFERENT device id is not proof for this one", async () => {
+    // The attacker holds a perfectly valid token — for their own device, on their own licence —
+    // and presents it while naming the victim's device id.
+    const mineLicense = await activateFromIdentity(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      { sub: "attacker-sub", groups: ["family"], claims: {} },
+      NOW,
+    );
+    if (!("licenseId" in mineLicense)) throw new Error("expected a licence");
+    const mine = await authorizeDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      (await getLicense(ctx.db, "djdl", mineLicense.licenseId))!,
+      "attacker-box",
+      NOW,
+    );
+    if ("error" in mine)
+      throw new Error("expected the attacker device to bind");
+
+    await runDeviceFlow(
+      "victim-cli",
+      { sub: "attacker2-sub", email: "attacker2@evil.test" },
+      mine.token,
+    );
+    const after = (await getLicense(ctx.db, "djdl", victim.licenseId))!;
+    expect(after.sub).toBeNull();
+    expect(after.origin).toBe("enroll");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// A3-02 — the product session cookie has no `__Host-` prefix and was read first-match
+// ═══════════════════════════════════════════════════════════════════════════════
+describe("A3-02 product session cookie shadowing", () => {
+  it("ATTACK: a duplicate pkey_<slug>_session cookie shadows the real one and is served instead", async () => {
+    const ctx = await makeCtx();
+    const victim = await activateFromIdentity(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      {
+        sub: "victim",
+        email: "ada@corp.example",
+        groups: ["family"],
+        claims: {},
+      },
+      NOW,
+    );
+    const attacker = await activateFromIdentity(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      { sub: "mallory", email: "m@evil.test", groups: ["family"], claims: {} },
+      NOW,
+    );
+    if (!("licenseId" in victim) || !("licenseId" in attacker)) {
+      throw new Error("expected two licences");
+    }
+    const cookieOf = async (licenseId: string): Promise<string> => {
+      const session = await createBrowserSession(
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        (await getLicense(ctx.db, "djdl", licenseId))!,
+        NOW,
+      );
+      if (!session.ok) throw new Error("expected a session");
+      return session.cookie.split(";")[0]!;
+    };
+    const victimCookie = await cookieOf(victim.licenseId);
+    const attackerCookie = await cookieOf(attacker.licenseId);
+
+    const read = (cookie: string) =>
+      handleBrowserSession(
+        req(`${ORIGIN}/djdl/identity/session`, { headers: { cookie } }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      );
+
+    // Control: each cookie alone resolves to its own licence.
+    const alone = (await (await read(victimCookie)).json()) as {
+      authenticated: boolean;
+    };
+    expect(alone.authenticated).toBe(true);
+
+    // FIXED: a Cookie header carrying TWO values for this name is refused outright. RFC 6265
+    // §5.4 sends the longest-`Path` cookie first, so a first-match reader picks up exactly the
+    // duplicate a sibling subdomain (`Domain=plrs.im`) or a `Path=/djdl/deeper` write plants —
+    // and `__Host-` cannot be used here, because it demands `Path=/` and this cookie is
+    // deliberately scoped per product. The ambiguity is resolved by failing closed.
+    for (const header of [
+      `${attackerCookie}; ${victimCookie}`,
+      `${victimCookie}; ${attackerCookie}`,
+      `${victimCookie}; other=1; ${attackerCookie}`,
+    ]) {
+      const shadowed = (await (await read(header)).json()) as {
+        authenticated: boolean;
+        doc: unknown;
+      };
+      expect(shadowed.authenticated, header).toBe(false);
+      expect(shadowed.doc, header).toBeNull();
+    }
+
+    // A duplicate that AGREES byte-for-byte is not an attack and still resolves.
+    const benign = (await (
+      await read(`${victimCookie}; ${victimCookie}`)
+    ).json()) as { authenticated: boolean };
+    expect(benign.authenticated).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// B4-02 — IdP group names were resolved against a plain object, so `Object.prototype` answered
+// ═══════════════════════════════════════════════════════════════════════════════
+describe("B4-02 prototype pollution in the group→role map", () => {
+  it("ATTACK: an IdP group named `constructor` matches Object.prototype and grants entitlement", async () => {
+    const ctx = await makeCtx();
+    // The product's map names exactly one group: `family` (see seedOidc). Nothing else may
+    // resolve — least of all a key that exists on every object in the language.
+    for (const group of [
+      "constructor",
+      "__proto__",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+      "isPrototypeOf",
+      "propertyIsEnumerable",
+      "toLocaleString",
+    ]) {
+      expect(
+        await activateFromIdentity(
+          ctx.env,
+          ctx.db,
+          ctx.product,
+          { sub: `u-${group}`, groups: [group], claims: {} },
+          NOW,
+        ),
+        `group ${group} must not grant`,
+      ).toEqual({ error: "not-entitled" });
+    }
+    expect(
+      await ctx.db.all("SELECT id FROM licenses WHERE product = 'djdl'"),
+    ).toHaveLength(0);
+
+    // Control: the one group the operator DID name still grants, with its tier.
+    const ok = await activateFromIdentity(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      { sub: "ada", groups: ["family"], claims: {} },
+      NOW,
+    );
+    if (!("licenseId" in ok)) throw new Error("expected a licence");
+    expect((await getLicense(ctx.db, "djdl", ok.licenseId))!.tier_id).toBe(
+      "pro",
+    );
+
+    // …and an operator who genuinely maps a group called `constructor` is still obeyed: the fix
+    // is "own properties only", not "these names are banned".
+    await ctx.db.run(
+      "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
+      JSON.stringify({ constructor: { role: "user", tier: "pro" } }),
+    );
+    expect(
+      await activateFromIdentity(
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        { sub: "mapped", groups: ["constructor"], claims: {} },
+        NOW,
+      ),
+    ).toMatchObject({ licenseId: expect.any(String) as string });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REGRESSION — the three sign-in paths are the platform's ONLY auth paths
+//
+// A3-06 put a mandatory cookie in front of every browser callback, A3-04 tightened where each
+// may land, B7-03 renamed every KV key the flows use and B3-06/B7-03 rebuilt the magic link. Any
+// one of those could have closed the hole by breaking the feature. These four drive each realm
+// the way a browser does and assert the resulting session ACTUALLY WORKS — not merely that a
+// `Set-Cookie` came back.
+// ═══════════════════════════════════════════════════════════════════════════════
+describe("REGRESSION ordinary sign-in still works end to end", () => {
+  /** The `Cookie:` header for one named cookie out of a response's Set-Cookie list. */
+  const cookieNamed = (res: Response, name: string): string => {
+    const hit = setCookies(res).find(
+      (c) => c.startsWith(`${name}=`) && !c.includes("Max-Age=0"),
+    );
+    if (!hit) throw new Error(`no live ${name} cookie`);
+    return hit.split(";")[0]!;
+  };
+
+  it("product: /identity/auth/start -> IdP -> /identity/auth/callback -> a usable browser session", async () => {
+    const ctx = await makeCtx();
+    const target = `${ORIGIN}/djdl/app#/settings`;
+    const start = await handleAuthStart(
+      req(`${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(target)}`),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    expect(start.status).toBe(302);
+    const authorize = new URL(start.headers.get("location")!);
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "ada",
+        email: "ada@corp.example",
+        email_verified: true,
+        groups: ["family"],
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    const done = await callback(
+      ctx,
+      authorize.searchParams.get("state")!,
+      "auth-code",
+      flowCookie(start),
+    );
+    expect(done.status).toBe(302);
+    expect(done.headers.get("location")).toBe(target);
+    // The binding cookie is retired in the same response that issues the session.
+    expect(setCookies(done).join("; ")).toContain("__Host-pkey_flow=;");
+
+    const session = await handleBrowserSession(
+      req(`${ORIGIN}/djdl/identity/session`, {
+        headers: { cookie: cookieNamed(done, "pkey_djdl_session") },
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      NOW,
+    );
+    const body = (await session.json()) as {
+      authenticated: boolean;
+      doc: { licenseId: string; profile?: { email?: string } } | null;
+    };
+    expect(body.authenticated).toBe(true);
+    expect(body.doc?.profile?.email).toBe("ada@corp.example");
+  });
+
+  it("product: the device/loopback flow is untouched — it stays cross-browser by design", async () => {
+    const ctx = await makeCtx();
+    const deviceCode = await deviceStart(ctx, "ada-cli");
+    // Confirmed in a completely different browser, carrying no binding cookie at all.
+    const confirm = await confirmDevice(ctx, deviceCode);
+    const authorize = new URL(confirm.headers.get("location")!);
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "ada",
+        groups: ["family"],
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    expect(
+      (await callback(ctx, authorize.searchParams.get("state")!)).status,
+    ).toBe(200);
+    const polled = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "ada-cli" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token: string };
+    expect(polled.status).toBe("ready");
+    const valid = await requireLicensedDevice(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      polled.token,
+      NOW,
+    );
+    if ("error" in valid) throw new Error("expected a valid device token");
+    expect(valid.license.sub).toBe("ada");
+  });
+
+  it("admin: /manage/login -> /manage/callback -> a session the console verifies", async () => {
+    const ctx = await makeCtx();
+    ctx.env.ADMIN_SESSION_SECRET = "admin-secret";
+    ctx.env.PLATFORM_ADMIN_GROUP = "platform-admins";
+    ctx.env.PLATFORM_OIDC_ISSUER = ISSUER;
+    ctx.env.PLATFORM_OIDC_CLIENT_ID = AUD;
+    const login = await handleAdminLogin(
+      req(
+        `${ORIGIN}/manage/login?returnTo=${encodeURIComponent("/docs/start/concepts/")}`,
+      ),
+      ctx.env,
+    );
+    const state = new URL(login.headers.get("location")!).searchParams.get(
+      "state",
+    )!;
+    const done = await handleAdminCallback(
+      req(`${ORIGIN}/manage/callback?code=c&state=${state}`, {
+        headers: { cookie: flowCookie(login) },
+      }),
+      ctx.env,
+      ctx.db,
+      NOW,
+      {
+        verify: async () => ({
+          sub: "op-1",
+          email: "op@plrs.im",
+          name: "Operator",
+          groups: ["platform-admins"],
+        }),
+      },
+    );
+    expect(done.status).toBe(302);
+    // A3-04 kept the docs-gate destination working, which is what `returnTo` exists for.
+    expect(done.headers.get("location")).toBe("/docs/start/concepts/");
+    const session = await sessionFromRequest(
+      ctx.env,
+      req(`${ORIGIN}/manage/api/products`, {
+        headers: { cookie: cookieNamed(done, "__Host-pkey_admin") },
+      }),
+      NOW,
+    );
+    expect(session?.sub).toBe("op-1");
+    expect(session?.groups).toContain("platform-admins");
+  });
+
+  it("portal: both /login -> /callback and the magic link land a session /api/me answers", async () => {
+    const ctx = await makeCtx();
+    ctx.env.PORTAL_SESSION_SECRET = "portal-secret";
+    ctx.env.PLATFORM_OIDC_ISSUER = ISSUER;
+    ctx.env.PLATFORM_OIDC_CLIENT_ID = AUD;
+
+    const login = await handlePortalLogin(
+      req(`${ORIGIN}/login`),
+      ctx.env,
+      ctx.db,
+    );
+    const authorize = new URL(login.headers.get("location")!);
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "ada",
+        email: "ada@corp.example",
+        email_verified: true,
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    const done = await handlePortalCallback(
+      req(
+        `${ORIGIN}/callback?code=c&state=${authorize.searchParams.get("state")!}`,
+        { headers: { cookie: flowCookie(login) } },
+      ),
+      ctx.env,
+      ctx.db,
+      NOW,
+    );
+    expect(done.status).toBe(302);
+    const me = await handlePortalApi(
+      req(`${ORIGIN}/api/me`, {
+        headers: { cookie: cookieNamed(done, "__Host-pkey_portal") },
+      }),
+      ctx.env,
+      ctx.db,
+      "/api/me",
+      NOW,
+    );
+    expect(me.status).toBe(200);
+    expect((await me.json()) as { account: { email: string } }).toMatchObject({
+      account: { email: "ada@corp.example" },
+    });
+
+    // …and the magic link, which has no flow binding at all (it is not a redirect flow).
+    const sent: { link?: string } = {};
+    ctx.env.EMAIL = {
+      send: async (m: { text: string }) => {
+        sent.link = m.text.split(/\s+/).find((w) => w.startsWith("https://"));
+      },
+    } as unknown as Env["EMAIL"];
+    expect(
+      (
+        await handleMagicStart(
+          req(`${ORIGIN}/api/magic/start`, {
+            method: "POST",
+            body: JSON.stringify({ email: "grace@corp.example" }),
+          }),
+          ctx.env,
+          ctx.db,
+        )
+      ).status,
+    ).toBe(200);
+    const verified = await handleMagicVerify(
+      req(sent.link!),
+      ctx.env,
+      ctx.db,
+      NOW,
+    );
+    expect(verified.status).toBe(302);
+    const magicMe = await handlePortalApi(
+      req(`${ORIGIN}/api/me`, {
+        headers: { cookie: cookieNamed(verified, "__Host-pkey_portal") },
+      }),
+      ctx.env,
+      ctx.db,
+      "/api/me",
+      NOW,
+    );
+    expect(
+      (await magicMe.json()) as { account: { email: string } },
+    ).toMatchObject({ account: { email: "grace@corp.example" } });
   });
 });
 
@@ -1431,19 +2234,21 @@ describe("R8 refuted", () => {
   });
 
   it("REFUTED: the nonce binding is real — a token without a nonce is rejected", async () => {
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-    );
+    await putFlow(ctx, "S", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+    });
     installFetchMock(await signIdToken(ctx, { sub: "u", groups: ["family"] }));
     expect((await callback(ctx, "S")).status).toBe(401);
   });
 
   it("REFUTED: HMAC-signed ID tokens are rejected (asymmetric algs only)", async () => {
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
-    );
+    await putFlow(ctx, "S", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+    });
     const hs = await new SignJWT({ sub: "u", groups: ["family"], nonce: "N" })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuer(ISSUER)
@@ -1498,17 +2303,14 @@ describe("R8 refuted", () => {
     );
     // Bound + confirmed, so the poll gets all the way to the mint and it is `licenseUsable`
     // — not the R8-01 device binding — that refuses.
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({
-        verifier: "v",
-        nonce: "N",
-        redirectUri: REDIRECT,
-        deviceId: "dev-1",
-        confirmedAt: NOW,
-        licenseId: r.licenseId,
-      }),
-    );
+    await putFlow(ctx, "S", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+      deviceId: "dev-1",
+      confirmedAt: NOW,
+      licenseId: r.licenseId,
+    });
     const out = (await (await poll(ctx, "S", "dev-1")).json()) as {
       status: string;
     };
@@ -1517,15 +2319,12 @@ describe("R8 refuted", () => {
   });
 
   it("REFUTED: the poll surface never echoes an IdP failure reason", async () => {
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({
-        verifier: "v",
-        nonce: "N",
-        redirectUri: REDIRECT,
-        error: "id-token-invalid",
-      }),
-    );
+    await putFlow(ctx, "S", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+      error: "id-token-invalid",
+    });
     const res = await poll(ctx, "S", "ATTACKER");
     expect(await res.text()).not.toContain("id-token-invalid");
   });
@@ -1552,15 +2351,12 @@ describe("R8 refuted", () => {
       NOW,
     );
     if (!("licenseId" in r)) throw new Error("expected license");
-    await ctx.env.HOT.put(
-      "p:djdl:flow:S",
-      JSON.stringify({
-        verifier: "v",
-        nonce: "N",
-        redirectUri: REDIRECT,
-        licenseId: r.licenseId,
-      }),
-    );
+    await putFlow(ctx, "S", {
+      verifier: "v",
+      nonce: "N",
+      redirectUri: REDIRECT,
+      licenseId: r.licenseId,
+    });
     const res = await handleAuthPoll(
       req(`${ORIGIN}/other/auth/poll?state=S&device=ATTACKER`),
       ctx.env,

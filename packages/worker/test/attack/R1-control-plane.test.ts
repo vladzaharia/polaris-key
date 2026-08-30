@@ -10,7 +10,12 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { makeTestDb } from "../helpers.js";
+import {
+  adminFlowKey,
+  flowCookie,
+  makeTestDb,
+  productDeviceFlowKey,
+} from "../helpers.js";
 import { KvMock, asKv } from "../kvMock.js";
 import { makeEnv, NOW, seedProduct } from "../seed.js";
 import type { Env } from "../../src/env.js";
@@ -30,6 +35,7 @@ import {
   verifyPortalSession,
 } from "../../src/services/identity/portal/session.js";
 import { hasAnyAdminGrant } from "../../src/admin/authz.js";
+import { FLOW_COOKIE } from "../../src/core/oidcFlow.js";
 import { hashKey } from "../../src/crypto.js";
 import { listAudit } from "../../src/repo.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
@@ -104,28 +110,56 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
       { now: NOW },
     );
     expect(res.status).toBe(302);
-    // The ONLY per-flow artefact is a KV row keyed by `state`. Nothing is planted in the
-    // requesting browser, so /manage/callback cannot tell "the browser that started this
-    // flow" from "any other browser".
-    expect(res.headers.get("set-cookie")).toBeNull();
+    // INVERTED (A3-06). The `it` name states the ATTACK, and this suite is green when the
+    // attack fails: /manage/login now DOES plant a per-flow artefact in the requesting
+    // browser. Until this landed the only artefact was a KV row keyed by `state` — a value
+    // that travels in the clear on two URLs — so /manage/callback could not tell "the browser
+    // that started this flow" from "any other browser", which is the whole of R1-01b below.
+    const setCookie = res.headers.get("set-cookie")!;
+    expect(setCookie).toContain(`${FLOW_COOKIE}=`);
+    // `__Host-` is what the binding rests on. A compliant browser refuses to store a cookie by
+    // this name unless it is `Secure`, carries no `Domain` and is `Path=/`, so not even a
+    // sibling subdomain may write it. An attacker can copy `state` off the wire; they cannot
+    // put this value into the victim's browser.
+    expect(FLOW_COOKIE.startsWith("__Host-")).toBe(true);
+    expect(setCookie).toContain("Path=/");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).not.toContain("Domain=");
+    // `SameSite=Lax`, deliberately NOT `Strict`: /manage/callback arrives as a top-level
+    // cross-site navigation FROM the IdP, and a `Strict` cookie is withheld on exactly that
+    // navigation — a `Strict` binding would refuse every genuine sign-in.
+    expect(setCookie).toContain("SameSite=Lax");
+    // Matches the KV `expirationTtl` on the flow record, so the cookie cannot outlive the row
+    // it is bound to.
+    expect(setCookie).toContain("Max-Age=600");
+
     const location = new URL(res.headers.get("location")!);
     const state = location.searchParams.get("state")!;
     expect(state).toBeTruthy();
     // FIXED (R12-04): the key name is the HASHED state, so a KV listing is not a dump of live
-    // OIDC `state` values. The flow record itself is unchanged.
-    const flowKey = `admin:flow:${await hashKey(state, env.KEY_HASH_PEPPER)}`;
+    // OIDC `state` values.
+    const flowKey = await adminFlowKey(env, state);
     expect(kv.keys()).toEqual([flowKey]);
     expect(kv.keys()[0]).not.toContain(state);
-    // The stored flow holds only PKCE + nonce + redirect_uri — nothing browser-specific.
+    // The stored flow now carries the browser binding alongside PKCE + nonce + redirect_uri.
     const flow = JSON.parse((await kv.get(flowKey))!) as Record<
       string,
       unknown
     >;
     expect(Object.keys(flow).sort()).toEqual([
+      "flowHash",
       "nonce",
       "redirectUri",
       "verifier",
     ]);
+    // Only the HASH goes to KV; the opaque `flowId` only ever exists in the cookie. So an
+    // attacker who can READ the flow record still cannot construct the cookie that redeems it,
+    // and the binding survives a KV disclosure the way the hashed key name (R12-04) does.
+    const flowId = flowCookie(res).slice(`${FLOW_COOKIE}=`.length);
+    expect(flowId).toBeTruthy();
+    expect(flow.flowHash).not.toBe(flowId);
+    expect(flow.flowHash).toBe(await hashKey(flowId, env.KEY_HASH_PEPPER));
   });
 
   it("R1-01b: an attacker-run flow can be redeemed in a VICTIM browser, planting the attacker's admin session", async () => {
@@ -134,28 +168,11 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
     const env = adminEnv(kv);
     await seedProduct(db, "djdl");
 
-    // ── Step 1: the ATTACKER starts a flow from their own machine.
-    const start = await handleAdmin(
-      req("GET", "https://key.plrs.im/manage/login", {
-        "cf-connecting-ip": "203.0.113.7",
-        "user-agent": "attacker-browser",
-      }),
-      env,
-      db,
-      "/login",
-      { now: NOW },
-    );
-    const state = new URL(start.headers.get("location")!).searchParams.get(
-      "state",
-    )!;
-    // Step 2: the attacker completes sign-in AT THE IdP as themselves and captures the
-    // `code` off the redirect instead of letting their browser follow it.
+    // The attacker completes sign-in AT THE IdP as themselves and captures the `code` off the
+    // redirect instead of letting their browser follow it. Everything below replays that one
+    // `code` from various browsers; only the browser that STARTED the flow may spend it.
     const ATTACKER_CODE = "attacker-authorization-code";
-
-    // Step 3: the victim (a different browser, different IP, NO cookies at all) is made to
-    // top-level-navigate to the callback URL. `SameSite=Strict` does not stop this: it
-    // governs cookies SENT, not cookies SET on a cross-site navigation response.
-    const victimVerifier: IdTokenVerifier = {
+    const attackerIdentity: IdTokenVerifier = {
       async verify({ code }) {
         expect(code).toBe(ATTACKER_CODE);
         return {
@@ -166,34 +183,114 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
         };
       },
     };
-    const victimRes = await handleAdmin(
-      req(
-        "GET",
-        `https://key.plrs.im/manage/callback?code=${ATTACKER_CODE}&state=${encodeURIComponent(state)}`,
-        { "cf-connecting-ip": "198.51.100.4", "user-agent": "victim-browser" },
-      ),
-      env,
-      db,
-      "/callback",
-      { now: NOW, verifier: victimVerifier },
-    );
 
-    // The worker never looked at the victim's Cookie header — the flow is keyed by `state`
-    // alone — so it happily mints a session and 302s the victim into the admin SPA.
-    expect(victimRes.status).toBe(302);
-    expect(victimRes.headers.get("location")).toBe("/manage/");
-    const setCookie = victimRes.headers.get("set-cookie")!;
+    /** The ATTACKER starts a flow from their own machine, keeping BOTH halves of it. */
+    async function attackerStart(): Promise<{ state: string; cookie: string }> {
+      const start = await handleAdmin(
+        req("GET", "https://key.plrs.im/manage/login", {
+          "cf-connecting-ip": "203.0.113.7",
+          "user-agent": "attacker-browser",
+        }),
+        env,
+        db,
+        "/login",
+        { now: NOW },
+      );
+      return {
+        state: new URL(start.headers.get("location")!).searchParams.get(
+          "state",
+        )!,
+        cookie: flowCookie(start),
+      };
+    }
+
+    /** Present `code` + `state` at the callback from an arbitrary browser. */
+    function redeem(
+      state: string,
+      headers: Record<string, string>,
+    ): Promise<Response> {
+      return handleAdmin(
+        req(
+          "GET",
+          `https://key.plrs.im/manage/callback?code=${ATTACKER_CODE}&state=${encodeURIComponent(state)}`,
+          headers,
+        ),
+        env,
+        db,
+        "/callback",
+        { now: NOW, verifier: attackerIdentity },
+      );
+    }
+
+    // ── The attack. The victim (a different browser, different IP, NO cookies at all) is made
+    // to top-level-navigate to the callback URL. `SameSite=Strict` never stopped this: it
+    // governs cookies SENT, not cookies SET on a cross-site navigation response.
+    const first = await attackerStart();
+    const victimRes = await redeem(first.state, {
+      "cf-connecting-ip": "198.51.100.4",
+      "user-agent": "victim-browser",
+    });
+
+    // INVERTED (A3-06). The worker used to answer this 302 + `Set-Cookie`, handing the victim's
+    // browser a fully valid admin session for the ATTACKER's identity — every subsequent
+    // mutation from that browser then audited as the attacker, breaking "the audit actor is
+    // ALWAYS the verified session". `handleAdminCallback` now demands a cookie hashing to the
+    // flow record's `flowHash`, and the victim's browser has none.
+    expect(victimRes.status).toBe(400);
+    expect(victimRes.headers.get("set-cookie")).toBeNull();
+    expect(victimRes.headers.get("location")).toBeNull();
+
+    // The refusal reuses the EXISTING expired/unknown-state page verbatim, so it is not an
+    // oracle for "this state is live, you just have the wrong browser" — byte-identical to the
+    // answer a state that was never issued gets.
+    const victimBody = await victimRes.text();
+    const unknownState = await redeem("never-issued-by-this-worker", {
+      "cf-connecting-ip": "198.51.100.4",
+      "user-agent": "victim-browser",
+    });
+    expect(unknownState.status).toBe(400);
+    expect(await unknownState.text()).toBe(victimBody);
+
+    // Nor is SOME cookie enough — it has to be THIS flow's cookie. The attacker holds a
+    // perfectly valid `__Host-pkey_flow` value (their own, from `first`); replaying it against
+    // a different flow's `state` is refused just the same, because each record stores the hash
+    // of the value minted FOR IT.
+    const second = await attackerStart();
+    const foreignCookie = await redeem(second.state, {
+      "cf-connecting-ip": "198.51.100.4",
+      "user-agent": "victim-browser",
+      cookie: first.cookie,
+    });
+    expect(foreignCookie.status).toBe(400);
+    expect(foreignCookie.headers.get("set-cookie")).toBeNull();
+
+    // ── CONTROL: the ORIGINATING browser still completes the sign-in end to end. A binding
+    // that refused everything would satisfy every assertion above and ship a console nobody
+    // can log into, so the working path is pinned in the same test as the attack.
+    const own = await attackerStart();
+    const ownRes = await redeem(own.state, {
+      "cf-connecting-ip": "203.0.113.7",
+      "user-agent": "attacker-browser",
+      cookie: own.cookie,
+    });
+    expect(ownRes.status).toBe(302);
+    expect(ownRes.headers.get("location")).toBe("/manage/");
+    const setCookie = ownRes.headers.get("set-cookie")!;
     expect(setCookie).toContain(`${ADMIN_COOKIE}=`);
     expect(setCookie).toContain("SameSite=Strict");
+    // The binding is single-use: the callback retires `__Host-pkey_flow` in the same response
+    // that issues the session, so a replay cannot ride the cookie a second time.
+    expect(setCookie).toContain(`${FLOW_COOKIE}=;`);
+    expect(setCookie).toContain("Max-Age=0");
 
-    // The planted cookie is a fully valid admin session for the ATTACKER's identity.
+    // The session cookie is a fully valid admin session for the attacker's OWN browser — which
+    // is exactly what a legitimate sign-in is.
     const token = setCookie.split(";")[0]!.slice(`${ADMIN_COOKIE}=`.length);
     const session = await verifySession(env, token, NOW);
     expect(session).not.toBeNull();
     expect(session!.sub).toBe("attacker-oidc-sub");
     expect(session!.groups).toContain(PLATFORM_GROUP);
 
-    // ...and the victim's browser is now driving the admin API as the attacker.
     const me = await handleAdmin(
       req("GET", "https://key.plrs.im/manage/api/me", {
         cookie: `${ADMIN_COOKIE}=${token}`,
@@ -208,8 +305,8 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
       "attacker-oidc-sub",
     );
 
-    // Every subsequent admin mutation this browser performs is audited as the ATTACKER,
-    // breaking the "the audit actor is ALWAYS the verified session" property.
+    // Every flow record — refused or redeemed — is deleted at the callback, so a refused
+    // attempt is not simply retryable with a better guess at the cookie.
     expect(kv.keys().some((k) => k.startsWith("admin:flow:"))).toBe(false);
   });
 
@@ -230,6 +327,11 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
       req(
         "GET",
         `https://key.plrs.im/manage/callback?code=c&state=${encodeURIComponent(state)}`,
+        // A3-06 — this test is about the GROUP gate, so the request has to get PAST the browser
+        // binding first: it carries the `__Host-pkey_flow` cookie /manage/login planted, the way
+        // the originating browser would. Without it the callback stops at the generic 400 and
+        // the 403 below would silently never be exercised again.
+        { cookie: flowCookie(start) },
       ),
       env,
       db,
@@ -816,8 +918,10 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
     // once phished to a victim, bound the victim's license to the attacker's flow.
     expect(confirmed.status).toBe(200);
     expect(confirmed.headers.get("location")).toBeNull();
+    // B7-03 / A3-B1 — the KV key is the HASHED device code, so the record has to be looked up
+    // through the shared helper rather than by pasting the credential into a key name.
     const stored = JSON.parse(
-      (await kv.get(`p:djdl:device-flow:${deviceCode}`))!,
+      (await kv.get(await productDeviceFlowKey(env, "djdl", deviceCode)))!,
     ) as { confirmedAt?: number; deviceId: string };
     // The state-mutating half is gone: a GET cannot mark the flow confirmed.
     expect(stored.confirmedAt).toBeFalsy();
@@ -831,8 +935,10 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
     env.HOT = asKv(kv);
     await seedProduct(db, "djdl");
     const product = (await loadProduct(env, db, "djdl"))!;
+    // B7-03 / A3-B1 — a planted device-flow record has to be filed under the HASHED code, or
+    // `handleAuthDeviceVerify` looks somewhere else and 404s.
     await kv.put(
-      "p:djdl:device-flow:dc",
+      await productDeviceFlowKey(env, "djdl", "dc"),
       JSON.stringify({
         state: "s",
         deviceId: "attacker-device",
@@ -1006,6 +1112,10 @@ describe("REFUTED hypotheses", () => {
       req(
         "GET",
         `https://key.plrs.im/manage/callback?code=c&state=${encodeURIComponent(state)}`,
+        // A3-06 — the browser binding sits in front of the claim mapping, so the refutation has
+        // to carry the login's `__Host-pkey_flow` cookie to reach the code it is about. A bare
+        // callback now stops at a generic 400 that says nothing about `groups`.
+        { cookie: flowCookie(start) },
       ),
       env,
       db,

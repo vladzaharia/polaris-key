@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeTestDb } from "./helpers.js";
+import { makeTestDb, portalMagicKey } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
   makeEnv,
@@ -123,11 +123,16 @@ describe("customer portal", () => {
     );
     expect(start.status).toBe(200);
     expect(sent[0]?.to).toBe("ada@example.com");
-    const token = kv
-      .keys()
-      .find((key) => key.startsWith("portal:magic:"))
-      ?.replace("portal:magic:", "");
+    // B7-03 hashed the magic record's KV key under `KEY_HASH_PEPPER` and sealed the target
+    // address inside the value, so the token is no longer recoverable by stripping a prefix off
+    // `kv.keys()` — a KV listing is now inert. The one place the token exists in the clear is
+    // the link that was mailed to the account holder, so read it the way the recipient does.
+    const link = sent[0]!.text.match(/https?:\/\/\S+/)?.[0];
+    expect(link).toBeTruthy();
+    const token = new URL(link!).searchParams.get("token");
     expect(token).toBeTruthy();
+    // …and the hashed key really is the one the record was written under.
+    expect(kv.keys()).toContain(await portalMagicKey(env, token!));
 
     const verified = await handleMagicVerify(
       req("GET", `/magic/verify?token=${encodeURIComponent(token!)}`),

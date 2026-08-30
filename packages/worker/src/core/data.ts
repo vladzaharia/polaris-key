@@ -43,6 +43,7 @@ export {
   countActiveDevices,
   getActiveSchema,
   getDevice,
+  getDeviceByTokenHash,
   getDeviceFacts,
   getFingerprint,
   getKey,

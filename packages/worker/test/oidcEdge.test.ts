@@ -7,7 +7,12 @@ import {
   SignJWT,
 } from "jose";
 import type { ManagedPayload } from "../src/core/payload.js";
-import { makeTestDb } from "./helpers.js";
+import {
+  flowCookie,
+  makeTestDb,
+  productDeviceFlowKey,
+  productFlowKey,
+} from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
@@ -263,13 +268,18 @@ describe("handleAuthPoll states", () => {
 
   /** A flow record shaped the way beginAuthFlow + device confirmation write it: bound to the
    *  device that started it and stamped confirmed. Both are authorization inputs on the poll
-   *  surfaces (R8-01), so a fixture without them is not a pollable flow. */
+   *  surfaces (R8-01), so a fixture without them is not a pollable flow.
+   *
+   *  B7-03 / A3-B1 hashed the KV key under `KEY_HASH_PEPPER`, so the fixture can no longer name
+   *  the record by pasting the `state` into the key — `productFlowKey` derives it the same way
+   *  `oidc.ts`'s private `flowKey` does. No `returnTo`/`flowHash` is written: this is the
+   *  device/loopback shape, which A3-06 deliberately leaves unbound to a browser. */
   async function putFlow(
     state: string,
     flow: Record<string, unknown>,
   ): Promise<void> {
     await env.HOT.put(
-      `p:djdl:flow:${state}`,
+      await productFlowKey(env, "djdl", state),
       JSON.stringify({
         verifier: "v",
         nonce: "n",
@@ -352,23 +362,45 @@ describe("handleAuthPoll states", () => {
       deviceCode: string;
       userCode: string;
       verificationUri: string;
+      verificationUriComplete: string;
       pollUrl: string;
       expiresIn: number;
       interval: number;
     };
     expect(body.deviceCode).toBeTruthy();
-    expect(body.userCode).toMatch(/^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$/);
+    // A3-03: the user code is minted from its OWN entropy over the unambiguous alphabet, so it
+    // is asserted against THAT alphabet rather than a permissive `[A-Z0-9_-]` class the old
+    // `deviceCode.slice(0, 8).toUpperCase()` derivation also satisfied.
+    expect(body.userCode).toMatch(
+      /^[ACDEFGHJKLMNPQRTWXYZ2346789]{4}-[ACDEFGHJKLMNPQRTWXYZ2346789]{4}$/,
+    );
+    // …and the whole point of A3-03: seeing the code the human reads aloud must not disclose any
+    // part of the secret that redeems the flow.
+    expect(
+      body.deviceCode.toUpperCase().startsWith(body.userCode.replace("-", "")),
+    ).toBe(false);
     expect(body.verificationUri).toContain(
       "https://key.plrs.im/djdl/identity/auth/device/verify?device_code=",
+    );
+    // RFC 8628 §3.3.1: the "complete" URI carries the user code so it need not be transcribed.
+    // It used to be emitted equal to `verificationUri` (A3-03), which said nothing at all.
+    expect(body.verificationUriComplete).toBe(
+      `${body.verificationUri}&user_code=${encodeURIComponent(body.userCode)}`,
     );
     expect(body.pollUrl).toBe(
       "https://key.plrs.im/djdl/identity/auth/device/poll",
     );
     expect(body.expiresIn).toBe(600);
     expect(body.interval).toBeGreaterThan(0);
+    // B7-03 / A3-B1: the device code is no longer its own KV key name.
+    expect(
+      await env.HOT.get(
+        await productDeviceFlowKey(env, "djdl", body.deviceCode),
+      ),
+    ).toBeTruthy();
     expect(
       await env.HOT.get(`p:djdl:device-flow:${body.deviceCode}`),
-    ).toBeTruthy();
+    ).toBeNull();
   });
 
   it("polls a JSON device flow and mints through the shared authorizer", async () => {
@@ -379,11 +411,11 @@ describe("handleAuthPoll states", () => {
       deviceId: "dev-json",
     });
     await env.HOT.put(
-      "p:djdl:device-flow:device-code",
+      await productDeviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({
         state: "oauth-state",
         deviceId: "dev-json",
-        userCode: "ABCD-EFGH",
+        userCode: "ACDE-FGHJ",
         authorizeUrl: "https://id.example/authorize",
         confirmedAt: NOW,
       }),
@@ -410,11 +442,11 @@ describe("handleAuthPoll states", () => {
   it("renders and confirms the JSON device verification page", async () => {
     await putFlow("oauth-state", { deviceId: "dev-json" });
     await env.HOT.put(
-      "p:djdl:device-flow:device-code",
+      await productDeviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({
         state: "oauth-state",
         deviceId: "dev-json",
-        userCode: "ABCD-EFGH",
+        userCode: "ACDE-FGHJ",
         authorizeUrl: "https://id.example/authorize",
         deviceName: "Studio Mac",
       }),
@@ -452,12 +484,14 @@ describe("handleAuthPoll states", () => {
       "https://id.example/authorize",
     );
     const stored = JSON.parse(
-      (await env.HOT.get("p:djdl:device-flow:device-code"))!,
+      (await env.HOT.get(
+        await productDeviceFlowKey(env, "djdl", "device-code"),
+      ))!,
     ) as { confirmedAt?: number };
     expect(stored.confirmedAt).toBeTruthy();
     // …and the confirmation is recorded on the flow the poll surfaces actually read.
     const flow = JSON.parse(
-      (await env.HOT.get("p:djdl:flow:oauth-state"))!,
+      (await env.HOT.get(await productFlowKey(env, "djdl", "oauth-state")))!,
     ) as {
       confirmedAt?: number;
     };
@@ -467,7 +501,7 @@ describe("handleAuthPoll states", () => {
   it("rejects JSON device polls from a different device id", async () => {
     await putFlow("oauth-state", {});
     await env.HOT.put(
-      "p:djdl:device-flow:device-code",
+      await productDeviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({ state: "oauth-state", deviceId: "dev-json" }),
     );
     const res = await handleAuthDevicePoll(
@@ -532,6 +566,35 @@ describe("handleAuthStart redirect-URI allowlist (D7)", () => {
     ) as unknown as Request;
     const res = await handleAuthStart(req, env, db, product);
     expect(res.status).toBe(302);
+    // A3-06 — this is THE browser-redirect entry point, so the 302 now also hands the browser
+    // the opaque `__Host-pkey_flow` value the callback will demand back. The flow record used to
+    // be a bearer credential keyed on `state`, and `state` rides in the clear on two URLs; the
+    // cookie is the one thing an attacker who copied `state` cannot plant in a victim's browser.
+    // The attributes are load-bearing, not decoration: `__Host-` is only honoured with `Secure`
+    // + `Path=/` + no `Domain` (so no sibling subdomain may write it), and `SameSite=Lax` — not
+    // `Strict` — because the callback arrives as a top-level cross-site navigation from the IdP
+    // and a `Strict` cookie would be withheld from every genuine sign-in.
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie).toMatch(/^__Host-pkey_flow=[^;]+;/);
+    expect(setCookie).toContain("Path=/");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("Max-Age=600");
+    expect(setCookie).not.toContain("Domain=");
+    // And the split that makes the binding worth anything: the browser gets the flow id, KV
+    // gets only `hashKey(flowId, pepper)`. A HOT dump therefore yields nothing that can be
+    // replayed as a cookie — the same property B7-03 gave the key names, applied to the value.
+    const flowId = flowCookie(res as unknown as Response).split("=")[1]!;
+    expect(flowId).not.toBe("");
+    const state = new URL(res.headers.get("location")!).searchParams.get(
+      "state",
+    )!;
+    const stored = JSON.parse(
+      (await env.HOT.get(await productFlowKey(env, "djdl", state)))!,
+    ) as { flowHash?: string };
+    expect(stored.flowHash).toBeTruthy();
+    expect(stored.flowHash).not.toBe(flowId);
   });
 
   it("returns 400 when the computed redirect URI is NOT allow-listed", async () => {
@@ -657,10 +720,19 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   }
 
   /** Seed a flow record the way handleAuthDeviceStart + confirmation would: known nonce and
-   *  redirect URI, bound to `dev-1` and confirmed, so `poll()` below can complete it. */
+   *  redirect URI, bound to `dev-1` and confirmed, so `poll()` below can complete it.
+   *
+   *  Two things follow from that shape. The key is `productFlowKey`, not `p:djdl:flow:<state>` —
+   *  B7-03 / A3-B1 hashed it under `KEY_HASH_PEPPER` so a KV listing no longer hands over live
+   *  `state` values. And the record carries neither `flowHash` nor `returnTo`, which is exactly
+   *  the device/loopback flow A3-06 leaves unbound: the human may legitimately finish it in a
+   *  different browser, so `handleAuthCallback` asks for no `__Host-pkey_flow` cookie here. The
+   *  browser-redirect half of A3-06 — the flow that DOES get bound — is asserted on the start
+   *  side in the D7 block above; use `flowCookie` to carry the binding if a case here ever
+   *  seeds a `returnTo`/`flowHash` record. */
   async function seedFlow(state: string, nonce: string): Promise<void> {
     await env.HOT.put(
-      `p:djdl:flow:${state}`,
+      await productFlowKey(env, "djdl", state),
       JSON.stringify({
         verifier: "v",
         nonce,

@@ -32,9 +32,9 @@ The response:
 {
   "status": "pending",
   "deviceCode": "…",
-  "userCode": "ABCD-1234",
+  "userCode": "QHDK-72WN",
   "verificationUri": "https://…/<product>/identity/auth/device/verify?device_code=…",
-  "verificationUriComplete": "https://…/<product>/identity/auth/device/verify?device_code=…",
+  "verificationUriComplete": "https://…/<product>/identity/auth/device/verify?device_code=…&user_code=…",
   "expiresIn": 600,
   "interval": 2,
   "pollUrl": "https://…/<product>/identity/auth/device/poll"
@@ -42,9 +42,22 @@ The response:
 ```
 
 `deviceCode` is the bearer handle the client polls with — treat it like a credential.
-`userCode` is display-only: it is the first 8 characters of `deviceCode`, uppercased and
-hyphenated after the fourth character, meant to be read aloud or typed by a human, not used by
-the polling client itself.
+`userCode` is display-only: it is meant to be read aloud or typed by a human, not used by the
+polling client itself. It is minted with its **own** entropy, over an alphabet that omits the
+glyphs which are ambiguous when read or typed (no `I`/`O`/`S`/`B`/`U`/`V`, no `0`/`1`/`5`). It
+used to be the first 8 characters of `deviceCode`, uppercased — so the value a user was asked to
+read out disclosed 48 bits of the secret that redeems the flow.
+
+`verificationUriComplete` is `verificationUri` with the user code appended as a `user_code`
+query parameter, which is what RFC 8628 §3.3.1 defines it as; it was previously emitted
+byte-equal to `verificationUri`.
+
+An already-enrolled client MAY present its `pkeyt_` device token at start, as
+`Authorization: Bearer` or as `deviceToken` in the body. That is what lets the completed sign-in
+**claim** the auto-issued licence the device is already running on, keeping its devices and local
+state on the same row. Without it the sign-in gets an ordinary new or existing licence: the
+`deviceId` alone is not evidence of a relationship to a licence, because it is a client-chosen
+string that the portal and console both disclose.
 
 ## `GET`/`POST /identity/auth/device/verify`
 

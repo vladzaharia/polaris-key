@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 import type { Env } from "../src/env.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
-import { makeTestDb } from "./helpers.js";
+import { flowCookie, makeTestDb } from "./helpers.js";
 import { handleDocs, docsAssetPath, docsSecurityHeaders } from "../src/docs.js";
 import { matchRoute } from "../src/router.js";
 import {
@@ -328,24 +328,39 @@ const stubVerifier: IdTokenVerifier = {
   verify: async () => OPERATOR,
 };
 
-/** Drive /manage/login and pull the `state` the flow was stored under. */
-async function startLogin(env: Env, returnTo?: string): Promise<string> {
+/**
+ * Drive /manage/login and pull back everything the browser would carry into the callback.
+ *
+ * A3-06 bound every OIDC redirect realm to the browser that started the flow: `handleAdminLogin`
+ * mints a `__Host-pkey_flow` cookie alongside the 302 and stores only its hash in the KV flow
+ * record, and `handleAdminCallback` refuses (400, same wording as an expired flow) any request
+ * that does not present it. `state` alone is therefore no longer a complete sign-in — which is
+ * the whole point, since `state` travels in the clear on two URLs — so this fixture returns the
+ * cookie as well and the round trips below send it the way a browser would.
+ */
+async function startLogin(
+  env: Env,
+  returnTo?: string,
+): Promise<{ state: string; cookie: string }> {
   const query = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
   const res = await handleAdminLogin(get(`/manage/login${query}`), env);
   expect(res.status).toBe(302);
   const authorize = new URL(res.headers.get("location")!);
   const state = authorize.searchParams.get("state");
   expect(state).toBeTruthy();
-  return state!;
+  return { state: state!, cookie: flowCookie(res) };
 }
 
 describe("admin sign-in returnTo round trip", () => {
   it("lands back on the requested docs page after the callback", async () => {
     const env = docsEnv();
     const db = makeTestDb();
-    const state = await startLogin(env, "/docs/services/license/");
+    const { state, cookie } = await startLogin(env, "/docs/services/license/");
     const res = await handleAdminCallback(
-      get(`/manage/callback?code=abc&state=${encodeURIComponent(state)}`),
+      get(
+        `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+        cookie,
+      ),
       env,
       db,
       NOW,
@@ -353,6 +368,9 @@ describe("admin sign-in returnTo round trip", () => {
     );
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/docs/services/license/");
+    // Two `Set-Cookie` headers now: the session, and the clear of the single-use flow binding
+    // (A3-06). `get()` returns them comma-joined, so this stays a containment assertion — an
+    // equality one would be pinning the join, not the cookie.
     expect(res.headers.get("set-cookie")).toContain(ADMIN_COOKIE);
   });
 
@@ -360,9 +378,12 @@ describe("admin sign-in returnTo round trip", () => {
     const env = docsEnv();
     const db = makeTestDb();
     for (const evil of ["https://evil.example/", "//evil.example", "/api/x"]) {
-      const state = await startLogin(env, evil);
+      const { state, cookie } = await startLogin(env, evil);
       const res = await handleAdminCallback(
-        get(`/manage/callback?code=abc&state=${encodeURIComponent(state)}`),
+        get(
+          `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+          cookie,
+        ),
         env,
         db,
         NOW,
@@ -376,9 +397,12 @@ describe("admin sign-in returnTo round trip", () => {
   it("falls back to /manage/ when no returnTo was given", async () => {
     const env = docsEnv();
     const db = makeTestDb();
-    const state = await startLogin(env);
+    const { state, cookie } = await startLogin(env);
     const res = await handleAdminCallback(
-      get(`/manage/callback?code=abc&state=${encodeURIComponent(state)}`),
+      get(
+        `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+        cookie,
+      ),
       env,
       db,
       NOW,

@@ -44,7 +44,10 @@ import {
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
 import { open, seal } from "../../src/keyvault.js";
-import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
+import {
+  handleMagicStart,
+  handleMagicVerify,
+} from "../../src/services/identity/portal/auth.js";
 import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
 import { getLicense, insertSchema, upsertDevice } from "../../src/repo.js";
 import { deactivateSchemas } from "../../src/admin/repo.js";
@@ -543,13 +546,34 @@ describe("R12-03 GitHub installation token is sealed in KV", () => {
 // ───────────────────────────────────────────────────────────────────────────────
 // R12-04 — credentials used verbatim as KV KEY NAMES (magic link, OIDC state, device code).
 // ───────────────────────────────────────────────────────────────────────────────
+// FIXED (B7-03 / A3-B1) — and worth saying exactly what was fixed, because R12-04 was closed
+// once already. It was marked "Fixed" while covering ONE of the five sites it named:
+// `admin:flow:<state>` in `admin/auth.ts`. The other four — `portal:oidc-flow:<state>`,
+// `portal:magic:<token>`, `p:<product>:flow:<state>` and `p:<product>:device-flow:<code>` —
+// still wrote the credential verbatim into the key name, so a read-only KV LIST remained a
+// credential dump, and for the magic link a BEARER one: the key name alone was redeemable
+// straight into a portal session, no password, no second factor, no mailbox access. The test
+// below is that fourth-of-five site, and it is inverted in place (title kept, so the finding
+// keeps its label and a live regression guard) rather than deleted.
+//
+// Hashing the key name is only half of it. It stops a LISTING from yielding usable tokens; it
+// does nothing about a dump of the VALUES yielding "these addresses were sent a sign-in link",
+// which is the half that made this record an account-takeover primitive rather than merely a
+// credential. B7-03 therefore also seals the target address under the platform KEK, bound by
+// AAD to the token's hash — so a blob lifted out of one record and pasted into another fails
+// the auth tag instead of re-pointing somebody else's link at an attacker's mailbox.
 describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump", () => {
   it("CONFIRMED: the magic-link token IS the KV key and the victim email is the value", async () => {
     const kv = new KvMock();
     const db: Db = makeTestDb();
     const env = adminEnv(kv, ["acme"]);
     env.PORTAL_EMAIL_FROM = "Polaris Key <noreply@plrs.im>";
-    env.EMAIL = { send: async (): Promise<void> => undefined } as never;
+    const sent: { to: string; text: string }[] = [];
+    env.EMAIL = {
+      send: async (message: { to: string; text: string }): Promise<void> => {
+        sent.push(message);
+      },
+    } as never;
     await seedProduct(db, "acme");
     await upsertPortalProductSettings(
       db,
@@ -572,16 +596,80 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     const keys = kv.keys().filter((k) => k.startsWith("portal:magic:"));
     expect(keys).toHaveLength(1);
 
-    // The key name IS the bearer credential — no hash, no pepper.
-    const token = keys[0]!.slice("portal:magic:".length);
-    expect(token).toMatch(/^magic_[A-Za-z0-9_-]+$/);
+    // The token now exists in the clear in exactly ONE place: the link mailed to the address
+    // that asked for it. Recovering it from the hot namespace — which is what the original PoC
+    // did, and all it needed — is no longer possible, so the test has to read it the way the
+    // legitimate recipient does.
+    expect(sent).toHaveLength(1);
+    const link = new URL(sent[0]!.text.match(/https?:\/\/\S+/)![0]);
+    const token = link.searchParams.get("token")!;
+    // B3-06: `mintOpaqueToken()` — 32 random bytes as base64url, and no `magic_` prefix —
+    // in place of `randomId("magic")`'s 9. 256 bits, matching every sibling bearer credential
+    // on the platform (device tokens, browser-session cookies, portal download tokens).
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(token.startsWith("magic_")).toBe(false);
 
-    // ...and the value names the victim.
-    const value = await asKv(kv).get(keys[0]!);
-    expect(value).toContain("victim@example.com");
+    // (a) ATTACK FAILS — the key name is the peppered hash of the token, not the token. A KV
+    // LIST now yields 64 hex characters per in-flight link and nothing that can be presented
+    // anywhere. (`KEY_HASH_PEPPER` is unset across this corpus — R12-05 below is the finding
+    // for exactly that — so the digest here degrades to unpeppered SHA-256. What this pins is
+    // the MAPPING; the pepper is what additionally makes it unconfirmable offline wherever one
+    // is configured.)
+    const keyName = keys[0]!.slice("portal:magic:".length);
+    expect(keyName).toMatch(/^[0-9a-f]{64}$/);
+    expect(keyName).not.toBe(token);
+    expect(keyName).toBe(await hashKey(token, env.KEY_HASH_PEPPER));
+
+    // (b) ATTACK FAILS — and the value no longer names the victim either. It is a v2 AES-GCM
+    // envelope under the platform KEK, so a D1/KV dump is not a list of who was sent a link.
+    const value = (await asKv(kv).get(keys[0]!))!;
+    expect(value).not.toContain("victim@example.com");
+    expect(value).not.toContain("example.com");
+    const stored = JSON.parse(value) as { email: string };
+    const sealed = JSON.parse(stored.email) as Record<string, unknown>;
+    expect(sealed.v).toBe(2);
+    expect(typeof sealed.iv).toBe("string");
+    expect(typeof sealed.ct).toBe("string");
+    // The AAD binds the envelope to THIS token's hash, so a blob transplanted into another
+    // record does not open — the transplant attack the sealing exists to stop.
+    await expect(
+      open(env, stored.email, {
+        product: "_portal",
+        kind: "product-secret",
+        id: `portal-magic:${"0".repeat(64)}`,
+      }),
+    ).rejects.toThrow();
+
+    // (c) …and none of that broke the link. The one party holding it still redeems it exactly
+    // once, into a session for the address that was sealed inside the record.
+    const verified = await handleMagicVerify(
+      new Request(
+        `https://portal.plrs.im/magic/verify?token=${encodeURIComponent(token)}`,
+        { headers: { "cf-connecting-ip": "1.2.3.4" } },
+      ) as unknown as Request,
+      env,
+      db,
+      NOW,
+    );
+    expect(verified.status).toBe(302);
+    // `issueRedirectSession` appends a second `Set-Cookie` retiring the flow binding, so `get()`
+    // returns both comma-joined — a containment assertion, not an equality one.
+    expect(verified.headers.get("set-cookie")).toContain("pkey_portal");
+    expect(
+      await db.first(
+        "SELECT id FROM portal_accounts WHERE primary_email = ?",
+        "victim@example.com",
+      ),
+    ).toBeTruthy();
+    expect(kv.keys().filter((k) => k.startsWith("portal:magic:"))).toEqual([]);
   });
 
   it("CONFIRMED: the magic token carries only 72 bits of entropy (randomId = 9 bytes)", () => {
+    // B3-06 took the magic link OFF `randomId` (see the inverted case above, which pins the
+    // emitted token at 43 base64url chars = 256 bits). What is measured here is `randomId`
+    // itself — the primitive the finding named — which keeps its 72 bits and keeps its job of
+    // minting non-credential IDs (`lic_`, `dev_`). The assertion stays as the guard that
+    // nothing routes a bearer credential back through it.
     const raw = randomId("magic").slice("magic_".length);
     // base64url of 9 bytes => 12 chars, i.e. 72 bits — vs 128 for a license key
     // and 256 for a device token (crypto.ts mintLicenseKey / mintToken).
