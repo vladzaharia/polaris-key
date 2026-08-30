@@ -54,7 +54,6 @@ export {
   getTier,
   insertKey,
   insertLicense,
-  insertSchema,
   listDevicesByLicense,
   listKeysByLicense,
   listLicenseProfiles,
@@ -67,6 +66,7 @@ export {
   setFingerprintPolicy,
   setKeyStatus,
   setLicenseProfiles,
+  stmtInsertSchema,
   touchKey,
   upsertDevice,
 } from "../repo.js";

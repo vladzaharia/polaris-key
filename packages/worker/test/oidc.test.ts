@@ -76,9 +76,9 @@ describe("OIDC activation", () => {
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
 
-    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    const r1 = await activateFromIdentity(env, db, product, identity(), NOW);
     expect("licenseId" in r1).toBe(true);
-    const r2 = await activateFromIdentity(db, product, identity(), NOW);
+    const r2 = await activateFromIdentity(env, db, product, identity(), NOW);
     expect(r2).toEqual(r1);
   });
 
@@ -89,9 +89,10 @@ describe("OIDC activation", () => {
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
 
-    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    const r1 = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r1)) throw new Error("expected license");
     const r2 = await activateFromIdentity(
+      env,
       db,
       product,
       identity({
@@ -130,7 +131,7 @@ describe("OIDC activation", () => {
     await seedProduct(db, "djdl");
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
-    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    const r1 = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r1)) throw new Error("expected license");
     await db.run(
       "UPDATE licenses SET status = ? WHERE product = ? AND id = ?",
@@ -138,7 +139,13 @@ describe("OIDC activation", () => {
       "djdl",
       r1.licenseId,
     );
-    const disabled = await activateFromIdentity(db, product, identity(), NOW);
+    const disabled = await activateFromIdentity(
+      env,
+      db,
+      product,
+      identity(),
+      NOW,
+    );
     expect(disabled).toEqual({ error: "license-unusable" });
 
     await db.run(
@@ -148,7 +155,13 @@ describe("OIDC activation", () => {
       "djdl",
       r1.licenseId,
     );
-    const expired = await activateFromIdentity(db, product, identity(), NOW);
+    const expired = await activateFromIdentity(
+      env,
+      db,
+      product,
+      identity(),
+      NOW,
+    );
     expect(expired).toEqual({ error: "license-unusable" });
   });
 
@@ -164,7 +177,7 @@ describe("OIDC activation", () => {
       "pro",
     );
     const product = (await loadProduct(env, db, "djdl"))!;
-    const r = await activateFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     await authorizeAndMint(env, db, product, r.licenseId, "dev-1", NOW);
     await expect(
@@ -179,6 +192,7 @@ describe("OIDC activation", () => {
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
     const r = await activateFromIdentity(
+      env,
       db,
       product,
       identity({ sub: "other", groups: ["randos"] }),
@@ -196,7 +210,7 @@ describe("OIDC activation", () => {
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
 
-    const r = await activateFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     const token = await authorizeAndMint(
       env,

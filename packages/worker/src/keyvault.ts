@@ -62,9 +62,21 @@ function b64Decode(s: string): Uint8Array {
   return out;
 }
 
+/**
+ * The slot a ciphertext belongs to. `kind` is a CLOSED set on purpose: it is the namespace
+ * separator inside the AAD, so two slots may only share an AAD if they share a kind.
+ *
+ * `"managed-secret"` exists because they once did (ADJ-03). Catalog-declared managed values were
+ * sealed as `kind: "product-secret"` with `id: "managed:" + key`, and a per-product secret is
+ * sealed as `kind: "product-secret"` with `id: name` — so a product secret literally NAMED
+ * `managed:<key>` produced a byte-identical AAD to the managed value for catalog key `<key>`,
+ * and either ciphertext would open in the other's slot. The separation was lexical (a prefix
+ * nobody enforced) where it needed to be structural. Managed values now carry their own kind and
+ * a bare `id`, which no `product-secret` id can collide with whatever it is called.
+ */
 export interface SealContext {
   product: string;
-  kind: "signing-key" | "product-secret";
+  kind: "signing-key" | "product-secret" | "managed-secret";
   id: string;
 }
 

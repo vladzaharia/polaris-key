@@ -50,7 +50,6 @@ export {
 export {
   countLicensesUsingProfile,
   countLicensesUsingTier,
-  deactivateSchemas,
   deleteProfile,
   deleteTier,
   listLicenses,
@@ -59,6 +58,7 @@ export {
   nextSchemaVersion,
   patchLicense,
   setLicenseStatus,
+  stmtDeactivateSchemas,
   upsertProfile,
   upsertTier,
 } from "../admin/repo.js";

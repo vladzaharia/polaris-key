@@ -67,6 +67,7 @@ import {
   readBody,
 } from "../lib/respond.js";
 import { productView } from "../lib/shape.js";
+import { resealManagedValue } from "../lib/managedSecrets.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
  *  an error message. Reuses the catalog compiler so manual schema is validated like a publish. */
@@ -440,8 +441,9 @@ const SEALED_TABLES = [
  * a config document with a missing secret, not as an error.)
  *
  * Both tables are keyed `(product, id)` and store `JSON.stringify(ManagedPayload)` with sealed
- * values under `config` / `secrets`. The AAD is `…:product-secret:managed:<key>`, exactly as
- * `admin/lib/managedSecrets.ts` writes it.
+ * values under `config` / `secrets`. The AAD belongs to `admin/lib/managedSecrets.ts` and is
+ * built there — `resealManagedValue` is what this pass calls, so the sweep cannot fall behind a
+ * change to the context (it did once: ADJ-03 moved managed values off `kind: "product-secret"`).
  */
 const MANAGED_PAYLOAD_TABLES = [
   { table: "profiles", column: "payload_json" },
@@ -688,17 +690,17 @@ async function resealSweep(
       let rewritten = 0;
       for (const leaf of leaves) {
         if (leaf.kekId === active) continue;
-        const ctx = {
-          product: row.product,
-          kind: "product-secret" as const,
-          id: `managed:${leaf.key}`,
-        };
         try {
-          const plaintext = await open(env, leaf.value, ctx);
-          const next = await seal(env, plaintext, ctx);
-          if ((await open(env, next, ctx)) !== plaintext)
-            throw new Error("re-sealed value did not round-trip");
-          payload![leaf.bucket]![leaf.key]!.value = next;
+          // The AAD is `managedSecrets.ts`'s to build, not this sweep's to reconstruct — it
+          // moved once already (ADJ-03) and a second copy of the spelling here is how the two
+          // drift apart. `resealManagedValue` also reads the pre-ADJ-03 AAD, so a rotation
+          // finds the older envelopes instead of reporting them as unopenable.
+          payload![leaf.bucket]![leaf.key]!.value = await resealManagedValue(
+            env,
+            row.product,
+            leaf.key,
+            leaf.value,
+          );
           rewritten++;
         } catch (e) {
           failures.push({

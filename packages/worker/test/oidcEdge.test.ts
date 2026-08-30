@@ -110,8 +110,9 @@ describe("activateFromIdentity", () => {
   });
 
   it("is idempotent on the OIDC subject", async () => {
-    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    const r1 = await activateFromIdentity(env, db, product, identity(), NOW);
     const r2 = await activateFromIdentity(
+      env,
       db,
       product,
       identity({ name: "Changed Name" }),
@@ -124,6 +125,7 @@ describe("activateFromIdentity", () => {
 
   it("denies an identity whose groups grant nothing", async () => {
     const r = await activateFromIdentity(
+      env,
       db,
       product,
       identity({ sub: "x", groups: ["randos"] }),
@@ -133,7 +135,7 @@ describe("activateFromIdentity", () => {
   });
 
   it("selects the tier from the first matching group + stamps expiry", async () => {
-    const r = await activateFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     const lic = await getLicense(db, "djdl", r.licenseId);
     expect(lic?.tier_id).toBe("pro");
@@ -142,6 +144,7 @@ describe("activateFromIdentity", () => {
 
   it("leaves expiry null when the matched group has no tier", async () => {
     const r = await activateFromIdentity(
+      env,
       db,
       product,
       identity({ sub: "adminuser", groups: ["admin"] }),
@@ -154,7 +157,7 @@ describe("activateFromIdentity", () => {
   });
 
   it("bakes provisioning overrides into the new license", async () => {
-    const r = await activateFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     const lic = await getLicense(db, "djdl", r.licenseId);
     const ov = JSON.parse(lic!.overrides_json!) as ManagedPayload;
@@ -167,8 +170,10 @@ describe("activateFromIdentity", () => {
 
 describe("applyProvisioning", () => {
   let db: SqliteDb;
+  let env: Env;
   beforeEach(async () => {
     db = makeTestDb();
+    env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     await seedOidc(db);
   });
@@ -176,6 +181,7 @@ describe("applyProvisioning", () => {
   it("fires only when the claim is present and truthy", async () => {
     const p = emptyPayload();
     await applyProvisioning(
+      env,
       db,
       "djdl",
       identity({ claims: { sub: "x" } }),
@@ -189,6 +195,7 @@ describe("applyProvisioning", () => {
   it("skips a claim that is explicitly false", async () => {
     const p = emptyPayload();
     await applyProvisioning(
+      env,
       db,
       "djdl",
       identity({ claims: { sub: "x", remnawaveSub: false } }),
@@ -205,7 +212,7 @@ describe("applyProvisioning", () => {
       "https://evil.example/{claim}",
     );
     const p = emptyPayload();
-    await applyProvisioning(db, "djdl", identity(), p, NOW);
+    await applyProvisioning(env, db, "djdl", identity(), p, NOW);
     // The entitlement still applies, but the disallowed secret is dropped.
     expect(p.entitlements.polarisVpn?.value).toBe(true);
     expect(p.secrets["proxy.subscriptionUrl"]).toBeUndefined();
@@ -214,6 +221,7 @@ describe("applyProvisioning", () => {
   it("URL-encodes the claim value into the secret URL", async () => {
     const p = emptyPayload();
     await applyProvisioning(
+      env,
       db,
       "djdl",
       identity({ claims: { sub: "x", remnawaveSub: "a/b c" } }),
@@ -313,7 +321,7 @@ describe("handleAuthPoll states", () => {
   });
 
   it("returns ready with a token once the license is set, then consumes the flow", async () => {
-    const r = await activateFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     await putFlow("s3", { licenseId: r.licenseId });
     const body = (await (await poll("s3")).json()) as {
@@ -364,7 +372,7 @@ describe("handleAuthPoll states", () => {
   });
 
   it("polls a JSON device flow and mints through the shared authorizer", async () => {
-    const r = await activateFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     await putFlow("oauth-state", {
       licenseId: r.licenseId,
@@ -488,7 +496,7 @@ describe("authorizeAndMint", () => {
     await seedProduct(db, "djdl");
     await seedOidc(db);
     const product = (await loadProduct(env, db, "djdl"))!;
-    const r = await activateFromIdentity(db, product, identity(), NOW);
+    const r = await activateFromIdentity(env, db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     const token = await authorizeAndMint(
       env,

@@ -599,9 +599,16 @@ describe("R3-03 free-license farming", () => {
     const first = (await (await enroll(MACHINE, "dev-A")).json()) as {
       license: { id: string };
     };
-    const claim = await activateFromIdentity(h.db, h.product, identity, NOW, {
-      enrolledLicenseId: first.license.id,
-    });
+    const claim = await activateFromIdentity(
+      h.env,
+      h.db,
+      h.product,
+      identity,
+      NOW,
+      {
+        enrolledLicenseId: first.license.id,
+      },
+    );
     expect(claim).toMatchObject({ merged: "claimed" });
     expect(
       (await getLicense(h.db, "djdl", first.license.id))?.enroll_hwid,
@@ -618,7 +625,7 @@ describe("R3-03 free-license farming", () => {
     // The migrate arm: give the identity a second licence to merge INTO, retire the enrolled
     // row through the merge path, and confirm the machine still cannot enrol.
     const other = { ...identity, sub: "user-2", email: "u2@example.com" };
-    await activateFromIdentity(h.db, h.product, other, NOW);
+    await activateFromIdentity(h.env, h.db, h.product, other, NOW);
     const third = await enroll(MACHINE, "dev-C");
     expect(third.status).toBe(403);
 
@@ -644,6 +651,7 @@ describe("R3-03 free-license farming", () => {
 
     // The OIDC path on the SAME tier agrees — the two paths no longer diverge.
     const viaOidc = await activateFromIdentity(
+      h.env,
       h.db,
       h.product,
       {

@@ -124,6 +124,14 @@
             "properties": { "kind": { "const": "config" } },
             "required": ["kind"]
           }
+        },
+        {
+          "$comment": "secret: true is a category error on a flag entry — a flag's value is an entitlement, and entitlements are never sealed.",
+          "if": {
+            "properties": { "kind": { "const": "flag" } },
+            "required": ["kind"]
+          },
+          "then": { "properties": { "secret": { "const": false } } }
         }
       ]
     }

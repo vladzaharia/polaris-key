@@ -3,12 +3,10 @@
  * the active-catalog loader used for value validation + redaction.
  */
 
-import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
 import {
   listDevicesByLicense,
-  getActiveSchema,
   listLicenseProfiles,
   getProductSyncState,
   type LicenseRow,
@@ -94,19 +92,12 @@ function syncStateView(
   };
 }
 
-/** Load + compile a product's active catalog (for value validation). Null if none/invalid. */
-export async function loadCatalog(
-  db: Db,
-  product: string,
-): Promise<Catalog | null> {
-  const row = await getActiveSchema(db, product);
-  if (!row) return null;
-  try {
-    return new Catalog(JSON.parse(row.catalog_json));
-  } catch {
-    return null;
-  }
-}
+/** Load a product's active catalog (for value validation). Null if none/invalid.
+ *
+ *  Core's `activeCatalog` under its admin-side name: the document prune reads the catalog
+ *  through the same function, so "no active row" and "unparseable row" can never come to mean
+ *  one thing on the delivery path and another on the console's. */
+export { activeCatalog as loadCatalog } from "../../core/payload.js";
 
 /** The list/detail summary projection of a license row (with derived key + device counts). */
 export async function licenseSummary(

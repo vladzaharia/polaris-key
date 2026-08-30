@@ -332,6 +332,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
       }),
     );
     const r = await activateFromIdentity(
+      ctx.env,
       ctx.db,
       ctx.product,
       { sub: "victim", groups: ["family"], claims: { sub: "victim" } },
@@ -1067,6 +1068,7 @@ describe("R8-05 claim trust", () => {
     ] as unknown[]) {
       const payload = { config: {}, secrets: {}, entitlements: {} };
       await applyProvisioning(
+        ctx.env,
         ctx.db,
         "djdl",
         { sub: "u", groups: [], claims: { isPro: claimVal } },
@@ -1083,6 +1085,7 @@ describe("R8-05 claim trust", () => {
     for (const claimVal of [true, "abc123"] as unknown[]) {
       const payload = { config: {}, secrets: {}, entitlements: {} };
       await applyProvisioning(
+        ctx.env,
         ctx.db,
         "djdl",
         { sub: "u", groups: [], claims: { isPro: claimVal } },
@@ -1196,6 +1199,7 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
     // FIXED: an unparseable group map grants nothing instead of throwing.
     expect(
       await activateFromIdentity(
+        ctx.env,
         ctx.db,
         ctx.product,
         { sub: "u", groups: ["family"], claims: {} },
@@ -1221,6 +1225,7 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
     );
     // FIXED: an unparseable entitlement value drops that hook, no exception.
     const r = await activateFromIdentity(
+      ctx.env,
       ctx.db,
       ctx.product,
       { sub: "u", groups: ["family"], claims: { sub: "u" } },
@@ -1249,6 +1254,7 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
     );
     const payload = { config: {}, secrets: {}, entitlements: {} };
     await applyProvisioning(
+      ctx.env,
       ctx.db,
       "djdl",
       { sub: "u", groups: [], claims: { sub: "u" } },
@@ -1276,6 +1282,7 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
     );
     const payload = { config: {}, secrets: {}, entitlements: {} };
     await applyProvisioning(
+      ctx.env,
       ctx.db,
       "djdl",
       { sub: "u", groups: [], claims: { sub: "u" } },
@@ -1463,6 +1470,7 @@ describe("R8 refuted", () => {
     );
     const payload = { config: {}, secrets: {}, entitlements: {} };
     await applyProvisioning(
+      ctx.env,
       ctx.db,
       "djdl",
       { sub: "u", groups: [], claims: { s: "@evil.test/x" } },
@@ -1477,6 +1485,7 @@ describe("R8 refuted", () => {
 
   it("REFUTED: /auth/poll cannot mint on a license that is disabled or expired", async () => {
     const r = await activateFromIdentity(
+      ctx.env,
       ctx.db,
       ctx.product,
       { sub: "u", groups: ["family"], claims: {} },
@@ -1536,6 +1545,7 @@ describe("R8 refuted", () => {
     );
     const other = (await loadProduct(ctx.env, ctx.db, "other"))!;
     const r = await activateFromIdentity(
+      ctx.env,
       ctx.db,
       ctx.product,
       { sub: "u", groups: ["family"], claims: {} },

@@ -24,7 +24,6 @@
 export {
   getActiveSchema,
   getProduct,
-  insertSchema,
   setAutoIssuePolicy,
   setFingerprintPolicy,
   setServices,
@@ -44,10 +43,10 @@ export {
 export {
   countLicensesUsingProfile,
   countLicensesUsingTier,
-  deactivateSchemas,
   listProfiles,
   listTiers,
   nextSchemaVersion,
+  stmtDeactivateSchemas,
 } from "../admin/repo.js";
 
 /**

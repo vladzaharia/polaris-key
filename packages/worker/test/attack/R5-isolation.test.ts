@@ -218,6 +218,7 @@ describe("R5-01 cross-tenant license injection by unverified email", () => {
     // `mapClaims` (oidc.ts:676) never looks at `email_verified`, and activateFromIdentity
     // writes the claim straight into `licenses.email`.
     const minted = await activateFromIdentity(
+      e,
       db,
       evilco,
       {
@@ -336,6 +337,7 @@ describe("R5-02 cross-issuer OIDC subject collision", () => {
     // EVILCO runs its OWN issuer, so it chooses its own subject namespace. It picks "1000".
     // Note the email deliberately does NOT match: this is purely the `sub` join.
     const minted = await activateFromIdentity(
+      e,
       db,
       evilco,
       {

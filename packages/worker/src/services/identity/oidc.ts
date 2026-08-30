@@ -27,7 +27,13 @@ import {
   ID_TOKEN_MAX_AGE,
 } from "./idToken.js";
 import type { ManagedEntry } from "@polaris-key/protocol";
-import type { ManagedPayload } from "../../core/payload.js";
+import {
+  activeCatalog,
+  isManagedSecretKey,
+  parsePayload,
+  sealManagedValue,
+  type ManagedPayload,
+} from "../../core/payload.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // R9-01: the manifest validator's issuer rule, applied again at the SINK. Ingest-only
 // validation would leave every `oidc_config` row written before it landed (or by any future
@@ -393,9 +399,20 @@ async function rateLimited(
 }
 
 // ── identity mapping + provisioning ──────────────────────────────────────────
-/** Apply provisioning hooks (verified claim -> entitlement + secret) into a payload.
- *  `now` (epoch seconds) is stamped as `updatedAt` on every entry written. */
+/**
+ * Apply provisioning hooks (verified claim -> entitlement + secret) into a payload.
+ * `now` (epoch seconds) is stamped as `updatedAt` on every entry written.
+ *
+ * `env` is here for R12-02. The secret this writes is a real product secret — a subscription
+ * URL with a verified claim interpolated into it — and it lands in `licenses.overrides_json`,
+ * the same column `applyOverrides` seals before writing. It used to land there in PLAINTEXT,
+ * because sealing was added at the console path and this writer was never brought along; a
+ * read-only D1 dump therefore yielded every OIDC-provisioned secret in the clear while the
+ * admin-authored value for the very same catalog key was ciphertext. Same column, same key,
+ * same rule.
+ */
 export async function applyProvisioning(
+  env: Env,
   db: Db,
   product: string,
   identity: OidcIdentity,
@@ -403,6 +420,11 @@ export async function applyProvisioning(
   now: number,
 ): Promise<void> {
   const hooks = await getProvisioning(db, product);
+  if (hooks.length === 0) return;
+  // Resolved ONCE per call, not per hook: `isManagedSecretKey` is a catalog lookup, and
+  // re-reading `product_schema` for every row would put an unbounded number of D1 reads on
+  // the sign-in path for no new information.
+  const catalog = await activeCatalog(db, product);
   for (const h of hooks) {
     const claimVal = identity.claims[h.claim];
     if (!claimEnables(claimVal)) continue;
@@ -438,18 +460,52 @@ export async function applyProvisioning(
       } catch {
         continue;
       }
+      // Seal exactly as `admin/lib/overrides.ts` does — same helper, same AAD, so the console
+      // and the sign-in path write interchangeable envelopes for one catalog key and either
+      // can rotate the other's value. The catalog-unavailable arm FAILS CLOSED (seal anyway),
+      // which costs nothing: this bucket is `secrets`, `validatePayload` only lets a
+      // `kind: "secret"` entry out of it, and `isManagedSecretKey` is true for every such
+      // entry — so any value that could ever be DELIVERED is one the catalog would have told
+      // us to seal. Refusing to classify is not a reason to write plaintext.
+      const value =
+        !catalog || isManagedSecretKey(catalog, h.secret_key)
+          ? await sealManagedValue(env, product, h.secret_key, url)
+          : url;
       payload.secrets[h.secret_key] = {
         state: "hidden",
-        value: url,
+        value,
         updatedAt: now,
       };
     }
   }
 }
 
+/**
+ * Overlay a sign-in's provisioning output onto whatever is already stored on the licence.
+ *
+ * Provisioning owns the keys its hooks name and NOTHING else, so the stored entry survives for
+ * every other key. `activateFromIdentity` used to start from an empty `ManagedPayload` and
+ * `UPDATE licenses SET overrides_json = ?` with it, which meant every OIDC sign-in silently
+ * discarded whatever an admin had set on that licence in the console — the operator's edit
+ * lasted exactly until the user next signed in, with no error and no audit row. The provisioned
+ * entries still WIN (they are spread last), because a hook re-evaluated against fresh verified
+ * claims is the newer statement about the keys it owns.
+ */
+function overlayProvisioned(
+  stored: ManagedPayload,
+  provisioned: ManagedPayload,
+): ManagedPayload {
+  return {
+    config: { ...stored.config, ...provisioned.config },
+    secrets: { ...stored.secrets, ...provisioned.secrets },
+    entitlements: { ...stored.entitlements, ...provisioned.entitlements },
+  };
+}
+
 /** Find or mint a license for an identity. Returns the licenseId, or an error if the
  *  identity's groups don't grant entitlement. Idempotent on the OIDC subject. */
 export async function activateFromIdentity(
+  env: Env,
   db: Db,
   product: Product,
   identity: OidcIdentity,
@@ -493,12 +549,12 @@ export async function activateFromIdentity(
     expiresAt = tierExpiresAt(await getTier(db, product.slug, tierId), now);
   }
 
-  const overrides: ManagedPayload = {
+  const provisioned: ManagedPayload = {
     config: {},
     secrets: {},
     entitlements: {},
   };
-  await applyProvisioning(db, product.slug, identity, overrides, now);
+  await applyProvisioning(env, db, product.slug, identity, provisioned, now);
 
   // The enrolled license this device is currently on, if it is genuinely a claimable
   // anonymous one. Anything else (an admin or OIDC license) is left alone.
@@ -532,7 +588,9 @@ export async function activateFromIdentity(
     );
     await db.run(
       "UPDATE licenses SET overrides_json = ? WHERE product = ? AND id = ?",
-      JSON.stringify(overrides),
+      JSON.stringify(
+        overlayProvisioned(parsePayload(claimable.overrides_json), provisioned),
+      ),
       product.slug,
       claimable.id,
     );
@@ -594,7 +652,9 @@ export async function activateFromIdentity(
       JSON.stringify(identity.groups),
       tierId,
       expiresAt,
-      JSON.stringify(overrides),
+      JSON.stringify(
+        overlayProvisioned(parsePayload(existing.overrides_json), provisioned),
+      ),
       "oidc",
       now,
       product.slug,
@@ -619,7 +679,8 @@ export async function activateFromIdentity(
     activated_at: now,
     expires_at: expiresAt,
     max_offline_days: null,
-    overrides_json: JSON.stringify(overrides),
+    // A brand-new row has nothing to preserve, so the provisioning output IS the payload.
+    overrides_json: JSON.stringify(provisioned),
     channels_json: null,
     min_version: null,
     max_version: null,
@@ -1078,7 +1139,7 @@ export async function handleAuthCallback(
     ? ((await getDevice(db, product.slug, flow.deviceId))?.license_id ?? null)
     : null;
 
-  const result = await activateFromIdentity(db, product, identity, now, {
+  const result = await activateFromIdentity(env, db, product, identity, now, {
     enrolledLicenseId,
   });
   if ("error" in result) {

@@ -405,6 +405,7 @@ describe("merge on sign-in", () => {
   it("claims the enrolled license in place when the identity is new", async () => {
     const licenseId = await enrolledLicenseId();
     const result = await activateFromIdentity(
+      env,
       db,
       await product(),
       IDENTITY,
@@ -429,6 +430,7 @@ describe("merge on sign-in", () => {
   it("migrates devices when the identity already has a license", async () => {
     // The identity signs in on another machine first, creating its own license…
     const first = await activateFromIdentity(
+      env,
       db,
       await product(),
       IDENTITY,
@@ -441,6 +443,7 @@ describe("merge on sign-in", () => {
     expect(enrolled).not.toBe(identityLicense);
 
     const result = await activateFromIdentity(
+      env,
       db,
       await product(),
       IDENTITY,
@@ -462,6 +465,7 @@ describe("merge on sign-in", () => {
 
   it("leaves a non-enrolled license alone", async () => {
     const first = await activateFromIdentity(
+      env,
       db,
       await product(),
       IDENTITY,
@@ -470,6 +474,7 @@ describe("merge on sign-in", () => {
     const identityLicense = (first as { licenseId: string }).licenseId;
 
     const again = await activateFromIdentity(
+      env,
       db,
       await product(),
       IDENTITY,
@@ -514,9 +519,11 @@ describe("OIDC default tier", () => {
   it("still denies an unmapped identity when no default is configured", async () => {
     // The pre-existing behaviour must be byte-for-byte unchanged with the policy unset.
     const product = (await loadProduct(env, db, "djdl"))!;
-    expect(await activateFromIdentity(db, product, UNMAPPED, NOW)).toEqual({
-      error: "not-entitled",
-    });
+    expect(await activateFromIdentity(env, db, product, UNMAPPED, NOW)).toEqual(
+      {
+        error: "not-entitled",
+      },
+    );
   });
 
   it("falls back to the free tier when the product opts in", async () => {
@@ -526,7 +533,7 @@ describe("OIDC default tier", () => {
       "djdl",
     );
     const product = (await loadProduct(env, db, "djdl"))!;
-    const result = await activateFromIdentity(db, product, UNMAPPED, NOW);
+    const result = await activateFromIdentity(env, db, product, UNMAPPED, NOW);
     expect(result).toHaveProperty("licenseId");
 
     const row = await getLicense(
@@ -545,8 +552,10 @@ describe("OIDC default tier", () => {
       "djdl",
     );
     const product = (await loadProduct(env, db, "djdl"))!;
-    expect(await activateFromIdentity(db, product, UNMAPPED, NOW)).toEqual({
-      error: "not-entitled",
-    });
+    expect(await activateFromIdentity(env, db, product, UNMAPPED, NOW)).toEqual(
+      {
+        error: "not-entitled",
+      },
+    );
   });
 });

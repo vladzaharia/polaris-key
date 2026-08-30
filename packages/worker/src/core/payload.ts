@@ -68,16 +68,37 @@ export interface MergedPayload {
   tier: TierRow | null;
 }
 
+/**
+ * The product's ACTIVE catalog, or `null` when there is none to enforce — no active
+ * `product_schema` row, or a row whose `catalog_json` will not parse into a `Catalog`.
+ *
+ * ONE loader, deliberately: `prunePayloadAgainstCatalog` treats both of those as the same
+ * fail-closed answer (see below), and the admin surface's `loadCatalog` is this function under
+ * its old name. Two spellings of "read the active catalog" is how one of them acquires a
+ * different null policy from the other.
+ */
+export async function activeCatalog(
+  db: Db,
+  product: string,
+): Promise<Catalog | null> {
+  const schemaRow = await getActiveSchema(db, product);
+  if (!schemaRow) return null;
+  try {
+    return new Catalog(JSON.parse(schemaRow.catalog_json));
+  } catch {
+    return null;
+  }
+}
+
 /** The catalog's own declared defaults, the bottom layer of every merge. */
 async function catalogDefaultPayload(
   db: Db,
   product: string,
   now: number,
 ): Promise<string | null> {
-  const schemaRow = await getActiveSchema(db, product);
-  if (!schemaRow) return null;
+  const catalog = await activeCatalog(db, product);
+  if (!catalog) return null;
   try {
-    const catalog = new Catalog(JSON.parse(schemaRow.catalog_json));
     const payload: ManagedPayload = {
       config: {},
       secrets: {},
@@ -184,31 +205,61 @@ export function validatePayload(
 }
 
 /**
- * Run the merged payload through the product's ACTIVE catalog, or `null` when the catalog row
- * exists but cannot be parsed.
+ * Run the merged payload through the product's ACTIVE catalog, or `null` when there is no
+ * usable catalog: no active `product_schema` row, or a row that will not parse.
  *
  * The null is the fail-closed arm both document routes answer `500 catalog_unavailable` to: a
  * catalog we cannot interpret is a catalog we cannot enforce, and delivering the unpruned
- * payload would ship exactly what the catalog exists to refuse. A product with NO active schema
- * row is a different thing — nothing to validate against, payload passes through unchanged.
+ * payload would ship exactly what the catalog exists to refuse.
+ *
+ * ── WHY "NO ACTIVE SCHEMA ROW" IS THE SAME ANSWER (deliberate, not an oversight) ─────────────
+ *
+ * This used to `return payload` unpruned when there was no active schema, on the reasoning that
+ * there is "nothing to validate against". That is defensible for a payload assembled only out of
+ * catalog-derived layers — an empty catalog contributes no defaults, so there would be nothing
+ * to drop — and it is WRONG in composition, because the payload reaching here is NOT only
+ * catalog-derived:
+ *
+ *   • `services/identity/oidc.ts:applyProvisioning` writes `payload.secrets[<key>]` straight from
+ *     a `provisioning_config` row, with no catalog consulted at all;
+ *   • `licenses.overrides_json` / `profiles.payload_json` keep whatever a previous catalog
+ *     version, or a previous admin, put there.
+ *
+ * So "no active schema" is not "nothing to drop" — it is "everything, including a
+ * `delivery: "serverOnly"` secret, passes through into a signed document". And the state is
+ * reachable on purpose: `deactivateSchemas` runs on every catalog publish, and a product may
+ * simply never have published one. `delivery: "serverOnly"` is only true rather than descriptive
+ * because THIS prune enforces it (see `validatePayload`), which means the enforcement may not be
+ * conditional on a row that an ordinary admin action removes.
+ *
+ * The cost of the closed door is honest and bounded: a product with no catalog cannot serve a
+ * config document, and gets a 500 naming the reason instead of a silently over-broad document.
+ * A product that wants config publishes a catalog — an empty one is a legal catalog and prunes
+ * everything, which is the correct reading of "this product declares no keys".
  */
 export async function prunePayloadAgainstCatalog(
   db: Db,
   product: string,
   payload: ManagedPayload,
 ): Promise<ManagedPayload | null> {
-  const schemaRow = await getActiveSchema(db, product);
-  if (!schemaRow) return payload;
+  const catalog = await activeCatalog(db, product);
+  if (!catalog) return null;
   try {
-    return validatePayload(
-      payload,
-      new Catalog(JSON.parse(schemaRow.catalog_json)),
-    );
+    return validatePayload(payload, catalog);
   } catch {
     return null;
   }
 }
 
-/** Open sealed managed secrets in place (R12-02). Re-exported through Core so a service never
- *  imports the admin tree to mint its own document. */
-export { openManagedPayload } from "../admin/lib/managedSecrets.js";
+/** The managed-secret envelope helpers (R12-02), re-exported through Core so a service never
+ *  imports the admin tree to mint its own document — or to seal a value it writes. */
+export {
+  isManagedSecretKey,
+  openManagedPayload,
+  sealManagedValue,
+} from "../admin/lib/managedSecrets.js";
+
+/** Read one of the stored `ManagedPayload` JSON columns. Core-owned because the shape is
+ *  declared here: a writer that has to merge onto an existing row (Identity's sign-in, which
+ *  must not flatten an admin's overrides) needs the reader without importing the admin tree. */
+export { parsePayload } from "../admin/lib/redact.js";

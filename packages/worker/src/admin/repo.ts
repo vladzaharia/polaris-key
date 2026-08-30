@@ -4,7 +4,7 @@
 // the platform-product registry queries (products table) are the only intentionally
 // unscoped ones, and they are gated on PLATFORM_ADMIN before they're reached.
 
-import type { Db } from "../db/types.js";
+import type { Db, DbStatement } from "../db/types.js";
 import type {
   KeyRow,
   LicenseRow,
@@ -106,6 +106,24 @@ export async function deactivateSchemas(
     "UPDATE product_schema SET active = 0 WHERE product = ?",
     product,
   );
+}
+
+/**
+ * The deactivation half of a catalog publish, as a statement (for atomic batch).
+ *
+ * A publish is `deactivate every row` + `insert the new active row`, and run as two awaited
+ * statements it has a window in between where the product has NO active catalog. That window is
+ * not cosmetic: `core/payload.ts`'s prune is the only thing enforcing `delivery: "serverOnly"`,
+ * and with no active row it can only fail closed — so an isolate that dies between the two
+ * writes leaves every config document on the product answering 500 until someone republishes.
+ * Pairing this with `stmtInsertSchema` in one `db.batch([...])` makes the flip a single
+ * transaction, so the product goes from catalog vN straight to catalog vN+1.
+ */
+export function stmtDeactivateSchemas(product: string): DbStatement {
+  return {
+    sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
+    params: [product],
+  };
 }
 
 export async function nextSchemaVersion(

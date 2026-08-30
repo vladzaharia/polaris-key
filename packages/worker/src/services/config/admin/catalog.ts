@@ -16,15 +16,15 @@
 
 import { Catalog } from "@polaris-key/catalog";
 import { ErrorCode } from "../../../core/errors.js";
-import { getActiveSchema, insertSchema } from "../../../core/data.js";
+import { getActiveSchema, stmtInsertSchema } from "../../../core/data.js";
 import {
   adminJson,
   adminNotFound,
   audit,
-  deactivateSchemas,
   err,
   nextSchemaVersion,
   readBody,
+  stmtDeactivateSchemas,
 } from "../../../core/adminApi.js";
 import type { ConfigAdminContext } from "./index.js";
 
@@ -57,17 +57,24 @@ export async function handleCatalog(
       });
     }
     const version = await nextSchemaVersion(db, slug);
-    await deactivateSchemas(db, slug);
-    await insertSchema(db, {
-      product: slug,
-      catalog_version: version,
-      catalog_json: JSON.stringify({
-        schemaVersion: version,
-        entries: catalog.entries,
+    // ONE transaction, not two awaited writes. A crash between "deactivate every row" and
+    // "insert the new one" leaves the product with no active catalog at all, and the document
+    // prune (`core/payload.ts`) fails closed on exactly that state — so the half-applied publish
+    // is an outage, not a stale catalog. Batched, the product moves from vN to vN+1 or stays
+    // on vN.
+    await db.batch([
+      stmtDeactivateSchemas(slug),
+      stmtInsertSchema({
+        product: slug,
+        catalog_version: version,
+        catalog_json: JSON.stringify({
+          schemaVersion: version,
+          entries: catalog.entries,
+        }),
+        active: 1,
+        created_at: now,
       }),
-      active: 1,
-      created_at: now,
-    });
+    ]);
     await audit(
       db,
       slug,

@@ -35,11 +35,10 @@ export function redactPayload(
   // A config key flagged `secret` in the catalog is also redacted (value blanked, but its
   // state + updatedAt are preserved so the admin UI can still show change metadata).
   //
-  // R12-01 — this FAILS CLOSED. The catalog is mutable external state: it is null while a
-  // schema replacement or a manifest resync is between `deactivateSchemas` and `insertSchema`,
-  // null when `catalog_json` is unparseable, and a v2 catalog may legitimately drop a key or
-  // its `secret` flag. In every one of those cases the old code fell through to `: entry` and
-  // echoed the stored plaintext. An entry we cannot positively classify as non-secret is
+  // R12-01 — this FAILS CLOSED. The catalog is mutable external state: it is null for a product
+  // that has never published one, null when `catalog_json` is unparseable, and a v2 catalog may
+  // legitimately drop a key or its `secret` flag. In every one of those cases the old code fell
+  // through to `: entry` and echoed the stored plaintext. An entry we cannot positively classify as non-secret is
   // redacted, because the module's guarantee ("responses NEVER echo a stored secret value")
   // has to hold when the catalog is missing, not only when it agrees with us.
   const config: Record<string, ManagedEntry> = {};

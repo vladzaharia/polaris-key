@@ -143,6 +143,43 @@ describe("browser sessions", () => {
     expect(broken.status).toBe(500);
     expect(await broken.text()).toContain("catalog_unavailable");
   });
+
+  // WP-04: the OTHER half of the same hole. `GET /<p>/identity/session` failed closed on a
+  // MALFORMED catalog row but skipped the prune entirely when there was NO active row — the
+  // state `deactivateSchemas` leaves behind on every catalog publish and manifest resync. It
+  // now shares Core's `prunePayloadAgainstCatalog`, so both spellings of "no enforceable
+  // catalog" get the same 500 rather than an unvalidated document.
+  it("no active catalog row fails CLOSED too, not just a malformed one", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = makeEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const { key } = await seedLicenseWithKey(db, "djdl");
+
+    const login = await handleBrowserSessionLicense(
+      req("POST", "/djdl/identity/session/license", { body: { key } }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const cookie = login.headers.get("set-cookie")!;
+
+    await db.run(
+      "UPDATE product_schema SET active = 0 WHERE product = ?",
+      "djdl",
+    );
+    const res = await handleBrowserSession(
+      req("GET", "/djdl/identity/session", { cookie }),
+      env,
+      db,
+      product,
+      NOW + 1,
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("catalog_unavailable");
+  });
 });
 
 describe("a corrupt session record", () => {

@@ -16,20 +16,20 @@ import { audit, type AuditActor } from "../../core/adminApi.js";
 import {
   countLicensesUsingProfile,
   countLicensesUsingTier,
-  deactivateSchemas,
   getActiveSchema,
   getProduct,
-  insertSchema,
   listProfiles,
   listTiers,
   nextSchemaVersion,
   setAutoIssuePolicy,
   setFingerprintPolicy,
   setServices,
+  stmtDeactivateSchemas,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
   stmtInsertProfile,
   stmtInsertProvisioning,
+  stmtInsertSchema,
   stmtInsertTier,
 } from "../../core/ingest.js";
 import { getReleaseConfig, setReleaseAccess } from "./config.js";
@@ -425,14 +425,20 @@ export async function resyncRepo(
   // Screened + `serverOnly`-gated above, before the first write.
   if (catalogChanged) {
     const version = await nextSchemaVersion(db, slug);
-    await deactivateSchemas(db, slug);
-    await insertSchema(db, {
-      product: slug,
-      catalog_version: version,
-      catalog_json: nextCatalogJson,
-      active: 1,
-      created_at: now,
-    });
+    // One transaction, for the reason spelled out at the admin publish site: between the
+    // deactivate and the insert the product has NO active catalog, and the document prune
+    // fails closed on that state. A webhook-driven resync is exactly the caller most likely to
+    // be interrupted mid-flight, so the flip may not be two statements.
+    await db.batch([
+      stmtDeactivateSchemas(slug),
+      stmtInsertSchema({
+        product: slug,
+        catalog_version: version,
+        catalog_json: nextCatalogJson,
+        active: 1,
+        created_at: now,
+      }),
+    ]);
     updated.push("schema");
   }
 
