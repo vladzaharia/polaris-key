@@ -44,6 +44,7 @@ import {
   deletePortalAccount,
   type PortalArtifactRow,
   type PortalLicenseRow,
+  type PortalReleaseRow,
 } from "./repo.js";
 import {
   PORTAL_CSRF_HEADER,
@@ -267,6 +268,27 @@ function artifactAccess(artifact: PortalArtifactRow): string {
   if (artifact.access === "authenticated" || artifact.access === "licensed") {
     return artifact.access;
   }
+  return "public";
+}
+
+/**
+ * ADJ-02 — the same normalisation for `release_metadata.metadata_access`.
+ *
+ * The column has existed since 0007 and the portal is its only consumer, which read it into
+ * `PortalReleaseRow` and then ignored it: a product that had set its release METADATA to
+ * `licensed` still published every version, title, release note and source URL to any portal
+ * account that happened to be linked to the product. The finding's alternative was to delete
+ * the column; it is enforced instead, because `release_config.metadata_access` — which
+ * `releaseStoreStatements` copies into every row it writes — is the same operator switch that
+ * already governs `/update/version` and `/release/changelog`, and a portal that ignored it made
+ * the console's own setting a half-truth.
+ *
+ * `authenticated` is satisfied by reaching this code at all (there is no unauthenticated portal
+ * listing), so only `licensed` has anything left to check — exactly the shape `artifactAccess`
+ * is used in four lines below.
+ */
+function metadataAccess(release: PortalReleaseRow): string {
+  if (release.metadata_access === "licensed") return "licensed";
   return "public";
 }
 
@@ -646,6 +668,11 @@ async function handleReleases(
         );
         usableByProduct.set(release.product, usable);
       }
+      // ADJ-02. The whole entry is the metadata — version, title, notes and the upstream URL —
+      // so a `licensed` gate the caller does not satisfy withholds the ROW. Emitting it with
+      // the fields blanked would still disclose that the release exists and which version it
+      // is, which is the disclosure the column is set to prevent.
+      if (metadataAccess(release) === "licensed" && !usable) continue;
       const artifacts = await listPortalArtifacts(
         db,
         release.product,

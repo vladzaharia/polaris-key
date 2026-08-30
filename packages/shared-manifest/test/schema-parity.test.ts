@@ -184,6 +184,8 @@ function base(): Docs {
           kid: "ABC123",
           claimsTemplate: { iss: "TEAMID" },
           ttlSeconds: 3600,
+          requires: "licensed",
+          requiredEntitlement: "acmeVpn",
         },
       ],
     },
@@ -667,6 +669,26 @@ const MUTATIONS: Mutation[] = [
     file: "release",
     schema: "rejects",
     mutate: (d) => (mint(d).id = "bad id!"),
+  },
+  {
+    code: "invalid_edge_mint_id",
+    file: "release",
+    schema: "rejects",
+    // A6-08. `AppleMusic` is inside the old `ID_RE` and outside the mint ROUTE's
+    // `^[a-z0-9-]+$`, so ingest used to accept a recipe that no request could ever reach.
+    mutate: (d) => (mint(d).id = "AppleMusic"),
+  },
+  {
+    code: "invalid_edge_mint_requires",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (mint(d).requires = "licenced"),
+  },
+  {
+    code: "invalid_edge_mint_entitlement",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (mint(d).requiredEntitlement = "not a key!"),
   },
   {
     code: "invalid_edge_mint_kid",

@@ -1,0 +1,33 @@
+-- 0024 — per-recipe authorization for edge minting (A6-02 / B2-02).
+--
+-- `POST /<p>/config/mint/<id>/token` authenticated the CALLER — a device of this product, and,
+-- when the product runs License, one whose licence is usable — and then minted whatever recipe
+-- the path named. Nothing said which recipes a given caller may mint, so the two shapes below
+-- both worked:
+--
+--   * On a CONFIG-ONLY product `resolveRegistration` derives `open`, so anyone could register a
+--     device with no credential at all and then mint third-party-signed tokens (an Apple MusicKit
+--     developer token is the shipped instance) with the operator's key, at the operator's cost,
+--     under the operator's identity.
+--   * On a LICENSED product every usable licence could mint every recipe, so a free-tier device
+--     minted the recipe intended for a paid tier.
+--
+-- `requires` is the caller class a recipe demands and `required_entitlement` optionally names a
+-- catalog flag that must be present and truthy in the caller's merged payload.
+--
+-- The default is `licensed`, deliberately: every row that exists today was written before this
+-- column and carries no author intent, so it must FAIL CLOSED. A recipe that is genuinely open
+-- (or merely device-scoped) has to say so in the manifest, which is a reviewable diff; the
+-- alternative default would have silently preserved the finding for every already-registered
+-- product. `requires: 'licensed'` on a product that does not run License is a MISCONFIGURATION
+-- and the handler refuses it rather than passing — see `services/config/mint.ts`.
+--
+-- The enum is a CHECK rather than a code-side normalisation because, unlike
+-- `release_config.metadata_access`, there is no safe fallback to read an unrecognised value as:
+-- coercing garbage to `none` opens the recipe and coercing it to `licensed` breaks a
+-- config-only product. Refusing the write is the only answer that is wrong in neither direction.
+-- Both statements stay on ONE line each: the docs data-model generator
+-- (`packages/docs/scripts/gen-reference.mjs`) matches `ALTER TABLE <t> ADD COLUMN <c>` literally,
+-- so a wrapped ALTER silently omits the column from the published schema table.
+ALTER TABLE edge_mint_config ADD COLUMN requires TEXT NOT NULL DEFAULT 'licensed' CHECK (requires IN ('none', 'registered', 'licensed'));
+ALTER TABLE edge_mint_config ADD COLUMN required_entitlement TEXT;

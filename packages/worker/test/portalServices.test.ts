@@ -150,7 +150,13 @@ async function capabilities(
 async function seedRelease(
   db: ReturnType<typeof makeTestDb>,
   slug: string,
-  opts: { releaseId: string; version: string; artifactId: string },
+  opts: {
+    releaseId: string;
+    version: string;
+    artifactId: string;
+    /** `release_metadata.metadata_access` (ADJ-02). Defaults to the suite's `authenticated`. */
+    metadataAccess?: string;
+  },
 ): Promise<void> {
   await db.run(
     `INSERT INTO release_metadata
@@ -164,7 +170,7 @@ async function seedRelease(
     null,
     null,
     `https://github.com/acme/${slug}/releases/tag/v${opts.version}`,
-    "authenticated",
+    opts.metadataAccess ?? "authenticated",
     "authenticated",
     NOW,
     null,
@@ -391,6 +397,92 @@ describe("portal downloads listing", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ releases: [] });
+  });
+
+  // FIXED (ADJ-02). `release_metadata.metadata_access` has existed since 0007 and the portal
+  // listing was its only consumer — it read the column into `PortalReleaseRow` and then ignored
+  // it, so a product that had gated its release METADATA behind a licence still published every
+  // version, title, note and source URL to any linked portal account. The column is now
+  // ENFORCED (rather than deleted), on the same `usable` value the artifact rule beside it
+  // already uses.
+  describe("ADJ-02 release metadata_access", () => {
+    /** A linked account whose licence for `djdl` has expired: linked, but not USABLE. */
+    async function linkedButUnlicensed(): Promise<{
+      db: ReturnType<typeof makeTestDb>;
+      env: Env;
+      session: { cookie: string; csrf: string; accountId: string };
+    }> {
+      const db = makeTestDb();
+      const env = portalEnv();
+      await seedProduct(db, "djdl");
+      await seedLicenseWithKey(db, "djdl", { expiresAt: NOW - 1 });
+      await setProductServices(db, "djdl", { release: { enabled: true } });
+      const session = await portalSession(env, db);
+      return { db, env, session };
+    }
+
+    async function list(
+      env: Env,
+      db: ReturnType<typeof makeTestDb>,
+      session: { cookie: string },
+    ): Promise<Array<{ product: string; version: string }>> {
+      const res = await handlePortalApi(
+        req("GET", "/api/releases", { cookie: session.cookie }),
+        env,
+        db,
+        "/api/releases",
+        NOW,
+      );
+      expect(res.status).toBe(200);
+      return (
+        (await res.json()) as {
+          releases: Array<{ product: string; version: string }>;
+        }
+      ).releases;
+    }
+
+    it("withholds a `licensed` release from an account with no usable licence", async () => {
+      const { db, env, session } = await linkedButUnlicensed();
+      await seedRelease(db, "djdl", {
+        releaseId: "rel_1",
+        version: "1.2.3",
+        artifactId: "art_1",
+        metadataAccess: "licensed",
+      });
+      // Not merely blanked: the version and the release id are themselves the disclosure.
+      expect(await list(env, db, session)).toEqual([]);
+    });
+
+    it("still serves a `public` release to the same account (the column is the only difference)", async () => {
+      const { db, env, session } = await linkedButUnlicensed();
+      await seedRelease(db, "djdl", {
+        releaseId: "rel_1",
+        version: "1.2.3",
+        artifactId: "art_1",
+        metadataAccess: "public",
+      });
+      expect(await list(env, db, session)).toMatchObject([
+        { product: "djdl", version: "1.2.3" },
+      ]);
+    });
+
+    it("serves the `licensed` release once the account's licence is usable", async () => {
+      const db = makeTestDb();
+      const env = portalEnv();
+      await seedProduct(db, "djdl");
+      await seedLicenseWithKey(db, "djdl");
+      await setProductServices(db, "djdl", { release: { enabled: true } });
+      const session = await portalSession(env, db);
+      await seedRelease(db, "djdl", {
+        releaseId: "rel_1",
+        version: "1.2.3",
+        artifactId: "art_1",
+        metadataAccess: "licensed",
+      });
+      expect(await list(env, db, session)).toMatchObject([
+        { product: "djdl", version: "1.2.3" },
+      ]);
+    });
   });
 });
 

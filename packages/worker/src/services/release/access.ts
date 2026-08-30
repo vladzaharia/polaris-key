@@ -103,6 +103,62 @@ export function entitledSelectorFor(
 }
 
 /**
+ * Re-assert the version window once a MOVING selector has resolved to a concrete release
+ * (A5-03).
+ *
+ * `entitledSelectorFor` can only populate `version` for a PINNED selector, so
+ * `enforceReleaseAccess` evaluates the window for `/release/dl/2.0.0/…` and skips it entirely
+ * for `latest`, `stable` and a bare channel appcast — there is no version to check yet. That
+ * made the ceiling a property of the URL SHAPE rather than of the grant: a caller capped at
+ * 1.x was 403'd on the pinned path and handed the same out-of-window artifact by swapping one
+ * segment for `latest`.
+ *
+ * So the surfaces call this immediately after `resolveSelector`, with the version they actually
+ * resolved. It is a no-op unless this surface's effective mode is `entitled`, and it asks
+ * `entitledAccessCheck` the same question over the same rows — the answer is therefore the same
+ * `403 version_blocked` + `allowedRange` body the pinned path already returns, because clients
+ * parse that shape and a second one would be a second contract.
+ *
+ * The selector carries NO channel: the channel was decided before resolution, from what the
+ * caller asked for, and re-deriving it here from the resolved release would ask a different
+ * question than the one that was refused.
+ */
+export async function assertEntitledVersion(
+  env: Env,
+  db: Db,
+  product: Product,
+  cfg: ReleaseConfigRow,
+  kind: ReleaseKind,
+  resolvedVersion: string,
+  token: string | null,
+  now: number,
+): Promise<Response | null> {
+  if (accessModeFor(artifactPolicy(cfg), kind) !== "entitled") return null;
+  const decision = await entitledAccessCheck(
+    env,
+    db,
+    product,
+    token,
+    {
+      channel: null,
+      channelKind: null,
+      version: resolvedVersion.replace(/^v/, ""),
+    },
+    now,
+  );
+  if (decision.ok) return null;
+  if (decision.code === "version_blocked") {
+    return wireError(403, "version_blocked", {
+      allowedRange: decision.allowedRange,
+    });
+  }
+  if (decision.code === "channel_not_allowed") {
+    return wireError(403, "channel_not_allowed");
+  }
+  return wireError(401, "unauthorized");
+}
+
+/**
  * Enforce the effective access mode. Returns `null` when the request may proceed, or the
  * refusal to serve.
  */

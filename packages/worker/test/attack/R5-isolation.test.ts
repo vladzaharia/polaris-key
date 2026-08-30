@@ -27,6 +27,9 @@ import type { SqliteDb } from "../../src/db/sqlite.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
 import { handleActivate } from "../../src/services/license/activation.js";
 import { handleDevices } from "../../src/core/devices.js";
+import { handleRegister } from "../../src/core/register.js";
+import { SERVICES } from "../../src/mount.js";
+import { setServices } from "../../src/repo.js";
 import { handleMintToken } from "../../src/services/config/mint.js";
 import { activateFromIdentity } from "../../src/services/identity/oidc.js";
 import { handleAdminApi } from "../../src/admin/api.js";
@@ -614,12 +617,25 @@ describe("R5-05 no tenant-scoped admin role exists", () => {
 // R5-06 — edgeMint.ts:188-192: any licensed device of a product may mint ANY recipe id in
 // that product. Recipe access is not entitlement/tier gated. (Intra-tenant, not cross.)
 // ───────────────────────────────────────────────────────────────────────────────
+// FIXED (A6-02 / B2-02). `handleMintToken` asked ONE product-wide question — "is this a device
+// of this product, and, if the product runs License, is its licence usable" — and then minted
+// whichever recipe the path named. Migration 0024 gives every recipe its own `requires` and an
+// optional `required_entitlement`, defaulting to `licensed` so rows that predate the column fail
+// closed, and `authorizeMint` evaluates both between the auth block and the signing block.
 describe("R5-06 edge-mint recipes are not entitlement-gated", () => {
-  async function seedRecipe(db: Db, slug: string, id: string): Promise<void> {
+  const MINT_PEM =
+    "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----";
+
+  async function seedRecipe(
+    db: Db,
+    slug: string,
+    id: string,
+    over: { requires?: string; requiredEntitlement?: string | null } = {},
+  ): Promise<void> {
     await db.run(
       `INSERT INTO edge_mint_config
-         (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
+         (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template,requires,required_entitlement)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
       slug,
       id,
       "EdDSA",
@@ -629,26 +645,35 @@ describe("R5-06 edge-mint recipes are not entitlement-gated", () => {
       3600,
       "https://api.example.com",
       null,
+      over.requires ?? "licensed",
+      over.requiredEntitlement ?? null,
     );
   }
 
-  it("a free-tier device mints the premium recipe it was never granted", async () => {
-    const db = makeTestDb();
-    const e = env();
+  /** ACME with a mint key and a `free` tier, ready to activate against. */
+  async function mintable(db: SqliteDb, e: Env): Promise<Product> {
     await seedProduct(db, ACME);
-    await seedProductSecret(
-      db,
-      ACME,
-      "mintkey",
-      "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----",
-    );
+    await seedProductSecret(db, ACME, "mintkey", MINT_PEM);
     await seedTier(db, ACME, "free");
-    await seedRecipe(db, ACME, "premium-partner-api");
-    const acme = (await loadProduct(e, db, ACME))!;
+    return (await loadProduct(e, db, ACME))!;
+  }
 
+  async function freeTierToken(
+    db: SqliteDb,
+    e: Env,
+    acme: Product,
+    entitlements?: Record<string, unknown>,
+  ): Promise<string> {
     const { key } = await seedLicenseWithKey(db, ACME, {
       id: "lic_free",
       tierId: "free",
+      ...(entitlements
+        ? {
+            entitlements: entitlements as NonNullable<
+              Parameters<typeof seedLicenseWithKey>[2]
+            >["entitlements"],
+          }
+        : {}),
     });
     const act = await handleActivate(
       mkReq("POST", {
@@ -660,7 +685,20 @@ describe("R5-06 edge-mint recipes are not entitlement-gated", () => {
       acme,
       NOW,
     );
-    const token = ((await act.json()) as { token: string }).token;
+    expect(act.status).toBe(200);
+    return ((await act.json()) as { token: string }).token;
+  }
+
+  // INVERTED IN PLACE (A6-02). This test used to end `expect(res.status).toBe(200); // no tier
+  // / entitlement check anywhere on this path`. Same name, same attack, opposite verdict.
+  it("a free-tier device mints the premium recipe it was never granted", async () => {
+    const db = makeTestDb();
+    const e = env();
+    const acme = await mintable(db, e);
+    await seedRecipe(db, ACME, "premium-partner-api", {
+      requiredEntitlement: "premiumPartner",
+    });
+    const token = await freeTierToken(db, e, acme);
 
     const res = await handleMintToken(
       mkReq("POST", { authorization: `Bearer ${token}` }),
@@ -670,7 +708,180 @@ describe("R5-06 edge-mint recipes are not entitlement-gated", () => {
       "premium-partner-api",
       NOW,
     );
-    expect(res.status).toBe(200); // no tier / entitlement check anywhere on this path
+    expect(res.status).toBe(403);
+    expect(await res.text()).toContain("premiumPartner");
+  });
+
+  it("an entitlement stored FALSE is a denial, not a mention", async () => {
+    // The one arm a `key in map` test would get wrong: a tier that explicitly withholds the
+    // capability still carries the key, with a falsy value.
+    const db = makeTestDb();
+    const e = env();
+    const acme = await mintable(db, e);
+    await seedRecipe(db, ACME, "premium-partner-api", {
+      requiredEntitlement: "premiumPartner",
+    });
+    const token = await freeTierToken(db, e, acme, {
+      premiumPartner: { state: "enforced", value: false, updatedAt: NOW },
+    });
+
+    const res = await handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      e,
+      db,
+      acme,
+      "premium-partner-api",
+      NOW,
+    );
+    expect(res.status).toBe(403);
+  });
+
+  // REGRESSION GUARD. The gate must not cost a legitimately entitled caller anything — a mint
+  // route that refuses the licences it was built for is a worse outage than the finding.
+  it("a legitimately entitled licensed device still mints", async () => {
+    const db = makeTestDb();
+    const e = env();
+    const acme = await mintable(db, e);
+    await seedRecipe(db, ACME, "premium-partner-api", {
+      requiredEntitlement: "premiumPartner",
+    });
+    const token = await freeTierToken(db, e, acme, {
+      premiumPartner: { state: "enforced", value: true, updatedAt: NOW },
+    });
+
+    const res = await handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      e,
+      db,
+      acme,
+      "premium-partner-api",
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()) as { token: string }).toHaveProperty("token");
+  });
+
+  it("an anonymously-registered device on a config-only product cannot mint", async () => {
+    // The expensive half of A6-02: a config-only product derives `open` registration, so the
+    // device token below cost the caller nothing — no licence key, no identity, one
+    // credential-free POST. `requires` defaults to `licensed`, which a product that does not
+    // run License cannot evaluate, so the recipe is a MISCONFIGURATION and is refused rather
+    // than silently falling through to the weaker check.
+    const db = makeTestDb();
+    const e = env();
+    await seedProduct(db, ACME);
+    await seedProductSecret(db, ACME, "mintkey", MINT_PEM);
+    await setServices(
+      db,
+      ACME,
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+        release: { enabled: false },
+        update: { enabled: false },
+        identity: { enabled: false },
+      }),
+      "admin",
+      NOW,
+    );
+    await seedRecipe(db, ACME, "premium-partner-api");
+    const acme = (await loadProduct(e, db, ACME))!;
+    expect(acme.registration).toBe("open");
+
+    const reg = await handleRegister(
+      mkReq("POST", { "x-pkey-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH" }),
+      e,
+      db,
+      acme,
+      NOW,
+      SERVICES,
+    );
+    expect(reg.status).toBe(200);
+    const token = ((await reg.json()) as { token: string }).token;
+
+    const res = await handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      e,
+      db,
+      acme,
+      "premium-partner-api",
+      NOW,
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("misconfigured");
+  });
+
+  it("…and still mints once the recipe DECLARES that a device token is its whole gate", async () => {
+    // The capability the fix must not remove: edge minting is how a catalog secret with
+    // `delivery: "edgeMint"` reaches a config-only runtime (D-08). It just has to be declared.
+    const db = makeTestDb();
+    const e = env();
+    await seedProduct(db, ACME);
+    await seedProductSecret(db, ACME, "mintkey", MINT_PEM);
+    await setServices(
+      db,
+      ACME,
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+        release: { enabled: false },
+        update: { enabled: false },
+        identity: { enabled: false },
+      }),
+      "admin",
+      NOW,
+    );
+    await seedRecipe(db, ACME, "open-recipe", { requires: "registered" });
+    const acme = (await loadProduct(e, db, ACME))!;
+
+    const reg = await handleRegister(
+      mkReq("POST", { "x-pkey-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH" }),
+      e,
+      db,
+      acme,
+      NOW,
+      SERVICES,
+    );
+    const token = ((await reg.json()) as { token: string }).token;
+    const res = await handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      e,
+      db,
+      acme,
+      "open-recipe",
+      NOW,
+    );
+    expect(res.status).toBe(200);
+  });
+
+  // A6-09. `atob`/`importKey`/`signJws` all throw on key material they cannot parse, and the
+  // worker has no top-level catch, so a corrupt `product_secrets` row surfaced as an unhandled
+  // rejection on a route any authenticated device can reach at will.
+  it("500s `misconfigured` (not an uncaught throw) on corrupt key material", async () => {
+    const db = makeTestDb();
+    const e = env();
+    await seedProduct(db, ACME);
+    await seedProductSecret(
+      db,
+      ACME,
+      "mintkey",
+      "-----BEGIN PRIVATE KEY-----\nnot base64 at all !!!\n-----END PRIVATE KEY-----",
+    );
+    await seedTier(db, ACME, "free");
+    await seedRecipe(db, ACME, "broken-key");
+    const acme = (await loadProduct(e, db, ACME))!;
+    const token = await freeTierToken(db, e, acme);
+
+    const res = await handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      e,
+      db,
+      acme,
+      "broken-key",
+      NOW,
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("misconfigured");
   });
 
   it("REFUTED: minting does NOT cross tenants — another product's recipe id is 404", async () => {

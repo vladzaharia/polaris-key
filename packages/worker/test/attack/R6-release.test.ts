@@ -13,10 +13,18 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "../seed.js";
+import {
+  makeEnv,
+  mkReq,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+} from "../seed.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/env.js";
 import type { Product } from "../../src/core/products.js";
+import { loadProduct } from "../../src/core/products.js";
+import { handleActivate } from "../../src/services/license/activation.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
@@ -1915,5 +1923,245 @@ describe("R6-05 .pkey/ ingest rewrites security state with no review", () => {
       "acme",
     );
     expect(versions).toHaveLength(1);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// A5-03 — `entitled` skipped the version window for every UNPINNED selector
+// ═════════════════════════════════════════════════════════════════════════════
+
+// FIXED (A5-03). `entitledSelectorFor` can only populate `version` for a PINNED selector, so
+// `enforceReleaseAccess` — which runs BEFORE the selector resolves — evaluated the caller's
+// version window for `/release/dl/2.0.0/…` and skipped it entirely for `latest`, `stable` and a
+// bare channel appcast. The ceiling was therefore a property of the URL SHAPE, not of the grant:
+// the same caller, refused the pinned path, got the identical artifact by swapping one segment.
+// `assertEntitledVersion` re-asks the question against the RESOLVED release at all three
+// post-resolution points, in the same `403 version_blocked` + `allowedRange` shape.
+describe("A5-03 entitled skips the version window on an unpinned selector", () => {
+  /** A release list whose newest stable is 2.0.0, plus a beta above it. */
+  const STABLE_2 = release({
+    tag_name: "v2.0.0",
+    assets: [asset("djdl-2.0.0-arm64.dmg", 91), asset("djdl-arm64", 92)],
+  });
+  const STABLE_1 = release({
+    tag_name: "v1.0.0",
+    published_at: "2025-01-01T00:00:00Z",
+    assets: [asset("djdl-1.0.0-arm64.dmg", 93), asset("djdl-arm64", 94)],
+  });
+  const BETA_3 = release({
+    tag_name: "v3.0.0-beta.1",
+    prerelease: true,
+    published_at: "2026-03-01T00:00:00Z",
+    assets: [asset("djdl-3.0.0-beta.1-beta-arm64.dmg", 95)],
+  });
+
+  function releaseListFetch(): FetchImpl {
+    return stubFetch([
+      [
+        "/releases?per_page",
+        () =>
+          new Response(JSON.stringify([BETA_3, STABLE_2, STABLE_1]), {
+            status: 200,
+          }),
+      ],
+      [
+        "/releases/tags/",
+        () => new Response(JSON.stringify(STABLE_2), { status: 200 }),
+      ],
+    ]).fetchImpl;
+  }
+
+  /** An `entitled` product, unsigned feeds, plus an activated device with a capped grant. */
+  async function world(
+    access: Record<string, unknown>,
+    grant: Parameters<typeof seedLicenseWithKey>[2] = {},
+  ): Promise<{ db: Db; env: Env; product: Product; token: string }> {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      // No Sparkle key, signature not required: the appcast must render so the test is about
+      // the access decision and not about the enclosure.
+      sparkle_ed25519_pub: null,
+      artifact_policy_json: JSON.stringify({ requireSparkleSignature: false }),
+      // No channel workflow, so `beta` resolves through the prerelease heuristic rather than
+      // an Actions lookup this stub does not serve.
+      channel_workflow: null,
+      ...access,
+    });
+    const env = envFor();
+    const product = (await loadProduct(env, db, SLUG))!;
+    const { key } = await seedLicenseWithKey(db, SLUG, grant);
+    const activated = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-a503",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(activated.status).toBe(200);
+    const { token } = (await activated.json()) as { token: string };
+    return { db, env, product, token };
+  }
+
+  function authed(url: string, token: string): Request {
+    return new Request(url, {
+      headers: { authorization: `Bearer ${token}` },
+    }) as unknown as Request;
+  }
+
+  it("blocks `latest` for a caller whose grant caps below the newest release", async () => {
+    const { db, env, product, token } = await world(
+      { artifacts_access: "entitled" },
+      { maxVersion: "1.5.0" },
+    );
+    const res = await handleRelease(
+      authed(
+        "https://key.plrs.im/djdl/release/dl/latest/djdl-arm64.dmg",
+        token,
+      ),
+      env,
+      db,
+      product,
+      "dmg",
+      { version: "latest", arch: "arm64" },
+      releaseListFetch(),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({
+      error: { code: "version_blocked" },
+      // The SAME body the pinned path already answered with — clients parse this shape, and a
+      // second one would be a second contract.
+      allowedRange: { min: "0.0.0", max: "1.5.0" },
+    });
+  });
+
+  it("blocks the bare appcast, which names no version at all", async () => {
+    const { db, env, product, token } = await world(
+      { artifacts_access: "entitled" },
+      { maxVersion: "1.5.0" },
+    );
+    const res = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/appcast.xml", token),
+      env,
+      db,
+      product,
+      "appcast",
+      { arch: "arm64" },
+      releaseListFetch(),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: { code: "version_blocked" },
+    });
+  });
+
+  it("blocks the CHANNEL appcast for a beta-entitled caller who is version-capped", async () => {
+    // The channel gate passes (the grant names `beta`) and the version gate is the only thing
+    // left — which is exactly the combination the pre-resolution check could not evaluate.
+    const { db, env, product, token } = await world(
+      { artifacts_access: "entitled" },
+      { channels: ["beta"], maxVersion: "2.5.0" },
+    );
+    const res = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/beta/appcast.xml", token),
+      env,
+      db,
+      product,
+      "channelAppcast",
+      { channel: "beta", arch: "arm64" },
+      releaseListFetch(),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: { code: "version_blocked" },
+    });
+  });
+
+  it("blocks /update/version, which ADVERTISES the release it may not serve", async () => {
+    const { db, env, product, token } = await world(
+      { metadata_access: "entitled" },
+      { maxVersion: "1.5.0" },
+    );
+    const res = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/version", token),
+      env,
+      db,
+      product,
+      "version",
+      { version: "latest" },
+      releaseListFetch(),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: { code: "version_blocked" },
+    });
+  });
+
+  // REGRESSION GUARD. Over-blocking here would break every legitimate updater on an `entitled`
+  // product, which is a worse outage than the finding.
+  it("still serves the unpinned selector to a caller INSIDE the window", async () => {
+    const { db, env, product, token } = await world(
+      { artifacts_access: "entitled", metadata_access: "entitled" },
+      { maxVersion: "9.0.0" },
+    );
+
+    const feed = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/appcast.xml", token),
+      env,
+      db,
+      product,
+      "appcast",
+      { arch: "arm64" },
+      releaseListFetch(),
+    );
+    expect(feed.status).toBe(200);
+    expect(await feed.text()).toContain("djdl-2.0.0-arm64.dmg");
+
+    const version = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/version", token),
+      env,
+      db,
+      product,
+      "version",
+      { version: "latest" },
+      releaseListFetch(),
+    );
+    expect(version.status).toBe(200);
+    expect(((await version.json()) as { version: string }).version).toBe(
+      "2.0.0",
+    );
+
+    const dl = await handleRelease(
+      authed(
+        "https://key.plrs.im/djdl/release/dl/latest/djdl-arm64.dmg",
+        token,
+      ),
+      env,
+      db,
+      product,
+      "dmg",
+      { version: "latest", arch: "arm64" },
+      releaseListFetch(),
+    );
+    // Not 200 only because the stub serves no asset BYTES; the point is that the access
+    // decision let the request through to the surface.
+    expect(dl.status).not.toBe(403);
+  });
+
+  // The mode is opt-in. A `public` product must not pay for any of this.
+  it("does not touch a product that has not opted in", async () => {
+    const { db, env, product } = await world({}, { maxVersion: "0.0.1" });
+    const res = await handleRelease(
+      req("https://key.plrs.im/djdl/update/version"),
+      env,
+      db,
+      product,
+      "version",
+      { version: "latest" },
+      releaseListFetch(),
+    );
+    expect(res.status).toBe(200);
   });
 });

@@ -17,16 +17,18 @@ routes.
 
 ## The recipe
 
-| Field              | Meaning                                                                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`               | The recipe's identifier; also the path segment in `/config/mint/<id>/…`. Constrained to `^[a-z0-9-]+$` at the router, before any lookup happens.                                           |
-| `alg`              | `ES256`, `RS256`, or `EdDSA`. Anything else is `500 misconfigured` at mint time.                                                                                                           |
-| `signingKeySecret` | Not the key material — the **name** of a sealed row in `product_secrets`, opened per request.                                                                                              |
-| `kid`              | Optional; carried into the minted JWT's header when present.                                                                                                                               |
-| `claimsTemplate`   | A free-form JSON object merged into the minted claims.                                                                                                                                     |
-| `ttlSeconds`       | The minted token's lifetime; the Worker stamps `exp = now + ttlSeconds`. Capped at **3600** — the manifest is repo-writable and may not decide how long a leaked minted token stays valid. |
-| `audience`         | Optional, trusted `aud` — server/recipe-controlled, never settable from the template.                                                                                                      |
-| `authPageTemplate` | Optional operator HTML served verbatim at the `/auth` route.                                                                                                                               |
+| Field                 | Meaning                                                                                                                                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                  | The recipe's identifier; also the path segment in `/config/mint/<id>/…`. Constrained to `^[a-z0-9-]+$` at the router, and the manifest validator holds ingest to the same alphabet so a declared recipe can never be one the route cannot serve. |
+| `alg`                 | `ES256`, `RS256`, or `EdDSA`. Anything else is `500 misconfigured` at mint time.                                                                                                                                                                 |
+| `signingKeySecret`    | Not the key material — the **name** of a sealed row in `product_secrets`, opened per request.                                                                                                                                                    |
+| `kid`                 | Optional; carried into the minted JWT's header when present.                                                                                                                                                                                     |
+| `claimsTemplate`      | A free-form JSON object merged into the minted claims.                                                                                                                                                                                           |
+| `ttlSeconds`          | The minted token's lifetime; the Worker stamps `exp = now + ttlSeconds`. Capped at **3600** — the manifest is repo-writable and may not decide how long a leaked minted token stays valid.                                                       |
+| `audience`            | Optional, trusted `aud` — server/recipe-controlled, never settable from the template.                                                                                                                                                            |
+| `requires`            | Who may mint this recipe: `none`, `registered`, or `licensed`. **Omitted means `licensed`** — see below.                                                                                                                                         |
+| `requiredEntitlement` | Optional catalog key that must be present **and truthy** in the caller's merged payload before this recipe will mint.                                                                                                                            |
+| `authPageTemplate`    | Optional operator HTML served verbatim at the `/auth` route.                                                                                                                                                                                     |
 
 Authored via `.pkey/release`'s `edgeMint[]` array at manifest ingest, or directly in admin.
 `signingKeySecret` names a row the operator still has to configure in admin's product secrets —
@@ -43,6 +45,7 @@ A worked recipe, in the shape of `.pkey/release`'s `edgeMint[]` entry:
   "kid": "ABC123DEFG",
   "claimsTemplate": { "iss": "TEAMID1234" },
   "ttlSeconds": 3600,
+  "requires": "licensed",
 }
 ```
 
@@ -90,29 +93,44 @@ Requesting `/<product>/config/mint/<id>/token`:
 1. **Rate limit** — bucket `mint`, keyed by client IP, 60 requests per 60 seconds. Over budget is
    `429 rate_limited`.
 2. **Device token required** — the same `validateDeviceToken` the config document route uses.
-   Missing or invalid is `401 unauthorized`.
-3. **License-usable, but only if License is enabled.** When the product runs License, the
-   device's license must also be usable (`licenseUsable`) or the request is `401`. When License
-   is disabled for the product, this extra check is skipped entirely.
+   Missing or invalid is `401 unauthorized`. This applies to _every_ recipe, including one
+   declared `requires: "none"`: the route spends the product's third-party signing key, so it is
+   never anonymous. It also runs before the recipe is looked up, so an unauthenticated caller
+   cannot enumerate recipe ids by telling `404` from `401`.
+3. **The recipe's own `requires`.** `licensed` demands a usable license (`licenseUsable`) and
+   answers `401 unauthorized` without one. `registered` and `none` are satisfied by the device
+   token from step 2 — they differ in what the manifest _says_, not in what is checked.
+4. **The recipe's `requiredEntitlement`, when set.** The caller's merged payload is resolved
+   through the same pipeline the license document is built from, and the named key must be
+   present and truthy. Absent, `false`, `0` or `""` is `403 forbidden` — a tier that explicitly
+   withholds a capability is a denial, not an omission.
 
-That third step is the confused-deputy guard, and its condition is deliberately narrower than
-"always require a license". Minting a third-party credential is a stronger capability than reading
-your own settings, so it borrows the same scope rule Core's own `/devices` and `/devices/report`
-surfaces use: the license check applies **iff** the product enables License. On a config-only
-product (D-08) a valid device token is sufficient — there is no license to be usable, and refusing
-every mint on that product would leave Config's edge-mint capability permanently unreachable for
-it. On a licensed product, this is byte-identical to what device-token validation used to enforce
-on this route's behalf before the license/config split moved the check here explicitly.
+Steps 3 and 4 are **per recipe**, which is the point. A single product-wide answer meant a
+free-tier device could mint the recipe intended for a paid tier, and — because a config-only
+product derives `open` device registration — that an anonymous caller could register in one
+credential-free request and then mint third-party tokens with the operator's key.
+
+`requires` therefore defaults to **`licensed`**, in the manifest normalizer and in the column
+itself (migration `0024`), so every recipe written before the field existed fails closed. A
+recipe that genuinely only needs a device token has to declare `requires: "registered"`, which is
+a reviewable line in `.pkey/`.
+
+The corollary: `requires: "licensed"` on a product that does **not** run License is a
+misconfiguration, not a pass. The demand cannot be evaluated, and a recipe whose stated posture is
+stricter than the product can enforce must not fall through to the weaker one — so the route
+answers `500 misconfigured`. That is also the upgrade path: a licensed product that turns License
+off stops minting rather than silently opening every recipe on it.
 
 ### Responses at a glance
 
-| Status              | When                                                                             |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `200`               | Minted. `{ token, expiresAt }`.                                                  |
-| `401 unauthorized`  | Missing/invalid device token, or (License enabled) an unusable license.          |
-| `404 not_found`     | No recipe with that `id` for this product.                                       |
-| `429 rate_limited`  | Over 60 requests/60s for this client IP.                                         |
-| `500 misconfigured` | Unsupported `alg`, missing/unopenable signing key, or a corrupt claims template. |
+| Status              | When                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `200`               | Minted. `{ token, expiresAt }`.                                                                                                                  |
+| `401 unauthorized`  | Missing/invalid device token, or `requires: "licensed"` with an unusable license.                                                                |
+| `403 forbidden`     | The recipe's `requiredEntitlement` is absent or falsy in the caller's merged payload.                                                            |
+| `404 not_found`     | No recipe with that `id` for this product.                                                                                                       |
+| `429 rate_limited`  | Over 60 requests/60s for this client IP.                                                                                                         |
+| `500 misconfigured` | Unsupported `alg`, missing/unopenable/unparseable signing key, a corrupt claims template, or `requires: "licensed"` without the License service. |
 
 A success is `200`:
 
@@ -151,3 +169,6 @@ nothing.
 - `packages/worker/test/edgeMint.test.ts` — pins the confused-deputy guard, the reserved-claims
   strip, and the fail-closed `misconfigured` responses for a bad alg, a missing key, and a corrupt
   claims template.
+- `packages/worker/test/attack/R5-isolation.test.ts` — pins the per-recipe gate: a free-tier
+  device refused a paid recipe, an anonymously-registered device on a config-only product refused
+  the fail-closed default, and an entitled device still minting.

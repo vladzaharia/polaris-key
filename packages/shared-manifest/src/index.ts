@@ -223,6 +223,9 @@ export type ManifestCatalog = Omit<ProductCatalog, "entries"> & {
   entries: ManifestCatalogEntry[];
 };
 
+/** Who may mint a recipe (A6-02). See `EDGE_MINT_REQUIRES_VALUES`. */
+export type ManifestEdgeMintRequires = "none" | "registered" | "licensed";
+
 export interface ManifestEdgeMint {
   id: string;
   alg: string;
@@ -231,6 +234,14 @@ export interface ManifestEdgeMint {
   claimsTemplate: Record<string, unknown>;
   ttlSeconds: number;
   audience?: string | null;
+  /**
+   * The caller class this recipe demands. Always populated by the normalizer, and `licensed`
+   * when the manifest is silent — a recipe signs with the product's third-party key, so an
+   * undeclared one fails closed.
+   */
+  requires: ManifestEdgeMintRequires;
+  /** A catalog flag that must be present and truthy in the caller's merged payload, or null. */
+  requiredEntitlement?: string | null;
 }
 
 export interface ParsedManifest {
@@ -357,6 +368,19 @@ const RESERVED_PROPERTY_NAMES = new Set([
 const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$/;
 /** `edgeMint[].kid` — emitted verbatim in a JWS protected header. */
 const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+/**
+ * `edgeMint[].id` — A6-08.
+ *
+ * The recipe id is a URL path segment (`/<product>/config/mint/<id>/{token,auth}`) and the
+ * ROUTE matches it with `^[a-z0-9-]+$` (`services/config/routes.ts`), which is strictly
+ * narrower than the `ID_RE` this rule used to share with profile/tier/catalog ids. Ingest
+ * therefore accepted `AppleMusic` or `apple.music` and wrote a recipe row that no request could
+ * ever reach — a permanently unservable recipe, discoverable only by an operator wondering why
+ * their mint endpoint 404s. The two must agree, and they agree on the STRICTER of the two so
+ * that ingest refuses what the route cannot serve rather than the reverse. The 64-character
+ * bound is `ID_RE`'s, kept so the column stays bounded.
+ */
+const MINT_ID_RE = /^[a-z0-9-]{1,64}$/;
 /** Channel / architecture names — they reach URL path segments and asset-match patterns. */
 const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 /** `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`). */
@@ -450,6 +474,28 @@ const SECRET_DELIVERY_VALUES = [
   "serverOnly",
   "clientScoped",
   "edgeMint",
+] as const;
+/**
+ * `edgeMint[].requires` — who may mint this recipe (A6-02).
+ *
+ *   none        the recipe adds no demand of its own.
+ *   registered  a device of THIS product, stated explicitly.
+ *   licensed    a device whose licence is usable. The product must run License, or the recipe
+ *               is a misconfiguration and the route refuses it.
+ *
+ * `none` and `registered` are both satisfied by the device token EVERY mint request must
+ * present — the route spends the product's third-party signing key, so it is never anonymous.
+ * They differ in what they say, not in what they check: a config-only product (D-08) declares
+ * `registered` to record that a device token is the whole of its gate, and `none` records that
+ * the recipe is deliberately ungated beyond that. Neither is safe by default, which is the
+ * point of the finding — on a config-only product `resolveRegistration` derives `open`
+ * registration, so an anonymous caller can obtain that device token in one credential-free
+ * request. Hence `licensed` is the default the normalizer and the DB column both apply.
+ */
+export const EDGE_MINT_REQUIRES_VALUES = [
+  "none",
+  "registered",
+  "licensed",
 ] as const;
 const MANAGEMENT_STATE_VALUES = ["default", "enforced", "hidden"] as const;
 const DEFAULT_RELEASE_ACCESS: ManifestReleaseAccessPolicy = {
@@ -1193,15 +1239,16 @@ export function validateManifestDocuments(
       );
       continue;
     }
-    // The recipe id is a URL path segment (`/<product>/mint/<id>/auth`) and a table key.
+    // The recipe id is a URL path segment (`/<product>/config/mint/<id>/…`) and a table key,
+    // held to the ROUTE's alphabet so ingest cannot write an unreachable recipe (A6-08).
     constrained(
       errors,
       "release",
       raw.id,
       `/edgeMint/${i}/id`,
       "invalid_edge_mint_id",
-      ID_RE,
-      "Edge mint ids must match ^[A-Za-z0-9._:-]{1,64}$.",
+      MINT_ID_RE,
+      "Edge mint ids must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet).",
     );
     // `kid` is emitted verbatim in the JWS protected header; `audience` becomes `aud`.
     constrained(
@@ -1255,6 +1302,30 @@ export function validateManifestDocuments(
         `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`,
       );
     }
+    // A6-02. Both are ENFORCEMENT: an unrecognised value must be refused, never coerced, or a
+    // typo'd `requires: "licenced"` would decide who may mint with the product's signing key.
+    if (
+      raw.requires !== undefined &&
+      !isOneOf(raw.requires, EDGE_MINT_REQUIRES_VALUES)
+    ) {
+      add(
+        errors,
+        "release",
+        `/edgeMint/${i}/requires`,
+        "invalid_edge_mint_requires",
+        "Edge mint requires must be none, registered, or licensed.",
+      );
+    }
+    // Names a catalog entry, so it is held to the same key alphabet catalog entries are.
+    constrained(
+      errors,
+      "release",
+      raw.requiredEntitlement,
+      `/edgeMint/${i}/requiredEntitlement`,
+      "invalid_edge_mint_entitlement",
+      ID_RE,
+      "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$.",
+    );
   }
 
   // ── Fingerprint + auto-issue policy blocks ──────────────────────────────────────────────
@@ -1826,6 +1897,17 @@ function normalizeEdgeMint(raw: unknown): ManifestEdgeMint | null {
         ? Math.min(raw.ttlSeconds, MAX_EDGE_MINT_TTL_SECONDS)
         : MAX_EDGE_MINT_TTL_SECONDS,
     audience: typeof raw.audience === "string" ? raw.audience : null,
+    // A6-02. Same shape as `ttlSeconds`: validation has already refused anything outside the
+    // enum, so this only decides the OMITTED case — and the omitted case is `licensed`, the
+    // same fail-closed default the column carries (migration 0024). A recipe that means to be
+    // reachable without a licence has to say so.
+    requires: isOneOf(raw.requires, EDGE_MINT_REQUIRES_VALUES)
+      ? raw.requires
+      : "licensed",
+    requiredEntitlement:
+      typeof raw.requiredEntitlement === "string" && raw.requiredEntitlement
+        ? raw.requiredEntitlement
+        : null,
   };
 }
 

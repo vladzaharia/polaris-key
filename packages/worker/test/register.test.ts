@@ -647,8 +647,12 @@ describe("Core surfaces accept a registered device when License is disabled", ()
   it("edge-mint signs for a registered device", async () => {
     const w = await world(SET.configOnly);
     await seedProductSecret(w.db, "djdl", "applemusic_devkey", ES_PEM);
+    // A6-02: a config-only product's recipe now has to SAY that a device token is the whole of
+    // its gate. `requires` defaults to `licensed`, which on a product that does not run License
+    // is a misconfiguration and is refused (asserted in R5-isolation). This test pins the
+    // capability the fix must NOT take away — a recipe that declares `registered` still mints.
     await w.db.run(
-      "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template,requires) VALUES (?,?,?,?,?,?,?,?,?,'registered')",
       "djdl",
       "applemusic",
       "ES256",

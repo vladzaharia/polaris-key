@@ -631,11 +631,15 @@ export interface EdgeMintInput {
   claimsTemplate: Record<string, unknown>;
   ttlSeconds: number;
   audience?: string | null;
+  /** Who may mint this recipe (A6-02). Omitted persists as `licensed` — fail closed. */
+  requires?: "none" | "registered" | "licensed";
+  /** A catalog flag the caller's merged payload must carry, truthy. */
+  requiredEntitlement?: string | null;
 }
 export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
   return {
-    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template, requires, required_entitlement)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
     params: [
       e.product,
       e.id,
@@ -645,6 +649,11 @@ export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
       JSON.stringify(e.claimsTemplate),
       e.ttlSeconds,
       e.audience ?? null,
+      // The `??` is the same fail-closed default as the column's, restated here because a
+      // caller that builds an `EdgeMintInput` by hand (a test, a future admin path) would
+      // otherwise be relying on the DDL to decide its authorization posture.
+      e.requires ?? "licensed",
+      e.requiredEntitlement ?? null,
     ],
   };
 }
@@ -1152,7 +1161,9 @@ export async function claimDeviceSeat(
            status = 'authorized',
            seat_no = excluded.seat_no,
            last_seen = excluded.last_seen
-         WHERE devices.seat_no IS NULL OR devices.status <> 'authorized'`,
+         WHERE devices.seat_no IS NULL
+            OR devices.status <> 'authorized'
+            OR devices.license_id <> excluded.license_id`,
         product,
         deviceId,
         licenseId,
@@ -1161,8 +1172,21 @@ export async function claimDeviceSeat(
         now,
       );
       if (changes > 0) return true;
-      // The row exists and already holds a seat — nothing to claim.
-      return true;
+      // A7-02. The conflict guard refused the write. With the licence term in it that can only
+      // mean the row is already authorized on THIS licence and already holds an ordinal — a
+      // concurrent claim for the SAME device won — so confirm it from the row rather than
+      // asserting it. The previous code returned `true` here unconditionally, which reported a
+      // seat for every refused write; combined with the guard's missing licence term, a device
+      // MOVING between licences was told it held a seat on the new one while the row still
+      // carried the old licence and the old ordinal.
+      const seated = await db.first<{ seat_no: number | null }>(
+        `SELECT seat_no FROM devices
+          WHERE product = ? AND device_id = ? AND license_id = ? AND status = 'authorized'`,
+        product,
+        deviceId,
+        licenseId,
+      );
+      return seated?.seat_no != null;
     } catch {
       // UNIQUE constraint on idx_devices_seat: another isolate took this ordinal first.
       continue;

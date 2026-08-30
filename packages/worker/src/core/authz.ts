@@ -91,6 +91,25 @@ export type AuthzError =
  *
  * Returns the same `{ error: "unauthorized" }` for a bad token and for a dead licence: telling
  * them apart would let an unauthenticated caller probe licence state with a stolen token.
+ *
+ * ── THE SEAT IS RE-ASSERTED, NOT ASSUMED (A7-03) ────────────────────────────────────────────
+ *
+ * A seat is claimed at ACTIVATION and can be taken away afterwards — the dormancy sweep frees
+ * the ordinals of devices that stopped checking in, and an operator can free one by hand. Until
+ * this check existed nothing on the grant-issuing paths ever looked again, so a device whose
+ * seat had been reclaimed kept fetching full licence documents forever: the capacity was back in
+ * the pool AND the device still held it, which is the one state the seat count is supposed to
+ * make impossible.
+ *
+ * So a device holding no ordinal must re-earn one here, through the same
+ * `claimDeviceSeat` the activation path uses, against the same `deviceLimit` entitlement — the
+ * number enforced here and the number the client reads out of its own document cannot disagree.
+ * A device that already holds a seat does no extra work and no extra query.
+ *
+ * A device with NO licence row never reaches the claim: `licenseUsable(null)` is false, so
+ * config-only products (D-08 — devices that register, hold real `pkeyt_` tokens and have no
+ * licence at all) are refused by this function for the reason they always were, and their
+ * surfaces do not call it in the first place.
  */
 export async function requireLicensedDevice(
   env: Env,
@@ -103,6 +122,28 @@ export async function requireLicensedDevice(
   const valid = await validateDeviceToken(env, db, product, token, now, opts);
   if ("error" in valid) return valid;
   if (!licenseUsable(valid.license, now)) return { error: "unauthorized" };
+  if (valid.device.seat_no == null) {
+    const entitlements = await resolveEntitlements(
+      db,
+      product.slug,
+      valid.license,
+      valid.device,
+      now,
+    );
+    const limit = resolveDeviceLimit(entitlements, product.defaultDeviceLimit);
+    const seated = await claimDeviceSeat(
+      db,
+      product.slug,
+      valid.license.id,
+      valid.device.device_id,
+      limit,
+      now,
+    );
+    // Same refusal as a dead licence, for the same reason: a device that cannot hold a seat
+    // has no grant, and distinguishing "out of seats" from "bad token" here would let a
+    // stolen token enumerate the licence's capacity.
+    if (!seated) return { error: "unauthorized" };
+  }
   return {
     tokenHash: valid.tokenHash,
     license: valid.license,

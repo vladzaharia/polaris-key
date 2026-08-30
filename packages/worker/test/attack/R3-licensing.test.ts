@@ -49,6 +49,7 @@ import {
   sealManagedValue,
 } from "../../src/admin/lib/managedSecrets.js";
 import {
+  claimDeviceSeat,
   countActiveDevices,
   findFingerprintByHwid,
   getFingerprint,
@@ -1005,5 +1006,173 @@ describe("R3-09 sibling seat eviction", () => {
     );
     expect(bye.status).toBe(200);
     expect(await countActiveDevices(h.db, "djdl", licenseId)).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A7-03 / A7-02 — the seat is claimed once and never re-asserted, and the claim lies.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// FIXED (A7-03). A seat is taken at ACTIVATION and can be given back afterwards — the dormancy
+// sweep frees the ordinals of devices that stopped checking in, and an operator can free one by
+// hand. Nothing on the grant-issuing paths ever looked again, so a device whose seat had been
+// reclaimed kept fetching full licence documents forever: the capacity was back in the pool AND
+// the device still held it. `requireLicensedDevice` now makes such a device re-earn an ordinal
+// through the same `claimDeviceSeat` the activation path uses.
+describe("A7-03 licence document never re-asserts the seat", () => {
+  /** Take the device's ordinal away, exactly as `releaseDormantSeats` / an operator would. */
+  async function reclaimSeat(h: Harness, deviceId: string): Promise<void> {
+    await h.db.run(
+      "UPDATE devices SET seat_no = NULL WHERE product = ? AND device_id = ?",
+      "djdl",
+      deviceId,
+    );
+  }
+
+  it("a device whose seat was reclaimed cannot fetch a licence document", async () => {
+    const h = await harness();
+    await seedTier(h.db, "djdl", "solo", { deviceLimit: 1 });
+    const { key } = await seedLicenseWithKey(h.db, "djdl", { tierId: "solo" });
+
+    const victim = await activate(h, key, "dev-reclaimed");
+    expect((await licenseDoc(h, victim)).status).toBe(200);
+
+    // The state the dormancy sweep leaves behind: this device's ordinal went back into the pool
+    // and another install took it, so the licence is at capacity WITHOUT this device. Written
+    // directly because the `/activate` route that normally produces it is itself capacity-gated
+    // — the seat is what is being modelled here, not the route that hands one out.
+    await reclaimSeat(h, "dev-reclaimed");
+    await h.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, seat_no, first_seen, last_seen)
+       VALUES (?, ?, ?, 'authorized', 1, ?, ?)`,
+      "djdl",
+      "dev-successor",
+      "lic_djdl_1",
+      NOW,
+      NOW,
+    );
+
+    const res = await licenseDoc(h, victim);
+    expect(res.status).toBe(401);
+    // Still seatless: the refused claim must not have written a second ordinal, and the
+    // successor must still hold the one seat the licence has.
+    const rows = await h.db.all<{ device_id: string; seat_no: number | null }>(
+      "SELECT device_id, seat_no FROM devices WHERE product = ? ORDER BY device_id",
+      "djdl",
+    );
+    expect(rows).toEqual([
+      { device_id: "dev-reclaimed", seat_no: null },
+      { device_id: "dev-successor", seat_no: 1 },
+    ]);
+  });
+
+  it("re-adopts a reclaimed device when the licence still has room", async () => {
+    // REGRESSION GUARD. The check must cost a returning device nothing when capacity exists —
+    // otherwise every device that went quiet over a weekend is locked out on Monday.
+    const h = await harness();
+    await seedTier(h.db, "djdl", "team", { deviceLimit: 3 });
+    const { key } = await seedLicenseWithKey(h.db, "djdl", { tierId: "team" });
+    const token = await activate(h, key, "dev-returning");
+    await reclaimSeat(h, "dev-returning");
+
+    expect((await licenseDoc(h, token)).status).toBe(200);
+    const row = await h.db.first<{ seat_no: number | null }>(
+      "SELECT seat_no FROM devices WHERE product = ? AND device_id = ?",
+      "djdl",
+      "dev-returning",
+    );
+    expect(row?.seat_no).not.toBeNull();
+  });
+
+  it("a device that already holds its seat is unaffected", async () => {
+    const h = await harness();
+    await seedTier(h.db, "djdl", "solo", { deviceLimit: 1 });
+    const { key } = await seedLicenseWithKey(h.db, "djdl", { tierId: "solo" });
+    const token = await activate(h, key, "dev-seated");
+    const before = await h.db.first<{ seat_no: number | null }>(
+      "SELECT seat_no FROM devices WHERE product = ? AND device_id = ?",
+      "djdl",
+      "dev-seated",
+    );
+    expect((await licenseDoc(h, token)).status).toBe(200);
+    const after = await h.db.first<{ seat_no: number | null }>(
+      "SELECT seat_no FROM devices WHERE product = ? AND device_id = ?",
+      "djdl",
+      "dev-seated",
+    );
+    expect(after?.seat_no).toBe(before?.seat_no);
+  });
+});
+
+// FIXED (A7-02). `claimDeviceSeat`'s `ON CONFLICT` guard did not cover a device MOVING between
+// licences: the row already held an ordinal and was already authorized, so the write was
+// refused — and the function then returned an unconditional `true`, reporting a seat on the new
+// licence while the row still carried the old licence id and the old ordinal.
+describe("A7-02 claimDeviceSeat lies about a cross-licence rebind", () => {
+  it("a device moving between licences gets a correct ordinal, not a stale one", async () => {
+    const h = await harness();
+    // Licence A gives the device seat 1; licence B already has seat 1 taken, so a correct
+    // rebind must land on 2 — a stale-ordinal bug shows up as the row still reading 1 on A.
+    await seedTier(h.db, "djdl", "team", { deviceLimit: 5 });
+    const a = await seedLicenseWithKey(h.db, "djdl", {
+      id: "lic_a",
+      tierId: "team",
+    });
+    const b = await seedLicenseWithKey(h.db, "djdl", {
+      id: "lic_b",
+      tierId: "team",
+    });
+    await activate(h, a.key, "dev-mover");
+    await activate(h, b.key, "dev-incumbent");
+
+    const claimed = await claimDeviceSeat(
+      h.db,
+      "djdl",
+      b.licenseId,
+      "dev-mover",
+      5,
+      NOW,
+    );
+    expect(claimed).toBe(true);
+
+    const row = await h.db.first<{ license_id: string; seat_no: number }>(
+      "SELECT license_id, seat_no FROM devices WHERE product = ? AND device_id = ?",
+      "djdl",
+      "dev-mover",
+    );
+    // The row actually moved…
+    expect(row?.license_id).toBe(b.licenseId);
+    // …and took a free ordinal on the NEW licence rather than keeping the old one, which
+    // would have collided with `dev-incumbent` under `idx_devices_seat`.
+    expect(row?.seat_no).toBe(2);
+    expect(await countActiveDevices(h.db, "djdl", b.licenseId)).toBe(2);
+    expect(await countActiveDevices(h.db, "djdl", a.licenseId)).toBe(0);
+  });
+
+  it("reports FALSE rather than a phantom seat when the new licence is full", async () => {
+    const h = await harness();
+    await seedTier(h.db, "djdl", "solo", { deviceLimit: 1 });
+    const a = await seedLicenseWithKey(h.db, "djdl", {
+      id: "lic_a",
+      tierId: "solo",
+    });
+    const b = await seedLicenseWithKey(h.db, "djdl", {
+      id: "lic_b",
+      tierId: "solo",
+    });
+    await activate(h, a.key, "dev-mover");
+    await activate(h, b.key, "dev-incumbent");
+
+    expect(
+      await claimDeviceSeat(h.db, "djdl", b.licenseId, "dev-mover", 1, NOW),
+    ).toBe(false);
+    // Nothing moved: a refused claim is not allowed to have side effects on the row.
+    const row = await h.db.first<{ license_id: string; seat_no: number }>(
+      "SELECT license_id, seat_no FROM devices WHERE product = ? AND device_id = ?",
+      "djdl",
+      "dev-mover",
+    );
+    expect(row?.license_id).toBe(a.licenseId);
+    expect(await countActiveDevices(h.db, "djdl", b.licenseId)).toBe(1);
   });
 });

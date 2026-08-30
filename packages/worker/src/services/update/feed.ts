@@ -16,8 +16,10 @@
  */
 
 import type { Env, Db } from "../../core/platform.js";
+import { bearer } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";
+import { assertEntitledVersion } from "../release/access.js";
 import type { UpdateArch } from "@polaris-key/protocol/update";
 import type { FetchImpl } from "../release/githubApp.js";
 import { fetchTextAsset } from "../release/github.js";
@@ -82,6 +84,7 @@ export function handleUpdate(
       kind === "version"
         ? handleVersion(ctx)
         : handleAppcast(
+            kind,
             kind === "appcast"
               ? { ...ctx.params, channel: "stable" }
               : ctx.params,
@@ -91,8 +94,11 @@ export function handleUpdate(
 }
 
 async function handleVersion({
+  req,
   env,
+  db,
   cfg,
+  product,
   params,
   now,
   fetchImpl,
@@ -105,6 +111,20 @@ async function handleVersion({
     now,
     fetchImpl,
   );
+  // A5-03 — the window is re-asserted against the RESOLVED tag. `/update/version` is the
+  // surface that TELLS a caller which version is current, so answering it for a release
+  // outside the caller's ceiling advertises the artifact the download route would refuse.
+  const blocked = await assertEntitledVersion(
+    env,
+    db,
+    product,
+    cfg,
+    "version",
+    versionFromTag(release.tag_name),
+    bearer(req),
+    now,
+  );
+  if (blocked) return blocked;
   return json(
     {
       version: versionFromTag(release.tag_name),
@@ -139,8 +159,9 @@ function minimumSystemVersion(policyJson: string | null): string | undefined {
 }
 
 async function handleAppcast(
+  kind: "appcast" | "channelAppcast",
   params: ReleaseParams,
-  { env, cfg, product, origin, now, fetchImpl }: SurfaceContext,
+  { req, env, db, cfg, product, origin, now, fetchImpl }: SurfaceContext,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
@@ -153,6 +174,21 @@ async function handleAppcast(
     now,
     fetchImpl,
   );
+
+  // A5-03 — a bare `/update/appcast.xml` names no version, so the grant's ceiling was never
+  // applied to it. The feed's whole job is to hand an updater an enclosure URL, so serving one
+  // for an out-of-window release is the same disclosure as serving the DMG.
+  const blocked = await assertEntitledVersion(
+    env,
+    db,
+    product,
+    cfg,
+    kind,
+    versionFromTag(release.tag_name),
+    bearer(req),
+    now,
+  );
+  if (blocked) return blocked;
 
   const suffix = channelSuffix(sel);
   const dmg = matchAsset(release.assets, {

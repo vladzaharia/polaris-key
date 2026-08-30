@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments can emit, extrac
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 71 distinct emit sites.
+codes with their JSON-pointer paths. 73 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -32,9 +32,11 @@ the offending value, or the allowed set.
 | `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer. |
 | `invalid_edge_mint_alg` | error | release | `/edgeMint/${i}/alg` | Edge mint alg must be ES256, RS256, or EdDSA. |
 | `invalid_edge_mint_audience` | error | release | `/edgeMint/${i}/audience` | Edge mint audience |
+| `invalid_edge_mint_entitlement` | error | release | `/edgeMint/${i}/requiredEntitlement` | Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]\{1,64\}$. |
 | `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint recipes require id. |
-| `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint ids must match ^[A-Za-z0-9._:-]\{1,64\}$. |
+| `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint ids must match ^[a-z0-9-]\{1,64\}$ (the mint route's own alphabet). |
 | `invalid_edge_mint_kid` | error | release | `/edgeMint/${i}/kid` | Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
+| `invalid_edge_mint_requires` | error | release | `/edgeMint/${i}/requires` | Edge mint requires must be none, registered, or licensed. |
 | `invalid_entitlement_key` | error | product | `/provisioning/${i}/entitlementKey` | Provisioned entitlement keys must be catalog identifiers. |
 | `invalid_fingerprint_enabled` | error | product | `/fingerprint/enabled` | fingerprint.enabled must be a boolean. |
 | `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |

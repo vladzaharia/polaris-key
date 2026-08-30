@@ -12,8 +12,10 @@
  */
 
 import type { Env, Db } from "../../core/platform.js";
+import { bearer } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";
+import { assertEntitledVersion } from "./access.js";
 import type { FetchImpl } from "./githubApp.js";
 import {
   type Release,
@@ -141,7 +143,7 @@ async function handleChangelog({
 
 async function handleBinary(
   kind: "cli" | "dmg",
-  { req, env, cfg, product, params, now, fetchImpl }: SurfaceContext,
+  { req, env, db, cfg, product, params, now, fetchImpl }: SurfaceContext,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
   // The download path accepts `aarch64` / `amd64` aliases; canonicalise them here so the arch
@@ -157,6 +159,22 @@ async function handleBinary(
     now,
     fetchImpl,
   );
+
+  // A5-03. `/release/dl/latest/…` and `/release/dl/beta/…` arrive at `enforceReleaseAccess`
+  // with no version to check, so the grant's ceiling is only applied once the selector has
+  // named a concrete release. Before this, swapping `2.0.0` for `latest` served the very
+  // artifact the pinned path had just refused.
+  const blocked = await assertEntitledVersion(
+    env,
+    db,
+    product,
+    cfg,
+    kind,
+    versionFromTag(release.tag_name),
+    bearer(req),
+    now,
+  );
+  if (blocked) return blocked;
 
   const suffix = channelSuffix(sel);
   const asset =

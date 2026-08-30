@@ -422,7 +422,11 @@
       "description": "Edge-mint recipe (a Config-service secret-delivery capability, served at /<product>/config/mint/<id>/...). May also live in the release document.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/identifier" },
+        "id": {
+          "description": "A URL path segment on the mint route, held to that route's own alphabet so ingest cannot write a recipe no request could reach.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,64}$"
+        },
         "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
         "signingKeySecret": { "$ref": "#/$defs/secretRef" },
         "kid": {
@@ -438,6 +442,14 @@
         },
         "audience": {
           "anyOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]
+        },
+        "requires": {
+          "description": "Who may mint this recipe: none (anyone) · registered (a device of this product) · licensed (a device whose licence is usable). Omitted means licensed — a recipe signs with the product's third-party key, so it fails closed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this recipe may be minted.",
+          "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
         }
       },
       "required": ["id", "alg", "signingKeySecret"]

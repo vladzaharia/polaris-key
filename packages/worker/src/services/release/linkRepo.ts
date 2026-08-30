@@ -469,6 +469,11 @@ async function registerFromManifest(
         claimsTemplate: e.claimsTemplate ?? {},
         ttlSeconds: e.ttlSeconds,
         audience: e.audience ?? null,
+        // A6-02 — carried through ingest, not dropped. The normalizer always populates
+        // `requires` (`licensed` when the manifest is silent), so a recipe that omits it lands
+        // fail-closed rather than inheriting whatever the column default happened to be.
+        requires: e.requires,
+        requiredEntitlement: e.requiredEntitlement ?? null,
       }),
     );
   }
