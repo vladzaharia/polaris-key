@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
 
+# B6-04: least privilege at the top level, matching ci.yml. Without this block the
+# workflow inherits the repository default, which is configurable per-org and may be
+# read-write. The write scopes this workflow genuinely needs are escalated at the job
+# level below and nowhere else.
+permissions:
+  contents: read
+
 # Changesets opens/maintains a "Version Packages" PR; merging it publishes the JS SDKs
 # (@polaris-key/*) to the private registry. Python (PyPI) and Swift (git tag) are released
 # from their own tags.
@@ -11,18 +18,27 @@ jobs:
   release:
     name: Changesets publish
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: github.repository == 'vladzaharia/polaris-key'
     permissions:
       contents: write
       pull-requests: write
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      # B6-04: `persist-credentials: false`. By default checkout writes the job's
+      # `contents: write` GITHUB_TOKEN into .git/config as an extraheader, where it stays
+      # for the rest of the job — across `pnpm install`, `build`, `test` and `lint`, five
+      # steps that each execute arbitrary third-party postinstall and plugin code. Any one
+      # of them can read .git/config and push to this repo. changesets/action does not
+      # need the git credential: it takes GITHUB_TOKEN through `env` and uses the API.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       # No `version:` here — the action reads `packageManager` from package.json.
       # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
       # which is why every CI run in this repo failed at step 2 until 2026-08-26.
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
@@ -32,7 +48,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm lint
-      - uses: changesets/action@v1
+      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           publish: pnpm changeset publish
         env:

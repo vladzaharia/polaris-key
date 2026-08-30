@@ -154,17 +154,80 @@ GITHUB_WEBHOOK_SECRET
 The webhook secret is an operator-chosen high-entropy value. It must exactly match the
 Worker secret `GITHUB_WEBHOOK_SECRET`.
 
-### GitHub Actions secret
+### GitHub Actions secret (environment-scoped, not repository-scoped)
 
-In `vladzaharia/polaris-key`, create the repository secret:
+`CLOUDFLARE_API_TOKEN` must exist **only** as an environment secret on the `production`
+environment. It must not exist as a repository secret.
 
-```text
-CLOUDFLARE_API_TOKEN
-```
+Why the distinction matters, because it is the entire deploy gate:
 
-The token must be able to apply D1 migrations and deploy Workers in the `Polaris`
-Cloudflare account. The local OAuth login already has the needed account access, but CI
-needs its own token.
+`.github/workflows/deploy.yml` triggers on `push: tags`. For a push event, GitHub runs
+the copy of the workflow file carried by **the pushed ref's own tree** — not the copy on
+`main`. Anyone holding `contents: write` can branch locally, delete every check in that
+file, commit, and push the result straight to `refs/tags/v9.9.9`; the commit never lands
+on a branch and never appears in a PR, and GitHub runs their edited workflow. So the
+semver check, the "must be an ancestor of `origin/main`" check and the CI-green check are
+all **advisory** — they stop mistakes, never someone who can write a tag, because that
+person edits them out in the same commit they deploy.
+
+What such a person cannot rewrite from inside the tag is which secrets the job is allowed
+to see. A repository secret is visible to every workflow in the repo, so with a
+repository-scoped token `environment: production` is decorative and deleting that line
+costs the attacker nothing. With an environment-scoped token, deleting the line removes
+the credential: the deploy reaches `wrangler` with no token and fails. The environment
+binding is the only enforcement; everything in the workflow file is a lint.
+
+#### Steps
+
+1. **Rotate the existing token.** The current value has been repository-wide and readable
+   by every workflow in the repo, including any workflow file introduced on a tag, so
+   treat it as exposed. Create a **new** Cloudflare API token; do not reuse the value.
+
+2. **Scope the new token narrowly.** In the Cloudflare dashboard, create a custom token
+   limited to the one account (`Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8`) with
+   exactly these permissions — CI applies D1 migrations and deploys the Worker, nothing
+   else:
+
+   | Permission                | Level |
+   | ------------------------- | ----- |
+   | Account · Workers Scripts | Edit  |
+   | Account · D1              | Edit  |
+
+   Do not grant Zone permissions, Workers KV admin, or account-wide `Edit` roles. The
+   custom-domain route already exists and is not created per deploy.
+
+3. **Create the `production` environment** (repo → Settings → Environments → New
+   environment → `production`) if it does not exist.
+
+4. **Add the secret to the environment, not the repository.** Inside the `production`
+   environment, add `CLOUDFLARE_API_TOKEN` with the new value.
+
+5. **Delete the repository-level `CLOUDFLARE_API_TOKEN`** (repo → Settings → Secrets and
+   variables → Actions → Repository secrets). If both exist the environment copy wins for
+   this job, but the repository copy stays readable by every other workflow — which is
+   exactly the exposure being closed. It must be removed.
+
+6. **Add protection rules to the `production` environment:**
+
+   | Rule                         | Value                                                    |
+   | ---------------------------- | -------------------------------------------------------- |
+   | Required reviewers           | at least one operator other than the tag pusher          |
+   | Deployment branches and tags | **Selected branches and tags** → protected tag rule `v*` |
+
+   Required reviewers mean a deploy pauses for a human even when the workflow file in the
+   tag says otherwise. The `v*` tag policy means the environment — and therefore the
+   token — is unreachable from any ref that is not a release tag, so a branch or a
+   `swift-v*`/`python-v*` tag cannot borrow it.
+
+7. **Verify.** Push a throwaway tag and confirm the run pauses for review before the
+   "Apply D1 migrations" step, then reject it. Then confirm
+   `gh api repos/vladzaharia/polaris-key/actions/secrets` does not list
+   `CLOUDFLARE_API_TOKEN` (repository scope), while
+   `gh api repos/vladzaharia/polaris-key/environments/production/secrets` does.
+
+Related, and equally out of reach from the workflow file: add a repository ruleset on
+`refs/tags/v*` that forbids tag deletion and force-update, so a released tag cannot be
+silently repointed after review.
 
 ## 3. Cloudflare resources
 
@@ -307,7 +370,20 @@ vMAJOR.MINOR.PATCH
 vMAJOR.MINOR.PATCH-prerelease
 ```
 
-The workflow applies D1 migrations, deploys the Worker/admin assets, and smoke-checks
+Before it touches production the workflow requires, in order:
+
+1. the tag to be semver `vMAJOR.MINOR.PATCH`;
+2. the tagged commit to be an ancestor of `origin/main`;
+3. every check run recorded against that exact commit SHA to be green — a commit can
+   reach `main` with CI red (an admin merge, a check that was not required yet, a workflow
+   that errored before reporting), and ancestry alone does not notice; and
+4. approval from a required reviewer on the `production` environment.
+
+Only (4) is enforcement. (1)–(3) live in the workflow file that the tag itself carries, so
+they catch mistakes and nothing more — see "GitHub Actions secret (environment-scoped)" in
+section 2 for why.
+
+It then applies D1 migrations, deploys the Worker/admin assets, and smoke-checks
 `https://key.plrs.im/djdl/.well-known/jwks.json`, asserting a non-empty key set. That is a
 data-plane endpoint on purpose: `/manage` is a static asset and returns 200 with D1, KV and
 the signing path all down.
@@ -319,7 +395,8 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-If a tag is malformed, the workflow exits before applying migrations or deploying.
+If a tag is malformed, if its commit is not on `main`, or if CI was not green on that
+commit, the workflow exits before applying migrations or deploying.
 
 CI does not deploy on `main` pushes. PRs and `main` still run `.github/workflows/ci.yml`.
 
@@ -434,6 +511,11 @@ Validate portal email:
 - DJDL product secrets are configured.
 - DJDL SDK/app has the returned trust key pinned.
 - CI deploys production from semver tags only.
+- `CLOUDFLARE_API_TOKEN` exists as a `production` **environment** secret and **not** as a
+  repository secret, and the pre-rotation value has been revoked in Cloudflare.
+- The `production` environment has required reviewers and a `v*` deployment tag policy.
+- Rulesets forbid force-updating and deleting `v*`, `swift-v*` and `python-v*` tags.
+- Every action in `.github/workflows/` is pinned to a 40-character commit SHA.
 
 ## 12. Common failure modes
 
@@ -472,3 +554,75 @@ Portal says email sign-in is disabled.
 - Only `env.prod` carries real IDs. For `staging`/`dev`, replace the `REPLACE_ME_*_D1_ID`
   and `REPLACE_ME_*_KV_ID` placeholders in `wrangler.toml` with IDs from the resource
   creation commands.
+
+Deploy fails with `Refusing to deploy: no check runs recorded against <sha>.`
+
+- Nothing ever ran CI on the tagged commit. The gate fails closed by design. Push the
+  commit to `main`, let `.github/workflows/ci.yml` finish, then tag.
+
+Deploy fails at the "Attest build provenance" step of a Swift release.
+
+- GitHub artifact attestations require a public repository or GitHub Advanced Security.
+  See section 13.
+
+## 13. Swift SDK release integrity
+
+SwiftPM consumers resolve `sdks/swift` **by git tag**. A git dependency has no registry,
+no package hash and no checksum in `Package.resolved` — the client fetches whatever commit
+`swift-v1.2.3` points at at resolve time. Moving that tag is therefore an unsigned
+code-delivery primitive: every consumer picks up different source on their next resolve,
+with nothing to compare against and no signature to fail.
+
+`.github/workflows/release-swift.yml` cannot fix this on its own. What it does is archive
+the exact `sdks/swift` tree at the tag, attach that archive to the GitHub release, and
+attest its provenance with `actions/attest-build-provenance`. That binds the archive's
+digest to this repository, workflow and commit, so a later force-update of the tag no
+longer matches a signed record. **That is detection, not prevention.** The two controls
+that actually prevent it are repository settings and a signing key, and both have to be
+established by hand:
+
+### Required: a ruleset that makes release tags immutable
+
+Repo → Settings → Rules → Rulesets → New tag ruleset:
+
+| Field              | Value                                                   |
+| ------------------ | ------------------------------------------------------- |
+| Target             | Tags, pattern `swift-v*` (add `v*` and `python-v*` too) |
+| Restrict updates   | on — forbids force-updating an existing tag             |
+| Restrict deletions | on — forbids deleting and recreating it elsewhere       |
+| Bypass list        | empty                                                   |
+
+Without "Restrict updates", every other control here is undone by one `git push --force`.
+
+### Required: sign `swift-v*` tags
+
+Release tags must be created with `git tag -s`, never `git tag` or the GitHub UI:
+
+```sh
+git tag -s swift-v0.1.0 -m "Polaris Key Swift 0.1.0"
+git push origin swift-v0.1.0
+git tag -v swift-v0.1.0   # must print a good signature before announcing the release
+```
+
+Publish the signing public key so consumers can verify it — export it to
+`docs/security/swift-release-signing-key.asc` and reference it from the SDK README:
+
+```sh
+gpg --armor --export <key-id> > docs/security/swift-release-signing-key.asc
+```
+
+A consumer then verifies delivery two ways: `git tag -v swift-v0.1.0` against the
+published key, and the release archive against its attestation:
+
+```sh
+gh attestation verify polaris-key-swift-0.1.0.tar.gz --repo vladzaharia/polaris-key
+```
+
+### Prerequisite: artifact attestations must be available
+
+GitHub artifact attestations are available on public repositories and on private
+repositories with GitHub Advanced Security. `vladzaharia/polaris-key` is **private**, so
+GHAS must be enabled before the next `swift-v*` tag or the "Attest build provenance" step
+fails and the release does not publish. That is deliberate — the step is not marked
+`continue-on-error`, because an attestation that silently no-ops is a green check that
+proves nothing.

@@ -3,6 +3,19 @@ packages:
   - "tools"
   - "conformance/runners/node"
   - "products"
+
+# Moved here from package.json's `pnpm` field. pnpm 10.33.2 prints
+#   The "pnpm" field in package.json is no longer read by pnpm
+# and IGNORES it, so this allowlist was silently inert. It is not cosmetic: pnpm 10
+# blocks lifecycle scripts for all dependencies by default, and only packages named here
+# may run their build. With the setting ignored, `better-sqlite3` never compiles its
+# native binding — and per AGENTS.md that does not fail like a broken test, it makes the
+# entire worker package fail to COLLECT, so the error points nowhere near the cause.
+onlyBuiltDependencies:
+  - better-sqlite3
+  - esbuild
+  - workerd
+
 overrides:
   "@types/node": ^22.14.0
   jiti: ^2.7.0

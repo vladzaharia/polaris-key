@@ -14,27 +14,50 @@ jobs:
   deploy-worker:
     name: Deploy worker
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: github.repository == 'vladzaharia/polaris-key'
+
+    # =========================================================================
+    # B6-01/B6-02 — DO NOT DELETE `environment: production` BELOW.
+    # It is the only line in this file that is actually enforcement.
+    #
+    # This workflow triggers on `push: tags`. For a push event GitHub runs the
+    # copy of THIS FILE carried by the pushed ref's own tree — not the copy on
+    # `main`. So anyone holding `contents: write` (no merge rights, no review)
+    # can branch locally, delete every gate written below, commit, and push
+    # that commit straight to `refs/tags/v9.9.9`. The commit never appears on a
+    # branch and never appears in a PR, and GitHub runs their edited workflow.
+    #
+    # Therefore: every check written inside this file is ADVISORY. The tag-shape
+    # check, the ancestry check and the CI-green check each stop a mistake.
+    # None of them stops an actor who can write a tag, because that actor edits
+    # them out in the same commit they deploy.
+    #
+    # The one thing that actor cannot rewrite from inside the tag is WHICH
+    # SECRETS THE JOB IS ALLOWED TO SEE. CLOUDFLARE_API_TOKEN is an ENVIRONMENT
+    # secret on `production`, not a repository secret. Deleting the line below
+    # does not unlock the deploy — it removes the credential, and wrangler fails
+    # with no token. The `production` environment's protection rules (required
+    # reviewers, and a deployment tag policy of `v*`) live in repository
+    # settings, out of reach of anything in this tree.
+    #
+    # If CLOUDFLARE_API_TOKEN is ever recreated as a *repository* secret, this
+    # line becomes decorative again and the whole gate collapses.
+    # See docs/DEPLOYMENT.md §2 "GitHub Actions secret (environment-scoped)".
+    # =========================================================================
     environment: production
+
+    permissions:
+      contents: read
+      # B6-05: read the check runs recorded against the tagged commit, so the
+      # gate below can require CI to have actually passed on this exact SHA.
+      checks: read
     concurrency:
       group: deploy-production
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      # No `version:` here — the action reads `packageManager` from package.json.
-      # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
-      # which is why every CI run in this repo failed at step 2 until 2026-08-26.
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm lint
-      - name: Select target
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Validate release tag
         id: target
         env:
           REF: ${{ github.ref }}
@@ -48,6 +71,12 @@ jobs:
           # never on main, never reviewed, pushed straight from a laptop — deployed to
           # production. Branch protection gives zero coverage against that. Require the
           # tagged commit to be an ancestor of origin/main.
+          #
+          # B6-01: keep this, but be honest about its reach. It catches the ACCIDENT —
+          # tagging a local WIP commit, tagging a stale branch, tagging a revert that
+          # never landed. It catches nothing deliberate, because an actor who can push
+          # this tag also chose the contents of this file (see the block above). Read it
+          # as a lint, not as a control.
           git fetch --no-tags --depth=100 origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "Refusing to deploy: $GITHUB_SHA is not an ancestor of origin/main." >&2
@@ -62,6 +91,91 @@ jobs:
           # router, D1, product load AND opening the signing key under PLATFORM_KEK, so a
           # missing or wrong KEK fails the deploy instead of silently 404ing every route.
           echo "smoke=https://key.plrs.im/djdl/.well-known/jwks.json" >> "$GITHUB_OUTPUT"
+      # B6-05: ancestry proves only that the tagged commit is REACHABLE from main. It
+      # says nothing about whether anything was ever run on it. A commit can land on
+      # main with CI red (admin merge, a required check that was not required yet, a
+      # workflow that errored before reporting) and still pass the ancestry gate. So
+      # additionally require the checks recorded against this exact SHA to be green.
+      #
+      # Same caveat as above: this is in the tag's tree, so it is an anti-mistake gate,
+      # not a control. It fails CLOSED — zero check runs found is a failure, not a pass.
+      - name: Require green checks on the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          # Exclude this workflow run's own check runs — they are necessarily still
+          # in_progress while this step executes. Actions check runs carry an html_url of
+          # the form .../actions/runs/<run_id>/job/<job_id>, so the current run is matched
+          # exactly by id and no job display name has to be duplicated here. RUN_ID is read
+          # through jq's $ENV rather than interpolated, so nothing is spliced into the
+          # program text.
+          # Capture through a variable, not process substitution: `gh` exits non-zero on
+          # an API error but writes the error BODY to stdout, so piping straight into
+          # mapfile would turn "the API was unreachable" into a nonsense check-run row.
+          # Test its exit status explicitly and fail with a distinguishable message.
+          if ! CHECKS_TSV=$(
+            gh api --paginate "repos/$REPO/commits/$SHA/check-runs?per_page=100" \
+              --jq '.check_runs[]
+                    | select(((.html_url // "") | contains("/actions/runs/" + $ENV.RUN_ID + "/")) | not)
+                    | [.name, .status, (.conclusion // "pending")]
+                    | @tsv'
+          ); then
+            echo "Refusing to deploy: could not read check runs for $SHA." >&2
+            echo "This is an API/permissions failure, not a red build. The job needs" >&2
+            echo "'checks: read'; see the permissions block above." >&2
+            exit 1
+          fi
+
+          # A here-string over an empty capture still yields one empty line, so filter.
+          ROWS=()
+          while IFS= read -r LINE; do
+            [ -n "$LINE" ] && ROWS+=("$LINE")
+          done <<< "$CHECKS_TSV"
+
+          if [ "${#ROWS[@]}" -eq 0 ]; then
+            echo "Refusing to deploy: no check runs recorded against $SHA." >&2
+            echo "CI must have run on the tagged commit before it can be deployed." >&2
+            exit 1
+          fi
+
+          BAD=0
+          for ROW in "${ROWS[@]}"; do
+            NAME="${ROW%%$'\t'*}"
+            REST="${ROW#*$'\t'}"
+            STATUS="${REST%%$'\t'*}"
+            CONCLUSION="${REST##*$'\t'}"
+            case "$STATUS:$CONCLUSION" in
+              completed:success | completed:skipped | completed:neutral)
+                echo "  ok    $NAME ($CONCLUSION)"
+                ;;
+              *)
+                echo "  FAIL  $NAME (status=$STATUS conclusion=$CONCLUSION)" >&2
+                BAD=1
+                ;;
+            esac
+          done
+
+          if [ "$BAD" -ne 0 ]; then
+            echo "Refusing to deploy: CI is not green on $SHA." >&2
+            exit 1
+          fi
+          echo "All ${#ROWS[@]} check run(s) on $SHA are green."
+      # No `version:` here — the action reads `packageManager` from package.json.
+      # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
+      # which is why every CI run in this repo failed at step 2 until 2026-08-26.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm lint
       - name: Apply D1 migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

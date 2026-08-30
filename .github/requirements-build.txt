@@ -1,0 +1,69 @@
+# Build tooling for the PyPI publish job (B6-07).
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# .github/workflows/release-python.yml's `publish` job holds `id-token: write`, which is
+# the PyPI Trusted Publishing credential. Anything that executes in that job can mint a
+# PyPI token for `polaris-key`. It must therefore install ZERO unpinned code.
+#
+# `pip install --require-hashes -r` refuses to install anything that is not pinned with
+# `==` AND accompanied by a hash it can verify, and it refuses if a transitive dependency
+# is missing from this file. That turns "trust PyPI's resolver at publish time" into
+# "trust exactly these bytes".
+#
+# The closure below is `build` + `hatchling` and their full runtime dependency sets as
+# resolved for CPython 3.12 on Linux. `hatchling` is here because the publish job runs
+# `python -m build --no-isolation`: with isolation, pip would silently fetch the backend
+# (hatchling, from sdks/python/pyproject.toml's [build-system]) into a throwaway venv
+# UNPINNED and UNHASHED, and run it — reintroducing the exact hole this file closes.
+# Environment markers that are false on 3.12/Linux (colorama on Windows, tomli and
+# importlib-metadata on older Pythons) are deliberately omitted.
+#
+# HOW TO REGENERATE
+# -----------------
+# Bump a version here only together with its hashes. Two equivalent ways to get them:
+#
+#   1. pip download --dest /tmp/pin --no-deps <pkg>==<version>
+#      pip hash /tmp/pin/*
+#
+#   2. curl -sS https://pypi.org/pypi/<pkg>/json \
+#        | jq -r '.releases["<version>"][] | .filename + " sha256:" + .digests.sha256'
+#
+# Both hashes per package (wheel and sdist) are listed; pip accepts a match against any
+# one of them. All eight are pure-Python `py3-none-any` wheels, so the same artifact is
+# used on every runner OS and the hashes are platform independent.
+#
+# Every hash below was verified by downloading the artifact and recomputing sha256 —
+# not copied from a lockfile.
+#
+# Last regenerated: 2026-08-29
+
+# --- `python -m build` frontend ------------------------------------------------------
+build==1.6.0 \
+    --hash=sha256:f7aaf1ebbb79178a02ba248bb524f2176b256017e17e8e4bd4289c7b38cc2bad \
+    --hash=sha256:bd2c8afc603e7a2e0ce70e2ea85f0a6d02043bafbd307f5bada0f98669eca5af
+pyproject_hooks==1.2.0 \
+    --hash=sha256:9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913 \
+    --hash=sha256:1e859bd5c40fae9448642dd871adf459e5e2084186e8d2c2a79a824c970da1f8
+
+# --- hatchling, the build backend declared by sdks/python/pyproject.toml --------------
+hatchling==1.32.0 \
+    --hash=sha256:0e17c9c3b9aa7c625acc8d0f5b622f107d5049af9ecf5ada4de1aada5be7cdbc \
+    --hash=sha256:0bdbde4a52b06c37e3eca395f85a762bf0ef06fe374fd8ae429dc6be10230f5f
+pathspec==1.1.1 \
+    --hash=sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189 \
+    --hash=sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a
+pluggy==1.6.0 \
+    --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746 \
+    --hash=sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3
+tomlkit==0.15.1 \
+    --hash=sha256:177a05aece5a8ca5266fd3c448abb47b8d352f09d477d3ca8332db4d89b24304 \
+    --hash=sha256:e25bbf38843005246210a12982776f27f99cb9be67160e14434d0c0d21ee1e97
+trove-classifiers==2026.6.1.19 \
+    --hash=sha256:ab4c4ec93cc4a4e7815fa759906e05e6bb3f2fbd92ea0f897288c6a43efd15b3 \
+    --hash=sha256:c5132b4b61a829d11cfbd2d72e97f20a45ed6edb95e45c5efdeb5e00836b2745
+
+# --- shared by both ------------------------------------------------------------------
+packaging==26.3 \
+    --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c \
+    --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79

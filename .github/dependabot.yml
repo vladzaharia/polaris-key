@@ -1,0 +1,34 @@
+version: 2
+
+# B6-03 companion. Every action in .github/workflows/ is pinned to a full 40-character
+# commit SHA rather than a floating tag, because a tag is a mutable pointer: `@v4` is
+# whatever the owner (or anyone who compromises them) repoints it at, and it is fetched
+# with the repository's GITHUB_TOKEN into a job that in this repo may also hold
+# CLOUDFLARE_API_TOKEN or a PyPI Trusted Publishing identity.
+#
+# The cost of pinning is staleness — a SHA never picks up a security fix on its own, and
+# a pin nobody updates silently becomes the thing it was protecting against. Dependabot
+# closes that gap: it opens a PR that rewrites the SHA and the trailing `# vX.Y.Z`
+# comment together, with the upstream release notes attached, so bumping is a reviewed
+# change rather than an invisible one.
+#
+# Grouped into a single weekly PR on purpose: five workflows share the same four or five
+# actions, and one reviewable PR gets read where five separate ones get rubber-stamped.
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      github-actions:
+        patterns:
+          - "*"

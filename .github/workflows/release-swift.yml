@@ -5,14 +5,29 @@ on:
     tags:
       - "swift-v*"
 
+# Least privilege at the top level, matching ci.yml. Write scopes are escalated on the
+# `release` job only.
+permissions:
+  contents: read
+
 jobs:
-  validate:
-    name: Validate Swift SDK release
+  # BLUE-MG-2: `swift test` used to run in the same job that had already persisted a
+  # `contents: write` GITHUB_TOKEN into .git/config. SwiftPM resolves and compiles
+  # third-party package code, so that token was readable by dependency build plugins for
+  # the whole test run. Split out: this job is read-only and holds no writable credential.
+  test:
+    name: Test Swift SDK
     runs-on: macos-14
+    timeout-minutes: 30
+    # BLUE-MG-1: only the canonical repo releases. A fork that pushes a `swift-v*` tag
+    # runs nothing.
+    if: github.repository == 'vladzaharia/polaris-key'
     permissions:
-      contents: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Validate semver tag
         env:
           TAG: ${{ github.ref_name }}
@@ -23,12 +38,81 @@ jobs:
           fi
       - name: Test
         run: swift test --package-path sdks/swift
+
+  # =========================================================================
+  # B6-06 — Swift delivery has no checksum, and this job cannot give it one.
+  #
+  # SwiftPM consumers resolve `sdks/swift` BY GIT TAG. There is no registry,
+  # no package hash, no Package.resolved checksum for a git dependency: the
+  # client fetches whatever commit `swift-v1.2.3` points at TODAY. Moving that
+  # tag is therefore an unsigned code-delivery primitive — every consumer
+  # silently picks up different source on their next resolve.
+  #
+  # Nothing in this workflow can prevent that. The two controls that actually
+  # prevent it are repository settings and a signing key, both outside this
+  # tree, both documented in docs/DEPLOYMENT.md section 13 "Swift SDK release
+  # integrity":
+  #
+  #   1. a repository ruleset on `refs/tags/swift-v*` forbidding tag deletion
+  #      and force-update, so the tag is immutable once pushed; and
+  #   2. `git tag -s` signing, with the signing public key published, so a
+  #      consumer can verify who created the tag.
+  #
+  # What this job CAN do is make tampering DETECTABLE after the fact: it
+  # archives the exact `sdks/swift` tree at the tag, attaches it to the
+  # release, and attests its provenance. The attestation binds that artifact's
+  # digest to this repository, this workflow and this commit, so a later
+  # force-update of the tag no longer matches a signed record. Detection, not
+  # prevention — do not read the green check as "the tag is safe".
+  # =========================================================================
+  release:
+    name: Publish Swift SDK release
+    needs: test
+    runs-on: macos-14
+    timeout-minutes: 15
+    if: github.repository == 'vladzaharia/polaris-key'
+    permissions:
+      # `gh release create`.
+      contents: write
+      # Both of these are REQUIRED by actions/attest-build-provenance, which fails
+      # without them: `id-token: write` to obtain the OIDC token it exchanges for a
+      # Sigstore signing certificate, and `attestations: write` to store the resulting
+      # attestation against this repository.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Archive the tagged Swift source tree
+        id: archive
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # `git archive` off HEAD (the tagged commit) is a deterministic function of the
+          # tree, so the digest below identifies exactly the source a SwiftPM consumer
+          # resolves for this tag.
+          NAME="polaris-key-swift-${TAG#swift-v}"
+          git archive --format=tar.gz --prefix="$NAME/" -o "$NAME.tar.gz" HEAD sdks/swift
+          shasum -a 256 "$NAME.tar.gz"
+          echo "path=$NAME.tar.gz" >> "$GITHUB_OUTPUT"
+      # NOTE: GitHub artifact attestations are available on public repositories and on
+      # private repositories with GitHub Advanced Security. `vladzaharia/polaris-key` is
+      # private, so GHAS must be enabled on it before the next `swift-v*` tag or this step
+      # fails the release. That failure is deliberate: silently skipping the attestation
+      # would reproduce the PK-01 pattern of a green check that proves nothing.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.archive.outputs.path }}
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
+          ARCHIVE: ${{ steps.archive.outputs.path }}
         run: |
-          gh release create "$TAG" \
+          # `--verify-tag` refuses to create a release for a tag that does not exist.
+          gh release create "$TAG" "$ARCHIVE" \
             --title "Polaris Key Swift ${TAG#swift-v}" \
-            --notes "Swift SDK release ${TAG#swift-v}" \
+            --notes "Swift SDK release ${TAG#swift-v}. The attached archive is the exact sdks/swift tree at this tag; its provenance is attested and verifiable with 'gh attestation verify'. SwiftPM resolves this package by git tag and checks no digest — see docs/DEPLOYMENT.md section 13." \
             --verify-tag
