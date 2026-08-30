@@ -673,6 +673,98 @@ describe("R1-06 unauthenticated /manage asset proxy", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
+// PK-01 — The /manage asset proxy served the platform-admin-gated docs site
+//
+// `scripts/assemble-assets.mjs` copies the admin dist to the assets ROOT and the docs build
+// into `docs/` of that same root. `router.ts` claims `/manage/*` before the `/docs`
+// reservation is consulted, `index.ts` strips `/manage`, and `handleAdmin` tests only
+// `/login`, `/callback` and `/api` before falling through to `serveAdminAsset` — which had no
+// prefix confining it. `GET /manage/docs/index.html` therefore returned the gated docs with no
+// session of any kind. Found independently by three lanes; `deploy.yml` smoke-checked `/docs/`
+// but never `/manage/docs/`, so the gate verified green on every release while open.
+// ───────────────────────────────────────────────────────────────────────────────
+
+describe("PK-01 the /manage asset proxy is confined to the admin bundle", () => {
+  function assetsEcho(seen: string[]): Fetcher {
+    return {
+      async fetch(input: Request) {
+        const p = new URL(typeof input === "string" ? input : input.url)
+          .pathname;
+        seen.push(p);
+        return new Response(`asset:${p}`, {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      },
+    } as unknown as Fetcher;
+  }
+
+  async function fetchViaManage(path: string): Promise<string[]> {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock());
+    const seen: string[] = [];
+    env.ASSETS = assetsEcho(seen);
+    await handleAdmin(
+      req("GET", `https://key.plrs.im/manage${path}`),
+      env,
+      db,
+      path,
+      { now: NOW },
+    );
+    return seen;
+  }
+
+  it("FIXED (PK-01): an unauthenticated GET /manage/docs/index.html cannot reach the docs bundle", async () => {
+    const seen = await fetchViaManage("/docs/index.html");
+    // The whole finding in one assertion: the docs path must never be fetched from the
+    // shared assets root by this handler.
+    expect(seen).not.toContain("/docs/index.html");
+    expect(seen).toEqual(["/manage.html"]);
+  });
+
+  it("FIXED (PK-01): the rest of the docs site is unreachable by enumeration too", async () => {
+    for (const p of [
+      "/docs/admin/kek/index.html", // renders RUNBOOK.md — the highest-value page
+      "/docs/admin/secrets-and-keys/index.html",
+      "/docs/_astro/index.js",
+      "/docs/404.html",
+    ]) {
+      const seen = await fetchViaManage(p);
+      expect(seen).toEqual(["/manage.html"]);
+    }
+  });
+
+  it("PK-01 regression: the admin bundle's own assets still resolve", async () => {
+    // The fix is an allow-list, so its risk is over-blocking. These are the real top-level
+    // entries `pnpm --filter @polaris-key/worker assemble` produces.
+    expect(await fetchViaManage("/manage.js")).toEqual(["/manage.js"]);
+    expect(await fetchViaManage("/manage.html")).toEqual(["/manage.html"]);
+    expect(await fetchViaManage("/index.html")).toEqual(["/index.html"]);
+    expect(await fetchViaManage("/assets/manage-KdG8z-an.js")).toEqual([
+      "/assets/manage-KdG8z-an.js",
+    ]);
+    expect(await fetchViaManage("/assets/styles-Do8wQARe.js")).toEqual([
+      "/assets/styles-Do8wQARe.js",
+    ]);
+  });
+
+  it("PK-01 regression: SPA deep links still fall through to the shell", async () => {
+    expect(await fetchViaManage("/p/djdl/licenses")).toEqual(["/manage.html"]);
+  });
+
+  it("FIXED (PK-01): a nested path under /assets/ is not a way back out", async () => {
+    // `/assets/` is one flat directory of build output; a nested path there is reaching for
+    // something the bundle does not emit, and would otherwise re-open the traversal shape.
+    expect(await fetchViaManage("/assets/foo/bar.js")).toEqual([
+      "/manage.html",
+    ]);
+    expect(await fetchViaManage("/assets/docs/index.html")).toEqual([
+      "/manage.html",
+    ]);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
 // R1-07 — Device-authorization "user confirmation" is attacker-self-servable
 // ───────────────────────────────────────────────────────────────────────────────
 

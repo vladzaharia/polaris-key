@@ -39,6 +39,34 @@ function spaShell(): Response {
   );
 }
 
+/**
+ * The files the admin bundle actually owns in the shared assets root, as an ALLOW-list.
+ *
+ * PK-01: `scripts/assemble-assets.mjs` copies the admin dist to the assets ROOT and the docs
+ * build into `docs/` OF THAT SAME ROOT, so `serveAdminAsset` has no prefix confining it and
+ * used to address every file in the root. `GET /manage/docs/index.html` therefore reached the
+ * platform-admin-gated docs site with no session check of any kind — `handleAdmin` tests only
+ * `/login`, `/callback` and `/api` before falling through here, and the router claims
+ * `/manage/*` (router.ts) BEFORE the `/docs` reservation is ever consulted.
+ *
+ * This is an allow-list and not a `/docs` block-list on purpose: a block-list is wrong again
+ * the moment anything else is assembled into the root. The admin dist's real top level is
+ * `index.html`, `manage.html` and `assets/` — nothing else, and nothing nested.
+ */
+const ADMIN_ROOT_FILE = /^\/[A-Za-z0-9_~.-]+$/;
+const ADMIN_ASSETS_PREFIX = "/assets/";
+
+function adminOwnsAsset(cleanPath: string): boolean {
+  if (cleanPath.startsWith(ADMIN_ASSETS_PREFIX)) {
+    // One flat directory of build output. A nested path here would be reaching for something
+    // the bundle does not emit.
+    return ADMIN_ROOT_FILE.test(
+      cleanPath.slice(ADMIN_ASSETS_PREFIX.length - 1),
+    );
+  }
+  return ADMIN_ROOT_FILE.test(cleanPath);
+}
+
 async function serveAdminAsset(
   req: Request,
   env: Env,
@@ -50,7 +78,14 @@ async function serveAdminAsset(
   // whose parser normalises percent-encoded dot segments — `/manage/%2e%2e/%2e%2e/x.html`
   // walked the fetch out of the /manage prefix. Anything that is not a literal, already
   // normalised asset path falls through to the SPA shell.
-  const isShell = !isSafeAssetPath(cleanPath) || !cleanPath.includes(".");
+  //
+  // PK-01 adds the second half: being a well-formed asset path is not enough, it must also be
+  // a path the ADMIN bundle owns. Everything else — `/docs/...` above all — is the shell, so a
+  // deep link still works and a sibling bundle in the same root is unreachable.
+  const isShell =
+    !isSafeAssetPath(cleanPath) ||
+    !cleanPath.includes(".") ||
+    !adminOwnsAsset(cleanPath);
   url.pathname = isShell ? "/manage.html" : cleanPath;
   const res = await env.ASSETS.fetch(new Request(url, req));
   const headers = new Headers(res.headers);

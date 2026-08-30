@@ -108,4 +108,14 @@ jobs:
             302\ */manage/login*) echo "Docs gate OK: $DOCS_LOCATION" ;;
             *) echo "Smoke check failed: /docs/ unauthenticated returned: $DOCS_LOCATION" >&2; exit 1 ;;
           esac
+          # PK-01: checking /docs/ alone was FALSE ASSURANCE. The admin asset proxy served the
+          # same docs bundle out of the shared assets root, so /manage/docs/ returned the gated
+          # site with no session while this very step reported "Docs gate OK" on every deploy.
+          # The gate is only proven by testing BOTH doors into the same bundle.
+          BYPASS_CODE=$(curl --silent --output /dev/null --write-out '%{http_code}' "$ORIGIN/manage/docs/index.html")
+          if [ "$BYPASS_CODE" = "200" ]; then
+            echo "Smoke check failed: /manage/docs/index.html returned 200 — the docs gate is bypassable (PK-01)." >&2
+            exit 1
+          fi
+          echo "Docs gate OK via /manage proxy: $BYPASS_CODE"
           echo "Smoke check OK: data plane is serving a non-empty JWKS."
