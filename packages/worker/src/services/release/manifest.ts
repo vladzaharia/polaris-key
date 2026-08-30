@@ -7,6 +7,10 @@ export {
   // `parseManifest` — able to steer the token POST that carries the product's client secret.
   isSafeIssuerUrl,
   issuerUrlProblem,
+  // R6-07's `ghOwner`/`ghRepo` character class. `parseRepoUrl` derives the same two values from
+  // a pasted URL instead of from `.pkey/release`, and both end up interpolated unencoded into
+  // `api.github.com` paths — so it applies this rule rather than a second, looser one.
+  GH_SLUG_RE,
   MAX_MANIFEST_BYTES,
   MAX_MANIFEST_DEPTH,
   type ManifestEdgeMint,

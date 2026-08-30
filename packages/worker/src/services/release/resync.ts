@@ -10,8 +10,9 @@
  * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here.
  */
 
-import { Catalog } from "@polaris-key/catalog";
+import { Catalog, type ConfigEntry } from "@polaris-key/catalog";
 import type { Db, DbStatement, Env } from "../../core/platform.js";
+import { audit, type AuditActor } from "../../core/adminApi.js";
 import {
   countLicensesUsingProfile,
   countLicensesUsingTier,
@@ -31,7 +32,7 @@ import {
   stmtInsertProvisioning,
   stmtInsertTier,
 } from "../../core/ingest.js";
-import { getReleaseConfig } from "./config.js";
+import { getReleaseConfig, setReleaseAccess } from "./config.js";
 import { parseManifest } from "./manifest.js";
 import {
   discoverInstallation,
@@ -42,12 +43,87 @@ import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
+import {
+  managedSecretKeyPredicate,
+  sealedProfilePayloadJson,
+} from "./manifestSecrets.js";
+import { changedFields, manifestStateSnapshot } from "./resyncAudit.js";
 import { releaseStoreSyncStatements } from "./sync.js";
 import { serializeServices } from "../../core/services.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
   | { ok: false; error: string; errors?: string[] };
+
+/**
+ * The actor an audit row from this path names.
+ *
+ * A resync has no session: it runs from a GitHub push webhook, or from the console's "resync"
+ * button (which audits its own `release.resync` row with the operator's session on top of these).
+ * Naming the ingest itself is honest — the change came from the repo, and the individual push
+ * author is a value in an unauthenticated webhook body, which is exactly the kind of self-
+ * attestation this file refuses to trust anywhere else.
+ */
+const MANIFEST_ACTOR: AuditActor = {
+  sub: "system:manifest-resync",
+  name: "Manifest resync",
+  email: "",
+};
+
+/** True when a catalog entry is a secret the worker consumes and never signs into a document. */
+function isServerOnlySecret(entry: ConfigEntry): boolean {
+  return entry.kind === "secret" && entry.delivery === "serverOnly";
+}
+
+/** The active catalog as a `Catalog`, or null when there is none / it will not parse. */
+function parseStoredCatalog(catalogJson: string | undefined): Catalog | null {
+  if (!catalogJson) return null;
+  try {
+    return new Catalog(JSON.parse(catalogJson) as never);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Refuse a catalog that drops or reclassifies an ACTIVE `delivery: "serverOnly"` secret.
+ *
+ * `serverOnly` means "the worker consumes this value; it is never signed into a device
+ * document" — `core/payload.ts`'s prune is what makes the declaration true rather than
+ * descriptive. Which means the declaration is also the ONLY thing holding the value back, and
+ * it lives in a repo file: deleting one word from `.pkey/schema` (or changing `delivery` to
+ * `clientScoped`) re-classifies the secret, and the very next config document hands it out
+ * signed, to every device, with no admin review.
+ *
+ * ONE-DIRECTIONAL by design. Adding a new `serverOnly` entry, or promoting an existing key TO
+ * `serverOnly`, is a tightening and stays allowed; only the loosening is gated. Returns the
+ * operator-facing refusal, or null.
+ */
+function serverOnlyDowngradeRefusal(
+  active: Catalog | null,
+  next: Catalog,
+): string | null {
+  if (!active) return null;
+  const incoming = new Map(next.entries.map((e) => [e.key, e]));
+  for (const entry of active.entries) {
+    if (!isServerOnlySecret(entry)) continue;
+    const candidate = incoming.get(entry.key);
+    if (!candidate) {
+      return (
+        `manifest removes the server-only secret ${JSON.stringify(entry.key)} from the catalog; ` +
+        `a repo push may not withdraw the declaration that keeps a value out of signed documents`
+      );
+    }
+    if (!isServerOnlySecret(candidate)) {
+      return (
+        `manifest reclassifies the server-only secret ${JSON.stringify(entry.key)} ` +
+        `(kind ${JSON.stringify(candidate.kind)}, delivery ${JSON.stringify(candidate.delivery ?? "clientScoped")}); ` +
+        `a repo push may not turn a server-only secret into one the platform signs into device documents`
+      );
+    }
+  }
+  return null;
+}
 
 async function readManifestFile(
   token: string,
@@ -174,6 +250,115 @@ export async function resyncRepo(
     }
   }
 
+  // ── The rest of the pre-write gates ─────────────────────────────────────────
+  //
+  // Everything from here to `const updated` is the same shape as the issuer gate above and is
+  // here for the same reason: below it the function is a sequence of un-batched `db.run`s, so a
+  // refusal further down leaves half a manifest applied. A gate that has to be able to say "no"
+  // to the WHOLE resync has to run before the first write.
+
+  const nextCatalogJson = JSON.stringify(manifest.catalog);
+  const activeSchema = await getActiveSchema(db, slug);
+  const catalogChanged = activeSchema?.catalog_json !== nextCatalogJson;
+  const activeCatalog = parseStoredCatalog(activeSchema?.catalog_json);
+
+  // Same screening the admin API applies before writing `product_schema`. A resync is
+  // triggered by a repo webhook, so without this the sync path installs catalogs the admin
+  // API would refuse — and the refusal is the only thing bounding `pattern` complexity. Only
+  // a CHANGED catalog is screened, so a product whose stored catalog predates the screen keeps
+  // resyncing; construction is inside the try either way, so a malformed one is a 4xx and not
+  // an unhandled throw out of the webhook.
+  let nextCatalog: Catalog;
+  try {
+    nextCatalog = new Catalog(manifest.catalog as never);
+    if (catalogChanged) nextCatalog.compileAll();
+  } catch (e) {
+    return {
+      ok: false,
+      error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
+    };
+  }
+  if (catalogChanged) {
+    const downgrade = serverOnlyDowngradeRefusal(activeCatalog, nextCatalog);
+    if (downgrade) return { ok: false, error: downgrade };
+  }
+
+  // The Sparkle key is what proves a DMG is authentic: `services/update/appcast.ts` verifies
+  // every `.sig` sidecar against it, and an item that does not verify is dropped. A push that
+  // swaps the key therefore makes the attacker's own signature the one the feed accepts. Same
+  // refusal shape as the issuer gate, and gated on the same thing — the CHANGE, not the status
+  // quo. CLEARING it (`sparkleEd25519Pub: ""`) stays allowed: with no key configured the
+  // operator-owned `requireSparkleSignature` default makes the feed fail closed, so removal
+  // costs the attacker the feed rather than winning it.
+  const rel = manifest.release;
+  const nextSparkle = rel?.sparkleEd25519Pub || "";
+  if (
+    nextSparkle &&
+    cfg.sparkle_ed25519_pub &&
+    nextSparkle !== cfg.sparkle_ed25519_pub
+  ) {
+    return {
+      ok: false,
+      error:
+        `manifest replaces the stored Sparkle public key for ${slug}; a repo push may not ` +
+        `rotate the key that authenticates this product's builds — an operator must do it`,
+    };
+  }
+
+  // Referential refusals, hoisted above the first write for the same reason. A tier or profile
+  // a live license still points at cannot be removed, and finding that out half-way through
+  // used to leave the product row and the catalog already rewritten.
+  const storedProfiles = await listProfiles(db, slug);
+  const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
+  for (const profile of storedProfiles) {
+    if (nextProfileIds.has(profile.id)) continue;
+    const refs = await countLicensesUsingProfile(db, slug, profile.id);
+    if (refs > 0)
+      return {
+        ok: false,
+        error: `cannot remove profile ${profile.id}; ${refs} license(s) still reference it`,
+      };
+  }
+  const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
+  for (const tier of await listTiers(db, slug)) {
+    if (nextTierIds.has(tier.id)) continue;
+    const refs = await countLicensesUsingTier(db, slug, tier.id);
+    if (refs > 0)
+      return {
+        ok: false,
+        error: `cannot remove tier ${tier.id}; ${refs} license(s) still reference it`,
+      };
+  }
+
+  // Catalog-declared secrets carried in a profile payload: sealed before they are serialised,
+  // and never allowed to replace a value an operator has already sealed. See
+  // `manifestSecrets.ts` for why both halves are one gate.
+  const isSecretKey = managedSecretKeyPredicate(
+    activeCatalog ? [nextCatalog, activeCatalog] : [nextCatalog],
+  );
+  const storedPayloads = new Map(
+    storedProfiles.map((p) => [p.id, p.payload_json]),
+  );
+  const profilePayloads = new Map<string, string>();
+  for (const p of manifest.profiles) {
+    const sealed = await sealedProfilePayloadJson(
+      env,
+      slug,
+      p.id,
+      p.payload,
+      isSecretKey,
+      storedPayloads.get(p.id) ?? null,
+    );
+    if (!sealed.ok) return { ok: false, error: sealed.error };
+    profilePayloads.set(p.id, sealed.json);
+  }
+
+  // ── Writes ──────────────────────────────────────────────────────────────────
+
+  // The "before" half of the audit trail (`resyncAudit.ts`). Taken after every gate and before
+  // the first write, so a refused resync appends nothing at all.
+  const beforeState = await manifestStateSnapshot(db, slug);
+
   const updated: string[] = [];
 
   await db.run(
@@ -237,20 +422,8 @@ export async function resyncRepo(
   updated.push("services");
 
   // ── schema: publish a new active version only when the catalog changed ──────
-  const nextCatalogJson = JSON.stringify(manifest.catalog);
-  const activeSchema = await getActiveSchema(db, slug);
-  if (activeSchema?.catalog_json !== nextCatalogJson) {
-    // Same screening the admin API applies before writing `product_schema`. A resync is
-    // triggered by a repo webhook, so without this the sync path installs catalogs the admin
-    // API would refuse — and the refusal is the only thing bounding `pattern` complexity.
-    try {
-      new Catalog(manifest.catalog as never).compileAll();
-    } catch (e) {
-      return {
-        ok: false,
-        error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
-      };
-    }
+  // Screened + `serverOnly`-gated above, before the first write.
+  if (catalogChanged) {
     const version = await nextSchemaVersion(db, slug);
     await deactivateSchemas(db, slug);
     await insertSchema(db, {
@@ -264,7 +437,6 @@ export async function resyncRepo(
   }
 
   // ── release_config: update the GitHub-distribution block in place ───────────
-  const rel = manifest.release;
   if (rel) {
     // Defence in depth for R6-01 (the repo-name fallback bypasses the manifest boundary).
     const binaryName = rel.binaryName || repo;
@@ -277,7 +449,7 @@ export async function resyncRepo(
     await db.run(
       `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
          sparkle_ed25519_pub = ?, summary_marker = ?, manual_channels_json = ?,
-         artifact_policy_json = ?, metadata_access = ?, artifacts_access = ?
+         artifact_policy_json = ?
          WHERE product = ?`,
       rel.channelWorkflow || null,
       rel.betaBranch || "main",
@@ -286,9 +458,17 @@ export async function resyncRepo(
       rel.summaryMarker || "pkey:summary",
       rel.manualChannels.length ? JSON.stringify(rel.manualChannels) : null,
       rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,
-      rel.access.metadata,
-      rel.access.artifacts,
       slug,
+    );
+    // The two access columns leave that UPDATE and go through Release's own writer, because
+    // they are the only fields in the row with an OWNER (0022). Putting the ownership predicate
+    // on the statement above would have made an operator-pinned access mode block the rest of
+    // the release block — the binary name, the Sparkle key — from ever being resynced again.
+    await setReleaseAccess(
+      db,
+      slug,
+      { metadata: rel.access.metadata, artifacts: rel.access.artifacts },
+      "manifest",
     );
     updated.push("release");
   }
@@ -314,17 +494,7 @@ export async function resyncRepo(
   }
   updated.push("oidc");
 
-  const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
-  for (const profile of await listProfiles(db, slug)) {
-    if (!nextProfileIds.has(profile.id)) {
-      const refs = await countLicensesUsingProfile(db, slug, profile.id);
-      if (refs > 0)
-        return {
-          ok: false,
-          error: `cannot remove profile ${profile.id}; ${refs} license(s) still reference it`,
-        };
-    }
-  }
+  // Removal refusals and payload sealing both happened above, before the first write.
   stmts.push({ sql: "DELETE FROM profiles WHERE product = ?", params: [slug] });
   for (const p of manifest.profiles) {
     stmts.push(
@@ -333,24 +503,13 @@ export async function resyncRepo(
         id: p.id,
         name: p.name,
         description: p.description ?? null,
-        payloadJson: JSON.stringify(p.payload),
+        payloadJson: profilePayloads.get(p.id) ?? JSON.stringify(p.payload),
         modifiedAt: now,
       }),
     );
   }
   updated.push("profiles");
 
-  const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
-  for (const tier of await listTiers(db, slug)) {
-    if (!nextTierIds.has(tier.id)) {
-      const refs = await countLicensesUsingTier(db, slug, tier.id);
-      if (refs > 0)
-        return {
-          ok: false,
-          error: `cannot remove tier ${tier.id}; ${refs} license(s) still reference it`,
-        };
-    }
-  }
   stmts.push({ sql: "DELETE FROM tiers WHERE product = ?", params: [slug] });
   for (const t of manifest.tiers) {
     stmts.push(
@@ -424,6 +583,26 @@ export async function resyncRepo(
   }
 
   if (stmts.length > 0) await db.batch(stmts);
+
+  // ── The audit trail (`resyncAudit.ts`) ──────────────────────────────────────
+  //
+  // One row per field the resync actually MOVED. `updated` above says which sections were
+  // processed, which is not the same question — the ownership guards mean an attempted write is
+  // often not a change — and it is overwritten in `product_sync_state` by the next sync anyway.
+  // A resync of an unchanged manifest therefore appends nothing, and a push that rewrites the
+  // admin group leaves a permanent row naming the field, in the same log as every console edit.
+  const afterState = await manifestStateSnapshot(db, slug);
+  for (const field of changedFields(beforeState, afterState)) {
+    await audit(
+      db,
+      slug,
+      MANIFEST_ACTOR,
+      now,
+      "release.resync.field",
+      { kind: "field", id: field },
+      `Manifest resync changed ${field} for ${slug}`,
+    );
+  }
 
   return { ok: true, updated };
 }

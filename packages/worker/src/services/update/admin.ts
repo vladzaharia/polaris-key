@@ -124,10 +124,17 @@ export async function handleUpdateAdmin(
         { fields: ["metadataAccess", "artifactsAccess"] },
       );
     }
-    await setReleaseAccess(db, slug, {
-      ...(metadata !== undefined ? { metadata } : {}),
-      ...(artifacts !== undefined ? { artifacts } : {}),
-    });
+    // `admin`: stamps `*_access_source` on the columns this PATCH actually names, so the next
+    // `.pkey/release` push cannot quietly put the feed back to `public` (0022).
+    await setReleaseAccess(
+      db,
+      slug,
+      {
+        ...(metadata !== undefined ? { metadata } : {}),
+        ...(artifacts !== undefined ? { artifacts } : {}),
+      },
+      "admin",
+    );
   }
   if (compatMin !== undefined || compatMax !== undefined) {
     await setCompatWindow(

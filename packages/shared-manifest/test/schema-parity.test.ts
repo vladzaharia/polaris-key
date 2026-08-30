@@ -648,7 +648,10 @@ const MUTATIONS: Mutation[] = [
     code: "invalid_release_access",
     file: "release",
     schema: "rejects",
-    mutate: (d) => (rel(d).access.artifacts = "entitled"),
+    // `entitled` used to be the mutation here; it is the fourth LEGAL mode now (parity with
+    // the worker's `RELEASE_ACCESS_MODES`), so the invalid value has to be one that is
+    // genuinely outside the set.
+    mutate: (d) => (rel(d).access.artifacts = "private"),
   },
   {
     code: "invalid_edge_mint_id",
@@ -679,6 +682,15 @@ const MUTATIONS: Mutation[] = [
     file: "release",
     schema: "rejects",
     mutate: (d) => (mint(d).ttlSeconds = 0),
+  },
+  {
+    code: "invalid_ttl",
+    file: "release",
+    schema: "rejects",
+    // The CEILING arm (MAX_EDGE_MINT_TTL_SECONDS). A repo push must not be able to decide how
+    // long a token minted with the product's third-party signing key stays valid; the schema
+    // expresses this one as `maximum: 3600`.
+    mutate: (d) => (mint(d).ttlSeconds = 31_536_000),
   },
 ];
 

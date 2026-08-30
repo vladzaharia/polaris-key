@@ -206,9 +206,10 @@ discovery rather than a literal. It never verifies updates: `SUPublicEDKey` in t
 `Info.plist` is the terminal anchor, and the target only asserts loudly that it is present.
 
 Metadata and artifact access default to `public` — anonymous update checking is a feature for the
-products that want it. Tightening to `authenticated`, `licensed` or the operator-only `entitled`
-mode is a console setting, not a manifest one. See [Update](/docs/services/update/) and
-[Release](/docs/services/release/).
+products that want it. Tightening to `authenticated`, `licensed` or `entitled` can come from
+`.pkey/release`'s `access` block or from the console; whichever an operator sets in the console
+becomes admin-owned and a later manifest push no longer moves it. See
+[Update](/docs/services/update/) and [Release](/docs/services/release/).
 
 ## Goal: everything
 

@@ -165,7 +165,7 @@
       }
     },
     "access": {
-      "description": "Who may read release metadata and download artifacts. (The per-product `entitled` feed mode is an admin-set runtime policy, not a manifest value.)",
+      "description": "Who may read release metadata and download artifacts. Ownership is per-column: once an operator sets either mode in the console the column is admin-owned and a resync leaves it alone.",
       "type": "object",
       "properties": {
         "metadata": {
@@ -177,7 +177,7 @@
       }
     },
     "accessMode": {
-      "enum": ["public", "authenticated", "licensed"]
+      "enum": ["public", "authenticated", "licensed", "entitled"]
     },
     "edgeMintRecipe": {
       "description": "Edge-mint recipe (identical shape to product.schema.json's — the block is accepted in either document).",
@@ -202,8 +202,10 @@
           "type": "object"
         },
         "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour: the manifest is repo-writable, so it may not dictate how long a leaked minted token stays valid.",
           "type": "integer",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "maximum": 3600
         },
         "audience": {
           "anyOf": [

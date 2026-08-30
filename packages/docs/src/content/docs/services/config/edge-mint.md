@@ -17,16 +17,16 @@ routes.
 
 ## The recipe
 
-| Field              | Meaning                                                                                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`               | The recipe's identifier; also the path segment in `/config/mint/<id>/…`. Constrained to `^[a-z0-9-]+$` at the router, before any lookup happens. |
-| `alg`              | `ES256`, `RS256`, or `EdDSA`. Anything else is `500 misconfigured` at mint time.                                                                 |
-| `signingKeySecret` | Not the key material — the **name** of a sealed row in `product_secrets`, opened per request.                                                    |
-| `kid`              | Optional; carried into the minted JWT's header when present.                                                                                     |
-| `claimsTemplate`   | A free-form JSON object merged into the minted claims.                                                                                           |
-| `ttlSeconds`       | The minted token's lifetime; the Worker stamps `exp = now + ttlSeconds`.                                                                         |
-| `audience`         | Optional, trusted `aud` — server/recipe-controlled, never settable from the template.                                                            |
-| `authPageTemplate` | Optional operator HTML served verbatim at the `/auth` route.                                                                                     |
+| Field              | Meaning                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`               | The recipe's identifier; also the path segment in `/config/mint/<id>/…`. Constrained to `^[a-z0-9-]+$` at the router, before any lookup happens.                                           |
+| `alg`              | `ES256`, `RS256`, or `EdDSA`. Anything else is `500 misconfigured` at mint time.                                                                                                           |
+| `signingKeySecret` | Not the key material — the **name** of a sealed row in `product_secrets`, opened per request.                                                                                              |
+| `kid`              | Optional; carried into the minted JWT's header when present.                                                                                                                               |
+| `claimsTemplate`   | A free-form JSON object merged into the minted claims.                                                                                                                                     |
+| `ttlSeconds`       | The minted token's lifetime; the Worker stamps `exp = now + ttlSeconds`. Capped at **3600** — the manifest is repo-writable and may not decide how long a leaked minted token stays valid. |
+| `audience`         | Optional, trusted `aud` — server/recipe-controlled, never settable from the template.                                                                                                      |
+| `authPageTemplate` | Optional operator HTML served verbatim at the `/auth` route.                                                                                                                               |
 
 Authored via `.pkey/release`'s `edgeMint[]` array at manifest ingest, or directly in admin.
 `signingKeySecret` names a row the operator still has to configure in admin's product secrets —

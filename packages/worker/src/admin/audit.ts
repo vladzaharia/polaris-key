@@ -7,10 +7,21 @@ import { appendAudit } from "../repo.js";
 import { randomId } from "../crypto.js";
 import type { AdminSession } from "./session.js";
 
+/**
+ * The three session fields an audit row records.
+ *
+ * Narrower than `AdminSession` so a non-session actor can be audited too: a manifest resync
+ * runs from a GitHub push webhook and has no session at all, yet it rewrites more product state
+ * than any console action — see `MANIFEST_ACTOR` in `services/release/resync.ts`. Every session
+ * satisfies this shape, so no existing caller changes; what it deliberately does NOT admit is
+ * anything reaching for `groups` or `csrf` to make an authorization decision down here.
+ */
+export type AuditActor = Pick<AdminSession, "sub" | "name" | "email">;
+
 export async function audit(
   db: Db,
   product: string,
-  session: AdminSession,
+  session: AuditActor,
   now: number,
   action: string,
   target: { kind: string; id: string } | null,

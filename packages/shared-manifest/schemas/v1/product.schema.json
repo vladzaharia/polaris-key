@@ -430,7 +430,12 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
         },
         "claimsTemplate": { "type": "object" },
-        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+        "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour: the manifest is repo-writable, so it may not dictate how long a leaked minted token stays valid.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 3600
+        },
         "audience": {
           "anyOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]
         }

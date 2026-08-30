@@ -170,7 +170,20 @@ export interface ManifestReleaseArtifactPolicy {
   allowAmbiguousAssets: boolean;
 }
 
-export type ManifestReleaseAccess = "public" | "authenticated" | "licensed";
+/**
+ * Who may read release metadata / download artifacts.
+ *
+ * `entitled` (D-13) joins the set so the manifest can express what the admin API has always
+ * accepted: the worker's own `RELEASE_ACCESS_MODES` (`services/release/config.ts`) has been
+ * four-valued since P2.T3, and a manifest that named the fourth was rejected outright — the
+ * one access mode a product could not declare in its own repo. The values are otherwise
+ * identical, so this is parity, not a new capability.
+ */
+export type ManifestReleaseAccess =
+  | "public"
+  | "authenticated"
+  | "licensed"
+  | "entitled";
 
 export interface ManifestReleaseAccessPolicy {
   metadata: ManifestReleaseAccess;
@@ -293,8 +306,15 @@ const SEMVER_RE =
 // R6-07). Reject, never coerce: a manifest that fails these is not applied at all.
 /** `binaryName` — interpolated into the served POSIX shell installer. */
 const BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-/** `ghOwner` / `ghRepo` — interpolated unencoded into `api.github.com` paths. */
-const GH_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+/**
+ * `ghOwner` / `ghRepo` — interpolated unencoded into `api.github.com` paths.
+ *
+ * Exported because the manifest is not the only door into those paths: the console's
+ * "link a repo" form takes a URL and derives the same two values (`release/linkRepo.ts`
+ * `parseRepoUrl`), and a second, looser character class there would be exactly the bypass this
+ * one exists to close. One rule, two callers.
+ */
+export const GH_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 /** `channelWorkflow` — a workflow filename or numeric id in an API path segment. */
 const CHANNEL_WORKFLOW_RE = /^(?:[0-9]{1,20}|[A-Za-z0-9._-]{1,100}\.ya?ml)$/;
 /** `betaBranch` — a git branch name used as a query value. */
@@ -385,7 +405,24 @@ export const MAX_MANIFEST_DEPTH = 32;
  *  so a dependency default change cannot silently widen it. */
 const MAX_YAML_ALIASES = 100;
 
-const RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"] as const;
+/**
+ * Ceiling on `edgeMint[].ttlSeconds` — one hour.
+ *
+ * `ttlSeconds` is the lifetime of a token the PLATFORM mints with the product's third-party
+ * signing key, and it arrives from a `.pkey/` file any repo writer can push. Without a ceiling
+ * the manifest dictates how long a leaked minted token stays valid, and `ttlSeconds: 31536000`
+ * is a one-line edit that turns a short-lived credential into a year-long bearer token — with
+ * no admin review and (before this) no audit trail. One hour is the value the normalizer has
+ * always defaulted to, so nothing that did not deliberately raise it is affected.
+ */
+export const MAX_EDGE_MINT_TTL_SECONDS = 3600;
+
+const RELEASE_ACCESS_VALUES = [
+  "public",
+  "authenticated",
+  "licensed",
+  "entitled",
+] as const;
 const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
 const FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"] as const;
 const AUTO_ISSUE_MODE_VALUES = ["anonymous", "oidcDefault", "both"] as const;
@@ -1048,7 +1085,7 @@ export function validateManifestDocuments(
               "release",
               `/release/access/${key}`,
               "invalid_release_access",
-              "release.access values must be public, authenticated, or licensed.",
+              "release.access values must be public, authenticated, licensed, or entitled.",
             );
           }
         }
@@ -1204,13 +1241,18 @@ export function validateManifestDocuments(
         "Edge mint signing key refs must be stable uppercase names.",
       );
     }
-    if (raw.ttlSeconds !== undefined && !positiveInteger(raw.ttlSeconds)) {
+    const ttl: unknown = raw.ttlSeconds;
+    if (
+      ttl !== undefined &&
+      (!positiveInteger(ttl) ||
+        (typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS))
+    ) {
       add(
         errors,
         "release",
         `/edgeMint/${i}/ttlSeconds`,
         "invalid_ttl",
-        "Edge mint TTL must be a positive integer.",
+        `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`,
       );
     }
   }
@@ -1776,7 +1818,13 @@ function normalizeEdgeMint(raw: unknown): ManifestEdgeMint | null {
     signingKeySecret: String(raw.signingKeySecret ?? ""),
     kid: typeof raw.kid === "string" ? raw.kid : undefined,
     claimsTemplate: asRecord(raw.claimsTemplate),
-    ttlSeconds: typeof raw.ttlSeconds === "number" ? raw.ttlSeconds : 3600,
+    // Validation has already refused anything above the ceiling (reject, never coerce), so the
+    // `Math.min` is belt-and-braces for a caller that reaches the normalizer directly. The
+    // omitted-value default has always been one hour, which is also the ceiling.
+    ttlSeconds:
+      typeof raw.ttlSeconds === "number"
+        ? Math.min(raw.ttlSeconds, MAX_EDGE_MINT_TTL_SECONDS)
+        : MAX_EDGE_MINT_TTL_SECONDS,
     audience: typeof raw.audience === "string" ? raw.audience : null,
   };
 }

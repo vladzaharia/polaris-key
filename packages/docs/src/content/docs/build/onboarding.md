@@ -260,8 +260,19 @@ until it installs an unsigned payload.
 The `entitled` feed access mode makes the server enforce the same grant. `licensed` asks whether
 there is a usable license; `entitled` also asks whether _this_ license holds _this_ channel at
 _this_ version, closing the gap where a stable-only key could fetch `/djdl/beta/appcast.xml` and
-the build behind it. It is **operator-set, not manifest-declarable** — `.pkey/release`'s
-`access` accepts only `public`, `authenticated` and `licensed`:
+the build behind it. `.pkey/release`'s `access` block accepts all four modes:
+
+```yaml
+access:
+  metadata: public
+  artifacts: entitled
+```
+
+An operator can also set them live, and that is where **ownership** matters. Setting a mode in
+the console (or through the endpoint below) marks that column admin-owned, and a later
+`.pkey/release` push leaves it alone — otherwise the next unrelated repo commit would quietly put
+a narrowed feed back to `public`. Ownership is per column, so pinning `artifactsAccess` leaves
+`metadataAccess` tracking the manifest.
 
 ```sh
 curl -X PATCH https://key.plrs.im/manage/api/products/djdl/update/settings \

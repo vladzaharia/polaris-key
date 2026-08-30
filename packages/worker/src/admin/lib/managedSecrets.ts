@@ -63,6 +63,36 @@ export async function sealManagedValue(
   return seal(env, plaintext, ctx(product, key));
 }
 
+/**
+ * Does a stored value already hold exactly `value`?
+ *
+ * The manifest ingest needs this and `openManagedValue` cannot answer it: sealing uses a random
+ * IV, so re-sealing the same plaintext yields a different envelope and a byte comparison of two
+ * envelopes is meaningless. Comparing the SEALED PLAINTEXT is exact — `sealManagedValue` derives
+ * it from the value by a fixed rule, so the same value always produces the same plaintext.
+ *
+ * Fails CLOSED: an envelope that will not open is never reported as matching, so a resync facing
+ * a value it cannot read refuses rather than silently overwriting it.
+ */
+export async function managedValueMatches(
+  env: Env,
+  product: string,
+  key: string,
+  stored: unknown,
+  value: unknown,
+): Promise<boolean> {
+  const wanted = typeof value === "string" ? value : JSON.stringify(value);
+  if (!isSealedEnvelope(stored)) {
+    const have = typeof stored === "string" ? stored : JSON.stringify(stored);
+    return have === wanted;
+  }
+  try {
+    return (await open(env, stored as string, ctx(product, key))) === wanted;
+  } catch {
+    return false;
+  }
+}
+
 /** Open one managed secret value. A legacy plaintext value is returned as-is (lazy migration);
  *  a value that IS an envelope but fails to open returns null, so a wrong or partial plaintext
  *  can never escape. */

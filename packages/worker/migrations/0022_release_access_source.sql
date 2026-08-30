@@ -1,0 +1,21 @@
+-- Polaris Key — ownership markers for `release_config.metadata_access` / `artifacts_access`.
+--
+-- The same rule the fingerprint (0010), auto-issue (0011) and services (0020) columns already
+-- follow, applied to the last pair of manifest-written columns that had no owner:
+--   'manifest' => `.pkey/release` owns the access mode and a resync reapplies it.
+--   'admin'    => an operator set it live (PATCH /update/settings); resync must leave it alone.
+-- NULL is read as 'manifest' (COALESCE at the call site), so pre-existing rows stay
+-- manifest-owned without a backfill.
+--
+-- WHY IT MATTERS. `metadata_access` / `artifacts_access` decide who may read the update feed and
+-- who may download a build. Before this, `resyncRepo`'s unconditional UPDATE wrote the manifest's
+-- values over the operator's on EVERY push to `.pkey/` — so an operator who moved a product to
+-- `licensed` or `entitled` had it silently reset to `public` by the next unrelated repo commit.
+--
+-- Two bare ALTERs, in the 0010/0011 shape rather than the one-statement-per-file shape: they are
+-- the same column pair on the same table and are only ever read together (`artifactPolicy()`
+-- resolves both), so splitting them across two files would let a half-applied pair look like a
+-- deliberate mixed ownership. Neither statement can be made replay-idempotent in pure SQL; a
+-- replay aborts on the first with `duplicate column name` and nothing behind it is new work.
+ALTER TABLE release_config ADD COLUMN metadata_access_source TEXT;
+ALTER TABLE release_config ADD COLUMN artifacts_access_source TEXT;

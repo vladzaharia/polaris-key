@@ -18,7 +18,7 @@
 
 export type { AdminSession } from "../admin/session.js";
 
-export { audit } from "../admin/audit.js";
+export { audit, type AuditActor } from "../admin/audit.js";
 
 export {
   adminJson,

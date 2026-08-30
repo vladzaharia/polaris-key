@@ -75,7 +75,10 @@ describe("manifest contract defaults", () => {
     });
   });
 
-  it("rejects unknown release access values", () => {
+  // Parity with the worker's four-valued `RELEASE_ACCESS_MODES` (`release/config.ts`): the
+  // admin API has accepted `entitled` since P2.T3, so refusing it here made it the one access
+  // mode a product could not declare in its own repo.
+  it("accepts entitled, the fourth mode the admin API already writes", () => {
     const res = parseManifest({
       product: JSON.stringify(PRODUCT),
       schema: JSON.stringify(catalogWithSecretDelivery()),
@@ -84,10 +87,27 @@ describe("manifest contract defaults", () => {
       ),
     });
 
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.access).toEqual({
+      metadata: "public",
+      artifacts: "entitled",
+    });
+  });
+
+  it("rejects unknown release access values", () => {
+    const res = parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify(
+        release({ metadata: "public", artifacts: "private" }),
+      ),
+    });
+
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.errors.join("\n")).toContain(
-      "release.access values must be public, authenticated, or licensed.",
+      "release.access values must be public, authenticated, licensed, or entitled.",
     );
   });
 });

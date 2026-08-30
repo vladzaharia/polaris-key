@@ -28,6 +28,10 @@ export interface ReleaseConfigRow {
   artifact_policy_json: string | null;
   metadata_access?: string | null;
   artifacts_access?: string | null;
+  /** Who owns each access column — `manifest` (a resync may rewrite it) or `admin` (an operator
+   *  set it live and a resync must not). NULL reads as `manifest` (0022). */
+  metadata_access_source?: string | null;
+  artifacts_access_source?: string | null;
 }
 
 /** A release config that has the GitHub coordinates needed to talk to the API. */
@@ -154,18 +158,57 @@ export function accessModeFor(
  * sanctioned cross-service edge rather than issuing SQL against a table it does not own. The two
  * modes are validated by the caller against `isReleaseAccess`; this function does not re-check,
  * because a silent fallback here would turn a rejected value into a quiet downgrade.
+ *
+ * ── OWNERSHIP (0022) ────────────────────────────────────────────────────────────────────────
+ *
+ * `source` is the same manifest-vs-admin rule `setServices` / `setFingerprintPolicy` already
+ * apply, and for the same reason: these two columns decide who may read the update feed and who
+ * may download a build, and `resyncRepo` used to rewrite them from `.pkey/release` on EVERY push.
+ * An operator who moved a product to `licensed` or `entitled` in the console therefore had it
+ * silently reset to `public` by the next unrelated repo commit.
+ *
+ *   `admin`    stamps the column's `*_access_source` and always wins.
+ *   `manifest` writes only while that column is still manifest-owned — the guard is in the
+ *              UPDATE's own WHERE clause, not a read-then-write in the caller, so two concurrent
+ *              resyncs cannot race past it.
+ *
+ * Ownership is PER COLUMN: an operator who pins `artifacts_access` alone leaves
+ * `metadata_access` manifest-owned, which is the distinction a single row-level flag would lose.
  */
 export async function setReleaseAccess(
   db: Db,
   product: string,
   access: { metadata?: ReleaseAccess; artifacts?: ReleaseAccess },
+  source: "manifest" | "admin",
 ): Promise<void> {
+  if (source === "manifest") {
+    await db.run(
+      `UPDATE release_config
+          SET metadata_access =
+                CASE WHEN COALESCE(metadata_access_source, 'manifest') = 'manifest'
+                     THEN COALESCE(?, metadata_access) ELSE metadata_access END,
+              artifacts_access =
+                CASE WHEN COALESCE(artifacts_access_source, 'manifest') = 'manifest'
+                     THEN COALESCE(?, artifacts_access) ELSE artifacts_access END
+        WHERE product = ?`,
+      access.metadata ?? null,
+      access.artifacts ?? null,
+      product,
+    );
+    return;
+  }
   await db.run(
     `UPDATE release_config
         SET metadata_access = COALESCE(?, metadata_access),
-            artifacts_access = COALESCE(?, artifacts_access)
+            metadata_access_source =
+              CASE WHEN ? IS NULL THEN metadata_access_source ELSE 'admin' END,
+            artifacts_access = COALESCE(?, artifacts_access),
+            artifacts_access_source =
+              CASE WHEN ? IS NULL THEN artifacts_access_source ELSE 'admin' END
       WHERE product = ?`,
     access.metadata ?? null,
+    access.metadata ?? null,
+    access.artifacts ?? null,
     access.artifacts ?? null,
     product,
   );

@@ -49,3 +49,22 @@ export {
   listTiers,
   nextSchemaVersion,
 } from "../admin/repo.js";
+
+/**
+ * R12-02's envelope encryption, opened to the manifest ingest.
+ *
+ * These three were console-only: `applyOverrides` (the profile/override editor) was the single
+ * caller, so a value that arrived through `.pkey/product`'s `licensing.profiles[].payload`
+ * instead of through the console was written to `profiles.payload_json` in CLEARTEXT — under a
+ * catalog key the product itself declares `kind: "secret"`. The same push also OVERWROTE
+ * whatever an operator had rotated the value to, which is an incident response silently
+ * reverted by a routine repo commit. Both ingest paths (`linkRepo`, `resyncRepo`) now seal on
+ * write and refuse to clobber an already-sealed stored value, and they reach the helpers
+ * through this door because a service may not import `admin/` directly.
+ */
+export {
+  isManagedSecretKey,
+  isSealedEnvelope,
+  managedValueMatches,
+  sealManagedValue,
+} from "../admin/lib/managedSecrets.js";

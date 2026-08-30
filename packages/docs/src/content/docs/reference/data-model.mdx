@@ -46,7 +46,7 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `release_config` | 0001_init.sql | `product`, `gh_owner`, `gh_repo`, `gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`, `artifact_policy_json (0006)`, `metadata_access (0007)`, `artifacts_access (0007)` |
+| `release_config` | 0001_init.sql | `product`, `gh_owner`, `gh_repo`, `gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`, `artifact_policy_json (0006)`, `metadata_access (0007)`, `artifacts_access (0007)`, `metadata_access_source (0022)`, `artifacts_access_source (0022)` |
 | `release_metadata` | 0007_backend_contracts.sql | `product`, `release_id`, `version`, `title`, `notes`, `commit_sha`, `source_url`, `metadata_access`, `artifacts_access`, `published_at`, `metadata_json`, `created_at`, `modified_at` |
 | `release_artifacts` | 0007_backend_contracts.sql | `product`, `release_id`, `artifact_id`, `name`, `kind`, `platform`, `arch`, `content_type`, `size_bytes`, `sha256`, `source_url`, `storage_key`, `sparkle_signature`, `access`, `metadata_json`, `created_at` |
 | `release_channels` | 0007_backend_contracts.sql | `product`, `channel`, `release_id`, `policy_json`, `created_at`, `modified_at` |

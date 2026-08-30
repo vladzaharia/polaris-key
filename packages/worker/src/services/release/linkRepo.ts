@@ -40,7 +40,7 @@ import {
   stmtInsertSchema,
   stmtInsertTier,
 } from "../../core/ingest.js";
-import { parseManifest, type ParsedManifest } from "./manifest.js";
+import { GH_SLUG_RE, parseManifest, type ParsedManifest } from "./manifest.js";
 import {
   discoverInstallation,
   type FetchImpl,
@@ -48,6 +48,10 @@ import {
 } from "./githubApp.js";
 import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
+import {
+  managedSecretKeyPredicate,
+  sealedProfilePayloadJson,
+} from "./manifestSecrets.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
 import { serializeServices } from "../../core/services.js";
@@ -67,7 +71,17 @@ export type LinkRepoResult =
     }
   | { ok: false; error: string; errors?: string[] };
 
-/** Pull `{owner, repo}` from a GitHub URL or a bare `owner/repo`. Returns null on garbage. */
+/**
+ * Pull `{owner, repo}` from a GitHub URL or a bare `owner/repo`. Returns null on garbage.
+ *
+ * The URL arm used to accept `[^/]+` for both halves, which admits `?`, `#`, `:`, `..` and
+ * every other non-slash byte — and both values are then interpolated UNENCODED into
+ * `api.github.com` paths (`github.ts`, `githubApp.ts`) and stored as the product's permanent
+ * coordinates. `https://github.com/acme/repo?x=` and `https://github.com/../../orgs/x/repo`
+ * both parsed. The manifest validator has bounded the same two strings with `GH_SLUG_RE` since
+ * R6-07; this is the console's door onto the identical values, so it is the identical rule —
+ * imported, not re-typed, because two copies of a character class is how one of them drifts.
+ */
 export function parseRepoUrl(
   repoUrl: string,
 ): { owner: string; repo: string } | null {
@@ -78,8 +92,9 @@ export function parseRepoUrl(
   // Accept https://github.com/owner/repo, git@github.com:owner/repo, or owner/repo.
   const m =
     trimmed.match(/github\.com[/:]([^/]+)\/([^/]+)$/i) ??
-    trimmed.match(/^([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)$/);
+    trimmed.match(/^([^/]+)\/([^/]+)$/);
   if (!m || !m[1] || !m[2]) return null;
+  if (!GH_SLUG_RE.test(m[1]) || !GH_SLUG_RE.test(m[2])) return null;
   return { owner: m[1], repo: m[2] };
 }
 
@@ -291,13 +306,36 @@ async function registerFromManifest(
   // not, so a manifest from GitHub could install a catalog the admin API would have rejected
   // — unsupported keywords, or a `pattern` the validator cannot compile. Screen it here too,
   // so there is no route into `product_schema` that skips the check.
+  let catalog: Catalog;
   try {
-    new Catalog(manifest.catalog as never).compileAll();
+    catalog = new Catalog(manifest.catalog as never);
+    catalog.compileAll();
   } catch (e) {
     return {
       ok: false,
       error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
     };
+  }
+
+  // Catalog-declared secrets carried in a profile payload are sealed under `PLATFORM_KEK`
+  // before they are serialised — `manifestSecrets.ts` explains why the manifest paths needed
+  // this and the console path already had it. There is no stored row to protect at link time
+  // (the product does not exist yet), so the refusal half cannot fire here; only the sealing
+  // half does. `sealManagedValue` THROWS when the KEK is missing, which is the correct
+  // outcome: a secret is never persisted unsealed.
+  const isSecretKey = managedSecretKeyPredicate([catalog]);
+  const profilePayloads = new Map<string, string>();
+  for (const p of manifest.profiles) {
+    const sealed = await sealedProfilePayloadJson(
+      env,
+      slug,
+      p.id,
+      p.payload,
+      isSecretKey,
+      null,
+    );
+    if (!sealed.ok) return { ok: false, error: sealed.error };
+    profilePayloads.set(p.id, sealed.json);
   }
 
   const statements: DbStatement[] = [
@@ -369,7 +407,7 @@ async function registerFromManifest(
         id: p.id,
         name: p.name,
         description: p.description ?? null,
-        payloadJson: JSON.stringify(p.payload),
+        payloadJson: profilePayloads.get(p.id) ?? JSON.stringify(p.payload),
         modifiedAt: now,
       }),
     );

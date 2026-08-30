@@ -34,6 +34,11 @@ import { defaultInstallScript } from "../../src/services/release/install.js";
 import { linkRepo } from "../../src/services/release/linkRepo.js";
 import { handleGithubWebhook } from "../../src/githubWebhook.js";
 import { getReleaseConfig } from "../../src/services/release/index.js";
+import { setReleaseAccess } from "../../src/services/release/config.js";
+import {
+  isSealedEnvelope,
+  openManagedValue,
+} from "../../src/admin/lib/managedSecrets.js";
 import { handlePortalDownload } from "../../src/services/identity/portal/api.js";
 import {
   createPortalDownloadToken,
@@ -1551,5 +1556,364 @@ describe("R6-11 portal download redirect host allowlist", () => {
     // database, not the ordering, is what decides which one gets the redirect.
     const [a, b] = await Promise.all([fire(), fire()]);
     expect([a.status, b.status].sort()).toEqual([302, 404]);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// R6-05 (fix direction #4) — `.pkey/` ingest was a control plane
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The finding's open half: a push to `.pkey/` on a linked repo's default branch, by anyone with
+// write access, with no admin review and no audit row, rewrote security-relevant product state.
+// Each test below is one of those rewrites, and each is GREEN when the push FAILS to make it.
+
+/** Catalog with a `serverOnly` secret (worker-consumed) and a `clientScoped` one (delivered). */
+const INGEST_ENTRIES: readonly Record<string, unknown>[] = [
+  {
+    key: "run.concurrency",
+    kind: "config",
+    category: "Run",
+    label: "Concurrency",
+    description: "How many downloads run at once.",
+    schema: { type: "integer", minimum: 1 },
+  },
+  {
+    key: "api.serverToken",
+    kind: "secret",
+    category: "Secrets",
+    label: "Server token",
+    description: "Consumed by the worker; never signed into a device document.",
+    schema: { type: "string", minLength: 1 },
+    delivery: "serverOnly",
+  },
+  {
+    key: "api.deviceToken",
+    kind: "secret",
+    category: "Secrets",
+    label: "Device token",
+    description: "Delivered to the device's keyring.",
+    schema: { type: "string", minLength: 1 },
+    delivery: "clientScoped",
+  },
+];
+
+function ingestSchemaJson(
+  mutate: (entries: Record<string, unknown>[]) => void = () => {},
+): string {
+  const entries = JSON.parse(JSON.stringify(INGEST_ENTRIES)) as Record<
+    string,
+    unknown
+  >[];
+  mutate(entries);
+  return JSON.stringify({ schemaVersion: 1, entries });
+}
+
+function ingestProductJson(
+  opts: { adminGroup?: string; secretValue?: string } = {},
+): string {
+  return JSON.stringify({
+    slug: "acme",
+    name: "Acme",
+    compatMin: "1.0.0",
+    compatMax: "9.0.0",
+    adminGroup: opts.adminGroup ?? "acme-admins",
+    licensing: {
+      profiles: [
+        {
+          id: "base",
+          name: "Base",
+          payload: {
+            secrets: {
+              "api.deviceToken": {
+                state: "enforced",
+                value: opts.secretValue ?? "manifest-secret-v1",
+                updatedAt: 0,
+              },
+            },
+          },
+        },
+      ],
+      tiers: [{ id: "pro", label: "Pro", profileId: "base" }],
+    },
+  });
+}
+
+/** Link `acme-org/acme-app` with the ingest fixtures; returns the mutable file map. */
+async function linkIngest(
+  env: Env,
+  db: Db,
+): Promise<ReturnType<typeof pkeyFetch>> {
+  const stub = pkeyFetch({
+    ".pkey/schema.json": ingestSchemaJson(),
+    ".pkey/product.json": ingestProductJson(),
+    ".pkey/release.json": releaseJson(),
+  });
+  const linked = await linkRepo(
+    env,
+    db,
+    "acme-org/acme-app",
+    NOW,
+    stub.fetchImpl,
+  );
+  expect(linked.ok, JSON.stringify(linked)).toBe(true);
+  return stub;
+}
+
+/** Fire one webhook delivery. `nonce` keeps the delivery GUID distinct across calls. */
+async function push(
+  env: Env,
+  db: Db,
+  stub: ReturnType<typeof pkeyFetch>,
+  at: number,
+  nonce = "0",
+): Promise<{ ok: boolean; products: Array<{ ok: boolean; error?: string }> }> {
+  const res = await handleGithubWebhook(
+    deliveryRequest(
+      await signedPush(
+        pushPayload({ after: nonce.padEnd(40, "0") }),
+        "webhook-secret",
+      ),
+    ),
+    env,
+    db,
+    at,
+    stub.fetchImpl,
+  );
+  expect(res.status).toBe(200);
+  return (await res.json()) as {
+    ok: boolean;
+    products: Array<{ ok: boolean; error?: string }>;
+  };
+}
+
+async function activeCatalog(db: Db): Promise<string | undefined> {
+  const row = await db.first<{ catalog_json: string }>(
+    "SELECT catalog_json FROM product_schema WHERE product = ? AND active = 1",
+    "acme",
+  );
+  return row?.catalog_json;
+}
+
+async function profilePayload(db: Db): Promise<string | undefined> {
+  const row = await db.first<{ payload_json: string }>(
+    "SELECT payload_json FROM profiles WHERE product = ? AND id = ?",
+    "acme",
+    "base",
+  );
+  return row?.payload_json;
+}
+
+async function auditRows(
+  db: Db,
+): Promise<Array<{ action: string; target_id: string | null }>> {
+  return db.all<{ action: string; target_id: string | null }>(
+    "SELECT action, target_id FROM audit WHERE product = ? ORDER BY target_id",
+    "acme",
+  );
+}
+
+function envWithWebhook(): Env {
+  const env = envFor();
+  env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
+  return env;
+}
+
+describe("R6-05 .pkey/ ingest rewrites security state with no review", () => {
+  // FIXED: `serverOnly` is the declaration that keeps a secret out of every signed document
+  // (`core/payload.ts`'s prune). Withdrawing it in a repo file made the platform hand the value
+  // out signed on the very next document poll.
+  it("a push that reclassifies a serverOnly secret is refused and the catalog is unchanged", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    const stub = await linkIngest(env, db);
+    const before = await activeCatalog(db);
+
+    stub.files[".pkey/schema.json"] = ingestSchemaJson((entries) => {
+      entries[1]!.delivery = "clientScoped";
+    });
+    const body = await push(env, db, stub, NOW + 10, "1");
+
+    expect(body.ok).toBe(false);
+    expect(body.products[0]?.error).toContain("api.serverToken");
+    expect(await activeCatalog(db)).toBe(before);
+  });
+
+  it("a push that DELETES a serverOnly secret from the catalog is refused too", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    const stub = await linkIngest(env, db);
+    const before = await activeCatalog(db);
+
+    stub.files[".pkey/schema.json"] = ingestSchemaJson((entries) =>
+      entries.splice(1, 1),
+    );
+    const body = await push(env, db, stub, NOW + 10, "2");
+
+    expect(body.ok).toBe(false);
+    expect(body.products[0]?.error).toContain("api.serverToken");
+    expect(await activeCatalog(db)).toBe(before);
+  });
+
+  // The guard is ONE-DIRECTIONAL: tightening must stay possible, or the check would freeze
+  // every catalog that ever declared a serverOnly key.
+  it("a push that ADDS a serverOnly secret still applies", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    const stub = await linkIngest(env, db);
+
+    stub.files[".pkey/schema.json"] = ingestSchemaJson((entries) => {
+      entries[2]!.delivery = "serverOnly";
+      entries.push({
+        key: "api.extraToken",
+        kind: "secret",
+        category: "Secrets",
+        label: "Extra token",
+        description: "",
+        schema: { type: "string", minLength: 1 },
+        delivery: "serverOnly",
+      });
+    });
+    const body = await push(env, db, stub, NOW + 10, "3");
+
+    expect(body.ok).toBe(true);
+    expect(await activeCatalog(db)).toContain("api.extraToken");
+  });
+
+  // FIXED: `release_config`'s two access columns carry an owner (0022). They decide who may
+  // read the update feed and who may download a build, and a resync used to reset them from
+  // `.pkey/release` on every push — so an operator's `licensed` became `public` again.
+  it("a push cannot flip an admin-set artifacts_access back to public", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    const stub = await linkIngest(env, db);
+
+    // The operator narrows downloads in the console.
+    await setReleaseAccess(db, "acme", { artifacts: "licensed" }, "admin");
+
+    // The repo pushes a manifest that says both modes are wide open.
+    stub.files[".pkey/release.json"] = releaseJson({
+      access: { metadata: "authenticated", artifacts: "public" },
+    });
+    const body = await push(env, db, stub, NOW + 10, "4");
+    expect(body.ok).toBe(true);
+
+    const cfg = await getReleaseConfig(db, "acme");
+    // The admin-owned column survived…
+    expect(cfg?.artifacts_access).toBe("licensed");
+    // …and ownership is PER COLUMN, so the one the operator never touched still tracks the repo.
+    expect(cfg?.metadata_access).toBe("authenticated");
+  });
+
+  // FIXED: the Sparkle key is what proves a DMG is authentic — every `.sig` sidecar is verified
+  // against it. Swapping it in a repo file makes the attacker's own signature the accepted one.
+  it("a push cannot replace a stored sparkle_ed25519_pub", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    const stub = await linkIngest(env, db);
+    expect((await getReleaseConfig(db, "acme"))?.sparkle_ed25519_pub).toBe(
+      "PUBKEY==",
+    );
+
+    stub.files[".pkey/release.json"] = releaseJson({
+      sparkleEd25519Pub: "ATTACKERKEY==",
+      binaryName: "acme-pwned",
+    });
+    const body = await push(env, db, stub, NOW + 10, "5");
+
+    expect(body.ok).toBe(false);
+    expect(body.products[0]?.error).toContain("Sparkle public key");
+    const cfg = await getReleaseConfig(db, "acme");
+    expect(cfg?.sparkle_ed25519_pub).toBe("PUBKEY==");
+    // The refusal precedes every write, so nothing else in the manifest landed either.
+    expect(cfg?.binary_name).toBe("acme");
+  });
+
+  // FIXED (R12-02's missing half): `applyOverrides` sealed catalog secrets, but only the CONSOLE
+  // reached it. Both manifest paths wrote `JSON.stringify(p.payload)` verbatim.
+  it("a manifest-supplied secret is sealed at rest, not stored in cleartext", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    await linkIngest(env, db);
+
+    const stored = await profilePayload(db);
+    expect(stored).toBeDefined();
+    expect(stored).not.toContain("manifest-secret-v1");
+
+    const entry = (
+      JSON.parse(stored!) as {
+        secrets: Record<string, { value: unknown }>;
+      }
+    ).secrets["api.deviceToken"]!;
+    expect(isSealedEnvelope(entry.value)).toBe(true);
+    expect(
+      await openManagedValue(env, "acme", "api.deviceToken", entry.value),
+    ).toBe("manifest-secret-v1");
+  });
+
+  it("a push cannot overwrite a sealed stored secret with its own value", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    const stub = await linkIngest(env, db);
+    const before = await profilePayload(db);
+
+    stub.files[".pkey/product.json"] = ingestProductJson({
+      secretValue: "attacker-rotated-value",
+    });
+    const body = await push(env, db, stub, NOW + 10, "6");
+
+    expect(body.ok).toBe(false);
+    expect(body.products[0]?.error).toContain("api.deviceToken");
+    // Byte-identical: the refusal ran before the first write.
+    expect(await profilePayload(db)).toBe(before);
+  });
+
+  // FIXED: `grep -n audit resync.ts githubWebhook.ts` used to return nothing at all.
+  it("a resync that changes product state writes one audit row per changed field", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    const stub = await linkIngest(env, db);
+
+    stub.files[".pkey/product.json"] = ingestProductJson({
+      adminGroup: "attacker-controlled-group",
+    });
+    const body = await push(env, db, stub, NOW + 10, "7");
+    expect(body.ok).toBe(true);
+
+    const rows = await auditRows(db);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.action === "release.resync.field")).toBe(true);
+    expect(rows.map((r) => r.target_id)).toContain("products.admin_group");
+    // A field the push did NOT move gets no row.
+    expect(rows.map((r) => r.target_id)).not.toContain("products.name");
+  });
+
+  // REGRESSION GUARD. An over-eager ownership guard that refuses (or churns on) a legitimate,
+  // unchanged resync is worse than the bug: every push under `.pkey/` triggers one.
+  it("a resync of an UNCHANGED manifest is still a clean no-op", async () => {
+    const db = makeTestDb();
+    const env = envWithWebhook();
+    const stub = await linkIngest(env, db);
+    const catalogBefore = await activeCatalog(db);
+    const payloadBefore = await profilePayload(db);
+    const cfgBefore = await getReleaseConfig(db, "acme");
+
+    for (const [i, at] of [NOW + 10, NOW + 20, NOW + 30].entries()) {
+      const body = await push(env, db, stub, at, `a${i}`);
+      expect(body.ok, JSON.stringify(body)).toBe(true);
+    }
+
+    // Nothing moved…
+    expect(await activeCatalog(db)).toBe(catalogBefore);
+    expect(await profilePayload(db)).toBe(payloadBefore);
+    expect(await getReleaseConfig(db, "acme")).toEqual(cfgBefore);
+    // …so there is nothing to audit. (A resync that logged on every push would bury the real
+    // ones and would be its own retention problem.)
+    expect(await auditRows(db)).toEqual([]);
+    // …and exactly one active catalog version: no version churn from re-publishing.
+    const versions = await db.all<{ catalog_version: number }>(
+      "SELECT catalog_version FROM product_schema WHERE product = ?",
+      "acme",
+    );
+    expect(versions).toHaveLength(1);
   });
 });
