@@ -23,6 +23,13 @@ import { getReleaseConfig } from "./config.js";
 export const releaseService: ServiceDescriptor = {
   slug: "release",
   handle: handleReleaseRoutes,
+  /** The canonical surface `routes.ts` dispatches (B7-09) — what `routeCoverage` pins. The
+   *  permanent `/{product}/install.sh` alias is the ROUTER's rewrite, not Release's surface. */
+  surface: [
+    { path: "/{product}/release/changelog", methods: ["get"] },
+    { path: "/{product}/release/install.sh", methods: ["get"] },
+    { path: "/{product}/release/dl/{version}/{asset}", methods: ["get"] },
+  ],
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleReleaseAdmin(ctx),
   /**

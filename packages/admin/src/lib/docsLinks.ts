@@ -24,6 +24,9 @@ export const DOCS_LINKS = {
   createLicense: "/docs/admin/licenses-and-devices/",
   mintKey: "/docs/services/license/model/",
   mintBundle: "/docs/admin/bundles/",
+  // The token exists so `pkey bundle` can authenticate without an exported browser cookie, and
+  // the bundles page is where that command (and its credential) is documented.
+  mintApiToken: "/docs/admin/bundles/",
   tierEditor: "/docs/services/license/model/",
   createProfile: "/docs/services/config/profiles/",
   resync: "/docs/build/manifest/",

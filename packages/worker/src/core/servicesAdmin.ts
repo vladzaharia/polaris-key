@@ -46,8 +46,7 @@ import {
   REGISTRATION_POLICIES,
   serviceStateOf,
   SERVICE_SLUGS,
-  serializeServices,
-  validateServices,
+  serializeValidatedServices,
   type ProductServices,
   type RegistrationPolicy,
   type ServiceSlug,
@@ -142,13 +141,17 @@ export async function handleServicesAdmin(
   if (fields.length > 0)
     return err(422, ErrorCode.BadRequest, "invalid services", { fields });
 
-  const errors = validateServices(services, registration);
-  if (errors.length > 0)
-    return err(422, ErrorCode.BadRequest, "incoherent services", { errors });
-
   const next: ProductServices =
     registration === undefined ? { services } : { services, registration };
-  await setServices(db, slug, serializeServices(next), "admin", now);
+  // A4-04: this path used to call `validateServices` and then `serializeServices` as two
+  // separate steps — correct here, and the shape the other two writers quietly omitted the first
+  // half of. One call now, so there is no first half to omit.
+  const serialized = serializeValidatedServices(next);
+  if (!serialized.ok)
+    return err(422, ErrorCode.BadRequest, "incoherent services", {
+      errors: serialized.errors,
+    });
+  await setServices(db, slug, serialized.json, "admin", now);
 
   const enabled = SERVICE_SLUGS.filter((s) => services[s].enabled);
   await audit(

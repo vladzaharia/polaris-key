@@ -1762,12 +1762,37 @@ export async function pruneAudit(
   );
 }
 
+/** The activity feed's page size: the default, and the ceiling `clampAuditLimit` enforces. */
+export const AUDIT_LIMIT_DEFAULT = 50;
+export const AUDIT_LIMIT_MAX = 200;
+
+/**
+ * Coerce a caller-supplied page size into a usable one (B4-03).
+ *
+ * `Math.min(opts.limit ?? 50, 200)` was the whole of this, and it is only HALF a clamp: it has a
+ * ceiling and no floor. `?limit=-1` therefore arrived intact and became `LIMIT -1`, which SQLite
+ * does not treat as an error or as zero — a **negative LIMIT means no limit at all**. So the one
+ * parameter whose entire job was to bound the query was also the way to remove the bound, on a
+ * per-product audit table with no other cap. `0` was the same class of answer via a different
+ * route (an empty page forever).
+ *
+ * Non-integers are floored rather than rejected because this is a page size, not an identifier:
+ * `?limit=10.5` means ten and the caller does not need a 422 to be told so. Anything that is not
+ * a finite number at all falls back to the default, which is what the old `|| 50` did for `"abc"`
+ * and is the behaviour callers already depend on.
+ */
+export function clampAuditLimit(value: number | undefined): number {
+  if (value === undefined || !Number.isFinite(value))
+    return AUDIT_LIMIT_DEFAULT;
+  return Math.min(Math.max(Math.floor(value), 1), AUDIT_LIMIT_MAX);
+}
+
 export async function listAudit(
   db: Db,
   product: string,
   opts: { beforeAt?: number; beforeId?: string; limit?: number } = {},
 ): Promise<AuditRow[]> {
-  const limit = Math.min(opts.limit ?? 50, 200);
+  const limit = clampAuditLimit(opts.limit);
   if (opts.beforeAt !== undefined && opts.beforeId !== undefined) {
     return db.all<AuditRow>(
       `SELECT * FROM audit WHERE product = ? AND (at < ? OR (at = ? AND id < ?))

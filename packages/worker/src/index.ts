@@ -14,7 +14,7 @@ import { handleDocs } from "./docs.js";
 // stay reserved ahead of product slugs in `router.ts`. Only the implementation moved (D-14).
 import { handlePortal } from "./services/identity/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
-import { notFound } from "./core/errors.js";
+import { ErrorCode, notFound, wireError } from "./core/errors.js";
 import { secureResponse } from "./securityHeaders.js";
 import { handleScheduled } from "./scheduled.js";
 import { handleDevices, handleReport } from "./core/devices.js";
@@ -41,7 +41,7 @@ export default {
     // than something each handler has to remember, and it is what currently covers the two
     // identity OIDC pages (device-authorization + "you're signed in"), which set no headers of
     // their own.
-    return secureResponse(await dispatch(req, env));
+    return secureResponse(await dispatchGuarded(req, env));
   },
 
   /**
@@ -64,6 +64,37 @@ export default {
     await handleScheduled(env);
   },
 } satisfies ExportedHandler<Env>;
+
+/**
+ * A3-07 — the dispatcher's error boundary for a MALFORMED REQUEST.
+ *
+ * There was none, so anything thrown between `new URL(req.url)` and a handler's first line left
+ * the worker as an unhandled rejection. The specific instance found was `matchRoute`
+ * percent-decoding two attacker-chosen path segments (`router.ts`, fixed there too): `GET
+ * /download/%` threw a `URIError` before any handler existed to have an opinion, and the caller
+ * got a runtime 500 for what is an unparseable URL.
+ *
+ * `matchRoute` now answers `{kind:"badRequest"}` for those two segments rather than throwing, so
+ * the router's own decodes no longer reach this catch. It is NOT therefore dead code: it covers
+ * every OTHER percent-decode on the request path, and there is a live one —
+ * `services/identity/browserSession.ts`'s `readCookie` decodes a product session cookie the
+ * caller supplies, so `Cookie: pkey_sess_djdl=%` still throws a `URIError` from inside a handler.
+ * The router fix makes the known instance impossible; this makes the CLASS non-fatal.
+ *
+ * Deliberately narrow. It catches `URIError` — what every percent-decode in the runtime throws —
+ * and answers 400, because a request that cannot be decoded is a client error and nothing a retry
+ * would fix. Everything else RETHROWS: a D1 outage or a bug in a handler must not be laundered
+ * into "bad request", which would hide a real failure behind a status that tells an operator to
+ * go look at the caller.
+ */
+async function dispatchGuarded(req: Request, env: Env): Promise<Response> {
+  try {
+    return await dispatch(req, env);
+  } catch (e) {
+    if (e instanceof URIError) return malformedUrl();
+    throw e;
+  }
+}
 
 async function dispatch(req: Request, env: Env): Promise<Response> {
   {
@@ -146,8 +177,23 @@ async function dispatch(req: Request, env: Env): Promise<Response> {
           db,
           url.pathname.slice("/manage".length) || "/",
         );
+      // A3-07: the router could not PARSE the path, so it never got as far as deciding whether
+      // anything lives there. 400 rather than falling into the `notFound` default below, which
+      // would report the result of a lookup that did not happen.
+      case "badRequest":
+        return malformedUrl();
       default:
         return notFound();
     }
   }
+}
+
+/** The one 400 body for an unparseable URL, shared by the router's `badRequest` route and the
+ *  `URIError` boundary, so the two cannot drift into describing the same failure differently. */
+function malformedUrl(): Response {
+  // The NESTED wire-v3 shape: this refusal is a property of the dispatcher, which is v3's, not
+  // of any handler that carried a v2 body across the service move.
+  return wireError(400, ErrorCode.BadRequest, {
+    message: "malformed percent-encoding in the request URL",
+  });
 }

@@ -17,6 +17,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
+import { SERVICES } from "../src/mount.js";
+import { matchRoute } from "../src/router.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
@@ -41,6 +43,10 @@ const NARRATIVE_ONLY = new Set([
   "githubWebhook",
   "docs",
   "notFound",
+  // A3-07. Not a surface: `badRequest` is what the router answers when the PATH will not decode,
+  // so it documents no endpoint and has no method. It sits here rather than in the table below
+  // for the same reason `notFound` does.
+  "badRequest",
 ]);
 
 /** Core route kinds → the spec paths (with methods) that document them. */
@@ -57,34 +63,43 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
 };
 
 /**
- * The canonical service surface — mirrors each `services/<slug>/routes.ts`. The `service`
- * route kind carries every one of these; documenting the KIND means documenting this table.
+ * The canonical service surface — DERIVED from the composition root (B7-09).
+ *
+ * This used to be a hand-written literal transcribing each `services/<slug>/routes.ts`, which
+ * made the gate answerable in the wrong direction: it compared one copy of the spec against
+ * another copy of the spec, so a service could grow a route, nobody could document it, and the
+ * test stayed green because neither side of the comparison knew about it. Now the list comes off
+ * `ServiceDescriptor.surface` — declared beside the router it describes, in the service's own
+ * directory — so this file no longer holds an opinion about the service surface at all, and a
+ * service added to or removed from `mount.ts` changes what this test demands without anybody
+ * editing this file.
+ *
+ * `mount.ts` is the ONE table both dispatchers use (public router + admin API), so deriving from
+ * it also means a service that is declared but never mounted contributes nothing here.
  */
-const SERVICE_PATHS: Array<[string, string[]]> = [
-  ["/{product}/license/activate", ["post"]],
-  ["/{product}/license/enroll", ["post"]],
-  ["/{product}/license/token", ["post"]],
-  ["/{product}/license/deauthorize", ["post"]],
-  ["/{product}/license/document", ["get"]],
-  ["/{product}/config/document", ["get"]],
-  ["/{product}/config/schema", ["get"]],
-  ["/{product}/config/mint/{mintId}/token", ["get", "post"]],
-  ["/{product}/config/mint/{mintId}/auth", ["get"]],
-  ["/{product}/release/changelog", ["get"]],
-  ["/{product}/release/install.sh", ["get"]],
-  ["/{product}/release/dl/{version}/{asset}", ["get"]],
-  ["/{product}/update/appcast.xml", ["get"]],
-  ["/{product}/update/{channel}/appcast.xml", ["get"]],
-  ["/{product}/update/version", ["get"]],
-  ["/{product}/identity/session", ["get"]],
-  ["/{product}/identity/session/license", ["post"]],
-  ["/{product}/identity/auth/start", ["get"]],
-  ["/{product}/identity/auth/callback", ["get"]],
-  ["/{product}/identity/auth/poll", ["get"]],
-  ["/{product}/identity/auth/logout", ["post"]],
-  ["/{product}/identity/auth/device/start", ["post"]],
-  ["/{product}/identity/auth/device/verify", ["get", "post"]],
-  ["/{product}/identity/auth/device/poll", ["post"]],
+const SERVICE_PATHS: Array<[string, string[]]> = [...SERVICES.values()].flatMap(
+  (descriptor) =>
+    descriptor.surface.map((route): [string, string[]] => [
+      route.path,
+      [...route.methods],
+    ]),
+);
+
+/**
+ * The admin surface the spec documents — the ONE exception to "admin is narrative-only".
+ *
+ * `adminApi` stays in `NARRATIVE_ONLY` above because the route KIND is: `/manage/api/*` is a
+ * browser API driven by a session cookie and a CSRF double-submit, and the docs site describes it
+ * in prose. The API-TOKEN surface underneath that kind is different in the one way that matters
+ * here — it is spoken by a program (`pkey bundle`, from a terminal and from CI) with an
+ * `Authorization: Bearer pkeya_…` header and no browser anywhere — so it is documented in the
+ * machine-readable file and pinned in BOTH directions, exactly like a service route: missing from
+ * the spec fails the first test below, present in the spec but absent from this table fails the
+ * phantom-path sweep.
+ */
+const ADMIN_PATHS: Array<[string, string[]]> = [
+  ["/manage/api/tokens", ["get", "post"]],
+  ["/manage/api/tokens/{tokenId}", ["delete"]],
 ];
 
 /** The four permanent pre-namespace aliases (D-07). */
@@ -130,9 +145,60 @@ describe("router → spec", () => {
   }
 
   it("every canonical service route is documented", () => {
+    expect(SERVICE_PATHS.length).toBeGreaterThan(20);
     for (const [path, methods] of SERVICE_PATHS) {
       for (const method of methods) {
         expect(specMethods(path), `${method} ${path}`).toContain(method);
+      }
+    }
+  });
+
+  it("every mounted service declares a surface", () => {
+    for (const [slug, descriptor] of SERVICES) {
+      expect(
+        descriptor.surface.length,
+        `${slug} declares no routes`,
+      ).toBeGreaterThan(0);
+      for (const route of descriptor.surface) {
+        expect(route.path, `${slug}: ${route.path}`).toMatch(
+          new RegExp(`^/\\{product\\}/${slug}/`),
+        );
+        expect(route.methods.length, `${slug}: ${route.path}`).toBeGreaterThan(
+          0,
+        );
+      }
+    }
+  });
+
+  /**
+   * B7-09's other half: a DECLARED path must be one the core router actually dispatches to that
+   * service. Without this the surface would be prose in a different file — a service could
+   * declare a path it does not serve and the spec would faithfully document a 404.
+   *
+   * Templates are instantiated with concrete segments (`{channel}` → `beta`, `{version}` →
+   * `1.2.3`, …) because `matchRoute` works on real pathnames, not on templates.
+   */
+  it("every declared service route is dispatched to its own service", () => {
+    const sample: Record<string, string> = {
+      "{channel}": "beta",
+      "{version}": "1.2.3",
+      "{asset}": "djdl-arm64",
+      "{mintId}": "musickit",
+      "{deviceId}": "d".repeat(32),
+    };
+    for (const [slug, descriptor] of SERVICES) {
+      for (const route of descriptor.surface) {
+        const pathname = route.path
+          .replace("/{product}/", "/djdl/")
+          .split("/")
+          .map((seg) => sample[seg] ?? seg)
+          .join("/");
+        const matched = matchRoute(pathname);
+        expect(matched.kind, `${route.path} → ${pathname}`).toBe("service");
+        expect(
+          matched.kind === "service" ? matched.slug : null,
+          `${route.path} → ${pathname}`,
+        ).toBe(slug);
       }
     }
   });
@@ -144,6 +210,23 @@ describe("router → spec", () => {
       }
     }
   });
+
+  it("the documented admin surface exists in the spec", () => {
+    for (const [path, methods] of ADMIN_PATHS) {
+      for (const method of methods) {
+        expect(specMethods(path), `${method} ${path}`).toContain(method);
+      }
+    }
+  });
+
+  /** The admin routes are the one place the spec crosses into `/manage`; nothing else may. */
+  it("no other admin path leaks into the spec", () => {
+    const allowed = new Set(ADMIN_PATHS.map(([path]) => path));
+    const stray = Object.keys(spec.paths).filter(
+      (path) => path.startsWith("/manage") && !allowed.has(path),
+    );
+    expect(stray, `undeclared /manage paths: ${stray.join(", ")}`).toEqual([]);
+  });
 });
 
 describe("spec → router", () => {
@@ -152,6 +235,7 @@ describe("spec → router", () => {
       [
         ...Object.values(CORE_KIND_PATHS).flat(),
         ...SERVICE_PATHS,
+        ...ADMIN_PATHS,
         ...ALIAS_PATHS,
       ].map(([path]) => path),
     );

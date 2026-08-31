@@ -33,13 +33,14 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 /**
  * The migration-time index assertion, read from the NEWEST migration that carries one.
  *
- * 0018 introduced the mechanism; 0026 re-asserts with `idx_product_keys_one_active_anchor` added.
- * The re-assertion has to be a new file rather than an edit to 0018 because D1 records 0018 as
- * applied and will never re-run it — editing it would assert the new index on fresh databases
- * only, which is everywhere except production.
+ * 0018 introduced the mechanism; 0026 re-asserted with `idx_product_keys_one_active_anchor`
+ * added; 0027 re-asserts again with `idx_admin_api_tokens_hash`. Each re-assertion has to be a new
+ * file rather than an edit to its predecessor because D1 records the older migration as applied
+ * and will never re-run it — editing it would assert the new index on fresh databases only, which
+ * is everywhere except production. Point this constant at the newest one when you add another.
  */
 const ASSERTION_SQL = readFileSync(
-  join(HERE, "..", "migrations", "0026_trust_anchor_keys.sql"),
+  join(HERE, "..", "migrations", "0027_admin_api_tokens.sql"),
   "utf8",
 );
 const ORIGINAL_ASSERTION_SQL = readFileSync(

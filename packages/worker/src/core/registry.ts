@@ -89,6 +89,32 @@ export interface RegistrationAuthContext {
 }
 
 /**
+ * One canonical route a service serves, as DATA (B7-09).
+ *
+ * `path` is the OpenAPI-style template the spec documents it under —
+ * `/{product}/license/activate`, `/{product}/config/mint/{mintId}/token` — so the drift gate
+ * compares like with like instead of transcribing one shape into another.
+ *
+ * ── WHY THE DESCRIPTOR AND NOT THE TEST ─────────────────────────────────────────────────────
+ *
+ * `test/routeCoverage.test.ts` used to carry this list as a hand-written literal, which made the
+ * gate answerable in the wrong direction: a service could grow a route in its `routes.ts`, nobody
+ * would document it, and the test would stay green because the only thing it compared was one
+ * copy of the spec against another copy of the spec. Moving the list here does not make it
+ * self-derived — `routes.ts` is imperative and there is nothing to reflect over — but it does two
+ * things a test-side literal cannot: it sits in the same directory as the router it describes, so
+ * a route added without a surface entry is a diff a reviewer sees in one file; and it is
+ * EXECUTABLE, so `routeCoverage` can instantiate every declared path and assert the core router
+ * actually dispatches it to this slug. A declared path the router cannot reach now fails.
+ */
+export interface ServiceRoute {
+  /** The OpenAPI path template, product placeholder included. */
+  path: string;
+  /** Lower-case HTTP methods this route answers. */
+  methods: readonly string[];
+}
+
+/**
  * One service's contract with Core.
  *
  * `handle` returns `null` — not a 404 — when no route inside the service matched. The
@@ -100,6 +126,12 @@ export interface ServiceDescriptor {
   slug: ServiceSlug;
   /** Handle a product-scoped request. `null` = no route matched inside this service. */
   handle(ctx: ServiceContext): Promise<Response | null>;
+  /**
+   * The canonical routes this service serves, as spec path templates (B7-09). The permanent
+   * pre-namespace aliases are NOT listed: they are the router's rewrites, not a service's
+   * surface, and `routeCoverage` pins them separately.
+   */
+  surface: readonly ServiceRoute[];
   /**
    * This service's fragment of `/.well-known/polaris.json` (design spec §4.3). Only called when
    * enabled — Core emits `{enabled:false}` and nothing else for the rest.
@@ -179,12 +211,18 @@ export async function dispatchService(
  * `dispatchService`: a product whose `services_json` says the service is off must not have that
  * service's code run, even to say no.
  *
- * `validateServices` refuses the `requires-identity` + identity-disabled combination on the
- * ADMIN path (`registration_requires_identity`, via `servicesAdmin.ts`) — and ONLY there.
- * Manifest ingest does not call it: `linkRepo`/`resync` go straight to `serializeServices`.
- * So this check is not a redundant second opinion, it is the only thing standing between a
- * repo-authored `devices.registration: requires-identity` on an identity-disabled product and
- * a minted device token. Do not remove it on the grounds that validation "already" happened.
+ * `validateServices` refuses the `requires-identity` + identity-disabled combination
+ * (`registration_requires_identity`), and since A4-04 it does so on ALL THREE writers of
+ * `products.services_json` — `linkRepo` and `resyncRepo` reach it through
+ * `serializeValidatedServices` now, where they once called `serializeServices` directly and a
+ * repo-authored `devices.registration: requires-identity` on an identity-disabled product
+ * became live state unexamined.
+ *
+ * Keep this check anyway. It is no longer the ONLY thing standing between that manifest and a
+ * minted device token, but rows written before A4-04 were never re-validated, and a stored
+ * column is not re-checked on read. Defence at the point of USE does not expire when defence at
+ * the point of WRITE arrives; do not remove it on the grounds that validation "already"
+ * happened somewhere upstream.
  */
 export async function authorizeRegistration(
   registry: ServiceRegistry,

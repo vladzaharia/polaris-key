@@ -181,6 +181,50 @@ export function serializeServices(parsed: ProductServices): string {
 }
 
 /**
+ * `validateServices` + `serializeServices`, as ONE step — the only supported way to produce a
+ * value for `products.services_json` (A4-04).
+ *
+ * ── WHY THE TWO ARE WELDED TOGETHER ─────────────────────────────────────────────────────────
+ *
+ * `validateServices` is declared, right below, as the coherence authority for this column. It
+ * was wired into exactly one of the three writers. The other two — `linkRepo` (GitHub-forward
+ * create) and `resyncRepo` (the push webhook) — called `serializeServices` directly, so a
+ * repo-authored enablement set became a `products` row without the authority ever being
+ * consulted. `core/registry.ts` documents the consequence it had to defend against at runtime:
+ * a `.pkey/product` declaring `devices.registration: requires-identity` on an identity-disabled
+ * product, which the manifest validator does not check either, reached `authorizeRegistration`
+ * as live state.
+ *
+ * Routing all three through one function is the fix rather than adding a second and third call
+ * to `validateServices`, because "remember to validate first" is precisely the convention that
+ * already failed twice here. There is now no way to spell the column's value that skips it: the
+ * validator is not something a writer calls, it is something the serializer IS.
+ *
+ * ── WHY INGEST REFUSES RATHER THAN REPAIRS ──────────────────────────────────────────────────
+ *
+ * Both ingest callers already return `{ ok: false, error, errors? }` and both already refuse a
+ * whole resync over a single coherence problem elsewhere in the manifest (see
+ * `serverOnlyDowngradeRefusal`). An incoherent enablement set is the same kind of fact: the
+ * repo asked for a product that cannot work, and the honest answer is to say so and change
+ * nothing, not to silently drop the offending half and leave the operator reading a manifest
+ * that no longer describes their product.
+ *
+ * Note this is deliberately STRICTER than `@polaris-key/manifest`, which grades
+ * `config_without_activation` as a warning and does not check
+ * `registration_requires_identity` at all. That is not a contradiction to reconcile: the
+ * manifest validator grades a DOCUMENT an author is still editing, while this grades a WRITE to
+ * live state. The console has refused all three of these since the admin path was built; a
+ * repo push arriving at the same column should not be the one caller allowed past.
+ */
+export function serializeValidatedServices(
+  parsed: ProductServices,
+): { ok: true; json: string } | { ok: false; errors: string[] } {
+  const errors = validateServices(parsed.services, parsed.registration);
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, json: serializeServices(parsed) };
+}
+
+/**
  * The EFFECTIVE registration policy (wire v3 §6, spec §2.3).
  *
  * The derivation is ordered by how much the product already knows about the caller:

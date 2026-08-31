@@ -285,6 +285,7 @@ plan knows it is not merely deprecated — no verifier, signer or store ever acc
 | ------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------- |
 | ISSUER (`iss`)           | `key.plrs.im`                                                              | `plrs.im`                                                 |
 | Device token prefix      | `pkeyt_`                                                                   | `plrst_`                                                  |
+| Admin API token prefix   | `pkeya_`                                                                   | — (new in v3; no interim spelling ever existed)           |
 | Client headers           | `X-PKey-*`                                                                 | `X-Polaris-*`                                             |
 | License key prefix       | `pkey_<product>_…`                                                         | — (never changed)                                         |
 | JWS `typ` values         | `pkey-license+jws`, `pkey-config+jws`, `pkey-trust+jws`, `pkey-bundle+jws` | the `plrs-*` spellings                                    |
@@ -300,6 +301,15 @@ plan knows it is not merely deprecated — no verifier, signer or store ever acc
 trust manifest. The document _shapes_ changed; the type strings did not. That is safe only because
 this is pre-launch and corpus v1 was deleted in the same wave, so no dual-shape artifact under
 either string ever existed in the wild.
+
+`pkeya_` is the newest member of the family and the only one that is **not** a wire credential: it
+authenticates a caller to the ADMIN API (`Authorization: Bearer pkeya_…`), never to a
+product-scoped endpoint, and no signed document ever references it. It is registered here anyway,
+because the value of a prefix registry is that a leaked string can be classified on sight — and
+because rule 8's "one spelling per credential class" only holds if every class is written down.
+The shape is `pkeya_` + 43 base64url characters (256 bits), stored only as
+`hashKey(token, KEY_HASH_PEPPER)`, and shown exactly once at mint. See A2-02/A2-05 in the audit:
+it exists so `pkey bundle` stopped replaying an operator's browser session cookie.
 
 ## 9. Rollout & versioning
 

@@ -164,6 +164,29 @@ describe("Releases view", () => {
     expect(screen.getByText(/managed from the repo manifest/i)).toBeTruthy();
   });
 
+  it("renders the default device limit as the number it is, never as “unlimited”", async () => {
+    // A7-08. `0` used to render as "unlimited"; R11-02 part 2 made that false — `licenseCore`
+    // gates the seat check on `limit > 0`, so a stored 0 disabled seat enforcement rather than
+    // lifting the cap, and it is now refused by `invalidDeviceLimit` on both admin write paths
+    // and by migrations/0015's triggers on `products`. There is no special case to replace it
+    // with: the stored number is the whole truth, including for a legacy pre-0015 row.
+    render(<Releases slug="djdl" />);
+    await screen.findByText("DJDL");
+    expect(screen.getByText("Default device limit")).toBeTruthy();
+    expect(screen.getByText("3")).toBeTruthy();
+    expect(screen.queryByText("unlimited")).toBeNull();
+
+    cleanup();
+    product.mockResolvedValue({
+      product: { ...PRODUCT, defaultDeviceLimit: 0 },
+    });
+    resetCache();
+    render(<Releases slug="djdl" />);
+    await screen.findByText("DJDL");
+    expect(screen.queryByText("unlimited")).toBeNull();
+    expect(screen.getByText("0")).toBeTruthy();
+  });
+
   it("resyncs from the repo via the confirm dialog, calling resyncProduct", async () => {
     resyncProduct.mockResolvedValue({ ok: true, slug: "djdl" });
     render(<Releases slug="djdl" />);

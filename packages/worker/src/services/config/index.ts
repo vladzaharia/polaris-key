@@ -20,6 +20,16 @@ import { handleConfigAdmin } from "./admin/index.js";
 export const configService: ServiceDescriptor = {
   slug: "config",
   handle: handleConfigRoutes,
+  /** The canonical surface `routes.ts` dispatches (B7-09) — what `routeCoverage` pins. */
+  surface: [
+    { path: "/{product}/config/document", methods: ["get"] },
+    { path: "/{product}/config/schema", methods: ["get"] },
+    {
+      path: "/{product}/config/mint/{mintId}/token",
+      methods: ["get", "post"],
+    },
+    { path: "/{product}/config/mint/{mintId}/auth", methods: ["get"] },
+  ],
   /** `config/{catalog,profiles}` on the console API (§R1). */
   adminHandle: handleConfigAdmin,
   /**

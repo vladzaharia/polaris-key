@@ -49,7 +49,7 @@ import {
 } from "./manifestSecrets.js";
 import { changedFields, manifestStateSnapshot } from "./resyncAudit.js";
 import { releaseStoreSyncStatements } from "./sync.js";
-import { serializeServices } from "../../core/services.js";
+import { serializeValidatedServices } from "../../core/services.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
@@ -409,16 +409,22 @@ export async function resyncRepo(
   // derived default rather than freezing whatever it last said. The `services_source = 'admin'`
   // guard lives inside `setServices`, so a push cannot turn a service back on after an operator
   // has turned it off live — nor re-open registration after one has closed it.
-  await setServices(
-    db,
-    slug,
-    serializeServices({
-      services: manifest.services,
-      ...(manifest.registration ? { registration: manifest.registration } : {}),
-    }),
-    "manifest",
-    now,
-  );
+  // A4-04: through `serializeValidatedServices`, which is the coherence authority for this
+  // column. This call site used to reach `serializeServices` directly, so a repo could push an
+  // enablement set the console would have refused — `registration: requires-identity` with
+  // Identity off being the one nothing else checks (see `core/registry.ts`).
+  const serviceJson = serializeValidatedServices({
+    services: manifest.services,
+    ...(manifest.registration ? { registration: manifest.registration } : {}),
+  });
+  if (!serviceJson.ok) {
+    return {
+      ok: false,
+      error: "`.pkey/product` declares an incoherent service set",
+      errors: serviceJson.errors,
+    };
+  }
+  await setServices(db, slug, serviceJson.json, "manifest", now);
   updated.push("services");
 
   // ── schema: publish a new active version only when the catalog changed ──────

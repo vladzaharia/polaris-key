@@ -41,6 +41,22 @@ import { authorizeRegistration } from "./registration.js";
 export const identityService: ServiceDescriptor = {
   slug: "identity",
   handle: handleIdentityRoutes,
+  /** The canonical surface `routes.ts` dispatches (B7-09) — what `routeCoverage` pins. The ROOT
+   *  portal paths are not here: they are platform routes, not this service's namespace. */
+  surface: [
+    { path: "/{product}/identity/session", methods: ["get"] },
+    { path: "/{product}/identity/session/license", methods: ["post"] },
+    { path: "/{product}/identity/auth/start", methods: ["get"] },
+    { path: "/{product}/identity/auth/callback", methods: ["get"] },
+    { path: "/{product}/identity/auth/poll", methods: ["get"] },
+    { path: "/{product}/identity/auth/logout", methods: ["post"] },
+    { path: "/{product}/identity/auth/device/start", methods: ["post"] },
+    {
+      path: "/{product}/identity/auth/device/verify",
+      methods: ["get", "post"],
+    },
+    { path: "/{product}/identity/auth/device/poll", methods: ["post"] },
+  ],
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
   authorizeRegistration: (ctx: RegistrationAuthContext) =>

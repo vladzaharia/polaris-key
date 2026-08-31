@@ -123,6 +123,7 @@ export const SWEEP_MAX_PRODUCTS = 100;
  * 0018's list) name the same set, so the two cannot drift apart.
  */
 export const REQUIRED_INDEXES: readonly string[] = [
+  "idx_admin_api_tokens_hash",
   "idx_audit_time",
   "idx_devices_license_status",
   "idx_devices_seat",

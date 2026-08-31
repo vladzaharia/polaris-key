@@ -86,11 +86,54 @@ export type Route =
       rest: string[];
       alias?: true;
     }
-  | { kind: "notFound" };
+  | { kind: "notFound" }
+  /**
+   * The request's PATH could not be parsed (A3-07) — distinct from `notFound`, and deliberately.
+   *
+   * `notFound` is a claim about the world: this URL is well-formed, and it addresses nothing.
+   * `badRequest` is a claim about the request: it is not well-formed enough to address anything,
+   * so no lookup was attempted and none could be. Collapsing the two would answer a truncated
+   * escape with "no such download token", which is not what happened and which quietly narrows
+   * the difference between "your token is wrong" and "your URL is broken" for the one caller —
+   * an operator debugging a shell-mangled URL — who most needs them told apart.
+   */
+  | { kind: "badRequest" };
 
 /** One alias route: same slug, same segments, marked. */
 function alias(slug: ServiceSlug, product: string, rest: string[]): Route {
   return { kind: "service", slug, product, rest, alias: true };
+}
+
+/**
+ * Percent-decode one path segment, or `null` when it is not decodable (A3-07).
+ *
+ * `decodeURIComponent` THROWS a `URIError` on a truncated or invalid escape — `%`, `%zz`, a lone
+ * surrogate — and this function is the first thing every request runs. Two call sites below fed it
+ * an attacker-chosen segment with no guard, so `GET /download/%` left `matchRoute` by throwing:
+ * not a 404, not a 400, an unhandled rejection out of the router before any handler existed to
+ * have an opinion.
+ *
+ * `null` becomes `badRequest` at both call sites — a 400, not a 404. An undecodable segment does
+ * not name a download token or a device id, but neither does it name a resource that is absent:
+ * nothing was looked up, because there was nothing to look up. Answering 404 would assert the
+ * outcome of a lookup that never ran, and would leak the shape of that distinction to anyone
+ * probing which of their two problems they have.
+ *
+ * It is deliberately NOT "fall back to the raw segment" — that would make the router's idea of
+ * the id depend on whether the escape happened to be valid, which is exactly the kind of parser
+ * disagreement that turns into a bypass one layer down.
+ *
+ * `index.ts` also carries a boundary for the same class of failure; see `dispatchGuarded`. The
+ * two are not redundant — this one decides what a bad PATH means, that one catches a `URIError`
+ * from anywhere else in the request (a malformed product session cookie is the live example) and
+ * keeps it from being a 500.
+ */
+function decodeSegment(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
 }
 
 export function matchRoute(pathname: string): Route {
@@ -124,11 +167,12 @@ export function matchRoute(pathname: string): Route {
   if (path === "/magic/verify") return { kind: "portalMagicVerify" };
   if (path === "/api" || path.startsWith("/api/")) return { kind: "portalApi" };
   const portalDownload = path.match(/^\/download\/([^/]+)$/);
-  if (portalDownload?.[1])
-    return {
-      kind: "portalDownload",
-      token: decodeURIComponent(portalDownload[1]),
-    };
+  if (portalDownload?.[1]) {
+    const token = decodeSegment(portalDownload[1]);
+    return token === null
+      ? { kind: "badRequest" }
+      : { kind: "portalDownload", token };
+  }
 
   // Product-scoped: /<product>/<rest>
   const m = path.match(/^\/([a-z0-9-]+)\/(.+)$/);
@@ -183,12 +227,12 @@ export function matchRoute(pathname: string): Route {
     return alias("update", product, [appcast[1], "appcast.xml"]);
 
   const devices = rest.match(/^\/devices\/([^/]+)$/);
-  if (devices && devices[1])
-    return {
-      kind: "devices",
-      product,
-      deviceId: decodeURIComponent(devices[1]),
-    };
+  if (devices && devices[1]) {
+    const deviceId = decodeSegment(devices[1]);
+    return deviceId === null
+      ? { kind: "badRequest" }
+      : { kind: "devices", product, deviceId };
+  }
 
   return { kind: "notFound" };
 }

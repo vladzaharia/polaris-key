@@ -867,8 +867,29 @@ export async function handlePortalDownload(
   // never redirects.
   const location = artifact ? redirectableSourceUrl(artifact) : null;
   if (!artifact || location === null) return notFound();
+  // A4-02 — REDEMPTION checks service enablement too, not just the portal's own two toggles.
+  //
+  // The mint side (`handleReleases`) already folds all three, and this side re-checked the two
+  // that live in `portal_product_settings` while omitting the third that lives in
+  // `products.services_json`. The gap is not theoretical, it is the whole reason a redemption
+  // re-checks anything at all: a download token is minted once and redeemed later, so every
+  // condition that held at mint has had time to stop holding. Turning Release off is exactly
+  // such a change — it does not delete `release_artifacts` and it does not revoke outstanding
+  // tokens, so until this line every unspent token minted before the switch stayed redeemable,
+  // and a product that had turned the service off went on serving artifacts through the portal
+  // door for the rest of those tokens' lifetimes.
+  //
+  // `releaseServiceEnabled(services_json)` is the same authority `core/registry.ts` consults
+  // before dispatching to a service at all, so the portal door and the service's own front door
+  // now answer this question the same way instead of two ways.
   const settings = await getPortalProductSettings(db, row.product);
-  if (settings.portal_enabled !== 1 || settings.releases_enabled !== 1) {
+  const productRow = await getProduct(db, row.product);
+  if (
+    settings.portal_enabled !== 1 ||
+    settings.releases_enabled !== 1 ||
+    !productRow ||
+    !releaseServiceEnabled(productRow.services_json)
+  ) {
     return notFound();
   }
   const scope = parseJson<{ portalAccountId?: string }>(row.scope_json, {});

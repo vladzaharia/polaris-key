@@ -24,6 +24,13 @@ import { handleUpdateAdmin } from "./admin.js";
 export const updateService: ServiceDescriptor = {
   slug: "update",
   handle: handleUpdateRoutes,
+  /** The canonical surface `routes.ts` dispatches (B7-09) — what `routeCoverage` pins. The three
+   *  appcast/version aliases are the ROUTER's rewrites, not Update's surface. */
+  surface: [
+    { path: "/{product}/update/appcast.xml", methods: ["get"] },
+    { path: "/{product}/update/{channel}/appcast.xml", methods: ["get"] },
+    { path: "/{product}/update/version", methods: ["get"] },
+  ],
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleUpdateAdmin(ctx),
   /**

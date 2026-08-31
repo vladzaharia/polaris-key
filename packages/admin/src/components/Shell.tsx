@@ -8,6 +8,7 @@ import {
   FileStack,
   Fingerprint,
   KeyRound,
+  KeySquare,
   Layers,
   LayoutDashboard,
   LogOut,
@@ -107,8 +108,8 @@ export function Shell({
 }: ShellProps): React.ReactElement {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const activeTab = tabOf(route);
-  // Dashboard and the product registry belong to no service, so they take the platform accent
-  // rather than keeping whichever section the operator came from (D-17).
+  // Dashboard, the product registry and the API-token roster belong to no service, so they take
+  // the platform accent rather than keeping whichever section the operator came from (D-17).
   const accent = activeTab ? sectionOf(activeTab).accent : "core";
 
   const go = (next: Route): void => {
@@ -213,6 +214,15 @@ function Sidebar({
           active={route.kind === "products"}
           onClick={() => go({ kind: "products" })}
         />
+        {/* Platform-scoped for the same reason the registry is: a `pkeya_` token belongs to the
+            platform, not to a product, and lives above the product switcher so it does not read
+            as something the selected product owns. */}
+        <NavItem
+          icon={KeySquare}
+          label="API tokens"
+          active={route.kind === "tokens"}
+          onClick={() => go({ kind: "tokens" })}
+        />
 
         <div className="my-2 px-1">
           <p className="px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -310,12 +320,13 @@ function NavItem({
  * The topbar heading. Product views are qualified by their section ("License · Licenses")
  * because the tab labels alone are ambiguous once every service owns one — "Settings" is the
  * platform tab, "Update settings" is the Update service's, and both read as "settings" at a
- * glance. Dashboard, the product registry, and a license detail belong to no section and keep
- * the bare titles they have always had.
+ * glance. Dashboard, the product registry, the API-token roster, and a license detail belong to
+ * no section and keep bare titles.
  */
 function titleFor(route: Route, activeTab: Tab | null): string {
   if (route.kind === "dashboard") return "Dashboard";
   if (route.kind === "products") return "Products";
+  if (route.kind === "tokens") return "API tokens";
   if (route.view === "license") return "License";
   if (!activeTab) return "Console";
   const section = sectionOf(activeTab);

@@ -202,19 +202,30 @@ export function CopyButton({
 }
 
 /**
- * A one-time secret-reveal panel for a freshly-minted license key. The minted key is shown ONCE
- * and never returned again by the API, so we make the gravity of that clear and offer a copy
- * button. `onDismiss` clears the secret from React state (it should not be retained).
+ * A one-time secret-reveal panel for a freshly-minted credential. The value is shown ONCE and
+ * never returned again by the API, so we make the gravity of that clear and offer a copy button.
+ * `onDismiss` clears the secret from React state (it should not be retained).
+ *
+ * Every label is overridable because this panel is not licence-specific: the admin API-token
+ * screen mints a `pkeya_` secret with exactly the same "nothing stored can reproduce it"
+ * property, and a second copy of this component would be a second place for that framing to
+ * drift. The defaults keep the licence-key callers byte-identical.
  */
 export function OneTimeKeyPanel({
   value,
   title = "License key minted",
   description = "Copy it now — for security it is shown only once and cannot be retrieved again.",
+  valueLabel = "Minted license key",
+  copyLabel = "Copy key",
   onDismiss,
 }: {
   value: string;
   title?: string;
   description?: string;
+  /** Accessible name for the `<code>` holding the secret. */
+  valueLabel?: string;
+  /** Accessible name for the copy button. */
+  copyLabel?: string;
   onDismiss?: () => void;
 }): React.ReactElement {
   return (
@@ -229,12 +240,12 @@ export function OneTimeKeyPanel({
       </div>
       <div className="flex items-center gap-2">
         <code
-          aria-label="Minted license key"
+          aria-label={valueLabel}
           className="flex-1 select-all overflow-x-auto whitespace-nowrap rounded-md border border-border bg-background px-3 py-2 font-mono text-sm"
         >
           {value}
         </code>
-        <CopyButton value={value} label="Copy key" />
+        <CopyButton value={value} label={copyLabel} />
       </div>
       {onDismiss ? (
         <Button type="button" size="sm" variant="ghost" onClick={onDismiss}>

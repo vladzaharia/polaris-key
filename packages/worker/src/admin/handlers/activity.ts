@@ -4,7 +4,7 @@
  */
 
 import type { Db } from "../../db/types.js";
-import { listAudit } from "../../repo.js";
+import { clampAuditLimit, listAudit } from "../../repo.js";
 import { adminJson } from "../lib/respond.js";
 
 export async function handleActivity(
@@ -15,7 +15,14 @@ export async function handleActivity(
   const url = new URL(req.url);
   const beforeAt = url.searchParams.get("beforeAt");
   const beforeId = url.searchParams.get("beforeId");
-  const limit = Number(url.searchParams.get("limit")) || 50;
+  // B4-03. `Number(param) || 50` looked like a guard and was not one: `-1` is truthy, so it
+  // survived to `listAudit`, whose `Math.min(…, 200)` has no floor either, and reached SQLite as
+  // `LIMIT -1` — unbounded. Clamped HERE as well as there, with the same function, for a second
+  // reason: `nextCursor` below compares `rows.length` against this variable, so if the handler's
+  // idea of the page size and the query's ever diverged, `?limit=500` would return 200 rows and
+  // then report that there were no more.
+  const raw = url.searchParams.get("limit");
+  const limit = clampAuditLimit(raw === null ? undefined : Number(raw));
   const rows = await listAudit(db, slug, {
     beforeAt: beforeAt ? Number(beforeAt) : undefined,
     beforeId: beforeId ?? undefined,

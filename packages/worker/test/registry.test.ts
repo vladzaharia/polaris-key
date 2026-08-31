@@ -80,6 +80,9 @@ function stub(
       calls.push(ctx);
       return answer(ctx);
     },
+    // B7-09: the declared route surface. A stub serves whatever the test asks it, so the honest
+    // declaration is the bare namespace — `routeCoverage` derives from `mount.ts`, never from here.
+    surface: [{ path: `/{product}/${slug}/stub`, methods: ["get"] }],
     discoveryFragment: async () => ({ enabled: true }),
   };
   return { descriptor, calls };
@@ -298,6 +301,7 @@ describe("authorizeRegistration", () => {
       descriptor: {
         slug: "identity",
         handle: async () => null,
+        surface: [{ path: "/{product}/identity/stub", methods: ["get"] }],
         discoveryFragment: async () => ({ enabled: true }),
         authorizeRegistration: async () => {
           asked.push(1);

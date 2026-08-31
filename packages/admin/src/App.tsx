@@ -19,6 +19,7 @@ import { Button, Spinner, EmptyState } from "./components/ui/index.js";
 import { LogoMark } from "./components/brand/Logo.js";
 import { Dashboard } from "./views/Dashboard.js";
 import { Products } from "./views/Products.js";
+import { ApiTokens } from "./views/ApiTokens.js";
 import { ProductOverview } from "./views/ProductOverview.js";
 import { Services } from "./views/Services.js";
 import { Licenses } from "./views/Licenses.js";
@@ -211,6 +212,9 @@ function renderRoute(
 ): React.ReactElement {
   if (route.kind === "dashboard") return <Dashboard />;
   if (route.kind === "products") return <Products />;
+  // Platform-scoped, above the product switcher: an API token belongs to the deployment, and
+  // this screen is session-only (a token principal cannot reach these routes at all).
+  if (route.kind === "tokens") return <ApiTokens />;
 
   // `handleMe` returns every product or none — admin authority is platform-wide and there is
   // no per-product grant to be missing. So the only way to land here is a hash pointing at a

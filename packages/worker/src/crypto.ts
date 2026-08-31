@@ -59,6 +59,37 @@ export function isDeviceToken(token: string): boolean {
 }
 
 /**
+ * The admin API-token prefix (wire contract v3 §8). A2-05/A2-02's other half: `pkey bundle` used
+ * to authenticate by replaying the operator's live browser session cookie, because the admin API
+ * had exactly one credential. This is the machine credential that replaces it.
+ *
+ * `pkeya_` — `a` for admin — sits in the same family as `pkey_` (license key) and `pkeyt_`
+ * (device token) so a leaked string is identifiable on sight, and so AGENTS.md rule 8's one
+ * spelling per credential class keeps holding.
+ */
+export const ADMIN_API_TOKEN_PREFIX = "pkeya_";
+
+/** An admin API token: `pkeya_` + 43 base64url chars (256 bits), shown once at mint. */
+export function mintAdminApiToken(): string {
+  return `${ADMIN_API_TOKEN_PREFIX}${b64url(randomBytes(32))}`;
+}
+
+/**
+ * Shape gate for a presented admin API token — the sibling of `isDeviceToken`, and here for
+ * exactly the same reason.
+ *
+ * Checked BEFORE the hash + D1 lookup in `validateAdminApiToken`. Without it, "a session cookie
+ * pasted into an `Authorization: Bearer` header is rejected" would be true only by accident (no
+ * such hash is stored), which is a property of the data rather than of the code — and it would
+ * stop being true the moment anything else started writing to `admin_api_tokens`. It also keeps
+ * a bare `Bearer <anything>` from costing a D1 read. Length is a floor, not an equality, so
+ * widening the entropy later is not a break.
+ */
+export function isAdminApiToken(token: string): boolean {
+  return /^pkeya_[A-Za-z0-9_-]{43,}$/.test(token);
+}
+
+/**
  * An opaque, unguessable 256-bit token with NO prefix: the browser-session cookie value and the
  * portal's single-use download token.
  *

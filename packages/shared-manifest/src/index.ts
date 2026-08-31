@@ -499,10 +499,24 @@ const FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"] as const;
 const AUTO_ISSUE_MODE_VALUES = ["anonymous", "oidcDefault", "both"] as const;
 
 /**
- * Product slugs the platform router reserves ahead of tenant routing. Every one of these is
- * (or fronts) a root path the worker matches before `/<product>/…` — a product registered
- * under such a slug would be permanently shadowed. `validateManifestDocuments` refuses them
- * (`reserved_slug`), and the worker's manual-create admin path checks the same list.
+ * Product slugs the platform reserves ahead of tenant routing, because something else is
+ * matched first and a product registered under one would be shadowed by it.
+ * `validateManifestDocuments` refuses them (`reserved_slug`), and the worker's manual-create
+ * admin path checks the same list.
+ *
+ * TWO routers contribute, which is worth saying because the list reads like one:
+ *
+ *  - The PUBLIC router (`worker/src/router.ts`) matches these as root paths before
+ *    `/<product>/…`. `docs` … `well-known` are all of this kind, and a product holding one of
+ *    those names would lose every route it has.
+ *  - The ADMIN API (`worker/src/admin/handlers/products.ts`) matches `kek` and `link-repo` as
+ *    single-segment ACTIONS under `/manage/api/products/`, ahead of the product-slug lookup
+ *    (A4-03). The damage is narrower — the action arms only fire at length 1, so
+ *    `/manage/api/products/kek/licenses` still reaches a product called `kek` — but the
+ *    product's own detail route is gone: `GET /manage/api/products/kek` answers with the
+ *    platform KEK keyring, and the same GET for `link-repo` answers 405, that action being
+ *    POST-only. A product the console can create and then cannot display is not a state worth
+ *    supporting, and reserving two names costs a tenant nothing it would miss.
  */
 export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "docs",
@@ -516,6 +530,8 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "download",
   "webhooks",
   "well-known",
+  "kek",
+  "link-repo",
 ];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",

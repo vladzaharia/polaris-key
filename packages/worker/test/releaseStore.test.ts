@@ -18,6 +18,8 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import { serializeServices } from "../src/core/services.js";
+import { setServices } from "../src/repo.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Db, DbParam, DbStatement } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
@@ -470,6 +472,26 @@ async function seedDownloadable(
   env: Env,
   sourceUrl: string,
 ): Promise<void> {
+  // A4-02: a product that distributes builds RUNS the Release service, and since the download
+  // redemption path re-checks `products.services_json` this fixture has to say so. It was silent
+  // before only because nothing on that path asked — `parseServices(null)` lands on
+  // `DEFAULT_SERVICES`, where Release is OFF, so a silent fixture now describes a product that
+  // does not distribute anything.
+  await setServices(
+    db,
+    SLUG,
+    serializeServices({
+      services: {
+        license: { enabled: true },
+        config: { enabled: false },
+        release: { enabled: true },
+        update: { enabled: false },
+        identity: { enabled: true },
+      },
+    }),
+    "manifest",
+    NOW,
+  );
   await db.run(
     `INSERT INTO release_metadata
        (product, release_id, version, title, notes, commit_sha, source_url,

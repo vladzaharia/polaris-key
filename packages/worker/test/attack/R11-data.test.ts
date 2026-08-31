@@ -672,6 +672,15 @@ describe("R11-05 product scoping", () => {
       // 0018_index_assertion.sql — a single-row deploy-time assertion about the SCHEMA, which
       // is platform-wide by definition. It holds no tenant data of any kind.
       "schema_index_assertion",
+      // 0027_admin_api_tokens.sql — the admin API's machine credential. Unlike a license key,
+      // this belongs to the PLATFORM and not to a product: it is minted by a platform admin,
+      // authenticates against the platform-admin group, and its scopes name capabilities rather
+      // than tenants. There is no product column to scope it by, and inventing one would imply a
+      // per-product admin credential that `admin/authz.ts` says does not exist. The tenant
+      // boundary it must not cross is enforced one layer up — `admin/api.ts` puts a token through
+      // the same `canAdminProduct` gate a session goes through, and every per-product query the
+      // handler then reaches still carries the slug.
+      "admin_api_tokens",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

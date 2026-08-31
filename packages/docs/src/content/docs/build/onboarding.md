@@ -302,10 +302,13 @@ file instead — the classic request-code flow. The app shows its request code (
 `deviceId`); an operator mints a bundle against it; the file crosses on a USB stick.
 
 ```sh
-PKEY_ADMIN_COOKIE='__Host-pkey_admin=<console session cookie>' \
+PKEY_ADMIN_TOKEN='pkeya_<admin API token>' \
   pkey bundle --product djdl --device <deviceId> --grace-days 365
-# -> djdl-<first 8 of device id>.pkeybundle
+# -> djdl-<first 8 of device id>.pkeybundle (mode 0600)
 ```
+
+Mint the token in the console (/manage → API tokens): it is scoped to `bundles:mint`, shown
+once, and revocable without touching anyone's console session.
 
 The mint (`POST /manage/api/products/djdl/bundles`) signs the license document, the config
 document if Config is enabled, and the current trust manifest into one envelope. `--grace-days`

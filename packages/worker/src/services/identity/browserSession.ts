@@ -133,7 +133,19 @@ function sessionSealContext(product: string, tokenHash: string): SealContext {
  */
 function readCookie(req: Request, name: string): string | null {
   const raw = readSingleCookie(req.headers.get("cookie"), name);
-  return raw === null ? null : decodeURIComponent(raw);
+  if (raw === null) return null;
+  // A3-07's other instance. The value is CALLER-SUPPLIED — a cookie the browser sends back, and
+  // one anybody can set to `%` by hand — so an unguarded `decodeURIComponent` here threw a
+  // `URIError` out of session loading and, before `index.ts` grew its boundary, out of the worker.
+  // `null` is the right answer and not merely the safe one: a cookie whose value will not decode
+  // is not a session token this code ever issued (`setCookieHeader` encodes what it writes), so
+  // "no session" is exactly what it means. Falling back to the RAW value would instead hand an
+  // attacker-chosen, half-decoded string to the token lookup.
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
 }
 
 function setCookieHeader(product: string, token: string): string {

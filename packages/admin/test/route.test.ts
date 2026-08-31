@@ -46,6 +46,12 @@ describe("parseRoute", () => {
     expect(parseRoute("#/products")).toEqual({ kind: "products" });
   });
 
+  it("#/tokens parses to the platform API-token roster", () => {
+    // Platform-scoped like the registry: a `pkeya_` token belongs to the deployment, so it
+    // carries no slug and is never filtered by a product's enablement.
+    expect(parseRoute("#/tokens")).toEqual({ kind: "tokens" });
+  });
+
   it("a product root defaults to the overview view", () => {
     expect(parseRoute("#/p/djdl")).toEqual({
       kind: "product",
@@ -133,9 +139,10 @@ describe("parseRoute", () => {
 });
 
 describe("hashFor", () => {
-  it("serializes the dashboard + products routes", () => {
+  it("serializes the three platform routes", () => {
     expect(hashFor({ kind: "dashboard" })).toBe("#/");
     expect(hashFor({ kind: "products" })).toBe("#/products");
+    expect(hashFor({ kind: "tokens" })).toBe("#/tokens");
   });
 
   it("serializes a tab route", () => {
@@ -172,6 +179,7 @@ describe("parseRoute ∘ hashFor round-trip", () => {
   const routes: Route[] = [
     { kind: "dashboard" },
     { kind: "products" },
+    { kind: "tokens" },
     { kind: "product", slug: "djdl", view: "overview" },
     { kind: "product", slug: "djdl", view: "licenses" },
     { kind: "product", slug: "acme", view: "activity" },
@@ -187,9 +195,10 @@ describe("parseRoute ∘ hashFor round-trip", () => {
 });
 
 describe("tabOf", () => {
-  it("dashboard + products have no tab", () => {
+  it("the platform routes have no tab", () => {
     expect(tabOf({ kind: "dashboard" })).toBeNull();
     expect(tabOf({ kind: "products" })).toBeNull();
+    expect(tabOf({ kind: "tokens" })).toBeNull();
   });
 
   it("a license detail maps back to the licenses tab", () => {

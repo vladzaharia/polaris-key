@@ -29,7 +29,11 @@ import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/fingerprint.js";
-import { DEFAULT_SERVICES } from "../../src/core/services.js";
+import {
+  DEFAULT_SERVICES,
+  serializeServices,
+} from "../../src/core/services.js";
+import { setServices } from "../../src/repo.js";
 import type { FetchImpl } from "../../src/services/release/githubApp.js";
 import type { Arch } from "../../src/services/release/assets.js";
 import type {
@@ -1485,6 +1489,32 @@ describe("R6-10 downgrade: deleting the newest release silently makes an older o
 // on one ground: `release_artifacts.source_url` had no writer in `src/`, so the missing allowlist
 // could not be reached. `services/release/store.ts` gives it one, so the redirect is hardened in
 // the same change and the PoC below becomes its regression test.
+/**
+ * Turn the Release service ON for the fixture product (A4-02).
+ *
+ * `seedProduct` leaves `services_json` NULL, which `parseServices` reads as `DEFAULT_SERVICES` —
+ * Release OFF. That was invisible to the portal download path until the redemption side started
+ * re-checking enablement; now a fixture that omits it describes a product that does not
+ * distribute builds, and the 404 under test would be the enablement refusal rather than the
+ * allowlist one.
+ */
+async function enableRelease(db: Db): Promise<void> {
+  await setServices(
+    db,
+    SLUG,
+    serializeServices({
+      services: {
+        ...DEFAULT_SERVICES,
+        license: { enabled: true },
+        release: { enabled: true },
+        identity: { enabled: true },
+      },
+    }),
+    "manifest",
+    NOW,
+  );
+}
+
 describe("R6-11 portal download redirect host allowlist", () => {
   it("FIXED: refuses an arbitrary off-platform source_url instead of 302ing to it", async () => {
     const db = makeTestDb();
@@ -1567,6 +1597,10 @@ describe("R6-11 portal download redirect host allowlist", () => {
     const env = makeEnv(new KvMock(), [SLUG]);
     env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
     await seedProduct(db, SLUG);
+    // A4-02: the redemption path now re-checks Release enablement, so a product that serves an
+    // artifact has to actually run the service. Without this the token is refused for the wrong
+    // reason and the race this test exists to observe never runs.
+    await enableRelease(db);
     await seedLicenseWithKey(db, SLUG);
     const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
     await syncAccountLicenseLinks(db, account.id, NOW);

@@ -351,6 +351,38 @@ describe("api — every product-scoped resource is under its owning service", ()
     },
   );
 
+  /**
+   * The admin API-token surface is not product-scoped at all: it is the PLATFORM's own
+   * credential store, so its paths carry no slug. Pinned here because a client that pointed
+   * these at `/manage/api/products/…/tokens` would 404 on a screen whose whole job is to be
+   * the one place a `pkeya_` secret is ever shown.
+   */
+  it("the admin API-token routes carry no product segment", async () => {
+    setCsrf("tok-t");
+    stubFetch(() => json({ tokens: [] }));
+    await api.apiTokens();
+    expect(calls[0]!.url).toBe("/manage/api/tokens");
+    expect(calls[0]!.init.method).toBeUndefined();
+
+    await api.mintApiToken({ label: "CI", expiresInDays: 90 });
+    expect(calls[1]!.url).toBe("/manage/api/tokens");
+    expect(calls[1]!.init.method).toBe("POST");
+    expect((calls[1]!.init.headers as Headers).get("X-PKey-CSRF")).toBe(
+      "tok-t",
+    );
+    expect(JSON.parse(calls[1]!.init.body as string)).toEqual({
+      label: "CI",
+      expiresInDays: 90,
+    });
+
+    await api.revokeApiToken("apitok_1/x");
+    expect(calls[2]!.url).toBe("/manage/api/tokens/apitok_1%2Fx");
+    expect(calls[2]!.init.method).toBe("DELETE");
+    expect((calls[2]!.init.headers as Headers).get("X-PKey-CSRF")).toBe(
+      "tok-t",
+    );
+  });
+
   it("services mutations send the right method and echo CSRF", async () => {
     setCsrf("tok-p");
     stubFetch(() => json({}));

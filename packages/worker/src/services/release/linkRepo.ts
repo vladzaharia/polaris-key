@@ -54,7 +54,7 @@ import {
 } from "./manifestSecrets.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
-import { serializeServices } from "../../core/services.js";
+import { serializeValidatedServices } from "../../core/services.js";
 import { invalidSigningKid, mintKid } from "../../core/keys.js";
 
 export type LinkRepoResult =
@@ -346,6 +346,24 @@ async function registerFromManifest(
   // (the product does not exist yet), so the refusal half cannot fire here; only the sealing
   // half does. `sealManagedValue` THROWS when the KEK is missing, which is the correct
   // outcome: a secret is never persisted unsealed.
+  // A4-04. Validated HERE rather than inline in the batch below, for the reason the batch
+  // exists: `stmtInsertProduct` is one statement in an atomic create, so the coherence check has
+  // to produce a refusal before any of it is assembled, not a throw from inside it. This was the
+  // third of three `services_json` writers and, like the resync path, it reached
+  // `serializeServices` directly — so a linked repo could create a product in a state the
+  // console would refuse to put it into.
+  const serviceJson = serializeValidatedServices({
+    services: manifest.services,
+    ...(manifest.registration ? { registration: manifest.registration } : {}),
+  });
+  if (!serviceJson.ok) {
+    return {
+      ok: false,
+      error: "`.pkey/product` declares an incoherent service set",
+      errors: serviceJson.errors,
+    };
+  }
+
   const isSecretKey = managedSecretKeyPredicate([catalog]);
   const profilePayloads = new Map<string, string>();
   for (const p of manifest.profiles) {
@@ -379,12 +397,7 @@ async function registerFromManifest(
       // atomic batch as the row itself, not applied afterwards like the fingerprint/auto-issue
       // policies: enablement decides which routes a product has, so there must be no instant
       // where a product row exists without it. A freshly linked product is manifest-owned.
-      services_json: serializeServices({
-        services: manifest.services,
-        ...(manifest.registration
-          ? { registration: manifest.registration }
-          : {}),
-      }),
+      services_json: serviceJson.json,
       services_source: "manifest",
       created_at: now,
       modified_at: now,

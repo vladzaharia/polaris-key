@@ -6,6 +6,7 @@
  *
  *   #/                                  -> dashboard
  *   #/products                          -> platform product registry
+ *   #/tokens                            -> platform admin API tokens
  *   #/p/<slug>/overview                 -> product operational overview
  *   #/p/<slug>/licenses                 -> licenses list for a product
  *   #/p/<slug>/licenses/<id>            -> a license detail
@@ -263,9 +264,15 @@ export function normalizeView(view: View): Tab | "license" | "profile" {
   return view;
 }
 
+/**
+ * `dashboard`, `products` and `tokens` are the three PLATFORM routes: they belong to no product
+ * and to no service, so they carry no slug, are never filtered by enablement, and take the
+ * `core` accent (`tabOf` returns null for each).
+ */
 export type Route =
   | { kind: "dashboard" }
   | { kind: "products" }
+  | { kind: "tokens" }
   | { kind: "product"; slug: string; view: Tab }
   | { kind: "product"; slug: string; view: "license"; id: string }
   | { kind: "product"; slug: string; view: "profile"; id: string };
@@ -282,6 +289,7 @@ export function parseRoute(hash: string): Route {
   if (hash === "" || hash === "#" || hash === "#/")
     return { kind: "dashboard" };
   if (hash.startsWith("#/products")) return { kind: "products" };
+  if (hash.startsWith("#/tokens")) return { kind: "tokens" };
   const m = hash.match(PRODUCT);
   if (m && m[1]) {
     const slug = decodeURIComponent(m[1]);
@@ -325,6 +333,7 @@ export function tabOf(route: Route): Tab | null {
 export function hashFor(route: Route): string {
   if (route.kind === "dashboard") return "#/";
   if (route.kind === "products") return "#/products";
+  if (route.kind === "tokens") return "#/tokens";
   if (route.view === "license" || route.view === "profile") {
     const parent = LEAF_PARENT[route.view];
     return `#/p/${encodeURIComponent(route.slug)}/${parent}/${encodeURIComponent(route.id)}`;

@@ -547,10 +547,15 @@ function DistributionCard({
           <Row term="Default max offline days">
             {String(product.defaultMaxOfflineDays)}
           </Row>
+          {/* A7-08. This used to render 0 as "unlimited", which stopped being true when
+              R11-02 part 2 landed: `licenseCore` gates the seat check on `limit > 0`, so a
+              stored 0 did not lift the cap, it disabled seat enforcement outright. That is now
+              refused on every write path — `invalidDeviceLimit` on the admin create and PATCH,
+              and migrations/0015's BEFORE INSERT/UPDATE triggers on `products` — so 0 is not a
+              value this field can hold, and inventing a replacement special case for it would
+              only put a second untrue label where the first one was. The number is the truth. */}
           <Row term="Default device limit">
-            {product.defaultDeviceLimit === 0
-              ? "unlimited"
-              : String(product.defaultDeviceLimit)}
+            {String(product.defaultDeviceLimit)}
           </Row>
           {/* Manifest metadata only — not an authorization input (see ProductOverview). */}
           <Row term="Admin group (metadata only)" mono>

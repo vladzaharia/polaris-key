@@ -35,9 +35,12 @@ this page is the two human sides of that flow.
 the file:
 
 ```sh
-PKEY_ADMIN_COOKIE='__Host-pkey_admin=<console session cookie>' \
+PKEY_ADMIN_TOKEN='pkeya_<admin API token>' \
   pkey bundle --product djdl --device <deviceId> --grace-days 365
 ```
+
+Mint the token in the console (/manage → API tokens); it is shown once, scoped to
+`bundles:mint`, and revocable on its own. The written file is mode `0600`.
 
 The console's offline-bundle dialog does the same mint over the UI; both hit
 `POST /manage/api/products/<slug>/bundles`, which signs the license document (and the config

@@ -126,6 +126,25 @@ describe("admin SPA shell", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("shows the platform API-token roster, reachable from the sidebar", async () => {
+    // Platform-scoped like the registry, and above the product switcher: an API token belongs
+    // to the deployment, so it must not read as something the selected product owns.
+    mockFetch({ "/manage/api/me": ME, "/manage/api/tokens": { tokens: [] } });
+    render(<App />);
+    await screen.findByText(/Welcome, Ada/);
+    await userEvent.click(
+      within(screen.getByRole("navigation", { name: "Primary" })).getByRole(
+        "button",
+        { name: "API tokens" },
+      ),
+    );
+    expect(window.location.hash).toBe("#/tokens");
+    expect(
+      (await screen.findAllByRole("heading", { name: "API tokens" })).length,
+    ).toBeGreaterThan(0);
+    expect(await screen.findByText("No API tokens")).toBeTruthy();
+  });
+
   it("reports an unknown slug as unknown, not as an authorization failure", async () => {
     // `handleMe` returns every product or none — there is no per-product grant that could be
     // missing — so a slug outside `me.products` simply does not exist. The old copy ("You do
