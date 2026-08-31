@@ -185,9 +185,16 @@ export async function verifySession(
   const body = token.slice(0, dot);
   const sig = token.slice(dot + 1);
 
-  const key = await sessionKey(env);
   let ok: boolean;
   try {
+    // A3-10: `sessionKey()` was awaited OUTSIDE this `try`, and it THROWS when
+    // `ADMIN_SESSION_SECRET` is unset. So the one configuration in which no session can
+    // possibly be authentic — no signing secret at all — was the one configuration in which
+    // verification did not return null but propagated an exception to whatever called it. Every
+    // caller here is a gate, and a gate whose verifier throws is a gate whose behaviour is
+    // decided by its caller's error handling rather than by this function. Inside the `try`,
+    // "there is no secret" fails closed exactly like "the signature is wrong".
+    const key = await sessionKey(env);
     const expected = await crypto.subtle.sign("HMAC", key, signingInput(body));
     ok = safeEqual(sig, base64UrlEncode(new Uint8Array(expected)));
   } catch {

@@ -8,10 +8,13 @@
  * reaching for `signJws` itself, so there is exactly one call site to audit when the envelope
  * changes.
  *
- * `typ` is the wire-v3 domain separator (WIRE-CONTRACT-V3 §2). One product key signs the
- * license document, the config document and the trust manifest, so `typ` is the ONLY thing
- * standing between them: without it a config document could be replayed into a call site
- * expecting a license document and verify perfectly. Every call site here passes one — the
+ * `typ` is the wire-v3 domain separator (WIRE-CONTRACT-V3 §2). The §1.1 anchor/document split
+ * separates the trust manifest from the documents by PURPOSE — `core/trust.ts` signs the
+ * manifest with the anchor key and does not come through here — but it does not separate the
+ * documents from each other, and a product that has not yet rotated a document key still signs
+ * every one of them with a single key. So `typ` is the ONLY thing standing between them:
+ * without it a config document could be replayed into a call site expecting a license document
+ * and verify perfectly. Every call site here passes one — the
  * license and config documents, and all three artifacts `core/bundles.ts` mints — so the
  * optionality is inherited from `signJws`, not exercised: a signer that omits `typ` is a bug
  * rather than a compatibility choice. The one Polaris Key document with no `typ` is the FUSED

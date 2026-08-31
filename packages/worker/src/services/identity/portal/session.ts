@@ -126,9 +126,14 @@ export async function verifyPortalSession(
   if (dot <= 0) return null;
   const body = token.slice(0, dot);
   const sig = token.slice(dot + 1);
-  const key = await sessionKey(env);
   let expected: ArrayBuffer;
   try {
+    // A3-10: awaited outside this `try` until now. `sessionKey()` throws when neither
+    // `PORTAL_SESSION_SECRET` nor `ADMIN_SESSION_SECRET` is set, so a deployment with no
+    // session secret made this verifier throw rather than answer "not a valid session" — the
+    // same defect as `admin/session.ts`, and fixed the same way. See that file for why a
+    // verifier that throws is worse than one that returns null.
+    const key = await sessionKey(env);
     expected = await crypto.subtle.sign("HMAC", key, signingInput(body));
   } catch {
     return null;

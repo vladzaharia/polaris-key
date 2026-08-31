@@ -5,9 +5,9 @@ sidebar:
   order: 4
 ---
 
-Every product has its own Ed25519 keypair. The private half is envelope-encrypted at rest in D1
-under the platform **KEK** (a single worker secret) and never leaves the worker. The public half
-is published two ways, and only one of them is a trust root.
+Every product has its own Ed25519 keys. Every private half is envelope-encrypted at rest in D1
+under the platform **KEK** (a single worker secret) and never leaves the worker. The public
+halves are published two ways, and only one of them is a trust root.
 
 ## The two tiers
 
@@ -29,6 +29,43 @@ explicitly pinned in source.
 
 The on-disk cache is **never** a key source. It persists the manifest's compact JWS, never bare
 `kid → key` JSON, so a file write can neither add a kid nor swap the bytes behind one.
+
+## Two key classes: the anchor and the document keys
+
+A product's keys are split by **purpose**, and the split is what keeps a key rotation an
+operation rather than an application release.
+
+| Class        | Signs                                                    | Rotation cadence             | Pinned by clients |
+| ------------ | -------------------------------------------------------- | ---------------------------- | ----------------- |
+| **anchor**   | `pkey-trust+jws` — the trust manifest, and nothing else  | Rare; an application release | **Yes**           |
+| **document** | `pkey-license+jws`, `pkey-config+jws`, `pkey-bundle+jws` | Freely, on operator cadence  | No                |
+
+A product has at most one active key of each class. The anchor is published in the manifest and
+in JWKS like any other verification key — what makes it the anchor is that it is the key host
+applications **pin**, and the only key the server will use to sign a manifest.
+
+The split exists because manifests verify against pins only. Before it, the manifest was signed
+by the same active key that signed documents, so the first document-key rotation made every
+already-installed client reject every subsequent manifest: trust refresh died, the clock floor
+stopped advancing, and — worst of the three — revocation died, for exactly the population a
+compromise needs to reach. With the split, rotating a document key changes nothing a client
+verifies a manifest with.
+
+**The two classes are roles, not necessarily two keys.** For a product that predates the split,
+one key holds both roles, because that is the key deployed clients already pin; it signs its
+documents with its anchor until the first document-key rotation separates them. This is a
+server-side detail and changes nothing a verifier does — a client must never reject a document
+because its `kid` happens to match the pinned anchor.
+
+Manifest entries may carry `role: "anchor" | "document"`, and it is **advisory only**. No
+verifier may use it in any verification decision — not to decide what may sign a manifest, not
+to prune. A verifier that let the manifest's own `role` field decide what may sign a manifest
+would be letting the manifest introduce the key that verifies it, which is the pinned-shadowing
+vulnerability through a new door. The property is enforced structurally instead: only the anchor
+is pinned, and manifests verify against pins only.
+
+Operator-side rotation procedure lives in
+[Secrets and keys](/docs/admin/secrets-and-keys/).
 
 ## `GET /<p>/.well-known/jwks.json`
 
@@ -62,6 +99,7 @@ with `cache-control: public, max-age=300`. Its payload:
       "crv": "Ed25519",
       "publicKey": "…",
       "status": "active",
+      "role": "anchor", // advisory; never an input to a verification decision
     },
   ],
 }
@@ -72,11 +110,12 @@ the advertised `cacheSeconds`, and the HTTP `max-age`. `jwksUrl` is built from t
 request actually arrived on, so the manifest advertises the host it was fetched from, while
 `iss` is the fixed `key.plrs.im` string and is never derived from the host.
 
-`typ` is mandatory in v3. One product key signs the license document, the config document, and
-the trust manifest, so `typ` is the only thing standing between them — without it a config
-document could be replayed into a call site expecting a license document and verify perfectly.
-An untyped manifest is rejected outright, which means the signing side had to start emitting it
-too.
+`typ` is mandatory in v3. The key classes above separate the manifest from the documents by
+_purpose_, but they do not separate the documents from each other, and for a product that has
+not yet rotated a document key one key still signs all three — so `typ` is the only thing
+standing between them. Without it a config document could be replayed into a call site
+expecting a license document and verify perfectly. An untyped manifest is rejected outright,
+which means the signing side had to start emitting it too.
 
 The same signing function produces the manifest embedded inside an offline bundle, so the served
 artifact and the bundled one cannot drift in shape.
@@ -85,14 +124,24 @@ artifact and the bundled one cannot drift in shape.
 
 The manifest is built from the product's verification keys — `active`, `staged`, and `retired`,
 in that priority order. `retired` and `staged` keys are trusted for **verification**; only the
-active key signs.
+two active keys sign, each within its own class.
 
-:::caution
-Revoked keys are filtered out of the query entirely, so this worker's manifest never carries a
-`status: "revoked"` entry. Revocation reaches clients as **absence** (see below), not as an
-explicit prune signal. The wire contract (§2.3) describes servers emitting revoked keys
-explicitly for at least `2 × cacheSeconds`; the client honours such entries if it sees them, but
-this server does not produce them.
+**Plus recently revoked keys, deliberately.** `loadPublicSigningKeys` is called with
+`now − 2 × TRUST_CACHE_SECONDS`, so the manifest also lists every key revoked inside that
+window, carrying `status: "revoked"`. Every client that could still be holding such a key
+cached therefore reads a **positive removal signal** rather than having to infer one from
+absence — which matters because 2× the cache window is long enough that any client refreshing
+on schedule sees at least one manifest naming the revoked kid. Once a revocation ages out of
+the window the entry disappears and absence takes over, which the replace-wholesale merge
+already handles identically. This is what the wire contract's §2.3 requires, and this worker
+implements it: see `signTrustManifest` in `packages/worker/src/core/trust.ts`.
+
+:::caution[A revoked key in the manifest is not a trusted key]
+`status: "revoked"` entries appear in the manifest so clients can **prune** on them. A verifier
+must drop them from the discovered set — never add them — and the check is deliberately ordered
+_before_ the algorithm check so that a revoked entry is pruned whatever else is wrong with it.
+The unsigned surfaces are different: JWKS and discovery build **trusted** key sets, so they omit
+revoked keys entirely and never pass the revocation window.
 :::
 
 ## How a manifest is verified
@@ -190,11 +239,17 @@ real time — independent of whether it may still publish keys.
 
 ## Signing
 
-One function turns a document into a compact JWS under a product's active key, and every
-minting surface goes through it rather than reaching for the JWS library directly. That is what
-keeps a single call site to audit when the envelope changes. The encoding itself is frozen and
-pinned by the conformance corpus; the per-product `kid` and key are what scope a signed document
-to one tenant.
+One function turns a document into a compact JWS under a product's active **document** key, and
+every document-minting surface goes through it rather than reaching for the JWS library
+directly. That is what keeps a single call site to audit when the envelope changes. The
+encoding itself is frozen and pinned by the conformance corpus; the per-product `kid` and key
+are what scope a signed document to one tenant.
+
+The trust manifest is the exception, and it is the exception on purpose: `signTrustManifest`
+signs with the product's **anchor** key and its anchor `kid`. Signing a manifest with the
+rotating document key is precisely the defect the two-class split fixed — clients verify
+manifests against pins only, so a manifest signed by a key that moved on rotation is a manifest
+no installed client can accept.
 
 ## See also
 

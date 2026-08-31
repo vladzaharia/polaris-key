@@ -18,6 +18,7 @@ import {
   clearFlowCookie,
   flowBindingMatches,
   mintFlowBinding,
+  parseFlowRecord,
 } from "../../../core/oidcFlow.js";
 import { safeReturnUrl } from "../../../core/returnTo.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
@@ -303,14 +304,14 @@ export async function handlePortalCallback(
   const key = await flowKey(state, env);
   const raw = await env.HOT.get(key);
   if (!raw) return htmlError(400, "This sign-in link has expired.");
-  let flow: FlowRecord;
-  try {
-    flow = JSON.parse(raw) as FlowRecord;
-  } catch {
-    await env.HOT.delete(key);
-    return htmlError(400, "This sign-in link has expired.");
-  }
+  // A3-08 — through the shared guarded reader rather than a bare `JSON.parse(...) as FlowRecord`.
+  // The cast was not merely unconventional: `JSON.parse("null")` SUCCEEDS, so a stored `null`
+  // left the local `try` intact and then threw a TypeError at `flow.flowHash` below, outside any
+  // guard — an uncaught 500 on the sign-in path in place of the 400 every other malformed-flow
+  // case gets. `parseFlowRecord` rejects a non-object, so both shapes take one branch.
+  const flow = parseFlowRecord<FlowRecord>(raw);
   await env.HOT.delete(key);
+  if (!flow) return htmlError(400, "This sign-in link has expired.");
   // A3-06 — only the browser that started this flow may finish it. Same message the expired
   // arm returns, so a probe cannot tell "no such flow" from "not your flow".
   if (!(await flowBindingMatches(req, env, flow.flowHash))) {
@@ -548,8 +549,14 @@ export async function handleMagicVerify(
   await env.HOT.delete(key);
   let record: MagicRecord;
   try {
-    const stored = JSON.parse(raw) as StoredMagicRecord;
-    if (typeof stored.email !== "string") throw new Error("bad record");
+    // A3-08 — same shared reader. This one was already fail-closed (the surrounding `try` is
+    // wide enough to catch the TypeError a non-object would raise on `.email`), so the change
+    // is that the rejection is now stated rather than caught: a `null` record is refused by the
+    // reader, not by an exception thrown three lines later and swallowed by a catch whose real
+    // job is the unseal.
+    const stored = parseFlowRecord<StoredMagicRecord>(raw);
+    if (!stored || typeof stored.email !== "string")
+      throw new Error("bad record");
     // Unsealed under the IDENTICAL context the write used. Any failure — a rotated-away KEK, a
     // blob transplanted from another record — is "this link does not resolve", which is the
     // same answer an expired one gets.

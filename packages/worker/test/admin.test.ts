@@ -739,10 +739,12 @@ describe("admin api", () => {
     expect(rows[0]?.actor_sub).toBe("u1");
   });
 
-  it("fails closed: with NO ADMIN_SESSION_SECRET, issuing/verifying a session throws (D1)", async () => {
+  it("fails closed: with NO ADMIN_SESSION_SECRET, issuing throws and verifying returns null (D1)", async () => {
     const env = adminEnv(new KvMock(), []);
     // Remove the secret — the worker must NOT fall back to a guessable signing key.
     delete (env as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
+    // MINTING still throws, and should: issuing a session with no secret is a deployment error
+    // with no safe answer, and the caller is a sign-in handler that must not proceed.
     await expect(
       issueSession(
         env,
@@ -750,10 +752,17 @@ describe("admin api", () => {
         NOW,
       ),
     ).rejects.toThrow("ADMIN_SESSION_SECRET is required");
-    // Verification of any token must also throw (so no request can authenticate).
-    await expect(verifySession(env, "forged.token", NOW)).rejects.toThrow(
-      "ADMIN_SESSION_SECRET is required",
-    );
+    // VERIFYING is INVERTED as of A3-10, and the inversion is the fix, not a weakening.
+    //
+    // This assertion used to demand a throw, on the reasoning "so no request can authenticate".
+    // It got that outcome by accident: `sessionKey()` was awaited OUTSIDE `verifySession`'s
+    // `try`, so the one configuration in which no session can possibly be authentic was the one
+    // configuration in which the verifier did not answer "no" but propagated an exception into
+    // whatever gate called it. Every caller is a gate, and a gate whose verifier throws has its
+    // behaviour decided by its caller's error handling rather than by the verifier — which is
+    // the definition of not failing closed. `null` IS "no request can authenticate", stated by
+    // the function that knows, and it is the same answer a tampered or expired token gets.
+    expect(await verifySession(env, "forged.token", NOW)).toBeNull();
   });
 
   it("manual create with an uploaded schema yields a usable product (loadProduct + /config sign)", async () => {

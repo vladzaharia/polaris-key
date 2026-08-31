@@ -13,7 +13,7 @@ Design spec: `docs/superpowers/specs/2026-08-26-polaris-suite-services-design.md
 
 Two tiers, strictly decreasing authority. The on-disk cache is **never** a key source.
 
-1. **Pinned keys** — `TrustSet = Record<kid, base64url(raw Ed25519 pubkey)>` compiled into the host app. Terminal: `mergeTrust(discovered, pinned) = { ...discovered, ...pinned }` (pins spread last; a manifest can never shadow a pin). **[C]**
+1. **Pinned keys** — `TrustSet = Record<kid, base64url(raw Ed25519 pubkey)>` compiled into the host app. Terminal: `mergeTrust(pinned, discovered) = { ...discovered, ...pinned }` (pins spread last; a manifest can never shadow a pin). **[C]** The argument order is `(pinned, discovered)` in all three implementations — `client-core/src/trust.ts`, `polaris_key/core/trust.py` and `PolarisKeyCore/Trust.swift` — and the spread order is the reverse of it on purpose. Reading the call as if it took `(discovered, pinned)` is exactly the transposition that was R2-01, so the two orders are written out together here rather than left to be inferred.
 2. **Manifest keys** — learned only from a verified trust manifest (`pkey-trust+jws`). The discovered set is **replaced wholesale** on every successful verification; absence of a previously-seen kid is revocation. **[C]**
 
 ### 1.1 Two key CLASSES: the trust anchor and the document keys
@@ -236,7 +236,7 @@ Unchanged semantics: a recorded hard 401 (`lastSyncUnauthorized`) yields `revoke
 
 ## 6. Device principal
 
-- **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `pkeyt_` tokens are rejected (pre-launch, no migration).
+- **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `plrst_` tokens — the withdrawn spelling in §8 — are rejected (pre-launch, no migration).
 - **Registration policy** (per product, manifest key `devices.registration`, default derived — `requires-license` if license enabled, else `requires-identity` if identity enabled, else `open`):
   - `open` — `POST /<p>/devices/register` (keyless, rate-limited, optional fingerprint) mints a token.
   - `requires-identity` — same endpoint, but only with a valid product identity session.

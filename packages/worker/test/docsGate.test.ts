@@ -177,6 +177,36 @@ describe("handleDocs: the platform-admin gate", () => {
     expect(res.headers.get("strict-transport-security")).toBeTruthy();
   });
 
+  // A3-11. `hasAnyAdminGrant` and `isPlatformAdmin` are the same predicate today, so a session
+  // that lacks the platform group cannot currently be minted by the callback — which is exactly
+  // why the property needs a test rather than a comment. These two forge such a session
+  // directly, so the gate is asserted on its own terms instead of on `admin/authz.ts` keeping
+  // two functions equal forever.
+  it("403s a real session whose groups lack the platform admin group", async () => {
+    const env = docsEnv();
+    const { token } = await issueSession(
+      env,
+      { ...OPERATOR, groups: ["some-other-group"] },
+      NOW,
+    );
+    const res = await handleDocs(
+      get("/docs/", `${ADMIN_COOKIE}=${token}`),
+      env,
+      NOW,
+    );
+    // 403, not 302: signing in again returns the same groups, so a redirect would loop.
+    expect(res.status).toBe(403);
+    expect(await res.text()).not.toContain("docs home");
+  });
+
+  it("403s every session when PLATFORM_ADMIN_GROUP is unset", async () => {
+    const env = docsEnv();
+    const cookie = await adminCookie(env);
+    delete (env as Record<string, unknown>).PLATFORM_ADMIN_GROUP;
+    const res = await handleDocs(get("/docs/", cookie), env, NOW);
+    expect(res.status).toBe(403);
+  });
+
   it("refuses non-GET/HEAD methods", async () => {
     const env = docsEnv();
     const res = await handleDocs(

@@ -22,9 +22,12 @@ call site is named.
    declares the companion apps it cares about as **probes**; the client answers only those.
 4. **Everything is bounded.** The report body is capped at 16 KiB, the probe map at 32
    entries, and the signed config document at 64 KiB. Unknown keys are dropped, not stored.
-5. **Retention is device lifetime.** Fingerprints and software facts are deleted when the
-   device they describe is deauthorized. There is no separate retention job, because there is
-   nothing that outlives its device.
+5. **Retention is device lifetime, plus a bounded window for the audit log.** Fingerprints and
+   software facts are deleted when the device they describe is deauthorized — they never
+   outlive it, and no job has to notice. The audit log is the one thing that does outlive a
+   device, because it records that something _happened_ rather than describing a machine, so it
+   is not open-ended either: a nightly maintenance job deletes audit records after 180 days.
+   See _Scheduled cleanup_ below.
 
 ## What is collected
 
@@ -65,16 +68,42 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 
 ## Where it lives, and for how long
 
-| Data                           | Table                 | Lifetime                              |
-| ------------------------------ | --------------------- | ------------------------------------- |
-| Fingerprint components + hwid  | `device_fingerprints` | Deleted with the device               |
-| Software facts + probe results | `device_facts`        | Deleted with the device               |
-| Drift and mismatch events      | `audit`               | Retained with the product's audit log |
+| Data                           | Table                 | Lifetime                       |
+| ------------------------------ | --------------------- | ------------------------------ |
+| Fingerprint components + hwid  | `device_fingerprints` | Deleted with the device        |
+| Software facts + probe results | `device_facts`        | Deleted with the device        |
+| Drift and mismatch events      | `audit`               | 180 days, then deleted nightly |
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the
-same operation. Disabling a license purges every one of its devices. This is why no scheduled
-cleanup job exists: there is no orphaned data for one to collect.
+same operation. Disabling a license purges every one of its devices. Device-owned data is
+therefore gone the moment the device is, with nothing left over for a cleanup job to collect.
+
+### Scheduled cleanup
+
+What deletion-on-deauthorization cannot reach is the data that describes an **event** rather
+than a device. That data is bounded by a nightly maintenance job — `scheduled()` in
+`packages/worker/src/scheduled.ts`, triggered by `crons = ["17 3 * * *"]` in
+`packages/worker/wrangler.toml`, so **03:17 UTC every day**. Every step it runs is a deletion
+or a release; the job collects nothing and reads nothing from any device.
+
+| Nightly step              | What it acts on                                                                                                                                    | Threshold                             |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `audit`                   | The product's admin-side audit log — the drift and mismatch events in the table above, plus the acting operator's name and email on each record    | Deleted at **180 days**               |
+| `portal_audit`            | Customer-portal audit records — sign-ins, device disconnects, license claims — each keyed to a portal account                                      | Deleted at **180 days**               |
+| `release_download_tokens` | Single-use download tokens issued for release artifacts, once past their own expiry                                                                | Deleted once **expired**              |
+| Device seats              | Releases the _seat_ held by a device that has not checked in recently. The device row, its name and its history are left untouched — only the seat | Released after **90 days** of silence |
+
+The 180-day figure is `AUDIT_RETENTION_SECONDS`, and it is a deliberate balance: an audit log
+is the evidence for "who disabled that license", and incidents are often discovered a quarter
+or two later, while indefinite retention of a personal record with no stated period is exactly
+what a privacy policy is supposed to rule out.
+
+**What this means for you.** Six months after an action on your account is recorded, the record
+is deleted — it can no longer be produced, for you or for anyone else. And if you stop using a
+machine for 90 days, it stops occupying one of your license's seats, so a new machine can
+activate without you disconnecting the old one first; the old device still appears in the
+portal and you can still disconnect it, which is what actually erases its data.
 
 ## Per-product opt-out
 

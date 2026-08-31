@@ -233,11 +233,14 @@ async function reload(
     checkFreshness: false,
   });
   expect(trust.doc).not.toBeNull();
-  // `mergeTrust(discovered, pinned)` — pins spread last, so a manifest can never shadow one
-  // (§1 rule 1). The documents verify against the EFFECTIVE set, never against pins alone.
+  // `mergeTrust(pinned, discovered)` — the arguments are pins FIRST, and the function spreads
+  // them last, so a manifest can never shadow a pin (§1 rule 1). This call had the two
+  // transposed, which is the same inversion as R2-01: it passed only because the fixture's
+  // pinned and discovered sets agree, and it would have kept passing while a manifest key
+  // silently overrode a pin. The documents verify against the EFFECTIVE set, never pins alone.
   const opts = {
     ...verifyOpts(device, systemNow),
-    trust: mergeTrust(trust.discovered, TRUST),
+    trust: mergeTrust(TRUST, trust.discovered),
     checkFreshness: false,
   };
   const license = await verifyLicenseDoc(cache.docs.license, opts);

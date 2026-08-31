@@ -71,6 +71,7 @@ import {
   clearFlowCookie,
   flowBindingMatches,
   mintFlowBinding,
+  parseFlowRecord,
 } from "../../core/oidcFlow.js";
 import { safeReturnUrl } from "../../core/returnTo.js";
 import { createBrowserSession } from "./browserSession.js";
@@ -401,23 +402,6 @@ function parseJsonColumn<T>(raw: string | null | undefined): T | undefined {
     return JSON.parse(raw) as T;
   } catch {
     return undefined;
-  }
-}
-
-/**
- * Parse a stored flow record, treating a corrupt value exactly like a missing one (R11-06).
- *
- * Every caller already has a well-defined answer for "this flow does not exist" — `expired`,
- * `unknown state`, `timeout`. A truncated or garbled KV value is indistinguishable from that
- * for every purpose the handler has, so it should take the same branch rather than escape as
- * an uncaught `SyntaxError` and 500 a sign-in path.
- */
-function parseFlowRecord<T>(raw: string): T | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as T) : null;
-  } catch {
-    return null;
   }
 }
 

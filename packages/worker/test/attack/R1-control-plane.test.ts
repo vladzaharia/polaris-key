@@ -454,6 +454,40 @@ describe("R1-02 cross-realm session signing", () => {
     expect(await verifyPortalSession(env, legacy, NOW)).toBeNull();
   });
 
+  it("A3-10: with NO session secret at all, BOTH verifiers answer null instead of throwing", async () => {
+    const env = adminEnv(new KvMock());
+    // The portal verifier falls back to ADMIN_SESSION_SECRET, so a genuine no-secret
+    // deployment means removing both.
+    delete (env as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
+    delete (env as { PORTAL_SESSION_SECRET?: string }).PORTAL_SESSION_SECRET;
+
+    // `sessionKey()` throws in this configuration, and both verifiers used to await it OUTSIDE
+    // their `try` — so the deployment in which NO session can be authentic was the one in which
+    // the verifiers raised into their callers instead of refusing. A gate whose verifier throws
+    // is a gate whose behaviour belongs to whoever catches, which is not failing closed.
+    // Asserted for both realms together because the defect was in both and a fix to one only
+    // would leave the other as the counter-example.
+    expect(await verifySession(env, "forged.token", NOW)).toBeNull();
+    expect(await verifyPortalSession(env, "forged.token", NOW)).toBeNull();
+
+    // Not merely "a malformed token is rejected": a WELL-FORMED token, signed with a key the
+    // attacker chose, is refused for the same reason — there is nothing to verify it against.
+    const body = b64urlStr(
+      JSON.stringify({
+        accountId: "acct_1",
+        sub: "u1",
+        name: "Mallory",
+        email: "m@evil.test",
+        groups: [PLATFORM_GROUP],
+        csrf: "x",
+        exp: NOW + 3600,
+      }),
+    );
+    const forged = `${body}.${await hmacB64url("attacker-chosen", `pkey.admin.v1|${body}`)}`;
+    expect(await verifySession(env, forged, NOW)).toBeNull();
+    expect(await verifyPortalSession(env, forged, NOW)).toBeNull();
+  });
+
   it("R1-02e: REFUTED — lastIndexOf('.') splitting is not forgeable (extra dots move the signed body)", async () => {
     const env = adminEnv(new KvMock());
     const { token } = await issueSession(

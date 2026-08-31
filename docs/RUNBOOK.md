@@ -27,8 +27,14 @@ Reserved platform routes:
 - `/manage/*` - admin SPA, admin OIDC, and admin JSON API.
 - `/api/*`, `/login`, `/callback`, `/logout`, `/magic/verify`, `/download/*` - customer
   portal.
+- `/docs/*` - the docs site, behind the platform-admin session.
+- `/assets/*` - static assets for the admin SPA.
 - `/webhooks/github` - signed GitHub App push webhooks.
 - `/<product>/*` - product-scoped licensing, config, OIDC activation, releases, and JWKS.
+  Only five service namespaces exist under a product — `license`, `config`, `release`,
+  `update`, `identity` — plus four permanent aliases (`appcast.xml`,
+  `<channel>/appcast.xml`, `install.sh`, `version`) and the core `.well-known/*` and
+  `devices*` paths. Anything else under `/<product>/` is a 404 by design, not by omission.
 
 ## Deploy
 
@@ -39,8 +45,17 @@ pnpm build
 pnpm typecheck
 pnpm test
 pnpm lint
+# REQUIRED. `wrangler.toml` declares `[assets] directory = "./assets"` and that directory is
+# gitignored — no `pnpm build` step creates it. Skip this and `wrangler deploy` aborts on a
+# missing assets root. CI runs it as its own step.
+pnpm --filter @polaris-key/worker assemble
 cd packages/worker
 npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
+# Re-assert the indexes the security invariants rest on. Migration replay cannot be made
+# idempotent in pure SQL, so this is the check that catches a half-applied migration — CI runs
+# it on every deploy, and the nightly sweep re-runs the same assertion at 03:17 UTC.
+npx wrangler d1 execute polaris_key_prod --env prod --remote \
+  --file migrations/0018_index_assertion.sql
 npx wrangler deploy --env prod
 ```
 
@@ -288,7 +303,7 @@ Product validation:
 ```sh
 curl -fsS https://key.plrs.im/djdl/.well-known/polaris.json | jq .
 curl -fsS https://key.plrs.im/djdl/.well-known/jwks.json | jq .
-curl -fsS https://key.plrs.im/djdl/schema | jq .
+curl -fsS https://key.plrs.im/djdl/config/schema | jq .
 curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 ```
 
@@ -344,8 +359,13 @@ No client action, no release, no user impact. All four calls are authenticated a
 Verify: the manifest's header `kid` must be unchanged, and the new document key must be present.
 
 ```sh
-curl -fsS https://key.plrs.im/<slug>/.well-known/polaris-trust.jws \
-  | cut -d. -f1 | base64 -d | jq .kid          # must equal trust.anchorKid, before AND after
+# The protected header is base64url with the padding stripped, so `base64 -d` is wrong on both
+# counts — it rejects `-`/`_` and it wants the `=`. Node's "base64url" decoder handles each.
+curl -fsS https://key.plrs.im/<slug>/.well-known/polaris-trust.jws | cut -d. -f1 | node -e '
+  let s = "";
+  process.stdin.on("data", (d) => (s += d)).on("end", () =>
+    console.log(JSON.parse(Buffer.from(s.trim(), "base64url").toString()).kid));
+'   # must equal trust.anchorKid, before AND after
 ```
 
 #### Exceptional: rotating the ANCHOR
@@ -432,8 +452,8 @@ Repo-link or release sync cannot access GitHub:
   `GITHUB_WEBHOOK_SECRET`.
 - Confirm the app has Contents: read and Actions: read.
 
-Every product route 404s at once (JWKS, `/config`, `/activate`, appcast), with nothing in the
-admin broken:
+Every product route 404s at once (JWKS, `/config/document`, `/license/activate`, appcast), with
+nothing in the admin broken:
 
 - This is the KEK failure signature. `loadProduct` swallows a sealed-value error and returns
   `null`, so a product whose signing key cannot be opened looks exactly like a product that
@@ -448,5 +468,7 @@ admin broken:
 
 Deploy fails on bindings:
 
-- Confirm `REPLACE_ME_PROD_D1_ID` and `REPLACE_ME_PROD_KV_ID` in
-  `packages/worker/wrangler.toml` have been replaced with real Cloudflare IDs.
+- Confirm the environment's D1 and KV ids in `packages/worker/wrangler.toml` are real
+  Cloudflare ids. `prod` already carries real ids; `staging` and `dev` still carry
+  `REPLACE_ME_*` placeholders, so this is a staging/dev failure mode unless someone has
+  reverted the prod block.

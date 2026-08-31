@@ -52,6 +52,10 @@ window, escalating publicly is reasonable.
 
 - The Worker at `key.plrs.im` and everything under `packages/worker/`
 - The admin console and customer portal (`packages/admin/`)
+- The admin API's credentials — both the browser session and the `pkeya_` machine token
+  (`Authorization: Bearer pkeya_…`). In particular: a way to make a token reach an admin route
+  outside its scopes, to use a revoked or expired token, to recover a token's plaintext from
+  storage or from any surface that displays it, or to mint one without platform-admin authority
 - All four client SDKs — Node, React, Python, Swift (`packages/sdk-*`, `sdks/`)
 - The shared wire contract and conformance corpus (`packages/shared-*`, `conformance/`)
 - The release-distribution path: appcasts, `install.sh`, artifact serving, the GitHub App
@@ -67,12 +71,27 @@ window, escalating publicly is reasonable.
 - Social engineering of the maintainer
 - Vulnerabilities requiring a compromised identity provider's _signing keys_ (we do model
   malicious _claims_ from an IdP — those are in scope)
-- Reports that a licensed user can bypass client-side enforcement on their own machine. This is
-  a documented, accepted property of the design; see
+- Reports that a licensed user can make their **own** client report itself as licensed — by
+  patching the binary, hand-writing a cache file, or winding back their clock. This is a
+  documented, accepted property of the design; see
   [`docs/security/THREAT-MODEL.md`](docs/security/THREAT-MODEL.md) §6 for what the licensing
-  layer does and does not promise. A bypass that yields something the **server** would not have
-  sent — product secrets, edge-mint tokens, another tenant's data — _is_ in scope and we want
-  to hear about it.
+  layer does and does not promise.
+
+  **This carve-out is narrower than it used to be, and the boundary is worth stating exactly.**
+  It covers property 1 of §6 only. Properties 2 and 3 were listed as "does not hold" in v1 of
+  the threat model and **now hold**, so breaking either of them is a bug we want reported, not
+  an accepted trade-off:
+
+  - Anything that lets a **local file write change which keys verify signatures** — a manifest
+    key shadowing a pinned one, a manifest accepted against the discovered set rather than the
+    pins, the cache reintroduced as a key source, a pinned kid's bytes substituted without the
+    whole manifest being rejected.
+  - Anything that makes a **revoked signing key stay trusted** — a client that ignores
+    `status: "revoked"`, a discovered set that grows instead of being replaced, or any way a
+    key rotation stops a client from receiving revocations at all.
+
+  A bypass that yields something the **server** would not have sent — product secrets,
+  edge-mint tokens, another tenant's data — remains in scope, as it always was.
 
 ## Testing guidance
 

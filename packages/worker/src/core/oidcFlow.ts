@@ -105,3 +105,30 @@ export async function flowBindingMatches(
   const hash = await hashKey(presented, env.KEY_HASH_PEPPER);
   return hash === expectedHash;
 }
+
+/**
+ * Parse a stored flow record, treating a corrupt value exactly like a missing one (R11-06).
+ *
+ * Every caller already has a well-defined answer for "this flow does not exist" — `expired`,
+ * `unknown state`, `timeout`. A truncated or garbled KV value is indistinguishable from that
+ * for every purpose the handler has, so it should take the same branch rather than escape as an
+ * uncaught `SyntaxError` and 500 a sign-in path.
+ *
+ * This lives HERE, next to the binding, because A3-08 found the same three realms diverging
+ * again: the product realm had this guard and the portal's OIDC-flow and magic-link readers and
+ * the admin realm's flow reader each still called bare `JSON.parse`. A convention that only one
+ * of three realms follows is not a convention, so the function moved out of `oidc.ts` and all
+ * three import it — the identical fix, and the identical reason, as `identity/idToken.ts`.
+ *
+ * The `typeof parsed === "object"` check is load-bearing and not decoration: `JSON.parse("2")`
+ * and `JSON.parse("null")` both succeed, and a caller that then reads `.email` off the result
+ * gets `undefined` from a value that never came from this system rather than a rejection.
+ */
+export function parseFlowRecord<T>(raw: string): T | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as T) : null;
+  } catch {
+    return null;
+  }
+}

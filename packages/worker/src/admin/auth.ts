@@ -22,9 +22,15 @@ import {
   clearFlowCookie,
   flowBindingMatches,
   mintFlowBinding,
+  parseFlowRecord,
 } from "../core/oidcFlow.js";
 import { sanitizeReturnTo } from "../core/returnTo.js";
 import { platformOidcConfig } from "../platformOidc.js";
+import {
+  ALLOWED_ID_TOKEN_ALGS,
+  ID_TOKEN_CLOCK_TOLERANCE,
+  ID_TOKEN_MAX_AGE,
+} from "../services/identity/idToken.js";
 import { staticHtmlSecurityHeaders } from "../securityHeaders.js";
 import { hasAnyAdminGrant } from "./authz.js";
 import {
@@ -163,9 +169,16 @@ const joseIdTokenVerifier: IdTokenVerifier = {
     );
     try {
       const verified = await jwtVerify(tokens.id_token, jwks, {
+        // A3-05: these three came from a hand-copied literal that happened to match the
+        // product verifier's alg list and silently omitted its two freshness options — so the
+        // ADMIN realm, the one whose session carries full platform authority, accepted an ID
+        // token of any age. `idToken.ts` exists precisely to stop this drift; admin is now its
+        // third consumer alongside the product and portal callbacks.
         issuer: cfg.issuer,
         audience: cfg.clientId,
-        algorithms: ["RS256", "ES256", "EdDSA"],
+        algorithms: ALLOWED_ID_TOKEN_ALGS,
+        clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
+        maxTokenAge: ID_TOKEN_MAX_AGE,
       });
       const claims = verified.payload as Record<string, unknown>;
       // Reject unconditionally on a missing or mismatched nonce — a token with no nonce
@@ -279,14 +292,13 @@ export async function handleAdminCallback(
   const flowKey = await adminFlowKey(state, env);
   const raw = await env.HOT.get(flowKey);
   if (!raw) return htmlError(400, "This sign-in link has expired. Try again.");
-  let flow: FlowRecord;
-  try {
-    flow = JSON.parse(raw) as FlowRecord;
-  } catch {
-    await env.HOT.delete(flowKey);
-    return htmlError(400, "This sign-in link has expired. Try again.");
-  }
+  // A3-08 — the third realm, with the identical defect the portal's OIDC reader had: a bare
+  // `JSON.parse(raw) as FlowRecord` left a stored `null` to throw at `flow.flowHash` below,
+  // outside the guard. Fixing two of three would just leave the convention broken somewhere
+  // else, which is how this class keeps coming back.
+  const flow = parseFlowRecord<FlowRecord>(raw);
   await env.HOT.delete(flowKey);
+  if (!flow) return htmlError(400, "This sign-in link has expired. Try again.");
   // A3-06 — only the browser that started this flow may finish it. Without this an attacker
   // completed the IdP leg under their own (admin-grouped) account and handed the resulting
   // callback URL to a victim, whose browser then held a working console session it never asked

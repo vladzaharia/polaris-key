@@ -4,11 +4,18 @@
  * material (the real runbook, deployment shape, KEK procedures), and the decision (docs plan
  * N7) was to publish that behind the existing admin OIDC gate rather than scrub it.
  *
- * Why the gate is just "a session exists": admin sessions are only ever issued to identities
- * whose groups pass `hasAnyAdminGrant` (`admin/auth.ts` callback) — `admin/session.ts` states
- * the invariant as "a session either carries full platform authority or it was never issued".
- * So `sessionFromRequest` returning non-null IS the platform-admin check; there is no weaker
- * session to 403.
+ * Why the gate calls `isPlatformAdmin` explicitly (A3-11): it is true TODAY that admin sessions
+ * are only ever issued to identities whose groups pass `hasAnyAdminGrant`, and that predicate is
+ * currently defined to be the SAME function as `isPlatformAdmin` — so "a session exists" and "a
+ * platform admin is asking" happen to coincide. But that coincidence lives in `admin/authz.ts`
+ * and is one edit away from ending: the moment `hasAnyAdminGrant` widens to admit any weaker
+ * grant, every gate that inferred authority from a session's mere existence silently opens,
+ * and this one gates the operator material — the real runbook, deployment shape, KEK
+ * procedures. `admin/api.ts` never made that inference; it authenticates and then asks
+ * `canAdminProduct`. This gate now does the same, so the property is enforced here rather than
+ * asserted about somewhere else. It also inherits the fail-closed edge for free:
+ * `isPlatformAdmin` returns false when `PLATFORM_ADMIN_GROUP` is unset, which is precisely the
+ * deployment in which no session should be believed.
  *
  * Why this works at `/docs` at all: the session cookie is `__Host-pkey_admin`, and the
  * `__Host-` prefix REQUIRES `Path=/` (R1-08) — every request to this origin carries it, so
@@ -27,6 +34,7 @@
 
 import type { Env } from "./env.js";
 import { sessionFromRequest } from "./admin/session.js";
+import { isPlatformAdmin } from "./admin/authz.js";
 import { isSafeAssetPath } from "./http.js";
 import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
 import { DOCS_SCRIPT_HASHES, DOCS_STYLE_HASHES } from "./docsCsp.generated.js";
@@ -68,6 +76,28 @@ function docsShell(): Response {
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Polaris Key — Docs</title></head><body><h1>Documentation</h1><p>The docs site has not been built into this worker. Run <code>pnpm --filter @polaris-key/docs build</code> and <code>pnpm --filter @polaris-key/worker assemble</code>.</p></body></html>`,
     {
       status: 200,
+      headers: docsSecurityHeaders(
+        new Headers({
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+        }),
+      ),
+    },
+  );
+}
+
+/**
+ * 403 for a session that is real but does not carry platform authority (A3-11).
+ *
+ * A hard-coded literal on the admin origin, so it goes out under the same script-free hardening
+ * every other statically-generated page here does. It says nothing about what exists under
+ * `/docs` — an authenticated non-admin learns only that they are not an admin.
+ */
+function docsForbidden(): Response {
+  return new Response(
+    `<!doctype html><meta charset="utf-8"><title>Forbidden</title><h1>403</h1><p>Platform administrator access is required for the documentation site.</p>`,
+    {
+      status: 403,
       headers: docsSecurityHeaders(
         new Headers({
           "content-type": "text/html; charset=utf-8",
@@ -152,6 +182,10 @@ export async function handleDocs(
 
   const session = await sessionFromRequest(env, req, now);
   if (!session) return loginRedirect(url.pathname);
+  // Authenticated but not authorized is a 403, not another trip through the IdP: the sign-in
+  // would hand back the same groups and the browser would loop. See the header for why this
+  // check is made here rather than inferred from the session's existence.
+  if (!isPlatformAdmin(env, session)) return docsForbidden();
 
   if (!env.ASSETS) return docsShell();
 
