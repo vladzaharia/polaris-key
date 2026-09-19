@@ -102,10 +102,24 @@ jobs:
           }
           # The gated docs site: unauthenticated must be a redirect INTO sign-in — a 200
           # would mean the gate is off, a 5xx that the assembled assets are broken.
+          #
+          # Poll, do not ask once. `wrangler deploy` returns as soon as the triggers are
+          # updated, and the new version needs a few seconds to reach every edge. v0.2.2
+          # failed here on a 404 served 1.1s after "Deployed ... triggers" by the PREVIOUS
+          # version, which predated the docs site — a green deploy reported red. `curl
+          # --retry` cannot cover this: a 404 is a well-formed response, not a transport
+          # error, so curl never retries it. Hence an explicit poll, ~60s total.
           ORIGIN=$(echo "$SMOKE_URL" | sed -E 's#^(https://[^/]+).*#\1#')
-          DOCS_LOCATION=$(curl --silent --output /dev/null --write-out '%{http_code} %{redirect_url}' "$ORIGIN/docs/")
-          case "$DOCS_LOCATION" in
-            302\ */manage/login*) echo "Docs gate OK: $DOCS_LOCATION" ;;
-            *) echo "Smoke check failed: /docs/ unauthenticated returned: $DOCS_LOCATION" >&2; exit 1 ;;
-          esac
+          for attempt in $(seq 1 12); do
+            DOCS_LOCATION=$(curl --silent --output /dev/null --write-out '%{http_code} %{redirect_url}' "$ORIGIN/docs/")
+            case "$DOCS_LOCATION" in
+              302\ */manage/login*) echo "Docs gate OK: $DOCS_LOCATION"; break ;;
+            esac
+            if [ "$attempt" -eq 12 ]; then
+              echo "Smoke check failed: /docs/ unauthenticated returned: $DOCS_LOCATION" >&2
+              exit 1
+            fi
+            echo "Docs gate not ready (attempt $attempt/12): $DOCS_LOCATION — retrying in 5s"
+            sleep 5
+          done
           echo "Smoke check OK: data plane is serving a non-empty JWKS."
