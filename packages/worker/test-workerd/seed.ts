@@ -64,6 +64,7 @@ export async function seedProduct(
     status: "active",
     created_at: NOW,
     rotated_at: null,
+    revoked_at: null,
   });
   await insertSchema(db, {
     product: slug,

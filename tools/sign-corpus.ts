@@ -48,7 +48,7 @@ const SWIFT_V2_RESOURCES = join(
 
 /** Committed TEST keypairs. These are NOT production keys — they exist only to sign the
  *  corpus. `djdl-test-2026` signs the DJDL baseline; `pkey-test-prod-2026` is a Polaris Key
- *  Key test key. */
+ *  test key. */
 interface CorpusKey {
   kid: string;
   publicKeyRaw: string;
