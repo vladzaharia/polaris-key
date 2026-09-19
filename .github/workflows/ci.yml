@@ -68,9 +68,17 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # The worker imports the workspace packages from their built `dist`, and wrangler.toml's
-      # assets binding points at `packages/admin/dist`, so both must exist before workerd boots.
+      # The worker imports the workspace packages from their built `dist`, so they must exist
+      # before workerd boots.
       - run: pnpm build
+      # wrangler.toml's `[assets] directory` is `./assets` — the ASSEMBLED root, gitignored and
+      # built from the admin SPA plus the docs site. vitest-pool-workers parses wrangler.toml
+      # at startup and hard-errors ("the assets directory specified does not exist") before a
+      # single test collects, so the assemble must happen here too. Jobs share no filesystem,
+      # so the `js` job doing it is no help. This went unnoticed because typecheck:workerd
+      # failed first and test:workerd never ran.
+      - run: pnpm --filter @polaris-key/admin build
+      - run: pnpm --filter @polaris-key/worker assemble
       - run: pnpm --filter @polaris-key/worker typecheck:workerd
       - run: pnpm --filter @polaris-key/worker test:workerd
 
