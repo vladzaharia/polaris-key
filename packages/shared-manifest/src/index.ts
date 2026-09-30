@@ -385,6 +385,64 @@ export function compileManualChannelRegex(source: string): RegExp | null {
  */
 export const DEFAULT_STABLE_TAG_PATTERN =
   "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?";
+// ── Release model vocabulary (P2-03) ───────────────────────────────────────────
+//
+// The release truth store keeps these as free TEXT with no CHECK (a CHECK change is a table
+// rebuild, and the lists grow: P4 adds roles), so they are validated in code, against these
+// lists — by the release-descriptor validator (P2-04) and the worker's `release/model.ts`.
+
+/** OS families a build targets (README §3.1 "platform"). iPadOS is `ios`. */
+export const RELEASE_PLATFORMS = [
+  "macos",
+  "ios",
+  "android",
+  "windows",
+  "linux",
+  "web",
+] as const;
+export type ReleasePlatform = (typeof RELEASE_PLATFORMS)[number];
+
+/** CPU architectures a build targets. `universal` and `any` match every arch. */
+export const RELEASE_ARCHES = [
+  "arm64",
+  "x86_64",
+  "universal",
+  "armv7",
+  "wasm32",
+  "any",
+] as const;
+export type ReleaseArch = (typeof RELEASE_ARCHES)[number];
+
+/** What an artifact is FOR within its build (`release_artifacts.role`). */
+export const ARTIFACT_ROLES = [
+  "payload",
+  "files-index",
+  "chunk-index",
+  "chunk-bundle",
+  "delta",
+  "signature",
+  "checksum",
+] as const;
+export type ArtifactRole = (typeof ARTIFACT_ROLES)[number];
+
+/** Something a product releases: its `app`, or a pack. */
+export const DELIVERABLE_KINDS = ["app", "pack"] as const;
+export type DeliverableKind = (typeof DELIVERABLE_KINDS)[number];
+
+/** The id of the product's own application deliverable (README §3.12 `deliverables.app`). */
+export const APP_DELIVERABLE_ID = "app";
+/** Deliverable ids: lower-case, dot-separated segments (`app`, `diceroll.core3d`). */
+export const DELIVERABLE_ID_PATTERN = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
+export const MAX_DELIVERABLE_ID_LENGTH = 64;
+/** A well-formed deliverable id: matches `DELIVERABLE_ID_PATTERN`, at most 64 characters. */
+export function isDeliverableId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= MAX_DELIVERABLE_ID_LENGTH &&
+    DELIVERABLE_ID_PATTERN.test(value)
+  );
+}
+
 /** `release.ignoreTags` bounds: how many exact tag names, and how long each may be. */
 export const MAX_IGNORE_TAGS = 200;
 export const MAX_IGNORE_TAG_LENGTH = 255;

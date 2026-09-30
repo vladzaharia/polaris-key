@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 // Used only to measure the quadratic path we deliberately turned OFF, as a control.
 import { parse as parseYaml } from "yaml";
 import {
+  APP_DELIVERABLE_ID,
+  ARTIFACT_ROLES,
   compileManualChannelRegex,
+  DELIVERABLE_KINDS,
+  isDeliverableId,
+  MAX_DELIVERABLE_ID_LENGTH,
+  RELEASE_ARCHES,
+  RELEASE_PLATFORMS,
   DEFAULT_STABLE_TAG_PATTERN,
   issuerUrlProblem,
   isSafeIssuerUrl,
@@ -1443,4 +1450,57 @@ describe("web.origins (P0-05)", () => {
       codes({ origins: ["https://diceroll.gg", "https://diceroll.gg"] }),
     ).toEqual(["invalid_web_origin"]);
   });
+});
+
+describe("release model vocabulary (P2-03)", () => {
+  it("names the README §3.1 vocabularies verbatim", () => {
+    expect(RELEASE_PLATFORMS).toEqual([
+      "macos",
+      "ios",
+      "android",
+      "windows",
+      "linux",
+      "web",
+    ]);
+    expect(RELEASE_ARCHES).toEqual([
+      "arm64",
+      "x86_64",
+      "universal",
+      "armv7",
+      "wasm32",
+      "any",
+    ]);
+    expect(ARTIFACT_ROLES).toEqual([
+      "payload",
+      "files-index",
+      "chunk-index",
+      "chunk-bundle",
+      "delta",
+      "signature",
+      "checksum",
+    ]);
+    expect(DELIVERABLE_KINDS).toEqual(["app", "pack"]);
+  });
+
+  it.each([APP_DELIVERABLE_ID, "diceroll.core3d", "l10n-de", "a.b-c.d0"])(
+    "accepts the deliverable id %s",
+    (id) => expect(isDeliverableId(id)).toBe(true),
+  );
+
+  it.each([
+    "",
+    "App",
+    "0app",
+    "-app",
+    "app.",
+    ".app",
+    "app..pack",
+    "app_pack",
+    "app pack",
+    "a".repeat(MAX_DELIVERABLE_ID_LENGTH + 1),
+    42,
+    null,
+  ])("rejects the deliverable id %j", (id) =>
+    expect(isDeliverableId(id)).toBe(false),
+  );
 });
