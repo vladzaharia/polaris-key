@@ -289,11 +289,28 @@ describe("R8-01 /auth/poll device-id confusion", () => {
     // No seat was taken and no device row exists for the attacker's device.
     expect(await getDevice(ctx.db, "djdl", "ATTACKER-DEVICE")).toBeNull();
 
-    // 5. The legitimate device still completes — the fix closes the hole, not the flow.
-    const victim = (await (await poll(ctx, state, "victim-cli")).json()) as {
+    // 5. P1-06: a device-code flow does not redeem on /auth/poll at all, not even for the
+    //    device that started it — `state` plus the device id is not a credential. The
+    //    legitimate device completes where it always polled: /auth/device/poll, with the
+    //    secret device code. The fix closes the hole, not the flow.
+    const viaState = (await (await poll(ctx, state, "victim-cli")).json()) as {
       status: string;
-      token: string;
+      token?: string;
     };
+    expect(viaState.status).toBe("error");
+    expect(viaState.token).toBeUndefined();
+    const victim = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "victim-cli" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token: string };
     expect(victim.status).toBe("ready");
     const valid = await requireLicensedDevice(
       ctx.env,
@@ -625,6 +642,128 @@ describe("R8-02 device-code flow weaknesses", () => {
     );
     expect(page.headers.get("x-frame-options")).toBe("DENY");
     expect(page.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  // P1-06 review: the user code is shown large and rendered as a QR code, so it must not be a
+  // path to the victim's token. The chain was: the page shows the raw device id when no
+  // deviceName was sent; a POST with the page's csrf 303s to the authorize URL, which carries
+  // `state`; and /auth/poll redeemed exactly `state` + device id once the victim signed in.
+  it("ATTACK: holding only the user code, an attacker reads the device id and `state` off the page and steals the victim's token on /auth/poll", async () => {
+    const started = await handleAuthDeviceStart(
+      req(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        body: JSON.stringify({ deviceId: "victim-cli" }), // no deviceName
+      }),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    const { deviceCode, userCode } = (await started.json()) as {
+      deviceCode: string;
+      userCode: string;
+    };
+    const ENTRY = `${ORIGIN}/djdl/identity/auth/device`;
+    const entryPost = (fields: Record<string, string>, ip: string) =>
+      handleAuthDeviceEntry(
+        req(ENTRY, {
+          method: "POST",
+          // What a browser sends from this no-referrer page.
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            origin: "null",
+            "sec-fetch-site": "same-origin",
+            "cf-connecting-ip": ip,
+          },
+          body: new URLSearchParams(fields).toString(),
+        }),
+        ctx.env,
+        ctx.product,
+      );
+
+    // 1. The attacker (a stream viewer, a photo of the QR code, a lucky guess) opens the page.
+    //    FIXED: it no longer shows the raw device id.
+    const attackerPage = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "198.51.100.66" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    expect(attackerPage.status).toBe(200);
+    const attackerHtml = await attackerPage.text();
+    expect(attackerHtml).not.toContain("victim-cli");
+    expect(attackerHtml).toContain("Unnamed device");
+
+    // 2. The victim confirms on their own phone and goes on to the IdP.
+    const victimPage = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "203.0.113.20" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    const csrf = (await victimPage.text()).match(
+      /name="csrf" value="([^"]+)"/,
+    )![1]!;
+    const confirmed = await entryPost(
+      { user_code: userCode, csrf },
+      "203.0.113.20",
+    );
+    expect(confirmed.status).toBe(303);
+    const authorize = new URL(confirmed.headers.get("location")!);
+
+    // 3. FIXED: after confirmation the code is retired. The attacker can no longer re-render
+    //    the page, re-mint a csrf token, or be 303'd to the authorize URL.
+    const again = await handleAuthDeviceEntry(
+      req(`${ENTRY}?user_code=${userCode}`, {
+        headers: { "cf-connecting-ip": "198.51.100.66" },
+      }),
+      ctx.env,
+      ctx.product,
+    );
+    expect(again.status).toBe(404);
+    expect(await again.text()).not.toContain('name="csrf"');
+    expect(
+      (await entryPost({ user_code: userCode }, "198.51.100.66")).status,
+    ).toBe(404);
+
+    // 4. Grant the attacker the strongest position anyway: `state` (as if they had confirmed
+    //    first and been 303'd) AND the device id. The victim signs in at the IdP.
+    const state = authorize.searchParams.get("state")!;
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "victim-sub",
+        email: "victim@corp.com",
+        email_verified: true,
+        groups: ["family"],
+        nonce: authorize.searchParams.get("nonce")!,
+      }),
+    );
+    expect((await callback(ctx, state)).status).toBe(200);
+
+    // 5. FIXED: /auth/poll refuses a device-code flow outright — generic error, no token.
+    const stolen = (await (await poll(ctx, state, "victim-cli")).json()) as {
+      status: string;
+      token?: string;
+    };
+    expect(stolen.status).toBe("error");
+    expect(stolen.token).toBeUndefined();
+
+    // 6. The flow is intact, and the real device — holding the device code — gets its token.
+    const real = (await (
+      await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode, deviceId: "victim-cli" }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      )
+    ).json()) as { status: string; token?: string };
+    expect(real.status).toBe("ready");
+    expect(real.token?.startsWith("pkeyt_")).toBe(true);
   });
 
   // R8-02 — `interval` is enforced server-side and the poll surface is rate limited.

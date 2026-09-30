@@ -122,6 +122,11 @@ interface FlowRecord {
   /** Stamped by the first callback that claims this state. A state is single-use: a second
    *  callback must never be able to rebind `licenseId` under a waiting poller (R8-04). */
   consumedAt?: number;
+  /** Set on a flow `/device/start` began. Such a flow redeems ONLY through `/device/poll`, with
+   *  the secret device code: `state` rides on the authorize URL the confirmation POST 303s to,
+   *  and the device id can be on the page, so on `/identity/auth/poll` the pair would be a
+   *  redemption handle for anyone who holds the user code (R8-02, P1-06). */
+  viaDeviceCode?: boolean;
 }
 
 interface DeviceFlowRecord {
@@ -757,6 +762,7 @@ async function beginAuthFlow(
   product: Product,
   returnTo?: string,
   deviceId?: string,
+  viaDeviceCode = false,
 ): Promise<
   | {
       ok: true;
@@ -782,6 +788,7 @@ async function beginAuthFlow(
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
   const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo, deviceId };
+  if (viaDeviceCode) flow.viaDeviceCode = true;
   await env.HOT.put(
     await flowKey(env, product.slug, state),
     JSON.stringify(flow),
@@ -863,7 +870,15 @@ export async function handleAuthDeviceStart(
     typeof body.deviceName === "string" && body.deviceName.trim()
       ? body.deviceName.trim().slice(0, 120)
       : undefined;
-  const flow = await beginAuthFlow(req, env, db, product, undefined, deviceId);
+  const flow = await beginAuthFlow(
+    req,
+    env,
+    db,
+    product,
+    undefined,
+    deviceId,
+    true,
+  );
   if (flow instanceof Response) return flow;
   const deviceCode = b64url(randomBytes(16));
   // The user code is independent of the device code (RFC 8628 §6.1). A live collision would
@@ -960,6 +975,10 @@ async function confirmDeviceFlow(
   await env.HOT.put(deviceKey, JSON.stringify(record), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
+  // A confirmed flow is done with its user code: nobody else who learns the code (a stream, a
+  // photographed QR code, a guess) can re-render the page, re-mint the CSRF token or read the
+  // authorize URL after the human has confirmed.
+  await deleteUserCodeIndex(env, product.slug, record.userCode);
   return new Response(null, {
     status: 303,
     headers: {
@@ -972,10 +991,18 @@ async function confirmDeviceFlow(
   });
 }
 
-/** Browsers always send `Origin` on a form POST; a cross-site submission is refused outright. */
+/** Refuse a cross-site POST to a device-flow page.
+ *
+ *  Fetch Metadata decides when the browser sends it: only `same-origin` passes. Without it, an
+ *  absent `Origin`, this origin, or the literal `"null"` pass. `"null"` is not optional: both
+ *  device pages are served with `referrer-policy: no-referrer`, and under that policy the Fetch
+ *  standard serialises a same-origin form POST's `Origin` as `null`. The single-use CSRF token
+ *  minted on the page's render is what actually guards a confirmation. */
 function sameOriginPost(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  if (site !== null) return site === "same-origin";
   const origin = req.headers.get("origin");
-  return !origin || origin === new URL(req.url).origin;
+  return !origin || origin === "null" || origin === new URL(req.url).origin;
 }
 
 /** Headers for the device-flow HTML pages: the static-page bundle, no Referer, no caching.
@@ -1039,7 +1066,9 @@ async function renderDeviceConfirmation(
     JSON.stringify(record),
     { expirationTtl: FLOW_TTL_SECONDS },
   );
-  const deviceLabel = record.deviceName || record.deviceId;
+  // Never the raw device id: with `state` it is half of what `/identity/auth/poll` checks, so
+  // the page would hand it to anyone who holds the user code (R8-02, P1-06).
+  const deviceLabel = record.deviceName || "Unnamed device";
   const hiddenInputs = Object.entries(hidden)
     .map(
       ([name, value]) =>
@@ -1147,9 +1176,11 @@ async function readEntryForm(
  *   - an unknown, expired or malformed code: the entry form again with one generic line, 404.
  *
  * The secret device code never appears in a URL, a page or a form on this path: anyone holding
- * it plus the device id (the page shows the id when no `deviceName` was given) could race the
- * real device for the token once the user confirms. The code → device-code lookup stays
- * server-side, through the peppered `deviceUserKey` index.
+ * it plus the device id could race the real device for the token once the user confirms. The
+ * code → device-code lookup stays server-side, through the peppered `deviceUserKey` index.
+ * What a user-code holder DOES get — `state`, in the authorize URL the confirmation 303s to —
+ * redeems nothing: `/identity/auth/poll` refuses a device-code flow (`viaDeviceCode`). Once the
+ * flow is confirmed the code stops resolving here at all.
  */
 export async function handleAuthDeviceEntry(
   req: Request,
@@ -1193,7 +1224,10 @@ export async function handleAuthDeviceEntry(
   const raw = deviceCode
     ? await env.HOT.get(await deviceFlowKey(env, product.slug, deviceCode))
     : null;
-  const record = raw ? parseFlowRecord<DeviceFlowRecord>(raw) : null;
+  const parsed = raw ? parseFlowRecord<DeviceFlowRecord>(raw) : null;
+  // A confirmed flow no longer answers to its user code (the index is deleted on confirmation;
+  // this also covers a KV read that still sees the index for a moment after the delete).
+  const record = parsed && !parsed.confirmedAt ? parsed : null;
   if (!userCode || !deviceCode || !record) {
     // A confirmation POST for a code that has gone away is still a refused confirmation.
     if (csrf !== undefined)
@@ -1468,6 +1502,7 @@ async function pollAuthFlow(
   state: string | null,
   deviceId: string | null,
   now: number,
+  surface: "state" | "deviceCode",
 ): Promise<Response> {
   if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing state/device");
@@ -1476,6 +1511,11 @@ async function pollAuthFlow(
   if (!raw) return json({ status: "timeout" });
   const flow = parseFlowRecord<FlowRecord>(raw);
   if (!flow) return json({ status: "timeout" });
+  // A device-code flow redeems only through `/device/poll`, with the device code. On the
+  // `state` surface, `state` (on the authorize URL a user-code holder is 303'd to) plus the
+  // device id would otherwise be a complete credential for the victim's token (R8-02, P1-06).
+  if (surface === "state" && flow.viaDeviceCode)
+    return json({ status: "error" });
   // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
   if (flow.error) return json({ status: "error" });
   if (!flow.licenseId) return json({ status: "pending" });
@@ -1505,7 +1545,9 @@ async function pollAuthFlow(
   return json({ status: "ready", token, schemaVersion: product.schemaVersion });
 }
 
-/** GET /<product>/identity/auth/poll?state=&device= — return a token once the flow completes. */
+/** GET /<product>/identity/auth/poll?state=&device= — return a token once a device-bound flow
+ *  completes. A flow `/device/start` began is refused here (generic `error`): it redeems only on
+ *  `/device/poll`, with the device code (R8-02, P1-06). */
 export async function handleAuthPoll(
   req: Request,
   env: Env,
@@ -1530,6 +1572,7 @@ export async function handleAuthPoll(
     state,
     url.searchParams.get("device"),
     now,
+    "state",
   );
 }
 
@@ -1595,6 +1638,7 @@ export async function handleAuthDevicePoll(
     deviceFlow.state,
     deviceFlow.deviceId,
     now,
+    "deviceCode",
   );
   const bodyOut = (await res
     .clone()

@@ -564,6 +564,21 @@ describe("the RFC 8628 user-code page", () => {
       body: new URLSearchParams(fields).toString(),
     });
 
+  /** A form POST with exactly these headers (no default Origin): the header shapes a browser
+   *  actually sends, rather than the `origin: ORIGIN` shorthand `postForm` uses. */
+  const postWith = (
+    fields: Record<string, string>,
+    headers: Record<string, string>,
+  ): Promise<Response> =>
+    entry(ENTRY, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        ...headers,
+      },
+      body: new URLSearchParams(fields).toString(),
+    });
+
   const csrfOf = (html: string): string =>
     html.match(/name="csrf" value="([^"]+)"/)![1]!;
 
@@ -730,6 +745,18 @@ describe("the RFC 8628 user-code page", () => {
     expect(device.confirmedAt).toBeTruthy();
     expect(device.csrf).toBeUndefined(); // single-use
 
+    // Confirmation retires the user code at once: it no longer resolves, so nobody else who
+    // learns it can re-render the page, re-mint the csrf or read the authorize URL.
+    const indexKey = await deviceUserKey(
+      env,
+      "djdl",
+      body.userCode.replace("-", ""),
+    );
+    expect(await kv.get(indexKey)).toBeNull();
+    expect((await entry(`${ENTRY}?user_code=${body.userCode}`)).status).toBe(
+      404,
+    );
+
     // Confirmed but the IdP has not called back yet: the poll waits on the IdP.
     expect(
       ((await (await poll(body.deviceCode, NOW)).json()) as { status: string })
@@ -749,12 +776,7 @@ describe("the RFC 8628 user-code page", () => {
     expect(ready.status).toBe("ready");
     expect(ready.token?.startsWith("pkeyt_")).toBe(true);
 
-    // Ready deletes the flow AND its user-code index: the code is dead on the entry page.
-    const indexKey = await deviceUserKey(
-      env,
-      "djdl",
-      body.userCode.replace("-", ""),
-    );
+    // Ready deletes the flow; the user-code index stays gone.
     expect(await kv.get(indexKey)).toBeNull();
     expect(
       await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)),
@@ -810,6 +832,132 @@ describe("the RFC 8628 user-code page", () => {
     expect((await postForm({ user_code: body.userCode, csrf })).status).toBe(
       403,
     );
+  });
+
+  it("accepts the POSTs a real browser sends from these no-referrer pages (Origin: null, Sec-Fetch-Site: same-origin)", async () => {
+    // Both pages are served with `referrer-policy: no-referrer`; under that policy the Fetch
+    // standard serialises a same-origin form POST's Origin as the string "null".
+    const browser = { origin: "null", "sec-fetch-site": "same-origin" };
+    const body = await start("Steam Deck");
+
+    // Typing the code into the entry form: the lookup POST renders the confirmation page.
+    const looked = await postWith({ user_code: body.userCode }, browser);
+    expect(looked.status).toBe(200);
+    const csrf = csrfOf(await looked.text());
+
+    // Pressing "Continue to sign in": the confirmation POST 303s to the IdP.
+    const confirm = await postWith({ user_code: body.userCode, csrf }, browser);
+    expect(confirm.status).toBe(303);
+    expect(new URL(confirm.headers.get("location")!).origin).toBe(
+      "https://id.example",
+    );
+
+    // The same header shape on the legacy `/device/verify` page, which shares the check.
+    const other = await start();
+    const verifyUrl = `${ORIGIN}/djdl/identity/auth/device/verify?device_code=${encodeURIComponent(other.deviceCode)}`;
+    const verifyPage = await handleAuthDeviceVerify(
+      new Request(verifyUrl) as unknown as Request,
+      env,
+      product,
+    );
+    const verifyCsrf = csrfOf(await verifyPage.text());
+    const verified = await handleAuthDeviceVerify(
+      new Request(verifyUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "cf-connecting-ip": "203.0.113.8",
+          ...browser,
+        },
+        body: new URLSearchParams({ csrf: verifyCsrf }).toString(),
+      }) as unknown as Request,
+      env,
+      product,
+    );
+    expect(verified.status).toBe(303);
+  });
+
+  it("refuses a cross-site POST by Fetch Metadata, even with the real csrf and this Origin", async () => {
+    const body = await start();
+    const csrf = csrfOf(
+      await (await entry(`${ENTRY}?user_code=${body.userCode}`)).text(),
+    );
+    for (const site of ["cross-site", "same-site", "none"]) {
+      for (const origin of [ORIGIN, "null"]) {
+        expect(
+          (
+            await postWith(
+              { user_code: body.userCode, csrf },
+              { origin, "sec-fetch-site": site },
+            )
+          ).status,
+          `sec-fetch-site ${site}, origin ${origin}`,
+        ).toBe(403);
+      }
+      expect(
+        (
+          await postWith(
+            { user_code: body.userCode },
+            { origin: ORIGIN, "sec-fetch-site": site },
+          )
+        ).status,
+      ).toBe(403);
+    }
+    // Nothing was confirmed, and the token is still good for the real page.
+    expect(
+      (
+        await postWith(
+          { user_code: body.userCode, csrf },
+          { origin: "null", "sec-fetch-site": "same-origin" },
+        )
+      ).status,
+    ).toBe(303);
+  });
+
+  it("without Fetch Metadata, refuses a foreign Origin and leaves an absent or null Origin to the csrf check", async () => {
+    const body = await start();
+    const csrf = csrfOf(
+      await (await entry(`${ENTRY}?user_code=${body.userCode}`)).text(),
+    );
+    expect(
+      (
+        await postWith(
+          { user_code: body.userCode, csrf },
+          { origin: "https://evil.attacker.test" },
+        )
+      ).status,
+    ).toBe(403);
+    // A null Origin passes the header check but not the csrf check…
+    expect(
+      (
+        await postWith(
+          { user_code: body.userCode, csrf: "forged" },
+          { origin: "null" },
+        )
+      ).status,
+    ).toBe(403);
+    // …and with the real token it confirms, as does a request with no Origin at all.
+    expect(
+      (await postWith({ user_code: body.userCode, csrf }, { origin: "null" }))
+        .status,
+    ).toBe(303);
+    const other = await start();
+    const otherCsrf = csrfOf(
+      await (await postWith({ user_code: other.userCode }, {})).text(),
+    );
+    expect(
+      (await postWith({ user_code: other.userCode, csrf: otherCsrf }, {}))
+        .status,
+    ).toBe(303);
+  });
+
+  it("labels a device that sent no deviceName generically, never with its device id", async () => {
+    const body = await start();
+    const html = await (
+      await entry(`${ENTRY}?user_code=${body.userCode}`)
+    ).text();
+    expect(html).toContain("Unnamed device");
+    expect(html).not.toContain("steamdeck-1");
   });
 
   it("answers an unknown, malformed or expired code with the one generic 404 page", async () => {
