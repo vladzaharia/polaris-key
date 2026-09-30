@@ -4,7 +4,7 @@ WHAT CHANGED FROM v2
 
 The v2 document had a ``modules`` object each surface re-derived its own way, so it could
 say a capability was on while its routes 404ed. v3 replaces it with a top-level
-``services`` map keyed by the five service slugs, every entry a projection of one
+``services`` map keyed by the service slugs, every entry a projection of one
 authority (the product's ``services_json``), and a disabled service is
 ``{"enabled": false}`` and NOTHING ELSE — no endpoint list to read a disabled service's
 shape out of.
@@ -32,6 +32,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from ._services import DEFAULT_ENABLED_SERVICES, SERVICE_SLUGS
+
 __all__ = [
     "SERVICE_SLUGS",
     "DEFAULT_SERVICES",
@@ -50,8 +52,9 @@ __all__ = [
     "DISCOVERY_PATH",
 ]
 
-#: The five opt-in services. Core is not a service — it is always on.
-SERVICE_SLUGS = ("license", "config", "release", "update", "identity")
+# SERVICE_SLUGS (the opt-in services, in canonical order) and DEFAULT_ENABLED_SERVICES are
+# GENERATED from the service table (tools/services.json) into ``_services.py`` by
+# ``pnpm gen:services``. Core is not a service — it is always on.
 
 #: ``polaris.json`` lives beside the JWKS and the trust manifest under ``.well-known``.
 DISCOVERY_PATH = ".well-known/polaris.json"
@@ -60,16 +63,17 @@ DISCOVERY_PATH = ".well-known/polaris.json"
 ServicesMap = Dict[str, Dict[str, bool]]
 
 
-def _map(**enabled: bool) -> ServicesMap:
-    return {slug: {"enabled": enabled.get(slug, False)} for slug in SERVICE_SLUGS}
+def _map(enabled: Iterable[str] = ()) -> ServicesMap:
+    on = set(enabled)
+    return {slug: {"enabled": slug in on} for slug in SERVICE_SLUGS}
 
 
 #: What a client believes when it has neither a discovery document nor a stated
 #: expectation: licensing + settings distribution, which is what every product ran before
 #: the suite existed. Distribution and identity are OFF, so their sub-clients refuse until
 #: something says otherwise — the fail-closed half of D-21 applied to the genuinely new
-#: surfaces.
-DEFAULT_SERVICES: ServicesMap = _map(license=True, config=True)
+#: surfaces. The service table's ``defaultEnabled`` rows.
+DEFAULT_SERVICES: ServicesMap = _map(DEFAULT_ENABLED_SERVICES)
 
 #: Everything off. The starting point for :func:`services_from_list`.
 NO_SERVICES: ServicesMap = _map()
