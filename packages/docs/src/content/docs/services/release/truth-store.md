@@ -29,6 +29,9 @@ independent paths to it, not one reading from the other.
 | `release_channels`  | channel name                            | resync     |
 | `release_health`    | release or channel, as a health subject | resync     |
 
+A floor table, `release_channel_floors`, sits beside them. A sync raises it and an operator
+lowers it (see [below](#release_channel_floors)).
+
 A fifth table, `release_config`, anchors all four — it is the one row per product carrying
 the linked repository's coordinates, binary name, Sparkle key, and access modes, and it is
 what [GitHub sync](/docs/services/release/github-sync/) describes in full. The truth store
@@ -60,11 +63,26 @@ any operator-defined manual channels — recording which `release_id` that chann
 resolves to. This is a **moving pointer**: a channel's row is overwritten on every sync to
 reflect whatever the same resolution logic the live feed uses currently picks, so the
 console can show "what does `beta` ship today" without making a request to GitHub to find
-out.
+out. That logic is the candidate filter and version ordering described on Update's
+[Eligibility](/docs/services/update/eligibility/#which-tags-are-candidates-and-which-one-wins)
+page: `release.stableTagPattern` and `release.ignoreTags` decide which tags count, and the
+highest semver wins. Creation order does not.
+
+### `release_channel_floors`
+
+One row per floored channel: the highest version that channel has resolved to during a sync,
+and the tag it came from. The sync only ever raises a floor. When the release list now offers
+something lower, because the floor's release was deleted or unpublished, the channel row is
+left pointing at nothing and its `release_health` subject is `blocked`, rather than following
+the list down. The live routes enforce the same floor, and an operator lowers or clears it
+deliberately. See
+[Channel floors](/docs/services/update/eligibility/#channel-floors-no-silent-downgrade).
+This table is the one part of the store the device-facing routes read. It costs one D1 read
+per moving selector.
 
 ### `release_health`
 
-A status snapshot — `healthy`, `degraded`, or `unknown` — per health _subject_, where a
+A status snapshot — `healthy`, `degraded`, `blocked`, or `unknown` — per health _subject_, where a
 subject is either a specific release (do its assets look complete) or a channel (does it
 currently resolve to anything at all). This is the coarse, always-on signal written on
 every sync; the richer, on-demand checklist described in
@@ -128,21 +146,30 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
 2. **Sparkle public key** — configured or not (a missing key is a warning here, not a
    failure: a product may not ship Sparkle updates at all).
 3. **GitHub access** — can the installation token actually list releases right now.
-4. **Latest release** — is there a published, non-draft release to evaluate.
-5. **macOS arm64 DMG** — present or not. Absence counts as _missing_, unconditionally:
+4. **Channel floors** — one `channel-regressed` error per floored channel whose floor release
+   is gone, naming the floor and what the release list now offers (see
+   [Channel floors](/docs/services/update/eligibility/#channel-floors-no-silent-downgrade)).
+   A non-stable floor the pages already read do not reach costs one more resolution; if that
+   GitHub lookup fails (quota or an upstream error), the check is a
+   `channel-floor-unverified-<channel>` warning instead, and the rest of the report stands.
+5. **Latest release** — what `stable` resolves to, through the same resolution function the
+   download route, the appcast and the version check use: candidate filter, semver order,
+   page cap and floor included.
+6. **macOS arm64 DMG** — present or not. Absence counts as _missing_, unconditionally:
    every macOS product is expected to ship one.
-6. **macOS x86_64 DMG** — present or not. Also _missing_ by default; it softens to a warning
+7. **macOS x86_64 DMG** — present or not. Also _missing_ by default; it softens to a warning
    only for a product whose artifact policy turns `requireDmg` off.
-7. **Sparkle signature** — either the policy requires signed appcasts and no public key is
+8. **Sparkle signature** — either the policy requires signed appcasts and no public key is
    configured at all (_missing_), or a key is configured and the question is whether the
    sibling `.sig` asset for the arm64 DMG is actually present. This check confirms presence;
    the appcast itself additionally _verifies_ it — see
    [Appcast](/docs/services/update/appcast/).
-8. **CLI assets** — arm64 and x86_64 bare-binary assets, present or not (each a warning
+9. **CLI assets** — arm64 and x86_64 bare-binary assets, present or not (each a warning
    unless the artifact policy requires it).
 
 The rolled-up status a product carries is `healthy` when every check passes, `needs-setup`
-when something expected is simply missing, and `error` when GitHub access itself failed —
+when something expected is simply missing, and `error` when GitHub access itself failed or
+a channel has regressed below its floor —
 distinct from `not-configured`, which means there is no release configuration at all yet
 to check.
 
@@ -157,7 +184,7 @@ to check.
   with the live [health checklist](#health-checks) and the sync-state card
   alongside it, describing how the belief was formed rather than standing in for it.
 - **The live release and update routes** — including the `entitled` access check — do not
-  read this store at all. They resolve a request's selector against GitHub directly (see
+  read this store, except for one `release_channel_floors` lookup per moving selector. They resolve a request's selector against GitHub directly (see
   [Eligibility](/docs/services/update/eligibility/) for how `entitled` evaluates a caller's
   own license against that live resolution).
 

@@ -2,13 +2,19 @@ import { describe, expect, it } from "vitest";
 // Used only to measure the quadratic path we deliberately turned OFF, as a control.
 import { parse as parseYaml } from "yaml";
 import {
+  compileManualChannelRegex,
+  DEFAULT_STABLE_TAG_PATTERN,
   issuerUrlProblem,
   isSafeIssuerUrl,
+  isWebOrigin,
+  MAX_WEB_ORIGINS,
   MAX_MANIFEST_BYTES,
   MAX_MANIFEST_DEPTH,
   normalizeAutoIssue,
   parseManifest,
+  validateIngestDocuments,
   validateManifestDocuments,
+  webOriginProblem,
 } from "./index.js";
 
 const PRODUCT = { slug: "acme", name: "Acme" };
@@ -89,6 +95,52 @@ describe("manifest contract defaults", () => {
     expect(res.errors.join("\n")).toContain(
       "release.access values must be public, authenticated, or licensed.",
     );
+  });
+});
+
+describe("release candidate filter (stableTagPattern, ignoreTags)", () => {
+  const withFields = (fields: Record<string, unknown>) =>
+    parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify({
+        release: { ...(release().release as object), ...fields },
+      }),
+    });
+
+  it("normalises undeclared fields to the default filter", () => {
+    const res = withFields({});
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.stableTagPattern).toBeNull();
+    expect(res.manifest.release?.ignoreTags).toEqual([]);
+  });
+
+  it("carries a declared pattern and de-duplicated ignore list", () => {
+    const res = withFields({
+      stableTagPattern: "^v\\d+\\.\\d+\\.\\d+$",
+      ignoreTags: ["channels", "packs", "channels"],
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.stableTagPattern).toBe(
+      "^v\\d+\\.\\d+\\.\\d+$",
+    );
+    expect(res.manifest.release?.ignoreTags).toEqual(["channels", "packs"]);
+  });
+
+  it("the default pattern fits the declared-pattern cap and matches semver tags only", () => {
+    expect(DEFAULT_STABLE_TAG_PATTERN.length).toBeLessThanOrEqual(80);
+    const re = compileManualChannelRegex(DEFAULT_STABLE_TAG_PATTERN)!;
+    for (const tag of ["v1.2.3", "1.2.3", "v2.0.0-rc.1", "v1.0.0+build.5"])
+      expect(re.test(tag), tag).toBe(true);
+    for (const tag of ["channels", "packs", "v1.2", "v01.2.3", "release-1.2.3"])
+      expect(re.test(tag), tag).toBe(false);
+  });
+
+  it("rejects an unsafe pattern and malformed ignore entries", () => {
+    const res = withFields({ stableTagPattern: "(", ignoreTags: ["", "a b"] });
+    expect(res.ok).toBe(false);
   });
 });
 
@@ -1134,5 +1186,261 @@ describe("reserved product slugs", () => {
         schema: catalogWithSecretDelivery(),
       }).errors.map((e) => e.code),
     ).toEqual([]);
+  });
+});
+
+describe("ingest document presence (validateIngestDocuments)", () => {
+  const configOff = {
+    ...PRODUCT,
+    modules: { license: { enabled: true }, release: { enabled: true } },
+  };
+
+  it("requires the schema even when Config is off, where the author-side check does not", () => {
+    const docs = { product: configOff, release: release() };
+    expect(
+      validateManifestDocuments(docs).errors.map((e) => e.code),
+    ).not.toContain("missing_schema");
+
+    const res = validateIngestDocuments(docs);
+    expect(res.ok).toBe(false);
+    expect(res.errors.filter((e) => e.code === "missing_schema")).toEqual([
+      {
+        file: "schema",
+        path: "/",
+        code: "missing_schema",
+        message:
+          ".pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries.",
+      },
+    ]);
+  });
+
+  it("reports missing_schema once when Config is on", () => {
+    const res = validateIngestDocuments({ product: PRODUCT });
+    expect(res.errors.filter((e) => e.code === "missing_schema")).toHaveLength(
+      1,
+    );
+  });
+
+  it("accepts an empty catalog with Config off", () => {
+    const res = validateIngestDocuments({
+      product: configOff,
+      schema: { schemaVersion: 1, catalog: [] },
+      release: release(),
+    });
+    expect(res.errors).toEqual([]);
+    expect(res.ok).toBe(true);
+  });
+
+  it("does not shape-validate a Config-off catalog (link/resync behaviour is unchanged)", () => {
+    const schema = {
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "api.token",
+          kind: "config",
+          category: "General",
+          label: "API token",
+          schema: { type: "string" },
+        },
+      ],
+    };
+    const res = validateIngestDocuments({
+      product: configOff,
+      schema,
+      release: release(),
+    });
+    expect(res.errors.map((e) => e.code)).not.toContain(
+      "invalid_catalog_shape",
+    );
+    expect(
+      validateIngestDocuments({ product: PRODUCT, schema }).errors.map(
+        (e) => e.code,
+      ),
+    ).toContain("invalid_catalog_shape");
+  });
+
+  it("parseManifest returns the same message for a missing schema file", () => {
+    const res = parseManifest({
+      product: JSON.stringify(configOff),
+      release: JSON.stringify(release()),
+    });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors).toEqual([
+      "schema: .pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries.",
+    ]);
+  });
+
+  it("reports a missing product, and a missing schema alongside it", () => {
+    const only = parseManifest({
+      schema: JSON.stringify({ schemaVersion: 1 }),
+    });
+    expect(only.ok).toBe(false);
+    if (only.ok) return;
+    expect(only.errors).toEqual([
+      "product: .pkey/product is required at ingest.",
+    ]);
+
+    const both = parseManifest({ release: JSON.stringify(release()) });
+    expect(both.ok).toBe(false);
+    if (both.ok) return;
+    expect(both.errors.map((e) => e.split(":")[0])).toEqual([
+      "product",
+      "schema",
+    ]);
+  });
+});
+
+describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
+  const tiered = (tier: Record<string, unknown>) => ({
+    product: {
+      ...PRODUCT,
+      licensing: { tiers: [{ id: "standard", ...tier }] },
+    },
+    schema: { schemaVersion: 1, catalog: [] },
+  });
+
+  it("normalises a policyDeviceLimit tier with no expiry to a non-expiring licence", () => {
+    const res = parseManifest({
+      product: JSON.stringify(tiered({ policyDeviceLimit: 5 }).product),
+      schema: JSON.stringify({ schemaVersion: 1, catalog: [] }),
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.tiers[0]).toMatchObject({
+      policyDeviceLimit: 5,
+      policyExpiryDays: null,
+    });
+  });
+
+  it("warns, without erroring, for deviceLimit and maxOfflineDays on a tier", () => {
+    const res = validateManifestDocuments(
+      tiered({ deviceLimit: 5, maxOfflineDays: 14 }),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.errors).toEqual([]);
+    expect(res.warnings.filter((w) => w.code === "tier_ignored_field")).toEqual(
+      [
+        expect.objectContaining({
+          path: "/licensing/tiers/0/deviceLimit",
+          message: expect.stringContaining("policyDeviceLimit"),
+        }),
+        expect.objectContaining({
+          path: "/licensing/tiers/0/maxOfflineDays",
+          message: expect.stringContaining("policyExpiryDays"),
+        }),
+      ],
+    );
+  });
+
+  it("stays silent for the keys the normaliser reads", () => {
+    const res = validateManifestDocuments(
+      tiered({ policyDeviceLimit: 5, policyExpiryDays: 30 }),
+    );
+    expect(res.warnings.map((w) => w.code)).not.toContain("tier_ignored_field");
+  });
+});
+
+describe("web.origins (P0-05)", () => {
+  const parse = (web: unknown) =>
+    parseManifest({
+      product: JSON.stringify({ ...PRODUCT, web }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+  const codes = (web: unknown) =>
+    validateManifestDocuments({
+      product: { ...PRODUCT, web },
+      schema: catalogWithSecretDelivery(),
+    }).errors.map((e) => e.code);
+
+  it("accepts exact origins, including an explicit non-default port and loopback http", () => {
+    for (const origin of [
+      "https://diceroll.gg",
+      "https://play.diceroll.gg:8443",
+      "https://xn--bcher-kva.example",
+      "http://localhost",
+      "http://localhost:8060",
+      "http://127.0.0.1:8060",
+    ]) {
+      expect(webOriginProblem(origin), origin).toBeNull();
+      expect(isWebOrigin(origin), origin).toBe(true);
+    }
+  });
+
+  it("refuses anything a browser would never send as an Origin", () => {
+    for (const bad of [
+      "",
+      "diceroll.gg",
+      "https://diceroll.gg/",
+      "https://diceroll.gg/play",
+      "https://diceroll.gg?x=1",
+      "https://diceroll.gg#top",
+      "https://user:pw@diceroll.gg",
+      "https://*.diceroll.gg",
+      "*",
+      "null",
+      "https://DICEROLL.gg",
+      "HTTPS://diceroll.gg",
+      "https://diceroll.gg:443",
+      "https://diceroll.gg:0443",
+      "https://diceroll.gg:99999",
+      "http://diceroll.gg",
+      "http://127.0.0.2",
+      "http://[::1]:8060",
+      "http://localhost:80",
+      "ws://localhost:8060",
+      "https://diceroll.gg\n",
+      `https://${"a".repeat(300)}.example`,
+      42,
+      null,
+    ]) {
+      expect(webOriginProblem(bad), String(bad)).not.toBeNull();
+    }
+  });
+
+  it("carries the list through parseManifest, and defaults to empty", () => {
+    const res = parse({
+      origins: ["https://diceroll.gg", "http://localhost:8060"],
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.webOrigins).toEqual([
+      "https://diceroll.gg",
+      "http://localhost:8060",
+    ]);
+
+    const none = parse(undefined);
+    expect(none.ok).toBe(true);
+    if (!none.ok) return;
+    expect(none.manifest.webOrigins).toEqual([]);
+  });
+
+  it("refuses rather than coerces: one bad entry fails the whole manifest", () => {
+    const res = parse({
+      origins: ["https://diceroll.gg", "https://Diceroll.gg"],
+    });
+    expect(res.ok).toBe(false);
+    expect(codes({ origins: ["https://diceroll.gg/"] })).toEqual([
+      "invalid_web_origin",
+    ]);
+  });
+
+  it("reports the block shape and the cap as invalid_web_origins", () => {
+    expect(codes("https://diceroll.gg")).toEqual(["invalid_web_origins"]);
+    expect(codes({ origins: "https://diceroll.gg" })).toEqual([
+      "invalid_web_origins",
+    ]);
+    const many = Array.from(
+      { length: MAX_WEB_ORIGINS + 1 },
+      (_, i) => `https://a${i}.example`,
+    );
+    expect(codes({ origins: many })).toEqual(["invalid_web_origins"]);
+    expect(codes({ origins: many.slice(0, MAX_WEB_ORIGINS) })).toEqual([]);
+  });
+
+  it("refuses a duplicate entry", () => {
+    expect(
+      codes({ origins: ["https://diceroll.gg", "https://diceroll.gg"] }),
+    ).toEqual(["invalid_web_origin"]);
   });
 });

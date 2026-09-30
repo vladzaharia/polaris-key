@@ -37,12 +37,16 @@ The parser is strict _and_ fail-safe, and the two are not in tension. The column
 read on every product-scoped request, and its content could be a stale row, a hand-edit in the D1
 console, or the output of a future writer this build has never seen. So:
 
-- Anything structurally wrong — not JSON, not an object, an array, an unrecognised slug, a
-  non-object entry, an `enabled` that is not a boolean, a `registration` outside the three
+- Anything structurally wrong — not JSON, not an object, an array, a non-object entry, an `enabled` that is not a boolean, a `registration` outside the three
   policies — **discards the whole record** and reads as the defaults. Never a partial merge:
   half-honouring a typo is how it turns into a silently disabled service. One rule for the whole
   blob, including `registration` — a second, softer tolerance for one key inside the same value
   is exactly the inconsistency that gets misremembered later.
+- An unrecognised slug whose value is a well-formed `{ "enabled": boolean }` is a service a newer
+  build wrote. It never affects enablement or registration, and it is carried through and written
+  back unchanged (sorted by key, after the known slugs), so rolling a worker back past the release
+  that introduced a slug neither resets the slugs it knows nor deletes the one it does not. A
+  malformed unrecognised value still discards the whole record.
 - A well-formed record that simply omits a slug gets that slug's default.
 - It never throws. Hostile database content must not be able to `500` a request.
 
@@ -96,7 +100,9 @@ Because `releases` brings Release with it by construction, a legacy manifest can
 ## Who owns the column: `services_source`
 
 `products.services_source` is `manifest` or `admin`, and it is the same machinery as
-`fingerprint_policy_source` and `auto_issue_source`:
+`fingerprint_policy_source`, `auto_issue_source`, `compat_source` (the compatibility window) and
+`release_config.access_source` (both release access modes, claimed and reverted together from
+[Update settings](/docs/services/update/eligibility/#the-console-update-settings)):
 
 - A **resync writes only while the column is `manifest`-owned**, and the guard is the `UPDATE`'s
   own `WHERE … = 'manifest'` predicate rather than a read-then-write in the caller. A push cannot

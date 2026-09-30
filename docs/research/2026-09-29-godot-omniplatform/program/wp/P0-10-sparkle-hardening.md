@@ -85,7 +85,8 @@ of an isolate out-of-memory crash, and an unverifiable asset fails closed with a
   `S ≥ L`, reject undecodable points, use the cofactorless equation. Add a property test that
   signs random messages with WebCrypto and checks both verifiers agree, including a flipped bit
   in `M`, `R` and `S`, and the RFC 8032 §7.1 vectors.
-- **Dependency.** `@noble/curves` is audited and dependency-free, but it is a new runtime
+- **Dependency.** `@noble/curves` is audited and depends only on `@noble/hashes` (same author,
+  also audited; corrected during implementation: 2.4.0 is not dependency-free), but it is a new runtime
   dependency of the Worker (a T6 supply-chain surface, `THREAT-MODEL.md` §4). Pin the exact
   version, add it to `packages/worker/package.json` `dependencies` (the boundaries test derives its
   allowed imports from there), and say why in the PR. If review rejects the dependency, the
@@ -106,18 +107,18 @@ of an isolate out-of-memory crash, and an unverifiable asset fails closed with a
 
 ## Acceptance criteria
 
-- [ ] `sdks/swift/Package.swift` declares `from: "2.9.6"`; `swift build` and `swift test` pass on
+- [x] `sdks/swift/Package.swift` declares `from: "2.9.6"`; `swift build` and `swift test` pass on
       macOS; no doc in the repo still names 2.6.4 as the floor.
-- [ ] Worker test: the existing R6-03 fixtures (valid, tampered, wrong key, missing sidecar) give
+- [x] Worker test: the existing R6-03 fixtures (valid, tampered, wrong key, missing sidecar) give
       the same results as before.
-- [ ] Worker test: a lazily generated 300 MiB body with a valid signature verifies, and the test
+- [x] Worker test: a lazily generated 300 MiB body with a valid signature verifies, and the test
       asserts no single buffer larger than one chunk was retained (count bytes held by the reader).
-- [ ] Worker test: a body larger than the cap, with or without `Content-Length`, returns `false`
+- [x] Worker test: a body larger than the cap, with or without `Content-Length`, returns `false`
       without throwing; so does `S ≥ L`.
-- [ ] Property test: WebCrypto and the streaming verifier agree on 200 random cases and on the
+- [x] Property test: WebCrypto and the streaming verifier agree on 200 random cases and on the
       RFC 8032 §7.1 vectors.
-- [ ] `pnpm --filter @polaris-key/worker test:workerd` passes with a streaming-verify smoke case.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `pnpm --filter @polaris-key/worker test:workerd` passes with a streaming-verify smoke case.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 

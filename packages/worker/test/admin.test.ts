@@ -22,6 +22,7 @@ import {
 } from "../src/admin/session.js";
 import {
   getActiveProductKey,
+  getProduct,
   getProductSecret,
   listAudit,
   setServices,
@@ -1263,6 +1264,30 @@ describe("admin services enablement", () => {
     });
     const product = await loadProduct(w.env, w.db, "djdl");
     expect(product?.services.update.enabled).toBe(true);
+  });
+
+  it("PATCH preserves a slug from a newer build it does not know (P0-08)", async () => {
+    const w = await world();
+    await setServices(
+      w.db,
+      "djdl",
+      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"distribution":{"enabled":true}}',
+      "manifest",
+      NOW,
+    );
+    const { status } = await call(w, "PATCH", "", {
+      services: { release: { enabled: true } },
+    });
+    expect(status).toBe(200);
+    const row = await getProduct(w.db, "djdl");
+    expect(row?.services_json).toBe(
+      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"update":{"enabled":false},"identity":{"enabled":false},"distribution":{"enabled":true}}',
+    );
+    // The console still cannot patch a slug it does not know.
+    const bad = await call(w, "PATCH", "", {
+      services: { distribution: { enabled: false } },
+    });
+    expect(bad.status).toBe(422);
   });
 
   it("PATCH refuses an incoherent set without writing it", async () => {
