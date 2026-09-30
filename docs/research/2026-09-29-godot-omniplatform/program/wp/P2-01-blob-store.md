@@ -58,6 +58,10 @@ sandbox; …`; no HTML, XHTML, SVG, XML, JS, JSON or `text/*` type is ever serve
 >   references), never from `blob_objects` alone, and a product gets a ref only by promoting a
 >   verified upload from its own `staging/<product>/…` prefix or for a key it already
 >   references (THREAT-MODEL §3). Delta-key squatting is recorded there as a residual risk.
+> - **No hosted web builds on the bytes host.** This package did not set up a separate
+>   registrable domain, so P6-04 cannot build on one "P2-01 set up". Web builds need HTML and
+>   script, which `dl.plrs.im` refuses by design; P6-04 must obtain its own separate registrable
+>   domain (a human input, THREAT-MODEL §3) and may reuse `core/blobs.ts`, never the bytes host.
 
 ## Goal
 
@@ -235,8 +239,10 @@ mise exec node@22 -- pnpm typecheck
   objects, and both grant a ref only under the THREAT-MODEL §3 rule: a verified promote from
   the product's own `staging/<product>/…` prefix, or a key the product already references.
   P4-14 collects unreferenced objects. P2-05 and P2b-04 use `blobResponse` and
-  `hasRef`, and register their byte routes on the host allowlist. P6-04 uses the bytes host for
-  hosted web builds.
+  `hasRef`, and register their byte routes on the host allowlist. P6-04 must **not** host web
+  builds on `dl.plrs.im`: web builds serve HTML and script, which the bytes host refuses, so
+  they need their own separate registrable domain (a human input), per THREAT-MODEL §3. P6-04
+  may reuse `core/blobs.ts` for storage, but not the bytes host.
 - The key layout, the `gated/` prefix and the lock duration are fixed here; P4-05 and P4-14 rely
   on them.
 - Record in the PR which human inputs arrived (bucket names, domain, deploy). Then set the status:
