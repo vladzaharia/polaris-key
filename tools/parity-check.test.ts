@@ -135,6 +135,9 @@ function withEntry(id: string, entry: Json): Json {
   return m;
 }
 
+/** The same manifest shipping to the browser only. */
+const webOnly = (m: Json): Json => ({ ...m, runtimes: ["web"] });
+
 // ── The clean baseline ─────────────────────────────────────────────────────────────────────
 
 describe("parity-check — the clean fixture", () => {
@@ -239,13 +242,17 @@ describe("rule 3 — an N/A must be one the registry allows", () => {
     ]);
   });
 
+  // The next two use a web-only manifest, so the N/A covers every runtime and the pair is the
+  // only thing wrong.
   it("fails an na on a listed runtime the registry does not allow", () => {
     const { violations } = run({
-      manifest: withEntry("demo.verify", {
-        status: "na",
-        runtime: "web",
-        reason: "runtime",
-      }),
+      manifest: webOnly(
+        withEntry("demo.verify", {
+          status: "na",
+          runtime: "web",
+          reason: "runtime",
+        }),
+      ),
     });
     expect(violations).toEqual([
       "[rule 3] demo: demo.verify: na web: runtime is not an N/A the registry allows",
@@ -254,11 +261,13 @@ describe("rule 3 — an N/A must be one the registry allows", () => {
 
   it("fails an na whose reason differs from the allowed one", () => {
     const { violations } = run({
-      manifest: withEntry("demo.secret", {
-        status: "na",
-        runtime: "web",
-        reason: "dependency",
-      }),
+      manifest: webOnly(
+        withEntry("demo.secret", {
+          status: "na",
+          runtime: "web",
+          reason: "dependency",
+        }),
+      ),
     });
     expect(violations).toEqual([
       "[rule 3] demo: demo.secret: na web: dependency is not an N/A the registry allows",
@@ -275,6 +284,40 @@ describe("rule 3 — an N/A must be one the registry allows", () => {
     expect(violations).toEqual([
       "[rule 3] demo: demo.verify: except web: runtime is not an N/A the registry allows",
     ]);
+  });
+
+  it("fails an na that does not cover every runtime the manifest lists", () => {
+    const { violations } = run({
+      manifest: withEntry("demo.secret", {
+        status: "na",
+        runtime: "web",
+        reason: "runtime",
+      }),
+    });
+    expect(violations).toEqual([
+      "[rule 3] demo: demo.secret: na covers web but not node; declare a partial N/A with except",
+    ]);
+  });
+
+  it("accepts an na that covers every listed runtime with an allowed pair", () => {
+    const reg = registry();
+    const secret = (reg.features as Json[]).find(
+      (f) => f.id === "demo.secret",
+    )!;
+    (secret.allowedNa as Json[]).push({
+      runtime: "node",
+      reason: "runtime",
+      why: "delegated",
+    });
+    const { violations } = run({
+      registry: reg,
+      manifest: withEntry("demo.secret", {
+        status: "na",
+        runtime: ["node", "web"],
+        reason: "runtime",
+      }),
+    });
+    expect(violations).toEqual([]);
   });
 
   it("accepts a trait the manifest declares, and refuses it when the manifest does not", () => {

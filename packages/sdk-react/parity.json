@@ -35,34 +35,34 @@
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "On desktop the host process's store holds the token."
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host process's store holds the token."
     },
     "license.gate": { "status": "implemented" },
     "license.activate": { "status": "implemented" },
     "license.enroll": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "On desktop the host's Node SDK enrols."
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK enrols."
     },
     "license.deactivate": { "status": "implemented" },
     "license.entitlements": { "status": "implemented" },
     "license.channels": { "status": "planned", "wp": "P1b-07" },
     "license.reregister": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "New web N/A (P1b-01). On desktop the host's Node SDK re-registers (P1b-06)."
+      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers (P1b-06)."
     },
     "config.resolve": { "status": "implemented" },
     "config.list": { "status": "implemented" },
     "config.secret": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "The desktop renderer never holds secrets either; the host reads them with the Node SDK."
+      "note": "New desktop-bridge N/A (P1b-01). The desktop renderer never holds secrets either; the host reads them with the Node SDK."
     },
     "config.schema": { "status": "planned", "wp": "P1b-07" },
     "config.mint": {
@@ -76,21 +76,21 @@
     },
     "devices.fingerprint": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "On desktop the host's Node SDK computes it."
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK computes it."
     },
     "devices.facts": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "On desktop the host's Node SDK collects them."
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK collects them."
     },
     "devices.register": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "New web N/A (P1b-01). On desktop the host's Node SDK registers."
+      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK registers."
     },
     "devices.manage": {
       "status": "implemented",
@@ -151,21 +151,21 @@
     },
     "packs.transport.steam": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "On desktop the host's Node SDK owns platform transports."
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
     },
     "packs.transport.msix": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "On desktop the host's Node SDK owns platform transports."
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
     },
     "packs.transport.flatpak": {
       "status": "na",
-      "runtime": "web",
+      "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "On desktop the host's Node SDK owns platform transports."
+      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
     },
     "ui.stages": {
       "status": "planned",

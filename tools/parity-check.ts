@@ -17,7 +17,8 @@
 //   2. an `implemented` entry has no tagged test under the manifest's testRoots, or, for a
 //      corpus proof that exists, no tagged file names the corpus file (or family) it loads;
 //   3. an `na` or `except` names a runtime or trait the manifest does not list, or a
-//      runtime/reason pair the registry does not allow;
+//      runtime/reason pair the registry does not allow, or an `na` leaves one of the
+//      manifest's runtimes uncovered (unless it names a trait the manifest lists);
 //   4. a `planned` entry's `wp` is not a work package, or that package is already `done`
 //      (`unowned: true` with a note is listed, not failed; with no program file, skipped);
 //   5. a tag names an unknown feature id.
@@ -483,6 +484,24 @@ export function checkParity(options: ParityOptions): ParityResult {
           ? entry.runtime
           : [entry.runtime];
         for (const r of runtimes) checkNa(feature, r, entry.reason, "na");
+        // An SDK-wide N/A must be allowed on EVERY runtime the SDK ships to. A trait the
+        // manifest lists covers them all (it is a property of the whole SDK); otherwise one
+        // allowed runtime would silently stretch the N/A over runtimes the registry does not
+        // allow it on. A mixed SDK declares `implemented`/`planned` with `except` instead.
+        // (An unlisted name already failed above; the coverage line would only be noise.)
+        const traits = new Set(manifest.traits ?? []);
+        if (
+          runtimes.every((r) => listed.has(r)) &&
+          !runtimes.some((r) => traits.has(r))
+        ) {
+          const uncovered = manifest.runtimes.filter(
+            (r) => !runtimes.includes(r),
+          );
+          if (uncovered.length)
+            violations.push(
+              `[rule 3] ${where}: ${id}: na covers ${runtimes.join(", ")} but not ${uncovered.join(", ")}; declare a partial N/A with except`,
+            );
+        }
       } else {
         if (entry.wp !== undefined) {
           if (program) {

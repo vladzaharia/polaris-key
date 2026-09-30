@@ -82,7 +82,7 @@
           "properties": {
             "status": { "const": "na" },
             "runtime": {
-              "description": "The runtime(s) or trait whose allowed N/A justifies this SDK-wide N/A.",
+              "description": "The runtime(s) or trait whose allowed N/A justifies this SDK-wide N/A. The runtimes named must cover every runtime the manifest lists (each with an allowed runtime/reason pair), unless one is a trait the manifest lists; a feature N/A on only some runtimes is `implemented` or `planned` with `except`.",
               "oneOf": [
                 { "$ref": "#/$defs/slug" },
                 {

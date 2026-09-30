@@ -37,7 +37,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet.
 | `core.headers` | Canonical platform/arch/SDK/engine header values | `headers.json` (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | planned (P1b-04) | — |
 | `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | planned (P1b-02) | — |
 | `core.caps` | supports() and capability telemetry | unit | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | — |
-| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | planned (P1b-09) | N/A (web: runtime) | planned (P1b-09) | planned (P1b-09) | web: runtime |
+| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | planned (P1b-09) | web, desktop-bridge: runtime |
 
 ## License
 
@@ -45,11 +45,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `license.gate` | Gate evaluation, every status | `gate-matrix.json` | ✓ | ✓ | ✓ | ✓ | — |
 | `license.activate` | Activate with a key (+ fingerprint) | transcripts (P1b-03) | ✓ | ✓ | ✓ | ✓ | — |
-| `license.enroll` | Keyless enrolment | transcripts (P1b-03) | ✓ | N/A (web: runtime) | ✓ | ✓ | web: runtime |
+| `license.enroll` | Keyless enrolment | transcripts (P1b-03) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | web, desktop-bridge: runtime |
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts (P1b-03) | ✓ | ✓ | ✓ | ✓ | — |
 | `license.entitlements` | Entitlements, profile, licence id | `cases.json` | ✓ | ✓ | ✓ | ✓ | — |
 | `license.channels` | entitledChannels() | unit | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | — |
-| `license.reregister` | Re-register on 401 for licence-less devices | transcripts (P1b-03) | planned (P1b-06) | N/A (web: runtime) | planned (P1b-06) | planned (P1b-06) | web: runtime |
+| `license.reregister` | Re-register on 401 for licence-less devices | transcripts (P1b-03) | planned (P1b-06) | N/A (web, desktop-bridge: runtime) | planned (P1b-06) | planned (P1b-06) | web, desktop-bridge: runtime |
 
 ## Config
 
@@ -57,7 +57,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `config.resolve` | Precedence (enforced, default, local, environment) | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | — |
 | `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` (P1b-04) | ✓ | ✓ | ✓ | ✓ | — |
-| `config.secret` | getSecret | transcripts (P1b-03) | ✓ | N/A (web: runtime) | ✓ | ✓ | web: runtime |
+| `config.secret` | getSecret | transcripts (P1b-03) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | web, desktop-bridge: runtime |
 | `config.schema` | Catalog fetch (/config/schema) | transcripts (P1b-07) | planned (P1b-07) | planned (P1b-07) | planned (P1b-07) | ✓ | — |
 | `config.mint` | Edge-mint of third-party tokens | transcripts (P1b-08) | planned (P1b-08) | planned (unowned) | planned (P1b-08) | planned (P1b-08) | — |
 | `config.mirror` | Typed catalog mirrors | `pnpm gen:mirrors -- --check` | ✓ | ✓ | ✓ | ✓ | — |
@@ -66,9 +66,9 @@ owner yet (listed below). A proof marked with a work package does not exist yet.
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `devices.fingerprint` | Components, hashing, device id | `fingerprint.json` | planned (P1b-09) | N/A (web: runtime) | planned (P1b-09) | ✓ | web: runtime |
-| `devices.facts` | Device facts and probes | unit | ✓ | N/A (web: runtime) | ✓ | ✓ | web: runtime |
-| `devices.register` | Keyless registration | transcripts (P1b-03) | ✓ | N/A (web: runtime) | ✓ | ✓ | web: runtime |
+| `devices.fingerprint` | Components, hashing, device id | `fingerprint.json` | planned (P1b-09) | N/A (web, desktop-bridge: runtime) | planned (P1b-09) | ✓ | web, desktop-bridge: runtime |
+| `devices.facts` | Device facts and probes | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | web, desktop-bridge: runtime |
+| `devices.register` | Keyless registration | transcripts (P1b-03) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | web, desktop-bridge: runtime |
 | `devices.manage` | List, rename, deauthorise | transcripts (P1b-03) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | web: runtime |
 | `devices.report` | Telemetry (allowlisted keys) | transcripts (P1b-03) | ✓ | planned (P1b-07); N/A (web: runtime) | ✓ | planned (P1b-07) | web: runtime |
 | `identity.oidc` | Browser sign-in | transcripts | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | — |
@@ -103,9 +103,9 @@ owner yet (listed below). A proof marked with a work package does not exist yet.
 | `packs.provides` | isAvailable(contentId) from provides | unit | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | — |
 | `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
 | `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
-| `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | web, ios, android: runtime |
-| `packs.transport.msix` | MSIX optional packages | device tests | planned (unowned) | N/A (web: runtime) | planned (unowned) | N/A (macos, ios: runtime) | web, macos, ios, android, linux: runtime; any: outlet |
-| `packs.transport.flatpak` | Flatpak extensions | device tests | planned (unowned) | N/A (web: runtime) | planned (unowned) | N/A (macos, ios: runtime) | web, macos, ios, android, windows: runtime |
+| `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | web, desktop-bridge, ios, android: runtime |
+| `packs.transport.msix` | MSIX optional packages | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | web, desktop-bridge, macos, ios, android, linux: runtime; any: outlet |
+| `packs.transport.flatpak` | Flatpak extensions | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | web, desktop-bridge, macos, ios, android, windows: runtime |
 
 ## UI and commerce
 

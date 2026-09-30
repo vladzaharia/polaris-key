@@ -143,6 +143,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "A browser has no keyring; the session lives in an HttpOnly cookie."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer holds no credentials; the host process's Node SDK keeps the token behind the bridge (packages/sdk-react/src/desktop/bridge.ts)."
         }
       ]
     },
@@ -173,6 +178,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "A browser has no hardware ids to anchor a keyless enrolment."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer delegates enrolment to the host process's Node SDK, which holds the hardware ids."
         }
       ]
     },
@@ -212,6 +222,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "A browser session holds a cookie, not a registered device token, so there is no registration to repeat (follows devices.register on web)."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer holds no device token; the host process's Node SDK re-registers."
         }
       ]
     },
@@ -249,6 +264,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "The Worker strips secrets from browser sessions."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer never holds secrets; the host process's Node SDK resolves them (packages/sdk-react/src/desktop/desktopAdapter.ts)."
         }
       ]
     },
@@ -289,6 +309,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "A browser has no hardware ids; it uses a random id in IndexedDB."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer cannot read hardware ids; the host process's Node SDK fingerprints the device."
         }
       ]
     },
@@ -303,6 +328,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "A browser cannot read OS or hardware facts or probe for companion apps."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer cannot read OS or hardware facts; the host process's Node SDK collects them."
         }
       ]
     },
@@ -317,6 +347,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "Registration mints a bearer device token; the browser adapter is cookie-session based and holds none (packages/sdk-react/src/browser/browserAdapter.ts), and a browser has no hardware anchor."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The host process's Node SDK registers the device and holds its bearer; the renderer never sees it."
         }
       ]
     },
@@ -682,6 +717,11 @@
           "why": "Steamworks does not run in a browser."
         },
         {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "Pack transports run in the host process's Node SDK, which owns the filesystem; the renderer drives none."
+        },
+        {
           "runtime": "ios",
           "reason": "runtime",
           "why": "Steam does not distribute iOS apps."
@@ -704,6 +744,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "MSIX is Windows-only."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "Pack transports run in the host process's Node SDK, which owns the filesystem; the renderer drives none."
         },
         {
           "runtime": "macos",
@@ -743,6 +788,11 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "Flatpak is Linux-only."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "Pack transports run in the host process's Node SDK, which owns the filesystem; the renderer drives none."
         },
         {
           "runtime": "macos",
