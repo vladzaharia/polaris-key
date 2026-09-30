@@ -83,9 +83,12 @@ Any feature whose security depends on the client _refusing_ to do something is n
   security-relevant field makes it inert again. A repo writer can name a secret in a recipe but
   cannot make that secret signable, nor make an unapproved recipe mint. Nor can a push widen an
   approved recipe into a public mint: the open-registration acknowledgement is stored on the
-  approval and re-checked on every mint, so a push that opens registration (declaring
-  `devices.registration: open`, or turning License off so the derived policy is open) makes an
-  approval given without it stop matching.
+  approval and re-checked on every mint, so a push that makes the mint public — declaring
+  `devices.registration: open`, turning License off so the derived policy is open, or enabling
+  anonymous `autoIssue` enrolment (which hands any caller a licence and a device token while
+  registration still reads `requires-license`) — makes an approval given without it stop
+  matching. The upgrade backfill records the acknowledgement only for recipes that were already
+  public mints at deploy.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -145,10 +148,13 @@ currently holds:
    when License is on): the recipe's signing secret is marked usage `edge-mint`, and an approval
    equal to the current recipe column for column exists. Neither can be set from a `.pkey/`
    manifest; failing the first is `500 misconfigured`, failing the second is the same `404` as an
-   unknown recipe. While the product's effective registration is open, an approval matches only if
-   it carries an explicit, audited acknowledgement that the token is publicly mintable. That is
-   checked on every mint, not only when approving, so registration opening after an approval (by
-   push or by operator) makes the recipe `404` until it is re-approved with the acknowledgement.
+   unknown recipe. While the mint is public — the product's effective registration is open, or
+   auto-issue allows anonymous enrolment (`mintIsPublic`) — an approval matches only if it carries
+   an explicit, audited acknowledgement that the token is publicly mintable. That is checked on
+   every mint, not only when approving, so the mint becoming public after an approval (by push or
+   by operator) makes the recipe `404` until it is re-approved with the acknowledgement. The only
+   acknowledgements not given by an operator are the upgrade backfill's (approved by
+   `migration`), written only where the recipe was already a public mint before the upgrade.
    Every device is also capped at 30 mints a minute beside the per-IP budget.
 2. ❌ A tampered cache should not be able to change _which keys verify signatures_. **Does not hold**
    — the cache overrides pinned keys.

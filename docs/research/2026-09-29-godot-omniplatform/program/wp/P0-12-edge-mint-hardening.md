@@ -68,20 +68,28 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   recipe (`404 not_found`). Any push that changes a security-relevant field makes the recipe inert
   until re-approved. Resync deletes approvals for recipe ids the manifest no longer declares.
   _Correction (implementation):_ the table also carries `open_registration_acknowledged`
-  (`INTEGER NOT NULL DEFAULT 0`). Registration is product state, not a recipe column, and a
-  `.pkey/product` push can open it (declare `devices.registration: open`, or turn License off)
-  without touching the recipe. Checking the acknowledgement only at approve time would let such a
+  (`INTEGER NOT NULL DEFAULT 0`). Whether the mint is public is product state, not a recipe
+  column, and a `.pkey/product` push can make it public without touching the recipe in two ways:
+  open registration (declare `devices.registration: open`, or turn License off with Identity
+  off), or enable anonymous `autoIssue` enrolment (`mode` `anonymous`/`both`), which hands any
+  caller a licence and a device token from `POST /<p>/license/enroll` while registration still
+  reads `requires-license`. Checking the acknowledgement only at approve time would let such a
   push widen a closed-product approval into a public mint, so the flag is stored on the approval
-  and re-checked on every mint: while the effective registration is `open`, an approval without
-  it does not match (404, reported `changed` with `registration` in `changedFields`). The
-  migration backfill records `1`, because every backfilled recipe already minted under the
-  product's current policy.
+  and re-checked on every mint: while `mintIsPublic(product)` holds (either condition), an
+  approval without it does not match (404, reported `changed` with `registration` in
+  `changedFields`). The same predicate drives the approve route, the admin list (`publicMint`,
+  `anonymousEnroll`), discovery, the setup checklist and the console warning. The migration
+  backfill records `1` only where the mint was already public at deploy (a SQL mirror of
+  `mintIsPublic` over `services_json` and `auto_issue_json`) and `0` everywhere else, so a
+  closed product such as djdl keeps minting under today's policy but goes inert if a later push
+  makes it public.
 - **Admin API** under Config's admin handler (`services/config/admin/index.ts`):
   `GET /manage/api/products/<slug>/config/mint` (each recipe with status `approved`, `pending` or
   `changed`, its secret's usage, and the product's effective registration policy);
   `POST …/config/mint/<id>/approve` with the recipe fields echoed back (refused if they no longer
   match, so an operator never approves something they did not see) and, when the effective
-  registration is `open`, `"acknowledgeOpenRegistration": true`;
+  registration is `open`, `"acknowledgeOpenRegistration": true` (_correction:_ also when
+  anonymous auto-issue enrolment is on — see `mintIsPublic` above);
   `POST …/config/mint/<id>/revoke`. Audit events `config.mint.approve`, `config.mint.revoke`,
   `secret.usage`.
 - **Per-device rate limit** in addition to the per-IP one: bucket `mintDevice`, keyed by device id,
@@ -148,8 +156,10 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
 - [x] Test: changing the recipe's `claimsTemplate`, `audience`, `alg`, `kid`, `ttlSeconds` or
       `signingKeySecret` by resync makes it `404` again; an unchanged resync keeps it approved.
 - [x] Test: approve with stale echoed fields is refused; approve on an `open` product without
-      `acknowledgeOpenRegistration` is refused.
-- [x] Test: after the migration, a djdl-shaped fixture (recipe + secret) mints exactly as before.
+      `acknowledgeOpenRegistration` is refused (likewise with anonymous enrolment on).
+- [x] Test: after the migration, a djdl-shaped fixture (recipe + secret) mints exactly as before,
+      and (review fix) goes `404` if a later push opens registration or enables anonymous
+      enrolment; a product already public at deploy keeps minting.
 - [x] Test: the per-device bucket returns `429` after 30 mints in a minute from one device.
 - [x] Test: discovery `config.mint.available` is false while every recipe is pending.
 - [x] `THREAT-MODEL.md` and `services/config/edge-mint.md` describe both conditions; `gen:check`,

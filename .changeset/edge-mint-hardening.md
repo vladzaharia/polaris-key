@@ -15,16 +15,18 @@ reachable token mint.
   recipe. A push that changes a security-relevant field makes the recipe inert until re-approved;
   resync deletes approvals for recipe ids the manifest dropped. Config's admin API gains
   `GET …/config/mint`, `POST …/config/mint/<id>/approve` (fields echoed back; `409` if stale;
-  `acknowledgeOpenRegistration` required under open registration) and `…/revoke`. The
-  acknowledgement is stored on the approval and re-checked on every mint, so a push that opens
-  registration (or turns License off) after approval makes the recipe `404` until re-approved.
+  `acknowledgeOpenRegistration` required while the mint is public — open registration or
+  anonymous auto-issue enrolment) and `…/revoke`. The acknowledgement is stored on the approval
+  and re-checked on every mint, so a push that opens registration, turns License off, or enables
+  anonymous `autoIssue` after approval makes the recipe `404` until re-approved.
 - **Per-device budget.** Bucket `mintDevice`, 30 mints per device per minute, beside the per-IP one.
 - **Discovery.** `config.mint.available` is true only when an approved recipe exists.
 - **Console.** An Edge-mint recipes card on the Secrets view, a usage selector when setting a
   secret, and setup-checklist items for pending recipes and unmarked recipe secrets.
 - **Upgrade.** Migrations `0025_a` and `0025_b` backfill: every secret a deployed recipe names is
   marked `edge-mint` and every deployed recipe is approved (`approved_by = 'migration'`), so
-  existing products keep minting. Operators should review
+  existing products keep minting. The acknowledgement is backfilled only where the mint was
+  already public at deploy; a closed product (djdl) gets none. Operators should review
   `SELECT product, name FROM product_secrets WHERE usage = 'edge-mint'` once after deploy.
 
 The device-facing route keeps its wire contract: no OpenAPI, corpus or SDK change.

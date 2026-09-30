@@ -46,10 +46,11 @@ stands**: each recipe shows as _Pending approval_, _Approved_, or _Changed since
 the approved value beside each changed field), next to its signing secret's usage. **Approve**
 shows the full recipe once more and records exactly those values; if a push changed it in the
 meantime the approval is refused and the card reloads. **Revoke** drops the approval. When the
-product's registration is open the card warns that an approved recipe is a public token mint, and
-approval needs an explicit acknowledgement. The acknowledgement belongs to the approval: if
-registration becomes open after you approved without it, the recipe shows _Changed since approval_
-and stops minting until you re-approve it. The setup checklist lists each recipe awaiting approval
+mint is public — the product's registration is open, or auto-issue allows anonymous enrolment —
+the card warns that an approved recipe is a public token mint, and approval needs an explicit
+acknowledgement. The acknowledgement belongs to the approval: if the mint becomes public after you
+approved without it, the recipe shows _Changed since approval_ and stops minting until you
+re-approve it. The setup checklist lists each recipe awaiting approval
 and each recipe secret not yet marked edge-mint. The full rule, the admin endpoints and the
 upgrade backfill are in [Edge-mint](/docs/services/config/edge-mint/#two-operator-conditions).
 

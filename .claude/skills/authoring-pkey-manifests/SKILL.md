@@ -138,9 +138,10 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
       signs only with a secret the operator marked usage `edge-mint`. The manifest can never set
       either. Changing a recipe's `alg`, `signingKeySecret`, `kid`, `claimsTemplate`,
       `ttlSeconds` or `audience` makes it inert again until it is re-approved; an unchanged
-      resync keeps it approved; dropping it deletes its approval. So does a push that opens
-      registration (`devices.registration: open`, or License turned off) when the approval was
-      given without the open-registration acknowledgement. Tell the product owner to expect a
+      resync keeps it approved; dropping it deletes its approval. So does a push that makes the
+      mint public — opens registration (`devices.registration: open`, or License turned off) or
+      enables anonymous `autoIssue` (`mode: anonymous`/`both`) — when the approval was given
+      without the open-registration acknowledgement. Tell the product owner to expect a
       review step after any such push (docs: `services/config/edge-mint`).
 - [ ] Five blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
       `auto_issue_source` (on the product), `compat_source` (the compat window, claimed from
