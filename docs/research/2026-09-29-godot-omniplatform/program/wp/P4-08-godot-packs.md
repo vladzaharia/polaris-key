@@ -100,8 +100,8 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   `audio.bank`, `custom.*` handlers (→ [P4-16](P4-16-more-pack-types.md)).
 - `is_available(content_id)` from `provides` (→ [P4-20](P4-20-save-compat.md)).
 - Platform transports: Background Assets, PAD, Steam depots (→ P5-05, P5-06, P5-08).
-- Web builds with large packs (IDBFS keeps all of `user://` in memory, A6 §2.6): v1 supports small
-  packs on web; the large-pack web strategy waits for S-05's findings.
+- Web builds with large packs beyond the web cap below (IDBFS keeps all of `user://` in memory,
+  A6 §2.6; S-05 §4.3 measured every web path holding mounted packs in JS memory).
 - Export-plugin UI for choosing embedded or lean packs per preset (README §5.9). P1-11 builds only
   the build stamp and the dock, and no work package owns this yet; v1 games place embedded packs
   and their markers themselves.
@@ -122,12 +122,33 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 - **Directory check**: every entry under a declared `handler.prefixes` entry, plus
   `.godot/imported/` artefacts of in-prefix sources; no scripts, `project.binary`, class cache or
   native libraries. Pin it to the same rules as [P4-03](P4-03-ci-patch-artifacts.md)'s lint.
-  Keep "no `uid://` into packs".
+  Keep "no `uid://` into packs". S-05 §4.6 measured why: `--export-pack` always adds
+  `project.binary` and `.godot/global_script_class_cache.cfg`, even to a script-free pack, and
+  mounting it with `replace_files=true` replaces the class cache (`get_global_class_list()` went
+  from 6 to 0). The rule, verbatim: "Data packs are mounted with `replace_files=true`, in
+  `mountOrder`. A data pack contains no `project.binary` and no
+  `.godot/global_script_class_cache.cfg` (the pack build strips both) and no scripts;
+  `.godot/uid_cache.bin` is allowed and is what makes the pack's `uid://` references resolve. With
+  `replace_files=false` a pack's UIDs never register, so only UID-free packs may use it." UIDs of
+  the main pack and of several independently built, stripped packs all resolved together.
 - **GDScript performance.** Assemble output with `append_array` or `store_buffer` in 1 MiB steps
   (a byte loop runs at about 30 MB/s); hash with `HashingContext` (~220–240 MB/s); `decompress`
   needs the exact size, which every zstd reference carries.
-- **Android**: mount one pack per frame (the `load_resource_pack` stall, godot#105009); S-05 may
-  refine this.
+- **Mount pacing** (S-05 §4.1, Android 14 emulator): the stall grows with a pack's entry count,
+  not its size (about 16 µs per entry cold from `user://`, 4 µs warm; a 200 MB pack of 8 files
+  mounts in ≤ 8 ms). Mount after the first frame, one pack per frame, on the main thread (a
+  `Thread` did not remove the hitch); mounting in `_ready` delayed the first frame by about 1.1 s.
+  Packs of up to 2,000 entries may mount while the spinner runs; larger ones only under a loading
+  screen. Warn above 2,000 entries per pack and fail above 20,000 in the pack lint. The low-end
+  phone run is still outstanding; replace the numbers when it lands.
+- **Web pack path** (S-05 §4.3): packs never go to `user://`. The HTML shell (or a head include)
+  fetches each pack by its content-addressed URL through the Cache Storage API, copies it into a
+  MEMFS path outside `user://` (`/pkey/packs/<sha256>.pck`) with the engine's `copyToFS`, and
+  GDScript mounts that path; a Cache Storage miss is a normal re-download. This path persisted
+  across reload and browser restart in Chromium, WebKit and iOS Simulator Safari, with warm boots of
+  0.1–3 s for 150 MB. Do not use `HTTPRequest.download_file` on web: in 4.7.2 the file is deleted
+  after a "successful" download. Cap the total mounted pack bytes on web (default 150 MB on mobile
+  browsers, 300 MB on desktop) until device numbers exist.
 
 ## Steps
 

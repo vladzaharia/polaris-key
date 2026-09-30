@@ -103,8 +103,9 @@ S3TC-only pack is applied on arm64 Linux (§9.2 #12) ([README §9.2](../../READM
 - **Engine bumps** invalidate every `godot.pck` pack; the publish check fails an app release on a new
   engine until matching pack releases exist ([CONTENT §6.8](../../CONTENT.md#68-diceroll-worked-through)).
 - **Saves** reference content ids, never paths; never delete or migrate a save for a missing pack.
-- **Web:** keep packs out of `user://`, which is held in memory; follow S-05's web path if it has
-  reported ([README §5.7](../../README.md#57-packs-at-runtime)).
+- **Web:** keep packs out of `user://`, which is held in memory; use P4-08's web pack path (Cache
+  Storage API into a non-`user://` MEMFS path, S-05 §4.3) and its web size cap
+  ([README §5.7](../../README.md#57-packs-at-runtime)).
 
 ## Steps
 

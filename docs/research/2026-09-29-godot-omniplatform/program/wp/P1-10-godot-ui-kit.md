@@ -93,6 +93,11 @@ already have partial kits to mirror (notes/A2 §10).
 
 ## Design notes
 
+- **MOUNT pacing** (S-05 §4.1): the `mount` stage starts after the first frame has been drawn and
+  mounts at most one pack per frame, on the main thread. Mount cost follows entry count, not bytes;
+  packs above 2,000 entries mount only while a loading screen (not just the spinner) is shown.
+  Mounting before the first frame delayed it by about 1.1 s on an Android emulator.
+
 - **One machine, many views.** `PKeyBoot` never decides a transition itself; it performs a stage's
   work, sends the result to the machine and renders what the machine says. A game that wants its
   own visuals connects to the signals and hides the default view.

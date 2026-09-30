@@ -10,43 +10,43 @@ Every probe runs as an **exported project on an official Godot 4.7.2-stable temp
 
 ## Environment of the recorded run (2026-09-30)
 
-| Item          | Value                                                                                                                       |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Host          | Apple M5 Pro (18 cores), 64 GB, macOS 27.0 (26A428), Xcode 27.0                                                             |
-| Engine        | Godot 4.7.2-stable official `ed1daf0bf`, official export templates                                                          |
-| Android       | Emulator 37.1.11.0, AVD `capture`: Android 14 (`UE1A.230829.050`, google_apis arm64-v8a), 4 vCPU, 4 GB RAM, 8 GB data      |
-| Android tools | Android Studio JBR, bundletool 1.18.3, `com.google.android.play:asset-delivery:2.3.0`                                       |
-| Web           | Playwright-core 1.63.0: Chromium 153.0.8010.12 (build 1243), WebKit build 2359; iOS 26.5 Simulator Safari (iPhone 17e)      |
-| Velopack      | `vpk` 1.2.161 (.NET 8), Rust crate `velopack = "=1.2.161"`                                                                  |
+| Item          | Value                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Host          | Apple M5 Pro (18 cores), 64 GB, macOS 27.0 (26A428), Xcode 27.0                                                                |
+| Engine        | Godot 4.7.2-stable official `ed1daf0bf`, official export templates                                                             |
+| Android       | Emulator 37.1.11.0, AVD `capture`: Android 14 (`UE1A.230829.050`, google_apis arm64-v8a), 4 vCPU, 4 GB RAM, 8 GB data          |
+| Android tools | Android Studio JBR, bundletool 1.18.3, `com.google.android.play:asset-delivery:2.3.0`                                          |
+| Web           | Playwright-core 1.63.0: Chromium 153.0.8010.12 (build 1243), WebKit build 2359; iOS 26.5 Simulator Safari (iPhone 17e)         |
+| Velopack      | `vpk` 1.2.161 (.NET 8), Rust crate `velopack = "=1.2.161"`                                                                     |
 | Not available | Physical Android phone, Windows machine (MSIX, Velopack on Windows), Firefox (the Playwright build does not start on macOS 27) |
 
 ## What is here
 
-| Path                       | What                                                                                                                        |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `tools/gen_packs.py`       | streams a data-only PCK v4: `gen_packs.py <out.pck> <total_bytes> <entries> [prefix] [seed]`, plus a SHA-256 manifest       |
-| `tools/strip_pack.py`      | rewrites a PCK without `project.binary` and `.godot/global_script_class_cache.cfg` (what `--export-pack` always adds)       |
-| `tools/editor_sc.sh`       | self-contained editor under `tpl/editor/` so Android exports use their own Java SDK setting                                 |
-| `tools/summarize_a.py`     | per-case medians of `out/a/results.jsonl`                                                                                   |
-| `tools/summarize_c.py`     | table of `out/c/runs.jsonl` (Playwright) and the `ios_*` rows of `out/c/reports.jsonl`                                      |
-| `tplrun_mac.sh`            | exports a project as a pack and runs it on the macOS release template as `<name>.app/Contents/Resources/<name>.pck`         |
-| `a_stall/`                 | (a) mount-stall probe: `probe/probe.gd` reads a JSON plan, animates a spinner, mounts, records call time and frame deltas   |
-| `a_stall/build_packs.sh`   | the (a) packs: 5, 50, 200 MB as 8 entries ("few") or 64 entries/MB ("many"), and `c20k` (5 MB in 20,000 entries)            |
-| `a_stall/export_apk.sh`    | release APK with a throwaway keystore (git-ignored)                                                                         |
-| `a_stall/run_a.sh`         | one case on a device or emulator (`DEV`, `PKG`); cold = `drop_caches` + force-stop, warm = force-stop only                  |
-| `a_stall/matrix_a.sh`      | the (a) matrix, three repetitions; `retry_a.sh` re-runs the cases adb dropped                                               |
-| `b_pad/build_pad.sh`       | (b) AAB: the (a) probe plus two asset packs (on-demand, fast-follow) and the `S05Pad` Java plugin; `--local-testing` APKs   |
-| `c_web/build_c.sh`         | (c) web export (single-threaded) and pack sets `w1` (1 × 50 MB), `w3` (3 × 33 MB), `w6` (6 × 25 MB)                         |
-| `c_web/server.mjs`         | serves the export and packs (`immutable` cache headers), counts pack GETs, collects the probe's reports                     |
-| `c_web/run_c.mjs`          | Playwright driver: per browser, mode and pack count a first visit, reload, browser restart, and an ephemeral context        |
-| `c_web/run_ios.sh`         | the same loads in the iOS Simulator's Safari (`simctl openurl`)                                                             |
-| `c_web/dlfile_demo.mjs`    | shows `HTTPRequest.download_file` losing the file on web                                                                    |
-| `c_web/dlprobe/`           | desktop control for the same `download_file` path (Content-Length and chunked)                                              |
-| `e_velopack/launcher/`     | Rust launcher shim: `VelopackApp::build().run()`, optional update from a local feed, then runs Godot beside it              |
-| `e_velopack/game/`         | Godot export whose autoload logs its arguments and quits from `_init` on a `--veloapp-*` hook                               |
-| `e_velopack/build_e.sh`    | builds `S05Game.app` (template + pack + launcher) and a `vpk pack` release of it                                            |
-| `e_velopack/time_hooks.py` | spawns an executable with each hook as Velopack does and times it against the 30/15/15/30 s limits                          |
-| `f_uid/`                   | (f) a main project and three independently imported packs (`dataA`, `dataB`, `classpack`); `run_f.sh` runs all mount cases  |
+| Path                       | What                                                                                                                       |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `tools/gen_packs.py`       | streams a data-only PCK v4: `gen_packs.py <out.pck> <total_bytes> <entries> [prefix] [seed]`, plus a SHA-256 manifest      |
+| `tools/strip_pack.py`      | rewrites a PCK without `project.binary` and `.godot/global_script_class_cache.cfg` (what `--export-pack` always adds)      |
+| `tools/editor_sc.sh`       | self-contained editor under `tpl/editor/` so Android exports use their own Java SDK setting                                |
+| `tools/summarize_a.py`     | per-case medians of `out/a/results.jsonl`                                                                                  |
+| `tools/summarize_c.py`     | table of `out/c/runs.jsonl` (Playwright) and the `ios_*` rows of `out/c/reports.jsonl`                                     |
+| `tplrun_mac.sh`            | exports a project as a pack and runs it on the macOS release template as `<name>.app/Contents/Resources/<name>.pck`        |
+| `a_stall/`                 | (a) mount-stall probe: `probe/probe.gd` reads a JSON plan, animates a spinner, mounts, records call time and frame deltas  |
+| `a_stall/build_packs.sh`   | the (a) packs: 5, 50, 200 MB as 8 entries ("few") or 64 entries/MB ("many"), and `c20k` (5 MB in 20,000 entries)           |
+| `a_stall/export_apk.sh`    | release APK with a throwaway keystore (git-ignored)                                                                        |
+| `a_stall/run_a.sh`         | one case on a device or emulator (`DEV`, `PKG`); cold = `drop_caches` + force-stop, warm = force-stop only                 |
+| `a_stall/matrix_a.sh`      | the (a) matrix, three repetitions; `retry_a.sh` re-runs the cases adb dropped                                              |
+| `b_pad/build_pad.sh`       | (b) AAB: the (a) probe plus two asset packs (on-demand, fast-follow) and the `S05Pad` Java plugin; `--local-testing` APKs  |
+| `c_web/build_c.sh`         | (c) web export (single-threaded) and pack sets `w1` (1 × 50 MB), `w3` (3 × 33 MB), `w6` (6 × 25 MB)                        |
+| `c_web/server.mjs`         | serves the export and packs (`immutable` cache headers), counts pack GETs, collects the probe's reports                    |
+| `c_web/run_c.mjs`          | Playwright driver: per browser, mode and pack count a first visit, reload, browser restart, and an ephemeral context       |
+| `c_web/run_ios.sh`         | the same loads in the iOS Simulator's Safari (`simctl openurl`)                                                            |
+| `c_web/dlfile_demo.mjs`    | shows `HTTPRequest.download_file` losing the file on web                                                                   |
+| `c_web/dlprobe/`           | desktop control for the same `download_file` path (Content-Length and chunked)                                             |
+| `e_velopack/launcher/`     | Rust launcher shim: `VelopackApp::build().run()`, optional update from a local feed, then runs Godot beside it             |
+| `e_velopack/game/`         | Godot export whose autoload logs its arguments and quits from `_init` on a `--veloapp-*` hook                              |
+| `e_velopack/build_e.sh`    | builds `S05Game.app` (template + pack + launcher) and a `vpk pack` release of it                                           |
+| `e_velopack/time_hooks.py` | spawns an executable with each hook as Velopack does and times it against the 30/15/15/30 s limits                         |
+| `f_uid/`                   | (f) a main project and three independently imported packs (`dataA`, `dataB`, `classpack`); `run_f.sh` runs all mount cases |
 
 `out/`, `logs/`, `tpl/`, exports, packs, APKs, AABs, keystores, browser profiles and the Rust
 `target/` are git-ignored.

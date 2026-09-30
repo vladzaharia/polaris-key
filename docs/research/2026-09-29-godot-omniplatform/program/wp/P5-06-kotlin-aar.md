@@ -99,9 +99,15 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
   (notes/E2 §A2).
 - **Staged rollouts.** In-App Updates availability is per device and staged-rollout aware, so the
   server's "latest" is advisory on Play (notes/E2 §A2). The facade reports what Play says.
-- **PAD paths.** Loading a `.pck` from `getPackLocation(...).assetsPath()` is unverified (notes/E2
-  §G). S-05 hands this package the PAD mounting rule; if it has not run, add a device check for it
-  to the checklist.
+- **PAD paths** (S-05 §4.2, emulator with `bundletool --local-testing`): after `fetch` reports
+  `COMPLETED`, mount `getPackLocation(<pack>).assetsPath() + "/<pack>.pck"` with
+  `ProjectSettings.load_resource_pack`. It is a plain file under
+  `/data/data/<pkg>/files/assetpacks/<pack>/<versionCode>/<versionCode>/assets/`
+  (`STORAGE_FILES`) and mounted in 2.5–4.4 ms for on-demand and fast-follow packs. Re-read the path
+  on every launch (it contains the `versionCode`) and never persist it; treat `STORAGE_APK` or an
+  empty `assetsPath()` as not available. Install-time packs mount as `res://<path>.pck`. The
+  70-line reference plugin is `prototype/platform-mechanics/b_pad/`. Keep a device check on the
+  internal test track in the checklist, since Play delivery itself was not exercised.
 - **Existing plugins** (`dcryptoniun/Godot-Android-InAppUpdate`, `icecube092/GodotInAppUpdate`) are
   small and single-maintainer; read them, do not depend on them.
 - **What can be built before a human supplies anything:** everything behind interfaces, tested with

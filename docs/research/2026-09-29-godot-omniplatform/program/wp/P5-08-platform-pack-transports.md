@@ -76,7 +76,8 @@ availability of those packs feeds readiness holds. This package closes the progr
   retire candidates, with the 200-pack and 200 GB quotas shown.
 - **Godot transports** in `addons/polaris_key/content/transports/`: `apple_ba.gd` (ensure,
   progress, fresh `url(for:)` path each launch), `play_pad.gd` (fetch, confirmation dialog on large
-  cellular downloads, absolute pack path), `steam.gd` (GodotSteam when present: install dir, DLC
+  cellular downloads, absolute pack path: `assetsPath() + "/<pack>.pck"`, re-read every launch, per
+  S-05 §4.2), `steam.gd` (GodotSteam when present: install dir, DLC
   installed, build id, beta name; read the marker from the depot; never write there). Each verifies
   the marker, then every file against the files index, before handing the pack to the handler.
 - `parity.json` for Godot: `packs.transport.apple`, `packs.transport.play`, `packs.transport.steam`.
