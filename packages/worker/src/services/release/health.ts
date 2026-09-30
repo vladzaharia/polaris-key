@@ -2,7 +2,11 @@
 
 import type { Db, Env } from "../../core/platform.js";
 import { findBinaryAsset, matchAsset, sigAssetName } from "./assets.js";
-import { getReleaseConfig } from "./config.js";
+import {
+  getReleaseConfig,
+  operatorPolicy,
+  type ReleaseConfigRow,
+} from "./config.js";
 import { type Release, listReleases, NotFoundError } from "./github.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 
@@ -62,35 +66,34 @@ function newestPublished(releases: Release[]): Release | null {
   return releases.find((r) => !r.draft) ?? null;
 }
 
-function artifactPolicy(raw: string | null): {
+/**
+ * What the health check expects of a release. `requireDmg`/`requireCli` are MANIFEST-owned and
+ * come from `artifact_policy_json`; `requireSparkleSignature` is OPERATOR-owned and comes from
+ * `operator_policy_json` (P0-01) through the same reader the feed uses. Unreadable JSON falls
+ * back to the fail-safe defaults: a DMG and a signature required, no CLI.
+ */
+function artifactPolicy(cfg: ReleaseConfigRow): {
   requireDmg: boolean;
   requireCli: boolean;
   requireSparkleSignature: boolean;
 } {
+  const { requireSparkleSignature } = operatorPolicy(cfg);
+  const raw = cfg.artifact_policy_json;
   if (!raw) {
-    return {
-      requireDmg: true,
-      requireCli: false,
-      requireSparkleSignature: true,
-    };
+    return { requireDmg: true, requireCli: false, requireSparkleSignature };
   }
   try {
     const parsed = JSON.parse(raw) as {
       requireDmg?: unknown;
       requireCli?: unknown;
-      requireSparkleSignature?: unknown;
     };
     return {
       requireDmg: parsed.requireDmg !== false,
       requireCli: parsed.requireCli === true,
-      requireSparkleSignature: parsed.requireSparkleSignature !== false,
+      requireSparkleSignature,
     };
   } catch {
-    return {
-      requireDmg: true,
-      requireCli: false,
-      requireSparkleSignature: true,
-    };
+    return { requireDmg: true, requireCli: false, requireSparkleSignature };
   }
 }
 
@@ -238,7 +241,7 @@ export async function checkReleaseHealth(
   );
 
   const binaryName = cfg.binary_name ?? product;
-  const policy = artifactPolicy(cfg.artifact_policy_json);
+  const policy = artifactPolicy(cfg);
   const armDmg = matchAsset(latest.assets, {
     arch: "arm64",
     ext: "dmg",

@@ -79,14 +79,15 @@ async function seedReleaseConfig(
     artifact_policy_json: null as string | null,
     metadata_access: "public",
     artifacts_access: "public",
+    operator_policy_json: null as string | null,
     ...over,
   };
   await db.run(
     `INSERT INTO release_config
        (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
         manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker,
-        artifact_policy_json, metadata_access, artifacts_access)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        artifact_policy_json, metadata_access, artifacts_access, operator_policy_json)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     row.product,
     row.gh_owner,
     row.gh_repo,
@@ -101,6 +102,7 @@ async function seedReleaseConfig(
     row.artifact_policy_json,
     row.metadata_access,
     row.artifacts_access,
+    row.operator_policy_json,
   );
 }
 
@@ -643,7 +645,8 @@ describe("handleRelease", () => {
     const db = makeTestDb();
     await seedReleaseConfig(db, {
       sparkle_ed25519_pub: null,
-      artifact_policy_json: JSON.stringify({ requireSparkleSignature: false }),
+      // The opt-out is operator policy: it lives in `operator_policy_json` (P0-01).
+      operator_policy_json: JSON.stringify({ requireSparkleSignature: false }),
     });
     const { env } = envFor();
     // No `.sig` asset, and that's fine: an unsigned-pubkey product may ship without a signature.

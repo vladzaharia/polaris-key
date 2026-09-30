@@ -325,6 +325,8 @@ async function registerFromManifest(
           : {}),
       }),
       services_source: "manifest",
+      // The compat window is manifest-owned until an operator sets it in `update/settings`.
+      compat_source: "manifest",
       created_at: now,
       modified_at: now,
     }),
@@ -417,6 +419,10 @@ async function registerFromManifest(
         : null,
       metadataAccess: rel?.access.metadata ?? "public",
       artifactsAccess: rel?.access.artifacts ?? "public",
+      // Manifest-owned until an operator claims the modes. `operatorPolicyJson` is deliberately
+      // absent: the operator-only artifact policy has no manifest spelling (R6-03), so a freshly
+      // linked product starts on the fail-safe defaults (signature required, no minimum).
+      accessSource: "manifest",
     }),
   );
 

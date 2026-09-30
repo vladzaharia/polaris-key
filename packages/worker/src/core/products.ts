@@ -163,7 +163,7 @@ export async function openProductSecret(
 }
 
 /**
- * Set a product's global compatibility window (spec §8, P2.T3).
+ * Set a product's global compatibility window (spec §8, P2.T3), and CLAIM it for the operator.
  *
  * The window relocated from `PATCH /manage/api/products/<slug>` to `update/settings`: it is a
  * statement about which BUILDS this product supports, which is the Update service's subject, and
@@ -171,7 +171,9 @@ export async function openProductSecret(
  * stays core-owned (`products` is Core's per spec §5.2), so the writer lives here and Update
  * reaches it through Core rather than reaching into the table.
  *
- * `undefined` leaves a bound alone; the COALESCE keeps a partial patch partial.
+ * `undefined` leaves a bound alone; the COALESCE keeps a partial patch partial. Either bound
+ * flips `compat_source` to `admin` (0022_a), and resync's own UPDATE skips a claimed window — so
+ * an operator who narrows the window to stop an incident is not overruled by the next push.
  */
 export async function setCompatWindow(
   db: Db,
@@ -183,6 +185,7 @@ export async function setCompatWindow(
     `UPDATE products
         SET compat_min = COALESCE(?, compat_min),
             compat_max = COALESCE(?, compat_max),
+            compat_source = 'admin',
             modified_at = ?
       WHERE slug = ?`,
     window.min ?? null,
@@ -190,4 +193,34 @@ export async function setCompatWindow(
     now,
     slug,
   );
+}
+
+/**
+ * Hand the compatibility window back to manifest control. Only the owner flips; the stored
+ * bounds stay as the operator left them until the next resync re-applies `.pkey/product`.
+ */
+export async function revertCompatWindowToManifest(
+  db: Db,
+  slug: string,
+  now: number,
+): Promise<void> {
+  await db.run(
+    "UPDATE products SET compat_source = 'manifest', modified_at = ? WHERE slug = ?",
+    now,
+    slug,
+  );
+}
+
+/** The stored window and its owner, read fresh (a loaded `Product` may predate a write). */
+export async function getCompatWindow(
+  db: Db,
+  slug: string,
+): Promise<{ min: string; max: string; source: "manifest" | "admin" } | null> {
+  const row = await getProduct(db, slug);
+  if (!row) return null;
+  return {
+    min: row.compat_min,
+    max: row.compat_max,
+    source: row.compat_source === "admin" ? "admin" : "manifest",
+  };
 }
