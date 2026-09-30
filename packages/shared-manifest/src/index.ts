@@ -194,6 +194,13 @@ export interface ManifestRelease {
   summaryMarker: string;
   sparkleEd25519Pub: string;
   manualChannels: ManifestManualChannel[];
+  /** `release.stableTagPattern` — which tags are real app releases (candidates for
+   *  stable/latest and the beta prerelease fallback). `null` when undeclared, which means
+   *  `DEFAULT_STABLE_TAG_PATTERN`. Persisted to `release_config.stable_tag_pattern`. */
+  stableTagPattern: string | null;
+  /** `release.ignoreTags` — exact tag names that are never a resolution candidate on any
+   *  moving channel. Persisted to `release_config.ignore_tags_json` (NULL when empty). */
+  ignoreTags: string[];
   artifactPolicy: ManifestReleaseArtifactPolicy | null;
   access: ManifestReleaseAccessPolicy;
 }
@@ -356,6 +363,26 @@ export function compileManualChannelRegex(source: string): RegExp | null {
   } catch {
     return null;
   }
+}
+/**
+ * The candidate filter used when `release.stableTagPattern` is undeclared: a semver 2.0 tag with
+ * an optional leading `v` (`v1.2.3`, `1.2.3-rc.1`, `v2.0.0+build.5`). Written UNANCHORED because
+ * `compileManualChannelRegex` anchors every source (`^(?:…)$`) — the written-out
+ * `^v?…$` form is 81 characters, one over the cap a declared pattern must meet.
+ */
+export const DEFAULT_STABLE_TAG_PATTERN =
+  "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?";
+/** `release.ignoreTags` bounds: how many exact tag names, and how long each may be. */
+export const MAX_IGNORE_TAGS = 200;
+export const MAX_IGNORE_TAG_LENGTH = 255;
+/** One `release.ignoreTags` entry: a non-empty tag name with no control characters or spaces. */
+export function isIgnoreTag(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_IGNORE_TAG_LENGTH &&
+    !/[\u0000-\u0020\u007f]/.test(value)
+  );
 }
 /** `provisioning[].allowedHosts` entries — a host, optionally with a port. */
 const HOST_RE = /^[A-Za-z0-9._-]{1,253}(?::[0-9]{1,5})?$/;
@@ -1030,6 +1057,48 @@ export function validateManifestDocuments(
           }
         }
       }
+      // The candidate filter for stable/latest: compiled under the manual-channel safety rule
+      // (anchored, capped, must compile) so a pattern the validator accepts is one the
+      // worker's resolver keeps rather than silently falling back to the default.
+      if (
+        relRoot.stableTagPattern !== undefined &&
+        (typeof relRoot.stableTagPattern !== "string" ||
+          compileManualChannelRegex(relRoot.stableTagPattern) === null)
+      ) {
+        add(
+          errors,
+          "release",
+          "/release/stableTagPattern",
+          "invalid_stable_tag_pattern",
+          `release.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+        );
+      }
+      if (relRoot.ignoreTags !== undefined) {
+        if (
+          !Array.isArray(relRoot.ignoreTags) ||
+          relRoot.ignoreTags.length > MAX_IGNORE_TAGS
+        ) {
+          add(
+            errors,
+            "release",
+            "/release/ignoreTags",
+            "invalid_ignore_tags",
+            `release.ignoreTags must be an array of at most ${MAX_IGNORE_TAGS} exact tag names.`,
+          );
+        } else {
+          for (const [i, tag] of relRoot.ignoreTags.entries()) {
+            if (!isIgnoreTag(tag)) {
+              add(
+                errors,
+                "release",
+                `/release/ignoreTags/${i}`,
+                "invalid_ignore_tags",
+                `release.ignoreTags entries must be non-empty tag names of at most ${MAX_IGNORE_TAG_LENGTH} characters with no spaces or control characters.`,
+              );
+            }
+          }
+        }
+      }
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
         add(
           errors,
@@ -1577,6 +1646,12 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     summaryMarker: String(rel.summaryMarker ?? "pkey:summary"),
     sparkleEd25519Pub: String(rel.sparkleEd25519Pub ?? ""),
     manualChannels: normalizeManualChannels(rel.manualChannels),
+    stableTagPattern:
+      typeof rel.stableTagPattern === "string" &&
+      compileManualChannelRegex(rel.stableTagPattern) !== null
+        ? rel.stableTagPattern
+        : null,
+    ignoreTags: normalizeIgnoreTags(rel.ignoreTags),
     artifactPolicy: normalizeArtifactPolicy(rel.artifactPolicy),
     access: normalizeReleaseAccess(rel.access),
   };
@@ -1600,6 +1675,12 @@ function normalizeManualChannels(raw: unknown): ManifestManualChannel[] {
     }
   }
   return out;
+}
+
+/** Keep the well-formed, de-duplicated entries (validation has already reported the rest). */
+function normalizeIgnoreTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.filter(isIgnoreTag))].slice(0, MAX_IGNORE_TAGS);
 }
 
 function normalizeReleaseAccess(raw: unknown): ManifestReleaseAccessPolicy {

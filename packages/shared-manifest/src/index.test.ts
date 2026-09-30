@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 // Used only to measure the quadratic path we deliberately turned OFF, as a control.
 import { parse as parseYaml } from "yaml";
 import {
+  compileManualChannelRegex,
+  DEFAULT_STABLE_TAG_PATTERN,
   issuerUrlProblem,
   isSafeIssuerUrl,
   MAX_MANIFEST_BYTES,
@@ -89,6 +91,52 @@ describe("manifest contract defaults", () => {
     expect(res.errors.join("\n")).toContain(
       "release.access values must be public, authenticated, or licensed.",
     );
+  });
+});
+
+describe("release candidate filter (stableTagPattern, ignoreTags)", () => {
+  const withFields = (fields: Record<string, unknown>) =>
+    parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify({
+        release: { ...(release().release as object), ...fields },
+      }),
+    });
+
+  it("normalises undeclared fields to the default filter", () => {
+    const res = withFields({});
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.stableTagPattern).toBeNull();
+    expect(res.manifest.release?.ignoreTags).toEqual([]);
+  });
+
+  it("carries a declared pattern and de-duplicated ignore list", () => {
+    const res = withFields({
+      stableTagPattern: "^v\\d+\\.\\d+\\.\\d+$",
+      ignoreTags: ["channels", "packs", "channels"],
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.stableTagPattern).toBe(
+      "^v\\d+\\.\\d+\\.\\d+$",
+    );
+    expect(res.manifest.release?.ignoreTags).toEqual(["channels", "packs"]);
+  });
+
+  it("the default pattern fits the declared-pattern cap and matches semver tags only", () => {
+    expect(DEFAULT_STABLE_TAG_PATTERN.length).toBeLessThanOrEqual(80);
+    const re = compileManualChannelRegex(DEFAULT_STABLE_TAG_PATTERN)!;
+    for (const tag of ["v1.2.3", "1.2.3", "v2.0.0-rc.1", "v1.0.0+build.5"])
+      expect(re.test(tag), tag).toBe(true);
+    for (const tag of ["channels", "packs", "v1.2", "v01.2.3", "release-1.2.3"])
+      expect(re.test(tag), tag).toBe(false);
+  });
+
+  it("rejects an unsafe pattern and malformed ignore entries", () => {
+    const res = withFields({ stableTagPattern: "(", ignoreTags: ["", "a b"] });
+    expect(res.ok).toBe(false);
   });
 });
 
