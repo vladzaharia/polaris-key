@@ -149,7 +149,7 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 1. Test fixtures: a tiny PCK v4 writer in the test helpers (port `prototype/content/gen/pck.py`)
    producing v1 and v2 with changed, added and removed entries, one forbidden script, and one
    path outside the prefixes; an unstripped `--export-pack` pack (with `project.binary` and the
-   class cache); 2,001- and 20,001-entry packs; a small tree pair.
+   class cache); 1,000-, 1,001- and 20,001-entry packs; a small tree pair.
 2. PCK directory reader, the strip step and the type lints.
 3. Files index, gaps blob, per-file blobs; the byte-for-byte rebuild self-check.
 4. Deltas via the zstd CLI; descriptors; the magic-base refusal.
@@ -168,7 +168,8 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 - [ ] A fixture with `project.binary` and `.godot/global_script_class_cache.cfg` is stripped of
       exactly those two entries, written back, and then passes; the record hashes the stripped
       bytes.
-- [ ] A 2,001-entry fixture passes with a warning; a 20,001-entry fixture fails.
+- [ ] A 1,000-entry fixture passes without a warning; a 1,001-entry fixture passes with a warning;
+      a 20,001-entry fixture fails.
 - [ ] A base starting `37 A4 30 EC` produces no `zstd-patch-from` delta and a dry-run warning.
 - [ ] Publishing v2 after v1 uploads only new objects (a test counts upload calls).
 - [ ] The signed record verifies with the test release key, stays under the payload cap for a

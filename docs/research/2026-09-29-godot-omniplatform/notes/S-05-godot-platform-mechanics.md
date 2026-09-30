@@ -119,13 +119,17 @@ its SHA-256 checks (3/3).
   (141–296), warm 29 ms (19–148) against 121 ms (52–190); c20k cold 154 ms (17–3,245) against
   210 ms (143–1,173), warm 101 ms (39–103) against 175 ms (174–390). In two thread runs (c20k cold,
   200 MB many warm) every frame during the mount stayed at 17–19 ms. The other runs still hitched,
-  and the thread's wall time was longer than a main-thread call (62–7,104 ms against 47–1,161 ms),
-  so on this emulator, shared with three others, a `Thread` lowered the hitch but did not remove it:
-  the evidence is inconclusive [M]. The main-thread rule rests instead on thread safety: `PackedData`
+  and the thread's wall time overlapped and mostly exceeded the main-thread call (31.7–7,104 ms
+  against 47–1,161 ms; the thread median was longer in three cells, 317 against 209 ms, 79 against
+  48 ms and 237 against 156 ms, and shorter in c20k warm, 134 against 164 ms). Thread time is read
+  when `_process` next sees `is_alive()` return false, so it is measured only to frame resolution
+  and rounds up by up to one frame. On this emulator, shared with three others, a `Thread` lowered
+  the hitch but did not remove it: the evidence is inconclusive [M]. The main-thread rule rests instead on thread safety: `PackedData`
   and the UID registry are not documented as safe to change while the main thread loads resources
   [I]. The low-end phone run should repeat the thread cases.
-- **Frame hitches**: the median worst frame is 13–230 ms even for the smallest packs, because the
-  emulator shared the host with three other emulators; treat the hitch columns in
+- **Frame hitches**: the median worst frame is 8–62 ms for the 5 MB packs and up to 962 ms overall
+  across the mount-in-`_process` cells (c20k warm from `res://`; the mount in `_ready` reached
+  1,119 ms), because the emulator shared the host with three other emulators; treat the hitch columns in
   `out/a/summary.txt` as noise and use the call times [M, I].
 
 **The low-end phone multiplier is unmeasured.** No physical phone was available; S-04's low-end
