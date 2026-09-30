@@ -116,10 +116,13 @@ and devices.
 
 ## Design notes
 
-**Decisions the plan must put to the human**, each with the recommendation shown:
+**Decisions the plan must put to the human**, each with the recommendation shown. All four are
+resolved in [`plans/P1-01.md`](../plans/P1-01.md) §8.
 
 1. **`valid-nul-byte-in-string`.** A Godot `String` cannot hold U+0000; the verdict is right but
-   the decoded document differs (notes/A5 §2). WIRE-CONTRACT-V3 §10 forbids local tolerances and
+   the decoded document differs (notes/A5 §2). Measured 2026-09-30: when both sides are parsed by
+   Godot, the comparison still passes, vacuously. 4.7.2 turns the U+0000 into U+FFFD on both
+   sides, and 4.4.1 drops it from both (PARITY §6.3 #4). WIRE-CONTRACT-V3 §10 forbids local tolerances and
    rule 1 forbids weakening runners. Options: (a) a WIRE-CONTRACT-V3 §10 ledger entry plus a
    generator-emitted, per-case annotation that the decoded string is lossy in Godot, which the
    Godot runner honours for that one case only while still asserting the verdict; (b) the
@@ -129,7 +132,9 @@ and devices.
 2. **Mirror path** `sdks/godot/tests/corpus/v2/` (recommended), not inside the addon, which
    would ship 1.4 MB of vectors into games.
 3. **CI engines:** 4.4.x editor (floor, README decision 11), 4.7.2 editor, 4.7.2 release
-   template. If the prototype does not parse on 4.4, record the fix or escalate the floor.
+   template. If the prototype does not parse on 4.4, record the fix or escalate the floor. The
+   latest 4.4.x is 4.4.1; there is no 4.4.2. The prototype passes on 4.4.1 unchanged (measured
+   2026-09-30).
 4. **Template download:** extract only `linux_release.x86_64` from the 1.28 GB `.tpz` with HTTP
    Range (notes/A5 §1), or cache the full set; either is fine, record which.
 
@@ -141,8 +146,15 @@ and its plan must name Godot.
 
 **Pitfalls:**
 
-- Godot often exits 0 after a script parse error. The CI step must also fail when the log
-  contains `SCRIPT ERROR` or `Parse Error`, and the import step must not be `|| true`.
+- A script parse error does not fail anything by exit code (measured on 4.4.1 and 4.7.2):
+  - `--import` exits 0 and prints nothing;
+  - `--check-only` exits 0 on 4.7.2;
+  - running the project **hangs**: the runner fails to load, and Godot falls back to a plain
+    `SceneTree` that runs the main scene forever.
+
+  So the CI step must fail when the log contains `SCRIPT ERROR` or `Parse Error`, and it needs a
+  timeout. The import step must not be `|| true`. The plan adds a boot guard and a watchdog.
+
 - `class_name` globals need `--import` first (notes/E4 §7).
 - The editor and the template use the same invocation, because the runner is the main loop:
   `godot --headless --path sdks/godot -- --pkey-test ci` and
@@ -160,14 +172,15 @@ rest once the SDK ships.
 
 | Where                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Owner             |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `AGENTS.md` repo map (`:15-37`, add `sdks/godot/`), green gate (`:77-100`), rule 1 (`:107-110`, the mirror)                                                                                                                                                                                                                                                                                                                                                                                                                                                            | P1-01             |
-| `CONTRIBUTING.md:42-51` (gate, `test:all`), `:84` ("four runners, the Swift mirror")                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | P1-01             |
-| `packages/docs/src/content/docs/build/wire/corpus.md:3,9,22-35,67-84,94,103,131,146`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | P1-01             |
-| `packages/docs/src/content/docs/contribute/corpus.md:3,11,31,51-66`; `agents/conventions.md:58`                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | P1-01             |
+| `AGENTS.md` repo map (`:15-37`, add `sdks/godot/`), standalone toolchains (`:53-54`), green gate (`:77-100`), rule 1 (`:107-110`, the mirror)                                                                                                                                                                                                                                                                                                                                                                                                                          | P1-01             |
+| `CONTRIBUTING.md:12-17` (setup), `:42-51` (gate, `test:all`), `:84` ("four runners, the Swift mirror")                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | P1-01             |
+| `packages/docs/src/content/docs/build/wire/corpus.md:3,9,13-15,22-35,67-84,94,103,130-131,146`, plus a `docNulPointers` paragraph (plan §6)                                                                                                                                                                                                                                                                                                                                                                                                                            | P1-01             |
+| `packages/docs/src/content/docs/contribute/corpus.md:3,11,31,51-66,83`; `agents/conventions.md:58,86`; `contribute/waves.md:66` (drift-gate row); `contribute/setup.md:3,9,18,33-62` (toolchain, gate, `test:all`); `contribute/layout.md:9,27-29` (repo map); the corpus and setup rows `build/wire/index.md:78` and `contribute/index.md:26,29`                                                                                                                                                                                                                      | P1-01             |
 | `packages/docs/scripts/gen-reference.mjs:380-382` → regenerate `reference/corpus.mdx`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | P1-01             |
-| `tools/sign-corpus.ts:1-13,2119`; `conformance/runners/node/{corpusV2.test.ts:1-5, fingerprint.test.ts:4}`; root `package.json` `test:all`; `.github/workflows/ci.yml`                                                                                                                                                                                                                                                                                                                                                                                                 | P1-01             |
+| `tools/sign-corpus.ts:1-13` (`:2119` is historical and stays); `conformance/runners/node/corpusV2.test.ts:1-5`; root `package.json` `test:all`; `.github/workflows/ci.yml`                                                                                                                                                                                                                                                                                                                                                                                             | P1-01             |
+| `conformance/runners/node/fingerprint.test.ts:4-6` and `build/wire/corpus.md:85-89` (the fingerprint runners), once Godot runs `deviceIds`                                                                                                                                                                                                                                                                                                                                                                                                                             | P1-02             |
 | `AGENTS.md:8-9,118`; `CONTRIBUTING.md:3-4,65,81`; `README.md:4,58`; `SECURITY.md:55`; `docs/security/WIRE-CONTRACT-V3.md:5`; `docs/PRIVACY.md:31`; `.husky/pre-commit` comment                                                                                                                                                                                                                                                                                                                                                                                         | P1-12             |
-| docs site: `index.mdx:3`, `start/index.md:9,99-103`, `start/concepts.md:10`, `build/index.md:16,26`, `build/sdks/index.md` (+ new `godot.mdx`), `build/wire/index.md:26,78`, `build/wire/envelope.md:19`, `contribute/index.md:8-9,28-29`, `contribute/waves.md:3,29,35`, `contribute/setup.md:79`, `agents/index.md:57-58`, `admin/bundles.md:11`                                                                                                                                                                                                                     | P1-12             |
+| docs site: `index.mdx:3`, `start/index.md:9,99-103`, `start/concepts.md:10`, `build/index.md:16,26`, `build/sdks/index.md` (+ new `godot.mdx`), `build/wire/index.md:26`, `build/wire/envelope.md:19`, `contribute/index.md:8-9,28`, `contribute/waves.md:3,29,35`, `contribute/setup.md:79`, `agents/index.md:57-58`, `admin/bundles.md:11`                                                                                                                                                                                                                           | P1-12             |
 | code comments: `packages/client-core/src/claims.ts:2`, `bundle.ts:24,68`; `packages/client-core/README.md:12`; `packages/worker/test/bundles.test.ts:7`; `sdks/python/src/polaris_key/core/{jws.py:13,108, bundle.py:16,65, models.py:193}`, `_version.py:20`; `sdks/python/tests/{test_conformance.py:5, test_bundle_local.py:3}`; `sdks/swift/Sources/PolarisKeyCore/{Bundle.swift:24,62, Trust.swift:3, DeviceID.swift:24}`; the device-id formula comments `packages/sdk-node/src/devices/deviceId.ts:54` and `sdks/python/src/polaris_key/devices/deviceid.py:86` | P1-12             |
 | `packages/cli/src/manifest.ts:161-178` + `packages/cli/README.md:104` (`pkey trust` GDScript snippet)                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | P1-11             |
 | `tools/gen-mirrors.ts:248-258` (`gdscript` target)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | P1-04             |
@@ -226,6 +239,9 @@ mise exec node@22 -- pnpm format
 - **Classes:** `PKeySha512`, `PKeyEd25519.verify(sig, msg, pk) -> bool`, `PKeyEd25519Ref`,
   `PKeyJws.verify(jws, trust, typ, max_payload_bytes) -> Variant` (null on any failure), and
   `PolarisKey.SDK_VERSION`. P1-02 reshapes `PKeyJws` behind the strict JSON module.
+  - `polaris_key.gd` has no `class_name`: `PolarisKey` is the name of the autoload that P1-02
+    registers.
+  - Until then, read the constant with `preload("res://addons/polaris_key/polaris_key.gd").SDK_VERSION`.
 - **Runner contract:** `-- --pkey-test <suite>[,<suite>]`; each later work package registers its
   suite in the `ci` set, and CI and `tools/run_tests.sh` stay the only entry points.
 - Web, Android and iOS runs (a web export under headless Chromium, device runs) are not owned by
