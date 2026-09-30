@@ -65,6 +65,7 @@ import {
   handleProductScopedResource,
 } from "./handlers/products.js";
 import { handleActivity } from "./handlers/activity.js";
+import { handleProductDevices } from "./handlers/devices.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { loadProduct } from "../core/products.js";
@@ -188,6 +189,21 @@ async function handleProductScoped(
 
   if (resource === "activity") {
     return handleActivity(req, db, slug);
+  }
+
+  // Every device of the product, licensed or not. CORE: a product that issues no licences (open
+  // or requires-identity registration) still has devices, and License's per-licence route cannot
+  // reach them.
+  if (resource === "devices") {
+    return handleProductDevices(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      rest.slice(1),
+      now,
+    );
   }
 
   return notFound();

@@ -193,6 +193,146 @@ export async function listDevicesByProduct(
   return db.all<DeviceRow>("SELECT * FROM devices WHERE product = ?", product);
 }
 
+// ── Devices, product-wide (Platform → Devices) ───────────────────────────────
+
+/** `devices.license_id` for a device that holds no licence (open / requires-identity
+ *  registration). Mirrors `NO_LICENSE_ID` in core/devices.ts; repeated here as a literal because
+ *  this module only ever depends on `repo.ts` types. */
+const LICENCE_FREE = "";
+
+export interface DeviceListFilter {
+  /** `all` drops the status predicate. */
+  status: "authorized" | "deauthorized" | "all";
+  platform?: string;
+  /** true = holds a licence, false = licence-free, undefined = both. */
+  licensed?: boolean;
+  /** Case-insensitive prefix of the device id or the label. */
+  q?: string;
+  limit: number;
+  /** Keyset position: the last row of the previous page. */
+  after?: { lastSeen: number; deviceId: string };
+}
+
+/** Escape `%`, `_` and the escape character itself so `q` is matched literally. */
+function likePrefix(q: string): string {
+  return `${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/**
+ * One page of a product's devices, newest `last_seen` first, `device_id` ascending as the
+ * tie-break so the keyset is total. Summaries only: no fingerprint or facts join (the licence
+ * view's N+1 is deliberately not repeated; detail is fetched on demand).
+ *
+ * Cost: `status = ?` walks `idx_devices_status (product, status, last_seen DESC)` in order.
+ * `status = 'all'` has no equality prefix on that index, so SQLite scans the product's rows and
+ * sorts; fine at today's sizes, and the reason the console defaults to `authorized`.
+ *
+ * Returns `limit + 1` rows at most; the caller trims the extra one to learn whether a next page
+ * exists.
+ */
+export async function listDevicesPage(
+  db: Db,
+  product: string,
+  f: DeviceListFilter,
+): Promise<DeviceRow[]> {
+  const where = ["product = ?"];
+  const params: (string | number)[] = [product];
+  if (f.status !== "all") {
+    where.push("status = ?");
+    params.push(f.status);
+  }
+  if (f.platform !== undefined) {
+    where.push("platform = ?");
+    params.push(f.platform);
+  }
+  if (f.licensed === true) where.push(`license_id <> '${LICENCE_FREE}'`);
+  if (f.licensed === false) where.push(`license_id = '${LICENCE_FREE}'`);
+  if (f.q) {
+    where.push(
+      "(device_id LIKE ? ESCAPE '\\' OR (label IS NOT NULL AND label LIKE ? ESCAPE '\\'))",
+    );
+    const like = likePrefix(f.q);
+    params.push(like, like);
+  }
+  if (f.after) {
+    where.push("(last_seen < ? OR (last_seen = ? AND device_id > ?))");
+    params.push(f.after.lastSeen, f.after.lastSeen, f.after.deviceId);
+  }
+  params.push(f.limit + 1);
+  return db.all<DeviceRow>(
+    `SELECT * FROM devices WHERE ${where.join(" AND ")}
+     ORDER BY last_seen DESC, device_id ASC LIMIT ?`,
+    ...params,
+  );
+}
+
+export interface DeviceCount {
+  value: string | null;
+  count: number;
+}
+
+export interface DeviceSummaryCounts {
+  total: number;
+  byStatus: DeviceCount[];
+  licensed: { licensed: number; licenceFree: number };
+  byPlatform: DeviceCount[];
+  byArch: DeviceCount[];
+  bySdkName: DeviceCount[];
+  byAppVersion: DeviceCount[];
+}
+
+/** How many `app_version` groups the summary returns. */
+export const APP_VERSION_TOP_N = 20;
+
+/**
+ * Counts for the Devices tab. `byStatus` covers every device of the product; every other
+ * breakdown counts AUTHORIZED devices only (a deauthorized device has had its facts purged and is
+ * no longer part of the installed base). One GROUP BY per dimension, each over a single product;
+ * fine today, and the first thing to revisit for a very large free game.
+ */
+export async function deviceSummary(
+  db: Db,
+  product: string,
+): Promise<DeviceSummaryCounts> {
+  const by = (col: string, limit?: number): Promise<DeviceCount[]> =>
+    db.all<DeviceCount>(
+      `SELECT ${col} AS value, COUNT(*) AS count FROM devices
+       WHERE product = ? AND status = 'authorized'
+       GROUP BY ${col} ORDER BY count DESC, value IS NULL, value ASC${limit ? ` LIMIT ${limit}` : ""}`,
+      product,
+    );
+  const [byStatus, split, byPlatform, byArch, bySdkName, byAppVersion] =
+    await Promise.all([
+      db.all<DeviceCount>(
+        `SELECT status AS value, COUNT(*) AS count FROM devices
+         WHERE product = ? GROUP BY status ORDER BY count DESC, value ASC`,
+        product,
+      ),
+      db.first<{ licensed: number | null; free: number | null }>(
+        `SELECT SUM(license_id <> '${LICENCE_FREE}') AS licensed,
+                SUM(license_id = '${LICENCE_FREE}') AS free
+         FROM devices WHERE product = ? AND status = 'authorized'`,
+        product,
+      ),
+      by("platform"),
+      by("arch"),
+      by("sdk_name"),
+      by("app_version", APP_VERSION_TOP_N),
+    ]);
+  return {
+    total: byStatus.reduce((n, r) => n + r.count, 0),
+    byStatus,
+    licensed: {
+      licensed: split?.licensed ?? 0,
+      licenceFree: split?.free ?? 0,
+    },
+    byPlatform,
+    byArch,
+    bySdkName,
+    byAppVersion,
+  };
+}
+
 // ── Keys ─────────────────────────────────────────────────────────────────────
 export async function countKeysByLicense(
   db: Db,
