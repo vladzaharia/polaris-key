@@ -104,8 +104,25 @@ Group that S-01 proved are added to the exported Xcode project by a repeatable s
   extension uses one (report §4.1). The facade reports Background Assets as unsupported with
   reason `outlet` in such builds.
 - **Background Assets rules.** Resolve `url(for:)` fresh on every launch and never persist it; the
-  extension must not carry the device token or fingerprint (notes/E9 §7.1); the self-hosted managed
-  protocol is undocumented, so only Apple-hosted packs are supported.
+  extension must not carry the device token or fingerprint (notes/E9 §7.1). Only Apple-hosted packs
+  are supported: self-hosted managed packs would use the manifest `ba-package download-manifest`
+  writes, but `pkey-cdn` already covers non-store outlets (notes/S-01).
+- **S-01 recipe and lessons** ([notes/S-01](../../notes/S-01.md) §Recommendation). The patch is
+  `prototype/apple-ba/patch/patch_ba.rb` (Ruby `xcodeproj` 1.27, in place and idempotent): target
+  type `com.apple.product-type.extensionkit-extension`, id `<app id>.BackgroundDownload`, a
+  `StoreDownloaderExtension`, `EXExtensionPointIdentifier =
+com.apple.background-asset-downloader-extension`, versions copied from the app, App Group on both
+  targets, embed into `$(EXTENSIONS_FOLDER_PATH)`. In the binding: never touch `sharedManager` unless
+  the `BA*` Info.plist keys are present (it traps); `url(for:)` returns a path for files that do not
+  exist, so check existence; after `ensure` fails, re-check `getLocalStatus` and treat `downloaded`
+  as ready (the simulator reports "Couldn't communicate with a helper application" after complete
+  downloads); an update replaces the file at the same path while an open mount keeps the old
+  bytes, so apply updates at the next launch; give the xcframework its own bundle id (an id equal
+  to the app's blocks install).
+- **Simulator.** The official 4.7.2 iOS template's simulator `libgodot.a` is x86_64 only. CI on
+  Apple Silicon needs Rosetta or an arm64 simulator slice built from the same tag (`scons
+platform=ios target=template_release arch=arm64 simulator=yes`, about 6 minutes), and the
+  Compatibility renderer (the simulator template has no Metal or Vulkan).
 - **StoreKit.** Set `appAccountToken` from the value P6-01 issues; `finish()` only after the server
   has recorded the transaction. TestFlight and sandbox report `originalAppVersion` as `1.0`
   (notes/E1 §F2); do not use it there.

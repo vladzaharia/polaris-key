@@ -45,7 +45,7 @@ TestFlight and App Store installs can be told apart only at run time, through `A
 ## Read first
 
 - In the Polaris Key repo: `AGENTS.md`; the hand-offs of P5-08 (the `pkey transport …` commands and
-  Action inputs, the asset-pack id `<pack>.c<contentApi>`), P5-05 (`PolarisKeyApple`, the per-preset
+  Action inputs, the asset-pack id `<pack>-c<contentApi>`), P5-05 (`PolarisKeyApple`, the per-preset
   Xcode patch that sideload IPAs skip), P5-06 (`PKeyAndroid`, In-App Updates, PAD), P6-01
   (`PolarisKey.commerce.get_binding()`, `PolarisKey.commerce.claim(store, payload)`) and S-01's note.
 - S-07's note, rows 6, 8 and 9 (App Review clauses, Play fee programmes, Billing Library deadlines).
@@ -80,7 +80,7 @@ TestFlight and App Store installs can be told apart only at run time, through `A
 
 ## Design notes
 
-- **Asset-pack ids carry the content level** (`foes.c1`), because a live asset-pack version switches
+- **Asset-pack ids carry the content level** (`foes-c1`; App Store Connect rejects dots, notes/S-01), because a live asset-pack version switches
   every installed app version ([CONTENT §6.6](../../CONTENT.md#66-transport-imposed-binding-per-outlet)).
   Distribution holds an app release on the App Store until its level's packs are approved, and old
   levels' packs must be retired within the 200-pack and 200 GB quotas.

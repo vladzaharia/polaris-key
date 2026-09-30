@@ -68,8 +68,11 @@ availability of those packs feeds readiness holds. This package closes the progr
   - `pkey transport steam-depot vdf`: app and depot build VDFs for a content-only build of the pack's
     depot on a branch, with `setlive` for named branches only;
   - each ends by calling `pkey distribution report` with the transport's availability.
-- **Asset-pack ids** carry the content level: `<pack>.c<contentApi>` (e.g. `foes.c3`), because a
-  live asset-pack version switches every installed app version (CONTENT §6.6).
+- **Asset-pack ids** carry the content level: `<pack>-c<contentApi>` (e.g. `foes-c3`; a dotted
+  pack id `diceroll.foes` maps to `diceroll-foes-c3`), because a live asset-pack version switches
+  every installed app version (CONTENT §6.6). App Store Connect accepts only alphanumerics and
+  hyphens, and an archived id can never be reused (notes/S-01 §5); validate with
+  `^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$` and at most 64 characters before the first upload.
 - **Distribution:** link P5-02's `apple-ba` availability rows to pack releases through the uploaded
   asset-pack id and version; move P4-14's `dist_readiness` from `blocked` to `ready` when the new
   level's packs reach `READY_FOR_DISTRIBUTION`; list asset packs for levels no longer live as
@@ -90,7 +93,8 @@ availability of those packs feeds readiness holds. This package closes the progr
 - `msix-optional` and `flatpak-ext` transports: no work package owns them yet.
 - Paid-pack gating on stores (StoreKit, Billing, Steam DLC ownership) (→ [P6-01](P6-01-commerce-bridge.md)).
 - The native plugins themselves (→ [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md)).
-- Self-hosted managed Background Assets: the protocol is undocumented (notes/E1 §E7).
+- Self-hosted managed Background Assets: `pkey-cdn` covers non-store outlets (notes/E1 §E7,
+  notes/S-01).
 
 ## Design notes
 
@@ -103,7 +107,14 @@ availability of those packs feeds readiness holds. This package closes the progr
   with scripts never reaches `apple-ba`, `play-pad` or a Steam depot of a store build.
 - **Apple quotas and switching.** One live App Store version per asset pack; a new version switches
   every installed app version. Retire old `contentApi` packs promptly; whether the ASC API can
-  archive them is unverified, so the first cut lists candidates for the operator.
+  archive them was unverified before S-01: archiving is `PATCH /v1/backgroundAssets/{id}`
+  `{archived: true}` and is irreversible, so the first cut lists candidates for the operator.
+- **S-01 upload facts.** Start from `prototype/apple-ba/asc/upload_pack.mjs` (request shapes from
+  the ASC OpenAPI 4.5 spec). App Store review of a pack version is a `reviewSubmissionItems` item
+  with a `backgroundAssetVersion` relationship; external TestFlight review of a pack has no API
+  (`betaAppReviewSubmissions` relates only to builds), so it is an operator step in the UI.
+  `ba-package` output is not byte-reproducible (packaging time in the archive root and manifest):
+  hash the pack's inputs, never the `.aar`. Updates are whole-pack on the wire (notes/S-01 §3).
 - **PAD pins.** PAD packs change only with a new AAB; a `compatible` pack delivered by PAD is
   effectively pinned on Play. Its availability is the AAB's: take it from P5-03's Play mirror when
   present, otherwise from the CI report (P5-03 is not a declared dependency).
@@ -130,7 +141,7 @@ availability of those packs feeds readiness holds. This package closes the progr
       modules (including texture suffixes) and the VDFs against golden files, and the upload
       sequence against a fake ASC server.
 - [ ] Worker tests show a `BACKGROUND_ASSET_VERSION_APP_STORE_RELEASE_STATE_UPDATED` to
-      `READY_FOR_DISTRIBUTION` for `foes.c4` moves readiness to `ready` for the app release that
+      `READY_FOR_DISTRIBUTION` for `foes-c4` moves readiness to `ready` for the app release that
       needs level 4, and a `REJECTED` state leaves it `blocked`.
 - [ ] Headless Godot tests show each transport refuses a pack whose marker or file hash does not
       match, and returns `Unsupported` when its plugin is absent.
@@ -150,5 +161,5 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
 
 - `pkey transport …` commands and the Action inputs Diceroll's CI uses in D-05.
 - The `apple_ba`, `play_pad` and `steam` transports behind P4-08's transport interface.
-- The asset-pack id convention `<pack>.c<contentApi>`.
+- The asset-pack id convention `<pack>-c<contentApi>`.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P5-08 done`.

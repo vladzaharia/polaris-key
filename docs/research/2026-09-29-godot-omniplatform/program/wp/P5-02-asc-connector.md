@@ -109,6 +109,12 @@ built and tested against recorded payloads and a fake ASC server before any real
   `READY_FOR_DISTRIBUTION` and legacy `READY_FOR_SALE` → `live`; `PENDING_DEVELOPER_RELEASE` →
   `approved-held`; `WAITING_FOR_REVIEW`/`IN_REVIEW` → submission `in-review`; `REJECTED`,
   `METADATA_REJECTED`, `INVALID_BINARY` → `rejected`; `REPLACED_WITH_NEW_VERSION` → `superseded`.
+- **Background Asset states** (ASC OpenAPI 4.5, notes/S-01 §4): version `AWAITING_UPLOAD`,
+  `PROCESSING`, `FAILED`, `COMPLETE` (with `stateDetails` errors/warnings); internal beta release
+  `READY_FOR_TESTING`, `SUPERSEDED`; external beta release `READY_FOR_BETA_SUBMISSION` …
+  `READY_FOR_TESTING`, `SUPERSEDED`; App Store release `PREPARE_FOR_SUBMISSION` …
+  `READY_FOR_DISTRIBUTION`, `SUPERSEDED`. Map them with the vocabulary above; their durations are
+  still unmeasured (S-01 hand-off).
 - **Linking.** ASC ids (app, build, version, asset pack, asset-pack version) go into
   `platform_ref_json`; they are store-assigned after signing, so they never enter a release record
   (README §3.3). A Background Asset state that no pack release claims yet is stored unresolved and

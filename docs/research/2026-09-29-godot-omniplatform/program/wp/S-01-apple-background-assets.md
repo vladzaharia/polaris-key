@@ -14,7 +14,7 @@
 
 ## Goal
 
-A research note, `notes/S-01-apple-background-assets.md`, answers four questions with evidence from
+A research note, `notes/S-01.md`, answers four questions with evidence from
 a real TestFlight install:
 
 1. Can a CI script add an Apple-hosted **Background Download extension** and an **App Group** to
@@ -127,7 +127,7 @@ spike.
 
 ## Acceptance criteria
 
-- [ ] `notes/S-01-apple-background-assets.md` exists with the notes' provenance blockquote, the
+- [ ] `notes/S-01.md` exists with the notes' provenance blockquote, the
       question, a short answer, method, environment (Godot, Xcode, iOS versions; device model),
       results with raw numbers, recommendation, affected briefs and sources, using the evidence
       tags [V], [M], [S], [I].
