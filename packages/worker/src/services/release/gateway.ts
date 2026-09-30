@@ -36,18 +36,27 @@ import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import {
   type Release,
+  getReleaseByTag,
   listReleases,
   NotFoundError,
+  RELEASE_PAGE_CAP,
   resolveRelease,
   UpstreamRateLimitedError,
 } from "./github.js";
 import {
   type ChannelSelector,
   classifyChannel,
+  floorChannelOf,
   isMovingSelector,
   parseManualChannels,
+  resolutionPolicy,
   resolveChannel,
 } from "./channels.js";
+import {
+  getChannelFloor,
+  isBelowFloor,
+  type ReleaseChannelFloorRow,
+} from "./store.js";
 import {
   accessModeFor,
   artifactPolicy,
@@ -318,9 +327,17 @@ export async function installationToken(
   );
 }
 
-/** Resolve a version/channel selector to a concrete release. */
+/**
+ * Resolve a version/channel selector to a concrete release.
+ *
+ * Pinned `X.Y.Z` goes straight to the tag (`v<version>`, then `<version>`); every moving selector
+ * goes through `resolveMovingSelector`, the ONE resolution function the download route, the
+ * appcast, the version check and `checkReleaseHealth` share. A moving selector that resolves to
+ * nothing — including a channel whose floor release has disappeared (R6-10) — is a 404.
+ */
 export async function resolveSelector(
   env: Env,
+  db: Db,
   cfg: ResolvedConfig,
   selector: string | undefined,
   now: number,
@@ -343,17 +360,122 @@ export async function resolveSelector(
     return { release, sel };
   }
 
-  const releases = await listReleases(
+  const { release } = await resolveMovingSelector(
+    env,
+    db,
+    cfg,
     tok,
-    cfg.gh_owner,
-    cfg.gh_repo,
-    100,
+    sel,
+    now,
     fetchImpl,
   );
-  const channelTags = await channelTagsFor(env, cfg, sel, now, fetchImpl);
-  const release = resolveChannel(sel, releases, channelTags);
   if (!release) throw new NotFoundError(`no release for selector: ${selector}`);
   return { release, sel };
+}
+
+/** What a moving selector resolved to, and why. */
+export interface MovingResolution {
+  /** The release to serve, or null (nothing matches, or the channel regressed below its floor). */
+  release: Release | null;
+  /** The highest candidate among the pages read, before the floor was applied. */
+  offered: Release | null;
+  /** The channel's floor row, when it has one. */
+  floor: ReleaseChannelFloorRow | null;
+  /** True when `offered` sits below the floor and the floor's release is gone. */
+  regressed: boolean;
+  /** Everything read from the release list (for the health check's "listed N" line). */
+  listed: Release[];
+}
+
+/**
+ * Resolve a MOVING selector (latest/stable, beta, pr-<n>, a manual channel): the single
+ * resolution function P0-02 asks for.
+ *
+ * 1. Filter + order with the product's candidate policy (`stableTagPattern`, `ignoreTags`,
+ *    semver precedence — `resolutionPolicy`).
+ * 2. Read release pages until one holds a candidate for this selector, capped at
+ *    `RELEASE_PAGE_CAP.live` (3), and pick the highest candidate among the pages read. A repo
+ *    whose first page already holds one — every normal repo — still costs ONE list call.
+ * 3. Apply the channel floor (R6-10): one D1 read; and only when the pick is BELOW the floor,
+ *    one GitHub tag lookup for the floor's release. Still there (it sat on a page not read) ⇒
+ *    serve it. Gone ⇒ `release: null`, `regressed: true` — the caller 404s rather than
+ *    silently promoting an older build to `latest` with a public cache header.
+ *
+ * `tok` is passed in so `checkReleaseHealth` can call this with the token it already holds.
+ */
+export async function resolveMovingSelector(
+  env: Env,
+  db: Db,
+  cfg: ResolvedConfig,
+  tok: string,
+  sel: ChannelSelector,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<MovingResolution> {
+  const policy = resolutionPolicy(cfg);
+  const channelTags = await channelTagsFor(env, cfg, sel, now, fetchImpl);
+  // `pr-<n>` without workflow tags can never resolve; do not spend three pages learning that.
+  const listed =
+    sel.kind === "pr" && !channelTags
+      ? []
+      : await listReleases(tok, cfg.gh_owner, cfg.gh_repo, 100, fetchImpl, {
+          maxPages: RELEASE_PAGE_CAP.live,
+          // Every selector's match is a per-release predicate, so "the pages so far hold a
+          // match" is "the NEW page holds one": look at each release once here (R10-09 — each
+          // look may run an operator regex), not once per page read.
+          stopWhen: (_soFar, page) =>
+            resolveChannel(sel, page, channelTags, policy) !== null,
+        });
+  const offered = resolveChannel(sel, listed, channelTags, policy);
+
+  const floorName = floorChannelOf(sel, cfg);
+  const floor = floorName
+    ? await getChannelFloor(db, cfg.product, floorName)
+    : null;
+  if (!floor || !isBelowFloor(offered, floor)) {
+    return { release: offered, offered, floor, regressed: false, listed };
+  }
+  const held = await floorRelease(tok, cfg, floor, fetchImpl);
+  // The floor's release must still be something this selector would pick: a tag since added to
+  // `ignoreTags`, or re-flagged as a prerelease, no longer holds the stable channel up.
+  if (held && resolveChannel(sel, [held], channelTags, policy)) {
+    return { release: held, offered, floor, regressed: false, listed };
+  }
+  return { release: null, offered, floor, regressed: true, listed };
+}
+
+/**
+ * Look a floor's release up: by its recorded tag (one call), or — for a floor an operator
+ * lowered to a version the store never recorded — by the pinned `v<version>` / `<version>`
+ * lookup. `null` when it no longer exists.
+ */
+async function floorRelease(
+  tok: string,
+  cfg: ResolvedConfig,
+  floor: ReleaseChannelFloorRow,
+  fetchImpl: FetchImpl,
+): Promise<Release | null> {
+  if (floor.release_id) {
+    return getReleaseByTag(
+      tok,
+      cfg.gh_owner,
+      cfg.gh_repo,
+      floor.release_id,
+      fetchImpl,
+    );
+  }
+  try {
+    return await resolveRelease(
+      tok,
+      cfg.gh_owner,
+      cfg.gh_repo,
+      floor.version,
+      fetchImpl,
+    );
+  } catch (err) {
+    if (err instanceof NotFoundError) return null;
+    throw err;
+  }
 }
 
 /**

@@ -21,7 +21,7 @@ a product with no license service does not carry the gate.
 | `PolarisKeyCore`    | device principal, trust set, verified cache, clock floor, transport, discovery, bundles | —                     |
 | `PolarisKeyLicense` | the gate, activation, entitlements                                                      | Core                  |
 | `PolarisKeyConfig`  | the config document, layered resolution, device facts                                   | Core                  |
-| `PolarisKeyUpdate`  | Sparkle wiring. **macOS only**                                                          | Core, Sparkle ≥ 2.6.4 |
+| `PolarisKeyUpdate`  | Sparkle wiring. **macOS only**                                                          | Core, Sparkle ≥ 2.9.6 |
 | `PolarisKeyUI`      | the brandable SwiftUI drop-in gate                                                      | Core, License, Config |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
@@ -203,7 +203,9 @@ var body: some View {
 
 ## Updates (macOS, D-24)
 
-`PolarisKeyUpdate` wires **Sparkle ≥ 2.6.4** (the CVE-2025-0509 floor) to the product's own feed.
+`PolarisKeyUpdate` wires **Sparkle ≥ 2.9.6** to the product's own feed. That is the security floor:
+2.9.5 and 2.9.6 fixed a symlink attack in delta patching and a root privilege escalation, on top of
+CVE-2025-0509 (fixed in 2.6.4).
 It carries three facts from Polaris Key to Sparkle and refuses to do a fourth:
 
 ```swift

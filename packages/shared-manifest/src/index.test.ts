@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 // Used only to measure the quadratic path we deliberately turned OFF, as a control.
 import { parse as parseYaml } from "yaml";
 import {
+  compileManualChannelRegex,
+  DEFAULT_STABLE_TAG_PATTERN,
   issuerUrlProblem,
   isSafeIssuerUrl,
   isWebOrigin,
@@ -10,6 +12,7 @@ import {
   MAX_MANIFEST_DEPTH,
   normalizeAutoIssue,
   parseManifest,
+  validateIngestDocuments,
   validateManifestDocuments,
   webOriginProblem,
 } from "./index.js";
@@ -92,6 +95,52 @@ describe("manifest contract defaults", () => {
     expect(res.errors.join("\n")).toContain(
       "release.access values must be public, authenticated, or licensed.",
     );
+  });
+});
+
+describe("release candidate filter (stableTagPattern, ignoreTags)", () => {
+  const withFields = (fields: Record<string, unknown>) =>
+    parseManifest({
+      product: JSON.stringify(PRODUCT),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify({
+        release: { ...(release().release as object), ...fields },
+      }),
+    });
+
+  it("normalises undeclared fields to the default filter", () => {
+    const res = withFields({});
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.stableTagPattern).toBeNull();
+    expect(res.manifest.release?.ignoreTags).toEqual([]);
+  });
+
+  it("carries a declared pattern and de-duplicated ignore list", () => {
+    const res = withFields({
+      stableTagPattern: "^v\\d+\\.\\d+\\.\\d+$",
+      ignoreTags: ["channels", "packs", "channels"],
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.release?.stableTagPattern).toBe(
+      "^v\\d+\\.\\d+\\.\\d+$",
+    );
+    expect(res.manifest.release?.ignoreTags).toEqual(["channels", "packs"]);
+  });
+
+  it("the default pattern fits the declared-pattern cap and matches semver tags only", () => {
+    expect(DEFAULT_STABLE_TAG_PATTERN.length).toBeLessThanOrEqual(80);
+    const re = compileManualChannelRegex(DEFAULT_STABLE_TAG_PATTERN)!;
+    for (const tag of ["v1.2.3", "1.2.3", "v2.0.0-rc.1", "v1.0.0+build.5"])
+      expect(re.test(tag), tag).toBe(true);
+    for (const tag of ["channels", "packs", "v1.2", "v01.2.3", "release-1.2.3"])
+      expect(re.test(tag), tag).toBe(false);
+  });
+
+  it("rejects an unsafe pattern and malformed ignore entries", () => {
+    const res = withFields({ stableTagPattern: "(", ignoreTags: ["", "a b"] });
+    expect(res.ok).toBe(false);
   });
 });
 
@@ -1137,6 +1186,158 @@ describe("reserved product slugs", () => {
         schema: catalogWithSecretDelivery(),
       }).errors.map((e) => e.code),
     ).toEqual([]);
+  });
+});
+
+describe("ingest document presence (validateIngestDocuments)", () => {
+  const configOff = {
+    ...PRODUCT,
+    modules: { license: { enabled: true }, release: { enabled: true } },
+  };
+
+  it("requires the schema even when Config is off, where the author-side check does not", () => {
+    const docs = { product: configOff, release: release() };
+    expect(
+      validateManifestDocuments(docs).errors.map((e) => e.code),
+    ).not.toContain("missing_schema");
+
+    const res = validateIngestDocuments(docs);
+    expect(res.ok).toBe(false);
+    expect(res.errors.filter((e) => e.code === "missing_schema")).toEqual([
+      {
+        file: "schema",
+        path: "/",
+        code: "missing_schema",
+        message:
+          ".pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries.",
+      },
+    ]);
+  });
+
+  it("reports missing_schema once when Config is on", () => {
+    const res = validateIngestDocuments({ product: PRODUCT });
+    expect(res.errors.filter((e) => e.code === "missing_schema")).toHaveLength(
+      1,
+    );
+  });
+
+  it("accepts an empty catalog with Config off", () => {
+    const res = validateIngestDocuments({
+      product: configOff,
+      schema: { schemaVersion: 1, catalog: [] },
+      release: release(),
+    });
+    expect(res.errors).toEqual([]);
+    expect(res.ok).toBe(true);
+  });
+
+  it("does not shape-validate a Config-off catalog (link/resync behaviour is unchanged)", () => {
+    const schema = {
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "api.token",
+          kind: "config",
+          category: "General",
+          label: "API token",
+          schema: { type: "string" },
+        },
+      ],
+    };
+    const res = validateIngestDocuments({
+      product: configOff,
+      schema,
+      release: release(),
+    });
+    expect(res.errors.map((e) => e.code)).not.toContain(
+      "invalid_catalog_shape",
+    );
+    expect(
+      validateIngestDocuments({ product: PRODUCT, schema }).errors.map(
+        (e) => e.code,
+      ),
+    ).toContain("invalid_catalog_shape");
+  });
+
+  it("parseManifest returns the same message for a missing schema file", () => {
+    const res = parseManifest({
+      product: JSON.stringify(configOff),
+      release: JSON.stringify(release()),
+    });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors).toEqual([
+      "schema: .pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries.",
+    ]);
+  });
+
+  it("reports a missing product, and a missing schema alongside it", () => {
+    const only = parseManifest({
+      schema: JSON.stringify({ schemaVersion: 1 }),
+    });
+    expect(only.ok).toBe(false);
+    if (only.ok) return;
+    expect(only.errors).toEqual([
+      "product: .pkey/product is required at ingest.",
+    ]);
+
+    const both = parseManifest({ release: JSON.stringify(release()) });
+    expect(both.ok).toBe(false);
+    if (both.ok) return;
+    expect(both.errors.map((e) => e.split(":")[0])).toEqual([
+      "product",
+      "schema",
+    ]);
+  });
+});
+
+describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
+  const tiered = (tier: Record<string, unknown>) => ({
+    product: {
+      ...PRODUCT,
+      licensing: { tiers: [{ id: "standard", ...tier }] },
+    },
+    schema: { schemaVersion: 1, catalog: [] },
+  });
+
+  it("normalises a policyDeviceLimit tier with no expiry to a non-expiring licence", () => {
+    const res = parseManifest({
+      product: JSON.stringify(tiered({ policyDeviceLimit: 5 }).product),
+      schema: JSON.stringify({ schemaVersion: 1, catalog: [] }),
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.tiers[0]).toMatchObject({
+      policyDeviceLimit: 5,
+      policyExpiryDays: null,
+    });
+  });
+
+  it("warns, without erroring, for deviceLimit and maxOfflineDays on a tier", () => {
+    const res = validateManifestDocuments(
+      tiered({ deviceLimit: 5, maxOfflineDays: 14 }),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.errors).toEqual([]);
+    expect(res.warnings.filter((w) => w.code === "tier_ignored_field")).toEqual(
+      [
+        expect.objectContaining({
+          path: "/licensing/tiers/0/deviceLimit",
+          message: expect.stringContaining("policyDeviceLimit"),
+        }),
+        expect.objectContaining({
+          path: "/licensing/tiers/0/maxOfflineDays",
+          message: expect.stringContaining("policyExpiryDays"),
+        }),
+      ],
+    );
+  });
+
+  it("stays silent for the keys the normaliser reads", () => {
+    const res = validateManifestDocuments(
+      tiered({ policyDeviceLimit: 5, policyExpiryDays: 30 }),
+    );
+    expect(res.warnings.map((w) => w.code)).not.toContain("tier_ignored_field");
   });
 });
 
