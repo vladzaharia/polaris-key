@@ -552,18 +552,18 @@ unchanged (so they still map to the finding ids above) but every body now assert
 **fails**. It is the regression suite. 28/28 pass; `test/oidc.test.ts` + `test/oidcEdge.test.ts`
 (37 tests) pass.
 
-| Finding | Fixed                    | Proof                                                                                                                                 |
-| ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| R8-01   | ✅                       | `R8-01 › ATTACK: knowing only 'state'…`, `› …bypass of BOTH guards…`                                                                  |
-| R8-02   | ✅ (partial)             | `R8-02 › ATTACK: an unauthenticated GET turns a device_code…`, `› …ships no security headers…`, `› userCode is a case-folded PREFIX…` |
-| R8-03   | ❌ out of scope          | unchanged PoCs still assert the gap                                                                                                   |
-| R8-04   | ✅                       | `R8-04 › ATTACK: a second callback on the same state…`                                                                                |
-| R8-05   | ✅ (a–d)                 | four tests under `R8-05 claim trust`                                                                                                  |
-| R8-06   | ✅                       | four tests under `R8-06 unguarded JSON.parse…`                                                                                        |
-| R8-07   | ❌ deliberate            | unchanged PoC still asserts the fail-open                                                                                             |
-| R8-08   | ❌ out of scope (portal) | unchanged PoCs                                                                                                                        |
-| R8-09   | ❌ out of scope          | code-verified only                                                                                                                    |
-| R8-10   | ✅                       | `R8-01 › ATTACK: repeated /auth/poll guesses are never rate limited…`                                                                 |
+| Finding | Fixed                         | Proof                                                                                                                                 |
+| ------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| R8-01   | ✅                            | `R8-01 › ATTACK: knowing only 'state'…`, `› …bypass of BOTH guards…`                                                                  |
+| R8-02   | ✅ (residual closed by P1-06) | `R8-02 › ATTACK: an unauthenticated GET turns a device_code…`, `› …ships no security headers…`, `› userCode is a case-folded PREFIX…` |
+| R8-03   | ❌ out of scope               | unchanged PoCs still assert the gap                                                                                                   |
+| R8-04   | ✅                            | `R8-04 › ATTACK: a second callback on the same state…`                                                                                |
+| R8-05   | ✅ (a–d)                      | four tests under `R8-05 claim trust`                                                                                                  |
+| R8-06   | ✅                            | four tests under `R8-06 unguarded JSON.parse…`                                                                                        |
+| R8-07   | ❌ deliberate                 | unchanged PoC still asserts the fail-open                                                                                             |
+| R8-08   | ❌ out of scope (portal)      | unchanged PoCs                                                                                                                        |
+| R8-09   | ❌ out of scope               | code-verified only                                                                                                                    |
+| R8-10   | ✅                            | `R8-01 › ATTACK: repeated /auth/poll guesses are never rate limited…`                                                                 |
 
 ## R8-01 — `/auth/poll` device-id confusion (Critical)
 
@@ -607,14 +607,34 @@ src/oidc.ts` is now non-zero. Per-IP buckets: `authStart`/`authDeviceStart`/`aut
   carry a **second** bucket keyed on the `state`/`device_code` (40·60s and 5·60s), so one flow
   cannot be hammered from a botnet.
 
-**Not fixed (residual, asserted by the inverted PoCs):** `verificationUri ===
-verificationUriComplete` and `userCode` remaining a case-folded prefix of `deviceCode`.
-Generating an independent RFC 8628 user code changes the public device-flow contract
-(`/auth/device/start`'s response shape and the human lookup path) and is a product change, not a
-patch. Residual entropy is ~84 bits, so it is not brute-forceable today.
+**Residual, since fixed (P1-06, the RFC 8628 user-code page):** `verificationUri ===
+verificationUriComplete` and `userCode` remaining a case-folded prefix of `deviceCode` were left
+at audit time because fixing them changes the public device-flow contract. P1-06 made that
+change:
 
-**Not fixed:** the full security-header bundle (`content-security-policy`, `x-frame-options`,
-`x-content-type-options`) on the verify page. Two other lanes' PoCs assert their _absence_
+- `userCode` is eight characters from RFC 8628 §6.1's consonant alphabet
+  (`BCDFGHJKLMNPQRSTVWXZ`, 20⁸ ≈ 2.6 × 10¹⁰ codes, ~34.5 bits), drawn independently of
+  `deviceCode`, still shown as `XXXX-XXXX`.
+- It is indexed as `p:<slug>:device-user:<hashKey(normalised code, KEY_HASH_PEPPER)>` → the
+  device code, with the flow's 600 s TTL, regenerated on collision and deleted with the flow
+  when a poll returns `ready` or `timeout`. No KV key name holds a raw user code (R12-04).
+- `verificationUri` is `<origin>/<p>/identity/auth/device` (the code-entry page) and
+  `verificationUriComplete` adds `?user_code=XXXX-XXXX` for a QR code. Neither carries the device
+  code.
+- `GET`/`POST /<p>/identity/auth/device` looks the code up server-side and renders the same
+  confirmation page, whose form posts `user_code` + `csrf` — never the device code — back to the
+  same route. Confirmation is the shared `confirmDeviceFlow` (Origin check, single-use CSRF, 303
+  with `no-referrer`/`no-store`). Unknown, expired and malformed codes share one generic 404 page.
+- A per-IP `authDeviceEntry` bucket (30·60s, fail-closed); deliberately no product-wide bucket,
+  which one attacker could exhaust to lock every player out.
+- `/auth/device/verify?device_code=` is unchanged, for flows in flight across the deploy.
+
+The two R8-02 PoCs that asserted the residual now assert the fix
+(`test/attack/R8-oidc.test.ts`), and `test/oidcEdge.test.ts` covers the page.
+
+**Not fixed at audit time (since fixed by R1-09's `staticHtmlSecurityHeaders`):** the full
+security-header bundle (`content-security-policy`, `x-frame-options`, `x-content-type-options`) on
+the verify page. Two other lanes' PoCs assert their _absence_
 (`R1-07b`, `R9-12`); adding them belongs with that remediation so the header policy lands once,
 from `src/securityHeaders.ts`, rather than being hand-rolled here.
 

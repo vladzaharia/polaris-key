@@ -181,6 +181,43 @@ that publish deltas (P4-03, P4-17) own the fix: product-scoped or content-named 
 granting a delta ref only under the earn-a-ref rule above, so a squatted key is never served
 under the victim product.
 
+### The device-code user-code page (P1-06)
+
+**What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
+console, a game or a CLI sends the player to. The player types (or scans) an eight-character
+user code; the page looks it up server-side and shows a confirmation page naming the product and
+the device; one button press sends the browser to the IdP. The secret `deviceCode` — which,
+with the device id, is what a poller redeems for a device token — never appears in a URL, a page
+or a form on this path. The user code is drawn independently of it, so learning a user code
+(over a shoulder, from a stream, from a photo of a QR code) gives nothing to poll with. Its KV
+index is keyed by a peppered hash (R12-04), lives for the flow's 600 s and is deleted with it.
+
+**Brute force (RFC 8628 §5.1).** The code space is 20⁸ ≈ 2.56 × 10¹⁰ (RFC 8628 §6.1's
+consonant alphabet). The page allows 30 requests per minute per IP, fail-closed, so one address
+gets at most 300 guesses in a code's 600-second life: with N codes live at once, a single
+address hits one with probability about 300·N / 2.56 × 10¹⁰ — 1.2 × 10⁻⁵ even with 1,000 live
+flows. A botnet scales that linearly with its addresses (10,000 addresses against 1,000 live
+flows is roughly 0.12 per 10-minute window). What a hit buys is bounded: it can render and
+confirm SOMEONE ELSE's flow and sign it in under the attacker's own IdP identity (the device ends
+up on the attacker's account, not the reverse), or re-render the page to invalidate the real
+user's single-use CSRF token so their click 403s and they reload. It cannot obtain a device
+token, a license, the device code, or the victim's identity. There is deliberately no
+product-wide bucket: one attacker could exhaust it and lock every player of a product out of
+sign-in.
+
+**Remote phishing (RFC 8628 §5.4).** An attacker can start a flow on their own device and send a
+victim the `verificationUriComplete` link; if the victim confirms and signs in, the attacker's
+device receives the victim's license. The control is the confirmation page itself, which a QR
+scan still lands on: it names the product and shows the device label and user code, and nothing
+happens without a button press. The device label is `deviceName` from `/device/start`, which is
+client-supplied display text, so a phisher can make it say anything. This residual is inherent
+to the device-authorization grant; it is the same one every RFC 8628 deployment carries.
+
+**Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
+flight across the deploy. Confirmation on both routes is one function: an `Origin` check, a
+single-use CSRF token, and a `303` to the IdP with `no-referrer` and `no-store`. The confirmation
+page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
