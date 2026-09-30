@@ -59,11 +59,13 @@ and devices.
 
 **In:**
 
-- **Project skeleton** `sdks/godot/`: `project.godot` (a dummy main scene, which templates
-  require, and `application/run/main_loop_type="PKeyTestRunner"`), `.gitignore` (`.godot/`,
-  `build/`), `export_presets.cfg` with one preset `Conformance (Linux)` (`include_filter="*.json"`,
-  `binary_format/embed_pck=false`, export path under `build/`), and a short contributor
-  `README.md`.
+- **Project skeleton** `sdks/godot/`, with the exact settings in plan §5:
+  - `project.godot`: a dummy main scene, which templates require,
+    `application/run/main_loop_type="PKeyTestRunner"` and `run/flush_stdout_on_print=true`;
+  - `.gitignore` (`.godot/`, `build/`);
+  - `export_presets.cfg` with one preset `Conformance (Linux)` (`include_filter="*.json"`,
+    `binary_format/embed_pck=false`, export path under `build/`);
+  - a short contributor `README.md`.
 - **Move, with history** (`git mv`, `.uid` sidecars included) from
   `docs/research/2026-09-29-godot-omniplatform/prototype/`:
   - `addons/polaris_key/crypto/sha512.gd` → `addons/polaris_key/core/crypto/sha512.gd`;
@@ -74,7 +76,9 @@ and devices.
     `tests/suite_jws.gd` → `tests/suite_conformance.gd` (both rewritten below).
 - **Rename** the global classes to the SDK prefix: `PKSha512` → `PKeySha512`, `PKEd25519Fast` →
   `PKeyEd25519`, `PKEd25519Ref` → `PKeyEd25519Ref`, `PKJws` → `PKeyJws`, `PKTestRunner` →
-  `PKeyTestRunner`. No behaviour change.
+  `PKeyTestRunner`.
+  - There is no behaviour change, except one, in its own commit: `PKeyJws` decodes the escape
+    `\u0000` as U+FFFD on every engine (WIRE-CONTRACT-V3 §10, plan §5).
 - **Addon shell:** `plugin.cfg` (`name="Polaris Key"`, `version="0.1.0"`), `plugin.gd`
   (`@tool extends EditorPlugin`, empty), `polaris_key.gd` with `const SDK_VERSION := "0.1.0"`.
 - **Runner:** `tests/runner.gd` (`class_name PKeyTestRunner extends SceneTree`). It runs suites
@@ -82,16 +86,26 @@ and devices.
   a plain `SceneTree`, so the project still runs scenes. It prints the engine version, debug or
   release, editor or template, then one line per case and a summary, and quits with exit code 1
   on any failure. Suites may be coroutines. `ci` is the CI set.
+  - Suites follow the contract in plan §5: `run(t, args) -> bool`, explicit `t.check` calls and a
+    closing coverage check, and never `assert`.
+  - The rule is needed because release templates skip GDScript runtime error checks.
 - **Conformance suite** `tests/suite_conformance.gd`: every `jwsCases` entry from
   `res://tests/corpus/v2/cases.json`, asserting the verdict, the `kid` and the decoded document
   (the prototype's derived `corpus_jws.json` and `gen_corpus.mjs` are not carried over).
 - **Corpus mirror:** `GODOT_V2_RESOURCES` in `tools/sign-corpus.ts` →
-  `sdks/godot/tests/corpus/v2/`, written and `--check`-guarded for all three files exactly like
-  Swift's; the header comment updated.
-- **One entry point** `sdks/godot/tools/run_tests.sh`: `--import`, then the `ci` suites on
-  `$GODOT_BIN`; when `$GODOT_TEMPLATE` is set, `--export-pack "Conformance (Linux)"`, copy the
-  template binary beside the pack as `build/pkey_conformance.x86_64`, and run it. Root
-  `package.json` `test:all` calls it.
+  `sdks/godot/tests/corpus/v2/`.
+  - It is written and `--check`-guarded for all three files, exactly like Swift's, through one list
+    of corpus targets.
+  - The header comment is updated.
+  - The generator also writes `expect.docNulReplaced` for the one U+0000 case, with a
+    WIRE-CONTRACT-V3 §10 entry (plan §2 and §4).
+- **One entry point**, `sdks/godot/tools/run_tests.sh`:
+  - `--import`, then the `ci` suites on `$GODOT_BIN`;
+  - when `$GODOT_TEMPLATE` is set: `--export-pack "Conformance (Linux)"`, copy the template binary
+    beside the pack as `build/pkey_conformance.x86_64`, and run it;
+  - every step runs under a log watchdog and a timeout (plan §5).
+  - Root `package.json` `test:all` calls it.
+  - CI fetches the engines with `tools/fetch_godot.sh`, checked against `tools/godot.sha512`.
 - **CI job `godot`** in `.github/workflows/ci.yml`: editor legs on 4.7.2 and the latest 4.4.x,
   a template leg on the official 4.7.2 `linux_release.x86_64`. Cache the downloads.
 - **Corpus, runner and gate text** (the rows marked P1-01 in the inventory below), then
@@ -122,13 +136,17 @@ resolved in [`plans/P1-01.md`](../plans/P1-01.md) §8.
 1. **`valid-nul-byte-in-string`.** A Godot `String` cannot hold U+0000; the verdict is right but
    the decoded document differs (notes/A5 §2). Measured 2026-09-30: when both sides are parsed by
    Godot, the comparison still passes, vacuously. 4.7.2 turns the U+0000 into U+FFFD on both
-   sides, and 4.4.1 drops it from both (PARITY §6.3 #4). WIRE-CONTRACT-V3 §10 forbids local tolerances and
-   rule 1 forbids weakening runners. Options: (a) a WIRE-CONTRACT-V3 §10 ledger entry plus a
-   generator-emitted, per-case annotation that the decoded string is lossy in Godot, which the
-   Godot runner honours for that one case only while still asserting the verdict; (b) the
-   contract forbids U+0000 in signed documents and the case flips to reject in every SDK (an
+   sides, and 4.4.1 drops it from both (PARITY §6.3 #4). WIRE-CONTRACT-V3 §10 forbids local
+   tolerances and rule 1 forbids weakening runners. Options: (a) a WIRE-CONTRACT-V3 §10 ledger
+   entry plus a generator-emitted, per-case annotation that the decoded string is lossy in Godot,
+   which the Godot runner honours for that one case only while still asserting the verdict; (b)
+   the contract forbids U+0000 in signed documents and the case flips to reject in every SDK (an
    all-languages behaviour change). **Recommend (a).** With (a) the plan must confirm that the
    Node, Python, Swift and React runners ignore the new field.
+   - **Resolved (plan §8):** (a), made exact rather than lossy.
+     - The annotation is `expect.docNulReplaced`, the U+FFFD form of each such string.
+     - `PKeyJws` decodes `\u0000` as U+FFFD on every engine.
+     - The Godot runner asserts those strings exactly, so 4.4.1's dropped NUL fails.
 2. **Mirror path** `sdks/godot/tests/corpus/v2/` (recommended), not inside the addon, which
    would ship 1.4 MB of vectors into games.
 3. **CI engines:** 4.4.x editor (floor, README decision 11), 4.7.2 editor, 4.7.2 release
@@ -139,21 +157,30 @@ resolved in [`plans/P1-01.md`](../plans/P1-01.md) §8.
    Range (notes/A5 §1), or cache the full set; either is fine, record which.
 
 **Corpus regeneration and SDKs that follow.** No vector changes, `corpusVersion` stays 2 and no
-SDK behaviour changes. `pnpm gen:corpus` gains a second mirror. Under option (a), the one
-annotated case is regenerated and every runner is checked to ignore the field. From this work
-package on, every corpus change (P0-04, P1-09, P1b-04, P3-02, …) must keep the Godot job green,
-and its plan must name Godot.
+shipped SDK changes behaviour (only the unreleased Godot `PKeyJws` gains the U+0000 rule).
+`pnpm gen:corpus` gains a second mirror. Under option (a), the one annotated case is regenerated
+and every runner is checked to ignore the field. From this work package on, every corpus change
+(P0-04, P1-09, P1b-04, P3-02, …) must keep the Godot job green, and its plan must name Godot.
 
 **Pitfalls:**
 
-- A script parse error does not fail anything by exit code (measured on 4.4.1 and 4.7.2):
-  - `--import` exits 0 and prints nothing;
-  - `--check-only` exits 0 on 4.7.2;
-  - running the project **hangs**: the runner fails to load, and Godot falls back to a plain
-    `SceneTree` that runs the main scene forever.
+- A script parse error is not reliably reported by exit code (measured on 4.4.1 and 4.7.2):
+  - `--import` exits 0. 4.4.1 prints the error; 4.7.2 prints nothing.
+  - `--check-only` exits 0 on 4.7.2.
+  - When the runner (the main loop) fails to load, `main/main.cpp` calls `OS::alert()`, then
+    returns `EXIT_FAILURE`. On macOS that alert is a modal `NSAlert`, which nobody can dismiss
+    under `--headless`, so the run **hangs**. On Linux it prints and exits 1. The main scene never
+    loads, so a scene-based guard cannot help.
 
-  So the CI step must fail when the log contains `SCRIPT ERROR` or `Parse Error`, and it needs a
-  timeout. The import step must not be `|| true`. The plan adds a boot guard and a watchdog.
+  So every step must fail when the log contains `SCRIPT ERROR`, `Parse Error`,
+  `Failed to load script`, `Cannot get class` or `Invalid MainLoop`, and it needs a timeout. The
+  import step must not be `|| true`. The plan's watchdog does this.
+
+- Release templates skip GDScript runtime error checks (measured on 4.7.2): a method call on null,
+  a missing key or index read and `assert(false)` all continue silently. The editor aborts the
+  function instead. Suites therefore use explicit checks and a coverage check, never `assert`.
+- Release templates block-buffer stdout, so set `application/run/flush_stdout_on_print=true` to
+  keep logs in order.
 
 - `class_name` globals need `--import` first (notes/E4 §7).
 - The editor and the template use the same invocation, because the runner is the main loop:
@@ -162,8 +189,9 @@ and its plan must name Godot.
 - Negative shifts in constant expressions are parse errors in debug builds (notes/A5 §2(f)).
   The rename must not reformat the crypto code.
 - Keep 4.4 syntax: typed dictionaries are fine; `@abstract` and variadic arguments are not.
-- The moved `tests/vectors/*.json` are compact JSON: add them to `.prettierignore` (as the
-  prototype's vectors are) or format them; `pnpm format` checks `**/*.json`.
+- The moved `tests/vectors/*.json` are not prettier-formatted: `ed25519.json` uses one-space
+  indentation, and `sha512.json` uses Python's `json.dumps` style. `pnpm format` checks `**/*.json`,
+  so the `.prettierignore` entry moves with them and the files stay byte-for-byte.
 - The generated mirror is prettier-formatted by the generator, byte-identical to the source.
 
 **Inventory: every place that enumerates the language set** (notes/A2 §5.4, re-checked against
@@ -172,12 +200,12 @@ rest once the SDK ships.
 
 | Where                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Owner             |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `AGENTS.md` repo map (`:15-37`, add `sdks/godot/`), standalone toolchains (`:53-54`), green gate (`:77-100`), rule 1 (`:107-110`, the mirror)                                                                                                                                                                                                                                                                                                                                                                                                                          | P1-01             |
-| `CONTRIBUTING.md:12-17` (setup), `:42-51` (gate, `test:all`), `:84` ("four runners, the Swift mirror")                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | P1-01             |
-| `packages/docs/src/content/docs/build/wire/corpus.md:3,9,13-15,22-35,67-84,94,103,130-131,146`, plus a `docNulPointers` paragraph (plan §6)                                                                                                                                                                                                                                                                                                                                                                                                                            | P1-01             |
-| `packages/docs/src/content/docs/contribute/corpus.md:3,11,31,51-66,83`; `agents/conventions.md:58,86`; `contribute/waves.md:66` (drift-gate row); `contribute/setup.md:3,9,18,33-62` (toolchain, gate, `test:all`); `contribute/layout.md:9,27-29` (repo map); the corpus and setup rows `build/wire/index.md:78` and `contribute/index.md:26,29`                                                                                                                                                                                                                      | P1-01             |
+| `AGENTS.md` repo map (`:15-37`, add `sdks/godot/`), standalone toolchains (`:53-54`), green gate (`:77-100`), rule 1 (`:107-111`, the mirror)                                                                                                                                                                                                                                                                                                                                                                                                                          | P1-01             |
+| `CONTRIBUTING.md:12-17` (setup), `:29-52` (gate, `test:all`), `:83-84` ("four runners, the Swift mirror")                                                                                                                                                                                                                                                                                                                                                                                                                                                              | P1-01             |
+| `packages/docs/src/content/docs/build/wire/corpus.md:3,9,13-15,22-35,67-84,94,103,130-131,146`, plus a `docNulReplaced` paragraph (plan §6)                                                                                                                                                                                                                                                                                                                                                                                                                            | P1-01             |
+| `packages/docs/src/content/docs/contribute/corpus.md:3,11,17-33,51-66,83`; `agents/conventions.md:28-44,58,86`; `contribute/waves.md:66` (drift-gate row); `contribute/setup.md:3,9,18,33-62` (toolchain, gate, `test:all`); `contribute/layout.md:9,27-29` (repo map); the corpus and setup rows `build/wire/index.md:78` and `contribute/index.md:26,29`                                                                                                                                                                                                             | P1-01             |
 | `packages/docs/scripts/gen-reference.mjs:380-382` → regenerate `reference/corpus.mdx`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | P1-01             |
-| `tools/sign-corpus.ts:1-13` (`:2119` is historical and stays); `conformance/runners/node/corpusV2.test.ts:1-5`; root `package.json` `test:all`; `.github/workflows/ci.yml`                                                                                                                                                                                                                                                                                                                                                                                             | P1-01             |
+| `tools/sign-corpus.ts:1-13` (`:2119` is historical and stays); `conformance/runners/node/corpusV2.test.ts:1-5`; root `package.json` `test:all`; `.github/workflows/ci.yml`; `.prettierignore` (the vectors entry); `packages/worker/test/attack/R12-secrets.test.ts:689-695` (add `sdks/godot/README.md` to the READMEs that must not publish a corpus key)                                                                                                                                                                                                            | P1-01             |
 | `conformance/runners/node/fingerprint.test.ts:4-6` and `build/wire/corpus.md:85-89` (the fingerprint runners), once Godot runs `deviceIds`                                                                                                                                                                                                                                                                                                                                                                                                                             | P1-02             |
 | `AGENTS.md:8-9,118`; `CONTRIBUTING.md:3-4,65,81`; `README.md:4,58`; `SECURITY.md:55`; `docs/security/WIRE-CONTRACT-V3.md:5`; `docs/PRIVACY.md:31`; `.husky/pre-commit` comment                                                                                                                                                                                                                                                                                                                                                                                         | P1-12             |
 | docs site: `index.mdx:3`, `start/index.md:9,99-103`, `start/concepts.md:10`, `build/index.md:16,26`, `build/sdks/index.md` (+ new `godot.mdx`), `build/wire/index.md:26`, `build/wire/envelope.md:19`, `contribute/index.md:8-9,28`, `contribute/waves.md:3,29,35`, `contribute/setup.md:79`, `agents/index.md:57-58`, `admin/bundles.md:11`                                                                                                                                                                                                                           | P1-12             |
@@ -211,10 +239,11 @@ Historical documents (`docs/security/2026-08-26-security-audit.md`, `findings/*`
       byte-identical to `conformance/corpus/v2/`; changing one byte in the Godot mirror makes
       `pnpm gen:corpus -- --check` exit 1 (shown in the PR description).
 - [ ] On the 4.7.2 editor, `-- --pkey-test ci` reports `jwsCases` 36/36 (verdict, `kid` and
-      decoded document, per the plan's NUL decision), SHA-512 24/24 and Ed25519 26/26 for both
+      decoded document, with `valid-nul-byte-in-string` matching `docNulReplaced` exactly),
+      SHA-512 24/24 and Ed25519 26/26 for both
       `PKeyEd25519` and `PKeyEd25519Ref`, and exits 0; a corrupted vector makes it exit 1.
 - [ ] The same result from the exported pack on the official 4.7.2 Linux release template.
-- [ ] The same result on the 4.4.x editor, or the plan's recorded decision on the floor.
+- [ ] The same result on the 4.4.1 editor (the floor stays 4.4; plan §8 decision 3).
 - [ ] The `godot` CI job is green on the PR and fails on a deliberately introduced parse error.
 - [ ] `pnpm --filter @polaris-key/docs gen:check` passes and the corpus pages name the Godot
       runner and mirror.
@@ -242,7 +271,9 @@ mise exec node@22 -- pnpm format
   - `polaris_key.gd` has no `class_name`: `PolarisKey` is the name of the autoload that P1-02
     registers.
   - Until then, read the constant with `preload("res://addons/polaris_key/polaris_key.gd").SDK_VERSION`.
-- **Runner contract:** `-- --pkey-test <suite>[,<suite>]`; each later work package registers its
+- **Runner contract:** `-- --pkey-test <suite>[,<suite>]`. A suite is
+  `func run(t: PKeyTestContext, args: PackedStringArray) -> bool`, reporting through `t.check` and
+  ending with a coverage check. Each later work package registers its
   suite in the `ci` set, and CI and `tools/run_tests.sh` stay the only entry points.
 - Web, Android and iOS runs (a web export under headless Chromium, device runs) are not owned by
   any work package yet; S-04 measures performance only.
