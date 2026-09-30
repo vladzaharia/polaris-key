@@ -83,6 +83,7 @@ environment-variable JSON parsing is exactly the kind of rule languages disagree
 - `corpusInventory()` extended to list the new files, then `reference/corpus.mdx` regenerated.
 - Manifests updated: `core.headers` implemented; `config.resolve` and `config.list` proven by
   `config-matrix.json`.
+- **Wave-1 sync:** **Headers proof must become enforceable (from P1b-01).** The parity checker never compares a registry proof's `wp` against the program, so `core.headers`'s proof naming this package stays silently unenforced until `headers.json` exists. Create it, and have `tools/parity-check.ts` rule 4 also check proof-level `wp` (a proof whose `wp` is `done` with no file is an error).
 
 **Out** (and where it belongs instead):
 
@@ -190,6 +191,7 @@ whatever P1-01 settled.
 - [ ] `parity.json` manifests are updated for every SDK this changes, and `pnpm parity:check`
       passes.
 - [ ] The green gate passes (`AGENTS.md`).
+- [ ] `core.headers` has an enforced corpus proof; `pnpm parity:check` fails if a `done` package's proof file is missing.
 
 ## Verify
 

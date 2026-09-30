@@ -1,16 +1,16 @@
-# P2-01 Core blob store on R2: content-addressed, bucket-locked, on a separate domain
+# P2-01 Core blob store on R2: content-addressed, bucket-locked, on a bytes host (dl.plrs.im)
 
-| Field       | Value                                                                                                                                                                                                                |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                                                                                                     |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                 |
-| Depends on  | none                                                                                                                                                                                                                 |
-| Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-05](P2-05-release-routes.md), [P6-04](P6-04-hosted-web.md)                                                                                                                  |
-| Role        | `pkey-implementer`                                                                                                                                                                                                   |
-| Plan mode   | no                                                                                                                                                                                                                   |
-| Gates       | threat model (`docs/security/THREAT-MODEL.md`); `wrangler.toml` bindings and routes; D1 migration + `TABLE_OWNERS` (two Core tables; not in the graph's gates); `test:workerd` (new R2 lane); `docs/DEPLOYMENT.md`   |
-| Human input | ✋ Cloudflare R2 buckets per environment (prod, staging, dev) with the lock and lifecycle rules below; a **separate registrable domain** for bytes with a custom-domain route; `wrangler deploy` of the new bindings |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth and publishing                                                                                                                                                                                                                                                                           |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                                       |
+| Depends on  | none                                                                                                                                                                                                                                                                                                       |
+| Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-05](P2-05-release-routes.md), [P6-04](P6-04-hosted-web.md)                                                                                                                                                                                                        |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                         |
+| Gates       | threat model (`docs/security/THREAT-MODEL.md`); `wrangler.toml` bindings and routes; D1 migration + `TABLE_OWNERS` (two Core tables; not in the graph's gates); `test:workerd` (new R2 lane); `docs/DEPLOYMENT.md`                                                                                         |
+| Human input | ✋ Cloudflare R2 buckets per environment (prod, staging, dev) with the lock and lifecycle rules below; the bytes host `dl.plrs.im` (owner decision: same-site with the console, compensating controls; not a separate registrable domain) with custom-domain routes; `wrangler deploy` of the new bindings |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                  |
 
 > **Corrections from implementation (2026-09-30).** The code is the fact; where this brief and
 > the branch disagree, the branch wins.
@@ -21,7 +21,7 @@
 >   `dl-dev.plrs.im`), never an R2 domain. Compensations, recorded in
 >   `docs/security/THREAT-MODEL.md` §3 and pinned in `test/bytesHost.test.ts`: every
 >   bytes-host response sets `X-Content-Type-Options: nosniff` and `Content-Security-Policy:
-sandbox; …`; no HTML, XHTML, SVG, XML, JS, JSON or `text/*` type is ever served there;
+sandbox; …`; no HTML, XHTML, SVG, XML, JS or `text/*` type is ever served there, and JSON only as the platform error body at status >= 400;
 >   `Content-Disposition: attachment` unless the type is allowlisted and the route asks for
 >   `inline`; no cookie is read or set on the host; console session cookies are host-only.
 > - **Real resources exist.** Buckets `polaris-key-blobs-prod|-staging|-dev` were created with

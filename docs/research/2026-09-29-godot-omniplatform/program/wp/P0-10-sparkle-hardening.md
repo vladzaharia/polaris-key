@@ -100,7 +100,7 @@ of an isolate out-of-memory crash, and an unverifiable asset fails closed with a
 ## Steps
 
 1. Swift floor, comments, README and docs.
-2. `streamingEd25519Verify(publicKey, signature, body: ReadableStream, maxBytes)` in
+2. `streamingEd25519Verify(publicKey, signature, body: ReadableStream, maxBytes)` (landed as `streamingEd25519Check`/`streamingEd25519Verify` in `services/release/ed25519Stream.ts`, called from `sparkle.ts`) in
    `services/release/sparkle.ts` (or a sibling module in the same service).
 3. Switch `verifySparkleSignature` to it; raise the TTL; remove the buffering path.
 4. Tests in Node and a smoke test under `test:workerd` (the `node:crypto` path differs).
@@ -131,7 +131,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 
 ## Hand-off
 
-P3-09 (WinSparkle and Sparkle feed extensions) reuses the streaming verifier for any EdDSA
-signature over a large artifact. P5-07 (the macOS Sparkle bridge for Godot) relies on the 2.9.6
+P3-09 (WinSparkle and Sparkle feed extensions) reuses `streamingEd25519Check` / `streamingEd25519Verify` (`services/release/ed25519Stream.ts`) for any EdDSA
+signature over a large artifact. As landed, a final negative verdict is also memoised (`"0"`, `NEGATIVE_VERIFY_CACHE_TTL_SECONDS`, 24 h, same `sparkle-sig` key) beyond this brief's positive 30-day TTL; reusers must know negatives are cached. The verifier is stricter than WebCrypto (it refuses small-order public keys); the DoS residual (no single-flight, an aborted request never writes a verdict, up to 2 GiB per miss, bounded per IP) is accepted and owned by P3-03 (R10-05 addendum, R6-03). P5-07 (the macOS Sparkle bridge for Godot) relies on the 2.9.6
 floor. When done:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-10 done`.

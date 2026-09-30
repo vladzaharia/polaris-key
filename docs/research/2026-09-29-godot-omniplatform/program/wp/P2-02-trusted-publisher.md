@@ -41,7 +41,7 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
 - [notes/E5 §2.1–§2.3 and §4.5](../../notes/E5-frontier-tech.md#22-github-actions-oidc-as-the-ci-polaris-credential)
   (the claim list, the verification recipe, immutable releases, the upload flow);
   [notes/E7 §6](../../notes/E7-server-ci-tools.md#6-godot-ci-tooling-and-whether-to-ship-polaris-keypublish).
-- [P2-01](P2-01-blob-store.md) hand-off: `stagingKey`, `verifyStaged`, `promote`, `isStored` (`blob_objects`).
+- [P2-01](P2-01-blob-store.md) hand-off: `stagingKey`, `verifyStaged`, `promote` and `referencedKeys(db, product, keys)` (landed, `core/blobs.ts`). `present` comes from `referencedKeys`, never from `isStored`, `storedKeys` or `blob_objects`: a ref is earned per product (THREAT-MODEL §3).
 - Code: `packages/worker/src/admin/auth.ts:16` and `services/identity/oidc.ts:23` (existing `jose`
   JWKS use), `src/githubWebhook.ts` (KV replay guard pattern), `src/crypto.ts:107` (`hashKey`
   with `KEY_HASH_PEPPER`, as `pkeyt_` tokens use it at `src/core/devices.ts:383`),
@@ -80,6 +80,11 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
   most 90 days out). Audited.
 - Threat model: CI OIDC claims as a semi-trusted input (§5), `pkeyci_` tokens and R2 temporary
   credentials as assets (§2), a new AT-3 branch ("publish through a trusted publisher").
+- **Wave-1 sync:** **Ticket credential scope.** CI's temporary R2 credentials must be read-write on `staging/<product>/<ticketId>/` only, with no copy source outside that prefix and no read on any locked or other-product prefix. `promote`'s stored-checksum path never re-hashes staged bytes, so a CopyObject from `gated/…` into the ticket prefix would carry another product's checksum across (THREAT-MODEL §3); add this to the threat-model text.
+- **Wave-1 sync:** **Earn-a-ref product check.** `promote` takes no product. Compare `parseKey(from).product` to the ticket's product before calling it, or add an expected-product parameter to `core/blobs.ts` `promote` that refuses a mismatch with `bad_key` (small Core change, in scope).
+- **Wave-1 sync:** **Never surface `alreadyStored` to CI.** It and the short-circuit timing are a cross-tenant existence oracle for files held by other tenants; record it in THREAT-MODEL §3 as a residual risk and answer tickets and submits the same whether or not the object existed.
+- **Wave-1 sync:** **Multipart checksums.** `verifyStaged` trusts `checksums.sha256` whenever present. Confirm against real R2 what the binding exposes for multipart uploads (the AWS CLI goes multipart above 8 MB). If it is a composite hash-of-parts, valid uploads fail closed with `digest_mismatch`; then require single-part uploads or verify by streaming.
+- **Wave-1 sync:** **Real-binding coverage.** The `alreadyStored` promote path runs only against the Node fake; add a `test:workerd` case (in workerd `src.body` is locked by `pipeThrough(FixedLengthStream)`).
 
 **Out** (and where it belongs instead):
 
@@ -123,8 +128,9 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
   (Worker secrets, proposed `R2_ACCOUNT_ID`, `R2_PARENT_ACCESS_KEY_ID`,
   `R2_PARENT_SECRET_ACCESS_KEY`), scoped to `staging/<product>/<ticketId>/` with object read-write
   and expiring with the token. Cloudflare supports minting them locally by signing a JWT with the
-  parent secret. `present: true` marks objects already in the store (one query on P2-01's
-  `blob_objects`, not an R2 `head` per object), so CI skips them (P4-03 relies on this). A ticket
+  parent secret. `present: true` marks objects this product already references (one
+  `referencedKeys(db, product, keys)` query over `blob_refs`, not `blob_objects` and not an R2 `head`
+  per object), so CI skips them (P4-03 relies on this). A ticket
   is redeemed once.
 - **`nextSeq`** is the deliverable's current highest `seq` + 1 at issue time. P3-01's plan
   recommends that CI assigns `seq` from the ticket; P2-04 enforces monotonicity.
@@ -162,6 +168,8 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
 - [ ] Rule 10: `routeCoverage` passes with the three paths; `docs gen:check` is clean.
 - [ ] The threat model lists the new input, assets and attack branch.
 - [ ] The green gate passes (`AGENTS.md`).
+- [ ] Upload-credential tests show the minted credentials cannot read or copy from any prefix outside `staging/<product>/<ticketId>/`, and a promote from another product's staging key is refused with `bad_key`.
+- [ ] A resubmit of an already-stored object answers CI identically to a first submit (no `alreadyStored` or timing signal).
 
 ## Verify
 
