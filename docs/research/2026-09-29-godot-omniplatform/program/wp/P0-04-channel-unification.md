@@ -26,7 +26,7 @@ in Node, React/`client-core`, Python and Swift.
 The licence gate knows `stable | staging | pr | dev` (`packages/worker/src/core/gate.ts:51`,
 `normalizeChannel` at `gate.ts:82-88`) and refuses any other header value with
 `channel-not-entitled` (`gate.ts:144-148`). Release knows `stable | beta | pr-N | <manual>`
-(`services/release/channels.ts:22,44-64`). So `X-PKey-Channel: beta` is refused, and there is no
+(`services/release/channels.ts:28,50-70`). So `X-PKey-Channel: beta` is refused, and there is no
 coherent beta programme across License and Release (report
 [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) issue #2, rated High).
 The report decided the fix ([§11](../../README.md#11-decisions-needed) decision 5): **unify on
@@ -43,15 +43,15 @@ would have to send `staging` to pass ([notes/A2 §1.9](../../notes/A2-sdk-port.m
   (`channelAllowed`: the Release-side rule, `pr-N` allowed by `pr`), `services/release/channels.ts`,
   `services/release/access.ts:85-103` (`entitledSelectorFor`), `services/release/surfaces.ts:95`
   and `install.ts:128-138` (the installer advertises `staging`, which Release does not know).
-- Clients: `packages/client-core/src/semver.ts:51-57`, `sdks/python/src/polaris_key/core/semver.py:86-95`,
+- Clients: `packages/client-core/src/semver.ts:51-58`, `sdks/python/src/polaris_key/core/semver.py:86-95`,
   `sdks/swift/Sources/PolarisKeyCore/Semver.swift:14-19,76-80` (public `enum Channel`),
   `sdks/swift/Sources/PolarisKeyCore/CoreContext.swift:225`, `sdks/swift/Sources/PolarisKeyUpdate/UpdateFeed.swift:96-104`
   (`allowedChannels(from:)`; `:113-125` is `feedHeaders`),
   `packages/sdk-node/src/core/context.ts:181,292`.
 - Corpus: `tools/sign-corpus.ts:1632-2115` (gate-matrix v2: carried rows are frozen, new rows
   are appended in `buildGateMatrixV2`), the runner ports in
-  `conformance/runners/node/corpusV2.test.ts:322-420`, `sdks/python/tests/test_gate_matrix.py:72-99`,
-  `sdks/swift/Tests/PolarisKeyTests/GateMatrixTests.swift:75-101`.
+  `conformance/runners/node/corpusV2.test.ts:327-426`, `sdks/python/tests/test_gate_matrix.py:73-100`,
+  `sdks/swift/Tests/PolarisKeyTests/GateMatrixTests.swift:76-102`.
 - Catalog and console: `products/djdl/catalog.json` (the `channels` flag, enum `stable, staging, pr`),
   `packages/admin/src/views/licenses/shared.tsx:84` (`CHANNELS = ["stable", "beta", "staging", "pr"]`;
   its `onChange` at `:107` drops any value it does not offer), and a second picker in
@@ -63,8 +63,9 @@ would have to send `staging` to pass ([notes/A2 §1.9](../../notes/A2-sdk-port.m
 
 **In** (the plan decides the details; implementation follows the approved plan):
 
-- The server gate and `entitledAccessCheck` share one channel normaliser and one entitlement
-  predicate in `core/`.
+- The server gate and `entitledAccessCheck` share one entitlement predicate (`channelEntitled`, in
+  `core/`) and one alias table (`CHANNEL_ALIASES`); the header and selector parsers stay separate
+  (plan D15).
 - `channelForVersion` in the worker, `client-core`, Python and Swift agree on the new mapping.
 - Appended `gate-matrix.json` rows, the Swift mirror, and the three runner ports updated.
 - Release accepts `staging` as an alias selector for `beta` unless the product declares a manual
