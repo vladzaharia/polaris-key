@@ -34,12 +34,27 @@ export const rows = [
     row: 1,
     fact: "Android developer verification: enforcement from 2026-09-30 for participating stores in BR, ID, SG, TH; global in 2027; direct sideloads not yet in scope",
     sources: [
+      // The overview was rewritten on or before 2026-09-30: it no longer names the stores or
+      // countries (the guide, FAQ and blog still do). Both generations of wording are accepted
+      // as separate sources so a re-run shows which is live.
       src("overview", ANDROID_DV, "html", {
         quotes: [
-          "Next milestone: September 30, 2026",
-          "These protections begin for users installing apps from participating stores (Google Play, HONOR App Market, OPPO App Market, Galaxy Store, Palm Store, V-Appstore, GetApps) in Brazil, Indonesia, Singapore, and Thailand, on certified devices running Android 7+. In 2027, we'll expand this globally to all apps on certified devices.",
+          "Effective September 30, 2026",
+          "Protections begin for users installing apps from participating stores in select regions on certified Android devices. We'll continue rolling out user protections globally in 2027.",
         ],
       }),
+      src(
+        "blog",
+        "https://android-developers.googleblog.com/2026/03/android-developer-verification-rolling-out-to-all-developers.html",
+        "html",
+        {
+          quotes: [
+            "The user side protections will first go live in Brazil, Indonesia, Singapore, and Thailand this September, before expanding globally in 2027.",
+            "September 30, 2026:",
+            "Unregistered apps can be sideloaded with ADB or advanced flow.",
+          ],
+        },
+      ),
       src("guide", `${ANDROID_DV}/guides`, "html", {
         date: GOOGLE_DATE,
         quotes: [
@@ -322,7 +337,8 @@ export const rows = [
       }),
       src("service-fees", `${PLAY_HELP}/112622?hl=en`, "html", {
         quotes: [
-          "For transactions with users in the EEA, UK, or US starting June 30, 2026:",
+          "For transactions with users in Australia, the European Economic Area, Japan, United Kingdom, or United States:",
+          "(June 30, 2026 for the EEA, UK, and US; September 30, 2026 for Australia and Japan)",
           "For all remaining markets until the announced updated service fees are rolled out globally:",
         ],
       }),
