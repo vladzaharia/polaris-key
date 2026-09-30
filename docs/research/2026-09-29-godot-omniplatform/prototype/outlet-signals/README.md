@@ -23,6 +23,7 @@ names: redact before quoting them anywhere.
 | `android/assemble-apk.sh`     | Packs the probe into the official `android_debug.apk` template (package `com.godot.game`), with `assets/_cl_` starting the `outlet` suite                                                                                                                                               |
 | `android/run-variants.sh`     | `adb` install variants (`adb`, `adb -i <installer>`, a shell session, `--update-ownership`), each followed by `dumpsys` and the probe                                                                                                                                                   |
 | `android/system-installer.sh` | Installs through the system Package Installer (`VIEW` on a Downloads file), optionally with a browser `EXTRA_REFERRER`                                                                                                                                                                  |
+| `android/signer-digest.sh`    | Pulls installer packages' APKs and prints their certificate SHA-256 with `apksigner`, to cross-check the probe's `initiator_signing` digest (hashed in GDScript)                                                                                                                        |
 | `android/chrome-download.sh`  | Chrome downloads the APK from a host server (`adb reverse`) and opens it from Chrome's Downloads page. The `uiautomator` taps are best-effort: Chrome's UI changes between versions                                                                                                     |
 | `android/range-server.py`     | Static server with `Range` and `ETag`, for the Obtainium run                                                                                                                                                                                                                            |
 | `web/display-mode.mjs`        | Playwright: display-mode media queries, `navigator.standalone` and `getInstalledRelatedApps` in a Chromium tab, a Chromium `--app` window and WebKit                                                                                                                                    |
@@ -56,6 +57,7 @@ SERIAL=emulator-5558 ./android/run-variants.sh
 SERIAL=emulator-5558 ./android/system-installer.sh                       # packageSource LOCAL_FILE
 SERIAL=emulator-5558 ./android/system-installer.sh https://example.org/x  # DOWNLOADED_FILE
 SERIAL=emulator-5558 ./android/chrome-download.sh
+SERIAL=emulator-5558 ./android/signer-digest.sh com.google.android.packageinstaller com.android.vending
 
 # Web
 (cd web && npm i playwright && node display-mode.mjs)

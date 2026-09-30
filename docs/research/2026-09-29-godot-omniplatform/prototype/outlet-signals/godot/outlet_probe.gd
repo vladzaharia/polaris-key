@@ -377,9 +377,36 @@ func _android() -> Dictionary:
 		r["installingPackageName"] = info.getInstallingPackageName()
 		r["initiatingPackageName"] = info.getInitiatingPackageName()
 		r["originatingPackageName"] = info.getOriginatingPackageName()
-		r["has_initiatingPackageSigningInfo"] = info.getInitiatingPackageSigningInfo() != null
+		var signing = info.getInitiatingPackageSigningInfo()
+		r["has_initiatingPackageSigningInfo"] = signing != null
+		if signing != null:
+			r["initiator_signing"] = _android_signing_digests(signing)
 		if sdk_int >= 33:
 			r["packageSource"] = info.getPackageSource()
 		if sdk_int >= 34:
 			r["updateOwnerPackageName"] = info.getUpdateOwnerPackageName()
 	return r
+
+
+# SHA-256 of each initiator signing certificate (android.content.pm.SigningInfo ->
+# getApkContentsSigners() -> Signature[] -> toByteArray()), hashed in GDScript. This is the value
+# `apksigner verify --print-certs` prints as "certificate SHA-256 digest" for the installer's APK.
+func _android_signing_digests(signing) -> Dictionary:
+	var d := {}
+	d["hasMultipleSigners"] = signing.hasMultipleSigners()
+	d["hasPastSigningCertificates"] = signing.hasPastSigningCertificates()
+	var signers = signing.getApkContentsSigners()
+	d["signers_type"] = type_string(typeof(signers))
+	var digests: Array = []
+	if typeof(signers) == TYPE_ARRAY:
+		for sig in signers:
+			var der = sig.toByteArray() if sig != null else null
+			if typeof(der) != TYPE_PACKED_BYTE_ARRAY:
+				digests.append("toByteArray returned " + type_string(typeof(der)))
+				continue
+			var h := HashingContext.new()
+			h.start(HashingContext.HASH_SHA256)
+			h.update(der)
+			digests.append(h.finish().hex_encode())
+	d["apkContentsSigners_sha256"] = digests
+	return d
