@@ -107,18 +107,18 @@ of an isolate out-of-memory crash, and an unverifiable asset fails closed with a
 
 ## Acceptance criteria
 
-- [ ] `sdks/swift/Package.swift` declares `from: "2.9.6"`; `swift build` and `swift test` pass on
+- [x] `sdks/swift/Package.swift` declares `from: "2.9.6"`; `swift build` and `swift test` pass on
       macOS; no doc in the repo still names 2.6.4 as the floor.
-- [ ] Worker test: the existing R6-03 fixtures (valid, tampered, wrong key, missing sidecar) give
+- [x] Worker test: the existing R6-03 fixtures (valid, tampered, wrong key, missing sidecar) give
       the same results as before.
-- [ ] Worker test: a lazily generated 300 MiB body with a valid signature verifies, and the test
+- [x] Worker test: a lazily generated 300 MiB body with a valid signature verifies, and the test
       asserts no single buffer larger than one chunk was retained (count bytes held by the reader).
-- [ ] Worker test: a body larger than the cap, with or without `Content-Length`, returns `false`
+- [x] Worker test: a body larger than the cap, with or without `Content-Length`, returns `false`
       without throwing; so does `S ≥ L`.
-- [ ] Property test: WebCrypto and the streaming verifier agree on 200 random cases and on the
+- [x] Property test: WebCrypto and the streaming verifier agree on 200 random cases and on the
       RFC 8032 §7.1 vectors.
-- [ ] `pnpm --filter @polaris-key/worker test:workerd` passes with a streaming-verify smoke case.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `pnpm --filter @polaris-key/worker test:workerd` passes with a streaming-verify smoke case.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
