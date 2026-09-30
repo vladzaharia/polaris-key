@@ -69,6 +69,7 @@ function base(): Docs {
         identity: { enabled: true },
       },
       devices: { registration: "requires-license" },
+      web: { origins: ["https://app.acme.example", "http://localhost:8060"] },
       licensing: {
         profiles: [
           { id: "base", name: "Base profile", payload: { config: {} } },
@@ -633,6 +634,13 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (rel(d).artifactPolicy.architectures = ["bad arch!"]),
   },
   {
+    code: "invalid_architecture",
+    file: "release",
+    schema: "rejects",
+    // The length bound: CHANNEL_RE allows 64 characters in total, so 65 is out for both.
+    mutate: (d) => (rel(d).artifactPolicy.architectures = ["a".repeat(65)]),
+  },
+  {
     code: "invalid_manual_channel",
     file: "release",
     schema: "rejects",
@@ -708,6 +716,68 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) => (mint(d).ttlSeconds = 0),
   },
+  {
+    code: "invalid_web_origins",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).web = "https://app.acme.example"),
+  },
+  {
+    code: "invalid_web_origins",
+    file: "product",
+    schema: "rejects",
+    // One over the cap of 16, every entry individually valid and distinct.
+    mutate: (d) =>
+      (p(d).web.origins = Array.from(
+        { length: 17 },
+        (_, i) => `https://app${i}.acme.example`,
+      )),
+  },
+  {
+    code: "invalid_web_origin",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).web.origins[0] = "https://app.acme.example/play"),
+  },
+  {
+    code: "invalid_web_origin",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).web.origins[0] = "https://*.acme.example"),
+  },
+  {
+    code: "invalid_web_origin",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).web.origins[0] = "https://APP.acme.example"),
+  },
+  {
+    code: "invalid_web_origin",
+    file: "product",
+    schema: "rejects",
+    // Plain http is for the two loopback hosts only.
+    mutate: (d) => (p(d).web.origins[0] = "http://app.acme.example"),
+  },
+  {
+    code: "invalid_web_origin",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).web.origins[0] = "https://user@app.acme.example"),
+  },
+  {
+    code: "invalid_web_origin",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => p(d).web.origins.push("https://app.acme.example"),
+  },
+  {
+    code: "invalid_web_origin",
+    file: "product",
+    schema: "accepts",
+    // The validator-only half: the pattern admits an explicit port, but only the URL round
+    // trip knows that :443 is https's default and a browser would never send it.
+    mutate: (d) => (p(d).web.origins[0] = "https://app.acme.example:443"),
+  },
 ];
 
 describe("valid manifests pass both validators", () => {
@@ -719,6 +789,21 @@ describe("valid manifests pass both validators", () => {
       schema: true,
       release: true,
     });
+  });
+
+  it("an architecture longer than 32 characters (the validator's CHANNEL_RE bound, P0-01)", () => {
+    // The schema used to cap architectures at 32 characters while the authoritative validator
+    // allowed 64, so an editor flagged manifests the platform accepts. Pin both ends of the
+    // validator's range so the drift cannot return.
+    for (const arch of ["a".repeat(40), "a".repeat(64)]) {
+      const docs = base();
+      rel(docs).artifactPolicy.architectures = ["arm64", arch];
+      expect(tsCodes(docs)).toEqual([]);
+      expect(
+        validateRelease(docs.release),
+        JSON.stringify(validateRelease.errors),
+      ).toBe(true);
+    }
   });
 
   it("the alias shapes (flattened root, licensing nesting, clientSecretRef, tier.profile)", () => {

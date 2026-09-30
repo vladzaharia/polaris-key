@@ -107,6 +107,14 @@ export interface ProductServices {
   services: ServicesMap;
   /** As DECLARED. `undefined` = undeclared; call `resolveRegistration` for the effective value. */
   registration?: RegistrationPolicy;
+  /**
+   * Slugs this build does not know, carried through so a round-trip does not delete them. A newer
+   * worker may have written a service (e.g. `distribution`) that a rolled-back or not-yet-deployed
+   * build has never heard of. Only WELL-FORMED entries (`{ enabled: boolean }`) land here.
+   * PASSTHROUGH ONLY: nothing may read this to decide enablement or registration — an unknown
+   * service is not enabled as far as this build is concerned. Absent when there are none.
+   */
+  unknown?: Record<string, { enabled: boolean }>;
 }
 
 /**
@@ -116,13 +124,18 @@ export interface ProductServices {
  * every product-scoped request; its content can be a stale row, a hand-edit in the D1 console,
  * or the output of a future writer this build has never seen. So:
  *
- *   - Anything structurally wrong — not JSON, not an object, an array, an unrecognised key,
- *     a non-object entry, an `enabled` that isn't a boolean, a `registration` outside the three
+ *   - Anything structurally wrong — not JSON, not an object, an array, an unrecognised key
+ *     whose value is not a well-formed `{ enabled: boolean }`, a non-object entry, an `enabled` that isn't a boolean, a `registration` outside the three
  *     policies — discards the WHOLE record and returns the defaults. Not a partial merge: a
  *     record we cannot fully understand cannot be trusted to be describing what we think it
  *     describes, and half-honouring it would turn a typo into a silently-disabled service.
  *     ONE rule for the whole blob, including `registration`: a second, softer tolerance for one
  *     key inside the same value is exactly the inconsistency that gets misremembered later.
+ *   - An unrecognised key with a WELL-FORMED value is a slug a newer build wrote. It is skipped
+ *     for every decision and carried in `ProductServices.unknown` so `serializeServices` writes
+ *     it back: rolling a worker back past the release that introduced a slug must neither reset
+ *     the slugs it does know nor delete the one it does not. Malformed unknown values still
+ *     discard the whole record, and `__proto__` is never a slug.
  *   - A well-formed record that simply omits a slug gets that slug's default; one that omits
  *     `registration` gets the derived policy (`resolveRegistration`). Undeclared means "not
  *     stated", which is the same thing the manifest means by it.
@@ -149,26 +162,38 @@ export function parseServices(
 
   const services = defaults();
   let registration: RegistrationPolicy | undefined;
+  const unknown: Record<string, { enabled: boolean }> = {};
+  let hasUnknown = false;
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     if (key === "registration") {
       if (!isRegistrationPolicy(value)) return fallback();
       registration = value;
       continue;
     }
-    if (!isServiceSlug(key)) return fallback();
+    if (key === "__proto__") return fallback();
     if (!value || typeof value !== "object" || Array.isArray(value))
       return fallback();
     const enabled = (value as Record<string, unknown>).enabled;
     if (typeof enabled !== "boolean") return fallback();
-    services[key] = { enabled };
+    if (isServiceSlug(key)) {
+      services[key] = { enabled };
+    } else {
+      unknown[key] = { enabled };
+      hasUnknown = true;
+    }
   }
-  return registration === undefined ? { services } : { services, registration };
+  return {
+    services,
+    ...(registration === undefined ? {} : { registration }),
+    ...(hasUnknown ? { unknown } : {}),
+  };
 }
 
 /**
  * The inverse of `parseServices`: the exact JSON the column stores.
  *
- * Slugs first in canonical order, `registration` last and only when declared — so a manifest
+ * Slugs first in canonical order, then any passed-through unknown slugs sorted by key, then
+ * `registration` last and only when declared — so a manifest
  * that says nothing about registration writes a column that says nothing about it either, and
  * the derived default keeps tracking the enablement set.
  */
@@ -176,6 +201,15 @@ export function serializeServices(parsed: ProductServices): string {
   const out: Record<string, unknown> = {};
   for (const slug of SERVICE_SLUGS)
     out[slug] = { enabled: parsed.services[slug].enabled };
+  if (parsed.unknown) {
+    const entries = Object.entries(parsed.unknown).sort(([x], [y]) =>
+      x < y ? -1 : x > y ? 1 : 0,
+    );
+    for (const [key, value] of entries) {
+      if (key === "__proto__" || key === "registration") continue;
+      out[key] = { enabled: value.enabled };
+    }
+  }
   if (parsed.registration !== undefined) out.registration = parsed.registration;
   return JSON.stringify(out);
 }

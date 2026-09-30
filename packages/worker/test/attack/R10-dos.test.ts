@@ -492,6 +492,7 @@ function makeReleaseProduct(): Product {
     autoIssue: DEFAULT_AUTO_ISSUE,
     services: DEFAULT_SERVICES,
     registration: "requires-license",
+    webOrigins: [],
   };
 }
 

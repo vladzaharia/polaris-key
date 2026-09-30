@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments can emit, extrac
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 74 distinct emit sites.
+codes with their JSON-pointer paths. 77 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -77,6 +77,9 @@ the offending value, or the allowed set.
 | `invalid_tier_label` | error | product | `/licensing/tiers/${i}/label` | Tier label |
 | `invalid_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId must be a tier identifier. |
 | `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer. |
+| `invalid_web_origin` | error | product | `/web/origins/${i}` | web.origins entries $\{problem\}. |
+| `invalid_web_origins` | error | product | `/web/origins` | web.origins must be an array of at most $\{MAX_WEB_ORIGINS\} origins. |
+| `invalid_web_origins` | error | product | `/web` | web must be an object. |
 | `missing_auto_issue_tier` | error | product | `/autoIssue/tierId` | autoIssue.tierId is required when autoIssue is enabled — a policy naming no tier cannot issue anything. |
 | `missing_github_repo` | error | release | `/release/provider` | GitHub releases require owner and repo. |
 | `missing_name` | error | product | `/product/name` | Add product.name. |
