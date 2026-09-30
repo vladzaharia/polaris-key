@@ -190,9 +190,10 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 - `@polaris-key/client-core/stages` (`bootTransition`, the stage, event and outcome names) and
   `stage-matrix.json`: P1-10 ports them to GDScript under the same names in snake_case and loads
   the Godot mirror in its runner.
-- P3-10 (guard rows) and P4-08 (pack rows) extend the same file under their own plans. Neither is
-  plan-mode, so [`plans/P1-09.md`](../plans/P1-09.md) §4.5 routes the extensions through P3-01
-  and P3-02, and through P4-01 with P4-04 or P4-06. P3-10 and P4-08 then implement those rows.
+- Later rows for P3-10 (boot confirmation) and P4-08 (packs) extend the same file. Neither package
+  is plan-mode, so [`plans/P1-09.md`](../plans/P1-09.md) §4.5 routes the extensions through
+  P3-01 and P3-02, and through P4-01 with P4-04 or P4-06. P3-10 and P4-08 then implement those
+  rows.
 - Renderers other than Godot are unowned; record that in the plan so the lead can schedule them.
 - Set the status with
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1-09 done`.
