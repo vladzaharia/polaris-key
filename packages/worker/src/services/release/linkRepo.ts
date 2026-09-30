@@ -51,6 +51,7 @@ import { isSafeBinaryName } from "./install.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
 import { serializeServices } from "../../core/services.js";
+import { serializeWebOrigins } from "../../core/cors.js";
 
 export type LinkRepoResult =
   | {
@@ -327,6 +328,8 @@ async function registerFromManifest(
       services_source: "manifest",
       // The compat window is manifest-owned until an operator sets it in `update/settings`.
       compat_source: "manifest",
+      // The CORS allowlist (P0-05). Validated by the manifest parser; NULL when undeclared.
+      web_origins_json: serializeWebOrigins(manifest.webOrigins),
       created_at: now,
       modified_at: now,
     }),
