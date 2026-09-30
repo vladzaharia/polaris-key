@@ -4,11 +4,14 @@ import { parse as parseYaml } from "yaml";
 import {
   issuerUrlProblem,
   isSafeIssuerUrl,
+  isWebOrigin,
+  MAX_WEB_ORIGINS,
   MAX_MANIFEST_BYTES,
   MAX_MANIFEST_DEPTH,
   normalizeAutoIssue,
   parseManifest,
   validateManifestDocuments,
+  webOriginProblem,
 } from "./index.js";
 
 const PRODUCT = { slug: "acme", name: "Acme" };
@@ -1134,5 +1137,109 @@ describe("reserved product slugs", () => {
         schema: catalogWithSecretDelivery(),
       }).errors.map((e) => e.code),
     ).toEqual([]);
+  });
+});
+
+describe("web.origins (P0-05)", () => {
+  const parse = (web: unknown) =>
+    parseManifest({
+      product: JSON.stringify({ ...PRODUCT, web }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+  const codes = (web: unknown) =>
+    validateManifestDocuments({
+      product: { ...PRODUCT, web },
+      schema: catalogWithSecretDelivery(),
+    }).errors.map((e) => e.code);
+
+  it("accepts exact origins, including an explicit non-default port and loopback http", () => {
+    for (const origin of [
+      "https://diceroll.gg",
+      "https://play.diceroll.gg:8443",
+      "https://xn--bcher-kva.example",
+      "http://localhost",
+      "http://localhost:8060",
+      "http://127.0.0.1:8060",
+    ]) {
+      expect(webOriginProblem(origin), origin).toBeNull();
+      expect(isWebOrigin(origin), origin).toBe(true);
+    }
+  });
+
+  it("refuses anything a browser would never send as an Origin", () => {
+    for (const bad of [
+      "",
+      "diceroll.gg",
+      "https://diceroll.gg/",
+      "https://diceroll.gg/play",
+      "https://diceroll.gg?x=1",
+      "https://diceroll.gg#top",
+      "https://user:pw@diceroll.gg",
+      "https://*.diceroll.gg",
+      "*",
+      "null",
+      "https://DICEROLL.gg",
+      "HTTPS://diceroll.gg",
+      "https://diceroll.gg:443",
+      "https://diceroll.gg:0443",
+      "https://diceroll.gg:99999",
+      "http://diceroll.gg",
+      "http://127.0.0.2",
+      "http://[::1]:8060",
+      "http://localhost:80",
+      "ws://localhost:8060",
+      "https://diceroll.gg\n",
+      `https://${"a".repeat(300)}.example`,
+      42,
+      null,
+    ]) {
+      expect(webOriginProblem(bad), String(bad)).not.toBeNull();
+    }
+  });
+
+  it("carries the list through parseManifest, and defaults to empty", () => {
+    const res = parse({
+      origins: ["https://diceroll.gg", "http://localhost:8060"],
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.webOrigins).toEqual([
+      "https://diceroll.gg",
+      "http://localhost:8060",
+    ]);
+
+    const none = parse(undefined);
+    expect(none.ok).toBe(true);
+    if (!none.ok) return;
+    expect(none.manifest.webOrigins).toEqual([]);
+  });
+
+  it("refuses rather than coerces: one bad entry fails the whole manifest", () => {
+    const res = parse({
+      origins: ["https://diceroll.gg", "https://Diceroll.gg"],
+    });
+    expect(res.ok).toBe(false);
+    expect(codes({ origins: ["https://diceroll.gg/"] })).toEqual([
+      "invalid_web_origin",
+    ]);
+  });
+
+  it("reports the block shape and the cap as invalid_web_origins", () => {
+    expect(codes("https://diceroll.gg")).toEqual(["invalid_web_origins"]);
+    expect(codes({ origins: "https://diceroll.gg" })).toEqual([
+      "invalid_web_origins",
+    ]);
+    const many = Array.from(
+      { length: MAX_WEB_ORIGINS + 1 },
+      (_, i) => `https://a${i}.example`,
+    );
+    expect(codes({ origins: many })).toEqual(["invalid_web_origins"]);
+    expect(codes({ origins: many.slice(0, MAX_WEB_ORIGINS) })).toEqual([]);
+  });
+
+  it("refuses a duplicate entry", () => {
+    expect(
+      codes({ origins: ["https://diceroll.gg", "https://diceroll.gg"] }),
+    ).toEqual(["invalid_web_origin"]);
   });
 });

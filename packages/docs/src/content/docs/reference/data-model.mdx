@@ -15,7 +15,7 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `products` | 0001_init.sql | `slug`, `name`, `signing_kid`, `signing_pub`, `compat_min`, `compat_max`, `default_max_offline_days`, `default_device_limit`, `admin_group`, `branding_json`, `created_at`, `modified_at`, `release_source (0003)`, `status (0006)`, `deleted_at (0006)`, `fingerprint_policy_json (0010)`, `fingerprint_policy_source (0010)`, `auto_issue_json (0011)`, `auto_issue_source (0011)`, `services_json (0019)`, `services_source (0020)` |
+| `products` | 0001_init.sql | `slug`, `name`, `signing_kid`, `signing_pub`, `compat_min`, `compat_max`, `default_max_offline_days`, `default_device_limit`, `admin_group`, `branding_json`, `created_at`, `modified_at`, `release_source (0003)`, `status (0006)`, `deleted_at (0006)`, `fingerprint_policy_json (0010)`, `fingerprint_policy_source (0010)`, `auto_issue_json (0011)`, `auto_issue_source (0011)`, `services_json (0019)`, `services_source (0020)`, `compat_source (0022)`, `web_origins_json (0024)` |
 | `product_keys` | 0003_keyvault.sql | `product`, `kid`, `alg`, `public_b64url`, `enc_private_json`, `status`, `created_at`, `rotated_at`, `revoked_at (0021)` |
 | `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at` |
 | `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)` |
@@ -48,7 +48,7 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `release_config` | 0001_init.sql | `product`, `gh_owner`, `gh_repo`, `gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`, `artifact_policy_json (0006)`, `metadata_access (0007)`, `artifacts_access (0007)` |
+| `release_config` | 0001_init.sql | `product`, `gh_owner`, `gh_repo`, `gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`, `artifact_policy_json (0006)`, `metadata_access (0007)`, `artifacts_access (0007)`, `access_source (0022)`, `operator_policy_json (0022)` |
 | `release_metadata` | 0007_backend_contracts.sql | `product`, `release_id`, `version`, `title`, `notes`, `commit_sha`, `source_url`, `metadata_access`, `artifacts_access`, `published_at`, `metadata_json`, `created_at`, `modified_at` |
 | `release_artifacts` | 0007_backend_contracts.sql | `product`, `release_id`, `artifact_id`, `name`, `kind`, `platform`, `arch`, `content_type`, `size_bytes`, `sha256`, `source_url`, `storage_key`, `sparkle_signature`, `access`, `metadata_json`, `created_at` |
 | `release_channels` | 0007_backend_contracts.sql | `product`, `channel`, `release_id`, `policy_json`, `created_at`, `modified_at` |
