@@ -95,11 +95,12 @@ S3TC-only pack is applied on arm64 Linux (§9.2 #12) ([README §9.2](../../READM
   pack's major track it (foes 1.x ↔ `contentApi` 1) ([CONTENT §6.7](../../CONTENT.md#67-lifecycle-implications)).
 - **Play narrows bindings.** With Play Asset Delivery, or packs embedded in the AAB, a compatible
   pack is effectively pinned on Play unless routed through `pkey-cdn` ([CONTENT §6.6](../../CONTENT.md#66-transport-imposed-binding-per-outlet)).
-- **Data only.** Packs carry no scripts, `project.binary` or class cache; P4-03 lints at publish and
-  P4-08's directory check refuses at mount. `replace_files` is not a security boundary.
+- **Data only.** Packs carry no scripts, `project.binary` or class cache; P4-03 strips the two
+  engine files and lints at publish, and P4-08's directory check refuses at mount (S-05 §5 (f)). `replace_files` is not a security boundary.
 - **Mounting** follows P4-08: `mountOrder`, one pack per frame (the Android stall), new
-  content-addressed paths, and `replace_files=false` for full, disjoint-prefix, UID-free packs.
-  Diceroll's rule of no `uid://` into `assets/**` keeps its packs UID-free.
+  content-addressed paths, and `replace_files=true` after the directory check (S-05 §5 (f)).
+  Diceroll's rule of no `uid://` into `assets/**` stays a game choice; its PCKPacker packs carry no
+  `uid_cache.bin`, so they are UID-free either way.
 - **Engine bumps** invalidate every `godot.pck` pack; the publish check fails an app release on a new
   engine until matching pack releases exist ([CONTENT §6.8](../../CONTENT.md#68-diceroll-worked-through)).
 - **Saves** reference content ids, never paths; never delete or migrate a save for a missing pack.

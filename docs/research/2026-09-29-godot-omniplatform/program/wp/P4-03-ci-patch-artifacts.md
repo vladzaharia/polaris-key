@@ -17,7 +17,7 @@
 `pkey release publish --deliverable <packId>` turns the built payload of each variant into a
 CI-signed `kind: pack` release record plus its patch artifacts: the full blob, a `pkey-files/1`
 index (with a gaps blob for container payloads), a blob per file, a whole-payload delta and a
-per-entry delta set against the **stored** previous release. It lints the payload by type, writes
+per-entry delta set against the **stored** previous release. It strips the two engine files `--export-pack` always adds, lints the payload by type, writes
 the marker, uploads only objects the blob store lacks, and submits the record.
 `--deliverable app` stamps the `content` block (`contentApi`, pins, per-build `embeds`) into the
 app record. `--dry-run` prints everything without uploading or signing. The `polaris-key/publish`
@@ -48,6 +48,10 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   (A7's CI stand-in: files index, gaps blob, per-file and whole `--patch-from` deltas, the zstd CLI
   calls), `content/gen/pck.py` (PCK v2–v4 reader and writer), and `patching/tools/` (A6's
   offline tools).
+- [notes/S-05 §4.1, §4.6 and §5](../../notes/S-05.md#5-recommendation-rules-the-named-briefs-adopt)
+  (the entry-count limits, the admission list and the strip step) and
+  `prototype/platform-mechanics/tools/strip_pack.py`; `f_uid/` holds real `--export-pack` output
+  to copy the fixtures from.
 - [P2-06](P2-06-publish-cli-action.md): the `pkey release` commands, signing, upload tickets and
   the Action this extends. Code: `packages/cli/src/index.ts` (command switch at line 66),
   `packages/cli/test/`.
@@ -58,11 +62,12 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 
 - `--deliverable <packId>` for `godot.pck` and `files.tree`, one payload per declared variant,
   located through the `.pkey/release` artifact map (P2-04).
-- **Lint by type.** `godot.pck`: an unencrypted PCK v2–v4; every entry under the deliverable's
-  `handler.prefixes` (plus the import artefacts those need, see below); no scripts (`.gd`, `.gdc`),
-  no `project.binary`, no global class cache, no native libraries or `.gdextension`; the header's
-  engine version inside `requires.engine`. `files.tree`: A7 §3.3 path rules, no symlinks. Every
-  failure names the path.
+- **Strip, then lint by type.** `godot.pck`: first remove `project.binary` and
+  `.godot/global_script_class_cache.cfg`, which `--export-pack` always adds, and write the stripped
+  PCK back in place (see below). Then lint: an unencrypted PCK v2–v4; only the entries S-05's (f)
+  rule admits (below); the header's engine version inside `requires.engine`; **warn above 2,000
+  entries and fail above 20,000** (the mount stall grows with entry count, S-05 §4.1).
+  `files.tree`: A7 §3.3 path rules, no symlinks. Every failure names the path.
 - **Files index.** `layout: container` for PCKs (offsets from the PCK directory, ascending,
   non-overlapping; one zstd gaps blob of every uncovered byte); `layout: tree` with `treeDigest`.
   Each entry carries the blob reference P4-01 decided.
@@ -103,14 +108,25 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   vector was built with; check `zstd --version` ≥ 1.5.5 and fail clearly otherwise. The Action
   installs it. Compressed bytes may differ across zstd versions; content addressing makes that
   harmless, but never re-publish an object under an existing hash.
-- **The directory check must admit import artefacts.** An exported PCK stores `res://` sources
-  as remaps plus `.godot/imported/…` files (A7 §3.3's example path is
-  `.godot/imported/t512_05.png-….s3tc.ctex`). The prefix rule admits `.godot/imported/` entries
-  whose source path lies under a declared prefix, and the `.import`/`.remap` files under it.
-  Whether `.godot/uid_cache.bin` may ship is P4-01's call (A6 §2.7: UIDs register from it; the
-  Diceroll rule is "no `uid://` into packs"). Keep the rule table (prefix admission, denylist) in
-  one documented form and reuse the same fixture PCKs in the device-side check of
-  [P4-08](P4-08-godot-packs.md), so the two cannot drift.
+- **The admission list** ([notes/S-05 §5 (f)](../../notes/S-05.md#5-recommendation-rules-the-named-briefs-adopt),
+  measured in §4.6). A `godot.pck` payload may contain only: (1) entries under one of the
+  deliverable's `handler.prefixes`, including their `.remap` and `.import` files; (2) the
+  `.godot/exported/…` and `.godot/imported/…` files that those `.remap` and `.import` files point
+  to (A7 §3.3's example is `.godot/imported/t512_05.png-….s3tc.ctex`; a script-free
+  `--export-pack` writes `.godot/exported/<n>/export-<md5>-<name>.res` and `.scn`); and (3)
+  `.godot/uid_cache.bin`, which is what makes the pack's `uid://` references resolve when P4-08
+  mounts it with `replace_files=true`. Everything else fails with its path, in particular
+  `project.binary`, `.godot/global_script_class_cache.cfg`, scripts (`.gd`, `.gdc`, `.cs`, and a
+  `.remap` that points to one), native libraries and `.gdextension` files. This answers the
+  `uid_cache.bin` question: it ships. Keep the list in one documented form and reuse the same
+  fixture PCKs in the device-side check of [P4-08](P4-08-godot-packs.md), so the two cannot drift.
+- **The strip step.** `--export-pack` always adds `project.binary` and
+  `.godot/global_script_class_cache.cfg`, even to a project with no scripts, and a pack mounted with
+  either replaces the main pack's copy (S-05 §4.6: `get_global_class_list()` went from 6 to 0).
+  `publish` removes exactly those two entries before it lints, hashes and indexes the payload,
+  rebuilds the PCK directory as `prototype/platform-mechanics/tools/strip_pack.py` does, writes the
+  result back in place (so the embedded copy is the one the marker pins) and reports the strip in
+  `--dry-run`. It removes nothing else; any other forbidden entry is a lint failure.
 - **Container rebuild is type-neutral** (gap₀, file₀, gap₁, …): the CLI must prove its index and
   gaps blob rebuild the payload byte for byte before it publishes.
 - **Per-entry deltas** only for files whose path exists in the base with a different hash; added
@@ -122,8 +138,9 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 
 1. Test fixtures: a tiny PCK v4 writer in the test helpers (port `prototype/content/gen/pck.py`)
    producing v1 and v2 with changed, added and removed entries, one forbidden script, and one
-   path outside the prefixes; a small tree pair.
-2. PCK directory reader and the type lints.
+   path outside the prefixes; an unstripped `--export-pack` pack (with `project.binary` and the
+   class cache); 2,001- and 20,001-entry packs; a small tree pair.
+2. PCK directory reader, the strip step and the type lints.
 3. Files index, gaps blob, per-file blobs; the byte-for-byte rebuild self-check.
 4. Deltas via the zstd CLI; descriptors; the magic-base refusal.
 5. Record assembly, signing, marker, upload, submit, `--dry-run`; the app `content` stamping.
@@ -135,9 +152,13 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
       rebuild v2 byte for byte (SHA-256 equal).
 - [ ] Every per-entry delta decodes with `zstd -d --patch-from=<old entry>` to the new entry's
       SHA-256; the whole-payload delta decodes to v2.
-- [ ] Lint rejects the script, `project.binary`, a native library and the out-of-prefix path, each
-      with its path; a clean pack passes; a `.godot/imported/` artefact of an in-prefix source
-      passes.
+- [ ] Lint rejects the script, a native library and the out-of-prefix path, each with its path; a
+      clean pack passes; a `.godot/imported/` artefact of an in-prefix source, a
+      `.godot/exported/` file named by an in-prefix `.remap`, and `.godot/uid_cache.bin` pass.
+- [ ] A fixture with `project.binary` and `.godot/global_script_class_cache.cfg` is stripped of
+      exactly those two entries, written back, and then passes; the record hashes the stripped
+      bytes.
+- [ ] A 2,001-entry fixture passes with a warning; a 20,001-entry fixture fails.
 - [ ] A base starting `37 A4 30 EC` produces no `zstd-patch-from` delta and a dry-run warning.
 - [ ] Publishing v2 after v1 uploads only new objects (a test counts upload calls).
 - [ ] The signed record verifies with the test release key, stays under the payload cap for a
