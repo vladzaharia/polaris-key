@@ -43,7 +43,7 @@ Today the feed can offer what the download refuses, because the two read access 
   [notes/E5 §5](../../notes/E5-frontier-tech.md) (rollouts and halts).
 - Hand-offs: [P2-05](P2-05-release-routes.md) (routes, `resolveBuild`), [P2b-01](P2b-01-distribution-service.md)
   (hooks), [P2b-02](P2b-02-distribution-manifest.md) (outlets), [P2-01](P2-01-blob-store.md)
-  (`blobResponse`, the bytes-host allowlist), P0-01 (the source column on `artifacts_access`).
+  (landed: `blobResponse(req, bucket, key, opts)` in `core/blobs.ts`; the `BYTE_ROUTES` allowlist in `mount.ts`, consumed by `dispatchBytesHost`; see P2-05 for the hardening it adds), P0-01 (the source column on `artifacts_access`).
 - Code: `packages/worker/src/router.ts:154-183` (the alias rewrite pattern, D-07),
   `src/services/release/routes.ts`, `surfaces.ts`, `gateway.ts`, `access.ts`, `config.ts:140-172`
   (`accessModeFor`, `setReleaseAccess`), `install.ts`; `src/services/update/feed.ts`,
@@ -88,6 +88,7 @@ Today the feed can offer what the download refuses, because the two read access 
 - Discovery: distribution's fragment advertises `download`, `install`, `builds` and `blobs`.
 - Docs: `services/distribution/delivery.md` and `rollouts.md`; `services/release/artifacts.md`
   and `services/update/eligibility.md` updated; threat model.
+- **Wave-1 sync:** **Register on both hosts.** The distribution byte routes and the `/release/…` aliases are added to `mount.ts` `BYTE_ROUTES` with the distribution slug (moving them out of release's list that P2-05 registers), and the docs wording for the disabled case distinguishes the two not-found bodies.
 
 **Out** (and where it belongs instead):
 
@@ -119,7 +120,7 @@ Today the feed can offer what the download refuses, because the two read access 
   backfilled distribution for every product with Release on; a manifest that later enables Release
   without distribution loses downloads by choice. State it in the docs.
 - **No GitHub token in distribution.** GitHub-located bytes come through `releaseCatalog.openSource`;
-  R2 bytes through Core's `blobResponse`. Distribution never imports `github.ts` or `githubApp.ts`.
+  R2 bytes through Core's `blobResponse(req, bucket, key, opts)`; byte routes are registered as `ByteRoute`s in `mount.ts` `BYTE_ROUTES`, each with `service` set to the distribution slug, because the bytes host bypasses `dispatchService` and that field is the only enablement check there. Distribution never imports `github.ts` or `githubApp.ts`.
 - **Access CHECKs.** `dist_access.mode` includes `entitled`. Stop reading
   `release_config.artifacts_access` (leave the column; dropping it needs a rebuild) and say so in a
   comment next to `setReleaseAccess`.
@@ -142,7 +143,7 @@ Today the feed can offer what the download refuses, because the two read access 
 
 - [ ] Every existing download, `install.sh` and appcast test passes through the alias paths with
       byte-identical responses; the canonical `/distribution/…` paths answer the same.
-- [ ] With distribution disabled, every byte route and alias returns the registry not-found body.
+- [ ] With distribution disabled, every byte route and alias is not served: on the console host it returns the registry not-found body; on the bytes host (`dl.plrs.im`) it returns that host's flat `{"error":"not_found"}`, indistinguishable from an absent route (P2-01 test pattern).
 - [ ] An operator set to `entitled` in `dist_access` makes the appcast, the download and the
       portal mint all refuse a caller without the channel entitlement (one test each).
 - [ ] Rollout transitions are enforced; CI needs `distribution:rollout`; mirrored rows refuse

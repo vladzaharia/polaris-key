@@ -1,0 +1,116 @@
+{
+  "$schema": "../../conformance/parity/manifest.schema.json",
+  "sdk": "python",
+  "runtimes": ["python"],
+  "traits": ["headless"],
+  "testRoots": ["sdks/python/tests", "tools/gen-mirrors.test.ts"],
+  "features": {
+    "core.verify": { "status": "implemented" },
+    "core.cache": { "status": "implemented" },
+    "core.bundle": { "status": "implemented" },
+    "core.discover": { "status": "implemented" },
+    "core.sync": { "status": "implemented" },
+    "core.local": { "status": "implemented" },
+    "core.headers": {
+      "status": "planned",
+      "wp": "P1b-04",
+      "note": "Sends windows/AMD64-style values where other SDKs send other spellings."
+    },
+    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.caps": { "status": "planned", "wp": "P1b-10" },
+    "core.store": {
+      "status": "planned",
+      "wp": "P1b-09",
+      "note": "keyring is an optional extra; without it tokens go to a 0600 file and the SDK does not report it."
+    },
+    "license.gate": { "status": "implemented" },
+    "license.activate": { "status": "implemented" },
+    "license.enroll": { "status": "implemented" },
+    "license.deactivate": { "status": "implemented" },
+    "license.entitlements": { "status": "implemented" },
+    "license.channels": { "status": "planned", "wp": "P1b-07" },
+    "license.reregister": { "status": "planned", "wp": "P1b-06" },
+    "config.resolve": { "status": "implemented" },
+    "config.list": { "status": "implemented" },
+    "config.secret": { "status": "implemented" },
+    "config.schema": { "status": "planned", "wp": "P1b-07" },
+    "config.mint": { "status": "planned", "wp": "P1b-08" },
+    "config.mirror": {
+      "status": "implemented",
+      "note": "The Python mirror is rendered by tools/gen-mirrors.ts."
+    },
+    "devices.fingerprint": {
+      "status": "planned",
+      "wp": "P1b-09",
+      "note": "Two Windows components vanish without wmic; the Linux anchor depends on privilege."
+    },
+    "devices.facts": { "status": "implemented" },
+    "devices.register": { "status": "implemented" },
+    "devices.manage": { "status": "implemented" },
+    "devices.report": { "status": "implemented" },
+    "identity.oidc": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No browser sign-in in the Python SDK, and no work package ports it."
+    },
+    "identity.devicecode": { "status": "planned", "wp": "P1b-08" },
+    "release.changelog": { "status": "implemented" },
+    "release.download": { "status": "implemented" },
+    "release.record": { "status": "planned", "wp": "P3-06" },
+    "update.check": { "status": "implemented" },
+    "update.feed": { "status": "planned", "wp": "P3-06" },
+    "update.decide": { "status": "planned", "wp": "P3-06" },
+    "update.driver": {
+      "status": "planned",
+      "unowned": true,
+      "note": "Only appcast_url() today; the Velopack hand-off has no work package (P3-06 excludes it)."
+    },
+    "update.bootguard": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them."
+    },
+    "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "packs.plan": { "status": "planned", "wp": "P4-07" },
+    "packs.index": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.full": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.file": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
+    "packs.apply.delta": { "status": "planned", "wp": "P4-07" },
+    "packs.state": { "status": "planned", "wp": "P4-07" },
+    "packs.handlers": { "status": "planned", "wp": "P4-07" },
+    "packs.provides": { "status": "planned", "wp": "P4-20" },
+    "packs.transport.apple": {
+      "status": "na",
+      "runtime": "python",
+      "reason": "runtime"
+    },
+    "packs.transport.play": {
+      "status": "na",
+      "runtime": "python",
+      "reason": "runtime"
+    },
+    "packs.transport.steam": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner."
+    },
+    "packs.transport.msix": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No work package owns the MSIX optional-package transport (P5-08 Out)."
+    },
+    "packs.transport.flatpak": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
+    },
+    "ui.stages": { "status": "planned", "wp": "P1-09" },
+    "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
+    "commerce.receipt": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+    }
+  }
+}

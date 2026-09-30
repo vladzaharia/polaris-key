@@ -28,6 +28,7 @@ files):
 ```sh
 pnpm build
 pnpm gen:corpus -- --check
+pnpm parity:check
 pnpm typecheck
 pnpm test
 pnpm lint

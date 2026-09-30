@@ -624,7 +624,9 @@ a B are the two things every single comparator already does: **re-verify on load
 > **Deployment note (outside this review's scope, worth routing).** Sparkle **CVE-2025-0509**
 > (fixed in 2.6.4) lets an attacker replace a signed update with another payload, bypassing the
 > (Ed)DSA check. Polaris Key serves Sparkle appcasts (`README.md:7`, `ADOPTER-GUIDE.md:43`), so
-> adopters' embedded Sparkle version should be confirmed ≥ 2.6.4.
+> adopters' embedded Sparkle version should be confirmed ≥ 2.6.4. _(Since superseded: the Swift
+> SDK's floor is now **2.9.6**, which adds the 2.9.5/2.9.6 delta-patch symlink and
+> privilege-escalation fixes; see `sdks/swift/Package.swift`.)_
 
 ---
 

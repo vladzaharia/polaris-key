@@ -19,7 +19,7 @@
 
 **Architecture:** One Cloudflare Worker restructured into `core/` + `services/<slug>/` with a service registry and lint-enforced boundaries; wire contract v3 with per-service signed documents over a shared envelope; per-product opt-in via `products.services_json`; four SDKs re-shaped as core + service sub-clients; three offline depths; suite console. Pre-launch: wire breaks sanctioned, `PROTOCOL_VERSION → 3`, corpus v2, djdl re-seeded.
 
-**Tech Stack:** Cloudflare Workers (workerd, D1, KV, DO), TypeScript ESM (plain `tsc`, pnpm + turbo), React 18, Python ≥3.9 (hatchling, httpx, cryptography), Swift 6 (SwiftPM, CryptoKit, Sparkle ≥ 2.6.4), Ed25519 JWS (WebCrypto), conformance corpus.
+**Tech Stack:** Cloudflare Workers (workerd, D1, KV, DO), TypeScript ESM (plain `tsc`, pnpm + turbo), React 18, Python ≥3.9 (hatchling, httpx, cryptography), Swift 6 (SwiftPM, CryptoKit, Sparkle ≥ 2.6.4, since raised to 2.9.6), Ed25519 JWS (WebCrypto), conformance corpus.
 
 **Naming (resolved external gates):** npm scope **`@plrs/*`** publishing to GitHub Packages (org `plrs` — availability verified 2026-08-26; creation is an external prerequisite before any publish, not before code). PyPI dist **`polaris-suite`**, import **`polaris`**, console script **`polaris`**. Swift package **`Polaris`**. Manifest CLI bin **`plrs`**.
 
@@ -483,7 +483,7 @@ export function dispatchService(
 
 ### Task 5.S: Swift
 
-**Files:** `sdks/swift` — `Package.swift` v2: name `Polaris`; targets `PolarisCore` (Base64URL/JSONValue/Models(v3)/JWSVerifier/Trust/Semver/DeviceID/Fingerprint/KeychainStore/`PolarisTransport` protocol + `URLSessionTransport`/`MonotonicClock`/Discovery), `PolarisLicense` (Gate(v3 incl. not-applicable/bundle)/Endpoints/LicenseClient), `PolarisConfig` (Fetch/ConfigClient/Facts), `PolarisUpdate` (macOS-only, Sparkle `from: "2.6.4"` platform-conditioned; feed URL from discovery; entitled auth via `SPUUpdater.httpHeaders`; `SUPublicEDKey` presence assertion), `PolarisUI` (login/gate views re-pointed), umbrella `Polaris` (`@_exported import` Core+License+Config); `refreshTrust` moves out of the client actor into Core behind the transport; HTTPS guard; keychain service tag `plrs:<product>`; corpus v2 mirror + tests re-pathed.
+**Files:** `sdks/swift` — `Package.swift` v2: name `Polaris`; targets `PolarisCore` (Base64URL/JSONValue/Models(v3)/JWSVerifier/Trust/Semver/DeviceID/Fingerprint/KeychainStore/`PolarisTransport` protocol + `URLSessionTransport`/`MonotonicClock`/Discovery), `PolarisLicense` (Gate(v3 incl. not-applicable/bundle)/Endpoints/LicenseClient), `PolarisConfig` (Fetch/ConfigClient/Facts), `PolarisUpdate` (macOS-only, Sparkle `from: "2.6.4"` (since raised to `"2.9.6"`) platform-conditioned; feed URL from discovery; entitled auth via `SPUUpdater.httpHeaders`; `SUPublicEDKey` presence assertion), `PolarisUI` (login/gate views re-pointed), umbrella `Polaris` (`@_exported import` Core+License+Config); `refreshTrust` moves out of the client actor into Core behind the transport; HTTPS guard; keychain service tag `plrs:<product>`; corpus v2 mirror + tests re-pathed.
 
 - [ ] Each track: full language suite green + corpus v2 green before fan-in review. Green gate closes P5.
 

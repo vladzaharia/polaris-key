@@ -201,9 +201,15 @@ async function cmdDoctor(
   const body = (await res.json()) as {
     signing?: unknown;
     trust?: unknown;
-    modules?: unknown;
+    services?: Record<string, { enabled?: unknown } | undefined>;
   };
   stdout.write(`\nRemote discovery: ok ${url}\n`);
+  const enabled = Object.entries(body.services ?? {})
+    .filter(([, service]) => service?.enabled === true)
+    .map(([slug]) => slug);
+  stdout.write(
+    `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}\n`,
+  );
   stdout.write(
     `Signing keys exposed: ${JSON.stringify(body.signing ?? body.trust ?? {})}\n`,
   );

@@ -7,9 +7,9 @@ sidebar:
 
 Every page in this section is **generated** — `packages/docs/scripts/gen-reference.mjs` reads
 the real source (validator code, protocol constants, migrations, the OpenAPI spec, the
-conformance corpus) and a freshness test byte-compares each committed page against a fresh
-run, so these tables cannot drift from the code they describe. Regenerate with
-`pnpm --filter @polaris-key/docs gen`; never edit them by hand.
+conformance corpus, the parity registry and manifests) and a freshness test byte-compares each
+committed page against a fresh run, so these tables cannot drift from the code they describe.
+Regenerate with `pnpm --filter @polaris-key/docs gen`; never edit them by hand.
 
 | Page                                                                  | Extracted from                                               |
 | --------------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -20,3 +20,4 @@ run, so these tables cannot drift from the code they describe. Regenerate with
 | [Public route table](/docs/reference/routes/)                         | the OpenAPI spec (itself coverage-tested against the router) |
 | [D1 data model](/docs/reference/data-model/)                          | the migrations, replayed to the live schema                  |
 | [Conformance corpus v2](/docs/reference/corpus/)                      | the corpus files themselves                                  |
+| [SDK parity matrix](/docs/reference/parity/)                          | the feature registry and every SDK's `parity.json`           |

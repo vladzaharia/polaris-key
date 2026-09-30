@@ -65,6 +65,7 @@ operations; this package puts them in front of the operator.
 - Update the view's doc comment, and add a help link to the channels docs page P2-05 wrote
   (`/docs/services/release/channels/`) through `docsLinks.ts`.
 - Tests in `test/releases.test.tsx` (and a new `test/releaseChannels.test.tsx` if clearer).
+- **Wave-1 sync:** **Channel-floor console (from P0-02).** A button for the channel-floor endpoint (`/manage/api` route that lowers or clears a floor; it refuses to raise), and show the new `channel-floor-unverified-<channel>` warning (and the `channel-regressed` check) in the health view.
 
 **Out** (and where it belongs instead):
 
@@ -107,6 +108,7 @@ operations; this package puts them in front of the operator.
       fixture lacks one platform's build in the newest release.
 - [ ] `test/docsLinks.test.ts` (admin) and the worker's docs-link drift test pass.
 - [ ] The green gate passes (`AGENTS.md`), including `pnpm --filter @polaris-key/admin build`.
+- [ ] The console can lower or clear a channel floor and renders the `channel-floor-unverified-<channel>` warning.
 
 ## Verify
 

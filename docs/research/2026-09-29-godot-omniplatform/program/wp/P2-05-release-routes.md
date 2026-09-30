@@ -43,7 +43,7 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
 - [notes/A1 §2, §4, §6.2, §7](../../notes/A1-release-update.md#2-every-route-and-what-it-emits);
   [notes/E3 §F](../../notes/E3-windows-linux-web.md) item 1 (winget refuses redirects; App
   Installer and zsync need Range).
-- Hand-offs of [P2-01](P2-01-blob-store.md) (`blobResponse`, the bytes-host allowlist),
+- Hand-offs of [P2-01](P2-01-blob-store.md) (landed: `blobResponse(req, bucket, key, {sha256, gated, host, contentType?, disposition?, filename?})` in `core/blobs.ts`; the bytes-host allowlist `BYTE_ROUTES` in `mount.ts`, consumed by `dispatchBytesHost(req, env, db, routes)` in `core/bytesHost.ts`),
   [P2-03](P2-03-release-data-model.md) (`model.ts`, policy semantics), [P2-02](P2-02-trusted-publisher.md)
   (`requireCiScope`), and the landed [P0-02](P0-02-release-resolution.md) (comparator, tag filter).
 - Code: `packages/worker/src/services/release/gateway.ts` (the pipeline, `resolveSelector`, the
@@ -72,7 +72,7 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
     All three answer `GET` and `HEAD`. Location order: R2 (`blobResponse`) → GitHub
     (`streamAsset`) → `external` (302). A
     `?redirect=1` request for a public artifact of a public repository may get a 302 to GitHub
-    instead of a stream. Register all three on the bytes-host allowlist.
+    instead of a stream. Register all three in `mount.ts` `BYTE_ROUTES` as `ByteRoute`s with `service: "release"` (`match(pathname)` returns `{product, params}`; `handle(req, ctx)`). The bytes host does not go through `dispatchService`, so the `service` field is what makes Release-off serve nothing; its not-found is the flat `{"error":"not_found"}`, and CORS and hardening are applied by the dispatcher, not the route.
 - **GitHub caching:** release resolution cached 60–120 s per (product, selector), and GitHub's
   signed asset URL cached per asset for less than its lifetime, so a Range chunk costs no API call.
 - **Channel policy operations**, one implementation in `services/release/policy.ts`, reached by:
@@ -90,6 +90,13 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
 - Discovery: release's fragment advertises `endpoints.builds` and `endpoints.blobs` (templated),
   on the bytes host when `BLOB_ORIGIN` is set.
 - Docs: `services/release/artifacts.md`, a `services/release/channels.md` page; `docs gen`.
+- **Wave-1 sync:** **Harden `dispatchBytesHost`.** It has no try/catch; once routes exist, a throw from `loadProduct` or a route becomes Cloudflare's own HTML 1101 page on `dl.plrs.im`, without `nosniff` or the sandbox CSP. Catch inside `dispatchBytesHost` (around `answer`) and return a hardened platform-JSON 500 that goes through `hardenBytesHostResponse`.
+- **Wave-1 sync:** **Derive the host, do not trust it.** `blobResponse` must compute `host` from `req.url` via `isBytesHost(url, env)` instead of trusting `opts.host`, so a console route can never ask for the bytes-host type/inline relaxation.
+- **Wave-1 sync:** **Fail closed on locked keys.** `blobResponse` must answer not-found when a locked-prefix (`blobs/`, `bundles/`, `deltas/`, `gated/`) object has no stored checksum instead of serving it with ETag and `Repr-Digest` from `opts.sha256`; everything `putVerified` writes has one.
+- **Wave-1 sync:** **Gated cache header.** Gated responses use `private, no-store, no-transform` (today `private, no-store`), so the edge cannot recompress `application/wasm` and break `Content-Length`, Range and `Repr-Digest`; correct P2-01's brief line and its test.
+- **Wave-1 sync:** **Slimmer byte-route context (optional, least privilege).** `dispatchBytesHost` runs `loadProduct` (a PLATFORM_KEK unseal of the signing key) on every download and hands the PEM to routes in `ctx.product`; byte routes never need it. Pass a context without the key if `loadProduct` allows it.
+- **Wave-1 sync:** **Resolution cache (from P0-02).** Health and download paths now pay a full live GitHub resolution plus one per floored channel that looks below its floor; the 60–120 s resolution cache here must cover them (issue #3).
+- **Wave-1 sync:** **`BLOB_ORIGIN` guard.** A `BLOB_ORIGIN` equal to the console hostname 404s every console path, and a missing `BLOB_ORIGIN` with the `dl*` route deployed serves the full console on the same-site sibling (host isolation fails open). Add a config guard that refuses it, or a line in `docs/DEPLOYMENT.md` that the route and the var are removed together.
 
 **Out** (and where it belongs instead):
 
@@ -160,6 +167,9 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
       request makes none (fetch-counting test).
 - [ ] `routeCoverage` passes with the new paths; `docs gen:check` is clean.
 - [ ] The green gate passes (`AGENTS.md`), including `test/attack/R6-release.test.ts`.
+- [ ] A throw inside a registered byte route or `loadProduct` answers a JSON 500 with `X-Content-Type-Options: nosniff` and the sandbox CSP on the bytes host (test).
+- [ ] `blobResponse` ignores a caller-supplied `host: "bytes"` on a console-host request; a locked key with no stored checksum answers not-found; a gated response carries `no-transform`.
+- [ ] With Release off for a product, the three release byte routes answer the bytes host's flat not-found (test).
 
 ## Verify
 

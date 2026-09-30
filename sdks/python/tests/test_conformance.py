@@ -1,3 +1,4 @@
+# @pkey-feature core.verify core.bundle
 """Cross-language conformance: drive EVERY vector in ``conformance/corpus/v2/`` through
 the production verifiers and assert the expected outcome.
 
