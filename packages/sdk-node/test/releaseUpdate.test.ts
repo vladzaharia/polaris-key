@@ -109,6 +109,7 @@ const CHANGELOG = {
   ],
 };
 
+// @pkey-feature release.changelog release.download
 describe("ReleaseClient — the truth store's public face (§R1)", () => {
   it("GETs the CANONICAL /release/changelog, not v2's /changelog alias", async () => {
     const mock = mockFetch({ "/release/changelog": () => json(CHANGELOG) });
@@ -210,6 +211,7 @@ describe("ReleaseClient — the truth store's public face (§R1)", () => {
   });
 });
 
+// @pkey-feature update.check
 describe("UpdateClient — the feed over Release's store (§R1)", () => {
   const VERSION = {
     version: "1.3.0",

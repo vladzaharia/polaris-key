@@ -1,3 +1,4 @@
+// @pkey-feature core.verify core.cache
 // Wire contract v3 §1/§4/§5 regression tests, driven through a whole `PolarisKeyClient` against a
 // routing transport stub.
 //
@@ -529,6 +530,7 @@ final class TrustAndCacheTests: XCTestCase {
     }
 
     // ── §5 a 304 renews freshness (R2-11) ─────────────────────────────────────────
+    // @pkey-feature core.sync
     /// A continuously ONLINE client must never drift into `grace` because its content ETag is
     /// stable. Once the cached document is inside the refresh margin, a 304 is escalated to an
     /// unconditional fetch that returns a freshly signed document.
@@ -556,6 +558,7 @@ final class TrustAndCacheTests: XCTestCase {
         XCTAssertEqual(unconditional.count, 1)
     }
 
+    // @pkey-feature core.sync
     /// …and while the document is comfortably fresh, a 304 stays a 304: no extra round trip.
     func test304OnAFreshDocumentDoesNotRefetch() async throws {
         let t = nowSec()
@@ -573,6 +576,7 @@ final class TrustAndCacheTests: XCTestCase {
         XCTAssertEqual(freshFetches, 1)
     }
 
+    // @pkey-feature core.sync
     /// `sync(force:)` drops the conditional request outright — without it, activation could 304
     /// against a stale ETag and never install the very first document.
     func testForcedSyncSendsNoConditionalHeader() async throws {
@@ -592,6 +596,7 @@ final class TrustAndCacheTests: XCTestCase {
         XCTAssertNil(last?.headers["if-none-match"])
     }
 
+    // @pkey-feature core.sync
     /// §5 — exactly ONE re-acquire per pass, then one retry, then the hard 401 is recorded. A
     /// retry loop would keep postponing the offline revocation signal (§4.3) forever.
     func testSingle401ReacquireThenRecordedRevocation() async throws {
@@ -646,6 +651,7 @@ final class TrustAndCacheTests: XCTestCase {
         XCTAssertEqual(status, .ok)
     }
 
+    // @pkey-feature devices.facts devices.report
     /// §6 — telemetry rides on `POST /devices/report` (v2's `/config/report` is gone) and carries
     /// the software facts alongside the snapshot, on the SAME call.
     func testTelemetryPostsToDevicesReportWithFacts() async throws {
@@ -704,6 +710,7 @@ final class TrustAndCacheTests: XCTestCase {
         }
     }
 
+    // @pkey-feature license.deactivate
     /// Deactivation wipes the credential and every artifact, and resets the floor with them — a
     /// floor without its sources is a bare counter.
     func testDeactivateWipesEverythingIncludingTheFloor() async throws {

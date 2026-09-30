@@ -82,6 +82,7 @@ def test_discovery_unlocks_them() -> None:
 
 
 # ── Release ─────────────────────────────────────────────────────────────────────────
+# @pkey-feature release.changelog
 def test_changelog_decodes_entries() -> None:
     c = make_client(_feed_routes(), expected_services=["release"])
     entries = c.release.changelog()
@@ -99,6 +100,7 @@ def test_a_changelog_body_without_entries_is_empty_not_a_crash() -> None:
     c.close()
 
 
+# @pkey-feature release.download
 def test_install_and_download_urls_are_built_not_fetched() -> None:
     c = make_client(_feed_routes(), expected_services=["release"])
     assert c.release.install_url() == f"{BASE_URL}/{PRODUCT}/release/install.sh"
@@ -152,6 +154,7 @@ def test_a_403_reports_the_entitlement_refusal_rather_than_retrying() -> None:
 
 
 # ── Update ──────────────────────────────────────────────────────────────────────────
+# @pkey-feature update.check
 def test_version_check_compares_against_the_HOST_application_version() -> None:
     """``updateAvailable`` is computed from the host app's version, not the SDK's — the
     SDK ships INSIDE the thing being updated. And the comparison is the same
@@ -167,6 +170,7 @@ def test_version_check_compares_against_the_HOST_application_version() -> None:
     ahead.close()
 
 
+# @pkey-feature update.check
 def test_version_check_passes_the_channel_through() -> None:
     seen: Dict[str, Any] = {}
 

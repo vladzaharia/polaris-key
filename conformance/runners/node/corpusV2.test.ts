@@ -174,6 +174,7 @@ const matrix = JSON.parse(readFileSync(v2("gate-matrix.json"), "utf8")) as {
   rows: MatrixRow[];
 };
 
+// @pkey-feature core.verify
 describe(`conformance corpus v${corpus.corpusVersion} — JWS (§1–§2)`, () => {
   it("has vectors in every section", () => {
     expect(corpus.corpusVersion).toBe(2);
@@ -221,6 +222,7 @@ const docOpts = (c: DocCase): VerifyOptions => ({
   checkFreshness: c.checkFreshness,
 });
 
+// @pkey-feature core.verify license.entitlements
 describe(`conformance corpus v${corpus.corpusVersion} — license documents (§3)`, () => {
   for (const c of corpus.licenseDocCases) {
     it(`${c.id} → accept:${c.expect.accept}`, async () => {
@@ -230,6 +232,7 @@ describe(`conformance corpus v${corpus.corpusVersion} — license documents (§3
   }
 });
 
+// @pkey-feature core.verify
 describe(`conformance corpus v${corpus.corpusVersion} — config documents (§3)`, () => {
   for (const c of corpus.configDocCases) {
     it(`${c.id} → accept:${c.expect.accept}`, async () => {
@@ -239,6 +242,7 @@ describe(`conformance corpus v${corpus.corpusVersion} — config documents (§3)
   }
 });
 
+// @pkey-feature core.verify
 describe(`conformance corpus v${corpus.corpusVersion} — trust set (§1)`, () => {
   for (const c of corpus.trustCases) {
     it(`${c.id} → accepted:${c.expect.accepted}`, async () => {
@@ -262,6 +266,7 @@ describe(`conformance corpus v${corpus.corpusVersion} — trust set (§1)`, () =
   }
 });
 
+// @pkey-feature core.verify
 // §4.2 — the monotonic clock floor. Each case replays the cache-RELOAD path as pure data:
 // re-verify the cached manifest against the PINS (freshness off), re-verify each cached
 // document against the resulting effective set (freshness off), fold the `issuedAt` of
@@ -392,6 +397,7 @@ function matrixDoc(l: MatrixRow["license"]): LicenseDoc | null {
   };
 }
 
+// @pkey-feature license.gate
 describe(`gate-matrix v${matrix.gateMatrixVersion} (§5)`, () => {
   for (const row of matrix.rows) {
     it(row.name, () => {
@@ -448,6 +454,7 @@ async function importBundle(c: BundleCase): Promise<ImportOutcome> {
   return { imports: true, docs };
 }
 
+// @pkey-feature core.bundle
 describe(`conformance corpus v${corpus.corpusVersion} — offline bundles (§7)`, () => {
   it("pins the bundle payload cap against the implementation's own constant", () => {
     for (const c of corpus.bundleCases) {

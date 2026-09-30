@@ -1,3 +1,4 @@
+// @pkey-feature license.gate
 // Gate transition tests — wire contract v3 §5. The ordering of the checks (not-applicable →
 // no-activation → blocked → revoked → no-doc → expired → grace → ok) is load-bearing, so each
 // branch gets a case that could only pass with the right precedence.

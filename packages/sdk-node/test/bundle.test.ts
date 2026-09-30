@@ -1,3 +1,4 @@
+// @pkey-feature core.bundle
 // Offline bundle import THROUGH THE SDK — wire contract v3 §7, step 5.
 //
 // Steps 1–4 belong to `@polaris-key/client-core`'s `inspectBundle` and are pinned there (and by the
