@@ -98,14 +98,24 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
   unowned — report it).
 - A shorter vanity path such as `/<p>/link` (optional; not needed while QR is the primary path).
 - A server-rendered SVG QR code (notes/E9 §8.1 alternative; not needed, clients render QR).
-- Changing `interval`, `expiresIn` or the poll contract.
+- Changing `interval`, `expiresIn` or the poll contract. _Correction (review):_ one narrowing of
+  `/identity/auth/poll` was required — see the design note below — while `/device/poll`,
+  `interval` and `expiresIn` are unchanged.
 
 ## Design notes
 
 - **Never expose the device code on the user-code path.** Anyone who learns a device code and the
   device id (the page shows the id when no `deviceName` was given) could poll and race the real
   device for the token once the user confirms. The lookup therefore stays server-side and the
-  confirmation form carries `user_code`, not `device_code`.
+  confirmation form carries `user_code`, not `device_code`. _Correction (review):_ that was not
+  enough. Confirming 303s the user-code holder to the authorize URL, which carries `state`, and
+  `/identity/auth/poll` redeems `state` + device id — so the user code alone was a path to the
+  victim's token. The code now: marks flows `/device/start` begins (`FlowRecord.viaDeviceCode`)
+  and has `/identity/auth/poll` answer them with the generic `error`, so only `/device/poll` with
+  the device code redeems them; shows `deviceName` or "Unnamed device", never the device id; and
+  deletes the user-code index on confirmation. The same review found that `Origin`-only checking
+  refused every real browser POST (a `no-referrer` page sends `Origin: null`); the check now
+  decides on `Sec-Fetch-Site` first and lets `Origin: null` through to the CSRF check.
 - **Brute force** (RFC 8628 §5.1): 20^8 codes, a 600-second lifetime, a per-IP limit and a
   per-flow single-use CSRF token keep blind guessing impractical; the threat-model paragraph
   states the numbers. Do not add a product-wide bucket that one attacker could exhaust to lock

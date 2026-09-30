@@ -69,24 +69,29 @@ URL.
 
 **`GET` with `?user_code=`** (the QR-code path), or a **`POST` of the entry form**, looks the code
 up and renders the confirmation page: the product, the device label (the `deviceName` given at
-start, else the device id) and the user code, with one button. Input is forgiving — case does not
+start, else "Unnamed device" — never the device id) and the user code, with one button. Input is forgiving — case does not
 matter, and spaces and hyphens are ignored, so `wdjb mjht` finds `WDJB-MJHT` — but anything
 outside the alphabet, or not eight characters, is simply not a code. Rendering mints a fresh
 single-use CSRF token into the stored record and changes nothing else about the flow. The
 confirmation form posts `user_code` and `csrf` back to this route; the device code never appears
 in the URL, the page or the form.
 
-**`POST` with `csrf`** confirms, and only when three things hold: the request's `Origin` header,
-if present, must match this origin; the posted CSRF token must match the one the render minted;
-and that token is deleted immediately after, so it cannot be replayed. On success it stamps
-`confirmedAt` on the flow — which is what the poll routes below require before they will ever
-return a token — and answers with a `303` redirect straight to the IdP's authorize URL, carrying
-`Referrer-Policy: no-referrer` and `Cache-Control: no-store` so the `state`/`nonce` in that URL
-never leak through a Referer header or a shared cache. A cross-site `Origin`, and an empty, wrong
-or reused token, all get the same `403`.
+**`POST` with `csrf`** confirms, and only when three things hold: the request must not be
+cross-site; the posted CSRF token must match the one the render minted; and that token is
+deleted immediately after, so it cannot be replayed. "Not cross-site" is decided by
+`Sec-Fetch-Site` when the browser sends it (only `same-origin` passes); without it, an `Origin`
+header naming another origin is refused, while an absent `Origin` or `Origin: null` passes to the
+token check — `null` is what a browser sends on a same-origin form POST from a page served with
+`Referrer-Policy: no-referrer`, as this one is. On success it stamps `confirmedAt` on the flow —
+which is what the poll below requires before it will ever return a token — deletes the user-code
+index, so the code stops resolving here, and answers with a `303` redirect straight to the IdP's
+authorize URL, carrying `Referrer-Policy: no-referrer` and `Cache-Control: no-store` so the
+`state`/`nonce` in that URL never leak through a Referer header or a shared cache. A cross-site
+request, and an empty, wrong or reused token, all get the same `403`. The same check applies to
+the entry form's `POST`.
 
-An unknown, expired or malformed code re-renders the entry form with one generic line — "That code
-is not valid or has expired." — and status `404`. The page never says which, so a guesser learns
+An unknown, expired, malformed or already-confirmed code re-renders the entry form with one
+generic line — "That code is not valid or has expired." — and status `404`. The page never says which, so a guesser learns
 nothing from the difference. Every page here is script-free HTML under the static-page security
 headers, `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; the confirmation page's
 `form-action` also allows the IdP's origin, because a browser applies `form-action` to the
@@ -180,10 +185,11 @@ network ate my request."
 
 Use it wherever a client cannot receive a browser redirect at all — a headless CLI, a build
 agent, a device with no embedded or system browser reachable from the process doing the polling.
-A client that _can_ open (or already captured a redirect into) a local browser is better served
-by the loopback `/identity/auth/poll` surface in
-[Product OIDC](/docs/services/identity/oidc/), which skips the human-facing confirmation page
-entirely.
+A device-code flow completes only on `/identity/auth/device/poll`, with the device code: the
+`state`-keyed `/identity/auth/poll` in [Product OIDC](/docs/services/identity/oidc/) refuses it,
+because the user code is public by design and the confirmation page hands its holder the
+authorize URL, which carries `state`. What a user-code holder can and cannot do is set out in
+the security threat model.
 
 :::note[Changed: the user code is independent]
 `userCode` used to be the first eight characters of `deviceCode`, case-folded, and

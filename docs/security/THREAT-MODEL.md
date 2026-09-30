@@ -188,9 +188,38 @@ console, a game or a CLI sends the player to. The player types (or scans) an eig
 user code; the page looks it up server-side and shows a confirmation page naming the product and
 the device; one button press sends the browser to the IdP. The secret `deviceCode` — which,
 with the device id, is what a poller redeems for a device token — never appears in a URL, a page
-or a form on this path. The user code is drawn independently of it, so learning a user code
-(over a shoulder, from a stream, from a photo of a QR code) gives nothing to poll with. Its KV
-index is keyed by a peppered hash (R12-04), lives for the flow's 600 s and is deleted with it.
+or a form on this path, and the user code is drawn independently of it. Its KV index is keyed by
+a peppered hash (R12-04), lives at most for the flow's 600 s, and is deleted the moment the flow
+is confirmed.
+
+**What a user-code holder can do.** The user code is public by design: clients show it large
+and render it as a QR code, so assume it is read over a shoulder, off a stream or from a photo.
+Before the real user confirms, its holder can (a) open the confirmation page, which re-mints the
+single-use CSRF token and so makes the real user's pending click 403 until they reload; and (b)
+confirm the flow themselves and sign it in under their OWN IdP identity, so the victim's device
+ends up on the attacker's account (a mis-binding the victim sees, not a takeover of theirs). It
+cannot obtain the victim's device token, the device code, a license, or the victim's identity,
+and it cannot act at all once the victim has confirmed.
+
+Three controls make that true, and the first is the one that matters:
+
+1. **Only the device code redeems a device-code flow.** Confirming 303s the browser to the IdP
+   authorize URL, and that URL carries `state`. `/identity/auth/poll` redeems `state` plus a
+   device id, so a user-code holder who confirmed would hold one half of that pair for free.
+   A flow `/device/start` began is therefore marked (`viaDeviceCode`) and `/identity/auth/poll`
+   answers it with the generic `error`; it completes only on `/identity/auth/device/poll`, with
+   the device code. (Found in P1-06 review: without this, a user code was enough to race the
+   real device for its token — an R8-01-class theft.)
+2. **The page never shows the device id.** It shows `deviceName`, or "Unnamed device".
+3. **Confirmation retires the user code.** The index is deleted, and a flow already confirmed
+   does not resolve even if a KV read still sees it: nobody can re-render, re-mint the CSRF token
+   or be 303'd to the authorize URL after the real user has pressed the button.
+
+**Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
+policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
+decides on Fetch Metadata when the browser sends it (only `Sec-Fetch-Site: same-origin` passes)
+and otherwise accepts an absent Origin, this origin, or `null`; a foreign Origin is refused. The
+single-use CSRF token minted on the render is what actually guards a confirmation.
 
 **Brute force (RFC 8628 §5.1).** The code space is 20⁸ ≈ 2.56 × 10¹⁰ (RFC 8628 §6.1's
 consonant alphabet). The page allows 30 requests per minute per _client network_, fail-closed:
@@ -209,10 +238,9 @@ the product's other rate-limited routes, a visible attack in its own right — 1
 give about 6 × 10⁵ guesses per 600 s and one hit roughly every 7 hours; at a more sustainable
 200 guesses a second, one every day and a half; with 10 live flows, a hundred times rarer. What
 actually bounds guessing is the code space, the 600-second lifetime and the limited value of a
-hit. A hit can render and confirm SOMEONE ELSE's flow and sign it in under the attacker's own
-IdP identity (the device ends up on the attacker's account, not the reverse), or re-render the
-page to invalidate the real user's single-use CSRF token so their click 403s and they reload. It
-cannot obtain a device token, a license, the device code, or the victim's identity. There is
+hit, which is exactly what any user-code holder gets (above): the two nuisances before the victim
+confirms, and nothing after. Because only the device code redeems a device-code flow, a hit is
+not a path to a device token. There is
 deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
 product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
 `clientIp`, and sharding the rate-limit Durable Object (R10-04a).
@@ -226,8 +254,9 @@ client-supplied display text, so a phisher can make it say anything. This residu
 to the device-authorization grant; it is the same one every RFC 8628 deployment carries.
 
 **Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
-flight across the deploy. Confirmation on both routes is one function: an `Origin` check, a
-single-use CSRF token, and a `303` to the IdP with `no-referrer` and `no-store`. The confirmation
+flight across the deploy. Confirmation on both routes is one function: the Fetch Metadata /
+`Origin` check above, a single-use CSRF token, and a `303` to the IdP with `no-referrer` and
+`no-store`. The confirmation
 page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
 
 ### Boundaries that are weaker than they look

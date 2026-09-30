@@ -2201,12 +2201,16 @@ paths:
       tags: [identity]
       summary: Poll a browser sign-in flow
       description: >
-        The CLI's half of the browser flow: it opened `authStart` in a browser and now waits
-        here for the device token. Both query parameters are required. Four terminal-or-not
-        states, all at HTTP 200: `pending` (nothing confirmed yet), `ready` (with the minted
-        `pkeyt_` token), `timeout` (the flow record is gone — including immediately after a
-        `ready`, which deletes it), and `error`. `error` deliberately carries NO reason: an
-        unauthenticated poller learns that it failed, not why.
+        Polls a sign-in flow by `state` for the device token. Both query parameters are
+        required. Only a flow bound to a device id can complete, and a flow begun by
+        `authDeviceStart` never completes here: it answers `error` and redeems only on
+        `authDevicePoll`, with the secret device code, because `state` rides on the authorize
+        URL the user-code confirmation page hands to anyone holding the public user code.
+        Four terminal-or-not states, all at HTTP 200: `pending` (nothing confirmed yet),
+        `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone —
+        including immediately after a `ready`, which deletes it), and `error`. `error`
+        deliberately carries NO reason: an unauthenticated poller learns that it failed, not
+        why.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: state
@@ -2433,12 +2437,14 @@ paths:
         The `verificationUri` a device-code client shows. Without `user_code` it renders the
         entry form: one text field that POSTs back to this URL. With `user_code` (the
         `verificationUriComplete` a QR code carries) it looks the code up server-side and
-        renders the confirmation page — product, device label (`deviceName` if given, else the
-        device id) and user code — with a fresh single-use hidden `csrf` field; that form posts
+        renders the confirmation page — product, device label (`deviceName` if given, else
+        "Unnamed device"; never the device id) and user code — with a fresh single-use hidden
+        `csrf` field; that form posts
         `user_code` and `csrf` back here, never the device code. Input is case-insensitive and
         spaces and hyphens are ignored; anything outside `BCDFGHJKLMNPQRSTVWXZ` or not eight
-        characters long is invalid. An unknown, expired or malformed code re-renders the entry
-        form with one generic message and status 404. Every page is script-free, under the
+        characters long is invalid. An unknown, expired, malformed or already-confirmed code
+        re-renders the entry form with one generic message and status 404. Every page is
+        script-free, under the
         static-HTML CSP, `cache-control: no-store` and `referrer-policy: no-referrer`; the
         confirmation page's `form-action` additionally allows the IdP origin its POST
         redirects to. Nothing about the flow is confirmed by this GET.
@@ -2474,14 +2480,17 @@ paths:
                     </form>
         "404":
           description: >
-            Unknown, expired or malformed code: the entry form again with one generic line
-            ("That code is not valid or has expired."), whatever the reason. `text/html`.
+            Unknown, expired, malformed or already-confirmed code: the entry form again with one
+            generic line ("That code is not valid or has expired."), whatever the reason.
+            `text/html`.
           content:
             text/html:
               schema: { type: string }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
-          description: 30 requests per 60 s per client IP (fail-closed) — LEGACY FLAT.
+          description: >
+            30 requests per 60 s per client network — the IPv4 address, or the IPv6 /64
+            (fail-closed) — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -2496,10 +2505,14 @@ paths:
         the confirmation page rendered, exactly as the GET with `?user_code=` does. The
         confirmation form sends `user_code` and `csrf`: when the `csrf` field is present at
         all, this is a confirmation — the single-use token must match the one the page minted,
-        and on success the flow is stamped confirmed and the browser is sent to the IdP with a
-        303, `cache-control: no-store` and `referrer-policy: no-referrer`, as
-        `deviceAuthVerify` does. A cross-site `Origin`, and an empty, wrong, reused or
-        orphaned `csrf`, share ONE 403 message. The body is
+        and on success the flow is stamped confirmed, the user code stops resolving, and the
+        browser is sent to the IdP with a 303, `cache-control: no-store` and
+        `referrer-policy: no-referrer`, as `deviceAuthVerify` does. Both forms are refused when
+        cross-site: `Sec-Fetch-Site` decides when present (only `same-origin` passes);
+        otherwise an `Origin` naming another origin is refused, while an absent `Origin` or
+        `Origin: null` — what a browser sends from this no-referrer page — passes to the
+        `csrf` check. A cross-site request, and an empty, wrong, reused or orphaned `csrf`,
+        share ONE 403 message. The body is
         `application/x-www-form-urlencoded` (the pages' own forms) or JSON when the
         `content-type` says so.
       requestBody:
@@ -2536,7 +2549,7 @@ paths:
               example: https://id.example/authorize
         "403":
           description: >
-            Cross-site `Origin`, or a `csrf` that is empty, wrong, already used, or for a code
+            A cross-site request, or a `csrf` that is empty, wrong, already used, or for a code
             that no longer exists — LEGACY FLAT. One message for all of them, deliberately.
           content:
             application/json:
@@ -2557,7 +2570,9 @@ paths:
                 expired: { value: { error: not_found, message: device code expired } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
-          description: 30 requests per 60 s per client IP (fail-closed) — LEGACY FLAT.
+          description: >
+            30 requests per 60 s per client network — the IPv4 address, or the IPv6 /64
+            (fail-closed) — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -2632,8 +2647,9 @@ paths:
         stored at device-start — not 200, and not 302, so the follow-up is a GET regardless of
         this POST. The token is deleted on use. The body may be
         `application/x-www-form-urlencoded` (the page's own form) or JSON when the
-        `content-type` says so; either way the field is named `csrf`. A cross-site `Origin`
-        header and a missing/wrong token share ONE 403 message.
+        `content-type` says so; either way the field is named `csrf`. A cross-site request
+        (the same `Sec-Fetch-Site` / `Origin` rule as `deviceAuthEntry`, under which
+        `Origin: null` passes) and a missing/wrong token share ONE 403 message.
       requestBody:
         required: true
         content:
@@ -2667,7 +2683,7 @@ paths:
                 missingCode: { value: { error: bad_request, message: missing code } }
         "403":
           description: >
-            Cross-site `Origin`, or a missing/mismatched `csrf` — LEGACY FLAT. One message for
+            A cross-site request, or a missing/mismatched `csrf` — LEGACY FLAT. One message for
             both, deliberately.
           content:
             application/json:

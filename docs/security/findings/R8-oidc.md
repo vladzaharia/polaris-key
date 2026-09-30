@@ -549,7 +549,7 @@ chose, but they encode the device binding only on the surface that _has_ it:
 All changes are confined to `packages/worker/src/oidc.ts` plus its tests. The PoC suite
 `packages/worker/test/attack/R8-oidc.test.ts` has been **inverted**: the `it()` titles are
 unchanged (so they still map to the finding ids above) but every body now asserts the attack
-**fails**. It is the regression suite. 28/28 pass; `test/oidc.test.ts` + `test/oidcEdge.test.ts`
+**fails**. It is the regression suite. 29/29 pass; `test/oidc.test.ts` + `test/oidcEdge.test.ts`
 (37 tests) pass.
 
 | Finding | Fixed                         | Proof                                                                                                                                 |
@@ -589,13 +589,24 @@ more. That is the intended fail-closed direction (a bare `state` must not be a b
 `/auth/device/start` + either poll surface remains fully functional. `pollUrl` is still
 advertised in discovery and still works for device flows.
 
+**Later change (P1-06):** "either poll surface" no longer holds. A flow `/auth/device/start`
+began is refused on `/auth/poll` (`FlowRecord.viaDeviceCode`, generic `error`) and completes
+only on `/auth/device/poll` with the device code, because the user-code page made `state` plus
+the device id reachable by anyone holding the public user code (see R8-02 below). Since those
+are the only flows ever bound to a device id, `/auth/poll` currently completes no flow; it
+stays routed and in discovery, answering its existing generic statuses.
+
 ## R8-02 — device-code CSRF / disclosure / throttle (High)
 
 - Confirmation is now **`POST` only**. `GET` renders the page and is side-effect free; `?confirm=1`
   on a GET is ignored (no mutation, no `Location`, no `state`/`nonce`).
 - The GET mints a CSRF token into `DeviceFlowRecord.csrf`; the POST must echo it and is
-  additionally refused when an `Origin` header names a foreign origin. The token is deleted on
-  use (single-use).
+  additionally refused when it is cross-site. (P1-06: the check decides on `Sec-Fetch-Site` when
+  the browser sends it — only `same-origin` passes — and otherwise refuses only a foreign
+  `Origin`. `Origin: null` must pass, because a browser sends exactly that on a same-origin form
+  POST from a page served with `referrer-policy: no-referrer`, which both device pages are; the
+  earlier `Origin`-only check refused every real confirmation.) The token is deleted on use
+  (single-use).
 - The confirmation redirect is a `303` carrying `Referrer-Policy: no-referrer` and
   `Cache-Control: no-store`; the same two headers are now on the rendered page, whose URL holds
   the device code.
@@ -616,8 +627,9 @@ change:
   (`BCDFGHJKLMNPQRSTVWXZ`, 20⁸ ≈ 2.6 × 10¹⁰ codes, ~34.5 bits), drawn independently of
   `deviceCode`, still shown as `XXXX-XXXX`.
 - It is indexed as `p:<slug>:device-user:<hashKey(normalised code, KEY_HASH_PEPPER)>` → the
-  device code, with the flow's 600 s TTL, regenerated on collision and deleted with the flow
-  when a poll returns `ready` or `timeout`. No KV key name holds a raw user code (R12-04).
+  device code, with the flow's 600 s TTL, regenerated on collision and deleted as soon as the
+  flow is confirmed (or when a poll returns `ready` or `timeout`); a confirmed flow never
+  resolves by user code again. No KV key name holds a raw user code (R12-04).
 - `verificationUri` is `<origin>/<p>/identity/auth/device` (the code-entry page) and
   `verificationUriComplete` adds `?user_code=XXXX-XXXX` for a QR code. Neither carries the device
   code.
@@ -630,9 +642,24 @@ change:
   product-wide bucket, which one attacker could exhaust to lock every player out. The
   brute-force numbers and their residuals are in `THREAT-MODEL.md`.
 - `/auth/device/verify?device_code=` is unchanged, for flows in flight across the deploy.
+- **Only the device code redeems a device-code flow.** The user code is public by design (shown
+  large, rendered as a QR code), and confirming 303s its holder to the authorize URL, which
+  carries `state`. `/auth/poll` redeems `state` + device id, and the page used to show the raw
+  device id when no `deviceName` was sent, so a user-code holder could have raced the real device
+  for its token once the victim signed in — an R8-01-class theft found in P1-06 review. Fixed
+  three ways: a flow `/device/start` began carries `FlowRecord.viaDeviceCode` and `/auth/poll`
+  answers it with the generic `error` (it redeems only on `/auth/device/poll`, with the device
+  code); the page shows `deviceName` or "Unnamed device", never the id; and confirmation deletes
+  the user-code index, so nobody can re-render, re-mint the CSRF token or reach the authorize URL
+  after the real user has confirmed. What a user-code holder can still do is bounded in
+  `THREAT-MODEL.md`: before the victim confirms, invalidate their CSRF token, or confirm first and
+  sign the device in under the holder's own IdP identity.
 
 The two R8-02 PoCs that asserted the residual now assert the fix
-(`test/attack/R8-oidc.test.ts`), and `test/oidcEdge.test.ts` covers the page.
+(`test/attack/R8-oidc.test.ts`), a third (`› holding only the user code, an attacker reads the
+device id and state off the page…`) asserts the user-code path is not a token path, and
+`test/oidcEdge.test.ts` covers the page, including the `Origin: null` / Fetch Metadata shapes a
+real browser sends.
 
 **Not fixed at audit time (since fixed by R1-09's `staticHtmlSecurityHeaders`):** the full
 security-header bundle (`content-security-policy`, `x-frame-options`, `x-content-type-options`) on
