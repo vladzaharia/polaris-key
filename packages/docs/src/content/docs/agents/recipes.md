@@ -52,14 +52,14 @@ curl -s https://key.plrs.im/<product>/.well-known/polaris.json | jq .services
 
 Deep page: [The config catalog](/docs/services/config/catalog/) · Skill: `adding-a-catalog-entry`
 
-| #   | Step                      | Detail                                                                                                                                                                                               |
-| --- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Pick the kind             | `config` = plaintext client setting · `secret` = redacted, keyring-delivered · `flag` = an entitlement, which rides the **license** document only                                                    |
-| 2   | Write the schema fragment | A Draft-07 **subset**. An unimplemented keyword or format makes the fragment unsupported — a 422 at publish, and a pruned value at request time. Never silently ignored, and `$ref` is not supported |
-| 3   | Pick enforcement          | `managementDefault` on config kinds: `default` overridable · `enforced` server wins · `hidden` enforced and withheld from enumeration                                                                |
-| 4   | Pick delivery             | `delivery` on secret kinds: `serverOnly` · `clientScoped` · `edgeMint`. Setting it on a non-secret entry is an error                                                                                 |
-| 5   | Decide on `schemaVersion` | Bump **only** on an incompatible shape change — adding a key is not one                                                                                                                              |
-| 6   | Publish                   | Push `.pkey/schema` (webhook resync, keeps the repo authoritative) or **Catalog → Publish new version** in the console                                                                               |
+| #   | Step                      | Detail                                                                                                                                                                                                      |
+| --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Pick the kind             | `config` = plaintext client setting · `secret` = redacted, delivered in the config document (cached in a `0600` file, not the keyring) · `flag` = an entitlement, which rides the **license** document only |
+| 2   | Write the schema fragment | A Draft-07 **subset**. An unimplemented keyword or format makes the fragment unsupported — a 422 at publish, and a pruned value at request time. Never silently ignored, and `$ref` is not supported        |
+| 3   | Pick enforcement          | `managementDefault` on config kinds: `default` overridable · `enforced` server wins · `hidden` enforced and withheld from enumeration                                                                       |
+| 4   | Pick delivery             | `delivery` on secret kinds: `serverOnly` · `clientScoped` · `edgeMint`. Setting it on a non-secret entry is an error                                                                                        |
+| 5   | Decide on `schemaVersion` | Bump **only** on an incompatible shape change — adding a key is not one                                                                                                                                     |
+| 6   | Publish                   | Push `.pkey/schema` (webhook resync, keeps the repo authoritative) or **Catalog → Publish new version** in the console                                                                                      |
 
 ```sh
 pnpm --filter @polaris-key/manifest test

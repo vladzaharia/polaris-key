@@ -98,15 +98,34 @@ under `packages/docs/src/content/docs/`, short code paths under `packages/worker
 
 ## Acceptance criteria
 
-- [ ] Every row of the table is fixed; `grep -rn "not macOS-specific\|/djdl/schema" packages/docs docs`
+- [x] Every row of the table is fixed; `grep -rn "not macOS-specific\|/djdl/schema" packages/docs docs`
       returns nothing, and the OpenAPI no longer mentions `v1.2.3` as a selector.
-- [ ] Worker test: a product with `artifactPolicy.requireDmg: false` and no DMG in its latest
+- [x] Worker test: a product with `artifactPolicy.requireDmg: false` and no DMG in its latest
       release has health `healthy`, with no `dmg-arm64`, `dmg-x86_64` or `sparkle-signature` failure.
-- [ ] Worker test: djdl-shaped fixtures (no artifact policy) keep today's health results.
-- [ ] Admin test: a product with License disabled shows no "Issue a license" checklist item.
-- [ ] Worker test: the portal artifact list for a release with `app.dmg`, `app.dmg.sig` and
+- [x] Worker test: djdl-shaped fixtures (no artifact policy) keep today's health results.
+- [x] Admin test: a product with License disabled shows no "Issue a license" checklist item.
+- [x] Worker test: the portal artifact list for a release with `app.dmg`, `app.dmg.sig` and
       `SHA256SUMS.sha256` returns only `app.dmg`.
-- [ ] `pnpm --filter @polaris-key/docs check:links` and `docsLinks.test.ts` pass; the green gate passes.
+- [x] `pnpm --filter @polaris-key/docs check:links` and `docsLinks.test.ts` pass; the green gate passes.
+
+Implementation notes (corrections recorded while implementing):
+
+- The `grep -rn "not macOS-specific\|/djdl/schema" packages/docs docs` criterion matches the
+  research corpus under `docs/research/` (this brief, the README and notes A1/A3 quote the
+  phrases). Run it as `packages/docs docs/RUNBOOK.md docs/security docs/superpowers` for the
+  intended check; it returns nothing there.
+- The `?channel=` and OpenAPI "pinned" fixes also stop saying `v1.2.3` is a selector: the
+  route only accepts a bare `1.2.3`, which already matches both a `v1.2.3` and a `1.2.3` tag
+  (`resolveChannel`), so no P0-02 dependency was needed for the wording.
+- The "ships DMGs" helper is `shipsDmgs`/`requiresDmg` in `services/release/config.ts`.
+  Release health evaluates it against the GitHub release list; the console setup state reads
+  the truth store through `latestReleaseHasDmg` (`services/release/store.ts`).
+- Also updated for the same reasons: `services/release/truth-store.md` (health checklist),
+  the `adding-a-catalog-entry` skill and `start/concepts.md` and `agents/recipes.md` and
+  `build/manifest/authoring.md` (the keyring wording), and the `mount.ts` header comment.
+- Left alone (out of scope, follow-up): the `secret` kind description in
+  `packages/shared-manifest/schemas/v1/schema.schema.json` still says "delivered to the OS
+  keyring"; changing it is a schema edit under rule 9.
 
 ## Verify
 

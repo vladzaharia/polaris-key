@@ -126,13 +126,15 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
 1. **Release config** — are the GitHub owner, repo, installation id, and binary name all
    present at all.
 2. **Sparkle public key** — configured or not (a missing key is a warning here, not a
-   failure: a product may not ship Sparkle updates at all).
+   failure: a product may not ship Sparkle updates at all). Checked only for a product that
+   _ships DMGs_ (below).
 3. **GitHub access** — can the installation token actually list releases right now.
 4. **Latest release** — is there a published, non-draft release to evaluate.
-5. **macOS arm64 DMG** — present or not. Absence counts as _missing_, unconditionally:
-   every macOS product is expected to ship one.
-6. **macOS x86_64 DMG** — present or not. Also _missing_ by default; it softens to a warning
-   only for a product whose artifact policy turns `requireDmg` off.
+5. **macOS arm64 DMG** — present or not. Absence counts as _missing_ by default: a product
+   that ships DMGs is expected to have both architectures. It softens to a warning for a
+   product whose artifact policy turns `requireDmg` off but whose latest release carries a
+   DMG anyway.
+6. **macOS x86_64 DMG** — present or not. Same rule as the arm64 check.
 7. **Sparkle signature** — either the policy requires signed appcasts and no public key is
    configured at all (_missing_), or a key is configured and the question is whether the
    sibling `.sig` asset for the arm64 DMG is actually present. This check confirms presence;
@@ -140,6 +142,12 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
    [Appcast](/docs/services/update/appcast/).
 8. **CLI assets** — arm64 and x86_64 bare-binary assets, present or not (each a warning
    unless the artifact policy requires it).
+
+A product **ships DMGs** when its artifact policy requires one (the default, so a product with
+no policy is checked exactly as before) or its latest release already contains a `.dmg`. For a
+product that does neither — a Linux or Godot build, say — checks 2 and 5 to 7 are skipped
+entirely rather than reported as missing, so it is not told it "needs setup" for artifacts it
+never builds.
 
 The rolled-up status a product carries is `healthy` when every check passes, `needs-setup`
 when something expected is simply missing, and `error` when GitHub access itself failed —

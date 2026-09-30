@@ -86,12 +86,18 @@ at all.
 A product declares one **binary name** in its manifest (defaulting to the repository name)
 and Release matches assets against it by convention: `<binaryName>-<arch>` for a bare CLI
 binary, the same shape with a `.dmg` extension for a macOS disk image, and a `-<channel>`
-infix for anything built off a non-stable channel. Release itself is not macOS-specific —
-the download route and the truth store classify assets by platform (macOS, Linux, Windows)
-from their file extension and name, and only the DMG path and the Sparkle appcast assume
-Apple's update mechanism. A product that ships a Linux or Windows CLI still gets indexed
-artifacts, a changelog, and an install script; it just never has anything for
-[Update](/docs/services/update/) to render a feed over.
+infix for anything built off a non-stable channel. What is served today is narrower than the
+platform names suggest: the **download route** serves only extension-less binaries
+(`<binaryName>-<arch>`) and `.dmg` files, so a `.zip`, `.tar.gz`, `.exe` or `.pkg` asset has no
+route under `/release/dl/`. The **truth store** does classify every asset of a release by kind
+(`dmg`, `pkg`, `archive`, `cli`, `signature`, `checksum`, `other`) and platform from its name,
+and that classification is what the customer portal lists (the portal hands out a listed file
+by redirecting to its GitHub URL) — but classification is a store concern only; it adds no
+route under `/release/dl/`. Only the DMG path and the Sparkle appcast assume
+Apple's update mechanism, so a product that ships no DMG has nothing for
+[Update](/docs/services/update/) to render a feed over, and release health does not ask it for
+one: the DMG and Sparkle checks apply only to a product that requires a DMG or whose latest
+release carries one.
 
 ## Draft releases are invisible
 
