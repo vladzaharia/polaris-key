@@ -266,6 +266,9 @@ After the next deploy, check the isolation from outside:
 ```sh
 curl -sI https://dl.plrs.im/manage | grep -iE '^(HTTP|content-security-policy|x-content-type-options)'
 # HTTP/2 404, content-security-policy: sandbox; ..., x-content-type-options: nosniff
+# The fully-qualified form (trailing dot) must answer the same, not the console:
+curl -sI https://dl.plrs.im./manage | grep -iE '^(HTTP|content-security-policy|x-content-type-options)'
+# HTTP/2 404, content-security-policy: sandbox; ..., x-content-type-options: nosniff
 ```
 
 ## 4. Worker secrets
@@ -498,7 +501,8 @@ Validate portal email:
 - Durable Object namespace `RL` is bound in prod.
 - R2 bucket `polaris-key-blobs-prod` is bound as `BLOBS`, with 180-day age locks on `blobs/`,
   `bundles/`, `deltas/` and `gated/`, a 1-day expiry on `staging/`, and `r2.dev` disabled.
-- `https://dl.plrs.im/manage` answers 404 with `content-security-policy: sandbox; …`.
+- `https://dl.plrs.im/manage` and `https://dl.plrs.im./manage` (trailing dot) answer 404 with
+  `content-security-policy: sandbox; …`.
 - Email Service binding `EMAIL` is present in prod and can send as `noreply@plrs.im`.
 - GitHub App webhooks validate with `GITHUB_WEBHOOK_SECRET`.
 - DJDL is linked through `.pkey/`, not seeded.

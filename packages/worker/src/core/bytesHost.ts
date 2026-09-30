@@ -14,8 +14,12 @@
  * in `blobs.ts`, and are test-pinned (`test/bytesHost.test.ts`):
  *   - every response carries `X-Content-Type-Options: nosniff` and `BLOB_CSP` (`sandbox`), so
  *     a body a browser chose to render still runs no script and has an opaque origin;
- *   - a byte route may never answer with an executable or renderable type (HTML, XML, SVG,
- *     script, JSON, text) — the dispatcher replaces such a response with not-found;
+ *   - a byte route's non-error answer must carry a type on the explicit inert allowlist
+ *     (`BYTES_HOST_TYPES`) — anything else, a missing type on a body included, is replaced
+ *     with not-found — and leaves as `Content-Disposition: attachment` unless the route asked
+ *     for `inline`; an error answer may be JSON (the platform's `{"error":…}` bodies) or an
+ *     allowlisted type, never HTML, XML, SVG, script or text;
+ *   - a route's own `Access-Control-*` headers are dropped; only `core/cors.ts` sets them;
  *   - no cookie is read (the `Cookie` header is stripped before a route sees the request) and
  *     none is set (`Set-Cookie` is stripped from every response);
  *   - the console's session cookies are host-only (`__Host-` prefix, no `Domain`), so the
@@ -25,7 +29,7 @@
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { notFound } from "./errors.js";
-import { BLOB_CSP } from "./blobs.js";
+import { BLOB_CSP, BYTES_HOST_TYPES } from "./blobs.js";
 import { corsPreflight, withCors } from "./cors.js";
 import { loadProduct, type Product } from "./products.js";
 
@@ -63,36 +67,104 @@ export interface ByteRoute {
  */
 export const BYTE_ROUTES: readonly ByteRoute[] = [];
 
-/** The bytes host's hostname (lowercase), or `null` when `BLOB_ORIGIN` is unset or unusable. */
+/**
+ * A hostname in the form hosts are compared in: lowercase, with any trailing dots removed.
+ * `dl.plrs.im.` (the fully-qualified form) is the same DNS name as `dl.plrs.im`, and the edge
+ * routes it to this Worker with the dot still in `req.url` — so an exact comparison would let
+ * `https://dl.plrs.im./manage` skip host isolation and reach the console.
+ */
+function normalizeHostname(hostname: string): string {
+  return hostname.toLowerCase().replace(/\.+$/, "");
+}
+
+/** The bytes host's hostname (lowercase, no trailing dot), or `null` when `BLOB_ORIGIN` is
+ *  unset or unusable. */
 export function bytesHostname(env: Pick<Env, "BLOB_ORIGIN">): string | null {
   const origin = env.BLOB_ORIGIN;
   if (typeof origin !== "string" || origin.trim() === "") return null;
   try {
     const u = new URL(origin);
     if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-    return u.hostname.toLowerCase() || null;
+    return normalizeHostname(u.hostname) || null;
   } catch {
     return null;
   }
 }
 
-/** True when `url` is on the bytes host. Always false with `BLOB_ORIGIN` unset. */
+/** True when `url` is on the bytes host, in any case and with or without the trailing dot.
+ *  Always false with `BLOB_ORIGIN` unset. */
 export function isBytesHost(url: URL, env: Pick<Env, "BLOB_ORIGIN">): boolean {
   const host = bytesHostname(env);
-  return host !== null && url.hostname.toLowerCase() === host;
+  return host !== null && normalizeHostname(url.hostname) === host;
 }
 
-/** Types a bytes-host response may never carry, whatever route produced it. */
+/** Refused on the bytes host whatever the status or the allowlist says: anything a browser may
+ *  execute or render as an active document. */
 const EXECUTABLE_TYPE =
   /html|xml|svg|script|ecmascript|^\s*text\/|multipart\//i;
-/** JSON is allowed only as an error body (the platform's `{"error":…}` answers), never as a
- *  success payload: the bytes host serves bytes, not documents. */
-const JSON_TYPE = /json/i;
+/** The platform's error bodies (`core/errors.ts`). Allowed only at status 400 and above: the
+ *  bytes host serves bytes, not documents. */
+const ERROR_JSON_TYPES: ReadonlySet<string> = new Set([
+  "application/json",
+  "application/problem+json",
+]);
 
+function baseType(t: string): string {
+  return (t.split(";")[0] ?? "").trim().toLowerCase();
+}
+
+/**
+ * The host-wide type rule, applied to every route answer whatever produced it (`blobResponse`
+ * applies the same allowlist, but a route need not use it — the boundary lives here, as
+ * R1-09's `secureResponse` does for the console):
+ *   - executable or renderable types are refused at every status;
+ *   - below 400, a `Content-Type` must be on `BYTES_HOST_TYPES`, and a body must have one;
+ *   - at 400 and above, a body's type must be the platform's JSON error type or allowlisted.
+ * A body-less answer with no type (304, 204, a 416 or 405 from `blobResponse`) passes.
+ */
 function refusedType(res: Response): boolean {
-  const type = res.headers.get("content-type") ?? "";
-  if (EXECUTABLE_TYPE.test(type)) return true;
-  return JSON_TYPE.test(type) && res.status < 400;
+  const raw = res.headers.get("content-type");
+  if (raw !== null && EXECUTABLE_TYPE.test(raw)) return true;
+  const type = raw === null ? "" : baseType(raw);
+  if (type === "") return res.body !== null;
+  if (BYTES_HOST_TYPES.has(type)) return false;
+  return !(res.status >= 400 && ERROR_JSON_TYPES.has(type));
+}
+
+/** `inline` only when the route asked for it on an allowlisted type; else `attachment`,
+ *  keeping the route's parameters (the filename). */
+function forcedDisposition(res: Response): string | null {
+  if (res.status >= 400) return null;
+  const type = baseType(res.headers.get("content-type") ?? "");
+  if (type === "" && res.body === null) return null;
+  const disp = res.headers.get("content-disposition") ?? "";
+  if (/^\s*inline\s*(;|$)/i.test(disp) && BYTES_HOST_TYPES.has(type))
+    return null;
+  if (/^\s*attachment\s*(;|$)/i.test(disp)) return null;
+  const params = /^\s*inline\s*;(.*)$/i.exec(disp)?.[1];
+  return params !== undefined ? `attachment;${params}` : "attachment";
+}
+
+/**
+ * The route's answer with the host's own headers enforced: no `Access-Control-*` of its own
+ * (CORS is `core/cors.ts`'s alone, and `withCors` leaves a product with no `web.origins`
+ * untouched, so a route's own `*` would otherwise survive), and a forced disposition.
+ */
+function policed(res: Response): Response {
+  const disposition = forcedDisposition(res);
+  let touched = disposition !== null;
+  const headers = new Headers();
+  res.headers.forEach((value, key) => {
+    if (key.toLowerCase().startsWith("access-control-")) touched = true;
+    else headers.append(key, value);
+  });
+  if (!touched) return res;
+  if (disposition !== null) headers.set("content-disposition", disposition);
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
 }
 
 /**
@@ -124,8 +196,8 @@ function withoutCookies(req: Request): Request {
 
 /**
  * Dispatch a request that arrived on the bytes host. Only `routes` can answer; anything else,
- * an unknown product, and any route answer with an executable type, becomes the plain
- * not-found.
+ * an unknown product, and any route answer whose type breaks the host's rule (`refusedType`),
+ * becomes the plain not-found.
  *
  * CORS (P0-05) runs here exactly as `dispatch.ts` runs it for the console's covered routes:
  * the product's own `web.origins` decide; a preflight is answered before the handler runs (so
@@ -168,7 +240,7 @@ async function answer(
       await res.body?.cancel().catch(() => undefined);
       res = notFound();
     }
-    return withCors(product, req, res);
+    return withCors(product, req, policed(res));
   }
   return notFound();
 }

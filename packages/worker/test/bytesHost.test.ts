@@ -82,6 +82,25 @@ describe("bytes host: configuration", () => {
     expect(bytesHostname({ BLOB_ORIGIN: "https://dl.plrs.im/" })).toBe(
       "dl.plrs.im",
     );
+    // The fully-qualified form (trailing dot) is the same DNS name.
+    expect(bytesHostname({ BLOB_ORIGIN: "https://dl.plrs.im./" })).toBe(
+      "dl.plrs.im",
+    );
+    expect(
+      isBytesHost(new URL("https://dl.plrs.im./manage"), {
+        BLOB_ORIGIN: "https://dl.plrs.im",
+      }),
+    ).toBe(true);
+    expect(
+      isBytesHost(new URL("https://DL.plrs.im../manage"), {
+        BLOB_ORIGIN: "https://dl.plrs.im",
+      }),
+    ).toBe(true);
+    expect(
+      isBytesHost(new URL("https://key.plrs.im./manage"), {
+        BLOB_ORIGIN: "https://dl.plrs.im",
+      }),
+    ).toBe(false);
     expect(bytesHostname({})).toBeNull();
     expect(bytesHostname({ BLOB_ORIGIN: "" })).toBeNull();
     expect(bytesHostname({ BLOB_ORIGIN: "not a url" })).toBeNull();
@@ -135,6 +154,24 @@ describe("bytes host: isolation", () => {
         // The dispatcher's HSTS backstop still applies to the bytes host.
         expect(res.headers.get("strict-transport-security"), path).toContain(
           "max-age=",
+        );
+      }
+    }
+  });
+
+  it("the fully-qualified host (trailing dot) is the bytes host too, not a way around it", async () => {
+    // The edge routes `dl.plrs.im.` to this Worker with the dot kept in req.url; an exact
+    // hostname comparison would hand it the whole console.
+    for (const base of [BYTES + ".", "https://DL.example.test.:443"]) {
+      for (const path of CONSOLE_PATHS) {
+        const res = await worker.fetch(new Request(base + path), env(BYTES));
+        expect(res.status, base + path).toBe(404);
+        expect(await res.json(), base + path).toEqual({ error: "not_found" });
+        expect(res.headers.get("content-security-policy"), base + path).toBe(
+          BLOB_CSP,
+        );
+        expect(res.headers.get("x-content-type-options"), base + path).toBe(
+          "nosniff",
         );
       }
     }
@@ -274,6 +311,159 @@ describe("bytes host: dispatch", () => {
     }
   });
 
+  /** A body with no Content-Type at all (a string body would get `text/plain` implicitly). */
+  const untypedBody = (): ReadableStream<Uint8Array> =>
+    new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode("%PDF-1.7 <script>"));
+        c.close();
+      },
+    });
+
+  it("a success answer whose type is not on the inert allowlist is replaced by not-found", async () => {
+    const cases: Array<[string, () => ByteRoute]> = [
+      [
+        "application/pdf inline",
+        () =>
+          echo("%PDF-1.7", {
+            "content-type": "application/pdf",
+            "content-disposition": "inline",
+          }),
+      ],
+      [
+        "application/pdf",
+        () => echo("%PDF-1.7", { "content-type": "application/pdf" }),
+      ],
+      [
+        "video/mp4 inline",
+        () =>
+          echo("v", {
+            "content-type": "video/mp4",
+            "content-disposition": "inline",
+          }),
+      ],
+      ["image/png", () => echo("png", { "content-type": "image/png" })],
+      [
+        "image/png inline",
+        () =>
+          echo("png", {
+            "content-type": "image/png",
+            "content-disposition": "inline",
+          }),
+      ],
+      ["no Content-Type (stream body)", () => echo(untypedBody(), {})],
+      ["no Content-Type (206)", () => echo(untypedBody(), {}, 206)],
+      [
+        "empty Content-Type",
+        () => echo(new Uint8Array([1, 2]), { "content-type": "" }),
+      ],
+      [
+        "JSON below 400",
+        () => echo("{}", { "content-type": "application/json" }, 201),
+      ],
+    ];
+    for (const [label, route] of cases) {
+      const res = await dispatchBytesHost(
+        new Request(`${BYTES}/${SLUG}/fake/x`, { headers: { origin: LISTED } }),
+        env(BYTES),
+        db,
+        [route()],
+      );
+      expect(res.status, label).toBe(404);
+      expect(await res.json(), label).toEqual({ error: "not_found" });
+      expect(res.headers.get("content-disposition"), label).toBeNull();
+      expect(res.headers.get("x-content-type-options"), label).toBe("nosniff");
+      expect(res.headers.get("content-security-policy"), label).toBe(BLOB_CSP);
+    }
+  });
+
+  it("an allowlisted answer leaves as attachment unless the route asked for inline", async () => {
+    const run = async (headers: Record<string, string>): Promise<Response> =>
+      dispatchBytesHost(
+        new Request(`${BYTES}/${SLUG}/fake/x`),
+        env(BYTES),
+        db,
+        [echo(new Uint8Array([1]), headers)],
+      );
+    const apk = "application/vnd.android.package-archive";
+    const none = await run({ "content-type": apk });
+    expect(none.status).toBe(200);
+    expect(none.headers.get("content-type")).toBe(apk);
+    expect(none.headers.get("content-disposition")).toBe("attachment");
+
+    const odd = await run({
+      "content-type": apk,
+      "content-disposition": "form-data; name=x",
+    });
+    expect(odd.headers.get("content-disposition")).toBe("attachment");
+
+    const att = await run({
+      "content-type": apk,
+      "content-disposition": 'attachment; filename="a.apk"',
+    });
+    expect(att.headers.get("content-disposition")).toBe(
+      'attachment; filename="a.apk"',
+    );
+
+    const inline = await run({
+      "content-type": "application/wasm",
+      "content-disposition": 'inline; filename="a.wasm"',
+    });
+    expect(inline.status).toBe(200);
+    expect(inline.headers.get("content-disposition")).toBe(
+      'inline; filename="a.wasm"',
+    );
+    expect(inline.headers.get("content-security-policy")).toBe(BLOB_CSP);
+  });
+
+  it("body-less answers with no type (304, HEAD-style 200) pass untouched", async () => {
+    const notModified = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`),
+      env(BYTES),
+      db,
+      [echo(null, { etag: '"abc"' }, 304)],
+    );
+    expect(notModified.status).toBe(304);
+    expect(notModified.headers.get("content-disposition")).toBeNull();
+    expect(notModified.headers.get("content-security-policy")).toBe(BLOB_CSP);
+
+    const head = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, { method: "HEAD" }),
+      env(BYTES),
+      db,
+      [echo(null, octet)],
+    );
+    expect(head.status).toBe(200);
+    expect(head.headers.get("content-disposition")).toBe("attachment");
+  });
+
+  it("an error answer may be the platform's JSON or an allowlisted type, nothing else", async () => {
+    for (const [type, status, allowed] of [
+      ["application/json", 403, true],
+      ["application/problem+json", 429, true],
+      ["application/octet-stream", 416, true],
+      ["application/pdf", 403, false],
+      ["image/png", 404, false],
+      ["text/html", 500, false],
+    ] as const) {
+      const res = await dispatchBytesHost(
+        new Request(`${BYTES}/${SLUG}/fake/x`),
+        env(BYTES),
+        db,
+        [echo(new Uint8Array([1]), { "content-type": type }, status)],
+      );
+      expect(res.status, type).toBe(allowed ? status : 404);
+      expect(res.headers.get("content-security-policy"), type).toBe(BLOB_CSP);
+    }
+    const untyped = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`),
+      env(BYTES),
+      db,
+      [echo(untypedBody(), {}, 400)],
+    );
+    expect(untyped.status).toBe(404);
+  });
+
   it("a JSON error body from a route is allowed through (it is not a payload)", async () => {
     const res = await dispatchBytesHost(
       new Request(`${BYTES}/${SLUG}/fake/x`),
@@ -377,6 +567,37 @@ describe("bytes host: dispatch", () => {
     );
     expect(res.headers.get("access-control-allow-origin")).toBeNull();
     expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+  });
+
+  it("...nor for a product with no web.origins, where core/cors.ts adds nothing", async () => {
+    // `withCors` returns a product-without-origins response untouched, so this is the case
+    // where a route's own headers would otherwise survive.
+    await seedProduct(db, "quiet");
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/quiet/fake/x`, {
+        headers: { origin: "https://evil.example" },
+      }),
+      env(BYTES),
+      db,
+      [
+        {
+          ...echo("b", {}),
+          handle: async () =>
+            new Response(new Uint8Array([1]), {
+              headers: {
+                ...octet,
+                "access-control-allow-origin": "*",
+                "access-control-allow-credentials": "true",
+                "access-control-expose-headers": "*",
+              },
+            }),
+        },
+      ],
+    );
+    expect(res.status).toBe(200);
+    for (const [k] of res.headers)
+      expect(k.startsWith("access-control-"), k).toBe(false);
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
   });
 });
 

@@ -262,14 +262,18 @@ describe("bytes host isolation on workerd", R2_LANE, () => {
       "/docs",
       "/djdl/.well-known/polaris.json",
     ]) {
-      const res = await SELF.fetch(`https://dl.workerd.test${path}`, {
-        headers: { cookie: "__Host-pkey_admin=x" },
-      });
-      expect(res.status, path).toBe(404);
-      expect(await res.json(), path).toEqual({ error: "not_found" });
-      expect(res.headers.get("content-security-policy"), path).toBe(BLOB_CSP);
-      expect(res.headers.get("x-content-type-options"), path).toBe("nosniff");
-      expect(res.headers.get("set-cookie"), path).toBeNull();
+      // The fully-qualified form (trailing dot) is the same host, not a way around it.
+      for (const host of ["dl.workerd.test", "dl.workerd.test."]) {
+        const res = await SELF.fetch(`https://${host}${path}`, {
+          headers: { cookie: "__Host-pkey_admin=x" },
+        });
+        const at = host + path;
+        expect(res.status, at).toBe(404);
+        expect(await res.json(), at).toEqual({ error: "not_found" });
+        expect(res.headers.get("content-security-policy"), at).toBe(BLOB_CSP);
+        expect(res.headers.get("x-content-type-options"), at).toBe("nosniff");
+        expect(res.headers.get("set-cookie"), at).toBeNull();
+      }
     }
   });
 });
