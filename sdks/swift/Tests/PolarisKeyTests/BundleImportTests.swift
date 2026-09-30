@@ -1,3 +1,4 @@
+// @pkey-feature core.bundle
 // Offline activation bundles — §7 step 5, the half the conformance corpus cannot pin.
 //
 // `ConformanceTests.testAllBundleCases` drives steps 1–4 through the shared vectors and asserts

@@ -39,6 +39,7 @@ def _ok_routes(**kw: Any):
 
 
 # ── layered config ──────────────────────────────────────────────────────────────────
+# @pkey-feature config.resolve
 def test_enforced_remote_value_wins_over_local_and_env() -> None:
     c = make_client(
         _ok_routes(),
@@ -52,6 +53,7 @@ def test_enforced_remote_value_wins_over_local_and_env() -> None:
     c.close()
 
 
+# @pkey-feature config.resolve
 def test_default_state_local_override_then_env_then_remote() -> None:
     # local override wins over env + remote-default.
     c = make_client(_ok_routes(), local_overrides={"ui.theme": "solarized"})
@@ -75,6 +77,7 @@ def test_default_state_local_override_then_env_then_remote() -> None:
     c.close()
 
 
+# @pkey-feature config.resolve
 def test_env_raw_string_when_not_json_and_fallback_source() -> None:
     c = make_client(_ok_routes(), env={"PKEY_CONFIG_ui__theme": "not json {"})
     c.license.activate_with_key("k")
@@ -86,6 +89,7 @@ def test_env_raw_string_when_not_json_and_fallback_source() -> None:
     c.close()
 
 
+# @pkey-feature config.list
 def test_list_user_config_excludes_hidden_and_marks_enforced() -> None:
     c = make_client(_ok_routes(), local_overrides={"ui.theme": "solarized"})
     c.license.activate_with_key("k")
@@ -107,6 +111,7 @@ def test_list_user_config_excludes_hidden_and_marks_enforced() -> None:
 
 
 # ── the whole flow ──────────────────────────────────────────────────────────────────
+# @pkey-feature license.activate license.entitlements config.secret
 def test_activation_then_reads_across_both_documents() -> None:
     state = {"reports": 0}
 
@@ -158,6 +163,7 @@ def test_activation_then_reads_across_both_documents() -> None:
     c.close()
 
 
+# @pkey-feature core.sync
 def test_the_two_documents_have_independent_etags() -> None:
     """§5: a settings edit no longer forces a licence re-download, and a tier change no
     longer forces a settings refetch."""
@@ -168,6 +174,7 @@ def test_the_two_documents_have_independent_etags() -> None:
     c.close()
 
 
+# @pkey-feature core.sync
 def test_sync_reports_per_service_outcomes() -> None:
     c = make_client(_ok_routes())
     c._tokens.set(TOKEN)
@@ -223,6 +230,7 @@ def test_get_sync_state_is_the_bridge_contract() -> None:
     c.close()
 
 
+# @pkey-feature core.sync
 def test_on_change_fires_only_when_the_content_actually_changed() -> None:
     fired: list = []
     c = make_client(_ok_routes(), on_change=lambda st: fired.append(st))
@@ -322,6 +330,7 @@ def test_a_healthy_sync_clears_the_unsigned_hints() -> None:
 
 
 # ── activation failure ladder ───────────────────────────────────────────────────────
+# @pkey-feature license.activate
 def test_activation_unauthorized() -> None:
     c = make_client(lambda r: httpx.Response(401, text="bad key"))
     r = c.license.activate_with_key("nope")
@@ -330,6 +339,7 @@ def test_activation_unauthorized() -> None:
     c.close()
 
 
+# @pkey-feature license.activate
 def test_activation_device_limit_reads_both_body_shapes() -> None:
     for body in ({"limit": 3, "deviceCount": 3}, {"error": {"limit": 3, "deviceCount": 3}}):
         c = make_client(lambda r, b=body: httpx.Response(403, json=b))
@@ -354,12 +364,14 @@ def test_activation_hardware_mismatch() -> None:
     c.close()
 
 
+# @pkey-feature license.enroll
 def test_enroll_disabled_is_a_404() -> None:
     c = make_client(lambda r: httpx.Response(404))
     assert c.license.enroll().kind == "enroll-disabled"
     c.close()
 
 
+# @pkey-feature license.enroll
 def test_enroll_succeeds_and_syncs() -> None:
     c = make_client(_ok_routes())
     assert c.license.enroll().kind == "ok"
@@ -428,6 +440,7 @@ def test_a_hard_401_is_recorded_once_and_becomes_revoked() -> None:
     c.close()
 
 
+# @pkey-feature license.deactivate
 def test_deactivate_wipes_local_state() -> None:
     c = make_client(_ok_routes())
     c.license.activate_with_key("k")
@@ -439,6 +452,7 @@ def test_deactivate_wipes_local_state() -> None:
     c.close()
 
 
+# @pkey-feature license.deactivate
 def test_deactivate_works_offline() -> None:
     """The network call is best-effort and the local wipe is not: a device deactivating on
     a plane must not be left holding a token because the control plane was unreachable."""
@@ -464,6 +478,7 @@ def test_wrong_device_doc_rejected() -> None:
 
 
 # ── offline init performs zero network calls ────────────────────────────────────────
+# @pkey-feature core.cache
 def test_offline_init_makes_no_network_calls() -> None:
     """§5 / the sync loop's first line: an unactivated client that polls must not generate
     traffic, and an offline-first ``init()`` must not either."""
@@ -481,6 +496,7 @@ def test_offline_init_makes_no_network_calls() -> None:
 
 
 # ── device management passthroughs ──────────────────────────────────────────────────
+# @pkey-feature devices.manage
 def test_current_device_and_offline_roster() -> None:
     c = make_client(_ok_routes())
     current = c.current_device()

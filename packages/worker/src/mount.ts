@@ -16,6 +16,7 @@
  */
 
 import type { ServiceRegistry } from "./core/registry.js";
+import type { ByteRoute } from "./core/bytesHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
 import { releaseService } from "./services/release/index.js";
@@ -29,3 +30,14 @@ export const SERVICES: ServiceRegistry = new Map([
   [updateService.slug, updateService],
   [identityService.slug, identityService],
 ]);
+
+/**
+ * The bytes-host allowlist (P2-01, `core/bytesHost.ts`): the only routes that can answer on
+ * `BLOB_ORIGIN` (`dl.plrs.im`). A route not listed here does not exist on that host.
+ *
+ * It lives here, beside `SERVICES`, for the same reason: byte routes are service code (P2-05's
+ * release byte routes, P2b-04's distribution routes), and Core must not import services. Each
+ * entry names its `service`, and the bytes-host dispatcher runs it only while that service is
+ * enabled for the product. EMPTY in P2-01 by design.
+ */
+export const BYTE_ROUTES: readonly ByteRoute[] = [];

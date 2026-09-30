@@ -1,3 +1,4 @@
+// @pkey-feature config.mirror
 import { describe, it, expect } from "vitest";
 import type { ProductCatalog } from "@polaris-key/catalog";
 import { renderTs, renderPython, renderSwift } from "./gen-mirrors.js";
