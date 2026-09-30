@@ -1,0 +1,785 @@
+{
+  "$schema": "./features.schema.json",
+  "registryVersion": 1,
+  "reasons": ["runtime", "outlet", "product", "dependency", "version"],
+  "runtimes": [
+    { "id": "node", "title": "Node (servers, CLIs, Electron main)" },
+    { "id": "python", "title": "CPython" },
+    { "id": "web", "title": "Browser (React SDK over client-core)" },
+    { "id": "desktop-bridge", "title": "Desktop renderer over a host bridge" },
+    { "id": "macos", "title": "macOS" },
+    { "id": "ios", "title": "iOS and iPadOS" },
+    { "id": "windows", "title": "Windows" },
+    { "id": "linux", "title": "Linux" },
+    { "id": "android", "title": "Android" },
+    { "id": "jvm", "title": "JVM desktop" },
+    { "id": "dotnet", "title": ".NET desktop" },
+    { "id": "unity", "title": "Unity" },
+    { "id": "tauri", "title": "Tauri webview" }
+  ],
+  "traits": [
+    {
+      "id": "headless",
+      "title": "Headless SDK: ships no UI toolkit (Node, Python)"
+    }
+  ],
+  "families": [
+    { "id": "core", "title": "Core" },
+    { "id": "license", "title": "License" },
+    { "id": "config", "title": "Config" },
+    { "id": "devices", "title": "Devices and identity" },
+    { "id": "release", "title": "Release and update" },
+    { "id": "packs", "title": "Packs" },
+    { "id": "ui", "title": "UI and commerce" }
+  ],
+  "sdks": [
+    {
+      "id": "node",
+      "title": "Node",
+      "manifest": "packages/sdk-node/parity.json"
+    },
+    {
+      "id": "react",
+      "title": "React",
+      "manifest": "packages/sdk-react/parity.json"
+    },
+    {
+      "id": "python",
+      "title": "Python",
+      "manifest": "sdks/python/parity.json"
+    },
+    { "id": "swift", "title": "Swift", "manifest": "sdks/swift/parity.json" }
+  ],
+  "features": [
+    {
+      "id": "core.verify",
+      "family": "core",
+      "title": "JWS verify, trust manifest (pinning, rotation), clock floor",
+      "service": "core",
+      "proof": [{ "kind": "corpus", "file": "cases.json" }],
+      "allowedNa": []
+    },
+    {
+      "id": "core.cache",
+      "family": "core",
+      "title": "Verified cache; construct and load offline",
+      "service": "core",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }, { "kind": "unit" }],
+      "allowedNa": []
+    },
+    {
+      "id": "core.bundle",
+      "family": "core",
+      "title": "Offline bundle import",
+      "service": "core",
+      "proof": [
+        { "kind": "corpus", "file": "cases.json", "family": "bundleCases" }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "core.discover",
+      "family": "core",
+      "title": "Discovery and capabilities, fail-closed",
+      "service": "core",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": []
+    },
+    {
+      "id": "core.sync",
+      "family": "core",
+      "title": "Sync, ETag/304, backoff, refresh loop, change events",
+      "service": "core",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": []
+    },
+    {
+      "id": "core.local",
+      "family": "core",
+      "title": "Local-only client (no network)",
+      "service": "core",
+      "proof": [{ "kind": "unit" }],
+      "allowedNa": []
+    },
+    {
+      "id": "core.headers",
+      "family": "core",
+      "title": "Canonical platform/arch/SDK/engine header values",
+      "service": "core",
+      "proof": [{ "kind": "corpus", "file": "headers.json", "wp": "P1b-04" }],
+      "allowedNa": []
+    },
+    {
+      "id": "core.errors",
+      "family": "core",
+      "title": "Shared error codes",
+      "service": "core",
+      "proof": [
+        {
+          "kind": "generated",
+          "command": "pnpm gen:constants -- --check",
+          "wp": "P1b-02"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "core.caps",
+      "family": "core",
+      "title": "supports() and capability telemetry",
+      "service": "core",
+      "proof": [{ "kind": "unit" }],
+      "allowedNa": [],
+      "note": "Also proven by the parity gate: the capability table must agree with the SDK's manifest (P1b-10)."
+    },
+    {
+      "id": "core.store",
+      "family": "core",
+      "title": "Secure token store, surfaced failure, no silent downgrade",
+      "service": "core",
+      "proof": [{ "kind": "unit" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no keyring; the session lives in an HttpOnly cookie."
+        }
+      ]
+    },
+    {
+      "id": "license.gate",
+      "family": "license",
+      "title": "Gate evaluation, every status",
+      "service": "license",
+      "proof": [{ "kind": "corpus", "file": "gate-matrix.json" }],
+      "allowedNa": []
+    },
+    {
+      "id": "license.activate",
+      "family": "license",
+      "title": "Activate with a key (+ fingerprint)",
+      "service": "license",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": []
+    },
+    {
+      "id": "license.enroll",
+      "family": "license",
+      "title": "Keyless enrolment",
+      "service": "license",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no hardware ids to anchor a keyless enrolment."
+        }
+      ]
+    },
+    {
+      "id": "license.deactivate",
+      "family": "license",
+      "title": "Remote best-effort, local wipe mandatory",
+      "service": "license",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": []
+    },
+    {
+      "id": "license.entitlements",
+      "family": "license",
+      "title": "Entitlements, profile, licence id",
+      "service": "license",
+      "proof": [{ "kind": "corpus", "file": "cases.json" }],
+      "allowedNa": []
+    },
+    {
+      "id": "license.channels",
+      "family": "license",
+      "title": "entitledChannels()",
+      "service": "license",
+      "proof": [{ "kind": "unit" }],
+      "allowedNa": [],
+      "note": "PARITY §5.2 names cases.json, but no corpus case asserts entitledChannels yet (licenseDocCases only expect accept). Unit until a corpus case exists."
+    },
+    {
+      "id": "license.reregister",
+      "family": "license",
+      "title": "Re-register on 401 for licence-less devices",
+      "service": "license",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser session holds a cookie, not a registered device token, so there is no registration to repeat (follows devices.register on web)."
+        }
+      ]
+    },
+    {
+      "id": "config.resolve",
+      "family": "config",
+      "title": "Precedence (enforced, default, local, environment)",
+      "service": "config",
+      "proof": [
+        { "kind": "unit" },
+        { "kind": "corpus", "file": "config-matrix.json", "wp": "P1b-04" }
+      ],
+      "allowedNa": [],
+      "note": "The environment layer applies to desktop hosts only; in a browser it is empty by definition, which the matrix pins rather than an N/A."
+    },
+    {
+      "id": "config.list",
+      "family": "config",
+      "title": "User-visible config, enforced rows flagged",
+      "service": "config",
+      "proof": [
+        { "kind": "unit" },
+        { "kind": "corpus", "file": "config-matrix.json", "wp": "P1b-04" }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "config.secret",
+      "family": "config",
+      "title": "getSecret",
+      "service": "config",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "The Worker strips secrets from browser sessions."
+        }
+      ]
+    },
+    {
+      "id": "config.schema",
+      "family": "config",
+      "title": "Catalog fetch (/config/schema)",
+      "service": "config",
+      "proof": [{ "kind": "transcript", "wp": "P1b-07" }],
+      "allowedNa": []
+    },
+    {
+      "id": "config.mint",
+      "family": "config",
+      "title": "Edge-mint of third-party tokens",
+      "service": "config",
+      "proof": [{ "kind": "transcript", "wp": "P1b-08" }],
+      "allowedNa": []
+    },
+    {
+      "id": "config.mirror",
+      "family": "config",
+      "title": "Typed catalog mirrors",
+      "service": "config",
+      "proof": [
+        { "kind": "generated", "command": "pnpm gen:mirrors -- --check" }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "devices.fingerprint",
+      "family": "devices",
+      "title": "Components, hashing, device id",
+      "service": "core",
+      "proof": [{ "kind": "corpus", "file": "fingerprint.json" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no hardware ids; it uses a random id in IndexedDB."
+        }
+      ]
+    },
+    {
+      "id": "devices.facts",
+      "family": "devices",
+      "title": "Device facts and probes",
+      "service": "core",
+      "proof": [{ "kind": "unit" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser cannot read OS or hardware facts or probe for companion apps."
+        }
+      ]
+    },
+    {
+      "id": "devices.register",
+      "family": "devices",
+      "title": "Keyless registration",
+      "service": "core",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Registration mints a bearer device token; the browser adapter is cookie-session based and holds none (packages/sdk-react/src/browser/browserAdapter.ts), and a browser has no hardware anchor."
+        }
+      ]
+    },
+    {
+      "id": "devices.manage",
+      "family": "devices",
+      "title": "List, rename, deauthorise",
+      "service": "core",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": []
+    },
+    {
+      "id": "devices.report",
+      "family": "devices",
+      "title": "Telemetry (allowlisted keys)",
+      "service": "core",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": []
+    },
+    {
+      "id": "identity.oidc",
+      "family": "devices",
+      "title": "Browser sign-in",
+      "service": "identity",
+      "proof": [{ "kind": "transcript" }],
+      "allowedNa": []
+    },
+    {
+      "id": "identity.devicecode",
+      "family": "devices",
+      "title": "Device-code sign-in (RFC 8628) with QR",
+      "service": "identity",
+      "proof": [{ "kind": "transcript", "wp": "P1b-08" }],
+      "allowedNa": []
+    },
+    {
+      "id": "release.changelog",
+      "family": "release",
+      "title": "Changelog",
+      "service": "release",
+      "proof": [{ "kind": "transcript", "wp": "P1b-07" }],
+      "allowedNa": []
+    },
+    {
+      "id": "release.download",
+      "family": "release",
+      "title": "Download and install URLs",
+      "service": "release",
+      "proof": [{ "kind": "transcript", "wp": "P1b-07" }],
+      "allowedNa": []
+    },
+    {
+      "id": "release.record",
+      "family": "release",
+      "title": "Verify pkey-release+jws against pinned release keys",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "releaseRecordCases",
+          "wp": "P3-02"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "update.check",
+      "family": "release",
+      "title": "Today's version check",
+      "service": "update",
+      "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
+      "allowedNa": []
+    },
+    {
+      "id": "update.feed",
+      "family": "release",
+      "title": "Verify pkey-feed+jws: freshness, seq",
+      "service": "update",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "feedCases",
+          "wp": "P3-02"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "update.decide",
+      "family": "release",
+      "title": "The update decision",
+      "service": "update",
+      "proof": [
+        { "kind": "corpus", "file": "update-matrix.json", "wp": "P3-02" }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "update.driver",
+      "family": "release",
+      "title": "Hand off to the native updater, or a store link",
+      "service": "update",
+      "proof": [{ "kind": "device" }],
+      "allowedNa": [
+        {
+          "runtime": "ios",
+          "reason": "outlet",
+          "why": "iOS forbids self-update; the SDK offers a store link only."
+        }
+      ]
+    },
+    {
+      "id": "update.bootguard",
+      "family": "release",
+      "title": "Confirm a boot, roll back after N failures",
+      "service": "update",
+      "proof": [
+        { "kind": "corpus", "file": "stage-matrix.json", "wp": "P1-09" }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "outlet.detect",
+      "family": "release",
+      "title": "Outlet detection",
+      "service": "update",
+      "proof": [
+        { "kind": "corpus", "file": "outlet-matrix.json", "wp": "P3-02" }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.plan",
+      "family": "packs",
+      "title": "The install planner",
+      "service": "release",
+      "proof": [
+        { "kind": "corpus", "file": "plan-matrix.json", "wp": "P4-04" }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.index",
+      "family": "packs",
+      "title": "Chunk and files index parsing, path rules",
+      "service": "release",
+      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.apply.full",
+      "family": "packs",
+      "title": "Full apply",
+      "service": "release",
+      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.apply.file",
+      "family": "packs",
+      "title": "File apply with type-neutral container rebuild",
+      "service": "release",
+      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.apply.chunk",
+      "family": "packs",
+      "title": "Chunk sync from seeds, request runs",
+      "service": "release",
+      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-10" }],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.apply.delta",
+      "family": "packs",
+      "title": "Raw-prefix delta",
+      "service": "release",
+      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "allowedNa": [
+        {
+          "runtime": "*",
+          "reason": "dependency",
+          "why": "An optional zstd decoder is missing (e.g. Python 3.12 without zstandard). Never runtime."
+        },
+        {
+          "runtime": "*",
+          "reason": "version",
+          "why": "The runtime's zstd ignores the dictionary option (Node 22.15-22.18, 24.0-24.5). Never runtime."
+        }
+      ]
+    },
+    {
+      "id": "packs.state",
+      "family": "packs",
+      "title": "Install state, journal, atomic switch, confirm, GC roots",
+      "service": "release",
+      "proof": [
+        { "kind": "corpus", "file": "stage-matrix.json", "wp": "P1-09" },
+        { "kind": "unit" }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.handlers",
+      "family": "packs",
+      "title": "Handler contract; registerHandler for custom types",
+      "service": "release",
+      "proof": [{ "kind": "unit" }],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.provides",
+      "family": "packs",
+      "title": "isAvailable(contentId) from provides",
+      "service": "release",
+      "proof": [{ "kind": "unit" }],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.transport.apple",
+      "family": "packs",
+      "title": "Apple Background Assets",
+      "service": "distribution",
+      "proof": [{ "kind": "device" }],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API, reached only through the Apple plugin package."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API, reached only through the Apple plugin package."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API, reached only through the Apple plugin package."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API."
+        },
+        {
+          "runtime": "tauri",
+          "reason": "runtime",
+          "why": "Background Assets is an Apple-platform API."
+        }
+      ]
+    },
+    {
+      "id": "packs.transport.play",
+      "family": "packs",
+      "title": "Play Asset Delivery",
+      "service": "distribution",
+      "proof": [{ "kind": "device" }],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API, reached only through the Kotlin AAR."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API, reached only through the Kotlin AAR."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API."
+        },
+        {
+          "runtime": "tauri",
+          "reason": "runtime",
+          "why": "Play Asset Delivery is an Android API."
+        }
+      ]
+    },
+    {
+      "id": "packs.transport.steam",
+      "family": "packs",
+      "title": "Steam depots",
+      "service": "distribution",
+      "proof": [{ "kind": "device" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Steamworks does not run in a browser."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "Steam does not distribute iOS apps."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "Steam does not distribute Android apps."
+        }
+      ]
+    },
+    {
+      "id": "packs.transport.msix",
+      "family": "packs",
+      "title": "MSIX optional packages",
+      "service": "distribution",
+      "proof": [{ "kind": "device" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "MSIX is Windows-only."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "MSIX is Windows-only."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "MSIX is Windows-only."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "MSIX is Windows-only."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "MSIX is Windows-only."
+        },
+        {
+          "runtime": "*",
+          "reason": "outlet",
+          "why": "An unpackaged app has no MSIX package identity."
+        }
+      ]
+    },
+    {
+      "id": "packs.transport.flatpak",
+      "family": "packs",
+      "title": "Flatpak extensions",
+      "service": "distribution",
+      "proof": [{ "kind": "device" }],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Flatpak is Linux-only."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "Flatpak is Linux-only."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "Flatpak is Linux-only."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "Flatpak is Linux-only."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Flatpak is Linux-only."
+        }
+      ]
+    },
+    {
+      "id": "ui.stages",
+      "family": "ui",
+      "title": "The boot stage machine: states, events, outcomes",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "stage-matrix.json", "wp": "P1-09" }
+      ],
+      "allowedNa": [],
+      "note": "Headless SDKs implement ui.stages so a host can render it, but ship no widget kit."
+    },
+    {
+      "id": "ui.kit",
+      "family": "ui",
+      "title": "Gate, activation, sign-in with QR, settings, devices, update banner, pack progress",
+      "service": "sdk",
+      "proof": [{ "kind": "snapshot" }],
+      "allowedNa": [
+        {
+          "runtime": "headless",
+          "reason": "runtime",
+          "why": "A headless SDK ships no UI toolkit; hosts render ui.stages themselves."
+        }
+      ]
+    },
+    {
+      "id": "commerce.receipt",
+      "family": "ui",
+      "title": "Store purchase to licence entitlement",
+      "service": "license",
+      "proof": [{ "kind": "transcript", "wp": "P6-01" }],
+      "allowedNa": []
+    }
+  ]
+}
