@@ -1,0 +1,200 @@
+# P4-10 Chunk indexes and chunk bundles in CI; content corpus v2
+
+| Field       | Value                                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v2)                                                                                                                                                                                                   |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                             |
+| Depends on  | [P4-03](P4-03-ci-patch-artifacts.md), [P4-04](P4-04-content-corpus-v1.md)                                                                                                                                        |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-17](P4-17-lazy-deltas.md)                                                                                                                                                 |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                            |
+| Plan mode   | yes: `program/plans/P4-10.md` is written and approved before any code                                                                                                                                            |
+| Gates       | plan mode; corpus (content-corpus drift gate, `pnpm gen:corpus -- --check`, Swift and Godot mirrors, generated `corpus.mdx`); all SDKs (every runner loads corpus v2); rule 9 if chunking is manifest-configured |
+| Human input | approval of the plan (merging the plan PR); nothing else                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                        |
+
+## Goal
+
+`pkey release publish --deliverable <packId>` produces, for every single-file pack payload, a
+`pkey-chunks/1` chunk index and immutable chunk bundles (file-aware FastCDC, one zstd frame or a
+raw copy per chunk), uploads only objects that do not exist yet, and records them as `chunk-index`
+and `chunk-bundle` artifacts and in the pack release record's `chunks {format, sha256, params}`.
+The content corpus moves to version 2 with `chunkIndexCases` and the chunk `applyCases`,
+regenerated deterministically under a drift gate and mirrored for Swift and Godot. The Node runner
+parses every chunk-index case through a shared TypeScript parser; every other runner loads v2 and
+declares chunk apply `planned` until P4-11.
+
+## Why
+
+Chunk sync is the default patch mechanism for packs of 16 MiB and more, and the only incremental
+path that works from **any** older release ([README decision 14](../../README.md#11-decisions-needed);
+[CONTENT §8.1](../../CONTENT.md#81-the-strategy-ladder-and-planner)). On the synthetic 36 MiB
+Godot pack it downloads 1.05 MB instead of 9.80 MB ([CONTENT §8.3](../../CONTENT.md#83-godot-measured-pure-gdscript-472)).
+Chunk boundaries are computed only in CI (CONTENT principle 3), so CI must emit the index and the
+bundles before any SDK can sync. The corpus pins the format before four SDKs implement it
+([notes/A7 §11.5](../../notes/A7-xlang-content.md#115-corpus-plan-a-plan-mode-all-languages-event-per-claudemd)).
+
+## Read first
+
+- `AGENTS.md` (rules 1–3, the green gate), `CLAUDE.md` (plan mode), `program/plans/README.md`.
+- [CONTENT §8](../../CONTENT.md#8-patching), [§9](../../CONTENT.md#9-formats) (chunk index, codec,
+  patch descriptor), [§11](../../CONTENT.md#11-server-side-by-service) (CI tooling, R2 keys) and
+  [§12](../../CONTENT.md#12-security) (gated bundles).
+- [notes/A7](../../notes/A7-xlang-content.md): §2 (the vector set), §3.1 (format and validation
+  order), §3.4 (chunk apply), §3.5 (error codes), §5 (corpus encoding), §11.5 (corpus plan).
+- [notes/A6 §2.3](../../notes/A6-godot-patching.md#23-chunk-based-reassembly-e8s-thin-client) for
+  the file-aware measurements (64 KiB average: 984,678 B; 16 KiB: 934,696 B with a 1.8× index).
+- The reference code in `docs/research/2026-09-29-godot-omniplatform/prototype/content/`:
+  `gen/gen.py` (`chunk`, `build_index`, bundle packing, the case list), `gen/fastcdc.js`,
+  `runners/js/content.mjs` (parser and applier), `runners/python/pkey_content.py`.
+- What P4-03 and P4-04 landed: the pack path of `pkey release publish` in `packages/cli/src/`
+  (files index, gaps blob, deltas, lint), the content-corpus generator, its directory and its
+  runners. Use the names they chose; this brief uses the research's.
+- `tools/sign-corpus.ts` (`reconcile` and `main`, ~L2311–2381; `SWIFT_V2_RESOURCES` ~L37) and
+  `packages/docs/scripts/gen-reference.mjs` §7 (`corpusInventory`, ~L365).
+
+## Scope
+
+**In:**
+
+- The plan, `program/plans/P4-10.md`, in the format of `program/plans/README.md`.
+- A `pkey-chunks/1` parser and validator in `client-core`, beside P4-06's pack code (for example
+  `packages/client-core/src/packs/chunkIndex.ts`), used by the CLI's self-check and the Node runner.
+- In the CLI publisher: file-aware FastCDC, per-chunk zstd frames, chunk-bundle packing, the
+  binary index writer, the lints below, upload of new objects only, and the `chunks` field and
+  artifact roles in the release descriptor.
+- Content corpus v2: `chunkIndexCases` (15), the eight chunk `applyCases` (`chunk-v1-to-v2`,
+  `chunk-no-seed`, `chunk-tampered-zstd`, `chunk-tampered-raw`, `chunk-bundle-truncated`,
+  `chunk-seed-tampered`, `chunk-seed-tampered-repair`, `chunk-index-for-other-payload`), the blobs
+  they need (`chunks/v1.pkc`, `chunks/v2.pkc`, `bundles/<sha256>`), and any chunk rows of
+  `plan-matrix.json` that P4-04 deferred (`plan-run-rules`, `plan-two-seeds`, the four
+  `plan-real-*` rows). The corpus version constant goes to 2.
+- Pack-kind `releaseRecordCases` in `conformance/corpus/v2/cases.json` gain `chunks`, pinning the
+  content vectors' chunk-index hash, so the two corpora join by SHA-256.
+- Runner updates: Node parses all 15 index cases; Python, Swift and Godot load v2 and report the
+  chunk sections as `planned` (in `parity.json` once P1b-01 exists). No silent skips.
+- Regenerated docs: `corpus.mdx` and the content-corpus page under `contribute/`.
+
+**Out** (and where it belongs instead):
+
+- The chunk applier, seeds and sync in any SDK (→ [P4-11](P4-11-chunk-sync-sdks.md)).
+- Planner logic: P4-06 implemented it; only rows change here.
+- Lazy deltas (→ [P4-17](P4-17-lazy-deltas.md)); web `dcz` (→ [P4-18](P4-18-web-dcz.md)).
+- Bundle liveness and server GC (→ [P4-14](P4-14-readiness-gc-rollouts.md)). Repacking bundles
+  below ~50% live data (CONTENT §11) has no owner yet; the plan should say so.
+- Chunk indexes for large files inside `layout: tree` payloads. CONTENT §4.2 wants them for big
+  tree files; the record carries one `chunks` field. Not scheduled; the plan confirms.
+- Serving bundles by `Range`/`If-Range`: that is the distribution blob route (P4-05, P2b-04), and
+  S-02 measures R2's behaviour. Here, only add a Worker test that a bundle key is served with
+  `Accept-Ranges` and honours `If-Range`, if P4-05 has no such test.
+
+## Design notes
+
+- **Format, exactly as A7 §3.1.** A 64-byte header (magic `PKEYCHNK`, `version` u16 = 1,
+  `recordSize` u16 = 48, `flags` u32 with bit 0 `fileAware`, `chunkCount`, `bundleCount`,
+  `payloadSize` u64, `payloadSha256`), then 48-byte chunk records
+  `id[32] | len u32 | clen u32 | bundle u32 | offset u32` in payload order, then 48-byte bundle
+  records `sha256[32] | size u64 | reserved u64`. File length is exactly
+  `64 + 48 × (chunkCount + bundleCount)`. The parser returns the first failure in the fixed order
+  with its code (`chunks.bad_length`, `chunks.bad_magic`, `chunks.unsupported_version`,
+  `chunks.bad_record_size`, `chunks.bad_flags`, `chunks.reserved_nonzero`, `chunks.zero_length`,
+  `chunks.bad_clen`, `chunks.bad_bundle_ref`, `chunks.bad_bundle_range`, `chunks.size_mismatch`);
+  `chunks.payload_mismatch` is an apply-time check.
+- **Codec** (README decision 21): `clen == len` means stored raw; `clen < len` means exactly one
+  zstd frame with the content-size field; `clen > len` is invalid, so CI stores raw whenever the
+  frame is not smaller. Chunk ids are SHA-256 of the **uncompressed** bytes.
+- **Lints** (A7 §11.5): every frame is a single frame, has the content-size flag, decodes to `len`
+  and hashes to `id`; the written index parses cleanly with the shared parser; the bundle table's
+  sizes match the uploaded objects.
+- **File-aware chunking.** For a container payload (`layout: container` files index from P4-03),
+  run FastCDC separately over each segment (gap, file, gap, …) and set `fileAware`. A single-file
+  payload without a container index (an `ml.model`, say) is chunked whole with the bit clear.
+- **Parameters** are not in the binary index; they go in the record's `chunks.params` and never
+  change for a published release (CI never re-chunks history). Default: FastCDC average 64 KiB,
+  minimum average/4, maximum average×4 (A6). A7's generator records
+  `{chunker: "fastcdc-2016-nc1", fileAware, avgSize, minSize, maxSize, bundleTarget, zstdLevel}`;
+  notes/E8 §5.4 sketched `{alg, min, avg, max, id, codec}`. Use what P4-01 froze; otherwise the
+  plan picks A7's names. S-03 may move the default average; that changes CI config, not the format.
+- **Manifest.** README §3.12 sketches `patch.chunking: {alg: fastcdc, avg: 65536, fileAware: true}`
+  in `.pkey/release`. If this package makes chunking configurable there, it is a rule-9 change:
+  validator rule, mutation-table entry in `packages/shared-manifest/test/schema-parity.test.ts`,
+  JSON schema, regenerated `validation-codes.mdx`.
+- **Bundles** target 4–16 MiB (CONTENT §2) and hold unique chunks in first-use order; duplicate
+  records point at one location. The plan must choose between:
+  - fresh bundles per release (what the A7 vectors do; trivial GC), or
+  - bundles shared across releases of **one** deliverable, where a new release's bundles hold only
+    new chunks (what the run rule, A7 §4.3, and CONTENT §11's repacking assume; much less storage).
+
+  Recommend the second, scoped to one deliverable and one gating class. The index format supports
+  both. Never share a bundle between a gated and a free pack: a `Range` would leak content
+  (CONTENT §12).
+
+- **Storage.** R2 keys `bundles/sha256/<h>` (gated deliverables under the gated prefix);
+  `release_artifacts` roles `chunk-index` and `chunk-bundle` (added by P2-03). Upload new objects
+  only (dedupe by hash). If an operator gates a deliverable later, its earlier bundles stay under
+  the public prefix; document that in the pack authoring docs.
+- **Corpus determinism.** zstd output depends on the library version, and A7's generator was
+  reproducible only with a pinned zstd CLI. Follow whatever P4-04 chose (committed blobs as hashed
+  inputs, or a pinned compressor). `--check` must not depend on the host's libzstd. Keep the
+  content corpus under 5 MB; A7's full set, bundles included, is 4.1 MB.
+- **Expected verdicts come from a reference implementation**, a port of A7's
+  `refapply.py`/`content.mjs` inside the generator, never from hand-written numbers. `requests`
+  counts are part of the verdict and must match the planner's run rule.
+- **Wire.** If the v4 pack record (P3-01, P4-01) already has an optional `chunks` field, this is a
+  corpus change only. If not, the plan treats it as a wire change: `PROTOCOL_VERSION`, the
+  compatibility story for deployed clients, and every SDK.
+
+## Steps
+
+1. Write `program/plans/P4-10.md`: the `chunks` fields and parameter names; the bundle strategy;
+   the corpus v2 sections, files and version constant; generator, mirror and drift-gate changes;
+   the SDK follow-ups (P4-11 for `client-core`, Python, Swift and Godot; X-01 and P6-05 later);
+   Worker impact (artifact roles, the blob-route `Range` test). Set the status to
+   `awaiting-approval` and stop.
+2. After approval, add the parser and its unit tests in `client-core`.
+3. Add the chunker, bundle packer, index writer and lints to the CLI publisher, then the
+   descriptor fields and upload.
+4. Extend the content-corpus generator and mirrors; add `chunks` to the pack-kind
+   `releaseRecordCases`; run `pnpm gen:corpus`.
+5. Update the runners, the parity manifests and the docs; run the green gate.
+
+## Acceptance criteria
+
+- [ ] `program/plans/P4-10.md` is merged (human approval) before any code lands.
+- [ ] `pnpm --filter @polaris-key/cli test` covers: no chunk straddles a files-index entry when
+      `fileAware` is set; raw storage when the frame is not smaller; every frame is one frame with
+      a content size; the same input twice gives identical index and bundle hashes; a second
+      publish of the same payload uploads nothing; a gated deliverable writes under the gated prefix.
+- [ ] The `client-core` parser returns exactly the A7 §3.1 code for each of the 15
+      `chunkIndexCases` in `conformance/runners/node`.
+- [ ] Content corpus v2 contains the 15 index cases and the 8 chunk apply cases; its `--check` and
+      `pnpm gen:corpus -- --check` are clean, including the Swift and Godot mirrors; it is under 5 MB.
+- [ ] A pack-kind `releaseRecordCases` vector pins the chunk index's SHA-256.
+- [ ] Python, Swift and Godot runners load v2 and report the chunk sections as `planned`; none is
+      skipped silently.
+- [ ] `pnpm --filter @polaris-key/docs gen:check` passes (corpus page regenerated).
+- [ ] The green gate passes (`AGENTS.md`).
+- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+
+## Verify
+
+```sh
+mise exec node@22 -- pnpm --filter @polaris-key/client-core test
+mise exec node@22 -- pnpm --filter @polaris-key/cli test
+mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm conformance
+mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
+( cd sdks/python && .venv/bin/python -m pytest -q )
+( cd sdks/swift && swift test )
+```
+
+## Hand-off
+
+- **P4-11** relies on: the parser's API and module path; the corpus v2 location, section names
+  and verdict shape; the record's `chunks {format, sha256, params}`; the bundle key layout.
+- **P4-17** reuses the CLI's zstd and descriptor helpers and the `deltas/<from>/<to>.<method>`
+  key convention from P4-03.
+- **P4-14** relies on the `chunk-index` and `chunk-bundle` roles and on bundle references in
+  `blob_refs` to compute liveness.
+
+Set the status in the PR that completes the work:
+`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-10 done`.

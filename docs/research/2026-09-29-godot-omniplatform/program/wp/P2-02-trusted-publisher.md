@@ -1,0 +1,178 @@
+# P2-02 Trusted publishing: GitHub OIDC verification, publisher policy, scoped upload tickets
+
+| Field       | Value                                                                                                                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth and publishing                                                                                                                                                                         |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                     |
+| Depends on  | [P2-01](P2-01-blob-store.md) (and, for the `submit` step only, [P2-04](P2-04-release-descriptor.md): see Scope)                                                                                          |
+| Unblocks    | [P2-06](P2-06-publish-cli-action.md)                                                                                                                                                                     |
+| Role        | `pkey-implementer`                                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                                       |
+| Gates       | threat model; rule 9 (`publishing.trustedPublisher`); rule 10 (three routes); D1 migration + `TABLE_OWNERS` (not listed in the graph, but required); required-index assertion for the replay index      |
+| Human input | none in the graph; in practice an **R2 API token** per environment (the parent of CI's temporary credentials) set as Worker secrets. Until then the uploads route answers not-found and tests use a fake |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                |
+
+## Goal
+
+A GitHub Actions job whose OIDC token satisfies its product's publisher policy exchanges that
+token for a short-lived, scoped `pkeyci_` token. With it, the job obtains an upload ticket and R2
+temporary credentials that can write only `staging/<product>/<ticketId>/`, and submits a release
+descriptor whose staged objects the Worker verifies and promotes into the blob store. There is no
+long-lived secret in the product's repository. A non-GitHub CI can use an operator-issued,
+hashed, expiring `pkeyci_` token instead.
+
+## Why
+
+CI cannot authenticate to Polaris Key at all today: the admin API has one credential, the
+platform-admin browser session ([notes/A3 §4.2](../../notes/A3-admin-dx.md#42-how-ci-can-authenticate-to-pkey-today)).
+The research adopts the npm/PyPI trusted-publishing model
+([§3.4 Publishing](../../README.md#34-release-the-record-of-everything-that-exists),
+[notes/E5 §2.2](../../notes/E5-frontier-tech.md#22-github-actions-oidc-as-the-ci-polaris-credential),
+[notes/A3 §4.5](../../notes/A3-admin-dx.md#45-credential-design-recommendation)). Binaries never
+transit the Worker (request bodies cap at 100 MB), so CI uploads to R2 directly and the Worker
+only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
+
+## Read first
+
+- `AGENTS.md` (rules 6, 9, 10), `CLAUDE.md`, and the `authoring-pkey-manifests` skill.
+- [README §3.4](../../README.md#34-release-the-record-of-everything-that-exists) "Publishing",
+  [§3.2](../../README.md#32-service-model-release-distribution-and-update-across-everything-delivered)
+  ("Core gains: trusted-publisher auth").
+- [notes/E5 §2.1–§2.3 and §4.5](../../notes/E5-frontier-tech.md#22-github-actions-oidc-as-the-ci-polaris-credential)
+  (the claim list, the verification recipe, immutable releases, the upload flow);
+  [notes/E7 §6](../../notes/E7-server-ci-tools.md#6-godot-ci-tooling-and-whether-to-ship-polaris-keypublish).
+- [P2-01](P2-01-blob-store.md) hand-off: `stagingKey`, `verifyStaged`, `promote`.
+- Code: `packages/worker/src/admin/auth.ts:16` and `services/identity/oidc.ts:23` (existing `jose`
+  JWKS use), `src/githubWebhook.ts` (KV replay guard pattern), `src/crypto.ts:107` (`hashKey`
+  with `KEY_HASH_PEPPER`, as `pkeyt_` tokens use it at `src/core/devices.ts:383`),
+  `src/core/rateLimit.ts`, `src/core/errors.ts:14-30`,
+  `src/services/release/linkRepo.ts` (installation discovery), `migrations/0018_index_assertion.sql`
+  and `src/scheduled.ts` `REQUIRED_INDEXES`.
+- `packages/shared-manifest/src/index.ts` (release rules at `:875-1060`),
+  `schemas/v1/release.schema.json`, `test/schema-parity.test.ts`.
+
+## Scope
+
+**In:**
+
+- **Core verification** in `packages/worker/src/core/publisher.ts`: GitHub OIDC JWT verification
+  and the policy check; `pkeyci_` token issue, hashing and lookup with scopes; upload tickets.
+- **Tables** (migration; names proposed, `TABLE_OWNERS` under `core`):
+  - `ci_publishers(product PK, provider, repository_id, repository_owner_id, workflow, environment, scopes_json, source, created_at, modified_at)`;
+  - `ci_tokens(token_hash PK, product, kind oidc|static, scopes_json, subject, jti, issued_at, expires_at, revoked_at, created_by)` with a unique index on `jti`;
+  - `ci_upload_tickets(ticket_hash PK, product, token_hash, objects_json, issued_at, expires_at, redeemed_at)`.
+- **Routes** (rule 10: OpenAPI + `SERVICE_PATHS` in `test/routeCoverage.test.ts`), in the release
+  namespace because publishing is "into release":
+  - `POST /{product}/release/publish/token`: GitHub OIDC JWT in → `{token, expiresAt, scopes}`;
+  - `POST /{product}/release/publish/uploads`: `pkeyci_` token with `release:publish`, body
+    `{objects: [{sha256, size}]}` → `{ticket, expiresAt, credentials: {endpoint, bucket, accessKeyId, secretAccessKey, sessionToken}, prefix, objects: [{sha256, key, present}], nextSeq: {<deliverable>: n}}`;
+  - `POST /{product}/release/publish/submit`: token + ticket + descriptor → verify each staged
+    object, promote it, then call P2-04's `ingestReleaseDescriptor`; `dryRun: true` validates only.
+- **Manifest (rule 9):** `.pkey/release` `publishing.trustedPublisher: {workflow, environment}`
+  (README §3.12). Validator codes (proposed) `invalid_trusted_publisher_workflow`,
+  `invalid_trusted_publisher_environment`; mutation-table entries; `release.schema.json`;
+  regenerated `reference/validation-codes.mdx`; the skill and `build/manifest/authoring.md`.
+- **Ingest:** link and resync write `ci_publishers` while `source = 'manifest'`, resolving
+  `repository_id` and `repository_owner_id` from GitHub (`GET /repos/{owner}/{repo}`) with the
+  installation token, never from the manifest.
+- **Operator path** (admin API, narrative-only): read and claim the policy (`source = 'admin'`),
+  edit `scopes_json`, and issue, list and revoke static `pkeyci_` tokens (shown once, expiring at
+  most 90 days out). Audited.
+- Threat model: CI OIDC claims as a semi-trusted input (§5), `pkeyci_` tokens and R2 temporary
+  credentials as assets (§2), a new AT-3 branch ("publish through a trusted publisher").
+
+**Out** (and where it belongs instead):
+
+- The descriptor shape, its validation against the artifact map, and the rows it writes
+  (→ [P2-04](P2-04-release-descriptor.md)).
+- The CLI and the `polaris-key/publish` Action (→ [P2-06](P2-06-publish-cli-action.md)).
+- Channel promote/pin/yank routes that accept these tokens (→ [P2-05](P2-05-release-routes.md));
+  `distribution:report` routes (→ [P2b-03](P2b-03-availability-keys.md)).
+- Console UI for the policy and static tokens. README §6.1 step 4 ("the console shows the exact
+  policy to paste") has no owning work package; see the report. Sigstore/attestation checks
+  (README §3.4 "later"; no owner).
+
+## Design notes
+
+- **Verification** (README §3.4, E5 §2.2): `alg` RS256 only; `iss` exactly
+  `https://token.actions.githubusercontent.com`; JWKS from `/.well-known/jwks`, cached in KV `HOT`
+  for about an hour and refetched at most once a minute on an unknown `kid`; `exp`/`nbf` with 60 s
+  skew. The `aud` is custom and product-bound: `<origin>/<product>/release/publish` (proposed).
+  Make the JWKS fetcher injectable for tests; never make the issuer configurable.
+- **Policy checks**, all required: numeric `repository_id` and `repository_owner_id` equal the
+  linked repo's (E5: pin the numbers, not `sub`, against name recycling); `job_workflow_ref`
+  equals `<owner>/<repo>/<workflow>@<ref>` for the declared workflow; `environment` equals the
+  declared environment (default `release`); `ref_protected == "true"`;
+  `runner_environment == "github-hosted"`; `event_name` in `push`, `release`, `workflow_dispatch`.
+  The last three are platform-fixed and not configurable from the manifest.
+- **The repo must not be able to weaken its own control** (the R6-03 precedent,
+  `release/config.ts:89-96`). A manifest may only name the workflow and environment. Once an
+  operator claims the policy, resync skips it, as `services_source` does. A resync that changes a
+  manifest-owned policy is audited.
+- **Replay.** The token exchange is single-use: insert `ci_tokens` with the OIDC `jti` under a
+  unique index, so a replay fails in D1 atomically. Add that index to the required-index list
+  (`0018` and `REQUIRED_INDEXES`, in a new migration).
+- **Tokens.** Format `pkeyci_<random>`; only the peppered hash is stored. OIDC-minted tokens live
+  30 minutes. Scopes (a string set; later work packages add theirs): `release:publish`,
+  `release:promote`, `release:yank`, `distribution:report`. Default grant:
+  `release:publish`, `release:promote`, `distribution:report`; `release:yank` is opt-in.
+- **Tickets and R2 credentials.** Temporary credentials are minted from the parent R2 token
+  (Worker secrets, proposed `R2_ACCOUNT_ID`, `R2_PARENT_ACCESS_KEY_ID`,
+  `R2_PARENT_SECRET_ACCESS_KEY`), scoped to `staging/<product>/<ticketId>/` with object read-write
+  and expiring with the token. Cloudflare supports minting them locally by signing a JWT with the
+  parent secret. `present: true` marks objects already in the store (one query on P2-01's
+  `blob_objects`, not an R2 `head` per object), so CI skips them (P4-03 relies on this). A ticket is redeemed once.
+- **`nextSeq`** is the deliverable's current highest `seq` + 1 at issue time. P3-01's plan
+  recommends that CI assigns `seq` from the ticket; P2-04 enforces monotonicity.
+- **Errors.** Reuse `ErrorCode` (`unauthorized`, `forbidden`, `bad_request`, `not_found`) with a
+  machine-readable `reason`. A new `PolarisErrorCode` would be a `shared-protocol` change (plan
+  mode) and nothing but the CLI reads these routes.
+- **Enablement.** The routes live in the release namespace, so a product with Release off does not
+  expose them. Per-IP and per-product rate limits on `publish/token`.
+- **Ordering with P2-04.** Everything up to and including promotion is independent of P2-04. If
+  P2-04 is not `done`, land token, policy, uploads and ticket redemption first, and `submit` in a
+  second PR after P2-04.
+
+## Steps
+
+1. Migration, `TABLE_OWNERS` entries, `docs gen`; the replay index in the required-index list.
+2. `core/publisher.ts` with tests: a locally generated RSA key signs fake GitHub tokens; one test
+   per claim check, expiry, wrong `aud`, wrong `iss`, unknown `kid` refetch, and replay.
+3. Validator rules, mutation entries, schema; ingest of `ci_publishers` in link and resync.
+4. The three routes, OpenAPI entries, `routeCoverage` rows; `docs gen` for `routes.mdx`.
+5. Admin endpoints for the policy and static tokens, with audit rows.
+6. Threat-model update; `docs/DEPLOYMENT.md` (R2 parent token secrets); a docs page section on
+   trusted publishing under `services/release/`.
+
+## Acceptance criteria
+
+- [ ] Worker tests prove each policy check refuses: wrong `repository_id`, wrong owner id, other
+      workflow or ref, other environment, `ref_protected` false, self-hosted runner, disallowed
+      event, wrong `aud`, expired token, replayed `jti`.
+- [ ] A token without `release:publish` cannot obtain a ticket; a revoked or expired `pkeyci_`
+      token is refused; a ticket cannot be redeemed twice or by another product's token.
+- [ ] Submit refuses a descriptor whose staged object is missing or whose SHA-256 or size differs,
+      and promotes nothing in that case (tests against the R2 fake).
+- [ ] A resync cannot change an operator-claimed publisher policy.
+- [ ] Rule 9: new codes have mutation entries; `pnpm --filter @polaris-key/manifest test` passes.
+- [ ] Rule 10: `routeCoverage` passes with the three paths; `docs gen:check` is clean.
+- [ ] The threat model lists the new input, assets and attack branch.
+- [ ] The green gate passes (`AGENTS.md`).
+
+## Verify
+
+```sh
+mise exec node@22 -- pnpm --filter @polaris-key/worker test -- publisher routeCoverage boundaries
+mise exec node@22 -- pnpm --filter @polaris-key/manifest test
+mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
+mise exec node@22 -- pnpm typecheck
+```
+
+## Hand-off
+
+- P2-06 calls the three routes; the request and response shapes above are its contract, and the
+  `aud` rule tells it what audience to request.
+- P2-05 and P2b-03 accept `pkeyci_` tokens through `core/publisher.ts` (`requireCiScope(req, product, scope)`,
+  name proposed) and add their scopes to the vocabulary.
+- P3-03 extends `submit` to accept CI-signed `pkey-release+jws` records.
+- Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P2-02 done`.
