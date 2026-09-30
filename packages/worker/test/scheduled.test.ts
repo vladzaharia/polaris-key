@@ -440,4 +440,30 @@ describe("required-index assertion", () => {
     expect(inSql.length).toBeGreaterThan(0);
     expect([...inSql].sort()).toEqual([...REQUIRED_INDEXES].sort());
   });
+
+  // The deploy re-runs the assertion on every deploy, and each successor DELETEs then re-INSERTs
+  // its own list — so a deploy that named an OLDER file would overwrite the newest row with a
+  // shorter list and silently stop checking the indexes added since (0018 lacks
+  // idx_release_metadata_seq). The step must select the newest file, never name one.
+  it("the deploy re-runs the newest *_index_assertion.sql, not a pinned older one", () => {
+    const deploy = readFileSync(
+      join(HERE, "..", "..", "..", ".github", "workflows", "deploy.yml"),
+      "utf8",
+    );
+    expect(deploy).toContain(
+      'ASSERTION="$(ls migrations/*_index_assertion.sql | sort | tail -1)"',
+    );
+    expect(deploy).toMatch(/d1 execute[^\n]*--file "\$ASSERTION"/);
+    const pinned = [
+      ...deploy.matchAll(/--file\s+\S*?(\d+[a-z_]*_index_assertion\.sql)/g),
+    ].map((m) => m[1]);
+    expect(pinned).toEqual([]);
+    // And the selection the shell makes is the file this suite treats as the contract.
+    const newest = readdirSync(join(HERE, "..", "migrations"))
+      .filter((f) => f.endsWith("_index_assertion.sql"))
+      .sort()
+      .at(-1);
+    expect(newest).toBe(ASSERTION_FILE);
+    expect(ASSERTION_FILE).not.toBe("0018_index_assertion.sql");
+  });
 });
