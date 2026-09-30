@@ -662,6 +662,12 @@ export async function blobResponse(
   const named = parsed ? namedHash(parsed) : null;
   if (!parsed || (named !== null && named !== opts.sha256))
     throw new BlobKeyError("blobResponse: key is not named by opts.sha256");
+  // Staged objects are unverified CI uploads: nothing may serve them.
+  if (parsed.area === "staging")
+    throw new BlobKeyError("blobResponse: staging/ objects are never served");
+  // A key under gated/ is private whatever the caller passed: a gated object must never be
+  // written into a shared cache by a route that forgot to say so.
+  const gated = opts.gated || parsed.gated;
 
   if (req.method !== "GET" && req.method !== "HEAD")
     return new Response(null, {
@@ -683,7 +689,7 @@ export async function blobResponse(
     "accept-ranges": "bytes",
     "x-content-type-options": "nosniff",
     "content-security-policy": BLOB_CSP,
-    "cache-control": opts.gated
+    "cache-control": gated
       ? "private, no-store"
       : "public, max-age=31536000, immutable, no-transform",
   });

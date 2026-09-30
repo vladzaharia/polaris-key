@@ -610,6 +610,21 @@ describe("blobResponse", () => {
     expect(nm.headers.get("cache-control")).toBe("private, no-store");
   });
 
+  it("a gated/ key is private, no-store even if the caller forgot to say gated", async () => {
+    const gkey = blobKey(HEX, { gated: true });
+    await putVerified(asR2(r2), gkey, BODY, { sha256: HEX, size });
+    const res = await blobResponse(req(), asR2(r2), gkey, ungated);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("never serves a staging/ object (unverified CI upload)", async () => {
+    const skey = stagingKey("djdl", "t1", HEX);
+    r2.seed(skey, BODY);
+    await expect(blobResponse(req(), asR2(r2), skey, ungated)).rejects.toThrow(
+      BlobKeyError,
+    );
+  });
+
   it("console-host responses are always octet-stream attachments, whatever is asked", async () => {
     const res = await blobResponse(req(), asR2(r2), key, {
       sha256: HEX,
