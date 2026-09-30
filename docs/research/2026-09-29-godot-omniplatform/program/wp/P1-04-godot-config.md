@@ -1,16 +1,16 @@
 # P1-04 Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors
 
-| Field       | Value                                                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                                                     |
-| Size        | 1–1.25 engineer-weeks                                                                                                  |
-| Depends on  | [P1-02](P1-02-godot-core.md), [P0-12](P0-12-edge-mint-hardening.md)                                                   |
-| Unblocks    | [P1-10](P1-10-godot-ui-kit.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                                         |
-| Role        | `pkey-godot-engineer`                                                                                                  |
-| Plan mode   | no                                                                                                                     |
-| Gates       | `tools/gen-mirrors.ts` unit tests for the new `gdscript` target (`tools/gen-mirrors.test.ts`)                          |
-| Human input | none                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                              |
+| Field       | Value                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                                                            |
+| Size        | 1–1.25 engineer-weeks                                                                         |
+| Depends on  | [P1-02](P1-02-godot-core.md), [P0-12](P0-12-edge-mint-hardening.md)                           |
+| Unblocks    | [P1-10](P1-10-godot-ui-kit.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                 |
+| Role        | `pkey-godot-engineer`                                                                         |
+| Plan mode   | no                                                                                            |
+| Gates       | `tools/gen-mirrors.ts` unit tests for the new `gdscript` target (`tools/gen-mirrors.test.ts`) |
+| Human input | none                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                     |
 
 ## Goal
 
@@ -24,7 +24,8 @@ Godot is the first SDK with an edge-mint client.
 ## Why
 
 Managed config is what Diceroll adopts first: balance tuning, kill switches and settings
-(report [§5.4](../../README.md#54-managed-config-in-a-game), [§13](../../README.md#13-diceroll-adoption-path)).
+(report [§5.4](../../README.md#54-managed-config-in-a-game),
+[§13](../../README.md#13-diceroll-adoption-path)).
 In a game the layers map onto a `user://settings.cfg`, command-line arguments and engine APIs,
 not onto `process.env` (notes/A2 §11). Secrets in the cache and a `.pck` are extractable, so the
 safe path for third-party API keys is edge-mint, which no SDK implements
@@ -66,11 +67,15 @@ first). Feature ids: `config.resolve`, `config.list`, `config.secret`, `config.s
   `PKEY_CONFIG_`, plus `--pkey-config key=value` user arguments; JSON-looking values parsed with
   `PKeyJson` using client-core's `looksLikeJson` rule. Off by default in release builds on
   mobile and web; a `PKeyOptions` flag turns it on.
-- **Catalog fetch:** `await fetch_catalog()` → `GET /<p>/config/schema` (unsigned; UI hints
-  only; cached in memory).
+- **Catalog fetch:** `await fetch_schema()` → `GET /<p>/config/schema` (unsigned,
+  unauthenticated, UI hints only; cached in memory; `null` on any failure, never an error, as
+  Swift does and P1b-07 ports under the same name).
 - **Edge-mint:** `await mint_token(recipe_id) -> PKeyMintResult` (`token`, `expires_at`) via
-  `POST /<p>/config/mint/<id>/token` with the device token; an in-memory cache until
-  `expires_at` minus a margin; never persisted; typed results for 401, 403, 404, 429 and 500.
+  `GET /<p>/config/mint/<recipe_id>/token` with the device bearer, after checking discovery's
+  `config.mint.available` and the recipe id against the router's pattern `^[a-z0-9-]+$`; an
+  in-memory cache until `expires_at` minus 30 s; never persisted; typed results for 401, 404
+  (unknown or not approved, per P0-12), 429 and 500, and `service-unavailable` when Config is
+  off.
 - `PKeyConfigBinding.bind_property(node, property, key, fallback)`, re-applied on
   `config_changed`.
 - **Typed mirror:** a `gdscript` language in `tools/gen-mirrors.ts` (`Lang`, `FILENAME`,
@@ -82,7 +87,8 @@ first). Feature ids: `config.resolve`, `config.list`, `config.secret`, `config.s
 
 - `config-matrix.json` (→ [P1b-04](P1b-04-headers-config-corpora.md); the Godot runner loads it
   when it exists).
-- Edge-mint and catalog fetch in Node, Python and Swift (→ [P1b-08](P1b-08-devicecode-edgemint-ports.md),
+- Edge-mint and catalog fetch in Node, Python and Swift
+  (→ [P1b-08](P1b-08-devicecode-edgemint-ports.md),
   [P1b-07](P1b-07-license-config-release-gaps.md)).
 - Server-side mint authorisation (→ [P0-12](P0-12-edge-mint-hardening.md)).
 - The settings panel UI (→ [P1-10](P1-10-godot-ui-kit.md)).
@@ -107,9 +113,11 @@ first). Feature ids: `config.resolve`, `config.list`, `config.secret`, `config.s
   extractable, like everything in a `.pck`; the README (P1-12) says so and points at edge-mint.
   The docs claim secrets go "into the OS keyring" (`catalog.md`); no SDK does that (report §9.1
   #20, notes/A2 §4). Do not repeat the claim.
-- **Edge-mint tokens** live in memory only, per recipe id, and are refetched after expiry.
-  Do not retry a 401/403; report it. Handle P0-12's authorisation failure as its own
-  `PKeyMintResult.kind`.
+- **Edge-mint tokens** live in memory only, per recipe id, and are refetched after expiry. A 401
+  gets the normal single re-acquire (P1-03's rule) and then fails; nothing else is retried. The
+  route contract is unchanged by P0-12 (`GET|POST`, `200 {token, expiresAt}`); what changes is
+  that only operator-approved recipes answer, and discovery's `config.mint.available` says
+  whether any exist.
 - **Feature flags** for kill switches are `config` keys; paid or earned features are licence
   `flag` entitlements (`PolarisKey.license.is_entitled`); Godot feature tags are build facts, not
   remote flags.
@@ -127,7 +135,7 @@ first). Feature ids: `config.resolve`, `config.list`, `config.secret`, `config.s
 2. Add the override-store interface and `PKeyConfigFileStore`; test enforced and hidden
    ignoring a saved value.
 3. Add the environment and `--pkey-config` layers.
-4. Add `get_secret`, `fetch_catalog` and `mint_token` against the fake server.
+4. Add `get_secret`, `fetch_schema` and `mint_token` against the fake server.
 5. Add `config_changed` (diffed after each sync) and `PKeyConfigBinding`.
 6. Add the `gdscript` renderer and its tests; generate a sample from a fixture catalog and load
    it in the Godot runner.
@@ -142,10 +150,11 @@ first). Feature ids: `config.resolve`, `config.list`, `config.secret`, `config.s
       release web or mobile build unless enabled.
 - [ ] A saved `settings.cfg` value for an `enforced` key stays in the file after a sync.
 - [ ] `mint_token` returns the token and `expires_at`, serves the cached token on a second call
-      before expiry, fetches again after it, and maps 401, 403, 404, 429 and 500 to distinct
-      kinds.
-- [ ] `fetch_catalog()` parses the catalog served by the fake server; a malformed body is an
-      error result, never a crash.
+      before expiry, fetches again after it, maps 401 (after one re-acquire), 404, 429 and 500 to
+      distinct kinds, and sends nothing when discovery says `config.mint.available` is false or
+      the recipe id fails the pattern.
+- [ ] `fetch_schema()` parses the catalog served by the fake server and returns `null` for a
+      malformed body or a network failure.
 - [ ] `mise exec node@22 -- pnpm --filter @polaris-key/tools test` covers the `gdscript`
       renderer (version, entries, defaults, escaping of quotes and non-ASCII labels), and the
       generated file loads in the Godot runner.

@@ -1,16 +1,16 @@
 # P1-06 Serve an RFC 8628 user-code page for device-code sign-in
 
-| Field       | Value                                                                                                                                                             |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                                                                                                |
-| Size        | 0.5–0.75 engineer-weeks                                                                                                                                           |
-| Depends on  | none                                                                                                                                                              |
-| Unblocks    | [P1-07](P1-07-godot-identity.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                                                                                  |
-| Role        | `pkey-implementer`                                                                                                                                                |
-| Plan mode   | no (an HTTP identity route, not the signed wire contract)                                                                                                        |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); threat model; generated `reference/routes.mdx` (rule 3); the R8-02 attack PoCs flip from "residual" to "fixed"              |
-| Human input | a production deploy before P1-07's end-to-end check and before D-02 ships                                                                                        |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                         |
+| Field       | Value                                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                                                                                                                  |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                                             |
+| Depends on  | none                                                                                                                                                |
+| Unblocks    | [P1-07](P1-07-godot-identity.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                                                                     |
+| Role        | `pkey-implementer`                                                                                                                                  |
+| Plan mode   | no (an HTTP identity route, not the signed wire contract)                                                                                           |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); threat model; generated `reference/routes.mdx` (rule 3); the R8-02 attack PoCs flip from "residual" to "fixed" |
+| Human input | a production deploy before P1-07's end-to-end check and before D-02 ships                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                           |
 
 ## Goal
 
@@ -25,8 +25,8 @@ never appears in a URL, a page or a form on the user-code path.
 
 Today the flow is "loosely" RFC 8628: `userCode` is the first eight characters of `deviceCode`,
 upper-cased and hyphenated, and `verificationUri` embeds the whole device code, so there is no
-page where a user types a code (`packages/worker/src/services/identity/oidc.ts:303-308,
-762-786`; report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) #18;
+page where a user types a code (`packages/worker/src/services/identity/oidc.ts:303-308` and
+`:762-786`; report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) #18;
 notes/A2 §6). A game on a Steam Deck in game mode, a TV or a console cannot show a clickable
 link; the player must type or scan. The audit left this as a documented residual of R8-02
 because it changes the public device-flow contract (`docs/security/findings/R8-oidc.md:610-614`).

@@ -16,9 +16,8 @@
 
 The Worker does both halves of the two-signer model, and the CLI signs. **Sign and ingest:**
 `pkey release publish` signs the release record with the CI-held release key through P2-06's
-`signRecord` seam, and submits it with the descriptor; the Worker checks it
-against the product's declared release keys and the release descriptor, stores it immutably and
-serves it by its hash. **Compose:** for each channel, the Worker builds the device-less channel
+`signRecord` seam and submits it with the descriptor; the Worker checks it against the product's
+declared release keys and the descriptor, stores it immutably and serves it by its hash. **Compose:** for each channel, the Worker builds the device-less channel
 feed from release's pointer, floor and `critical` and from distribution's per-outlet availability,
 rollout and halts, signs it with the product key as `pkey-feed+jws`, and advertises both routes
 in discovery. An SDK from the wave can fetch the feed, fetch the pinned record, verify both and
@@ -53,8 +52,11 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
 - Core: `core/signing.ts` (`signDoc`), `core/trust.ts:58-120` (the device-less signed document to
   copy: `application/jose`, `public, max-age`), `core/discovery.ts`, `core/registry.ts:121-134`
   (the hook pattern), `core/entitledAccess.ts`.
-- The distribution hooks and tables from [P2b-01](P2b-01-distribution-service.md) and
-  [P2b-04](P2b-04-rollouts-delivery.md) (`dist_rollouts`, `dist_availability`).
+- The distribution hooks and tables: [P2b-01](P2b-01-distribution-service.md) (the hooks),
+  [P2b-04](P2b-04-rollouts-delivery.md) (`dist_rollouts` with `rollout_bp` and `rollout_salt`,
+  `delivery.rollout()`, the halt path) and [P2b-03](P2b-03-availability-keys.md)
+  (`dist_availability`, `dist_keys` with purpose `release`). P2b-03 is not a graph dependency;
+  without it the feed carries no availability, and says so.
 - Gates: `packages/worker/openapi/polaris-key.v3.yaml`, `test/routeCoverage.test.ts:63-88`
   (`SERVICE_PATHS`), `test/boundaries.test.ts`, `packages/docs/scripts/gen-reference.mjs:248`
   (`TABLE_OWNERS`), `docs/security/THREAT-MODEL.md` (AT-3 at `:160-170`; §9 names a wire version
@@ -69,10 +71,11 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
   rather than reshapes), sign it as `pkey-release+jws` with an Ed25519 key read from the CI
   environment (a GitHub Environment secret; KMS later, README §11 decision 3), and add the
   matching `polaris-key/publish` Action input. `--dry-run` prints the record unsigned. A small
-  key helper (proposed `pkey release keys generate`) prints the public half for `.pkey/release`.
+  key helper (proposed `pkey release keys generate`) creates a key pair, prints the public key and
+  `kid` for `.pkey/release`, and writes the private key to a file for the CI secret.
 - **Record ingest** through P2-02's `submit` route and P2-04's ingest: accept the compact JWS
-  beside the descriptor and refuse the publish unless `typ` is `pkey-release+jws`, `kid` is one of the
-  product's declared release keys, the signature verifies, `aud` is the product, `deliverable`,
+  beside the descriptor and refuse the publish unless `typ` is `pkey-release+jws`, `kid` is one
+  of the product's declared release keys, the signature verifies, `aud` is the product, `deliverable`,
   `kind`, `version` and `seq` match the descriptor, every build's `sha256` and `size` match the
   artifact records, and `seq` is greater than the deliverable's previous `seq`. Each refusal has
   an error code in the registry (`reference/error-codes.mdx` regenerates).
@@ -134,9 +137,10 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
   (`services/update/routes.ts`), `/update/feed/appcast.xml` could read as either the feed of a
   channel called `appcast.xml` (refused by the `CHANNEL` pattern) or the appcast of a channel
   called `feed`. Pin the intended reading, reserve the new path words if needed, and add tests.
-- **Gates not in the graph.** This package adds tables (migration, `TABLE_OWNERS`) and may add a
-  manifest field (rule 9). Both are required even though `workpackages.json` lists only rule 10
-  and the threat model.
+- **Gates not in the graph.** This package adds tables (migration, `TABLE_OWNERS`), may add a
+  manifest field (rule 9), and changes the CLI, whose Action bundle is generated and checked
+  (P2-06). All are required even though `workpackages.json` lists only rule 10 and the threat
+  model.
 - **Existing surfaces are untouched.** `/update/version`, the appcasts and `/release/dl` keep their
   behaviour; P3-09 extends them.
 
@@ -177,6 +181,8 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
 ## Verify
 
 ```sh
+mise exec node@22 -- pnpm --filter @polaris-key/cli test
+mise exec node@22 -- pnpm --filter @polaris-key/cli bundle:action -- --check   # P2-06's generated Action bundle
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 mise exec node@22 -- pnpm --filter @polaris-key/worker typecheck:workerd
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd

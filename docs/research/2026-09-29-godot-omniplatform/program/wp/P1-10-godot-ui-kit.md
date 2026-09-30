@@ -1,16 +1,16 @@
 # P1-10 Godot UI kit v1 and `PKeyBoot` shell
 
-| Field       | Value                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P1: Godot SDK core                                                                                                                                     |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                   |
-| Depends on  | [P1-03](P1-03-godot-license.md), [P1-04](P1-04-godot-config.md), [P1-07](P1-07-godot-identity.md), [P1-09](P1-09-boot-stage-machine.md)               |
-| Unblocks    | [P1-12](P1-12-godot-release.md), [P4-08](P4-08-godot-packs.md)                                                                                         |
-| Role        | `pkey-godot-engineer`                                                                                                                                  |
-| Plan mode   | no (it ports P1-09's approved machine; it adds no corpus rows)                                                                                        |
-| Gates       | `stage-matrix.json` in the Godot runner on both targets; UI structural snapshot tests                                                                 |
-| Human input | none (screenshots for review are taken by the agent from an editor run)                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                              |
+| Field       | Value                                                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                                                                                                      |
+| Size        | 1.5–2 engineer-weeks                                                                                                                    |
+| Depends on  | [P1-03](P1-03-godot-license.md), [P1-04](P1-04-godot-config.md), [P1-07](P1-07-godot-identity.md), [P1-09](P1-09-boot-stage-machine.md) |
+| Unblocks    | [P1-12](P1-12-godot-release.md), [P4-08](P4-08-godot-packs.md)                                                                          |
+| Role        | `pkey-godot-engineer`                                                                                                                   |
+| Plan mode   | no (it ports P1-09's approved machine; it adds no corpus rows)                                                                          |
+| Gates       | `stage-matrix.json` in the Godot runner on both targets; UI structural snapshot tests                                                   |
+| Human input | none (screenshots for review are taken by the agent from an editor run)                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                               |
 
 ## Goal
 

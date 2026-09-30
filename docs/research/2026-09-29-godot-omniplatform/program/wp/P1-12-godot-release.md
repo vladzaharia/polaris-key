@@ -1,16 +1,16 @@
 # P1-12 Package, document and publish the Godot SDK (docs page, Asset Library)
 
-| Field       | Value                                                                                                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core. Milestone: **Diceroll can adopt managed config, licensing and identity**                                                                         |
-| Size        | 0.5–0.75 engineer-weeks                                                                                                                                               |
-| Depends on  | [P1-05](P1-05-godot-devices.md), [P1-08](P1-08-godot-update-check.md), [P1-10](P1-10-godot-ui-kit.md), [P1-11](P1-11-godot-export-plugin.md)                         |
-| Unblocks    | [D-02](D-02-diceroll-after-p1.md)                                                                                                                                     |
-| Role        | `pkey-godot-engineer`                                                                                                                                                 |
-| Plan mode   | no                                                                                                                                                                    |
-| Gates       | docs links (`pnpm --filter @polaris-key/docs check:links`); docs freshness (`gen:check`); `parity:check` once P1b-01 exists                                          |
+| Field       | Value                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core. Milestone: **Diceroll can adopt managed config, licensing and identity**                                                                        |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                                                             |
+| Depends on  | [P1-05](P1-05-godot-devices.md), [P1-08](P1-08-godot-update-check.md), [P1-10](P1-10-godot-ui-kit.md), [P1-11](P1-11-godot-export-plugin.md)                        |
+| Unblocks    | [D-02](D-02-diceroll-after-p1.md)                                                                                                                                   |
+| Role        | `pkey-godot-engineer`                                                                                                                                               |
+| Plan mode   | no                                                                                                                                                                  |
+| Gates       | docs links (`pnpm --filter @polaris-key/docs check:links`); docs freshness (`gen:check`); `parity:check` once P1b-01 exists                                         |
 | Human input | the addon's licence; the first version number; pushing the release tag; the Godot Asset Store upload and the legacy Asset Library submission (no upload API exists) |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                           |
 
 ## Goal
 
@@ -64,8 +64,8 @@ repo's own docs say there are four SDKs, which is wrong once Godot passes the co
   and Swift.
 - `.github/workflows/release-godot.yml`, on tags `godot-v*`: validate the semver tag; fail unless
   tag, `plugin.cfg` and `SDK_VERSION` agree; run `tools/run_tests.sh` on the editor and the
-  release template; zip `addons/polaris_key/` as `polaris-key-godot-vX.Y.Z.zip`; `gh release
-  create` with the zip attached.
+  release template; zip `addons/polaris_key/` as `polaris-key-godot-vX.Y.Z.zip`; run
+  `gh release create` with the zip attached.
 - A clean-install smoke test in the release workflow: unzip into an empty project on 4.4 and
   4.7.2, import, enable the plugin, and fail on any error in the log.
 - `sdks/godot/parity.json` complete for P1 and `pnpm parity:check` green, if P1b-01 has landed.

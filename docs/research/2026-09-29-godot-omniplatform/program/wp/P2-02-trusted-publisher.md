@@ -8,7 +8,7 @@
 | Unblocks    | [P2-06](P2-06-publish-cli-action.md)                                                                                                                                                                     |
 | Role        | `pkey-implementer`                                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                                       |
-| Gates       | threat model; rule 9 (`publishing.trustedPublisher`); rule 10 (three routes); D1 migration + `TABLE_OWNERS` (not listed in the graph, but required); required-index assertion for the replay index      |
+| Gates       | threat model; rule 9 (`publishing.trustedPublisher`); rule 10 (three routes); D1 migration + `TABLE_OWNERS` (not listed in the graph, but required); required-index assertion for the replay index       |
 | Human input | none in the graph; in practice an **R2 API token** per environment (the parent of CI's temporary credentials) set as Worker secrets. Until then the uploads route answers not-found and tests use a fake |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                |
 
@@ -41,7 +41,7 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
 - [notes/E5 §2.1–§2.3 and §4.5](../../notes/E5-frontier-tech.md#22-github-actions-oidc-as-the-ci-polaris-credential)
   (the claim list, the verification recipe, immutable releases, the upload flow);
   [notes/E7 §6](../../notes/E7-server-ci-tools.md#6-godot-ci-tooling-and-whether-to-ship-polaris-keypublish).
-- [P2-01](P2-01-blob-store.md) hand-off: `stagingKey`, `verifyStaged`, `promote`.
+- [P2-01](P2-01-blob-store.md) hand-off: `stagingKey`, `verifyStaged`, `promote`, `isStored` (`blob_objects`).
 - Code: `packages/worker/src/admin/auth.ts:16` and `services/identity/oidc.ts:23` (existing `jose`
   JWKS use), `src/githubWebhook.ts` (KV replay guard pattern), `src/crypto.ts:107` (`hashKey`
   with `KEY_HASH_PEPPER`, as `pkeyt_` tokens use it at `src/core/devices.ts:383`),
@@ -101,10 +101,12 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
   Make the JWKS fetcher injectable for tests; never make the issuer configurable.
 - **Policy checks**, all required: numeric `repository_id` and `repository_owner_id` equal the
   linked repo's (E5: pin the numbers, not `sub`, against name recycling); `job_workflow_ref`
-  equals `<owner>/<repo>/<workflow>@<ref>` for the declared workflow; `environment` equals the
+  starts with `<owner>/<repo>/<workflow>@` for the declared workflow; `environment` equals the
   declared environment (default `release`); `ref_protected == "true"`;
   `runner_environment == "github-hosted"`; `event_name` in `push`, `release`, `workflow_dispatch`.
-  The last three are platform-fixed and not configurable from the manifest.
+  The last three are platform-fixed and not configurable from the manifest. `ref_protected` is
+  true only when a branch or tag ruleset covers the ref, so a tag-triggered release needs a tag
+  ruleset; P2-06's `build/ci.md` must say so.
 - **The repo must not be able to weaken its own control** (the R6-03 precedent,
   `release/config.ts:89-96`). A manifest may only name the workflow and environment. Once an
   operator claims the policy, resync skips it, as `services_source` does. A resync that changes a
@@ -113,15 +115,17 @@ only verifies ([notes/E7 §0](../../notes/E7-server-ci-tools.md) item 2).
   unique index, so a replay fails in D1 atomically. Add that index to the required-index list
   (`0018` and `REQUIRED_INDEXES`, in a new migration).
 - **Tokens.** Format `pkeyci_<random>`; only the peppered hash is stored. OIDC-minted tokens live
-  30 minutes. Scopes (a string set; later work packages add theirs): `release:publish`,
-  `release:promote`, `release:yank`, `distribution:report`. Default grant:
-  `release:publish`, `release:promote`, `distribution:report`; `release:yank` is opt-in.
+  30 minutes. Scopes (a string set; later work packages add theirs, P2b-04
+  `distribution:rollout` and P2b-05 `distribution:feeds`): `release:publish`, `release:promote`,
+  `release:yank`, `distribution:report`. Default grant: `release:publish`, `release:promote`,
+  `distribution:report`; `release:yank` is opt-in.
 - **Tickets and R2 credentials.** Temporary credentials are minted from the parent R2 token
   (Worker secrets, proposed `R2_ACCOUNT_ID`, `R2_PARENT_ACCESS_KEY_ID`,
   `R2_PARENT_SECRET_ACCESS_KEY`), scoped to `staging/<product>/<ticketId>/` with object read-write
   and expiring with the token. Cloudflare supports minting them locally by signing a JWT with the
   parent secret. `present: true` marks objects already in the store (one query on P2-01's
-  `blob_objects`, not an R2 `head` per object), so CI skips them (P4-03 relies on this). A ticket is redeemed once.
+  `blob_objects`, not an R2 `head` per object), so CI skips them (P4-03 relies on this). A ticket
+  is redeemed once.
 - **`nextSeq`** is the deliverable's current highest `seq` + 1 at issue time. P3-01's plan
   recommends that CI assigns `seq` from the ticket; P2-04 enforces monotonicity.
 - **Errors.** Reuse `ErrorCode` (`unauthorized`, `forbidden`, `bad_request`, `not_found`) with a
@@ -172,7 +176,7 @@ mise exec node@22 -- pnpm typecheck
 
 - P2-06 calls the three routes; the request and response shapes above are its contract, and the
   `aud` rule tells it what audience to request.
-- P2-05 and P2b-03 accept `pkeyci_` tokens through `core/publisher.ts` (`requireCiScope(req, product, scope)`,
-  name proposed) and add their scopes to the vocabulary.
+- P2-05, P2b-03, P2b-04 and P2b-05 accept `pkeyci_` tokens through `core/publisher.ts`
+  (`requireCiScope(req, product, scope)`, name proposed) and add their scopes to the vocabulary.
 - P3-03 extends `submit` to accept CI-signed `pkey-release+jws` records.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P2-02 done`.

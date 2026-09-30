@@ -1,16 +1,16 @@
 # P3-10 Godot updater: outlet adapters, sidecar-PCK swap, boot guard, Velopack and Sparkle hooks
 
-| Field       | Value                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                 |
-| Size        | 1.5–2 engineer-weeks                                                                                                                       |
-| Depends on  | [P3-08](P3-08-v4-godot.md), [P3-09](P3-09-updater-feeds.md)                                                                                |
-| Unblocks    | [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md), [P5-07](P5-07-desktop-plugins.md), [D-03](D-03-diceroll-after-p3.md) |
-| Role        | `pkey-godot-engineer` (see `.claude/agents/`)                                                                                              |
-| Plan mode   | no                                                                                                                                         |
+| Field       | Value                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                           |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                 |
+| Depends on  | [P3-08](P3-08-v4-godot.md), [P3-09](P3-09-updater-feeds.md)                                                                                                          |
+| Unblocks    | [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md), [P5-07](P5-07-desktop-plugins.md), [D-03](D-03-diceroll-after-p3.md)                           |
+| Role        | `pkey-godot-engineer` (see `.claude/agents/`)                                                                                                                        |
+| Plan mode   | no                                                                                                                                                                   |
 | Gates       | none in the graph; `stage-matrix.json` boot-guard rows must already exist (planned in P3-01, emitted by P3-02), else this is a corpus change that needs a plan first |
-| Human input | none required. A Windows machine or CI runner to measure the sidecar rename                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
+| Human input | none required. A Windows machine or CI runner to measure the sidecar rename                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                            |
 
 Milestone: **Diceroll deletes its own updater and feed scripts** (with [D-03](D-03-diceroll-after-p3.md)).
 
@@ -18,8 +18,8 @@ Milestone: **Diceroll deletes its own updater and feed scripts** (with [D-03](D-
 
 The Godot SDK acts on the verified update decision correctly for every outlet, without
 `--main-pack`. Each outlet id has an adapter: store and sideload outlets open the right listing or
-deep link; platform outlets (Steam, itch, Flatpak, Snap, App Installer, web) stay silent; direct
-desktop builds hand off to Sparkle, Velopack or WinSparkle through GDScript hook interfaces, or
+deep link; platform outlets (Steam, itch, Flathub, Snap, App Installer) stay silent and web
+offers a reload; direct desktop builds hand off to Sparkle, Velopack or WinSparkle through GDScript hook interfaces, or
 swap a verified sidecar `.pck` on writable portable installs; AppImage builds call
 AppImageUpdate. A boot guard with staged, current and previous slots rolls back after two failed
 boots and never re-offers the bad version. `PKeyBoot` runs the guard in `GUARD` and the decision
@@ -33,8 +33,8 @@ Official Godot 4.6+ templates ignore `--main-pack`, `--path`, `--scene` and `-s`
 ([README §0.4](../../README.md#04-findings-that-should-change-plans-now) #1,
 [§9.2](../../README.md#92-diceroll-for-the-diceroll-side) #1). The research picks full-app
 updaters with deltas first and a sidecar-PCK swap for portable installs
-([README §5.6](../../README.md#56-code-updates-without---main-pack), [§11](../../README.md#11-decisions-needed)
-decision 6). Capabilities must come from the outlet, not the game, because Diceroll's Steam and
+([README §5.6](../../README.md#56-code-updates-without---main-pack),
+[§11](../../README.md#11-decisions-needed) decision 6). Capabilities must come from the outlet, not the game, because Diceroll's Steam and
 itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-itch),
 [§5.5](../../README.md#55-distribution-layer-one-build-any-outlet)).
 
@@ -74,8 +74,9 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   falls back to a download link.
 - **AppImage**: when `APPIMAGE` is set and `appimageupdatetool` is available, run it through
   `OS.execute` and restart; otherwise a download link.
-- **Sidecar-PCK swap** in `updater/sidecar_swap.gd`: download the release's `pck` build with Range
-  resume through P1-02's transport, verify size and SHA-256 against the verified record, stage
+- **Sidecar-PCK swap** in `updater/sidecar_swap.gd`: download the release's `pck` build (from the
+  URL the plan names, for example distribution by content hash) with Range resume through P1-02's
+  transport, verify size and SHA-256 against the verified record, stage
   it, and at restart replace `<exe-name>.pck` beside the executable, keeping the old one as
   previous; `OS.set_restart_on_exit`. Refuse where the directory is not writable, inside a macOS
   `.app`, under `Program Files`, or in MSIX, Flatpak or Snap installs.
@@ -129,6 +130,8 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   Measure it. If rename fails, use a detached helper (`OS.create_process`) that waits for the
   game to exit, swaps and relaunches, or accept a second restart; record the choice and the
   measurement in the PR. Linux renames an open file without trouble.
+  [D-01](D-01-diceroll-now.md) makes the same swap in Diceroll first and records the Windows
+  behaviour; start from its result.
 - **The sidecar keeps the executable's hash stable**, which keeps its SmartScreen reputation across
   code updates (notes/E3 §A3.3).
 - **HTTP rules from P1-02**: follow redirects manually without `Authorization` on a host change,

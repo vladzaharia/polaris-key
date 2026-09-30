@@ -1,16 +1,16 @@
 # P2-05 Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching
 
-| Field       | Value                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                   |
-| Size        | 1–1.5 engineer-weeks                                                                                                               |
-| Depends on  | [P2-01](P2-01-blob-store.md), [P2-03](P2-03-release-data-model.md)                                                                 |
-| Unblocks    | [P2-07](P2-07-console-builds.md), [P2b-04](P2b-04-rollouts-delivery.md)                                                            |
-| Role        | `pkey-implementer`                                                                                                                 |
-| Plan mode   | no                                                                                                                                 |
+| Field       | Value                                                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth and publishing                                                                                                         |
+| Size        | 1–1.5 engineer-weeks                                                                                                                     |
+| Depends on  | [P2-01](P2-01-blob-store.md), [P2-03](P2-03-release-data-model.md)                                                                       |
+| Unblocks    | [P2-07](P2-07-console-builds.md), [P2b-04](P2b-04-rollouts-delivery.md)                                                                  |
+| Role        | `pkey-implementer`                                                                                                                       |
+| Plan mode   | no                                                                                                                                       |
 | Gates       | rule 10 (OpenAPI + `SERVICE_PATHS` in `routeCoverage`; regenerated `reference/routes.mdx`); `test/attack/R6-release.test.ts` stays green |
-| Human input | none (without P2-01's buckets, the blob route answers not-found and tests use the R2 fake)                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                          |
+| Human input | none (without P2-01's buckets, the blob route answers not-found and tests use the R2 fake)                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                |
 
 ## Goal
 
@@ -69,10 +69,10 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
     included), immutable;
   - `GET /{product}/release/blobs/sha256/{hash}`: a content-addressed object, only if an artifact
     of **this** product references it.
-  All three answer `GET` and `HEAD`. Location order: R2 (`blobResponse`) → GitHub
-  (`streamAsset`) → `external` (302). A
-  `?redirect=1` request for a public artifact of a public repository may get a 302 to GitHub
-  instead of a stream. Register all three on the bytes-host allowlist.
+    All three answer `GET` and `HEAD`. Location order: R2 (`blobResponse`) → GitHub
+    (`streamAsset`) → `external` (302). A
+    `?redirect=1` request for a public artifact of a public repository may get a 302 to GitHub
+    instead of a stream. Register all three on the bytes-host allowlist.
 - **GitHub caching:** release resolution cached 60–120 s per (product, selector), and GitHub's
   signed asset URL cached per asset for less than its lifetime, so a Range chunk costs no API call.
 - **Channel policy operations**, one implementation in `services/release/policy.ts`, reached by:
@@ -83,7 +83,7 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
   - admin routes (narrative-only): `GET …/release/channels`, `PUT …/release/channels/{channel}`
     (pointer, pin, floor, critical), `POST …/release/channels/{channel}/revert`,
     `POST`/`DELETE …/release/releases/{releaseId}/yank`.
-  Every change is audited with its actor (`admin:<sub>` or `ci:<subject>`).
+    Every change is audited with its actor (`admin:<sub>` or `ci:<subject>`).
 - **Admin read model:** `GET …/release/releases` adds builds (platform, arch, format, build number,
   min OS), artifact role, SHA-256, locations and the yank; `GET …/release/channels` returns the
   policy per deliverable with `source`. P2-07 renders these.

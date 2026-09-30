@@ -83,8 +83,9 @@ saves and support). `provides` also backs Diceroll's `Content.available()` and `
   the levels affected. `removes` ids that `P` never provided are a warning, not a failure.
 - **Wire and size, a stop condition.** CONTENT §6.9 puts `provides[]` and `removes[]` in the pack
   release record as optional fields, and P4-01's plan reserves both (decision 2). If the approved
-  plan did not, adding them is a wire change: stop and escalate to a plan. The record payload cap is 65,536 bytes in v3
-  (`docs/security/WIRE-CONTRACT-V3.md` §1). Measure a realistic registry (Diceroll's content ids).
+  plan did not, adding them is a wire change: stop and escalate to a plan. The record payload cap
+  is 65,536 bytes in v3 (`docs/security/WIRE-CONTRACT-V3.md` §1). Measure a realistic registry
+  (Diceroll's content ids).
   If `provides` would not fit, moving it to a hash-pinned artifact is also a wire change: escalate
   rather than truncate.
 - **Where `provides` comes from.** CI reads it from a file inside the payload or next to it,

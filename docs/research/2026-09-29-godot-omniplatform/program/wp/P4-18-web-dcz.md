@@ -97,9 +97,10 @@ That moves README P4 v3's "web Compression Dictionary Transport" from speculativ
 - **Only fetched payloads are dictionaries.** A payload assembled by chunk sync in OPFS was never
   fetched whole, so the browser has no dictionary for it. `dcz` helps when the installed payload
   was a `full` fetch through the payload URL still in the HTTP cache, which is also the Godot-web
-  pattern (CONTENT §10:
-  fetch large packs each session from immutable URLs). The dictionary lives in the evictable HTTP
-  cache, so always verify SHA-256(output) = `to` in JavaScript (A7 §9.3).
+  pattern (CONTENT §10: fetch large packs each session from immutable URLs). The dictionary lives
+  in the evictable HTTP cache, so always verify SHA-256(output) = `to` in JavaScript (A7 §9.3).
+  CONTENT §11 and A7 §9.3 put `dcz` on the blob or delta route; the payload URL is this brief's
+  refinement, for the reason above.
 - **Limits.** Dictionaries over 100 MiB are never offered (Chromium's `kDictionarySizeLimit`), and
   a per-site budget evicts dictionaries (A7 §9.3); do not send `Use-As-Dictionary` above 100 MiB.
   RFC 9842 requires secure contexts and same-origin matching; the bytes are on a separate

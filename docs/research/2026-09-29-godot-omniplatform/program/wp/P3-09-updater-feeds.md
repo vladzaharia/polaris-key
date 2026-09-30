@@ -105,7 +105,7 @@ off to exactly these feeds.
   (in the release descriptor or record) and are checked at ingest; Velopack relies on hashes and
   Authenticode; MSIX on the publisher certificate; AppImage on zsync hashes. Do not buffer whole
   installers to re-verify them in the isolate: `sparkle.ts` buffers up to 256 MiB in a 128 MB
-  isolate today (README §9.1 #11). Use [P0-10](P0-10-sparkle-hardening.md)'s streaming verifier, or the record's SHA-256 plus a
+  isolate today (README §9.1 #11). Use [P0-10](P0-10-sparkle-hardening.md)'s `streamingEd25519Verify`, or the record's SHA-256 plus a
   streaming digest.
 - **Enclosure and asset URLs are immutable and Range-capable**, served by distribution. winget
   and some updaters reject redirects; use the streaming path where the notes say so.

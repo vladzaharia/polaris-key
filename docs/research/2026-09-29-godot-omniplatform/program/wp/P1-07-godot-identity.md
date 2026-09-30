@@ -1,16 +1,16 @@
 # P1-07 Godot identity: device-code sign-in with a QR code
 
-| Field       | Value                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                             |
-| Size        | 0.75–1 engineer-weeks                                                                          |
-| Depends on  | [P1-02](P1-02-godot-core.md), [P1-06](P1-06-rfc8628-page.md)                                  |
-| Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                                 |
-| Role        | `pkey-godot-engineer`                                                                          |
-| Plan mode   | no                                                                                             |
-| Gates       | none beyond the green gate and the `godot` CI job                                              |
-| Human input | a deployed Worker with P1-06 for the one manual end-to-end check (fake server until then)      |
-| Repo        | `vladzaharia/polaris-key`                                                                      |
+| Field       | Value                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                                                        |
+| Size        | 0.75–1 engineer-weeks                                                                     |
+| Depends on  | [P1-02](P1-02-godot-core.md), [P1-06](P1-06-rfc8628-page.md)                              |
+| Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                            |
+| Role        | `pkey-godot-engineer`                                                                     |
+| Plan mode   | no                                                                                        |
+| Gates       | none beyond the green gate and the `godot` CI job                                         |
+| Human input | a deployed Worker with P1-06 for the one manual end-to-end check (fake server until then) |
+| Repo        | `vladzaharia/polaris-key`                                                                 |
 
 ## Goal
 
@@ -52,17 +52,19 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
 
 - `services/identity.gd` (`PolarisKey.identity`):
   - `is_available() -> bool` from discovery (`services.identity.enabled` and `configured`);
-  - `await begin_sign_in(device_name := "") -> PKeySignInPrompt` (`user_code`,
-    `verification_uri`, `verification_uri_complete`, `expires_in`, `interval`, `expires_at`);
+  - `await begin_sign_in(device_name := "") -> PKeySignInPrompt` (`device_code`, `user_code`,
+    `verification_uri`, `verification_uri_complete`, `expires_in`, `interval`, `expires_at`; the
+    snake_case of P1b-08's `SignInPrompt`);
   - automatic polling with `deviceCode` and the SDK's `X-PKey-Device` id; signals
     `sign_in_pending(prompt)` and `sign_in_finished(result)`; `cancel()`;
   - `open_in_browser(prompt)` (`OS.shell_open(verification_uri_complete)`) and
     `copy_link(prompt)` (`DisplayServer.clipboard_set`) for UI buttons.
 - `PKeySignInResult.kind`: `ok`, `timeout`, `expired`, `cancelled`, `denied` (poll `error`),
-  `device-mismatch` (401), `rate-limited`, `unavailable` (identity off or unconfigured: an
-  `unsupported` result with reason `product`), `error`.
-- On `ready`: store the `pkeyt_` token with token source `identity` (the P1-03 record), then
-  `await PolarisKey.sync(true)` so the licence and config documents arrive at once.
+  `device-mismatch` (401), `rate-limited`, `error`. With Identity off or unconfigured,
+  `begin_sign_in` returns `service-unavailable` before any request (D-21, as in every SDK).
+- On `ready`: store the `pkeyt_` token through the token manager with the in-memory token source
+  `identity` (P1-03), then `await PolarisKey.sync(true)` so the licence and config documents
+  arrive at once.
 - `ui/qr/`: a QR encoder (byte mode, error-correction level M, versions 1–10, all eight masks
   scored per the standard) returning a module matrix, and `PKeyQrRect extends TextureRect`
   (nearest filtering, a four-module quiet zone, theme colours).
@@ -70,7 +72,8 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
 
 **Out** (and where it belongs instead):
 
-- `PKeySignInDialog` and its place in the gate and activation panel (→ [P1-10](P1-10-godot-ui-kit.md)).
+- `PKeySignInDialog` and its place in the gate and activation panel
+  (→ [P1-10](P1-10-godot-ui-kit.md)).
 - The server's user-code page (→ [P1-06](P1-06-rfc8628-page.md)); Node, Python and Swift
   clients (→ [P1b-08](P1b-08-devicecode-edgemint-ports.md)).
 - A fingerprint on the device-code path, so `strict` tiers work (notes/A2 §15 item 3; unowned).
@@ -79,10 +82,10 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
 
 ## Design notes
 
-- **Polling:** wait `interval` seconds between polls. On `429 {"status":"slow_down"}` raise the
-  interval by 5 s (RFC 8628 §3.5), never below the server's `interval`. Stop at `expires_at`,
-  on `timeout`, `error`, `ready` or `cancel()`. The server enforces the cadence (R8-02); polling
-  faster only earns `slow_down`.
+- **Polling** (the rules P1b-08 ports): wait at least `interval` seconds between polls. On
+  `429 {"status":"slow_down"}` use the returned `interval`, adding 5 s only if none is given
+  (RFC 8628 §3.5). Stop at `expires_at`, on `timeout`, `error`, `ready` or `cancel()`. Never poll
+  faster because a poll failed. The server enforces the cadence (R8-02).
 - **The poll `deviceId` must equal `X-PKey-Device`**, or the server answers 401 device mismatch.
 - **`deviceName`** defaults to `OS.get_model_name()` (or a player label); the server truncates it
   to 120 characters and shows it on the confirmation page, which is the anti-phishing cue.
@@ -117,12 +120,12 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
 
 ## Acceptance criteria
 
-- [ ] Fake-server tests: start → `pending` → `slow_down` (interval raised) → `pending` → `ready`
-      stores the token with source `identity`, emits `sign_in_finished(ok)` and triggers one
-      forced sync; `timeout`, `error` and a 401 map to their kinds; `cancel()` stops polling
-      within one interval; no poll is sent after `expires_at`.
+- [ ] Fake-server tests: start → `pending` → `slow_down` (the returned interval is used) →
+      `pending` → `ready` stores the token, emits `sign_in_finished(ok)` and triggers one forced
+      sync; `timeout`, `error` and a 401 map to their kinds; `cancel()` stops polling within one
+      interval; no poll is sent after `expires_at`.
 - [ ] `begin_sign_in` on a product whose discovery has `identity.enabled == false` returns
-      `unsupported` with reason `product` and sends no request.
+      `service-unavailable` and sends no request.
 - [ ] Every poll carries the same device id as the `X-PKey-Device` header.
 - [ ] QR tests: for at least five fixed URLs up to 120 characters, the module matrix equals a
       committed fixture produced by a reference encoder at the same version, level and mask;

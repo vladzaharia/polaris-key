@@ -69,9 +69,10 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
 - In the CLI publisher: file-aware FastCDC, per-chunk zstd frames, chunk-bundle packing, the
   binary index writer, the lints below, upload of new objects only, and the `chunks` field and
   artifact roles in the release descriptor.
-- The content corpus's second version ("content corpus v2"): `chunkIndexCases` (15), the eight chunk `applyCases` (`chunk-v1-to-v2`,
-  `chunk-no-seed`, `chunk-tampered-zstd`, `chunk-tampered-raw`, `chunk-bundle-truncated`,
-  `chunk-seed-tampered`, `chunk-seed-tampered-repair`, `chunk-index-for-other-payload`), the blobs
+- Content corpus v2 (the content set's second version): `chunkIndexCases` (15), the eight chunk
+  `applyCases` (`chunk-v1-to-v2`, `chunk-no-seed`, `chunk-tampered-zstd`, `chunk-tampered-raw`,
+  `chunk-bundle-truncated`, `chunk-seed-tampered`, `chunk-seed-tampered-repair`,
+  `chunk-index-for-other-payload`), the blobs
   they need (`chunks/v1.pkc`, `chunks/v2.pkc`, `bundles/<sha256>`), and the index-blob plan rows
   P4-04 left for this package: `plan-matrix.json` rows whose chunk targets and seeds reference the
   `.pkc` blobs instead of inline `records`/`ids` (A7 §4.1 allows both; P4-01 put the inline form in
@@ -140,8 +141,9 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
   both. Never share a bundle between a gated and a free pack: a `Range` would leak content
   (CONTENT §12).
 
-- **Storage.** R2 keys `bundles/sha256/<h>` (gated deliverables under the gated prefix);
-  `release_artifacts` roles `chunk-index` and `chunk-bundle` (added by P2-03). Upload new objects
+- **Storage.** R2 keys from P2-01's `bundleKey(sha256, {gated})` (`bundles/sha256/<h>`, or under
+  `gated/` for gated deliverables); `release_artifacts` roles `chunk-index` and `chunk-bundle`
+  (added by P2-03); `blob_objects.kind = bundle`. Upload new objects
   only (dedupe by hash). If an operator gates a deliverable later, its earlier bundles stay under
   the public prefix; document that in the pack authoring docs.
 - **Corpus determinism.** zstd output depends on the library version. P4-04's rule applies: the
@@ -209,8 +211,8 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 - **P4-11** relies on: the parser's API and module path; the corpus section names and verdict
   shape; each variant's `chunks {format, sha256, params}`; the bundle key layout (`bundleKey` from
   P2-01).
-- **P4-17** reuses the CLI's zstd and descriptor helpers and the `deltas/<from>/<to>.<method>`
-  key convention from P4-03.
+- **P4-17** relies on the stored chunk indexes to estimate a pair's chunk-sync bytes without
+  reading payloads.
 - **P4-14** relies on the `chunk-index` and `chunk-bundle` roles and on bundle references in
   `blob_refs` to compute liveness.
 

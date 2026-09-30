@@ -1,16 +1,16 @@
 # P2b-03 Availability, submissions (CI-reported first) and the key inventory
 
-| Field       | Value                                                                                                                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2b: Distribution core                                                                                                                                                                        |
-| Size        | 1–1 engineer-weeks                                                                                                                                                                            |
-| Depends on  | [P2b-02](P2b-02-distribution-manifest.md), [P2-06](P2-06-publish-cli-action.md)                                                                                                               |
-| Unblocks    | [P2b-05](P2b-05-storefront-feeds.md), [P2b-06](P2b-06-download-page-matrix.md), [P5-02](P5-02-asc-connector.md), [P5-03](P5-03-play-connector.md), [P5-04](P5-04-msstore-connector.md)       |
-| Role        | `pkey-implementer`                                                                                                                                                                            |
-| Plan mode   | no                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                          |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2b: Distribution core                                                                                                                                                                         |
+| Size        | 1–1 engineer-weeks                                                                                                                                                                             |
+| Depends on  | [P2b-02](P2b-02-distribution-manifest.md), [P2-06](P2-06-publish-cli-action.md)                                                                                                                |
+| Unblocks    | [P2b-05](P2b-05-storefront-feeds.md), [P2b-06](P2b-06-download-page-matrix.md), [P5-02](P5-02-asc-connector.md), [P5-03](P5-03-play-connector.md), [P5-04](P5-04-msstore-connector.md)         |
+| Role        | `pkey-implementer`                                                                                                                                                                             |
+| Plan mode   | no                                                                                                                                                                                             |
 | Gates       | rule 10 (the CI report route); D1 migration + `TABLE_OWNERS`; `docs gen:check`; threat model for the key inventory (not in the graph's gates, but it is the independent check on signing keys) |
-| Human input | none                                                                                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                     |
+| Human input | none                                                                                                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                      |
 
 ## Goal
 
@@ -92,8 +92,8 @@ signing keys per package something to track and publish
   - availability: `pending`, `processing`, `in-review`, `approved`, `live`, `rejected`, `removed`;
   - submission: `prepared`, `submitted`, `in-review`, `approved`, `rejected`,
     `pending-developer-release`, `released`, `cancelled`.
-  A report may move a state backwards (a rejection after review); keep the current state and
-  write every change to the audit log.
+    A report may move a state backwards (a rejection after review); keep the current state and
+    write every change to the audit log.
 - **`source`** is `ci`, `admin`, or a connector kind (`asc`, `play`, `ms-store`) once P5 lands.
   Nothing here stops a connector overwriting a CI report; P5 decides precedence per outlet.
 - **Store-assigned ids** (ASC build id, Play version code, Steam depot manifest) live in

@@ -92,9 +92,9 @@ grows forever without GC, and on Apple the asset-pack quotas make retirement rou
     stands in;
   - `msix-optional` and `flatpak-ext` use CI-reported availability.
 - **Holding.** Where Polaris Key is authoritative (self-hosted rollouts: direct downloads,
-  sideload sources, the F-Droid relay, web), distribution's `delivery` hook (P2b-01) answers "not live"
-  until readiness is `ready`, so neither update's feed nor the storefront feeds offer the release
-  there. On store outlets, record the blocker and warn; where Polaris Key cannot hold a release (a
+  sideload sources, the F-Droid relay, web), distribution's `delivery` hook (P2b-01) answers
+  "not live" until readiness is `ready`, so neither update's feed nor the storefront feeds offer
+  the release there. On store outlets, record the blocker and warn; where Polaris Key cannot hold a release (a
   manual store release) it only warns (CONTENT §6.4).
 - **States** (proposed): `pending | blocked | ready | overridden`. An override is operator-owned
   (`*_source` guard, audited) and survives resync, per the operator-ownership model in
@@ -163,7 +163,8 @@ ref_kind, ref_id, created_at)`. `blob_refs` rows written at ingest (P2-04, P4-02
       kept; one past both grace and lock age is deleted from R2 and D1; a delta whose base was
       collected is deleted; a second run deletes nothing; one product's failure does not stop the
       others (`packages/worker/test/scheduled.test.ts`).
-- [ ] The migration applies; `TABLE_OWNERS` lists the new table; `pnpm --filter @polaris-key/docs gen:check` passes.
+- [ ] The migration applies; `TABLE_OWNERS` lists the new table;
+      `pnpm --filter @polaris-key/docs gen:check` passes.
 - [ ] The green gate passes (`AGENTS.md`), including the workerd smoke job.
 
 ## Verify

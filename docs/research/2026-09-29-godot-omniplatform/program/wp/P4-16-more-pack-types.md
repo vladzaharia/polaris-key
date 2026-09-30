@@ -61,8 +61,8 @@ so this is per-SDK handler work over the shared transport, patching, signing and
 - Type-specific verification (below) and typed N/A results for unsupported pairs.
 - `custom.<name>` end to end: registration, opaque file or tree payload, the game's activation.
 - CLI lints per new type in `pkey release publish`.
-- Widen the `.pkey/release` `type` rule that P4-02 limited to `godot.pck` and `files.tree` (rule 9: validator rule,
-  mutation-table entry, schema, regenerated `validation-codes.mdx`).
+- Widen the `.pkey/release` `type` rule that P4-02 limited to `godot.pck` and `files.tree`
+  (rule 9: validator rule, mutation-table entry, schema, regenerated `validation-codes.mdx`).
 - `parity.json` entries and tagged tests for each SDK.
 
 **Out** (and where it belongs instead):

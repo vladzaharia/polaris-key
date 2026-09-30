@@ -1,16 +1,16 @@
 # P1-05 Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys)
 
-| Field       | Value                                                                                                                                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                                                                                            |
-| Size        | 1–1.25 engineer-weeks                                                                                                                                         |
-| Depends on  | [P1-02](P1-02-godot-core.md)                                                                                                                                  |
-| Unblocks    | [P1-12](P1-12-godot-release.md)                                                                                                                               |
-| Role        | `pkey-godot-engineer`                                                                                                                                         |
+| Field       | Value                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P1: Godot SDK core                                                                                                                                           |
+| Size        | 1–1.25 engineer-weeks                                                                                                                                        |
+| Depends on  | [P1-02](P1-02-godot-core.md)                                                                                                                                 |
+| Unblocks    | [P1-12](P1-12-godot-release.md)                                                                                                                              |
+| Role        | `pkey-godot-engineer`                                                                                                                                        |
 | Plan mode   | no (the report is unsigned telemetry; `shared-protocol` is not touched)                                                                                      |
 | Gates       | `corpus:fingerprint` (`fingerprint.json` vectors in the Godot runner); worker tests and the OpenAPI `FactsReport` schema for the two new report keys; rule 7 |
-| Human input | none                                                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                     |
+| Human input | none                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                    |
 
 ## Goal
 
@@ -61,14 +61,15 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   `base64url(sha256("pkey-hw:<slug>:<component>:<raw>"))[0:22]`, composite `hwid` over the
   canonical order; omission of anything unreadable.
 - Raw readers per platform (notes/A2 §3.3), each a pure parser over captured command output:
-  - Windows: `reg query …\Cryptography /v MachineGuid`; board serial via PowerShell
-    `Get-CimInstance Win32_BaseBoard` (no `wmic`); `getmac /fo csv /nh`; `cmd /c vol C:`;
-    `OS.get_model_name()`;
+  - Windows: `reg query …\Cryptography /v MachineGuid`; one PowerShell call
+    (`-NoProfile -NonInteractive`, `Get-CimInstance`) printing `Win32_BaseBoard.SerialNumber` and
+    `Win32_ComputerSystem.Model` as JSON, as P1b-09 recommends for Node and Python (no `wmic`);
+    `getmac /fo csv /nh`; `cmd /c vol C:`;
   - macOS: `ioreg -rd1 -c IOPlatformExpertDevice` (UUID and serial); `diskutil info -plist /`;
     `ifconfig`; `OS.get_model_name()`;
-  - Linux: `/sys/class/dmi/id/product_uuid` then `/etc/machine-id` then
-    `/var/lib/dbus/machine-id`; `board_serial`; `/sys/class/net/*/address`;
-    `findmnt -no UUID /`; `product_name`;
+  - Linux: `/etc/machine-id` then `/var/lib/dbus/machine-id`, never `product_uuid`, and no
+    `board_serial` (P1b-09's recommendation; see Design notes); `/sys/class/net/*/address`;
+    `findmnt -no UUID /`; `/sys/class/dmi/id/product_name`;
   - all native: `cpuModel` = `OS.get_processor_name() + ":" + str(OS.get_processor_count())`
     (empty on Android: omit); `ramBucket` from `OS.get_memory_info()["physical"]`;
   - iOS/Android: anchor `OS.get_unique_id()`, model, RAM (and CPU on iOS); web: nothing.
@@ -121,14 +122,18 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   launch, and memoise for the session. PowerShell start-up is slow; never on the main thread.
   A Mac App Store sandbox may block `ioreg`; then omit the component and use `get_unique_id()`
   for the device id, and document it.
-- **Linux anchor:** `product_uuid` is root-only on most distributions, so a game (never root)
-  gets `machine-id`. That matches Node for non-root processes; P1b-09 decides the cross-SDK rule.
+- **Linux anchor:** `product_uuid` and `board_serial` are root-only, so the fingerprint would
+  change with privilege. P1b-09 recommends `machine-id` only, never `product_uuid`, and no
+  `board_serial` on Linux; use that rule from the start (a game never runs as root anyway), and
+  follow P1b-09's approved plan if it differs.
 - **`ramBucket` below 1 GiB:** omit it (Python and Swift do; Node emits `"0.5"`).
 - **Web:** no fingerprint (`devices.fingerprint` is an allowed `runtime` N/A); report the facts
   Godot has. **Strict tiers** are unusable on web, and device-code sign-in never sends a
   fingerprint (notes/A2 §3.4); say so in the README (P1-12).
 - **Report proposal** (names are new here; P1b-02 generates them later):
-  `engine = {renderer, videoAdapter, videoVendor, videoApi, display, debug}` from
+  `engine = {id, version, renderer, videoAdapter, videoVendor, videoApi, display, debug}`, where
+  `id` is the requirements form `godot-<major>.<minor>` (report §3.1; P1b-04 pins that format if
+  it runs after this) and the rest come from `Engine.get_version_info()`,
   `ProjectSettings "rendering/renderer/rendering_method"`, `RenderingServer` adapter calls,
   `DisplayServer.get_name()` and `OS.is_debug_build()`; `outlet` is an outlet id from report
   [§3.1](../../README.md#31-vocabulary) (`direct`, `steam`, `itch`, `app-store`, …). The Worker

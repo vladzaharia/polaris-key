@@ -1,16 +1,16 @@
 # P1-11 Godot export plugin v1: build stamp and editor dock
 
-| Field       | Value                                                                                   |
-| ----------- | --------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                      |
-| Size        | 0.5–0.75 engineer-weeks                                                                 |
-| Depends on  | [P1-01](P1-01-godot-scaffold.md)                                                        |
-| Unblocks    | [P1-12](P1-12-godot-release.md)                                                         |
-| Role        | `pkey-godot-engineer`                                                                   |
-| Plan mode   | no                                                                                      |
-| Gates       | a template-run check of the stamp in the `godot` CI job; `packages/cli` tests           |
-| Human input | none                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                               |
+| Field       | Value                                                                         |
+| ----------- | ----------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                                            |
+| Size        | 0.5–0.75 engineer-weeks                                                       |
+| Depends on  | [P1-01](P1-01-godot-scaffold.md)                                              |
+| Unblocks    | [P1-12](P1-12-godot-release.md)                                               |
+| Role        | `pkey-godot-engineer`                                                         |
+| Plan mode   | no                                                                            |
+| Gates       | a template-run check of the stamp in the `godot` CI job; `packages/cli` tests |
+| Human input | none                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                     |
 
 ## Goal
 
@@ -61,8 +61,8 @@ Godot form of the build identity that `pkey build-info` writes for other build s
     `PKEY_BUILD_CHANNEL`, `PKEY_BUILD_NUMBER`;
   - `_get_export_option_warning` for an unknown outlet id, a channel outside P0-04's
     vocabulary, or a non-semver `application/config/version`;
-  - `_export_begin`: build the stamp and `add_file("res://.polaris_key/build.json", bytes,
-    false)`;
+  - `_export_begin`: build the stamp and add it with
+    `add_file("res://.polaris_key/build.json", bytes, false)`;
   - `_get_export_features`: `pkey_outlet_<id>` and `pkey_channel_<channel>`, with `-` mapped to
     `_` (`pkey_outlet_app_store`).
 - **Stamp format** (`pkeyBuild: 1`), deterministic, no timestamps: `product`, `version`,
@@ -80,9 +80,9 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   editor has it (4.6+), otherwise `add_control_to_dock`.
 - `pkey trust` prints a Godot snippet (`const PINNED_TRUST_KEYS := {"<kid>": "<key>"}`) beside
   the JSON, Node/React, Python and Swift ones; the CLI README and a CLI test.
-- CI: the `godot` job exports the harness preset with `PKEY_BUILD_OUTLET=steam
-  PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42` and runs a `build_stamp` suite on the release
-  template that asserts the stamp and the feature tags.
+- CI: the `godot` job exports the harness preset with `PKEY_BUILD_OUTLET=steam`,
+  `PKEY_BUILD_CHANNEL=beta` and `PKEY_BUILD_NUMBER=42`, and runs a `build_stamp` suite on the
+  release template that asserts the stamp and the feature tags.
 
 **Out** (and where it belongs instead):
 
@@ -91,8 +91,9 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   (→ [P3-10](P3-10-godot-updater.md), [P5-05](P5-05-apple-plugin-package.md),
   [P5-06](P5-06-kotlin-aar.md)).
 - Runtime outlet detection that overrides the stamp (→ [P3-11](P3-11-outlet-detection.md)).
-- `pkey build-info` for other build systems (→ [P2-06](P2-06-publish-cli-action.md), which must
-  write the same `pkeyBuild: 1` shape).
+- `pkey build-info` for other build systems. [P2-06](P2-06-publish-cli-action.md) excludes it and
+  points here, but this package stamps Godot exports only, so the CLI command has no owner; whoever
+  builds it writes the same `pkeyBuild: 1` shape (report §3.4 names its file `pkey_build.json`).
 - `pkey sdk godot` and `pkey init --template godot` (report §6.1; not owned by any work package).
 - Diceroll's per-artifact stamping (→ [D-02](D-02-diceroll-after-p1.md)).
 
@@ -161,8 +162,8 @@ mise exec node@22 -- pnpm --filter @polaris-key/cli test
 
 - `res://.polaris_key/build.json` (`pkeyBuild: 1`) and `PolarisKey.build_info()`: P1-05 reports
   `outlet` from it, P1-10's dev-menu section shows it, P3-08 and P3-10 feed it to the update
-  decision, P4-08 fills `packSources` and `embeddedPacks`, and P2-06's `pkey build-info` writes the
-  same shape for other build systems.
+  decision, P4-08 fills `packSources` and `embeddedPacks`, and a future `pkey build-info` writes
+  the same shape for other build systems.
 - `PKeyExportPlugin`'s option names and env vars (`PKEY_BUILD_OUTLET`, `PKEY_BUILD_CHANNEL`,
   `PKEY_BUILD_NUMBER`), which D-02 sets in Diceroll's CI.
 - Set the status with

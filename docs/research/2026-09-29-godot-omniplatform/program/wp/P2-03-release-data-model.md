@@ -1,16 +1,16 @@
 # P2-03 Release data model v2: deliverables, builds, artifact roles, channel policy, yanks
 
-| Field       | Value                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P2: Release truth and publishing                                                                                                                       |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                   |
-| Depends on  | [P0-01](P0-01-operator-ownership.md), [P0-02](P0-02-release-resolution.md)                                                                             |
-| Unblocks    | [P2-04](P2-04-release-descriptor.md), [P2-05](P2-05-release-routes.md), [P2b-01](P2b-01-distribution-service.md), [P3-01](P3-01-wire-v4-plan.md)      |
-| Role        | `pkey-implementer`                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                     |
-| Gates       | D1 migrations (replay conventions of `0012`/`0018`); `TABLE_OWNERS` and the generated `reference/data-model.mdx` (`docs gen:check`); worker tests      |
-| Human input | none                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                              |
+| Field       | Value                                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth and publishing                                                                                                                  |
+| Size        | 1–1.5 engineer-weeks                                                                                                                              |
+| Depends on  | [P0-01](P0-01-operator-ownership.md), [P0-02](P0-02-release-resolution.md)                                                                        |
+| Unblocks    | [P2-04](P2-04-release-descriptor.md), [P2-05](P2-05-release-routes.md), [P2b-01](P2b-01-distribution-service.md), [P3-01](P3-01-wire-v4-plan.md)  |
+| Role        | `pkey-implementer`                                                                                                                                |
+| Plan mode   | no                                                                                                                                                |
+| Gates       | D1 migrations (replay conventions of `0012`/`0018`); `TABLE_OWNERS` and the generated `reference/data-model.mdx` (`docs gen:check`); worker tests |
+| Human input | none                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                         |
 
 ## Goal
 
@@ -72,7 +72,7 @@ every later release, distribution and wire v4 package names its tables.
   for builds by `(product, platform, arch)` and artifacts by `(product, sha256)`.
 - **Backfill** in the migrations: one `app` deliverable per product with a `release_config` row;
   `deliverable_id = 'app'` on every release; `seq` by `ROW_NUMBER() OVER (PARTITION BY product
-  ORDER BY published_at, release_id)`; `role` from the legacy `kind` (`signature`, `checksum`,
+ORDER BY published_at, release_id)`; `role` from the legacy `kind` (`signature`, `checksum`,
   else `payload`). Anything P0-02 used as an R6-10 stopgap moves into `release_yanks`.
 - **Resync must not clobber the new columns.** `releaseStoreStatements` upserts only the
   GitHub-derived columns; `sha256`, `storage_key`, `metadata_json`, `build_id`, `role` (once set by

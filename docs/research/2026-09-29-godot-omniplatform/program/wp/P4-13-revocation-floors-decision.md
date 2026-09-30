@@ -109,9 +109,10 @@ decision is conformance-tested like the licence gate, so these rows are what kee
   key may sign one; a delegated content key may not (P4-19). The feed lists revocation record
   hashes (the record hash P3-01 defined: SHA-256 over the ASCII compact JWS); the client fetches
   each from the record route by hash and verifies it against the **pinned release keys**
-  (`pinnedReleaseKeys`), never the Worker's trust set. A replacement must be the same deliverable. SDKs refuse to mount a revoked
-  release (embedded baselines and pinned packs included) and swap in the replacement if it is
-  compatible with the device (level, engine, variant); otherwise `blocked(revoked-content)`.
+  (`pinnedReleaseKeys`), never the Worker's trust set. A replacement must be the same deliverable.
+  SDKs refuse to mount a revoked release (embedded baselines and pinned packs included) and swap
+  in the replacement if it is compatible with the device (level, engine, variant); otherwise
+  `blocked(revoked-content)`.
 - **Yank vs revoke** (CONTENT §6.7 item 6): a yank stops new serving; devices keep what they have. A
   revocation makes devices stop using it. Resolution treats a revoked release as yanked.
 - **Floors.** A pack floor is per (pack, channel, level) (P4-12). A device is

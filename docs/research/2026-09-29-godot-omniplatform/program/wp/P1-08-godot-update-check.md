@@ -1,16 +1,16 @@
 # P1-08 Godot update-check parity with the existing SDKs
 
-| Field       | Value                                                  |
-| ----------- | ------------------------------------------------------ |
-| Phase       | P1: Godot SDK core                                     |
-| Size        | 0.25–0.5 engineer-weeks                                |
-| Depends on  | [P1-02](P1-02-godot-core.md)                           |
-| Unblocks    | [P1-12](P1-12-godot-release.md)                        |
-| Role        | `pkey-godot-engineer`                                  |
-| Plan mode   | no                                                     |
-| Gates       | none beyond the green gate and the `godot` CI job      |
-| Human input | none                                                   |
-| Repo        | `vladzaharia/polaris-key`                              |
+| Field       | Value                                             |
+| ----------- | ------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                |
+| Size        | 0.25–0.5 engineer-weeks                           |
+| Depends on  | [P1-02](P1-02-godot-core.md)                      |
+| Unblocks    | [P1-12](P1-12-godot-release.md)                   |
+| Role        | `pkey-godot-engineer`                             |
+| Plan mode   | no                                                |
+| Gates       | none beyond the green gate and the `godot` CI job |
+| Human input | none                                              |
+| Repo        | `vladzaharia/polaris-key`                         |
 
 ## Goal
 
@@ -45,8 +45,8 @@ decision, the signed feed and in-game installation are wire v4 work, not this.
 
 **In:**
 
-- `services/update.gd` (`PolarisKey.update`): `await check(channel := "") ->
-  PKeyVersionCheck` (`version`, `tag`, `url`, `update_available`); signal
+- `services/update.gd` (`PolarisKey.update`): `await check(channel := "")`, returning a
+  `PKeyVersionCheck` (`version`, `tag`, `url`, `update_available`); signal
   `update_available(check)`; `appcast_url(channel := "", arch := "") -> String` (empty when
   discovery is not loaded or Update is off).
 - `services/release.gd` (`PolarisKey.release`): `await changelog() -> Array[PKeyChangelogEntry]`

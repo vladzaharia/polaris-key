@@ -1,27 +1,26 @@
 # P2-01 Core blob store on R2: content-addressed, bucket-locked, on a separate domain
 
-| Field       | Value                                                                                                                                                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                                                                                                       |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                   |
-| Depends on  | [P0-09](P0-09-service-table.md)                                                                                                                                                                                        |
-| Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-05](P2-05-release-routes.md), [P6-04](P6-04-hosted-web.md)                                                                                                                    |
-| Role        | `pkey-implementer`                                                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                                                     |
-| Gates       | threat model (`docs/security/THREAT-MODEL.md`); `wrangler.toml` bindings and routes; D1 migration + `TABLE_OWNERS` (two Core tables; not in the graph's gates); `test:workerd` (new R2 lane); `docs/DEPLOYMENT.md`     |
+| Field       | Value                                                                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth and publishing                                                                                                                                                                                     |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                 |
+| Depends on  | [P0-09](P0-09-service-table.md)                                                                                                                                                                                      |
+| Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-05](P2-05-release-routes.md), [P6-04](P6-04-hosted-web.md)                                                                                                                  |
+| Role        | `pkey-implementer`                                                                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                                                                   |
+| Gates       | threat model (`docs/security/THREAT-MODEL.md`); `wrangler.toml` bindings and routes; D1 migration + `TABLE_OWNERS` (two Core tables; not in the graph's gates); `test:workerd` (new R2 lane); `docs/DEPLOYMENT.md`   |
 | Human input | ✋ Cloudflare R2 buckets per environment (prod, staging, dev) with the lock and lifecycle rules below; a **separate registrable domain** for bytes with a custom-domain route; `wrangler deploy` of the new bindings |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                            |
 
 ## Goal
 
 The Worker has an R2 binding `BLOBS` in every environment and a Core module,
 `packages/worker/src/core/blobs.ts`, that writes, verifies, promotes and serves content-addressed
 objects under the key layout below. Nothing lands under a locked prefix until its SHA-256 has been
-checked against the hash it is stored under, and D1 records which objects exist and which
-product references each. A byte response carries `Accept-Ranges`, a strong
-`ETag` equal to the SHA-256, `Repr-Digest` and honours `Range`, `If-Range` and `If-None-Match`.
-Requests to the separate bytes host reach nothing but byte routes. No route is added here; P2-05
-adds the first ones.
+checked against the hash it is stored under, and D1 records which objects exist and which product
+references each. A byte response carries `Accept-Ranges`, a strong `ETag` equal to the SHA-256 and
+`Repr-Digest`, and honours `Range`, `If-Range` and `If-None-Match`. Requests to the separate bytes
+host reach nothing but byte routes. No route is added here; P2-05 adds the first ones.
 
 ## Why
 
@@ -183,8 +182,9 @@ mise exec node@22 -- pnpm typecheck
 
 - P2-02 uses `stagingKey`, `verifyStaged`, `promote` and `isStored`; it adds the R2 parent
   credentials that mint CI's temporary credentials. P2-04 writes `blob_refs` for artifacts, P4-02
-  for pack objects; P4-14 collects unreferenced objects. P2-05 and P2b-04 use `blobResponse` and register their byte
-  routes on the host allowlist. P6-04 uses the bytes host for hosted web builds.
+  for pack objects; P4-14 collects unreferenced objects. P2-05 and P2b-04 use `blobResponse` and
+  `hasRef`, and register their byte routes on the host allowlist. P6-04 uses the bytes host for
+  hosted web builds.
 - The key layout, the `gated/` prefix and the lock duration are fixed here; P4-05 and P4-14 rely
   on them.
 - Record in the PR which human inputs arrived (bucket names, domain, deploy). Then set the status:

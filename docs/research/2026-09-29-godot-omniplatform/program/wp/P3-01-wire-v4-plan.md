@@ -126,10 +126,10 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
    reload profiles, and what a stale feed means for the decision (notes/E5 §1.4 "freeze": keep
    running, never auto-update). Whether the feed joins the clock floor. [No, not in v4.]
 4. `seq` rules: per (aud, channel, selector), bumped on content change only; accept `seq > stored`,
-   or `seq == stored` with a newer `issuedAt`. Who assigns a release's `seq` and how an installed
-   build learns its own release (build stamp from [P2-06](P2-06-publish-cli-action.md) and
-   [P1-11](P1-11-godot-export-plugin.md)). [CI assigns from the publish
-   ticket; installs identify by version and build number.]
+   or `seq == stored` with a newer `issuedAt`. Who assigns a release's `seq`, and how an installed
+   build learns its own release (the build stamp of [P1-11](P1-11-godot-export-plugin.md)). [CI
+   takes `seq` from [P2-02](P2-02-trusted-publisher.md)'s `nextSeq` ticket, as P2-06 does;
+   installs identify themselves by version and build number.]
 5. The `seq` floor must survive restarts, but WIRE-CONTRACT-V3 §4.1 forbids persisted counters.
    [Cache the verified feed JWS in a new optional `CacheRecordV3` slice and derive the floor on
    load; keep `CACHE_VERSION` 3 because the change is additive.]
@@ -138,7 +138,9 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
    P2-03's `build_id` as `id`); whether `ReleaseRecordDoc` lives in `shared-protocol` [yes, it is
    device-facing]; `iss` (the Worker's `key.plrs.im` would be false here) and `aud`;
    `buildNumber` type (iOS, Android, MSIX and Sparkle differ) [string]; `issuedAt` informational,
-   no expiry; how a v4 verifier treats the reserved kinds [verify, then refuse to act on them].
+   no expiry; how a v4 verifier treats the reserved kinds [verify, then refuse to act on them];
+   where clients get byte URLs [not in the signed body, since locations change after signing
+   (README §3.3); from distribution by content hash].
 7. The record hash: lowercase hex SHA-256 over the ASCII compact JWS, checked before signature
    verification. Field name in the feed.
 8. Release-key trust: a separate `pinnedReleaseKeys` input in every SDK (`pinned_release_keys` in
@@ -151,9 +153,11 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
    `packs`, `prestage`, `content-floor`, `revoked-content`. Keep `decideUpdate` synchronous: the
    bucket is computed by `rolloutBucket` and passed in, because WebCrypto hashing is async.
    Define `installId` [the SDK's device id] and the exact bytes and endianness of the bucket.
-10. Outlet capability defaults per outlet id: where they live [a block in `update-matrix.json`,
-    later emitted by [P1b-02](P1b-02-sdk-constants.md)'s `gen-sdk-constants`] and how the feed
-    narrows them.
+10. Outlet capability defaults per outlet id: the values, where they live and how the feed
+    narrows them. [One table in `outlet-matrix.json`, which
+    [P2b-02](P2b-02-distribution-manifest.md) already treats as the source of truth for its
+    proposed defaults; `update-matrix.json` rows refer to it; later emitted by
+    [P1b-02](P1b-02-sdk-constants.md)'s `gen-sdk-constants`.]
 11. `outlet-matrix.json`: row schema, signal vocabulary from notes/E9 §1.1 (named
     `<platform>.<signal>`), confidence levels, precedence of runtime evidence over the build
     stamp, the `unknown` outcome and its capabilities, and how unverified signals are marked
@@ -183,7 +187,7 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
     runner) → P3-04, P3-06, P3-07, P3-08 in parallel → P3-11.] No typed N/A for `update.feed`,
     `release.record` or `update.decide`; `update.driver` on iOS is `outlet`.
 19. Rollout: deploy order, what deployed v3 clients see (no SDK enforces `protocolVersion`;
-    license, config, trust and bundle documents are byte-identical), old workers, and whether the
+    licence, config, trust and bundle documents are byte-identical), old workers, and whether the
     interim release-key-only option of README §3.3 is used for Diceroll's minimum slice.
 20. Boot-guard rows for `stage-matrix.json`. [P1-09](P1-09-boot-stage-machine.md) hands them to
     P3-10 "under its own plan", but P3-10 is not plan-mode. [Plan them here (rollback after two

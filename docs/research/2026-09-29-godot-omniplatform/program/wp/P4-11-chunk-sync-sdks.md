@@ -65,8 +65,9 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
 
 - `client-core`: the chunk applier over P4-06's injected ports (the shape that ran unchanged in
   Node and Chromium in A7), the seed registry, and feeding `installed[].chunks` to the planner.
-  The planner itself is complete (P4-06 costs chunk candidates over inline records); only the
-  capability flips. Node and React wiring; React stages in OPFS through P4-06's storage adapter.
+  The planner itself is complete (P4-06 costs chunk candidates over inline records); it only
+  learns to take a chunk index by reference (P4-10's index-blob rows), and the capability flips.
+  Node and React wiring; React stages in OPFS through P4-06's storage adapter.
 - Python and Swift: parser (the P4-06 and P4-07 briefs assign it here), applier, seed registry,
   `Range` fetching.
 - Godot: parser (`PackedByteArray.decode_u32`/`decode_u64`), applier, `HTTPClient`-based `Range`
@@ -148,9 +149,10 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
 
 ## Acceptance criteria
 
-- [ ] The 15 `chunkIndexCases` and 8 chunk `applyCases` pass with identical verdicts, counters
-      included, in: `conformance/runners/node`, the Chromium job (if P1b-05 has landed), pytest on
-      CPython 3.9 and 3.14, `swift test`, and the Godot runner on the editor and a release template.
+- [ ] The 15 `chunkIndexCases`, the 8 chunk `applyCases` and P4-10's index-blob `plan-matrix.json`
+      rows pass with identical verdicts, counters included, in: `conformance/runners/node`, the
+      Chromium job (if P1b-05 has landed), pytest on CPython 3.9 and 3.14, `swift test`, and the
+      Godot runner on the editor and a release template.
 - [ ] Each SDK has an integration test with a fake server: v1 installed via `full` records its
       seed index; v2 installs via `chunk`; the number of `Range` requests equals the planner's
       `requests`; a `200` reply to a `Range` request makes the install fall back to the next

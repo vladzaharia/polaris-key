@@ -1,16 +1,16 @@
 # P2-07 Console: builds and channels view in the Release section
 
-| Field       | Value                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                               |
-| Size        | 0.5–1 engineer-weeks                                                                           |
-| Depends on  | [P2-05](P2-05-release-routes.md)                                                               |
-| Unblocks    | none (closes the P2 milestone)                                                                 |
-| Role        | `pkey-implementer`                                                                             |
-| Plan mode   | no                                                                                             |
+| Field       | Value                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth and publishing                                                              |
+| Size        | 0.5–1 engineer-weeks                                                                          |
+| Depends on  | [P2-05](P2-05-release-routes.md)                                                              |
+| Unblocks    | none (closes the P2 milestone)                                                                |
+| Role        | `pkey-implementer`                                                                            |
+| Plan mode   | no                                                                                            |
 | Gates       | admin tests; `pnpm --filter @polaris-key/admin build`; the help-link drift gate (`docsLinks`) |
-| Human input | none                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                      |
+| Human input | none                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                     |
 
 Milestone: **every Diceroll artifact indexed and published without long-lived secrets.**
 

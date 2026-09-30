@@ -123,7 +123,7 @@ Today the feed can offer what the download refuses, because the two read access 
   `release_config.artifacts_access` (leave the column; dropping it needs a rebuild) and say so in a
   comment next to `setReleaseAccess`.
 - **CORS** on byte routes comes from P0-05's allowlist with `Access-Control-Expose-Headers: ETag,
-  Content-Range, Repr-Digest` (README §3.11); no credentials on public objects.
+Content-Range, Repr-Digest` (README §3.11); no credentials on public objects.
 
 ## Steps
 

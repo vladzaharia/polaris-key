@@ -1,16 +1,16 @@
 # P2-06 `pkey release` publishing commands and the `polaris-key/publish` Action
 
-| Field       | Value                                                                                                                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                                                                                                                       |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                   |
-| Depends on  | [P2-02](P2-02-trusted-publisher.md), [P2-04](P2-04-release-descriptor.md) (and [P2-05](P2-05-release-routes.md) for the promote/pin/yank commands: see Scope)                                                                           |
-| Unblocks    | [P2b-03](P2b-03-availability-keys.md), [P3-03](P3-03-feed-composition.md), [P4-03](P4-03-ci-patch-artifacts.md), [D-03](D-03-diceroll-after-p3.md)                                                                                     |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                                                                     |
-| Gates       | CLI tests; an end-to-end publish test against the Worker; a freshness check for the committed Action bundle (a new generated file)                                                                                                    |
+| Field       | Value                                                                                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P2: Release truth and publishing                                                                                                                                                                                   |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                               |
+| Depends on  | [P2-02](P2-02-trusted-publisher.md), [P2-04](P2-04-release-descriptor.md) (and [P2-05](P2-05-release-routes.md) for the promote/pin/yank commands: see Scope)                                                      |
+| Unblocks    | [P2b-03](P2b-03-availability-keys.md), [P3-03](P3-03-feed-composition.md), [P4-03](P4-03-ci-patch-artifacts.md), [D-03](D-03-diceroll-after-p3.md)                                                                 |
+| Role        | `pkey-implementer`                                                                                                                                                                                                 |
+| Plan mode   | no                                                                                                                                                                                                                 |
+| Gates       | CLI tests; an end-to-end publish test against the Worker; a freshness check for the committed Action bundle (a new generated file)                                                                                 |
 | Human input | none in the graph; publishing the Action as `polaris-key/publish@v1` needs a GitHub organisation or repository and a Marketplace listing. Until then workflows use `vladzaharia/polaris-key/actions/publish@<sha>` |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                          |
 
 ## Goal
 
@@ -58,7 +58,7 @@ Diceroll's adoption (D-03) publishes through this Action and deletes `update_man
   writes `PKEY_CI_TOKEN` to `$GITHUB_ENV` after `::add-mask::`. Other commands call it implicitly
   when `PKEY_CI_TOKEN` is unset and the job is an Actions job.
 - `pkey release publish --product <slug> --deliverable app --version <v> [--tag vX.Y.Z]
-  [--channel <c>] --dir <path> [--source r2|github] [--meta builds.json] [--dry-run] [--base-url]`:
+[--channel <c>] --dir <path> [--source r2|github] [--meta builds.json] [--dry-run] [--base-url]`:
   1. load `.pkey/`, match files in `--dir` against the deliverable's `artifacts[].match` (none: a
      warning and the build is omitted; more than one: an error), pick up `<file>.sig` and
      `<file>.sha256` as sidecars;
@@ -68,8 +68,8 @@ Diceroll's adoption (D-03) publishes through this Action and deletes `update_man
      `x-amz-checksum-sha256` (SigV4 with the session token), retrying transient failures;
   4. build the descriptor (`seq` from the ticket's `nextSeq`, `provenance` from `GITHUB_SHA` and
      the run URL), validate it locally with `validateReleaseDescriptor`, and submit it.
-  `--source github` uploads nothing and lists `github` locations; the tagged release must be
-  immutable.
+     `--source github` uploads nothing and lists `github` locations; the tagged release must be
+     immutable.
 - `pkey release promote|pin|unpin <releaseId> --channel <c>` and
   `pkey release yank <releaseId> --reason <text>`, calling P2-05's CI routes.
 - **The Action** at `actions/publish/action.yml` (`runs.using` the current Node runtime GitHub

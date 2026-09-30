@@ -1,16 +1,16 @@
 # P2b-02 `.pkey/distribution`: outlets, identities, listings and transports
 
-| Field       | Value                                                                                                                                                                                              |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2b: Distribution core                                                                                                                                                                             |
-| Size        | 1–1 engineer-weeks                                                                                                                                                                                 |
-| Depends on  | [P2b-01](P2b-01-distribution-service.md) (and, in practice, [P2-04](P2-04-release-descriptor.md) for the artifact map that outlets reference)                                                     |
-| Unblocks    | [P2b-03](P2b-03-availability-keys.md), [P2b-04](P2b-04-rollouts-delivery.md)                                                                                                                       |
-| Role        | `pkey-implementer`                                                                                                                                                                                 |
-| Plan mode   | no                                                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2b: Distribution core                                                                                                                                                                                                |
+| Size        | 1–1 engineer-weeks                                                                                                                                                                                                    |
+| Depends on  | [P2b-01](P2b-01-distribution-service.md) (and, in practice, [P2-04](P2-04-release-descriptor.md) for the artifact map that outlets reference)                                                                         |
+| Unblocks    | [P2b-03](P2b-03-availability-keys.md), [P2b-04](P2b-04-rollouts-delivery.md)                                                                                                                                          |
+| Role        | `pkey-implementer`                                                                                                                                                                                                    |
+| Plan mode   | no                                                                                                                                                                                                                    |
 | Gates       | rule 9 (a fourth manifest document: validator, mutation table, new `distribution.schema.json`); D1 migration + `TABLE_OWNERS` (two tables; not in the graph's gates); `docs gen:check`; threat model for capabilities |
-| Human input | none                                                                                                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                          |
+| Human input | none                                                                                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                             |
 
 ## Goal
 
@@ -119,12 +119,12 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
 - **Default capabilities** (proposed; P3-01's `outlet-matrix.json` becomes the source of truth
   once approved, and this table must then match it):
 
-  | Kinds                                                                                  | binaryUpdates | codeUpdates | dataUpdates | channelSwitch | commerce    | downloadedScripts |
-  | -------------------------------------------------------------------------------------- | ------------- | ----------- | ----------- | ------------- | ----------- | ----------------- |
-  | `direct`, `web`                                                                        | `self`        | true        | true        | true          | `own`       | true              |
-  | `app-store`, `testflight`, `play`, `play-testing`, `ms-store`                          | `store`       | false       | true        | false         | `store-iap` | false             |
-  | `steam`                                                                                | `store`       | false       | true        | false         | `steam`     | false             |
-  | `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo`, `app-installer`, `itch`, `flathub`, `snap`, `winget` | `store` | false | true | false | `own` | false |
+  | Kinds                                                                                                        | binaryUpdates | codeUpdates | dataUpdates | channelSwitch | commerce    | downloadedScripts |
+  | ------------------------------------------------------------------------------------------------------------ | ------------- | ----------- | ----------- | ------------- | ----------- | ----------------- |
+  | `direct`, `web`                                                                                              | `self`        | true        | true        | true          | `own`       | true              |
+  | `app-store`, `testflight`, `play`, `play-testing`, `ms-store`                                                | `store`       | false       | true        | false         | `store-iap` | false             |
+  | `steam`                                                                                                      | `store`       | false       | true        | false         | `steam`     | false             |
+  | `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo`, `app-installer`, `itch`, `flathub`, `snap`, `winget` | `store`       | false       | true        | false         | `own`       | false             |
 
 - **Resync** upserts declared outlets and transports, sets `removed_at` on outlets no longer
   declared (never deletes: P2b-03's availability history refers to them), and never writes

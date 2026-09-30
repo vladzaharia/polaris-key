@@ -1,16 +1,16 @@
 # P1-02 Godot core: strict JSON, verify, trust, clock, cache, transport, persistence
 
-| Field       | Value                                                                                                                                                                                                                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                                                                                                                                                                                                                           |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                         |
-| Depends on  | [P1-01](P1-01-godot-scaffold.md)                                                                                                                                                                                                                                                             |
-| Unblocks    | [P1-03](P1-03-godot-license.md), [P1-04](P1-04-godot-config.md), [P1-05](P1-05-godot-devices.md), [P1-07](P1-07-godot-identity.md), [P1-08](P1-08-godot-update-check.md), [P1-09](P1-09-boot-stage-machine.md), [P3-08](P3-08-v4-godot.md)                                                 |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                                                        |
-| Plan mode   | no (no corpus or contract change; a divergence found here goes to a plan-mode work package)                                                                                                                                                                                                 |
-| Gates       | `corpus:cases`: every `cases.json` section and `fingerprint.json` `deviceIds` pass in the Godot runner on the editor and the release template                                                                                                                                              |
-| Human input | none                                                                                                                                                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P1: Godot SDK core                                                                                                                                                                                                                         |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                       |
+| Depends on  | [P1-01](P1-01-godot-scaffold.md)                                                                                                                                                                                                           |
+| Unblocks    | [P1-03](P1-03-godot-license.md), [P1-04](P1-04-godot-config.md), [P1-05](P1-05-godot-devices.md), [P1-07](P1-07-godot-identity.md), [P1-08](P1-08-godot-update-check.md), [P1-09](P1-09-boot-stage-machine.md), [P3-08](P3-08-v4-godot.md) |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                      |
+| Plan mode   | no (no corpus or contract change; a divergence found here goes to a plan-mode work package)                                                                                                                                                |
+| Gates       | `corpus:cases`: every `cases.json` section and `fingerprint.json` `deviceIds` pass in the Godot runner on the editor and the release template                                                                                              |
+| Human input | none                                                                                                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                  |
 
 ## Goal
 
@@ -28,7 +28,8 @@ Core. Godot's engine differs from the reference in ways that silently change ver
 not handled: a lenient JSON parser that keeps the last duplicate key and accepts trailing commas,
 leading zeros and raw control characters; every number a float; `HTTPRequest` forwarding
 `Authorization` on cross-host redirects; no SHA-512 or Ed25519 at all (report
-[§5.2](../../README.md#52-crypto-measured), [§5.3](../../README.md#53-transport-persistence-device-identity),
+[§5.2](../../README.md#52-crypto-measured),
+[§5.3](../../README.md#53-transport-persistence-device-identity),
 notes/A5 §2 and §4). The feature ids this work package turns on are `core.verify`,
 `core.cache`, `core.bundle`, `core.discover`, `core.sync`, `core.local`, and partly
 `core.headers`, `core.errors`, `core.store` ([PARITY §5.1](../../PARITY.md#51-core)).
@@ -72,11 +73,11 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
   four refusal reasons, then import).
 - `cache.gd`: the `CacheRecordV3` shape exactly as `client-core/src/store.ts:34-50`, the load
   procedure, one whole-record write per sync.
-- `store/file_store.gd` behind a `PKeyStore` interface: `user://pkey/<product>/{device, token,
-  managed.json}`, 0600 via `FileAccess.set_unix_permissions` on macOS and Linux, temp file plus
-  `DirAccess.rename_absolute` for every write, a write-once device id whose write failure is
-  surfaced, and `store_status()` in P1b-09's shape (`backend`: `file` or `indexeddb`; `degraded`
-  with a reason when persistence is not durable).
+- `store/file_store.gd` behind a `PKeyStore` interface: the files `device`, `token` and
+  `managed.json` under `user://pkey/<product>/`, 0600 via `FileAccess.set_unix_permissions` on
+  macOS and Linux, temp file plus `DirAccess.rename_absolute` for every write, a write-once
+  device id whose write failure is surfaced, and `store_status()` in P1b-09's shape (`backend`:
+  `file` or `indexeddb`; `degraded` with a reason when persistence is not durable).
 - `device_id.gd`: `PKeyDeviceId.from_raw(slug, raw)` and a default raw source
   (`OS.get_unique_id()`; on web or on failure a random 16-byte UUID).
 - `transport.gd`, `discovery.gd`, `token.gd`, `sync.gd`, `errors.gd`, `result.gd`,
@@ -95,9 +96,10 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
   desktop device-id sources, register and report (→ [P1-05](P1-05-godot-devices.md)).
 - Keychain/Keystore token stores (→ [P5-05](P5-05-apple-plugin-package.md),
   [P5-06](P5-06-kotlin-aar.md)); a desktop keyring is unowned.
-- Transcript replay (→ [P1b-03](P1b-03-http-transcripts.md)); `supports()` and generated
-  constants (→ [P1b-01](P1b-01-parity-registry.md), [P1b-02](P1b-02-sdk-constants.md));
-  canonical header values (→ [P1b-04](P1b-04-headers-config-corpora.md)).
+- Recording transcripts (→ [P1b-03](P1b-03-http-transcripts.md), which leaves the Godot replayer
+  to the Godot P1 packages; see Design notes); `supports()` and generated constants
+  (→ [P1b-01](P1b-01-parity-registry.md), [P1b-02](P1b-02-sdk-constants.md)); canonical header
+  values (→ [P1b-04](P1b-04-headers-config-corpora.md)).
 - Worker CORS for web exports (→ [P0-05](P0-05-cors.md)); wire v4 (→ [P3-08](P3-08-v4-godot.md)).
 - WebCrypto or GDExtension verify accelerators (optional, unowned; they must pass the same
   corpus if added).
@@ -146,6 +148,11 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
   unsupported feature is `code == &"unsupported"` with `detail = {feature, reason}`.
 - **Web:** `user://` is IndexedDB and may not persist (`OS.is_userfs_persistent()`); report it.
   A cleared store means a new device id.
+- **Transcripts:** write the fake server so it can serve P1b-03's `conformance/transcripts/*.json`
+  format. If P1b-03 has landed when this package starts, add a Godot mirror to
+  `pnpm gen:transcripts` (beside Swift's) and a replayer that filters by `sdks/godot/parity.json`,
+  replaying the `discovery-*` and sync transcripts; otherwise the first Godot package that starts
+  after P1b-03 does it.
 - Keep 4.4 syntax (P1-01). Use `@warning_ignore` sparingly; never silence parse errors.
 
 ## Steps

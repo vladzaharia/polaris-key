@@ -44,9 +44,9 @@ deliverables, `pinned` packs and `contentApi` on app records; this adds the othe
   `.pkey/release`), and [§11](../../README.md#11-decisions-needed) decisions 1 (guardrails),
   13, 18 and 19.
 - The P2-03, P2-04, P3-03 and P4-02 code: release tables (`release_records`, `release_pins`,
-  `release_deliverables`, `release_builds`,
-  `release_channel_policy`, `release_yanks`), the release descriptor ingest, the publish submit
-  route and its ticket, the `.pkey/release` deliverables validator.
+  `release_deliverables`, `release_builds`, `release_channel_policy`, `release_yanks`), the
+  release descriptor ingest, the publish submit route and its ticket, the `.pkey/release`
+  deliverables validator, and P4-03's `pkey release publish --dry-run`.
 - `packages/worker/src/services/release/` (today's `channels.ts`, `store.ts`, `admin.ts`),
   `packages/worker/test/boundaries.test.ts`.
 - `packages/shared-manifest/src/index.ts` (release section, ~L900–1060),

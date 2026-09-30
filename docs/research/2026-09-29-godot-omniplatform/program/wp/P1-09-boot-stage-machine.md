@@ -1,16 +1,16 @@
 # P1-09 Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`
 
-| Field       | Value                                                                                                                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                                                                                                                             |
-| Size        | 0.75–1 engineer-weeks                                                                                                                                                                          |
-| Depends on  | [P1-02](P1-02-godot-core.md)                                                                                                                                                                   |
-| Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                                                                                                                                 |
-| Role        | `pkey-wire-planner` writes the plan; implementation by `pkey-sdk-porter` after approval                                                                                                       |
-| Plan mode   | yes: `program/plans/P1-09.md` must be approved (merged) before any code                                                                                                                       |
-| Gates       | plan mode; `corpus:stage-matrix` (a new generated corpus file, its mirrors and `pnpm gen:corpus -- --check`, rule 1); all SDKs; generated `reference/corpus.mdx` (rule 3)                     |
-| Human input | plan approval, including the open decisions below                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                      |
+| Field       | Value                                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                                                                                                                                        |
+| Size        | 0.75–1 engineer-weeks                                                                                                                                                     |
+| Depends on  | [P1-02](P1-02-godot-core.md)                                                                                                                                              |
+| Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                                                                                                            |
+| Role        | `pkey-wire-planner` writes the plan; implementation by `pkey-sdk-porter` after approval                                                                                   |
+| Plan mode   | yes: `program/plans/P1-09.md` must be approved (merged) before any code                                                                                                   |
+| Gates       | plan mode; `corpus:stage-matrix` (a new generated corpus file, its mirrors and `pnpm gen:corpus -- --check`, rule 1); all SDKs; generated `reference/corpus.mdx` (rule 3) |
+| Human input | plan approval, including the open decisions below                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                 |
 
 ## Goal
 
@@ -38,8 +38,8 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
 - Report [§5.8](../../README.md#58-ui-kit-and-pkeyboot) (the stage table),
   [§6.3](../../README.md#63-player-end-user), §8 item 6.
 - [PARITY](../../PARITY.md) §2.2 (typed N/As), §4.1, §4.3, §5.5 (`update.bootguard`), §5.7.
-- [notes/E9](../../notes/E9-runtime-building-blocks.md) §8 and §11; [notes/A4](../../notes/A4-diceroll-mapping.md)
-  §2.7 (`BootShell` states and exits).
+- [notes/E9](../../notes/E9-runtime-building-blocks.md) §8 and §11;
+  [notes/A4](../../notes/A4-diceroll-mapping.md) §2.7 (`BootShell` states and exits).
 - `tools/sign-corpus.ts` (`buildGateMatrixV2`, `reconcile`, the mirror constants) and
   `conformance/runners/node/corpusV2.test.ts` (how a matrix is consumed).
 - `packages/client-core/src/{index.ts,gate.ts}` and `package.json` (subpath exports).
@@ -104,9 +104,9 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   `retry` returns to `sync`; `play-offline` reaches `ready` only when the required set is present
   and the gate is usable; a `required` decision blocks; `optional` continues and emits
   `update_available`; `rolled-back` continues and emits `boot_rolled_back`.
-- **Row format**, like `gate-matrix.json`:
-  `{name, init {allowOffline, requiredPacks}, events [...], expect {stages [...], emits [...],
-  outcome}}`. Start with about 20 rows covering every rule above.
+- **Row format**, like `gate-matrix.json`: `name`; `init` (`allowOffline`, `requiredPacks`);
+  `events` (the ordered inputs); `expect` (`stages`, `emits`, `outcome`). Start with about 20 rows
+  covering every rule above.
 
 **Decisions for the human** (with recommendations):
 
@@ -122,14 +122,14 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
 
 **SDKs that follow, and when** (the plan must restate this):
 
-| SDK    | What                                                      | Work package                        |
-| ------ | --------------------------------------------------------- | ----------------------------------- |
-| Node   | uses `client-core` directly; the Node runner section      | this one                            |
-| React  | uses `client-core` directly; no renderer yet               | this one (renderer unowned)         |
-| Python | a pure port and a pytest runner                           | this one                            |
-| Swift  | a pure port and an XCTest runner over the mirror          | this one                            |
-| Godot  | a port driving `PKeyBoot`, and the runner section         | [P1-10](P1-10-godot-ui-kit.md)      |
-| Kotlin, C# | ports when those SDKs exist                           | P6-05, X-01                         |
+| SDK        | What                                                 | Work package                   |
+| ---------- | ---------------------------------------------------- | ------------------------------ |
+| Node       | uses `client-core` directly; the Node runner section | this one                       |
+| React      | uses `client-core` directly; no renderer yet         | this one (renderer unowned)    |
+| Python     | a pure port and a pytest runner                      | this one                       |
+| Swift      | a pure port and an XCTest runner over the mirror     | this one                       |
+| Godot      | a port driving `PKeyBoot`, and the runner section    | [P1-10](P1-10-godot-ui-kit.md) |
+| Kotlin, C# | ports when those SDKs exist                          | P6-05, X-01                    |
 
 If the Python and Swift ports push this package past its estimate by more than half, the plan
 proposes moving them to a follow-up and marking `ui.stages` `planned` for those SDKs.

@@ -1,16 +1,16 @@
 # P2b-01 Add the `distribution` service with Core descriptor hooks and coherence rules
 
-| Field       | Value                                                                                                                                                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2b: Distribution core                                                                                                                                                                                                                                      |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                        |
-| Depends on  | [P0-09](P0-09-service-table.md), [P2-03](P2-03-release-data-model.md)                                                                                                                                                                                       |
-| Unblocks    | [P2b-02](P2b-02-distribution-manifest.md), [P3-01](P3-01-wire-v4-plan.md), [P5-01](P5-01-outlet-credentials.md)                                                                                                                                             |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                                          |
-| Plan mode   | no (stop and escalate if P0-09 put the service table in `shared-protocol` or any wire shape would change)                                                                                                                                                  |
-| Gates       | new service; `pnpm gen:services -- --check` (P0-09); rule 9 (two new coherence codes, one retired); D1 migration (backfill); threat model; all SDKs (generated enums); `docs check:links`                                                                   |
+| Field       | Value                                                                                                                                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2b: Distribution core                                                                                                                                                                                                                            |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                              |
+| Depends on  | [P0-09](P0-09-service-table.md), [P2-03](P2-03-release-data-model.md)                                                                                                                                                                             |
+| Unblocks    | [P2b-02](P2b-02-distribution-manifest.md), [P3-01](P3-01-wire-v4-plan.md), [P5-01](P5-01-outlet-credentials.md)                                                                                                                                   |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                |
+| Plan mode   | no (stop and escalate if P0-09 put the service table in `shared-protocol` or any wire shape would change)                                                                                                                                         |
+| Gates       | new service; `pnpm gen:services -- --check` (P0-09); rule 9 (two new coherence codes, one retired); D1 migration (backfill); threat model; all SDKs (generated enums); `docs check:links`                                                         |
 | Human input | ✋ confirmation that [P0-08](P0-08-unknown-slug-tolerance.md) is **in production** before this is deployed (program README §6; not in the graph's list); djdl's live `.pkey/product` gains `distribution` before its next push (see Design notes) |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                         |
 
 ## Goal
 
@@ -29,7 +29,7 @@ is in there", update "what this device should do next" ([§3.2](../../README.md#
 itself, with the one exception `update → release` (`AGENTS.md` rule 6), so distribution reads
 release and update reads distribution through Core-declared hooks, the pattern of
 `ServiceDescriptor.authorizeRegistration`. Every later distribution package (P2b-02 to P2b-06,
-P4-05, P4-14, P5-*) and the wire v4 plan (P3-01) build on this service and these hooks.
+P4-05, P4-14, P5-\*) and the wire v4 plan (P3-01) build on this service and these hooks.
 
 ## Read first
 
