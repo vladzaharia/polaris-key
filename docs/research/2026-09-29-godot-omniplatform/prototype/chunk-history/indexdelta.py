@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""How small could the target chunk index be on the wire? For each consecutive pair, the target's
+"""How small could the target chunk index be on the wire? For every ordered pair of releases, the target's
 pkey-chunks/1 (shared 4 MiB bundles) raw, as one zstd -19 frame, and as a zstd -19 --patch-from
 frame against the seed index the client already holds (raw-content prefix, as decoders use it).
-Run after matrix.py (uses its cached recipes and stored sizes). usage: python3 indexdelta.py [family]"""
+Run after matrix.py (uses its cached recipes and stored sizes). usage: python3 indexdelta.py [family]
+CHUNKERS=fa64,fa64m limits the chunkers (default: every chunker matrix.py ran)."""
 import json, os, sys
 from compression import zstd
 import hist
@@ -10,12 +11,13 @@ import hist
 fam = sys.argv[1] if len(sys.argv) > 1 else "desktop"
 R = hist.releases()
 rows = []
-for ch in ("fa64", "fa32m", "fa64m"):
+chs = os.environ.get("CHUNKERS", ",".join(hist.CHUNKERS)).split(",")
+for ch in chs:
     recs = [hist.recipe(r, fam, ch) for r in R]
     lays = hist.layouts_shared(recs, 4 * hist.MIB)
     size = [os.path.getsize(hist.payload_path(r, fam)) for r in R]
     blobs = [hist.index_blob(recs[k], lays[k][0], hist.CHUNKERS[ch][1], size[k]) for k in range(len(R))]
-    for i, j in [(k, k + 1) for k in range(len(R) - 1)] + [(0, len(R) - 1)]:
+    for i, j in [(i, j) for i in range(len(R)) for j in range(i + 1, len(R))]:
         a, b = blobs[i], blobs[j]
         opts = {zstd.CompressionParameter.compression_level: 19,
                 zstd.CompressionParameter.window_log: max(20, (len(a) + len(b)).bit_length())}

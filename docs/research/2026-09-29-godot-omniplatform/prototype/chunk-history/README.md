@@ -45,7 +45,7 @@ done
 python3 inventory.py
 python3 noise.py desktop
 python3 matrix.py desktop          # ~10 min on an 18-core M5 Pro; most of it is whole-file --patch-from
-PAIRS=adjacent python3 matrix.py android  # the APK's assets/ tree (ETC2/ASTC); N-1 pairs + oldest only
+python3 matrix.py android          # the APK's assets/ tree (ETC2/ASTC); PAIRS=adjacent limits it to N-1 pairs + oldest
 python3 packs.py                   # per-pack slices of the desktop PCK (an estimate)
 python3 indexdelta.py desktop      # index raw, as zstd, and as --patch-from of the seed index
 python3 report.py desktop android  # the note's tables

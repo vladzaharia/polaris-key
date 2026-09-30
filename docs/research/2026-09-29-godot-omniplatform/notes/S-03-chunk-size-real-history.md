@@ -155,7 +155,7 @@ Commands (from `prototype/chunk-history/`; the download loop is in the README):
 python3 inventory.py                 # checksums, versions, sizes, entry counts
 python3 noise.py desktop             # change classification
 python3 matrix.py desktop            # all 10 pairs × all strategies + planner
-PAIRS=adjacent python3 matrix.py android
+python3 matrix.py android            # all 10 pairs (PAIRS=adjacent: N−1 + oldest)
 python3 packs.py                     # per-pack estimate
 python3 indexdelta.py desktop        # index as zstd and as a delta against the seed index
 python3 report.py desktop android    # the tables below
@@ -324,17 +324,21 @@ noise matters for the app's main PCK, not for asset packs. [I]
 
 ### 4.7 Index size on the wire
 
-Latest release; index deltas for the N−1 pairs and oldest→latest [M].
+Latest release; index deltas for every ordered pair, as min–max per pair class [M].
 
-| Chunker | Records | Unique | `pkey-chunks/1` raw B | As one zstd -19 frame B | As `--patch-from` of the seed index, N−1 (min–max) B | … oldest→latest B |
-| ------- | ------: | -----: | --------------------: | ----------------------: | ---------------------------------------------------: | ----------------: |
-| fa16    |  16,244 |  9,724 |               780,928 |                 403,022 |                                                    — |                 — |
-| fa32    |  14,395 |  7,949 |               692,176 |                 328,000 |                                                    — |                 — |
-| fa64    |  13,628 |  7,196 |               655,360 |                 296,055 |                                          1,443–6,274 |             9,212 |
-| fa128   |  13,310 |  6,885 |               640,096 |                 282,861 |                                                    — |                 — |
-| plain64 |   1,016 |  1,016 |                49,888 |                  43,596 |                                                    — |                 — |
-| fa32m   |   8,029 |  7,934 |               386,608 |                 314,956 |                                          1,514–6,386 |             9,440 |
-| fa64m   |   7,262 |  7,181 |               349,792 |                 283,537 |                                          1,372–5,913 |             8,722 |
+| Chunker | Records | Unique | `pkey-chunks/1` raw B | As one zstd -19 frame B | `--patch-from` of the seed index, N−1 B | … N−2 B      | … N−3 B       | … oldest→latest B |
+| ------- | ------: | -----: | --------------------: | ----------------------: | --------------------------------------: | ------------ | ------------- | ----------------: |
+| fa16    |  16,244 |  9,724 |               780,928 |                 403,022 |                             1,907–7,678 | 5,778–10,501 | 10,843–11,167 |            11,415 |
+| fa32    |  14,395 |  7,949 |               692,176 |                 328,000 |                             1,620–6,748 | 5,112–8,924  | 9,222–9,769   |             9,981 |
+| fa64    |  13,628 |  7,196 |               655,360 |                 296,055 |                             1,443–6,274 | 4,595–8,367  | 8,646–9,036   |             9,212 |
+| fa128   |  13,310 |  6,885 |               640,096 |                 282,861 |                             1,400–6,049 | 4,371–8,073  | 8,380–8,746   |             8,934 |
+| plain64 |   1,016 |  1,016 |                49,888 |                  43,596 |                             1,001–2,003 | 1,816–2,486  | 2,447–2,488   |             2,447 |
+| fa32m   |   8,029 |  7,934 |               386,608 |                 314,956 |                             1,514–6,386 | 4,782–8,464  | 8,753–9,253   |             9,440 |
+| fa64m   |   7,262 |  7,181 |               349,792 |                 283,537 |                             1,372–5,913 | 4,322–7,906  | 8,193–8,512   |             8,722 |
+
+As a delta, the index term stops depending on the average or on the padding rule: every
+file-aware row is 1.4–11 KB. The padding rule still matters for the seed (first install, repair)
+and for clients that do not hold a seed index. [M]
 
 Bundle ids in this measurement stand in as SHA-256 of the bundle's chunk list, which is as
 incompressible as the real ids. Records of unchanged chunks keep their id, length, bundle and
@@ -345,27 +349,27 @@ client that stores its seed index (P4-11 already does) could receive the next in
 ### 4.8 Second texture family: Android `assets/` tree (ETC2/ASTC)
 
 [M] The APK's `assets/` files (6,628–6,737 files, 84.7–85.4 MB decoded, ETC2/ASTC textures) were
-concatenated in path order and chunked per file: a `layout: tree` payload with no gaps. Only the
-N−1 pairs and oldest→latest were run, because the host was overloaded. A tree has no padding, so
-`fa32m`/`fa64m` equal `fa32`/`fa64` here.
+concatenated in path order and chunked per file: a `layout: tree` payload with no gaps. All ten
+pairs were run. A tree has no padding, so `fa32m`/`fa64m` equal `fa32`/`fa64` here. Bytes are
+means per class; requests are shared / fresh 4 MiB bundles.
 
-| Strategy                              |     N−1 bytes, mean (range) | N−1 index B | N−1 requests shared / fresh 4 MiB | Oldest bytes | Oldest requests shared / fresh |
-| ------------------------------------- | --------------------------: | ----------: | --------------------------------: | -----------: | -----------------------------: |
-| chunk fa16                            |     1,085,018 (0.80–1.27 M) |     473,656 |                            2 / 47 |    1,873,356 |                       76 / 119 |
-| chunk fa32                            |     1,020,231 (0.72–1.20 M) |     384,904 |                          2 / 46.8 |    1,836,559 |                       74 / 118 |
-| **chunk fa64**                        | **1,000,636 (0.68–1.20 M)** |     348,292 |                            2 / 46 |    1,847,516 |                       74 / 115 |
-| chunk fa128                           |       991,010 (0.67–1.19 M) |     333,052 |                          2 / 45.8 |    1,838,012 |                       72 / 115 |
-| chunk plain64                         |     1,873,189 (1.00–2.52 M) |      50,296 |                          2 / 11.5 |    3,362,948 |                        21 / 16 |
-| delta, whole-file `--patch-from`      |       596,395 (0.37–0.78 M) |           — |                                 1 |    1,334,795 |                              1 |
-| delta, per-entry, files index as zstd |       889,374 (0.62–1.07 M) |           — |                              62.8 |    1,661,673 |                            181 |
-| file, files index as zstd             |     1,159,728 (0.89–1.35 M) |           — |                              62.8 |    1,940,720 |                            181 |
-| full (zstd -19)                       |                  62,502,183 |           — |                                 1 |   62,647,242 |                              1 |
+| Strategy                              |           N−1 bytes (range) |  N−1 req |           N−2 bytes (range) |     N−2 req |     N−3 bytes |      N−3 req |  Oldest bytes | Oldest req | Index B (latest) |
+| ------------------------------------- | --------------------------: | -------: | --------------------------: | ----------: | ------------: | -----------: | ------------: | ---------: | ---------------: |
+| chunk fa16                            |     1,085,018 (0.80–1.27 M) |   2 / 47 |     1,548,412 (1.41–1.73 M) |     29 / 86 |     1,810,568 | 57.5 / 111.5 |     1,873,356 |   76 / 119 |          475,504 |
+| chunk fa32                            |     1,020,231 (0.72–1.20 M) | 2 / 46.8 |     1,500,726 (1.34–1.70 M) | 28.3 / 85.7 |     1,773,676 | 56.5 / 110.5 |     1,836,559 |   74 / 118 |          386,704 |
+| **chunk fa64**                        | **1,000,636 (0.68–1.20 M)** |   2 / 46 | **1,503,092 (1.33–1.71 M)** | 28.3 / 83.7 | **1,784,820** | 56.5 / 107.5 | **1,847,516** |   74 / 115 |          349,984 |
+| chunk fa128                           |       991,010 (0.67–1.19 M) | 2 / 45.8 |     1,496,397 (1.33–1.70 M) | 27.7 / 83.3 |     1,775,322 | 54.5 / 107.5 |     1,838,012 |   72 / 115 |          334,720 |
+| chunk plain64                         |     1,873,189 (1.00–2.52 M) | 2 / 11.5 |     2,863,629 (2.49–3.36 M) |   11.3 / 14 |     3,360,451 |    17.5 / 16 |     3,362,948 |    21 / 16 |           50,416 |
+| delta, whole-file `--patch-from`      |       596,395 (0.37–0.78 M) |        1 |     1,014,034 (0.88–1.20 M) |           1 |     1,273,710 |            1 |     1,334,795 |          1 |                — |
+| delta, per-entry, files index as zstd |       889,374 (0.62–1.07 M) |     62.8 |     1,335,180 (1.19–1.53 M) |       127.3 |     1,600,566 |          173 |     1,661,673 |        181 |                — |
+| file, files index as zstd             |     1,159,728 (0.89–1.35 M) |     62.8 |     1,619,498 (1.49–1.80 M) |       127.3 |     1,878,014 |          173 |     1,940,720 |        181 |                — |
+| full (zstd -19)                       |                  62,502,183 |        1 |                  62,586,425 |           1 |    62,645,193 |            1 |    62,647,242 |          1 |                — |
 
 The ETC2/ASTC family agrees with the desktop result. The file-aware averages sit within 10% at
-N−1 and 2% at oldest, with 64 and 128 KiB marginally ahead. Shared bundles give 2 requests at N−1
-against ~46 with fresh ones, and the whole-file delta is 0.6× the chunk row. Planner choices are
-identical to §4.9. The first install's chunk-store "full" is again 29% above the full blob
-(81.0 MB vs 62.6 MB).
+N−1 and within 4% at N−2 and older, with 64 and 128 KiB marginally ahead. Shared bundles give 2
+requests at N−1 against ~46 with fresh ones, and the whole-file delta is 0.6–0.7× the chunk row.
+Planner choices are identical to §4.9 in every class. The first install's chunk-store "full" is
+again 29% above the full blob (81.0 MB vs 62.6 MB).
 
 ### 4.9 Planner choices
 
@@ -495,21 +499,21 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
 
 ## 8. Measured, emulated, unmeasured
 
-| Row                                                                     | Status                                                                                          |
-| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Release inventory, checksums, sizes, entries, engine                    | measured                                                                                        |
-| Chunker matrix, index size, runs, bundles touched (desktop, 10 pairs)   | measured (offline; bundle layouts computed, not uploaded)                                       |
-| Whole-file, per-entry and full zstd sizes                               | measured (zstd CLI 1.5.7)                                                                       |
-| Planner choices at 16/64 KiB, 256/64 MiB                                | measured with the reference planner (a pure function; no network)                               |
-| Re-import-noise classification                                          | measured                                                                                        |
-| Android asset-tree family (ETC2/ASTC)                                   | measured for the N−1 pairs and oldest→latest only (the host was overloaded); N−2/N−3 unmeasured |
-| Per-pack results                                                        | **emulated**: slices of the desktop PCK, not per-pack exports                                   |
-| Index as zstd and as a delta of the seed index                          | measured (bundle ids stood in)                                                                  |
-| Web PCK family                                                          | unmeasured: same size and entries as desktop; not run through the matrix                        |
-| Wall-clock times (CI chunking, deltas, client apply)                    | unmeasured: host load 500–1,000; A6/A7 have clean timings                                       |
-| Real R2/CDN request cost per run; Range behaviour per bundle size       | unmeasured here (S-02)                                                                          |
-| Device apply cost of chunk vs delta                                     | unmeasured (S-04; A6 §2.3 on desktop)                                                           |
-| N−5 and later history, engine bumps, texture reimports, per-pack export | unmeasured: only five releases exist; re-run `matrix.py` when there are ten (hand-off)          |
+| Row                                                                     | Status                                                                                 |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Release inventory, checksums, sizes, entries, engine                    | measured                                                                               |
+| Chunker matrix, index size, runs, bundles touched (desktop, 10 pairs)   | measured (offline; bundle layouts computed, not uploaded)                              |
+| Whole-file, per-entry and full zstd sizes                               | measured (zstd CLI 1.5.7)                                                              |
+| Planner choices at 16/64 KiB, 256/64 MiB                                | measured with the reference planner (a pure function; no network)                      |
+| Re-import-noise classification                                          | measured                                                                               |
+| Android asset-tree family (ETC2/ASTC)                                   | measured, all 10 pairs                                                                 |
+| Per-pack results                                                        | **emulated**: slices of the desktop PCK, not per-pack exports                          |
+| Index as zstd and as a delta of the seed index                          | measured (bundle ids stood in)                                                         |
+| Web PCK family                                                          | unmeasured: same size and entries as desktop; not run through the matrix               |
+| Wall-clock times (CI chunking, deltas, client apply)                    | unmeasured: host load 500–1,000; A6/A7 have clean timings                              |
+| Real R2/CDN request cost per run; Range behaviour per bundle size       | unmeasured here (S-02)                                                                 |
+| Device apply cost of chunk vs delta                                     | unmeasured (S-04; A6 §2.3 on desktop)                                                  |
+| N−5 and later history, engine bumps, texture reimports, per-pack export | unmeasured: only five releases exist; re-run `matrix.py` when there are ten (hand-off) |
 
 ## 9. Limits
 
@@ -521,7 +525,7 @@ costs up to 28% more than a full redownload. CONTENT §8.1 is confirmed.
   transport does multi-range requests or ~1 MB gap-filling (A7 §4.3 option), the older-pair runs
   shrink.
 - The per-pack numbers are slices: no per-pack PCK header or directory, and no per-pack export.
-- Everything is S3TC desktop except §4.8, and the Android family was run for 5 of the 10 pairs.
+- Everything is S3TC desktop except §4.8 (all 10 pairs of the Android asset tree).
 
 ## 10. Sources
 
