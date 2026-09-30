@@ -4,9 +4,9 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v1)                                                                                                                                          |
 | Size        | 0.75–1 engineer-weeks                                                                                                                                   |
-| Depends on  | [P4-02](P4-02-pack-deliverables.md), [P2b-04](P2b-04-rollouts-delivery.md)                                                                              |
-| Unblocks    | none                                                                                                                                                    |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                              |
+| Depends on  | [P4-02](P4-02-pack-deliverables.md), [P2b-04](P2b-04-rollouts-delivery.md), [P2b-03](P2b-03-availability-keys.md)                                       |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-18](P4-18-web-dcz.md), [D-04](D-04-diceroll-after-p4.md)                                                         |
+| Role        | `pkey-implementer`                                                                                                                                      |
 | Plan mode   | no                                                                                                                                                      |
 | Gates       | rule 10 (OpenAPI + `routeCoverage` for any new path or method; `routes.mdx` via `docs gen:check`); migration + `TABLE_OWNERS` only if a column is added |
 | Human input | none (uses the R2 buckets and byte domain P2-01 provisioned; local tests use the R2 mock)                                                               |

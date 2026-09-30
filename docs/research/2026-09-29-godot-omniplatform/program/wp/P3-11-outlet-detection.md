@@ -1,16 +1,16 @@
 # P3-11 Outlet detection in every SDK against `outlet-matrix.json`
 
-| Field       | Value                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                    |
-| Size        | 1–1.5 engineer-weeks                                                                          |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md)                                                     |
-| Unblocks    | none in the graph (see Hand-off: [P3-10](P3-10-godot-updater.md) consumes the Godot detector) |
-| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                                     |
-| Plan mode   | no: the matrix and its vocabulary are fixed by `plans/P3-01.md`                               |
-| Gates       | corpus (`outlet-matrix.json`); all SDKs                                                       |
-| Human input | none. Device checks of the platform APIs belong to S-06 and P5                                |
-| Repo        | `vladzaharia/polaris-key`                                                                     |
+| Field       | Value                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                              |
+| Size        | 1–1.5 engineer-weeks                                                                                    |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P1-02](P1-02-godot-core.md), [S-06](S-06-outlet-signals.md) |
+| Unblocks    | [P3-10](P3-10-godot-updater.md)                                                                         |
+| Role        | `pkey-sdk-porter`                                                                                       |
+| Plan mode   | no: the matrix and its vocabulary are fixed by `plans/P3-01.md`                                         |
+| Gates       | corpus (`outlet-matrix.json`); all SDKs                                                                 |
+| Human input | none. Device checks of the platform APIs belong to S-06 and P5                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                               |
 
 ## Goal
 

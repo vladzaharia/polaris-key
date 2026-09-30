@@ -3,8 +3,8 @@
 | Field       | Value                                                                                                                                                                                                                           |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P2b: Distribution core                                                                                                                                                                                                          |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                            |
-| Depends on  | [P2b-03](P2b-03-availability-keys.md), [P2b-04](P2b-04-rollouts-delivery.md)                                                                                                                                                    |
+| Size        | 2–3 engineer-weeks                                                                                                                                                                                                              |
+| Depends on  | [P2b-03](P2b-03-availability-keys.md), [P2b-04](P2b-04-rollouts-delivery.md), [S-07](S-07-policy-recheck.md)                                                                                                                    |
 | Unblocks    | [D-03](D-03-diceroll-after-p3.md)                                                                                                                                                                                               |
 | Role        | `pkey-implementer`                                                                                                                                                                                                              |
 | Plan mode   | no                                                                                                                                                                                                                              |
@@ -123,8 +123,9 @@ buildVersion, minOSVersion, appPermissions: {entitlements, privacy}}` from the I
   deliverable's `dist_access` is `public`; otherwise the route is not-found.
 - **URLs** are bytes-host URLs from `deliveryUrl` when `BLOB_ORIGIN` is set, and immutable per
   version (winget-style clients and hash-pinned manifests need that).
-- **CORS**: native clients ignore it; web tools (source browsers) need it. Use P0-05's allowlist
-  helper; allow any origin only if P0-05 permits it for credential-less public GETs.
+- **CORS**: native clients ignore it; web tools (source browsers) need it. P0-05 applies the
+  per-product `web.origins` allowlist centrally (`core/cors.ts`, exact origins, no wildcards); the
+  feeds get whatever that gives them. Do not add a per-route wildcard.
 - **Products are data.** No product or store name in code beyond the outlet-kind vocabulary.
 
 ## Steps

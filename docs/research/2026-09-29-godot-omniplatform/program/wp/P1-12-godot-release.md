@@ -1,16 +1,16 @@
-# P1-12 Package, document and publish the Godot SDK (docs page, Asset Library)
+# P1-12 Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)
 
-| Field       | Value                                                                                                                                                               |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core. Milestone: **Diceroll can adopt managed config, licensing and identity**                                                                        |
-| Size        | 0.5–0.75 engineer-weeks                                                                                                                                             |
-| Depends on  | [P1-05](P1-05-godot-devices.md), [P1-08](P1-08-godot-update-check.md), [P1-10](P1-10-godot-ui-kit.md), [P1-11](P1-11-godot-export-plugin.md)                        |
-| Unblocks    | [D-02](D-02-diceroll-after-p1.md)                                                                                                                                   |
-| Role        | `pkey-godot-engineer`                                                                                                                                               |
-| Plan mode   | no                                                                                                                                                                  |
-| Gates       | docs links (`pnpm --filter @polaris-key/docs check:links`); docs freshness (`gen:check`); `parity:check` once P1b-01 exists                                         |
-| Human input | the addon's licence; the first version number; pushing the release tag; the Godot Asset Store upload and the legacy Asset Library submission (no upload API exists) |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                           |
+| Field       | Value                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core. Milestone: **Diceroll can adopt managed config, licensing and identity**                                                                         |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                                                              |
+| Depends on  | [P1-05](P1-05-godot-devices.md), [P1-08](P1-08-godot-update-check.md), [P1-10](P1-10-godot-ui-kit.md), [P1-11](P1-11-godot-export-plugin.md), [P0-05](P0-05-cors.md) |
+| Unblocks    | [D-02](D-02-diceroll-after-p1.md)                                                                                                                                    |
+| Role        | `pkey-godot-engineer`                                                                                                                                                |
+| Plan mode   | no                                                                                                                                                                   |
+| Gates       | docs links (`pnpm --filter @polaris-key/docs check:links`); docs freshness (`gen:check`); `parity:check` once P1b-01 exists                                          |
+| Human input | the addon's licence; the first version number; pushing the release tag; the Godot Asset Store upload and the legacy Asset Library submission (no upload API exists)  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                            |
 
 ## Goal
 

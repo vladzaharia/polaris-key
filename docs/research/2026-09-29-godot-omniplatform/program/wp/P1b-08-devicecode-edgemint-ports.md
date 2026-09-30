@@ -4,9 +4,9 @@
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P1b: SDK parity                                                                                                                    |
 | Size        | 1–1.5 engineer-weeks                                                                                                               |
-| Depends on  | [P1b-03](P1b-03-http-transcripts.md), [P1-06](P1-06-rfc8628-page.md), [P1-04](P1-04-godot-config.md)                               |
+| Depends on  | [P1b-03](P1b-03-http-transcripts.md), [P1-06](P1-06-rfc8628-page.md), [P0-12](P0-12-edge-mint-hardening.md)                        |
 | Unblocks    | none                                                                                                                               |
-| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                                                                          |
+| Role        | `pkey-sdk-porter`                                                                                                                  |
 | Plan mode   | no                                                                                                                                 |
 | Gates       | all SDKs; new transcripts through P1b-03's harness (`pnpm gen:transcripts -- --check`); Swift `Package.swift`; `pnpm parity:check` |
 | Human input | none (the IdP is mocked in the Worker scenarios)                                                                                   |

@@ -5,7 +5,7 @@
 | Phase       | P5: Distribution connectors and native plugins                                                                                                                 |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                           |
 | Depends on  | [P2b-01](P2b-01-distribution-service.md)                                                                                                                       |
-| Unblocks    | [P5-02](P5-02-asc-connector.md), [P5-03](P5-03-play-connector.md), [P5-04](P5-04-msstore-connector.md)                                                         |
+| Unblocks    | [P5-02](P5-02-asc-connector.md), [P5-03](P5-03-play-connector.md), [P5-04](P5-04-msstore-connector.md), [P6-02](P6-02-trust-tiers.md)                          |
 | Role        | `pkey-implementer`                                                                                                                                             |
 | Plan mode   | no                                                                                                                                                             |
 | Gates       | threat model; D1 migration + `TABLE_OWNERS` (the generated data-model page, `docs gen:check`); edge-mint and GitHub App tests stay byte-stable; `test:workerd` |

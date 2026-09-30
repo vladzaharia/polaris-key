@@ -6,7 +6,7 @@
 | Size        | 0.5–0.75 engineer-weeks                                                                                      |
 | Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P1-02](P1-02-godot-core.md)                                      |
 | Unblocks    | [P3-10](P3-10-godot-updater.md), [P4-08](P4-08-godot-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
-| Role        | `pkey-godot-engineer` (see `.claude/agents/`)                                                                |
+| Role        | `pkey-godot-engineer`                                                                                        |
 | Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                                                    |
 | Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`, on the editor and a release template)       |
 | Human input | none                                                                                                         |

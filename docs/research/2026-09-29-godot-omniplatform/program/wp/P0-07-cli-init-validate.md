@@ -3,9 +3,9 @@
 | Field       | Value                                                                                                  |
 | ----------- | ------------------------------------------------------------------------------------------------------ |
 | Phase       | P0: Hygiene and unblockers                                                                             |
-| Size        | 0.25–0.25 engineer-weeks                                                                               |
+| Size        | 0.25 engineer-weeks                                                                                    |
 | Depends on  | none                                                                                                   |
-| Unblocks    | none                                                                                                   |
+| Unblocks    | [P0-09](P0-09-service-table.md)                                                                        |
 | Role        | `pkey-implementer`                                                                                     |
 | Plan mode   | no                                                                                                     |
 | Gates       | CLI and manifest tests; rule 9 parity stays green (one new warning code); generated `validation-codes` |

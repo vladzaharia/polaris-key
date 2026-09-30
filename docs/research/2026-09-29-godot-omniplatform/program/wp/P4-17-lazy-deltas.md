@@ -4,7 +4,7 @@
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v3)                                                                                                                                            |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                      |
-| Depends on  | [P4-10](P4-10-chunk-indexes.md)                                                                                                                           |
+| Depends on  | [P4-10](P4-10-chunk-indexes.md), [P3-03](P3-03-feed-composition.md)                                                                                       |
 | Unblocks    | none                                                                                                                                                      |
 | Role        | `pkey-implementer`                                                                                                                                        |
 | Plan mode   | no: lazy deltas use the existing `pkey-patch/1` descriptor and the feed's delta menu                                                                      |

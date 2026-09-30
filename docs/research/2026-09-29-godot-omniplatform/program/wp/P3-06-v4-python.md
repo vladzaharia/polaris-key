@@ -6,7 +6,7 @@
 | Size        | 0.5–0.75 engineer-weeks                                                            |
 | Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md)                                          |
 | Unblocks    | [P4-07](P4-07-python-swift-packs.md), [P4-13](P4-13-revocation-floors-decision.md) |
-| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                          |
+| Role        | `pkey-sdk-porter`                                                                  |
 | Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                          |
 | Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                   |
 | Human input | none                                                                               |

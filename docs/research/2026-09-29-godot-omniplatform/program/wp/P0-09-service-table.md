@@ -4,8 +4,8 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P0: Hygiene and unblockers                                                                                                                         |
 | Size        | 1–1.5 engineer-weeks                                                                                                                               |
-| Depends on  | [P0-08](P0-08-unknown-slug-tolerance.md) (merged **and deployed**)                                                                                 |
-| Unblocks    | [P1b-02](P1b-02-sdk-constants.md), [P2-01](P2-01-blob-store.md), [P2b-01](P2b-01-distribution-service.md)                                          |
+| Depends on  | [P0-08](P0-08-unknown-slug-tolerance.md), [P0-07](P0-07-cli-init-validate.md)                                                                      |
+| Unblocks    | [P1b-02](P1b-02-sdk-constants.md), [P2b-01](P2b-01-distribution-service.md)                                                                        |
 | Role        | `pkey-implementer`                                                                                                                                 |
 | Plan mode   | no (no wire shape changes; stop and escalate if one appears)                                                                                       |
 | Gates       | new drift gate `pnpm gen:services -- --check` (joins the green gate, CI and pre-commit); rule 3 banner family; all SDKs; rule 9 parity stays green |

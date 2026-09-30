@@ -5,8 +5,8 @@
 | Phase       | P0: Hygiene and unblockers                                                                                 |
 | Size        | 0.75–1 engineer-weeks                                                                                      |
 | Depends on  | none                                                                                                       |
-| Unblocks    | [P1-03](P1-03-godot-license.md)                                                                            |
-| Role        | `pkey-wire-planner` (plan), then `pkey-implementer` and `pkey-sdk-porter` for the approved plan            |
+| Unblocks    | [P1-03](P1-03-godot-license.md), [P1b-05](P1b-05-runners.md)                                               |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                       |
 | Plan mode   | **yes**: `program/plans/P0-04.md` must be approved (merged) before any code                                |
 | Gates       | plan mode; corpus `gate-matrix.json` + Swift mirror (`pnpm gen:corpus -- --check`); all SDKs; catalog data |
 | Human input | approval of the plan and its open questions; djdl's own `.pkey/schema` edit (follow-up, not blocking)      |

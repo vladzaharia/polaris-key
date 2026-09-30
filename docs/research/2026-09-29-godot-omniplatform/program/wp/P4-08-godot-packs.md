@@ -1,16 +1,16 @@
 # P4-08 Godot packs: `godot.pck` handler, delta bake, directory check, `PKeyBoot` pack stages
 
-| Field       | Value                                                                                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v1)                                                                                                                                          |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                    |
-| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P1-10](P1-10-godot-ui-kit.md), [P3-08](P3-08-v4-godot.md)                                                         |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md), [D-04](D-04-diceroll-after-p4.md)                  |
-| Role        | `pkey-godot-engineer` (see `.claude/agents/`)                                                                                                           |
-| Plan mode   | no                                                                                                                                                      |
-| Gates       | corpus: the content corpus and `plan-matrix.json` pass on the Godot **editor and an official release template** (the delta route uses engine internals) |
-| Human input | none (Godot 4.7.2 editor and export templates are downloaded in CI, as P1-01 set up)                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                               |
+| Field       | Value                                                                                                                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v1)                                                                                                                                                                     |
+| Size        | 2.5–3 engineer-weeks                                                                                                                                                               |
+| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P1-10](P1-10-godot-ui-kit.md), [P3-08](P3-08-v4-godot.md), [P3-10](P3-10-godot-updater.md), [S-05](S-05-godot-platform-mechanics.md)         |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md), [P5-08](P5-08-platform-pack-transports.md), [D-04](D-04-diceroll-after-p4.md) |
+| Role        | `pkey-godot-engineer`                                                                                                                                                              |
+| Plan mode   | no                                                                                                                                                                                 |
+| Gates       | corpus: the content corpus and `plan-matrix.json` pass on the Godot **editor and an official release template** (the delta route uses engine internals)                            |
+| Human input | none (Godot 4.7.2 editor and export templates are downloaded in CI, as P1-01 set up)                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                          |
 
 Milestone: **Diceroll's content-streaming phases 1–3 run on Polaris Key** (with D-04).
 

@@ -3,9 +3,9 @@
 | Field       | Value                                                                                                           |
 | ----------- | --------------------------------------------------------------------------------------------------------------- |
 | Phase       | P0: Hygiene and unblockers                                                                                      |
-| Size        | 0.5–0.5 engineer-weeks                                                                                          |
+| Size        | 0.5–0.75 engineer-weeks                                                                                         |
 | Depends on  | none                                                                                                            |
-| Unblocks    | [P1-04](P1-04-godot-config.md)                                                                                  |
+| Unblocks    | [P1-04](P1-04-godot-config.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                                   |
 | Role        | `pkey-implementer`                                                                                              |
 | Plan mode   | no (the device-facing route keeps its wire contract)                                                            |
 | Gates       | threat model; D1 migrations; `TABLE_OWNERS` + generated `data-model`; docs `check:links`                        |

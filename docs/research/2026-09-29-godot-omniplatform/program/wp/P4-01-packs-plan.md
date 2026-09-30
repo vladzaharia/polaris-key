@@ -6,7 +6,7 @@
 | Size        | 0.5–0.75 engineer-weeks                                                                                        |
 | Depends on  | [P3-01](P3-01-wire-v4-plan.md)                                                                                 |
 | Unblocks    | [P4-02](P4-02-pack-deliverables.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-04](P4-04-content-corpus-v1.md) |
-| Role        | `pkey-wire-planner` (see `.claude/agents/`)                                                                    |
+| Role        | `pkey-wire-planner` (planning only)                                                                            |
 | Plan mode   | yes: this package **is** the plan. It writes `program/plans/P4-01.md` and stops; no code                       |
 | Gates       | plan mode; human approval (merging the plan PR)                                                                |
 | Human input | approval of `program/plans/P4-01.md`. Nothing downstream starts until then                                     |

@@ -5,7 +5,7 @@
 | Phase       | P1: Godot SDK core                                                                                                                                           |
 | Size        | 1–1.25 engineer-weeks                                                                                                                                        |
 | Depends on  | [P1-02](P1-02-godot-core.md)                                                                                                                                 |
-| Unblocks    | [P1-12](P1-12-godot-release.md)                                                                                                                              |
+| Unblocks    | [P1-03](P1-03-godot-license.md), [P1-12](P1-12-godot-release.md)                                                                                             |
 | Role        | `pkey-godot-engineer`                                                                                                                                        |
 | Plan mode   | no (the report is unsigned telemetry; `shared-protocol` is not touched)                                                                                      |
 | Gates       | `corpus:fingerprint` (`fingerprint.json` vectors in the Godot runner); worker tests and the OpenAPI `FactsReport` schema for the two new report keys; rule 7 |
@@ -139,7 +139,8 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   [§3.1](../../README.md#31-vocabulary) (`direct`, `steam`, `itch`, `app-store`, …). The Worker
   bounds the shape but does not validate outlet ids, because P2b adds outlets.
 - **No migration and no `shared-protocol` change.** The report is persisted whole in
-  `devices.reported_json`; the typed `device_facts` columns are unchanged. Adding the fields to
+  `devices.reported_json`; the typed `device_facts` columns are unchanged. Deploy order does not
+  matter: a Worker without the change drops the two keys silently. Adding the fields to
   `DeviceFacts` in `shared-protocol` would make this a plan-mode change; leave the type alone.
 - **Manage is self-only.** A device token may rename or deauthorise only its own device; other
   rows are read-only (server R3-09). `deauthorize()` then wipes locally like `license.deactivate`.

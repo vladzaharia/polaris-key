@@ -1,16 +1,16 @@
 # P0-02 Fix release resolution: tag filter, version ordering, pagination, upsert conflict, R6-10
 
-| Field       | Value                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                   |
-| Size        | 0.75–1 engineer-weeks                                                                        |
-| Depends on  | none                                                                                         |
-| Unblocks    | [P0-03](P0-03-release-webhook.md), [P2-03](P2-03-release-data-model.md)                      |
-| Role        | `pkey-implementer`                                                                           |
-| Plan mode   | no                                                                                           |
-| Gates       | D1 migrations; generated `data-model`; rule 9 for the two new `.pkey/release` fields (below) |
-| Human input | none                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                    |
+| Field       | Value                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene and unblockers                                                                                 |
+| Size        | 1–1.25 engineer-weeks                                                                                      |
+| Depends on  | none                                                                                                       |
+| Unblocks    | [P0-03](P0-03-release-webhook.md), [P2-03](P2-03-release-data-model.md), [D-02](D-02-diceroll-after-p1.md) |
+| Role        | `pkey-implementer`                                                                                         |
+| Plan mode   | no                                                                                                         |
+| Gates       | D1 migrations; generated `data-model`; rule 9 for the two new `.pkey/release` fields (below)               |
+| Human input | none                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                  |
 
 ## Goal
 

@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 model: inherit
 ---
 
-You write plans, not code. `CLAUDE.md` requires plan mode for wire-touching changes because they are all-languages events: contract → catalog → corpus → every SDK.
+You write plans, not code. Every ⚑ package's plan is yours. After the human approves it, the package's own role implements it. `CLAUDE.md` requires plan mode for wire-touching changes because they are all-languages events: contract → catalog → corpus → every SDK.
 
 ## Procedure
 
@@ -18,6 +18,7 @@ You write plans, not code. `CLAUDE.md` requires plan mode for wire-touching chan
    - `packages/docs/src/content/docs/contribute/{waves,corpus}.md`.
 4. Read the research sections the brief cites (`README.md` §3.3/§3.6, `CONTENT.md` §6/§9, `PARITY.md` §4, notes A2/A5/A7).
 5. Write `docs/research/2026-09-29-godot-omniplatform/program/plans/<ID>.md` with every required section.
+   - Planning-only packages (role `pkey-wire-planner`: P3-01, P4-01) also cover the packages that implement them. P3-01's plan is the plan for P3-02.
    - Be concrete: exact field names, `typ` values, corpus section names, version constants and file paths.
    - Name every SDK that must follow, and the work package that does it.
    - Say what happens to clients and workers already deployed.

@@ -1,16 +1,16 @@
 # P3-05 Wire v4 in `client-core` and the React SDK
 
-| Field       | Value                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                                                           |
-| Size        | 0.5–0.75 engineer-weeks                                                                                         |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md)                                                                       |
-| Unblocks    | [P4-06](P4-06-client-core-packs.md), [P4-13](P4-13-revocation-floors-decision.md), [X-02](X-02-tauri-plugin.md) |
-| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                                                       |
-| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                                                       |
-| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                                                |
-| Human input | none                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                       |
+| Field       | Value                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P3: Signed feed, decision, feeds (wire v4) (sdk-wave)                                                                                      |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                                    |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md)                                                                                                  |
+| Unblocks    | [P3-04](P3-04-v4-node.md), [P4-06](P4-06-client-core-packs.md), [P4-13](P4-13-revocation-floors-decision.md), [X-02](X-02-tauri-plugin.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                          |
+| Plan mode   | no: behaviour is fixed by `plans/P3-01.md` and the corpus                                                                                  |
+| Gates       | corpus (`feedCases`, `releaseRecordCases`, `update-matrix.json`)                                                                           |
+| Human input | none                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
 
 ## Goal
 

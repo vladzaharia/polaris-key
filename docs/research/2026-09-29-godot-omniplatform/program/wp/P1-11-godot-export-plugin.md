@@ -1,16 +1,16 @@
 # P1-11 Godot export plugin v1: build stamp and editor dock
 
-| Field       | Value                                                                         |
-| ----------- | ----------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                            |
-| Size        | 0.5–0.75 engineer-weeks                                                       |
-| Depends on  | [P1-01](P1-01-godot-scaffold.md)                                              |
-| Unblocks    | [P1-12](P1-12-godot-release.md)                                               |
-| Role        | `pkey-godot-engineer`                                                         |
-| Plan mode   | no                                                                            |
-| Gates       | a template-run check of the stamp in the `godot` CI job; `packages/cli` tests |
-| Human input | none                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                     |
+| Field       | Value                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| Phase       | P1: Godot SDK core                                                                               |
+| Size        | 0.5–0.75 engineer-weeks                                                                          |
+| Depends on  | [P1-01](P1-01-godot-scaffold.md), [P1-02](P1-02-godot-core.md)                                   |
+| Unblocks    | [P1-10](P1-10-godot-ui-kit.md), [P1-12](P1-12-godot-release.md), [P3-10](P3-10-godot-updater.md) |
+| Role        | `pkey-godot-engineer`                                                                            |
+| Plan mode   | no                                                                                               |
+| Gates       | a template-run check of the stamp in the `godot` CI job; `packages/cli` tests                    |
+| Human input | none                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                        |
 
 ## Goal
 

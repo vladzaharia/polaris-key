@@ -1,16 +1,16 @@
 # P3-02 Implement the wire v4 contract and corpus (feed, release, malleability, update and outlet matrices)
 
-| Field       | Value                                                                                                                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                         |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                               |
-| Depends on  | [P3-01](P3-01-wire-v4-plan.md)                                                                                                                                                                                     |
-| Unblocks    | [P3-03](P3-03-feed-composition.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P3-08](P3-08-v4-godot.md), [P3-11](P3-11-outlet-detection.md) |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                                                                                         |
-| Plan mode   | yes: execute the approved `plans/P3-01.md`; do not start until a human has merged it                                                                                                                               |
-| Gates       | `PROTOCOL_VERSION` 3 → 4; corpus drift gate (`pnpm gen:corpus -- --check`, with the Swift and Godot mirrors); all SDKs (the new `jwsCases` run in every existing runner); generated docs (`reference/corpus.mdx`)  |
-| Human input | none beyond the approved plan                                                                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                          |
+| Field       | Value                                                                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                                                       |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                             |
+| Depends on  | [P3-01](P3-01-wire-v4-plan.md), [S-06](S-06-outlet-signals.md)                                                                                                                                                                                   |
+| Unblocks    | [P3-03](P3-03-feed-composition.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P3-08](P3-08-v4-godot.md), [P3-11](P3-11-outlet-detection.md), [P6-05](P6-05-kotlin-sdk.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                            |
+| Plan mode   | yes: execute the approved `plans/P3-01.md`; do not start until a human has merged it                                                                                                                                                             |
+| Gates       | `PROTOCOL_VERSION` 3 → 4; corpus drift gate (`pnpm gen:corpus -- --check`, with the Swift and Godot mirrors); all SDKs (the new `jwsCases` run in every existing runner); generated docs (`reference/corpus.mdx`)                                |
+| Human input | none beyond the approved plan                                                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                        |
 
 ## Goal
 

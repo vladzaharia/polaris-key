@@ -14,7 +14,7 @@ in the same pull request.
 
 | Path                                               | What it is                                                                                       |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [`workpackages.json`](workpackages.json)           | the dependency graph: 104 work packages with phase, role, estimate, gates, human inputs, status  |
+| [`workpackages.json`](workpackages.json)           | the dependency graph: 106 work packages with phase, role, estimate, gates, human inputs, status  |
 | [`INDEX.md`](INDEX.md)                             | the generated table of every work package, by phase (never edit by hand)                         |
 | [`wp/`](wp/)                                       | one self-contained brief per work package; [`wp/_TEMPLATE.md`](wp/_TEMPLATE.md) is the structure |
 | [`plans/`](plans/)                                 | written plans for plan-mode work packages, awaiting or holding human approval                    |
@@ -62,9 +62,14 @@ skill `running-the-omniplatform-program`, or follow §3 directly.
    - **human inputs** (§6): do not start a ✋ package whose inputs are missing; ask for them
      and move on;
    - **repo**: `D-*` packages run in `vladzaharia/diceroll`, not here.
-3. **Plan-mode packages (⚑) go to the wire planner first.** It writes `plans/<ID>.md`, sets the
-   status to `awaiting-approval` and stops. Nothing is implemented until a human approves the plan
-   (merging the plan PR is approval). The implementer then executes exactly the approved plan.
+3. **Plan-mode packages (⚑) go to the wire planner first.**
+   - `pkey-wire-planner` writes `plans/<ID>.md`, sets the status to `awaiting-approval` and stops.
+   - Nothing is implemented until a human approves the plan; merging the plan PR is approval.
+   - The package's own `role` then executes exactly the approved plan.
+   - Two packages are planning-only, and their role is the planner itself:
+     - P3-01, whose plan also governs P3-02 (`planRef`);
+     - P4-01, whose plan sets the decisions that P4-02 to P4-04 build on.
+   - The index lists every plan file and who implements it.
 4. **Dispatch.** For each chosen package:
    - branch `wp/<ID>-<slug>` from the default branch;
    - `node check.mjs --set <ID> in-progress` (commit it on the branch);
@@ -74,8 +79,11 @@ skill `running-the-omniplatform-program`, or follow §3 directly.
    and updates `parity.json` manifests once P1b-01 exists.
 6. **Review.** Start `pkey-wp-reviewer` on the finished branch. Its blocking findings go back to
    the role agent. Repeat until the reviewer passes it.
-7. **Land.** Open the PR with the brief's acceptance checklist in the body. Set the status to
-   `in-review`, and to `done` in the same PR (`--set <ID> done`, then prettier). A human merges.
+7. **Land.** Open the PR with the brief's acceptance checklist in the body.
+   - Role agents stop at `in-review`.
+   - When the reviewer passes the PR, the lead adds the final commit: the brief's hand-off line
+     `--set <ID> done`, then prettier.
+   - A human merges. The status then turns `done` exactly when the work lands.
 8. **Integrate.** After merges, re-run `--ready`. If a merged package changed an interface that a
    later brief names, update that brief in a small follow-up PR.
 9. **Escalate** to the human, and stop that package, when: a hard rule would have to bend; the
@@ -123,12 +131,24 @@ flowchart LR
 | Background Assets on iOS; in-app updates on Play                            | P5-08      | D-05          |
 | Paid packs on stores                                                        | P6-01      | D-05          |
 
-**Effort.** The 100 required work packages sum to about 95–133 engineer-weeks, including spikes
-and the Diceroll steps. P0–P6 alone are about 84–117, which is above the report's 70–90 because
-each package now carries its own review, docs and gate work. **The critical path** is about 14–20
-weeks:
+**Effort.** The 102 required work packages sum to about 105–146 engineer-weeks, including spikes
+and the Diceroll steps. P0–P6 alone come to about 93–129. That is above the report's 70–90 for two
+reasons:
 
-`P0-02 → P2-03 → P2b-01 → P3-01 → P3-02 → P3-03 → P3-09 → P3-10 → P5-05 → P5-08 → D-05`
+- each package carries its own review, docs and gate work;
+- the briefs' authors re-sized several packages after reading the code.
+
+**The critical path** is about 17–24 weeks:
+
+`P0-02 → P2-03 → P2-04 → P2-02 → P2-06 → P2b-03 → P3-03 → P4-02 → P4-12 → P4-13 → P4-14 → P5-08 → D-05`
+
+**The Diceroll milestones**, counted from the start with unlimited parallelism:
+
+| Step | Weeks from start | What it enables                 |
+| ---- | ---------------- | ------------------------------- |
+| D-02 | about 8–10       | adopt config and licensing      |
+| D-03 | about 14–20      | drop Diceroll's own updater     |
+| D-04 | about 15–20      | Diceroll's packs on Polaris Key |
 
 So calendar time is governed by parallelism and by human turnaround on plans, accounts and
 merges, not by total effort. `node check.mjs --critical` recomputes it as work lands.
@@ -151,30 +171,35 @@ Several packages can run at once only if they do not fight over the same generat
 Suggested concurrency for a team: one corpus lane, two or three Worker lanes, one SDK lane, one
 Godot lane, one native lane, and spikes whenever their human inputs exist.
 
-**A good first wave** (no dependencies, no corpus conflicts): P0-08, P0-01, P0-02, P0-05, P0-06,
-P0-07, P0-10, P0-11, P0-12, P1-06, P1b-01, P1b-05, the spikes S-02, S-05, S-06, S-07, and
-Diceroll's D-01. In parallel, the wire planner drafts P0-04 and P1-01, which are plan-mode.
+**A good first wave.** These have no dependencies and no corpus conflicts:
+
+- P0-01, P0-02, P0-05, P0-06, P0-07, P0-08, P0-10, P0-11, P0-12, P0-13;
+- P1b-01;
+- P2-01, once its R2 buckets exist;
+- the spikes S-02 to S-07, as their inputs allow;
+- Diceroll's D-01.
+
+In parallel, the wire planner drafts the plans for P0-04, P1-01 and P1-09. `node check.mjs --ready`
+always has the current list.
 
 ---
 
 ## 6. Human inputs
 
-Agents must not invent or fetch these. Ask early, because they gate the critical path.
+Agents must not invent or fetch these. Ask early, because several gate the critical path. The full
+register, per work package, is generated into [`INDEX.md`](INDEX.md#human-inputs). In summary:
 
-| Input                                                                                             | Needed by                                                                        |
-| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Approval of every plan in `plans/` (plan mode)                                                    | P0-04, P1-01, P1-09, P1b-04, P1b-09, P3-01/02, P4-01, P4-04, P4-10, P4-13, P4-19 |
-| Production deploy of P0-08 before any new service slug ships                                      | P0-09, P2b-01                                                                    |
-| Cloudflare: R2 buckets per environment; a separate registrable domain for bytes                   | P2-01, S-02                                                                      |
-| Apple developer account, App Store Connect API key and webhook secret, TestFlight, iOS 26 devices | S-01, P5-02, P5-05, P5-08                                                        |
-| Google Play: service account, Console test track, Android devices                                 | P5-03, P5-06, P5-08                                                              |
-| Android developer verification registration for `gg.vlad.diceroll`                                | D-01                                                                             |
-| Microsoft Partner Center app registration                                                         | P5-04                                                                            |
-| Steamworks partner account; Steam Web API key                                                     | P5-08, P6-01                                                                     |
-| Code-signing certificates (Windows, macOS)                                                        | P5-07                                                                            |
-| Store purchase notifications (App Store Server Notifications, Play RTDN)                          | P6-01                                                                            |
-| Read access to Diceroll's release history                                                         | S-03                                                                             |
-| Merges, and the go/no-go on optional work (P6-04, P6-05, X-01, X-02)                              | all                                                                              |
+| Kind                   | What                                                                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Approvals              | every plan in `plans/` (listed in [`INDEX.md`](INDEX.md#plans)); merges; go/no-go on optional work (P6-04, P6-05, X-01, X-02); the Godot addon's licence (P1-12)        |
+| Deploys                | P0-08 in production before any new service slug (P0-09, P2b-01); P0-13; P1-06 before P1-07's end-to-end check and D-02                                                  |
+| Cloudflare             | R2 buckets per environment, a separate registrable domain and zone for bytes, an R2 parent API token; later Queues, Workflows and Containers                            |
+| GitHub                 | subscribe the GitHub App to Release events; a Marketplace listing for `polaris-key/publish`; a `release` Environment for Diceroll's Ed25519 release key                 |
+| Apple                  | developer account, App Store Connect API key, App Store Server API key, App Attest, TestFlight, a Mac with Xcode 26+, iOS devices                                       |
+| Google                 | Play service account, Console test track, a Cloud project linked in Play Console, Android devices, developer verification for `gg.vlad.diceroll`                        |
+| Microsoft, Steam       | a Partner Center app registration; a Steamworks partner account and Web API key                                                                                         |
+| Signing and publishing | code-signing certificates for Windows and macOS; the Android release keystore; the F-Droid repo key; NuGet, crates.io, npm and Maven Central accounts for optional SDKs |
+| Access                 | read access to Diceroll's release history (S-03); devices and store accounts for the outlet-signal spike (S-06)                                                         |
 
 While waiting, a package can usually proceed against fixtures, recorded payloads or fakes; its
 brief says which.
@@ -204,6 +229,73 @@ brief says which.
 
 ## 8. Changing the plan
 
-Edit `workpackages.json` and the affected briefs in one PR, run `node check.mjs --write-index`,
-then prettier and `node check.mjs`. New packages take the next free id in their phase and a brief
-copied from `wp/_TEMPLATE.md`. Keep ids stable: never renumber a package that has started.
+Edit `workpackages.json` and the affected briefs in one PR. Then run, in this order:
+
+1. `node check.mjs --sync-briefs`, which rewrites each brief's Size, Depends on, Unblocks and Role
+   rows from the graph;
+2. `node check.mjs --write-index`;
+3. prettier on `program/`;
+4. `node check.mjs`.
+
+New packages take the next free id in their phase and a brief copied from `wp/_TEMPLATE.md`. Keep ids stable: never renumber a package that has started.
+
+---
+
+## 9. Known gaps without a work package
+
+The brief authors found work that the research implies but that no package owns yet. The lead turns
+these into packages when their phase approaches, using the next free id in the phase (§8).
+
+**SDK parity**
+
+- React `core.local`.
+- `identity.oidc` in Node, Python and Swift, and a registry decision on native Godot, which has no
+  native completion path.
+- Swift `ui.kit`, React `<PolarisBoot>` and SwiftUI `PolarisBootView`.
+- `update.driver` in Node, Python and React.
+- Browser telemetry: `/devices/report` accepts only a bearer token today.
+- React `config.mint`.
+- `Retry-After` back-off in every SDK; the Worker's 429s do not send the header yet.
+- A fingerprint on the device-code path, so strict tiers work.
+- A desktop keyring store for Godot.
+- Godot runs on web (headless Chromium) and on real devices.
+- `commerce.receipt` and device attestation in Node, Python, Swift and React.
+
+**Release, distribution and CLI**
+
+- A console card for trusted publishing and static `pkeyci_` tokens.
+- The console "Outlets and credentials" view (report §6.2 item 3).
+- `release_sources` with several repositories per product.
+- Mirroring GitHub assets into R2.
+- The winget REST source.
+- Per-user secret AltStore sources, and entitled-only download-page links.
+- Sigstore attestation checks.
+- The portal issues in report §9.1 #22.
+- A generic `pkey build-info` CLI; P1-11 only stamps Godot exports.
+- `pkey init --template godot` and `pkey sdk godot`.
+- Shipping `gen-mirrors` to adopters.
+
+**Stores and transports**
+
+- Android developer verification through the Developer Console API (it needs an OAuth user flow).
+- Microsoft Store add-ons and rollout controls.
+- ASC review-submission creation.
+- A macOS binding of the Apple plugin package, for Mac App Store builds.
+- The `msix-optional` and `flatpak-ext` transports.
+- A Tauri updater feed renderer.
+
+**Packs**
+
+- Repacking chunk bundles that fall below about 50% live data.
+- Per-type verify vectors in the corpus.
+- Named contracts (CONTENT §6.2).
+- Pinning a device or cohort to a pack set.
+- Chunk indexes for large files inside tree payloads.
+- `archive.*` delivered as an archive, and `godot.zip` beyond P4-16's tolerance.
+- The Godot export plugin's embedded-or-lean pack choice per preset.
+- The `PKeyDeviceList` widget.
+
+**Contradictions resolved in briefs rather than here.** Several briefs record places where the
+report and the code disagree, and say which way they went. Examples: the gate-matrix row that still
+pins the removed dev-build bypass (P1b-05 and P0-04), and wire v3's ban on persisted counters versus
+a feed `seq` floor (P3-01). The reviewer checks each brief's own notes.

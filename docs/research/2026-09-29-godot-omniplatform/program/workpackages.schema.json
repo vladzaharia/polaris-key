@@ -11,26 +11,45 @@
     "workPackages"
   ],
   "properties": {
-    "$schema": { "type": "string" },
-    "program": { "type": "string" },
-    "version": { "type": "integer", "minimum": 1 },
+    "$schema": {
+      "type": "string"
+    },
+    "program": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
     "phases": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["id", "title"],
         "properties": {
-          "id": { "type": "string" },
-          "title": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
     },
     "roles": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^pkey-[a-z-]+$" }
+      "items": {
+        "type": "string",
+        "pattern": "^pkey-[a-z-]+$"
+      }
     },
-    "statuses": { "type": "array", "items": { "type": "string" } },
+    "statuses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "workPackages": {
       "type": "array",
       "items": {
@@ -57,8 +76,13 @@
             "type": "string",
             "pattern": "^(P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D)-\\d{2}$"
           },
-          "title": { "type": "string", "minLength": 1 },
-          "phase": { "type": "string" },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phase": {
+            "type": "string"
+          },
           "stage": {
             "type": "string",
             "description": "sub-phase, e.g. v1/v2/v3 for packs or sdk-wave"
@@ -67,25 +91,57 @@
             "type": "string",
             "description": "the kind of work, used to spread concurrency"
           },
-          "role": { "type": "string", "pattern": "^pkey-[a-z-]+$" },
+          "role": {
+            "type": "string",
+            "pattern": "^pkey-[a-z-]+$"
+          },
           "estimateWeeks": {
             "type": "array",
-            "items": { "type": "number", "exclusiveMinimum": 0 },
+            "items": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
             "minItems": 2,
             "maxItems": 2
           },
           "deps": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "uniqueItems": true
           },
-          "planMode": { "type": "boolean" },
-          "gates": { "type": "array", "items": { "type": "string" } },
-          "humanInputs": { "type": "array", "items": { "type": "string" } },
-          "repo": { "type": "string" },
-          "optional": { "type": "boolean" },
-          "refs": { "type": "array", "items": { "type": "string" } },
-          "brief": { "type": "string", "pattern": "^wp/.+\\.md$" },
+          "planMode": {
+            "type": "boolean"
+          },
+          "gates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "humanInputs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "repo": {
+            "type": "string"
+          },
+          "optional": {
+            "type": "boolean"
+          },
+          "refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "brief": {
+            "type": "string",
+            "pattern": "^wp/.+\\.md$"
+          },
           "status": {
             "enum": [
               "todo",
@@ -98,7 +154,13 @@
               "dropped"
             ]
           },
-          "milestone": { "type": "string" }
+          "milestone": {
+            "type": "string"
+          },
+          "planRef": {
+            "type": "string",
+            "description": "the planning package whose approved plan this package executes (plans/<planRef>.md)"
+          }
         },
         "additionalProperties": false
       }

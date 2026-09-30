@@ -6,7 +6,7 @@
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                    |
 | Depends on  | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md)                                                                                |
 | Unblocks    | none                                                                                                                                                                                    |
-| Role        | `pkey-sdk-porter` (the Godot handlers may go to `pkey-godot-engineer`)                                                                                                                  |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                      |
 | Gates       | none in the graph; in practice rule 9 (the v1 validator accepts only `godot.pck` and `files.tree`, and P4-01 names this package to widen it); per-type corpus vectors would need a plan |
 | Human input | none                                                                                                                                                                                    |

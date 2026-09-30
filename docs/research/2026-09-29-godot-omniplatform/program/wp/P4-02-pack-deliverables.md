@@ -6,7 +6,7 @@
 | Size        | 1–1.5 engineer-weeks                                                                                                                                      |
 | Depends on  | [P4-01](P4-01-packs-plan.md), [P3-03](P3-03-feed-composition.md)                                                                                          |
 | Unblocks    | [P4-05](P4-05-pack-transports-cdn.md), [P4-09](P4-09-console-pack-views.md), [P4-12](P4-12-compat-resolution.md)                                          |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                                |
+| Role        | `pkey-implementer`                                                                                                                                        |
 | Plan mode   | no: it executes the approved `program/plans/P4-01.md`; a deviation needs a plan amendment first                                                           |
 | Gates       | rule 9 (validator rule + mutation-table entry + JSON schema); D1 migration + `TABLE_OWNERS` (`data-model.mdx`); `validation-codes.mdx` (`docs gen:check`) |
 | Human input | none                                                                                                                                                      |

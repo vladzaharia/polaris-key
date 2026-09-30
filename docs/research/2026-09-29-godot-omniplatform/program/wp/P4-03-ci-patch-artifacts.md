@@ -1,16 +1,16 @@
 # P4-03 CI: files index with gaps blob, per-entry deltas, pack lint and marker in `pkey release publish`
 
-| Field       | Value                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v1)                                                                                        |
-| Size        | 1–1.5 engineer-weeks                                                                                  |
-| Depends on  | [P4-01](P4-01-packs-plan.md), [P2-06](P2-06-publish-cli-action.md)                                    |
-| Unblocks    | [P4-10](P4-10-chunk-indexes.md)                                                                       |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                            |
-| Plan mode   | no: it implements the formats in the approved `program/plans/P4-01.md`                                |
-| Gates       | CLI tests; no Worker change. End-to-end submission needs [P4-02](P4-02-pack-deliverables.md) deployed |
-| Human input | none (tests sign with a committed test release key; the Action runs against a fixture product)        |
-| Repo        | `vladzaharia/polaris-key`                                                                             |
+| Field       | Value                                                                                                          |
+| ----------- | -------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v1)                                                                                                 |
+| Size        | 1–1.5 engineer-weeks                                                                                           |
+| Depends on  | [P4-01](P4-01-packs-plan.md), [P2-06](P2-06-publish-cli-action.md), [P3-03](P3-03-feed-composition.md)         |
+| Unblocks    | [P4-10](P4-10-chunk-indexes.md), [P5-08](P5-08-platform-pack-transports.md), [D-04](D-04-diceroll-after-p4.md) |
+| Role        | `pkey-implementer`                                                                                             |
+| Plan mode   | no: it implements the formats in the approved `program/plans/P4-01.md`                                         |
+| Gates       | CLI tests; no Worker change. End-to-end submission needs [P4-02](P4-02-pack-deliverables.md) deployed          |
+| Human input | none (tests sign with a committed test release key; the Action runs against a fixture product)                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                      |
 
 ## Goal
 

@@ -1,16 +1,16 @@
 # P1-08 Godot update-check parity with the existing SDKs
 
-| Field       | Value                                             |
-| ----------- | ------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                |
-| Size        | 0.25–0.5 engineer-weeks                           |
-| Depends on  | [P1-02](P1-02-godot-core.md)                      |
-| Unblocks    | [P1-12](P1-12-godot-release.md)                   |
-| Role        | `pkey-godot-engineer`                             |
-| Plan mode   | no                                                |
-| Gates       | none beyond the green gate and the `godot` CI job |
-| Human input | none                                              |
-| Repo        | `vladzaharia/polaris-key`                         |
+| Field       | Value                                                           |
+| ----------- | --------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                              |
+| Size        | 0.25–0.5 engineer-weeks                                         |
+| Depends on  | [P1-02](P1-02-godot-core.md)                                    |
+| Unblocks    | [P1-10](P1-10-godot-ui-kit.md), [P1-12](P1-12-godot-release.md) |
+| Role        | `pkey-godot-engineer`                                           |
+| Plan mode   | no                                                              |
+| Gates       | none beyond the green gate and the `godot` CI job               |
+| Human input | none                                                            |
+| Repo        | `vladzaharia/polaris-key`                                       |
 
 ## Goal
 

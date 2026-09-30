@@ -1,16 +1,16 @@
 # P2b-03 Availability, submissions (CI-reported first) and the key inventory
 
-| Field       | Value                                                                                                                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2b: Distribution core                                                                                                                                                                         |
-| Size        | 1–1 engineer-weeks                                                                                                                                                                             |
-| Depends on  | [P2b-02](P2b-02-distribution-manifest.md), [P2-06](P2-06-publish-cli-action.md)                                                                                                                |
-| Unblocks    | [P2b-05](P2b-05-storefront-feeds.md), [P2b-06](P2b-06-download-page-matrix.md), [P5-02](P5-02-asc-connector.md), [P5-03](P5-03-play-connector.md), [P5-04](P5-04-msstore-connector.md)         |
-| Role        | `pkey-implementer`                                                                                                                                                                             |
-| Plan mode   | no                                                                                                                                                                                             |
-| Gates       | rule 10 (the CI report route); D1 migration + `TABLE_OWNERS`; `docs gen:check`; threat model for the key inventory (not in the graph's gates, but it is the independent check on signing keys) |
-| Human input | none                                                                                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                      |
+| Field       | Value                                                                                                                                                                                                                                                             |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2b: Distribution core                                                                                                                                                                                                                                            |
+| Size        | 1 engineer-weeks                                                                                                                                                                                                                                                  |
+| Depends on  | [P2b-02](P2b-02-distribution-manifest.md), [P2-06](P2-06-publish-cli-action.md)                                                                                                                                                                                   |
+| Unblocks    | [P2b-05](P2b-05-storefront-feeds.md), [P2b-06](P2b-06-download-page-matrix.md), [P3-03](P3-03-feed-composition.md), [P4-05](P4-05-pack-transports-cdn.md), [P5-02](P5-02-asc-connector.md), [P5-03](P5-03-play-connector.md), [P5-04](P5-04-msstore-connector.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                |
+| Plan mode   | no                                                                                                                                                                                                                                                                |
+| Gates       | rule 10 (the CI report route); D1 migration + `TABLE_OWNERS`; `docs gen:check`; threat model for the key inventory (not in the graph's gates, but it is the independent check on signing keys)                                                                    |
+| Human input | none                                                                                                                                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                         |
 
 ## Goal
 

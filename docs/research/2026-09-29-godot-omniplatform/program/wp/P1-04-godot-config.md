@@ -5,7 +5,7 @@
 | Phase       | P1: Godot SDK core                                                                            |
 | Size        | 1–1.25 engineer-weeks                                                                         |
 | Depends on  | [P1-02](P1-02-godot-core.md), [P0-12](P0-12-edge-mint-hardening.md)                           |
-| Unblocks    | [P1-10](P1-10-godot-ui-kit.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                 |
+| Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                                |
 | Role        | `pkey-godot-engineer`                                                                         |
 | Plan mode   | no                                                                                            |
 | Gates       | `tools/gen-mirrors.ts` unit tests for the new `gdscript` target (`tools/gen-mirrors.test.ts`) |
@@ -92,9 +92,11 @@ first). Feature ids: `config.resolve`, `config.list`, `config.secret`, `config.s
   [P1b-07](P1b-07-license-config-release-gaps.md)).
 - Server-side mint authorisation (→ [P0-12](P0-12-edge-mint-hardening.md)).
 - The settings panel UI (→ [P1-10](P1-10-godot-ui-kit.md)).
-- Re-enabling a `gen:mirrors -- --check` step in CI: `ci.yml` omits it on purpose until a product
-  wires a catalog path (the comment in the `js` job); Diceroll does that in
-  [D-02](D-02-diceroll-after-p1.md).
+- A `gen:mirrors -- --check` step in this repo's CI: `ci.yml` omits it on purpose until an
+  in-repo product wires a catalog path (the comment in the `js` job), and Diceroll's catalog lives
+  in its own repo.
+- Shipping the mirror generator to adopters: it lives in `tools/` and is not published; exposing
+  it through the `pkey` CLI is not owned by any work package yet.
 - Keychain/Keystore storage for secrets (see Design notes; → P5 native plugins).
 
 ## Design notes
@@ -180,6 +182,7 @@ GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_t
 - The catalog (fetched or compiled) is what P1-10's `PKeySettingsPanel` renders from:
   `category`, `ui.widget`, `ui.order`, `ui.optionLabels`, `ui.advanced`, `dependsOn`.
 - The edge-mint request, response and error mapping is the reference P1b-08 ports.
-- `gen-mirrors --lang gdscript` is what D-02 runs over Diceroll's catalog.
+- `gen-mirrors --lang gdscript` is available to [D-02](D-02-diceroll-after-p1.md) if Diceroll
+  wants compiled defaults; today it must be run from a checkout of this repo.
 - Set the status with
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1-04 done`.

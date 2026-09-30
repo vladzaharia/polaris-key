@@ -4,7 +4,7 @@
 | ----------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P1: Godot SDK core                                                                                                      |
 | Size        | 1–1.25 engineer-weeks                                                                                                   |
-| Depends on  | [P1-02](P1-02-godot-core.md), [P0-04](P0-04-channel-unification.md)                                                     |
+| Depends on  | [P1-02](P1-02-godot-core.md), [P0-04](P0-04-channel-unification.md), [P1-05](P1-05-godot-devices.md)                    |
 | Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                                                          |
 | Role        | `pkey-godot-engineer`                                                                                                   |
 | Plan mode   | no                                                                                                                      |

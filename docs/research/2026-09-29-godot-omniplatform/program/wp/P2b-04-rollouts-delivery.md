@@ -1,16 +1,16 @@
 # P2b-04 Outlet-scoped rollouts and halts; delivery access and byte serving move to distribution
 
-| Field       | Value                                                                                                                                                                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2b: Distribution core                                                                                                                                                                                                                       |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                         |
-| Depends on  | [P2b-02](P2b-02-distribution-manifest.md), [P2-05](P2-05-release-routes.md)                                                                                                                                                                  |
-| Unblocks    | [P2b-05](P2b-05-storefront-feeds.md), [P2b-06](P2b-06-download-page-matrix.md), [P3-03](P3-03-feed-composition.md), [P4-05](P4-05-pack-transports-cdn.md), [P4-14](P4-14-readiness-gc-rollouts.md), [P6-03](P6-03-update-funnel-autohalt.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                           |
-| Plan mode   | no                                                                                                                                                                                                                                           |
-| Gates       | rule 10 (canonical routes move; permanent aliases added to `ALIAS_PATHS`); D1 migration + `TABLE_OWNERS`; `test/attack/R6-release.test.ts` and the portal R6-12 tests; threat model (access moves services)                                  |
-| Human input | none                                                                                                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2b: Distribution core                                                                                                                                                                                                                                                                                                                        |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                                                                          |
+| Depends on  | [P2b-02](P2b-02-distribution-manifest.md), [P2-05](P2-05-release-routes.md)                                                                                                                                                                                                                                                                   |
+| Unblocks    | [P2b-05](P2b-05-storefront-feeds.md), [P2b-06](P2b-06-download-page-matrix.md), [P3-03](P3-03-feed-composition.md), [P4-05](P4-05-pack-transports-cdn.md), [P4-14](P4-14-readiness-gc-rollouts.md), [P5-02](P5-02-asc-connector.md), [P5-03](P5-03-play-connector.md), [P6-03](P6-03-update-funnel-autohalt.md), [P6-04](P6-04-hosted-web.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                            |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                                            |
+| Gates       | rule 10 (canonical routes move; permanent aliases added to `ALIAS_PATHS`); D1 migration + `TABLE_OWNERS`; `test/attack/R6-release.test.ts` and the portal R6-12 tests; threat model (access moves services)                                                                                                                                   |
+| Human input | none                                                                                                                                                                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                     |
 
 ## Goal
 
@@ -61,7 +61,8 @@ Today the feed can offer what the download refuses, because the two read access 
     PK `(product, deliverable_id, outlet_id, channel)`, `state` `active|paused|halted|complete`;
   - `dist_access(product, deliverable_id, mode, entitlement, source, modified_at)`, PK
     `(product, deliverable_id)`, backfilled for `app` from `release_config.artifacts_access` and
-    its P0-01 source (an `entitled` value survives, unlike the truth store's `access` CHECK).
+    P0-01's `release_config.access_source` (an `entitled` value survives, unlike the truth store's
+    `access` CHECK).
 - **Rollout controls**, one implementation in `services/distribution/rollouts.ts`:
   - CI routes (rule 10), `pkeyci_` token with the new opt-in scope `distribution:rollout`:
     `POST /{product}/distribution/rollouts/{outlet}/{channel}` (`{deliverable?, releaseId, bp}`)
@@ -122,8 +123,10 @@ Today the feed can offer what the download refuses, because the two read access 
 - **Access CHECKs.** `dist_access.mode` includes `entitled`. Stop reading
   `release_config.artifacts_access` (leave the column; dropping it needs a rebuild) and say so in a
   comment next to `setReleaseAccess`.
-- **CORS** on byte routes comes from P0-05's allowlist with `Access-Control-Expose-Headers: ETag,
-Content-Range, Repr-Digest` (README §3.11); no credentials on public objects.
+- **CORS** on byte routes comes from P0-05's central step in `dispatch` (`core/cors.ts`), which
+  already exposes `ETag`, `Content-Range` and `Repr-Digest` (README §3.11). Check that the
+  canonical `/distribution/…` paths and the aliases fall inside its covered-path list, on both
+  hosts.
 
 ## Steps
 

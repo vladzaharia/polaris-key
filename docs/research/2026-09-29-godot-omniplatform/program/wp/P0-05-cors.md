@@ -5,7 +5,7 @@
 | Phase       | P0: Hygiene and unblockers                                                                                                                                                           |
 | Size        | 0.5–0.75 engineer-weeks                                                                                                                                                              |
 | Depends on  | none                                                                                                                                                                                 |
-| Unblocks    | [P6-04](P6-04-hosted-web.md)                                                                                                                                                         |
+| Unblocks    | [P1-12](P1-12-godot-release.md), [P3-09](P3-09-updater-feeds.md), [P6-04](P6-04-hosted-web.md), [D-02](D-02-diceroll-after-p1.md)                                                    |
 | Role        | `pkey-implementer`                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                   |
 | Gates       | rule 9 (`web.origins` validator + mutation table + schema); rule 10 (`OPTIONS` in spec + `routeCoverage`); D1 migration; generated `validation-codes` and `data-model`; threat model |

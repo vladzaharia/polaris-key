@@ -3,10 +3,10 @@
 | Field       | Value                                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P1: Godot SDK core                                                                                                                                                        |
-| Size        | 0.75–1 engineer-weeks                                                                                                                                                     |
-| Depends on  | [P1-02](P1-02-godot-core.md)                                                                                                                                              |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                      |
+| Depends on  | none                                                                                                                                                                      |
 | Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                                                                                                            |
-| Role        | `pkey-wire-planner` writes the plan; implementation by `pkey-sdk-porter` after approval                                                                                   |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                      |
 | Plan mode   | yes: `program/plans/P1-09.md` must be approved (merged) before any code                                                                                                   |
 | Gates       | plan mode; `corpus:stage-matrix` (a new generated corpus file, its mirrors and `pnpm gen:corpus -- --check`, rule 1); all SDKs; generated `reference/corpus.mdx` (rule 3) |
 | Human input | plan approval, including the open decisions below                                                                                                                         |
@@ -71,8 +71,8 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   section).
 - Renderers: React `<PolarisBoot>` and SwiftUI `PolarisBootView` (report §8 item 6; not owned by
   any work package yet), a terminal renderer for Node and Python (optional).
-- Boot-guard rows (rollback after two failed boots, `boot_rolled_back`)
-  (→ [P3-10](P3-10-godot-updater.md), a corpus change under its own plan).
+- Implementing the boot guard (slots, staged swaps, restarts) (→ [P3-10](P3-10-godot-updater.md));
+  its rows are decided here (decision 5).
 - Pack rows for `fetch`/`mount` (size disclosure, cellular choice, pause, ordered mounts)
   (→ [P4-08](P4-08-godot-packs.md) with [P4-04](P4-04-content-corpus-v1.md)).
 - The update decision itself (→ P3's `update-matrix.json`); here `decide` takes its result as an
@@ -119,6 +119,10 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
    own plan.
 4. Timeouts are host-owned (the host sends `sync.timeout`), **recommended**, so the matrix stays
    clock-free.
+5. Pin the boot-guard rule now? PARITY proves `update.bootguard` with this file, but P3-10 is
+   neither plan-mode nor corpus-gated. **Recommend yes:** a `guard` input
+   (`{staged, failedBoots}`) with rows for "apply the staged update", "roll back after two failed
+   boots and emit `boot_rolled_back`" and "confirm a boot", so P3-10 only implements it.
 
 **SDKs that follow, and when** (the plan must restate this):
 

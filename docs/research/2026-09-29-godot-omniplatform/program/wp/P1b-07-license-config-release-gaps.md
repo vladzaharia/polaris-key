@@ -3,10 +3,10 @@
 | Field       | Value                                                                                                                              |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P1b: SDK parity                                                                                                                    |
-| Size        | 1–1.5 engineer-weeks (tight: see Design notes for the split point)                                                                 |
+| Size        | 1.5–2 engineer-weeks                                                                                                               |
 | Depends on  | [P1b-03](P1b-03-http-transcripts.md)                                                                                               |
 | Unblocks    | none                                                                                                                               |
-| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                                                                          |
+| Role        | `pkey-sdk-porter`                                                                                                                  |
 | Plan mode   | no                                                                                                                                 |
 | Gates       | all SDKs; new transcripts through P1b-03's harness (`pnpm gen:transcripts -- --check`); `pnpm parity:check`; Swift `Package.swift` |
 | Human input | none                                                                                                                               |

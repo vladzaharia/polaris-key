@@ -5,7 +5,7 @@
 | Phase       | P2: Release truth and publishing                                                              |
 | Size        | 0.5–1 engineer-weeks                                                                          |
 | Depends on  | [P2-05](P2-05-release-routes.md)                                                              |
-| Unblocks    | none (closes the P2 milestone)                                                                |
+| Unblocks    | [P4-09](P4-09-console-pack-views.md)                                                          |
 | Role        | `pkey-implementer`                                                                            |
 | Plan mode   | no                                                                                            |
 | Gates       | admin tests; `pnpm --filter @polaris-key/admin build`; the help-link drift gate (`docsLinks`) |

@@ -1,16 +1,16 @@
 # P3-03 Worker: ingest CI-signed release records and compose the signed channel feed
 
-| Field       | Value                                                                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                           |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                 |
-| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P2b-04](P2b-04-rollouts-delivery.md), [P2-06](P2-06-publish-cli-action.md)                               |
-| Unblocks    | [P3-09](P3-09-updater-feeds.md), [P4-02](P4-02-pack-deliverables.md), [P6-03](P6-03-update-funnel-autohalt.md)                                       |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                           |
-| Plan mode   | no: the shapes, routes and checks are fixed by the approved `plans/P3-01.md`                                                                         |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); threat model; also D1 migrations with `TABLE_OWNERS`, and rule 9 if `releaseKeys` lands here (see Design notes) |
-| Human input | none. Production release keys stay in each product's CI; tests use the corpus test keys                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                            |
+| Field       | Value                                                                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                          |
+| Size        | 1.75–2.25 engineer-weeks                                                                                                                                                            |
+| Depends on  | [P3-02](P3-02-wire-v4-contract-corpus.md), [P2b-04](P2b-04-rollouts-delivery.md), [P2-06](P2-06-publish-cli-action.md), [P2b-03](P2b-03-availability-keys.md)                       |
+| Unblocks    | [P3-09](P3-09-updater-feeds.md), [P4-02](P4-02-pack-deliverables.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-17](P4-17-lazy-deltas.md), [P6-03](P6-03-update-funnel-autohalt.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                  |
+| Plan mode   | no: the shapes, routes and checks are fixed by the approved `plans/P3-01.md`                                                                                                        |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); threat model; also D1 migrations with `TABLE_OWNERS`, and rule 9 if `releaseKeys` lands here (see Design notes)                                |
+| Human input | none. Production release keys stay in each product's CI; tests use the corpus test keys                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                           |
 
 ## Goal
 

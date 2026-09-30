@@ -52,8 +52,8 @@ P4-05, P4-14, P5-\*) and the wire v4 plan (P3-01) build on this service and thes
 
 **In:**
 
-- **The table row** in `tools/services.json`: `distribution`, label "Distribution",
-  `defaultEnabled: false`, `requires: ["release"]`, `legacyModules: ["releases"]`, a new console
+- **The table row** in `tools/services.json`: `distribution`, label "Distribution", a `summary`
+  for the Services card, `defaultEnabled: false`, `requires: ["release"]`, `legacyModules: ["releases"]`, a new console
   accent `distribution` and an icon. Change `update`'s `requires` from `["release"]` to
   `["distribution"]`. Run `pnpm gen:services`.
 - **Everything the table generates** (P0-09): `ServiceSlug`/`SERVICE_SLUGS`/`MODULE_SERVICES` in

@@ -4,7 +4,7 @@
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P1: Godot SDK core                                                                                                                                  |
 | Size        | 0.5–0.75 engineer-weeks                                                                                                                             |
-| Depends on  | none                                                                                                                                                |
+| Depends on  | [P0-13](P0-13-oidc-flow-key-hashing.md)                                                                                                             |
 | Unblocks    | [P1-07](P1-07-godot-identity.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                                                                     |
 | Role        | `pkey-implementer`                                                                                                                                  |
 | Plan mode   | no (an HTTP identity route, not the signed wire contract)                                                                                           |
@@ -58,9 +58,10 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
 
 - **User code:** eight characters from RFC 8628 §6.1's consonant alphabet
   `BCDFGHJKLMNPQRSTVWXZ` (about 34.5 bits), shown as `XXXX-XXXX`, generated independently of
-  `deviceCode`. Stored as an index `p:<slug>:device-user:<sha256-hex of the normalised code>` →
-  the device code, with the flow's TTL (600 s); regenerate on collision; deleted with the flow on
-  `ready` or `timeout`.
+  `deviceCode`. Stored as an index `p:<slug>:device-user:<hash>` → the device code, where the
+  hash is `hashKey` of the normalised code under `KEY_HASH_PEPPER`
+  (`packages/worker/src/crypto.ts:107`), with the flow's TTL (600 s); regenerate on collision;
+  deleted with the flow on `ready` or `timeout`.
 - **Normalisation:** upper-case; drop spaces and hyphens; anything outside the alphabet makes the
   code invalid.
 - **Start response:** `userCode` as above; `verificationUri` =
@@ -109,8 +110,11 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
   out every player.
 - **Remote phishing** (§5.4): the confirmation page keeps showing the product and the device label
   and requires a button press; a QR scan (`verificationUriComplete`) still lands on it.
-- **R12-04:** the index key is a hash of the code, never the code itself, like the other flow keys
-  after that fix.
+- **R12-04:** the index key is a peppered hash of the code, never the code itself, as the admin
+  flow key does since that fix (`packages/worker/src/admin/auth.ts:33-45`). The existing
+  `p:<slug>:device-flow:<code>` and `p:<slug>:flow:<state>` keys (`oidc.ts:295-301`) still use the
+  secret verbatim although the audit lists R12-04 as fixed; do not change them here (in-flight
+  flows would break on deploy), and report the gap.
 - **Compatibility:** `userCode` keeps the `XXXX-XXXX` shape (existing tests match
   `/^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$/`). A host that opened `verificationUri` now lands on the entry
   page and must type the code; hosts should open `verificationUriComplete` (RFC 8628 §3.3.1). Say

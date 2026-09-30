@@ -1,16 +1,16 @@
 # P3-10 Godot updater: outlet adapters, sidecar-PCK swap, boot guard, Velopack and Sparkle hooks
 
-| Field       | Value                                                                                                                                                                |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                           |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                 |
-| Depends on  | [P3-08](P3-08-v4-godot.md), [P3-09](P3-09-updater-feeds.md)                                                                                                          |
-| Unblocks    | [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md), [P5-07](P5-07-desktop-plugins.md), [D-03](D-03-diceroll-after-p3.md)                           |
-| Role        | `pkey-godot-engineer` (see `.claude/agents/`)                                                                                                                        |
-| Plan mode   | no                                                                                                                                                                   |
-| Gates       | none in the graph; `stage-matrix.json` boot-guard rows must already exist (planned in P3-01, emitted by P3-02), else this is a corpus change that needs a plan first |
-| Human input | none required. A Windows machine or CI runner to measure the sidecar rename                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                       |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                             |
+| Depends on  | [P3-08](P3-08-v4-godot.md), [P3-09](P3-09-updater-feeds.md), [P3-11](P3-11-outlet-detection.md), [P1-10](P1-10-godot-ui-kit.md), [P1-11](P1-11-godot-export-plugin.md), [S-05](S-05-godot-platform-mechanics.md) |
+| Unblocks    | [P4-08](P4-08-godot-packs.md), [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md), [P5-07](P5-07-desktop-plugins.md), [D-03](D-03-diceroll-after-p3.md)                                        |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                            |
+| Plan mode   | no                                                                                                                                                                                                               |
+| Gates       | none in the graph; `stage-matrix.json` boot-guard rows must already exist (planned in P3-01, emitted by P3-02), else this is a corpus change that needs a plan first                                             |
+| Human input | none required. A Windows machine or CI runner to measure the sidecar rename                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                        |
 
 Milestone: **Diceroll deletes its own updater and feed scripts** (with [D-03](D-03-diceroll-after-p3.md)).
 

@@ -3,9 +3,9 @@
 | Field       | Value                                                                                                                                                                  |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P2b: Distribution core                                                                                                                                                 |
-| Size        | 1–1 engineer-weeks                                                                                                                                                     |
+| Size        | 1 engineer-weeks                                                                                                                                                       |
 | Depends on  | [P2b-03](P2b-03-availability-keys.md), [P2b-04](P2b-04-rollouts-delivery.md)                                                                                           |
-| Unblocks    | none (closes the P2b milestone)                                                                                                                                        |
+| Unblocks    | none                                                                                                                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                                     |
 | Plan mode   | no                                                                                                                                                                     |
 | Gates       | rule 10 (page routes and the bytes-host alias); admin tests and `pnpm --filter @polaris-key/admin build`; `docsLinks` drift gate; threat model (a public HTML surface) |

@@ -36,8 +36,8 @@ The program lives in `docs/research/2026-09-29-godot-omniplatform/program/`. Its
 
 - [ ] Start `pkey-wp-reviewer` on the branch. Send blocking findings back to the same role agent (continue it rather than starting fresh), and repeat until it passes.
 - [ ] Check that the PR body carries the brief's acceptance checklist, and that the status is `in-review` in `workpackages.json`.
-- [ ] Hand the PR to the human to merge. After the merge:
-  - confirm the status is `done`;
+- [ ] When the reviewer passes it, add the PR's last commit: the brief's hand-off line `check.mjs --set <ID> done`, then prettier on `workpackages.json` and `INDEX.md`. Hand the PR to the human to merge. After the merge:
+  - confirm the status reads `done` on the default branch;
   - re-run `--ready`;
   - update any downstream brief whose named interface changed.
 - [ ] Record deviations the agent reported. A scope or estimate change of more than half goes to the human before more work is dispatched on that line.
@@ -48,6 +48,11 @@ The program lives in `docs/research/2026-09-29-godot-omniplatform/program/`. Its
 - a plan needs a decision the research left open;
 - a human-held input is missing (accounts, keys, devices, deploys, the P0-08 production deploy before any new service slug);
 - two briefs contradict each other, or the code contradicts a brief in a way that changes scope.
+
+## When the graph changes
+
+- [ ] Edit `workpackages.json` and the briefs, then run `check.mjs --sync-briefs`, then `--write-index`, then prettier, then `check.mjs` (program README §8).
+- [ ] Turn items from the README's "Known gaps without a work package" into packages when their phase approaches.
 
 ## Never
 

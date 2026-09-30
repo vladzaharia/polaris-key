@@ -11,7 +11,7 @@ You implement **one** work package of the program in `docs/research/2026-09-29-g
 1. Read `AGENTS.md` (canonical: Node 22, the green gate, the eleven hard rules, the wave model) and `CLAUDE.md`.
 2. Read your brief (`program/wp/<ID>-*.md`) in full, then everything in its "Read first" list.
 3. Run `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --show <ID>` and confirm every dependency is `done`. If one is not, stop and report.
-4. If the brief is marked plan mode, confirm `program/plans/<ID>.md` exists and has been approved (merged). If not, stop: plan-mode work goes to `pkey-wire-planner` first.
+4. If the brief is marked plan mode, confirm that the approved plan exists and has been merged. It is `program/plans/<ID>.md`, or `program/plans/<planRef>.md` when the package has a `planRef` (P3-02 uses P3-01's plan). If it does not exist, stop: plan-mode work goes to `pkey-wire-planner` first.
 5. Verify the brief against the code. Where they disagree, the code is the fact. Adjust your approach and record the correction in the brief in the same branch.
 
 ## While you work
@@ -33,7 +33,7 @@ You implement **one** work package of the program in `docs/research/2026-09-29-g
 1. Run the full green gate from `AGENTS.md`, or state exactly which parts could not run here and why.
 2. Tick every acceptance criterion in the brief, or explain the ones you could not meet.
 3. Set the status in the same branch, then format both files:
-   - `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set <ID> in-review`;
+   - `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set <ID> in-review`. The lead runs the brief's `--set <ID> done` line as the PR's last commit, after review;
    - `mise exec node@22 -- pnpm exec prettier --write docs/research/2026-09-29-godot-omniplatform/program/{workpackages.json,INDEX.md}`.
 4. Push the branch. Open a PR if the environment allows: the brief's acceptance checklist goes in the body, and the repository's PR template is followed if one exists.
 

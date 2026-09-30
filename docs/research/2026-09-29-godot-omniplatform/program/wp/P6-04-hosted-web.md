@@ -4,7 +4,7 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P6: Commerce, ops, web (optional)                                                                                                                                                      |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [P2-01](P2-01-blob-store.md), [P0-05](P0-05-cors.md)                                                                                                                                   |
+| Depends on  | [P2-01](P2-01-blob-store.md), [P0-05](P0-05-cors.md), [P2b-04](P2b-04-rollouts-delivery.md), [P2-05](P2-05-release-routes.md)                                                          |
 | Unblocks    | none                                                                                                                                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                                                     |
 | Plan mode   | no                                                                                                                                                                                     |

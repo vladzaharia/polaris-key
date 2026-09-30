@@ -3,10 +3,10 @@
 | Field       | Value                                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v1)                                                                                                                                                            |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                      |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                      |
 | Depends on  | [P4-01](P4-01-packs-plan.md)                                                                                                                                              |
 | Unblocks    | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [P4-10](P4-10-chunk-indexes.md)                                 |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                                                |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                     |
 | Plan mode   | yes: `pkey-wire-planner` writes a short execution plan, `program/plans/P4-04.md`, against the approved P4-01 plan; a human approves it before code                        |
 | Gates       | corpus (`pnpm gen:corpus -- --check`, Swift and Godot mirrors); all SDKs (pack-kind record cases); `corpus.mdx` (`docs gen:check`); one corpus-touching package in flight |
 | Human input | approval of `program/plans/P4-04.md`                                                                                                                                      |

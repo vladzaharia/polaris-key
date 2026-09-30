@@ -3,10 +3,10 @@
 | Field       | Value                                                                                        |
 | ----------- | -------------------------------------------------------------------------------------------- |
 | Phase       | P3: Signed feed, decision, feeds (wire v4)                                                   |
-| Size        | 0.5–1 engineer-weeks                                                                         |
+| Size        | 1–1.5 engineer-weeks                                                                         |
 | Depends on  | [P2-03](P2-03-release-data-model.md), [P2b-01](P2b-01-distribution-service.md)               |
 | Unblocks    | [P3-02](P3-02-wire-v4-contract-corpus.md), [P4-01](P4-01-packs-plan.md)                      |
-| Role        | `pkey-wire-planner` (see `.claude/agents/`)                                                  |
+| Role        | `pkey-wire-planner` (planning only)                                                          |
 | Plan mode   | yes: this package **is** the plan. It writes `plans/P3-01.md`, then stops for human approval |
 | Gates       | plan mode; human approval (merging the plan PR is the approval)                              |
 | Human input | approval of `plans/P3-01.md`, and an answer to each open question it raises                  |

@@ -3,7 +3,7 @@
 | Field       | Value                                                                                     |
 | ----------- | ----------------------------------------------------------------------------------------- |
 | Phase       | P0: Hygiene and unblockers                                                                |
-| Size        | 0.25–0.25 engineer-weeks                                                                  |
+| Size        | 0.25 engineer-weeks                                                                       |
 | Depends on  | [P0-02](P0-02-release-resolution.md)                                                      |
 | Unblocks    | none                                                                                      |
 | Role        | `pkey-implementer`                                                                        |

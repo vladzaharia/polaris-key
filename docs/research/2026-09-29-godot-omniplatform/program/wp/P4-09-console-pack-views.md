@@ -3,10 +3,10 @@
 | Field       | Value                                                                                                       |
 | ----------- | ----------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v1)                                                                                              |
-| Size        | 0.5–0.5 engineer-weeks                                                                                      |
-| Depends on  | [P4-02](P4-02-pack-deliverables.md)                                                                         |
+| Size        | 0.5 engineer-weeks                                                                                          |
+| Depends on  | [P4-02](P4-02-pack-deliverables.md), [P2-07](P2-07-console-builds.md)                                       |
 | Unblocks    | none                                                                                                        |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                  |
+| Role        | `pkey-implementer`                                                                                          |
 | Plan mode   | no                                                                                                          |
 | Gates       | admin tests and build; console help links against the built slug manifest (`docsLinks`, `docs check:links`) |
 | Human input | none                                                                                                        |

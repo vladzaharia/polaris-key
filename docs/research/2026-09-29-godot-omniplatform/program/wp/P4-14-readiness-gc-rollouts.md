@@ -1,16 +1,16 @@
 # P4-14 Distribution: outlet readiness holds, per-outlet pack rollouts and halts, server GC
 
-| Field       | Value                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v2)                                                                                             |
-| Size        | 1–1.5 engineer-weeks                                                                                       |
-| Depends on  | [P4-12](P4-12-compat-resolution.md), [P2b-04](P2b-04-rollouts-delivery.md)                                 |
-| Unblocks    | [P5-08](P5-08-platform-pack-transports.md)                                                                 |
-| Role        | `pkey-implementer`                                                                                         |
-| Plan mode   | no                                                                                                         |
-| Gates       | migration (plus `TABLE_OWNERS` and the generated `data-model.mdx`); rule 10 only if a public route changes |
-| Human input | none                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                  |
+| Field       | Value                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P4: Packs (v2)                                                                                                           |
+| Size        | 1–1.5 engineer-weeks                                                                                                     |
+| Depends on  | [P4-12](P4-12-compat-resolution.md), [P2b-04](P2b-04-rollouts-delivery.md), [P4-13](P4-13-revocation-floors-decision.md) |
+| Unblocks    | [P4-15](P4-15-console-compat-matrix.md), [P5-08](P5-08-platform-pack-transports.md)                                      |
+| Role        | `pkey-implementer`                                                                                                       |
+| Plan mode   | no                                                                                                                       |
+| Gates       | migration (plus `TABLE_OWNERS` and the generated `data-model.mdx`); rule 10 only if a public route changes               |
+| Human input | none                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                |
 
 ## Goal
 

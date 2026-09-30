@@ -62,6 +62,6 @@ mise exec node@22 -- pnpm <…>
 ## Hand-off
 
 What downstream work packages rely on from this one (interfaces, names, files), and anything
-deliberately left for them. Update `program/workpackages.json` status with
-`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set <ID> done` in the PR
-that completes the work.
+deliberately left for them. The role agent sets `--set <ID> in-review` when it hands off. After
+review, the lead adds the last commit of the PR:
+`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set <ID> done`.

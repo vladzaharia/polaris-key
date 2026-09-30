@@ -3,10 +3,10 @@
 | Field       | Value                                                                                                                                            |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | P4: Packs (v1)                                                                                                                                   |
-| Size        | 1–1.5 engineer-weeks                                                                                                                             |
-| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md)                                                       |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md)                                                                             |
-| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                                                                                        |
+| Size        | 1.5–2.5 engineer-weeks                                                                                                                           |
+| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md)        |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md)                                              |
+| Role        | `pkey-sdk-porter`                                                                                                                                |
 | Plan mode   | no                                                                                                                                               |
 | Gates       | corpus: the content corpus and `plan-matrix.json` pass in Node (lowest and current Node 22) and Chromium; `pnpm gen:corpus -- --check` unchanged |
 | Human input | none                                                                                                                                             |

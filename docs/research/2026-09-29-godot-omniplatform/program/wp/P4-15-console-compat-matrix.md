@@ -3,9 +3,9 @@
 | Field       | Value                                                                                                                                     |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v2)                                                                                                                            |
-| Size        | 1–1 engineer-weeks                                                                                                                        |
-| Depends on  | [P4-12](P4-12-compat-resolution.md)                                                                                                       |
-| Unblocks    | none (milestone: content ships between app releases)                                                                                      |
+| Size        | 1 engineer-weeks                                                                                                                          |
+| Depends on  | [P4-12](P4-12-compat-resolution.md), [P4-13](P4-13-revocation-floors-decision.md), [P4-14](P4-14-readiness-gc-rollouts.md)                |
+| Unblocks    | none                                                                                                                                      |
 | Role        | `pkey-implementer`                                                                                                                        |
 | Plan mode   | no                                                                                                                                        |
 | Gates       | none in the graph; admin API routes are narrative-only in `routeCoverage.test.ts`; console help links are gated by the docs slug manifest |

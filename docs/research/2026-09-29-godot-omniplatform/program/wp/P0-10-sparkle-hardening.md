@@ -5,7 +5,7 @@
 | Phase       | P0: Hygiene and unblockers                                                                 |
 | Size        | 0.25–0.5 engineer-weeks                                                                    |
 | Depends on  | none                                                                                       |
-| Unblocks    | none                                                                                       |
+| Unblocks    | [P3-09](P3-09-updater-feeds.md)                                                            |
 | Role        | `pkey-implementer`                                                                         |
 | Plan mode   | no                                                                                         |
 | Gates       | worker tests + `test:workerd`; Swift build and tests (macOS); new worker dependency review |

@@ -4,9 +4,9 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | X: Optional SDKs                                                                                                                                               |
 | Size        | 2–3 engineer-weeks                                                                                                                                             |
-| Depends on  | [P1b-01](P1b-01-parity-registry.md), [P3-05](P3-05-v4-react.md)                                                                                                |
+| Depends on  | [P1b-01](P1b-01-parity-registry.md), [P3-05](P3-05-v4-react.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md), [P1b-04](P1b-04-headers-config-corpora.md)     |
 | Unblocks    | none                                                                                                                                                           |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                                     |
+| Role        | `pkey-implementer`                                                                                                                                             |
 | Plan mode   | no, except one sub-step: if `shared-jws` has no injectable Ed25519 primitive by then, adding one touches `shared-jws` and `client-core` and needs a plan first |
 | Gates       | `pnpm parity:check` with a new manifest; `fingerprint.json`, `headers.json` and the `jwsCases` vectors in `cargo test`; a new CI job                           |
 | Human input | the go/no-go on optional work (program README §6); later, crates.io and npm publishing rights. Build and test proceed without them                             |

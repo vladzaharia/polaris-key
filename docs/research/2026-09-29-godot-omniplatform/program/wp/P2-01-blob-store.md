@@ -4,7 +4,7 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P2: Release truth and publishing                                                                                                                                                                                     |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                 |
-| Depends on  | [P0-09](P0-09-service-table.md)                                                                                                                                                                                      |
+| Depends on  | none                                                                                                                                                                                                                 |
 | Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-05](P2-05-release-routes.md), [P6-04](P6-04-hosted-web.md)                                                                                                                  |
 | Role        | `pkey-implementer`                                                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                                                   |
@@ -93,7 +93,9 @@ console's cookies ([notes/A3 §7.2](../../notes/A3-admin-dx.md#72-web-builds-and
 - Upload tickets, R2 temporary credentials for CI and the submit path (→ [P2-02](P2-02-trusted-publisher.md)).
 - Any public route that serves a blob, and GitHub resolution caching (→ [P2-05](P2-05-release-routes.md)).
 - Access gating per deliverable and moving byte serving into distribution (→ [P2b-04](P2b-04-rollouts-delivery.md)).
-- CORS headers (→ P0-05's allowlist; P2-05 applies it to the routes).
+- CORS itself (→ P0-05's `core/cors.ts`, applied centrally in `dispatch`). The bytes-host path
+  must pass through that same step, as P0-05's hand-off asks; if P0-05 has not landed, leave a
+  test-pinned TODO at that point.
 - Garbage collection of unreferenced objects (→ P4-14). Hosted web builds (→ [P6-04](P6-04-hosted-web.md)).
 - Mirroring GitHub assets into R2 by cron or Queue (README §3.5 "optionally"; no work package owns it yet).
 

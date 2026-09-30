@@ -5,7 +5,7 @@
 | Phase       | P2: Release truth and publishing                                                                                                                                  |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                              |
 | Depends on  | [P2-03](P2-03-release-data-model.md)                                                                                                                              |
-| Unblocks    | [P2-06](P2-06-publish-cli-action.md) (and the `submit` step of [P2-02](P2-02-trusted-publisher.md))                                                               |
+| Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-06](P2-06-publish-cli-action.md), [P2b-02](P2b-02-distribution-manifest.md)                                              |
 | Role        | `pkey-implementer`                                                                                                                                                |
 | Plan mode   | no                                                                                                                                                                |
 | Gates       | rule 9 (validator rules, mutation table, `release.schema.json`, a new `release-descriptor.schema.json`); generated `reference/validation-codes.mdx`; worker tests |
@@ -45,8 +45,8 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
 - [notes/A1 §1.5, §5, §6.4](../../notes/A1-release-update.md#5-github-sync);
   [notes/E7 §0](../../notes/E7-server-ci-tools.md) items 10, 13 and 14.
 - [P2-03](P2-03-release-data-model.md) hand-off (`model.ts`, the vocabulary constants,
-  identifiers, `seq`), and the landed [P0-02](P0-02-release-resolution.md) (its tag filter and
-  version-scheme fields, if it added them to `.pkey/release`).
+  identifiers, `seq`), and the landed [P0-02](P0-02-release-resolution.md) (`stableTagPattern`,
+  `ignoreTags` and the shared comparator).
 - Code: `packages/shared-manifest/src/index.ts` (release root `:875-1060`, `normalizeRelease`
   `:1569`, `releaseRoot` `:2048`), `schemas/v1/release.schema.json`,
   `test/schema-parity.test.ts` (the `Docs` type `:44-48`, the sweep `:740-760`);
@@ -68,10 +68,11 @@ GitHub **immutable release** where GitHub is the source and cross-checks every d
   entry raises the warning `pack_deliverables_not_supported` and is ignored until P4-02. Each code
   has a mutation-table entry and a schema rule or an explicit `schema: "accepts"`.
 - **Compatibility.** A release document without `deliverables` means an implicit `app`
-  deliverable with legacy sniffing, so `products/djdl` stays valid. If P0-02 added flat
-  `stableTagPattern`/`ignoreTags`, accept them as the legacy spelling of
-  `deliverables.app.versioning` (the flattened-root precedent) and refuse both at once with
-  `conflicting_versioning`.
+  deliverable with legacy sniffing, so `products/djdl` stays valid. P0-02 adds top-level
+  `stableTagPattern` and `ignoreTags` (persisted as `release_config.stable_tag_pattern` and
+  `ignore_tags_json`); accept them as the legacy spelling of `deliverables.app.versioning` (the
+  flattened-root precedent), keep writing the same columns for the `app` deliverable, and refuse
+  both spellings at once with `conflicting_versioning`.
 - **Descriptor contract** in `packages/shared-manifest/src/descriptor.ts`:
   `ReleaseDescriptor` (v1) and `validateReleaseDescriptor(descriptor, parsedManifest)`, with
   `schemas/v1/release-descriptor.schema.json`. Extend the parity sweep to this file.

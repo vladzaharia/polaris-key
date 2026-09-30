@@ -41,9 +41,10 @@ every later release, distribution and wire v4 package names its tables.
   what is distribution's).
 - [notes/A1 §1, §6.3](../../notes/A1-release-update.md#63-new-tables-vs-new-columns) (new tables
   vs new columns; the `0007` non-idempotent tail; the `0018` index assertion).
-- The landed [P0-01](P0-01-operator-ownership.md) (the `*_source` pattern on `release_config`) and
-  [P0-02](P0-02-release-resolution.md) (version comparator, the `(product, version)` conflict fix,
-  whatever it did for R6-10). Use their names.
+- The landed [P0-01](P0-01-operator-ownership.md) (`access_source`, `compat_source`,
+  `operator_policy_json`, the revert endpoint shape) and [P0-02](P0-02-release-resolution.md)
+  (`stable_tag_pattern`, `ignore_tags_json`, the shared comparator, the non-unique
+  `idx_release_metadata_version`, `release_channel_floors`). Use their names.
 - Code: `packages/worker/migrations/0007_backend_contracts.sql:46-141` (truth-store tables),
   `0016_drop_dead_pii.sql` (the table-rebuild precedent), `0012_replay_guard.sql`,
   `0018_index_assertion.sql`; `packages/worker/src/services/release/store.ts:330-462`
@@ -67,13 +68,14 @@ every later release, distribution and wire v4 package names its tables.
   `release_metadata.deliverable_id`, `release_metadata.seq`, `release_metadata.channel`
   (see Design notes); `release_artifacts.build_id`, `release_artifacts.role`,
   `release_artifacts.locations_json`.
-- **Indexes:** replace the unique `idx_release_metadata_version (product, version)` with
-  `(product, deliverable_id, version)`; unique `(product, deliverable_id, seq)`; lookup indexes
-  for builds by `(product, platform, arch)` and artifacts by `(product, sha256)`.
+- **Indexes:** P0-02 made `idx_release_metadata_version` non-unique (two tags may strip to one
+  version); widen it to `(product, deliverable_id, version)`, still non-unique. Add a unique
+  `(product, deliverable_id, seq)` and lookup indexes for builds by `(product, platform, arch)` and
+  artifacts by `(product, sha256)`.
 - **Backfill** in the migrations: one `app` deliverable per product with a `release_config` row;
-  `deliverable_id = 'app'` on every release; `seq` by `ROW_NUMBER() OVER (PARTITION BY product
-ORDER BY published_at, release_id)`; `role` from the legacy `kind` (`signature`, `checksum`,
-  else `payload`). Anything P0-02 used as an R6-10 stopgap moves into `release_yanks`.
+  `deliverable_id = 'app'` on every release; `seq` numbered per product in
+  `(published_at, release_id)` order with a `ROW_NUMBER()` window; `role` from the legacy `kind`
+  (`signature`, `checksum`, else `payload`).
 - **Resync must not clobber the new columns.** `releaseStoreStatements` upserts only the
   GitHub-derived columns; `sha256`, `storage_key`, `metadata_json`, `build_id`, `role` (once set by
   a descriptor) and `locations_json` survive a resync. New releases found by sync get
@@ -135,6 +137,13 @@ ORDER BY published_at, release_id)`; `role` from the legacy `kind` (`signature`,
   list in `0018`'s successor and `src/scheduled.ts`.
 - `release_channels` stays as the derived "what GitHub says" view; stop treating `policy_json` as
   a seam and leave a comment pointing at `release_channel_policy`.
+- **Two different floors.** P0-02's `release_channel_floors` is an anti-rollback **high-water
+  mark** for live GitHub resolution (R6-10). `release_channel_policy.min_supported` is the
+  **device floor** the signed feed will carry (`blocked(app-floor)`, README §3.6). P0-02's hand-off
+  says to fold the first into the second; do not: every channel's floor would jump to its newest
+  version and, once P3 enforces floors, block every older install. Keep `release_channel_floors`
+  as release's own table (or a separate `high_water_version` column) and record the decision in
+  the PR. The yank table replaces nothing of it: a deleted GitHub release is not a yank.
 
 ## Steps
 
@@ -154,7 +163,8 @@ ORDER BY published_at, release_id)`; `role` from the legacy `kind` (`signature`,
       `locations_json` and `storage_key` (test in `releaseStore.test.ts`).
 - [ ] `setChannelPolicy` from an operator sets `source = 'admin'`, and a subsequent resync does not
       change that row; revert returns it to `manifest`.
-- [ ] Two releases of one deliverable cannot share a `version` or a `seq`; two deliverables can.
+- [ ] Two releases of one deliverable cannot share a `seq`; two deliverables can; two tags that
+      strip to one version still sync (P0-02's regression test stays green).
 - [ ] Existing release, update and portal suites pass unchanged (no behaviour change).
 - [ ] `docs gen:check` is clean and `reference/data-model.mdx` lists the new tables under Release.
 - [ ] The green gate passes (`AGENTS.md`).

@@ -1,16 +1,16 @@
 # P4-20 Save compatibility: `provides`/`removes` checks, `isAvailable`, content-interface fingerprint
 
-| Field       | Value                                                                                                          |
-| ----------- | -------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v3)                                                                                                 |
-| Size        | 1–1 engineer-weeks                                                                                             |
-| Depends on  | [P4-12](P4-12-compat-resolution.md), [P4-08](P4-08-godot-packs.md)                                             |
-| Unblocks    | none (milestone: localisation, events and supporter packs)                                                     |
-| Role        | `pkey-implementer`                                                                                             |
-| Plan mode   | no, because P4-01 reserved `provides[]` and `removes[]` in the pack record (see Design notes)                  |
-| Gates       | none in the graph; in practice rule 9 for the deliverable's `provides` policy, and every SDK for `isAvailable` |
-| Human input | none                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                      |
+| Field       | Value                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v3)                                                                                                                                |
+| Size        | 1 engineer-weeks                                                                                                                              |
+| Depends on  | [P4-12](P4-12-compat-resolution.md), [P4-08](P4-08-godot-packs.md), [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md) |
+| Unblocks    | none                                                                                                                                          |
+| Role        | `pkey-implementer`                                                                                                                            |
+| Plan mode   | no, because P4-01 reserved `provides[]` and `removes[]` in the pack record (see Design notes)                                                 |
+| Gates       | none in the graph; in practice rule 9 for the deliverable's `provides` policy, and every SDK for `isAvailable`                                |
+| Human input | none                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                     |
 
 ## Goal
 

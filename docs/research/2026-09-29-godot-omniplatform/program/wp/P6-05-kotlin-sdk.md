@@ -1,16 +1,16 @@
 # P6-05 Optional: the Kotlin SDK at full parity
 
-| Field       | Value                                                                                                                                                                                |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P6: Commerce, ops, web (optional)                                                                                                                                                    |
-| Size        | 6–8 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [P5-06](P5-06-kotlin-aar.md), [P1b-01](P1b-01-parity-registry.md)                                                                                                                    |
-| Unblocks    | none                                                                                                                                                                                 |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                    |
-| Plan mode   | no for the SDK itself; any corpus case it finds missing goes to `pkey-wire-planner`                                                                                                  |
-| Gates       | none listed. In practice: a new conformance runner, `parity:check`, the language lists in docs, `tools/gen-mirrors.ts`, and a new CI job and release workflow                        |
-| Human input | none listed. In practice: a decision that native Android (or JVM) apps are in scope (decision 10), and a Maven Central publisher account with a signing key before the first release |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web (optional)                                                                                                                                                     |
+| Size        | 6–8 engineer-weeks                                                                                                                                                                    |
+| Depends on  | [P5-06](P5-06-kotlin-aar.md), [P1b-01](P1b-01-parity-registry.md), [P3-02](P3-02-wire-v4-contract-corpus.md), [P1b-03](P1b-03-http-transcripts.md), [P1b-02](P1b-02-sdk-constants.md) |
+| Unblocks    | none                                                                                                                                                                                  |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                     |
+| Plan mode   | no for the SDK itself; any corpus case it finds missing goes to `pkey-wire-planner`                                                                                                   |
+| Gates       | none listed. In practice: a new conformance runner, `parity:check`, the language lists in docs, `tools/gen-mirrors.ts`, and a new CI job and release workflow                         |
+| Human input | none listed. In practice: a decision that native Android (or JVM) apps are in scope (decision 10), and a Maven Central publisher account with a signing key before the first release  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
 
 This is a kickoff brief for an optional, multi-PR package. The first PR is the skeleton, the corpus
 runner and the parity manifest; each later PR closes a group of feature ids.

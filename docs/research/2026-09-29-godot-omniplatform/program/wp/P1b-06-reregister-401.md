@@ -6,7 +6,7 @@
 | Size        | 0.75–1 engineer-weeks                                                                             |
 | Depends on  | [P1b-03](P1b-03-http-transcripts.md)                                                              |
 | Unblocks    | none                                                                                              |
-| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                                         |
+| Role        | `pkey-sdk-porter`                                                                                 |
 | Plan mode   | no (it implements an existing contract rule; it must not change the `client-core` store contract) |
 | Gates       | all SDKs; the `register-reregister-401` transcript; `pnpm parity:check`                           |
 | Human input | none                                                                                              |

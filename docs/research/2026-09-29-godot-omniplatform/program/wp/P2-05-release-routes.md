@@ -1,16 +1,16 @@
 # P2-05 Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching
 
-| Field       | Value                                                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                         |
-| Size        | 1–1.5 engineer-weeks                                                                                                                     |
-| Depends on  | [P2-01](P2-01-blob-store.md), [P2-03](P2-03-release-data-model.md)                                                                       |
-| Unblocks    | [P2-07](P2-07-console-builds.md), [P2b-04](P2b-04-rollouts-delivery.md)                                                                  |
-| Role        | `pkey-implementer`                                                                                                                       |
-| Plan mode   | no                                                                                                                                       |
-| Gates       | rule 10 (OpenAPI + `SERVICE_PATHS` in `routeCoverage`; regenerated `reference/routes.mdx`); `test/attack/R6-release.test.ts` stays green |
-| Human input | none (without P2-01's buckets, the blob route answers not-found and tests use the R2 fake)                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                |
+| Field       | Value                                                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth and publishing                                                                                                            |
+| Size        | 1–1.5 engineer-weeks                                                                                                                        |
+| Depends on  | [P2-01](P2-01-blob-store.md), [P2-03](P2-03-release-data-model.md)                                                                          |
+| Unblocks    | [P2-06](P2-06-publish-cli-action.md), [P2-07](P2-07-console-builds.md), [P2b-04](P2b-04-rollouts-delivery.md), [P6-04](P6-04-hosted-web.md) |
+| Role        | `pkey-implementer`                                                                                                                          |
+| Plan mode   | no                                                                                                                                          |
+| Gates       | rule 10 (OpenAPI + `SERVICE_PATHS` in `routeCoverage`; regenerated `reference/routes.mdx`); `test/attack/R6-release.test.ts` stays green    |
+| Human input | none (without P2-01's buckets, the blob route answers not-found and tests use the R2 fake)                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                   |
 
 ## Goal
 
@@ -96,7 +96,8 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
 - Console views (→ [P2-07](P2-07-console-builds.md)); CLI commands (→ [P2-06](P2-06-publish-cli-action.md)).
 - Moving byte serving and access into distribution, and outlet rollouts (→ [P2b-04](P2b-04-rollouts-delivery.md)).
 - Per-deliverable access gating and the `gated/` prefix on reads (→ P2b-04, P4-05).
-- CORS: apply P0-05's allowlist helper if it has landed; otherwise leave it to P2b-04.
+- CORS: P0-05 applies its allowlist centrally in `dispatch` (`core/cors.ts`); check that the new
+  byte routes fall inside its covered-path list, nothing per route.
 - Sparkle, WinSparkle and other updater-feed changes, including universal DMGs in the appcast
   (→ P3-09). Mirroring GitHub assets into R2 (no owner yet).
 
@@ -116,10 +117,13 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
      arch (`universal` and `any` match every arch), so a release missing the iOS build does not
      blank iOS. Whether it is live on an outlet is distribution's question (P2b).
 - **Floors and `critical`** are stored and returned by the admin read and the `releaseCatalog`
-  hook (P2b-01); nothing device-facing enforces them until the signed feed (P3-03).
+  hook (P2b-01); nothing device-facing enforces them until the signed feed (P3-03). Keep P0-02's
+  `…/release/channels/<channel>/floor` endpoint for its anti-rollback high-water mark and call the
+  device floor `minSupported` in the `PUT` body, so the two never share a name (P2-03).
 - **Cross-tenant blobs.** The blob route serves a key only if P2-01's `blob_refs` holds a ref from
-  this product (`hasRef`); otherwise it returns the not-found body. Access is the product's artifacts access mode
-  (P0-01's column), enforced with `enforceReleaseAccess`.
+  this product (`hasRef`); otherwise it returns the not-found body. Access is the product's
+  `artifacts_access` mode (operator-owned through P0-01's `access_source`), enforced with
+  `enforceReleaseAccess`.
 - **Winget refuses redirects** and App Installer and zsync need Range, so streaming stays the
   default; redirect is opt-in per request and only for public artifacts of public repositories.
 - **Cache keys** are synthesised, never `req.url` (`gateway.ts:120-140`), and non-public modes are

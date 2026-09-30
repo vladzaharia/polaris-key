@@ -3,8 +3,8 @@
 | Field       | Value                                                                                                                                            |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | P4: Packs (v3)                                                                                                                                   |
-| Size        | 1–1 engineer-weeks                                                                                                                               |
-| Depends on  | [P4-11](P4-11-chunk-sync-sdks.md)                                                                                                                |
+| Size        | 1 engineer-weeks                                                                                                                                 |
+| Depends on  | [P4-11](P4-11-chunk-sync-sdks.md), [P4-05](P4-05-pack-transports-cdn.md), [P1b-05](P1b-05-runners.md)                                            |
 | Unblocks    | none                                                                                                                                             |
 | Role        | `pkey-implementer`                                                                                                                               |
 | Plan mode   | no: the stored artifact and the descriptor do not change; `dcz` framing is added at the edge                                                     |

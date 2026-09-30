@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | P2: Release truth and publishing                                                                                                                                                                                   |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                                               |
-| Depends on  | [P2-02](P2-02-trusted-publisher.md), [P2-04](P2-04-release-descriptor.md) (and [P2-05](P2-05-release-routes.md) for the promote/pin/yank commands: see Scope)                                                      |
+| Depends on  | [P2-02](P2-02-trusted-publisher.md), [P2-04](P2-04-release-descriptor.md), [P2-05](P2-05-release-routes.md)                                                                                                        |
 | Unblocks    | [P2b-03](P2b-03-availability-keys.md), [P3-03](P3-03-feed-composition.md), [P4-03](P4-03-ci-patch-artifacts.md), [D-03](D-03-diceroll-after-p3.md)                                                                 |
 | Role        | `pkey-implementer`                                                                                                                                                                                                 |
 | Plan mode   | no                                                                                                                                                                                                                 |
@@ -57,8 +57,9 @@ Diceroll's adoption (D-03) publishes through this Action and deletes `update_man
   `ACTIONS_ID_TOKEN_REQUEST_TOKEN`), exchanges it at `POST /{product}/release/publish/token`, and
   writes `PKEY_CI_TOKEN` to `$GITHUB_ENV` after `::add-mask::`. Other commands call it implicitly
   when `PKEY_CI_TOKEN` is unset and the job is an Actions job.
-- `pkey release publish --product <slug> --deliverable app --version <v> [--tag vX.Y.Z]
-[--channel <c>] --dir <path> [--source r2|github] [--meta builds.json] [--dry-run] [--base-url]`:
+- `pkey release publish` with `--product <slug> --deliverable app --version <v> --dir <path>`
+  and the options `--tag vX.Y.Z`, `--channel <c>`, `--source r2|github`, `--meta builds.json`,
+  `--dry-run`, `--base-url`:
   1. load `.pkey/`, match files in `--dir` against the deliverable's `artifacts[].match` (none: a
      warning and the build is omitted; more than one: an error), pick up `<file>.sig` and
      `<file>.sha256` as sidecars;
@@ -76,8 +77,14 @@ Diceroll's adoption (D-03) publishes through this Action and deletes `update_man
   supports), inputs `product`, `deliverable`, `version`, `tag`, `channel`, `dir`, `source`, `meta`,
   `base-url`, `dry-run`. Its `dist/index.js` is an esbuild bundle of the CLI, committed with a
   GENERATED banner and a `--check` script in CI that rebuilds and diffs it.
-- Docs: a `build/ci.md` page (permissions, the workflow snippet, `--dry-run`, troubleshooting
-  policy refusals), linked from `build/onboarding.md`; `helpText` updated.
+- **CLI outside npm** (P0-07 hands this here): the same bundle runs as a standalone `pkey`
+  (`node pkey.mjs validate`), attached to the monorepo's GitHub releases, so a Godot repository with
+  no `node_modules` can validate locally; and `pkey manifest schemas --out <dir>` vendors
+  `schemas/v1/*.schema.json` for editors. Publishing `@polaris-key/cli` publicly on npm is a human
+  decision (the packages publish to GitHub Packages today).
+- Docs: a `build/ci.md` page (permissions, the workflow snippet, `--dry-run`, the branch or tag
+  ruleset `ref_protected` needs, troubleshooting policy refusals), linked from
+  `build/onboarding.md`; `helpText` updated.
 
 **Out** (and where it belongs instead):
 
