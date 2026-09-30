@@ -73,9 +73,16 @@ here.
   wanted anyway, read the hashed key first and then the legacy key for one TTL, and write only the
   hashed key. State which choice was made in the PR.
 - **The device-flow status endpoints** look the flow up by device code, so they must hash the same
-  way. Keep the timing-safe comparisons that exist today.
-- The device `user_code` shown to people is derived from `state` (`deviceUserCode`). Nothing here
-  changes it.
+  way. Keep the comparisons that exist today. (Correction, P0-13: they are plain `!==` checks on
+  the CSRF token and device id, not timing-safe ones; the device code itself is never compared,
+  it only addresses the record.)
+- The device `user_code` shown to people is derived from the device code (`deviceUserCode`, called
+  with `deviceCode` in `handleAuthDeviceStart`), not from `state` as this brief first said. Nothing
+  here changes it.
+- **Correction, P0-13:** the portal OIDC flow key (`portal:oidc-flow:<state>` in
+  `services/identity/portal/auth.ts`) was also verbatim, alongside the magic-link key. Both are
+  hashed here under the "anything else" scope line. The audit's old R12-04 proof cited a
+  `CONFIRMED:` test that asserted the magic-link token was still the key name.
 
 ## Steps
 
@@ -94,8 +101,11 @@ here.
 
 ## Verify
 
+The identity tests are `oidc*.test.ts` and `portal*.test.ts`; a bare `identity` filter matches only
+`identitySessionDoc.test.ts` (correction, P0-13).
+
 ```sh
-mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity R12
+mise exec node@22 -- pnpm --filter @polaris-key/worker test -- oidc portal R12
 mise exec node@22 -- pnpm --filter @polaris-key/worker typecheck:workerd
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 ```
