@@ -28,7 +28,8 @@ Diceroll's own updater, manifest generator and source generator are deleted.
 [notes/A4 §4.1](../../notes/A4-diceroll-mapping.md#41-deleted-moves-into-pkey-or-the-godot-sdk)):
 
 - `game/update/*` (`updater.gd`, `update_client.gd`, `update_fetcher.gd`, `update_manifest.gd`,
-  `update_policy.gd`, `update_store.gd`, `semver.gd`, `update_keys.gd`) and its six suites,
+  `update_policy.gd`, `update_store.gd`, `semver.gd`, `update_keys.gd`), the `Updater` autoload
+  entry in `project.godot`, and its six suites,
   `tests/test_update_{manifest,policy,store,e2e,semver,channel}.gd`, with their fixtures;
 - `tools/ci/update_manifest.py` and `tools/ci/altstore_source.py`, and their steps in `release.yml`;
 - the rolling `channels` release, after the bridge period below;
@@ -71,8 +72,10 @@ attack (#13) and missing SideStore fields (#14) ([README §9.2](../../README.md#
 - `release.yml`: `polaris-key/publish@v1` (or `vladzaharia/polaris-key/actions/publish@<sha>` until
   P2-06's listing exists) after the existing export and signing steps, the release
   key from the `release` Environment, the F-Droid index generation and signing step P2b-05 defines.
-- Build stamp: the SDK export plugin's per-preset Outlet and Channel options (P1-11), overridden per
-  artifact in CI through `get_or_env`, keeping D-01's one-stamp-per-artifact rule.
+- Build stamp: the SDK export plugin's preset options `polaris_key/outlet` and
+  `polaris_key/channel` (P1-11), overridden per artifact in CI with `PKEY_BUILD_OUTLET` and
+  `PKEY_BUILD_CHANNEL`, keeping D-01's one-stamp-per-artifact rule. The stamp moves to
+  `res://.polaris_key/build.json`; `build_info.json` keeps only what the game itself shows.
 - Updater: the SDK's (P3-10): outlet adapters, the sidecar-PCK swap on portable Windows and Linux
   x86_64, and the boot guard (rollback after two failed boots, reported as `boot_rolled_back`).
   Diceroll connects the SDK's signals to its banner and settings toggle, and configures the
@@ -101,8 +104,8 @@ attack (#13) and missing SideStore fields (#14) ([README §9.2](../../README.md#
 - **Bridge for installed clients.** Installed builds trust only the RSA key and read
   `update-<channel>.json` from the `channels` release. The last old-format manifest advertises the
   first SDK build as a BINARY update, with `pack: null` and `min_supported` set to it, so the
-  prompt cannot be dismissed ([notes/A4 §1.2](../../notes/A4-diceroll-mapping.md#12-manifest-schema-1)). The old AltStore source gets a final `news` item with `notify` pointing to the new
-  source URL. Keep `channels` until the human decides enough players have moved; then delete it and
+  prompt cannot be dismissed ([notes/A4 §1.2](../../notes/A4-diceroll-mapping.md#12-manifest-schema-1)).
+  The old AltStore source gets a final `news` item with `notify` pointing to the new source URL. Keep `channels` until the human decides enough players have moved; then delete it and
   update `docs/RELEASE.md:91`.
 - **Preserve the updater's properties** (notes/A4 §5, P1–P17): no downgrade, beta ⊇ stable, channel
   binding, engine gate, `min_binary`, a mandatory floor distinct from the licence's grant floor,

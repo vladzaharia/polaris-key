@@ -133,7 +133,10 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
 5. The `seq` floor must survive restarts, but WIRE-CONTRACT-V3 §4.1 forbids persisted counters.
    [Cache the verified feed JWS in a new optional `CacheRecordV3` slice and derive the floor on
    load; keep `CACHE_VERSION` 3 because the change is additive.]
-6. Record details: `iss` (the Worker's `key.plrs.im` would be false here) and `aud`;
+6. Record details: the payload is P2-04's descriptor body moved, not reshaped
+   (`builds[] {id, platform, arch, format, buildNumber, minOS, requires, artifacts[]}`, with
+   P2-03's `build_id` as `id`); whether `ReleaseRecordDoc` lives in `shared-protocol` [yes, it is
+   device-facing]; `iss` (the Worker's `key.plrs.im` would be false here) and `aud`;
    `buildNumber` type (iOS, Android, MSIX and Sparkle differ) [string]; `issuedAt` informational,
    no expiry; how a v4 verifier treats the reserved kinds [verify, then refuse to act on them].
 7. The record hash: lowercase hex SHA-256 over the ASCII compact JWS, checked before signature
@@ -182,6 +185,14 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
 19. Rollout: deploy order, what deployed v3 clients see (no SDK enforces `protocolVersion`;
     license, config, trust and bundle documents are byte-identical), old workers, and whether the
     interim release-key-only option of README §3.3 is used for Diceroll's minimum slice.
+20. Boot-guard rows for `stage-matrix.json`. [P1-09](P1-09-boot-stage-machine.md) hands them to
+    P3-10 "under its own plan", but P3-10 is not plan-mode. [Plan them here (rollback after two
+    failed boots, the skipped version, the `boot_rolled_back` event) so P3-02 emits them, and name
+    the stage machines that must pass them: `client-core` in P3-05, Godot in P3-10.]
+21. Update telemetry event names (README §3.6: `update_applied`, `update_confirmed`,
+    `update_reverted`, `pack_failed`, `boot_rolled_back`). They travel on the unsigned
+    `devices/report` and are not a wire change. [Fix the names here so P3-10 and P6-03 agree;
+    leave shapes and the allowlist to [P6-03](P6-03-update-funnel-autohalt.md).]
 
 If the plan cannot fit in about two pages, propose a split (for example, `outlet-matrix.json`
 planned on its own) instead of shortening the answers.
@@ -193,7 +204,7 @@ planned on its own) instead of shortening the answers.
 2. Read everything in "Read first". Note the names P2-03 and P2b-01 actually landed.
 3. Optionally probe backends for item 14 with a throwaway script outside the repo tree. Record
    the verdicts in the plan; commit no code.
-4. Write the plan section by section, answering items 1–19.
+4. Write the plan section by section, answering items 1–21.
 5. List the open questions, each with a recommendation, and the briefs the plan changes.
 6. `check.mjs --set P3-01 awaiting-approval`, regenerate the index, run prettier, push
    `wp/P3-01-plan` and open the PR titled `P3-01 plan: wire v4`.
@@ -231,6 +242,8 @@ git diff --name-only origin/main...HEAD
   composition rules. [P3-09](P3-09-updater-feeds.md) takes the extended `/version` shape.
 - [P3-04](P3-04-v4-node.md) to [P3-08](P3-08-v4-godot.md) take the function names, the cache
   slices and the corpus sections. [P3-11](P3-11-outlet-detection.md) takes the outlet matrix.
+- [P3-10](P3-10-godot-updater.md) takes the boot-guard rows and the event names;
+  [P6-03](P6-03-update-funnel-autohalt.md) takes the event names.
 - [P4-01](P4-01-packs-plan.md) extends the reserved slots rather than adding shapes.
 - The planner sets `awaiting-approval`. The lead sets
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P3-01 done` once the

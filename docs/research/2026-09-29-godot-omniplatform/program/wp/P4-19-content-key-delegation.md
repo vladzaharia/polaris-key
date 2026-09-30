@@ -87,7 +87,8 @@ TUF-style delegation).
 - **Chain.** Pack record `kid` ∈ pinned release keys → accept, as today. Otherwise find the
   delegation (plan decides: referenced by hash from the pack record, or listed by hash in the
   feed; recommend a hash reference in the pack record so the chain does not depend on the Worker),
-  verify it against a **pinned release key**, check it is unexpired and not revoked, and check the
+  verify it against a **pinned release key** (the SDKs' separate `pinnedReleaseKeys` input from
+  P3-01, never the Worker's trust set), check it is unexpired and not revoked, and check the
   pack record's `packId` starts with `packIdPrefix` and its `type` ∈ `types`. One level only: a
   content key cannot delegate.
 - **What a content key may never sign:** app records, revocations, delegations, and pack types
@@ -99,9 +100,10 @@ TUF-style delegation).
   handlers must reject safely. It cannot ship code, change app records or condemn releases. The
   Worker still cannot forge a delegation. A compromised Worker can withhold a delegation's
   revocation, as it can withhold any revocation today.
-- **Manifest.** README §3.12 puts `contentKeys` in `.pkey/release`. The manifest is unsigned, so it
-  can only tell the Worker and CI what to expect, never grant trust. If the plan keeps it, it is a
-  rule-9 change (validator rule, mutation-table entry, schema, `validation-codes.mdx`).
+- **Manifest.** README §3.12 puts `contentKeys` in `.pkey/release`, and P3-01's plan reserves that
+  field for this package beside `releaseKeys`. The manifest is unsigned, so it can only tell the
+  Worker and CI what to expect, never grant trust. If the plan keeps it, it is a rule-9 change
+  (validator rule, mutation-table entry, schema, `validation-codes.mdx`).
 - **Wire version.** A new `kind` inside `pkey-release+jws`. If v4 SDKs reject unknown kinds, old
   clients simply never accept delegated packs, which is safe; the plan states whether that needs a
   `PROTOCOL_VERSION` change.

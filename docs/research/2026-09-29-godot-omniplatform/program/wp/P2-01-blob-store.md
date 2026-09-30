@@ -118,7 +118,9 @@ console's cookies ([notes/A3 §7.2](../../notes/A3-admin-dx.md#72-web-builds-and
   bucket: a direct R2 domain cannot set `ETag` to the SHA-256, add `Repr-Digest`, or enforce access.
 - **`blobResponse`** sets `Accept-Ranges: bytes`, `ETag: "<hex>"`, `Repr-Digest: sha-256=:<base64>:`
   (RFC 9530, the whole representation even on a 206), `X-Content-Type-Options: nosniff`, and:
-  - ungated: `Cache-Control: public, max-age=31536000, immutable`; gated: `private, no-store`;
+  - ungated: `Cache-Control: public, max-age=31536000, immutable, no-transform` (no edge
+    recompression: hashes and `Range` depend on the stored bytes); gated: `private, no-store`;
+  - `HEAD` returns the same headers without a body;
   - `Range` → 206 with `Content-Range`, unsatisfiable → 416; `If-Range` not matching the ETag →
     the full 200; `If-None-Match` matching → 304. R2's `get(key, {range, onlyIf})` takes the
     request headers directly.

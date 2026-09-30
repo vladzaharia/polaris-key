@@ -166,8 +166,8 @@ python3 -c 'import sys,json,pck; f=sys.argv[1]; e=[x for x in pck.read_pck(f)["e
 
 ## Hand-off
 
-D-03 relies on: one stamp per artifact (it moves into the SDK export plugin's per-preset Outlet
-option), the signing-key list with fingerprints (imported into Polaris Key's key inventory), and
+D-03 relies on: one stamp per artifact (it moves into the SDK export plugin's `polaris_key/outlet`
+preset option), the signing-key list with fingerprints (imported into Polaris Key's key inventory), and
 the measured behaviour of the sidecar swap on Windows, which the lead should copy to P3-10's brief.
 Diceroll deletes nothing here. The status lives in the Polaris Key repo: the lead runs
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set D-01 done` there when the

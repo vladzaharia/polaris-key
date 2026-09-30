@@ -98,8 +98,8 @@ code), and this package brings the other native SDKs level ([PARITY §8](../../P
 
 - Start (`POST …/identity/auth/device/start`):
   - body `{ deviceId?, deviceName? }`; the device id falls back to the `X-PKey-Device` header;
-  - answers `{ status: "pending", deviceCode, userCode, verificationUri, verificationUriComplete,
-expiresIn, interval, pollUrl }`.
+  - answers `status: "pending"` with `deviceCode`, `userCode`, `verificationUri`,
+    `verificationUriComplete`, `expiresIn`, `interval` and `pollUrl`.
 - Poll (`POST …/identity/auth/device/poll`), body `{ deviceCode, deviceId }`. Answers:
   - `{ status: "pending" }`;
   - `429 { status: "slow_down", interval }`;
@@ -172,10 +172,12 @@ mise exec node@22 -- pnpm parity:check
 
 ## Hand-off
 
-- **Interfaces:** `identity.beginSignIn` / `pollSignIn` / `waitForSignIn` (snake_case in Python),
-  `SignInPrompt { deviceCode, userCode, verificationUri, verificationUriComplete, expiresIn,
-interval }`, `config.mintToken` → `{ token, expiresAt }`; Swift `PolarisKeyIdentity`; the three
-  transcripts.
+- **Interfaces:**
+  - `identity.beginSignIn`, `pollSignIn` and `waitForSignIn` (snake_case in Python);
+  - `SignInPrompt` with `deviceCode`, `userCode`, `verificationUri`, `verificationUriComplete`,
+    `expiresIn` and `interval`;
+  - `config.mintToken` returning `{ token, expiresAt }`;
+  - Swift's `PolarisKeyIdentity` target; the three transcripts.
 - An Electron host can now drive its bridge's `beginSignIn`/`pollSignIn` from the Node SDK instead of
   its own code. Kotlin (P6-05) and C# (X-01) replay the same transcripts.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1b-08 done`.

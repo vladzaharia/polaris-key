@@ -7,7 +7,7 @@
 | Depends on  | [P4-12](P4-12-compat-resolution.md), [P4-08](P4-08-godot-packs.md)                                             |
 | Unblocks    | none (milestone: localisation, events and supporter packs)                                                     |
 | Role        | `pkey-implementer`                                                                                             |
-| Plan mode   | no, provided `provides[]` and `removes[]` already exist as optional record fields (see Design notes)           |
+| Plan mode   | no, because P4-01 reserved `provides[]` and `removes[]` in the pack record (see Design notes) |
 | Gates       | none in the graph; in practice rule 9 for the deliverable's `provides` policy, and every SDK for `isAvailable` |
 | Human input | none                                                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                                                      |
@@ -82,8 +82,8 @@ saves and support). `provides` also backs Diceroll's `Content.available()` and `
   levels, it is a `contentApi` bump and the check passes. The failure names each dropped id and
   the levels affected. `removes` ids that `P` never provided are a warning, not a failure.
 - **Wire and size, a stop condition.** CONTENT §6.9 puts `provides[]` and `removes[]` in the pack
-  release record as optional fields. If the v4 plan (P3-01, P4-01) did not reserve them, adding
-  them is a wire change: stop and escalate to a plan. The record payload cap is 65,536 bytes in v3
+  release record as optional fields, and P4-01's plan reserves both (decision 2). If the approved
+  plan did not, adding them is a wire change: stop and escalate to a plan. The record payload cap is 65,536 bytes in v3
   (`docs/security/WIRE-CONTRACT-V3.md` §1). Measure a realistic registry (Diceroll's content ids).
   If `provides` would not fit, moving it to a hash-pinned artifact is also a wire change: escalate
   rather than truncate.

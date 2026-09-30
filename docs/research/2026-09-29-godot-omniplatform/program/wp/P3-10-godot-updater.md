@@ -8,7 +8,7 @@
 | Unblocks    | [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md), [P5-07](P5-07-desktop-plugins.md), [D-03](D-03-diceroll-after-p3.md) |
 | Role        | `pkey-godot-engineer` (see `.claude/agents/`)                                                                                              |
 | Plan mode   | no                                                                                                                                         |
-| Gates       | none in the graph; follows `stage-matrix.json` for the `GUARD` and `DECIDE` stages where [P1-09](P1-09-boot-stage-machine.md) defines them |
+| Gates       | none in the graph; `stage-matrix.json` boot-guard rows must already exist (planned in P3-01, emitted by P3-02), else this is a corpus change that needs a plan first |
 | Human input | none required. A Windows machine or CI runner to measure the sidecar rename                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                  |
 
@@ -66,9 +66,11 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   interface (proposed `PKeyOutletAdapter`: `id()`, `capabilities()`,
   `apply(decision) -> result`). `store` opens the decision's listing or deep link; `platform`
   shows the outlet's own message; `binary` dispatches on `method`.
-- **Native hook interfaces** (proposed `PKeySparkleBridge`, `PKeyVelopackBridge`,
-  `PKeyWinSparkleBridge`): `is_available()`, `check_now()`, `install_and_relaunch()`, with feed
-  URLs from discovery. Stubs return the typed unsupported result (`dependency`), and the adapter
+- **Native hook interfaces** in the mechanism scripts README §5.1 names
+  (`distribution/outlets/{sparkle,velopack}.gd`, plus `winsparkle.gd`), which
+  [P5-07](P5-07-desktop-plugins.md) expects (proposed classes `PKeySparkleBridge`,
+  `PKeyVelopackBridge`, `PKeyWinSparkleBridge`): `is_available()`, `check_now()`,
+  `install_and_relaunch()`, with feed URLs from discovery. Stubs return the typed unsupported result (`dependency`), and the adapter
   falls back to a download link.
 - **AppImage**: when `APPIMAGE` is set and `appimageupdatetool` is available, run it through
   `OS.execute` and restart; otherwise a download link.
@@ -112,8 +114,12 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   Override packs at `_init()` are not used for code (option 4).
 - **Adapters are per outlet, mechanisms are not outlets.** README §5.1's file list mixes outlet
   ids (`app_store`, `steam`) with updater mechanisms (`velopack`, `sparkle`, `appimage`, `apk`).
-  Key the adapters on the README §3.1 outlet ids the plan fixes, and put the mechanisms behind
-  `binary.method` and the bridges.
+  Key the adapters on the README §3.1 outlet ids the plan fixes (`direct.gd`, `app_store.gd`,
+  `ms_store.gd`, …), and keep the mechanisms as the bridge scripts that `binary.method` reaches.
+- **Guard rows come from the plan.** [P1-09](P1-09-boot-stage-machine.md) leaves the boot-guard
+  rows of `stage-matrix.json` to this package "under its own plan". P3-01 is asked to plan them
+  (its item 20) so P3-02 emits them. If they are missing when you start, stop and escalate:
+  adding them here would make this a corpus-touching, plan-mode change.
 - **Capabilities only narrow.** The compiled outlet defaults from P3-08 are the ceiling; the feed
   can lower them. A store, Steam or itch build can never be talked into self-updating code.
 - **Verify, then act.** Godot never checks a PCK's own hashes, so the SDK verifies the staged file
@@ -159,10 +165,10 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
 
 ## Verify
 
-Run the Godot suites with P1-01's runner command on the editor and on a release template, then
-check that only explanatory comments mention the relaunch flags:
-
 ```sh
+# P1-01's runner: the editor, then a release template
+GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh
+# only explanatory comments may mention the relaunch flags
 grep -rn -e '--main-pack' -e '"--path"' -e '"--scene"' sdks/godot/addons/polaris_key
 ```
 

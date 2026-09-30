@@ -55,16 +55,18 @@ pipeline as R2 events → Queue → Workflow → Container ([CONTENT §16](../..
 
 **In:**
 
-- Telemetry: if P4-06, P4-07, P4-08 or P4-11 did not already add it, a bounded report key for
-  pack install outcomes, added to `REPORT_KEYS` with a test in `register.test.ts` and the report
-  schema in the OpenAPI spec.
+- Telemetry: a bounded report key for pack install outcomes, added to `REPORT_KEYS` beside the
+  `packSetId` key P4-02 added, with a test in `register.test.ts` and the report description in the
+  OpenAPI spec (it counts "fifteen top-level keys"; update the count). The SDKs send it; if
+  P4-06, P4-07, P4-08 or P4-11 did not already emit it, add the emission in `client-core` and flag
+  the other SDKs as a follow-up.
 - A demand store and the hot-pair policy, active only for products whose `.pkey/release` sets
   `patch.deltaBases: hot-pairs` (README §3.12).
 - Producers: an R2 event-notification rule on the payload prefix (a new target payload) and a
   daily sweep in `scheduled.ts` (pairs that turned hot), both enqueuing to one Queue.
 - A Queue consumer that starts a Workflow per pair, and the Workflow `DeltaWorkflow`.
-- A Container image (the zstd CLI plus a small HTTP entrypoint) that streams both payloads from
-  R2, produces the frame, verifies it by decoding, and uploads it.
+- A Container image (the zstd CLI at the version P4-03 pins, plus a small HTTP entrypoint) that
+  streams both payloads from R2, produces the frame, verifies it by decoding, and uploads it.
 - The descriptor stored as a server-generated delta, included in update's delta menu.
 - Marking cold lazy deltas for P4-14's GC; per-product daily caps; a feature flag.
 - `wrangler.toml` bindings per environment, and `docs/DEPLOYMENT.md` and `docs/RUNBOOK.md` entries.

@@ -39,7 +39,9 @@ worse than missing docs here: adopters (and agents, AGENTS.md rule 11) build on 
 
 ## Scope
 
-**In** (each row is a claim, the code that contradicts it, and the fix):
+**In** (each row is a claim, the code that contradicts it, and the fix; short docs paths are
+under `packages/docs/src/content/docs/`, short code paths under `packages/worker/src/` and its
+`services/release/` or `services/update/` directories):
 
 | Claim                                                                                            | Where                                                                                                             | What the code does                                                                                                                                                                                                                       | Fix                                                                                                 |
 | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |

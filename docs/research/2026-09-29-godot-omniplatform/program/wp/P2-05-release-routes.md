@@ -69,7 +69,8 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
     included), immutable;
   - `GET /{product}/release/blobs/sha256/{hash}`: a content-addressed object, only if an artifact
     of **this** product references it.
-  Location order: R2 (`blobResponse`) → GitHub (`streamAsset`) → `external` (302). A
+  All three answer `GET` and `HEAD`. Location order: R2 (`blobResponse`) → GitHub
+  (`streamAsset`) → `external` (302). A
   `?redirect=1` request for a public artifact of a public repository may get a 302 to GitHub
   instead of a stream. Register all three on the bytes-host allowlist.
 - **GitHub caching:** release resolution cached 60–120 s per (product, selector), and GitHub's

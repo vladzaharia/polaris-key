@@ -47,8 +47,9 @@ item 13). The graph marks this package as the milestone "Content ships between a
   `rest.length === 1`), `packages/worker/src/services/update/admin.ts`,
   `packages/worker/src/admin/api.ts` (session, CSRF and rate-limit gates run there), and the
   `NARRATIVE_ONLY` set in `packages/worker/test/routeCoverage.test.ts`.
-- The P4-12 hook functions and, if landed, P4-13's feed composer (narrowing, floors, revocations)
-  and P4-14's rollout and readiness data.
+- The P4-12 hook functions; P3-03's feed composer and its per-outlet view in
+  `packages/worker/src/services/update/`; and, if landed, P4-13's additions to it (narrowing,
+  floors, revocations) and P4-14's rollout and readiness data.
 
 ## Scope
 

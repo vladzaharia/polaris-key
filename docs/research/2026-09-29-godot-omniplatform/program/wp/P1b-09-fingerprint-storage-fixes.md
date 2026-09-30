@@ -153,9 +153,15 @@ but Python does too), and `~/.config` on macOS in Swift by design (`Store.swift:
 - Node's `KeyringStore` swallows every keyring failure and uses the file (`store.ts:139-210`). Inside
   a Node single-executable build the addon cannot load at all.
 - Python's `KeyringStore` does the same when the optional `keyring` extra is missing.
-- **Recommend** an optional `status(): Promise<StoreStatus>` on the `client-core` `Store` interface,
-  with `StoreStatus = { backend: "keyring" | "keychain" | "file" | "memory" | "indexeddb";
-degraded?: { reason: "keyring-unavailable" | "keyring-error" | "legacy-keychain"; detail?: string } }`.
+- **Recommend** an optional `status(): Promise<StoreStatus>` on the `client-core` `Store` interface:
+
+  ```text
+  StoreStatus = {
+    backend: "keyring" | "keychain" | "file" | "memory" | "indexeddb";
+    degraded?: { reason: "keyring-unavailable" | "keyring-error" | "legacy-keychain"; detail?: string };
+  }
+  ```
+
 - Clients expose it: Node `client.storeStatus()`, Python `store_status()`, and Swift maps it beside
   `storeFailure()`.
 - Detect a single-executable build with `node:sea`'s `isSea()`.

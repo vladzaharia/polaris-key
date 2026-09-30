@@ -8,7 +8,7 @@
 | Unblocks    | none                                                                                                                           |
 | Role        | `pkey-implementer`                                                                                                             |
 | Plan mode   | no: the stored artifact and the descriptor do not change; `dcz` framing is added at the edge                                   |
-| Gates       | none in the graph; rule 10 if the blob route gains a path or its documented headers change; needs the Chromium runner (P1b-05) |
+| Gates       | none in the graph; in practice rule 10 (the payload URL is a new route: OpenAPI, `routeCoverage`, `routes.mdx`) and the Chromium runner (P1b-05) |
 | Human input | none                                                                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                                                                      |
 
@@ -17,10 +17,11 @@
 In Chromium, a pack update whose plan is a `zstd-patch-from` delta downloads only the delta.
 Distribution serves the stored bare frame with `Content-Encoding: dcz` and a 40-byte header
 derived from `from` whenever the browser advertises the installed payload as a dictionary. The
-React SDK verifies the decoded payload's SHA-256 against the record. It falls back to the
-decoder-only libzstd WASM build (raw-content prefix) with the installed payload from OPFS, and
-then down the plan, when `dcz` is not offered: the dictionary was evicted, the payload is over
-100 MiB, or the browser is Firefox or Safari.
+React SDK verifies the decoded payload's SHA-256 against the record. It falls back to
+`@polaris-key/zstd-wasm` (P4-06's decoder-only libzstd, raw-content prefix) with the installed
+payload from OPFS, and then down the plan, when `dcz` is not offered: the dictionary was evicted,
+the payload was never fetched whole, it is over 100 MiB, it is gated, or the browser is Firefox
+or Safari.
 
 ## Why
 
@@ -53,17 +54,20 @@ That moves README P4 v3's "web Compression Dictionary Transport" from speculativ
 
 **In:**
 
-- Worker (distribution's byte route):
-  - responses for ungated pack payloads of at most 100 MiB carry `Use-As-Dictionary` with a
-    per-(pack, variant) `match` pattern;
-  - a request for a target payload whose `Available-Dictionary` equals the SHA-256 of the `from`
-    of a published `zstd-patch-from` delta to that target is answered with
-    `Content-Encoding: dcz`, the body `5E 2A 4D 18 20 00 00 00 ‖ from (32 bytes) ‖ artifact`
-    streamed from R2, and `Vary: Accept-Encoding, Available-Dictionary`;
-  - otherwise the response is unchanged.
+- Worker (distribution), a **payload URL** per (pack, variant, payload SHA-256) beside the
+  hash-addressed blob route:
+  - it serves the _decoded_ payload to browsers by streaming the stored `full` object (one zstd
+    frame) with `Content-Encoding: zstd`, only when `Accept-Encoding` includes `zstd`; otherwise it
+    refuses (`406`) and the SDK uses the blob route and the WASM decoder;
+  - for ungated payloads of at most 100 MiB it adds `Use-As-Dictionary` with a per-(pack, variant)
+    `match` pattern;
+  - when `Available-Dictionary` equals the SHA-256 of the `from` of a published `zstd-patch-from`
+    delta to the requested payload, it answers `Content-Encoding: dcz` with the body
+    `5E 2A 4D 18 20 00 00 00 ‖ from (32 bytes) ‖ artifact` streamed from R2, and
+    `Vary: Accept-Encoding, Available-Dictionary`;
+  - rule 10: the new path gets an OpenAPI entry and a `routeCoverage` entry; `routes.mdx` is
+    regenerated.
 - React SDK: the `dcz` path for a planned `delta`, output verification, and the fallback chain.
-- The vendored decoder-only libzstd WASM, if P4-06 shipped a different zstd WASM: build script,
-  committed `.wasm`, hash check and licence notice.
 - Playwright tests in the Chromium job; docs for adopters on what the web gets.
 
 **Out** (and where it belongs instead):
@@ -79,14 +83,21 @@ That moves README P4 v3's "web Compression Dictionary Transport" from speculativ
 - **The header is derivable from `from` alone**: the 8-byte `dcz` magic followed by the 32-byte
   SHA-256 of the dictionary (A7 §9.3). No base bytes are read, and the stored artifact stays the
   portable bare frame (A7 §7.3: most decoders mishandle a `dcz` body).
+- **Why a separate payload URL.** The browser's dictionary is the response body _after_ content
+  decoding, and a `--patch-from` delta's base is the decoded payload (`from` is its SHA-256).
+  P4-05 serves every stored object on the blob route as opaque bytes with no `Content-Encoding`
+  (so `Range` and hashes stay intact), which would make the dictionary the compressed frame, not
+  the payload. The payload URL is full-body only (no `Range`), `no-transform`, and leaves the blob
+  route unchanged. A7 §9.1: a full blob served with `Content-Encoding: zstd` needs no WASM in
+  Chromium, which is a second win.
 - **Match patterns must be specific.** RFC 9842 has the browser pick the dictionary with the
   longest matching `match` pattern, then the most recent. A product-wide pattern would advertise
-  another pack's payload. Serve payloads under a per-(pack, variant) path prefix and match on that
-  prefix. If the blob route today is only `…/distribution/blob/<sha>`, this adds a path form:
-  that is rule 10 (OpenAPI + `routeCoverage`), and the regenerated `routes.mdx`.
+  another pack's payload. Put the pack and variant in the payload URL's path (proposed
+  `…/distribution/packs/<packId>/<variant>/payload/<sha256>`) and match on that prefix.
 - **Only fetched payloads are dictionaries.** A payload assembled by chunk sync in OPFS was never
   fetched whole, so the browser has no dictionary for it. `dcz` helps when the installed payload
-  was a `full` fetch still in the HTTP cache, which is also the Godot-web pattern (CONTENT §10:
+  was a `full` fetch through the payload URL still in the HTTP cache, which is also the Godot-web
+  pattern (CONTENT §10:
   fetch large packs each session from immutable URLs). The dictionary lives in the evictable HTTP
   cache, so always verify SHA-256(output) = `to` in JavaScript (A7 §9.3).
 - **Limits.** Dictionaries over 100 MiB are never offered (Chromium's `kDictionarySizeLimit`), and
@@ -105,38 +116,35 @@ That moves README P4 v3's "web Compression Dictionary Transport" from speculativ
   and varies the cache but never computes deltas (E5 §4.1). Gated responses stay
   `private, no-store`, which a browser cannot keep as a dictionary, so gated packs use the WASM
   path; say so in the adopter docs.
-- **WASM fallback.** The decoder-only libzstd build (zstd 1.5.7 `lib/common` + `lib/decompress`,
-  `clang --target=wasm32 -nostdlib -ffreestanding -mbulk-memory`, a 46-line shim) is 68,949 B
-  (24,110 B gzipped), passes all A7 cases in Node and Chromium, handles the magic base and a
-  153 MiB window, and is about twice as fast as `@bokuweb/zstd-wasm` (A7 §9.5). It uses
-  `ZSTD_DCtx_refPrefix` with an explicit window limit. Commit the build script and the `.wasm`
-  with a SHA-256 check test and the BSD-3-Clause notice.
+- **WASM fallback.** Reuse `@polaris-key/zstd-wasm` from P4-06 (the decoder-only libzstd 1.5.7
+  build of A7 §9.5: 68,949 B, 24,110 B gzipped, `ZSTD_DCtx_refPrefix` with an explicit window
+  limit, immune to the magic-base trap). If P4-06 shipped a different decoder, stop and raise it
+  rather than vendoring a second one here.
 - **Planner.** `dcz` is how the `delta` strategy executes in Chromium, not a new strategy. Bytes
   are the artifact plus 40; the request count is 1. The fallback order after a failed `dcz`
   attempt is WASM delta, then the plan's remaining candidates.
 
 ## Steps
 
-1. Worker: `Use-As-Dictionary` on payload responses, `dcz` on matching requests, the optional
-   `409` guard, headers and caching; Worker tests.
-2. React SDK: `dcz` fetch in the OPFS worker, verification, fallback chain.
-3. The WASM decoder vendoring (if needed) and its checks.
-4. Playwright tests: dictionary offered and used; evicted or absent dictionary falls back; over
-   100 MiB never offered; cross-origin with CORS.
-5. Adopter docs; the green gate.
+1. Worker: the payload URL (rule 10), `Content-Encoding: zstd` streaming, `Use-As-Dictionary`,
+   `dcz` on matching requests, the optional `409` guard, headers and caching; Worker tests.
+2. React SDK: `full` via the payload URL when available, the `dcz` path in the OPFS worker,
+   verification, fallback chain.
+3. Playwright tests: dictionary offered and used; evicted or absent dictionary falls back; over
+   100 MiB never offered; gated payload never offered; cross-origin with CORS.
+4. Adopter docs; the green gate.
 
 ## Acceptance criteria
 
-- [ ] Worker tests: a payload response carries `Use-As-Dictionary` with the per-(pack, variant)
-      pattern and none above 100 MiB; a request with a matching `Available-Dictionary` returns
-      `Content-Encoding: dcz`, the 40-byte header and the stored artifact, with
-      `Vary: Accept-Encoding, Available-Dictionary`; a non-matching header returns the plain payload.
+- [ ] Worker tests: the payload URL streams the stored frame with `Content-Encoding: zstd` and
+      `Use-As-Dictionary` (the per-(pack, variant) pattern; none above 100 MiB or for gated
+      packs); a request with a matching `Available-Dictionary` returns `Content-Encoding: dcz`,
+      the 40-byte header and the stored artifact, with `Vary: Accept-Encoding, Available-Dictionary`;
+      a non-matching header returns the plain payload; the blob route's responses are unchanged.
 - [ ] In the Chromium job, the React SDK updates A7's v1 → v2 vector via `dcz`, downloading
       artifact + 40 bytes and producing v2's SHA-256; with the dictionary cleared it falls back to
       the WASM delta; with a corrupted artifact it falls back further and reports the failure.
-- [ ] The vendored `.wasm` matches its recorded SHA-256 and passes the content corpus's delta cases
-      in Node and Chromium.
-- [ ] If a route path was added: `routeCoverage.test.ts` and the OpenAPI spec are updated and
+- [ ] `routeCoverage.test.ts` and the OpenAPI spec cover the payload URL, and
       `pnpm --filter @polaris-key/docs gen:check` passes.
 - [ ] The green gate passes (`AGENTS.md`), including the workerd smoke job.
 - [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).

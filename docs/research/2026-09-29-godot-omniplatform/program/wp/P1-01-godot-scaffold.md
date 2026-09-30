@@ -110,7 +110,8 @@ and devices.
   [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) #19)
   (→ [P3-02](P3-02-wire-v4-contract-corpus.md)).
 - Web, Android and iOS runs of the runner (unowned; see Hand-off).
-- `sdks/godot/parity.json` (→ after [P1b-01](P1b-01-parity-registry.md), filled by P1-02 onwards).
+- Filling `sdks/godot/parity.json` (→ P1-02 onwards). If [P1b-01](P1b-01-parity-registry.md) has
+  already landed, create the manifest here with every entry `planned`; otherwise P1b-01 creates it.
 
 ## Design notes
 

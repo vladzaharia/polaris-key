@@ -92,7 +92,7 @@ grows forever without GC, and on Apple the asset-pack quotas make retirement rou
     stands in;
   - `msix-optional` and `flatpak-ext` use CI-reported availability.
 - **Holding.** Where Polaris Key is authoritative (self-hosted rollouts: direct downloads,
-  sideload sources, the F-Droid relay, web), distribution's availability hook answers "not live"
+  sideload sources, the F-Droid relay, web), distribution's `delivery` hook (P2b-01) answers "not live"
   until readiness is `ready`, so neither update's feed nor the storefront feeds offer the release
   there. On store outlets, record the blocker and warn; where Polaris Key cannot hold a release (a
   manual store release) it only warns (CONTENT §6.4).
@@ -142,7 +142,7 @@ rollout_bp, rollout_salt, state, mirrored, source)` from P2b-04, which is alread
 ## Steps
 
 1. Migration, `TABLE_OWNERS`, regenerated `data-model.mdx`.
-2. Readiness: computation per transport, triggers, availability-hook effect, override, admin API
+2. Readiness: computation per transport, triggers, the `delivery`-hook effect, override, admin API
    and matrix blockers.
 3. Pack rollouts and halts: admin operations, CLI, feed composition.
 4. GC: reference collection through the P4-12 and distribution hooks, mark and sweep in

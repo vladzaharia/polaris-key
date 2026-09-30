@@ -74,9 +74,10 @@ S3TC-only pack is applied on arm64 Linux (§9.2 #12) ([README §9.2](../../READM
   and web builds stay lean and fetch through `pkey-cdn`. Transports stay `embedded` and `pkey-cdn`
   in this step.
 - **Game:** `PKeyBoot` as the boot scene, with BootShell's visuals connected to its stage signals
-  (the design's SHELL → VERIFY → FETCH → MOUNT\_\* → READY map onto `PKeyBoot`'s stages);
+  (the design's `SHELL` → `VERIFY` → `FETCH` → `MOUNT_*` → `READY` states map onto `PKeyBoot`'s
+  stages);
   `Content.available()` and `Content.missing()` read `PolarisKey.update.packs` state through
-  `needs.gd`; route prefetch ("Downloading Magma Depths (6 MB)…") uses the SDK's `ensure`.
+  `needs.gd`; route prefetch ("Downloading Magma Depths (6 MB)…") uses `PolarisKey.update.packs.ensure`.
 - The Auto-update setting maps to "no background downloads" and never stops mounting installed
   packs (fixes §9.2 #10).
 

@@ -66,8 +66,9 @@ TestFlight and App Store installs can be told apart only at run time, through `A
 - The Android AAR (P5-06) in the Play flavour: In-App Updates (flexible or immediate by the priority
   the Play connector sets) and PAD packs; the direct flavour is unchanged.
 - The supporter item: products in App Store Connect and Play Console mapped to
-  `diceroll.supporter.skins`; purchase through StoreKit 2 (with the Polaris user id as
-  `appAccountToken`) and `godot-google-play-billing`; `PolarisKey.commerce.claim` after purchase; a
+  `diceroll.supporter.skins`; purchase through StoreKit 2 and `godot-google-play-billing`, passing
+  the licence's binding UUID from `PolarisKey.commerce.get_binding()` as Apple's
+  `appAccountToken` and Play's `obfuscatedAccountId`; `PolarisKey.commerce.claim` after purchase; a
   restore action; the pack unlocked by `PolarisKey.license.is_entitled("extras.diceSkins")`.
 - Outlet detection through `AppDistributor` replaces the stamp for TestFlight versus App Store.
 

@@ -59,9 +59,9 @@ deliverables, `pinned` packs and `contentApi` on app records; this adds the othe
 **In:**
 
 - A pack module `packages/worker/src/services/release/packs/` (README decision 1 guardrail):
-  `resolve.ts` (pure), `checks.ts`, `holds.ts` and storage, behind the descriptor hook (README
-  §3.2 calls it `releaseCatalog`, README §10 `buildCatalog`; use the name P2b-01 landed). P4-02
-  started this module; extend it.
+  `resolve.ts` (pure), `checks.ts`, `holds.ts` and storage, exposed through the `releaseCatalog`
+  descriptor hook (P2b-01; implemented in `services/release/catalog.ts`). P4-02 started this
+  module; extend it.
 - A migration adding `release_sets`, `release_holds` and pack floors keyed per `contentApi`, with
   `TABLE_OWNERS.release` updated and `data-model.mdx` regenerated.
 - Resolution and its triggers; `packSetId`; hold mirroring at app-record ingest.
@@ -211,8 +211,7 @@ mise exec node@22 -- pnpm typecheck
 
 Downstream packages rely on these names (propose, then keep):
 
-- Hook functions (on the descriptor hook, whatever P2b-01 named it):
-  `liveLevels(product, appDeliverable, channel)`,
+- `releaseCatalog` hook functions: `liveLevels(product, appDeliverable, channel)`,
   `packSets(product, channel)` (rows of `release_sets` with `set_json` and `unsatisfied`),
   `packFloors(product, channel)` and `holdsFor(product, appReleaseId)`; `packSetId` as defined
   above.
