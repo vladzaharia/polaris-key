@@ -103,7 +103,7 @@ order is contract → catalog → corpus → every SDK:
 
 - Canonical names: `stable`; `beta`; `pr-<n>` (`pr` as the family grant); manual names in
   `^[a-z0-9][a-z0-9-]{0,63}$`, the intersection of the manifest's `CHANNEL_RE`
-  (`shared-manifest/src/index.ts:347`, which also allows `A-Z`, `.` and `_`) and the feed routes'
+  (`shared-manifest/src/index.ts:361`, which also allows `A-Z`, `.` and `_`) and the feed routes'
   `^[a-z0-9-]+$` (`update/routes.ts:20`, `router.ts:181`, which has no length bound).
 - Header normalisation: `stable` and `latest` → `stable`; `beta` → `beta`; `staging` → `beta`;
   `pr` or `pr-<n>` → `pr-<n>`; `dev` → `dev` (gate-only pseudo-channel for `0.0.0-dev*` builds,
