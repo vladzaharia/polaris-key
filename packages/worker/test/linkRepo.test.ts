@@ -309,6 +309,58 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(parseManualChannels(after?.manual_channels_json)).toEqual([canary]);
   });
 
+  it("persists web.origins on link, rewrites it on resync, and clears it when dropped (P0-05)", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    const productWith = (web: unknown) =>
+      JSON.stringify({ ...JSON.parse(PRODUCT_JSON), web });
+    const linked = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": productWith({
+        origins: ["https://play.acme.example", "http://localhost:8060"],
+      }),
+    });
+    expect(
+      (await linkRepo(env, db, "acme-org/acme-app", NOW, linked.fetchImpl)).ok,
+    ).toBe(true);
+    expect((await getProduct(db, "acme"))?.web_origins_json).toBe(
+      JSON.stringify(["https://play.acme.example", "http://localhost:8060"]),
+    );
+
+    const moved = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": productWith({ origins: ["https://acme.example"] }),
+    });
+    expect(
+      (await resyncRepo(env, db, "acme", NOW + 1, moved.fetchImpl)).ok,
+    ).toBe(true);
+    expect((await getProduct(db, "acme"))?.web_origins_json).toBe(
+      JSON.stringify(["https://acme.example"]),
+    );
+
+    // Dropping the block is a real edit, not "leave it as it was": no origin is allowed.
+    const dropped = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+    });
+    expect(
+      (await resyncRepo(env, db, "acme", NOW + 2, dropped.fetchImpl)).ok,
+    ).toBe(true);
+    expect((await getProduct(db, "acme"))?.web_origins_json).toBeNull();
+
+    // A bad origin is a manifest error: resync refuses and the stored list is untouched.
+    const bad = stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": productWith({
+        origins: ["https://*.acme.example"],
+      }),
+    });
+    expect((await resyncRepo(env, db, "acme", NOW + 3, bad.fetchImpl)).ok).toBe(
+      false,
+    );
+    expect((await getProduct(db, "acme"))?.web_origins_json).toBeNull();
+  });
+
   it("discovers the install + imports a JSON .pkey/ → product + schema + release + sealed key", async () => {
     const db = makeTestDb();
     const env = envFor();

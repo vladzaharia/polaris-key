@@ -271,7 +271,9 @@ curl -X PATCH https://key.plrs.im/manage/api/products/djdl/update/settings \
 
 `public` stays the default: anonymous update checking is a feature for the products that want it.
 The same endpoint owns `compatMin`/`compatMax`, the global window every grant is intersected
-with.
+with. Saving either block claims it for the operator, so a later `.pkey/` push no longer rewrites
+it — `entitled` survives the next resync; `POST …/update/settings/revert` with
+`{"fields":["access"]}` hands it back.
 
 ## 7. Cut over
 

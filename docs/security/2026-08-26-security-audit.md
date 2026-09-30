@@ -247,7 +247,7 @@ release blocker, not because a lane graded it Critical.
 | R11-02 | Seat consumption is check-then-act; a `<= 0` device limit disables the check outright                   | `packages/worker/src/licenseCore.ts:336-352`                                                  | **Fixed-partial**                     | `R11-data.test.ts` → `describe("R11-03 seat-count race")` ×2. DB half shipped (`0014_device_seats.sql`); call site still check-then-act                  |
 | R12-02 | Managed secret values stored PLAINTEXT in D1 while every other secret class is KEK-sealed               | `packages/worker/src/admin/lib/overrides.ts:40-66`                                            | **Fixed** †                           | `R12-secrets.test.ts` → `it("FIXED: kind:'secret' and secret-flagged config are sealed in profiles.payload_json")`; new `admin/lib/managedSecrets.ts`    |
 | R12-03 | Live GitHub App installation token cached in KV unencrypted                                             | `packages/worker/src/release/githubApp.ts:230-238`                                            | **Reported**                          | `R12-secrets.test.ts` → `it("CONFIRMED: the raw bearer token is readable from a KV dump")`                                                               |
-| R12-04 | Magic-link token / OIDC `state` / device code used verbatim as KV key names                             | `packages/worker/src/portal/auth.ts:353`; also `oidc.ts:508,584,626,814`, `admin/auth.ts:168` | **Fixed** †                           | `R12-secrets.test.ts` → `it("CONFIRMED: the magic-link token IS the KV key and the victim email is the value")`; fix marker `admin/auth.ts:36`           |
+| R12-04 | Magic-link token / OIDC `state` / device code used verbatim as KV key names                             | `packages/worker/src/portal/auth.ts:353`; also `oidc.ts:508,584,626,814`, `admin/auth.ts:168` | **Fixed**                             | `R12-secrets.test.ts` → `R12-04`, four `FIXED:` sign-in cases on a recording KV; keys hashed in `oidc.ts`, `portal/auth.ts`, `admin/auth.ts`             |
 | R12-07 | Python README pins a COMMITTED test keypair as a production trust anchor                                | `sdks/python/README.md:28,34,109`                                                             | **Reported**                          | `R12-secrets.test.ts` → `it("CONFIRMED: a doc forged with the committed private key verifies against the README's TRUST map")`                           |
 
 † **Divergences from the lane documents in this group.** R5 has no `## Remediation` section and
@@ -261,7 +261,10 @@ exists. R7-03 was closed incidentally by the R10-01 remediation, which removed `
 (`packages/shared-catalog/package.json:23` is now `"dependencies": {}`); this also resolves the only
 production-reachable advisory chain in R7-07. R10-02 was closed by the R6 lane, R10-03/R10-04b by
 the R1 lane, R12-02/R12-04 by lanes that did not update `R12-secrets.md` (which has no Remediation
-section at all — on its own terms all 17 of its findings read as open).
+section at all — on its own terms all 17 of its findings read as open). The first R12-04 lane
+hashed the admin flow key only; work package P0-13 later hashed the product OIDC, device-code,
+portal OIDC and magic-link keys and added a status note to `R12-secrets.md`, so R12-04 no
+longer carries a †.
 
 ### 3.3 Medium (68)
 

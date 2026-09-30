@@ -65,8 +65,9 @@ Each rendered `<item>` carries:
 - **`sparkle:version`** and **`sparkle:shortVersionString`** — both taken from the release
   tag. Polaris Key doesn't distinguish a marketing version from a separate build number;
   the tag is the version, in both fields.
-- **`sparkle:minimumSystemVersion`** — present only when the product's artifact policy
-  declares one, and only after its value passes a shape check (Sparkle compares it, never
+- **`sparkle:minimumSystemVersion`** — present only when an operator set a minimum macOS
+  version in [Update settings](/docs/services/update/eligibility/#the-console-update-settings)
+  (no manifest can declare it), and only after its value passes a shape check (Sparkle compares it, never
   displays it, so a value it can't parse would silently make every update ineligible).
 - **`<description>`** — the same curated changelog summary the changelog endpoint extracts
   (see Release's [Artifacts](/docs/services/release/artifacts/) page), HTML-escaped and
@@ -120,7 +121,10 @@ see [Swift client & Sparkle](/docs/services/update/sparkle/) for why.
 :::
 
 Whether a product requires a signature at all is an operator-only setting — a `.pkey/`
-manifest push can declare a Sparkle public key, but it can never turn the _requirement_ off.
+manifest push can declare a Sparkle public key, but it can never turn the _requirement_ off, and
+it can never turn an operator's deliberate "off" back on either: the setting lives in its own
+column that no resync writes. The console's Update settings view asks for confirmation before
+switching it off, and the change is audited as `release.policy.update`.
 A product with no key configured and no requirement set ships an unsigned appcast item on
 purpose; that combination has to be chosen deliberately by whoever configures the release,
 not by whatever the repository happens to contain.
