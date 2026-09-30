@@ -466,6 +466,58 @@ describe("pinned lookups of unprefixed tags", () => {
   });
 });
 
+describe("the appcast refuses a bare-tag / v-tag ambiguity (P2-03)", () => {
+  const appcast = (gh: ReturnType<typeof github>, db: Db) =>
+    handleReleaseSurface(
+      req(`https://key.plrs.im/${SLUG}/update/appcast.xml`),
+      envFor(),
+      db,
+      product(),
+      "appcast",
+      { arch: "arm64" },
+      gh.fetchImpl,
+    );
+
+  it("404s when latest picks bare 1.2.0 but the enclosure would resolve v1.2.0", async () => {
+    const db = makeTestDb();
+    await seed(db);
+    // `v1.2.0` was cut first; `1.2.0` re-tagged later and is what `latest` picks.
+    const gh = github({
+      releases: [
+        release("1.2.0", {
+          published_at: "2026-01-03T00:00:00Z",
+          assets: [asset("djdl-arm64.dmg", 601)],
+        }),
+        release("v1.2.0", {
+          published_at: "2026-01-02T00:00:00Z",
+          assets: [asset("djdl-arm64.dmg", 602)],
+        }),
+      ],
+    });
+    const res = await appcast(gh, db);
+    expect(res.status).toBe(404);
+    expect(gh.calls).toContain(`${API}/releases/tags/v1.2.0`);
+  });
+
+  it("serves a v-tagged item without the extra lookup", async () => {
+    const db = makeTestDb();
+    await seed(db);
+    const gh = github({
+      releases: [
+        release("v1.2.0", { assets: [asset("djdl-arm64.dmg", 603)] }),
+        release("1.2.0", {
+          published_at: "2026-01-01T00:00:00Z",
+          assets: [asset("djdl-arm64.dmg", 604)],
+        }),
+      ],
+    });
+    const res = await appcast(gh, db);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("/release/dl/1.2.0/djdl-arm64.dmg");
+    expect(gh.calls.filter((u) => u.includes("/releases/tags/"))).toEqual([]);
+  });
+});
+
 // ── Upsert conflict ──────────────────────────────────────────────────────────
 
 describe("two tags that strip to the same version", () => {
@@ -731,5 +783,66 @@ describe("channel floors (R6-10)", () => {
       "release.channel.floor",
     );
     expect(audit).toHaveLength(2);
+  });
+
+  it("a stranded floor (channel removed, or no longer floored) can be cleared but not lowered", async () => {
+    const db = makeTestDb();
+    await seed(db);
+    const env = envFor();
+    env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
+    env.PLATFORM_ADMIN_GROUP = "platform-admins";
+    const { token, session } = await issueSession(
+      env,
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: ["platform-admins"],
+      },
+      NOW,
+    );
+    const post = (channel: string, body: unknown) => {
+      const path = `/api/products/${SLUG}/release/channels/${channel}/floor`;
+      return handleAdmin(
+        new Request(`https://key.plrs.im/manage${path}`, {
+          method: "POST",
+          headers: {
+            cookie: `${ADMIN_COOKIE}=${token}`,
+            [CSRF_HEADER]: session.csrf,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }) as unknown as Request,
+        env,
+        db,
+        path,
+        { now: NOW },
+      );
+    };
+    // `nightly` was a manual channel once; `beta` was floored before a channel workflow existed.
+    for (const channel of ["nightly", "beta"])
+      await db.run(
+        `INSERT INTO release_channel_floors (product, channel, version, release_id, raised_at)
+         VALUES (?, ?, '2.0.0', NULL, ?)`,
+        SLUG,
+        channel,
+        NOW,
+      );
+    await db.run(
+      "UPDATE release_config SET channel_workflow = 'release.yml' WHERE product = ?",
+      SLUG,
+    );
+
+    expect((await post("nightly", { version: "1.0.0" })).status).toBe(422);
+    expect((await post("beta", { version: "1.0.0" })).status).toBe(422);
+    expect((await getChannelFloor(db, SLUG, "beta"))?.version).toBe("2.0.0");
+
+    expect((await post("nightly", { clear: true })).status).toBe(200);
+    expect((await post("beta", { clear: true })).status).toBe(200);
+    expect(await getChannelFloor(db, SLUG, "nightly")).toBeNull();
+    expect(await getChannelFloor(db, SLUG, "beta")).toBeNull();
+    // Once cleared, an unknown channel is unknown again, and an unfloored one is refused.
+    expect((await post("nightly", { clear: true })).status).toBe(404);
+    expect((await post("beta", { clear: true })).status).toBe(422);
   });
 });
