@@ -69,27 +69,41 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   until re-approved. Resync deletes approvals for recipe ids the manifest no longer declares.
   _Correction (implementation):_ the table also carries `open_registration_acknowledged`
   (`INTEGER NOT NULL DEFAULT 0`). Whether the mint is public is product state, not a recipe
-  column, and a `.pkey/product` push can make it public without touching the recipe in two ways:
-  open registration (declare `devices.registration: open`, or turn License off with Identity
-  off), or enable anonymous `autoIssue` enrolment (`mode` `anonymous`/`both`), which hands any
-  caller a licence and a device token from `POST /<p>/license/enroll` while registration still
-  reads `requires-license`. Checking the acknowledgement only at approve time would let such a
-  push widen a closed-product approval into a public mint, so the flag is stored on the approval
-  and re-checked on every mint: while `mintIsPublic(product)` holds (either condition), an
-  approval without it does not match (404, reported `changed` with `registration` in
-  `changedFields`). The same predicate drives the approve route, the admin list (`publicMint`,
-  `anonymousEnroll`), discovery, the setup checklist and the console warning. The migration
-  backfill records `1` only where the mint was already public at deploy (a SQL mirror of
-  `mintIsPublic` over `services_json` and `auto_issue_json`) and `0` everywhere else, so a
-  closed product such as djdl keeps minting under today's policy but goes inert if a later push
-  makes it public.
+  column, and a `.pkey/product` push can make it public without touching the recipe in three
+  ways: open registration (declare `devices.registration: open`, or turn License off with
+  Identity off); enable anonymous `autoIssue` enrolment (`mode` `anonymous`/`both`), which hands
+  any caller a licence and a device token from `POST /<p>/license/enroll` while registration
+  still reads `requires-license`; or, with Identity on, enable an OIDC default tier (`mode`
+  `oidcDefault`/`both`), which licenses every account the IdP signs in. Checking the
+  acknowledgement only at approve time would let such a push widen a closed-product approval
+  into a public mint, so the flag is stored on the approval and re-checked on every mint: while
+  `mintIsPublic(product)` holds, an approval without it does not match (404, reported `changed`
+  with `registration` in `changedFields`).
+  _Correction (review):_ on a closed product sign-in is a second push-controlled route to a
+  device token — `activateFromIdentity` licenses any identity whose groups hit the manifest's
+  `groupRoleMap`, against the manifest's issuer and client id. So the table also records the
+  sign-in trust the approval was given under: `identity_enabled`, `oidc_provider`,
+  `oidc_issuer`, `oidc_client_id`, `oidc_group_role_map_json` (read through the Core seam
+  `core/identityTrust.ts`). While Identity is on, an approval matches only if they are unchanged
+  (group map compared structurally); otherwise it is `changed` with `identity` in
+  `changedFields`. Turning Identity off never invalidates. The approve body echoes `identity`
+  (409 if stale). One TypeScript rule, `approvalMismatch` in `services/config/mint.ts`, now
+  decides for the token route, discovery, the admin list and approve, and the setup checklist
+  (the earlier SQL join fragment is gone). The migration backfill records the acknowledgement
+  `1` only where the mint was already public at deploy (a SQL mirror of `mintIsPublic` over
+  `services_json` and `auto_issue_json`) and `0` everywhere else, and copies the sign-in trust
+  as deployed, so a closed product such as djdl keeps minting under today's policy but goes
+  inert if a later push makes it public or rewrites its OIDC trust. Residual, recorded in
+  THREAT-MODEL §3: the approval trusts the IdP itself — whoever it signs in with a mapped group
+  is covered.
 - **Admin API** under Config's admin handler (`services/config/admin/index.ts`):
   `GET /manage/api/products/<slug>/config/mint` (each recipe with status `approved`, `pending` or
   `changed`, its secret's usage, and the product's effective registration policy);
   `POST …/config/mint/<id>/approve` with the recipe fields echoed back (refused if they no longer
   match, so an operator never approves something they did not see) and, when the effective
   registration is `open`, `"acknowledgeOpenRegistration": true` (_correction:_ also when
-  anonymous auto-issue enrolment is on — see `mintIsPublic` above);
+  anonymous auto-issue enrolment or an OIDC default tier is on — see `mintIsPublic` above — and
+  the body also echoes the sign-in trust as `identity`);
   `POST …/config/mint/<id>/revoke`. Audit events `config.mint.approve`, `config.mint.revoke`,
   `secret.usage`.
 - **Per-device rate limit** in addition to the per-IP one: bucket `mintDevice`, keyed by device id,
@@ -156,10 +170,15 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
 - [x] Test: changing the recipe's `claimsTemplate`, `audience`, `alg`, `kid`, `ttlSeconds` or
       `signingKeySecret` by resync makes it `404` again; an unchanged resync keeps it approved.
 - [x] Test: approve with stale echoed fields is refused; approve on an `open` product without
-      `acknowledgeOpenRegistration` is refused (likewise with anonymous enrolment on).
+      `acknowledgeOpenRegistration` is refused (likewise with anonymous enrolment or an OIDC
+      default tier on).
 - [x] Test: after the migration, a djdl-shaped fixture (recipe + secret) mints exactly as before,
       and (review fix) goes `404` if a later push opens registration or enables anonymous
-      enrolment; a product already public at deploy keeps minting.
+      enrolment; a product already public at deploy keeps minting. djdl's real Identity setup
+      (platform provider, its group map) is recorded and a later OIDC rewrite goes `404`.
+- [x] Test (review fix): with Identity on, a resync that changes `oidc.issuer`, `oidc.clientId`
+      or `oidc.groupRoleMap`, or that turns Identity on, makes an approved closed recipe `404`
+      until re-approved; approve with a stale `identity` echo is `409`.
 - [x] Test: the per-device bucket returns `429` after 30 mints in a minute from one device.
 - [x] Test: discovery `config.mint.available` is false while every recipe is pending.
 - [x] `THREAT-MODEL.md` and `services/config/edge-mint.md` describe both conditions; `gen:check`,

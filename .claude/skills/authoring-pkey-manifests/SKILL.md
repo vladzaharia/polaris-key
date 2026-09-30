@@ -139,10 +139,12 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
       either. Changing a recipe's `alg`, `signingKeySecret`, `kid`, `claimsTemplate`,
       `ttlSeconds` or `audience` makes it inert again until it is re-approved; an unchanged
       resync keeps it approved; dropping it deletes its approval. So does a push that makes the
-      mint public — opens registration (`devices.registration: open`, or License turned off) or
-      enables anonymous `autoIssue` (`mode: anonymous`/`both`) — when the approval was given
-      without the open-registration acknowledgement. Tell the product owner to expect a
-      review step after any such push (docs: `services/config/edge-mint`).
+      mint public — opens registration (`devices.registration: open`, or License turned off),
+      enables anonymous `autoIssue` (`mode: anonymous`/`both`), or enables `oidcDefault` with
+      Identity on — when the approval was given without the open-registration acknowledgement.
+      And, with Identity on, so does any change to `oidc.provider`, `oidc.issuer`,
+      `oidc.clientId` or `oidc.groupRoleMap`, or turning Identity on. Tell the product owner to
+      expect a review step after any such push (docs: `services/config/edge-mint`).
 - [ ] Five blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
       `auto_issue_source` (on the product), `compat_source` (the compat window, claimed from
       Update settings) and `access_source` (both release access modes together, on

@@ -81,14 +81,24 @@ Any feature whose security depends on the client _refusing_ to do something is n
   the exception that is held back: a recipe from `.pkey/` is **inert until an operator approves
   it** in the exact form it will run (`edge_mint_approvals`), and any push that changes a
   security-relevant field makes it inert again. A repo writer can name a secret in a recipe but
-  cannot make that secret signable, nor make an unapproved recipe mint. Nor can a push widen an
-  approved recipe into a public mint: the open-registration acknowledgement is stored on the
-  approval and re-checked on every mint, so a push that makes the mint public — declaring
-  `devices.registration: open`, turning License off so the derived policy is open, or enabling
-  anonymous `autoIssue` enrolment (which hands any caller a licence and a device token while
-  registration still reads `requires-license`) — makes an approval given without it stop
-  matching. The upgrade backfill records the acknowledgement only for recipes that were already
-  public mints at deploy.
+  cannot make that secret signable, nor make an unapproved recipe mint. An approval is also bound
+  to the two product settings that decide who can hold the device token the mint accepts, because
+  a push can change both without touching the recipe. (a) Whether the mint is public: the
+  open-registration acknowledgement is stored on the approval and re-checked on every mint, so a
+  push that makes the mint public — declaring `devices.registration: open`, turning License off
+  so the derived policy is open, enabling anonymous `autoIssue` enrolment (which hands any caller
+  a licence and a device token while registration still reads `requires-license`), or turning on
+  an OIDC default tier with Identity on (every account the IdP signs in gets a licence) — makes
+  an approval given without it stop matching. (b) The sign-in trust: on a closed product, signing
+  in is the other route to a device token, and the manifest writes the OIDC provider, issuer,
+  client id and `groupRoleMap` that decide who a sign-in licenses. The approval records them (and
+  whether Identity was on); while Identity is on, any change makes it stop matching, so a push
+  that aims sign-in at an issuer or client the pusher controls, or maps their group onto a tier,
+  does not reach the mint. The upgrade backfill records the acknowledgement only for recipes that
+  were already public mints at deploy, and the sign-in trust as deployed. **Residual:** an
+  approval trusts the identity provider itself — anyone that IdP signs in with a mapped group
+  (including accounts its administrator adds later) is covered, which is the IdP weakness below,
+  not something the approval can close.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -148,13 +158,17 @@ currently holds:
    when License is on): the recipe's signing secret is marked usage `edge-mint`, and an approval
    equal to the current recipe column for column exists. Neither can be set from a `.pkey/`
    manifest; failing the first is `500 misconfigured`, failing the second is the same `404` as an
-   unknown recipe. While the mint is public — the product's effective registration is open, or
-   auto-issue allows anonymous enrolment (`mintIsPublic`) — an approval matches only if it carries
-   an explicit, audited acknowledgement that the token is publicly mintable. That is checked on
-   every mint, not only when approving, so the mint becoming public after an approval (by push or
-   by operator) makes the recipe `404` until it is re-approved with the acknowledgement. The only
-   acknowledgements not given by an operator are the upgrade backfill's (approved by
-   `migration`), written only where the recipe was already a public mint before the upgrade.
+   unknown recipe. While the mint is public — the product's effective registration is open,
+   auto-issue allows anonymous enrolment, or Identity is on with an OIDC default tier
+   (`mintIsPublic`) — an approval matches only if it carries an explicit, audited
+   acknowledgement that the token is publicly mintable. While Identity is on, it matches only if
+   the OIDC provider, issuer, client id and group map are the ones it recorded. Both are checked
+   on every mint, not only when approving, so the mint becoming public, or sign-in trusting a
+   different IdP or group map, after an approval (by push or by operator) makes the recipe `404`
+   until it is re-approved. What an approval cannot bound is the IdP it trusts: whoever that IdP
+   signs in with a mapped group is covered (§3). The only approvals not given by an operator are
+   the upgrade backfill's (approved by `migration`), which carry the acknowledgement only where
+   the recipe was already a public mint before the upgrade, and the sign-in trust as deployed.
    Every device is also capped at 30 mints a minute beside the per-IP budget.
 2. ❌ A tampered cache should not be able to change _which keys verify signatures_. **Does not hold**
    — the cache overrides pinned keys.
@@ -214,5 +228,7 @@ onboarded; the portal gains write capability beyond device disconnect and key cl
 release channel or artifact type is added; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);
-or a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
-and that no manifest can grant it).
+a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
+and that no manifest can grant it); or a new way to obtain a device token or licence without an
+operator-issued key is added (it must be folded into `mintIsPublic` or into the edge-mint
+approval's recorded trust, in `services/config/mint.ts` and the `0025_b` backfill).

@@ -15,10 +15,13 @@ reachable token mint.
   recipe. A push that changes a security-relevant field makes the recipe inert until re-approved;
   resync deletes approvals for recipe ids the manifest dropped. Config's admin API gains
   `GET …/config/mint`, `POST …/config/mint/<id>/approve` (fields echoed back; `409` if stale;
-  `acknowledgeOpenRegistration` required while the mint is public — open registration or
-  anonymous auto-issue enrolment) and `…/revoke`. The acknowledgement is stored on the approval
+  `acknowledgeOpenRegistration` required while the mint is public — open registration,
+  anonymous auto-issue enrolment, or an OIDC default tier with Identity on) and `…/revoke`. The acknowledgement is stored on the approval
   and re-checked on every mint, so a push that opens registration, turns License off, or enables
-  anonymous `autoIssue` after approval makes the recipe `404` until re-approved.
+  anonymous `autoIssue` after approval makes the recipe `404` until re-approved. The approval
+  also records the sign-in trust (whether Identity is on, and the OIDC provider, issuer, client id
+  and group map); while Identity is on, a push that changes any of them makes the recipe `404`
+  until re-approved, and the approve body echoes it (`409` if stale).
 - **Per-device budget.** Bucket `mintDevice`, 30 mints per device per minute, beside the per-IP one.
 - **Discovery.** `config.mint.available` is true only when an approved recipe exists.
 - **Console.** An Edge-mint recipes card on the Secrets view, a usage selector when setting a
@@ -26,7 +29,7 @@ reachable token mint.
 - **Upgrade.** Migrations `0025_a` and `0025_b` backfill: every secret a deployed recipe names is
   marked `edge-mint` and every deployed recipe is approved (`approved_by = 'migration'`), so
   existing products keep minting. The acknowledgement is backfilled only where the mint was
-  already public at deploy; a closed product (djdl) gets none. Operators should review
+  already public at deploy; a closed product (djdl) gets none. The sign-in trust is backfilled as deployed. Operators should review
   `SELECT product, name FROM product_secrets WHERE usage = 'edge-mint'` once after deploy.
 
 The device-facing route keeps its wire contract: no OpenAPI, corpus or SDK change.

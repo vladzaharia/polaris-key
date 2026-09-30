@@ -55,7 +55,7 @@ whose decoded payload is the template's `iss` plus the server-stamped `iat`/`exp
 A recipe is **repo-authored**: anyone who can push to the linked repo can write one. On its own,
 then, it must not be enough to mint — otherwise a repo writer, or a mistaken recipe, could turn
 any PEM-shaped product secret into a token mint that every device of the product can reach
-(under open registration or anonymous enrolment, anyone). So the token route signs only when two
+(under open registration, anonymous enrolment or an OIDC default tier, anyone). So the token route signs only when two
 further conditions hold, and neither can be set from a manifest:
 
 1. **The signing secret is marked `edge-mint`.** Every product secret has a _usage_: general (the
@@ -72,7 +72,10 @@ further conditions hold, and neither can be set from a manifest:
    until it is approved again; an unchanged resync keeps it approved; a resync that drops the
    recipe id deletes its approval, so re-adding the id later starts pending. `authPageTemplate` is
    not part of the approval: it does not change what is signed, and the `/auth` page ships its
-   own script-free policy.
+   own script-free policy. The approval is also bound to the two product settings that decide
+   who can hold a device token at all — whether the mint is [public](#public-mints) and which
+   [identity provider](#sign-in-trust) sign-in trusts — because a push can change both without
+   touching the recipe.
 
 An unapproved (or changed) recipe answers **exactly** like an unknown one — `404 not_found` — so
 the device-facing contract is unchanged: 404 means "not available here".
@@ -81,43 +84,74 @@ the device-facing contract is unchanged: 404 means "not available here".
 
 The console's **Secrets** view has an _Edge-mint recipes_ card listing each recipe as
 `approved`, `pending` or `changed` (with the approved value beside each changed field), its signing
-secret's usage, the product's effective registration policy, and whether anonymous enrolment is on.
-Behind it is Config's admin API:
+secret's usage, the product's effective registration policy, whether anonymous enrolment or an
+OIDC default tier is on, and — when Identity is on — the identity provider and group map an
+approval would cover. Behind it is Config's admin API:
 
-| Endpoint                                                    | Does                                                                                                                                                               |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /manage/api/products/<slug>/config/mint`               | `{ registration, anonymousEnroll, publicMint, recipes[] }` — each recipe's fields, `status`, `secretUsage`, the stored `approval` (or `null`) and `changedFields`. |
-| `POST /manage/api/products/<slug>/config/mint/<id>/approve` | Approves. The body **echoes** the recipe's fields as the operator saw them (see below).                                                                            |
-| `POST /manage/api/products/<slug>/config/mint/<id>/revoke`  | Drops the approval; the recipe answers `404` again.                                                                                                                |
+| Endpoint                                                    | Does                                                                                                                                                                                                                                                     |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /manage/api/products/<slug>/config/mint`               | `{ registration, anonymousEnroll, oidcDefault, publicMint, identity, recipes[] }` — `identity` is the sign-in trust (or `null` with Identity off); each recipe's fields, `status`, `secretUsage`, the stored `approval` (or `null`) and `changedFields`. |
+| `POST /manage/api/products/<slug>/config/mint/<id>/approve` | Approves. The body **echoes** the recipe's fields and `identity` as the operator saw them (see below).                                                                                                                                                   |
+| `POST /manage/api/products/<slug>/config/mint/<id>/revoke`  | Drops the approval; the recipe answers `404` again.                                                                                                                                                                                                      |
 
 The approve body carries `alg`, `signingKeySecret`, `kid`, `claimsTemplateJson` (the stored JSON
-string), `ttlSeconds` and `audience`, exactly as `GET` returned them. If a push landed in between
-and they no longer equal the stored recipe, the call is refused with `409` and the differing field
-names, so an operator never approves something they did not see. A field missing from the body is
-`422`.
+string), `ttlSeconds` and `audience`, exactly as `GET` returned them, plus the `identity` object
+(`null` when Identity was off). If a push landed in between and they no longer equal the stored
+recipe or the product's current sign-in trust, the call is refused with `409` and the differing
+field names (`identity` for the latter), so an operator never approves something they did not see.
+A recipe field missing from the body is `422`.
+
+### Public mints
 
 The mint is **public** (`publicMint: true`) when anyone can hold a device token, which happens
-in two ways:
+in three ways:
 
-- the product's effective registration is `open` — any installation registers; or
+- the product's effective registration is `open` — any installation registers;
 - [auto-issue](/docs/services/license/policy/#auto-issue) allows anonymous enrolment (`mode` `anonymous` or
   `both`) — `POST /<slug>/license/enroll` hands any caller a licence and a device token with no
-  key and no sign-in, even though registration still reads `requires-license`.
+  key and no sign-in, even though registration still reads `requires-license`; or
+- Identity is on and auto-issue gives signed-in users a default tier (`mode` `oidcDefault` or
+  `both`) — every account the identity provider will sign in gets a licence, mapped group or not.
+  On a public identity provider that is anyone.
 
 A public mint can be the right call, but it has to be a visible one: the approve body must also
 carry `"acknowledgeOpenRegistration": true` (else `422`), and the audit entry records that it was
-given. `oidcDefault` auto-issue alone is not public: the caller must still sign in.
+given.
 
 The acknowledgement is stored **on the approval** and checked on every mint, not only when you
-approve. Both settings are product state, and a `.pkey/product` push can change either without
+approve. All three settings are product state, and a `.pkey/product` push can change them without
 touching the recipe: declaring `devices.registration: open`, turning License off (with Identity
-off) so the derived policy becomes open, or enabling anonymous `autoIssue` (manifest-owned until
-an operator edits the policy in the console). While the mint is public, an approval given without
-the acknowledgement does not count: the recipe answers `404`, and the list shows it `changed` with
+off) so the derived policy becomes open, or enabling `autoIssue` (manifest-owned until an operator
+edits the policy in the console). While the mint is public, an approval given without the
+acknowledgement does not count: the recipe answers `404`, and the list shows it `changed` with
 `registration` in `changedFields` (the approval's `openRegistrationAcknowledged` is `false`).
 Re-approve it with the acknowledgement to make it mint again. If the mint becomes closed again,
 the earlier approval applies again. An approval that already carries the acknowledgement keeps
 minting whatever the policy becomes.
+
+### Sign-in trust
+
+On a closed product, signing in is the other way people get device tokens without a key an
+operator issued: Identity licenses any account whose IdP groups hit the product's `groupRoleMap`,
+and with `registration: requires-identity` any signed-in account may register. The provider,
+issuer, client id and group map are all written from the `.pkey/product` manifest. So a push that
+points `oidc.issuer` at another host, swaps in a client the pusher registered, maps a group the
+pusher belongs to onto a tier, or turns Identity on, would otherwise hand the pusher a licensed
+device token that an approval given under the old settings still accepted.
+
+The approval therefore records the sign-in trust it was given under — whether Identity was on,
+and the `oidc_config` provider, issuer, client id and group map — and while Identity is on it
+applies only if all of them are unchanged (the group map compared by content, so reordering its
+keys is not a change). Otherwise the recipe answers `404` and the list shows it `changed` with
+`identity` in `changedFields`, the approved values beside the current ones; re-approving it, with
+the new trust in view, is the operator's decision. Turning Identity **off** only removes a way to
+get a token, so it never invalidates an approval.
+
+What this does not cover: the approval trusts the identity provider itself. Anyone that provider
+signs in with a mapped group — including an account its administrator adds later — is covered, as
+is anyone at all under an OIDC default tier (which is why that counts as public). Choosing the
+provider remains an operator decision: a change to a custom issuer's host is also refused at
+ingest unless the host is in `OIDC_ISSUER_ALLOWLIST`.
 
 Every change is audited: `config.mint.approve`, `config.mint.revoke`, and `secret.usage` when a
 secret's usage changes. A re-upload of a secret that omits `usage` keeps the stored usage, so
@@ -128,10 +162,12 @@ deployed: every secret a recipe already named is marked `edge-mint`, and every e
 approved as it stands (`approved_by = 'migration'`), so deployed products keep minting. That is
 the status quo, not a weakening: each of those secrets was already mintable under the product's
 current policy. The acknowledgement is recorded **only** where the mint was already public at
-deploy (open registration or anonymous enrolment); everywhere else — djdl, which runs
-`requires-license`, included — the migrated approval carries none, so a later push that makes the
-mint public turns the recipe inert until an operator re-approves it with the acknowledgement. Review the list once
-after deploying:
+deploy (open registration, anonymous enrolment, or an OIDC default tier with Identity on);
+everywhere else — djdl, which runs `requires-license`, included — the migrated approval carries
+none, so a later push that makes the mint public turns the recipe inert until an operator
+re-approves it with the acknowledgement. The sign-in trust is recorded as deployed too (for djdl:
+Identity on, the platform provider and its group map), so a later push that changes it turns the
+recipe inert the same way. Review the list once after deploying:
 
 ```sql
 SELECT product, name FROM product_secrets WHERE usage = 'edge-mint';
