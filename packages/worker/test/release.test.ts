@@ -740,6 +740,100 @@ describe("release health", () => {
     expect(health.missing).toContain("djdl-arm64.dmg.sig");
   });
 
+  it("is healthy with no DMG and no Sparkle key when the policy requires no DMG", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      sparkle_ed25519_pub: null,
+      artifact_policy_json: JSON.stringify({ requireDmg: false }),
+    });
+    const { env } = envFor();
+    const rel = release({
+      assets: [asset("djdl-linux-x86_64.tar.gz"), asset("djdl-arm64")],
+    });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+
+    const health = await checkReleaseHealth(
+      env,
+      db,
+      SLUG,
+      1_700_000_100,
+      fetchImpl,
+    );
+    expect(health.status).toBe("healthy");
+    const ids = health.checks.map((c) => c.id);
+    expect(ids).not.toContain("dmg-arm64");
+    expect(ids).not.toContain("dmg-x86_64");
+    expect(ids).not.toContain("sparkle-signature");
+    expect(ids).not.toContain("sparkle-key");
+  });
+
+  it("still checks DMGs when requireDmg is false but the latest release ships one", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, {
+      artifact_policy_json: JSON.stringify({ requireDmg: false }),
+    });
+    const { env } = envFor();
+    const rel = release({
+      assets: [asset("djdl-arm64.dmg"), asset("djdl-arm64.dmg.sig")],
+    });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+
+    const health = await checkReleaseHealth(
+      env,
+      db,
+      SLUG,
+      1_700_000_100,
+      fetchImpl,
+    );
+    expect(health.status).toBe("healthy");
+    expect(health.checks.find((c) => c.id === "dmg-arm64")?.status).toBe("ok");
+    // The missing Intel DMG is advisory, honouring requireDmg: false like the arm64 check.
+    expect(health.checks.find((c) => c.id === "dmg-x86_64")?.status).toBe(
+      "warning",
+    );
+    expect(
+      health.checks.find((c) => c.id === "sparkle-signature")?.status,
+    ).toBe("ok");
+  });
+
+  it("keeps a missing arm64 DMG as needs-setup for djdl-shaped products (no policy)", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const { env } = envFor();
+    const rel = release({
+      assets: [asset("djdl-arm64"), asset("djdl-x86_64")],
+    });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+
+    const health = await checkReleaseHealth(
+      env,
+      db,
+      SLUG,
+      1_700_000_100,
+      fetchImpl,
+    );
+    expect(health.status).toBe("needs-setup");
+    expect(health.checks.find((c) => c.id === "dmg-arm64")?.status).toBe(
+      "missing",
+    );
+    expect(health.missing).toContain("arm64 DMG asset");
+  });
+
   it("requires a Sparkle key by default so appcasts fail closed", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db, { sparkle_ed25519_pub: null });

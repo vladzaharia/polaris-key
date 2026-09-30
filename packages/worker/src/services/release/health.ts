@@ -2,7 +2,7 @@
 
 import type { Db, Env } from "../../core/platform.js";
 import { findBinaryAsset, matchAsset, sigAssetName } from "./assets.js";
-import { getReleaseConfig } from "./config.js";
+import { getReleaseConfig, shipsDmgs } from "./config.js";
 import { type Release, listReleases, NotFoundError } from "./github.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 
@@ -148,7 +148,7 @@ export async function checkReleaseHealth(
     };
   }
 
-  checks.push(
+  const sparkleKeyCheck = () =>
     check(
       "sparkle-key",
       "Sparkle public key",
@@ -156,8 +156,11 @@ export async function checkReleaseHealth(
       cfg.sparkle_ed25519_pub
         ? "Sparkle appcasts will fail closed when a signature is missing."
         : "No Sparkle public key is configured; appcasts may render unsigned.",
-    ),
-  );
+    );
+  // A product that requires no DMG only gets the Sparkle key check once its latest release
+  // turns out to ship one (see `ships` below).
+  const policyRequiresDmg = artifactPolicy(cfg.artifact_policy_json).requireDmg;
+  if (policyRequiresDmg) checks.push(sparkleKeyCheck());
 
   let releases: Release[];
   try {
@@ -239,63 +242,73 @@ export async function checkReleaseHealth(
 
   const binaryName = cfg.binary_name ?? product;
   const policy = artifactPolicy(cfg.artifact_policy_json);
-  const armDmg = matchAsset(latest.assets, {
-    arch: "arm64",
-    ext: "dmg",
-    binaryName,
-  });
-  checks.push(
-    check(
-      "dmg-arm64",
-      "macOS arm64 DMG",
-      armDmg ? "ok" : "missing",
-      armDmg
-        ? `Found ${armDmg.name}.`
-        : "The appcast and DMG endpoint need an arm64 DMG asset.",
-      armDmg ? [] : ["arm64 DMG asset"],
-    ),
+  const latestHasDmg = latest.assets.some((asset) =>
+    asset.name.toLowerCase().endsWith(".dmg"),
   );
+  const ships = shipsDmgs(cfg.artifact_policy_json, latestHasDmg);
 
-  const x64Dmg = matchAsset(latest.assets, {
-    arch: "x86_64",
-    ext: "dmg",
-    binaryName,
-  });
-  checks.push(
-    check(
-      "dmg-x86_64",
-      "macOS x86_64 DMG",
-      x64Dmg ? "ok" : policy.requireDmg ? "missing" : "warning",
-      x64Dmg
-        ? `Found ${x64Dmg.name}.`
-        : "No x86_64 DMG asset was found; Intel macOS downloads will 404.",
-    ),
-  );
-
-  if (!cfg.sparkle_ed25519_pub && policy.requireSparkleSignature) {
+  // DMG and Sparkle checks apply only to products that ship DMGs: a Godot or Linux-only
+  // product is not told forever that it "needs setup" for artifacts it never builds.
+  if (ships) {
+    if (!policyRequiresDmg) checks.push(sparkleKeyCheck());
+    const armDmg = matchAsset(latest.assets, {
+      arch: "arm64",
+      ext: "dmg",
+      binaryName,
+    });
     checks.push(
       check(
-        "sparkle-signature",
-        "Sparkle signature",
-        "missing",
-        "Artifact policy requires signed Sparkle appcasts, but no public key is configured.",
-        ["Sparkle public key"],
+        "dmg-arm64",
+        "macOS arm64 DMG",
+        armDmg ? "ok" : policy.requireDmg ? "missing" : "warning",
+        armDmg
+          ? `Found ${armDmg.name}.`
+          : "The appcast and DMG endpoint need an arm64 DMG asset.",
+        armDmg || !policy.requireDmg ? [] : ["arm64 DMG asset"],
       ),
     );
-  } else if (cfg.sparkle_ed25519_pub && armDmg) {
-    const sigName = sigAssetName(armDmg.name);
-    const sig = latest.assets.find((asset) => asset.name === sigName);
+
+    const x64Dmg = matchAsset(latest.assets, {
+      arch: "x86_64",
+      ext: "dmg",
+      binaryName,
+    });
     checks.push(
       check(
-        "sparkle-signature",
-        "Sparkle signature",
-        sig ? "ok" : "missing",
-        sig
-          ? `Found ${sig.name}.`
-          : `Expected Sparkle signature sidecar ${sigName}.`,
-        sig ? [] : [sigName],
+        "dmg-x86_64",
+        "macOS x86_64 DMG",
+        x64Dmg ? "ok" : policy.requireDmg ? "missing" : "warning",
+        x64Dmg
+          ? `Found ${x64Dmg.name}.`
+          : "No x86_64 DMG asset was found; Intel macOS downloads will 404.",
       ),
     );
+
+    if (!cfg.sparkle_ed25519_pub && policy.requireSparkleSignature) {
+      checks.push(
+        check(
+          "sparkle-signature",
+          "Sparkle signature",
+          "missing",
+          "Artifact policy requires signed Sparkle appcasts, but no public key is configured.",
+          ["Sparkle public key"],
+        ),
+      );
+    } else if (cfg.sparkle_ed25519_pub && armDmg) {
+      const sigName = sigAssetName(armDmg.name);
+      const sig = latest.assets.find((asset) => asset.name === sigName);
+      checks.push(
+        check(
+          "sparkle-signature",
+          "Sparkle signature",
+          sig ? "ok" : "missing",
+          sig
+            ? `Found ${sig.name}.`
+            : `Expected Sparkle signature sidecar ${sigName}.`,
+          sig ? [] : [sigName],
+        ),
+      );
+    }
   }
 
   const armCli = findBinaryAsset(latest.assets, binaryName, "arm64");

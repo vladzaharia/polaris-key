@@ -27,6 +27,7 @@ import {
   setServices,
 } from "../src/repo.js";
 import { loadProduct } from "../src/core/products.js";
+import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleMintToken } from "../src/services/config/mint.js";
@@ -1435,5 +1436,104 @@ describe("admin services enablement", () => {
     expect((await call(w, "GET", "/whatever")).status).toBe(404);
     expect((await call(w, "DELETE", "")).status).toBe(405);
     expect((await call(w, "GET", "/revert")).status).toBe(405);
+  });
+});
+
+describe("admin product setup: Sparkle warning", () => {
+  const SPARKLE =
+    "release: Sparkle public key not configured; appcasts may be unsigned";
+
+  async function warningsFor(opts: {
+    update: boolean;
+    policy: string | null;
+    withDmg?: boolean;
+  }): Promise<string[]> {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const services: ServicesMap = {
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: true },
+      update: { enabled: opts.update },
+      identity: { enabled: false },
+    };
+    await setServices(
+      db,
+      "djdl",
+      serializeServices({ services }),
+      "manifest",
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO release_config
+         (product, gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub,
+          artifact_policy_json)
+       VALUES ('djdl', 'acme', 'djdl', 42, 'djdl', NULL, ?)`,
+      opts.policy,
+    );
+    if (opts.withDmg) {
+      await db.run(
+        `INSERT INTO release_metadata
+           (product, release_id, version, metadata_access, artifacts_access, published_at,
+            created_at, modified_at)
+         VALUES ('djdl', 'rel_1', '1.0.0', 'public', 'public', ?, ?, ?)`,
+        NOW,
+        NOW,
+        NOW,
+      );
+      await db.run(
+        `INSERT INTO release_artifacts
+           (product, release_id, artifact_id, name, kind, access, created_at)
+         VALUES ('djdl', 'rel_1', 'a1', 'djdl-arm64.dmg', 'dmg', 'public', ?)`,
+        NOW,
+      );
+    }
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const res = await dispatch(
+      mkReq("GET", "/api/products/djdl", { cookie }),
+      env,
+      db,
+      "/api/products/djdl",
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      product: { setup: { warnings: string[] } };
+    };
+    return body.product.setup.warnings;
+  }
+
+  it("warns when Update is on and the product ships DMGs (default policy)", async () => {
+    expect(await warningsFor({ update: true, policy: null })).toEqual([
+      SPARKLE,
+    ]);
+  });
+
+  it("does not warn when Update is off", async () => {
+    expect(await warningsFor({ update: false, policy: null })).toEqual([]);
+  });
+
+  it("does not warn for a product that requires no DMG and has none", async () => {
+    expect(
+      await warningsFor({
+        update: true,
+        policy: JSON.stringify({ requireDmg: false }),
+      }),
+    ).toEqual([]);
+  });
+
+  it("warns when requireDmg is false but the latest release carries a DMG", async () => {
+    expect(
+      await warningsFor({
+        update: true,
+        policy: JSON.stringify({ requireDmg: false }),
+        withDmg: true,
+      }),
+    ).toEqual([SPARKLE]);
   });
 });

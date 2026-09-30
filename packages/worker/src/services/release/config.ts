@@ -120,6 +120,33 @@ export function artifactPolicy(cfg: ReleaseConfigRow): ArtifactPolicy {
 }
 
 /**
+ * Does the operator's artifact policy require a macOS DMG? Absent or unparseable policy means
+ * yes (djdl's behaviour), and only an explicit `requireDmg: false` opts out.
+ */
+export function requiresDmg(policyJson: string | null | undefined): boolean {
+  if (!policyJson) return true;
+  try {
+    const parsed = JSON.parse(policyJson) as { requireDmg?: unknown };
+    return parsed.requireDmg !== false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The "ships DMGs" predicate shared by release health and the console's setup state: the
+ * product requires a DMG, or its latest release already carries one. A product for which this
+ * is false has no Sparkle appcast to sign, so DMG and Sparkle checks do not apply to it.
+ * P2-04 replaces this with the declared artifact map.
+ */
+export function shipsDmgs(
+  policyJson: string | null | undefined,
+  latestReleaseHasDmg: boolean,
+): boolean {
+  return requiresDmg(policyJson) || latestReleaseHasDmg;
+}
+
+/**
  * The seven surfaces the two services serve between them.
  *
  * Still one union after the split, because it is what the SHARED gateway keys on: which lane
