@@ -92,6 +92,16 @@ function boot(services: Enablement | undefined, hash: string): void {
   mockFetch({
     "/manage/api/me": ME,
     "/manage/api/products/djdl": productWith(services),
+    "/manage/api/products/djdl/devices": { devices: [], nextCursor: null },
+    "/manage/api/products/djdl/devices/summary": {
+      total: 0,
+      byStatus: [],
+      licensed: { licensed: 0, licenceFree: 0 },
+      byPlatform: [],
+      byArch: [],
+      bySdkName: [],
+      byAppVersion: [],
+    },
   });
   render(<App />);
 }
@@ -186,6 +196,21 @@ describe("service-grouped nav (D-15)", () => {
     expect(sectionHeaders()).toEqual(["Platform"]);
     const nav = screen.getByRole("navigation", { name: "Primary" });
     expect(within(nav).getByRole("button", { name: /Services/ })).toBeTruthy();
+  });
+
+  it("keeps Platform → Devices for a product with License disabled", async () => {
+    // A free, licence-less game is exactly the product this tab exists for: its devices hold no
+    // licence, so the License section (which is gone) could never have listed them.
+    boot({ ...ALL_ON, license: { enabled: false } }, "#/p/djdl/devices");
+    await screen.findByRole("navigation", { name: "Primary" });
+    expect(sectionHeaders()).not.toContain("License");
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    expect(within(nav).getByRole("button", { name: /Devices/ })).toBeTruthy();
+    // The deep link renders the view, not the "service not enabled" explanation.
+    expect(
+      await screen.findByRole("heading", { name: "Devices" }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/isn.t enabled|not enabled/i)).toBeNull();
   });
 
   it("shows every group while enablement is unknown", async () => {

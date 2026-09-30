@@ -32,6 +32,7 @@ import { Releases } from "./views/Releases.js";
 import { UpdateSettings } from "./views/UpdateSettings.js";
 import { Identity } from "./views/Identity.js";
 import { Activity } from "./views/Activity.js";
+import { Devices } from "./views/Devices.js";
 import { Secrets } from "./views/Secrets.js";
 import { Settings } from "./views/Settings.js";
 
@@ -267,6 +268,8 @@ function renderRoute(
       return <ProductOverview slug={activeSlug} />;
     case "services":
       return <Services slug={activeSlug} />;
+    case "devices":
+      return <Devices slug={activeSlug} />;
     case "secrets":
       return <Secrets slug={activeSlug} />;
     case "activity":
