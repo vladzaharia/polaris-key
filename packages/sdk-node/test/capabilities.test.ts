@@ -1,3 +1,4 @@
+// @pkey-feature core.discover
 // Capability resolution (D-21) and the React bridge contract — the two things the suite's
 // service split makes newly breakable, pinned end to end against a mock control plane.
 //

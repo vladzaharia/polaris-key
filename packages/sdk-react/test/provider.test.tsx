@@ -162,6 +162,7 @@ describe("PolarisKeyProvider — theme variables reach portalled UI", () => {
   });
 });
 
+// @pkey-feature core.discover
 describe("PolarisKeyProvider — expectServices (D-21)", () => {
   it("forwards the configured expectation into a constructed browser adapter", async () => {
     function Caps(): JSX.Element {

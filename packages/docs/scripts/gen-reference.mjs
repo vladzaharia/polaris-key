@@ -396,6 +396,140 @@ mirror). Corpus v1 is deleted — v2 is the only corpus. \`corpusVersion ${cases
   );
 }
 
+// ── 8. SDK parity matrix ───────────────────────────────────────────────────────
+// Reads the feature registry and every SDK's parity manifest directly (this file stays
+// dependency-free, so it does not import tools/parity-check.ts, which is what GATES them).
+// MDX would read `<p>` in a note as JSX, so prose escapes angle brackets as well as braces.
+const mdxText = (s) => mdxProse(s).replace(/([<>])/g, "\\$1");
+
+function parityMatrix() {
+  const registry = JSON.parse(read("conformance", "parity", "features.json"));
+  const sdks = registry.sdks.map((sdk) => ({
+    ...sdk,
+    manifest: JSON.parse(read(...sdk.manifest.split("/"))),
+  }));
+
+  const runtimeList = (runtime) =>
+    (Array.isArray(runtime) ? runtime : [runtime]).join(", ");
+  const exceptText = (except) =>
+    (except ?? []).map((ex) => `; N/A (${ex.runtime}: ${ex.reason})`).join("");
+  const cell = (entry) => {
+    if (!entry) return "—";
+    if (entry.status === "implemented") return `✓${exceptText(entry.except)}`;
+    if (entry.status === "na")
+      return `N/A (${runtimeList(entry.runtime)}: ${entry.reason})`;
+    const owner = entry.wp ?? "unowned";
+    return `planned (${owner})${exceptText(entry.except)}`;
+  };
+  const proofText = (proof) =>
+    proof
+      .map((p) => {
+        const owner = p.wp ? ` (${p.wp})` : "";
+        if (p.kind === "corpus")
+          return `\`${p.file}\`${p.family ? ` \`${p.family}\`` : ""}${owner}`;
+        if (p.kind === "generated") return `\`${p.command}\`${owner}`;
+        if (p.kind === "transcript") return `transcripts${owner}`;
+        if (p.kind === "device") return "device tests";
+        if (p.kind === "snapshot") return "snapshot tests";
+        return p.kind;
+      })
+      .join(" + ");
+  const allowedText = (allowedNa) => {
+    if (!allowedNa.length) return "—";
+    const byReason = new Map();
+    for (const na of allowedNa) {
+      if (!byReason.has(na.reason)) byReason.set(na.reason, []);
+      byReason.get(na.reason).push(na.runtime === "*" ? "any" : na.runtime);
+    }
+    return [...byReason]
+      .map(([reason, runtimes]) => `${runtimes.join(", ")}: ${reason}`)
+      .join("; ");
+  };
+
+  const sections = [];
+  for (const family of registry.families) {
+    const rows = registry.features
+      .filter((f) => f.family === family.id)
+      .map((f) => [
+        `\`${f.id}\``,
+        mdxText(f.title),
+        proofText(f.proof),
+        ...sdks.map((sdk) => cell(sdk.manifest.features[f.id])),
+        allowedText(f.allowedNa),
+      ]);
+    sections.push(
+      `## ${family.title}\n\n${table(
+        [
+          "Id",
+          "Capability",
+          "Proven by",
+          ...sdks.map((sdk) => sdk.title),
+          "Allowed N/A",
+        ],
+        rows,
+      )}`,
+    );
+  }
+
+  const counts = sdks.map((sdk) => {
+    const entries = Object.values(sdk.manifest.features);
+    const n = (status, extra = () => true) =>
+      String(entries.filter((e) => e.status === status && extra(e)).length);
+    return [
+      sdk.title,
+      `\`${sdk.manifest.runtimes.join("`, `")}\``,
+      n("implemented"),
+      n("na"),
+      n("planned", (e) => Boolean(e.wp)),
+      n("planned", (e) => Boolean(e.unowned)),
+    ];
+  });
+
+  const unowned = [];
+  for (const sdk of sdks)
+    for (const f of registry.features) {
+      const entry = sdk.manifest.features[f.id];
+      if (entry?.status === "planned" && entry.unowned)
+        unowned.push([sdk.title, `\`${f.id}\``, mdxText(entry.note ?? "")]);
+    }
+
+  return page(
+    "SDK parity matrix",
+    "Every feature in the registry against every SDK's parity manifest: implemented, a typed N/A the registry allows, or planned in a named work package.",
+    `One row per feature id in \`conformance/parity/features.json\`, one column per SDK manifest
+(\`packages/sdk-node/parity.json\`, \`packages/sdk-react/parity.json\`, \`sdks/python/parity.json\`,
+\`sdks/swift/parity.json\`). \`pnpm parity:check\` gates the manifests: an implemented entry
+needs a test tagged \`@pkey-feature <id>\`, an N/A must be one the registry allows for that
+runtime, and a planned entry names an open work package or is marked unowned. A new feature
+starts with its registry entry; a new SDK starts with a manifest in which everything is planned.
+
+Cells: **✓** implemented; **N/A (runtime: reason)** a typed "unsupported here" result;
+**planned (P1b-07)** the work package that closes the gap; **planned (unowned)** a gap with no
+owner yet (listed below). A proof marked with a work package does not exist yet.`,
+    [
+      table(
+        [
+          "SDK",
+          "Runtimes",
+          "Implemented",
+          "N/A",
+          "Planned (owned)",
+          "Planned (unowned)",
+        ],
+        counts,
+      ),
+      "",
+      sections.join("\n\n"),
+      "",
+      "## Unowned gaps",
+      "",
+      unowned.length
+        ? `Planned entries no work package owns yet. Each needs an owner before the gap can close.\n\n${table(["SDK", "Feature", "Note"], unowned)}`
+        : "None.",
+    ].join("\n"),
+  );
+}
+
 // ── driver ─────────────────────────────────────────────────────────────────────
 export const EMITTERS = {
   "validation-codes.mdx": manifestValidationCodes,
@@ -405,6 +539,7 @@ export const EMITTERS = {
   "routes.mdx": routeTable,
   "data-model.mdx": dataModel,
   "corpus.mdx": corpusInventory,
+  "parity.mdx": parityMatrix,
 };
 
 const check = process.argv.includes("--check");

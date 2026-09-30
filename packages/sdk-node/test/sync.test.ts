@@ -1,3 +1,4 @@
+// @pkey-feature core.sync
 // `sync()` — the single Core loop that replaced v2's `refresh()`, and everything that hangs
 // off it. This file is the heir of the pre-suite `refreshLoop.test.ts`: the opt-in polling
 // timer and the `onChange` callback that make remote re-licensing land without a restart are

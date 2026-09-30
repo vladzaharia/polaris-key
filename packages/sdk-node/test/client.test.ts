@@ -238,6 +238,7 @@ function mockFetch(initial: MockOpts = {}): MockState {
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
+// @pkey-feature license.activate license.entitlements config.secret
 describe("PolarisKeyClient — activation + reads", () => {
   it("activate → ok; reads config, entitlement, secret, profile across the SPLIT documents", async () => {
     // The v2 pin read all four off one document. v3 splits them (§2.1/§2.2) and the point of
@@ -294,6 +295,7 @@ describe("PolarisKeyClient — activation + reads", () => {
   });
 });
 
+// @pkey-feature core.sync core.cache
 describe("PolarisKeyClient — sync / persistence", () => {
   it("activate persists BOTH signed artifacts per slice and reports a snapshot", async () => {
     const store = new InMemoryStore(PRODUCT);
@@ -534,6 +536,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
   });
 });
 
+// @pkey-feature core.cache
 describe("PolarisKeyClient — offline-first init", () => {
   it("init() applies a pre-seeded v3 cache with NO network and reflects ok status", async () => {
     // An offline-first host must be able to render its gate before it has ever reached the
@@ -584,6 +587,7 @@ describe("PolarisKeyClient — offline-first init", () => {
   });
 });
 
+// @pkey-feature license.deactivate
 describe("PolarisKeyClient — deactivate", () => {
   it("deactivate POSTs /license/deauthorize, wipes the store, and resets to needs-activation", async () => {
     const store = new InMemoryStore(PRODUCT);
@@ -638,6 +642,7 @@ describe("PolarisKeyClient — deactivate", () => {
   });
 });
 
+// @pkey-feature devices.manage
 describe("PolarisKeyClient — device management surface", () => {
   it("reports the current device and only deauthorizes the current device", async () => {
     const store = new InMemoryStore(PRODUCT);

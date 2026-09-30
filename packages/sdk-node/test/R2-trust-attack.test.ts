@@ -1,3 +1,4 @@
+// @pkey-feature core.verify core.cache
 // R2 RED TEAM — attacks on client-side key custody + document acceptance in @polaris-key/node.
 //
 // These began life as PoCs asserting the CURRENT (vulnerable) behaviour. They have now been

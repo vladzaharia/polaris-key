@@ -232,6 +232,7 @@ def test_document_network_exception_is_error_status_zero() -> None:
 
 
 # ── device facts ────────────────────────────────────────────────────────────────────
+# @pkey-feature devices.facts
 def test_collect_facts_reports_the_python_runtime() -> None:
     facts = collect_facts()
     assert facts["runtime"]["name"] == "python"
@@ -239,6 +240,7 @@ def test_collect_facts_reports_the_python_runtime() -> None:
     assert "probes" not in facts, "no probes declared ⇒ no probes reported"
 
 
+# @pkey-feature devices.facts
 def test_a_probe_with_no_target_for_this_platform_is_not_applicable(tmp_path) -> None:
     """Reporting it as ``present: False`` would be a lie an admin cannot distinguish from
     "not installed"."""

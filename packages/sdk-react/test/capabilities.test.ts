@@ -1,3 +1,4 @@
+// @pkey-feature core.discover
 // D-21 — capability negotiation, and the three ways it can go.
 //
 //   discovery succeeded   → the document's `services` map is the authority, absent = disabled
