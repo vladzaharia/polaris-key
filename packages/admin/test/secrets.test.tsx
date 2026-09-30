@@ -88,8 +88,14 @@ function recipe(over: Partial<EdgeMintRecipe> = {}): EdgeMintRecipe {
 function recipes(
   list: EdgeMintRecipe[],
   registration: EdgeMintRecipesResponse["registration"] = "requires-license",
+  anonymousEnroll = false,
 ): EdgeMintRecipesResponse {
-  return { registration, recipes: list };
+  return {
+    registration,
+    anonymousEnroll,
+    publicMint: registration === "open" || anonymousEnroll,
+    recipes: list,
+  };
 }
 
 function renderSecrets() {
@@ -247,6 +253,34 @@ describe("Edge-mint recipes card (P0-12)", () => {
     );
   });
 
+  it("with anonymous enrolment on a closed product, warns and requires the acknowledgement", async () => {
+    mockApi.edgeMintRecipes.mockResolvedValue(
+      recipes([recipe()], "requires-license", true),
+    );
+    mockApi.approveEdgeMintRecipe.mockResolvedValue({ ok: true });
+    renderSecrets();
+    await screen.findByText("Edge-mint recipes");
+    expect(screen.getByText(/public token mint/)).toBeTruthy();
+    expect(screen.getByText(/Anonymous enrolment is/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/I understand anonymous enrolment is on/),
+    ).toBeTruthy();
+    const confirm = within(dialog).getByRole("button", { name: "Approve" });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.click(within(dialog).getByRole("checkbox"));
+    await userEvent.click(confirm);
+    await waitFor(() =>
+      expect(mockApi.approveEdgeMintRecipe).toHaveBeenCalledWith(
+        "djdl",
+        "applemusic",
+        FIELDS,
+        true,
+      ),
+    );
+  });
+
   it("shows what changed since approval and offers re-approval and revoke", async () => {
     mockApi.edgeMintRecipes.mockResolvedValue(
       recipes([
@@ -310,7 +344,9 @@ describe("Edge-mint recipes card (P0-12)", () => {
     });
     renderSecrets();
     expect(
-      await screen.findByText(/Registration became open after this recipe/),
+      await screen.findByText(
+        /The mint became public \(registration is open\) after this recipe/,
+      ),
     ).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Re-approve" }));
     const dialog = await screen.findByRole("dialog");

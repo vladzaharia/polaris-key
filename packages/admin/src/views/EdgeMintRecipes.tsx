@@ -40,9 +40,10 @@ import {
  * the server refuses (409) and the operator reloads to see what changed, so they never approve
  * something they did not see.
  *
- * The open-registration acknowledgement is part of the approval too: if registration opens after
- * an approval that did not acknowledge it (a push can do that without touching the recipe), the
- * recipe is `changed` with `registration` among its changed fields.
+ * The open-registration acknowledgement is part of the approval too: if the mint becomes public
+ * (registration opens, or anonymous enrolment is turned on) after an approval that did not
+ * acknowledge it — a push can do either without touching the recipe — the recipe is `changed`
+ * with `registration` among its changed fields.
  */
 
 const FIELD_LABELS: Record<keyof EdgeMintRecipeFields, string> = {
@@ -159,7 +160,14 @@ export function EdgeMintRecipes({
   const [acknowledged, setAcknowledged] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
-  const open = data?.registration === "open";
+  const open = data?.publicMint === true;
+  const anonymousEnroll = data?.anonymousEnroll === true;
+  const openReason =
+    data?.registration === "open" && anonymousEnroll
+      ? "registration is open and anonymous enrolment is on"
+      : anonymousEnroll
+        ? "anonymous enrolment is on"
+        : "registration is open";
 
   const refresh = (): void => {
     invalidate(`edge-mint:${slug}`);
@@ -262,9 +270,18 @@ export function EdgeMintRecipes({
           >
             <AlertTriangle aria-hidden className="mt-0.5 size-4 text-warning" />
             <p>
-              Registration for this product is <strong>open</strong>: anyone who
-              installs it can hold a device token, so an approved recipe is a
-              public token mint.
+              {data.registration === "open" ? (
+                <>
+                  Registration for this product is <strong>open</strong>
+                  {anonymousEnroll ? " and anonymous enrolment is on" : ""}
+                </>
+              ) : (
+                <>
+                  Anonymous enrolment is <strong>on</strong> for this product
+                </>
+              )}
+              : anyone who installs it can hold a device token, so an approved
+              recipe is a public token mint.
             </p>
           </div>
         ) : null}
@@ -307,9 +324,9 @@ export function EdgeMintRecipes({
             <RecipeFields recipe={recipe} />
             {recipe.changedFields.includes("registration") ? (
               <p className="text-xs text-warning">
-                Registration became open after this recipe was approved. It does
-                not mint until it is re-approved with the open-registration
-                acknowledgement.
+                The mint became public ({openReason}) after this recipe was
+                approved. It does not mint until it is re-approved with the
+                open-registration acknowledgement.
               </p>
             ) : null}
             {recipe.secretUsage !== "edge-mint" ? (
@@ -352,8 +369,8 @@ export function EdgeMintRecipes({
                       onCheckedChange={(v) => setAcknowledged(v === true)}
                     />
                     <Label htmlFor="edge-mint-ack-open" className="font-normal">
-                      I understand registration is open, so anyone who installs
-                      this product can mint this token.
+                      I understand {openReason}, so anyone who installs this
+                      product can mint this token.
                     </Label>
                   </div>
                 ) : null}

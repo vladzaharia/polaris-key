@@ -119,14 +119,20 @@ export interface EdgeMintRecipe extends EdgeMintRecipeFields {
         approvedBy: string;
       })
     | null;
-  /** Why a `changed` recipe's approval no longer applies. `registration` means the product's
-   *  registration is open now and the approval was given without acknowledging that. */
+  /** Why a `changed` recipe's approval no longer applies. `registration` means the mint is
+   *  public now (open registration or anonymous enrolment) and the approval was given without
+   *  acknowledging that. */
   changedFields: (keyof EdgeMintRecipeFields | "registration")[];
 }
 
 export interface EdgeMintRecipesResponse {
   /** The product's EFFECTIVE registration policy; `open` means anyone can hold a device token. */
   registration: "open" | "requires-identity" | "requires-license";
+  /** Whether auto-issue lets any caller enrol anonymously (`POST /<p>/license/enroll`). */
+  anonymousEnroll: boolean;
+  /** Open registration OR anonymous enrolment: anyone can hold a device token, so approving
+   *  needs the acknowledgement. */
+  publicMint: boolean;
   recipes: EdgeMintRecipe[];
 }
 
