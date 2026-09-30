@@ -104,6 +104,15 @@ export interface EdgeMintRecipeFields {
   audience: string | null;
 }
 
+/** The sign-in trust an edge-mint approval covers: the product's identity provider and the group
+ *  map that decides who a sign-in licenses. `null` means Identity is off (no sign-in path). */
+export interface EdgeMintIdentity {
+  provider: string | null;
+  issuer: string | null;
+  clientId: string | null;
+  groupRoleMapJson: string | null;
+}
+
 export interface EdgeMintRecipe extends EdgeMintRecipeFields {
   id: string;
   /** Parsed `claimsTemplateJson`, for display only (null when absent or corrupt). */
@@ -115,14 +124,17 @@ export interface EdgeMintRecipe extends EdgeMintRecipeFields {
     | (EdgeMintRecipeFields & {
         /** Whether the approval carries the open-registration acknowledgement. */
         openRegistrationAcknowledged: boolean;
+        /** The sign-in trust recorded with the approval. */
+        identity: EdgeMintIdentity | null;
         approvedAt: number;
         approvedBy: string;
       })
     | null;
   /** Why a `changed` recipe's approval no longer applies. `registration` means the mint is
-   *  public now (open registration or anonymous enrolment) and the approval was given without
-   *  acknowledging that. */
-  changedFields: (keyof EdgeMintRecipeFields | "registration")[];
+   *  public now (open registration, anonymous enrolment or an OIDC default tier) and the
+   *  approval was given without acknowledging that; `identity` means sign-in now trusts a
+   *  different identity provider or group map than the approval recorded. */
+  changedFields: (keyof EdgeMintRecipeFields | "registration" | "identity")[];
 }
 
 export interface EdgeMintRecipesResponse {
@@ -130,9 +142,13 @@ export interface EdgeMintRecipesResponse {
   registration: "open" | "requires-identity" | "requires-license";
   /** Whether auto-issue lets any caller enrol anonymously (`POST /<p>/license/enroll`). */
   anonymousEnroll: boolean;
-  /** Open registration OR anonymous enrolment: anyone can hold a device token, so approving
-   *  needs the acknowledgement. */
+  /** Whether Identity is on and auto-issue gives every signed-in account a default tier. */
+  oidcDefault: boolean;
+  /** Open registration, anonymous enrolment or an OIDC default tier: anyone (who can sign in)
+   *  can hold a device token, so approving needs the acknowledgement. */
   publicMint: boolean;
+  /** The sign-in trust an approval given now would record; the approve call echoes it. */
+  identity: EdgeMintIdentity | null;
   recipes: EdgeMintRecipe[];
 }
 
@@ -926,11 +942,13 @@ export const api = {
   // ── config: edge-mint recipe approval (P0-12) ───────────────────────────────
   edgeMintRecipes: (slug: string) =>
     call<EdgeMintRecipesResponse>(`${p(slug)}/config/mint`),
-  /** Approve exactly what the operator was shown: the server refuses (409) if it changed. */
+  /** Approve exactly what the operator was shown — the recipe and the sign-in trust beside it:
+   *  the server refuses (409) if either changed. */
   approveEdgeMintRecipe: (
     slug: string,
     id: string,
     fields: EdgeMintRecipeFields,
+    identity: EdgeMintIdentity | null,
     acknowledgeOpenRegistration = false,
   ) =>
     call<{ ok: true; id: string; status: "approved" }>(
@@ -944,6 +962,7 @@ export const api = {
           claimsTemplateJson: fields.claimsTemplateJson,
           ttlSeconds: fields.ttlSeconds,
           audience: fields.audience,
+          identity,
           ...(acknowledgeOpenRegistration
             ? { acknowledgeOpenRegistration: true }
             : {}),

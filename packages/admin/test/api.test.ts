@@ -309,14 +309,19 @@ describe("api — every product-scoped resource is under its owning service", ()
     [
       "approveEdgeMintRecipe",
       () =>
-        api.approveEdgeMintRecipe("djdl", "music", {
-          alg: "ES256",
-          signingKeySecret: "K",
-          kid: null,
-          claimsTemplateJson: null,
-          ttlSeconds: 60,
-          audience: null,
-        }),
+        api.approveEdgeMintRecipe(
+          "djdl",
+          "music",
+          {
+            alg: "ES256",
+            signingKeySecret: "K",
+            kid: null,
+            claimsTemplateJson: null,
+            ttlSeconds: 60,
+            audience: null,
+          },
+          null,
+        ),
       "config/mint/music/approve",
     ],
     [
@@ -387,7 +392,7 @@ describe("api — every product-scoped resource is under its owning service", ()
     });
   });
 
-  it("approveEdgeMintRecipe echoes every field, and the acknowledgement only when given (P0-12)", async () => {
+  it("approveEdgeMintRecipe echoes every field and the sign-in trust, and the acknowledgement only when given (P0-12)", async () => {
     setCsrf("tok");
     stubFetch(() => json({ ok: true }));
     const fields = {
@@ -398,12 +403,22 @@ describe("api — every product-scoped resource is under its owning service", ()
       ttlSeconds: 3600,
       audience: null,
     };
-    await api.approveEdgeMintRecipe("djdl", "music", fields);
-    await api.approveEdgeMintRecipe("djdl", "music", fields, true);
+    const identity = {
+      provider: "custom",
+      issuer: "https://id.example",
+      clientId: "c",
+      groupRoleMapJson: "{}",
+    };
+    await api.approveEdgeMintRecipe("djdl", "music", fields, null);
+    await api.approveEdgeMintRecipe("djdl", "music", fields, identity, true);
     expect(calls[0]!.init.method).toBe("POST");
-    expect(JSON.parse(calls[0]!.init.body as string)).toEqual(fields);
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
+      ...fields,
+      identity: null,
+    });
     expect(JSON.parse(calls[1]!.init.body as string)).toEqual({
       ...fields,
+      identity,
       acknowledgeOpenRegistration: true,
     });
   });

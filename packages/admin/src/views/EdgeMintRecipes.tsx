@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import {
   api,
   ApiError,
+  type EdgeMintIdentity,
   type EdgeMintRecipe,
   type EdgeMintRecipeFields,
 } from "../api.js";
@@ -41,9 +42,14 @@ import {
  * something they did not see.
  *
  * The open-registration acknowledgement is part of the approval too: if the mint becomes public
- * (registration opens, or anonymous enrolment is turned on) after an approval that did not
- * acknowledge it — a push can do either without touching the recipe — the recipe is `changed`
- * with `registration` among its changed fields.
+ * (registration opens, anonymous enrolment is turned on, or signed-in users get a default tier)
+ * after an approval that did not acknowledge it — a push can do any of these without touching
+ * the recipe — the recipe is `changed` with `registration` among its changed fields.
+ *
+ * So is the sign-in trust. With Identity on, signing in is how people get device tokens without
+ * an operator-issued key, and the provider, issuer, client id and group map are all written by
+ * the manifest. The card shows them, the approve call echoes them, and a push that changes them
+ * makes the recipe `changed` with `identity` among its changed fields.
  */
 
 const FIELD_LABELS: Record<keyof EdgeMintRecipeFields, string> = {
@@ -145,6 +151,45 @@ function RecipeFields({
   );
 }
 
+/** The sign-in trust an approval covers; for a changed one, what the approval recorded. */
+function IdentityTrust({
+  identity,
+  was,
+}: {
+  identity: EdgeMintIdentity;
+  was?: EdgeMintIdentity | null;
+}): React.ReactElement {
+  const rows: [string, keyof EdgeMintIdentity][] = [
+    ["Provider", "provider"],
+    ["Issuer", "issuer"],
+    ["Client id", "clientId"],
+    ["Group map", "groupRoleMapJson"],
+  ];
+  return (
+    <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+      {rows.map(([label, key]) => (
+        <React.Fragment key={key}>
+          <dt className="text-muted-foreground">{label}</dt>
+          <dd className="min-w-0 space-y-1">
+            <span className="break-all font-mono text-xs">
+              {show(identity[key])}
+            </span>
+            {was !== undefined &&
+            (was === null || was[key] !== identity[key]) ? (
+              <p className="break-all text-xs text-warning">
+                approved as:{" "}
+                <span className="font-mono">
+                  {was === null ? "Identity off" : show(was[key])}
+                </span>
+              </p>
+            ) : null}
+          </dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+}
+
 export function EdgeMintRecipes({
   slug,
 }: {
@@ -162,12 +207,19 @@ export function EdgeMintRecipes({
 
   const open = data?.publicMint === true;
   const anonymousEnroll = data?.anonymousEnroll === true;
+  const oidcDefault = data?.oidcDefault === true;
+  const reasons = [
+    ...(data?.registration === "open" ? ["registration is open"] : []),
+    ...(anonymousEnroll ? ["anonymous enrolment is on"] : []),
+    ...(oidcDefault
+      ? ["every account that can sign in gets a default tier"]
+      : []),
+  ];
   const openReason =
-    data?.registration === "open" && anonymousEnroll
-      ? "registration is open and anonymous enrolment is on"
-      : anonymousEnroll
-        ? "anonymous enrolment is on"
-        : "registration is open";
+    reasons.length > 1
+      ? `${reasons.slice(0, -1).join(", ")} and ${reasons[reasons.length - 1]}`
+      : (reasons[0] ?? "registration is open");
+  const identity = data?.identity ?? null;
 
   const refresh = (): void => {
     invalidate(`edge-mint:${slug}`);
@@ -182,6 +234,7 @@ export function EdgeMintRecipes({
         slug,
         approving.id,
         fieldsOf(approving),
+        identity,
         open && acknowledged,
       );
       toast.success(
@@ -192,7 +245,7 @@ export function EdgeMintRecipes({
     } catch (err) {
       toast.error(
         err instanceof ApiError && err.status === 409
-          ? "The recipe changed — review it again"
+          ? "The recipe or its sign-in trust changed — review it again"
           : "Couldn’t approve recipe",
         err instanceof Error ? err.message : undefined,
       );
@@ -270,19 +323,20 @@ export function EdgeMintRecipes({
           >
             <AlertTriangle aria-hidden className="mt-0.5 size-4 text-warning" />
             <p>
-              {data.registration === "open" ? (
-                <>
-                  Registration for this product is <strong>open</strong>
-                  {anonymousEnroll ? " and anonymous enrolment is on" : ""}
-                </>
-              ) : (
-                <>
-                  Anonymous enrolment is <strong>on</strong> for this product
-                </>
-              )}
-              : anyone who installs it can hold a device token, so an approved
-              recipe is a public token mint.
+              The mint is <strong>public</strong>: {openReason}. Anyone who
+              installs this product (or can sign in to it) can hold a device
+              token, so an approved recipe is a public token mint.
             </p>
+          </div>
+        ) : null}
+        {identity ? (
+          <div className="space-y-2 rounded-md border border-border p-3">
+            <p className="text-sm">
+              Identity is on: signing in also hands out device tokens. An
+              approval covers this identity provider and group map; a push that
+              changes them makes every recipe inert until it is approved again.
+            </p>
+            <IdentityTrust identity={identity} />
           </div>
         ) : null}
         {data.recipes.map((recipe) => (
@@ -322,6 +376,19 @@ export function EdgeMintRecipes({
               </div>
             </div>
             <RecipeFields recipe={recipe} />
+            {recipe.changedFields.includes("identity") && identity ? (
+              <div className="space-y-2">
+                <p className="text-xs text-warning">
+                  Sign-in now trusts a different identity provider or group map
+                  than when this recipe was approved. It does not mint until it
+                  is re-approved.
+                </p>
+                <IdentityTrust
+                  identity={identity}
+                  was={recipe.approval?.identity ?? null}
+                />
+              </div>
+            ) : null}
             {recipe.changedFields.includes("registration") ? (
               <p className="text-xs text-warning">
                 The mint became public ({openReason}) after this recipe was
@@ -361,6 +428,14 @@ export function EdgeMintRecipes({
             {approving ? (
               <div className="space-y-4">
                 <RecipeFields recipe={{ ...approving, changedFields: [] }} />
+                {identity ? (
+                  <div className="space-y-2">
+                    <p className="text-sm">
+                      Devices can also get tokens by signing in with:
+                    </p>
+                    <IdentityTrust identity={identity} />
+                  </div>
+                ) : null}
                 {open ? (
                   <div className="flex items-start gap-2 text-sm">
                     <Checkbox

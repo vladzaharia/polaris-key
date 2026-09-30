@@ -9,6 +9,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import {
   ApiError,
+  type EdgeMintIdentity,
   type EdgeMintRecipe,
   type EdgeMintRecipesResponse,
   type ProductDetail,
@@ -85,15 +86,26 @@ function recipe(over: Partial<EdgeMintRecipe> = {}): EdgeMintRecipe {
   };
 }
 
+const IDENTITY: EdgeMintIdentity = {
+  provider: "custom",
+  issuer: "https://id.example",
+  clientId: "djdl-client",
+  groupRoleMapJson: '{"staff":{"role":"user","tier":"pro"}}',
+};
+
 function recipes(
   list: EdgeMintRecipe[],
   registration: EdgeMintRecipesResponse["registration"] = "requires-license",
   anonymousEnroll = false,
+  extra: { identity?: EdgeMintIdentity | null; oidcDefault?: boolean } = {},
 ): EdgeMintRecipesResponse {
+  const oidcDefault = extra.oidcDefault ?? false;
   return {
     registration,
     anonymousEnroll,
-    publicMint: registration === "open" || anonymousEnroll,
+    oidcDefault,
+    publicMint: registration === "open" || anonymousEnroll || oidcDefault,
+    identity: extra.identity ?? null,
     recipes: list,
   };
 }
@@ -226,6 +238,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "djdl",
         "applemusic",
         FIELDS,
+        null,
         false,
       ),
     );
@@ -248,6 +261,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "djdl",
         "applemusic",
         FIELDS,
+        null,
         true,
       ),
     );
@@ -261,7 +275,9 @@ describe("Edge-mint recipes card (P0-12)", () => {
     renderSecrets();
     await screen.findByText("Edge-mint recipes");
     expect(screen.getByText(/public token mint/)).toBeTruthy();
-    expect(screen.getByText(/Anonymous enrolment is/)).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toMatch(
+      /The mint is public: anonymous enrolment is on\./,
+    );
     await userEvent.click(screen.getByRole("button", { name: "Approve" }));
     const dialog = await screen.findByRole("dialog");
     expect(
@@ -276,6 +292,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "djdl",
         "applemusic",
         FIELDS,
+        null,
         true,
       ),
     );
@@ -290,6 +307,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
           approval: {
             ...FIELDS,
             openRegistrationAcknowledged: false,
+            identity: null,
             approvedAt: 1_700_000_000,
             approvedBy: "migration",
           },
@@ -328,6 +346,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
             approval: {
               ...FIELDS,
               openRegistrationAcknowledged: false,
+              identity: null,
               approvedAt: 1_700_000_000,
               approvedBy: "op-1",
             },
@@ -359,6 +378,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "djdl",
         "applemusic",
         FIELDS,
+        null,
         true,
       ),
     );
@@ -383,11 +403,106 @@ describe("Edge-mint recipes card (P0-12)", () => {
       within(dialog).getByRole("button", { name: "Approve" }),
     );
     expect(
-      await screen.findByText("The recipe changed — review it again"),
+      await screen.findByText(
+        "The recipe or its sign-in trust changed — review it again",
+      ),
     ).toBeTruthy();
     // The list is reloaded so the operator sees the recipe as it now stands.
     await waitFor(() =>
       expect(mockApi.edgeMintRecipes.mock.calls.length).toBeGreaterThan(1),
+    );
+  });
+  it("with Identity on, shows the sign-in trust and echoes it on approve", async () => {
+    mockApi.edgeMintRecipes.mockResolvedValue(
+      recipes([recipe()], "requires-license", false, { identity: IDENTITY }),
+    );
+    mockApi.approveEdgeMintRecipe.mockResolvedValue({ ok: true });
+    renderSecrets();
+    await screen.findByText("Edge-mint recipes");
+    expect(
+      screen.getByText(/signing in also hands out device tokens/),
+    ).toBeTruthy();
+    expect(screen.getAllByText("https://id.example").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/Devices can also get tokens by signing in/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Approve" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.approveEdgeMintRecipe).toHaveBeenCalledWith(
+        "djdl",
+        "applemusic",
+        FIELDS,
+        IDENTITY,
+        false,
+      ),
+    );
+  });
+
+  it("explains a recipe whose sign-in trust changed, with the approved issuer beside the new one", async () => {
+    mockApi.edgeMintRecipes.mockResolvedValue(
+      recipes(
+        [
+          recipe({
+            status: "changed",
+            approval: {
+              ...FIELDS,
+              openRegistrationAcknowledged: false,
+              identity: IDENTITY,
+              approvedAt: 1_700_000_000,
+              approvedBy: "op-1",
+            },
+            changedFields: ["identity"],
+          }),
+        ],
+        "requires-license",
+        false,
+        {
+          identity: { ...IDENTITY, issuer: "https://idp.attacker.example" },
+        },
+      ),
+    );
+    renderSecrets();
+    expect(
+      await screen.findByText(
+        /Sign-in now trusts a different identity provider or group map/,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("https://id.example")).toBeTruthy();
+    expect(screen.getByText(/approved as:/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Re-approve" })).toBeTruthy();
+  });
+
+  it("with an OIDC default tier, warns that the mint is public and requires the acknowledgement", async () => {
+    mockApi.edgeMintRecipes.mockResolvedValue(
+      recipes([recipe()], "requires-license", false, {
+        identity: IDENTITY,
+        oidcDefault: true,
+      }),
+    );
+    mockApi.approveEdgeMintRecipe.mockResolvedValue({ ok: true });
+    renderSecrets();
+    await screen.findByText("Edge-mint recipes");
+    expect(screen.getByRole("alert").textContent).toMatch(
+      /every account that can sign in gets a default tier/,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog).getByRole("button", { name: "Approve" });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.click(within(dialog).getByRole("checkbox"));
+    await userEvent.click(confirm);
+    await waitFor(() =>
+      expect(mockApi.approveEdgeMintRecipe).toHaveBeenCalledWith(
+        "djdl",
+        "applemusic",
+        FIELDS,
+        IDENTITY,
+        true,
+      ),
     );
   });
 });
