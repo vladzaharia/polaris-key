@@ -287,6 +287,10 @@ release:
   # manualChannels:
   #   - name: nightly
   #     regex: v.*-nightly\\..*
+  # Which tags are real app releases (candidates for stable/latest). Undeclared means any semver
+  # tag with an optional leading v; list tags that are not app releases in ignoreTags:
+  # stableTagPattern: v\\d+\\.\\d+\\.\\d+
+  # ignoreTags: [channels, packs]
 `;
 }
 

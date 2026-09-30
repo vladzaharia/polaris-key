@@ -499,6 +499,9 @@ newer release disappears from the list, with a `public` cache header.
 `release_config`, refuse to serve below it, and surface a `needs-attention` health check when
 the resolved latest regresses.
 
+**Status** — **Fixed in P0-02** (2026-09-30). See
+[R6-10 — downgrade protection — Fixed](#r6-10--downgrade-protection--fixed) under Remediation.
+
 ---
 
 ### R6-11 — Served `origin` comes from the request Host header — **Low**
@@ -855,12 +858,44 @@ is what breaks them.
 **Tests:** R6-08 × 4 inverted; the R10 lane's duplicate `R10-02` × 2 and the R9 lane's `R9-14`
 inverted for the same reason.
 
+### R6-10 — downgrade protection — **Fixed**
+
+Fixed later, in work package P0-02 of the Godot omniplatform program, as the feature the table
+below said it needed: a migration and an admin surface.
+
+- **Floor.** A new table, `release_channel_floors` (migration 0023), holds the highest
+  version each moving channel (`stable`, `beta` without a channel workflow, manual channels;
+  never a pinned `X.Y.Z`, never `pr-<n>`) has resolved to during a truth-store sync. Only the sync raises it; the request path never writes it.
+- **Enforcement.** `resolveMovingSelector` (`services/release/gateway.ts`) is the one resolution
+  function the download route, the appcast, `/version` and `checkReleaseHealth` share. When the
+  pick lands below the floor it looks the floor's release up by tag (one GitHub call): still
+  there (it sat on a page not read) ⇒ serve it; gone ⇒ `404 no release for selector`, so no
+  `cache-control: public` downgrade is ever emitted. The truth-store channel row refuses the
+  same downgrade and records `release_health` as `blocked`.
+- **Health.** `checkReleaseHealth` reports a `channel-regressed` check (error) naming the floor
+  and what the list now offers. The follow-up lookup for a non-stable floor is guarded: a quota
+  refusal or upstream failure there becomes a `channel-floor-unverified-<channel>` warning, so a
+  GitHub hiccup never turns the health report into a 500.
+- **Operator override.** `POST /manage/api/products/<slug>/release/channels/<channel>/floor`
+  with `{ "version": "1.0.0" }` lowers the floor (never raises it) and `{ "clear": true }`
+  removes it; both are audited as `release.channel.floor`.
+
+The fix direction's "compare against a client-reported version" half is not done: no client
+version is accepted on these routes, and the floor alone closes the deleted-release primitive.
+The floor table is a stop-gap that P2-03 folds into `release_channel_policy.min_supported`.
+
+**Tests:** the R6-10 PoC is now a regression test, `it("FIXED: once a sync has seen v2.0.0,
+deleting it 404s latest until an operator lowers the floor")`. It gains the sync step the PoC
+never had (without a sync there is no floor), then asserts `/version` 404s without a public
+cache header, health reports `channel-regressed` naming `2.0.0` and `v1.0.0`, and after the
+admin endpoint lowers the floor `v1.0.0` serves. `test/releaseResolution.test.ts` covers the
+floor's raise-only behaviour and the still-listed-elsewhere case.
+
 ### Deliberately NOT fixed (PoCs left green on purpose)
 
 | ID       | Why                                                                                                                                                                                                                                                                                                                                                                                       |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | R6-09    | `streamAsset`'s relative-`Location` `TypeError` and the unguarded second hop. Out of the assigned set; reaching hop 2 needs GitHub itself to 302 into a chain. ~15 lines in `github.ts` (try/catch → `NotFoundError`, plus `redirect:"manual"` and a bounded re-check loop) when scheduled.                                                                                               |
-| R6-10    | Downgrade/rollback protection needs a persisted `min_version` per (product, channel) — a migration and an admin surface, i.e. a feature, not a patch.                                                                                                                                                                                                                                     |
 | R6-11    | Origin from the `Host` header. Needs a `PUBLIC_ORIGIN` var + `wrangler.toml`, both outside this lane. **Partially mitigated**: `ORIGIN_RE` + `shQuote` mean a hostile Host can no longer inject shell, only a wrong URL.                                                                                                                                                                  |
 | R6-12    | Portal `/download/<token>` open redirect + TOCTOU lives in `portal/api.ts`, another owner. Still dormant (nothing writes `release_artifacts.source_url`).                                                                                                                                                                                                                                 |
 | R6-13    | CDATA breakout in `renderAppcast`. One-line fix, but unreachable (no caller supplies `descriptionHtml`) and flipping it would churn another lane's expectations for no live gain.                                                                                                                                                                                                         |

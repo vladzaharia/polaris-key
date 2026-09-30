@@ -168,6 +168,8 @@ function base(): Docs {
         summaryMarker: "pkey:summary",
         sparkleEd25519Pub: "AbCd1234",
         manualChannels: [{ name: "nightly", regex: "v.*-nightly\\..*" }],
+        stableTagPattern: "v\\d+\\.\\d+\\.\\d+",
+        ignoreTags: ["channels", "packs"],
         artifactPolicy: {
           channels: ["stable", "beta"],
           architectures: ["arm64", "x86_64"],
@@ -689,6 +691,32 @@ const MUTATIONS: Mutation[] = [
     schema: "accepts",
     // The validator-only half: JSON Schema cannot test that a regex COMPILES.
     mutate: (d) => (rel(d).manualChannels[0].regex = "(unclosed"),
+  },
+  {
+    code: "invalid_stable_tag_pattern",
+    file: "release",
+    schema: "rejects",
+    // The schema-expressible half: the same 80-character cap as a manual-channel regex.
+    mutate: (d) => (rel(d).stableTagPattern = "a".repeat(81)),
+  },
+  {
+    code: "invalid_stable_tag_pattern",
+    file: "release",
+    schema: "accepts",
+    // The validator-only half (regex safety rule): JSON Schema cannot test that it COMPILES.
+    mutate: (d) => (rel(d).stableTagPattern = "v(unclosed"),
+  },
+  {
+    code: "invalid_ignore_tags",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).ignoreTags = "channels"),
+  },
+  {
+    code: "invalid_ignore_tags",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (rel(d).ignoreTags = ["has space"]),
   },
   {
     code: "invalid_release_access",

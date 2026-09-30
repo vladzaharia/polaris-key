@@ -141,7 +141,7 @@ async function handleChangelog({
 
 async function handleBinary(
   kind: "cli" | "dmg",
-  { req, env, cfg, product, params, now, fetchImpl }: SurfaceContext,
+  { req, env, db, cfg, product, params, now, fetchImpl }: SurfaceContext,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
   // The download path accepts `aarch64` / `amd64` aliases; canonicalise them here so the arch
@@ -152,6 +152,7 @@ async function handleBinary(
   const binaryName = cfg.binary_name ?? product.slug;
   const { release, sel } = await resolveSelector(
     env,
+    db,
     cfg,
     params.version ?? params.channel,
     now,

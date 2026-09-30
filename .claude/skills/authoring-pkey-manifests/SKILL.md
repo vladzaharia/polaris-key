@@ -56,6 +56,12 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
       channels, install/appcast settings, edge-mint recipes. Maps to `release_config` and
       `edge_mint_config`.
+- [ ] If the repo publishes tags that are not app releases (rolling `channels`, content `packs`,
+      …), say so in `release`: `stableTagPattern` (an anchored regex, ≤ 80 characters, same
+      safety rule as `manualChannels[].regex`) narrows which tags may become stable/latest, and
+      `ignoreTags` lists exact tag names that never resolve on a moving channel. Undeclared, any
+      semver tag with an optional leading `v` is a candidate, and the highest semver wins — not
+      the newest by creation order.
 - [ ] The base name selects the role; the extension is a pure format preference, tried
       `.json` → `.yaml` → `.yml` and resolved **per document**, so `product.yaml` may sit next to
       `schema.json`.

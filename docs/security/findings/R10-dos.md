@@ -428,7 +428,8 @@ to explore the full failure tree.
 | 34 x's     | ~57 s                       |
 
 Doubling per character. Git tag names may be far longer than 34 characters, so this is
-unbounded in practice. `resolveChannel` multiplies it by the release-list length (up to 100).
+unbounded in practice. `resolveChannel` multiplies it by the release-list length: up to 100
+releases per request as audited, and more since P0-02 (see "Widened by P0-02" below).
 
 **Preconditions.** A product admin (or a `.pkey/release.yaml` in a linked repo, applied by the
 webhook resync path) sets `manual_channels_json`. `parseManualChannels` accepts the pattern —
@@ -445,6 +446,36 @@ change in a linked repo.
 **PoC status: PROVEN.** `R10-07 > an 8-character pattern under the cap backtracks
 catastrophically`, `… runtime doubles per extra input character (exponential, not linear)`,
 `… cost is multiplied by the release list length`.
+
+**Widened by P0-02 (release resolution, 2026-09).** This finding is still open, and P0-02 made
+its reach larger in two ways. Neither changes the precondition: write access to a linked repo's
+`.pkey/release`, or a product admin.
+
+1. **A second sink under the same non-guard.** `release.stableTagPattern` (column
+   `release_config.stable_tag_pattern`) is compiled by `compileManualChannelRegex`, which applies
+   the same length cap and compile check as a manual channel, and nothing else
+   (`resolutionPolicy`, `packages/worker/src/services/release/channels.ts`). It is not confined to
+   a manual channel's traffic. It runs against every non-draft, non-ignored, semver-parseable tag
+   on every `latest`/`stable` resolution, and on every `beta` resolution that falls back to
+   prereleases because no channel workflow is set. Those resolutions serve the ordinary
+   unauthenticated appcast, `/version` and download routes. It also runs in
+   `checkReleaseHealth` and in every truth-store sync.
+2. **A longer release list.** Live resolution now reads up to `RELEASE_PAGE_CAP.live` = 3 pages
+   of 100. The early-stop test looks at each new page once, and the pick then scans every
+   release read, so one moving-selector resolution runs the pattern up to about **600** times
+   (up to 300 releases, each tested twice). As audited it was 100. `checkReleaseHealth` adds a
+   pre-check over the listed releases and one more full resolution for each floored channel that
+   looks regressed. A sync reads up to `RELEASE_PAGE_CAP.sync` = 10 pages, so it tests up to
+   **1,000 releases per channel**. Manual-channel regexes get the same larger lists.
+
+What P0-02 does to limit this. It is ordering only, not a guard. The operator regex runs last,
+after the draft, `ignoreTags`, semver-parse and (on the stable path) `!prerelease` checks have
+each had the chance to reject a tag. Because an attacker with repo write access also controls the
+tags, this cuts the cost of normal repos but does not bound the attack.
+
+**Any fix for R10-09 must cover `stableTagPattern` as well as `manualChannels`.** Both go through
+`compileManualChannelRegex` (the validator's rule, `shared-manifest`) and both are matched in
+`channels.ts`. The same holds for the input-length cap on `tag_name`.
 
 **Fix direction.** Do not compile operator regexes at all — a glob/prefix matcher covers the
 real use case (`v*-nightly.*`). If regexes must stay, use a linear-time engine (RE2-style) or
