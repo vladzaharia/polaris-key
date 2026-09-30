@@ -88,6 +88,7 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/identity/auth/callback", ["get"]],
   ["/{product}/identity/auth/poll", ["get"]],
   ["/{product}/identity/auth/logout", ["post"]],
+  ["/{product}/identity/auth/device", ["get", "post"]],
   ["/{product}/identity/auth/device/start", ["post"]],
   ["/{product}/identity/auth/device/verify", ["get", "post"]],
   ["/{product}/identity/auth/device/poll", ["post"]],
@@ -196,6 +197,7 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/start",
   "/{product}/identity/auth/callback",
   "/{product}/identity/auth/logout",
+  "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
   "/{product}/config/mint/{mintId}/auth",
 ]);
