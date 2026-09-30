@@ -105,16 +105,19 @@ per artifact, and so mislabels Steam, itch and sideload builds
 - **Identity conditions and restrict-only evidence** ([notes/S-06](../../notes/S-06-outlet-signals.md),
   proposed for `plans/P3-01.md`): a launcher signal counts only when it names this product (Flatpak
   app id, snap name, Steam app id in the env or the library ACF, itch receipt `game.id`, `APPDIR`
-  containing the executable, Android installer equal to the initiator). The ids come from the
+  containing the executable, Android installer equal to the initiator, and the MSIX package
+  family name equal to the product's before any `windows.*` row counts, because identity can be
+  inherited from an MSIX parent process). The ids come from the
   stamp: [P1-11](P1-11-godot-export-plugin.md)'s export plugin copies the product's outlet
-  identities (Steam app id, itch game id, Flatpak app id, snap name, cask token, bundle or
-  application id) from `.pkey/distribution` into `build.json`, so detection works offline at first
+  identities (Steam app id, itch game id, Flatpak app id, snap name, cask token, MSIX package
+  family name, bundle or application id) from `.pkey/distribution` into `build.json`, so detection works offline at first
   launch, and the pure function receives them with the stamp. Non-attested evidence may
   move the stamp only to an outlet with no wider `binaryUpdates`. Attested evidence overrides the
   stamp only when it names a README §3.1 outlet. On macOS only two signing leaves select:
   `Apple Mac OS Application Signing` (`app-store`) and `TestFlight Beta Distribution`
-  (`testflight`). A Developer ID, Apple Distribution, Apple Development or ad hoc leaf is a veto
-  and never selects `direct`, because Steam and itch macOS builds are Developer ID too. A veto
+  (`testflight`). A Developer ID, Apple Distribution, Apple Development or ad hoc leaf, or an
+  unsigned bundle (signal value `none`), is a veto and never selects `direct`, because Steam
+  macOS builds are Developer ID, ad hoc or unsigned (6/4/2 of 12 measured). A veto
   drops the stamp and gives `unknown` when the stamp names the vetoed outlet, and changes nothing
   otherwise: Android installer ≠ initiator against `play`; an iOS provisioning profile against
   `app-store`; a non-store macOS leaf against `app-store`/`testflight`; a snap revision `x<n>`
@@ -128,9 +131,14 @@ per artifact, and so mislabels Steam, itch and sideload builds
   these rules, follow the plan and report the gap.
 - **Verification status** comes from [notes/S-06](../../notes/S-06-outlet-signals.md) (its
   signal-to-outlet table). `steam_appid.txt` is refuted as a dev-mode signal and the macOS
-  provisioning profile as a development-build signal: do not read either for detection. Rows
-  S-06 left unmeasured (Play tracks, iOS devices, Windows, Steam on Windows, Linux and Proton,
-  real itch and Snap launches) keep the plan's lowest confidence.
+  provisioning profile as a development-build signal: do not read either for detection. Each
+  signal takes the confidence in the note's table, including rows S-06 could not measure on a
+  device (Play tracks, iOS devices, Windows, Steam on Windows, Linux and Proton, real itch and
+  Snap launches). The attested rows backed only by documentation (`ios.appDistributor`,
+  `windows.packageIdentity`, `windows.signatureKind`, `windows.appInstallerUri`,
+  `windows.externalLocation`) are "attested per documentation"; P3-01 confirms or lowers them.
+  Do not downgrade them here: Swift, Node and Python have no stamp producer, so a lower
+  `ios.appDistributor` would make every stamp-less App Store install `unknown` (rule 7).
 - **Privacy** (AGENTS rule 7): read markers, never enumerate installed applications. Report only
   the detected outlet id, if the telemetry allowlist has an `outlet` key (P1-05).
 - **No typed N/A.** Every runtime can at least return the stamp or `unknown`.

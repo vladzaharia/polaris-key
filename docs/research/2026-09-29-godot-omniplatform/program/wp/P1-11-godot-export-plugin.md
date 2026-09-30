@@ -71,7 +71,9 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   `sdkVersion`, and `outletIds`: the product's non-secret outlet identities that runtime
   detection (P3-11) checks offline at first launch
   ([notes/S-06](../../notes/S-06-outlet-signals.md), precedence rule 4). Keys, each optional:
-  `steamAppId`, `itchGameId`, `flatpakId`, `snapName`, `caskToken`, and `bundleId` (from the
+  `steamAppId`, `itchGameId`, `flatpakId`, `snapName`, `caskToken`, `msixFamilyName` (the
+  Microsoft Store or App Installer package family name, which the `windows.*` rows must match
+  because package identity can be inherited from an MSIX parent process), and `bundleId` (from the
   preset's `application/bundle_identifier` or `package/unique_name` where the platform has one).
   The export plugin copies the others from the `.pkey/distribution` outlet entries when that file
   exists ([P2b-02](P2b-02-distribution-manifest.md)); until then from an optional
