@@ -1,6 +1,6 @@
 // @pkey-feature core.discover
 //
-// The React transcript replayer (P1b-03, PARITY §4.2), over the shared TypeScript replay engine
+// The React transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, over the shared TypeScript replay engine
 // in `conformance/runners/node/transcriptReplay.ts`.
 //
 // Which transcripts apply is DATA, read from `packages/sdk-react/parity.json` with the same rule

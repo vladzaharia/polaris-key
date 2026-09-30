@@ -409,6 +409,18 @@ function parityMatrix() {
     manifest: JSON.parse(read(...sdk.manifest.split("/"))),
   }));
 
+  // A transcript proof EXISTS once some committed transcript (conformance/transcripts/, written
+  // by `pnpm gen:transcripts`) lists the feature; until then it shows its owner, or "not
+  // recorded" when it has none.
+  const transcriptsDir = join(repo, "conformance", "transcripts");
+  const recorded = new Set(
+    existsSync(transcriptsDir)
+      ? readdirSync(transcriptsDir)
+          .filter((f) => f.endsWith(".json"))
+          .flatMap((f) => JSON.parse(read("conformance", "transcripts", f)).features)
+      : [],
+  );
+
   const runtimeList = (runtime) =>
     (Array.isArray(runtime) ? runtime : [runtime]).join(", ");
   const exceptText = (except) =>
@@ -421,14 +433,17 @@ function parityMatrix() {
     const owner = entry.wp ?? "unowned";
     return `planned (${owner})${exceptText(entry.except)}`;
   };
-  const proofText = (proof) =>
+  const proofText = (id, proof) =>
     proof
       .map((p) => {
         const owner = p.wp ? ` (${p.wp})` : "";
         if (p.kind === "corpus")
           return `\`${p.file}\`${p.family ? ` \`${p.family}\`` : ""}${owner}`;
         if (p.kind === "generated") return `\`${p.command}\`${owner}`;
-        if (p.kind === "transcript") return `transcripts${owner}`;
+        if (p.kind === "transcript")
+          return recorded.has(id)
+            ? "transcripts"
+            : `transcripts${owner || " (not recorded)"}`;
         if (p.kind === "device") return "device tests";
         if (p.kind === "snapshot") return "snapshot tests";
         return p.kind;
@@ -453,7 +468,7 @@ function parityMatrix() {
       .map((f) => [
         `\`${f.id}\``,
         mdxText(f.title),
-        proofText(f.proof),
+        proofText(f.id, f.proof),
         ...sdks.map((sdk) => cell(sdk.manifest.features[f.id])),
         allowedText(f.allowedNa),
       ]);
@@ -505,7 +520,8 @@ starts with its registry entry; a new SDK starts with a manifest in which everyt
 
 Cells: **✓** implemented; **N/A (runtime: reason)** a typed "unsupported here" result;
 **planned (P1b-07)** the work package that closes the gap; **planned (unowned)** a gap with no
-owner yet (listed below). A proof marked with a work package does not exist yet.`,
+owner yet (listed below). A proof marked with a work package does not exist yet; "transcripts
+(not recorded)" is a transcript proof no work package has taken on.`,
     [
       table(
         [

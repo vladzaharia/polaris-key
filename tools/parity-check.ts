@@ -11,6 +11,8 @@
 //   `@pkey-feature <id> [<id>…]` comments    in the tests under each manifest's testRoots
 //   docs/research/…/program/workpackages.json   which work packages exist and are open
 //
+// and one GENERATED input: `conformance/transcripts/*.json` (P1b-03, `pnpm gen:transcripts`).
+//
 // It fails when:
 //
 //   1. a registry id is missing from a manifest, or a manifest names an id the registry lacks;
@@ -21,7 +23,16 @@
 //      manifest's runtimes uncovered (unless it names a trait the manifest lists);
 //   4. a `planned` entry's `wp` is not a work package, or that package is already `done`
 //      (`unowned: true` with a note is listed, not failed; with no program file, skipped);
-//   5. a tag names an unknown feature id.
+//   5. a tag names an unknown feature id;
+//   6. a transcript is malformed, names a feature the registry lacks, or lists a feature whose
+//      registry entry has no `transcript` proof; or a transcript APPLIES to an SDK — every id in
+//      its `features` is `implemented` there and none in its `requires` is `na` — and for some
+//      id in its `features` no test tagged `@pkey-feature <id>` under that SDK's testRoots
+//      mentions `conformance/transcripts` (the replayer). The replayers apply the same
+//      `applies` rule at run time, so a transcript runs exactly where the gate demands it.
+//
+// A `transcript` proof no transcript lists yet is not enforced; it is listed (with its owner,
+// if it names one), and a warning is printed when the owner is already `done`.
 //
 // Schema violations of the registry or a manifest fail too. The parity docs page is written
 // by the docs generator (packages/docs/scripts/gen-reference.mjs), never by this file.
@@ -105,10 +116,17 @@ export interface UnownedGap {
   note: string;
 }
 
+/** A registry `transcript` proof that no committed transcript lists yet. */
+export interface UnrecordedTranscript {
+  feature: string;
+  wp?: string;
+}
+
 export interface ParityResult {
   violations: string[];
   warnings: string[];
   unowned: UnownedGap[];
+  unrecorded: UnrecordedTranscript[];
 }
 
 export interface ParityOptions {
@@ -122,6 +140,9 @@ export const REGISTRY_PATH = "conformance/parity/features.json";
 export const REGISTRY_SCHEMA_PATH = "conformance/parity/features.schema.json";
 export const MANIFEST_SCHEMA_PATH = "conformance/parity/manifest.schema.json";
 export const CORPUS_DIR = "conformance/corpus/v2";
+export const TRANSCRIPTS_DIR = "conformance/transcripts";
+/** What a replayer mentions — the directory it replays from. */
+const TRANSCRIPTS_TOKEN = "conformance/transcripts";
 export const PROGRAM_PATH =
   "docs/research/2026-09-29-godot-omniplatform/program/workpackages.json";
 
@@ -276,11 +297,84 @@ interface ProgramPackage {
   status: string;
 }
 
+/** The part of a transcript the gate reads. The Worker's generator owns the full format
+ *  (packages/worker/test/transcripts/format.ts). */
+export interface TranscriptHead {
+  file: string;
+  id: string;
+  features: string[];
+  requires: string[];
+}
+
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === "string");
+
+/** Read and sanity-check every committed transcript (rule 6). A missing directory is simply
+ *  "no transcripts yet". */
+function readTranscripts(
+  root: string,
+  features: Map<string, Feature>,
+  violations: string[],
+): TranscriptHead[] {
+  const dir = join(root, TRANSCRIPTS_DIR);
+  if (!existsSync(dir)) return [];
+  const out: TranscriptHead[] = [];
+  for (const name of readdirSync(dir).sort()) {
+    if (!name.endsWith(".json")) continue;
+    const file = `${TRANSCRIPTS_DIR}/${name}`;
+    const loaded = readJson(root, file);
+    if (loaded.error) {
+      violations.push(`[rule 6] ${loaded.error}`);
+      continue;
+    }
+    const t = loaded.data as Record<string, unknown>;
+    const id = name.replace(/\.json$/, "");
+    if (
+      t.id !== id ||
+      !isStringArray(t.features) ||
+      !t.features.length ||
+      !isStringArray(t.requires)
+    ) {
+      violations.push(
+        `[rule 6] ${file}: needs "id": "${id}", a non-empty "features" list and a "requires" list`,
+      );
+      continue;
+    }
+    for (const f of t.features) {
+      const feature = features.get(f);
+      if (!feature)
+        violations.push(`[rule 6] ${file}: names unknown feature "${f}"`);
+      else if (!feature.proof.some((p) => p.kind === "transcript"))
+        violations.push(
+          `[rule 6] ${file}: lists ${f}, whose registry entry has no transcript proof`,
+        );
+    }
+    for (const f of t.requires)
+      if (!features.has(f))
+        violations.push(`[rule 6] ${file}: requires unknown feature "${f}"`);
+    out.push({ file, id, features: t.features, requires: t.requires });
+  }
+  return out;
+}
+
+/** Does the transcript apply to this SDK? Every feature it proves is `implemented`, and none it
+ *  presupposes is `na` — the same rule each SDK's replayer uses to decide what to run. */
+export function transcriptApplies(
+  t: Pick<TranscriptHead, "features" | "requires">,
+  manifest: Pick<Manifest, "features">,
+): boolean {
+  return (
+    t.features.every((id) => manifest.features[id]?.status === "implemented") &&
+    t.requires.every((id) => manifest.features[id]?.status !== "na")
+  );
+}
+
 export function checkParity(options: ParityOptions): ParityResult {
   const { root } = options;
   const violations: string[] = [];
   const warnings: string[] = [];
   const unowned: UnownedGap[] = [];
+  const unrecorded: UnrecordedTranscript[] = [];
 
   // ── The registry ────────────────────────────────────────────────────────────────────────
   const reg = readJson(root, REGISTRY_PATH);
@@ -289,7 +383,7 @@ export function checkParity(options: ParityOptions): ParityResult {
   for (const r of [reg, regSchema, manSchema])
     if (r.error) violations.push(`[registry] ${r.error}`);
   if (reg.error || regSchema.error || manSchema.error)
-    return { violations, warnings, unowned };
+    return { violations, warnings, unowned, unrecorded };
 
   const regErrors = schemaErrors(
     REGISTRY_PATH,
@@ -297,7 +391,7 @@ export function checkParity(options: ParityOptions): ParityResult {
     reg.data,
   );
   violations.push(...regErrors);
-  if (regErrors.length) return { violations, warnings, unowned };
+  if (regErrors.length) return { violations, warnings, unowned, unrecorded };
   const registry = reg.data as Registry;
   const validateManifest = compile(manSchema.data as object);
 
@@ -354,6 +448,19 @@ export function checkParity(options: ParityOptions): ParityResult {
       [];
     program = new Map(packages.map((p) => [p.id, p]));
   }
+
+  // ── The transcripts (rule 6) ────────────────────────────────────────────────────────────
+  const transcripts = readTranscripts(root, features, violations);
+  const recorded = new Set(transcripts.flatMap((t) => t.features));
+  for (const f of registry.features)
+    for (const proof of f.proof) {
+      if (proof.kind !== "transcript" || recorded.has(f.id)) continue;
+      unrecorded.push({ feature: f.id, ...(proof.wp ? { wp: proof.wp } : {}) });
+      if (proof.wp && program?.get(proof.wp)?.status === "done")
+        warnings.push(
+          `[rule 6] ${f.id}: its transcript proof names ${proof.wp}, which is done, but no transcript lists ${f.id}`,
+        );
+    }
 
   // ── Every manifest ──────────────────────────────────────────────────────────────────────
   const tagsByFile = new Map<string, Tag[]>();
@@ -455,6 +562,26 @@ export function checkParity(options: ParityOptions): ParityResult {
         );
     };
 
+    // Rule 6: every transcript that applies here has a tagged replayer for each feature it
+    // proves. One line per feature, naming the transcripts that demand it.
+    const demanded = new Map<string, string[]>(); // feature id → transcript ids
+    for (const t of transcripts) {
+      if (!transcriptApplies(t, manifest)) continue;
+      for (const id of t.features) {
+        if (!demanded.has(id)) demanded.set(id, []);
+        demanded.get(id)!.push(t.id);
+      }
+    }
+    for (const [id, ids] of demanded) {
+      const replays = [...(taggedFiles.get(id) ?? [])].some((file) =>
+        mentions(textByFile.get(file) ?? "", TRANSCRIPTS_TOKEN),
+      );
+      if (!replays)
+        violations.push(
+          `[rule 6] ${where}: ${ids.join(", ")} ${ids.length === 1 ? "applies" : "apply"} here, but no test tagged @pkey-feature ${id} replays ${TRANSCRIPTS_TOKEN}`,
+        );
+    }
+
     for (const [id, entry] of Object.entries(manifest.features)) {
       const feature = features.get(id);
       if (!feature) continue;
@@ -539,7 +666,7 @@ export function checkParity(options: ParityOptions): ParityResult {
           );
     }
 
-  return { violations, warnings, unowned };
+  return { violations, warnings, unowned, unrecorded };
 }
 
 // ── CLI ────────────────────────────────────────────────────────────────────────────────────
@@ -547,7 +674,7 @@ export function checkParity(options: ParityOptions): ParityResult {
 function main(): void {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..");
   // `--check` is accepted and ignored: the checker never writes anything.
-  const { violations, warnings, unowned } = checkParity({ root });
+  const { violations, warnings, unowned, unrecorded } = checkParity({ root });
   for (const w of warnings) console.warn(`warning: ${w}`);
   if (unowned.length) {
     console.log(
@@ -555,6 +682,13 @@ function main(): void {
     );
     for (const u of unowned)
       console.log(`  ${u.sdk}: ${u.feature} (${u.note})`);
+  }
+  if (unrecorded.length) {
+    console.log(
+      `parity: ${unrecorded.length} transcript proofs have no recorded transcript yet:`,
+    );
+    for (const u of unrecorded)
+      console.log(`  ${u.feature} (${u.wp ?? "no owning work package"})`);
   }
   if (violations.length) {
     for (const v of violations) console.error(v);

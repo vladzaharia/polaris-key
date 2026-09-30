@@ -1,4 +1,4 @@
-// The Node transcript replayer (P1b-03, PARITY §4.2): drive `@polaris-key/node`'s
+// The Node transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/: drive `@polaris-key/node`'s
 // `PolarisKeyClient` through every recorded conversation its parity manifest says it can have,
 // against a fake server that serves the Worker's recorded answers and asserts every request.
 //

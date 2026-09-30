@@ -1,7 +1,8 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate devices.register
 //
-// The Swift transcript replayer (P1b-03, PARITY §4.2): drive `PolarisKeyClient` through every
+// The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
+// from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
 // recorded conversation `sdks/swift/parity.json` makes applicable, against a fake server
 // (`ReplayServer` behind a `PolarisTransport`) that serves the Worker's recorded answers and
 // asserts every request.

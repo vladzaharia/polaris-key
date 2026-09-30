@@ -1,4 +1,4 @@
-"""The Python transcript replayer (P1b-03, PARITY §4.2).
+"""The Python transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/.
 
 Drives ``PolarisKeyClient`` through every recorded conversation ``sdks/python/parity.json``
 makes applicable, against a fake server (``transcript_replay.ReplayServer``, an
