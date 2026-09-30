@@ -24,3 +24,9 @@ docs/research/2026-09-29-godot-omniplatform/prototype/patching/out/
 docs/research/2026-09-29-godot-omniplatform/prototype/patching/proj_v*/
 docs/research/2026-09-29-godot-omniplatform/prototype/patching/v2_changes.json
 docs/research/2026-09-29-godot-omniplatform/prototype/patching/venv/
+# S-04's low-end harness: the vectors sync.sh copies in, exports and Xcode projects, pulled results.
+docs/research/2026-09-29-godot-omniplatform/prototype/lowend/project/vectors/
+docs/research/2026-09-29-godot-omniplatform/prototype/lowend/project/addons/
+docs/research/2026-09-29-godot-omniplatform/prototype/lowend/project/lib/
+docs/research/2026-09-29-godot-omniplatform/prototype/lowend/build/
+docs/research/2026-09-29-godot-omniplatform/prototype/lowend/results/
