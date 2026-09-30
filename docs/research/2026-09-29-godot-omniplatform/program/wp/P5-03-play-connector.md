@@ -88,8 +88,15 @@ all built against recorded responses and a fake Google API before a real key exi
   The control asks for explicit confirmation in that case.
 - **Track ids.** `production`, `beta`, `alpha` and custom names are documented; the internal track
   may be `internal` or `qa`. Read the ids from `tracks.list`; never hard-code the internal one.
-- **Reporting API names are unverified** (metric-set and metric names, notes/E2 §A1). Confirm them
-  (S-07 row 17) before writing `vitals.ts`, and keep the fixtures in step.
+- **Reporting API names are verified** ([notes/S-07](../../notes/S-07.md) row 17, read from the v1beta1 discovery document,
+  revision 20260928): singleton resources `apps/{app}/crashRateMetricSet` and
+  `apps/{app}/anrRateMetricSet` (`vitals.crashrate` and `vitals.anrrate`, methods `get` and `query`);
+  metrics `crashRate`, `crashRate7dUserWeighted`, `crashRate28dUserWeighted`,
+  `userPerceivedCrashRate` (plus the two weighted variants) and `distinctUsers`, and the same set
+  with `anr` for ANRs; dimensions include `versionCode`; scope
+  `https://www.googleapis.com/auth/playdeveloperreporting`; DAILY is `America/Los_Angeles`, HOURLY
+  is `UTC` and has no weighted metrics. Keep the fixtures in step, and re-run
+  `prototype/policy-recheck/recheck.mjs --rows 17` at the start of the package.
 - **Quota:** 3,000 queries a minute per bucket; the poller is far below it, but back off on 429.
 - **Dependency gap.** Mirrored rollouts live in P2b-04's `dist_rollouts`, which is not a declared
   dependency. If it has not landed, guard the mirror and say so in the PR.

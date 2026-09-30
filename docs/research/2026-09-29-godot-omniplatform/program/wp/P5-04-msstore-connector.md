@@ -75,8 +75,16 @@ submits, publishes or changes a rollout.
   (e.g. `CommitStarted`, `PreProcessing`, `Certification`, `Release`, `Published`, and the
   `…Failed` states) with `statusDetails`; `packageRollout` (`isPackageRollout`,
   `packageRolloutPercentage`, `packageRolloutStatus`); flights under `…/listflights`. If the
-  documentation disagrees, the documentation wins and the fixtures follow it. S-07 rows 11 and 18
-  re-check these facts; use its findings if it has run.
+  documentation disagrees, the documentation wins and the fixtures follow it. [notes/S-07](../../notes/S-07.md) rows 11 and 18
+  re-checked these facts on 2026-09-30 and confirmed them; the full `status` list is `None`,
+  `Canceled`, `PendingCommit`, `CommitStarted`, `CommitFailed`, `PendingPublication`, `Publishing`,
+  `Published`, `PublishFailed`, `PreProcessing`, `PreProcessingFailed`, `Certification`,
+  `CertificationFailed`, `Release`, `ReleaseFailed`; `packageRolloutStatus` is one of
+  `PackageRolloutNotStarted`, `…InProgress`, `…Complete`, `…Stopped`; flight submissions have the
+  same rollout methods under `…/flights/{flightId}/submissions/{submissionId}/`. The submission API
+  answers 409 for an app that uses mandatory app updates or Store-managed consumable add-ons, and
+  returns an unknown price tier for an app on Pricing Version 2; treat both as "not readable", not as
+  errors. Store Policies 7.20 takes effect 2026-10-22.
 - **Gradual rollout is MSIX-only and never rolls back installed users** when halted (notes/E3
   §A1.2). Mirror it for information; it is not an access control.
 - **Certification lag.** Record `submitted_at` and `reviewed_at` so the console can show time in

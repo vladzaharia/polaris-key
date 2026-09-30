@@ -49,7 +49,8 @@ Polaris Key code or service is involved. **Diceroll deletes nothing at this step
   `tests/test_update_*.gd`; `export_presets.cfg`.
 - Research: [README §9.2](../../README.md#92-diceroll-for-the-diceroll-side), [§13](../../README.md#13-diceroll-adoption-path), [§5.5](../../README.md#55-distribution-layer-one-build-any-outlet) (build stamp), [§5.6](../../README.md#56-code-updates-without---main-pack) (replacements for `--main-pack`), [§4.2](../../README.md#42-android) (direct APK row).
 - [notes/A4 §1.4–§1.8](../../notes/A4-diceroll-mapping.md#14-check-cadence-and-gating), [§1.11](../../notes/A4-diceroll-mapping.md#111-release-workflow--jobs-and-every-store-upload-path), [§1.13](../../notes/A4-diceroll-mapping.md#113-export-presets-that-matter), [§7](../../notes/A4-diceroll-mapping.md#7-diceroll-findings-worth-fixing-regardless-of-pkey); [notes/A6 §2.7](../../notes/A6-godot-patching.md#27-mount-semantics); [notes/E2 §B1](../../notes/E2-android.md#b1-android-developer-verification-status-at-2026-09-29).
-- S-07's note, if it exists, for the current developer-verification facts.
+- [notes/S-07](../../notes/S-07.md) rows 1, 2, 7 and 10 (re-checked 2026-09-30: verification facts unchanged; the regional
+  deadline is today; Play policy pages for downloaded code and target API level unchanged).
 
 ## Scope
 

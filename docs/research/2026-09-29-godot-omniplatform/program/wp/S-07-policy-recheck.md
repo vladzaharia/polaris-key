@@ -14,7 +14,7 @@
 
 ## Goal
 
-A research note, `notes/S-07-policy-recheck.md`, re-verifies every dated policy fact the research
+A research note, `notes/S-07.md`, re-verifies every dated policy fact the research
 relies on against its primary source, and is written as a checklist that a later work package can
 re-run. For each fact it records: the claim as the research states it, where it is stated, the
 source checked (URL, retrieval date, the page's own "last updated" date), the exact quote, a
@@ -97,7 +97,7 @@ source lists give full URLs.
 
 ## Acceptance criteria
 
-- [ ] `notes/S-07-policy-recheck.md` exists with the provenance blockquote, question, short answer,
+- [ ] `notes/S-07.md` exists with the provenance blockquote, question, short answer,
       method, results, recommendation, affected briefs and sources.
 - [ ] All 18 rows have a verdict, a quote (or the reason none could be obtained), the URL, the
       retrieval date and the page's own date.

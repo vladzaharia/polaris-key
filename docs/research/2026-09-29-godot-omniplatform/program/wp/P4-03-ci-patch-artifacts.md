@@ -35,6 +35,11 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 
 ## Read first
 
+- [S-07](S-07-policy-recheck.md) row 13, read in [notes/S-07](../../notes/S-07.md) (re-checked 2026-09-30): the data-only
+  rule for packs on store builds is still the safe reading on every store: App Review 2.5.2 is
+  stricter than DPLA 3.3.1(B), Play exempts interpreted code only if it cannot violate Play policy,
+  and Microsoft Store 10.2.2 bans dynamic code that changes described functionality. Scripts in
+  downloaded packs stay off store builds and need the `downloadedScripts` capability elsewhere.
 - `AGENTS.md`; the approved `program/plans/P4-01.md` (record, files index, blob refs, delta
   descriptors, marker, pin source: authoritative).
 - [notes/A7 §3.2–§3.3](../../notes/A7-xlang-content.md#32-delta-artifacts-pkey-patch1-fields-the-vectors-use)

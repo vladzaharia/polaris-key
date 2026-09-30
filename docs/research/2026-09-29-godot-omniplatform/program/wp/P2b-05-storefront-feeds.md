@@ -45,6 +45,13 @@ Polaris Key never holds.
   [notes/E3 §A4 and §B2](../../notes/E3-windows-linux-web.md#a4-package-manager-surfaces-winget-scoop-chocolatey)
   (Scoop `checkver`/`autoupdate`, Flathub `x-checker-data`); [notes/A4](../../notes/A4-diceroll-mapping.md)
   (Diceroll's `altstore_source.py`).
+- [S-07](S-07-policy-recheck.md) rows 1–5, 12 and 14, read in [notes/S-07](../../notes/S-07.md) (re-checked 2026-09-30, all
+  unchanged): F-Droid may now host an upstream developer-signed package beside its own (row 3);
+  AltStore PAL serves the EU, Japan and Brazil with a 5% Core Technology Commission in each
+  (rows 4–5); Flathub forbids AI-generated or AI-assisted manifest content and any AI tool opening
+  or automating a submission pull request (row 12); winget wants the final, unredirected,
+  per-version publisher URL (row 14). Re-run those rows with
+  `prototype/policy-recheck/recheck.mjs --rows 1,2,3,4,5,12,14` if more than a month has passed.
 - Hand-offs: [P2b-03](P2b-03-availability-keys.md) (availability, keys), [P2b-04](P2b-04-rollouts-delivery.md)
   (`deliveryUrl`, rollouts, access), [P2b-02](P2b-02-distribution-manifest.md) (outlet identities,
   listing), [P2-02](P2-02-trusted-publisher.md) (upload tickets), [P2-04](P2-04-release-descriptor.md)
@@ -121,8 +128,13 @@ buildVersion, minOSVersion, appPermissions: {entitlements, privacy}}` from the I
   `{version, releases: [{arch, url, sha256, size}]}` for `type: json` (`extra-data`).
 - **Access.** None of these clients can authenticate, so a feed renders only when the
   deliverable's `dist_access` is `public`; otherwise the route is not-found.
+- **Flathub renderer is deterministic** (a template over release data, no generated prose). Its
+  output is checker JSON, not a manifest, and Polaris Key never opens, comments on or automates a
+  Flathub pull request (S-07 row 12).
 - **URLs** are bytes-host URLs from `deliveryUrl` when `BLOB_ORIGIN` is set, and immutable per
-  version (winget-style clients and hash-pinned manifests need that).
+  version (winget-style clients and hash-pinned manifests need that). A winget `InstallerUrl` must
+  also be the final URL: a redirect fails winget's `Validation-Indirect-URL` check (S-07 row 14),
+  so serve installer bytes directly at that URL when it is meant for winget.
 - **CORS**: native clients ignore it; web tools (source browsers) need it. P0-05 applies the
   per-product `web.origins` allowlist centrally (`core/cors.ts`, exact origins, no wildcards); the
   feeds get whatever that gives them. Do not add a per-route wildcard.
