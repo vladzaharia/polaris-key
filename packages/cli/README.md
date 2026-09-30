@@ -21,7 +21,7 @@ core as a library (`import { runPkey } from "@polaris-key/cli"`) for embedding i
 ## Commands
 
 ```
-pkey init [--product slug] [--name name] [--modules licensing,config,releases,oidc,edgeMint]
+pkey init [--product slug] [--name name] [--modules license,config,release,update,identity]
           [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]
 pkey validate
 pkey doctor [--base-url url --product slug]
@@ -38,17 +38,18 @@ Exit codes: `0` success, `1` a validation/runtime failure, `2` an unrecognized c
 
 Scaffolds `.pkey/` in the current directory: `product.yaml` and `schema.yaml` always
 (ingest requires both, even with Config off; without `config` the schema is an empty catalog),
-`release.yaml` when `releases` is. The scaffolded tier is `policyDeviceLimit: 5` with no expiry
-field, so its licences do not expire. `--modules` takes the
-**legacy** module vocabulary (`licensing`, `config`, `releases`, `oidc`, `edgeMint` — the same
-names `.pkey/product`'s `modules` block still accepts and translates to the five service
-slugs); omit it and you get `licensing,config`, matching what every product ran before the
-service suite existed. `--product`/`--slug` default to the current directory's name,
+`release.yaml` when Release is. The scaffolded tier is `policyDeviceLimit: 5` with no expiry
+field, so its licences do not expire. `--modules` takes either vocabulary: the service slugs
+(`license`, `config`, `release`, `update`, `identity`) or the legacy module names
+`.pkey/product`'s `modules` block still accepts (`licensing`, `releases` = release + update,
+`oidc`, `edgeMint` = config). The scaffold always writes the `modules` block in service slugs,
+one line per service. Omit `--modules` and you get `license,config`, matching what every
+product ran before the service suite existed. `--product`/`--slug` default to the current directory's name,
 lowercased and reduced to `[a-z0-9-]`; `--name` defaults to a titleized version of the slug.
 Existing files are never overwritten without `--force`.
 
 ```sh
-pkey init --product djdl --modules licensing,config,releases,oidc --admin-group djdl-admins \
+pkey init --product djdl --modules license,config,release,update,identity --admin-group djdl-admins \
   --release-owner vladzaharia --release-repo djdl
 # Created 3 manifest files:
 # - .pkey/product.yaml

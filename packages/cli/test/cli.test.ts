@@ -1,11 +1,16 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { parseManifest } from "@polaris-key/manifest";
+import {
+  MODULE_SERVICES,
+  SERVICE_SLUGS,
+  parseManifest,
+} from "@polaris-key/manifest";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   initManifest,
   loadManifest,
+  normalizeModules,
   runPkey,
   validateLoadedManifest,
 } from "../src/index.js";
@@ -72,9 +77,52 @@ describe("@polaris-key/cli", () => {
     const manifest = await loadManifest(cwd);
     const result = validateLoadedManifest(manifest);
     expect(result.ok).toBe(true);
-    // `--modules licensing,config` scaffolds the legacy module names; the validator reports
-    // back in Polaris Key service slugs (`licensing` -> `license`).
+    // `modules: ["licensing", "config"]` is the legacy vocabulary; the scaffold writes the
+    // canonical service slugs and the validator reports them (`licensing` -> `license`).
     expect(result.enabledModules).toEqual(["license", "config"]);
+  });
+
+  it("scaffolds a modules block of canonical service slugs, one per table row", async () => {
+    const cwd = await tempDir();
+    await initManifest({
+      cwd,
+      slug: "djdl",
+      name: "DJDL",
+      modules: ["licensing", "config", "releases"],
+    });
+    const product = await readFile(
+      path.join(cwd, ".pkey/product.yaml"),
+      "utf8",
+    );
+    const block = product.slice(
+      product.indexOf("modules:\n"),
+      product.indexOf("\n\n", product.indexOf("modules:\n")),
+    );
+    const keys = [...block.matchAll(/^ {2}([A-Za-z]+):$/gm)].map((m) => m[1]);
+    expect(keys).toEqual([...SERVICE_SLUGS]);
+    for (const legacy of ["licensing", "releases", "oidc", "edgeMint"])
+      expect(block).not.toContain(`${legacy}:`);
+    const result = validateLoadedManifest(await loadManifest(cwd));
+    expect(result.ok).toBe(true);
+    expect(result.enabledModules).toEqual([
+      "license",
+      "config",
+      "release",
+      "update",
+    ]);
+  });
+
+  it("--modules accepts both vocabularies and returns canonical slugs", () => {
+    expect(normalizeModules(undefined)).toEqual(["license", "config"]);
+    expect(normalizeModules("licensing,config")).toEqual(["license", "config"]);
+    expect(normalizeModules("config, license")).toEqual(["license", "config"]);
+    expect(normalizeModules("oidc,identity")).toEqual(["identity"]);
+    expect(normalizeModules("releases")).toEqual(["release", "update"]);
+    for (const name of Object.keys(MODULE_SERVICES))
+      expect(() => normalizeModules(name)).not.toThrow();
+    expect(() => normalizeModules("licence")).toThrow(
+      `Unknown module "licence". Expected one of ${SERVICE_SLUGS.join(", ")}, licensing,`,
+    );
   });
 
   it("fails validation when enabled releases have no release manifest", async () => {

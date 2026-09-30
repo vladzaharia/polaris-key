@@ -22,7 +22,7 @@ Deep page: [The `.pkey/` manifest](/docs/build/manifest/) · Skill: `authoring-p
 
 | #   | Step                    | Detail                                                                                                                                                                                                       |
 | --- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Scaffold                | `pkey init --product <slug> --name "<Name>" --modules licensing,config` writes `.pkey/product.yaml`, plus `schema.yaml` and `release.yaml` for the modules you selected                                      |
+| 1   | Scaffold                | `pkey init --product <slug> --name "<Name>" --modules license,config` writes `.pkey/product.yaml`, plus `schema.yaml` and `release.yaml` for the modules you selected                                        |
 | 2   | Get editor help         | The scaffold's `# yaml-language-server: $schema=…` header points at a **path** into `node_modules/@polaris-key/manifest/schemas/v1/` — the canonical `$id` URLs are on this gated site and cannot be fetched |
 | 3   | Fill in the three roles | `schema` = the config catalog · `product` = metadata, `modules`, `devices.registration`, OIDC, tiers, profiles, provisioning · `release` = provider coordinates and edge-mint recipes                        |
 | 4   | Avoid a reserved slug   | `docs`, `manage`, `api`, `assets`, `login`, `logout`, `callback`, `magic`, `download`, `webhooks`, `well-known` are refused with `reserved_slug`                                                             |

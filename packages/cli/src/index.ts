@@ -313,7 +313,7 @@ function helpText(): string {
   return `pkey - Polaris Key platform CLI
 
 Commands:
-  pkey init [--product slug] [--name name] [--modules licensing,config,releases,oidc,edgeMint]
+  pkey init [--product slug] [--name name] [--modules license,config,release,update,identity]
   pkey validate
   pkey doctor [--base-url url --product slug]
   pkey trust --kid kid --public-key key
