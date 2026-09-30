@@ -69,7 +69,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 | Id                                         | Title                                                                                       | Depends on          | Role        | Weeks | Status |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------- | ----------- | ----- | ------ |
-| [P2-01](wp/P2-01-blob-store.md) ✋         | Core blob store on R2: content-addressed, bucket-locked, on a separate domain               | —                   | implementer | 1–1.5 | todo   |
+| [P2-01](wp/P2-01-blob-store.md) ✋         | Core blob store on R2: content-addressed, bucket-locked, on a separate domain               | —                   | implementer | 1–1.5 | done   |
 | [P2-02](wp/P2-02-trusted-publisher.md) ✋  | Trusted publishing: GitHub OIDC verification, publisher policy, scoped upload tickets       | P2-01, P2-04        | implementer | 1–1.5 | todo   |
 | [P2-03](wp/P2-03-release-data-model.md)    | Release data model v2: deliverables, builds, artifact roles, channel policy, yanks          | P0-01, P0-02        | implementer | 1–1.5 | todo   |
 | [P2-04](wp/P2-04-release-descriptor.md)    | Release descriptor ingest and the declared artifact map in `.pkey/release`                  | P2-03               | implementer | 1–1.5 | todo   |

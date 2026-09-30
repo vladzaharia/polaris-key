@@ -728,7 +728,7 @@
       "optional": false,
       "refs": ["README §3.5", "README §11 decision 4", "notes/A3 §7"],
       "brief": "wp/P2-01-blob-store.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-02",
