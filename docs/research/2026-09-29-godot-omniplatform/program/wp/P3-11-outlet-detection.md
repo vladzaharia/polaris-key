@@ -67,8 +67,10 @@ per artifact, and so mislabels Steam, itch and sideload builds
   - Godot: `/.flatpak-info`, `FLATPAK_ID`, `SNAP_NAME`, `APPIMAGE`/`APPDIR`, `SteamAppId`, the
     Steam library ACF, the itch receipt, the macOS receipt and Mach-O signing leaf, the
     `pkey_outlet_*` feature tags and the build stamp through `PolarisKey.build_info()`
-    ([P1-11](P1-11-godot-export-plugin.md)). Android's `getInstallSourceInfo` is pure GDScript
-    through `AndroidRuntime` and `JavaClassWrapper` (Godot 4.4+, measured on 4.7.2 in
+    ([P1-11](P1-11-godot-export-plugin.md)). Android's `getInstallSourceInfo`, including the
+    initiator's certificate SHA-256 (`getInitiatingPackageSigningInfo().getApkContentsSigners()`
+    hashed with `HashingContext`), is pure GDScript through `AndroidRuntime` and
+    `JavaClassWrapper` (Godot 4.4+, measured on 4.7.2 in
     [notes/S-06](../../notes/S-06-outlet-signals.md) §7), so it needs no plugin. iOS
     `AppDistributor` and Windows package identity come from plugin hooks that return
     "unavailable" until [P5-05](P5-05-apple-plugin-package.md) and a Windows native reader land.
@@ -98,7 +100,11 @@ per artifact, and so mislabels Steam, itch and sideload builds
   proposed for `plans/P3-01.md`): a launcher signal counts only when it names this product (Flatpak
   app id, snap name, Steam app id in the env or the library ACF, itch receipt `game.id`, `APPDIR`
   containing the executable, Android installer equal to the initiator). Non-attested evidence may
-  move the stamp only to an outlet with no wider `binaryUpdates`. Async platform calls get a
+  move the stamp only to an outlet with no wider `binaryUpdates`. A veto (Android installer ≠
+  initiator against a `play` stamp; an iOS provisioning profile against an `app-store` stamp)
+  drops the stamp and gives `unknown`. On Android only `play` can be `attested`, and only when
+  the initiator digest equals the Play Store's recorded digest; until P5-06's device checklist
+  records it, Android `play` evidence is `declared` (restricting only), in Godot and every SDK. Async platform calls get a
   deadline, because `AppDistributor.current` hung on the simulator. If the plan does not adopt
   these rules, follow the plan and report the gap.
 - **Verification status** comes from [notes/S-06](../../notes/S-06-outlet-signals.md) (its

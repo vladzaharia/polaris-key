@@ -24,10 +24,12 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
 
 - Android install source (`com.android.vending`, `org.fdroid.fdroid`, `dev.imranr.obtainium`, …)
   decides the outlet ([§5.5](../../README.md#55-distribution-layer-one-build-any-outlet)). Godot
-  can already read it without the AAR, through `AndroidRuntime` and `JavaClassWrapper`
-  ([notes/S-06](../../notes/S-06-outlet-signals.md) §7, measured on 4.7.2). The AAR wraps it for
-  the Kotlin SDK and adds the initiator's signing-certificate digest, which detection needs to
-  trust a `com.android.vending` claim.
+  can already read it without the AAR, through `AndroidRuntime` and `JavaClassWrapper`, including
+  the initiator's signing-certificate digest ([notes/S-06](../../notes/S-06-outlet-signals.md) §7,
+  measured on 4.7.2). The AAR wraps the same reads for the Kotlin SDK; Godot's detection does not
+  depend on it. A `com.android.vending` claim is trusted (`attested`) only when that digest
+  equals the Play Store's, which S-06 could not record (no Play-enabled emulator image), so the
+  device checklist records it.
 - On Play, updates go through In-App Updates keyed on the priority P5-03 sets; direct APKs update
   through a verified `PackageInstaller` session; Play policy forbids self-update and
   `REQUEST_INSTALL_PACKAGES` in Play builds ([§4.2](../../README.md#42-android), notes/E2 §A2, §B2).
@@ -126,7 +128,9 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
 6. `parity.json` for the Godot SDK (`outlet.detect` signals, `update.driver` on Android,
    `core.store` on Android, `packs.transport.play` client).
 7. Device checklist (human): internal-track update offered with priority; flexible update completes;
-   a fast-follow pack arrives and mounts; a direct APK self-updates without a prompt on Android 14.
+   a fast-follow pack arrives and mounts; a direct APK self-updates without a prompt on Android 14;
+   an internal-track install reports installer and initiator `com.android.vending`, and the
+   initiator's certificate SHA-256 (record it for `outlet-matrix.json`; notes/S-06 §7).
 
 ## Acceptance criteria
 

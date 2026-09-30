@@ -117,7 +117,8 @@ godot --headless --path docs/research/2026-09-29-godot-omniplatform/prototype --
 ## Hand-off
 
 The 2026-09-30 run left these rows unmeasured, for want of the human-held inputs above: Play
-production and test tracks, iOS devices (development, ad hoc, AltStore, SideStore), every
+production and test tracks (with the Play Store's certificate digest, which Android `play`
+needs to be `attested`; P5-06's device checklist records it), iOS devices (development, ad hoc, AltStore, SideStore), every
 Windows row, Steam on Windows, Linux and Proton, the real itch app, a real snapd launch, and a
 real installed PWA or TWA. The note gives the default for each until it is measured.
 
