@@ -217,8 +217,9 @@ under the victim product.
   client id and `groupRoleMap` that decide who a sign-in licenses. The approval records them (and
   whether Identity was on); while Identity is on, any change widens it. A widened approval stops
   matching at once (every mint re-checks), **and the ingest deletes it**: link and resync drop every
-  approval the product has widened, before the first write and after the last, and audit it as
-  `config.mint.invalidate`. So a push that aims sign-in at an issuer the pusher controls, opens
+  approval the product has widened, before the first write and after the last (in a `finally`, so
+  a push that makes the ingest throw half-way — say, a duplicated recipe id — still triggers it),
+  and audit it as `config.mint.invalidate`. So a push that aims sign-in at an issuer the pusher controls, opens
   enrolment or turns License off, followed by a push that reverts it, leaves the recipe `pending`
   rather than approved; it mints again only when an operator re-approves it. Recipe-field changes
   are not swept (a changed recipe signs nothing meanwhile), so reverting one restores the
@@ -300,7 +301,7 @@ currently holds:
    All three are checked on every mint, not only when approving, so a widening after an approval
    (by push or by operator) makes the recipe `404` at once. A widening a manifest push causes is
    also permanent: link and resync delete the widened approval (`config.mint.invalidate` in the
-   audit log), so a later push that reverts the widening leaves the recipe `pending` until an
+   audit log), including when the push fails or throws after its widening writes, so a later push that reverts the widening leaves the recipe `pending` until an
    operator re-approves it. What a re-approval cannot undo is what was issued while the approval
    was widened — the operator reviews and disables it — and what an approval cannot bound is the
    IdP it trusts: whoever that IdP signs in with a mapped group is covered (§3). The only

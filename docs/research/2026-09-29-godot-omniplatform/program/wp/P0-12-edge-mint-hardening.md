@@ -105,7 +105,8 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   pushes restore the approval while the licences and device tokens issued in between kept
   working, so the manifest ingest makes a product-side widening permanent: resync deletes every
   approval `productWidening` reports (public without acknowledgement, License turned off,
-  sign-in trust changed) before its first write and after its last, auditing each as
+  sign-in trust changed) before its first write and after its last (the last in a `finally`, so a
+  push that throws after its widening writes cannot skip it — fourth review), auditing each as
   `config.mint.invalidate`; link deletes every approval row under the slug. The rule moved to
   `core/edgeMintApproval.ts` because the ingest (Release) may not import Config. Recipe-field
   changes are not swept. Residual (THREAT-MODEL §3): what was issued while widened survives a
@@ -199,6 +200,9 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
 - [x] Test (third review): after a License-off push sweeps the approval, a re-approval echoing
       `licenseEnabled: true` is `409` (absent is `422`); the console warns on the card and in the
       approve dialog while License is off and echoes `false`.
+- [x] Test (fourth review): a push that enables anonymous autoIssue and then throws (duplicated
+      recipe id) still drops and audits the approval; a console revert of the enrolment does not
+      let a stranger enrolled in between mint, and neither does a later clean resync.
 - [x] Test: the per-device bucket returns `429` after 30 mints in a minute from one device.
 - [x] Test: discovery `config.mint.available` is false while every recipe is pending.
 - [x] `THREAT-MODEL.md` and `services/config/edge-mint.md` describe both conditions; `gen:check`,

@@ -175,7 +175,8 @@ check against the product _as it stands_ is not enough on its own: a push that w
 (opens enrolment, turns License off, aims sign-in at an issuer the pusher controls) and a second
 push that reverts it would leave the approval applying again, while the licences and device
 tokens handed out in between keep working. So the manifest ingest also **deletes** every approval
-the product has widened: resync sweeps before its first write and after its last, and audits each
+the product has widened: resync sweeps before its first write and after its last (also when the
+push is refused or fails part-way, since the earlier writes are not rolled back), and audits each
 dropped approval as `config.mint.invalidate`; linking a product deletes every approval row under
 its slug. After the revert the recipe is `pending`, and it mints again only when an operator
 re-approves it.
