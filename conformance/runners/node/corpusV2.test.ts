@@ -222,7 +222,7 @@ const docOpts = (c: DocCase): VerifyOptions => ({
   checkFreshness: c.checkFreshness,
 });
 
-// @pkey-feature core.verify license.entitlements
+// @pkey-feature core.verify
 describe(`conformance corpus v${corpus.corpusVersion} — license documents (§3)`, () => {
   for (const c of corpus.licenseDocCases) {
     it(`${c.id} → accept:${c.expect.accept}`, async () => {

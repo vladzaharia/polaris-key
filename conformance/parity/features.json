@@ -199,7 +199,7 @@
       "family": "license",
       "title": "Entitlements, profile, licence id",
       "service": "license",
-      "proof": [{ "kind": "corpus", "file": "cases.json" }],
+      "proof": [{ "kind": "unit" }],
       "allowedNa": []
     },
     {
@@ -293,9 +293,7 @@
       "family": "config",
       "title": "Typed catalog mirrors",
       "service": "config",
-      "proof": [
-        { "kind": "generated", "command": "pnpm gen:mirrors -- --check" }
-      ],
+      "proof": [{ "kind": "unit" }],
       "allowedNa": []
     },
     {

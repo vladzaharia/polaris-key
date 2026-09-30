@@ -193,8 +193,18 @@ were needed to declare the four SDKs honestly, and later packages should rely on
 - A manifest may list `traits` (Node and Python list `headless`). An `na` entry's `runtime` may be
   an array when the SDK is N/A on several of its runtimes (Swift: `["macos", "ios"]` for Play Asset
   Delivery). `except` is accepted on `planned` entries too (Swift Steam depots: planned, N/A on iOS).
-- React's `na` entries name `web`; on `desktop-bridge` those features belong to the host's Node SDK,
-  which each entry's `note` says.
+- An SDK-wide `na` must cover every runtime the manifest lists, each with an allowed
+  runtime/reason pair, unless it names a trait the manifest lists (a trait is a property of the
+  whole SDK). Otherwise one allowed runtime would stretch the N/A over runtimes the registry does
+  not allow it on; the checker fails with `na covers <x> but not <y>; declare a partial N/A with
+except`. A feature N/A on only some runtimes is `implemented` or `planned` with `except`.
+- React's SDK-wide `na` entries name `["web", "desktop-bridge"]`. On `desktop-bridge` those
+  features belong to the host process's Node SDK (the renderer holds no credentials, secrets,
+  hardware ids or filesystem: `packages/sdk-react/src/desktop/bridge.ts`), so the registry carries
+  a `desktop-bridge` `allowedNa` (reason `runtime`) for each. New `desktop-bridge` N/As, for the
+  human's sign-off: `core.store`, `license.enroll`, `license.reregister`, `config.secret`,
+  `devices.fingerprint`, `devices.facts`, `devices.register`, `packs.transport.steam`,
+  `packs.transport.msix` and `packs.transport.flatpak`.
 - New `web` N/As (reason `runtime`, for the human's sign-off): `devices.register` and
   `license.reregister` (no bearer, no hardware anchor), `devices.manage` and `devices.report`
   (`/<p>/devices` and `/<p>/devices/report` accept only a device bearer; a browser holds a cookie
@@ -203,7 +213,13 @@ were needed to declare the four SDKs honestly, and later packages should rely on
   through the desktop bridge, and `devices.report` is `planned` in P1b-07 for the bridge. This
   settles the web half P1b-07 defers to P1b-01.
 - `config.mirror` is proven by `tools/gen-mirrors.test.ts` (it renders the TS, Python and Swift
-  mirrors), so every manifest lists that file in `testRoots`.
+  mirrors), so every manifest lists that file in `testRoots`. Its registry proof is `unit`, not
+  PARITY §5's `gen-mirrors --check`: `pnpm gen:mirrors -- --check` run bare exits 2 (it needs
+  `--catalog` and `--out-dir`), and CI does not run it.
+- `license.entitlements`' registry proof is `unit`, not PARITY §5's `cases.json`: as with
+  `license.channels`, no corpus case asserts entitlements, profile or licence id (every
+  `licenseDocCases` expectation is `{ "accept": … }`). The corpus runners are not tagged with it;
+  each SDK's unit test that reads entitlements is.
 - Evidence overrode two PARITY §5 marks: Swift `license.channels` (✓) is `planned` in P1b-07 (no
   test, and its empty-entitlement answer disagrees with the Worker), and React `core.cache` (✓) is
   `planned`, unowned (the browser adapter is online-only; only the desktop host caches). Swift
