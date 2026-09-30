@@ -46,7 +46,12 @@ import {
 } from "../../core/platform.js";
 import { openProductSecret, type Product } from "../../core/products.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
-import { clientIp, rateLimitOk, type RateLimit } from "../../core/rateLimit.js";
+import {
+  clientIp,
+  clientNetwork,
+  rateLimitOk,
+  type RateLimit,
+} from "../../core/rateLimit.js";
 import {
   appendAudit,
   claimEnrolledLicense,
@@ -1105,11 +1110,18 @@ async function readEntryForm(
 ): Promise<{ userCode: string | null; csrf: string | undefined }> {
   const text = await req.text().catch(() => "");
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
-    const body = parseJsonColumn<Record<string, unknown>>(text) ?? {};
+    // Only a JSON object is a form: `1`, `"x"`, `true` or `null` would make the `in` below throw
+    // (an uncaught 500 on an unauthenticated route), so any other shape reads as an empty form.
+    const parsed = parseJsonColumn<unknown>(text);
+    const body = (
+      parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : {}
+    ) as Record<string, unknown>;
     return {
       userCode: typeof body.user_code === "string" ? body.user_code : null,
       csrf:
-        "csrf" in body
+        Object.hasOwn(body, "csrf")
           ? typeof body.csrf === "string"
             ? body.csrf
             : ""
@@ -1147,11 +1159,13 @@ export async function handleAuthDeviceEntry(
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
   const now = Math.floor(Date.now() / 1000);
-  // Per IP only. A product-wide bucket would let one attacker exhaust it and lock every player
-  // out of sign-in; 20^8 codes over a 600 s lifetime is what makes blind guessing hopeless.
+  // Per client network only: the IPv4 address, or the IPv6 /64 (one host holds a whole /64, so
+  // a per-address key would be free to rotate — R10-04b). A product-wide bucket would let one
+  // attacker exhaust it and lock every player out of sign-in; 20^8 codes over a 600 s lifetime
+  // is what bounds blind guessing (THREAT-MODEL.md, "Brute force").
   const limited = await rateLimited(env, product, now, {
     bucket: "authDeviceEntry",
-    id: clientIp(req),
+    id: clientNetwork(req),
     limit: 30,
     windowSec: 60,
   });

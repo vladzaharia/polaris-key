@@ -851,6 +851,42 @@ describe("the RFC 8628 user-code page", () => {
     expect((await entry(ENTRY, { ip: "198.51.100.10" })).status).toBe(200);
   });
 
+  it("rate-limits an IPv6 client per /64, so rotating addresses inside it buys nothing", async () => {
+    // R10-04b: a host routed a /64 holds 2^64 addresses. Every one of them draws on one budget.
+    for (let i = 0; i < 30; i++) {
+      const res = await entry(`${ENTRY}?user_code=BCDF-GHJK`, {
+        ip: `2001:db8:77:1:${i.toString(16)}::1`,
+      });
+      expect(res.status).toBe(404);
+    }
+    expect(
+      (await entry(ENTRY, { ip: "2001:db8:77:1:ffff:ffff:ffff:fffe" })).status,
+    ).toBe(429);
+    // The next /64 over is someone else.
+    expect((await entry(ENTRY, { ip: "2001:db8:77:2::1" })).status).toBe(200);
+  });
+
+  it("treats a JSON body that is not an object as an empty form, never a crash", async () => {
+    for (const raw of ["1", '"x"', "true", "null", "[]"]) {
+      const res = await entry(ENTRY, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: ORIGIN },
+        body: raw,
+      });
+      // No user_code and no csrf field: the entry form, as for an empty POST.
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain('name="user_code"');
+    }
+    // A JSON object still works, and a csrf field in it still means "confirm".
+    const body = await start();
+    const res = await entry(ENTRY, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: ORIGIN },
+      body: JSON.stringify({ user_code: body.userCode, csrf: "forged" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
   it("fails CLOSED when the limiter is unavailable", async () => {
     env.RL = {
       idFromName: (name: string) => ({ name }) as unknown as DurableObjectId,

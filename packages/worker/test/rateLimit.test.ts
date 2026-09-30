@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { clientIp, rateLimitOk } from "../src/core/rateLimit.js";
+import {
+  clientIp,
+  clientNetwork,
+  rateLimitOk,
+} from "../src/core/rateLimit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -70,6 +74,36 @@ describe("clientIp", () => {
         }),
       ),
     ).toBe("203.0.113.7");
+  });
+});
+
+describe("clientNetwork", () => {
+  const net = (ip?: string): string =>
+    clientNetwork(mkReq("GET", ip ? { "cf-connecting-ip": ip } : {}));
+
+  it("keeps an IPv4 address whole", () => {
+    expect(net("203.0.113.7")).toBe("203.0.113.7");
+  });
+
+  it("collapses an IPv6 address to its /64, however it is written", () => {
+    // R10-04b: one host holds the whole /64, so every address in it is the same client.
+    const a = net("2001:db8:abcd:12::1");
+    expect(a).toBe("2001:db8:abcd:12::/64");
+    expect(net("2001:0DB8:ABCD:0012:ffff:ffff:ffff:ffff")).toBe(a);
+    expect(net("2001:db8:abcd:12:1234::9")).toBe(a);
+    expect(net("2001:db8:abcd:12::1%eth0")).toBe(a);
+    // A neighbouring /64 is a different client.
+    expect(net("2001:db8:abcd:13::1")).toBe("2001:db8:abcd:13::/64");
+    expect(net("::1")).toBe("0:0:0:0::/64");
+    expect(net("::ffff:192.0.2.1")).toBe("0:0:0:0::/64");
+    expect(net("2001:db8::")).toBe("2001:db8:0:0::/64");
+  });
+
+  it("falls back to the raw value when the address does not parse", () => {
+    expect(net("2001:db8:::1")).toBe("2001:db8:::1");
+    expect(net("1:2:3:4:5:6:7:8:9")).toBe("1:2:3:4:5:6:7:8:9");
+    expect(net("zz::1")).toBe("zz::1");
+    expect(net()).toBe("unknown");
   });
 });
 
