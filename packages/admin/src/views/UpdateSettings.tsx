@@ -1,14 +1,18 @@
 import * as React from "react";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Info, Undo2 } from "lucide-react";
 import {
   ApiError,
   api,
   type ReleaseAccess,
+  type SettingsSource,
+  type UpdateSettings as UpdateSettingsDto,
+  type UpdateSettingsBlock,
   type UpdateSettingsBody,
 } from "../api.js";
 import { invalidate, useResource } from "../context.js";
 import { docsUrl } from "../lib/docsLinks.js";
 import {
+  Badge,
   Button,
   Card,
   CardContent,
@@ -26,11 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  Switch,
   useToast,
+  ConfirmDialog,
 } from "../components/ui/index.js";
 
 /**
- * Update settings — the four answers to "which builds does this product offer, and to whom".
+ * Update settings — the answers to "which builds does this product offer, and to whom".
  *
  * Two of them (the compatibility window) used to live in product Settings, beside the display
  * name, which put a statement about SUPPORTED BUILDS in the form for "what is this product
@@ -41,6 +47,13 @@ import {
  * (`release_config` vs the product row), which is why `configured: false` disables only half
  * the form: a product with no release configuration has nowhere to store an access mode and the
  * server answers 422 rather than accepting a value the next GET would not return.
+ *
+ * Ownership (P0-01). The access pair and the compat window are ALSO written by a manifest
+ * resync, so each carries a source badge: saving one here claims it (`admin`), and resync skips
+ * a claimed block until "Revert to manifest" hands it back. The operator-only artifact policy
+ * (minimum macOS version, the Sparkle signature requirement) has no manifest spelling at all, so
+ * it has no badge — no push can write or erase it. Turning the signature requirement off weakens
+ * a security control and asks for confirmation first.
  */
 export function UpdateSettings({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(
@@ -111,63 +124,71 @@ const ACCESS_MODES: { value: ReleaseAccess; label: string; help: string }[] = [
   },
 ];
 
+type FormState = {
+  metadataAccess: ReleaseAccess;
+  artifactsAccess: ReleaseAccess;
+  compatMin: string;
+  compatMax: string;
+  /** The input's raw text; empty means "no minimum" and is sent as `null`. */
+  minimumSystemVersion: string;
+  requireSparkleSignature: boolean;
+};
+
+function seed(settings: UpdateSettingsDto): FormState {
+  return {
+    metadataAccess: settings.metadataAccess,
+    artifactsAccess: settings.artifactsAccess,
+    compatMin: settings.compatMin,
+    compatMax: settings.compatMax,
+    minimumSystemVersion: settings.minimumSystemVersion ?? "",
+    requireSparkleSignature: settings.requireSparkleSignature,
+  };
+}
+
+const BLOCK_COPY: Record<UpdateSettingsBlock, { name: string; title: string }> =
+  {
+    access: {
+      name: "access modes",
+      title: "Return the access modes to the manifest?",
+    },
+    compat: {
+      name: "compatibility window",
+      title: "Return the compatibility window to the manifest?",
+    },
+  };
+
 function SettingsForm({
   slug,
   settings,
 }: {
   slug: string;
-  settings: {
-    metadataAccess: ReleaseAccess;
-    artifactsAccess: ReleaseAccess;
-    compatMin: string;
-    compatMax: string;
-    configured: boolean;
-  };
+  settings: UpdateSettingsDto;
 }): React.ReactElement {
   const toast = useToast();
-  const [form, setForm] = React.useState({
-    metadataAccess: settings.metadataAccess,
-    artifactsAccess: settings.artifactsAccess,
-    compatMin: settings.compatMin,
-    compatMax: settings.compatMax,
-  });
+  const [form, setForm] = React.useState<FormState>(() => seed(settings));
   const [saving, setSaving] = React.useState(false);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
     {},
   );
+  // A save that turns the signature requirement OFF waits here for the operator to confirm.
+  const [pendingUnsigned, setPendingUnsigned] =
+    React.useState<UpdateSettingsBody | null>(null);
+  const [confirmRevert, setConfirmRevert] =
+    React.useState<UpdateSettingsBlock | null>(null);
+  const [reverting, setReverting] = React.useState(false);
 
   // Re-seed after a save (or a resync) replaces the settings this form was built from.
   React.useEffect(() => {
-    setForm({
-      metadataAccess: settings.metadataAccess,
-      artifactsAccess: settings.artifactsAccess,
-      compatMin: settings.compatMin,
-      compatMax: settings.compatMax,
-    });
+    setForm(seed(settings));
     setFieldErrors({});
   }, [settings]);
 
-  const dirty =
-    form.metadataAccess !== settings.metadataAccess ||
-    form.artifactsAccess !== settings.artifactsAccess ||
-    form.compatMin !== settings.compatMin ||
-    form.compatMax !== settings.compatMax;
+  const initial = seed(settings);
+  const dirty = (Object.keys(initial) as (keyof FormState)[]).some(
+    (k) => form[k] !== initial[k],
+  );
 
-  const onSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    // Send only what changed. The endpoint patches partially, and an unchanged access mode sent
-    // at an unconfigured product would 422 the whole request — including the compat window,
-    // which would otherwise have saved fine.
-    const body: UpdateSettingsBody = {};
-    if (form.metadataAccess !== settings.metadataAccess)
-      body.metadataAccess = form.metadataAccess;
-    if (form.artifactsAccess !== settings.artifactsAccess)
-      body.artifactsAccess = form.artifactsAccess;
-    if (form.compatMin !== settings.compatMin)
-      body.compatMin = form.compatMin.trim();
-    if (form.compatMax !== settings.compatMax)
-      body.compatMax = form.compatMax.trim();
-
+  const save = async (body: UpdateSettingsBody): Promise<void> => {
     setSaving(true);
     setFieldErrors({});
     try {
@@ -202,8 +223,59 @@ function SettingsForm({
       }
     } finally {
       setSaving(false);
+      setPendingUnsigned(null);
     }
   };
+
+  const onSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    // Send only what changed. The endpoint patches partially, and an unchanged access mode sent
+    // at an unconfigured product would 422 the whole request — including the compat window,
+    // which would otherwise have saved fine. Sending an unchanged block would also CLAIM it
+    // for the operator, which the operator did not ask for.
+    const body: UpdateSettingsBody = {};
+    if (form.metadataAccess !== settings.metadataAccess)
+      body.metadataAccess = form.metadataAccess;
+    if (form.artifactsAccess !== settings.artifactsAccess)
+      body.artifactsAccess = form.artifactsAccess;
+    if (form.compatMin !== settings.compatMin)
+      body.compatMin = form.compatMin.trim();
+    if (form.compatMax !== settings.compatMax)
+      body.compatMax = form.compatMax.trim();
+    const minSys = form.minimumSystemVersion.trim();
+    if (minSys !== (settings.minimumSystemVersion ?? ""))
+      body.minimumSystemVersion = minSys === "" ? null : minSys;
+    if (form.requireSparkleSignature !== settings.requireSparkleSignature)
+      body.requireSparkleSignature = form.requireSparkleSignature;
+
+    if (body.requireSparkleSignature === false) {
+      setPendingUnsigned(body);
+      return;
+    }
+    await save(body);
+  };
+
+  const onRevert = async (block: UpdateSettingsBlock): Promise<void> => {
+    setReverting(true);
+    try {
+      await api.revertUpdateSettings(slug, [block]);
+      invalidate(`update-settings:${slug}`);
+      toast.success(
+        "Returned to manifest control",
+        `The manifest’s ${BLOCK_COPY[block].name} re-apply on the next resync.`,
+      );
+      setConfirmRevert(null);
+    } catch (err) {
+      toast.error(
+        `Couldn’t revert the ${BLOCK_COPY[block].name}`,
+        err instanceof Error ? err.message : undefined,
+      );
+    } finally {
+      setReverting(false);
+    }
+  };
+
+  const signatureId = `update-${slug}-signature`;
 
   return (
     <Card>
@@ -211,8 +283,9 @@ function SettingsForm({
         <CardHeader>
           <CardTitle>Feed access &amp; compatibility</CardTitle>
           <CardDescription>
-            Who may read the appcast, who may download what it points at, and
-            the version window every grant is intersected with.
+            Who may read the appcast, who may download what it points at, the
+            version window every grant is intersected with, and the
+            operator-only artifact policy.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -227,8 +300,9 @@ function SettingsForm({
               />
               <p className="text-muted-foreground">
                 This product has no release configuration, so there is no row to
-                store an access mode on and the server refuses to write one. The
-                modes below are the defaults the feed serves. Link a repo with a{" "}
+                store an access mode or artifact policy on and the server
+                refuses to write one. The values below are the defaults the feed
+                serves. Link a repo with a{" "}
                 <code className="font-mono text-xs">.pkey/release</code> block
                 (or resync one) and they become editable. The compatibility
                 window lives on the product itself and can still be changed.{" "}
@@ -244,6 +318,13 @@ function SettingsForm({
             </div>
           ) : null}
 
+          <BlockHeading
+            title="Feed access"
+            block="access"
+            source={settings.accessSource}
+            canRevert={settings.configured}
+            onRevert={() => setConfirmRevert("access")}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <AccessField
               id={`update-${slug}-metadata`}
@@ -280,6 +361,13 @@ function SettingsForm({
             ))}
           </dl>
 
+          <BlockHeading
+            title="Compatibility window"
+            block="compat"
+            source={settings.compatSource}
+            canRevert
+            onRevert={() => setConfirmRevert("compat")}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="Compat min"
@@ -310,6 +398,68 @@ function SettingsForm({
               />
             </Field>
           </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold">Artifact policy</h3>
+            <Badge
+              variant="outline"
+              title="No manifest can set these; a resync never writes them."
+            >
+              operator-only
+            </Badge>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Minimum macOS version"
+              help="Rendered as sparkle:minimumSystemVersion (e.g. 13.0). Leave empty for no minimum."
+              error={fieldErrors.minimumSystemVersion}
+            >
+              <Input
+                value={form.minimumSystemVersion}
+                disabled={!settings.configured}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    minimumSystemVersion: e.target.value,
+                  }))
+                }
+                placeholder="none"
+                autoComplete="off"
+              />
+            </Field>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor={signatureId}>Require Sparkle signatures</Label>
+                <Switch
+                  id={signatureId}
+                  checked={form.requireSparkleSignature}
+                  disabled={!settings.configured}
+                  aria-describedby={`${signatureId}-help`}
+                  aria-invalid={
+                    fieldErrors.requireSparkleSignature ? true : undefined
+                  }
+                  onCheckedChange={(requireSparkleSignature) =>
+                    setForm((f) => ({ ...f, requireSparkleSignature }))
+                  }
+                />
+              </div>
+              <p
+                id={`${signatureId}-help`}
+                className="text-xs text-muted-foreground"
+              >
+                The appcast only lists a DMG with a verified EdDSA signature.
+                Turning this off lets an unsigned build ship to every updater.
+              </p>
+              {fieldErrors.requireSparkleSignature ? (
+                <p
+                  role="alert"
+                  className="text-xs font-medium text-destructive"
+                >
+                  {fieldErrors.requireSparkleSignature}
+                </p>
+              ) : null}
+            </div>
+          </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" loading={saving} disabled={!dirty}>
@@ -317,7 +467,95 @@ function SettingsForm({
           </Button>
         </CardFooter>
       </form>
+
+      <ConfirmDialog
+        open={pendingUnsigned !== null}
+        onOpenChange={(next) => !saving && !next && setPendingUnsigned(null)}
+        title="Turn off the Sparkle signature requirement?"
+        description={
+          <>
+            The feed will list builds with no verified EdDSA signature, so an
+            unsigned — or tampered — DMG can reach every updater. The change is
+            recorded in the audit log.
+          </>
+        }
+        confirmLabel="Turn off signatures"
+        confirmVariant="destructive"
+        loading={saving}
+        onConfirm={() => (pendingUnsigned ? save(pendingUnsigned) : undefined)}
+      />
+
+      <ConfirmDialog
+        open={confirmRevert !== null}
+        onOpenChange={(next) => !reverting && !next && setConfirmRevert(null)}
+        title={confirmRevert ? BLOCK_COPY[confirmRevert].title : ""}
+        description={
+          <>
+            Ownership goes back to the repo manifest. The live values are
+            unchanged until the next resync re-applies the manifest’s.{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href={docsUrl("updateSettingsRevert")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
+          </>
+        }
+        confirmLabel="Return to manifest"
+        confirmVariant="primary"
+        loading={reverting}
+        onConfirm={() => (confirmRevert ? onRevert(confirmRevert) : undefined)}
+      />
     </Card>
+  );
+}
+
+/** A block's heading, its ownership badge, and the button that hands it back to the manifest. */
+function BlockHeading({
+  title,
+  block,
+  source,
+  canRevert,
+  onRevert,
+}: {
+  title: string;
+  block: UpdateSettingsBlock;
+  source: SettingsSource;
+  canRevert: boolean;
+  onRevert: () => void;
+}): React.ReactElement {
+  const admin = source === "admin";
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <Badge
+          variant={admin ? "primary" : "outline"}
+          data-testid={`${block}-source`}
+          title={
+            admin
+              ? "An operator claimed this block; resyncs no longer write it."
+              : "The repo manifest owns this block; a resync may rewrite it."
+          }
+        >
+          {admin ? "admin-owned" : "manifest-owned"}
+        </Badge>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={!admin || !canRevert}
+        aria-label={`Revert ${title.toLowerCase()} to manifest`}
+        title={admin ? undefined : "This block is already manifest-owned."}
+        onClick={onRevert}
+      >
+        <Undo2 aria-hidden />
+        Revert to manifest
+      </Button>
+    </div>
   );
 }
 
@@ -398,7 +636,7 @@ function SettingsSkeleton(): React.ReactElement {
         <Skeleton className="h-4 w-72" />
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-9 w-full" />
         ))}
       </CardContent>

@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   UpdateSettings as UpdateSettingsDto,
+  UpdateSettingsBlock,
   UpdateSettingsBody,
 } from "../src/api.js";
 import { resetCache } from "../src/context.js";
@@ -12,6 +13,10 @@ const updateSettings = vi.fn<(slug: string) => Promise<UpdateSettingsDto>>();
 const saveUpdateSettings =
   vi.fn<
     (slug: string, body: UpdateSettingsBody) => Promise<UpdateSettingsDto>
+  >();
+const revertUpdateSettings =
+  vi.fn<
+    (slug: string, fields: UpdateSettingsBlock[]) => Promise<UpdateSettingsDto>
   >();
 
 // `ApiError` comes through REAL: the 422 branch that turns `fields` into inline errors is guarded
@@ -26,6 +31,8 @@ vi.mock("../src/api.js", async () => {
       updateSettings: (slug: string) => updateSettings(slug),
       saveUpdateSettings: (slug: string, body: UpdateSettingsBody) =>
         saveUpdateSettings(slug, body),
+      revertUpdateSettings: (slug: string, fields: UpdateSettingsBlock[]) =>
+        revertUpdateSettings(slug, fields),
     },
   };
 });
@@ -36,8 +43,12 @@ const { UpdateSettings } = await import("../src/views/UpdateSettings.js");
 const SETTINGS: UpdateSettingsDto = {
   metadataAccess: "authenticated",
   artifactsAccess: "licensed",
+  accessSource: "manifest",
   compatMin: "1.0.0",
   compatMax: "2.0.0",
+  compatSource: "manifest",
+  minimumSystemVersion: null,
+  requireSparkleSignature: true,
   configured: true,
 };
 
@@ -58,8 +69,10 @@ beforeEach(() => {
   resetCache();
   updateSettings.mockReset();
   saveUpdateSettings.mockReset();
+  revertUpdateSettings.mockReset();
   updateSettings.mockResolvedValue(SETTINGS);
   saveUpdateSettings.mockResolvedValue(SETTINGS);
+  revertUpdateSettings.mockResolvedValue(SETTINGS);
   // jsdom lacks these Radix-needed APIs.
   (
     Element.prototype as unknown as { hasPointerCapture: () => boolean }
@@ -282,5 +295,201 @@ describe("Update settings — the compatibility window (relocated by spec §8)",
     expect(
       await screen.findByRole("combobox", { name: "Metadata access" }),
     ).toBeTruthy();
+  });
+});
+
+describe("Update settings — ownership (P0-01)", () => {
+  it("badges each claimable block with its owner", async () => {
+    updateSettings.mockResolvedValue({ ...SETTINGS, accessSource: "admin" });
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    expect(screen.getByTestId("access-source").textContent).toBe("admin-owned");
+    expect(screen.getByTestId("compat-source").textContent).toBe(
+      "manifest-owned",
+    );
+  });
+
+  it("only offers a revert for an admin-owned block", async () => {
+    updateSettings.mockResolvedValue({ ...SETTINGS, compatSource: "admin" });
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    expect(
+      screen
+        .getByRole("button", { name: "Revert feed access to manifest" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+    expect(
+      screen
+        .getByRole("button", {
+          name: "Revert compatibility window to manifest",
+        })
+        .hasAttribute("disabled"),
+    ).toBe(false);
+  });
+
+  it("reverts one block after confirmation, sending only that block", async () => {
+    updateSettings.mockResolvedValue({
+      ...SETTINGS,
+      accessSource: "admin",
+      compatSource: "admin",
+    });
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Revert feed access to manifest" }),
+    );
+    expect(
+      await screen.findByText("Return the access modes to the manifest?"),
+    ).toBeTruthy();
+    expect(revertUpdateSettings).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Return to manifest" }),
+    );
+
+    await waitFor(() => expect(revertUpdateSettings).toHaveBeenCalledTimes(1));
+    expect(revertUpdateSettings.mock.calls[0]).toEqual(["djdl", ["access"]]);
+    // A revert is not a save: nothing else is written.
+    expect(saveUpdateSettings).not.toHaveBeenCalled();
+  });
+});
+
+describe("Update settings — operator artifact policy (P0-01)", () => {
+  it("renders the stored operator policy", async () => {
+    updateSettings.mockResolvedValue({
+      ...SETTINGS,
+      minimumSystemVersion: "13.0",
+      requireSparkleSignature: false,
+    });
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    expect(
+      (screen.getByLabelText(/Minimum macOS version/) as HTMLInputElement)
+        .value,
+    ).toBe("13.0");
+    expect(
+      screen
+        .getByRole("switch", { name: "Require Sparkle signatures" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+  });
+
+  it("sends a new minimum, and clears it to null when emptied", async () => {
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    const min = screen.getByLabelText(/Minimum macOS version/);
+    await userEvent.type(min, " 13.0 ");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save update settings" }),
+    );
+    await waitFor(() => expect(saveUpdateSettings).toHaveBeenCalledTimes(1));
+    expect(saveUpdateSettings.mock.calls[0]![1]).toEqual({
+      minimumSystemVersion: "13.0",
+    });
+
+    cleanup();
+    resetCache();
+    saveUpdateSettings.mockClear();
+    updateSettings.mockResolvedValue({
+      ...SETTINGS,
+      minimumSystemVersion: "13.0",
+    });
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+    await userEvent.clear(screen.getByLabelText(/Minimum macOS version/));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save update settings" }),
+    );
+    await waitFor(() => expect(saveUpdateSettings).toHaveBeenCalledTimes(1));
+    expect(saveUpdateSettings.mock.calls[0]![1]).toEqual({
+      minimumSystemVersion: null,
+    });
+  });
+
+  it("asks for confirmation before turning the signature requirement off", async () => {
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Require Sparkle signatures" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save update settings" }),
+    );
+
+    // Nothing is sent until the operator confirms: this weakens a security control.
+    expect(
+      await screen.findByText("Turn off the Sparkle signature requirement?"),
+    ).toBeTruthy();
+    expect(saveUpdateSettings).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Turn off signatures" }),
+    );
+    await waitFor(() => expect(saveUpdateSettings).toHaveBeenCalledTimes(1));
+    expect(saveUpdateSettings.mock.calls[0]![1]).toEqual({
+      requireSparkleSignature: false,
+    });
+  });
+
+  it("sends nothing when the confirmation is cancelled", async () => {
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Require Sparkle signatures" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save update settings" }),
+    );
+    await screen.findByText("Turn off the Sparkle signature requirement?");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Turn off the Sparkle signature requirement?"),
+      ).toBeNull(),
+    );
+    expect(saveUpdateSettings).not.toHaveBeenCalled();
+  });
+
+  it("turns the requirement back ON without a confirmation", async () => {
+    updateSettings.mockResolvedValue({
+      ...SETTINGS,
+      requireSparkleSignature: false,
+    });
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Require Sparkle signatures" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save update settings" }),
+    );
+    await waitFor(() => expect(saveUpdateSettings).toHaveBeenCalledTimes(1));
+    expect(saveUpdateSettings.mock.calls[0]![1]).toEqual({
+      requireSparkleSignature: true,
+    });
+  });
+
+  it("disables the operator policy on a product with no release configuration", async () => {
+    updateSettings.mockResolvedValue({ ...SETTINGS, configured: false });
+    renderSettings();
+    await screen.findByRole("combobox", { name: "Metadata access" });
+
+    expect(
+      (screen.getByLabelText(/Minimum macOS version/) as HTMLInputElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      screen
+        .getByRole("switch", { name: "Require Sparkle signatures" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
   });
 });
