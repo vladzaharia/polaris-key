@@ -22,9 +22,12 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
 
 ## Why
 
-- Android install source (`com.android.vending`, `org.fdroid.fdroid`, `dev.imranr.obtainium`, …) is
-  only readable natively, and it decides the outlet
-  ([§5.5](../../README.md#55-distribution-layer-one-build-any-outlet)).
+- Android install source (`com.android.vending`, `org.fdroid.fdroid`, `dev.imranr.obtainium`, …)
+  decides the outlet ([§5.5](../../README.md#55-distribution-layer-one-build-any-outlet)). Godot
+  can already read it without the AAR, through `AndroidRuntime` and `JavaClassWrapper`
+  ([notes/S-06](../../notes/S-06-outlet-signals.md) §7, measured on 4.7.2). The AAR wraps it for
+  the Kotlin SDK and adds the initiator's signing-certificate digest, which detection needs to
+  trust a `com.android.vending` claim.
 - On Play, updates go through In-App Updates keyed on the priority P5-03 sets; direct APKs update
   through a verified `PackageInstaller` session; Play policy forbids self-update and
   `REQUEST_INSTALL_PACKAGES` in Play builds ([§4.2](../../README.md#42-android), notes/E2 §A2, §B2).
@@ -55,7 +58,10 @@ a GDScript facade with stubs gives every other platform a typed "unsupported" re
     install permissions.
   - `direct`: install source, `PackageInstaller`, Keystore. No Play Core libraries.
 - Install source: `getInstallSourceInfo` (API 30+) with the `getInstallerPackageName` fallback,
-  returning the raw installer package name.
+  returning the raw installing and initiating package names, the initiator's signing-certificate
+  SHA-256 (`getInitiatingPackageSigningInfo`), `getPackageSource` (API 33+) and
+  `getUpdateOwnerPackageName` (API 34+). S-06 measured that the installing package alone is
+  forgeable (`adb install -i com.android.vending` records Play, with the shell as initiator).
 - In-App Updates: availability, allowed types, `updatePriority`, `clientVersionStalenessDays`,
   flexible and immediate flows, install-state progress, `completeUpdate`.
 - PAD: `fetch`, states (including `WAITING_FOR_WIFI` and `REQUIRES_USER_CONFIRMATION` with

@@ -64,9 +64,14 @@ per artifact, and so mislabels Steam, itch and sideload builds
     conventions, `ctypes` `GetCurrentPackageFullName` on Windows.
   - Swift: `AppDistributor.current` behind `#available(iOS 17.4, *)` (the package floor is iOS 17);
     `AppTransaction` on macOS; code-signature and Caskroom checks.
-  - Godot: `FLATPAK_ID`, `SNAP`, `APPIMAGE`, `SteamAppId`, the `pkey_outlet_*` feature tags and
-    the build stamp through `PolarisKey.build_info()` ([P1-11](P1-11-godot-export-plugin.md)); iOS and Android signals come from plugin hooks that return
-    "unavailable" until [P5-05](P5-05-apple-plugin-package.md) and [P5-06](P5-06-kotlin-aar.md).
+  - Godot: `/.flatpak-info`, `FLATPAK_ID`, `SNAP_NAME`, `APPIMAGE`/`APPDIR`, `SteamAppId`, the
+    Steam library ACF, the itch receipt, the macOS receipt and Mach-O signing leaf, the
+    `pkey_outlet_*` feature tags and the build stamp through `PolarisKey.build_info()`
+    ([P1-11](P1-11-godot-export-plugin.md)). Android's `getInstallSourceInfo` is pure GDScript
+    through `AndroidRuntime` and `JavaClassWrapper` (Godot 4.4+, measured on 4.7.2 in
+    [notes/S-06](../../notes/S-06-outlet-signals.md) §7), so it needs no plugin. iOS
+    `AppDistributor` and Windows package identity come from plugin hooks that return
+    "unavailable" until [P5-05](P5-05-apple-plugin-package.md) and a Windows native reader land.
 - **Wiring**: the update client uses the detected outlet when the host passes none; a host
   override always wins. The result is available to the host (for UI and support diagnostics).
 - Docs for each SDK page; `parity.json` in every SDK: `outlet.detect` → `implemented`.
@@ -89,9 +94,18 @@ per artifact, and so mislabels Steam, itch and sideload builds
   restrictive capabilities the plan assigns.
 - **Detection never widens capabilities.** It chooses an outlet; the outlet's compiled defaults and
   the feed's narrowing decide what the install may do.
-- **Unverified signals** (tagged `[I]` or `[M]` in notes/E9 §1.1, for example Steam's environment
-  variables and the ACF file) stay marked as such until S-06 reports; do not raise their
-  confidence here.
+- **Identity conditions and restrict-only evidence** ([notes/S-06](../../notes/S-06-outlet-signals.md),
+  proposed for `plans/P3-01.md`): a launcher signal counts only when it names this product (Flatpak
+  app id, snap name, Steam app id in the env or the library ACF, itch receipt `game.id`, `APPDIR`
+  containing the executable, Android installer equal to the initiator). Non-attested evidence may
+  move the stamp only to an outlet with no wider `binaryUpdates`. Async platform calls get a
+  deadline, because `AppDistributor.current` hung on the simulator. If the plan does not adopt
+  these rules, follow the plan and report the gap.
+- **Verification status** comes from [notes/S-06](../../notes/S-06-outlet-signals.md) (its
+  signal-to-outlet table). `steam_appid.txt` is refuted as a dev-mode signal and the macOS
+  provisioning profile as a development-build signal: do not read either for detection. Rows
+  S-06 left unmeasured (Play tracks, iOS devices, Windows, Steam on Windows, Linux and Proton,
+  real itch and Snap launches) keep the plan's lowest confidence.
 - **Privacy** (AGENTS rule 7): read markers, never enumerate installed applications. Report only
   the detected outlet id, if the telemetry allowlist has an `outlet` key (P1-05).
 - **No typed N/A.** Every runtime can at least return the stamp or `unknown`.

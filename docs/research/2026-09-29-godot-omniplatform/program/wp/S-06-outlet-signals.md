@@ -95,15 +95,16 @@ item 2), is the kind of mistake unverified signals would repeat.
 
 ## Acceptance criteria
 
-- [ ] `notes/S-06-outlet-signals.md` exists with the provenance blockquote, question, short answer,
+- [x] `notes/S-06-outlet-signals.md` exists with the provenance blockquote, question, short answer,
       method, environment, results, recommendation, affected briefs and sources, with evidence tags.
-- [ ] Every non-[V] signal in notes/E9 §1.1 and E9 §13 items 3, 4, 11 and 12 has a row: verified,
+- [x] Every non-[V] signal in notes/E9 §1.1 and E9 §13 items 3, 4, 11 and 12 has a row: verified,
       refuted, or not verified with the reason.
-- [ ] The itch row exists (verified or not).
-- [ ] A proposed signal-to-outlet table uses `<platform>.<signal>` names and README §3.1 outlet ids,
+- [x] The itch row exists (verified or not): from butler source and an emulated receipt; the itch
+      app itself was not run.
+- [x] A proposed signal-to-outlet table uses `<platform>.<signal>` names and README §3.1 outlet ids,
       states a confidence level and precedence for each row, and marks which signals Godot reads in
       pure GDScript.
-- [ ] `prototype/outlet-signals/` holds the probes with a README; no personal identifiers are committed.
+- [x] `prototype/outlet-signals/` holds the probes with a README; no personal identifiers are committed.
 
 ## Verify
 
@@ -114,6 +115,11 @@ godot --headless --path docs/research/2026-09-29-godot-omniplatform/prototype --
 ```
 
 ## Hand-off
+
+The 2026-09-30 run left these rows unmeasured, for want of the human-held inputs above: Play
+production and test tracks, iOS devices (development, ad hoc, AltStore, SideStore), every
+Windows row, Steam on Windows, Linux and Proton, the real itch app, a real snapd launch, and a
+real installed PWA or TWA. The note gives the default for each until it is measured.
 
 P3-01 takes the signal vocabulary, confidence levels and precedence for `outlet-matrix.json`, and
 drops the "unverified" markers S-06 resolves. P3-11 and P3-10 take the per-runtime split between
