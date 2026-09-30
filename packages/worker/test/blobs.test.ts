@@ -16,6 +16,7 @@ import {
   putVerified,
   recordObject,
   recordRef,
+  referencedKeys,
   reprDigest,
   stagingKey,
   storedKeys,
@@ -381,6 +382,41 @@ describe("promote and the blob tables", () => {
     expect(got.size).toBe(125);
     expect(got.has(keys[0]!)).toBe(true);
     expect(got.has(keys[1]!)).toBe(false);
+  });
+
+  it("referencedKeys answers per product: another product's stored copy is not 'present'", async () => {
+    // The tenant-safe deduplication answer (P2-02's `present`): storedKeys says "someone has
+    // these bytes"; referencedKeys says "THIS product already references them".
+    const keys: string[] = [];
+    for (let i = 0; i < 250; i++) {
+      const h = sha(new Uint8Array([i, i >> 8, 7]));
+      const key = blobKey(h, { gated: true });
+      keys.push(key);
+      await recordObject(
+        db,
+        { storageKey: key, sha256: h, size: 3, kind: "blob", gated: true },
+        NOW,
+      );
+      await recordRef(
+        db,
+        { product: "other", storageKey: key, refKind: "artifact", refId: "o" },
+        NOW,
+      );
+      if (i % 5 === 0)
+        for (const refId of ["a", "b"])
+          await recordRef(
+            db,
+            { product: "djdl", storageKey: key, refKind: "artifact", refId },
+            NOW,
+          );
+    }
+    expect((await storedKeys(db, keys)).size).toBe(250);
+    const mine = await referencedKeys(db, "djdl", [...keys, keys[0]!]);
+    expect(mine.size).toBe(50);
+    expect(mine.has(keys[0]!)).toBe(true);
+    expect(mine.has(keys[1]!)).toBe(false);
+    expect((await referencedKeys(db, "other", keys)).size).toBe(250);
+    expect((await referencedKeys(db, "nobody", keys)).size).toBe(0);
   });
 
   it("hasRef is per product: another product's ref does not count", async () => {

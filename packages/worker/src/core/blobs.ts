@@ -437,7 +437,15 @@ export async function recordObject(
   );
 }
 
-/** Is this object already stored (and verified)? One indexed lookup. */
+/**
+ * Is this object already stored (and verified) — by ANY product? One indexed lookup.
+ *
+ * NOT an authorisation answer, and not a deduplication answer to give a tenant: `blob_objects`
+ * is shared across products, so "stored" says nothing about whether the asking product ever
+ * had these bytes. A product earns a ref only by promoting a verified upload from its own
+ * `staging/<product>/…` prefix, or for a key it already references (THREAT-MODEL §3). To tell
+ * a product which uploads it may skip, use `referencedKeys`.
+ */
 export async function isStored(db: Db, storageKey: string): Promise<boolean> {
   const row = await db.first<{ one: number }>(
     "SELECT 1 AS one FROM blob_objects WHERE storage_key = ?",
@@ -450,8 +458,13 @@ export async function isStored(db: Db, storageKey: string): Promise<boolean> {
 const IN_CHUNK = 90;
 
 /**
- * The subset of `storageKeys` already stored — for upload tickets over thousands of pack file
- * blobs (P2-02/P4-03), where one query per key would be thousands of round trips.
+ * The subset of `storageKeys` already stored by any product, in chunked queries.
+ *
+ * NOT an authorisation or tenant-facing deduplication answer, for the reason given on
+ * `isStored`: answering a tenant's "is this hash present?" from `blob_objects` alone would let
+ * it skip an upload for another product's (gated) bytes and then be granted a ref to them, and
+ * would tell it which hashes other products hold. Upload tickets (P2-02/P4-03) mark `present`
+ * with `referencedKeys`.
  */
 export async function storedKeys(
   db: Db,
@@ -463,6 +476,33 @@ export async function storedKeys(
     const chunk = unique.slice(i, i + IN_CHUNK);
     const rows = await db.all<{ storage_key: string }>(
       `SELECT storage_key FROM blob_objects WHERE storage_key IN (${chunk.map(() => "?").join(", ")})`,
+      ...chunk,
+    );
+    for (const r of rows) out.add(r.storage_key);
+  }
+  return out;
+}
+
+/**
+ * The subset of `storageKeys` that `product` already references — the tenant-safe answer to
+ * "which of these may I skip uploading?" (P2-02's `present`, P4-03's pack upload). Only a key
+ * this product holds a ref to counts: another product's copy of the same bytes does not, so a
+ * tenant can neither learn which hashes others hold nor earn a ref to bytes it never uploaded.
+ */
+export async function referencedKeys(
+  db: Db,
+  product: string,
+  storageKeys: readonly string[],
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  const unique = [...new Set(storageKeys)];
+  const chunkSize = IN_CHUNK - 1; // one parameter is the product
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const rows = await db.all<{ storage_key: string }>(
+      `SELECT DISTINCT storage_key FROM blob_refs
+        WHERE product = ? AND storage_key IN (${chunk.map(() => "?").join(", ")})`,
+      product,
       ...chunk,
     );
     for (const r of rows) out.add(r.storage_key);
@@ -483,6 +523,14 @@ export interface BlobRef {
  * Record that `product` references a stored object. The object must already be recorded
  * (`blob_refs.storage_key` is a foreign key into `blob_objects`), so a ref can never point at
  * bytes that were not verified. Idempotent.
+ *
+ * This function does NOT decide whether `product` may hold the ref — the foreign key proves
+ * only that SOMEONE stored the bytes. The caller must, and the invariant is (THREAT-MODEL §3):
+ * a product earns a ref only (a) by promoting a verified upload from its OWN
+ * `staging/<product>/…` prefix (possession of the bytes; an `alreadyStored` promote still
+ * required the upload), or (b) for a key it already references. Never on the strength of
+ * `isStored`/`storedKeys`: that would let a tenant claim another product's gated build by
+ * naming its hash (which the other product's signed manifests publish).
  */
 export async function recordRef(
   db: Db,
@@ -504,7 +552,8 @@ export async function recordRef(
 /**
  * Does THIS product hold a reference to the object? A byte route serves a key only if so —
  * another product's ref is not enough, which is what stops a product from serving (and so
- * paying for, or leaking) bytes it never published.
+ * paying for, or leaking) bytes it never published. That holds only while refs are earned as
+ * `recordRef` requires.
  */
 export async function hasRef(
   db: Db,

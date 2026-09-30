@@ -99,6 +99,21 @@ uploads. Its write paths, and nothing else:
   gated content is authorised per request and served `private, no-store`.
 - **Clients verify against the signed manifest, not the headers.** `Repr-Digest` and the ETag
   help resumption; integrity rests on the hash in a signed document.
+- **A product earns a `blob_ref` only by proving it had the bytes.** `blob_objects` is shared
+  across products (content addressing deduplicates), so it records that _someone_ stored the
+  bytes, never _who may serve them_; tenancy is `blob_refs`, and `hasRef` is only as strong as
+  the way refs are granted. The rule for every caller of `recordRef` (P2-04, P4-02): a product
+  gets a ref to a key only (a) by promoting a verified upload from its **own**
+  `staging/<product>/…` prefix — a promote that finds the key `alreadyStored` still required
+  the upload — or (b) when it already references that key. Never on the strength of
+  `isStored`/`storedKeys`: a tenant (T3) could otherwise take the hash of another product's
+  gated build, which that product's signed manifests publish to every customer, be told
+  "present", skip the upload, get a ref, and serve the other product's paid bytes from its
+  own byte route.
+- **Deduplication answers are per product.** An upload ticket's `present` flag (P2-02, P4-03)
+  comes from `referencedKeys(db, product, keys)` — the keys _this_ product already
+  references — never from `blob_objects` alone, which would also tell a tenant which hashes
+  other products hold. `isStored`/`storedKeys` stay internal bookkeeping (promote, GC).
 
 **Lock duration and the GC trade-off.** `blobs/`, `bundles/`, `deltas/` and `gated/` carry an
 **age** lock of **180 days**, not an indefinite one. An indefinite lock would make it impossible
@@ -111,11 +126,15 @@ published bytes — it is not permanent immutability. `staging/` is unlocked wit
 **Boundary: the bytes host.** The same Worker answers on `dl.plrs.im` (`dl-staging`, `dl-dev`),
 named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allowlist
 (`core/bytesHost.ts` `BYTE_ROUTES`, empty until P2-05/P2b-04); `/manage`, `/docs`, the portal,
-discovery and every product route answer not-found there (`test/bytesHost.test.ts`). Every
-byte route is product-scoped; CORS on the host is the same `core/cors.ts` step as the console's
-covered routes (the product's own `web.origins`, preflight answered before the route runs,
-headers added after it returns, never `Allow-Credentials`), and a route cannot set its own
-`Access-Control-*` headers.
+discovery and every product route answer not-found there (`test/bytesHost.test.ts`). The host
+match is case-insensitive and ignores trailing dots: the edge routes the fully-qualified
+`dl.plrs.im.` to the Worker with the dot kept in the URL, so an exact comparison would hand
+that spelling the whole console. Every byte route is product-scoped; CORS on the host is the
+same `core/cors.ts` step as the console's covered routes (the product's own `web.origins`,
+preflight answered before the route runs, headers added after it returns, never
+`Allow-Credentials`), and a route cannot set its own `Access-Control-*` headers: the dispatcher
+drops them from every route answer, including for a product with no `web.origins` (for which
+`withCors` adds nothing).
 
 **Deviation, recorded: the bytes host is same-site with the console.** The design rule
 (research README §3.5, decision 4) was a separate registrable domain, because a `*.plrs.im`
@@ -127,11 +146,14 @@ and could try to toss `Domain=plrs.im` cookies at it. The compensations, each te
 - every bytes-host response carries `X-Content-Type-Options: nosniff` and
   `Content-Security-Policy: sandbox; default-src 'none'; frame-ancestors 'none'`, so a body a
   browser decides to render gets an opaque origin and runs no script;
-- nothing script-executable or renderable is ever served there: a byte route's type comes from
-  an explicit inert allowlist (`BYTES_HOST_TYPES`: APK, wasm, zip, archives, installers), HTML,
-  XHTML, SVG, XML, JavaScript, JSON and `text/*` are refused, the dispatcher replaces any such
-  route answer with not-found, and `Content-Disposition` is `attachment` unless the type is
-  allowlisted and the route asks for `inline`;
+- nothing script-executable or renderable is ever served there, and the **dispatcher**
+  enforces it for every route answer, whether or not the route used `blobResponse` (which
+  applies the same allowlist): a non-error answer must carry a type on the explicit inert
+  allowlist (`BYTES_HOST_TYPES`: APK, wasm, zip, archives, installers), and a body with no
+  type is refused, so PDF, images, video, HTML, XHTML, SVG, XML, JavaScript, JSON and
+  `text/*` all become not-found; an error answer may carry only the platform's JSON error type
+  or an allowlisted type; and `Content-Disposition` is forced to `attachment` unless the type
+  is allowlisted and the route asked for `inline`;
 - no cookie is read or set on the host: `Cookie` is stripped before a byte route sees the
   request and `Set-Cookie` from every response;
 - the console's session cookies are host-only: `__Host-pkey_admin` and `__Host-pkey_portal`
@@ -144,6 +166,17 @@ Residual risk: the compensations hold only while nothing else is hosted on `dl.p
 any other `plrs.im` sibling that serves attacker-influenced HTML. Hosted web builds (P6-04),
 which need HTML and script, cannot live on this host under these rules and need their own
 registrable domain.
+
+Residual risk: **delta keys can be squatted.** `deltas/<from>/<to>.<method>` is named by its
+endpoints, not by its own content, and is not product-scoped, so `promote` can verify only
+that the bytes match the hash the caller supplies. Any tenant can promote arbitrary bytes under
+another product's delta key first; the 180-day lock then fixes them in place, and the
+legitimate promote answers `conflict`. This must stay an availability problem only: a client
+must accept a delta's output only when it matches the signed `to` hash, and so falls back to
+the full blob; the delta path for that pair is then denied until the lock lapses. The packages
+that publish deltas (P4-03, P4-17) own the fix: product-scoped or content-named delta keys, or
+granting a delta ref only under the earn-a-ref rule above, so a squatted key is never served
+under the victim product.
 
 ### Boundaries that are weaker than they look
 

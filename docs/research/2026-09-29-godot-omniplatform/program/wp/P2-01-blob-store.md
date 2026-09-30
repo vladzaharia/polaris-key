@@ -46,7 +46,18 @@ sandbox; …`; no HTML, XHTML, SVG, XML, JS, JSON or `text/*` type is ever serve
 >   loads that product, answers `OPTIONS` with `corsPreflight` before the route runs and wraps
 >   the route's answer in `withCors`, then hardens it. Unknown products answer not-found.
 > - Host isolation lives in `core/bytesHost.ts` (`BYTE_ROUTES`, empty), called from `dispatch.ts`
->   (main moved dispatch out of `index.ts`).
+>   (main moved dispatch out of `index.ts`). The host match ignores case and trailing dots
+>   (`dl.plrs.im.` is the same host, and the edge keeps the dot in `req.url`).
+> - The same-site compensations are enforced by the **dispatcher** for every route answer, not
+>   only by `blobResponse`: a non-error answer needs a `BYTES_HOST_TYPES` type (a body with no
+>   type is refused), `Content-Disposition` is forced to `attachment` unless the route asked for
+>   `inline` on an allowlisted type, an error body may be only the platform JSON or an
+>   allowlisted type, and a route's own `Access-Control-*` headers are dropped.
+> - **Refs are earned, not looked up.** `referencedKeys(db, product, keys)` is added beside
+>   `storedKeys`: P2-02's `present` must come from it (the keys this product already
+>   references), never from `blob_objects` alone, and a product gets a ref only by promoting a
+>   verified upload from its own `staging/<product>/…` prefix or for a key it already
+>   references (THREAT-MODEL §3). Delta-key squatting is recorded there as a residual risk.
 
 ## Goal
 
@@ -218,9 +229,12 @@ mise exec node@22 -- pnpm typecheck
 
 ## Hand-off
 
-- P2-02 uses `stagingKey`, `verifyStaged`, `promote` and `isStored`; it adds the R2 parent
-  credentials that mint CI's temporary credentials. P2-04 writes `blob_refs` for artifacts, P4-02
-  for pack objects; P4-14 collects unreferenced objects. P2-05 and P2b-04 use `blobResponse` and
+- P2-02 uses `stagingKey`, `verifyStaged`, `promote` and `referencedKeys` (for `present`, which
+  must be per product, never `isStored`/`storedKeys`); it adds the R2 parent credentials that
+  mint CI's temporary credentials. P2-04 writes `blob_refs` for artifacts, P4-02 for pack
+  objects, and both grant a ref only under the THREAT-MODEL §3 rule: a verified promote from
+  the product's own `staging/<product>/…` prefix, or a key the product already references.
+  P4-14 collects unreferenced objects. P2-05 and P2b-04 use `blobResponse` and
   `hasRef`, and register their byte routes on the host allowlist. P6-04 uses the bytes host for
   hosted web builds.
 - The key layout, the `gated/` prefix and the lock duration are fixed here; P4-05 and P4-14 rely
