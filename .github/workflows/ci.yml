@@ -36,6 +36,9 @@ jobs:
       - run: pnpm lint
       # Drift gate: the cross-language conformance corpus must be regenerable in place.
       - run: pnpm gen:corpus -- --check
+      # Service-table drift: every language's generated service constants must match
+      # tools/services.json (tools/gen-services.ts regenerates in memory; exit 1 on any difference).
+      - run: pnpm gen:services -- --check
       # Mirror drift: a `pnpm gen:mirrors -- --check` gate is intentionally omitted.
       # tools/gen-mirrors.ts supports --check, but it REQUIRES --catalog <path> and
       # --out-dir <dir> (no defaults) and no product currently emits typed mirrors

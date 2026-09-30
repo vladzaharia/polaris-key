@@ -54,8 +54,10 @@ The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and 
 conformance runner. Python and Swift are standalone toolchains under `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
-opt-in service (`license`, `config`, `release`, `update`, `identity`). `src/mount.ts` is the
-composition root; `src/router.ts` holds `SERVICE_NAMESPACES`.
+opt-in service (`license`, `config`, `release`, `update`, `identity`). The services are declared
+once, as rows of `tools/services.json`; `pnpm gen:services` generates every language's slug
+constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
+`SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`.
 
 ## Toolchain constraint: Node 22
 
@@ -77,6 +79,7 @@ already covers the source files.
 ```sh
 pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
+pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -100,8 +103,8 @@ pnpm format                      # prettier check over md/json too (format:fix t
 `pnpm build` does **not** typecheck the worker (esbuild strips types), so `pnpm typecheck` is not
 redundant with it — that gap once hid five broken type-only imports.
 
-The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corpus -- --check`
-and `pnpm typecheck`). A green hook is not a green gate.
+The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corpus -- --check`,
+`pnpm gen:services -- --check` and `pnpm typecheck`). A green hook is not a green gate.
 
 ## Hard rules
 
@@ -118,15 +121,19 @@ license / config / trust / bundle (`pkey-license+jws`, `pkey-config+jws`, `pkey-
 `graceUntil`). Changing the encoding is a deliberate, all-languages event: contract → catalog →
 corpus → SDKs, in that order, and a feature is not done until all five implementations pass.
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Two families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Three families:
 
-| File(s)                                          | Written by                                        |
-| ------------------------------------------------ | ------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`       | the docs build (`scripts/collect-csp-hashes.mjs`) |
-| `packages/docs/src/content/docs/reference/*.mdx` | `pnpm --filter @polaris-key/docs gen`             |
+| File(s)                                                                 | Written by                                        |
+| ----------------------------------------------------------------------- | ------------------------------------------------- |
+| `packages/worker/src/docsCsp.generated.ts`                              | the docs build (`scripts/collect-csp-hashes.mjs`) |
+| `packages/docs/src/content/docs/reference/*.mdx`                        | `pnpm --filter @polaris-key/docs gen`             |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift` | `pnpm gen:services` from `tools/services.json`    |
 
-Both are committed on purpose (reviewable diffs; the site builds without running generators) and
-both have a freshness test, so a hand edit fails CI rather than shipping.
+All are committed on purpose (reviewable diffs; the site and packages build without running
+generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
+table), so a hand edit fails CI rather than shipping. The service table is the one declaration
+of the opt-in services; adding one is the checklist at
+`packages/docs/src/content/docs/contribute/layout.md` ("Adding a service").
 
 **4. Terminology comes from the concepts page.** `packages/docs/src/content/docs/start/concepts.md`
 (served at `/docs/start/concepts/`) is the canonical glossary — the former `docs/CONCEPTS.md`,

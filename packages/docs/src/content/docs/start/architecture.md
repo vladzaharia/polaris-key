@@ -34,8 +34,11 @@ the table out of there would close a cycle. The table is built once at module sc
 the two dispatchers that need it: the public router and the admin API. Descriptors are stateless
 route tables, so rebuilding the map per request would be work on every cold path for no benefit.
 
-Adding a service is therefore **one entry in `mount.ts`, one slug in `router.ts`'s
-`SERVICE_NAMESPACES`, and a directory** — nothing in Core learns the new name.
+The slugs themselves are declared once, in the service table (`tools/services.json`), and
+generated into every language; Core iterates them without knowing any by name. Adding a service
+is a checklist rather than a one-liner — the table row, its directory and descriptor, its
+`mount.ts` entry, console views and docs pages — and a drift test names each missing piece. See
+[Adding a service](/docs/contribute/layout/#adding-a-service).
 
 ## The service descriptor, as shipped
 
