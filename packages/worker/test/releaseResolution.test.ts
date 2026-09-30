@@ -91,7 +91,9 @@ async function seed(db: Db, over: Record<string, unknown> = {}) {
     install_template: null,
     sparkle_ed25519_pub: null,
     summary_marker: "pkey:summary",
-    artifact_policy_json: JSON.stringify({ requireSparkleSignature: false }),
+    artifact_policy_json: null,
+    // The signature opt-out is operator policy (P0-01), not manifest policy.
+    operator_policy_json: JSON.stringify({ requireSparkleSignature: false }),
     metadata_access: "public",
     artifacts_access: "public",
     stable_tag_pattern: null,
@@ -122,6 +124,7 @@ function product(): Product {
     autoIssue: DEFAULT_AUTO_ISSUE,
     services: DEFAULT_SERVICES,
     registration: "requires-license",
+    webOrigins: [],
   };
 }
 
