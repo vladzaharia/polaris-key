@@ -40,6 +40,12 @@ import {
   listReleaseMetadata,
 } from "../src/services/release/store.js";
 import { handleReleaseSurface } from "./releaseSurface.js";
+import { handleAdmin } from "../src/admin/index.js";
+import {
+  ADMIN_COOKIE,
+  CSRF_HEADER,
+  issueSession,
+} from "../src/admin/session.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 
 const SLUG = "djdl";
@@ -589,5 +595,69 @@ describe("channel floors (R6-10)", () => {
     expect(regressed?.message).toContain("2.0.0 (v2.0.0)");
     expect(regressed?.message).toContain("offers v1.0.0");
     expect(health.status).toBe("error");
+  });
+
+  it("the admin floor endpoint lowers but never raises, clears, and refuses unfloored channels", async () => {
+    const db = makeTestDb();
+    await seed(db);
+    const env = envFor();
+    env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
+    env.PLATFORM_ADMIN_GROUP = "platform-admins";
+    const gh = github({ releases: [release("v2.0.0"), release("v1.0.0")] });
+    await syncReleaseStore(env, db, SLUG, NOW, gh.fetchImpl);
+    const { token, session } = await issueSession(
+      env,
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: ["platform-admins"],
+      },
+      NOW,
+    );
+    const post = (channel: string, body: unknown) => {
+      const path = `/api/products/${SLUG}/release/channels/${channel}/floor`;
+      return handleAdmin(
+        new Request(`https://key.plrs.im/manage${path}`, {
+          method: "POST",
+          headers: {
+            cookie: `${ADMIN_COOKIE}=${token}`,
+            [CSRF_HEADER]: session.csrf,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }) as unknown as Request,
+        env,
+        db,
+        path,
+        { now: NOW },
+      );
+    };
+
+    expect((await post("stable", { version: "3.0.0" })).status).toBe(422);
+    expect(
+      (await post("stable", { version: "1.0.0", clear: true })).status,
+    ).toBe(422);
+    expect((await post("stable", { version: "not-semver" })).status).toBe(422);
+    expect((await post("nope", { clear: true })).status).toBe(404);
+    expect((await getChannelFloor(db, SLUG, "stable"))?.version).toBe("2.0.0");
+
+    const lowered = await post("stable", { version: "1.0.0" });
+    expect(lowered.status).toBe(200);
+    expect(await getChannelFloor(db, SLUG, "stable")).toMatchObject({
+      version: "1.0.0",
+      release_id: "v1.0.0",
+      lowered_by: "ada@x.io",
+      lowered_at: NOW,
+    });
+
+    expect((await post("stable", { clear: true })).status).toBe(200);
+    expect(await getChannelFloor(db, SLUG, "stable")).toBeNull();
+    const audit = await db.all<{ action: string }>(
+      "SELECT action FROM audit WHERE product = ? AND action = ?",
+      SLUG,
+      "release.channel.floor",
+    );
+    expect(audit).toHaveLength(2);
   });
 });
