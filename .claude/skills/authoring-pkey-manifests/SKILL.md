@@ -48,8 +48,9 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 - [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`. Maps to the
       `product_schema` row. For an entry's fields, use the `adding-a-catalog-entry` skill.
 - [ ] **`product`** (required) — product metadata, the `modules` block (enabled services),
-      `devices.registration`, OIDC, profiles, tiers, provisioning hooks, `fingerprint`,
-      `autoIssue`, `secrets.required`. Maps to `products` (incl. `services_json`) plus
+      `devices.registration`, `web.origins`, OIDC, profiles, tiers, provisioning hooks,
+      `fingerprint`, `autoIssue`, `secrets.required`. Maps to `products` (incl. `services_json`,
+      `web_origins_json`) plus
       `oidc_config`, `profiles`, `tiers`, `provisioning_config`.
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
       channels, install/appcast settings, edge-mint recipes. Maps to `release_config` and
@@ -81,6 +82,14 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 | `edgeMint`  | `config`             | edge-minting is a secret-**delivery** capability of Config, not a unit of its own    |
 
 `pkey init --modules` takes the **old** names: `licensing,config,releases,oidc,edgeMint`.
+
+- [ ] `web.origins` is optional: up to 16 exact browser origins that may read this product's
+      device-facing routes with `fetch` (CORS, no credentials). Spell each one the way a browser
+      sends `Origin`: `https://<host>[:port]`, lower-case, no default port, no path, trailing
+      slash, query, credentials or wildcard. Plain `http` only for `http://localhost[:port]` and
+      `http://127.0.0.1[:port]`. Bad entries are refused, never coerced (`invalid_web_origins`,
+      `invalid_web_origin`). Manifest-owned: resync rewrites it and dropping the block clears it.
+      Details: `packages/docs/src/content/docs/build/web-cors.md`.
 
 ### 5. Validate until clean
 
@@ -120,7 +129,7 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 ### 8. Understand resync and ownership before you promise a behavior
 
 - [ ] A resync updates the **manifest baseline**: product metadata, service enablement +
-      registration policy, fingerprint and auto-issue policy, catalog shape, OIDC baseline,
+      registration policy, `web.origins`, fingerprint and auto-issue policy, catalog shape, OIDC baseline,
       release baseline, profiles, tiers, provisioning, edge-mint recipes.
 - [ ] Admin-set **values and management states** (per profile/tier/license/device) live in D1 and
       are **not** overwritten by a resync.
@@ -133,11 +142,18 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
       registration (`devices.registration: open`, or License turned off) when the approval was
       given without the open-registration acknowledgement. Tell the product owner to expect a
       review step after any such push (docs: `services/config/edge-mint`).
-- [ ] Three blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
-      `auto_issue_source`. A live console edit flips the source `manifest` → `admin`, and a
-      resync then **skips** that block — a push cannot silently undo a 3am toggle. "Revert to
-      manifest" hands ownership back and changes nothing else; the manifest re-applies on the
-      **next** resync, not immediately.
+- [ ] Five blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
+      `auto_issue_source` (on the product), `compat_source` (the compat window, claimed from
+      Update settings) and `access_source` (both release access modes together, on
+      `release_config`). A live console edit flips the source `manifest` → `admin`, and a
+      resync then **skips** that block — a push cannot silently undo a 3am toggle, nor
+      downgrade an `entitled` product to the manifest's `public`. "Revert to manifest" hands
+      ownership back and changes nothing else; the manifest re-applies on the **next** resync,
+      not immediately.
+- [ ] The operator-only artifact policy (`requireSparkleSignature`, `minimumSystemVersion`)
+      has **no manifest spelling at all** — it lives in `release_config.operator_policy_json`,
+      which no manifest path writes. Do not try to declare either key (or the `entitled` access
+      mode) in `.pkey/release`; set them in the console's Update settings.
 
 ## Verification
 

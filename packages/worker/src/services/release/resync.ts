@@ -46,6 +46,7 @@ import { manifestIssuerRefusal } from "./linkRepo.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSyncStatements } from "./sync.js";
 import { serializeServices } from "../../core/services.js";
+import { serializeWebOrigins } from "../../core/cors.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
@@ -178,17 +179,29 @@ export async function resyncRepo(
 
   const updated: string[] = [];
 
+  // `web_origins_json` (P0-05) rides with the product metadata: it is manifest-owned with no
+  // operator claim, so it is rewritten unconditionally, and dropping `web.origins` from
+  // `.pkey/product` clears it back to NULL (no origin allowed) rather than freezing the old list.
   await db.run(
-    `UPDATE products SET name = ?, compat_min = ?, compat_max = ?,
+    `UPDATE products SET name = ?,
        default_max_offline_days = ?, default_device_limit = ?, admin_group = ?,
-       modified_at = ? WHERE slug = ?`,
+       web_origins_json = ?, modified_at = ? WHERE slug = ?`,
     manifest.product.name,
-    manifest.product.compatMin,
-    manifest.product.compatMax,
     manifest.product.defaultMaxOfflineDays,
     manifest.product.defaultDeviceLimit,
     manifest.product.adminGroup,
+    serializeWebOrigins(manifest.webOrigins),
     now,
+    slug,
+  );
+  // The compatibility window is operator-claimable (P0-01, 0022_a): once an operator sets it in
+  // `update/settings`, `compat_source = 'admin'` and this statement matches no row. The guard is
+  // the UPDATE's own WHERE clause — the same shape as `setServices` — not a read-then-write.
+  await db.run(
+    `UPDATE products SET compat_min = ?, compat_max = ?
+       WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'`,
+    manifest.product.compatMin,
+    manifest.product.compatMax,
     slug,
   );
   updated.push("product");
@@ -276,10 +289,13 @@ export async function resyncRepo(
         error: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
       };
     }
+    // `artifact_policy_json` is the MANIFEST half of the artifact policy only. The operator half
+    // (requireSparkleSignature, minimumSystemVersion) lives in `operator_policy_json`, which this
+    // function never names — so rewriting this blob whole can no longer drop an operator's keys.
     await db.run(
       `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
          sparkle_ed25519_pub = ?, summary_marker = ?, manual_channels_json = ?,
-         artifact_policy_json = ?, metadata_access = ?, artifacts_access = ?
+         artifact_policy_json = ?
          WHERE product = ?`,
       rel.channelWorkflow || null,
       rel.betaBranch || "main",
@@ -288,6 +304,14 @@ export async function resyncRepo(
       rel.summaryMarker || "pkey:summary",
       rel.manualChannels.length ? JSON.stringify(rel.manualChannels) : null,
       rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,
+      slug,
+    );
+    // The two access modes share ONE owner (`access_source`, 0022_b). Once an operator claims
+    // them, this matches no row: a manifest cannot express `entitled`, so without the guard every
+    // push would silently downgrade an entitled product to the manifest's mode (default public).
+    await db.run(
+      `UPDATE release_config SET metadata_access = ?, artifacts_access = ?
+         WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'`,
       rel.access.metadata,
       rel.access.artifacts,
       slug,

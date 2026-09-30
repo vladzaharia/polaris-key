@@ -29,7 +29,11 @@ import { loadProduct, type Product } from "../../src/core/products.js";
 import { handleActivate } from "../../src/services/license/activation.js";
 import { handleDevices } from "../../src/core/devices.js";
 import { handleMintToken } from "../../src/services/config/mint.js";
-import { activateFromIdentity } from "../../src/services/identity/oidc.js";
+import {
+  activateFromIdentity,
+  deviceFlowKey,
+  flowKey,
+} from "../../src/services/identity/oidc.js";
 import { handleAdminApi } from "../../src/admin/api.js";
 import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
 import { handlePortalApi } from "../../src/services/identity/portal/api.js";
@@ -765,10 +769,12 @@ describe("REFUTED: KV namespace confusion via crafted state / device_code / toke
     "p:acme:token:deadbeef",
   ];
 
-  it("no crafted id can make a flow/device-flow key collide with a token key", () => {
+  it("no crafted id can make a flow/device-flow key collide with a token key", async () => {
+    const e = env();
     for (const s of NASTY) {
-      const flow = `p:${ACME}:flow:${s}`;
-      const deviceFlow = `p:${ACME}:device-flow:${s}`;
+      // The real key derivations (R12-04: hashed, so the suffix is always hex).
+      const flow = await flowKey(e, ACME, s);
+      const deviceFlow = await deviceFlowKey(e, ACME, s);
       const browser = `p:${ACME}:browser-session:${s}`;
       for (const other of [ACME, EVILCO]) {
         // A real token key for either tenant, with any hash the attacker can imagine.

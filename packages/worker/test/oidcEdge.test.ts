@@ -15,6 +15,8 @@ import {
   applyProvisioning,
   authorizeAndMint,
   activateFromIdentity,
+  deviceFlowKey,
+  flowKey,
   handleAuthCallback,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
@@ -261,7 +263,7 @@ describe("handleAuthPoll states", () => {
     flow: Record<string, unknown>,
   ): Promise<void> {
     await env.HOT.put(
-      `p:djdl:flow:${state}`,
+      await flowKey(env, "djdl", state),
       JSON.stringify({
         verifier: "v",
         nonce: "n",
@@ -359,7 +361,7 @@ describe("handleAuthPoll states", () => {
     expect(body.expiresIn).toBe(600);
     expect(body.interval).toBeGreaterThan(0);
     expect(
-      await env.HOT.get(`p:djdl:device-flow:${body.deviceCode}`),
+      await env.HOT.get(await deviceFlowKey(env, "djdl", body.deviceCode)),
     ).toBeTruthy();
   });
 
@@ -371,7 +373,7 @@ describe("handleAuthPoll states", () => {
       deviceId: "dev-json",
     });
     await env.HOT.put(
-      "p:djdl:device-flow:device-code",
+      await deviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({
         state: "oauth-state",
         deviceId: "dev-json",
@@ -402,7 +404,7 @@ describe("handleAuthPoll states", () => {
   it("renders and confirms the JSON device verification page", async () => {
     await putFlow("oauth-state", { deviceId: "dev-json" });
     await env.HOT.put(
-      "p:djdl:device-flow:device-code",
+      await deviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({
         state: "oauth-state",
         deviceId: "dev-json",
@@ -444,12 +446,12 @@ describe("handleAuthPoll states", () => {
       "https://id.example/authorize",
     );
     const stored = JSON.parse(
-      (await env.HOT.get("p:djdl:device-flow:device-code"))!,
+      (await env.HOT.get(await deviceFlowKey(env, "djdl", "device-code")))!,
     ) as { confirmedAt?: number };
     expect(stored.confirmedAt).toBeTruthy();
     // …and the confirmation is recorded on the flow the poll surfaces actually read.
     const flow = JSON.parse(
-      (await env.HOT.get("p:djdl:flow:oauth-state"))!,
+      (await env.HOT.get(await flowKey(env, "djdl", "oauth-state")))!,
     ) as {
       confirmedAt?: number;
     };
@@ -459,7 +461,7 @@ describe("handleAuthPoll states", () => {
   it("rejects JSON device polls from a different device id", async () => {
     await putFlow("oauth-state", {});
     await env.HOT.put(
-      "p:djdl:device-flow:device-code",
+      await deviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({ state: "oauth-state", deviceId: "dev-json" }),
     );
     const res = await handleAuthDevicePoll(
@@ -652,7 +654,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
    *  redirect URI, bound to `dev-1` and confirmed, so `poll()` below can complete it. */
   async function seedFlow(state: string, nonce: string): Promise<void> {
     await env.HOT.put(
-      `p:djdl:flow:${state}`,
+      await flowKey(env, "djdl", state),
       JSON.stringify({
         verifier: "v",
         nonce,

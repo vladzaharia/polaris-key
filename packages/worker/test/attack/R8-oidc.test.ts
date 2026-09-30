@@ -40,6 +40,8 @@ import {
   handleAuthDeviceVerify,
   handleAuthPoll,
   handleAuthStart,
+  flowKey,
+  deviceFlowKey,
 } from "../../src/services/identity/oidc.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 // Wire v3 split `validateDeviceToken` in two: core answers "is this token a live device row",
@@ -53,6 +55,8 @@ import {
   handleMagicVerify,
   handlePortalCallback,
   handlePortalLogin,
+  portalFlowKey,
+  portalMagicKey,
 } from "../../src/services/identity/portal/auth.js";
 import { handleAdminCallback, handleAdminLogin } from "../../src/admin/auth.js";
 import { hashKey, randomId } from "../../src/crypto.js";
@@ -323,7 +327,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
   it("ATTACK: /auth/poll is an unauthenticated bypass of BOTH guards /auth/device/poll enforces (device binding AND user confirmation)", async () => {
     // Seed a device flow that the user has NOT confirmed.
     await ctx.env.HOT.put(
-      "p:djdl:device-flow:DC",
+      await deviceFlowKey(ctx.env, "djdl", "DC"),
       JSON.stringify({
         state: "S",
         deviceId: "victim-cli",
@@ -345,7 +349,10 @@ describe("R8-01 /auth/poll device-id confusion", () => {
       deviceId: "victim-cli",
       licenseId: r.licenseId,
     };
-    await ctx.env.HOT.put("p:djdl:flow:S", JSON.stringify(flow));
+    await ctx.env.HOT.put(
+      await flowKey(ctx.env, "djdl", "S"),
+      JSON.stringify(flow),
+    );
 
     // The hardened surface refuses a foreign device id (oidc.ts:903-904)…
     const guarded = await handleAuthDevicePoll(
@@ -393,7 +400,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
 
     // Once the human confirms, the bound device — and only it — completes.
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ ...flow, confirmedAt: NOW }),
     );
     const ok = (await (await poll(ctx, "S", "victim-cli")).json()) as {
@@ -511,7 +518,9 @@ describe("R8-02 device-code flow weaknesses", () => {
     const html = await res.text();
     expect(html).not.toContain("nonce=");
     const stored = JSON.parse(
-      (await ctx.env.HOT.get(`p:djdl:device-flow:${deviceCode}`))!,
+      (await ctx.env.HOT.get(
+        await deviceFlowKey(ctx.env, "djdl", deviceCode),
+      ))!,
     ) as { confirmedAt?: number };
     expect(stored.confirmedAt).toBeUndefined();
 
@@ -550,7 +559,9 @@ describe("R8-02 device-code flow weaknesses", () => {
     expect(ok.headers.get("referrer-policy")).toBe("no-referrer");
     expect(ok.headers.get("cache-control")).toBe("no-store");
     const after = JSON.parse(
-      (await ctx.env.HOT.get(`p:djdl:device-flow:${deviceCode}`))!,
+      (await ctx.env.HOT.get(
+        await deviceFlowKey(ctx.env, "djdl", deviceCode),
+      ))!,
     ) as { confirmedAt?: number };
     expect(after.confirmedAt).toBeTruthy();
   });
@@ -558,7 +569,7 @@ describe("R8-02 device-code flow weaknesses", () => {
   // R8-02 — the confirmation page no longer leaks the device code through the Referer chain.
   it("ATTACK: the confirmation page ships no security headers and no referrer policy while the URL holds the device code", async () => {
     await ctx.env.HOT.put(
-      "p:djdl:device-flow:DC",
+      await deviceFlowKey(ctx.env, "djdl", "DC"),
       JSON.stringify({
         state: "S",
         deviceId: "d",
@@ -683,7 +694,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
 
     // Nothing browser-derived was persisted: no cookie, no IP, no UA, no CSRF nonce.
     const flow = JSON.parse(
-      (await ctx.env.HOT.get(`p:djdl:flow:${state}`))!,
+      (await ctx.env.HOT.get(await flowKey(ctx.env, "djdl", state)))!,
     ) as Record<string, unknown>;
     expect(Object.keys(flow).sort()).toEqual([
       "nonce",
@@ -732,7 +743,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       "state",
     )!;
     const flow = JSON.parse(
-      (await ctx.env.HOT.get(`p:djdl:flow:${state}`))!,
+      (await ctx.env.HOT.get(await flowKey(ctx.env, "djdl", state)))!,
     ) as {
       returnTo: string;
     };
@@ -755,11 +766,11 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     // FIXED (R12-04): the KV key is now `admin:flow:<hashKey(state, pepper)>`, so a listing of
     // the HOT namespace no longer dumps live OIDC `state` values as key names.
     expect(await ctx.env.HOT.get(`admin:flow:${state}`)).toBeNull();
-    const flowKey = `admin:flow:${await hashKey(state, ctx.env.KEY_HASH_PEPPER)}`;
-    expect(flowKey).not.toContain(state);
+    const adminKey = `admin:flow:${await hashKey(state, ctx.env.KEY_HASH_PEPPER)}`;
+    expect(adminKey).not.toContain(state);
 
     // The admin flow record holds only PKCE material — nothing tied to the browser.
-    const flow = JSON.parse((await ctx.env.HOT.get(flowKey))!) as Record<
+    const flow = JSON.parse((await ctx.env.HOT.get(adminKey))!) as Record<
       string,
       unknown
     >;
@@ -805,7 +816,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     const state = authorize.searchParams.get("state")!;
     const nonce = authorize.searchParams.get("nonce")!;
     const flow = JSON.parse(
-      (await ctx.env.HOT.get(`portal:oidc-flow:${state}`))!,
+      (await ctx.env.HOT.get(await portalFlowKey(ctx.env, state)))!,
     ) as Record<string, unknown>;
     expect(Object.keys(flow).sort()).toEqual([
       "nonce",
@@ -922,7 +933,7 @@ describe("R8-05 claim trust", () => {
       ["s-mallory", "mallory@evil.test"],
     ] as const) {
       await ctx.env.HOT.put(
-        `p:djdl:flow:${state}`,
+        await flowKey(ctx.env, "djdl", state),
         JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
       );
       vi.restoreAllMocks();
@@ -934,7 +945,9 @@ describe("R8-05 claim trust", () => {
       const res = await callback(ctx, state);
       expect(res.status).toBe(401);
       // The flow is consumed on failure, so the poller cannot learn the reason either.
-      expect(await ctx.env.HOT.get(`p:djdl:flow:${state}`)).toBeNull();
+      expect(
+        await ctx.env.HOT.get(await flowKey(ctx.env, "djdl", state)),
+      ).toBeNull();
     }
     const rows = await ctx.db.all<{ id: string; sub: string; email: string }>(
       "SELECT id, sub, email FROM licenses WHERE product = 'djdl'",
@@ -943,7 +956,7 @@ describe("R8-05 claim trust", () => {
 
     // A non-string `sub` is not coerced into one either (123 must not collide with "123").
     await ctx.env.HOT.put(
-      "p:djdl:flow:s-typed",
+      await flowKey(ctx.env, "djdl", "s-typed"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
     vi.restoreAllMocks();
@@ -956,7 +969,7 @@ describe("R8-05 claim trust", () => {
   // R8-05b — only a verified email is persisted or signed.
   it("ATTACK: an UNVERIFIED `email` claim is signed into the config document's identity profile", async () => {
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
     installFetchMock(
@@ -979,7 +992,7 @@ describe("R8-05 claim trust", () => {
     // …so it cannot reach the SIGNED doc that products authorize on. Wire v3 moved the
     // identity profile onto the LICENSE document; the title keeps the finding-doc mapping.
     await ctx.env.HOT.put(
-      "p:djdl:flow:S2",
+      await flowKey(ctx.env, "djdl", "S2"),
       JSON.stringify({
         verifier: "v",
         nonce: "N",
@@ -1018,7 +1031,7 @@ describe("R8-05 claim trust", () => {
 
     // Control: the SAME address with email_verified = true is persisted as before.
     await ctx.env.HOT.put(
-      "p:djdl:flow:S3",
+      await flowKey(ctx.env, "djdl", "S3"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
     vi.restoreAllMocks();
@@ -1099,7 +1112,7 @@ describe("R8-05 claim trust", () => {
   // R8-05d — maxTokenAge + clockTolerance are enforced. azp/at_hash/hd remain unchecked.
   it("ATTACK: no maxTokenAge/clockTolerance/azp/at_hash/hd check — an ID token minted long ago still activates", async () => {
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
     const stale = await new SignJWT({
@@ -1125,7 +1138,7 @@ describe("R8-05 claim trust", () => {
     // Control: the same claims minted now (azp/hd still unchecked — see the finding doc) are
     // accepted, so the age check is what rejected the stale one.
     await ctx.env.HOT.put(
-      "p:djdl:flow:S-fresh",
+      await flowKey(ctx.env, "djdl", "S-fresh"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
     vi.restoreAllMocks();
@@ -1166,7 +1179,7 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
       "not-json",
     );
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
     installFetchMock(
@@ -1330,10 +1343,10 @@ describe("R8-07 redirect-URI allowlist fail-open", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// R8-08 — magic link: 72-bit token, unhashed KV key, no verify rate limit
+// R8-08 — magic link: 72-bit token, unhashed KV key (fixed, R12-04), no verify rate limit
 // ═══════════════════════════════════════════════════════════════════════════════
 describe("R8-08 portal magic link", () => {
-  it("ATTACK: the magic token is 72 bits, stored UNHASHED as its own KV key with the email as the value", async () => {
+  it("ATTACK: the magic token is 72 bits (FIXED R12-04: it is no longer its own KV key name)", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
@@ -1365,11 +1378,15 @@ describe("R8-08 portal magic link", () => {
     // download tokens are 256-bit AND peppered-hashed at rest.
     expect(token.slice("magic_".length).length).toBe(12); // 9 bytes b64url
 
-    // Stored VERBATIM as the KV key; the value is the target email in plaintext.
-    expect(kv.keys()).toContain(`portal:magic:${token}`);
-    expect(await kv.get(`portal:magic:${token}`)).toContain("victim@corp.com");
+    // FIXED (R12-04): the KV key is `portal:magic:<hashKey(token, pepper)>`, so a listing of
+    // the HOT namespace no longer yields a working token. The value still names the target
+    // email (the record shape is unchanged).
+    expect(kv.keys().some((k) => k.includes(token))).toBe(false);
+    const magicKey = await portalMagicKey(env, token);
+    expect(kv.keys()).toContain(magicKey);
+    expect(await kv.get(magicKey)).toContain("victim@corp.com");
 
-    // Anyone holding that KV key string is that user.
+    // The emailed token itself still signs the holder in.
     const verified = await handleMagicVerify(
       req(
         `https://key.plrs.im/magic/verify?token=${encodeURIComponent(token)}`,
@@ -1425,7 +1442,7 @@ describe("R8 refuted", () => {
 
   it("REFUTED: the nonce binding is real — a token without a nonce is rejected", async () => {
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
     installFetchMock(await signIdToken(ctx, { sub: "u", groups: ["family"] }));
@@ -1434,7 +1451,7 @@ describe("R8 refuted", () => {
 
   it("REFUTED: HMAC-signed ID tokens are rejected (asymmetric algs only)", async () => {
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
     const hs = await new SignJWT({ sub: "u", groups: ["family"], nonce: "N" })
@@ -1490,7 +1507,7 @@ describe("R8 refuted", () => {
     // Bound + confirmed, so the poll gets all the way to the mint and it is `licenseUsable`
     // — not the R8-01 device binding — that refuses.
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({
         verifier: "v",
         nonce: "N",
@@ -1509,7 +1526,7 @@ describe("R8 refuted", () => {
 
   it("REFUTED: the poll surface never echoes an IdP failure reason", async () => {
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({
         verifier: "v",
         nonce: "N",
@@ -1543,7 +1560,7 @@ describe("R8 refuted", () => {
     );
     if (!("licenseId" in r)) throw new Error("expected license");
     await ctx.env.HOT.put(
-      "p:djdl:flow:S",
+      await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({
         verifier: "v",
         nonce: "N",

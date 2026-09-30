@@ -53,7 +53,7 @@ signed settings without taking licensing, and another take a release feed withou
   }
   ```
 
-  A record that is not fully understood — bad JSON, an unknown slug, a non-boolean `enabled`, a
+  A record that is not fully understood — bad JSON, an unknown slug with a malformed value, a non-boolean `enabled`, a
   `registration` outside the three policies — is discarded **whole** and read as the defaults
   (`license` + `config` on, the rest off), never partially honoured: half-honouring a typo is how
   it turns into a silently disabled service. The defaults are also what a product that has never

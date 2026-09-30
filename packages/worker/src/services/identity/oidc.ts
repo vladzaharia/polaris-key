@@ -36,6 +36,7 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // `manifest.ts` merely re-exports it — a service may not import a sibling.
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import {
+  hashKey,
   platformOidcConfig,
   secret,
   staticHtmlSecurityHeaders,
@@ -294,12 +295,41 @@ async function getProvisioning(
   );
 }
 
-function flowKey(product: string, state: string): string {
-  return `p:${product}:flow:${state}`;
+/**
+ * KV key for an in-flight product sign-in, addressed by its OIDC `state`.
+ *
+ * R12-04: the `state` used to be the key name verbatim, so anyone who could LIST the HOT
+ * namespace read live `state` values straight out of the key names, with the PKCE `verifier`
+ * and `nonce` sitting in the value beside them. Hashing under `KEY_HASH_PEPPER` makes a listing
+ * inert: a key name is no longer a usable `state`, and without the pepper it cannot be
+ * reversed into one. Same shape as the admin flow key (`admin/auth.ts`), device tokens
+ * (`kv.ts`) and browser sessions (`browserSession.ts`).
+ *
+ * Exported for tests that plant or inspect a flow record; production code reaches it only
+ * through the handlers below.
+ */
+export async function flowKey(
+  env: Env,
+  product: string,
+  state: string,
+): Promise<string> {
+  return `p:${product}:flow:${await hashKey(state, env.KEY_HASH_PEPPER)}`;
 }
 
-function deviceFlowKey(product: string, code: string): string {
-  return `p:${product}:device-flow:${code}`;
+/**
+ * KV key for a device-code sign-in, addressed by its `deviceCode`.
+ *
+ * R12-04: the device code is the poll credential (together with the device id), so it gets
+ * the same peppered hash as `flowKey`. Every reader (verify, confirm and poll) derives the key
+ * the same way, so a lookup by device code still works and a key listing yields nothing that
+ * can be polled.
+ */
+export async function deviceFlowKey(
+  env: Env,
+  product: string,
+  code: string,
+): Promise<string> {
+  return `p:${product}:device-flow:${await hashKey(code, env.KEY_HASH_PEPPER)}`;
 }
 
 function deviceUserCode(state: string): string {
@@ -680,9 +710,11 @@ async function beginAuthFlow(
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
   const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo, deviceId };
-  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
-    expirationTtl: FLOW_TTL_SECONDS,
-  });
+  await env.HOT.put(
+    await flowKey(env, product.slug, state),
+    JSON.stringify(flow),
+    { expirationTtl: FLOW_TTL_SECONDS },
+  );
 
   const authorize = new URL(`${oidc.issuer.replace(/\/$/, "")}/authorize`);
   authorize.searchParams.set("response_type", "code");
@@ -771,7 +803,7 @@ export async function handleAuthDeviceStart(
     deviceName,
   };
   await env.HOT.put(
-    deviceFlowKey(product.slug, deviceCode),
+    await deviceFlowKey(env, product.slug, deviceCode),
     JSON.stringify(deviceRecord),
     { expirationTtl: FLOW_TTL_SECONDS },
   );
@@ -829,21 +861,21 @@ async function confirmDeviceFlow(
 
   // The confirmation is an authorization input for the poll surfaces, so it is recorded on
   // the flow the pollers actually read, not only on the device record (R8-01).
-  const flowRaw = await env.HOT.get(flowKey(product.slug, record.state));
+  const stateKey = await flowKey(env, product.slug, record.state);
+  const deviceKey = await deviceFlowKey(env, product.slug, deviceCode);
+  const flowRaw = await env.HOT.get(stateKey);
   if (!flowRaw) return errorResponse(404, "not_found", "device code expired");
   const flow = parseFlowRecord<FlowRecord>(flowRaw);
   if (!flow) return errorResponse(404, "not_found", "device code expired");
   flow.confirmedAt = now;
-  await env.HOT.put(flowKey(product.slug, record.state), JSON.stringify(flow), {
+  await env.HOT.put(stateKey, JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
   record.confirmedAt = now;
   delete record.csrf; // single-use
-  await env.HOT.put(
-    deviceFlowKey(product.slug, deviceCode),
-    JSON.stringify(record),
-    { expirationTtl: FLOW_TTL_SECONDS },
-  );
+  await env.HOT.put(deviceKey, JSON.stringify(record), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
   return new Response(null, {
     status: 303,
     headers: {
@@ -877,7 +909,8 @@ export async function handleAuthDeviceVerify(
   const url = new URL(req.url);
   const deviceCode = url.searchParams.get("device_code");
   if (!deviceCode) return errorResponse(400, "bad_request", "missing code");
-  const raw = await env.HOT.get(deviceFlowKey(product.slug, deviceCode));
+  const deviceKey = await deviceFlowKey(env, product.slug, deviceCode);
+  const raw = await env.HOT.get(deviceKey);
   if (!raw) return errorResponse(404, "not_found", "device code expired");
   const record = parseFlowRecord<DeviceFlowRecord>(raw);
   if (!record) return errorResponse(404, "not_found", "device code expired");
@@ -887,11 +920,9 @@ export async function handleAuthDeviceVerify(
 
   const csrf = b64url(randomBytes(16));
   record.csrf = csrf;
-  await env.HOT.put(
-    deviceFlowKey(product.slug, deviceCode),
-    JSON.stringify(record),
-    { expirationTtl: FLOW_TTL_SECONDS },
-  );
+  await env.HOT.put(deviceKey, JSON.stringify(record), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
   const deviceLabel = record.deviceName || record.deviceId;
   const html = `<!doctype html>
 <meta charset="utf-8">
@@ -982,7 +1013,8 @@ export async function handleAuthCallback(
     { bucket: "authCallbackState", id: state, limit: 5, windowSec: 60 },
   );
   if (limited) return limited;
-  const raw = await env.HOT.get(flowKey(product.slug, state));
+  const stateKey = await flowKey(env, product.slug, state);
+  const raw = await env.HOT.get(stateKey);
   if (!raw) return errorResponse(400, "bad_request", "unknown state");
   const flow = parseFlowRecord<FlowRecord>(raw);
   if (!flow) return errorResponse(400, "bad_request", "unknown state");
@@ -992,17 +1024,17 @@ export async function handleAuthCallback(
   if (flow.consumedAt)
     return errorResponse(400, "bad_request", "unknown state");
   flow.consumedAt = now;
-  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
+  await env.HOT.put(stateKey, JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
   const oidc = await resolveOidcConfig(env, db, product);
   if (oidc instanceof Response) {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     return oidc;
   }
   // Defense in depth: the stored flow's redirect_uri must still be allow-listed.
   if (!redirectUriAllowed(oidc.row, flow.redirectUri)) {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
 
@@ -1024,18 +1056,18 @@ export async function handleAuthCallback(
   if (!tokenRes.ok) {
     // Delete the flow rather than recording a reason — pollers must not be able to
     // enumerate IdP failure modes (D8). The poll surface returns a generic error.
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     return errorResponse(502, "oidc_error", "token exchange failed");
   }
   let tokens: { id_token?: string };
   try {
     tokens = (await tokenRes.json()) as { id_token?: string };
   } catch {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     return errorResponse(502, "oidc_error", "token response invalid");
   }
   if (!tokens.id_token) {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     return errorResponse(502, "oidc_error", "no id_token");
   }
 
@@ -1059,7 +1091,7 @@ export async function handleAuthCallback(
     if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce)
       throw new Error("nonce mismatch");
   } catch {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
@@ -1069,7 +1101,7 @@ export async function handleAuthCallback(
   // (R8-05a). Same generic 401 as any other bad ID token.
   const identity = mapClaims(claims);
   if (!identity.sub) {
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
@@ -1085,14 +1117,14 @@ export async function handleAuthCallback(
   });
   if ("error" in result) {
     // Failed activation: drop the flow so the poller gets a generic error, not the reason.
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     return errorResponse(403, "forbidden", "not entitled");
   }
   flow.licenseId = result.licenseId;
   if (flow.returnTo) {
     const license = await getLicense(db, product.slug, result.licenseId);
     if (!license) {
-      await env.HOT.delete(flowKey(product.slug, state));
+      await env.HOT.delete(stateKey);
       return errorResponse(401, "unauthorized", "license unavailable");
     }
     const session = await createBrowserSession(
@@ -1103,7 +1135,7 @@ export async function handleAuthCallback(
       now,
       req,
     );
-    await env.HOT.delete(flowKey(product.slug, state));
+    await env.HOT.delete(stateKey);
     if (!session.ok) {
       return errorResponse(
         session.status,
@@ -1120,7 +1152,7 @@ export async function handleAuthCallback(
       },
     });
   }
-  await env.HOT.put(flowKey(product.slug, state), JSON.stringify(flow), {
+  await env.HOT.put(stateKey, JSON.stringify(flow), {
     expirationTtl: FLOW_TTL_SECONDS,
   });
   return new Response(
@@ -1149,7 +1181,8 @@ async function pollAuthFlow(
 ): Promise<Response> {
   if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing state/device");
-  const raw = await env.HOT.get(flowKey(product.slug, state));
+  const stateKey = await flowKey(env, product.slug, state);
+  const raw = await env.HOT.get(stateKey);
   if (!raw) return json({ status: "timeout" });
   const flow = parseFlowRecord<FlowRecord>(raw);
   if (!flow) return json({ status: "timeout" });
@@ -1178,7 +1211,7 @@ async function pollAuthFlow(
   } catch {
     return json({ status: "error" });
   }
-  await env.HOT.delete(flowKey(product.slug, state));
+  await env.HOT.delete(stateKey);
   return json({ status: "ready", token, schemaVersion: product.schemaVersion });
 }
 
@@ -1242,7 +1275,8 @@ export async function handleAuthDevicePoll(
     { bucket: "authDevicePollCode", id: state, limit: 40, windowSec: 60 },
   );
   if (limited) return limited;
-  const raw = await env.HOT.get(deviceFlowKey(product.slug, state));
+  const deviceKey = await deviceFlowKey(env, product.slug, state);
+  const raw = await env.HOT.get(deviceKey);
   if (!raw) return json({ status: "timeout" });
   const deviceFlow = parseFlowRecord<DeviceFlowRecord>(raw);
   if (!deviceFlow) return json({ status: "timeout" });
@@ -1260,11 +1294,9 @@ export async function handleAuthDevicePoll(
     );
   }
   deviceFlow.lastPollAt = now;
-  await env.HOT.put(
-    deviceFlowKey(product.slug, state),
-    JSON.stringify(deviceFlow),
-    { expirationTtl: FLOW_TTL_SECONDS },
-  );
+  await env.HOT.put(deviceKey, JSON.stringify(deviceFlow), {
+    expirationTtl: FLOW_TTL_SECONDS,
+  });
   if (!deviceFlow.confirmedAt) return json({ status: "pending" });
   const res = await pollAuthFlow(
     env,
@@ -1279,7 +1311,7 @@ export async function handleAuthDevicePoll(
     .json()
     .catch(() => null)) as { status?: string } | null;
   if (bodyOut?.status === "ready" || bodyOut?.status === "timeout") {
-    await env.HOT.delete(deviceFlowKey(product.slug, state));
+    await env.HOT.delete(deviceKey);
   }
   return res;
 }

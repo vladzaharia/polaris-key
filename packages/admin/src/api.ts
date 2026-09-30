@@ -403,22 +403,41 @@ export type ReleaseAccess =
   | "licensed"
   | "entitled";
 
+/** Who owns a block a resync can also write: `admin` once an operator saved it here (resync then
+ *  skips it), `manifest` otherwise (P0-01). */
+export type SettingsSource = "manifest" | "admin";
+
 export interface UpdateSettings {
   metadataAccess: ReleaseAccess;
   artifactsAccess: ReleaseAccess;
+  /** One owner for BOTH access modes — the console saves them together. */
+  accessSource: SettingsSource;
   compatMin: string;
   compatMax: string;
-  /** False when the product has no release configuration: the access modes are defaults and a
-   *  PATCH of them has nothing to write to (the server 422s). */
+  compatSource: SettingsSource;
+  /** Operator-only `sparkle:minimumSystemVersion`; `null` when unset. No manifest writes it. */
+  minimumSystemVersion: string | null;
+  /** Operator-only; `true` unless an operator explicitly turned it off (R6-03). */
+  requireSparkleSignature: boolean;
+  /** False when the product has no release configuration: the access modes and artifact policy
+   *  are defaults and a PATCH of them has nothing to write to (the server 422s). */
   configured: boolean;
 }
 
 export type UpdateSettingsBody = Partial<
   Pick<
     UpdateSettings,
-    "metadataAccess" | "artifactsAccess" | "compatMin" | "compatMax"
+    | "metadataAccess"
+    | "artifactsAccess"
+    | "compatMin"
+    | "compatMax"
+    | "minimumSystemVersion"
+    | "requireSparkleSignature"
   >
 >;
+
+/** The blocks `update/settings/revert` can hand back to the manifest. */
+export type UpdateSettingsBlock = "access" | "compat";
 
 // ── release truth store ───────────────────────────────────────────────────────
 export interface ReleaseArtifactDto {
@@ -881,6 +900,13 @@ export const api = {
     call<UpdateSettings>(`${p(slug)}/update/settings`, {
       method: "PATCH",
       body: JSON.stringify(body),
+    }),
+  /** Hand the named blocks back to the manifest. Changes nothing live — the manifest re-applies
+   *  on the NEXT resync (worker `services/update/admin.ts`). */
+  revertUpdateSettings: (slug: string, fields: UpdateSettingsBlock[]) =>
+    call<UpdateSettings>(`${p(slug)}/update/settings/revert`, {
+      method: "POST",
+      body: JSON.stringify({ fields }),
     }),
 
   // ── config: catalog ───────────────────────────────────────────────────────────
