@@ -111,7 +111,7 @@
         "notes/A1"
       ],
       "brief": "wp/P0-02-release-resolution.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-03",
@@ -203,7 +203,7 @@
       "optional": false,
       "refs": ["README §9.1 #13", "notes/A3"],
       "brief": "wp/P0-07-cli-init-validate.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-08",
@@ -259,7 +259,7 @@
       "optional": false,
       "refs": ["README §9.1 #11 #16"],
       "brief": "wp/P0-10-sparkle-hardening.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-11",
