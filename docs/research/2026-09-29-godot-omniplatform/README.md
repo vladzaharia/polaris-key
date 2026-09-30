@@ -153,7 +153,7 @@ event** (protocol v4) that every SDK must follow.
    all use CI-chunked manifests plus a thin client that needs only SHA-256, zstd and HTTP Range.
    That is exactly what a pure-GDScript client can do. Measured on Godot 4.7.2 (§5.7), it can
    also drive Godot's own delta decoder: a v1→v2 update of a 36 MiB pack took 0.6 MB instead of
-   9.8 MB, with a byte-identical result ([`CONTENT.md`](CONTENT.md) §7).
+   9.8 MB, with a byte-identical result ([`CONTENT.md`](CONTENT.md) §8).
 
 ### 0.5 Difficulty at a glance
 
@@ -316,28 +316,29 @@ These nouns must not collide with the glossary:
 
 The proposed additions go into `start/concepts.md` in the first implementing PR.
 
-| Term                           | Meaning                                                                                                                                                                                                                                                                                  | Notes                                                                                                                   |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **platform**                   | OS family: `macos`, `ios`, `android`, `windows`, `linux`, `web`. iPadOS is `ios`, with a device-family facet                                                                                                                                                                             | already on the wire as `X-PKey-Platform`; normalise its values across SDKs (they differ today, notes/A2 §14)            |
-| **arch**                       | `arm64`, `x86_64`, **`universal`**, `armv7`, `wasm32`, **`any`**                                                                                                                                                                                                                         | `universal` and `any` match every arch                                                                                  |
-| **outlet**                     | a venue a build reaches players through, and that owns (or delegates) its updates: `direct`, `app-store`, `testflight`, `altstore`, `altstore-pal`, `play`, `play-testing`, `obtainium`, `fdroid-repo`, `ms-store`, `app-installer`, `steam`, `itch`, `flathub`, `snap`, `winget`, `web` | not "surface" or "distribution"; owned by the **`distribution`** service (§3.2, §3.8)                                   |
-| **outlet capabilities**        | what an outlet permits: `binaryUpdates` (`self` \| `store` \| `none`), `codeUpdates`, `dataUpdates`, `channelSwitch`, `commerce` (`own` \| `store-iap` \| `steam` \| `none`), `downloadedScripts`                                                                                        | security-relevant bits are **operator-owned**, never manifest-writable (the `requireSparkleSignature` precedent)        |
-| **build**                      | one compiled deliverable for (platform, arch, outlet, format), with a **build number**                                                                                                                                                                                                   | iOS `CFBundleVersion`, Android `versionCode`, MSIX 4-part, Sparkle `sparkle:version`                                    |
-| **artifact**                   | a file of a build, or a sidecar (sig, checksum, zsync, dSYM)                                                                                                                                                                                                                             | exists today; gains role, format, build and sha256                                                                      |
-| **listing**                    | store-page metadata (name, subtitle, description, icon, screenshots, tint, category)                                                                                                                                                                                                     | feeds AltStore, F-Droid and the download page                                                                           |
-| **submission**                 | a build's review lifecycle at a store outlet                                                                                                                                                                                                                                             | ASC, Play, Microsoft Store states                                                                                       |
-| **availability**               | "version V (or pack release P) is live on outlet O since T"; a distribution record                                                                                                                                                                                                       | the answer to "is it in the App Store yet"                                                                              |
-| **rollout**                    | percentage exposure of a release on one outlet; distribution state, carried into update's signed feed                                                                                                                                                                                    | client-evaluated buckets for self-hosted outlets; mirrored from stores otherwise                                        |
-| **promote / pin / yank**       | move a channel pointer / freeze it / make a release unservable except by pin                                                                                                                                                                                                             | "yank", not "revoke" (keys and licences revoke)                                                                         |
-| **release record**             | the CI-signed record of one release of one deliverable (`pkey-release+jws`): builds or variants, hashes, sizes, requirements, patch artifacts; for the app, the pinned pack releases                                                                                                     | new signed document (§3.3)                                                                                              |
-| **channel feed**               | the Worker-signed, device-less feed per channel (`pkey-feed+jws`): the app's release, the resolved pack set, freshness, floors, per-outlet availability, rollout and halts                                                                                                               | update's output (§3.3, §3.6)                                                                                            |
-| **pack**                       | a named, independently versioned unit of content of some **pack type** (`godot.pck`, `files.tree`, `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`), with requirements, dependencies, a delivery policy and optional entitlement                                         | full model in [`CONTENT.md`](CONTENT.md)                                                                                |
-| **deliverable** / **pack set** | something a product releases: the `app` (kind `app`) or a pack (kind `pack`) / a release-resolved lock of exact pack releases for one selector (channel × `contentApi` × platform × variant)                                                                                             | every deliverable goes through release, distribution and update the same way; Diceroll's `requires_packs` is a pack set |
-| **requirements**               | constraints on where an artifact or pack may run: `engine` (e.g. `godot-4.7`), `format`, `textures` (`s3tc`/`etc2`/`astc`), `minBuild`, `minOS`, `arch`                                                                                                                                  | the generic "compat key"; generalises to Unity, Electron, etc.                                                          |
-| **delivery policy**            | `essential` \| `prefetch` \| `onDemand`                                                                                                                                                                                                                                                  | Apple Background Assets' vocabulary, reused across transports                                                           |
-| **transport**                  | how a pack's bytes arrive: `embedded`, `pkey-cdn`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`, `flatpak-ext`, `web`                                                                                                                                                          | one pack id, many transports                                                                                            |
-| **patch strategy**             | how an update is obtained: `noop`, `platform`, `delta`, `chunk`, `file`, `full`, picked by a deterministic client planner                                                                                                                                                                | not "route" (a Worker term)                                                                                             |
-| **release key**                | a developer/CI-held Ed25519 key that signs release records (optionally delegating a content key for data-only packs)                                                                                                                                                                     | Sparkle's EdDSA key generalised; the Worker never holds it                                                              |
+| Term                           | Meaning                                                                                                                                                                                                                                                                                       | Notes                                                                                                                   |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **platform**                   | OS family: `macos`, `ios`, `android`, `windows`, `linux`, `web`. iPadOS is `ios`, with a device-family facet                                                                                                                                                                                  | already on the wire as `X-PKey-Platform`; normalise its values across SDKs (they differ today, notes/A2 §14)            |
+| **arch**                       | `arm64`, `x86_64`, **`universal`**, `armv7`, `wasm32`, **`any`**                                                                                                                                                                                                                              | `universal` and `any` match every arch                                                                                  |
+| **outlet**                     | a venue a build reaches players through, and that owns (or delegates) its updates: `direct`, `app-store`, `testflight`, `altstore`, `altstore-pal`, `play`, `play-testing`, `obtainium`, `fdroid-repo`, `ms-store`, `app-installer`, `steam`, `itch`, `flathub`, `snap`, `winget`, `web`      | not "surface" or "distribution"; owned by the **`distribution`** service (§3.2, §3.8)                                   |
+| **outlet capabilities**        | what an outlet permits: `binaryUpdates` (`self` \| `store` \| `none`), `codeUpdates`, `dataUpdates`, `channelSwitch`, `commerce` (`own` \| `store-iap` \| `steam` \| `none`), `downloadedScripts`                                                                                             | security-relevant bits are **operator-owned**, never manifest-writable (the `requireSparkleSignature` precedent)        |
+| **build**                      | one compiled deliverable for (platform, arch, outlet, format), with a **build number**                                                                                                                                                                                                        | iOS `CFBundleVersion`, Android `versionCode`, MSIX 4-part, Sparkle `sparkle:version`                                    |
+| **artifact**                   | a file of a build, or a sidecar (sig, checksum, zsync, dSYM)                                                                                                                                                                                                                                  | exists today; gains role, format, build and sha256                                                                      |
+| **listing**                    | store-page metadata (name, subtitle, description, icon, screenshots, tint, category)                                                                                                                                                                                                          | feeds AltStore, F-Droid and the download page                                                                           |
+| **submission**                 | a build's review lifecycle at a store outlet                                                                                                                                                                                                                                                  | ASC, Play, Microsoft Store states                                                                                       |
+| **availability**               | "version V (or pack release P) is live on outlet O since T"; a distribution record                                                                                                                                                                                                            | the answer to "is it in the App Store yet"                                                                              |
+| **rollout**                    | percentage exposure of a release on one outlet; distribution state, carried into update's signed feed                                                                                                                                                                                         | client-evaluated buckets for self-hosted outlets; mirrored from stores otherwise                                        |
+| **promote / pin / yank**       | move a channel pointer / freeze it / make a release unservable except by pin                                                                                                                                                                                                                  | "yank", not "revoke" (keys and licences revoke)                                                                         |
+| **release record**             | the CI-signed record of one release of one deliverable (`pkey-release+jws`): builds or variants, hashes, sizes, requirements, patch artifacts; for the app, its `contentApi` and its pinned and held pack releases                                                                            |
+| **channel feed**               | the Worker-signed, device-less feed per channel (`pkey-feed+jws`): the app's release, the resolved pack sets per `contentApi`, freshness, floors, revocations, per-outlet availability, rollout and halts                                                                                     |
+| **pack**                       | a named, independently versioned unit of content of some **pack type** (`godot.pck`, `files.tree`, `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`), with requirements, dependencies, a delivery policy and optional entitlement                                              | full model in [`CONTENT.md`](CONTENT.md)                                                                                |
+| **deliverable** / **pack set** | something a product releases: the `app` (kind `app`) or a pack (kind `pack`) / a release-resolved lock of exact pack releases for one selector (channel × app × `contentApi` × platform × variant), identified by a content-addressed `packSetId`                                             | every deliverable goes through release, distribution and update the same way; Diceroll's `requires_packs` is a pack set |
+| **binding** / **`contentApi`** | how a pack's version relates to the app's: `pinned` (the exact release is in the app's record), `compatible` (any release supporting the app's `contentApi`) or `standalone` (depends only on its type's format) / the integer an app release declares for the content shape its code expects | [`CONTENT.md`](CONTENT.md) §6; transports can narrow a binding on an outlet (Play Asset Delivery pins)                  |
+| **requirements**               | constraints on where an artifact or pack may run: `engine` (e.g. `godot-4.7`), `format`, `textures` (`s3tc`/`etc2`/`astc`), `minBuild`, `minOS`, `arch`                                                                                                                                       | the generic "compat key"; generalises to Unity, Electron, etc.                                                          |
+| **delivery policy**            | `essential` \| `prefetch` \| `onDemand`                                                                                                                                                                                                                                                       | Apple Background Assets' vocabulary, reused across transports                                                           |
+| **transport**                  | how a pack's bytes arrive: `embedded`, `pkey-cdn`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`, `flatpak-ext`, `web`                                                                                                                                                               | one pack id, many transports                                                                                            |
+| **patch strategy**             | how an update is obtained: `noop`, `platform`, `delta`, `chunk`, `file`, `full`, picked by a deterministic client planner                                                                                                                                                                     | not "route" (a Worker term)                                                                                             |
+| **release key**                | a developer/CI-held Ed25519 key that signs release records (optionally delegating a content key for data-only packs)                                                                                                                                                                          | Sparkle's EdDSA key generalised; the Worker never holds it                                                              |
 
 ### 3.2 Service model: Release, Distribution and Update across everything delivered
 
@@ -362,20 +363,20 @@ responsibility splits into three services with one question each:
 
 **The same activity, for the app and for a pack:**
 
-| Activity                               | App                                                              | Pack                                                                               | Service                                   |
-| -------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------- |
-| Declare it                             | `.pkey/release` `deliverables.app`                               | `.pkey/release` `deliverables.<packId>` (kind `pack`, pack type)                   | release                                   |
-| Publish a version                      | builds per platform/arch/format                                  | variants per texture family/locale                                                 | release                                   |
-| Sign what exists                       | `pkey-release+jws` (CI release key)                              | `pkey-release+jws` (CI release key or a delegated content key for data-only types) | release                                   |
-| Compute patch artifacts                | Sparkle/Velopack deltas; per-entry deltas for sidecar code packs | files index, chunk index, chunk bundles, per-entry deltas                          | release (records); CI (computes)          |
-| Channel pointer, floor, yank           | ✓                                                                | ✓ (per pack; or a pinned set)                                                      | release                                   |
-| Compatible set                         | the app pins pack releases (locked)                              | channel-resolved pack sets per `contentApi` (floating)                             | release                                   |
-| Store and serve bytes                  | direct downloads, install scripts                                | blobs, chunk bundles, deltas                                                       | distribution (bytes in Core's blob store) |
-| Platform transports                    | App Store, Play, Microsoft Store, Steam, …                       | Background Assets, Play Asset Delivery, Steam depots, MSIX optional packages, …    | distribution                              |
-| Availability, rollout, halt per outlet | ✓                                                                | ✓                                                                                  | distribution                              |
-| Storefront feeds, download page        | ✓                                                                | pack listings where a storefront supports them                                     | distribution                              |
-| Tell the device what to do             | signed feed → update decision                                    | signed feed → pack sets → install plan                                             | update                                    |
-| Outcome telemetry → auto-halt          | ✓                                                                | ✓                                                                                  | update (telemetry) → distribution (halt)  |
+| Activity                               | App                                                              | Pack                                                                                                                           | Service                                      |
+| -------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| Declare it                             | `.pkey/release` `deliverables.app`                               | `.pkey/release` `deliverables.<packId>` (kind `pack`, pack type)                                                               | release                                      |
+| Publish a version                      | builds per platform/arch/format                                  | variants per texture family/locale                                                                                             | release                                      |
+| Sign what exists                       | `pkey-release+jws` (CI release key)                              | `pkey-release+jws` (CI release key or a delegated content key for data-only types)                                             | release                                      |
+| Compute patch artifacts                | Sparkle/Velopack deltas; per-entry deltas for sidecar code packs | files index, chunk index, chunk bundles, per-entry deltas                                                                      | release (records); CI (computes)             |
+| Channel pointer, floor, yank           | ✓                                                                | ✓ (per pack; floors per `contentApi` level)                                                                                    | release                                      |
+| App ↔ pack binding                     | declares its `contentApi`; pins or holds pack releases           | declares `pinned`, `compatible` or `standalone` and the `contentApi` range it supports; resolved into pack sets per live level | release (sets); update (narrowed per outlet) |
+| Store and serve bytes                  | direct downloads, install scripts                                | blobs, chunk bundles, deltas                                                                                                   | distribution (bytes in Core's blob store)    |
+| Platform transports                    | App Store, Play, Microsoft Store, Steam, …                       | Background Assets, Play Asset Delivery, Steam depots, MSIX optional packages, …                                                | distribution                                 |
+| Availability, rollout, halt per outlet | ✓                                                                | ✓                                                                                                                              | distribution                                 |
+| Storefront feeds, download page        | ✓                                                                | pack listings where a storefront supports them                                                                                 | distribution                                 |
+| Tell the device what to do             | signed feed → update decision                                    | signed feed → pack sets → install plan                                                                                         | update                                       |
+| Outcome telemetry → auto-halt          | ✓                                                                | ✓                                                                                                                              | update (telemetry) → distribution (halt)     |
 
 **Dependencies and enablement.**
 
@@ -438,8 +439,12 @@ Release record, per build or variant:
 - `{platform, arch, format, sha256, size, buildNumber | variant}`;
 - requirements and dependencies;
 - patch artifacts: files index, chunk index, delta descriptors;
-- for an app release, the **pinned pack releases** (the locked set);
+- for an app release, its `contentApi` and its **pinned and held pack releases**;
 - `minSupportedSeq`.
+
+A **revocation** is a release record of `kind: revocation`. It marks a release unusable and
+names a replacement. Only CI can sign one, so the Worker can withhold content but never condemn or
+substitute it.
 
 Store-assigned ids are not in here, because they arrive after signing; they live in
 distribution.
@@ -448,8 +453,10 @@ Channel feed:
 
 - `seq`, `issuedAt`, `expiresAt`;
 - the app's current release (record hash);
-- the resolved **pack set** (pack release record hashes), from release;
-- floors and `critical`, from release;
+- the resolved **pack sets** per live `contentApi` (`packSetId` and pack release record hashes),
+  from release, with each pack's binding narrowed per outlet by its transport;
+- floors (the app's, and each pack's per `contentApi` level), `critical` and revocations in
+  force, from release;
 - per-outlet availability, `rollout{bp, salt}` and `halted`, from distribution;
 - the delta menu.
 
@@ -517,9 +524,13 @@ layer.
 - `release_channel_policy(product, deliverable_id, channel, pointer_release_id, pinned, includes_json, min_supported, critical, source)`:
   - operator-owned with a `*_source` guard, replacing the never-read and sync-clobbered
     `release_channels.policy_json`;
+  - pack floors are keyed per `contentApi` level, so a fix can be backported to an older content
+    line;
   - rollout and halt are outlet-scoped and live in distribution.
-- `release_sets(product, channel, select_json, set_json, resolved_at)`: resolved pack sets per
-  selector (`contentApi` × platform × variant).
+- `release_sets(product, channel, app_deliverable, content_api, platform, variant, pack_set_id, set_json, resolved_at)`:
+  resolved pack sets per selector.
+- `release_holds(product, app_release_id, pack_deliverable, pack_release_id, reason)`: an app
+  release keeping a `compatible` pack at one release; mirrored from the signed app record.
 - `release_yanks(product, release_id, reason, at, by)`.
 
 **Resolution rules** (every deliverable):
@@ -532,9 +543,23 @@ layer.
 - **Per platform:** resolution picks the newest release with a matching build or variant, so a
   release missing the iOS build doesn't blank iOS. Whether it is _live_ on the device's outlet is
   distribution's answer, combined by update.
-- **Pack sets:** on publish or pointer move, release resolves one set per selector. It takes the
-  highest version of each pack satisfying every requirement and dependency, with ties broken by
-  `seq`. An unsatisfiable set fails the publish; clients verify sets but never solve them.
+- **Pack sets** ([`CONTENT.md`](CONTENT.md) §6.3):
+  - On publish, pointer move, floor change or yank, release collects the **live `contentApi`
+    levels**: those of every non-yanked app release at or above its channel floor.
+  - For each (channel, app, level, platform, variant) it resolves one set over the `compatible`
+    and `standalone` packs. It takes the highest version of each pack satisfying every requirement,
+    dependency, floor and hold, with ties broken by `seq`.
+  - `pinned` packs never enter a set: they are in the app's own record.
+  - Release never reads distribution. The floor, not store availability, decides which levels are
+    live, so store lag is covered by not raising the floor early.
+  - Clients verify sets but never solve them.
+- **Publish checks run both ways** (`pkey release publish --dry-run` shows the result):
+  - A pack release must satisfy every live level in its declared range. It must not remove a
+    content id the previous release `provides` without a `contentApi` bump.
+  - An app release's pins and holds must exist and be unyanked. Every `required` compatible pack
+    must have a release for the app's `contentApi` on each of its channels.
+  - Either failure fails the publish. The report lists which app releases and outlets receive
+    what.
 - **Pagination** goes beyond 100 releases.
 - **Yanked** releases resolve only by explicit pin.
 
@@ -601,14 +626,17 @@ Vendor CLIs do the store uploads, not the Worker (fastlane/ASC API, Play Publish
 
 - **One signed channel feed for the app and its packs** (`pkey-feed+jws`, §3.3), composed from
   release's pointers and pack sets and distribution's per-outlet availability, rollout and halts.
+  Composing it is where each pack's declared binding is narrowed by the outlet's transport: a
+  `compatible` pack delivered by Play Asset Delivery is pinned on Play.
 - **Two conformance-tested client functions**, specified here and implemented in every SDK:
   - **Update decision** (`update-matrix.json`, like `gate-matrix.json`).
     - Inputs: feed, release records, build stamp, installed pack set, outlet capabilities, and the
       rollout bucket `u32(sha256(salt ‖ installId)[0..4]) mod 10000`, evaluated client-side so the
       feed is identical for everyone and cacheable.
-    - Output: `none` (with `behind`), `packs`, `code-ready`, `binary` (URL or native updater),
-      `store` (listing URL or deep link), `blocked` (below the outlet floor), or `platform` (the
-      outlet updates itself).
+    - Output: `none` (with `behind`), `packs`, `code-ready`, `binary` (URL or native updater,
+      with a `prestage` list when the new build changes `contentApi`), `store` (listing URL or deep
+      link), `blocked(app-floor | content-floor | revoked-content)`, or `platform` (the outlet
+      updates itself).
     - Invariants carried from Diceroll (notes/A4 §5): no downgrades; the binary supersedes packs;
       the floor is judged against the binary and suppressed when `behind`; engine, format and
       texture gating; drop staged content on a channel switch; store builds never self-update code.
@@ -616,7 +644,7 @@ Vendor CLIs do the store uploads, not the Worker (fastlane/ASC API, Play Publish
     - Inputs: the target pack set, installed payloads and seed indexes, and the client's
       capabilities.
     - It chooses `noop`, `platform`, `delta`, `chunk`, `file` or `full` per pack by cost
-      ([`CONTENT.md`](CONTENT.md) §7).
+      ([`CONTENT.md`](CONTENT.md) §8).
 - **App-updater feeds** are update routes, rendered from the same records:
 
   | Feed                                                                                              | Consumer                                                                   | Signed by                | Notes                                                                                                                                                               |
@@ -643,10 +671,41 @@ section lists only what is pack-specific; the full design is [`CONTENT.md`](CONT
   `files.tree`, `archive.*` (delivered as trees), `audio.bank`, `l10n.table`, `data.json`,
   `ml.model`, game-registered `custom.<name>`, and `unity.addressables` later. Handlers stage,
   verify, activate (hot, or at restart for Godot PCKs), roll back and uninstall.
-- **Locked or floating.**
-  - An app release **locks** exact pack releases in its record.
-  - Event, localisation and cosmetic packs can **float** on a channel between app releases, as
-    release-resolved pack sets gated by the app's `contentApi`.
+- **Binding: how pack versions relate to app versions** ([`CONTENT.md`](CONTENT.md) §6).
+  - Every pack declares one of three **bindings**:
+    - `pinned`: the app release record names the exact pack release, so it changes only with the
+      app;
+    - `compatible`: the pack follows the app's `contentApi`, and fixes and drops ship between app
+      releases;
+    - `standalone`: the pack depends only on its type's format, e.g. localisation tables.
+  - The usual pattern is an **embedded pinned baseline** with `compatible` releases above it.
+    Store builds embed the baseline of every required pack, so a store update is always playable
+    offline.
+  - An app release may **hold** a compatible pack at one release. The hold is signed in its record.
+  - Transports narrow bindings per outlet. Play Asset Delivery can only pin. Apple-hosted
+    Background Assets switch every installed app version, so the `contentApi` is part of the
+    asset-pack id. Steam ships content-only builds.
+- **Several app versions live at once** (store lag):
+  - Release resolves a pack set per live `contentApi` level (§3.4). Update's feed carries them all,
+    and each device takes the one for its level.
+  - **Pack floors per level** allow backporting a fix to an older content line. A floor with no
+    compatible release yields `blocked(content-floor)` and a store prompt.
+  - Pack majors track `contentApi` (foes 1.x ↔ 3, 2.x ↔ 4), so maintenance lines read naturally.
+- **Changing `contentApi`:**
+  - On self-updating outlets, the decision returns `binary` with a pre-stage list. The new build
+    and its pack set activate together, and roll back together.
+  - On store outlets, distribution **holds** the app release until its required packs are live
+    there, e.g. new Background Assets approved (`dist_readiness`, §3.8).
+- **Fixing bad content:**
+  - A yank stops new serving only. Revoking content devices already hold takes a CI-signed
+    revocation (§3.3).
+  - Pinned content is safe and slow to fix; compatible content is fast to fix. That is the trade-off
+    to choose per pack.
+- **Saves and support:**
+  - Saves reference content ids. A pack release that drops an id it used to `provide` needs a
+    `contentApi` bump or an explicit `removes`.
+  - Devices report `appRelease + packSetId`, so support can reproduce any device's content, and
+    multiplayer peers can compare sets.
 - **Patch artifacts are release data; their bytes are distribution's.**
   - At publish, CI computes a files index, file-aware content-defined chunks packed into 4–16 MiB
     chunk bundles, and per-entry deltas for hot pairs. Release records them.
@@ -654,7 +713,7 @@ section lists only what is pack-specific; the full design is [`CONTENT.md`](CONT
   - Update's planner picks among `noop → platform → delta → chunk → file → full`.
   - On a synthetic 36 MiB Godot pack these downloaded 0.60 MB (delta), 1.05 MB (chunk) and
     0.99 MB (file), against 9.80 MB full, at 0.2–0.45 s of pure-GDScript client CPU
-    ([`CONTENT.md`](CONTENT.md) §7.3).
+    ([`CONTENT.md`](CONTENT.md) §8.3).
   - Never compute deltas or chunk boundaries in the Worker.
 - **Transports are distribution's.**
   - `pkey-cdn`, `embedded`, `apple-ba` (Apple-hosted Background Assets are versioned independently
@@ -699,6 +758,13 @@ and outlets, and tracks its state there.
   - stores: mirrored from, and controlled through, the connector.
 - `dist_access(product, deliverable_id, mode public|authenticated|licensed|entitled, entitlement)`:
   delivery gating, the successor to Release's access modes.
+- `dist_readiness(product, app_release_id, outlet_id, blocking_pack_release_id, state)`: an app
+  release must not go live on an outlet before its required pack set is available through that
+  outlet's transport.
+  - Embedded, PAD and Steam builds are ready by construction.
+  - `apple-ba` waits for the new level's asset packs to be approved; distribution holds the app
+    release until then.
+  - Where Polaris Key cannot hold a release (a manual store release), it warns.
 - `dist_keys(product, purpose, fingerprint_sha256, outlet_id, notes)`: the key inventory below.
 
 **Routes:**
@@ -842,10 +908,13 @@ publishing:
   trustedPublisher:
     workflow: .github/workflows/release.yml
     environment: release
-contentApi: 3 # the content shape this app build line expects
 deliverables:
   app:
     kind: app
+    content: # stamped into every app release record at publish
+      contentApi: 3 # bump when code and content must change together
+      packChannels:
+        "diceroll.events.*": events # every app channel follows the events channel for event packs
     versioning:
       scheme: semver
       stableTagPattern: "^v\\d+\\.\\d+\\.\\d+$"
@@ -885,9 +954,20 @@ deliverables:
         arch: wasm32
         format: zip
         match: "Diceroll-*-web.zip"
+  diceroll.ui:
+    kind: pack
+    type: godot.pck
+    binding: pinned # changes only with an app release
+    baseline: embedded
+    required: true
+    delivery: essential
+    handler: { mountOrder: 1 }
   diceroll.core3d:
     kind: pack
     type: godot.pck
+    binding: compatible # updates between app releases within the contentApi range
+    baseline: embedded # store builds ship it, so they are playable offline
+    requires: { contentApi: { app: ">=3 <4" } }
     required: true
     delivery: essential
     handler: { mountOrder: 2, prefixes: ["res://assets/kaykit/"] }
@@ -895,27 +975,33 @@ deliverables:
   diceroll.audio:
     kind: pack
     type: godot.pck
+    binding: compatible
     delivery: prefetch
     handler: { mountOrder: 3 }
   diceroll.extra:
     kind: pack
     type: godot.pck
+    binding: compatible
     delivery: onDemand
     handler: { mountOrder: 6 }
   diceroll.l10n:
     kind: pack
     type: l10n.table
+    binding: standalone # depends only on the l10n.table format
     variants: { locale: [en, fr, de] }
     delivery: prefetch # hot-activated via TranslationServer
   diceroll.events.halloween:
     kind: pack
     type: godot.pck
-    channels: [events] # floats between app releases
+    binding: compatible
+    channels: [events]
     delivery: onDemand
-    requires: { packs: { diceroll.core3d: "^1.2.0" } }
+    requires:
+      { contentApi: { app: ">=3" }, packs: { diceroll.core3d: "^1.2.0" } }
   diceroll.supporter.skins:
     kind: pack
     type: godot.pck
+    binding: compatible
     delivery: onDemand
     entitlement: extras.diceSkins # enforced by distribution at delivery
 patch: # computed in CI at publish, recorded by release, served by distribution
@@ -1257,7 +1343,7 @@ options, in order of preference:
 2. **Sidecar-PCK swap** for writable portable installs on Windows and Linux.
    - Godot loads `<exe-name>.pck` beside the executable, so the updater verifies a staged pack,
      atomically renames it into place, and restarts (`OS.set_restart_on_exit`).
-   - The per-entry delta bake measured in [`CONTENT.md`](CONTENT.md) §7.3 makes such a code-pack
+   - The per-entry delta bake measured in [`CONTENT.md`](CONTENT.md) §8.3 makes such a code-pack
      update a few hundred KB, and the result is byte-identical to CI's pack, so one SHA-256
      verifies it.
    - Not for macOS `.app` bundles (breaks the seal) or `Program Files` installs.
@@ -1282,8 +1368,10 @@ can halt a bad rollout.
   - `files.tree`, `l10n.table`, `data.json` (hot activation);
   - `audio.bank`;
   - game-registered `custom.*`.
-- **Resolves** the locked or floating pack set, then **checks** requirements: engine
-  `major.minor`, format, `contentApi`, and texture family from `OS.has_feature("etc2"/"s3tc"/"astc")`.
+- **Takes** its active pack set without solving anything: the pinned packs from its app release
+  record, plus the feed's set for its `contentApi` and outlet. It then **checks** requirements
+  (engine `major.minor`, format, `contentApi`, and texture family from
+  `OS.has_feature("etc2"/"s3tc"/"astc")`) and revocations.
   There is no runtime texture compression on templates, so each texture family is its own
   variant. This fixes Diceroll's S3TC-only pack being applied on arm64 Linux.
 - **Picks a transport per outlet** and **plans** with the conformance-tested planner. Every
@@ -1307,6 +1395,8 @@ can halt a bad rollout.
 - **Hot types** (trees, translations, data, audio) load from `user://` in milliseconds via
   `ResourceLoader.load`, `TranslationServer` and `load_from_file`.
 - **Evicts** payloads outside the active and previous sets after a confirmed boot.
+- **Reports** `appRelease + packSetId`, and answers `is_available(content_id)` from the packs'
+  `provides` lists, which is what Diceroll's `Content.available()` needs.
 
 **Signals:** `pack_progress(id, bytes, total)`, `pack_ready(id)`, `pack_failed(id, err)`,
 `set_changed(activation)`.
@@ -1508,9 +1598,14 @@ New or changed console surfaces, in the order they matter (notes/A3 §2.4):
 3. **Outlets and credentials** (Distribution section). Outlet identities and listings, credential
    health (expiry, last successful call, scopes), webhook health (ASC deliveries), key inventory
    (Play signing, upload, sideload, F-Droid, release keys) with fingerprints.
-4. **Packs, in the same places as the app.** Pack deliverables, versions, requirements,
-   entitlement, size and which app releases pin which pack releases (Release); pack releases ×
-   outlets with transport states such as Background Assets review (Distribution).
+4. **Packs, in the same places as the app.**
+   - Release: pack deliverables, bindings, versions, requirements, entitlement and size.
+   - Release: a **compatibility matrix** of app releases × pack releases (pinned, held,
+     compatible, incompatible, revoked), with the live `contentApi` levels highlighted.
+   - Release: a **"what does this device get?"** simulator (app release × outlet × platform ×
+     variant → pack set).
+   - Distribution: pack releases × outlets with transport states such as Background Assets
+     review, and readiness holds.
 5. **Devices, product-wide.** Breakdown by platform, outlet, version, engine and channel. Today
    devices are listed per licence only, so free games see none.
 6. **Update health.** Funnel (offered → downloaded → applied → confirmed/reverted), pack failures,
@@ -1789,21 +1884,21 @@ WinSparkle.
 Estimates are focused engineer-weeks for one experienced engineer. Each phase includes its docs,
 skills and threat-model updates (~10%). Agent assistance compresses calendar time, not review.
 
-| Phase                                             | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Size     | Depends on          | Gates                                                                                  | Outcome                                                                                                                                  |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **P0 Hygiene and unblockers**                     | • operator-ownership `*_source` for access modes, compat window, artifact policy<br>• `release` webhook events<br>• tag filter, version-ordered "newest", pagination<br>• version-conflict fix; R6-10<br>• **channel vocabulary unification**<br>• CORS allowlist<br>• product-wide devices<br>• `init`/`validate` fixes<br>• unknown-slug tolerance<br>• **data-driven service table** (one table + drift gate replacing the per-file slug enumerations, before two new services)<br>• Sparkle floor ≥ 2.9.6<br>• docs drift                                                                                                                                                                                                             | 4–6 wk   | —                   | channel unification touches `gate-matrix.json` (plan mode); `OPTIONS` routes (rule 10) | Polaris Key is correct for any non-macOS product                                                                                         |
-| **P1 Godot SDK core**                             | • `addons/polaris_key` core (verify, trust, cache, clock, transport)<br>• License / Config (incl. edge-mint) / Devices / Identity (device-code + QR) / Update-check parity<br>• UI kit v1 (gate, activation, sign-in, settings, banner, dev-menu section)<br>• export plugin v1 (build stamp)<br>• GUT corpus runner + CI job<br>• docs page, Asset Store listing<br>• server: RFC 8628 user-code page; `engine`/`outlet` report keys                                                                                                                                                                                                                                                                                                     | 8–11 wk  | P0 (channels, CORS) | sixth conformance language                                                             | **Diceroll adopts managed config, licensing and identity**                                                                               |
-| **P2 Release truth and publishing**               | • Core blob store (R2) + trusted publisher (GitHub OIDC)<br>• `pkey publish` + `polaris-key/publish` Action<br>• release descriptor ingest; artifact map; platforms/arches incl. `universal`/`wasm32`<br>• builds and build numbers; per-platform resolution<br>• generic + blob routes<br>• channel policy (pin/promote/yank/includes)<br>• console builds view                                                                                                                                                                                                                                                                                                                                                                          | 5–7 wk   | P0                  | rules 9 and 10; migrations; threat model                                               | every Diceroll artifact indexed, downloadable and published without long-lived secrets                                                   |
-| **P2b Distribution core**                         | • `distribution` service (new slug via the service table)<br>• `.pkey/distribution` (outlets, identities, listings)<br>• availability and submissions (CI-reported first)<br>• outlet-scoped rollouts and halts<br>• storefront feeds: AltStore/SideStore/PAL, Obtainium, F-Droid CI generator + static relay, Scoop/Flathub JSON<br>• public download page v1<br>• key inventory<br>• descriptor hooks (`buildCatalog`, `availability`, `outletCapabilities`)<br>• console distribution matrix v1                                                                                                                                                                                                                                        | 5–7 wk   | P0, P2              | rules 9 and 10; new service; threat model                                              | Diceroll's AltStore source, F-Droid repo and download page come from Polaris Key                                                         |
-| **P3 Signed feed, decision, feeds**               | • **wire v4**: `pkey-feed+jws` + `pkey-release+jws`<br>• corpus: feed, release, `update-matrix`, malleability<br>• five SDKs + Godot<br>• update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync<br>• decision inputs from distribution's availability and rollout<br>• Godot updater: outlet adapters, sidecar swap, boot guard, Velopack/Sparkle hooks                                                                                                                                                                                                                                                                                                                                                          | 6–8 wk   | P2, P2b             | **plan mode; `PROTOCOL_VERSION` 4; all SDKs**                                          | **Diceroll deletes `game/update/*`, `update_manifest.py`, `altstore_source.py`, and the `channels` release**                             |
-| **P4 Packs** ([`CONTENT.md`](CONTENT.md) §15)     | • **v1** (5–7 wk): pack deliverables in release (types, requirements, dependencies, locked sets); CI patch artifacts (files index, per-entry deltas); distribution transports for packs (CDN, embedded; availability); update's pack install planning and handler contract in every SDK; marker file; install state; Godot `PKeyBoot`; console pack views<br>• **v2** (5–7 wk): chunk indexes and chunk bundles; chunk sync in every SDK; floating pack sets per `contentApi`; pack rollouts and halts per outlet; server GC<br>• **v3** (4–6 wk): more types (`l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`, `unity.addressables`); lazy hot-pair deltas; web Compression Dictionary Transport; content-key delegation | 14–20 wk | P2, P2b, P3         | no new service; corpus `plan-matrix.json`, chunk-index and apply vectors               | Diceroll's content-streaming phases 1–3 run on Polaris Key (v1); small chunk updates (v2); localisation, events and supporter packs (v3) |
-| **P5 Distribution connectors and native plugins** | • outlet-credential custody<br>• ASC (webhooks, TestFlight, phased release, Background Assets states)<br>• Play (tracks, rollout, priority, Reporting API)<br>• Microsoft Store status<br>• Godot plugins: iOS (`AppDistributor`, Background Assets, StoreKit 2), Android (install source, In-App Updates, PAD, PackageInstaller), macOS Sparkle, Windows Velopack/WinSparkle/StoreContext                                                                                                                                                                                                                                                                                                                                                | 10–14 wk | P2–P4               | threat model; per-platform CI                                                          | store state in the console; Background Assets packs on iOS; in-app updates on Play                                                       |
-| **P6 Commerce, ops, web**                         | • commerce bridge (App Store Server Notifications v2, Play purchases + RTDN, Steam ownership) → entitlements<br>• App Attest / Play Integrity trust tiers<br>• update funnel + auto-halt + Sentry<br>• optional Polaris-hosted web builds<br>• optional Kotlin SDK (+6–8 wk)                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 6–9 wk   | P3–P5               | —                                                                                      | paid packs on stores; automatic halts                                                                                                    |
+| Phase                                             | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Size     | Depends on          | Gates                                                                                                                                                      | Outcome                                                                                                                                                                   |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0 Hygiene and unblockers**                     | • operator-ownership `*_source` for access modes, compat window, artifact policy<br>• `release` webhook events<br>• tag filter, version-ordered "newest", pagination<br>• version-conflict fix; R6-10<br>• **channel vocabulary unification**<br>• CORS allowlist<br>• product-wide devices<br>• `init`/`validate` fixes<br>• unknown-slug tolerance<br>• **data-driven service table** (one table + drift gate replacing the per-file slug enumerations, before two new services)<br>• Sparkle floor ≥ 2.9.6<br>• docs drift                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 4–6 wk   | —                   | channel unification touches `gate-matrix.json` (plan mode); `OPTIONS` routes (rule 10)                                                                     | Polaris Key is correct for any non-macOS product                                                                                                                          |
+| **P1 Godot SDK core**                             | • `addons/polaris_key` core (verify, trust, cache, clock, transport)<br>• License / Config (incl. edge-mint) / Devices / Identity (device-code + QR) / Update-check parity<br>• UI kit v1 (gate, activation, sign-in, settings, banner, dev-menu section)<br>• export plugin v1 (build stamp)<br>• GUT corpus runner + CI job<br>• docs page, Asset Store listing<br>• server: RFC 8628 user-code page; `engine`/`outlet` report keys                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 8–11 wk  | P0 (channels, CORS) | sixth conformance language                                                                                                                                 | **Diceroll adopts managed config, licensing and identity**                                                                                                                |
+| **P2 Release truth and publishing**               | • Core blob store (R2) + trusted publisher (GitHub OIDC)<br>• `pkey publish` + `polaris-key/publish` Action<br>• release descriptor ingest; artifact map; platforms/arches incl. `universal`/`wasm32`<br>• builds and build numbers; per-platform resolution<br>• generic + blob routes<br>• channel policy (pin/promote/yank/includes)<br>• console builds view                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 5–7 wk   | P0                  | rules 9 and 10; migrations; threat model                                                                                                                   | every Diceroll artifact indexed, downloadable and published without long-lived secrets                                                                                    |
+| **P2b Distribution core**                         | • `distribution` service (new slug via the service table)<br>• `.pkey/distribution` (outlets, identities, listings)<br>• availability and submissions (CI-reported first)<br>• outlet-scoped rollouts and halts<br>• storefront feeds: AltStore/SideStore/PAL, Obtainium, F-Droid CI generator + static relay, Scoop/Flathub JSON<br>• public download page v1<br>• key inventory<br>• descriptor hooks (`buildCatalog`, `availability`, `outletCapabilities`)<br>• console distribution matrix v1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 5–7 wk   | P0, P2              | rules 9 and 10; new service; threat model                                                                                                                  | Diceroll's AltStore source, F-Droid repo and download page come from Polaris Key                                                                                          |
+| **P3 Signed feed, decision, feeds**               | • **wire v4**: `pkey-feed+jws` + `pkey-release+jws`<br>• corpus: feed, release, `update-matrix`, malleability<br>• five SDKs + Godot<br>• update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync<br>• decision inputs from distribution's availability and rollout<br>• Godot updater: outlet adapters, sidecar swap, boot guard, Velopack/Sparkle hooks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 6–8 wk   | P2, P2b             | **plan mode; `PROTOCOL_VERSION` 4; all SDKs**                                                                                                              | **Diceroll deletes `game/update/*`, `update_manifest.py`, `altstore_source.py`, and the `channels` release**                                                              |
+| **P4 Packs** ([`CONTENT.md`](CONTENT.md) §16)     | • **v1** (5–7 wk): pack deliverables in release (types, requirements, dependencies); `pinned` packs and embedded baselines; `contentApi` stamped on app releases; CI patch artifacts (files index, per-entry deltas); distribution transports for packs (CDN, embedded; availability); update's pack install planning and handler contract in every SDK; marker file; install state; Godot `PKeyBoot`; console pack views<br>• **v2** (6–8 wk): chunk indexes and chunk bundles; chunk sync in every SDK; `compatible` and `standalone` packs resolved per live `contentApi`; pack floors per level, holds, revocation; outlet readiness holds; binary pre-staging; pack rollouts and halts per outlet; compatibility matrix and device simulator; server GC<br>• **v3** (4–6 wk): more types (`l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`, `unity.addressables`); lazy hot-pair deltas; web Compression Dictionary Transport; content-key delegation; save-compatibility (`provides`/`removes`) checks and the content-interface fingerprint | 15–21 wk | P2, P2b, P3         | no new service; corpus `plan-matrix.json`, chunk-index and apply vectors, `update-matrix.json` rows for `content-floor`, `revoked-content` and pre-staging | Diceroll's content-streaming phases 1–3 run on Polaris Key (v1); small chunk updates and content between app releases (v2); localisation, events and supporter packs (v3) |
+| **P5 Distribution connectors and native plugins** | • outlet-credential custody<br>• ASC (webhooks, TestFlight, phased release, Background Assets states)<br>• Play (tracks, rollout, priority, Reporting API)<br>• Microsoft Store status<br>• Godot plugins: iOS (`AppDistributor`, Background Assets, StoreKit 2), Android (install source, In-App Updates, PAD, PackageInstaller), macOS Sparkle, Windows Velopack/WinSparkle/StoreContext                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | 10–14 wk | P2–P4               | threat model; per-platform CI                                                                                                                              | store state in the console; Background Assets packs on iOS; in-app updates on Play                                                                                        |
+| **P6 Commerce, ops, web**                         | • commerce bridge (App Store Server Notifications v2, Play purchases + RTDN, Steam ownership) → entitlements<br>• App Attest / Play Integrity trust tiers<br>• update funnel + auto-halt + Sentry<br>• optional Polaris-hosted web builds<br>• optional Kotlin SDK (+6–8 wk)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | 6–9 wk   | P3–P5               | —                                                                                                                                                          | paid packs on stores; automatic halts                                                                                                                                     |
 
 **Totals.**
 
 - **~60–80 engineer-weeks**, excluding the optional Kotlin SDK. Content delivery v2 and v3 account
-  for about 9–13 of those and sit off the critical path.
+  for about 10–14 of those and sit off the critical path.
 - The critical path is P0 → P2 → P3 → P4 v1, about 22–29 weeks. P2b (distribution) runs
   alongside P3.
 - P1 (the Godot SDK) runs in parallel from the start. P5 plugins can start as soon as their P2/P3
@@ -1819,7 +1914,7 @@ P2b + the Sparkle and generic-feed part of P3, plus the interim release-key-only
 
 | #   | Decision                            | Recommendation                                                                                                                                                                                                                                                                                                                               |
 | --- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | A separate content service?         | **No.** Packs are release **deliverables**, handled like the app: Release records them, Distribution delivers them, Update decides what to install. No new document types either                                                                                                                                                             |
+| 1   | A separate content service?         | **No.** Packs are release **deliverables**, handled like the app: Release records them, Distribution delivers them, Update decides what to install. No new document types either. Reasons, tripwires and guardrails below the table                                                                                                          |
 | 2   | Trust model for code and packs      | **Two signers** (CI release key + Worker feed), wire v4. Interim: release-key-only manifest                                                                                                                                                                                                                                                  |
 | 3   | Release-key custody                 | GitHub Environment secret with required reviewers now; a non-exportable KMS Ed25519 key via OIDC later                                                                                                                                                                                                                                       |
 | 4   | Byte hosting                        | R2, content-addressed, bucket-locked, on a **separate registrable domain**; GitHub remains a source with caching and mirroring                                                                                                                                                                                                               |
@@ -1831,11 +1926,34 @@ P2b + the Sparkle and generic-feed part of P3, plus the interim release-key-only
 | 10  | Kotlin SDK                          | Yes if native Android apps are in scope; its AAR becomes the Godot Android backend either way                                                                                                                                                                                                                                                |
 | 11  | Godot floor                         | 4.4 source-compatible; 4.6+ blessed                                                                                                                                                                                                                                                                                                          |
 | 12  | Diceroll iOS v1                     | Ship the full IPA (fits under 200 MB). Adopt Apple-hosted Background Assets when content drops between app versions matter                                                                                                                                                                                                                   |
-| 13  | How builds consume content          | Both: **lock** core packs in the release record; let event, localisation and cosmetic packs **float** on content channels, gated by `contentApi`                                                                                                                                                                                             |
+| 13  | How packs bind to app versions      | Declare a **binding** per pack: `pinned` for content coupled to code, `compatible` (against the app's `contentApi`) for most downloadable content, `standalone` for self-describing data such as localisation. Store builds embed a pinned baseline of every required pack. Transports can only narrow a binding                             |
 | 14  | Patch mechanism priority            | Platform transport where the outlet mandates or does it better; otherwise **chunk sync** (v2) as the default for packs ≥ 16 MiB; deltas only for hot pairs; `full` always available                                                                                                                                                          |
 | 15  | Who may publish content             | The release key by default. Allow a delegated **content key** for data-only types, so content can ship without code-release power                                                                                                                                                                                                            |
 | 16  | Distribution separate from Release? | **Yes, a `distribution` service.** Release answers "what was built", Distribution "where it goes and its state there" (outlets, connectors, availability, outlet rollouts, storefront feeds, download page), Update "what this device should do". Cross-service reads use Core descriptor hooks, so `update → release` stays the only import |
 | 17  | Service table first?                | **Yes.** Make the service list data-driven with a drift gate before adding `distribution`, instead of editing ~45 files for the new slug                                                                                                                                                                                                     |
+| 18  | Fixing bad content                  | Floors per `contentApi` level for compatible packs, so fixes can be backported; CI-signed **revocations** for dangerous content, since the Worker must not be able to condemn or substitute releases; pinned content is fixed by an app release                                                                                              |
+| 19  | Store lag and readiness             | Resolve a pack set per live `contentApi` level, bounded by the channel floor rather than store availability. Distribution holds an app release on an outlet until its required packs are live there                                                                                                                                          |
+
+**Why no content service (decision 1).**
+
+- **Reasons:**
+  - Packs need everything release already has: versions and `seq`, channels, floors, yanks, CI
+    signing, provenance and trusted publishing.
+  - The hardest part, app ↔ pack compatibility, is a constraint between app releases and pack
+    releases. Resolution must see both at once.
+  - A separate service would need a second cross-service import beside `update → release`, or would
+    have to copy the release model.
+  - Packs add no document type, so a separate service would own tables but no contract.
+- **Tripwires.** Revisit the decision if any of these appear:
+  - third-party or user-generated content from publishers other than the product's CI;
+  - per-user content (saves, user levels) at a scale unlike releases;
+  - content with no app contract at all, which is a CMS;
+  - operators who need content managed by a different role, or enabled without releases.
+- **Guardrails, so a later split stays cheap:**
+  - Keep pack logic in its own module (`services/release/packs/`: resolution, publish checks,
+    holds, revocations) behind the `releaseCatalog` hook.
+  - Key every policy table by deliverable, never by "is a pack".
+  - Keep pack fields inside the one release-record shape rather than adding pack-only wire.
 
 ---
 
@@ -1861,7 +1979,7 @@ P2b + the Sparkle and generic-feed part of P3, plus the interim release-key-only
 - whether scripts in downloaded packs are acceptable. The data-only rule sidesteps this on store
   builds.
 
-**Content delivery unknowns** ([`CONTENT.md`](CONTENT.md) §16):
+**Content delivery unknowns** ([`CONTENT.md`](CONTENT.md) §17):
 
 - whether Apple asset-pack updates are differential;
 - Cloudflare Range and cold-miss behaviour on R2 custom domains;
@@ -1964,3 +2082,6 @@ synthesis reflects the cross-checked position.
   them, and update plans their installation (§3.2).
 - notes/E8 and the first drafts rely on `replace_files=false` for data-only safety. notes/A6 shows
   that zips ignore it and that it blocks a pack's UIDs. The rule is a directory check before mount.
+- The first drafts described two ways to consume packs, "locked" and "floating". They are replaced
+  by three declared bindings (`pinned`, `compatible`, `standalone`), resolution per live
+  `contentApi` level, and per-outlet narrowing by transport ([`CONTENT.md`](CONTENT.md) §6).
