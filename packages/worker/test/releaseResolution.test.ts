@@ -349,6 +349,22 @@ describe("pagination", () => {
     expect(stable?.release_id).toBe("v1.0.0");
   });
 
+  it("stopWhen sees each new page on its own, so live resolution looks at a release once while paging (R10-09)", async () => {
+    const gh = github({ releases: RELEASES });
+    const seen: Array<[number, number]> = [];
+    await listReleases("t", "acme", "djdl", 100, gh.fetchImpl, {
+      maxPages: 3,
+      stopWhen: (soFar, page) => {
+        seen.push([soFar.length, page.length]);
+        return false;
+      },
+    });
+    expect(seen).toEqual([
+      [100, 100],
+      [150, 50],
+    ]);
+  });
+
   it("never follows a Link that leaves the GitHub API origin with the token", async () => {
     expect(
       nextPageUrl('<https://evil.example/releases?page=2>; rel="next"'),
