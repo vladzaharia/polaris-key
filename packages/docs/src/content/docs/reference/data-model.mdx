@@ -41,7 +41,7 @@ this page or fails the freshness gate.
 | `product_schema` | 0001_init.sql | `product`, `catalog_version`, `catalog_json`, `active`, `created_at` |
 | `profiles` | 0001_init.sql | `product`, `id`, `name`, `description`, `payload_json`, `modified_by`, `modified_at` |
 | `edge_mint_config` | 0001_init.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `auth_page_template`, `audience (0003)` |
-| `edge_mint_approvals` | 0025a_edge_mint_approvals.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `open_registration_acknowledged`, `approved_at`, `approved_by` |
+| `edge_mint_approvals` | 0025_b_edge_mint_approvals.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `open_registration_acknowledged`, `approved_at`, `approved_by` |
 
 ## release
 

@@ -114,7 +114,7 @@ Every change is audited: `config.mint.approve`, `config.mint.revoke`, and `secre
 secret's usage changes. A re-upload of a secret that omits `usage` keeps the stored usage, so
 rotating a key never silently changes what it may sign.
 
-**Upgrading.** Migration `0025a_edge_mint_approvals.sql` backfills both conditions from what was
+**Upgrading.** Migration `0025_b_edge_mint_approvals.sql` backfills both conditions from what was
 deployed: every secret a recipe already named is marked `edge-mint`, and every existing recipe is
 approved as it stands (`approved_by = 'migration'`), with the open-registration acknowledgement
 recorded, so deployed products keep minting. That is the status quo, not a weakening: each of

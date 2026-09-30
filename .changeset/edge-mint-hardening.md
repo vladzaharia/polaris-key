@@ -22,7 +22,7 @@ reachable token mint.
 - **Discovery.** `config.mint.available` is true only when an approved recipe exists.
 - **Console.** An Edge-mint recipes card on the Secrets view, a usage selector when setting a
   secret, and setup-checklist items for pending recipes and unmarked recipe secrets.
-- **Upgrade.** Migrations `0025` and `0025a` backfill: every secret a deployed recipe names is
+- **Upgrade.** Migrations `0025_a` and `0025_b` backfill: every secret a deployed recipe names is
   marked `edge-mint` and every deployed recipe is approved (`approved_by = 'migration'`), so
   existing products keep minting. Operators should review
   `SELECT product, name FROM product_secrets WHERE usage = 'edge-mint'` once after deploy.

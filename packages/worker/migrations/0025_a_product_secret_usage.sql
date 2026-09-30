@@ -9,7 +9,7 @@
 -- exactly like a missing row.
 --
 -- The backfill that marks every secret a deployed recipe already names lives in
--- 0025a_edge_mint_approvals.sql, which is fully idempotent.
+-- 0025_b_edge_mint_approvals.sql, which is fully idempotent.
 --
 -- ONE statement per file (see 0013/0014): a bare ALTER cannot be made replay-idempotent in
 -- pure SQL, so nothing may sit behind it and be stranded by a failed replay.
