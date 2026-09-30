@@ -137,5 +137,7 @@ docs) assume `pkey init && pkey validate` produces a linkable manifest. When don
   `file/`-prefixed lines as before.
 - `validateManifestDocuments` keeps its Config-conditional behaviour for author-side callers; both
   entry points share one emit site for `missing_schema`, so the generated reference has one row.
-- With Config off, a present schema is now shape-validated at ingest (previously it was only
-  normalised), which is what link already relied on.
+- With Config off, a present schema is checked for presence and that it normalises to a catalog
+  (`invalid_schema`, which link already refused via `compileAll(null)`); its content is NOT
+  shape-validated, so link and resync accept exactly what they accepted before. (An earlier
+  revision shape-validated it; review caught that as a behaviour change and it was reverted.)

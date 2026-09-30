@@ -654,7 +654,9 @@ function validateDocuments(
           "invalid_schema",
           "Schema must be a ProductCatalog object with entries[].",
         );
-      } else {
+      } else if (modules.includes("config")) {
+        // Content is shape-validated only when Config is on: a Config-off product's catalog is
+        // otherwise judged only by the looser Catalog.compileAll at link/resync.
         for (const issue of validateCatalogShape(catalog)) {
           add(errors, "schema", "/entries", "invalid_catalog_shape", issue);
         }

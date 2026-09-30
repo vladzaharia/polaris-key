@@ -91,7 +91,7 @@ modules:
 ```
 
 ```yaml
-# .pkey/schema.yaml — always required at ingest; the catalog is validated when present
+# .pkey/schema.yaml — always required at ingest; its contents are validated when Config is on
 schemaVersion: 1
 entries:
   - key: run.concurrency

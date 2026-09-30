@@ -20,3 +20,6 @@ Existing products created with the old scaffold have tiers with `maxOfflineDays:
 expire their licences after 14 days: the new warning is how their owners find out. Replace
 `maxOfflineDays` with `policyExpiryDays` (or drop it for a non-expiring tier) and `deviceLimit`
 with `policyDeviceLimit`.
+
+Ingest behaviour for Config-off products is unchanged: a present catalog is only required to
+normalise, its content is still shape-validated only when Config is on.

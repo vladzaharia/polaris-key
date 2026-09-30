@@ -1180,6 +1180,34 @@ describe("ingest document presence (validateIngestDocuments)", () => {
     expect(res.ok).toBe(true);
   });
 
+  it("does not shape-validate a Config-off catalog (link/resync behaviour is unchanged)", () => {
+    const schema = {
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "api.token",
+          kind: "config",
+          category: "General",
+          label: "API token",
+          schema: { type: "string" },
+        },
+      ],
+    };
+    const res = validateIngestDocuments({
+      product: configOff,
+      schema,
+      release: release(),
+    });
+    expect(res.errors.map((e) => e.code)).not.toContain(
+      "invalid_catalog_shape",
+    );
+    expect(
+      validateIngestDocuments({ product: PRODUCT, schema }).errors.map(
+        (e) => e.code,
+      ),
+    ).toContain("invalid_catalog_shape");
+  });
+
   it("parseManifest returns the same message for a missing schema file", () => {
     const res = parseManifest({
       product: JSON.stringify(configOff),
