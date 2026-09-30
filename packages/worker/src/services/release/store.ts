@@ -29,8 +29,24 @@
  * A release withdrawn upstream therefore leaves its row behind — stale, but inert: the portal
  * still gates every download on a live licence, and the artifact URL it holds is GitHub's, which
  * will 404 on its own.
+ *
+ * ── WHAT A RESYNC OWNS, AND WHAT IT DOES NOT (P2-03) ────────────────────────────────────────
+ *
+ * The sync upserts only the GitHub-derived columns. The release model v2 columns (0027) are
+ * someone else's, and a resync must never clobber them:
+ *
+ *   release_metadata   `deliverable_id` and `channel` are written on insert only (`app`, NULL);
+ *                      `seq` is assigned on insert — the deliverable's max + 1, in publication
+ *                      order — and afterwards only fills a NULL left by pre-P2-03 code.
+ *   release_artifacts  `sha256`, `storage_key`, `metadata_json`, `build_id` and `locations_json`
+ *                      belong to the release descriptor (P2-04, `model.ts`); `role` is filled
+ *                      from the name-sniffed kind when NULL and never overwritten once set.
+ *
+ * The product's implicit `app` deliverable is created (never modified) first in the batch, so
+ * every release the sync writes belongs to a deliverable that exists.
  */
 
+import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db, DbStatement } from "../../core/platform.js";
 import { archOf } from "./assets.js";
@@ -47,6 +63,7 @@ import {
   type ManualChannel,
 } from "./channels.js";
 import { artifactPolicy, type ReleaseConfigRow } from "./config.js";
+import { NEXT_SEQ_SQL, roleOfKind, stmtEnsureAppDeliverable } from "./model.js";
 
 // ── Row shapes ───────────────────────────────────────────────────────────────
 
@@ -64,6 +81,12 @@ export interface ReleaseMetadataRow {
   metadata_json: string | null;
   created_at: number;
   modified_at: number;
+  /** The deliverable this is a release of (0027_b). `app` for everything the sync writes. */
+  deliverable_id: string;
+  /** Publication order within the deliverable (0027_c). NULL only on a pre-P2-03 row. */
+  seq: number | null;
+  /** The channel a release was published to (0027_d). NULL ⇒ derive from GitHub, as today. */
+  channel: string | null;
 }
 
 export interface ReleaseArtifactRow {
@@ -83,8 +106,19 @@ export interface ReleaseArtifactRow {
   access: string;
   metadata_json: string | null;
   created_at: number;
+  /** The build this is a file of (0027_e). Written by the descriptor, never by the sync. */
+  build_id: string | null;
+  /** What the file is for (0027_f): `ARTIFACT_ROLES` in @polaris-key/manifest. */
+  role: string | null;
+  /** Hash-pinned byte locations as JSON (0027_g). Written by the descriptor, never by the sync. */
+  locations_json: string | null;
 }
 
+/**
+ * `release_channels`: the DERIVED "what GitHub says each channel resolves to" view, rewritten on
+ * every sync. `policy_json` is not a seam — nothing reads it and the sync always writes NULL.
+ * Operator-owned channel policy lives in `release_channel_policy` (0027_a, `model.ts`).
+ */
 export interface ReleaseChannelRow {
   product: string;
   channel: string;
@@ -98,6 +132,12 @@ export interface ReleaseChannelRow {
  * `release_channel_floors` (0023, R6-10): the highest version a moving channel has resolved to
  * during a truth-store sync. `release_id` is that release's tag (NULL when an operator lowered
  * the floor to a version the store never recorded).
+ *
+ * This is the sync's anti-rollback HIGH-WATER MARK, and it stays release's own table. It is not
+ * `release_channel_policy.min_supported` (P2-03), which is the DEVICE floor the signed feed will
+ * carry: folding the high-water mark into it would raise every channel's device floor to its
+ * newest version and, once P3 enforces floors, block every older install. (0023's header
+ * anticipated that fold; P2-03 decided against it.)
  */
 export interface ReleaseChannelFloorRow {
   product: string;
@@ -312,14 +352,23 @@ function publishedAtSeconds(iso: string | null): number | null {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
 }
 
-function stmtUpsertMetadata(row: ReleaseMetadataRow): DbStatement {
+/**
+ * `deliverable_id`, `seq` and `channel` are INSERT-only (see the header): on conflict the
+ * existing row keeps them, except that a NULL `seq` (a row pre-P2-03 code wrote) is filled.
+ * `row.seq` is ignored — the next seq is computed inside the statement, from the rows already
+ * written earlier in the same batch, so the batch's statement order IS the publication order.
+ */
+function stmtUpsertMetadata(
+  row: Omit<ReleaseMetadataRow, "seq" | "channel">,
+): DbStatement {
   return {
     sql: `INSERT INTO release_metadata
             (product, release_id, version, title, notes, commit_sha, source_url,
              metadata_access, artifacts_access, published_at, metadata_json,
-             created_at, modified_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+             created_at, modified_at, deliverable_id, seq, channel)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,${NEXT_SEQ_SQL},NULL)
           ON CONFLICT(product, release_id) DO UPDATE SET
+            seq = COALESCE(release_metadata.seq, excluded.seq),
             version = excluded.version,
             title = excluded.title,
             notes = excluded.notes,
@@ -344,17 +393,25 @@ function stmtUpsertMetadata(row: ReleaseMetadataRow): DbStatement {
       row.metadata_json,
       row.created_at,
       row.modified_at,
+      row.deliverable_id,
+      row.product,
+      row.deliverable_id,
     ],
   };
 }
 
+/**
+ * GitHub-derived columns only (see the header). `sha256`, `storage_key`, `metadata_json`,
+ * `build_id` and `locations_json` are inserted as the sync found them (NULL) and never updated;
+ * `role` is filled when NULL and never overwritten.
+ */
 function stmtUpsertArtifact(row: ReleaseArtifactRow): DbStatement {
   return {
     sql: `INSERT INTO release_artifacts
             (product, release_id, artifact_id, name, kind, platform, arch, content_type,
              size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
-             metadata_json, created_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             metadata_json, created_at, build_id, role, locations_json)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
           ON CONFLICT(product, release_id, artifact_id) DO UPDATE SET
             name = excluded.name,
             kind = excluded.kind,
@@ -364,7 +421,7 @@ function stmtUpsertArtifact(row: ReleaseArtifactRow): DbStatement {
             size_bytes = excluded.size_bytes,
             source_url = excluded.source_url,
             access = excluded.access,
-            metadata_json = excluded.metadata_json`,
+            role = COALESCE(release_artifacts.role, excluded.role)`,
     params: [
       row.product,
       row.release_id,
@@ -382,6 +439,9 @@ function stmtUpsertArtifact(row: ReleaseArtifactRow): DbStatement {
       row.access,
       row.metadata_json,
       row.created_at,
+      row.build_id,
+      row.role,
+      row.locations_json,
     ],
   };
 }
@@ -473,7 +533,9 @@ function floorStatement(
  *
  * ORDER IS LOAD-BEARING. `release_artifacts` and `release_channels` both carry a foreign key to
  * `release_metadata(product, release_id)`, which D1 enforces per statement inside a batch, so
- * every metadata row is emitted before anything that references it.
+ * every metadata row is emitted before anything that references it — and the `app` deliverable
+ * before everything. The metadata rows themselves go out oldest first, (published_at,
+ * release_id), because each new one takes the next `seq` in statement order (P2-03).
  */
 export function releaseStoreStatements(
   product: string,
@@ -494,7 +556,25 @@ export function releaseStoreStatements(
   const artifacts: DbStatement[] = [];
   const health: DbStatement[] = [];
 
-  for (const release of published) {
+  // Publication order, the same order 0027_h's backfill numbers `seq` in: an undated release
+  // first (SQLite sorts NULL low), then by date, ties by tag.
+  const inPublishOrder = published
+    .map((release) => ({
+      release,
+      at: publishedAtSeconds(release.published_at),
+    }))
+    .sort(
+      (a, b) =>
+        (a.at ?? -Infinity) - (b.at ?? -Infinity) ||
+        (a.release.tag_name < b.release.tag_name
+          ? -1
+          : a.release.tag_name > b.release.tag_name
+            ? 1
+            : 0),
+    )
+    .map((x) => x.release);
+
+  for (const release of inPublishOrder) {
     const releaseId = release.tag_name;
     metadata.push(
       stmtUpsertMetadata({
@@ -515,6 +595,7 @@ export function releaseStoreStatements(
         }),
         created_at: now,
         modified_at: now,
+        deliverable_id: APP_DELIVERABLE_ID,
       }),
     );
     for (const asset of release.assets) {
@@ -570,6 +651,7 @@ export function releaseStoreStatements(
         product,
         channel,
         release_id: resolved ? resolved.tag_name : null,
+        // Not a seam: operator policy is `release_channel_policy` (model.ts).
         policy_json: null,
         created_at: now,
         modified_at: now,
@@ -595,7 +677,14 @@ export function releaseStoreStatements(
     );
   }
 
-  return [...metadata, ...artifacts, ...channels, ...floorStmts, ...health];
+  return [
+    stmtEnsureAppDeliverable(product, now),
+    ...metadata,
+    ...artifacts,
+    ...channels,
+    ...floorStmts,
+    ...health,
+  ];
 }
 
 function artifactRow(
@@ -630,6 +719,10 @@ function artifactRow(
     access,
     metadata_json: null,
     created_at: now,
+    // The descriptor's (P2-04). A legacy release has no build; its role comes from the kind.
+    build_id: null,
+    role: roleOfKind(kind),
+    locations_json: null,
   };
 }
 
