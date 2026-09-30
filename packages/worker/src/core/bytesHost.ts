@@ -10,7 +10,7 @@
  * WHY THIS IS STRICT (owner decision, recorded in `docs/security/THREAT-MODEL.md` §3): the
  * bytes host is `dl.plrs.im`, a sibling of the console at `key.plrs.im`, so the two are
  * SAME-SITE. `SameSite` cookies therefore do not separate them, and anything able to run script
- * as `dl.plrs.im` could make same-site requests to the console. The compensations live here and
+ * as `dl.plrs.im` could make same-site requests to the console; the compensations live here and
  * in `blobs.ts`, and are test-pinned (`test/bytesHost.test.ts`):
  *   - every response carries `X-Content-Type-Options: nosniff` and `BLOB_CSP` (`sandbox`), so
  *     a body a browser chose to render still runs no script and has an opaque origin;
@@ -119,11 +119,9 @@ export async function dispatchBytesHost(
     const params = route.match(pathname);
     if (!params) continue;
     res = await route.handle(withoutCookies(req), env, params);
+    // A refused type is replaced silently: the worker logs nothing (R12), and the not-found
+    // answer is indistinguishable from a route that does not exist.
     if (refusedType(res)) {
-      console.error("byte route answered with a refused type", {
-        route: route.name,
-        type: res.headers.get("content-type"),
-      });
       await res.body?.cancel().catch(() => undefined);
       res = notFound();
     }

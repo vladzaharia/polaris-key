@@ -37,7 +37,10 @@ sandbox; …`; no HTML, XHTML, SVG, XML, JS, JSON or `text/*` type is ever serve
 > - `deltaKey` takes an optional `{gated}` like the other builders; `storedKeys(db, keys)` is
 >   added beside `isStored` for P2-02's bulk question; `recordObject` is exported.
 > - The migration is `0026_blob_store.sql` (number pre-assigned). `blob_refs.storage_key` is a
->   foreign key into `blob_objects`, and `blob_refs.product` cascades from `products`.
+>   foreign key into `blob_objects`; `blob_refs.product` references `products` without
+>   `ON DELETE`, as every non-portal table does (R11-01). `blob_objects` is exempt from the
+>   product-first-PK rule (R11-05) because objects are shared across products; tenancy is in
+>   `blob_refs`.
 > - P0-05 has not landed: `core/bytesHost.ts` carries a test-pinned `TODO(P0-05): CORS.` at the
 >   point where the central CORS step must run.
 > - Host isolation lives in `core/bytesHost.ts` (`BYTE_ROUTES`, empty), called from `index.ts`.

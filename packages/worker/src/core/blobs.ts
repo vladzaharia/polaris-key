@@ -183,9 +183,9 @@ export function reprDigest(sha256: string): string {
   return `sha-256=:${base64OfHex(hex(sha256, "sha256"))}:`;
 }
 
-type DigestStreamCtor = new (
-  algorithm: string,
-) => WritableStream<ArrayBuffer | ArrayBufferView> & {
+type DigestStreamCtor = new (algorithm: string) => WritableStream<
+  ArrayBuffer | ArrayBufferView
+> & {
   readonly digest: Promise<ArrayBuffer>;
   readonly bytesWritten: number | bigint;
 };
@@ -672,10 +672,9 @@ export async function blobResponse(
   const head = await bucket.head(key);
   if (!head) return notFound();
   const stored = checksumHex(head);
-  if (stored !== null && stored !== opts.sha256) {
-    console.error("blob checksum disagrees with its record", { key });
-    return notFound();
-  }
+  // A stored checksum that is not the expected hash means the record and the bytes disagree;
+  // serving them would hand out bytes under the wrong name, so the answer is not-found.
+  if (stored !== null && stored !== opts.sha256) return notFound();
 
   const etag = `"${opts.sha256}"`;
   const headers = new Headers({

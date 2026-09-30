@@ -25,10 +25,11 @@ CREATE TABLE IF NOT EXISTS blob_objects (
 CREATE INDEX IF NOT EXISTS idx_blob_objects_sha256 ON blob_objects(sha256);
 
 -- Who references what. P2-04 writes `artifact` refs, P4-02 `pack-object` refs. The object must
--- already be recorded (a ref can never name unverified bytes); deleting a product drops its
--- refs, never the shared objects — those are the collector's to reclaim.
+-- already be recorded (a ref can never name unverified bytes). No ON DELETE, like every other
+-- product-scoped table (R11-01): nothing deletes a product row today, and the shared objects a
+-- ref points at are the collector's to reclaim, never a cascade's.
 CREATE TABLE IF NOT EXISTS blob_refs (
-  product      TEXT NOT NULL REFERENCES products(slug) ON DELETE CASCADE,
+  product      TEXT NOT NULL REFERENCES products(slug),
   storage_key  TEXT NOT NULL REFERENCES blob_objects(storage_key),
   ref_kind     TEXT NOT NULL,
   ref_id       TEXT NOT NULL,
