@@ -106,12 +106,22 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
   the same bundle and `offset == prev.offset + prev.clen`; a seeded or duplicate record between
   two contiguous missing ones does not break the run (`plan-run-rules`). The applier's `requests`
   counter must equal the planner's, and the corpus checks it.
-- **HTTP.** One single-range request per run: `Range: bytes=<o>-<o+len-1>` and
-  `If-Range: "<bundle sha256>"` (the strong ETag is the SHA-256, README §3.5). A `200` instead of
-  `206` (the bundle changed or `Range` was ignored) aborts the strategy and falls back to the next
-  plan entry; never read a whole bundle to recover. No multi-range requests until S-02 says R2
-  supports them. A short body is `bundle.truncated`. Gated deliverables send the delivery
-  authorisation P4-05 defined on every request and never cache the response.
+- **HTTP.** One single-range request per run: `Range: bytes=<o>-<o+len-1>`,
+  `If-Range: "<bundle sha256>"` (the strong ETag is the SHA-256, README §3.5) and
+  `Accept-Encoding: identity`. Runs go out through a small parallel pool (6 in the S-02 probe).
+  - Accept only a `206` whose `Content-Range` equals the request and whose `ETag`, when present,
+    is exactly the same quoted hex.
+  - A `200`, or any other ETag, means the bundle changed or `Range` was ignored. That aborts the
+    strategy and falls back to the next plan entry; never read a whole bundle to recover.
+  - Never send a validator not derived from the signed index: no weak tags, dates, or ETags
+    learned from another host.
+  - **Never send multi-range.** S-02 found that the byte route answers it with the whole bundle
+    (11.9× the bytes for a real one), and that the edge supports multipart only behind a per-zone
+    setting.
+  - Web: `If-Range` costs one CORS preflight per bundle URL per `Access-Control-Max-Age`. A single
+    `Range` alone does not ([notes/S-02](../../notes/S-02.md) §4.4, §6).
+  - A short body is `bundle.truncated`. Gated deliverables send the delivery
+    authorisation P4-05 defined on every request and never cache the response.
 - **zstd.** Plain decode only, to exactly `len` bytes (every chunk record carries it; Godot's
   `decompress(len, FileAccess.COMPRESSION_ZSTD)` needs it). Use the dependency each SDK already
   has: `node:zlib` (22.15+) or `@polaris-key/zstd-wasm` (P4-06); Python 3.14 `compression.zstd` or
@@ -126,7 +136,8 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
   index is fetched after an install, not counted as a planner request. First install stays
   `full`, then records the index as a seed (CONTENT §8.1).
 - **Per SDK:**
-  - Godot: `HTTPClient` with `Accept-Encoding: identity` (gzip breaks `Range`), no automatic
+  - Godot: `HTTPClient` with `Accept-Encoding: identity`. `HTTPRequest` sends `gzip, deflate` even
+    with `Range` unless `accept_gzip = false` (S-02 §4.4). No automatic
     redirects, and no `Authorization` on a cross-host redirect (prototype HTTP probe). Assemble
     output with `append_array` or `FileAccess.store_buffer`, never a byte loop (A7 §6).
   - Swift: `URLSession` with `Range` in the `URLRequest`; CryptoKit streaming SHA-256.

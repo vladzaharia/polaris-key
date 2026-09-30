@@ -14,7 +14,7 @@
 
 ## Goal
 
-A research note, `notes/S-02-r2-range.md`, gives measured behaviour of R2 objects served three
+A research note, [`notes/S-02.md`](../../notes/S-02.md), gives measured behaviour of R2 objects served three
 ways, and a serving recommendation:
 
 - **A.** An R2 custom domain bound directly to the bucket, with caching on.
@@ -95,6 +95,17 @@ P2-01 and P2b-04 and the chunk-bundle size for P4-10.
 - The whole spike fits in R2's free tier. Delete the bucket afterwards unless the human wants it
   kept for P2-01.
 
+## Status of the inputs (2026-09-30)
+
+- The dev bucket `polaris-key-blobs-dev` exists (ENAM, no custom domain, `r2.dev` off), and every
+  zone on the account is on the Free plan.
+- The first run could not create the custom domain or deploy the probe Worker. So it measured the
+  Worker and R2-binding logic on miniflare, measured clients (Godot, Chromium, WebKit) for real,
+  and took edge behaviour from Cloudflare's docs.
+- The live rows are hand-off rows H1–H8 in the note (§8). The probe Worker binds
+  `polaris-key-blobs-dev` and keeps every test object under `s02/`, so teardown is one prefix
+  delete.
+
 ## Steps
 
 1. With the human: pick the zone and bucket names; create a scoped API token.
@@ -108,7 +119,7 @@ P2-01 and P2b-04 and the chunk-bundle size for P4-10.
 
 ## Acceptance criteria
 
-- [ ] `notes/S-02-r2-range.md` exists with the provenance blockquote, question, short answer,
+- [ ] `notes/S-02.md` exists with the provenance blockquote, question, short answer,
       method, environment (plan, colos, dates), results, recommendation, affected briefs and
       sources, with evidence tags.
 - [ ] A table answers, per path: single `Range` cold and warm (status, bytes fetched, TTFB),
