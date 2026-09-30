@@ -29,10 +29,21 @@
 			const GODOT_CONFIG = $GODOT_CONFIG;
 			const engine = new Engine(GODOT_CONFIG);
 			window.s05 = { engine, t_script: performance.now(), fetched: {}, errors: [] };
-			window.s05fetch = function (url, path) {
+			// useCache: keep the pack in the Cache Storage API (explicit, survives reloads) and read it
+			// back from there on later boots; otherwise rely on the browser's HTTP cache.
+			const cached = (url) =>
+				caches.open('pk-packs').then((c) =>
+					c.match(url).then((hit) =>
+						hit
+							? { r: hit, hit: true }
+							: fetch(url).then((r) => c.put(url, r.clone()).then(() => ({ r, hit: false }))),
+					),
+				);
+			window.s05fetch = function (url, path, useCache) {
 				const t0 = performance.now();
 				window.s05.fetched[path] = { state: 'pending' };
-				fetch(url)
+				let hit = null;
+				(useCache ? cached(url).then((x) => ((hit = x.hit), x.r)) : fetch(url))
 					.then((r) => r.arrayBuffer().then((b) => ({ r, b })))
 					.then(({ r, b }) => {
 						const t1 = performance.now();
@@ -45,6 +56,7 @@
 							fetch_ms: t1 - t0,
 							copy_ms: performance.now() - t1,
 							transfer_size: e ? e.transferSize : -1,
+							cache_hit: hit,
 						};
 					})
 					.catch((err) => {

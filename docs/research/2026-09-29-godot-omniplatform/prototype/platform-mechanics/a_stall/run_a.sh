@@ -8,7 +8,7 @@ set -e
 cd "$(dirname "$0")"
 ADB=${ADB:-$HOME/Library/Android/sdk/platform-tools/adb}
 DEV=${DEV:-emulator-5556}
-PKG=org.polariskey.s05stall
+PKG=${PKG:-org.polariskey.s05stall}
 EXT=/sdcard/Android/data/$PKG/files
 OUT=$(cd .. && pwd)/out/a; mkdir -p "$OUT"
 A() { "$ADB" -s "$DEV" "$@"; }

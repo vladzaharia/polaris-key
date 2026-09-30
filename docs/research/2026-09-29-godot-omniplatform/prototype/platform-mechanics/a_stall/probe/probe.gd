@@ -29,6 +29,8 @@ var thread_ok := false
 var mount_idx := 0
 var mount_log := []
 var phase := "wait"
+var pad: Object
+var pad_t0 := 0
 
 
 func _plan_path() -> String:
@@ -54,6 +56,43 @@ func _ready() -> void:
 		"model": OS.get_model_name(), "cpu": OS.get_processor_name(), "cores": OS.get_processor_count(),
 		"user_dir": OS.get_user_data_dir(), "exe": OS.get_executable_path(),
 		"ticks_at_ready_ms": t_boot_ms}
+	if plan.has("pad"):
+		# S-05 (b): fetch Play Asset Delivery packs through the S05Pad plugin, then mount each
+		# from getAssetsPath(name) + "/<name>.pck" (see b_pad/).
+		pad = Engine.get_singleton("S05Pad") if Engine.has_singleton("S05Pad") else null
+		result["pad_singleton"] = pad != null
+		if pad == null:
+			_finish()
+			return
+		pad_t0 = Time.get_ticks_msec()
+		for n: String in plan.pad:
+			result["pad_before_%s" % n] = {"status": pad.getStatus(n), "assets_path": pad.getAssetsPath(n)}
+			pad.fetch(n)
+		phase = "pad"
+		return
+	if plan.has("diag"):
+		# How does the engine see a file at an absolute path? (exists / open / length / magic / mount)
+		var dg := []
+		for p: String in plan.diag:
+			var f := FileAccess.open(p, FileAccess.READ)
+			var e := {"path": p, "exists": FileAccess.file_exists(p), "open": error_string(FileAccess.get_open_error()),
+				"dir_listing": Array(DirAccess.get_files_at(p.get_base_dir())).slice(0, 8)}
+			if f:
+				e["length"] = f.get_length()
+				e["magic"] = f.get_buffer(4).hex_encode()
+				f.seek(f.get_length() - 4)
+				e["tail_ok"] = f.get_position() == f.get_length() - 4
+				f = null
+			var t := Time.get_ticks_usec()
+			e["mount"] = ProjectSettings.load_resource_pack(p, true)
+			e["mount_ms"] = (Time.get_ticks_usec() - t) / 1000.0
+			var man := "res://data/%s/manifest.json" % p.get_file().get_basename()
+			e["manifest_visible"] = FileAccess.file_exists(man)
+			dg.append(e)
+		result["diag"] = dg
+		result["user_dir_abs"] = OS.get_user_data_dir()
+		_finish()
+		return
 	if plan.has("prep_copy"):
 		var cp := []
 		for pair in plan.prep_copy:
@@ -154,6 +193,37 @@ func _process(_d: float) -> void:
 		mount_log.append({"path": m.path, "thread": true, "ok": thread_ok, "thread_ms": (Time.get_ticks_usec() - thread_t0) / 1000.0, "frame": frames.size()})
 		mount_idx += 1
 		phase = "mount"
+	elif phase == "pad":
+		var done := true
+		for n: String in plan.pad:
+			var st: int = pad.getStatus(n)
+			if st != 4 and st != 5 and st != 6:
+				done = false
+		if done or Time.get_ticks_msec() - pad_t0 > 180000:
+			var pr := []
+			for n: String in plan.pad:
+				var ap: String = pad.getAssetsPath(n)
+				var e := {"pack": n, "status": pad.getStatus(n), "error": pad.getErrorCode(n), "storage": pad.getStorageMethod(n), "assets_path": ap, "fetch_ms": Time.get_ticks_msec() - pad_t0}
+				if ap != "":
+					var p := ap.path_join(n + ".pck")
+					e["dir_listing"] = Array(DirAccess.get_files_at(ap))
+					e["exists"] = FileAccess.file_exists(p)
+					var t := Time.get_ticks_usec()
+					e["mount"] = ProjectSettings.load_resource_pack(p, true)
+					e["mount_ms"] = (Time.get_ticks_usec() - t) / 1000.0
+					var man := "res://data/%s/manifest.json" % n
+					if FileAccess.file_exists(man):
+						var m: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(man))
+						var ok := 0
+						for k in m.keys():
+							var h := HashingContext.new()
+							h.start(HashingContext.HASH_SHA256)
+							h.update(FileAccess.get_file_as_bytes(k))
+							ok += 1 if h.finish().hex_encode() == m[k] else 0
+						e["sha_ok"] = "%d/%d" % [ok, m.size()]
+				pr.append(e)
+			result["pad"] = pr
+			_finish()
 	elif phase == "tail" and frames.size() >= finished_at:
 		_finish()
 

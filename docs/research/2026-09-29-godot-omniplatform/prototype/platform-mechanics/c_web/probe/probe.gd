@@ -1,8 +1,9 @@
 extends Control
 ## S-05 (c): several packs on a single-threaded web export.
-## URL query: mode=idb|mem, n=<pack count>, set=<pack-set prefix>, run=<label>
+## URL query: mode=idb|mem|cache, n=<pack count>, set=<pack-set prefix>, run=<label>
 ##   idb: HTTPRequest.download_file into user://packs/ (IDBFS: persisted, loaded into memory at boot)
 ##   mem: page JS fetch() (browser HTTP cache) + Engine.copyToFS into /tmp/pk/ (MEMFS, not persisted)
+##   cache: as mem, but the page keeps each pack in the Cache Storage API and reads it back from there
 ## Then load_resource_pack on each, verify 3 entries per pack, and POST a report to /report.
 
 var q := {}
@@ -87,7 +88,7 @@ func _next_fetch() -> void:
 		http.request_completed.connect(_on_dl.bind(name, dst, Time.get_ticks_usec()))
 		http.request(String(js("location.origin")) + "/packs/" + name)
 	else:
-		js("window.s05fetch('/packs/%s', '%s')" % [name, dst])
+		js("window.s05fetch('/packs/%s', '%s', %s)" % [name, dst, "true" if q.get("mode") == "cache" else "false"])
 		phase = "jsfetch"
 
 

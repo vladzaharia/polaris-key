@@ -22,8 +22,11 @@ createServer((req, res) => {
     let body = '';
     req.on('data', (c) => (body += c));
     req.on('end', () => {
-      reports.push(body);
-      appendFileSync(join(outDir, 'reports.jsonl'), body.replace(/\n/g, ' ') + '\n');
+      // Annotate with the pack GETs served so far, so consecutive reports give network vs cache.
+      let rec = body;
+      try { const o = JSON.parse(body); o._server_pack_gets_total = Object.values(counts).reduce((a, b) => a + b, 0); rec = JSON.stringify(o); } catch {}
+      reports.push(rec);
+      appendFileSync(join(outDir, 'reports.jsonl'), rec.replace(/\n/g, ' ') + '\n');
       res.writeHead(204).end();
     });
     return;
