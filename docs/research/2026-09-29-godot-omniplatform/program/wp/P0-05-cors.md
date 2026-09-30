@@ -85,7 +85,7 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
 
 **Out** (and where it belongs instead):
 
-- A separate registrable domain for bytes, R2 and immutable blob paths (→ P2-01).
+- The bytes host for R2 and immutable blob paths (→ P2-01, landed as `dl.plrs.im`, same-site with the console, with compensating controls; not a separate registrable domain).
 - Hosting web builds, COOP/COEP/CORP for threaded builds (→ [P6-04](P6-04-hosted-web.md)).
 - Credentialed (cookie) CORS for the React SDK's browser session: the browser adapter is
   first-party only and stays so.
@@ -152,6 +152,6 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 
 P1-02 (Godot web transport), P1b-05 (Chromium runner) and P6-04 (hosted web builds) rely on:
 the `web.origins` field and its validation rules, `Product.webOrigins`, the covered-path list,
-the exact allow/expose header sets and `core/cors.ts`. P2-01 moves bytes to a separate domain and
-must apply the same allowlist there. When done:
+the exact allow/expose header sets and `core/cors.ts`. P2-01 moved bytes to `dl.plrs.im` (a same-site sibling; `dispatchBytesHost` applies `core/cors.ts` itself) and
+applies the same allowlist there. When done:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-05 done`.
