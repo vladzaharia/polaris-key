@@ -602,13 +602,16 @@ export interface ReleaseConfigInput {
   accessSource?: "manifest" | "admin" | null;
   /** The operator-only artifact policy (0022_c). No manifest path supplies it; link leaves it NULL. */
   operatorPolicyJson?: string | null;
+  stableTagPattern?: string | null;
+  ignoreTagsJson?: string | null;
 }
 export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
   return {
     sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
             manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json,
-            metadata_access, artifacts_access, access_source, operator_policy_json)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`,
+            metadata_access, artifacts_access, access_source, operator_policy_json,
+            stable_tag_pattern, ignore_tags_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       r.product,
       r.ghOwner,
@@ -625,6 +628,8 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
       r.artifactsAccess ?? "public",
       r.accessSource ?? null,
       r.operatorPolicyJson ?? null,
+      r.stableTagPattern ?? null,
+      r.ignoreTagsJson ?? null,
     ],
   };
 }

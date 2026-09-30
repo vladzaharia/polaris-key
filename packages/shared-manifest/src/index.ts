@@ -73,6 +73,13 @@ export interface ManifestDocuments {
   release?: unknown;
 }
 
+/** The documents ingest is handed: `product` is `undefined` when the file is missing. */
+export interface IngestDocuments {
+  product: Record<string, unknown> | undefined;
+  schema?: unknown;
+  release?: unknown;
+}
+
 export interface ValidationResult {
   ok: boolean;
   errors: ValidationMessage[];
@@ -194,6 +201,13 @@ export interface ManifestRelease {
   summaryMarker: string;
   sparkleEd25519Pub: string;
   manualChannels: ManifestManualChannel[];
+  /** `release.stableTagPattern` — which tags are real app releases (candidates for
+   *  stable/latest and the beta prerelease fallback). `null` when undeclared, which means
+   *  `DEFAULT_STABLE_TAG_PATTERN`. Persisted to `release_config.stable_tag_pattern`. */
+  stableTagPattern: string | null;
+  /** `release.ignoreTags` — exact tag names that are never a resolution candidate on any
+   *  moving channel. Persisted to `release_config.ignore_tags_json` (NULL when empty). */
+  ignoreTags: string[];
   artifactPolicy: ManifestReleaseArtifactPolicy | null;
   access: ManifestReleaseAccessPolicy;
 }
@@ -363,6 +377,26 @@ export function compileManualChannelRegex(source: string): RegExp | null {
     return null;
   }
 }
+/**
+ * The candidate filter used when `release.stableTagPattern` is undeclared: a semver 2.0 tag with
+ * an optional leading `v` (`v1.2.3`, `1.2.3-rc.1`, `v2.0.0+build.5`). Written UNANCHORED because
+ * `compileManualChannelRegex` anchors every source (`^(?:…)$`) — the written-out
+ * `^v?…$` form is 81 characters, one over the cap a declared pattern must meet.
+ */
+export const DEFAULT_STABLE_TAG_PATTERN =
+  "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?";
+/** `release.ignoreTags` bounds: how many exact tag names, and how long each may be. */
+export const MAX_IGNORE_TAGS = 200;
+export const MAX_IGNORE_TAG_LENGTH = 255;
+/** One `release.ignoreTags` entry: a non-empty tag name with no control characters or spaces. */
+export function isIgnoreTag(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_IGNORE_TAG_LENGTH &&
+    !/[\u0000-\u0020\u007f]/.test(value)
+  );
+}
 /** `provisioning[].allowedHosts` entries — a host, optionally with a port. */
 const HOST_RE = /^[A-Za-z0-9._-]{1,253}(?::[0-9]{1,5})?$/;
 /**
@@ -482,8 +516,67 @@ function registrationPolicy(productRoot: Record<string, unknown>): unknown {
   return asRecord(productRoot.devices).registration;
 }
 
+/**
+ * Validate the documents as an AUTHOR-side check: the Config-conditional rules apply, so a
+ * Config-off product may omit `.pkey/schema`. That is NOT what ingest accepts — link and
+ * resync always require the schema. Anything that means to answer "will this link?" (the CLI's
+ * `pkey validate`, `parseManifest`) must call {@link validateIngestDocuments} instead.
+ */
 export function validateManifestDocuments(
   manifest: ManifestDocuments,
+): ValidationResult {
+  return validateDocuments(manifest, false);
+}
+
+/**
+ * The one rule for document presence: exactly what ingest (`link`, `resync`) requires. Both the
+ * product and schema documents must exist (the schema even when Config is off; an empty catalog
+ * is `schemaVersion: 1` with no entries), then everything {@link validateManifestDocuments}
+ * checks. `missing_schema` is reported once whether Config is on or off.
+ */
+export function validateIngestDocuments(
+  manifest: IngestDocuments,
+): ValidationResult {
+  const product = manifest.product;
+  if (product === undefined) {
+    // Nothing further can be judged without a product; the schema is still reported so the
+    // author sees every missing document at once.
+    const errors: ValidationMessage[] = [];
+    add(
+      errors,
+      "product",
+      "/",
+      "missing_product",
+      ".pkey/product is required at ingest.",
+    );
+    requireSchema(errors, manifest.schema);
+    return {
+      ok: false,
+      errors,
+      warnings: [],
+      enabledModules: [...DEFAULT_ENABLED],
+      requiredSecrets: [],
+    };
+  }
+  return validateDocuments({ ...manifest, product }, true);
+}
+
+/** True when the schema document is present; otherwise reports `missing_schema`. */
+function requireSchema(errors: ValidationMessage[], schema: unknown): boolean {
+  if (schema !== undefined) return true;
+  add(
+    errors,
+    "schema",
+    "/",
+    "missing_schema",
+    ".pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries.",
+  );
+  return false;
+}
+
+function validateDocuments(
+  manifest: ManifestDocuments,
+  schemaAlwaysRequired: boolean,
 ): ValidationResult {
   const errors: ValidationMessage[] = [];
   const warnings: ValidationMessage[] = [];
@@ -600,16 +693,8 @@ export function validateManifestDocuments(
     }
   }
 
-  if (modules.includes("config")) {
-    if (manifest.schema === undefined) {
-      add(
-        errors,
-        "schema",
-        "/",
-        "missing_schema",
-        "Config is enabled, so .pkey/schema.yaml or schema.json is required.",
-      );
-    } else {
+  if (schemaAlwaysRequired || modules.includes("config")) {
+    if (requireSchema(errors, manifest.schema)) {
       const catalog = normalizeCatalog(manifest.schema);
       if (!catalog) {
         add(
@@ -619,7 +704,9 @@ export function validateManifestDocuments(
           "invalid_schema",
           "Schema must be a ProductCatalog object with entries[].",
         );
-      } else {
+      } else if (modules.includes("config")) {
+        // Content is shape-validated only when Config is on: a Config-off product's catalog is
+        // otherwise judged only by the looser Catalog.compileAll at link/resync.
         for (const issue of validateCatalogShape(catalog)) {
           add(errors, "schema", "/entries", "invalid_catalog_shape", issue);
         }
@@ -770,6 +857,26 @@ export function validateManifestDocuments(
         "invalid_semver",
         SEMVER_RE,
         `Tier ${bound} must be a semver string.`,
+      );
+    }
+    // Keys the scaffold used to write. Neither is an error (existing manifests keep linking),
+    // but both are silently misread, so they warn.
+    if (record.deviceLimit !== undefined) {
+      add(
+        warnings,
+        "product",
+        `/licensing/tiers/${i}/deviceLimit`,
+        "tier_ignored_field",
+        "deviceLimit on a tier is ignored; use policyDeviceLimit.",
+      );
+    }
+    if (record.maxOfflineDays !== undefined) {
+      add(
+        warnings,
+        "product",
+        `/licensing/tiers/${i}/maxOfflineDays`,
+        "tier_ignored_field",
+        "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace.",
       );
     }
     // Enforcement strength is an enum, and a typo'd value must be an authoring error — the
@@ -1048,6 +1155,48 @@ export function validateManifestDocuments(
                 `${at}/regex`,
                 "invalid_manual_channel",
                 `manualChannels[].regex must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+              );
+            }
+          }
+        }
+      }
+      // The candidate filter for stable/latest: compiled under the manual-channel safety rule
+      // (anchored, capped, must compile) so a pattern the validator accepts is one the
+      // worker's resolver keeps rather than silently falling back to the default.
+      if (
+        relRoot.stableTagPattern !== undefined &&
+        (typeof relRoot.stableTagPattern !== "string" ||
+          compileManualChannelRegex(relRoot.stableTagPattern) === null)
+      ) {
+        add(
+          errors,
+          "release",
+          "/release/stableTagPattern",
+          "invalid_stable_tag_pattern",
+          `release.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+        );
+      }
+      if (relRoot.ignoreTags !== undefined) {
+        if (
+          !Array.isArray(relRoot.ignoreTags) ||
+          relRoot.ignoreTags.length > MAX_IGNORE_TAGS
+        ) {
+          add(
+            errors,
+            "release",
+            "/release/ignoreTags",
+            "invalid_ignore_tags",
+            `release.ignoreTags must be an array of at most ${MAX_IGNORE_TAGS} exact tag names.`,
+          );
+        } else {
+          for (const [i, tag] of relRoot.ignoreTags.entries()) {
+            if (!isIgnoreTag(tag)) {
+              add(
+                errors,
+                "release",
+                `/release/ignoreTags/${i}`,
+                "invalid_ignore_tags",
+                `release.ignoreTags entries must be non-empty tag names of at most ${MAX_IGNORE_TAG_LENGTH} characters with no spaces or control characters.`,
               );
             }
           }
@@ -1525,6 +1674,11 @@ export function validateManifestDocuments(
   };
 }
 
+/** `file/pointer: message`, or `file: message` for a whole-document problem (pointer "/"). */
+function formatIngestError(e: ValidationMessage): string {
+  return `${e.file}${e.path === "/" ? "" : e.path}: ${e.message}`;
+}
+
 export function parseManifest(
   files: Record<string, string>,
 ): ParseManifestResult {
@@ -1537,24 +1691,27 @@ export function parseManifest(
     if ("error" in res) errors.push(res.error);
     else docs[name] = res.value;
   }
-  if (files.schema === undefined)
-    errors.push("schema: required (.pkey/schema.{json,yaml,yml} is missing)");
-  if (files.product === undefined)
-    errors.push("product: required (.pkey/product.{json,yaml,yml} is missing)");
+  // Missing documents are reported by the same rule `pkey validate` applies
+  // (`validateIngestDocuments`), so a manifest that validates is one that links. A schema file
+  // that exists but failed to parse is already in `errors`, so it is not also "missing".
+  if (files.product === undefined) {
+    const missing = validateIngestDocuments({
+      product: undefined,
+      schema: files.schema === undefined ? undefined : null,
+    });
+    for (const e of missing.errors) errors.push(formatIngestError(e));
+  }
   if (errors.length) return { ok: false, errors };
   if (!isRecord(docs.product))
     return { ok: false, errors: ["product: must be an object"] };
 
-  const validation = validateManifestDocuments({
+  const validation = validateIngestDocuments({
     product: docs.product,
     schema: docs.schema,
     release: docs.release,
   });
   if (!validation.ok)
-    return {
-      ok: false,
-      errors: validation.errors.map((e) => `${e.file}${e.path}: ${e.message}`),
-    };
+    return { ok: false, errors: validation.errors.map(formatIngestError) };
 
   const productRoot = docs.product;
   const prod = nestedProductDoc(productRoot);
@@ -1649,6 +1806,12 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     summaryMarker: String(rel.summaryMarker ?? "pkey:summary"),
     sparkleEd25519Pub: String(rel.sparkleEd25519Pub ?? ""),
     manualChannels: normalizeManualChannels(rel.manualChannels),
+    stableTagPattern:
+      typeof rel.stableTagPattern === "string" &&
+      compileManualChannelRegex(rel.stableTagPattern) !== null
+        ? rel.stableTagPattern
+        : null,
+    ignoreTags: normalizeIgnoreTags(rel.ignoreTags),
     artifactPolicy: normalizeArtifactPolicy(rel.artifactPolicy),
     access: normalizeReleaseAccess(rel.access),
   };
@@ -1672,6 +1835,12 @@ function normalizeManualChannels(raw: unknown): ManifestManualChannel[] {
     }
   }
   return out;
+}
+
+/** Keep the well-formed, de-duplicated entries (validation has already reported the rest). */
+function normalizeIgnoreTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.filter(isIgnoreTag))].slice(0, MAX_IGNORE_TAGS);
 }
 
 function normalizeReleaseAccess(raw: unknown): ManifestReleaseAccessPolicy {
