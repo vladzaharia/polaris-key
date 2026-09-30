@@ -1,0 +1,173 @@
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { describe, expect, it } from "vitest";
+import {
+  TARGETS,
+  legacyModuleMap,
+  loadTable,
+  renderAdminTs,
+  renderAll,
+  renderManifestTs,
+  renderPython,
+  renderSwift,
+  run,
+  swiftCase,
+  validateTable,
+  type ServiceRow,
+  type ServiceTable,
+} from "./gen-services.js";
+
+const TABLE = loadTable();
+
+function withRow(extra: Partial<ServiceRow> = {}): ServiceTable {
+  return {
+    services: [
+      ...TABLE.services,
+      {
+        slug: "distribution",
+        label: "Distribution",
+        summary: "Content packs.",
+        defaultEnabled: false,
+        requires: [],
+        legacyModules: [],
+        console: { accent: "distribution", icon: "Boxes" },
+        docs: "/docs/services/distribution/",
+        ...extra,
+      },
+    ],
+  };
+}
+
+describe("tools/services.json", () => {
+  it("is valid and lists the five services in canonical order", () => {
+    expect(validateTable(TABLE)).toEqual([]);
+    expect(TABLE.services.map((r) => r.slug)).toEqual([
+      "license",
+      "config",
+      "release",
+      "update",
+      "identity",
+    ]);
+  });
+
+  it("maps the legacy module vocabulary exactly as the manifest always has", () => {
+    expect(Object.fromEntries(legacyModuleMap(TABLE))).toEqual({
+      licensing: ["license"],
+      edgeMint: ["config"],
+      releases: ["release", "update"],
+      oidc: ["identity"],
+    });
+  });
+});
+
+describe("validateTable", () => {
+  it("accepts a sixth row", () => {
+    expect(validateTable(withRow())).toEqual([]);
+  });
+
+  it.each([
+    [{ slug: "license" }, 'duplicate "license"'],
+    [{ slug: "Bad_Slug" }, ".slug: must match"],
+    [{ slug: "core", docs: "/docs/services/core/" }, '"core" is reserved'],
+    [{ requires: ["nope"] }, 'unknown slug "nope"'],
+    [{ requires: ["distribution"] }, "cannot require itself"],
+    [{ legacyModules: ["config"] }, "is a service slug"],
+    [{ console: { accent: "key", icon: "Boxes" } }, 'duplicate "key"'],
+    [{ console: { accent: "core", icon: "Boxes" } }, "platform section"],
+    [{ console: { accent: "dist", icon: "boxes" } }, "lucide-react icon"],
+    [{ docs: "/docs/distribution/" }, "/docs/services/distribution/"],
+    [{ defaultEnabled: "yes" as unknown as boolean }, "must be a boolean"],
+    [{ label: "" }, ".label: must be a non-empty string"],
+  ] as [Partial<ServiceRow>, string][])("rejects %j", (extra, message) => {
+    const errors = validateTable(withRow(extra));
+    expect(errors.join("\n")).toContain(message);
+  });
+
+  it("rejects a table that is not a table", () => {
+    expect(validateTable(null)).not.toEqual([]);
+    expect(validateTable({ services: [] })).toEqual([
+      "the table has no services",
+    ]);
+  });
+});
+
+describe("renderers", () => {
+  it("carry the GENERATED banner on every target", async () => {
+    for (const content of (await renderAll(TABLE)).values()) {
+      expect(content).toMatch(
+        /^(\/\/|#) GENERATED FILE — do not edit by hand\./,
+      );
+    }
+  });
+
+  it("a sixth row reaches every language", async () => {
+    const table = withRow({ requires: ["release"], legacyModules: ["packs"] });
+    const manifest = renderManifestTs(table);
+    expect(manifest).toContain('"identity" | "distribution"');
+    expect(manifest).toContain('"distribution": ["release"]');
+    expect(manifest).toContain('packs: ["distribution"]');
+    expect(renderAdminTs(table)).toContain('accent: "distribution"');
+    expect(renderPython(table)).toContain(
+      '("license", "config", "release", "update", "identity", "distribution")',
+    );
+    expect(renderSwift(table)).toContain("    case distribution\n");
+    expect(renderSwift(table)).toContain(
+      "case .release, .update, .identity, .distribution: return false",
+    );
+  });
+
+  it("defaults are generated from defaultEnabled", () => {
+    expect(renderManifestTs(TABLE)).toContain(
+      'DEFAULT_ENABLED_SERVICES: readonly ServiceSlug[] = ["license", "config"]',
+    );
+    expect(renderPython(TABLE)).toContain(
+      'DEFAULT_ENABLED_SERVICES: Tuple[str, ...] = ("license", "config")',
+    );
+    expect(renderSwift(TABLE)).toContain("case .license, .config: return true");
+  });
+
+  it("names a hyphenated or keyword slug as a valid Swift case", () => {
+    expect(swiftCase("content-packs")).toBe("contentPacks");
+    expect(swiftCase("default")).toBe("`default`");
+    expect(
+      renderSwift(
+        withRow({
+          slug: "content-packs",
+          docs: "/docs/services/content-packs/",
+        }),
+      ),
+    ).toContain('case contentPacks = "content-packs"');
+  });
+});
+
+describe("gen:services --check", () => {
+  it("the committed files are up to date", async () => {
+    expect(await run({ check: true })).toEqual([]);
+  });
+
+  it("reports a hand edit to any generated file, and does not write under --check", async () => {
+    const root = mkdtempSync(join(tmpdir(), "gen-services-"));
+    const rendered = await renderAll(TABLE);
+    for (const [path, content] of rendered) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), content);
+    }
+    expect(await run({ check: true, root, table: TABLE })).toEqual([]);
+
+    for (const target of TARGETS) {
+      const abs = join(root, target.path);
+      const original = readFileSync(abs, "utf8");
+      writeFileSync(abs, original.replace("identity", "identiti"));
+      expect(await run({ check: true, root, table: TABLE })).toEqual([
+        target.path,
+      ]);
+      expect(readFileSync(abs, "utf8")).not.toBe(original);
+      // Without --check the same call repairs it.
+      expect(await run({ check: false, root, table: TABLE })).toEqual([
+        target.path,
+      ]);
+      expect(readFileSync(abs, "utf8")).toBe(original);
+    }
+  });
+});
