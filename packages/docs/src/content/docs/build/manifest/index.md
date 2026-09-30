@@ -68,9 +68,12 @@ genuinely unreachable). The full list, with JSON-pointer paths, is at
 
 The files are a **baseline**, not the live state. A resync (re-link, or a signed GitHub push
 webhook) updates product metadata, service enablement, fingerprint and auto-issue policy,
-catalog shape, OIDC, release settings, profiles, tiers, and provisioning — but three blocks can
+catalog shape, OIDC, release settings, profiles, tiers, and provisioning — but five blocks can
 be **claimed** by an admin from the console (`services_source`, `fingerprint_policy_source`,
-`auto_issue_source`), and a resync skips whichever ones an admin already owns. "Revert to
+`auto_issue_source`, and from Update settings `compat_source` for the compatibility window and
+`access_source` for the two release access modes), and a resync skips whichever ones an admin
+already owns. The operator-only artifact policy — the Sparkle signature requirement and the
+minimum macOS version — has no manifest spelling at all, so no push can write or erase it. "Revert to
 manifest" hands ownership back without changing the values, so the manifest re-applies on the
 next resync rather than immediately — an operator's escape hatch that never depends on a
 GitHub round trip succeeding. Everything else an admin sets — secrets, per-profile/tier/
