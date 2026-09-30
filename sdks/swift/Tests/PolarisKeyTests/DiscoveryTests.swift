@@ -1,3 +1,4 @@
+// @pkey-feature core.discover
 // Discovery + capability resolution — D-21's fail-closed rules.
 //
 // Almost everything here is a PARSE test rather than a fetch test, and that is the point: the

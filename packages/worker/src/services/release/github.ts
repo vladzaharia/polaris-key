@@ -110,8 +110,11 @@ function apiHeaders(token: string, accept: string): HeadersInit {
 }
 
 /**
- * Resolve a release by version. `latest`/undefined hits `/releases/latest`; anything
- * else is treated as a semver tag and resolved via `/releases/tags/v<version>`.
+ * Resolve a release by version. `latest`/undefined hits `/releases/latest`; anything else is a
+ * pinned version, looked up as `tags/v<version>` and — only when that 404s — as
+ * `tags/<version>`, so a repo that tags `1.2.3` (no `v`) can be pinned and its stable appcast's
+ * pinned enclosure resolves. Any other failure is not retried: a 403 is a visibility answer,
+ * and asking twice would only double the quota spent learning it.
  */
 export async function resolveRelease(
   token: string,
@@ -121,33 +124,125 @@ export async function resolveRelease(
   fetchImpl: FetchImpl = fetch,
 ): Promise<Release> {
   const base = `${GITHUB_API}/repos/${owner}/${repo}/releases`;
-  const url =
-    !version || version === "latest"
-      ? `${base}/latest`
-      : `${base}/tags/v${encodeURIComponent(version)}`;
+  if (!version || version === "latest") {
+    const res = await fetchImpl(`${base}/latest`, {
+      headers: apiHeaders(token, "application/vnd.github+json"),
+    });
+    throwIfRateLimited(res);
+    if (!res.ok)
+      throw new NotFoundError(`release lookup failed: ${res.status}`);
+    return (await res.json()) as Release;
+  }
+  const prefixed = await getReleaseByTag(
+    token,
+    owner,
+    repo,
+    `v${version}`,
+    fetchImpl,
+  );
+  if (prefixed) return prefixed;
+  const bare = await getReleaseByTag(token, owner, repo, version, fetchImpl);
+  if (bare) return bare;
+  throw new NotFoundError("release lookup failed: 404");
+}
+
+/**
+ * One release by its exact tag: `null` on 404, `NotFoundError` on any other refusal (so a
+ * private repo is still indistinguishable from an absent one), `UpstreamRateLimitedError` on
+ * quota. Used by the pinned lookup above and by the R6-10 floor check, which needs to know
+ * whether the floor's release still EXISTS — a question a 404 answers and a 403 does not.
+ */
+export async function getReleaseByTag(
+  token: string,
+  owner: string,
+  repo: string,
+  tag: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<Release | null> {
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(tag)}`;
   const res = await fetchImpl(url, {
     headers: apiHeaders(token, "application/vnd.github+json"),
   });
   throwIfRateLimited(res);
+  if (res.status === 404) return null;
   if (!res.ok) throw new NotFoundError(`release lookup failed: ${res.status}`);
   return (await res.json()) as Release;
 }
 
-/** List published releases (newest first), for changelog + channel derivation. */
+/** Page budgets for `listReleases` callers (P0-02). */
+export const RELEASE_PAGE_CAP = {
+  /** The truth-store sync: 10 pages of 100, i.e. up to 1,000 releases. */
+  sync: 10,
+  /** Live resolution: read on until a candidate has been seen, but never past 3 pages. */
+  live: 3,
+} as const;
+
+export interface ListReleasesOptions {
+  /** Pages to read at most (default 1: the pre-pagination behaviour). */
+  maxPages?: number;
+  /**
+   * Stop early once this returns true. `page` is the page just read, so a per-release predicate
+   * can look at each entry once instead of re-scanning `soFar` after every page.
+   */
+  stopWhen?: (soFar: Release[], page: Release[]) => boolean;
+}
+
+/**
+ * The `rel="next"` target of a GitHub `Link` header, or null.
+ *
+ * The URL is used only when it is on the GitHub API origin: this request carries the
+ * installation token, and a `Link` pointing anywhere else must not be followed with it.
+ */
+export function nextPageUrl(link: string | null): string | null {
+  if (!link) return null;
+  for (const part of link.split(",")) {
+    const m = part.match(/<([^>]+)>\s*;\s*rel="?next"?/);
+    if (!m || !m[1]) continue;
+    try {
+      const url = new URL(m[1]);
+      return url.origin === GITHUB_API ? url.toString() : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * List published releases (newest first by creation), following `Link: rel="next"` up to
+ * `opts.maxPages` pages. Each page is one GitHub subrequest, so callers choose the cap:
+ * `RELEASE_PAGE_CAP.sync` for the truth store, `RELEASE_PAGE_CAP.live` (with a `stopWhen`) for
+ * request-time resolution, and the default single page everywhere else.
+ */
 export async function listReleases(
   token: string,
   owner: string,
   repo: string,
   perPage = 100,
   fetchImpl: FetchImpl = fetch,
+  opts: ListReleasesOptions = {},
 ): Promise<Release[]> {
-  const url = `${GITHUB_API}/repos/${owner}/${repo}/releases?per_page=${perPage}`;
-  const res = await fetchImpl(url, {
-    headers: apiHeaders(token, "application/vnd.github+json"),
-  });
-  throwIfRateLimited(res);
-  if (!res.ok) throw new NotFoundError(`releases list failed: ${res.status}`);
-  return (await res.json()) as Release[];
+  const maxPages = Math.max(1, opts.maxPages ?? 1);
+  let url: string | null =
+    `${GITHUB_API}/repos/${owner}/${repo}/releases?per_page=${perPage}`;
+  const out: Release[] = [];
+  for (let page = 0; url && page < maxPages; page++) {
+    const res = await fetchImpl(url, {
+      headers: apiHeaders(token, "application/vnd.github+json"),
+    });
+    throwIfRateLimited(res);
+    if (!res.ok) throw new NotFoundError(`releases list failed: ${res.status}`);
+    const body: unknown = await res.json();
+    // An off-shape page (an error envelope, a proxy's HTML) is not a release list; iterating it
+    // would 500 the route.
+    if (!Array.isArray(body))
+      throw new NotFoundError("releases list: unexpected shape");
+    const pageReleases = body as Release[];
+    out.push(...pageReleases);
+    if (opts.stopWhen?.(out, pageReleases)) break;
+    url = nextPageUrl(res.headers.get("Link"));
+  }
+  return out;
 }
 
 /** Strip an upstream asset name down to something safe inside a `filename="…"` parameter. */
@@ -405,25 +500,25 @@ export async function fetchTextAsset(
 }
 
 /**
- * Fetch a release asset's raw bytes into memory, for signature verification (R6-03).
- * `maxBytes` bounds the read so a huge artifact can't blow the isolate's memory budget.
+ * Open a release asset's body as a stream, for signature verification over artifacts of any
+ * size (R6-03, P0-10). A declared `Content-Length` over `maxBytes` is refused before a byte is
+ * read, and the unread body is cancelled; the consumer must still enforce `maxBytes` while
+ * streaming, because an absent or lying `Content-Length` must not be able to bypass the cap.
+ * Throws `NotFoundError` for a missing, unfetchable or declared-oversized asset.
  */
-export async function fetchAssetBytes(
+export async function fetchAssetStream(
   token: string,
   owner: string,
   repo: string,
   assetId: number,
   maxBytes: number,
   fetchImpl: FetchImpl = fetch,
-): Promise<Uint8Array> {
+): Promise<ReadableStream<Uint8Array> | null> {
   const res = await fetchAsset(token, owner, repo, assetId, fetchImpl);
-  const declared = Number(res.headers.get("Content-Length") ?? "0");
+  const declared = Number(res.headers.get("Content-Length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
+    await res.body?.cancel().catch(() => undefined);
     throw new NotFoundError(`asset too large to verify: ${declared} bytes`);
   }
-  const buf = new Uint8Array(await res.arrayBuffer());
-  if (buf.byteLength > maxBytes) {
-    throw new NotFoundError(`asset too large to verify: ${buf.byteLength}`);
-  }
-  return buf;
+  return res.body;
 }

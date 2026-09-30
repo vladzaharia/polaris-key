@@ -20,8 +20,9 @@ canonical glossary).
 ### 1. Scaffold
 
 - [ ] Run `pkey init` in the product repo root. It creates `.pkey/` and writes YAML:
-      `product.yaml` always; `schema.yaml` when the `config` module is selected; `release.yaml`
-      when `releases` is selected.
+      `product.yaml` and `schema.yaml` always (ingest requires both, even with Config off; without
+      `config` the schema is an empty catalog, `schemaVersion: 1` and `catalog: []`); `release.yaml`
+      when `releases` is selected. The scaffolded tier is `policyDeviceLimit: 5` with no expiry.
 - [ ] Other flags: `--admin-group`, `--release-owner`, `--release-repo`, `--force` (overwrite).
       With no `--modules`, the default is `licensing,config`.
 - [ ] Do **not** hand-create the directory if `pkey init` will do it — the scaffold writes the
@@ -55,6 +56,12 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
       channels, install/appcast settings, edge-mint recipes. Maps to `release_config` and
       `edge_mint_config`.
+- [ ] If the repo publishes tags that are not app releases (rolling `channels`, content `packs`,
+      …), say so in `release`: `stableTagPattern` (an anchored regex, ≤ 80 characters, same
+      safety rule as `manualChannels[].regex`) narrows which tags may become stable/latest, and
+      `ignoreTags` lists exact tag names that never resolve on a moving channel. Undeclared, any
+      semver tag with an optional leading `v` is a candidate, and the highest semver wins — not
+      the newest by creation order.
 - [ ] The base name selects the role; the extension is a pure format preference, tried
       `.json` → `.yaml` → `.yml` and resolved **per document**, so `product.yaml` may sit next to
       `schema.json`.

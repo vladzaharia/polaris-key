@@ -1,3 +1,4 @@
+// @pkey-feature license.gate
 // Cross-SDK gate parity — wire contract v3 §5, driven off `conformance/corpus/v2`'s
 // `gate-matrix.json` (version 2, 21 rows).
 //

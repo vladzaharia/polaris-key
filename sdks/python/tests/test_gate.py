@@ -1,3 +1,4 @@
+# @pkey-feature license.gate
 """Licence-gate transitions + semver/channel helpers.
 
 Mirrors ``@polaris-key/client-core``'s ``gate.test.ts`` / ``semver.ts``. The corpus's gate matrix

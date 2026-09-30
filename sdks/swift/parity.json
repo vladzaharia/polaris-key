@@ -1,0 +1,123 @@
+{
+  "$schema": "../../conformance/parity/manifest.schema.json",
+  "sdk": "swift",
+  "runtimes": ["macos", "ios"],
+  "testRoots": [
+    "sdks/swift/Tests/PolarisKeyTests",
+    "tools/gen-mirrors.test.ts"
+  ],
+  "features": {
+    "core.verify": { "status": "implemented" },
+    "core.cache": { "status": "implemented" },
+    "core.bundle": { "status": "implemented" },
+    "core.discover": { "status": "implemented" },
+    "core.sync": { "status": "implemented" },
+    "core.local": { "status": "implemented" },
+    "core.headers": { "status": "planned", "wp": "P1b-04" },
+    "core.errors": { "status": "planned", "wp": "P1b-02" },
+    "core.caps": { "status": "planned", "wp": "P1b-10" },
+    "core.store": {
+      "status": "planned",
+      "wp": "P1b-09",
+      "note": "The macOS keychain ignores the accessibility attribute without kSecUseDataProtectionKeychain."
+    },
+    "license.gate": { "status": "implemented" },
+    "license.activate": { "status": "implemented" },
+    "license.enroll": { "status": "implemented" },
+    "license.deactivate": { "status": "implemented" },
+    "license.entitlements": { "status": "implemented" },
+    "license.channels": {
+      "status": "planned",
+      "wp": "P1b-07",
+      "note": "entitledChannels() exists but is untested and returns [] when the entitlement is absent, where the Worker returns [\"stable\"]; P1b-07 settles the semantics."
+    },
+    "license.reregister": { "status": "planned", "wp": "P1b-06" },
+    "config.resolve": { "status": "implemented" },
+    "config.list": { "status": "implemented" },
+    "config.secret": { "status": "implemented" },
+    "config.schema": { "status": "implemented" },
+    "config.mint": { "status": "planned", "wp": "P1b-08" },
+    "config.mirror": {
+      "status": "implemented",
+      "note": "The Swift mirror is rendered by tools/gen-mirrors.ts."
+    },
+    "devices.fingerprint": { "status": "implemented" },
+    "devices.facts": { "status": "implemented" },
+    "devices.register": { "status": "implemented" },
+    "devices.manage": { "status": "implemented" },
+    "devices.report": {
+      "status": "planned",
+      "wp": "P1b-07",
+      "note": "Reported only as part of sync; P1b-07 exposes it as public API."
+    },
+    "identity.oidc": {
+      "status": "planned",
+      "unowned": true,
+      "note": "Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in."
+    },
+    "identity.devicecode": { "status": "planned", "wp": "P1b-08" },
+    "release.changelog": { "status": "planned", "wp": "P1b-07" },
+    "release.download": { "status": "planned", "wp": "P1b-07" },
+    "release.record": { "status": "planned", "wp": "P3-07" },
+    "update.check": { "status": "implemented" },
+    "update.feed": { "status": "planned", "wp": "P3-07" },
+    "update.decide": { "status": "planned", "wp": "P3-07" },
+    "update.driver": {
+      "status": "implemented",
+      "except": [{ "runtime": "ios", "reason": "outlet" }],
+      "note": "Sparkle on macOS."
+    },
+    "update.bootguard": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P1-09 pins the guard rows in stage-matrix.json, but only P3-10 (Godot) implements them."
+    },
+    "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "packs.plan": { "status": "planned", "wp": "P4-07" },
+    "packs.index": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.full": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.file": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
+    "packs.apply.delta": { "status": "planned", "wp": "P4-07" },
+    "packs.state": { "status": "planned", "wp": "P4-07" },
+    "packs.handlers": { "status": "planned", "wp": "P4-07" },
+    "packs.provides": { "status": "planned", "wp": "P4-20" },
+    "packs.transport.apple": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P5-05 builds the Apple plugin package and P5-08 wires the transport for Godot only; no package adopts it in the Swift SDK."
+    },
+    "packs.transport.play": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime"
+    },
+    "packs.transport.steam": {
+      "status": "planned",
+      "unowned": true,
+      "except": [{ "runtime": "ios", "reason": "runtime" }],
+      "note": "P5-08 covers Godot only; macOS Swift apps have no Steam-depot transport owner."
+    },
+    "packs.transport.msix": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime"
+    },
+    "packs.transport.flatpak": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime"
+    },
+    "ui.stages": { "status": "planned", "wp": "P1-09" },
+    "ui.kit": {
+      "status": "planned",
+      "unowned": true,
+      "note": "PolarisLoginView only; no work package builds the rest of the Swift kit."
+    },
+    "commerce.receipt": {
+      "status": "planned",
+      "unowned": true,
+      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+    }
+  }
+}

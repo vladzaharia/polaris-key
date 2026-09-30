@@ -74,6 +74,7 @@ function wrapperFor(adapter: PolarisAdapter) {
   );
 }
 
+// @pkey-feature update.check
 describe("useLatestVersion", () => {
   it("checks once on mount and reports the newest build", async () => {
     const invoke = vi.fn(async () => newer);
@@ -157,6 +158,7 @@ describe("useLatestVersion", () => {
   });
 });
 
+// @pkey-feature ui.kit
 describe("UpdatePrompt", () => {
   function renderPrompt(
     capabilities: ReturnType<typeof services>,

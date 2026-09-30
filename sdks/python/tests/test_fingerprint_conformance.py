@@ -1,3 +1,4 @@
+# @pkey-feature devices.fingerprint
 """The Python conformance runner for the fingerprint + device-id formulas.
 
 Mirrors conformance/runners/node/fingerprint.test.ts against the SAME

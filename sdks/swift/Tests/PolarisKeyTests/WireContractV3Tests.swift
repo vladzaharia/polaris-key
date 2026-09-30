@@ -1,3 +1,4 @@
+// @pkey-feature core.verify
 // Wire contract v3 §1–§3 regression tests: the parser hardening and the claim checks.
 //
 // The heir to `WireContractV2Tests`. Every v2 case is carried — each one corresponds to a

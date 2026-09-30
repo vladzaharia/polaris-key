@@ -22,8 +22,10 @@ import PackageDescription
 //
 // ── THE SPARKLE CONDITIONING (D-24) ─────────────────────────────────────────────────────────
 //
-// Sparkle ≥ 2.6.4 is the CVE-2025-0509 floor (docs/security/arch/anti-piracy-realism.md) and
-// this package's only external dependency. It is macOS-only, and iOS must never try to link
+// Sparkle ≥ 2.9.6 is the security floor and this package's only external dependency. 2.6.4
+// fixed CVE-2025-0509 (docs/security/arch/anti-piracy-realism.md); 2.9.5 and 2.9.6 fixed a
+// symlink attack in delta patching, a root privilege escalation, and package installs that
+// proceeded after signature validation failed. It is macOS-only, and iOS must never try to link
 // it, so the conditioning is applied in BOTH places it can be:
 //
 //   1. the PRODUCT dependency carries `.when(platforms: [.macOS])`, so an iOS build never
@@ -53,8 +55,10 @@ let package = Package(
         .library(name: "PolarisKeyUI", targets: ["PolarisKeyUI"]),
     ],
     dependencies: [
-        // D-24: Sparkle continues as the update mechanism; 2.6.4 is the CVE-2025-0509 floor.
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.4")
+        // D-24: Sparkle continues as the update mechanism. 2.9.6 is the security floor: the
+        // delta-patch symlink and privilege-escalation fixes (2.9.5/2.9.6) on top of
+        // CVE-2025-0509 (2.6.4).
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.6")
     ],
     targets: [
         .target(

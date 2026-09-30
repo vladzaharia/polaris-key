@@ -87,6 +87,7 @@ as re-register-on-401 went unnoticed (README §9.1 #14). P1b-06, P1b-07 and P1b-
   needs at least one transcript that lists it and a tagged replayer in that SDK.
 - CI step, `AGENTS.md` green gate and `waves.md` row for `pnpm gen:transcripts -- --check`. Add a
   "Transcripts" section to `contribute/corpus.md`.
+- **Wave-1 sync:** **Tighten parity rule 2 for corpus proofs (from P1b-01).** The check accepts a whole-word mention of the file's basename, so a tagged file that merely says "edge cases" satisfies `cases.json`, `fingerprint.json` and `content/`. Require the runner's actual load call instead (for example `forResource: "cases"` or `v2("cases.json")`), in `tools/parity-check.ts` with its tests.
 
 **Out** (and where it belongs instead):
 

@@ -1,3 +1,4 @@
+// @pkey-feature devices.fingerprint
 // The Node conformance runner for the fingerprint + device-id formulas.
 //
 // Until this landed, device-id derivation was the ONE cross-language behaviour with no golden
