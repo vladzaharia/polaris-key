@@ -225,6 +225,12 @@ except`. A feature N/A on only some runtimes is `implemented` or `planned` with 
   `planned`, unowned (the browser adapter is online-only; only the desktop host caches). Swift
   `license.enroll`, `license.entitlements` and `config.schema` had no test naming them;
   `sdks/swift/Tests/PolarisKeyTests/LicenseSurfaceTests.swift` adds one for each.
+- Node and Swift `devices.facts` were tagged only on report tests that show facts ride on
+  `POST /devices/report`; neither called the probe code (`runProbes` / `Facts.runProbes`), the
+  privacy-sensitive half of the feature (AGENTS rule 7). `packages/sdk-node/test/facts.test.ts`
+  and `sdks/swift/Tests/PolarisKeyTests/FactsTests.swift` port Python's facts tests: a declared
+  path that exists is `present: true`, a missing one `present: false`, a probe with no target for
+  this platform is omitted, and `collectFacts` / `Facts.collect` with no probes has no `probes`.
 - The generated reference pages are listed in `packages/docs/.prettierignore` (the generator is the
   formatting authority), so "prettier-clean" means the docs `lint` passes, as for every other page.
 
