@@ -277,7 +277,8 @@ export async function resyncRepo(
     await db.run(
       `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
          sparkle_ed25519_pub = ?, summary_marker = ?, manual_channels_json = ?,
-         artifact_policy_json = ?, metadata_access = ?, artifacts_access = ?
+         artifact_policy_json = ?, metadata_access = ?, artifacts_access = ?,
+         stable_tag_pattern = ?, ignore_tags_json = ?
          WHERE product = ?`,
       rel.channelWorkflow || null,
       rel.betaBranch || "main",
@@ -288,6 +289,8 @@ export async function resyncRepo(
       rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,
       rel.access.metadata,
       rel.access.artifacts,
+      rel.stableTagPattern,
+      rel.ignoreTags.length ? JSON.stringify(rel.ignoreTags) : null,
       slug,
     );
     updated.push("release");
@@ -413,6 +416,7 @@ export async function resyncRepo(
   if (syncedCfg) {
     const storeStmts = await releaseStoreSyncStatements(
       env,
+      db,
       syncedCfg,
       now,
       fetchImpl,

@@ -92,6 +92,7 @@ export function handleUpdate(
 
 async function handleVersion({
   env,
+  db,
   cfg,
   params,
   now,
@@ -100,6 +101,7 @@ async function handleVersion({
   if (!isResolved(cfg)) return notFound();
   const { release, sel } = await resolveSelector(
     env,
+    db,
     cfg,
     params.version ?? params.channel,
     now,
@@ -140,7 +142,7 @@ function minimumSystemVersion(policyJson: string | null): string | undefined {
 
 async function handleAppcast(
   params: ReleaseParams,
-  { env, cfg, product, origin, now, fetchImpl }: SurfaceContext,
+  { env, db, cfg, product, origin, now, fetchImpl }: SurfaceContext,
 ): Promise<Response> {
   if (!isResolved(cfg)) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
@@ -148,6 +150,7 @@ async function handleAppcast(
   const selectorStr = params.channel ?? params.version ?? "stable";
   const { release, sel } = await resolveSelector(
     env,
+    db,
     cfg,
     selectorStr,
     now,

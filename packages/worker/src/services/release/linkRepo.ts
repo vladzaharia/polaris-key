@@ -417,6 +417,10 @@ async function registerFromManifest(
         : null,
       metadataAccess: rel?.access.metadata ?? "public",
       artifactsAccess: rel?.access.artifacts ?? "public",
+      stableTagPattern: rel?.stableTagPattern ?? null,
+      ignoreTagsJson: rel?.ignoreTags.length
+        ? JSON.stringify(rel.ignoreTags)
+        : null,
     }),
   );
 

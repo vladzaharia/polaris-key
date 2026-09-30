@@ -35,10 +35,14 @@ import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db, DbStatement } from "../../core/platform.js";
 import { archOf } from "./assets.js";
 import type { Release, ReleaseAsset } from "./github.js";
+import { compareSemver, parseSemver } from "../../core/entitlements.js";
 import {
   classifyChannel,
+  floorChannelOf,
   parseManualChannels,
+  resolutionPolicy,
   resolveChannel,
+  semverOfTag,
   versionFromTag,
   type ManualChannel,
 } from "./channels.js";
@@ -88,6 +92,21 @@ export interface ReleaseChannelRow {
   policy_json: string | null;
   created_at: number;
   modified_at: number;
+}
+
+/**
+ * `release_channel_floors` (0023, R6-10): the highest version a moving channel has resolved to
+ * during a truth-store sync. `release_id` is that release's tag (NULL when an operator lowered
+ * the floor to a version the store never recorded).
+ */
+export interface ReleaseChannelFloorRow {
+  product: string;
+  channel: string;
+  version: string;
+  release_id: string | null;
+  raised_at: number;
+  lowered_by: string | null;
+  lowered_at: number | null;
 }
 
 export interface ReleaseHealthRow {
@@ -147,6 +166,43 @@ export async function listReleaseHealth(
       ORDER BY subject_kind ASC, subject_id ASC`,
     product,
   );
+}
+
+export async function listChannelFloors(
+  db: Db,
+  product: string,
+): Promise<ReleaseChannelFloorRow[]> {
+  return db.all<ReleaseChannelFloorRow>(
+    "SELECT * FROM release_channel_floors WHERE product = ? ORDER BY channel ASC",
+    product,
+  );
+}
+
+export async function getChannelFloor(
+  db: Db,
+  product: string,
+  channel: string,
+): Promise<ReleaseChannelFloorRow | null> {
+  return db.first<ReleaseChannelFloorRow>(
+    "SELECT * FROM release_channel_floors WHERE product = ? AND channel = ?",
+    product,
+    channel,
+  );
+}
+
+/**
+ * True when `offered` sits below `floor` — including when nothing is offered at all. A floor or
+ * an offer that is not semver cannot be ordered, so it never counts as below (a manual channel
+ * over date tags is simply not floored in practice: `floorStatement` only records semver).
+ */
+export function isBelowFloor(
+  offered: Release | null,
+  floor: Pick<ReleaseChannelFloorRow, "version">,
+): boolean {
+  if (!parseSemver(floor.version)) return false;
+  if (!offered) return true;
+  const v = semverOfTag(offered.tag_name);
+  return v !== null && compareSemver(v, floor.version) < 0;
 }
 
 // ── Writers ──────────────────────────────────────────────────────────────────
@@ -317,6 +373,44 @@ function stmtUpsertHealth(row: ReleaseHealthRow): DbStatement {
 }
 
 /**
+ * Raise a channel's floor to `release` when it is higher than the one read before the sync.
+ *
+ * The comparison is semver, which SQL cannot do, so it happens here against the row the caller
+ * READ — and the write is conditioned on that row still being what was read (`version = ?`), or
+ * on there still being no row (`DO NOTHING`). A concurrent sync or an operator lowering the
+ * floor in between therefore makes this a no-op instead of a lost update; the next sync
+ * re-evaluates. Returns null when there is nothing to raise.
+ */
+function floorStatement(
+  product: string,
+  channel: string,
+  release: Release,
+  current: ReleaseChannelFloorRow | undefined,
+  now: number,
+): DbStatement | null {
+  const version = semverOfTag(release.tag_name);
+  if (version === null) return null;
+  if (!current) {
+    return {
+      sql: `INSERT INTO release_channel_floors (product, channel, version, release_id, raised_at)
+            VALUES (?,?,?,?,?)
+            ON CONFLICT(product, channel) DO NOTHING`,
+      params: [product, channel, version, release.tag_name, now],
+    };
+  }
+  if (
+    parseSemver(current.version) &&
+    compareSemver(version, current.version) <= 0
+  )
+    return null;
+  return {
+    sql: `UPDATE release_channel_floors SET version = ?, release_id = ?, raised_at = ?
+           WHERE product = ? AND channel = ? AND version = ?`,
+    params: [version, release.tag_name, now, product, channel, current.version],
+  };
+}
+
+/**
  * The statements that make the truth store agree with a fetched GitHub release list.
  *
  * Returned rather than executed so the caller can put them in ITS batch: `resyncRepo` already
@@ -332,8 +426,10 @@ export function releaseStoreStatements(
   cfg: ReleaseConfigRow,
   releases: Release[],
   now: number,
+  floors: ReleaseChannelFloorRow[] = [],
 ): DbStatement[] {
   const policy = artifactPolicy(cfg);
+  const candidates = resolutionPolicy(cfg);
   const metadataAccess = storeAccess(policy.access.metadata);
   const artifactsAccess = storeAccess(policy.access.artifacts);
   // Drafts are not published software. They are visible to the installation token and invisible
@@ -390,15 +486,31 @@ export function releaseStoreStatements(
   }
 
   const channels: DbStatement[] = [];
+  const floorStmts: DbStatement[] = [];
+  const manual = parseManualChannels(cfg.manual_channels_json);
   for (const channel of channelNames(cfg)) {
-    const sel = classifyChannel(
-      channel,
-      parseManualChannels(cfg.manual_channels_json),
-    );
+    const sel = classifyChannel(channel, manual);
     // `beta` and `pr` resolve through the channel workflow when one is configured, and that is
     // a network call this pure function cannot make. `resolveChannel` falls back to the newest
-    // prerelease, which is the same fallback the live routes use when no workflow is set.
-    const resolved = sel ? resolveChannel(sel, published) : null;
+    // prerelease candidate, which is the same fallback the live routes use when no workflow is
+    // set — and the reason `floorChannelOf` refuses to floor `beta` when one IS set.
+    const offered = sel
+      ? resolveChannel(sel, published, undefined, candidates)
+      : null;
+    const floorName = sel ? floorChannelOf(sel, cfg) : null;
+    const floor = floorName
+      ? floors.find((f) => f.channel === floorName)
+      : undefined;
+    // R6-10. The sync read up to 1,000 releases, so a floor release that is not among them is
+    // gone: the channel resolves to NOTHING rather than to the older release still listed. The
+    // live route makes the same call (with a tag lookup, since it reads fewer pages), and
+    // `checkReleaseHealth` names the floor so an operator can lower it deliberately.
+    const regressed = floor ? isBelowFloor(offered, floor) : false;
+    const resolved = regressed ? null : offered;
+    if (floorName && resolved) {
+      const stmt = floorStatement(product, floorName, resolved, floor, now);
+      if (stmt) floorStmts.push(stmt);
+    }
     channels.push(
       stmtUpsertChannel({
         product,
@@ -414,16 +526,22 @@ export function releaseStoreStatements(
         product,
         subject_kind: "channel",
         subject_id: channel,
-        status: resolved ? "healthy" : "unknown",
+        status: regressed ? "blocked" : resolved ? "healthy" : "unknown",
         checked_at: now,
-        details_json: resolved
-          ? JSON.stringify({ releaseId: resolved.tag_name })
-          : null,
+        details_json: regressed
+          ? JSON.stringify({
+              regressed: true,
+              floor: { version: floor?.version, releaseId: floor?.release_id },
+              offered: offered ? offered.tag_name : null,
+            })
+          : resolved
+            ? JSON.stringify({ releaseId: resolved.tag_name })
+            : null,
       }),
     );
   }
 
-  return [...metadata, ...artifacts, ...channels, ...health];
+  return [...metadata, ...artifacts, ...channels, ...floorStmts, ...health];
 }
 
 function artifactRow(
@@ -462,7 +580,7 @@ function artifactRow(
 }
 
 /** The channels a product declares: the two built-ins plus its manual rules. */
-function channelNames(cfg: ReleaseConfigRow): string[] {
+export function channelNames(cfg: ReleaseConfigRow): string[] {
   const manual: ManualChannel[] = parseManualChannels(cfg.manual_channels_json);
   return ["stable", "beta", ...manual.map((c) => c.name)];
 }

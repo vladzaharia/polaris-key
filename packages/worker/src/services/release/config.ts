@@ -28,6 +28,10 @@ export interface ReleaseConfigRow {
   artifact_policy_json: string | null;
   metadata_access?: string | null;
   artifacts_access?: string | null;
+  /** `release.stableTagPattern` (0023). NULL ⇒ `DEFAULT_STABLE_TAG_PATTERN`. */
+  stable_tag_pattern?: string | null;
+  /** `release.ignoreTags` as a JSON array (0023). NULL ⇒ none. */
+  ignore_tags_json?: string | null;
 }
 
 /** A release config that has the GitHub coordinates needed to talk to the API. */
