@@ -35,6 +35,14 @@ and what binary it installs next.
 | A8  | **Service availability**                                          | Worker, D1, KV, DO                                              | A licensing outage can block paying customers from software they already bought.                                           |
 | A9  | **The ability to recover**                                        | Rotation and revocation machinery                               | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.      |
 
+**A5 is scoped by usage.** Every product secret carries a usage — general (stored `NULL`) or
+`edge-mint` — and `openProductSecret` opens a secret only for the usage its caller requires: the
+edge-mint route asks for `edge-mint`, the OIDC client-secret path for general, and a mismatch
+reads as a missing secret (the value is never unsealed). The usage is written **only** by the admin
+API (`PUT …/secrets/<name>` with `"usage"`), audited as `secret.usage`, and never by a `.pkey/`
+manifest. The usage is not yet bound into the AEAD associated data; that is stronger but needs
+every secret re-sealed, and is deferred to the outlet-credential work (P5-01).
+
 ## 3. Trust boundaries
 
 ```
@@ -69,7 +77,11 @@ Any feature whose security depends on the client _refusing_ to do something is n
   JWS is verified once on fetch, then discarded; the decoded doc is reloaded with a bare
   `JSON.parse`. Worse, the cache can supply `trustedKeys` that _override pinned keys_.
 - **A linked GitHub repo is a control-plane input, not just a data source.** `.pkey/` manifests
-  rewrite tiers, OIDC issuer, artifact policy, and admin group on resync.
+  rewrite tiers, OIDC issuer, artifact policy, and admin group on resync. Edge-mint recipes are
+  the exception that is held back: a recipe from `.pkey/` is **inert until an operator approves
+  it** in the exact form it will run (`edge_mint_approvals`), and any push that changes a
+  security-relevant field makes it inert again. A repo writer can name a secret in a recipe but
+  cannot make that secret signable, nor make an unapproved recipe mint.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -90,16 +102,16 @@ Any feature whose security depends on the client _refusing_ to do something is n
 These deserve their own section because each is treated as trusted somewhere in the code while
 originating outside the trust boundary.
 
-| Input                   | Trusted for                                                   | Actual origin        | Control                                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC `groups`           | **Platform admin authority**                                  | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.          |
-| OIDC `sub`              | License identity                                              | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license. |
-| OIDC `email`            | Portal license linking, cross-product                         | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.            |
-| `.pkey/` manifest       | Tiers, OIDC issuer, artifact policy, admin group, binary name | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy.                                                 |
-| `X-PKey-Version` header | Version and channel gating                                    | The client           | `0.0.0-dev` bypasses all of it.                                                                                                           |
-| `X-PKey-Device` header  | Device identity                                               | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                   |
-| Fingerprint components  | Seat/hardware binding                                         | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                             |
-| Cached `trustedKeys`    | **Signature verification**                                    | A user-writable file | Overrides pinned keys.                                                                                                                    |
+| Input                   | Trusted for                                                   | Actual origin        | Control                                                                                                                                                                                                                                          |
+| ----------------------- | ------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| OIDC `groups`           | **Platform admin authority**                                  | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                 |
+| OIDC `sub`              | License identity                                              | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                        |
+| OIDC `email`            | Portal license linking, cross-product                         | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                   |
+| `.pkey/` manifest       | Tiers, OIDC issuer, artifact policy, admin group, binary name | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. |
+| `X-PKey-Version` header | Version and channel gating                                    | The client           | `0.0.0-dev` bypasses all of it.                                                                                                                                                                                                                  |
+| `X-PKey-Device` header  | Device identity                                               | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                          |
+| Fingerprint components  | Seat/hardware binding                                         | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                    |
+| Cached `trustedKeys`    | **Signature verification**                                    | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                           |
 
 ## 6. What the licensing enforcement actually promises
 
@@ -123,7 +135,14 @@ defeat it.
 **Bounding the damage** is the achievable goal, and it rests on three properties — one of which
 currently holds:
 
-1. ✅ Secrets and minted tokens require a live server decision. **Holds.**
+1. ✅ Secrets and minted tokens require a live server decision. **Holds.** For an edge-mint token
+   that decision has two operator-held conditions besides the device token (and a usable licence
+   when License is on): the recipe's signing secret is marked usage `edge-mint`, and an approval
+   equal to the current recipe column for column exists. Neither can be set from a `.pkey/`
+   manifest; failing the first is `500 misconfigured`, failing the second is the same `404` as an
+   unknown recipe. Under open registration an approval requires an explicit, audited
+   acknowledgement that the token is publicly mintable, and every device is capped at 30 mints a
+   minute beside the per-IP budget.
 2. ❌ A tampered cache should not be able to change _which keys verify signatures_. **Does not hold**
    — the cache overrides pinned keys.
 3. ❌ A compromised signing key should be revocable. **Does not hold** — client trust sets only grow
@@ -180,5 +199,7 @@ operator; and denial of service originating from Cloudflare's own network contro
 Revisit this document when any of the following changes: a new tenant that is not first-party is
 onboarded; the portal gains write capability beyond device disconnect and key claim; a second
 release channel or artifact type is added; the admin authorization model changes; the wire contract
-version increments; or any new field is added to `AdminSession` or `PortalSession` (see the
-domain-separation note in the audit report — the two realms share HMAC key material by default).
+version increments; any new field is added to `AdminSession` or `PortalSession` (see the
+domain-separation note in the audit report — the two realms share HMAC key material by default);
+or a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
+and that no manifest can grant it).

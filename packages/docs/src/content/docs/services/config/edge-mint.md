@@ -1,6 +1,6 @@
 ---
 title: "Edge-mint"
-description: "Minting short-lived third-party tokens from a sealed product secret: recipes, claims templates, and the confused-deputy guard."
+description: "Minting short-lived third-party tokens from a sealed product secret: recipes, operator approval, claims templates, and the confused-deputy guard."
 sidebar:
   order: 6
 ---
@@ -28,10 +28,10 @@ routes.
 | `audience`         | Optional, trusted `aud` — server/recipe-controlled, never settable from the template.                                                            |
 | `authPageTemplate` | Optional operator HTML served verbatim at the `/auth` route.                                                                                     |
 
-Authored via `.pkey/release`'s `edgeMint[]` array at manifest ingest, or directly in admin.
-`signingKeySecret` names a row the operator still has to configure in admin's product secrets —
-declaring the recipe and supplying its key material are two separate steps, and the product's
-setup view lists which required secrets remain unconfigured.
+Authored via the `.pkey/` manifest's `edgeMint[]` array at link and resync. `signingKeySecret`
+names a row the operator still has to configure in admin's product secrets — declaring the
+recipe and supplying its key material are two separate steps, and the product's setup view lists
+which required secrets remain unconfigured.
 
 A worked recipe, in the shape of `.pkey/release`'s `edgeMint[]` entry:
 
@@ -50,6 +50,70 @@ A device with a usable license calling `POST /djdl/config/mint/musickit/token` g
 whose decoded payload is the template's `iss` plus the server-stamped `iat`/`exp` — never a
 `MUSICKIT_PRIVATE_KEY` value anywhere in the response.
 
+## Two operator conditions
+
+A recipe is **repo-authored**: anyone who can push to the linked repo can write one. On its own,
+then, it must not be enough to mint — otherwise a repo writer, or a mistaken recipe, could turn
+any PEM-shaped product secret into a token mint that every device of the product can reach
+(under open registration, anyone). So the token route signs only when two further conditions hold,
+and neither can be set from a manifest:
+
+1. **The signing secret is marked `edge-mint`.** Every product secret has a _usage_: general (the
+   default — an OIDC client secret, anything else) or `edge-mint`. The usage is set only by an
+   operator, through the console's Secrets view or
+   `PUT /manage/api/products/<slug>/secrets/<name>` with `"usage": "edge-mint"`. A recipe naming
+   a general secret reads exactly as if the secret were missing: `500 misconfigured`, and nothing
+   is signed. Conversely the OIDC client-secret path asks for a general secret, so an edge-mint key
+   is never usable as one.
+2. **The recipe is approved in the exact form it will run.** An operator's approval stores the
+   recipe's security-relevant fields — `alg`, `signingKeySecret`, `kid`, `claimsTemplate`,
+   `ttlSeconds` and `audience` — and the route mints only while the current recipe equals that
+   approval column for column. A push that changes any of those fields makes the recipe inert
+   until it is approved again; an unchanged resync keeps it approved; a resync that drops the
+   recipe id deletes its approval, so re-adding the id later starts pending. `authPageTemplate` is
+   not part of the approval: it does not change what is signed, and the `/auth` page ships its
+   own script-free policy.
+
+An unapproved (or changed) recipe answers **exactly** like an unknown one — `404 not_found` — so
+the device-facing contract is unchanged: 404 means "not available here".
+
+### Approving a recipe
+
+The console's **Secrets** view has an _Edge-mint recipes_ card listing each recipe as
+`approved`, `pending` or `changed` (with the approved value beside each changed field), its signing
+secret's usage, and the product's effective registration policy. Behind it is Config's admin API:
+
+| Endpoint                                                    | Does                                                                                                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /manage/api/products/<slug>/config/mint`               | `{ registration, recipes[] }` — each recipe's fields, `status`, `secretUsage`, the stored `approval` (or `null`) and `changedFields`. |
+| `POST /manage/api/products/<slug>/config/mint/<id>/approve` | Approves. The body **echoes** the recipe's fields as the operator saw them (see below).                                               |
+| `POST /manage/api/products/<slug>/config/mint/<id>/revoke`  | Drops the approval; the recipe answers `404` again.                                                                                   |
+
+The approve body carries `alg`, `signingKeySecret`, `kid`, `claimsTemplateJson` (the stored JSON
+string), `ttlSeconds` and `audience`, exactly as `GET` returned them. If a push landed in between
+and they no longer equal the stored recipe, the call is refused with `409` and the differing field
+names, so an operator never approves something they did not see. A field missing from the body is
+`422`.
+
+When the product's effective registration is `open`, anyone who installs it can hold a device
+token, so an approved recipe is a **public** token mint. That can be the right call, but it has to
+be a visible one: the approve body must also carry `"acknowledgeOpenRegistration": true` (else
+`422`), and the audit entry records that it was given.
+
+Every change is audited: `config.mint.approve`, `config.mint.revoke`, and `secret.usage` when a
+secret's usage changes. A re-upload of a secret that omits `usage` keeps the stored usage, so
+rotating a key never silently changes what it may sign.
+
+**Upgrading.** Migration `0025a_edge_mint_approvals.sql` backfills both conditions from what was
+deployed: every secret a recipe already named is marked `edge-mint`, and every existing recipe is
+approved as it stands (`approved_by = 'migration'`), so deployed products keep minting. That is the
+status quo, not a weakening — each of those secrets was already mintable. Review the list once
+after deploying:
+
+```sql
+SELECT product, name FROM product_secrets WHERE usage = 'edge-mint';
+```
+
 ## Signing
 
 `ES256` imports the PEM as a P-256 PKCS#8 key and signs with WebCrypto, taking the raw `r‖s`
@@ -59,8 +123,8 @@ signature JWS ES256 expects. `RS256` accepts either PKCS#1 (`BEGIN RSA PRIVATE K
 `@polaris-key/jws`'s own compact-JWS signer.
 
 `signingKeySecret` is opened through the same KEK-envelope machinery as the product's Ed25519
-signing key and its OIDC client secret. Missing, or present but unopenable, is `500 misconfigured`
-— the route never mints on a guess.
+signing key and its OIDC client secret, and only when its usage is `edge-mint`. Missing, marked
+general, or present but unopenable, is `500 misconfigured` — the route never mints on a guess.
 
 ## Claims: what the template can and can't set
 
@@ -94,6 +158,13 @@ Requesting `/<product>/config/mint/<id>/token`:
 3. **License-usable, but only if License is enabled.** When the product runs License, the
    device's license must also be usable (`licenseUsable`) or the request is `401`. When License
    is disabled for the product, this extra check is skipped entirely.
+4. **Per-device rate limit** — bucket `mintDevice`, keyed by the device id, 30 requests per 60
+   seconds, on top of the per-IP budget: one device behind many addresses cannot multiply its
+   allowance. Counted before the recipe lookup, so probing recipe ids spends the same budget.
+   Over budget is `429 rate_limited`.
+5. **An approved recipe** — see [Two operator conditions](#two-operator-conditions). Unknown,
+   pending, or changed since approval is `404 not_found`.
+6. **An `edge-mint` signing secret** — else `500 misconfigured`.
 
 That third step is the confused-deputy guard, and its condition is deliberately narrower than
 "always require a license". Minting a third-party credential is a stronger capability than reading
@@ -106,13 +177,13 @@ on this route's behalf before the license/config split moved the check here expl
 
 ### Responses at a glance
 
-| Status              | When                                                                             |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `200`               | Minted. `{ token, expiresAt }`.                                                  |
-| `401 unauthorized`  | Missing/invalid device token, or (License enabled) an unusable license.          |
-| `404 not_found`     | No recipe with that `id` for this product.                                       |
-| `429 rate_limited`  | Over 60 requests/60s for this client IP.                                         |
-| `500 misconfigured` | Unsupported `alg`, missing/unopenable signing key, or a corrupt claims template. |
+| Status              | When                                                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `200`               | Minted. `{ token, expiresAt }`.                                                                                       |
+| `401 unauthorized`  | Missing/invalid device token, or (License enabled) an unusable license.                                               |
+| `404 not_found`     | No recipe with that `id` for this product, or one not approved as it now stands.                                      |
+| `429 rate_limited`  | Over 60 requests/60s for this client IP, or over 30/60s for this device.                                              |
+| `500 misconfigured` | Unsupported `alg`, a signing key that is missing, unopenable or not marked `edge-mint`, or a corrupt claims template. |
 
 A success is `200`:
 
@@ -136,7 +207,9 @@ responses carry `cache-control: no-store`.
 ## What discovery publishes
 
 `/<product>/.well-known/polaris.json`'s `services.config.mint` carries one boolean —
-`available` — never the recipe id list and never per-recipe URLs. A client that needs a specific
+`available` — never the recipe id list and never per-recipe URLs. It is `true` only when at least
+one recipe is **approved** as it stands: a product whose every recipe is pending or changed says
+`false`, because there is nothing a client could mint. A client that needs a specific
 recipe already learned its id from the catalog entry whose `delivery` is `edgeMint`; publishing
 the inventory to an anonymous caller would enumerate a product's third-party integrations for
 nothing.
@@ -148,6 +221,8 @@ nothing.
 - [The config document](/docs/services/config/document/) — the plain device-token auth this
   route's guard is stricter than.
 - [Public route table](/docs/reference/routes/) — every route with its owning service.
+- [Secrets and keys](/docs/admin/secrets-and-keys/) — setting a secret's usage in the console.
 - `packages/worker/test/edgeMint.test.ts` — pins the confused-deputy guard, the reserved-claims
-  strip, and the fail-closed `misconfigured` responses for a bad alg, a missing key, and a corrupt
-  claims template.
+  strip, the fail-closed `misconfigured` responses for a bad alg, a missing key, a general-usage
+  key and a corrupt claims template, recipe approval, the per-device budget and the migration
+  backfill; `test/linkRepo.test.ts` pins approvals across link and resync.

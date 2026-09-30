@@ -124,6 +124,13 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
       release baseline, profiles, tiers, provisioning, edge-mint recipes.
 - [ ] Admin-set **values and management states** (per profile/tier/license/device) live in D1 and
       are **not** overwritten by a resync.
+- [ ] **Edge-mint recipes need operator approval.** A recipe from `.pkey/` is inert (its token
+      route answers `404`) until an operator approves it in the console's Secrets view, and it
+      signs only with a secret the operator marked usage `edge-mint`. The manifest can never set
+      either. Changing a recipe's `alg`, `signingKeySecret`, `kid`, `claimsTemplate`,
+      `ttlSeconds` or `audience` makes it inert again until it is re-approved; an unchanged
+      resync keeps it approved; dropping it deletes its approval. Tell the product owner to
+      expect a review step after any such push (docs: `services/config/edge-mint`).
 - [ ] Three blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
       `auto_issue_source`. A live console edit flips the source `manifest` → `admin`, and a
       resync then **skips** that block — a push cannot silently undo a 3am toggle. "Revert to
