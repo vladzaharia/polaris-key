@@ -30,14 +30,21 @@ describe("the service table, as the worker sees it", () => {
   it("every row has a src/services/<slug>/ directory with a descriptor", () => {
     for (const slug of SERVICE_SLUGS) {
       const index = `src/services/${slug}/index.ts`;
-      expect(
-        existsSync(join(WORKER_ROOT, "src", "services", slug)),
-        `src/services/${slug}/ is missing — tools/services.json has a "${slug}" row`,
-      ).toBe(true);
-      expect(
-        existsSync(join(WORKER_ROOT, index)),
-        `${index} is missing — the "${slug}" service needs a ServiceDescriptor there`,
-      ).toBe(true);
+      // Soft, so a brand-new row reports the directory AND the descriptor in one run.
+      expect
+        .soft(
+          existsSync(join(WORKER_ROOT, "src", "services", slug)),
+          `src/services/${slug}/ is missing — tools/services.json has a "${slug}" row`,
+        )
+        .toBe(true);
+      const hasIndex = existsSync(join(WORKER_ROOT, index));
+      expect
+        .soft(
+          hasIndex,
+          `${index} is missing — the "${slug}" service needs a ServiceDescriptor there`,
+        )
+        .toBe(true);
+      if (!hasIndex) continue;
       expect(
         read(index).includes(`slug: "${slug}"`),
         `${index} declares no ServiceDescriptor with slug: "${slug}"`,
