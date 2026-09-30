@@ -9,7 +9,14 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  exportJWK,
+  generateKeyPair,
+  importJWK,
+  type KeyLike,
+  SignJWT,
+} from "jose";
 import { makeTestDb } from "../helpers.js";
 import { KvMock, asKv } from "../kvMock.js";
 import {
@@ -40,11 +47,45 @@ import {
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
 import { open } from "../../src/keyvault.js";
-import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
+import {
+  handleMagicStart,
+  handleMagicVerify,
+  handlePortalCallback,
+  handlePortalLogin,
+} from "../../src/services/identity/portal/auth.js";
+import {
+  handleAuthCallback,
+  handleAuthDevicePoll,
+  handleAuthDeviceStart,
+  handleAuthDeviceVerify,
+  handleAuthStart,
+} from "../../src/services/identity/oidc.js";
+import { loadProduct, type Product } from "../../src/core/products.js";
 import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
 import { insertSchema, upsertDevice } from "../../src/repo.js";
 import { deactivateSchemas } from "../../src/admin/repo.js";
 import { verifyJws, signJws } from "@polaris-key/jws";
+
+// Swap ONLY jose's remote key getter (the R12-04 sign-in flows below need a test IdP); the
+// REAL jwtVerify still checks iss/aud/alg/signature/nonce. Nothing else in this file reaches a
+// remote JWKS.
+const idpKey = vi.hoisted(() => ({
+  getKey: null as null | (() => Promise<unknown>),
+}));
+vi.mock("jose", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("jose")>();
+  return {
+    ...actual,
+    createRemoteJWKSet: () => async () => {
+      if (!idpKey.getKey) throw new Error("no test IdP key installed");
+      return idpKey.getKey();
+    },
+  };
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..", "..", "..", "..");
@@ -527,16 +568,310 @@ describe("R12-03 GitHub installation token is sealed in KV", () => {
   });
 });
 
+// ── R12-04 sign-in fixtures ──────────────────────────────────────────────────────
+const SIGN_IN_SLUG = "acme";
+const SIGN_IN_ORIGIN = "https://key.plrs.im";
+const SIGN_IN_ISSUER = "https://id.example";
+const SIGN_IN_AUD = "client-acme";
+
+/** A KvMock that remembers every key name ever put, read or deleted — so a key that lived
+ *  only for part of a flow is still checked. */
+class RecordingKv extends KvMock {
+  readonly touched = new Set<string>();
+  override async get(key: string): Promise<string | null> {
+    this.touched.add(key);
+    return super.get(key);
+  }
+  override async put(
+    key: string,
+    value: string,
+    options?: { expirationTtl?: number },
+  ): Promise<void> {
+    this.touched.add(key);
+    return super.put(key, value, options);
+  }
+  override async delete(key: string): Promise<void> {
+    this.touched.add(key);
+    return super.delete(key);
+  }
+}
+
+const signInReq = (url: string, init?: RequestInit): Request =>
+  new Request(url, init) as unknown as Request;
+
+/** A product with a custom OIDC provider whose `family` group grants the `pro` tier, plus a
+ *  test IdP signing key installed behind the jose shim. */
+async function signInFixture(
+  env: Env,
+): Promise<{ db: Db; product: Product; priv: KeyLike }> {
+  const db: Db = makeTestDb();
+  await seedProduct(db, SIGN_IN_SLUG);
+  await db.run(
+    `INSERT INTO oidc_config (product, provider, issuer, client_id, client_secret_secret,
+       redirect_uris_json, group_role_map_json) VALUES (?,?,?,?,?,?,?)`,
+    SIGN_IN_SLUG,
+    "custom",
+    SIGN_IN_ISSUER,
+    SIGN_IN_AUD,
+    null,
+    JSON.stringify([
+      `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/callback`,
+    ]),
+    JSON.stringify({ family: { role: "user", tier: "pro" } }),
+  );
+  await db.run(
+    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days,
+       policy_device_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)`,
+    SIGN_IN_SLUG,
+    "pro",
+    "Pro",
+    null,
+    365,
+    50,
+    null,
+    NOW,
+  );
+  const product = (await loadProduct(env, db, SIGN_IN_SLUG))!;
+  const pair = await generateKeyPair("ES256", { extractable: true });
+  const pub = await importJWK(
+    { ...(await exportJWK(pair.publicKey)), alg: "ES256", kid: "r12-idp" },
+    "ES256",
+  );
+  idpKey.getKey = async () => pub;
+  return { db, product, priv: pair.privateKey };
+}
+
+function signInIdToken(
+  priv: KeyLike,
+  claims: Record<string, unknown>,
+): Promise<string> {
+  return new SignJWT({ groups: ["family"], ...claims })
+    .setProtectedHeader({ alg: "ES256", kid: "r12-idp" })
+    .setIssuer(SIGN_IN_ISSUER)
+    .setAudience(SIGN_IN_AUD)
+    .setIssuedAt()
+    .setExpirationTime("1h")
+    .sign(priv);
+}
+
+/** Route the IdP token endpoint to a canned id_token. */
+function installIdpFetch(idToken: string): void {
+  vi.spyOn(globalThis, "fetch").mockImplementation(
+    async (input: RequestInfo | URL) => {
+      const u =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      if (u.includes("/api/oidc/token")) {
+        return new Response(JSON.stringify({ id_token: idToken }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${u}`);
+    },
+  );
+}
+
 // ───────────────────────────────────────────────────────────────────────────────
 // R12-04 — credentials used verbatim as KV KEY NAMES (magic link, OIDC state, device code).
 // ───────────────────────────────────────────────────────────────────────────────
 describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump", () => {
-  it("CONFIRMED: the magic-link token IS the KV key and the victim email is the value", async () => {
-    const kv = new KvMock();
-    const db: Db = makeTestDb();
-    const env = adminEnv(kv, ["acme"]);
+  // FIXED (R12-04): every sign-in credential that addresses a HOT record (product OIDC
+  // `state`, device code, portal OIDC `state`, magic-link token) is now keyed by
+  // `hashKey(credential, KEY_HASH_PEPPER)`, as the admin flow key already was. Each flow below
+  // is driven end to end through the real handlers on a recording KV, and EVERY key name the
+  // worker touched (put, get or delete, including keys deleted before the flow ended) is
+  // checked against the credentials that flow handed out.
+  const PEPPER = "r12-04-test-pepper";
+
+  function signInEnv(kv: KvMock): Env {
+    const env = adminEnv(kv, [SIGN_IN_SLUG]);
+    env.KEY_HASH_PEPPER = PEPPER;
+    env.PORTAL_SESSION_SECRET = "r12-portal-session-secret";
     env.PORTAL_EMAIL_FROM = "Polaris Key <noreply@plrs.im>";
-    env.EMAIL = { send: async (): Promise<void> => undefined } as never;
+    env.PLATFORM_OIDC_ISSUER = SIGN_IN_ISSUER;
+    env.PLATFORM_OIDC_CLIENT_ID = SIGN_IN_AUD;
+    return env;
+  }
+
+  /** Assert no touched key name contains any of the given credentials. */
+  function expectNoCredentialInKeys(
+    kv: RecordingKv,
+    credentials: Record<string, string>,
+  ): void {
+    expect(kv.touched.size).toBeGreaterThan(0);
+    for (const key of kv.touched) {
+      for (const [name, value] of Object.entries(credentials)) {
+        expect(value.length, `${name} is empty`).toBeGreaterThan(0);
+        expect(key, `${name} appears in KV key ${key}`).not.toContain(value);
+      }
+    }
+  }
+
+  it("FIXED: a product browser sign-in never writes its OIDC state into a KV key name", async () => {
+    const kv = new RecordingKv();
+    const env = signInEnv(kv);
+    const { db, product, priv } = await signInFixture(env);
+
+    const start = await handleAuthStart(
+      signInReq(`${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/start`),
+      env,
+      db,
+      product,
+    );
+    expect(start.status).toBe(302);
+    const authorize = new URL(start.headers.get("location")!);
+    const state = authorize.searchParams.get("state")!;
+    const nonce = authorize.searchParams.get("nonce")!;
+    expect(kv.keys()).toContain(
+      `p:${SIGN_IN_SLUG}:flow:${await hashKey(state, PEPPER)}`,
+    );
+
+    installIdpFetch(await signInIdToken(priv, { sub: "r12-user", nonce }));
+    const callback = await handleAuthCallback(
+      signInReq(
+        `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/callback?code=c&state=${state}`,
+      ),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(callback.status).toBe(200);
+
+    expectNoCredentialInKeys(kv, { state, nonce });
+  });
+
+  it("FIXED: a device-code sign-in never writes its device code or state into a KV key name", async () => {
+    const kv = new RecordingKv();
+    const env = signInEnv(kv);
+    const { db, product, priv } = await signInFixture(env);
+    const deviceId = "r12-device";
+
+    const start = await handleAuthDeviceStart(
+      signInReq(
+        `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/device/start`,
+        {
+          method: "POST",
+          body: JSON.stringify({ deviceId }),
+        },
+      ),
+      env,
+      db,
+      product,
+    );
+    expect(start.status).toBe(200);
+    const { deviceCode, userCode } = (await start.json()) as {
+      deviceCode: string;
+      userCode: string;
+    };
+    expect(kv.keys()).toContain(
+      `p:${SIGN_IN_SLUG}:device-flow:${await hashKey(deviceCode, PEPPER)}`,
+    );
+
+    // Confirm the way the rendered page does: GET mints the CSRF token, POST sends it back.
+    const verifyUrl = `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}`;
+    const page = await handleAuthDeviceVerify(
+      signInReq(verifyUrl),
+      env,
+      product,
+    );
+    expect(page.status).toBe(200);
+    const csrf = (await page.text()).match(/name="csrf" value="([^"]+)"/)![1]!;
+    const confirmed = await handleAuthDeviceVerify(
+      signInReq(verifyUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          origin: SIGN_IN_ORIGIN,
+        },
+        body: new URLSearchParams({ csrf }).toString(),
+      }),
+      env,
+      product,
+    );
+    expect(confirmed.status).toBe(303);
+    const authorize = new URL(confirmed.headers.get("location")!);
+    const state = authorize.searchParams.get("state")!;
+    const nonce = authorize.searchParams.get("nonce")!;
+
+    installIdpFetch(
+      await signInIdToken(priv, { sub: "r12-device-user", nonce }),
+    );
+    const callback = await handleAuthCallback(
+      signInReq(
+        `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/callback?code=c&state=${state}`,
+      ),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(callback.status).toBe(200);
+
+    const poll = await handleAuthDevicePoll(
+      signInReq(`${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/device/poll`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceCode, deviceId }),
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(((await poll.json()) as { status: string }).status).toBe("ready");
+
+    expectNoCredentialInKeys(kv, { deviceCode, state, nonce, csrf, userCode });
+  });
+
+  it("FIXED: a portal OIDC sign-in never writes its state into a KV key name", async () => {
+    const kv = new RecordingKv();
+    const env = signInEnv(kv);
+    const { db, priv } = await signInFixture(env);
+
+    const login = await handlePortalLogin(
+      signInReq(`${SIGN_IN_ORIGIN}/login`),
+      env,
+      db,
+    );
+    expect(login.status).toBe(302);
+    const authorize = new URL(login.headers.get("location")!);
+    const state = authorize.searchParams.get("state")!;
+    const nonce = authorize.searchParams.get("nonce")!;
+
+    installIdpFetch(
+      await signInIdToken(priv, {
+        sub: "r12-portal-user",
+        email: "portal-user@example.com",
+        email_verified: true,
+        nonce,
+      }),
+    );
+    const callback = await handlePortalCallback(
+      signInReq(`${SIGN_IN_ORIGIN}/callback?code=c&state=${state}`),
+      env,
+      db,
+      NOW,
+    );
+    expect(callback.status).toBe(302);
+
+    expectNoCredentialInKeys(kv, { state, nonce });
+  });
+
+  it("FIXED: the magic-link token is not a KV key name (the value still names the recipient)", async () => {
+    const kv = new RecordingKv();
+    const db: Db = makeTestDb();
+    const env = signInEnv(kv);
+    const sent: string[] = [];
+    env.EMAIL = {
+      send: async (message: { text: string }): Promise<void> => {
+        sent.push(message.text);
+      },
+    } as never;
     await seedProduct(db, "acme");
     await upsertPortalProductSettings(
       db,
@@ -556,16 +891,28 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     const res = await handleMagicStart(req, env, db);
     expect(res.status).toBe(200);
 
-    const keys = kv.keys().filter((k) => k.startsWith("portal:magic:"));
-    expect(keys).toHaveLength(1);
-
-    // The key name IS the bearer credential — no hash, no pepper.
-    const token = keys[0]!.slice("portal:magic:".length);
+    // The token now reaches only the emailed link.
+    const link = /https:\/\/\S+/.exec(sent[0] ?? "")?.[0];
+    const token = link ? new URL(link).searchParams.get("token") : null;
     expect(token).toMatch(/^magic_[A-Za-z0-9_-]+$/);
 
-    // ...and the value names the victim.
-    const value = await asKv(kv).get(keys[0]!);
-    expect(value).toContain("victim@example.com");
+    const keys = kv.keys().filter((k) => k.startsWith("portal:magic:"));
+    expect(keys).toEqual([`portal:magic:${await hashKey(token!, PEPPER)}`]);
+    // The record shape is unchanged (out of scope for R12-04): the value still names the
+    // recipient, but a listing no longer yields a token that opens it.
+    expect(await asKv(kv).get(keys[0]!)).toContain("victim@example.com");
+
+    const verified = await handleMagicVerify(
+      new Request(
+        `https://portal.plrs.im/magic/verify?token=${encodeURIComponent(token!)}`,
+      ) as unknown as Request,
+      env,
+      db,
+      NOW,
+    );
+    expect(verified.status).toBe(302);
+
+    expectNoCredentialInKeys(kv, { token: token! });
   });
 
   it("CONFIRMED: the magic token carries only 72 bits of entropy (randomId = 9 bytes)", () => {

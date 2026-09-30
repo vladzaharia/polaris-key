@@ -35,6 +35,8 @@ import {
   serializeServices,
 } from "../../src/core/services.js";
 import {
+  deviceFlowKey,
+  flowKey,
   handleAuthCallback,
   handleAuthStart,
 } from "../../src/services/identity/oidc.js";
@@ -613,7 +615,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
 
     // A flow record is all the attacker needs; GET /djdl/auth/start hands them one.
     await env.HOT.put(
-      `p:${SLUG}:flow:ATTACKER_STATE`,
+      await flowKey(env, SLUG, "ATTACKER_STATE"),
       JSON.stringify({
         verifier: "v",
         nonce: "n",
@@ -652,7 +654,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     await seedCustomOidc(db, "http://169.254.169.254/latest/meta-data");
     const product = (await loadProduct(env, db, SLUG))!;
     await env.HOT.put(
-      `p:${SLUG}:flow:S`,
+      await flowKey(env, SLUG, "S"),
       JSON.stringify({
         verifier: "v",
         nonce: "n",
@@ -688,7 +690,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       await seedCustomOidc(db, "https://exfil.attacker.example");
       const product = (await loadProduct(env, db, SLUG))!;
       await env.HOT.put(
-        `p:${SLUG}:flow:S3`,
+        await flowKey(env, SLUG, "S3"),
         JSON.stringify({
           verifier: "v",
           nonce: "n",
@@ -723,7 +725,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     });
     const product = (await loadProduct(env, db, SLUG))!;
     await env.HOT.put(
-      `p:${SLUG}:flow:S2`,
+      await flowKey(env, SLUG, "S2"),
       JSON.stringify({
         verifier: "v",
         nonce: "n",
@@ -1505,7 +1507,10 @@ describe("R9-10 KV key construction", () => {
     const product = (await loadProduct(env, db, SLUG))!;
 
     // Plant a device-flow record and try to reach it through the plain flow reader.
-    await kv.put(`p:${SLUG}:device-flow:VICTIM`, JSON.stringify({ x: 1 }));
+    await kv.put(
+      await deviceFlowKey(env, SLUG, "VICTIM"),
+      JSON.stringify({ x: 1 }),
+    );
     await kv.put(`p:${SLUG}:token:VICTIMHASH`, JSON.stringify({ x: 1 }));
 
     // Every attacker-controlled component is the LAST segment of its key, and no
@@ -1526,7 +1531,9 @@ describe("R9-10 KV key construction", () => {
       );
       expect(res.status).toBe(400); // "unknown state" — never resolves cross-namespace
     }
-    expect(await kv.get(`p:${SLUG}:device-flow:VICTIM`)).not.toBeNull();
+    expect(
+      await kv.get(await deviceFlowKey(env, SLUG, "VICTIM")),
+    ).not.toBeNull();
   });
 
   // FIXED (R5-03), now on both halves. `getInstallationToken` derives the cache key itself
@@ -1652,7 +1659,7 @@ describe("R9-12 escapeHtml coverage", () => {
     const env = makeEnv(kv, [SLUG]);
     await seedProduct(db, SLUG);
     await kv.put(
-      `p:${SLUG}:device-flow:DC`,
+      await deviceFlowKey(env, SLUG, "DC"),
       JSON.stringify({
         state: "s",
         deviceId: "dev-1",
