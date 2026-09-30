@@ -30,6 +30,13 @@ export interface ProductRow {
   // `core/services.ts`; NULL reads back as the defaults (license + config).
   services_json?: string | null;
   services_source?: string | null;
+  // Ownership of `compat_min`/`compat_max` (migrations/0022_a), same rules once more: NULL or
+  // 'manifest' lets a resync rewrite the window, 'admin' (set by `update/settings`) makes it skip.
+  compat_source?: string | null;
+  // The per-product CORS allowlist (migrations/0024): a JSON array of exact origins from the
+  // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
+  // resync rewrites it. NULL reads back as "no origin allowed". Parsed by `core/cors.ts`.
+  web_origins_json?: string | null;
   created_at: number;
   modified_at: number;
 }
@@ -591,13 +598,17 @@ export interface ReleaseConfigInput {
   artifactPolicyJson?: string | null;
   metadataAccess?: string;
   artifactsAccess?: string;
+  /** Owner of the two access modes (0022_b). A freshly linked row is manifest-owned. */
+  accessSource?: "manifest" | "admin" | null;
+  /** The operator-only artifact policy (0022_c). No manifest path supplies it; link leaves it NULL. */
+  operatorPolicyJson?: string | null;
 }
 export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
   return {
     sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
             manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json,
-            metadata_access, artifacts_access)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
+            metadata_access, artifacts_access, access_source, operator_policy_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       r.product,
       r.ghOwner,
@@ -612,6 +623,8 @@ export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
       r.artifactPolicyJson ?? null,
       r.metadataAccess ?? "public",
       r.artifactsAccess ?? "public",
+      r.accessSource ?? null,
+      r.operatorPolicyJson ?? null,
     ],
   };
 }
@@ -657,8 +670,8 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
   return {
     sql: `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
             default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
-            services_json, services_source, created_at, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            services_json, services_source, compat_source, web_origins_json, created_at, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.slug,
       row.name,
@@ -673,6 +686,8 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       row.release_source,
       row.services_json ?? null,
       row.services_source ?? null,
+      row.compat_source ?? null,
+      row.web_origins_json ?? null,
       row.created_at,
       row.modified_at,
     ],

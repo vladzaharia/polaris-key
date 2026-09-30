@@ -242,6 +242,12 @@ export interface ParsedManifest {
   /** `devices.registration` — who may register a device (§2.3). Undefined = undeclared; the
    *  default is derived from the enabled services at the point of use, not baked in here. */
   registration?: RegistrationPolicy;
+  /**
+   * `web.origins` — the exact browser origins allowed to read this product's device-facing
+   * responses through CORS (P0-05). Always present; `[]` when undeclared, which means no
+   * origin gets any `Access-Control-*` header. Persisted to `products.web_origins_json`.
+   */
+  webOrigins: string[];
 }
 
 export type ParseManifestResult =
@@ -359,6 +365,23 @@ export function compileManualChannelRegex(source: string): RegExp | null {
 }
 /** `provisioning[].allowedHosts` entries — a host, optionally with a port. */
 const HOST_RE = /^[A-Za-z0-9._-]{1,253}(?::[0-9]{1,5})?$/;
+/**
+ * `web.origins` (P0-05) — the browser origins allowed to READ this product's device-facing
+ * responses through CORS. Each entry is compared byte-for-byte against a request's `Origin`
+ * header, so the manifest must spell it the way a browser serializes one: lower-case scheme and
+ * host, no default port, no trailing slash, no path. The rule is "reject, never coerce": a
+ * value that is not already in that form would silently never match, so it is refused at
+ * ingest rather than rewritten. Plain `http:` is allowed only for the two loopback hosts a
+ * local web-export test server uses; there is no wildcard form.
+ */
+export const MAX_WEB_ORIGINS = 16;
+/** `https://` + a 253-character host + `:65535`. */
+const MAX_WEB_ORIGIN_LENGTH = 267;
+/** An https origin over DNS labels (or a dotted-quad, which is digits and dots), or one of the
+ *  two loopback http origins; either may carry an explicit port. Mirrored as a `pattern` in
+ *  `schemas/v1/product.schema.json`. */
+const WEB_ORIGIN_RE =
+  /^(?:https:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*|http:\/\/(?:localhost|127\.0\.0\.1))(?::[0-9]{1,5})?$/;
 /** Any C0 control character or DEL: never legitimate in a manifest string, and the cheapest
  *  way to keep newlines out of logs, headers, and generated files. */
 const CONTROL_CHAR_RE = /[\u0000-\u001f\u007f]/;
@@ -1448,6 +1471,51 @@ export function validateManifestDocuments(
     );
   }
 
+  // `web.origins` (P0-05): the browser origins the worker answers CORS for on this product's
+  // device-facing routes. The block's SHAPE is `invalid_web_origins`; each entry's spelling is
+  // `invalid_web_origin`. A duplicate is refused too — it is harmless to the matcher, but it is
+  // always a typo'd second entry, and the schema's `uniqueItems` refuses it as well.
+  if (productRoot.web !== undefined && !isRecord(productRoot.web)) {
+    add(
+      errors,
+      "product",
+      "/web",
+      "invalid_web_origins",
+      "web must be an object.",
+    );
+  }
+  const webOrigins = asRecord(productRoot.web).origins;
+  if (webOrigins !== undefined) {
+    if (!Array.isArray(webOrigins) || webOrigins.length > MAX_WEB_ORIGINS) {
+      add(
+        errors,
+        "product",
+        "/web/origins",
+        "invalid_web_origins",
+        `web.origins must be an array of at most ${MAX_WEB_ORIGINS} origins.`,
+      );
+    } else {
+      const seen = new Set<string>();
+      for (const [i, origin] of webOrigins.entries()) {
+        const problem =
+          webOriginProblem(origin) ??
+          (seen.has(origin as string)
+            ? "must not repeat an earlier entry"
+            : null);
+        if (problem) {
+          add(
+            errors,
+            "product",
+            `/web/origins/${i}`,
+            "invalid_web_origin",
+            `web.origins entries ${problem}.`,
+          );
+        }
+        if (typeof origin === "string") seen.add(origin);
+      }
+    }
+  }
+
   return {
     ok: errors.length === 0,
     errors,
@@ -1533,6 +1601,10 @@ export function parseManifest(
     // The enablement set finally survives parsing. `validation` above already ran the
     // coherence rules over the same list, so this cannot carry an inapplicable combination.
     services: servicesFromModules(validation.enabledModules),
+    // Validated above, so every entry is already an exact, canonical origin.
+    webOrigins: (arrayAt(asRecord(productRoot.web), "origins") ?? []).filter(
+      isString,
+    ),
   };
 
   // Validated above; carried verbatim so the derivation of the default (which depends on the
@@ -2084,6 +2156,49 @@ function isUrl(v: unknown): v is string {
   } catch {
     return false;
   }
+}
+
+// ── Browser origins (P0-05) ──────────────────────────────────────────────────
+
+/**
+ * Why is this `web.origins` entry unacceptable? Returns a human-readable reason, or `null` when
+ * the value is an exact origin the worker may echo in `Access-Control-Allow-Origin`.
+ *
+ * Two layers, both required. {@link WEB_ORIGIN_RE} bounds the characters (and is what the JSON
+ * Schema mirrors); the `URL` round trip then proves the value is already the browser's own
+ * serialization — `https://a.example:443` and `https://a.example:0443` pass the pattern but
+ * serialize to `https://a.example`, so a browser would never send them and they are refused.
+ * A port above 65535 fails the parse outright.
+ */
+export function webOriginProblem(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0) {
+    return "must be an origin string such as https://app.example.com";
+  }
+  if (value.length > MAX_WEB_ORIGIN_LENGTH) {
+    return `must be at most ${MAX_WEB_ORIGIN_LENGTH} characters`;
+  }
+  if (!WEB_ORIGIN_RE.test(value)) {
+    return (
+      "must be a lower-case https://<host>[:port] origin with no path, query, fragment, " +
+      "credentials or wildcard (http is accepted only for localhost and 127.0.0.1)"
+    );
+  }
+  let origin: string;
+  try {
+    origin = new URL(value).origin;
+  } catch {
+    return "must be a parseable origin with a port no greater than 65535";
+  }
+  if (origin !== value) {
+    return `must be written exactly as a browser sends it (${origin})`;
+  }
+  return null;
+}
+
+/** Convenience predicate over {@link webOriginProblem}; the worker re-checks stored rows with
+ *  it so a row written by any path other than manifest ingest cannot widen the allowlist. */
+export function isWebOrigin(value: unknown): value is string {
+  return webOriginProblem(value) === null;
 }
 
 // ── Outbound-URL safety (R9-01 / R9-02) ──────────────────────────────────────
