@@ -224,8 +224,8 @@ published command, so it moved to `/<p>/release/changelog` outright. Both appcas
 before per-arch support existed, which is exactly why an SDK sends the parameter explicitly
 rather than relying on the default.
 
-On macOS, `PolarisKeyUpdate` is the Swift target that wires **Sparkle ≥ 2.6.4** (the
-CVE-2025-0509 floor) to the product's feed. It is macOS-only in two places at once — the Sparkle
+On macOS, `PolarisKeyUpdate` is the Swift target that wires **Sparkle ≥ 2.9.6** (the security
+floor: delta-patch symlink and privilege-escalation fixes) to the product's feed. It is macOS-only in two places at once — the Sparkle
 product dependency carries `.when(platforms: [.macOS])` and every Sparkle-touching source file is
 `#if os(macOS)`-guarded — because either alone is insufficient: an unguarded import fails to
 compile on iOS, and an unconditioned product drags a macOS XCFramework onto an iOS link line.
