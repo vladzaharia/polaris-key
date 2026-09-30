@@ -23,17 +23,18 @@ and what binary it installs next.
 
 ## 2. Assets, ranked by what their loss costs
 
-| #   | Asset                                                             | Where it lives                                                  | Loss impact                                                                                                                |
-| --- | ----------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| A1  | **`PLATFORM_KEK`**                                                | Worker secret                                                   | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9). |
-| A2  | **Per-product Ed25519 signing keys**                              | `product_keys.enc_private_json`, sealed under A1                | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.   |
-| A3  | **The release channel**                                           | GitHub App key, webhook secret, `release_config`                | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                          |
-| A4  | **`ADMIN_SESSION_SECRET`**                                        | Worker secret                                                   | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                               |
-| A5  | **Product secrets** (OIDC client secrets, edge-mint signing keys) | `product_secrets`, sealed under A1                              | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                  |
-| A6  | **Customer PII**                                                  | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                      |
-| A7  | **Licensing revenue**                                             | The whole enforcement path                                      | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                       |
-| A8  | **Service availability**                                          | Worker, D1, KV, DO                                              | A licensing outage can block paying customers from software they already bought.                                           |
-| A9  | **The ability to recover**                                        | Rotation and revocation machinery                               | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.      |
+| #   | Asset                                                             | Where it lives                                                                   | Loss impact                                                                                                                                |
+| --- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| A1  | **`PLATFORM_KEK`**                                                | Worker secret                                                                    | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                 |
+| A2  | **Per-product Ed25519 signing keys**                              | `product_keys.enc_private_json`, sealed under A1                                 | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                   |
+| A3  | **The release channel**                                           | GitHub App key, webhook secret, `release_config`                                 | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                          |
+| A4  | **`ADMIN_SESSION_SECRET`**                                        | Worker secret                                                                    | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                               |
+| A5  | **Product secrets** (OIDC client secrets, edge-mint signing keys) | `product_secrets`, sealed under A1                                               | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                  |
+| A6  | **Customer PII**                                                  | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext                  | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                      |
+| A7  | **Licensing revenue**                                             | The whole enforcement path                                                       | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                       |
+| A8  | **Service availability**                                          | Worker, D1, KV, DO                                                               | A licensing outage can block paying customers from software they already bought.                                                           |
+| A9  | **The ability to recover**                                        | Rotation and revocation machinery                                                | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                      |
+| A10 | **The blob store** (release bytes)                                | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1 | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach. |
 
 ## 3. Trust boundaries
 
@@ -45,7 +46,11 @@ and what binary it installs next.
   (SDK, fully           │    ├── D1  (relational, authoritative)    │
    attacker-controlled) │    ├── KV  (hot-path hints only)          │
                         │    ├── DO  (atomic rate limiting)         │
- browser (admin/portal)►│    └── ASSETS (SPA bundles)               │
+ browser (admin/portal)►│    ├── ASSETS (SPA bundles)               │
+                        │    └── R2  BLOBS (content-addressed bytes)│
+ downloader ───────────►│  same Worker on dl.plrs.im (bytes host:   │
+  (any client)          │    byte routes only — see below)          │
+ CI (temp creds) ──────►│  R2 staging/ only; never a locked prefix  │
                         │                                          │
  GitHub (webhooks, ────►│  secrets: PLATFORM_KEK, session secrets,  │
   repo contents,        │           GitHub App key, webhook secret  │
@@ -62,6 +67,79 @@ and what binary it installs next.
 Concretely: a bypassed client gate can fake "licensed" locally, but it cannot manufacture
 `payload.secrets` or an edge-mint token, because those only exist if the server chose to emit them.
 Any feature whose security depends on the client _refusing_ to do something is not secured.
+
+### The blob store and the bytes host (P2-01)
+
+**Asset A10.** Release bytes live in one R2 bucket per environment, content-addressed:
+`blobs/sha256/<hex>`, `bundles/sha256/<hex>`, `deltas/<from>/<to>.<method>`, the same layout
+under `gated/` for entitlement-gated content, and `staging/<product>/<ticketId>/<hex>` for CI
+uploads. Its write paths, and nothing else:
+
+1. **CI → `staging/` only**, with R2 temporary credentials scoped to that prefix (P2-02). CI can
+   never write a locked prefix.
+2. **The Worker's `BLOBS` binding → locked prefixes**, only through `core/blobs.ts`
+   `putVerified`/`promote`. The operator's account token can also write, and is out of the
+   Worker's control (as it is for D1).
+
+**Invariants** (code: `packages/worker/src/core/blobs.ts`; tests: `test/blobs.test.ts`,
+`test-workerd/blobs.test.ts`):
+
+- **Verify before lock.** A wrong object stored under a hash name would be locked in place, so
+  `promote` verifies the staged object first (R2's stored SHA-256, else a streamed re-hash via
+  `crypto.DigestStream`), pins the copy to the exact object version it verified, and writes the
+  target with R2's `sha256` put option so R2 itself refuses a mismatch. A key named by a hash
+  must be named by the expected hash. Writes are create-only (`If-None-Match: *`); the bucket
+  lock enforces the same at rest.
+- **`blob_objects` is written only after verification**; `blob_refs.storage_key` is a foreign
+  key into it, so a ref never names unverified bytes, and an object with a ref cannot be
+  deleted from D1.
+- **Every read goes through the Worker.** No R2 public domain and no `r2.dev`: only the Worker
+  sets `ETag` to the SHA-256, adds `Repr-Digest` (RFC 9530), and checks that **this** product
+  holds a ref to the key (`hasRef`) before serving it. A hash is never treated as a secret:
+  gated content is authorised per request and served `private, no-store`.
+- **Clients verify against the signed manifest, not the headers.** `Repr-Digest` and the ETag
+  help resumption; integrity rests on the hash in a signed document.
+
+**Lock duration and the GC trade-off.** `blobs/`, `bundles/`, `deltas/` and `gated/` carry an
+**age** lock of **180 days**, not an indefinite one. An indefinite lock would make it impossible
+for P4-14's collector ever to delete an unreferenced object, so storage would only grow; 180
+days is longer than any build a channel can still point at plausibly needs for rollback. The
+cost: an object older than 180 days is deletable by anyone holding account-level R2 write
+access, so the lock bounds the window in which a compromised Worker or token cannot destroy
+published bytes — it is not permanent immutability. `staging/` is unlocked with a 1-day expiry.
+
+**Boundary: the bytes host.** The same Worker answers on `dl.plrs.im` (`dl-staging`, `dl-dev`),
+named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allowlist
+(`core/bytesHost.ts` `BYTE_ROUTES`, empty until P2-05/P2b-04); `/manage`, `/docs`, the portal,
+discovery and every product route answer not-found there (`test/bytesHost.test.ts`).
+
+**Deviation, recorded: the bytes host is same-site with the console.** The design rule
+(research README §3.5, decision 4) was a separate registrable domain, because a `*.plrs.im`
+sibling is same-site with `key.plrs.im` and `SameSite` cookies then do not separate the two.
+The owner chose `dl.plrs.im` anyway. What that exposes: if anything on `dl.plrs.im` could run
+script, it could issue same-site requests to the console carrying `SameSite=Strict` cookies,
+and could try to toss `Domain=plrs.im` cookies at it. The compensations, each test-pinned:
+
+- every bytes-host response carries `X-Content-Type-Options: nosniff` and
+  `Content-Security-Policy: sandbox; default-src 'none'; frame-ancestors 'none'`, so a body a
+  browser decides to render gets an opaque origin and runs no script;
+- nothing script-executable or renderable is ever served there: a byte route's type comes from
+  an explicit inert allowlist (`BYTES_HOST_TYPES`: APK, wasm, zip, archives, installers), HTML,
+  XHTML, SVG, XML, JavaScript, JSON and `text/*` are refused, the dispatcher replaces any such
+  route answer with not-found, and `Content-Disposition` is `attachment` unless the type is
+  allowlisted and the route asks for `inline`;
+- no cookie is read or set on the host: `Cookie` is stripped before a byte route sees the
+  request and `Set-Cookie` from every response;
+- the console's session cookies are host-only: `__Host-pkey_admin` and `__Host-pkey_portal`
+  (the prefix forbids `Domain` and so cannot be shadowed by a sibling), and the per-product
+  identity cookie carries no `Domain` either; a test fails if any `Domain=` cookie attribute
+  appears in the Worker source. The browser therefore never sends a console cookie to
+  `dl.plrs.im`.
+
+Residual risk: the compensations hold only while nothing else is hosted on `dl.plrs.im` or on
+any other `plrs.im` sibling that serves attacker-influenced HTML. Hosted web builds (P6-04),
+which need HTML and script, cannot live on this host under these rules and need their own
+registrable domain.
 
 ### Boundaries that are weaker than they look
 
@@ -179,6 +257,8 @@ operator; and denial of service originating from Cloudflare's own network contro
 
 Revisit this document when any of the following changes: a new tenant that is not first-party is
 onboarded; the portal gains write capability beyond device disconnect and key claim; a second
-release channel or artifact type is added; the admin authorization model changes; the wire contract
+release channel or artifact type is added; a byte route is added to `BYTE_ROUTES`, a type to
+`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; the bucket-lock duration
+changes; the admin authorization model changes; the wire contract
 version increments; or any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default).
