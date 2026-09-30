@@ -7,6 +7,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  approveEdgeMintRecipe,
   seedProductSecret,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
@@ -1016,6 +1017,76 @@ describe("admin api", () => {
         sources: ["OIDC client secret"],
       },
     ]);
+  });
+
+  it("the setup checklist flags an edge-mint recipe awaiting approval and a secret not marked edge-mint (P0-12)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      `INSERT INTO edge_mint_config
+         (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template)
+       VALUES ('djdl','music','ES256','MUSIC_KEY',NULL,'{}',3600,NULL,NULL)`,
+    );
+    // Configured, but as a GENERAL secret: the recipe could not sign with it.
+    await seedProductSecret(db, "djdl", "MUSIC_KEY", "pem");
+    const { cookie } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    type Setup = {
+      healthy: boolean;
+      missing: string[];
+      modules: Array<{
+        id: string;
+        status: string;
+        pendingApproval?: string[];
+      }>;
+      nextActions: Array<{ id: string }>;
+    };
+    const setup = async (): Promise<Setup> => {
+      const res = await dispatch(
+        mkReq("GET", "/api/products/djdl", { cookie }),
+        env,
+        db,
+        "/api/products/djdl",
+      );
+      return ((await res.json()) as { product: { setup: Setup } }).product
+        .setup;
+    };
+
+    let s = await setup();
+    expect(s.healthy).toBe(false);
+    expect(s.missing).toContain("edge mint: MUSIC_KEY is not marked edge-mint");
+    expect(s.missing).toContain("edge mint: recipe music awaits approval");
+    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
+      status: "needs-secret",
+      pendingApproval: ["music"],
+    });
+    expect(s.nextActions.map((a) => a.id)).toEqual(
+      expect.arrayContaining(["secret-usage:MUSIC_KEY", "edge-mint:music"]),
+    );
+
+    // Marked edge-mint: only the approval is left.
+    await seedProductSecret(db, "djdl", "MUSIC_KEY", "pem", "edge-mint");
+    s = await setup();
+    expect(s.modules.find((m) => m.id === "edgeMint")?.status).toBe(
+      "needs-approval",
+    );
+    expect(s.missing).not.toContain(
+      "edge mint: MUSIC_KEY is not marked edge-mint",
+    );
+
+    // Approved: the module is configured and the checklist item is gone.
+    await approveEdgeMintRecipe(db, "djdl", "music");
+    s = await setup();
+    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
+      status: "configured",
+      pendingApproval: [],
+    });
+    expect(s.nextActions.map((a) => a.id)).not.toContain("edge-mint:music");
   });
 
   it("keys/rotate stages a new key, then break-glass activation retires the old key", async () => {

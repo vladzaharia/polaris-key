@@ -22,6 +22,7 @@ import {
   portalProductSettingsView,
 } from "../../services/identity/portal/repo.js";
 import { countKeysByLicense } from "../repo.js";
+import { APPROVAL_MATCHES_RECIPE } from "../../services/config/mint.js";
 
 interface RequiredSecretStatus {
   name: string;
@@ -39,6 +40,8 @@ interface OidcSetupRow {
 interface EdgeMintSetupRow {
   id: string;
   signing_key_secret: string | null;
+  /** P0-12: whether an operator approved this recipe as it currently stands. */
+  approval: "approved" | "pending" | "changed";
 }
 
 interface ReleaseSetupRow {
@@ -221,7 +224,13 @@ async function productSetupView(
     product,
   );
   const edgeMint = await db.all<EdgeMintSetupRow>(
-    "SELECT id, signing_key_secret FROM edge_mint_config WHERE product = ? ORDER BY id",
+    `SELECT c.id, c.signing_key_secret,
+            CASE WHEN a.id IS NULL THEN 'pending'
+                 WHEN ${APPROVAL_MATCHES_RECIPE} THEN 'approved'
+                 ELSE 'changed' END AS approval
+       FROM edge_mint_config c
+       LEFT JOIN edge_mint_approvals a ON a.product = c.product AND a.id = c.id
+      WHERE c.product = ? ORDER BY c.id`,
     product,
   );
   const release = await db.first<ReleaseSetupRow>(
@@ -232,13 +241,15 @@ async function productSetupView(
   const portalSettings = await getPortalProductSettings(db, product);
   const syncState = await getProductSyncState(db, product);
   const sync = syncStateView(syncState);
-  const configuredSecrets = new Set(
-    (
-      await db.all<{ name: string }>(
-        "SELECT name FROM product_secrets WHERE product = ?",
-        product,
-      )
-    ).map((row) => row.name),
+  const secretRows = await db.all<{ name: string; usage: string | null }>(
+    "SELECT name, usage FROM product_secrets WHERE product = ?",
+    product,
+  );
+  const configuredSecrets = new Set(secretRows.map((row) => row.name));
+  const edgeMintSecrets = new Set(
+    secretRows
+      .filter((row) => row.usage === "edge-mint")
+      .map((row) => row.name),
   );
 
   const secretSources = new Map<string, Set<string>>();
@@ -301,6 +312,29 @@ async function productSetupView(
         !configuredSecrets.has(row.signing_key_secret),
     )
     .map((row) => row.signing_key_secret as string);
+  // P0-12: the two operator-held conditions a recipe needs beyond its manifest row. A secret
+  // that is configured but not marked `edge-mint` signs nothing (500 misconfigured); a recipe
+  // that is pending or changed answers 404 until someone approves it.
+  const edgeWrongUsage = [
+    ...new Set(
+      edgeMint
+        .filter(
+          (row) =>
+            row.signing_key_secret &&
+            configuredSecrets.has(row.signing_key_secret) &&
+            !edgeMintSecrets.has(row.signing_key_secret),
+        )
+        .map((row) => row.signing_key_secret as string),
+    ),
+  ];
+  const edgeUnapproved = edgeMint
+    .filter((row) => row.approval !== "approved")
+    .map((row) => row.id);
+  const edgeProblems = [
+    ...edgeMissing,
+    ...edgeWrongUsage.map((name) => `${name} is not marked edge-mint`),
+    ...edgeUnapproved.map((id) => `recipe ${id} awaits approval`),
+  ];
   const releaseMissing = release
     ? [
         ...(release.gh_owner && release.gh_repo ? [] : ["GitHub repo"]),
@@ -373,12 +407,15 @@ async function productSetupView(
       id: "edgeMint",
       label: "Edge mint",
       status: edgeMint.length
-        ? edgeMissing.length
+        ? edgeMissing.length || edgeWrongUsage.length
           ? "needs-secret"
-          : "configured"
+          : edgeUnapproved.length
+            ? "needs-approval"
+            : "configured"
         : "not-configured",
-      configured: edgeMint.length ? edgeMissing.length === 0 : null,
-      missing: edgeMissing,
+      configured: edgeMint.length ? edgeProblems.length === 0 : null,
+      missing: edgeProblems,
+      pendingApproval: edgeUnapproved,
     },
   ];
 
@@ -387,6 +424,10 @@ async function productSetupView(
     ...missingSecrets,
     ...releaseMissing.map((item) => `release: ${item}`),
     ...syncMissing,
+    ...edgeWrongUsage.map(
+      (name) => `edge mint: ${name} is not marked edge-mint`,
+    ),
+    ...edgeUnapproved.map((id) => `edge mint: recipe ${id} awaits approval`),
   ];
   const nextActions = [
     ...missingSecrets.map((name) => ({
@@ -403,6 +444,16 @@ async function productSetupView(
             route: `#/p/${product}/settings`,
           },
         ]),
+    ...edgeWrongUsage.map((name) => ({
+      id: `secret-usage:${name}`,
+      label: `Mark secret ${name} for edge-minting`,
+      route: `#/p/${product}/secrets`,
+    })),
+    ...edgeUnapproved.map((id) => ({
+      id: `edge-mint:${id}`,
+      label: `Review and approve edge-mint recipe ${id}`,
+      route: `#/p/${product}/secrets`,
+    })),
     ...(release && releaseMissing.length > 0
       ? [
           {
