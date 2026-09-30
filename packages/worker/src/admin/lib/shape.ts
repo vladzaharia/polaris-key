@@ -23,8 +23,10 @@ import {
 } from "../../services/identity/portal/repo.js";
 import { countKeysByLicense } from "../repo.js";
 import {
-  approvalMatchesRecipe,
-  mintIsPublic,
+  approvalMismatch,
+  listEdgeMintRecipesWithApprovals,
+  mintApprovalBasis,
+  type MintPolicyProduct,
 } from "../../services/config/mint.js";
 import { parseAutoIssue } from "../../core/fingerprint.js";
 
@@ -178,10 +180,12 @@ export async function productView(
     db,
     p.slug,
     Boolean(signingPublicKey),
-    mintIsPublic({
+    {
+      slug: p.slug,
       registration: services.effectiveRegistration,
       autoIssue: parseAutoIssue(p.auto_issue_json),
-    }),
+      services: services.services,
+    },
   );
   const portalSettings = await getPortalProductSettings(db, p.slug);
   return {
@@ -226,24 +230,26 @@ async function productSetupView(
   db: Db,
   product: string,
   signingConfigured: boolean,
-  /** `mintIsPublic` of the product: an approval given while the mint was closed does not count
-   *  once it is public. */
-  publicMint: boolean,
+  /** The product policy an edge-mint approval is checked against (`approvalMismatch`): an
+   *  approval that no longer applies does not count as approved here either. */
+  mintPolicy: MintPolicyProduct,
 ): Promise<Record<string, unknown>> {
   const oidc = await db.first<OidcSetupRow>(
     "SELECT provider, issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
     product,
   );
-  const edgeMint = await db.all<EdgeMintSetupRow>(
-    `SELECT c.id, c.signing_key_secret,
-            CASE WHEN a.id IS NULL THEN 'pending'
-                 WHEN ${approvalMatchesRecipe(publicMint)} THEN 'approved'
-                 ELSE 'changed' END AS approval
-       FROM edge_mint_config c
-       LEFT JOIN edge_mint_approvals a ON a.product = c.product AND a.id = c.id
-      WHERE c.product = ? ORDER BY c.id`,
-    product,
-  );
+  const mintBasis = await mintApprovalBasis(db, mintPolicy);
+  const edgeMint: EdgeMintSetupRow[] = (
+    await listEdgeMintRecipesWithApprovals(db, product)
+  ).map(({ recipe, approval }) => ({
+    id: recipe.id,
+    signing_key_secret: recipe.signing_key_secret,
+    approval: !approval
+      ? "pending"
+      : approvalMismatch(recipe, approval, mintBasis).length === 0
+        ? "approved"
+        : "changed",
+  }));
   const release = await db.first<ReleaseSetupRow>(
     `SELECT gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub
       FROM release_config WHERE product = ?`,

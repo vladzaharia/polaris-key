@@ -15,6 +15,8 @@ import {
 } from "../src/repo.js";
 import { hashKey, mintLicenseKey } from "../src/crypto.js";
 import { seal } from "../src/keyvault.js";
+import { parseServices } from "../src/core/services.js";
+import { readIdentityIssuance } from "../src/core/identityTrust.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
 
@@ -134,8 +136,9 @@ export async function seedProductSecret(
 
 /**
  * Approve an edge-mint recipe exactly as it is currently stored — what an operator's
- * `POST …/config/mint/<id>/approve` records (P0-12). Tests that exercise SIGNING call this after
- * seeding the recipe; tests of the approval gate itself go through the admin API instead.
+ * `POST …/config/mint/<id>/approve` records (P0-12), including the product's sign-in trust as it
+ * stands now. Tests that exercise SIGNING call this after seeding the recipe; tests of the
+ * approval gate itself go through the admin API instead.
  */
 export async function approveEdgeMintRecipe(
   db: Db,
@@ -143,14 +146,28 @@ export async function approveEdgeMintRecipe(
   id: string,
   opts: { acknowledgeOpenRegistration?: boolean } = {},
 ): Promise<void> {
+  const row = await db.first<{ services_json: string | null }>(
+    "SELECT services_json FROM products WHERE slug = ?",
+    slug,
+  );
+  const identity = await readIdentityIssuance(db, {
+    slug,
+    services: parseServices(row?.services_json ?? null).services,
+  });
   await db.run(
     `INSERT OR REPLACE INTO edge_mint_approvals
        (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
-        open_registration_acknowledged, approved_at, approved_by)
+        open_registration_acknowledged, identity_enabled, oidc_provider, oidc_issuer,
+        oidc_client_id, oidc_group_role_map_json, approved_at, approved_by)
      SELECT product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds,
-            audience, ?, ?, 'test'
+            audience, ?, ?, ?, ?, ?, ?, ?, 'test'
        FROM edge_mint_config WHERE product = ? AND id = ?`,
     opts.acknowledgeOpenRegistration ? 1 : 0,
+    identity.enabled ? 1 : 0,
+    identity.provider,
+    identity.issuer,
+    identity.clientId,
+    identity.groupRoleMapJson,
     NOW,
     slug,
     id,

@@ -365,15 +365,28 @@ async function listRecipes(env: Env, db: SqliteDb): Promise<RecipeList> {
   return res.body as unknown as RecipeList;
 }
 
+interface IdentityView {
+  provider: string | null;
+  issuer: string | null;
+  clientId: string | null;
+  groupRoleMapJson: string | null;
+}
+
 interface RecipeList {
   registration: string;
   anonymousEnroll: boolean;
+  oidcDefault: boolean;
   publicMint: boolean;
+  identity: IdentityView | null;
   recipes: RecipeView[];
 }
 
-/** The approve body an operator's console sends: the recipe exactly as it was shown. */
-function echoOf(r: RecipeView): Record<string, unknown> {
+/** The approve body an operator's console sends: the recipe exactly as it was shown, and the
+ *  sign-in trust the list showed beside it (`null` when Identity was off). */
+function echoOf(
+  r: RecipeView,
+  identity: IdentityView | null = null,
+): Record<string, unknown> {
   return {
     alg: r.alg,
     signingKeySecret: r.signingKeySecret,
@@ -381,7 +394,36 @@ function echoOf(r: RecipeView): Record<string, unknown> {
     claimsTemplateJson: r.claimsTemplateJson,
     ttlSeconds: r.ttlSeconds,
     audience: r.audience,
+    identity,
   };
+}
+
+/** Turn Identity on for djdl with the given `oidc_config` — what a `.pkey/product` push writes. */
+async function setIdentity(
+  db: SqliteDb,
+  oidc: {
+    provider?: string;
+    issuer?: string | null;
+    clientId?: string | null;
+    groupRoleMap?: unknown;
+  } = {},
+  enabled = true,
+): Promise<void> {
+  await db.run(
+    "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
+    JSON.stringify({ identity: { enabled } }),
+  );
+  await db.run(
+    `INSERT OR REPLACE INTO oidc_config
+       (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+     VALUES ('djdl', ?, ?, ?, NULL, NULL, ?)`,
+    oidc.provider ?? "custom",
+    oidc.issuer === undefined ? "https://id.example" : oidc.issuer,
+    oidc.clientId === undefined ? "djdl-client" : oidc.clientId,
+    JSON.stringify(
+      oidc.groupRoleMap ?? { staff: { role: "user", tier: "pro" } },
+    ),
+  );
 }
 
 async function mint(
@@ -590,12 +632,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     expect(res.status).toBe(409);
     expect(res.body.fields).toEqual(["claimsTemplateJson"]);
     expect(
-      await getApprovedEdgeMintConfig(
-        db,
-        "djdl",
-        "applemusic",
-        mintIsPublic(product),
-      ),
+      await getApprovedEdgeMintConfig(db, product, "applemusic"),
     ).toBeNull();
   });
 
@@ -610,12 +647,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     );
     expect(res.status).toBe(422);
     expect(
-      await getApprovedEdgeMintConfig(
-        db,
-        "djdl",
-        "applemusic",
-        mintIsPublic(product),
-      ),
+      await getApprovedEdgeMintConfig(db, product, "applemusic"),
     ).toBeNull();
   });
 
@@ -639,12 +671,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     expect(refused.status).toBe(422);
     expect(refused.body.fields).toEqual(["acknowledgeOpenRegistration"]);
     expect(
-      await getApprovedEdgeMintConfig(
-        db,
-        "djdl",
-        "applemusic",
-        mintIsPublic(product),
-      ),
+      await getApprovedEdgeMintConfig(db, product, "applemusic"),
     ).toBeNull();
 
     const accepted = await admin(
@@ -823,13 +850,77 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     expect((await mint(env, db, anon, token)).status).toBe(200);
   });
 
-  it("oidcDefault auto-issue alone is not a public mint", async () => {
+  it("oidcDefault auto-issue with Identity off is not a public mint", async () => {
     await db.run(
       "UPDATE products SET auto_issue_json = ? WHERE slug = 'djdl'",
       JSON.stringify({ enabled: true, tierId: "free", mode: "oidcDefault" }),
     );
     const p = (await loadProduct(env, db, "djdl"))!;
+    expect(p.services.identity.enabled).toBe(false);
     expect(mintIsPublic(p)).toBe(false);
+  });
+
+  // With Identity on, an OIDC default tier licenses every account the IdP will sign in — on a
+  // public IdP, anyone. A push turns it on without touching the recipe.
+  it("oidcDefault with Identity on is a public mint: a closed approval stops applying until acknowledged", async () => {
+    await setIdentity(db);
+    await seedRecipe(db, {}, { approve: false });
+    const closed = await listRecipes(env, db);
+    expect(closed.publicMint).toBe(false);
+    expect(
+      (
+        await admin(
+          env,
+          db,
+          "POST",
+          "/api/products/djdl/config/mint/applemusic/approve",
+          echoOf(closed.recipes[0]!, closed.identity),
+        )
+      ).status,
+    ).toBe(200);
+    const identityOn = (await loadProduct(env, db, "djdl"))!;
+    const token = await activate(env, db, identityOn);
+    expect((await mint(env, db, identityOn, token)).status).toBe(200);
+
+    await db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({ enabled: true, tierId: "free", mode: "oidcDefault" }),
+    );
+    const p = (await loadProduct(env, db, "djdl"))!;
+    expect(p.registration).toBe("requires-license");
+    expect(mintIsPublic(p)).toBe(true);
+    expect((await mint(env, db, p, token)).status).toBe(404);
+
+    const listed = await listRecipes(env, db);
+    expect(listed).toMatchObject({
+      anonymousEnroll: false,
+      oidcDefault: true,
+      publicMint: true,
+    });
+    expect(listed.recipes[0]).toMatchObject({
+      status: "changed",
+      changedFields: ["registration"],
+    });
+    const refused = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      echoOf(listed.recipes[0]!, listed.identity),
+    );
+    expect(refused.status).toBe(422);
+    const accepted = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      {
+        ...echoOf(listed.recipes[0]!, listed.identity),
+        acknowledgeOpenRegistration: true,
+      },
+    );
+    expect(accepted.status).toBe(200);
+    expect((await mint(env, db, p, token)).status).toBe(200);
   });
 
   it("reports a changed recipe with the fields that changed", async () => {
@@ -853,6 +944,207 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       );
       expect(res.status).toBe(404);
     }
+  });
+});
+
+// The reviewer's probe: on a CLOSED product, sign-in is the other way device tokens reach people
+// an operator never issued a key to. `activateFromIdentity` licenses any identity whose groups hit
+// the push-controlled `groupRoleMap`, against a push-controlled issuer. An approval must not
+// survive a push that rewrites either.
+describe("P0-12 the approval binds the sign-in trust it was given under", () => {
+  let db: SqliteDb;
+  let env: Env;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = adminEnv();
+    await seedProduct(db, "djdl");
+    await seedProductSecret(
+      db,
+      "djdl",
+      "applemusic_devkey",
+      ES_PEM,
+      "edge-mint",
+    );
+    await setIdentity(db);
+    await seedRecipe(db, {}, { approve: false });
+  });
+
+  async function approveAsShown(): Promise<RecipeList> {
+    const listed = await listRecipes(env, db);
+    const res = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      echoOf(listed.recipes[0]!, listed.identity),
+    );
+    expect(res.status).toBe(200);
+    return listed;
+  }
+
+  async function mintNow(token: string): Promise<number> {
+    return (await mint(env, db, (await loadProduct(env, db, "djdl"))!, token))
+      .status;
+  }
+
+  it("the list shows the sign-in trust an approval would cover", async () => {
+    const listed = await listRecipes(env, db);
+    expect(listed.publicMint).toBe(false);
+    expect(listed.identity).toEqual({
+      provider: "custom",
+      issuer: "https://id.example",
+      clientId: "djdl-client",
+      groupRoleMapJson: JSON.stringify({
+        staff: { role: "user", tier: "pro" },
+      }),
+    });
+  });
+
+  it("a push that points sign-in at another issuer makes an approved closed recipe 404 until re-approved", async () => {
+    const shown = await approveAsShown();
+    const token = await activate(
+      env,
+      db,
+      (await loadProduct(env, db, "djdl"))!,
+    );
+    expect(await mintNow(token)).toBe(200);
+
+    // The pusher's own IdP, and a group they are in mapped onto a tier. Registration still reads
+    // requires-license and nothing about the recipe changed.
+    await setIdentity(db, {
+      issuer: "https://idp.attacker.example",
+      groupRoleMap: {
+        staff: { role: "user", tier: "pro" },
+        pwned: { role: "user", tier: "pro" },
+      },
+    });
+    const pushed = (await loadProduct(env, db, "djdl"))!;
+    expect(pushed.registration).toBe("requires-license");
+    expect(mintIsPublic(pushed)).toBe(false);
+    expect(await mintNow(token)).toBe(404);
+    expect(
+      await getApprovedEdgeMintConfig(db, pushed, "applemusic"),
+    ).toBeNull();
+    const fragment = (await configService.discoveryFragment!({
+      product: pushed,
+      env,
+      db,
+      base: "https://key.plrs.im/djdl",
+    })) as { mint: { available: boolean } };
+    expect(fragment.mint.available).toBe(false);
+
+    const listed = await listRecipes(env, db);
+    expect(listed.recipes[0]).toMatchObject({
+      status: "changed",
+      changedFields: ["identity"],
+      approval: { identity: shown.identity },
+    });
+    expect(listed.identity?.issuer).toBe("https://idp.attacker.example");
+
+    // An operator who has now SEEN the new issuer may approve it; that is their decision.
+    await approveAsShown();
+    expect(await mintNow(token)).toBe(200);
+  });
+
+  const TRUST_CHANGES: Array<[string, Parameters<typeof setIdentity>[1]]> = [
+    ["provider", { provider: "platform" }],
+    ["issuer", { issuer: "https://other.example" }],
+    ["clientId", { clientId: "other-client" }],
+    [
+      "groupRoleMap",
+      { groupRoleMap: { staff: { role: "user", tier: "enterprise" } } },
+    ],
+  ];
+  for (const [field, change] of TRUST_CHANGES) {
+    it(`changing oidc ${field} stops the approval applying; restoring it restores the approval`, async () => {
+      await approveAsShown();
+      const token = await activate(
+        env,
+        db,
+        (await loadProduct(env, db, "djdl"))!,
+      );
+      await setIdentity(db, change);
+      expect(await mintNow(token)).toBe(404);
+      expect((await listRecipes(env, db)).recipes[0]).toMatchObject({
+        status: "changed",
+        changedFields: ["identity"],
+      });
+      await setIdentity(db);
+      expect(await mintNow(token)).toBe(200);
+    });
+  }
+
+  it("a group map with the same entries in another key order is not a change", async () => {
+    await setIdentity(db, {
+      groupRoleMap: {
+        a: { role: "user", tier: "pro" },
+        b: { tier: "pro", role: "admin" },
+      },
+    });
+    await approveAsShown();
+    const token = await activate(
+      env,
+      db,
+      (await loadProduct(env, db, "djdl"))!,
+    );
+    await setIdentity(db, {
+      groupRoleMap: {
+        b: { role: "admin", tier: "pro" },
+        a: { tier: "pro", role: "user" },
+      },
+    });
+    expect(await mintNow(token)).toBe(200);
+  });
+
+  it("turning Identity on after an approval given with it off is a change", async () => {
+    await setIdentity(db, {}, false);
+    const off = await approveAsShown();
+    expect(off.identity).toBeNull();
+    const token = await activate(
+      env,
+      db,
+      (await loadProduct(env, db, "djdl"))!,
+    );
+    expect(await mintNow(token)).toBe(200);
+
+    await setIdentity(db);
+    expect(await mintNow(token)).toBe(404);
+    expect((await listRecipes(env, db)).recipes[0]).toMatchObject({
+      changedFields: ["identity"],
+    });
+  });
+
+  it("turning Identity off narrows, so the approval keeps applying", async () => {
+    await approveAsShown();
+    const token = await activate(
+      env,
+      db,
+      (await loadProduct(env, db, "djdl"))!,
+    );
+    await setIdentity(db, { issuer: "https://idp.attacker.example" }, false);
+    expect(await mintNow(token)).toBe(200);
+  });
+
+  it("refuses an approval whose echoed identity is stale or missing", async () => {
+    const shown = await listRecipes(env, db);
+    // A push lands between the operator loading the console and clicking Approve.
+    await setIdentity(db, { issuer: "https://idp.attacker.example" });
+    for (const identity of [shown.identity, null]) {
+      const res = await admin(
+        env,
+        db,
+        "POST",
+        "/api/products/djdl/config/mint/applemusic/approve",
+        echoOf(shown.recipes[0]!, identity),
+      );
+      expect(res.status).toBe(409);
+      expect(res.body.fields).toEqual(["identity"]);
+    }
+    const n = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM edge_mint_approvals WHERE product = 'djdl'",
+    );
+    expect(n?.n).toBe(0);
   });
 });
 
@@ -965,6 +1257,8 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     ),
   ) as {
     devices?: { registration?: string };
+    modules: Record<string, { enabled: boolean }>;
+    oidc: { provider: string; groupRoleMap: Record<string, unknown> };
     edgeMint: Array<{
       id: string;
       alg: string;
@@ -985,6 +1279,12 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
    */
   async function migrated(
     productColumns: { services_json?: string; auto_issue_json?: string } = {},
+    oidc?: {
+      provider: string;
+      issuer: string | null;
+      client_id: string | null;
+      group_role_map_json: string;
+    },
   ): Promise<{ handle: Database.Database; db: SqliteDb }> {
     const handle = new Database(":memory:");
     const runScript = handle.exec.bind(handle);
@@ -993,6 +1293,15 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     await seedProduct(db, "djdl");
     for (const [col, value] of Object.entries(productColumns)) {
       await db.run(`UPDATE products SET ${col} = ? WHERE slug = 'djdl'`, value);
+    }
+    if (oidc) {
+      await db.run(
+        "INSERT INTO oidc_config (product, provider, issuer, client_id, group_role_map_json) VALUES ('djdl', ?, ?, ?, ?)",
+        oidc.provider,
+        oidc.issuer,
+        oidc.client_id,
+        oidc.group_role_map_json,
+      );
     }
     const sealed = await seal({ PLATFORM_KEK: TEST_KEK } as Env, ES_PEM, {
       product: "djdl",
@@ -1140,7 +1449,90 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     });
   }
 
-  it("an oidcDefault-only product is not public at deploy: no acknowledgement", async () => {
+  // djdl as it really runs: Identity on, the platform IdP, and a group map that licenses
+  // `family` and `friends`. The backfill records that sign-in trust, so a later push that
+  // aims sign-in elsewhere — or maps another group — makes the migrated approval inert.
+  const DJDL_SERVICES = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(djdl.modules).map(([k, v]) => [k, { enabled: v.enabled }]),
+    ),
+  );
+  const DJDL_OIDC = {
+    provider: djdl.oidc.provider,
+    issuer: null,
+    client_id: null,
+    group_role_map_json: JSON.stringify(djdl.oidc.groupRoleMap),
+  };
+
+  it("records djdl's sign-in trust at deploy, keeps minting, and goes inert if a push rewrites it", async () => {
+    expect(djdl.modules.identity?.enabled).toBe(true);
+    const { handle, db } = await migrated(
+      { services_json: DJDL_SERVICES },
+      DJDL_OIDC,
+    );
+    expect(
+      handle
+        .prepare(
+          `SELECT open_registration_acknowledged, identity_enabled, oidc_provider, oidc_issuer,
+                  oidc_client_id, oidc_group_role_map_json
+             FROM edge_mint_approvals WHERE product = 'djdl'`,
+        )
+        .all(),
+    ).toEqual([
+      {
+        open_registration_acknowledged: 0,
+        identity_enabled: 1,
+        oidc_provider: "platform",
+        oidc_issuer: null,
+        oidc_client_id: null,
+        oidc_group_role_map_json: DJDL_OIDC.group_role_map_json,
+      },
+    ]);
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const product = (await loadProduct(env, db, "djdl"))!;
+    expect(product.services.identity.enabled).toBe(true);
+    expect(mintIsPublic(product)).toBe(false);
+    const token = await activate(env, db, product);
+    expect((await mint(env, db, product, token, recipe.id)).status).toBe(200);
+
+    // A repo writer pushes a custom issuer they run, with their own group mapped to a tier.
+    await db.run(
+      "UPDATE oidc_config SET provider = 'custom', issuer = 'https://idp.attacker.example', client_id = 'x', group_role_map_json = ? WHERE product = 'djdl'",
+      JSON.stringify({
+        ...djdl.oidc.groupRoleMap,
+        pwned: { role: "user", tier: "standard" },
+      }),
+    );
+    expect((await mint(env, db, product, token, recipe.id)).status).toBe(404);
+  });
+
+  it("an oidcDefault product with Identity on is public at deploy: records the acknowledgement and keeps minting", async () => {
+    const { handle, db } = await migrated(
+      {
+        services_json: DJDL_SERVICES,
+        auto_issue_json: JSON.stringify({
+          enabled: true,
+          tierId: "free",
+          mode: "oidcDefault",
+        }),
+      },
+      DJDL_OIDC,
+    );
+    expect(approvals(handle)).toEqual([
+      {
+        id: recipe.id,
+        approved_by: "migration",
+        open_registration_acknowledged: 1,
+      },
+    ]);
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const product = (await loadProduct(env, db, "djdl"))!;
+    expect(mintIsPublic(product)).toBe(true);
+    const token = await activate(env, db, product);
+    expect((await mint(env, db, product, token, recipe.id)).status).toBe(200);
+  });
+
+  it("an oidcDefault product with Identity off is not public at deploy: no acknowledgement", async () => {
     const { handle } = await migrated({
       auto_issue_json: JSON.stringify({
         enabled: true,

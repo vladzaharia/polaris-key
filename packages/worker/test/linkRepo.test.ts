@@ -1167,7 +1167,11 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     );
     expect(n?.n).toBe(0);
     expect(
-      await getApprovedEdgeMintConfig(db, "acme", "applemusic", false),
+      await getApprovedEdgeMintConfig(
+        db,
+        (await loadProduct(env, db, "acme"))!,
+        "applemusic",
+      ),
     ).toBeNull();
   });
 
@@ -1244,7 +1248,11 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       );
       expect(await w.mint()).toBe(404);
       expect(
-        await getApprovedEdgeMintConfig(w.db, "acme", "applemusic", true),
+        await getApprovedEdgeMintConfig(
+          w.db,
+          (await loadProduct(w.env, w.db, "acme"))!,
+          "applemusic",
+        ),
       ).toBeNull();
 
       // Re-approved WITH the acknowledgement: mints under open registration.
@@ -1277,7 +1285,11 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     expect(await w.mint()).toBe(404);
 
     expect(
-      await getApprovedEdgeMintConfig(w.db, "acme", "applemusic", true),
+      await getApprovedEdgeMintConfig(
+        w.db,
+        (await loadProduct(w.env, w.db, "acme"))!,
+        "applemusic",
+      ),
     ).toBeNull();
 
     await approveEdgeMintRecipe(w.db, "acme", "applemusic", {
@@ -1299,6 +1311,96 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     );
     expect(await w.mint()).toBe(404);
     await w.resync([BASE_RECIPE]);
+    expect(await w.mint()).toBe(200);
+  });
+
+  // Sign-in is the other push-controlled route to a device token on a CLOSED product:
+  // `activateFromIdentity` licenses any identity whose groups hit `oidc.groupRoleMap`, against the
+  // manifest's issuer and client id. The approval binds them, so a push that rewrites any of them
+  // (or turns Identity on) makes an approved recipe 404 while registration still reads
+  // requires-license. The ingest allowlist (R9-01) gates a NEW issuer host only; a second
+  // allowlisted host, a client id, a group map and Identity itself pass it.
+  const IDENTITY_PRODUCT = {
+    ...JSON.parse(PRODUCT_JSON),
+    modules: {
+      license: { enabled: true },
+      config: { enabled: true },
+      identity: { enabled: true },
+    },
+  } as { oidc: Record<string, unknown> } & Record<string, unknown>;
+  const TRUST_PUSHES: Array<[string, Record<string, unknown>]> = [
+    [
+      "maps a group the pusher is in onto a tier",
+      {
+        oidc: {
+          ...IDENTITY_PRODUCT.oidc,
+          groupRoleMap: {
+            "acme-admins": { role: "admin" },
+            pwned: { role: "user", tier: "pro" },
+          },
+        },
+      },
+    ],
+    [
+      "swaps the client id (a client the pusher registered at the same IdP)",
+      { oidc: { ...IDENTITY_PRODUCT.oidc, clientId: "pusher-client" } },
+    ],
+    [
+      "points the issuer at another allowlisted host",
+      {
+        oidc: {
+          ...IDENTITY_PRODUCT.oidc,
+          issuer: "https://shared-idp.example",
+        },
+      },
+    ],
+  ];
+  for (const [how, change] of TRUST_PUSHES) {
+    it(`a push that ${how} makes an approved closed recipe 404 until re-approved`, async () => {
+      const w = await linked();
+      w.env.OIDC_ISSUER_ALLOWLIST = "id.example, shared-idp.example";
+      await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
+      const before = (await loadProduct(w.env, w.db, "acme"))!;
+      expect(before.services.identity.enabled).toBe(true);
+      await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+      expect(await w.mint()).toBe(200);
+
+      await w.resync(
+        [BASE_RECIPE],
+        JSON.stringify({ ...IDENTITY_PRODUCT, ...change }),
+      );
+      const after = (await loadProduct(w.env, w.db, "acme"))!;
+      expect(after.registration).toBe("requires-license");
+      expect(mintIsPublic(after)).toBe(false);
+      expect(await w.mint()).toBe(404);
+      expect(
+        await getApprovedEdgeMintConfig(w.db, after, "applemusic"),
+      ).toBeNull();
+
+      // Re-approved with the new trust in view: the operator's decision, and it mints.
+      await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+      expect(await w.mint()).toBe(200);
+    });
+  }
+
+  it("a push that turns Identity on makes an approval given with it off 404", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    expect(
+      (await loadProduct(w.env, w.db, "acme"))!.services.identity.enabled,
+    ).toBe(false);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+
+    await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
+    expect(await w.mint()).toBe(404);
+  });
+
+  it("an unchanged resync of an Identity product keeps the recipe approved", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
     expect(await w.mint()).toBe(200);
   });
 

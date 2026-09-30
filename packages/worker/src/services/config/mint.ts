@@ -16,26 +16,35 @@
 //   1. the recipe's `signing_key_secret` names a product secret whose USAGE is `edge-mint`
 //      (`openProductSecret(..., "edge-mint")`; a general secret reads as missing → 500
 //      `misconfigured`), and
-//   2. an `edge_mint_approvals` row equals the current recipe column for column, and — while
-//      the mint is PUBLIC (`mintIsPublic`: effective registration `open`, or anonymous
-//      auto-issue enrolment on) — records the operator's open-registration acknowledgement. No
-//      approval, an approval of different values, or an approval given while the mint was closed
-//      that a later push made public, answers exactly like an unknown recipe (404).
+//   2. an `edge_mint_approvals` row APPLIES to the recipe as the product stands now
+//      (`approvalMismatch` is empty): it equals the current recipe column for column; while the
+//      mint is PUBLIC (`mintIsPublic`: open registration, anonymous enrolment, or an OIDC
+//      default tier) it records the operator's open-registration acknowledgement; and while
+//      Identity is on it recorded the same identity provider, issuer, client id and group map
+//      the product trusts now. A push can change every one of those product settings without
+//      touching the recipe, so all of them are re-checked on every request. No approval, or one
+//      that no longer applies, answers exactly like an unknown recipe (404).
 
 import type { Env, Db } from "../../core/platform.js";
 import { bearer, staticHtmlSecurityHeaders } from "../../core/platform.js";
 import { type Product, openProductSecret } from "../../core/products.js";
-import type { RegistrationPolicy } from "../../core/services.js";
+import type { RegistrationPolicy, ServicesMap } from "../../core/services.js";
 import {
   allowsAnonymousEnroll,
+  allowsOidcDefault,
   type AutoIssuePolicy,
 } from "../../core/fingerprint.js";
+import {
+  readIdentityIssuance,
+  sameGroupRoleMap,
+  type IdentityIssuance,
+} from "../../core/identityTrust.js";
 import { errorResponse } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 
-interface EdgeMintRow {
+export interface EdgeMintRow {
   product: string;
   id: string;
   alg: string;
@@ -175,66 +184,199 @@ export async function getEdgeMintConfig(
  * Whether anyone at all can obtain the device token this route accepts — the condition under
  * which an approval must carry the operator's open-registration acknowledgement.
  *
- * Two product settings, both of which a `.pkey/product` push can change without touching the
+ * Three product settings, each of which a `.pkey/product` push can change without touching the
  * recipe, make the mint public:
  *   - the EFFECTIVE registration is `open` (declared `devices.registration: open`, or License
- *     off with Identity off so the derived policy is open) — any installation registers; and
+ *     off with Identity off so the derived policy is open) — any installation registers;
  *   - auto-issue allows anonymous enrolment (`mode` `anonymous` or `both`, enabled with a tier):
  *     `POST /<p>/license/enroll` hands any caller a licence and a device token with no key and
- *     no sign-in, while the effective registration still reads `requires-license`.
- * `oidcDefault` alone is not public: the caller must still sign in with the product's IdP.
+ *     no sign-in, while the effective registration still reads `requires-license`; and
+ *   - Identity is on and auto-issue gives signed-in users a default tier (`mode` `oidcDefault`
+ *     or `both`): every account the product's identity provider will sign in gets a licence,
+ *     mapped group or not. On a public IdP that is anyone.
+ * WHICH identity provider, and which groups it maps, is not part of this predicate: it is bound
+ * to the approval as its own condition (`identity` in `approvalMismatch`).
  * Pass the resolved `Product`, never the declared manifest values.
  */
 export function mintIsPublic(product: {
   registration: RegistrationPolicy;
   autoIssue: AutoIssuePolicy;
+  services: ServicesMap;
 }): boolean {
   return (
-    product.registration === "open" || allowsAnonymousEnroll(product.autoIssue)
+    product.registration === "open" ||
+    allowsAnonymousEnroll(product.autoIssue) ||
+    (product.services.identity.enabled && allowsOidcDefault(product.autoIssue))
+  );
+}
+
+/** The recipe's security-relevant columns — what an approval records and must equal. */
+export interface MintRecipeFields {
+  alg: string;
+  signing_key_secret: string;
+  kid: string | null;
+  claims_template_json: string | null;
+  ttl_seconds: number;
+  audience: string | null;
+}
+
+/** An `edge_mint_approvals` row. */
+export interface MintApprovalRow extends MintRecipeFields {
+  id: string;
+  open_registration_acknowledged: number;
+  /** Identity was on when the operator approved; the four `oidc_*` columns are what it trusted. */
+  identity_enabled: number;
+  oidc_provider: string | null;
+  oidc_issuer: string | null;
+  oidc_client_id: string | null;
+  oidc_group_role_map_json: string | null;
+  approved_at: number;
+  approved_by: string;
+}
+
+/** The security-relevant fields, in their wire (camelCase) spelling, paired with the column.
+ *  `auth_page_template` is deliberately absent: it does not change what is signed, and the
+ *  `/auth` page ships its own script-free policy. */
+export const MINT_RECIPE_FIELDS = [
+  ["alg", "alg"],
+  ["signingKeySecret", "signing_key_secret"],
+  ["kid", "kid"],
+  ["claimsTemplateJson", "claims_template_json"],
+  ["ttlSeconds", "ttl_seconds"],
+  ["audience", "audience"],
+] as const;
+
+export type MintRecipeWireField = (typeof MINT_RECIPE_FIELDS)[number][0];
+
+/** Why an approval no longer applies: a recipe field, `registration` (public, not acknowledged)
+ *  or `identity` (sign-in trust changed). */
+export type MintMismatch = MintRecipeWireField | "registration" | "identity";
+
+/** Which wire fields differ between two recipe values (strict equality; NULL equals NULL). */
+export function differingRecipeFields(
+  a: MintRecipeFields,
+  b: MintRecipeFields,
+): MintRecipeWireField[] {
+  return MINT_RECIPE_FIELDS.filter(([, col]) => a[col] !== b[col]).map(
+    ([wire]) => wire,
   );
 }
 
 /**
- * The join condition that makes an approval apply: every security-relevant column of the
- * CURRENT recipe equals the approved value. `IS` rather than `=` so two NULLs (no kid, no
- * audience) compare equal. `auth_page_template` is deliberately absent: it does not change what
- * is signed, and the `/auth` page ships its own script-free policy.
- *
- * Whether the mint is public is the one input that is not a recipe column: it lives on the
- * product, and a push can open it without touching the recipe (see `mintIsPublic`). An approval
- * given while the mint was closed is not the operator's decision that ANYONE may mint, so while
- * `publicMint` holds the approval must also carry the acknowledgement. Pass
- * `mintIsPublic(product)`.
+ * The product state an approval is checked against besides the recipe itself. Both halves are
+ * product settings a push can change without touching the recipe, so they are read fresh for
+ * every decision.
  */
-export function approvalMatchesRecipe(publicMint: boolean): string {
-  const columns = `a.product = c.product AND a.id = c.id
-   AND a.alg IS c.alg
-   AND a.signing_key_secret IS c.signing_key_secret
-   AND a.kid IS c.kid
-   AND a.claims_template_json IS c.claims_template_json
-   AND a.ttl_seconds IS c.ttl_seconds
-   AND a.audience IS c.audience`;
-  return publicMint
-    ? `${columns}
-   AND a.open_registration_acknowledged = 1`
-    : columns;
+export interface MintApprovalBasis {
+  /** `mintIsPublic(product)`. */
+  publicMint: boolean;
+  /** The product's current identity issuance inputs (`core/identityTrust.ts`). */
+  identity: IdentityIssuance;
 }
 
-/** The recipe row, but ONLY when an operator approved exactly these values, with the
- *  acknowledgement if the mint is public now (P0-12). `publicMint` is `mintIsPublic(product)`. */
+/** The product fields `mintApprovalBasis` reads. */
+export type MintPolicyProduct = Pick<
+  Product,
+  "slug" | "registration" | "autoIssue" | "services"
+>;
+
+export async function mintApprovalBasis(
+  db: Db,
+  product: MintPolicyProduct,
+): Promise<MintApprovalBasis> {
+  return {
+    publicMint: mintIsPublic(product),
+    identity: await readIdentityIssuance(db, product),
+  };
+}
+
+/**
+ * Whether sign-in could hand out device tokens the approval did not cover. Only a WIDENING
+ * counts: with Identity off now there is no sign-in path at all, whatever was approved. With it
+ * on, the approval must have been given with Identity on and with the same provider, issuer,
+ * client id and group map — otherwise a push could aim sign-in at an issuer the pusher controls,
+ * or map their own group onto a tier, and mint with the licence that follows.
+ */
+function identityWidened(
+  approval: MintApprovalRow,
+  current: IdentityIssuance,
+): boolean {
+  if (!current.enabled) return false;
+  return (
+    approval.identity_enabled !== 1 ||
+    approval.oidc_provider !== current.provider ||
+    approval.oidc_issuer !== current.issuer ||
+    approval.oidc_client_id !== current.clientId ||
+    !sameGroupRoleMap(
+      approval.oidc_group_role_map_json,
+      current.groupRoleMapJson,
+    )
+  );
+}
+
+/**
+ * THE approval rule — the token route, discovery, the admin list and the setup checklist all
+ * decide with this one function. Empty means the approval applies. It lists:
+ *   - every recipe field whose current value differs from the approved one;
+ *   - `registration` when the mint is public now (`mintIsPublic`) and the approval was given
+ *     without the acknowledgement — an approval given while the mint was closed is not the
+ *     operator's decision that ANYONE may mint;
+ *   - `identity` when Identity is on and its provider, issuer, client id or group map is not the
+ *     one the approval recorded (`identityWidened`).
+ */
+export function approvalMismatch(
+  recipe: MintRecipeFields,
+  approval: MintApprovalRow,
+  basis: MintApprovalBasis,
+): MintMismatch[] {
+  return [
+    ...differingRecipeFields(recipe, approval),
+    ...(basis.publicMint && approval.open_registration_acknowledged !== 1
+      ? (["registration"] as const)
+      : []),
+    ...(identityWidened(approval, basis.identity)
+      ? (["identity"] as const)
+      : []),
+  ];
+}
+
+/** The recipe row, but ONLY when an operator's approval applies to it as the product stands now
+ *  (`approvalMismatch` is empty). */
 export async function getApprovedEdgeMintConfig(
   db: Db,
-  product: string,
+  product: MintPolicyProduct,
   id: string,
-  publicMint: boolean,
 ): Promise<EdgeMintRow | null> {
-  return db.first<EdgeMintRow>(
-    `SELECT c.* FROM edge_mint_config c
-       JOIN edge_mint_approvals a ON ${approvalMatchesRecipe(publicMint)}
-      WHERE c.product = ? AND c.id = ?`,
-    product,
+  const cfg = await getEdgeMintConfig(db, product.slug, id);
+  if (!cfg) return null;
+  const approval = await db.first<MintApprovalRow>(
+    "SELECT * FROM edge_mint_approvals WHERE product = ? AND id = ?",
+    product.slug,
     id,
   );
+  if (!approval) return null;
+  const basis = await mintApprovalBasis(db, product);
+  return approvalMismatch(cfg, approval, basis).length === 0 ? cfg : null;
+}
+
+/** Every recipe of the product with its approval (or null), in id order. */
+export async function listEdgeMintRecipesWithApprovals(
+  db: Db,
+  slug: string,
+): Promise<Array<{ recipe: EdgeMintRow; approval: MintApprovalRow | null }>> {
+  const recipes = await db.all<EdgeMintRow>(
+    "SELECT * FROM edge_mint_config WHERE product = ? ORDER BY id",
+    slug,
+  );
+  const approvals = await db.all<MintApprovalRow>(
+    "SELECT * FROM edge_mint_approvals WHERE product = ?",
+    slug,
+  );
+  const byId = new Map(approvals.map((a) => [a.id, a]));
+  return recipes.map((recipe) => ({
+    recipe,
+    approval: byId.get(recipe.id) ?? null,
+  }));
 }
 
 /** Whether this product has ANY approved edge-mint recipe — the capability bit the discovery
@@ -243,16 +385,16 @@ export async function getApprovedEdgeMintConfig(
  *  `configService.discoveryFragment`. */
 export async function hasApprovedEdgeMintRecipes(
   db: Db,
-  product: string,
-  publicMint: boolean,
+  product: MintPolicyProduct,
 ): Promise<boolean> {
-  const row = await db.first<{ id: string }>(
-    `SELECT c.id FROM edge_mint_config c
-       JOIN edge_mint_approvals a ON ${approvalMatchesRecipe(publicMint)}
-      WHERE c.product = ? LIMIT 1`,
-    product,
+  const rows = await listEdgeMintRecipesWithApprovals(db, product.slug);
+  if (!rows.some((r) => r.approval !== null)) return false;
+  const basis = await mintApprovalBasis(db, product);
+  return rows.some(
+    ({ recipe, approval }) =>
+      approval !== null &&
+      approvalMismatch(recipe, approval, basis).length === 0,
   );
-  return row !== null;
 }
 
 /** Per-device mint budget, on top of the per-IP one. */
@@ -331,15 +473,11 @@ export async function handleMintToken(
 
   // Unknown, never approved, and approved-but-since-changed are ONE answer: the device-facing
   // contract says 404 means "not available", and an unapproved recipe must not be
-  // distinguishable from a missing one. "Changed" includes the mint becoming public (registration
-  // opened, or anonymous enrolment turned on) after an approval that did not acknowledge it —
-  // re-checked here on every request, because a push can do either without touching the recipe.
-  const cfg = await getApprovedEdgeMintConfig(
-    db,
-    product.slug,
-    mintId,
-    mintIsPublic(product),
-  );
+  // distinguishable from a missing one. "Changed" includes the product changing under the
+  // approval — the mint becoming public without the acknowledgement, or sign-in trusting a
+  // different identity provider or group map — re-checked here on every request, because a
+  // push can do either without touching the recipe.
+  const cfg = await getApprovedEdgeMintConfig(db, product, mintId);
   if (!cfg) return errorResponse(404, "not_found", "no such edge-mint recipe");
   if (cfg.alg !== "ES256" && cfg.alg !== "RS256" && cfg.alg !== "EdDSA") {
     return errorResponse(500, "misconfigured", `unsupported alg ${cfg.alg}`);

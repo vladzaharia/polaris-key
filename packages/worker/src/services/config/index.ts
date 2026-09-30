@@ -14,7 +14,7 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import { handleConfigRoutes } from "./routes.js";
-import { hasApprovedEdgeMintRecipes, mintIsPublic } from "./mint.js";
+import { hasApprovedEdgeMintRecipes } from "./mint.js";
 import { handleConfigAdmin } from "./admin/index.js";
 
 export const configService: ServiceDescriptor = {
@@ -42,11 +42,7 @@ export const configService: ServiceDescriptor = {
       schema: `${base}/config/schema`,
     },
     mint: {
-      available: await hasApprovedEdgeMintRecipes(
-        db,
-        product.slug,
-        mintIsPublic(product),
-      ),
+      available: await hasApprovedEdgeMintRecipes(db, product),
     },
   }),
 };
@@ -59,5 +55,6 @@ export {
   handleMintAuth,
   handleMintToken,
   hasApprovedEdgeMintRecipes,
+  mintApprovalBasis,
   mintIsPublic,
 } from "./mint.js";
