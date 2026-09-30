@@ -2,7 +2,7 @@
 sidebar:
   order: 2
 title: "GitHub sync"
-description: "Linking a repository, the GitHub App installation, the .pkey/ manifest, and the push-webhook resync pipeline."
+description: "Linking a repository, the GitHub App installation, the .pkey/ manifest, the push-webhook resync pipeline, and release-event store refreshes."
 ---
 
 A Release-enabled product is never configured by filling in a form. It is configured by a
@@ -10,8 +10,8 @@ A Release-enabled product is never configured by filling in a form. It is config
 manifest through a scoped GitHub App installation, apply it atomically, and keep applying
 it every time the manifest changes. This page covers that whole pipeline: linking a repo
 for the first time, what the manifest contains, how installation tokens are minted and
-scoped, and the push-webhook that keeps a linked product current without anyone opening
-the console.
+scoped, and the webhook that keeps a linked product current without anyone opening the
+console: `push` events for the manifest, `release` events for the release truth store.
 
 ## Linking a repository
 
@@ -102,6 +102,42 @@ From there the pipeline narrows the delivery down before it does any real work:
 A delivery that clears all three triggers a resync for every product linked to that
 repository (a single repo can back more than one product).
 
+## Release events refresh the truth store
+
+The same endpoint also accepts GitHub's `release` event, and treats every action it sends —
+`published`, `unpublished`, `created`, `edited`, `deleted`, `prereleased`, `released` — the
+same way: for each product linked to the delivery's repository, it re-runs the
+[truth-store](/docs/services/release/truth-store/) half of a resync and nothing else. Publishing
+a build therefore shows up in the console's Releases view and the customer portal within one
+delivery, without a push to `.pkey/` and without anyone pressing **Resync from repo**.
+
+The guards are the push path's, in the same order: the signature is verified over the raw body
+before anything is parsed, the delivery GUID is recorded before the event is dispatched (so a
+replayed release delivery is answered "ignored" and writes nothing), and the delivery's
+installation id must match the one recorded for each product — a mismatch is reported for that
+product and writes nothing for it.
+
+What a release delivery does **not** do matters as much:
+
+- **It never trusts the payload's release.** Only the repository's owner and name and the
+  installation id are read from the body. The store is refreshed by listing releases from
+  GitHub with the installation token — the same paginated, floor-aware read a resync makes — so
+  a forged or stale `release` object in a delivery cannot put anything into the store.
+- **It never touches the manifest.** `.pkey/` is not read, no manifest-owned row is written,
+  and the [sync-state row](#sync-state--changed-paths-in-the-console) is left alone: that row
+  records the _manifest_ sync, and a release event overwriting it would hide a failed one.
+  `release_health.checked_at` is the release refresh's own record.
+- **It never deletes.** A release that is deleted, or unpublished back to a draft, keeps its
+  rows; once a sync has read the whole release list and it is no longer there, its
+  `release_health` subject turns `degraded` with `absentUpstream: true`. A list cut short by the
+  10-page cap marks nothing, because absence from a partial read proves nothing. Deleting a
+  release that was a channel's head is also what trips that channel's
+  [floor](/docs/services/update/eligibility/#channel-floors-no-silent-downgrade).
+
+Each release delivery costs one installation-token read (normally a KV hit) plus the release
+list pages — one call for a repository with fewer than 100 releases. That is cheap at release
+cadence; bursts are not coalesced.
+
 ## Pinned to the repo's own default branch, never to the webhook payload
 
 `resyncRepo` takes **no ref**. Earlier revisions of this pipeline read `payload.after` — an
@@ -166,7 +202,8 @@ it succeeded, when it was last checked and last actually synced, the commit SHA 
 named, the changed paths that triggered it, which sections were updated, and any validation
 errors. The console's **Manifest sync** card on the Releases view is a direct read of that
 row — it is how an operator confirms that a push actually landed, and reads the validation
-errors verbatim when it didn't.
+errors verbatim when it didn't. A `release` delivery never writes this row; its trace is the
+`checked_at` of the product's `release_health` rows.
 
 ## The manual resync action
 
