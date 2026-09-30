@@ -100,6 +100,9 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
 - **Threat model**: rewrite AT-3 for the two-signer model and add what a compromised Worker can
   still do (withhold, delay, re-target among signed releases, freeze until `expiresAt`).
 - **Tests** in `packages/worker/test/` with the corpus test keys (see Acceptance criteria).
+- **Wave-1 sync:** **Close the Sparkle verification residuals (P0-10 follow-ups).** Verification at publish time removes the unauthenticated appcast's DoS residual (up to 2 GiB upstream read per cache-missing `GET /<p>/appcast.xml`, no single-flight, aborted requests never memoise). If the appcast still verifies at request time before this lands, run the stream tail and memo write under `ctx.waitUntil` as a stopgap.
+- **Wave-1 sync:** **Harden the verifier's edges in `services/release/sparkle.ts` / `ed25519Stream.ts`:** pass the release listing's `dmg.size` through and return `incomplete` (never memoised) when the streamed total differs, so a truncated clean EOF or a wrong-but-2xx body cannot pin a `"0"` verdict for 24 h and drop a security update from the appcast; run the S >= L, point-decode and small-order checks before `fetchAssetStream` so a malformed key or signature opens no GitHub download; wrap both `env.HOT.put` memo writes in `.catch(() => undefined)` (the contract says the verifier never throws); write the literal NUL bytes in the cache-key template (`sparkle.ts` ~line 69) as `\u0000` so git diffs the file as text.
+- **Wave-1 sync:** **R10-dos wording.** Cross-reference R10-04b in the R10-dos.md addendum: the "~60 GiB/min" bound is per address, and `clientIp` has no IPv6 /64 grouping, so the residual is not bounded per attacker.
 
 **Out** (and where it belongs instead):
 
@@ -177,6 +180,7 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
 - [ ] `boundaries.test.ts` passes with no new cross-service import.
 - [ ] `docs/security/THREAT-MODEL.md` describes the two-signer property and its limits.
 - [ ] The green gate passes (`AGENTS.md`), including `typecheck:workerd` and `test:workerd`.
+- [ ] Sparkle verification: a body shorter or longer than the listed asset size answers `incomplete` and writes no memo; a malformed key or signature makes no upstream fetch; a failing KV `put` does not turn a completed verification into a 500.
 
 ## Verify
 
