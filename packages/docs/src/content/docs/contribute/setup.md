@@ -38,6 +38,7 @@ Run these before opening a PR — they are what CI runs (`.github/workflows/ci.y
 ```sh
 pnpm build                       # build all JS packages (turbo)
 pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
+pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
 pnpm lint                        # per-package prettier check
