@@ -82,9 +82,12 @@ export const PRUNE_MAX_BATCHES = 20;
  * one-free-licence-per-machine; `idx_devices_seat` is the UNIQUE arbiter that makes
  * `claimDeviceSeat` atomic instead of check-then-act; `idx_product_keys_one_active` is one active
  * signing key per product; `idx_release_download_tokens_hash` is what makes a download token
- * globally unambiguous. Without them nothing errors — the constraint simply stops being enforced.
+ * globally unambiguous; `idx_release_metadata_seq` (P2-03) is "two releases of one deliverable never
+ * share a seq", the position the signed release record carries. Without them nothing errors — the
+ * constraint simply stops being enforced.
  *
- * A test asserts this list and 0018's are the same set, so the two cannot drift apart.
+ * A test asserts this list and the newest `migrations/*_index_assertion.sql` (0018, then its
+ * successors — 0027_i today) are the same set, so the two cannot drift apart.
  */
 export const REQUIRED_INDEXES: readonly string[] = [
   "idx_audit_time",
@@ -104,6 +107,7 @@ export const REQUIRED_INDEXES: readonly string[] = [
   "idx_product_keys_verify",
   "idx_release_download_tokens_expiry",
   "idx_release_download_tokens_hash",
+  "idx_release_metadata_seq",
 ];
 
 /** Which of `REQUIRED_INDEXES` are absent from the live schema. */
