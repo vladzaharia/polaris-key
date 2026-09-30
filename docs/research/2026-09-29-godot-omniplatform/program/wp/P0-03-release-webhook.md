@@ -60,6 +60,7 @@ and portal lag behind what the device routes (which call GitHub live) already se
 - Response body: `{ ok: true, event: "release", action, results: [{ product, ok, statements }] }`.
 - Docs: `docs/DEPLOYMENT.md` App settings table (Events: Push, Release);
   `services/release/github-sync.md` describes both events.
+- **Wave-1 sync:** **Safe on every event (from P0-02).** The store sync now resolves through P0-02's paginated, capped, floor-aware path and is idempotent, so it is safe to run on every release event; the existing tests must keep passing with no further debouncing.
 
 **Out** (and where it belongs instead):
 
