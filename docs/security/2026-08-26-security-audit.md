@@ -314,7 +314,7 @@ section at all — on its own terms all 17 of its findings read as open).
 | R10-06 | `POST /<p>/session/license` is an unrate-limited `/activate` clone                             | `packages/worker/src/browserSession.ts:250-292`                                  | **Fixed** †         | Closed by R3-08's rate limit; no R10-lane test was written                                                                                                   |
 | R10-07 | Unauthenticated KV-write amplification on `/<p>/auth/*`                                        | `packages/worker/src/oidc.ts:508-510`                                            | **Fixed** †         | Closed by R8-10's limiter. PoC block is named `R10-05`                                                                                                       |
 | R10-08 | `/webhooks/github` buffers the entire request body before authenticating it                    | `packages/worker/src/githubWebhook.ts:118-124`                                   | **Reported**        | PoC block `R10-06` ×2                                                                                                                                        |
-| R10-09 | Manual-channel regex ReDoS — the 80-char cap is not a guard                                    | `packages/worker/src/release/channels.ts:38`                                     | **Fixed-partial**   | PoC block `R10-07` ×3. The _catalog_ half is fixed (`shared-catalog/src/regex.ts`); `channels.ts:38` still reproduces                                        |
+| R10-09 | Manual-channel regex ReDoS — the 80-char cap is not a guard                                    | `packages/worker/src/release/channels.ts:38`                                     | **Fixed-partial**   | PoC block `R10-07` ×3. Catalog half fixed (`shared-catalog/src/regex.ts`); `channels.ts:38` still reproduces. Widened ‡                                      |
 | R10-10 | `GET /<p>/config` is unrate-limited and writes D1 on every poll                                | `packages/worker/src/licensing.ts:475-566`                                       | **Reported**        | `describe("R10-10 …")` ×2                                                                                                                                    |
 | R10-11 | Uncapped request headers written verbatim into D1 device rows                                  | `packages/worker/src/licensing.ts:65-81`                                         | **Reported**        | PoC block `R10-08` ×2                                                                                                                                        |
 | R10-12 | KV token records have no TTL and are resurrected by _rejected_ requests                        | `packages/worker/src/kv.ts:27-34`                                                | **Fixed** †         | PoC block `R10-09` ×2; fix `expirationTtl: TOKEN_RECORD_TTL_SECONDS` at `kv.ts:46`                                                                           |
@@ -339,6 +339,14 @@ section at all — on its own terms all 17 of its findings read as open).
 † Divergences in this group are the same three classes as §3.2: R5/R7/R9/R12 documents that predate
 or omit their remediation. R10-06/R10-07/R10-13 were closed by other lanes' rate limits and indexes,
 not by the R10 lane.
+
+‡ R10-09 was widened by P0-02 (release resolution, 2026-09). `release.stableTagPattern` is a second
+sink under the same length-only cap and the same precondition (write access to a linked repo's
+`.pkey/release`). It is reached on every `latest`/`stable` request, in `checkReleaseHealth` and in
+every sync, not only on a manual channel. The release list it runs over is now up to 3 pages live
+(about 600 tests per resolution, against 100 as audited) and up to 1,000 releases per channel per
+sync. Any fix must cover both `manualChannels` and `stableTagPattern`. Details are in
+`findings/R10-dos.md`, R10-09.
 
 ### 3.4 Low (53)
 
