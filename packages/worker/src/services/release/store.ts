@@ -205,6 +205,60 @@ export function isBelowFloor(
   return v !== null && compareSemver(v, floor.version) < 0;
 }
 
+/**
+ * The tag the store recorded for a version, newest first, when there is one. Only the operator
+ * floor endpoint uses it (to give a lowered floor a tag to look up); resolution never looks a
+ * release up by version.
+ */
+export async function releaseIdForVersion(
+  db: Db,
+  product: string,
+  version: string,
+): Promise<string | null> {
+  const row = await db.first<{ release_id: string }>(
+    `SELECT release_id FROM release_metadata WHERE product = ? AND version = ?
+      ORDER BY COALESCE(published_at, 0) DESC LIMIT 1`,
+    product,
+    version,
+  );
+  return row?.release_id ?? null;
+}
+
+/** An operator lowers a floor (R6-10). The caller has checked it is not a raise. */
+export async function lowerChannelFloor(
+  db: Db,
+  product: string,
+  channel: string,
+  floor: { version: string; releaseId: string | null },
+  loweredBy: string,
+  now: number,
+): Promise<void> {
+  await db.run(
+    `UPDATE release_channel_floors
+        SET version = ?, release_id = ?, lowered_by = ?, lowered_at = ?
+      WHERE product = ? AND channel = ?`,
+    floor.version,
+    floor.releaseId,
+    loweredBy,
+    now,
+    product,
+    channel,
+  );
+}
+
+/** An operator clears a floor: the channel follows the list again until the next sync. */
+export async function clearChannelFloor(
+  db: Db,
+  product: string,
+  channel: string,
+): Promise<void> {
+  await db.run(
+    "DELETE FROM release_channel_floors WHERE product = ? AND channel = ?",
+    product,
+    channel,
+  );
+}
+
 // ── Writers ──────────────────────────────────────────────────────────────────
 
 /**
