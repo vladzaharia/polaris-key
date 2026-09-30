@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  TABLE_PATH,
   TARGETS,
   legacyModuleMap,
   loadTable,
@@ -168,6 +169,37 @@ describe("gen:services --check", () => {
         target.path,
       ]);
       expect(readFileSync(abs, "utf8")).toBe(original);
+    }
+  });
+});
+
+describe("the service table, as the parity registry sees it", () => {
+  it("conformance/parity/features.schema.json accepts every table slug as a feature's service", () => {
+    // The registry may name a service ahead of its table row (P2b-01's `distribution`), so this
+    // is a subset check, not equality: a row the registry cannot name is what it catches.
+    const schema = JSON.parse(
+      readFileSync(
+        join(
+          dirname(TABLE_PATH),
+          "..",
+          "conformance",
+          "parity",
+          "features.schema.json",
+        ),
+        "utf8",
+      ),
+    ) as {
+      $defs: Record<string, { properties?: { service?: { enum?: string[] } } }>;
+    };
+    const services = Object.values(schema.$defs).find(
+      (d) => d.properties?.service?.enum,
+    )?.properties?.service?.enum;
+    expect(services).toBeDefined();
+    for (const row of TABLE.services) {
+      expect(
+        services,
+        `conformance/parity/features.schema.json's feature "service" enum is missing "${row.slug}"`,
+      ).toContain(row.slug);
     }
   });
 });
