@@ -2,21 +2,22 @@
 # Export the outlet probe with official Godot 4.7 release templates, into a scratch copy of the
 # prototype project so the shared export_presets.cfg stays untouched.
 #   ./export.sh macos     -> out/macos/OutletProbe.app          (ad-hoc signed by Godot's built-in signer)
-#   ./export.sh linux     -> out/linux/outletprobe.x86_64 (+ .pck)
+#   ./export.sh linux     -> out/linux/outletprobe.x86_64 (+ .pck); LINUX_ARCH=arm64 for arm64
 #   ./export.sh windows   -> out/windows/outletprobe.exe (+ .pck)
-#   ./export.sh android   -> out/android/outletprobe.apk        (debug keystore generated under out/)
+#   ./export.sh android   -> out/android/outletprobe.apk        (needs java_sdk_path in editor settings)
+#   ./export.sh pack      -> out/android/probe.zip              (used by ../android/assemble-apk.sh)
 # Needs: godot 4.7.x on PATH with matching export templates; for android, ANDROID_HOME and a JDK 17+
 # (JAVA_HOME). Run the result with `<binary> --headless -- outlet`.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PROTO="$(cd "$HERE/../.." && pwd)"
 OUT="$HERE/../out"
-TARGET="${1:?usage: export.sh macos|linux|windows|android}"
+TARGET="${1:?usage: export.sh macos|linux|windows|android|pack}"
 WORK="$OUT/project"
 mkdir -p "$OUT/$TARGET"
 rsync -a --delete --exclude .godot --exclude build --exclude 'outlet-signals/out' "$PROTO/" "$WORK/"
 
-cat >"$WORK/export_presets.cfg" <<'EOF'
+cat >"$WORK/export_presets.cfg" <<EOF
 [preset.0]
 name="macOS"
 platform="macOS"
@@ -45,7 +46,7 @@ custom_features=""
 export_path=""
 [preset.1.options]
 binary_format/embed_pck=false
-binary_format/architecture="x86_64"
+binary_format/architecture="${LINUX_ARCH:-x86_64}"
 
 [preset.2]
 name="Windows"
@@ -88,6 +89,7 @@ case "$TARGET" in
 macos) godot --headless --path . --export-release macOS "$OUT/macos/OutletProbe.zip" ;;
 linux) godot --headless --path . --export-release Linux "$OUT/linux/outletprobe.x86_64" ;;
 windows) godot --headless --path . --export-release Windows "$OUT/windows/outletprobe.exe" ;;
+pack) mkdir -p "$OUT/android" && godot --headless --path . --export-pack Android "$OUT/android/probe.zip" ;;
 android)
 	KS="$OUT/android/debug.keystore"
 	[ -f "$KS" ] || "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$KS" -storepass android -alias androiddebugkey \
