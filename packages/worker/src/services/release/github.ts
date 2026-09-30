@@ -500,25 +500,25 @@ export async function fetchTextAsset(
 }
 
 /**
- * Fetch a release asset's raw bytes into memory, for signature verification (R6-03).
- * `maxBytes` bounds the read so a huge artifact can't blow the isolate's memory budget.
+ * Open a release asset's body as a stream, for signature verification over artifacts of any
+ * size (R6-03, P0-10). A declared `Content-Length` over `maxBytes` is refused before a byte is
+ * read, and the unread body is cancelled; the consumer must still enforce `maxBytes` while
+ * streaming, because an absent or lying `Content-Length` must not be able to bypass the cap.
+ * Throws `NotFoundError` for a missing, unfetchable or declared-oversized asset.
  */
-export async function fetchAssetBytes(
+export async function fetchAssetStream(
   token: string,
   owner: string,
   repo: string,
   assetId: number,
   maxBytes: number,
   fetchImpl: FetchImpl = fetch,
-): Promise<Uint8Array> {
+): Promise<ReadableStream<Uint8Array> | null> {
   const res = await fetchAsset(token, owner, repo, assetId, fetchImpl);
-  const declared = Number(res.headers.get("Content-Length") ?? "0");
+  const declared = Number(res.headers.get("Content-Length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
+    await res.body?.cancel().catch(() => undefined);
     throw new NotFoundError(`asset too large to verify: ${declared} bytes`);
   }
-  const buf = new Uint8Array(await res.arrayBuffer());
-  if (buf.byteLength > maxBytes) {
-    throw new NotFoundError(`asset too large to verify: ${buf.byteLength}`);
-  }
-  return buf;
+  return res.body;
 }

@@ -1140,6 +1140,43 @@ software-distribution outage:
 "private" and "absent" stay indistinguishable. This is what makes exhaustion diagnosable
 instead of looking like a withdrawn release.
 
+**Addendum (P0-10): an appcast miss can now cost a full DMG download.** The cost model above
+treats the metadata surfaces as cheap and only `cli`/`dmg` as moving artifact bytes. Since
+R6-03 the appcast also reads the DMG — the worker verifies its Sparkle EdDSA signature — and
+P0-10 made that read a stream with a 2 GiB cap (GitHub's asset maximum) where it used to refuse
+anything past 256 MiB. So one uncached `GET /<p>/appcast.xml` can cost up to 2 GiB of upstream
+read and seconds of Worker CPU, and the 30/min/IP `release` bucket alone would let one IP drive
+~60 GiB/min. The verdict memo in KV, keyed by (product, asset id, signature, public key),
+reduces that for the common case: a positive verdict is kept for 30 days, and — added for
+exactly this reason — a _final_ negative verdict (the body was read to the end within the cap
+and the signature does not cover it, or the key/signature is malformed) for 24 h. A failing 404
+is not edge-cached, so without the negative memo a release with a rotated key, a pre-stapling
+`.sig` or a bogus sidecar would re-download on every miss that runs to completion. A mid-stream
+failure or an over-cap body is not memoised, so it is retried.
+
+The memo does **not** bound the cost per IP, and the residual is wider than "one download per
+tuple":
+
+- **No single-flight.** `verifySparkleSignature` reads the memo, streams the whole DMG, then
+  writes the verdict. Every miss that arrives while a stream is in flight (tens of seconds for a
+  2 GiB DMG) pays its own full download, and KV's cross-colo propagation (up to ~60 s, with
+  negative lookups cached) widens that window per colo.
+- **An aborted request never memoises.** Verification runs inline in the request, not under
+  `ctx.waitUntil`, so a client that disconnects before the stream finishes cancels the
+  invocation and neither `"1"` nor `"0"` is written. The same holds for an invocation killed by
+  the CPU limit. An attacker who aborts each request just before the end can repeat a
+  near-2 GiB upstream read indefinitely, bounded only by the 30/min/IP `release` bucket — the
+  ~60 GiB/min figure above. The cheapest target is an item no real client fetches (a pinned
+  old version or an unused arch), because nothing else will complete the stream and land the
+  memo.
+
+The cost lands on GitHub's storage egress and on Worker CPU and duration, not on the D1 or KV
+quotas. Accepted for now; what removes it is publish-time verification (P3-03), which takes the
+DMG read off the unauthenticated request path. Finishing the stream and the memo write under
+`ctx.waitUntil` would close the abort case only (not the concurrency window, and only within
+the post-response `waitUntil` budget). Tests: `releaseSparkleStream.test.ts` → "memoises a
+final negative verdict for a day, so the next request does not fetch".
+
 ## R10-15 — unbounded `.sig` read
 
 `fetchTextAsset` now takes `maxBytes` (default `MAX_TEXT_ASSET_BYTES = 4096`; a Sparkle EdDSA
@@ -1151,15 +1188,16 @@ wrong value, and callers already fail closed on the throw.
 
 ## Test status
 
-| Finding                                      | Fixed? | Test                                                                                                                      |
-| -------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------- |
-| R5-03 mint is un-scoped                      | yes    | `R5-isolation.test.ts` → `R5-03 GitHub installation tokens are down-scoped to one repo` (7 tests)                         |
-| R5-03 cache key derived from caller argument | yes    | same block + `R9-injection.test.ts` → `the installation-token cache key no longer comes from the caller's scope argument` |
-| R12-03 token cached in plaintext             | yes    | `R12-secrets.test.ts` → `R12-03 GitHub installation token is sealed in KV` (3 tests, original inverted)                   |
-| R10-05 no cache in front of GitHub           | yes    | `R10-dos.test.ts` → `R10-05 public release surface no longer amplifies into GitHub` (10 tests)                            |
-| R10-05 no rate limit                         | yes    | same block (per-IP 429, artifact lane, fail-open, cache-hit-not-metered)                                                  |
-| R10-05 403 → 404 hides exhaustion            | yes    | same block (`503 upstream_rate_limited`; bare 403 still 404s)                                                             |
-| R10-15 uncapped `.sig` read                  | yes    | `R10-dos.test.ts` → `R10-15 sidecar text assets are size-capped` (4 tests)                                                |
+| Finding                                      | Fixed?  | Test                                                                                                                      |
+| -------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| R5-03 mint is un-scoped                      | yes     | `R5-isolation.test.ts` → `R5-03 GitHub installation tokens are down-scoped to one repo` (7 tests)                         |
+| R5-03 cache key derived from caller argument | yes     | same block + `R9-injection.test.ts` → `the installation-token cache key no longer comes from the caller's scope argument` |
+| R12-03 token cached in plaintext             | yes     | `R12-secrets.test.ts` → `R12-03 GitHub installation token is sealed in KV` (3 tests, original inverted)                   |
+| R10-05 no cache in front of GitHub           | yes     | `R10-dos.test.ts` → `R10-05 public release surface no longer amplifies into GitHub` (10 tests)                            |
+| R10-05 no rate limit                         | yes     | same block (per-IP 429, artifact lane, fail-open, cache-hit-not-metered)                                                  |
+| R10-05 403 → 404 hides exhaustion            | yes     | same block (`503 upstream_rate_limited`; bare 403 still 404s)                                                             |
+| R10-05 addendum: appcast DMG read (P0-10)    | partial | `releaseSparkleStream.test.ts` (verdict memo); abort and concurrent-miss residual accepted, removed by P3-03              |
+| R10-15 uncapped `.sig` read                  | yes     | `R10-dos.test.ts` → `R10-15 sidecar text assets are size-capped` (4 tests)                                                |
 
 `pnpm --filter @polaris-key/worker test` → **736 passed / 39 files**. Typecheck and prettier
 clean on every file touched.

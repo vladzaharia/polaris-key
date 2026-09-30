@@ -46,10 +46,12 @@ together is what makes an iOS build genuinely never see Sparkle.
 
 ## The version floor
 
-The package pins **Sparkle ≥ 2.6.4** as its minimum dependency version. That floor isn't a
-routine bump — it's the fixed release Sparkle shipped a signature-verification CVE
-(CVE-2025-0509) in, so the minimum is enforced at build time rather than left as a
-recommendation in a README a project might not read.
+The package pins **Sparkle ≥ 2.9.6** as its minimum dependency version. That floor isn't a
+routine bump — it's a security floor, enforced at build time rather than left as a
+recommendation in a README a project might not read. Sparkle 2.9.5 and 2.9.6 fixed a symlink
+attack in delta patching, a root privilege escalation, and package installs that went ahead
+after signature validation had failed; the floor also covers the earlier signature-verification
+CVE (CVE-2025-0509, fixed in 2.6.4).
 
 ## The trust anchor: what this SDK deliberately does not do
 
