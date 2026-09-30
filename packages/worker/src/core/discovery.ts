@@ -12,7 +12,7 @@
  * "four surfaces each re-infer enablement from row presence" problem spec §2.2 abolishes — the
  * document could say a service was on while its routes 404ed, or off while they answered.
  *
- * So `modules` is replaced by `services`, keyed by the five service slugs, and every entry is a
+ * So `modules` is replaced by `services`, keyed by the service slugs, and every entry is a
  * projection of ONE authority:
  *
  *   - enabled  ⇒ the service's own `discoveryFragment` (design spec §4.3). Core does not know
@@ -71,13 +71,8 @@ export async function handleDiscovery(
     trustKeys[signingKid] = signingPublicKey;
 
   const ctx: DiscoveryContext = { product, env, db, base };
-  const services: Record<ServiceSlug, Record<string, unknown>> = {
-    license: DISABLED,
-    config: DISABLED,
-    release: DISABLED,
-    update: DISABLED,
-    identity: DISABLED,
-  };
+  // Keys in canonical table order — the order clients read. Every slug gets a fragment.
+  const services = {} as Record<ServiceSlug, Record<string, unknown>>;
   for (const slug of SERVICE_SLUGS) {
     services[slug] = await fragmentFor(slug, ctx, registry);
   }
