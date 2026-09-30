@@ -68,7 +68,7 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   Then remove `project.binary` and `.godot/global_script_class_cache.cfg`, which `--export-pack`
   always adds, and write the stripped PCK back in place with the source header's format version,
   engine version and pack flags (see below). Then lint: only the entries S-05's (f) rule admits
-  (below); the header's engine version inside `requires.engine`; **warn above 2,000 entries and
+  (below); the header's engine version inside `requires.engine`; **warn above 1,000 entries and
   fail above 20,000** (the mount stall grows with entry count, S-05 §4.1).
   `files.tree`: A7 §3.3 path rules, no symlinks. Every failure names the path.
 - **Files index.** `layout: container` for PCKs (offsets from the PCK directory, ascending,

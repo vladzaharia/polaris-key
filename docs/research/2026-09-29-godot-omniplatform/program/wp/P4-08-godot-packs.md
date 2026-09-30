@@ -151,8 +151,10 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   resources (a `Thread` mount lowered the worst frame but did not remove it on the contended
   emulator, so the thread evidence is inconclusive). A mount in `_ready` held the first `_process`
   back by 88–276 ms, about its own call time.
-  Packs of up to 2,000 entries may mount while the spinner runs; larger ones only under a loading
-  screen. The pack lint ([P4-03](P4-03-ci-patch-artifacts.md)) warns above 2,000 entries per pack
+  A mount freezes the spinner for the whole call, so the budget is at most 100 ms (6 frames at
+  60 Hz) per mount on a low-end phone assumed 3–5× slower than the emulator: packs of up to 1,000
+  entries (an estimated 48–80 ms) may mount while the spinner runs; larger ones only under a loading
+  screen. The pack lint ([P4-03](P4-03-ci-patch-artifacts.md)) warns above 1,000 entries per pack
   and fails above 20,000; the directory check logs the entry count. The low-end
   phone run is still outstanding; replace the numbers when it lands.
 - **Web pack path** (S-05 §4.3): packs never go to `user://`. The HTML shell (or a head include)

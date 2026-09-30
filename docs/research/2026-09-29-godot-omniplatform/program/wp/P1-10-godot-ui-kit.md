@@ -97,8 +97,11 @@ already have partial kits to mirror (notes/A2 §10).
   mounts at most one pack per frame, on the main thread (`PackedData` and the UID registry are not
   documented as thread-safe while the main thread loads resources; a `Thread` mount lowered the
   hitch on an Android emulator but did not remove it, so that evidence is inconclusive). Mount cost
-  follows entry count, not bytes; packs above 2,000 entries mount only while a loading screen (not
-  just the spinner) is shown. A mount in `_ready` held the first frame back by about its own call
+  follows entry count, not bytes. A mount freezes the spinner for the whole call, so the budget is
+  at most 100 ms (6 frames at 60 Hz) per mount on a low-end phone: packs of up to 1,000 entries may
+  mount under the spinner (an estimated 48–80 ms on a phone assumed 3–5× slower than the emulator's
+  16 µs per entry cold); packs above 1,000 entries mount only while a loading screen (not just the
+  spinner) is shown. A mount in `_ready` held the first frame back by about its own call
   time (the first `_process` came 88–276 ms after `_ready` for a 12,800-entry pack, against a
   31 ms median without one).
 
