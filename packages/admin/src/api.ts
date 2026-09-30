@@ -89,6 +89,40 @@ export interface ProductModuleSummary {
   missingSecrets?: string[];
 }
 
+// ── edge-mint recipe approval (Config, P0-12) ────────────────────────────────
+
+/** What a product secret may be used for. Set by an operator only — never by a manifest. */
+export type SecretUsage = "general" | "edge-mint";
+
+/** The security-relevant recipe fields, exactly as the approve call must echo them. */
+export interface EdgeMintRecipeFields {
+  alg: string;
+  signingKeySecret: string;
+  kid: string | null;
+  claimsTemplateJson: string | null;
+  ttlSeconds: number;
+  audience: string | null;
+}
+
+export interface EdgeMintRecipe extends EdgeMintRecipeFields {
+  id: string;
+  /** Parsed `claimsTemplateJson`, for display only (null when absent or corrupt). */
+  claimsTemplate: unknown;
+  /** `approved` mints; `pending` was never approved; `changed` was approved in another form. */
+  status: "approved" | "pending" | "changed";
+  secretUsage: SecretUsage | "missing" | "unrecognised";
+  approval:
+    | (EdgeMintRecipeFields & { approvedAt: number; approvedBy: string })
+    | null;
+  changedFields: (keyof EdgeMintRecipeFields)[];
+}
+
+export interface EdgeMintRecipesResponse {
+  /** The product's EFFECTIVE registration policy; `open` means anyone can hold a device token. */
+  registration: "open" | "requires-identity" | "requires-license";
+  recipes: EdgeMintRecipe[];
+}
+
 export interface ProductSetupAction {
   id?: string;
   label?: string;
@@ -804,11 +838,20 @@ export const api = {
         body: JSON.stringify(body),
       },
     ),
-  putProductSecret: (slug: string, name: string, value: string) =>
-    call<{ ok: true; name: string }>(`${p(slug)}/secrets/${enc(name)}`, {
-      method: "PUT",
-      body: JSON.stringify({ value }),
-    }),
+  /** Write-only. `usage` omitted keeps what is stored (a new secret is general). */
+  putProductSecret: (
+    slug: string,
+    name: string,
+    value: string,
+    usage?: SecretUsage,
+  ) =>
+    call<{ ok: true; name: string; usage?: SecretUsage }>(
+      `${p(slug)}/secrets/${enc(name)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(usage ? { value, usage } : { value }),
+      },
+    ),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
 
@@ -840,6 +883,39 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ catalog }),
     }),
+
+  // ── config: edge-mint recipe approval (P0-12) ───────────────────────────────
+  edgeMintRecipes: (slug: string) =>
+    call<EdgeMintRecipesResponse>(`${p(slug)}/config/mint`),
+  /** Approve exactly what the operator was shown: the server refuses (409) if it changed. */
+  approveEdgeMintRecipe: (
+    slug: string,
+    id: string,
+    fields: EdgeMintRecipeFields,
+    acknowledgeOpenRegistration = false,
+  ) =>
+    call<{ ok: true; id: string; status: "approved" }>(
+      `${p(slug)}/config/mint/${enc(id)}/approve`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          alg: fields.alg,
+          signingKeySecret: fields.signingKeySecret,
+          kid: fields.kid,
+          claimsTemplateJson: fields.claimsTemplateJson,
+          ttlSeconds: fields.ttlSeconds,
+          audience: fields.audience,
+          ...(acknowledgeOpenRegistration
+            ? { acknowledgeOpenRegistration: true }
+            : {}),
+        }),
+      },
+    ),
+  revokeEdgeMintRecipe: (slug: string, id: string) =>
+    call<{ ok: true; id: string; status: "pending" }>(
+      `${p(slug)}/config/mint/${enc(id)}/revoke`,
+      { method: "POST" },
+    ),
 
   // ── licenses ────────────────────────────────────────────────────────────────
   licenses: (slug: string) =>
