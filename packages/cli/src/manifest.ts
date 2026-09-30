@@ -1,7 +1,7 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  validateManifestDocuments,
+  validateIngestDocuments,
   type ServiceSlug,
 } from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
@@ -131,7 +131,9 @@ export async function loadManifest(cwd: string): Promise<LoadedManifest> {
 export function validateLoadedManifest(
   manifest: LoadedManifest,
 ): ValidationResult {
-  return validateManifestDocuments({
+  // The same rule link and resync apply (schema always required), so validate cannot pass a
+  // manifest that fails at link.
+  return validateIngestDocuments({
     product: manifest.product,
     schema: manifest.schema,
     release: manifest.release,
@@ -145,11 +147,14 @@ export async function initManifest(opts: InitOptions): Promise<InitResult> {
   const productPath = path.join(rootDir, "product.yaml");
   await writeNewFile(productPath, productYaml(opts), opts.force);
   files.push(productPath);
-  if (opts.modules.includes("config")) {
-    const schemaPath = path.join(rootDir, "schema.yaml");
-    await writeNewFile(schemaPath, schemaYaml(), opts.force);
-    files.push(schemaPath);
-  }
+  // Always written: ingest requires .pkey/schema even when Config is off.
+  const schemaPath = path.join(rootDir, "schema.yaml");
+  await writeNewFile(
+    schemaPath,
+    schemaYaml(opts.modules.includes("config")),
+    opts.force,
+  );
+  files.push(schemaPath);
   if (opts.modules.includes("releases")) {
     const releasePath = path.join(rootDir, "release.yaml");
     await writeNewFile(releasePath, releaseYaml(opts), opts.force);
@@ -221,8 +226,6 @@ ${moduleLines.join("\n")}
 licensing:
   defaultDeviceLimit: 5
   defaultMaxOfflineDays: 14
-  keyActivation:
-    enabled: ${opts.modules.includes("licensing") ? "true" : "false"}
   profiles:
     - id: standard-defaults
       name: Standard defaults
@@ -234,8 +237,7 @@ licensing:
     - id: standard
       label: Standard
       profile: standard-defaults
-      deviceLimit: 5
-      maxOfflineDays: 14
+      policyDeviceLimit: 5
       channels: ["stable"]${oidc}
 
 secrets:
@@ -243,11 +245,15 @@ secrets:
 `;
 }
 
-function schemaYaml(): string {
-  return `# yaml-language-server: $schema=${SCHEMA_BASE}/schema.schema.json
+function schemaYaml(withExamples: boolean): string {
+  const header = `# yaml-language-server: $schema=${SCHEMA_BASE}/schema.schema.json
 apiVersion: pkey.dev/v1
 schemaVersion: 1
-catalog:
+`;
+  // Ingest requires the document even for a product with no config; an empty catalog is the
+  // valid "nothing to configure yet" state.
+  if (!withExamples) return `${header}catalog: []\n`;
+  return `${header}catalog:
   - key: feature.example
     kind: flag
     label: Example feature
@@ -319,52 +325,6 @@ async function findExisting(
 function parseFile(file: string, raw: string): unknown {
   if (file.endsWith(".json")) return JSON.parse(raw) as unknown;
   return parseYaml(raw) as unknown;
-}
-
-function enabledModules(product: Record<string, unknown>): ProductModule[] {
-  const modules = asRecord(product.modules);
-  if (!modules) return ["licensing", "config"];
-  return MODULES.filter((module) => {
-    const value = modules[module];
-    if (typeof value === "boolean") return value;
-    const record = asRecord(value);
-    return record?.enabled === true;
-  });
-}
-
-function collectRequiredSecrets(
-  secrets: Record<string, unknown> | null,
-): string[] {
-  const required = secrets?.required;
-  if (!Array.isArray(required)) return [];
-  const names = required
-    .map((item) =>
-      typeof item === "string" ? item : stringAt(asRecord(item), "name"),
-    )
-    .filter((item): item is string => Boolean(item));
-  return [...new Set(names)];
-}
-
-function add(
-  list: ValidationMessage[],
-  file: ValidationMessage["file"],
-  pointer: string,
-  code: string,
-  message: string,
-): void {
-  list.push({ file, path: pointer, code, message });
-}
-
-function stringAt(
-  record: Record<string, unknown> | null | undefined,
-  key: string,
-): string | undefined {
-  const value = record?.[key];
-  return typeof value === "string" && value.trim() ? value : undefined;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return isRecord(value) ? value : null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -36,8 +36,10 @@ Exit codes: `0` success, `1` a validation/runtime failure, `2` an unrecognized c
 
 ### `pkey init`
 
-Scaffolds `.pkey/` in the current directory: `product.yaml` always, `schema.yaml` when
-`config` is among `--modules`, `release.yaml` when `releases` is. `--modules` takes the
+Scaffolds `.pkey/` in the current directory: `product.yaml` and `schema.yaml` always
+(ingest requires both, even with Config off; without `config` the schema is an empty catalog),
+`release.yaml` when `releases` is. The scaffolded tier is `policyDeviceLimit: 5` with no expiry
+field, so its licences do not expire. `--modules` takes the
 **legacy** module vocabulary (`licensing`, `config`, `releases`, `oidc`, `edgeMint` — the same
 names `.pkey/product`'s `modules` block still accepts and translates to the five service
 slugs); omit it and you get `licensing,config`, matching what every product ran before the

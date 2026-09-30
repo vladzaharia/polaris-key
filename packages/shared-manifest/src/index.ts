@@ -73,6 +73,13 @@ export interface ManifestDocuments {
   release?: unknown;
 }
 
+/** The documents ingest is handed: `product` is `undefined` when the file is missing. */
+export interface IngestDocuments {
+  product: Record<string, unknown> | undefined;
+  schema?: unknown;
+  release?: unknown;
+}
+
 export interface ValidationResult {
   ok: boolean;
   errors: ValidationMessage[];
@@ -459,8 +466,67 @@ function registrationPolicy(productRoot: Record<string, unknown>): unknown {
   return asRecord(productRoot.devices).registration;
 }
 
+/**
+ * Validate the documents as an AUTHOR-side check: the Config-conditional rules apply, so a
+ * Config-off product may omit `.pkey/schema`. That is NOT what ingest accepts — link and
+ * resync always require the schema. Anything that means to answer "will this link?" (the CLI's
+ * `pkey validate`, `parseManifest`) must call {@link validateIngestDocuments} instead.
+ */
 export function validateManifestDocuments(
   manifest: ManifestDocuments,
+): ValidationResult {
+  return validateDocuments(manifest, false);
+}
+
+/**
+ * The one rule for document presence: exactly what ingest (`link`, `resync`) requires. Both the
+ * product and schema documents must exist (the schema even when Config is off; an empty catalog
+ * is `schemaVersion: 1` with no entries), then everything {@link validateManifestDocuments}
+ * checks. `missing_schema` is reported once whether Config is on or off.
+ */
+export function validateIngestDocuments(
+  manifest: IngestDocuments,
+): ValidationResult {
+  const product = manifest.product;
+  if (product === undefined) {
+    // Nothing further can be judged without a product; the schema is still reported so the
+    // author sees every missing document at once.
+    const errors: ValidationMessage[] = [];
+    add(
+      errors,
+      "product",
+      "/",
+      "missing_product",
+      ".pkey/product is required at ingest.",
+    );
+    requireSchema(errors, manifest.schema);
+    return {
+      ok: false,
+      errors,
+      warnings: [],
+      enabledModules: [...DEFAULT_ENABLED],
+      requiredSecrets: [],
+    };
+  }
+  return validateDocuments({ ...manifest, product }, true);
+}
+
+/** True when the schema document is present; otherwise reports `missing_schema`. */
+function requireSchema(errors: ValidationMessage[], schema: unknown): boolean {
+  if (schema !== undefined) return true;
+  add(
+    errors,
+    "schema",
+    "/",
+    "missing_schema",
+    ".pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries.",
+  );
+  return false;
+}
+
+function validateDocuments(
+  manifest: ManifestDocuments,
+  schemaAlwaysRequired: boolean,
 ): ValidationResult {
   const errors: ValidationMessage[] = [];
   const warnings: ValidationMessage[] = [];
@@ -577,16 +643,8 @@ export function validateManifestDocuments(
     }
   }
 
-  if (modules.includes("config")) {
-    if (manifest.schema === undefined) {
-      add(
-        errors,
-        "schema",
-        "/",
-        "missing_schema",
-        "Config is enabled, so .pkey/schema.yaml or schema.json is required.",
-      );
-    } else {
+  if (schemaAlwaysRequired || modules.includes("config")) {
+    if (requireSchema(errors, manifest.schema)) {
       const catalog = normalizeCatalog(manifest.schema);
       if (!catalog) {
         add(
@@ -747,6 +805,26 @@ export function validateManifestDocuments(
         "invalid_semver",
         SEMVER_RE,
         `Tier ${bound} must be a semver string.`,
+      );
+    }
+    // Keys the scaffold used to write. Neither is an error (existing manifests keep linking),
+    // but both are silently misread, so they warn.
+    if (record.deviceLimit !== undefined) {
+      add(
+        warnings,
+        "product",
+        `/licensing/tiers/${i}/deviceLimit`,
+        "tier_ignored_field",
+        "deviceLimit on a tier is ignored; use policyDeviceLimit.",
+      );
+    }
+    if (record.maxOfflineDays !== undefined) {
+      add(
+        warnings,
+        "product",
+        `/licensing/tiers/${i}/maxOfflineDays`,
+        "tier_ignored_field",
+        "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace.",
       );
     }
     // Enforcement strength is an enum, and a typo'd value must be an authoring error — the
@@ -1457,6 +1535,11 @@ export function validateManifestDocuments(
   };
 }
 
+/** `file/pointer: message`, or `file: message` for a whole-document problem (pointer "/"). */
+function formatIngestError(e: ValidationMessage): string {
+  return `${e.file}${e.path === "/" ? "" : e.path}: ${e.message}`;
+}
+
 export function parseManifest(
   files: Record<string, string>,
 ): ParseManifestResult {
@@ -1469,24 +1552,27 @@ export function parseManifest(
     if ("error" in res) errors.push(res.error);
     else docs[name] = res.value;
   }
-  if (files.schema === undefined)
-    errors.push("schema: required (.pkey/schema.{json,yaml,yml} is missing)");
-  if (files.product === undefined)
-    errors.push("product: required (.pkey/product.{json,yaml,yml} is missing)");
+  // Missing documents are reported by the same rule `pkey validate` applies
+  // (`validateIngestDocuments`), so a manifest that validates is one that links. A schema file
+  // that exists but failed to parse is already in `errors`, so it is not also "missing".
+  if (files.product === undefined) {
+    const missing = validateIngestDocuments({
+      product: undefined,
+      schema: files.schema === undefined ? undefined : null,
+    });
+    for (const e of missing.errors) errors.push(formatIngestError(e));
+  }
   if (errors.length) return { ok: false, errors };
   if (!isRecord(docs.product))
     return { ok: false, errors: ["product: must be an object"] };
 
-  const validation = validateManifestDocuments({
+  const validation = validateIngestDocuments({
     product: docs.product,
     schema: docs.schema,
     release: docs.release,
   });
   if (!validation.ok)
-    return {
-      ok: false,
-      errors: validation.errors.map((e) => `${e.file}${e.path}: ${e.message}`),
-    };
+    return { ok: false, errors: validation.errors.map(formatIngestError) };
 
   const productRoot = docs.product;
   const prod = nestedProductDoc(productRoot);

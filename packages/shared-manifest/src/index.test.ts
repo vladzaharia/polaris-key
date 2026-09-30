@@ -8,6 +8,7 @@ import {
   MAX_MANIFEST_DEPTH,
   normalizeAutoIssue,
   parseManifest,
+  validateIngestDocuments,
   validateManifestDocuments,
 } from "./index.js";
 
@@ -1134,5 +1135,129 @@ describe("reserved product slugs", () => {
         schema: catalogWithSecretDelivery(),
       }).errors.map((e) => e.code),
     ).toEqual([]);
+  });
+});
+
+describe("ingest document presence (validateIngestDocuments)", () => {
+  const configOff = {
+    ...PRODUCT,
+    modules: { license: { enabled: true }, release: { enabled: true } },
+  };
+
+  it("requires the schema even when Config is off, where the author-side check does not", () => {
+    const docs = { product: configOff, release: release() };
+    expect(
+      validateManifestDocuments(docs).errors.map((e) => e.code),
+    ).not.toContain("missing_schema");
+
+    const res = validateIngestDocuments(docs);
+    expect(res.ok).toBe(false);
+    expect(res.errors.filter((e) => e.code === "missing_schema")).toEqual([
+      {
+        file: "schema",
+        path: "/",
+        code: "missing_schema",
+        message:
+          ".pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries.",
+      },
+    ]);
+  });
+
+  it("reports missing_schema once when Config is on", () => {
+    const res = validateIngestDocuments({ product: PRODUCT });
+    expect(res.errors.filter((e) => e.code === "missing_schema")).toHaveLength(
+      1,
+    );
+  });
+
+  it("accepts an empty catalog with Config off", () => {
+    const res = validateIngestDocuments({
+      product: configOff,
+      schema: { schemaVersion: 1, catalog: [] },
+      release: release(),
+    });
+    expect(res.errors).toEqual([]);
+    expect(res.ok).toBe(true);
+  });
+
+  it("parseManifest returns the same message for a missing schema file", () => {
+    const res = parseManifest({
+      product: JSON.stringify(configOff),
+      release: JSON.stringify(release()),
+    });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors).toEqual([
+      "schema: .pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries.",
+    ]);
+  });
+
+  it("reports a missing product, and a missing schema alongside it", () => {
+    const only = parseManifest({
+      schema: JSON.stringify({ schemaVersion: 1 }),
+    });
+    expect(only.ok).toBe(false);
+    if (only.ok) return;
+    expect(only.errors).toEqual([
+      "product: .pkey/product is required at ingest.",
+    ]);
+
+    const both = parseManifest({ release: JSON.stringify(release()) });
+    expect(both.ok).toBe(false);
+    if (both.ok) return;
+    expect(both.errors.map((e) => e.split(":")[0])).toEqual([
+      "product",
+      "schema",
+    ]);
+  });
+});
+
+describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
+  const tiered = (tier: Record<string, unknown>) => ({
+    product: {
+      ...PRODUCT,
+      licensing: { tiers: [{ id: "standard", ...tier }] },
+    },
+    schema: { schemaVersion: 1, catalog: [] },
+  });
+
+  it("normalises a policyDeviceLimit tier with no expiry to a non-expiring licence", () => {
+    const res = parseManifest({
+      product: JSON.stringify(tiered({ policyDeviceLimit: 5 }).product),
+      schema: JSON.stringify({ schemaVersion: 1, catalog: [] }),
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.tiers[0]).toMatchObject({
+      policyDeviceLimit: 5,
+      policyExpiryDays: null,
+    });
+  });
+
+  it("warns, without erroring, for deviceLimit and maxOfflineDays on a tier", () => {
+    const res = validateManifestDocuments(
+      tiered({ deviceLimit: 5, maxOfflineDays: 14 }),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.errors).toEqual([]);
+    expect(res.warnings.filter((w) => w.code === "tier_ignored_field")).toEqual(
+      [
+        expect.objectContaining({
+          path: "/licensing/tiers/0/deviceLimit",
+          message: expect.stringContaining("policyDeviceLimit"),
+        }),
+        expect.objectContaining({
+          path: "/licensing/tiers/0/maxOfflineDays",
+          message: expect.stringContaining("policyExpiryDays"),
+        }),
+      ],
+    );
+  });
+
+  it("stays silent for the keys the normaliser reads", () => {
+    const res = validateManifestDocuments(
+      tiered({ policyDeviceLimit: 5, policyExpiryDays: 30 }),
+    );
+    expect(res.warnings.map((w) => w.code)).not.toContain("tier_ignored_field");
   });
 });
