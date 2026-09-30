@@ -76,9 +76,15 @@ Godot form of the build identity that `pkey build-info` writes for other build s
   because package identity can be inherited from an MSIX parent process), and `bundleId` (from the
   preset's `application/bundle_identifier` or `package/unique_name` where the platform has one).
   The export plugin copies the others from the `.pkey/distribution` outlet entries when that file
-  exists ([P2b-02](P2b-02-distribution-manifest.md)); until then from an optional
-  `polaris_key/outlet_ids` export option (a JSON object). An absent id is simply left out, so the
-  object is `{}` at minimum.
+  exists ([P2b-02](P2b-02-distribution-manifest.md)): `steam.appId` → `steamAppId`,
+  `itch.gameId` → `itchGameId`, `flathub.appId` → `flatpakId`, `snap.name` → `snapName`,
+  `direct.homebrewCask` → `caskToken`, and the `packageFamilyName` of the `ms-store` or
+  `app-installer` entry matching the preset's outlet → `msixFamilyName`. Otherwise, or for a key the file does not supply, they come from an optional
+  `polaris_key/outlet_ids` export option (a JSON object). `itch.gameId`, `packageFamilyName` and
+  `direct.homebrewCask` are new in P2b-02's brief, so until P2b-02 lands them, `itchGameId`,
+  `msixFamilyName` and `caskToken` come only from the export option. A key present in both with
+  different values is an `_get_export_option_warning`, and the file's value wins. An absent id is
+  simply left out, so the object is `{}` at minimum.
 - `core/build_stamp.gd` (`PKeyBuildStamp`) and `PolarisKey.build_info()`: read the stamp with
   `FileAccess` (data added by `add_file` is not imported); when absent, fall back to
   `application/config/version`, no outlet, the dock's editor channel, and the runtime
@@ -145,7 +151,9 @@ Godot form of the build identity that `pkey build-info` writes for other build s
       `PKEY_BUILD_CHANNEL=beta`, `PKEY_BUILD_NUMBER=42` produces a pack whose
       `res://.polaris_key/build.json` has those values, `pkeyBuild: 1`, the version from
       `application/config/version`, an `outletIds` object and no timestamp; the stamp is
-      byte-identical across two exports.
+      byte-identical across two exports. With `polaris_key/outlet_ids` set to
+      `{"itchGameId": "…", "msixFamilyName": "…", "caskToken": "…"}` and no `.pkey/distribution`,
+      those three keys appear in `outletIds` unchanged.
 - [ ] On the release template, `OS.has_feature("pkey_outlet_steam")` and
       `OS.has_feature("pkey_channel_beta")` are true, and `PolarisKey.build_info()` returns the
       stamp.

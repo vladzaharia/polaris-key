@@ -447,9 +447,17 @@ Notes:
    MSIX package family name (for its Microsoft Store and App Installer entries: without it, an
    identity inherited from an MSIX parent process would let a `Store` `SignatureKind` override a
    `steam` stamp) become product-declared, non-secret configuration: the `.pkey/distribution.yaml` outlet
-   entries, README §3.12. The export plugin (P1-11) copies these outlet identities, plus the
+   entries, README §3.12. Three of them already have a field there (`steam.appId`,
+   `flathub.appId`, `snap.name`). The other three had none: `itch` carries only `target`, the
+   butler `user/game` slug, which is not the receipt's numeric `game.id`; `ms-store` carries only
+   `productId`, and `app-installer` nothing; no entry carries a cask token. This branch adds them
+   to P2b-02's identity fields: `itch.gameId`, `ms-store`/`app-installer` `packageFamilyName`,
+   and `direct.homebrewCask`, each with its rule-9 validator check, mutation entry and schema
+   property. The export plugin (P1-11) copies these outlet identities, plus the
    bundle or application id, from `.pkey/distribution` into the build stamp (`build.json`), so
-   detection works offline at first launch; the detector receives them with the stamp. The
+   detection works offline at first launch; the detector receives them with the stamp. Until
+   P2b-02 lands those three fields, `itchGameId`, `msixFamilyName` and `caskToken` come only from
+   P1-11's `polaris_key/outlet_ids` export option. The
    Play Store's certificate digest is the same for every product, so it is platform data in
    `outlet-matrix.json`. That makes the checks data, not code (AGENTS rule 5).
 5. **Async platform calls get a deadline** (proposed 2 s). A timeout is "no evidence", not
@@ -503,10 +511,22 @@ Changed on this branch:
   until P3-01 decides.
 - **P1-11** (stamp format): an `outletIds` field (`steamAppId`, `itchGameId`, `flatpakId`,
   `snapName`, `caskToken`, `msixFamilyName`, `bundleId`), copied by the export plugin from `.pkey/distribution`
-  (P2b-02) or, until that exists, from an optional export option, so the identity conditions
+  (P2b-02, with the per-key field mapping) or, until that exists, from an optional export
+  option. `itchGameId`, `msixFamilyName` and `caskToken` come only from the export option until
+  P2b-02 adds their fields. This lets the identity conditions
   (rule 4) and the iOS bundle-id rewrite check can run offline at first launch. These are
   non-secret, product-declared ids. Without the field, P3-11 could not implement rule 4 without
   reopening P1-11.
+- **P2b-02** (identity fields per kind): adds `itch` `gameId` (the numeric itch.io game id,
+  matched against the receipt's `game.id`; `target` stays the butler slug), `ms-store` and
+  `app-installer` `packageFamilyName` (the MSIX `<Name>_<PublisherId>`, matched by the
+  `windows.*` identity gate), and `direct` `homebrewCask` (the cask token, matched by
+  `macos.homebrewCask`). Each is a rule-9 addition (AGENTS rule 9): a schema property in
+  `distribution.schema.json`, a check under the existing `invalid_outlet_identity` code, and one
+  mutation entry per field. Its acceptance and hand-off now name them and P1-11 as a reader.
+  Without these fields, P1-11 would have nowhere to copy `itchGameId`, `msixFamilyName` and
+  `caskToken` from, and `itch.receipt`, every `windows.*` row and `macos.homebrewCask` could never
+  pass their identity condition.
 - **S-06** (this brief): acceptance ticked, with the itch limit, and the unmeasured rows listed
   in the hand-off.
 
@@ -527,6 +547,9 @@ Proposed, not edited (they are decisions or research notes):
 - **notes/E9 §1.1**: the `AppDistributor` `web` case is iOS 17.5+. The Steam, macOS and Flatpak
   rows can move to [M]. The `steam_appid.txt` "dev mode" claim and the macOS provisioning-profile
   heuristic are refuted.
+- **README §3.12**: the illustrative `distribution.yaml` should show the new identity fields:
+  `gameId` beside the `itch` entry's `target`, `homebrewCask` on the `direct` entry if a cask is
+  planned, and `packageFamilyName` on any `ms-store` or `app-installer` entry.
 - **P1-05**: report only the outlet id and `subkind`, never the raw signals, several of which
   carry account names or keys.
 

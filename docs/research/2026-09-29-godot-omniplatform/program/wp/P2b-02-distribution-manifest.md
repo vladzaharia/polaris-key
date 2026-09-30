@@ -104,10 +104,34 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
 - **Identity fields per kind** (proposed): `app-store`/`testflight` `appleId`, `bundleId`;
   `altstore`/`altstore-pal` `artifact`, `bundleId`, `marketplaceId` (PAL only); `play`/`play-testing`
   `packageName`, `tracks {<channel>: <track>}`; `obtainium`/`fdroid-repo` `artifact`,
-  `packageName`; `ms-store` `productId`; `steam` `appId`, `branches {<channel>: <branch>}`;
-  `itch` `target`; `flathub` `appId`; `snap` `name`; `winget` `packageIdentifier`; `direct`
-  `platforms[]`; `web` none. `artifact` names an artifact-map `id` (P2-04); channel keys must be
-  declared channels.
+  `packageName`; `ms-store` `productId`, `packageFamilyName`; `app-installer`
+  `packageFamilyName`; `steam` `appId`, `branches {<channel>: <branch>}`; `itch` `target`,
+  `gameId`; `flathub` `appId`; `snap` `name`; `winget` `packageIdentifier`; `direct`
+  `platforms[]`, `homebrewCask`; `web` none. `artifact` names an artifact-map `id` (P2-04);
+  channel keys must be declared channels.
+- **Identities for runtime outlet detection**
+  ([notes/S-06](../../notes/S-06-outlet-signals.md) precedence rule 4). Runtime detection
+  (P3-11) accepts a launcher signal only when it names this product, and P1-11's export plugin
+  copies the ids it matches from this file into the build stamp's `outletIds`. The mapping is
+  `steam.appId` → `steamAppId`, `itch.gameId` → `itchGameId`, `flathub.appId` → `flatpakId`,
+  `snap.name` → `snapName`, `direct.homebrewCask` → `caskToken`, and the `packageFamilyName` of
+  the `ms-store` or `app-installer` entry matching the build's outlet → `msixFamilyName`. Three of these fields are here only
+  for detection, and each is optional:
+  - `itch.gameId`: the numeric itch.io game id, matched against the itch app's receipt
+    `game.id`. `target` is the butler `user/game` slug, not that id.
+  - `packageFamilyName` on `ms-store` and `app-installer`: the MSIX package family name
+    (`<Name>_<PublisherId>`, the publisher id being 13 characters [I]). The `windows.*`
+    identity gate matches it, because a process can inherit package identity from an MSIX
+    parent. The two entries may differ, because a Store-signed and a self-signed package can
+    have different publisher ids [I].
+  - `direct.homebrewCask`: the Homebrew cask token (lowercase letters, digits, `-`, `.`, `@`
+    [I]), matched against `Caskroom/<token>/` by `macos.homebrewCask`. Detection never
+    enumerates Caskroom, so the token has to be declared.
+
+  Each field is a rule-9 addition. It gets a property in `distribution.schema.json`, a check
+  under the existing `invalid_outlet_identity` code (a positive integer for `gameId`, the
+  patterns above), and its own mutation entry.
+
 - **Transports** `embedded`, `pkey-cdn`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`,
   `flatpak-ext`, `web`. `pkey-cdn` and `embedded` fit any outlet; `apple-ba` only `app-store`/
   `testflight`; `play-pad` only `play`/`play-testing`; `steam-depot` only `steam`;
@@ -144,7 +168,9 @@ precedent (R6-03; README §3.1). Store ids and URLs belong here, not in the conf
 ## Acceptance criteria
 
 - [ ] `pnpm --filter @polaris-key/manifest test` passes with a Diceroll-shaped `distribution`
-      document in the base fixture and one mutation per new code.
+      document in the base fixture and one mutation per new code, plus one
+      `invalid_outlet_identity` mutation each for `itch.gameId`, `packageFamilyName` and
+      `direct.homebrewCask`.
 - [ ] Resync of a fixture repo writes the expected `dist_outlets` and `dist_transports` rows; a
       second resync is a no-op; removing an outlet sets `removed_at`.
 - [ ] A manifest with `capabilities` fails validation; an operator widening a capability is
@@ -167,5 +193,9 @@ mise exec node@22 -- pnpm typecheck
 
 - `dist_outlets`, `dist_transports`, the outlet id and kind vocabulary, the identity fields and
   `capabilities.ts` are what P2b-03 to P2b-06, P3-01 (outlet matrix), P4-05 and P5-02 to P5-04 read.
+- P1-11's export plugin reads the detection identities (mapping under "Identities for runtime
+  outlet detection") from the parsed file into the stamp's `outletIds`. Until this package
+  lands, P1-11 takes `itchGameId`, `msixFamilyName` and `caskToken` from its
+  `polaris_key/outlet_ids` export option.
 - The Core `manifestIngest` helper is available to any later service.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P2b-02 done`.
