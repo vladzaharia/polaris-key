@@ -148,6 +148,7 @@ describe("desktopAdapter reads the v2 additions", () => {
   });
 });
 
+// @pkey-feature devices.manage update.check
 describe("the invoke() escape hatch", () => {
   it('routes device verbs through invoke("devices", …)', async () => {
     const bridge = makeFakeBridge(okBridgeState());

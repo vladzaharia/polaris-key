@@ -1,3 +1,4 @@
+// @pkey-feature ui.kit config.list
 // `<ConfigPanel>` — the settings panel over the shipped `listUserConfig`/`getConfigSource`
 // data layer. What is asserted here is what a hand-rolled copy usually gets wrong: the
 // provenance badge, and offering an override affordance ONLY where an override can win.

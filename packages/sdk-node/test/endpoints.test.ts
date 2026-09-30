@@ -107,6 +107,7 @@ const FINGERPRINT: HardwareFingerprint = {
   hwid: "hwid-hash",
 };
 
+// @pkey-feature license.activate
 describe("activateWithKey — POST /<p>/license/activate", () => {
   it("POSTs the v3 route with Bearer <key> + the device header and returns the minted token", async () => {
     const { impl, calls } = fakeFetch([
@@ -267,6 +268,7 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
   });
 });
 
+// @pkey-feature license.enroll
 describe("enroll — POST /<p>/license/enroll", () => {
   it("POSTs the enroll route with NO Authorization header", async () => {
     // The whole point of §5's keyless tier: there is no credential to present. An
@@ -371,6 +373,7 @@ describe("reacquireToken — POST /<p>/license/token", () => {
   });
 });
 
+// @pkey-feature license.deactivate
 describe("deauthorize — POST /<p>/license/deauthorize", () => {
   it("POSTs the deauthorize route with the token bearer", async () => {
     const { impl, calls } = fakeFetch([{ status: 200, json: { ok: true } }]);
@@ -399,6 +402,7 @@ describe("deauthorize — POST /<p>/license/deauthorize", () => {
   });
 });
 
+// @pkey-feature devices.report
 describe("reportSnapshot — POST /<p>/devices/report", () => {
   it("POSTs the JSON snapshot to the DEVICES route, not the retired /config/report", async () => {
     // §6: telemetry moved off the config service. It is licence anti-fraud data that had been

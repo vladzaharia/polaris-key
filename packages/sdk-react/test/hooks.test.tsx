@@ -76,6 +76,7 @@ describe("useLicense", () => {
   });
 });
 
+// @pkey-feature config.resolve
 describe("useManagedConfig", () => {
   it("returns the config map + a typed getter", async () => {
     const adapter = desktopAdapter({
@@ -144,6 +145,7 @@ describe("useManagedConfig", () => {
   });
 });
 
+// @pkey-feature license.entitlements
 describe("useEntitlement", () => {
   it("returns true only for a granted boolean entitlement", async () => {
     const adapter = desktopAdapter({

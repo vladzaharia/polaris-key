@@ -549,7 +549,7 @@
       "optional": false,
       "refs": ["PARITY §3", "PARITY §5"],
       "brief": "wp/P1b-01-parity-registry.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-02",

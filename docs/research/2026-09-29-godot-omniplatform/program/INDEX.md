@@ -52,7 +52,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 | Id                                                 | Title                                                                                                                        | Depends on           | Role        | Weeks  | Status |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------- | ------ | ------ |
-| [P1b-01](wp/P1b-01-parity-registry.md)             | Feature registry, per-SDK parity manifests and the `parity:check` gate                                                       | —                    | implementer | 1–1.5  | todo   |
+| [P1b-01](wp/P1b-01-parity-registry.md)             | Feature registry, per-SDK parity manifests and the `parity:check` gate                                                       | —                    | implementer | 1–1.5  | done   |
 | [P1b-02](wp/P1b-02-sdk-constants.md)               | Generate SDK constants: error codes, header values, enums, feature ids                                                       | P1b-01, P0-09        | implementer | 1      | todo   |
 | [P1b-03](wp/P1b-03-http-transcripts.md)            | Capture HTTP transcripts from Worker tests and replay them in every SDK                                                      | P1b-01               | implementer | 2–3    | todo   |
 | [P1b-04](wp/P1b-04-headers-config-corpora.md) ⚑    | Add `headers.json` and `config-matrix.json` to the corpus                                                                    | P1b-02               | sdk-porter  | 0.75–1 | todo   |

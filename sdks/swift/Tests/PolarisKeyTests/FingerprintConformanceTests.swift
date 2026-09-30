@@ -1,3 +1,4 @@
+// @pkey-feature devices.fingerprint
 // The Swift conformance runner for the fingerprint + device-id formulas. Mirrors
 // conformance/runners/node/fingerprint.test.ts and the Python runner against the SAME corpus,
 // bundled here as a test resource (the Swift test target can't reach up the monorepo at test
