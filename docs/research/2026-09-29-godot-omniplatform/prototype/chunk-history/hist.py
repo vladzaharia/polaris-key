@@ -9,6 +9,7 @@ Reuses ../patching/tools/pck.py and ../patching/tools/fastcdc.cjs, and the refer
 """
 import hashlib
 import json
+import multiprocessing
 import os
 import re
 import subprocess
@@ -38,7 +39,13 @@ CHUNKERS = {  # name -> (avg, file_aware); min = avg/4, max = avg*4, normalised 
     "fa64": (64 * KIB, True),
     "fa128": (128 * KIB, True),
     "plain64": (64 * KIB, False),
+    "fa32m": (32 * KIB, True),
+    "fa64m": (64 * KIB, True),
 }
+# "m" variants: file-aware, but a gap shorter than PAD_MERGE bytes (the exporter's 16-byte alignment
+# padding between entries) is appended to the segment before it instead of becoming its own chunk.
+MERGE_PAD = {"fa32m", "fa64m"}
+PAD_MERGE = 64
 BUNDLE_TARGETS = (4 * MIB, 8 * MIB, 16 * MIB)
 
 
@@ -157,6 +164,16 @@ def segments(files, size):
     return segs
 
 
+def merge_padding(segs):
+    out = []
+    for o, n in segs:
+        if out and n < PAD_MERGE and out[-1][0] + out[-1][1] == o:
+            out[-1][1] += n
+        else:
+            out.append([o, n])
+    return out
+
+
 def gaps_of(data, files):
     out, pos = bytearray(), 0
     for f in files:
@@ -188,7 +205,8 @@ def recipe(r, family, chunker):
     if fa:
         sp = cache + ".segs.json"
         os.makedirs(os.path.dirname(cache), exist_ok=True)
-        json.dump(segments(files_of(r, family), os.path.getsize(p)), open(sp, "w"))
+        segs = segments(files_of(r, family), os.path.getsize(p))
+        json.dump(merge_padding(segs) if chunker in MERGE_PAD else segs, open(sp, "w"))
         env["FASTCDC_SEGMENTS"] = sp
     else:
         env.pop("FASTCDC_SEGMENTS", None)
@@ -238,7 +256,8 @@ def ensure_clens(data, rec, workers=None):
             todo.append((h, bytes(data[o:o + s])))
     if not todo:
         return
-    with ProcessPoolExecutor(max_workers=workers or os.cpu_count()) as ex:
+    # fork, not spawn: the scripts are plain top-level modules without a __main__ guard
+    with ProcessPoolExecutor(max_workers=workers or os.cpu_count(), mp_context=multiprocessing.get_context("fork")) as ex:
         for h, n in ex.map(_zlen_task, todo, chunksize=16):
             C[h] = n
     save_clens()
@@ -299,6 +318,27 @@ def records(rec, loc):
 
 def index_bytes(n_records, n_bundles):
     return HDR + REC * (n_records + n_bundles)
+
+
+def index_blob(rec, loc, file_aware, payload_size):
+    """The pkey-chunks/1 bytes (gen.py's writer). Bundle ids stand in as SHA-256 of the bundle's chunk
+    ids (the real bundle bytes are not built here); both are 32 incompressible bytes."""
+    import struct
+
+    bundles = sorted({v[0] for v in loc.values()})
+    remap = {b: k for k, b in enumerate(bundles)}
+    ends = {}
+    for h, (b, o, cl) in loc.items():
+        ends[b] = max(ends.get(b, 0), o + cl)
+    hdr = b"PKEYCHNK" + struct.pack("<HHIIIQ", 1, REC, 1 if file_aware else 0, len(rec), len(bundles), payload_size)
+    hdr += bytes(32)  # payloadSha256 placeholder
+    body = bytearray()
+    for _, s, h in rec:
+        b, o, cl = loc[h]
+        body += bytes.fromhex(h) + struct.pack("<IIII", s, cl, remap[b], o)
+    for b in bundles:
+        body += hashlib.sha256(f"bundle-{b}".encode()).digest() + struct.pack("<QQ", ends[b], 0)
+    return hdr + bytes(body)
 
 
 def missing_stats(target_recs, seed_ids):

@@ -24,3 +24,5 @@ docs/research/2026-09-29-godot-omniplatform/prototype/patching/out/
 docs/research/2026-09-29-godot-omniplatform/prototype/patching/proj_v*/
 docs/research/2026-09-29-godot-omniplatform/prototype/patching/v2_changes.json
 docs/research/2026-09-29-godot-omniplatform/prototype/patching/venv/
+# S-03: downloaded Diceroll release assets and everything derived from them (private inputs).
+docs/research/2026-09-29-godot-omniplatform/prototype/chunk-history/data/
