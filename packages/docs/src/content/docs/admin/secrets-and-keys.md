@@ -56,7 +56,9 @@ changes them makes the recipe _Changed since approval_ too, with the approved va
 ones, and so does turning License off after an approval given with it on. When the change arrives
 by a manifest push, the ingest also drops the approval (audited as `config.mint.invalidate`), so
 the recipe returns to _Pending approval_ and a later push that reverts the change does not restore
-it: review the licences and devices issued in between before you re-approve. The setup checklist lists each recipe awaiting approval
+it: review the licences and devices issued in between before you re-approve. While License is
+off the card and the approve dialog warn that the mint does not check device licences, so an
+approval given then (recorded as such) lets a disabled or expired licence mint. The setup checklist lists each recipe awaiting approval
 and each recipe secret not yet marked edge-mint. The full rule, the admin endpoints and the
 upgrade backfill are in [Edge-mint](/docs/services/config/edge-mint/#two-operator-conditions).
 

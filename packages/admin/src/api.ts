@@ -961,6 +961,9 @@ export const api = {
     id: string,
     fields: EdgeMintRecipeFields,
     identity: EdgeMintIdentity | null,
+    /** Whether License was on in the view the operator approved from (refused with 409 if a
+     *  push changed it since). */
+    licenseEnabled: boolean,
     acknowledgeOpenRegistration = false,
   ) =>
     call<{ ok: true; id: string; status: "approved" }>(
@@ -975,6 +978,7 @@ export const api = {
           ttlSeconds: fields.ttlSeconds,
           audience: fields.audience,
           identity,
+          licenseEnabled,
           ...(acknowledgeOpenRegistration
             ? { acknowledgeOpenRegistration: true }
             : {}),

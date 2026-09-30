@@ -228,6 +228,9 @@ export function EdgeMintRecipes({
       ? `${reasons.slice(0, -1).join(", ")} and ${reasons[reasons.length - 1]}`
       : (reasons[0] ?? "registration is open");
   const identity = data?.identity ?? null;
+  // `licenseEnabled` is echoed on approve, so the value the operator was shown is the one
+  // recorded; a push that flips it in between is refused (409).
+  const licenseEnabled = data?.licenseEnabled !== false;
 
   const refresh = (): void => {
     invalidate(`edge-mint:${slug}`);
@@ -243,6 +246,7 @@ export function EdgeMintRecipes({
         approving.id,
         fieldsOf(approving),
         identity,
+        licenseEnabled,
         open && acknowledged,
       );
       toast.success(
@@ -253,7 +257,7 @@ export function EdgeMintRecipes({
     } catch (err) {
       toast.error(
         err instanceof ApiError && err.status === 409
-          ? "The recipe or its sign-in trust changed — review it again"
+          ? "The recipe, its sign-in trust or License changed — review it again"
           : "Couldn’t approve recipe",
         err instanceof Error ? err.message : undefined,
       );
@@ -334,6 +338,20 @@ export function EdgeMintRecipes({
               The mint is <strong>public</strong>: {openReason}. Anyone who
               installs this product (or can sign in to it) can hold a device
               token, so an approved recipe is a public token mint.
+            </p>
+          </div>
+        ) : null}
+        {!licenseEnabled ? (
+          <div
+            role="alert"
+            data-testid="edge-mint-license-off"
+            className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm"
+          >
+            <AlertTriangle aria-hidden className="mt-0.5 size-4 text-warning" />
+            <p>
+              <strong>License is off</strong>: this mint does not check device
+              licences, so a disabled or expired licence can mint. An approval
+              given now records that; turning License on later only narrows it.
             </p>
           </div>
         ) : null}
@@ -444,6 +462,16 @@ export function EdgeMintRecipes({
             {approving ? (
               <div className="space-y-4">
                 <RecipeFields recipe={{ ...approving, changedFields: [] }} />
+                {!licenseEnabled ? (
+                  <p
+                    role="alert"
+                    data-testid="edge-mint-approve-license-off"
+                    className="text-sm text-warning"
+                  >
+                    License is off: this mint does not check device licences; a
+                    disabled or expired licence can mint.
+                  </p>
+                ) : null}
                 {identity ? (
                   <div className="space-y-2">
                     <p className="text-sm">

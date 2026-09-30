@@ -93,15 +93,16 @@ approval would cover. Behind it is Config's admin API:
 | Endpoint                                                    | Does                                                                                                                                                                                                                                                                     |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `GET /manage/api/products/<slug>/config/mint`               | `{ registration, anonymousEnroll, oidcDefault, publicMint, licenseEnabled, identity, recipes[] }` — `identity` is the sign-in trust (or `null` with Identity off); each recipe's fields, `status`, `secretUsage`, the stored `approval` (or `null`) and `changedFields`. |
-| `POST /manage/api/products/<slug>/config/mint/<id>/approve` | Approves. The body **echoes** the recipe's fields and `identity` as the operator saw them (see below).                                                                                                                                                                   |
+| `POST /manage/api/products/<slug>/config/mint/<id>/approve` | Approves. The body **echoes** the recipe's fields, `identity` and `licenseEnabled` as the operator saw them (see below).                                                                                                                                                 |
 | `POST /manage/api/products/<slug>/config/mint/<id>/revoke`  | Drops the approval; the recipe answers `404` again.                                                                                                                                                                                                                      |
 
 The approve body carries `alg`, `signingKeySecret`, `kid`, `claimsTemplateJson` (the stored JSON
 string), `ttlSeconds` and `audience`, exactly as `GET` returned them, plus the `identity` object
-(`null` when Identity was off). If a push landed in between and they no longer equal the stored
-recipe or the product's current sign-in trust, the call is refused with `409` and the differing
-field names (`identity` for the latter), so an operator never approves something they did not see.
-A recipe field missing from the body is `422`.
+(`null` when Identity was off) and the `licenseEnabled` boolean. If a push landed in between and
+they no longer equal the stored recipe, the product's current sign-in trust or whether License is
+on, the call is refused with `409` and the differing field names (`identity` or `licenseEnabled`
+for the latter two), so an operator never approves something they did not see. A recipe field or
+`licenseEnabled` missing from the body is `422`.
 
 ### Public mints
 
@@ -141,6 +142,13 @@ again. The approval therefore records whether License was on (`licenseEnabled`);
 given with License on does not apply while it is off — the recipe answers `404` and the list shows
 it `changed` with `license` in `changedFields`. Turning License **on** only narrows, so it never
 invalidates an approval.
+
+Re-approving while License is off is a decision to mint without licence checks, so it has to be a
+seen one: the console warns on the card and in the approve dialog whenever License is off
+("this mint does not check device licences; a disabled or expired licence can mint"), the approve
+body echoes `licenseEnabled` (`409` if a push flipped it since the card loaded), and the audit
+entry says "License off". The warning matters most after a push: the ingest deletes the widened
+approval, so the recipe reads plain `pending` and the card-level warning is what says why.
 
 ### Sign-in trust
 

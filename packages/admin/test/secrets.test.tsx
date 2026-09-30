@@ -244,6 +244,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "applemusic",
         FIELDS,
         null,
+        true,
         false,
       ),
     );
@@ -267,6 +268,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "applemusic",
         FIELDS,
         null,
+        true,
         true,
       ),
     );
@@ -298,6 +300,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "applemusic",
         FIELDS,
         null,
+        true,
         true,
       ),
     );
@@ -387,6 +390,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         FIELDS,
         null,
         true,
+        true,
       ),
     );
   });
@@ -411,7 +415,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
     );
     expect(
       await screen.findByText(
-        "The recipe or its sign-in trust changed — review it again",
+        "The recipe, its sign-in trust or License changed — review it again",
       ),
     ).toBeTruthy();
     // The list is reloaded so the operator sees the recipe as it now stands.
@@ -444,6 +448,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "applemusic",
         FIELDS,
         IDENTITY,
+        true,
         false,
       ),
     );
@@ -513,6 +518,49 @@ describe("Edge-mint recipes card (P0-12)", () => {
     expect(screen.getByRole("button", { name: "Re-approve" })).toBeTruthy();
   });
 
+  it("while License is off, warns on the card and in the dialog and echoes License off", async () => {
+    // What an operator sees after a push turned License off and the ingest dropped the
+    // approval: the recipe is plain `pending`, so the reason must come from the card itself.
+    mockApi.edgeMintRecipes.mockResolvedValue(
+      recipes([recipe()], "requires-identity", false, {
+        identity: IDENTITY,
+        licenseEnabled: false,
+      }),
+    );
+    mockApi.approveEdgeMintRecipe.mockResolvedValue({ ok: true });
+    renderSecrets();
+    await screen.findByText("Edge-mint recipes");
+    expect(screen.getByText("Pending approval")).toBeTruthy();
+    expect(screen.getByTestId("edge-mint-license-off").textContent).toMatch(
+      /License is off.*does not check device\s+licences.*disabled or expired licence can mint/s,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByTestId("edge-mint-approve-license-off").textContent,
+    ).toMatch(/License is off: this mint does not check device licences/);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Approve" }),
+    );
+    await waitFor(() =>
+      expect(mockApi.approveEdgeMintRecipe).toHaveBeenCalledWith(
+        "djdl",
+        "applemusic",
+        FIELDS,
+        IDENTITY,
+        false,
+        false,
+      ),
+    );
+  });
+
+  it("shows no License warning while License is on", async () => {
+    mockApi.edgeMintRecipes.mockResolvedValue(recipes([recipe()]));
+    renderSecrets();
+    await screen.findByText("Edge-mint recipes");
+    expect(screen.queryByTestId("edge-mint-license-off")).toBeNull();
+  });
+
   it("with an OIDC default tier, warns that the mint is public and requires the acknowledgement", async () => {
     mockApi.edgeMintRecipes.mockResolvedValue(
       recipes([recipe()], "requires-license", false, {
@@ -538,6 +586,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
         "applemusic",
         FIELDS,
         IDENTITY,
+        true,
         true,
       ),
     );

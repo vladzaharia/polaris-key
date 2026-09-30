@@ -321,6 +321,7 @@ describe("api — every product-scoped resource is under its owning service", ()
             audience: null,
           },
           null,
+          true,
         ),
       "config/mint/music/approve",
     ],
@@ -392,7 +393,7 @@ describe("api — every product-scoped resource is under its owning service", ()
     });
   });
 
-  it("approveEdgeMintRecipe echoes every field and the sign-in trust, and the acknowledgement only when given (P0-12)", async () => {
+  it("approveEdgeMintRecipe echoes every field, the sign-in trust and License, and the acknowledgement only when given (P0-12)", async () => {
     setCsrf("tok");
     stubFetch(() => json({ ok: true }));
     const fields = {
@@ -409,16 +410,25 @@ describe("api — every product-scoped resource is under its owning service", ()
       clientId: "c",
       groupRoleMapJson: "{}",
     };
-    await api.approveEdgeMintRecipe("djdl", "music", fields, null);
-    await api.approveEdgeMintRecipe("djdl", "music", fields, identity, true);
+    await api.approveEdgeMintRecipe("djdl", "music", fields, null, true);
+    await api.approveEdgeMintRecipe(
+      "djdl",
+      "music",
+      fields,
+      identity,
+      false,
+      true,
+    );
     expect(calls[0]!.init.method).toBe("POST");
     expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
       ...fields,
       identity: null,
+      licenseEnabled: true,
     });
     expect(JSON.parse(calls[1]!.init.body as string)).toEqual({
       ...fields,
       identity,
+      licenseEnabled: false,
       acknowledgeOpenRegistration: true,
     });
   });

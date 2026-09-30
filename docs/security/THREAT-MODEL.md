@@ -210,7 +210,9 @@ under the victim product.
   without it. (b) Whether licences are checked: the mint requires a usable licence only while
   License is on, and with Identity on a push that turns License off keeps the mint closed
   (`requires-identity`) while letting a device whose licence was disabled or expired mint again;
-  the approval records whether License was on. (c) The sign-in trust: on a closed product, signing
+  the approval records whether License was on, the approve call echoes it (`409` if it changed
+  since the console loaded), and the console warns while License is off, so a re-approval after
+  a License-off push cannot record "no licence checks" unseen. (c) The sign-in trust: on a closed product, signing
   in is the other route to a device token, and the manifest writes the OIDC provider, issuer,
   client id and `groupRoleMap` that decide who a sign-in licenses. The approval records them (and
   whether Identity was on); while Identity is on, any change widens it. A widened approval stops

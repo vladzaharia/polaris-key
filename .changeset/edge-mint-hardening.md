@@ -21,7 +21,8 @@ reachable token mint.
   anonymous `autoIssue` after approval makes the recipe `404` until re-approved. The approval
   also records the sign-in trust (whether Identity is on, and the OIDC provider, issuer, client id
   and group map); while Identity is on, a push that changes any of them makes the recipe `404`
-  until re-approved, and the approve body echoes it (`409` if stale).
+  until re-approved, and the approve body echoes it (`409` if stale). The approval also records whether License was on; the approve body
+  echoes it as `licenseEnabled` (`409` if stale, `422` if absent), and the console warns while License is off.
 - **Per-device budget.** Bucket `mintDevice`, 30 mints per device per minute, beside the per-IP one.
 - **Discovery.** `config.mint.available` is true only when an approved recipe exists.
 - **Console.** An Edge-mint recipes card on the Secrets view, a usage selector when setting a

@@ -117,7 +117,10 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   match, so an operator never approves something they did not see) and, when the effective
   registration is `open`, `"acknowledgeOpenRegistration": true` (_correction:_ also when
   anonymous auto-issue enrolment or an OIDC default tier is on — see `mintIsPublic` above — and
-  the body also echoes the sign-in trust as `identity`);
+  the body also echoes the sign-in trust as `identity`; _correction (third review):_ and whether
+  License is on as `licenseEnabled`, `409` with `fields: ["licenseEnabled"]` if it differs and
+  `422` if absent — the console warns on the card and in the dialog while License is off, since
+  after a License-off push the swept recipe reads plain `pending`);
   `POST …/config/mint/<id>/revoke`. Audit events `config.mint.approve`, `config.mint.revoke`,
   `secret.usage`.
 - **Per-device rate limit** in addition to the per-IP one: bucket `mintDevice`, keyed by device id,
@@ -193,6 +196,9 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
 - [x] Test (review fix): with Identity on, a resync that changes `oidc.issuer`, `oidc.clientId`
       or `oidc.groupRoleMap`, or that turns Identity on, makes an approved closed recipe `404`
       until re-approved; approve with a stale `identity` echo is `409`.
+- [x] Test (third review): after a License-off push sweeps the approval, a re-approval echoing
+      `licenseEnabled: true` is `409` (absent is `422`); the console warns on the card and in the
+      approve dialog while License is off and echoes `false`.
 - [x] Test: the per-device bucket returns `429` after 30 mints in a minute from one device.
 - [x] Test: discovery `config.mint.available` is false while every recipe is pending.
 - [x] `THREAT-MODEL.md` and `services/config/edge-mint.md` describe both conditions; `gen:check`,
