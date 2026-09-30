@@ -417,7 +417,9 @@ function parityMatrix() {
     existsSync(transcriptsDir)
       ? readdirSync(transcriptsDir)
           .filter((f) => f.endsWith(".json"))
-          .flatMap((f) => JSON.parse(read("conformance", "transcripts", f)).features)
+          .flatMap(
+            (f) => JSON.parse(read("conformance", "transcripts", f)).features,
+          )
       : [],
   );
 
