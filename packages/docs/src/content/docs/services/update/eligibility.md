@@ -45,13 +45,13 @@ The download route, the appcast, and the version check all resolve a channel or 
 selector through one shared vocabulary, so the three can never disagree about what "beta"
 currently means:
 
-| Selector                                             | Resolves to                                                                                                                                                               |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `stable`, `latest`, or omitted                       | the newest non-prerelease release                                                                                                                                         |
-| a bare `X.Y.Z` (optionally with a prerelease suffix) | that exact tag, pinned                                                                                                                                                    |
-| `beta`                                               | the latest tag from a configured GitHub Actions channel workflow's run on the product's beta branch, falling back to the newest prerelease when no workflow is configured |
-| `pr-<n>`                                             | the same workflow-based resolution, scoped to that pull request's head commit — with no workflow configured, this resolves to nothing                                     |
-| a manifest-declared manual channel                   | the newest release whose tag matches the channel's anchored regular expression                                                                                            |
+| Selector                                             | Resolves to                                                                                                                                                                          |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `stable`, `latest`, or omitted                       | the highest-version non-prerelease **candidate** (see below)                                                                                                                         |
+| a bare `X.Y.Z` (optionally with a prerelease suffix) | that exact tag, pinned                                                                                                                                                               |
+| `beta`                                               | the latest tag from a configured GitHub Actions channel workflow's run on the product's beta branch, falling back to the highest prerelease candidate when no workflow is configured |
+| `pr-<n>`                                             | the same workflow-based resolution, scoped to that pull request's head commit — with no workflow configured, this resolves to nothing                                                |
+| a manifest-declared manual channel                   | the highest release whose tag matches the channel's anchored regular expression                                                                                                      |
 
 Anything that matches none of these is passed through **unrecognized** rather than quietly
 treated as `stable` — an unresolvable selector answers `404` visibly instead of silently
@@ -63,6 +63,54 @@ table. The regex is compiled anchored (`^(?:…)$`), capped at 80 characters, an
 manifest validation if it does not compile; the runtime reader applies the same rule, so an
 ingested channel is always a resolvable one. The built-in names are matched first, so a
 manual channel could never be called `stable`, `beta`, `latest` or `pr-<n>`.
+
+### Which tags are candidates, and which one wins
+
+Not every GitHub release is an app release. A repository may also publish a rolling
+`channels` release, a content `packs` release, or anything else its tooling needs, and none of
+those may ever become `latest`. So `stable`/`latest` and the `beta` prerelease fallback only
+consider **candidates**: non-draft releases whose tag matches `release.stableTagPattern` and is
+not listed in `release.ignoreTags`, and whose version (the tag minus a leading `v`) parses as
+semver.
+
+- **`stableTagPattern`** is an anchored regular expression under the same rule as a manual
+  channel's (compiled `^(?:…)$`, at most 80 characters, refused at validation if it does not
+  compile). Undeclared, it is a semver tag with an optional leading `v`, such as `v1.2.3`,
+  `1.2.3-rc.1` or `v2.0.0+build.5`.
+- **`ignoreTags`** is a list of exact tag names that no moving channel ever resolves to. Manual
+  channels keep their own regex, but they skip these tags too. A pinned `X.Y.Z` still
+  reaches an ignored tag, because a pin names its tag exactly.
+
+Among the candidates, the winner is the **highest semver precedence**, not the most recently
+created release: `v1.10.0` beats `v1.4.0` even when `v1.4.0` was cut later as a backport. When
+two tags strip to the same version (`v1.2.0` and `1.2.0`), the later `published_at` wins. A
+manual channel over tags that are not semver, such as dated nightlies, is ordered by
+`published_at` alone.
+
+A request reads the GitHub release list one page of 100 at a time. It stops at the first page
+that holds a candidate for the selector, and it never reads more than three pages. The winner
+is the highest candidate among the pages it read. A repository whose newest page holds an app
+release, which is nearly all of them, still costs one list call. A pinned `X.Y.Z` is looked up
+as `tags/v<X.Y.Z>` first and, only when that 404s, as `tags/<X.Y.Z>`, so a repository that tags
+without a `v` can be pinned and its stable appcast's pinned enclosure resolves.
+
+### Channel floors: no silent downgrade
+
+Each truth-store [sync](/docs/services/release/github-sync/) records the highest version every
+moving channel has resolved to (`release_channel_floors`). The channels floored are `stable`,
+`beta` when no channel workflow is configured, and manual channels. Pinned versions and
+`pr-<n>` are never floored. When a request's pick lands **below** that floor, the route looks
+the floor's release up by tag, which costs one extra GitHub call:
+
+- If the release still exists (it sat on a page the request did not read), it is served.
+- If it is gone (deleted or unpublished), the channel answers `404` rather than quietly
+  promoting an older build to `latest` behind a public cache header.
+
+The console's [release health](/docs/services/release/truth-store/#health-checks) then reports
+`channel-regressed`, naming the floor and what the list now offers. The only way past a floor
+is an operator's decision. `POST /manage/api/products/<slug>/release/channels/<channel>/floor`
+with `{ "version": "1.0.0" }` lowers it, and `{ "clear": true }` removes it. Both are audited
+as `release.channel.floor`. A floor can only be lowered this way. Only a sync raises one.
 
 ## Access versus eligibility, restated
 

@@ -58,6 +58,9 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
   `compileManualChannelRegex`, max 80 characters) and `ignoreTags` (a list of exact tag names).
   Default `stableTagPattern`, when undeclared:
   `^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$`.
+  (Correction, from the code: written out with `^…$` this is 81 characters, one over the cap.
+  `compileManualChannelRegex` anchors every source as `^(?:…)$` itself, so the constant
+  `DEFAULT_STABLE_TAG_PATTERN` is stored unanchored and matches the same tags.)
   Only matching, non-ignored, non-draft releases are candidates for `stable`/`latest` and for
   the `beta` prerelease fallback. Manual channels keep their own regex but skip `ignoreTags`.
   Persist as `release_config.stable_tag_pattern` and `release_config.ignore_tags_json`
@@ -114,6 +117,8 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
   rule 9 work is part of the tag filter the report asks for.
 - New table ⇒ a `TABLE_OWNERS` entry (release) in `packages/docs/scripts/gen-reference.mjs:248`
   and a regenerated `reference/data-model.mdx`. Number migrations on rebase (P0-01 adds some too).
+  (Correction: the lead pre-assigned 0023 to this package, so the three files are
+  `0023_release_resolution.sql` plus one `0023_release_resolution_*.sql` per bare ALTER.)
 - Quota: pagination adds API calls only where the first page has no candidate. Record the
   per-request call counts in the PR (issue #3 is P2-05's to solve).
 

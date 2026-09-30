@@ -104,9 +104,14 @@ signature over the DMG's own bytes against the product's configured public key �
 merely checks that a sidecar file happens to exist. A release whose signature fails to
 verify, or whose product requires one it doesn't have, is dropped from the feed entirely:
 the whole `/appcast.xml` response answers `404` rather than shipping an item Sparkle would
-refuse to install anyway. A verified verdict is cached for a day, keyed to the exact
-asset, signature, and public key involved, so a hot channel doesn't re-verify the same
-bytes on every request — and so a swapped asset or a rotated key can never reuse a stale
+refuse to install anyway. The DMG is streamed through the check rather than held in
+memory, so any DMG up to GitHub's 2 GiB asset limit can be verified. A verified verdict is
+cached for 30 days and a failed one for a day, keyed to the exact asset, signature, and
+public key involved, so once a check has completed, later requests reuse its verdict instead
+of downloading the DMG again. Until a verdict is cached — including when requests arrive
+while the first check is still streaming, or when a request is aborted before its check
+finishes — each request still performs its own full check. Any change to those inputs is a new key — GitHub gives a
+re-uploaded asset a new id — so a swapped asset or a rotated key can never reuse a stale
 verdict.
 
 :::caution[This is a publishing gate, not the trust boundary]

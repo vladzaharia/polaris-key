@@ -91,7 +91,7 @@ modules:
 ```
 
 ```yaml
-# .pkey/schema.yaml — the catalog is required AND validated when Config is on
+# .pkey/schema.yaml — always required at ingest; its contents are validated when Config is on
 schemaVersion: 1
 entries:
   - key: run.concurrency
@@ -201,8 +201,9 @@ await client.update.check({ channel: "stable" });
 client.update.appcastUrl({ channel: "stable", arch: "arm64" });
 ```
 
-On macOS, `PolarisKeyUpdate` wires **Sparkle ≥ 2.6.4** to the feed, taking the feed URL from
-discovery rather than a literal. It never verifies updates: `SUPublicEDKey` in the code-signed
+On macOS, `PolarisKeyUpdate` wires **Sparkle ≥ 2.9.6** (the
+[security floor](/docs/services/update/sparkle/#the-version-floor)) to the feed, taking the feed
+URL from discovery rather than a literal. It never verifies updates: `SUPublicEDKey` in the code-signed
 `Info.plist` is the terminal anchor, and the target only asserts loudly that it is present.
 
 Metadata and artifact access default to `public` — anonymous update checking is a feature for the
