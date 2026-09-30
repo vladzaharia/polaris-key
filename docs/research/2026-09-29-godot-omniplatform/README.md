@@ -20,7 +20,10 @@ corpus is a **plan-mode, all-languages event** (CLAUDE.md) and is flagged as suc
 - [`CONTENT.md`](CONTENT.md): the content delivery system design. It covers many independently
   versioned packs of any type, delivered and patched through whatever each platform offers. It
   expands §3.7 of this report.
-- `notes/`: fourteen research reports this synthesis is built from (§15). They carry the file:line
+- [`PARITY.md`](PARITY.md): how every feature reaches every SDK and runtime. It covers a feature
+  registry with a CI gate, typed "unsupported here" results, corpora and HTTP transcripts, and the
+  gaps to close today. It expands §8.
+- `notes/`: sixteen research reports this synthesis is built from (§15). They carry the file:line
   evidence and the external sources.
 - `prototype/`: a runnable Godot 4.7 project with a pure-GDScript SHA-512, Ed25519 verifier and JWS
   verifier. It is tested against RFC 8032 and the repo's own conformance corpus.
@@ -44,7 +47,7 @@ corpus is a **plan-mode, all-languages event** (CLAUDE.md) and is flagged as suc
 None of this requires giving up a founding rule. Products stay data, the wire stays one contract
 across languages, and services stay independent.
 
-It is, however, a **program and not a feature**. Estimated at **~60–80 engineer-weeks** across eight
+It is, however, a **program and not a feature**. Estimated at **~70–90 engineer-weeks** across nine
 phases (§10), several of which parallelise. The difficulty is breadth, not depth: a dozen outlets,
 each with its own feed format, API, signing rules and store policy, plus **one deliberate wire
 event** (protocol v4) that every SDK must follow.
@@ -313,6 +316,8 @@ These nouns must not collide with the glossary:
 - "catalog" is the config catalog;
 - "manifest" means `.pkey/` files;
 - "staging" is a licence-gate channel.
+- "app" is never a synonym for product (the glossary forbids it). Here it names only the
+  deliverable kind `app`, the product's executable, as in the existing `app.minVersion` keys.
 
 The proposed additions go into `start/concepts.md` in the first implementing PR.
 
@@ -715,6 +720,9 @@ section lists only what is pack-specific; the full design is [`CONTENT.md`](CONT
     0.99 MB (file), against 9.80 MB full, at 0.2–0.45 s of pure-GDScript client CPU
     ([`CONTENT.md`](CONTENT.md) §8.3).
   - Never compute deltas or chunk boundaries in the Worker.
+  - The operations are portable. notes/A7 ran them in Python, Node, Chromium, the JVM, .NET and
+    Godot against 75 shared vectors, with identical verdicts and byte-identical outputs. Each SDK
+    needs at most one small zstd dependency, and Godot none.
 - **Transports are distribution's.**
   - `pkey-cdn`, `embedded`, `apple-ba` (Apple-hosted Background Assets are versioned independently
     of the app and switch every installed app version, so the `contentApi` is part of the asset-pack
@@ -1771,7 +1779,8 @@ immutable, non-redirecting, hash-pinned** URL. Add one for `access=public` artif
 
 ## 8. Carrying the concepts to the other SDKs and products
 
-Nothing above is Godot-specific except the runtime mechanics in §5. The generalisable pieces:
+Nothing above is Godot-specific except the runtime mechanics in §5. How every feature reaches
+every SDK, and stays there, is designed in [`PARITY.md`](PARITY.md). The generalisable pieces:
 
 1. **One canonical release record, many feeds.** Builds × outlets × requirements × hashes, with
    AppStream-flavoured field names. Every feed is a pure renderer of it: Sparkle, AltStore,
@@ -1808,13 +1817,15 @@ Nothing above is Godot-specific except the runtime mechanics in §5. The general
 
 **Per SDK:**
 
-| SDK                    | What it gains                                                                                                                                                                    |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Node                   | Electron: Velopack JS or an electron-updater-compatible feed renderer. CLIs: the generic `/version`, and `install.ps1` alongside `install.sh` (today's installer is Darwin-only) |
-| Python                 | Signed-feed verification, a resumable pack downloader (models, datasets), the Velopack Python SDK for desktop tools                                                              |
-| Swift                  | Extended Sparkle features; iOS outlet detection; Background Assets transport; StoreKit 2 bridge; raise the Sparkle floor to ≥ 2.9.6                                              |
-| React                  | CORS-enabled feed, PWA update pointer, OpenFeature provider                                                                                                                      |
-| Kotlin (new, optional) | Play/F-Droid flavours, In-App Updates, PAD, PackageInstaller; doubles as the Godot Android backend                                                                               |
+| SDK                       | What it gains                                                                                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node                      | Electron: Velopack JS or an electron-updater-compatible feed renderer. CLIs: the generic `/version`, and `install.ps1` alongside `install.sh` (today's installer is Darwin-only) |
+| Python                    | Signed-feed verification, a resumable pack downloader (models, datasets), the Velopack Python SDK for desktop tools                                                              |
+| Swift                     | Extended Sparkle features; iOS outlet detection; Background Assets transport; StoreKit 2 bridge; raise the Sparkle floor to ≥ 2.9.6                                              |
+| React                     | CORS-enabled feed, PWA update pointer, OpenFeature provider                                                                                                                      |
+| Kotlin (new, optional)    | Play/F-Droid flavours, In-App Updates, PAD, PackageInstaller; doubles as the Godot Android backend                                                                               |
+| C# / .NET (new, optional) | one package for .NET desktop, MAUI, Unity and Godot C#; Ed25519 via BouncyCastle or NSec (the base library has none); zstd via `ZstdSharp.Port` below .NET 11                    |
+| Tauri (plugin, optional)  | a first-party Rust plugin for keyring, fingerprint, Ed25519 fallback and updater hand-off; the React SDK does the rest in the webview                                            |
 
 **djdl** (the first product) benefits directly: universal DMGs, build numbers, critical, phased and
 delta Sparkle items, R2 hosting off the GitHub quota, trusted publishing, and a Windows path via
@@ -1894,6 +1905,7 @@ skills and threat-model updates (~10%). Agent assistance compresses calendar tim
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **P0 Hygiene and unblockers**                     | • operator-ownership `*_source` for access modes, compat window, artifact policy<br>• `release` webhook events<br>• tag filter, version-ordered "newest", pagination<br>• version-conflict fix; R6-10<br>• **channel vocabulary unification**<br>• CORS allowlist<br>• product-wide devices<br>• `init`/`validate` fixes<br>• unknown-slug tolerance<br>• **data-driven service table** (one table + drift gate replacing the per-file slug enumerations, before two new services)<br>• Sparkle floor ≥ 2.9.6<br>• docs drift                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 4–6 wk   | —                   | channel unification touches `gate-matrix.json` (plan mode); `OPTIONS` routes (rule 10)                                                                     | Polaris Key is correct for any non-macOS product                                                                                                                          |
 | **P1 Godot SDK core**                             | • `addons/polaris_key` core (verify, trust, cache, clock, transport)<br>• License / Config (incl. edge-mint) / Devices / Identity (device-code + QR) / Update-check parity<br>• UI kit v1 (gate, activation, sign-in, settings, banner, dev-menu section)<br>• export plugin v1 (build stamp)<br>• GUT corpus runner + CI job<br>• docs page, Asset Store listing<br>• server: RFC 8628 user-code page; `engine`/`outlet` report keys                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 8–11 wk  | P0 (channels, CORS) | sixth conformance language                                                                                                                                 | **Diceroll adopts managed config, licensing and identity**                                                                                                                |
+| **P1b SDK parity** ([`PARITY.md`](PARITY.md))     | • feature registry, per-SDK parity manifests, `parity:check` gate and generated parity page<br>• `gen-sdk-constants` (error codes, header values, enums, feature ids)<br>• HTTP transcripts captured from Worker tests, replayed in every SDK<br>• `headers.json`, `config-matrix.json`; Chromium and minimum-version runners<br>• close today's gaps: re-register-on-401, `entitledChannels`, catalog fetch, device-code sign-in, edge-mint ports, Swift/React release client, React bundle import and telemetry, fingerprint and storage fixes (§9.1 #23–27)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 8–12 wk  | P0                  | `parity:check` joins the green gate                                                                                                                        | every later phase closes in all SDKs, or with a declared typed N/A                                                                                                        |
 | **P2 Release truth and publishing**               | • Core blob store (R2) + trusted publisher (GitHub OIDC)<br>• `pkey publish` + `polaris-key/publish` Action<br>• release descriptor ingest; artifact map; platforms/arches incl. `universal`/`wasm32`<br>• builds and build numbers; per-platform resolution<br>• generic + blob routes<br>• channel policy (pin/promote/yank/includes)<br>• console builds view                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 5–7 wk   | P0                  | rules 9 and 10; migrations; threat model                                                                                                                   | every Diceroll artifact indexed, downloadable and published without long-lived secrets                                                                                    |
 | **P2b Distribution core**                         | • `distribution` service (new slug via the service table)<br>• `.pkey/distribution` (outlets, identities, listings)<br>• availability and submissions (CI-reported first)<br>• outlet-scoped rollouts and halts<br>• storefront feeds: AltStore/SideStore/PAL, Obtainium, F-Droid CI generator + static relay, Scoop/Flathub JSON<br>• public download page v1<br>• key inventory<br>• descriptor hooks (`buildCatalog`, `availability`, `outletCapabilities`)<br>• console distribution matrix v1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 5–7 wk   | P0, P2              | rules 9 and 10; new service; threat model                                                                                                                  | Diceroll's AltStore source, F-Droid repo and download page come from Polaris Key                                                                                          |
 | **P3 Signed feed, decision, feeds**               | • **wire v4**: `pkey-feed+jws` + `pkey-release+jws`<br>• corpus: feed, release, `update-matrix`, malleability<br>• five SDKs + Godot<br>• update feeds: Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync<br>• decision inputs from distribution's availability and rollout<br>• Godot updater: outlet adapters, sidecar swap, boot guard, Velopack/Sparkle hooks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 6–8 wk   | P2, P2b             | **plan mode; `PROTOCOL_VERSION` 4; all SDKs**                                                                                                              | **Diceroll deletes `game/update/*`, `update_manifest.py`, `altstore_source.py`, and the `channels` release**                                                              |
@@ -1903,11 +1915,11 @@ skills and threat-model updates (~10%). Agent assistance compresses calendar tim
 
 **Totals.**
 
-- **~60–80 engineer-weeks**, excluding the optional Kotlin SDK. Content delivery v2 and v3 account
-  for about 10–14 of those and sit off the critical path.
+- **~70–90 engineer-weeks**, excluding the optional Kotlin, C# and Tauri work. Content delivery v2
+  and v3 account for about 10–14 of those and sit off the critical path.
 - The critical path is P0 → P2 → P3 → P4 v1, about 22–29 weeks. P2b (distribution) runs
   alongside P3.
-- P1 (the Godot SDK) runs in parallel from the start. P5 plugins can start as soon as their P2/P3
+- P1 (the Godot SDK) and P1b (parity) run in parallel from the start. P5 plugins can start as soon as their P2/P3
   interfaces are fixed.
 
 **Minimum viable slice for Diceroll to drop its updater:** P0 + P1 + P2 + the AltStore part of
@@ -1939,6 +1951,9 @@ P2b + the Sparkle and generic-feed part of P3, plus the interim release-key-only
 | 17  | Service table first?                | **Yes.** Make the service list data-driven with a drift gate before adding `distribution`, instead of editing ~45 files for the new slug                                                                                                                                                                                                     |
 | 18  | Fixing bad content                  | Floors per `contentApi` level for compatible packs, so fixes can be backported; CI-signed **revocations** for dangerous content, since the Worker must not be able to condemn or substitute releases; pinned content is fixed by an app release                                                                                              |
 | 19  | Store lag and readiness             | Resolve a pack set per live `contentApi` level, bounded by the channel floor rather than store availability. Distribution holds an app release on an outlet until its required packs are live there                                                                                                                                          |
+| 20  | Parity rule                         | Every feature in every SDK, or a **typed "unsupported here"** result whose reason the feature registry allows. Enforced by `parity:check`, corpora and HTTP transcripts ([`PARITY.md`](PARITY.md))                                                                                                                                           |
+| 21  | Content codec                       | **zstd only** (one frame with its content size, or stored raw). No second `deflate` codec: every SDK needs zstd for deltas anyway, and the browser's WASM decoder is 24 KB gzipped                                                                                                                                                           |
+| 22  | SDKs after Godot                    | Build the Apple plugin package and the Kotlin AAR as shared native backends; then Kotlin if native Android apps matter, C#/.NET for Unity and MAUI, and a Tauri plugin rather than a Tauri SDK                                                                                                                                               |
 
 **Why no content service (decision 1).**
 
@@ -2064,6 +2079,7 @@ Moving it to `sdks/godot/` is the first task of P1.
 | [E7](notes/E7-server-ci-tools.md)         | external    | publishing, signing and hosting tools; reference platforms                                                                                                                                                                                                                                                          |
 | [E8](notes/E8-content-delivery.md)        | external    | multi-type content delivery and patching: Riot, Blizzard, Epic, Steam, itch, casync/OSTree/OCI, Unity/Unreal/Godot, platform transports; schema sketches                                                                                                                                                            |
 | [A6](notes/A6-godot-patching.md)          | empirical   | what a pure-GDScript client can patch on Godot 4.7.2: delta PCKs, PCK rebuild, chunk reassembly, binary deltas, zip and loose-file types, mount semantics                                                                                                                                                           |
+| [A7](notes/A7-xlang-content.md)           | empirical   | content operations in Python, Node, Chromium, JVM, .NET and Godot against 75 shared vectors: `pkey-chunks/1` and `pkey-files/1` defined in full, the planner specification and `plan-matrix` rows, decoder traps, `dcz`, throughput                                                                                 |
 | [E9](notes/E9-runtime-building-blocks.md) | external    | per-runtime building blocks (Node, Electron, Tauri, Python, Swift, Kotlin, .NET, Unity, web, Godot): outlet detection, self-update drivers, background downloads, hashing and decompression, atomic activation, secure storage, transport bindings, boot/sign-in UI, native footprint; the runtime × feature matrix |
 
 The notes are research working papers produced during this investigation. They are kept for their
@@ -2089,6 +2105,11 @@ synthesis reflects the cross-checked position.
   them, and update plans their installation (§3.2).
 - notes/E8 and the first drafts rely on `replace_files=false` for data-only safety. notes/A6 shows
   that zips ignore it and that it blocks a pack's UIDs. The rule is a directory check before mount.
+- notes/E9 recommends adding a `deflate` chunk codec. notes/A7 then showed zstd working in every
+  runtime with at most one small dependency, and a second codec would double the corpus and
+  every applier; decision 21 keeps zstd only. notes/E8 §5.4's `windowLog: 27` is superseded by
+  notes/A7 §3.2: a `--patch-from` window is at least the larger file, and clients raise
+  `windowLogMax` explicitly.
 - The first drafts described two ways to consume packs, "locked" and "floating". They are replaced
   by three declared bindings (`pinned`, `compatible`, `standalone`), resolution per live
   `contentApi` level, and per-outlet narrowing by transport ([`CONTENT.md`](CONTENT.md) §6).

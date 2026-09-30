@@ -556,26 +556,36 @@ handles transfer; Polaris Key keeps identity, compatibility, entitlement and act
 ### 8.1 The strategy ladder and planner
 
 ```text
-plan(target, installed, seeds, caps):
-  if installed payload == target payload                  → noop
-  if pack is bound to a platform transport on this outlet → platform   (ask the OS/store, then verify)
-  candidates:
-    chunk        if caps ∋ chunk/1 and target has a chunk index and any seed exists
-                 bytes = Σ compressed length of chunks missing from all seeds
-                 requests = contiguous runs of missing chunks per chunk bundle
-    delta        for each published delta with from == installed payload and caps ∋ method
-                 and memory need ≤ caps.memBudget            (pairwise; hot pairs only)
-    file         download changed files by hash, rebuild the container locally
-                 (any installed version whose files index is known)
-    full         payload (or its compressed blob)
-  cost = bytes + α·requests + β·peakDisk + γ·cpu(strategy)
-  choose the minimum-cost feasible strategy; the fallbacks are the rest by cost, full last
-  if peakDisk > freeDisk: offer "replace in place" (loses rollback), only with consent
+plan(target, installed, caps):                  integers only; full spec in notes/A7 §4
+  if an installed payload == target payload               → noop
+  if the pack is bound to a platform transport here       → platform if caps has that transport,
+                                                            else error plan.transport_unsupported
+                                                            (never a silent CDN fallback)
+  candidates, each with bytes and requests:
+    delta   each published delta whose `from` is installed, method ∈ caps, memBytes ≤ memBudget
+    chunk   chunk index + Σ clen of chunks missing from every seed; requests = 1 + request runs
+    file    files index + gaps blob + missing file blobs (any installed release with a files index)
+    full    the full blob (always a candidate)
+  cost     = bytes + requestWeight × requests          requestWeight: a capability, default 16 KiB
+  peakDisk = payload size + bytes; drop candidates with peakDisk > freeDisk
+  choose by (cost, strategy rank, menu order); fallbacks in that order, full always last
 ```
 
-- **Deterministic.** The planner is a pure function of (channel feed and release records, installed state, seed
-  indexes, capabilities). It becomes the corpus file `plan-matrix.json` (like `gate-matrix.json`
-  and README §3.6's `update-matrix.json`), so every SDK chooses identically.
+- **Deterministic.** The planner is a pure integer function of (channel feed and release records,
+  installed state, seed indexes, capabilities). It becomes the corpus file `plan-matrix.json`
+  (like `gate-matrix.json` and README §3.6's `update-matrix.json`), so every SDK chooses
+  identically. notes/A7 wrote the first 23 rows and ran them in six runtimes.
+- **Disk and memory are constraints, not prices.** Every strategy applies at 100+ MB/s even in
+  GDScript, so CPU is not worth pricing, and per-device constants would make the function
+  non-portable.
+- **The request weight matters.** On the real v1→v2 menu, the whole-payload delta wins
+  (311,529 B), then per-file deltas (345,603 B), chunk sync (558,312 B, 22 requests), file
+  (665,655 B) and full (1,246,961 B). At a 64 KiB request weight, full beats chunk sync. SDKs on
+  high-latency links, or in throttled background sessions, raise it.
+- **The request-run rule is shared** by the planner and the chunk applier, and the applier's
+  request count is checked against it in the corpus.
+- **UX policy stays outside the pure function:** metered/cellular consent, and the "replace in
+  place, loses rollback" offer when nothing fits on disk.
 - **First install:** take the single full blob, then _record its chunk index as a seed_, so the
   next update is incremental without ever having downloaded chunks.
 - **Cross-pack seeds:** a chunk can come from any installed pack or the embedded baseline. Moving
@@ -690,17 +700,43 @@ Full JSON sketches are in `notes/E8 §5.4`. The essentials:
   - `deltas[]`, `requires`, `conflicts`, `entitlement`, `marker`, `provenance`.
   - Platform ids are **not** in here, because platforms assign them after signing. They live in
     distribution's availability records and in the channel feed.
-- **Files index** (`pkey-files/1`, JSON): `{path, size, sha256, mode, chunks[]}` per file.
-- **Chunk index** (`pkey-chunks/1`, binary):
-  - a 64-byte header, then fixed 48-byte little-endian records
-    `id[32] | len u32 | clen u32 | bundle u32 | offset u32`;
+- **Files index** (`pkey-files/1`, JSON; defined in full in notes/A7 §3.3):
+  - `layout: container` (a single-file payload such as a PCK): `{path, offset, size, sha256}` per
+    file in offset order, plus one **gaps blob** holding every byte no file covers (header,
+    padding, directory). A container rebuild is then type-neutral (gap, file, gap, file, …), so
+    no SDK needs a PCK writer for the `file` strategy.
+  - `layout: tree`: the same list without offsets, verified per file and summarised as a
+    `treeDigest`.
+  - **Portable path rules:** printable ASCII only, no Windows-reserved characters or names, no
+    `.`/`..` or empty segments, and no case-insensitive collisions or file/directory conflicts.
+    GDScript has no Unicode normalisation, so the rules are ASCII by construction.
+- **Chunk index** (`pkey-chunks/1`, binary, little-endian; notes/A7 §3.1):
+  - a 64-byte header: magic `PKEYCHNK`, version, record size, flags (`fileAware`), chunk and
+    bundle counts, `payloadSize` and **`payloadSha256`**, which binds a seed index to its payload
+    without the release record;
+  - fixed 48-byte chunk records `id[32] | len u32 | clen u32 | bundle u32 | offset u32`, then a
+    table of 48-byte chunk-bundle records `sha256[32] | size u64 | reserved u64`;
+  - a fixed validation order with one error code per failure;
   - parseable in GDScript with `PackedByteArray.decode_u32`;
-  - ids are SHA-256 of **uncompressed** bytes; `clen == len` means stored raw.
+  - ids are SHA-256 of **uncompressed** bytes; `clen == len` means stored raw, and `clen > len` is
+    invalid. Chunker parameters live in the release record, since clients never chunk.
+- **Codec.** Every compressed object is **one zstd frame with its content size**, or stored raw.
+  Every zstd reference in a record carries the decoded `size`, because Godot's `decompress` needs
+  it. There is no second codec (README §11 decision 21).
 - **Patch descriptor** (`pkey-patch/1`):
-  - `from`/`to` hashes, `method` (`zstd-patch-from` | `hdiffpatch` | `bsdiff` |
-    `godot-delta-pck`), `artifact`;
-  - apply needs (`memBytes`, `tmpDiskBytes`, `minSdk`);
+  - `from`/`to` hashes, `size`, `method` (`zstd-patch-from` | `hdiffpatch` | `bsdiff` |
+    `godot-delta-pck`), `artifact`, `artifactSha256`;
+  - apply needs (`memBytes`, `tmpDiskBytes`, `minSdk`) and the frame's window size;
   - `layerOver` and `maxStack` for Godot delta PCKs.
+  - **Publish and decode rules** (notes/A7 §3.2, found by running six runtimes):
+    - decoders use **raw-content prefix** mode, never dictionary-type auto-detection;
+    - CI never publishes a `zstd-patch-from` delta against a base starting with the zstd
+      dictionary magic `37 A4 30 EC`, which several SDK decoders misparse; the planner falls back;
+    - the frame's window is at least the larger file (153 MiB for a 160 MB pair), so decoders
+      raise `windowLogMax` explicitly, within `memBytes`;
+    - the stored artifact is the bare frame; the browser's `dcz` framing is added at the edge.
+- **Error codes:** one registry shared by every SDK (`chunks.*`, `files.*`, `full.*`, `delta.*`,
+  `chunk.*`, `plan.*`; notes/A7 §3.5).
 - **Channel feed, pack part** (`pkey-feed+jws`, update's Worker-signed, device-less feed):
   - `product`, `channel`, `seq`, `issuedAt`, `expiresAt`;
   - `sets[] {select, packs[] {id, version, release}, rollout}`;
@@ -758,6 +794,13 @@ Full JSON sketches are in `notes/E8 §5.4`. The essentials:
   content-addressed URLs that the browser's HTTP cache (or OPFS, via page JavaScript) keeps
   across sessions, and mount them from memory.
 - Web pack sets should stay lean; patching saves bandwidth there, not memory.
+- **Deltas in Chromium use Compression Dictionary Transport.** When the installed payload was
+  fetched with `Use-As-Dictionary`, distribution serves the stored bare `--patch-from` frame with
+  a 40-byte `dcz` header derived from `from`, and the browser decodes it natively (dictionaries up
+  to 100 MiB). notes/A7 decoded the vectors' own delta byte-identically this way. Elsewhere, a
+  vendored decoder-only libzstd WASM build (69 KB, 24 KB gzipped) applies it.
+- `DecompressionStream` has no zstd, WebCrypto `digest()` does not stream, and `Cache.put`
+  rejects 206 responses. Stage in OPFS from a worker.
 
 ---
 
@@ -766,14 +809,14 @@ Full JSON sketches are in `notes/E8 §5.4`. The essentials:
 **Worker routes** (all new routes need an OpenAPI spec entry and a `routeCoverage` entry, rule 10).
 Packs add routes to the existing services, not a new one:
 
-| Service      | Route                                                   | Purpose                                                                                                                                               |
-| ------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| release      | `POST /<p>/release/publish/*`                           | trusted-publisher (GitHub OIDC) upload tickets, finalize (verify size and SHA-256), submit release records for any deliverable, move channel pointers |
-| release      | `GET /<p>/release/record/<sha>`                         | a release record (app or pack) by hash                                                                                                                |
-| distribution | `GET /<p>/distribution/blob/<sha>` (on the byte domain) | payloads, indexes, chunk bundles, deltas: Range-capable, immutable, `Repr-Digest`; gated deliverables from a gated prefix, authorised per request     |
-| distribution | connector webhooks, CI reports                          | availability per release per outlet, including ASC `BACKGROUND_ASSET_VERSION_*` and PAD/Steam/MSIX reports                                            |
-| update       | `GET /<p>/update/<channel>/feed.jws`                    | the channel feed: app release + pack sets + availability/rollout/halts + delta menu; public, edge-cached, short TTL                                   |
-| core         | `POST /<p>/devices/report`                              | pack install telemetry (allowlisted keys)                                                                                                             |
+| Service      | Route                                                   | Purpose                                                                                                                                                                                                                        |
+| ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| release      | `POST /<p>/release/publish/*`                           | trusted-publisher (GitHub OIDC) upload tickets, finalize (verify size and SHA-256), submit release records for any deliverable, move channel pointers                                                                          |
+| release      | `GET /<p>/release/record/<sha>`                         | a release record (app or pack) by hash                                                                                                                                                                                         |
+| distribution | `GET /<p>/distribution/blob/<sha>` (on the byte domain) | payloads, indexes, chunk bundles, deltas: Range-capable, immutable, `Repr-Digest`; gated deliverables from a gated prefix, authorised per request; a delta as `dcz` when the request's `Available-Dictionary` matches its base |
+| distribution | connector webhooks, CI reports                          | availability per release per outlet, including ASC `BACKGROUND_ASSET_VERSION_*` and PAD/Steam/MSIX reports                                                                                                                     |
+| update       | `GET /<p>/update/<channel>/feed.jws`                    | the channel feed: app release + pack sets + availability/rollout/halts + delta menu; public, edge-cached, short TTL                                                                                                            |
+| core         | `POST /<p>/devices/report`                              | pack install telemetry (allowlisted keys)                                                                                                                                                                                      |
 
 **D1:**
 
@@ -847,27 +890,30 @@ Action):
 Every SDK exposes packs through the **update** sub-client's pack facet (`client.update.packs`:
 `ensure`, `state`, `isAvailable`, `registerHandler`, with progress events), mirroring the service
 that decides them. Release data (`client.release`) and delivery details (`client.distribution`)
-are available for tooling but not needed by game code. Cross-SDK parity is covered in its own
-design note.
+are available for tooling but not needed by game code. Cross-SDK parity is designed in
+[`PARITY.md`](PARITY.md).
 
-| SDK                        | Types (v1 → v3)                                                                             | Transports                                                                                          | Patch strategies                                                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Godot**                  | `godot.pck`, `godot.zip`, `files.tree`, `l10n.table`, `data.json`, `audio.bank`, `custom.*` | embedded, pkey-cdn, web; apple-ba (iOS plugin), play-pad (Android plugin), steam-depot (GodotSteam) | noop, platform, delta (via Godot's own decoder, pure GDScript), chunk (file-aware), file, full: all pure GDScript (§8.3) |
-| **Swift** (macOS/iOS apps) | `files.tree`, `ml.model`, `data.json`, `l10n.table`                                         | apple-ba (native), pkey-cdn                                                                         | chunk, delta (vendored libzstd: Apple's Compression framework has no zstd), full                                         |
-| **Node / Electron**        | `files.tree`, `archive.*`, `ml.model`                                                       | pkey-cdn                                                                                            | chunk, delta (zstd/HDiffPatch), full                                                                                     |
-| **Python** (tools, ML)     | `files.tree`, `ml.model`, `data.json`                                                       | pkey-cdn                                                                                            | chunk, delta, full                                                                                                       |
-| **React / web**            | `files.tree`, `data.json`, `l10n.table`                                                     | web                                                                                                 | chunk (OPFS), full                                                                                                       |
-| **Kotlin** (proposed)      | `files.tree`, `ml.model`                                                                    | play-pad, pkey-cdn                                                                                  | chunk, delta, full                                                                                                       |
-| **Unity** (later)          | `unity.addressables`                                                                        | pkey-cdn (custom provider)                                                                          | file-level reuse                                                                                                         |
+| SDK                          | Types (v1 → v3)                                                                             | Transports                                                                                          | Patch strategies                                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Godot**                    | `godot.pck`, `godot.zip`, `files.tree`, `l10n.table`, `data.json`, `audio.bank`, `custom.*` | embedded, pkey-cdn, web; apple-ba (iOS plugin), play-pad (Android plugin), steam-depot (GodotSteam) | noop, platform, delta (via Godot's own decoder, pure GDScript), chunk (file-aware), file, full: all pure GDScript (§8.3)        |
+| **Swift** (macOS/iOS apps)   | `files.tree`, `ml.model`, `data.json`, `l10n.table`                                         | apple-ba (native), pkey-cdn                                                                         | chunk, delta (libzstd from the official `facebook/zstd` SwiftPM package; Apple's Compression framework has no zstd), file, full |
+| **Node / Electron**          | `files.tree`, `archive.*`, `ml.model`                                                       | pkey-cdn                                                                                            | chunk, delta (`node:zlib` on Node ≥ 22.19, else the shared WASM decoder; probed at startup), file, full                         |
+| **Python** (tools, ML)       | `files.tree`, `ml.model`, `data.json`                                                       | pkey-cdn                                                                                            | chunk, delta (stdlib `compression.zstd` on 3.14; `zstandard` on 3.9–3.13), file, full                                           |
+| **React / web**              | `files.tree`, `data.json`, `l10n.table`                                                     | web                                                                                                 | chunk (OPFS, WASM zstd), delta (`dcz` in Chromium, else WASM), file, full                                                       |
+| **Kotlin** (proposed)        | `files.tree`, `ml.model`                                                                    | play-pad, pkey-cdn                                                                                  | chunk, delta (zstd-jni `.aar`; relies on the magic-base publish rule), file, full                                               |
+| **C# / .NET, Unity** (later) | `files.tree`, `unity.addressables`                                                          | pkey-cdn (Unity custom provider), steam-depot, msix-optional                                        | chunk, delta (.NET 11 `SetPrefix`; `ZstdSharp.Port` on .NET ≤ 10, Unity and Blazor), file, full                                 |
 
-`client-core` gains the shared pieces:
+`client-core` gains the shared pieces, with `sha256`, `zstd` and `fetch` injected. This is the
+shape that ran unchanged in Node and Chromium in notes/A7:
 
-- index verification;
+- index verification and chunk-index parsing (`chunkIndexCases`);
+- the chunk, file, full and delta appliers;
 - the planner (`plan-matrix.json`);
-- chunk-index parsing (`chunkIndexCases`);
+- the path rules and the error registry;
 - the install-state machine.
 
-Per-type handlers stay per SDK.
+Python, Swift, Kotlin, C# and GDScript reimplement the same ~450–700 lines against the same
+vectors. Per-type handlers stay per SDK.
 
 ---
 
@@ -936,8 +982,9 @@ small-update win and content that ships between app releases.
 3. Chunk size for **real** Diceroll PCK history. The synthetic pair favoured file-aware 64 KiB
    (16 KiB saved only 5% more at 1.8× the index size); confirm on several real versions,
    including the any-older-version case.
-4. GDScript SHA-256 and zstd throughput on low-end Android and in browsers (desktop: ~220 MB/s
-   and ~1 GB/s).
+4. SHA-256 and zstd throughput on low-end Android and in mobile browsers. Desktop is measured
+   (notes/A7 §8): Godot's release template hashes at 242 MB/s and decodes zstd at 568 MB/s;
+   Chromium hashes at ~200 MB/s, decodes WASM zstd at 302 MB/s and chunk-syncs at 106–136 MB/s.
 5. The Android `load_resource_pack` stall (godot#105009) with several packs, and web memory with a
    realistic pack set.
 6. Which Steamworks calls expose installed depot manifests on the device?
