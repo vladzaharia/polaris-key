@@ -1120,12 +1120,11 @@ async function readEntryForm(
     ) as Record<string, unknown>;
     return {
       userCode: typeof body.user_code === "string" ? body.user_code : null,
-      csrf:
-        Object.hasOwn(body, "csrf")
-          ? typeof body.csrf === "string"
-            ? body.csrf
-            : ""
-          : undefined,
+      csrf: Object.hasOwn(body, "csrf")
+        ? typeof body.csrf === "string"
+          ? body.csrf
+          : ""
+        : undefined,
     };
   }
   const form = new URLSearchParams(text);

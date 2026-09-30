@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  clientIp,
-  clientNetwork,
-  rateLimitOk,
-} from "../src/core/rateLimit.js";
+import { clientIp, clientNetwork, rateLimitOk } from "../src/core/rateLimit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
