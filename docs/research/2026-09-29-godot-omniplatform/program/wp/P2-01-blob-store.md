@@ -41,9 +41,12 @@ sandbox; …`; no HTML, XHTML, SVG, XML, JS, JSON or `text/*` type is ever serve
 >   `ON DELETE`, as every non-portal table does (R11-01). `blob_objects` is exempt from the
 >   product-first-PK rule (R11-05) because objects are shared across products; tenancy is in
 >   `blob_refs`.
-> - P0-05 has not landed: `core/bytesHost.ts` carries a test-pinned `TODO(P0-05): CORS.` at the
->   point where the central CORS step must run.
-> - Host isolation lives in `core/bytesHost.ts` (`BYTE_ROUTES`, empty), called from `index.ts`.
+> - P0-05 landed first, so the bytes host applies CORS through `core/cors.ts` directly (no
+>   TODO): a byte route's `match` returns `{product, params}`, `dispatchBytesHost(req, env, db)`
+>   loads that product, answers `OPTIONS` with `corsPreflight` before the route runs and wraps
+>   the route's answer in `withCors`, then hardens it. Unknown products answer not-found.
+> - Host isolation lives in `core/bytesHost.ts` (`BYTE_ROUTES`, empty), called from `dispatch.ts`
+>   (main moved dispatch out of `index.ts`).
 
 ## Goal
 

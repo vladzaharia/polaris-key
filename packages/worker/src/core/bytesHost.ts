@@ -23,20 +23,38 @@
  */
 
 import type { Env } from "../env.js";
+import type { Db } from "../db/types.js";
 import { notFound } from "./errors.js";
 import { BLOB_CSP } from "./blobs.js";
+import { corsPreflight, withCors } from "./cors.js";
+import { loadProduct, type Product } from "./products.js";
+
+/**
+ * What a byte route's `match` returns: the product that owns the path, plus its parameters.
+ * Every byte route is product-scoped — a key is served only when THIS product holds a ref to
+ * it (`blobs.ts` `hasRef`) — and the product is also what decides CORS (`core/cors.ts`).
+ */
+export interface ByteRouteMatch {
+  readonly product: string;
+  readonly params: Record<string, string>;
+}
+
+/** What a byte route's handler receives once its product has loaded. */
+export interface ByteRouteContext {
+  readonly env: Env;
+  readonly db: Db;
+  readonly product: Product;
+  readonly params: Record<string, string>;
+  readonly now: number;
+}
 
 /** One route that may answer on the bytes host. */
 export interface ByteRoute {
   /** For logs and tests. */
   readonly name: string;
-  /** Path parameters when the route handles `pathname`, else `null`. */
-  match(pathname: string): Record<string, string> | null;
-  handle(
-    req: Request,
-    env: Env,
-    params: Record<string, string>,
-  ): Promise<Response>;
+  /** The owning product and path parameters when the route handles `pathname`, else `null`. */
+  match(pathname: string): ByteRouteMatch | null;
+  handle(req: Request, ctx: ByteRouteContext): Promise<Response>;
 }
 
 /**
@@ -106,30 +124,51 @@ function withoutCookies(req: Request): Request {
 
 /**
  * Dispatch a request that arrived on the bytes host. Only `routes` can answer; anything else,
- * and any route answer with an executable type, becomes the plain not-found.
+ * an unknown product, and any route answer with an executable type, becomes the plain
+ * not-found.
+ *
+ * CORS (P0-05) runs here exactly as `dispatch.ts` runs it for the console's covered routes:
+ * the product's own `web.origins` decide; a preflight is answered before the handler runs (so
+ * it cannot probe anything the handler would decide); and the headers are added only after the
+ * handler returns, so nothing a handler caches carries one origin's allow header to the next.
+ * Credentials are never allowed — and there are none to allow, since no cookie reaches a route.
  */
 export async function dispatchBytesHost(
   req: Request,
   env: Env,
+  db: Db,
   routes: readonly ByteRoute[] = BYTE_ROUTES,
 ): Promise<Response> {
+  return hardenBytesHostResponse(await answer(req, env, db, routes));
+}
+
+async function answer(
+  req: Request,
+  env: Env,
+  db: Db,
+  routes: readonly ByteRoute[],
+): Promise<Response> {
   const pathname = new URL(req.url).pathname;
-  let res: Response | null = null;
   for (const route of routes) {
-    const params = route.match(pathname);
-    if (!params) continue;
-    res = await route.handle(withoutCookies(req), env, params);
+    const matched = route.match(pathname);
+    if (!matched) continue;
+    const product = await loadProduct(env, db, matched.product);
+    if (!product) return notFound();
+    if (req.method === "OPTIONS") return corsPreflight(product, req);
+    let res = await route.handle(withoutCookies(req), {
+      env,
+      db,
+      product,
+      params: matched.params,
+      now: Math.floor(Date.now() / 1000),
+    });
     // A refused type is replaced silently: the worker logs nothing (R12), and the not-found
     // answer is indistinguishable from a route that does not exist.
     if (refusedType(res)) {
       await res.body?.cancel().catch(() => undefined);
       res = notFound();
     }
-    break;
+    return withCors(product, req, res);
   }
-  // TODO(P0-05): CORS. P0-05's `core/cors.ts` is applied centrally in dispatch; the bytes host
-  // must pass through that same step, right here, before hardening. Until P0-05 lands no CORS
-  // header is emitted on this host — `test/bytesHost.test.ts` pins both this marker and that
-  // absence, so landing P0-05 without wiring this point fails a test.
-  return hardenBytesHostResponse(res ?? notFound());
+  return notFound();
 }

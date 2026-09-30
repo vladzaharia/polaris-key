@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import worker from "../src/index.js";
 import {
   BYTE_ROUTES,
@@ -13,9 +13,17 @@ import {
 import { BLOB_CSP } from "../src/core/blobs.js";
 import { ADMIN_COOKIE } from "../src/admin/session.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
+import {
+  CORS_ALLOW_HEADERS,
+  CORS_ALLOW_METHODS,
+  CORS_EXPOSE_HEADERS,
+  serializeWebOrigins,
+} from "../src/core/cors.js";
+import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
+import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv } from "./seed.js";
+import { makeEnv, seedProduct } from "./seed.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -161,31 +169,52 @@ describe("bytes host: isolation", () => {
 });
 
 describe("bytes host: dispatch", () => {
+  const SLUG = "djdl";
+  const LISTED = "https://play.djdl.example";
   const seen: Request[] = [];
+  let db: Db;
+
+  beforeEach(async () => {
+    seen.length = 0;
+    db = makeTestDb();
+    await seedProduct(db, SLUG);
+    await db.run(
+      "UPDATE products SET web_origins_json = ? WHERE slug = ?",
+      serializeWebOrigins([LISTED]),
+      SLUG,
+    );
+  });
+
+  /** A fake byte route under `/<product>/fake/...`, the shape P2-05's routes will take. */
   const echo = (
     body: BodyInit | null,
     headers: Record<string, string>,
     status = 200,
   ): ByteRoute => ({
     name: "fake",
-    match: (p) => (p.startsWith("/fake/") ? { rest: p.slice(6) } : null),
-    handle: async (req) => {
+    match: (p) => {
+      const m = /^\/([^/]+)\/fake\/(.*)$/.exec(p);
+      return m ? { product: m[1]!, params: { rest: m[2]! } } : null;
+    },
+    handle: async (req, ctx) => {
       seen.push(req);
+      expect(ctx.product.slug).toBe(SLUG);
       return new Response(body, { status, headers });
     },
   });
+  const octet = { "content-type": "application/octet-stream" };
 
   it("only allowlisted routes answer; the Cookie header never reaches them", async () => {
-    seen.length = 0;
     const route = echo("bytes", {
-      "content-type": "application/octet-stream",
+      ...octet,
       "set-cookie": "pkey_x=1; Path=/",
     });
     const res = await dispatchBytesHost(
-      new Request(BYTES + "/fake/a", {
+      new Request(`${BYTES}/${SLUG}/fake/a`, {
         headers: { cookie: `${ADMIN_COOKIE}=forged; ${PORTAL_COOKIE}=forged` },
       }),
       env(BYTES),
+      db,
       [route],
     );
     expect(res.status).toBe(200);
@@ -200,9 +229,23 @@ describe("bytes host: dispatch", () => {
     const other = await dispatchBytesHost(
       new Request(BYTES + "/nope"),
       env(BYTES),
+      db,
       [route],
     );
     expect(other.status).toBe(404);
+  });
+
+  it("a route for an unknown product answers not-found without running", async () => {
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/nobody/fake/a`),
+      env(BYTES),
+      db,
+      [echo("bytes", octet)],
+    );
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(seen).toHaveLength(0);
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
   });
 
   it("a route that answers with an executable or renderable type is replaced by not-found", async () => {
@@ -217,19 +260,25 @@ describe("bytes host: dispatch", () => {
       "application/json",
     ]) {
       const res = await dispatchBytesHost(
-        new Request(BYTES + "/fake/x"),
+        new Request(`${BYTES}/${SLUG}/fake/x`, {
+          headers: { origin: LISTED },
+        }),
         env(BYTES),
+        db,
         [echo("<script>alert(1)</script>", { "content-type": type })],
       );
       expect(res.status, type).toBe(404);
       expect(await res.json(), type).toEqual({ error: "not_found" });
+      expect(res.headers.get("x-content-type-options"), type).toBe("nosniff");
+      expect(res.headers.get("content-security-policy"), type).toBe(BLOB_CSP);
     }
   });
 
   it("a JSON error body from a route is allowed through (it is not a payload)", async () => {
     const res = await dispatchBytesHost(
-      new Request(BYTES + "/fake/x"),
+      new Request(`${BYTES}/${SLUG}/fake/x`),
       env(BYTES),
+      db,
       [
         echo(
           '{"error":"forbidden"}',
@@ -241,17 +290,93 @@ describe("bytes host: dispatch", () => {
     expect(res.status).toBe(403);
   });
 
-  it("CORS: none yet — the TODO(P0-05) marker sits at the point P0-05 must wire", async () => {
-    const res = await dispatchBytesHost(
-      new Request(BYTES + "/fake/x", {
+  it("CORS: the product's own web.origins decide, through the same core/cors.ts step", async () => {
+    const route = echo("b", octet);
+    const listed = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, { headers: { origin: LISTED } }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(listed.headers.get("access-control-allow-origin")).toBe(LISTED);
+    expect(listed.headers.get("access-control-expose-headers")).toBe(
+      CORS_EXPOSE_HEADERS,
+    );
+    expect(listed.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(listed.headers.get("vary")).toMatch(/origin/i);
+    // The hardening survives CORS decoration.
+    expect(listed.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    expect(listed.headers.get("x-content-type-options")).toBe("nosniff");
+
+    const unlisted = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, {
         headers: { origin: "https://evil.example" },
       }),
       env(BYTES),
-      [echo("b", { "content-type": "application/octet-stream" })],
+      db,
+      [route],
+    );
+    expect(unlisted.status).toBe(200);
+    expect(unlisted.headers.get("access-control-allow-origin")).toBeNull();
+    expect(unlisted.headers.get("vary")).toMatch(/origin/i);
+  });
+
+  it("CORS preflight is answered before the route runs", async () => {
+    const route = echo("b", octet);
+    const pre = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, {
+        method: "OPTIONS",
+        headers: {
+          origin: LISTED,
+          "access-control-request-method": "GET",
+          "access-control-request-headers": "range",
+        },
+      }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(pre.status).toBe(204);
+    expect(seen).toHaveLength(0);
+    expect(pre.headers.get("access-control-allow-origin")).toBe(LISTED);
+    expect(pre.headers.get("access-control-allow-methods")).toBe(
+      CORS_ALLOW_METHODS,
+    );
+    expect(pre.headers.get("access-control-allow-headers")).toBe(
+      CORS_ALLOW_HEADERS,
+    );
+    expect(pre.headers.get("content-security-policy")).toBe(BLOB_CSP);
+
+    const evil = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, {
+        method: "OPTIONS",
+        headers: { origin: "https://evil.example" },
+      }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(evil.status).toBe(204);
+    expect(evil.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("a route cannot set its own Access-Control-* headers", async () => {
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, {
+        headers: { origin: "https://evil.example" },
+      }),
+      env(BYTES),
+      db,
+      [
+        echo("b", {
+          ...octet,
+          "access-control-allow-origin": "*",
+          "access-control-allow-credentials": "true",
+        }),
+      ],
     );
     expect(res.headers.get("access-control-allow-origin")).toBeNull();
-    const src = readFileSync(join(SRC, "core", "bytesHost.ts"), "utf8");
-    expect(src).toContain("TODO(P0-05): CORS.");
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
   });
 });
 

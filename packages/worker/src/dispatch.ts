@@ -47,7 +47,7 @@ export async function dispatch(
   // The bytes host (P2-01) reaches ONLY its byte-route allowlist — never the console, the
   // portal, `/docs` or a product route. With `BLOB_ORIGIN` unset this is always false, and
   // everything below runs exactly as it did before the bytes host existed.
-  if (isBytesHost(url, env)) return dispatchBytesHost(req, env);
+  if (isBytesHost(url, env)) return dispatchBytesHost(req, env, db);
   const route = matchRoute(url.pathname);
   const now = Math.floor(Date.now() / 1000);
 

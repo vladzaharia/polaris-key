@@ -111,7 +111,11 @@ published bytes — it is not permanent immutability. `staging/` is unlocked wit
 **Boundary: the bytes host.** The same Worker answers on `dl.plrs.im` (`dl-staging`, `dl-dev`),
 named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allowlist
 (`core/bytesHost.ts` `BYTE_ROUTES`, empty until P2-05/P2b-04); `/manage`, `/docs`, the portal,
-discovery and every product route answer not-found there (`test/bytesHost.test.ts`).
+discovery and every product route answer not-found there (`test/bytesHost.test.ts`). Every
+byte route is product-scoped; CORS on the host is the same `core/cors.ts` step as the console's
+covered routes (the product's own `web.origins`, preflight answered before the route runs,
+headers added after it returns, never `Allow-Credentials`), and a route cannot set its own
+`Access-Control-*` headers.
 
 **Deviation, recorded: the bytes host is same-site with the console.** The design rule
 (research README §3.5, decision 4) was a separate registrable domain, because a `*.plrs.im`
