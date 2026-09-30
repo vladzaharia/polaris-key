@@ -15,7 +15,10 @@ import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import { handlePortalCallback } from "../src/services/identity/portal/auth.js";
+import {
+  handlePortalCallback,
+  portalFlowKey,
+} from "../src/services/identity/portal/auth.js";
 
 const idp = vi.hoisted(() => ({ jwks: { keys: [] as unknown[] } }));
 
@@ -63,7 +66,7 @@ async function callbackWith(
   env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
 
   await kv.put(
-    `portal:oidc-flow:${STATE}`,
+    await portalFlowKey(env, STATE),
     JSON.stringify({
       verifier: "v".repeat(43),
       nonce: "nonce-1",
