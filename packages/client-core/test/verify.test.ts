@@ -1,3 +1,4 @@
+// @pkey-feature core.verify
 // Per-document verification — wire contract v3 §2–§3.
 //
 // Signs real `pkey-license+jws` / `pkey-config+jws` documents with a freshly generated

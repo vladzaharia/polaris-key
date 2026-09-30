@@ -121,6 +121,7 @@ and devices.
   - a pointer in `lowend/README.md`, if S-04 has merged.
 - **Parity manifest** (plan §5.1), if P1b-01 has landed: the registry's `godot` entry and
   `sdks/godot/parity.json`, with every feature `planned` under the plan's owner table.
+- **Wave-1 sync:** **Parity discipline (from P1b-01).** The Godot manifest (`conformance/parity/` registry, per-SDK `parity.json`) declares N/As per runtime with the `allowedNa` discipline across its export targets, and if it declares `devices.facts` as implemented it ships a probe-level `devices.facts` test tagged `@pkey-feature devices.facts`. `pnpm parity:check` must pass with the Godot manifest added; update `gen-reference.mjs`, which hard-codes the four manifest paths in the page intro, to derive them from `registry.sdks`.
 
 **Out** (and where it belongs instead):
 
@@ -271,6 +272,7 @@ Historical documents (`docs/security/2026-08-26-security-audit.md`, `findings/*`
       pointer to `sdks/godot` instead of hanging.
 - [ ] The green gate passes (`AGENTS.md`), including `pnpm gen:corpus -- --check` and
       `pnpm format`.
+- [ ] `pnpm parity:check` passes with the Godot manifest; `parity.mdx` lists it (regenerated, not hand-edited).
 
 ## Verify
 

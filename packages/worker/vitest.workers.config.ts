@@ -47,7 +47,13 @@ export default defineWorkersConfig(async () => {
             // with account-specific ids), so the lane declares local equivalents.
             d1Databases: ["DB"],
             kvNamespaces: ["HOT"],
+            // The blob store (P2-01): miniflare's local R2, so `test-workerd/blobs.test.ts`
+            // exercises the real binding's checksum, range and conditional-put behaviour.
+            r2Buckets: ["BLOBS"],
             bindings: {
+              // A bytes host for the isolation smoke test. SELF requests to any other host
+              // (every other test uses key.plrs.im) route exactly as without it.
+              BLOB_ORIGIN: "https://dl.workerd.test",
               TEST_MIGRATIONS: migrations,
               // 32 zero bytes, base64 — the same constant the Node lane seeds with.
               PLATFORM_KEK: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
