@@ -100,12 +100,19 @@ per artifact, and so mislabels Steam, itch and sideload builds
   proposed for `plans/P3-01.md`): a launcher signal counts only when it names this product (Flatpak
   app id, snap name, Steam app id in the env or the library ACF, itch receipt `game.id`, `APPDIR`
   containing the executable, Android installer equal to the initiator). Non-attested evidence may
-  move the stamp only to an outlet with no wider `binaryUpdates`. A veto (Android installer ≠
-  initiator against a `play` stamp; an iOS provisioning profile against an `app-store` stamp)
-  drops the stamp and gives `unknown`. On Android only `play` can be `attested`, and only when
-  the initiator digest equals the Play Store's recorded digest; until P5-06's device checklist
-  records it, Android `play` evidence is `declared` (restricting only), in Godot and every SDK. Async platform calls get a
-  deadline, because `AppDistributor.current` hung on the simulator. If the plan does not adopt
+  move the stamp only to an outlet with no wider `binaryUpdates`. Attested evidence overrides the
+  stamp only when it names a README §3.1 outlet. On macOS only two signing leaves select:
+  `Apple Mac OS Application Signing` (`app-store`) and `TestFlight Beta Distribution`
+  (`testflight`). A Developer ID, Apple Distribution, Apple Development or ad hoc leaf is a veto
+  and never selects `direct`, because Steam and itch macOS builds are Developer ID too. A veto
+  drops the stamp and gives `unknown` when the stamp names the vetoed outlet, and changes nothing
+  otherwise: Android installer ≠ initiator against `play`; an iOS provisioning profile against
+  `app-store`; a non-store macOS leaf against `app-store`/`testflight`; a snap revision `x<n>`
+  against `snap`.
+  On Android only `play` can be `attested`, and only when the initiator digest equals the Play
+  Store's recorded digest; until P5-06's device checklist records it, Android `play` evidence is
+  `declared` (restricting only), in Godot and every SDK. Async platform calls get a deadline,
+  because `AppDistributor.current` hung on the simulator. If the plan does not adopt
   these rules, follow the plan and report the gap.
 - **Verification status** comes from [notes/S-06](../../notes/S-06-outlet-signals.md) (its
   signal-to-outlet table). `steam_appid.txt` is refuted as a dev-mode signal and the macOS
