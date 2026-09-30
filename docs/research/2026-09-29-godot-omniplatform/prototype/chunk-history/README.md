@@ -14,12 +14,12 @@ only. Commit scripts and numbers, never anything from `data/`.
 
 ## Reused code
 
-| From                                                               | Used for                                                                |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `../patching/tools/pck.py`                                         | reading PCK v4 directories                                              |
-| `../patching/tools/fastcdc.cjs` (unchanged; `FASTCDC_SEGMENTS`)    | every chunk recipe, so the gear table is the one the GDScript port uses |
-| `../content/gen/gen.py` (`segments`, `build_index`, bundle packing) | re-implemented in `hist.py` with the bundle target as a parameter      |
-| `../content/runners/python/pkey_content.py` (`plan`)               | the planner's choice for every pair                                     |
+| From                                                                | Used for                                                                |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `../patching/tools/pck.py`                                          | reading PCK v4 directories                                              |
+| `../patching/tools/fastcdc.cjs` (unchanged; `FASTCDC_SEGMENTS`)     | every chunk recipe, so the gear table is the one the GDScript port uses |
+| `../content/gen/gen.py` (`segments`, `build_index`, bundle packing) | re-implemented in `hist.py` with the bundle target as a parameter       |
+| `../content/runners/python/pkey_content.py` (`plan`)                | the planner's choice for every pair                                     |
 
 `../patching/tools/chunk_rerun.py` and `pckdiff.py` are generalised here from one v1/v2 pair to a
 release list (`matrix.py`, `noise.py`).
@@ -45,8 +45,9 @@ done
 python3 inventory.py
 python3 noise.py desktop
 python3 matrix.py desktop          # ~10 min on an 18-core M5 Pro; most of it is whole-file --patch-from
-python3 matrix.py android          # the APK's assets/ tree (ETC2/ASTC textures), concatenated in path order
+PAIRS=adjacent python3 matrix.py android  # the APK's assets/ tree (ETC2/ASTC); N-1 pairs + oldest only
 python3 packs.py                   # per-pack slices of the desktop PCK (an estimate)
+python3 indexdelta.py desktop      # index raw, as zstd, and as --patch-from of the seed index
 python3 report.py desktop android  # the note's tables
 ```
 
@@ -55,19 +56,22 @@ blobs, deltas), so re-runs are fast. Delete `data/out/` to measure from scratch.
 
 ## Files
 
-| File           | What it does                                                                                                          |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `hist.py`      | releases, payload families, file-aware segments, recipes, per-chunk zstd -19, bundle layouts, index size, run rule    |
-| `inventory.py` | per release: version, engine, commit, asset lock, payload bytes and entries; checks `SHA256SUMS.txt`                  |
-| `noise.py`     | consecutive-release diff classified as content, version stamp, order-only cache rewrites, or other re-import noise    |
-| `matrix.py`    | every pair × every strategy, plus the planner's choice at request weights 16/64 KiB and memory budgets 256/64 MiB     |
-| `packs.py`     | the same for the desktop PCK sliced into the proposed packs (base, ui, core3d, audio, foes, nature, extra)            |
-| `report.py`    | prints the Markdown tables used in the note                                                                           |
+| File            | What it does                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `hist.py`       | releases, payload families, file-aware segments, recipes, per-chunk zstd -19, bundle layouts, index size, run rule |
+| `inventory.py`  | per release: version, engine, commit, asset lock, payload bytes and entries; checks `SHA256SUMS.txt`               |
+| `noise.py`      | consecutive-release diff classified as content, version stamp, order-only cache rewrites, or other re-import noise |
+| `matrix.py`     | every pair × every strategy, plus the planner's choice at request weights 16/64 KiB and memory budgets 256/64 MiB  |
+| `packs.py`      | the same for the desktop PCK sliced into the proposed packs (base, ui, core3d, audio, foes, nature, extra)         |
+| `indexdelta.py` | the target chunk index raw, as one zstd frame, and as a `--patch-from` frame against the seed index                |
+| `report.py`     | prints the Markdown tables used in the note                                                                        |
 
 ## Definitions
 
 - **Chunkers.** FastCDC 2016, normalised level 1, `min = avg/4`, `max = avg×4`, as in
   `fastcdc.cjs`. File-aware = one FastCDC run per segment (gap, entry, gap, …), `fileAware` bit set.
+  `fa32m`/`fa64m` add the padding rule: a gap shorter than 64 B right after an entry joins that
+  entry's segment (header, directory and longer gaps stay separate).
 - **Stored size** of a chunk: one zstd -19 frame, or raw when that is not smaller (gen.py's rule).
 - **Index bytes:** `64 + 48 × (records + bundles referenced)`, the real `pkey-chunks/1` size.
 - **Bundles.** Unique chunks in first-use order, packed until the next one would pass the target

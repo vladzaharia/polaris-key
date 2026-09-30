@@ -48,7 +48,7 @@ for ch in hist.CHUNKERS:
 # ---------------------------------------------------------------- per-release sizes (full, first install)
 def full_size(r):
     out = os.path.join(W, f"{r['dir']}.full.zst")
-    if not os.path.exists(out):
+    if not os.path.exists(out + ".time.json"):
         t = time.time()
         hist.zstd_cli(["-19", hist.payload_path(r, fam), "-o", out])
         json.dump({"seconds": round(time.time() - t, 1)}, open(out + ".time.json", "w"))
@@ -84,7 +84,7 @@ hist.save_clens()
 
 # ---------------------------------------------------------------- deltas
 def patch_from(a_path, b_path, out):
-    if not os.path.exists(out):
+    if not os.path.exists(out + ".time.json"):
         t = time.time()
         hist.zstd_cli(["-19", f"--patch-from={a_path}", b_path, "-o", out])
         json.dump({"seconds": round(time.time() - t, 1)}, open(out + ".time.json", "w"))
@@ -98,7 +98,8 @@ def entry_patch(a_bytes, b_bytes, key):
         pa, pb = out + ".a", out + ".b"
         open(pa, "wb").write(a_bytes)
         open(pb, "wb").write(b_bytes)
-        hist.zstd_cli(["-19", f"--patch-from={pa}", pb, "-o", out])
+        hist.zstd_cli(["-19", f"--patch-from={pa}", pb, "-o", out + ".tmp"])
+        os.replace(out + ".tmp", out)
         os.remove(pa)
         os.remove(pb)
     return os.path.getsize(out)

@@ -56,7 +56,11 @@ for fam in fams:
         for k, lab in (("whole", "delta, whole-file --patch-from"), ("perEntry", "delta, per-entry --patch-from")):
             rows = [p["delta"][k] for p in ps]
             print(f"| {lab} | {rng([r['bytes'] for r in rows])} | — | {mean([r['requests'] for r in rows])} | — | — | — | — | — | — |")
+        zi = lambda p: M["releases"][next(d for d, r in M["releases"].items() if r["version"] == p["to"])]  # noqa: E731
+        adj = lambda p, b: b - zi(p)["filesIndexBytes"] + zi(p)["filesIndexZstd"]  # noqa: E731
+        print(f"| delta, per-entry, files index as zstd | {rng([adj(p, p['delta']['perEntry']['bytes']) for p in ps])} | — | {mean([p['delta']['perEntry']['requests'] for p in ps])} | — | — | — | — | — | — |")
         rows = [p["file"] for p in ps]
+        print(f"| file, files index as zstd | {rng([adj(p, p['file']['bytes']) for p in ps])} | — | {mean([r['requests'] for r in rows])} | — | — | — | — | — | — |")
         print(f"| file (missing entries, zstd -19) | {rng([r['bytes'] for r in rows])} | — | {mean([r['requests'] for r in rows])} | — | — | — | — | — | — |")
         print(f"| full (zstd -19) | {rng([p['full'] for p in ps])} | — | 1 | — | — | — | — | — | — |")
     print("\n### Planner choice (menu: both deltas, chunk with shared 4 MiB bundles, file, full)\n")
@@ -109,16 +113,17 @@ ppath = os.path.join(O, "packs-desktop.json")
 if os.path.exists(ppath):
     rows = json.load(open(ppath))
     print("\n## Per-pack estimate (desktop PCK sliced by the proposed packs)\n")
-    print("| Pack | slice B (latest) | full B | pairs unchanged (of 5) | N-1 mean: delta B | N-1 mean: chunk fa64 B (req) | N-1 mean: chunk fa32 B (req) | oldest: delta B | oldest: chunk fa64 B (req) | planner fa64 @16K / @64K (N-1; no-delta) |")
-    print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |")
+    print("| Pack | slice B (latest) | full B | pairs unchanged (of 5) | N-1 mean: delta B | N-1 mean: chunk fa64m B (req) | N-1 mean: chunk fa32m B (req) | oldest: delta B | oldest: chunk fa64m B (req) | planner fa64m @16K / @64K (N-1; no-delta) | planner fa64m oldest @16K / @64K (no-delta) |")
+    print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |")
     for pk in dict.fromkeys(r["pack"] for r in rows):
         rs = [r for r in rows if r["pack"] == pk]
         n1 = [r for r in rs if r["class"] == "N-1"]
         old = [r for r in rs if r["class"] != "N-1"][0]
         ch = lambda rr, c, k: statistics.mean(r["chunk"][c][k] for r in rr)  # noqa: E731
         from collections import Counter
-        pl = lambda w, key: ", ".join(f"{k}×{v}" for k, v in Counter(r["plan"][f"fa64@{w}"][key] for r in n1).items())  # noqa: E731
+        pl = lambda w, key: ", ".join(f"{k}×{v}" for k, v in Counter(r["plan"][f"fa64m@{w}"][key] for r in n1).items())  # noqa: E731
+        po = lambda w: f"{old['plan'][f'fa64m@{w}']['choice']} ({old['plan'][f'fa64m@{w}']['noDelta']})"  # noqa: E731
         print(f"| {pk} | {n(n1[-1]['size'])} | {n(n1[-1]['full'])} | {sum(r['unchanged'] for r in rs)} | {n(statistics.mean(r['wholeDelta'] for r in n1))} | "
-              f"{n(ch(n1, 'fa64', 'bytes'))} ({ch(n1, 'fa64', 'requests'):.1f}) | {n(ch(n1, 'fa32', 'bytes'))} ({ch(n1, 'fa32', 'requests'):.1f}) | "
-              f"{n(old['wholeDelta'])} | {n(old['chunk']['fa64']['bytes'])} ({old['chunk']['fa64']['requests']}) | "
-              f"{pl(16384, 'choice')} / {pl(65536, 'choice')}; {pl(16384, 'noDelta')} / {pl(65536, 'noDelta')} |")
+              f"{n(ch(n1, 'fa64m', 'bytes'))} ({ch(n1, 'fa64m', 'requests'):.1f}) | {n(ch(n1, 'fa32m', 'bytes'))} ({ch(n1, 'fa32m', 'requests'):.1f}) | "
+              f"{n(old['wholeDelta'])} | {n(old['chunk']['fa64m']['bytes'])} ({old['chunk']['fa64m']['requests']}) | "
+              f"{pl(16384, 'choice')} / {pl(65536, 'choice')}; {pl(16384, 'noDelta')} / {pl(65536, 'noDelta')} | {po(16384)} / {po(65536)} |")

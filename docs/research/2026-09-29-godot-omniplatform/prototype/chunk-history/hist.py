@@ -43,7 +43,7 @@ CHUNKERS = {  # name -> (avg, file_aware); min = avg/4, max = avg*4, normalised 
     "fa64m": (64 * KIB, True),
 }
 # "m" variants: file-aware, but a gap shorter than PAD_MERGE bytes (the exporter's 16-byte alignment
-# padding between entries) is appended to the segment before it instead of becoming its own chunk.
+# padding after an entry) is appended to that entry's segment instead of becoming its own chunk.
 MERGE_PAD = {"fa32m", "fa64m"}
 PAD_MERGE = 64
 BUNDLE_TARGETS = (4 * MIB, 8 * MIB, 16 * MIB)
@@ -164,14 +164,28 @@ def segments(files, size):
     return segs
 
 
-def merge_padding(segs):
-    out = []
-    for o, n in segs:
-        if out and n < PAD_MERGE and out[-1][0] + out[-1][1] == o:
-            out[-1][1] += n
+def segments_merged(files, size):
+    """File-aware segments where each entry absorbs the gap right after it when that gap is shorter
+    than PAD_MERGE bytes (the exporter's alignment padding). Entries themselves are never merged, so
+    a chunk still never spans two entries; longer gaps (header, directory) stay their own segments."""
+    segs, pos = [], 0
+    for f in files:
+        if f["offset"] > pos:
+            g = f["offset"] - pos
+            if segs and segs[-1][2] and g < PAD_MERGE:
+                segs[-1][1] += g
+            else:
+                segs.append([pos, g, False])
+        if f["size"]:
+            segs.append([f["offset"], f["size"], True])
+        pos = f["offset"] + f["size"]
+    if size > pos:
+        g = size - pos
+        if segs and segs[-1][2] and g < PAD_MERGE:
+            segs[-1][1] += g
         else:
-            out.append([o, n])
-    return out
+            segs.append([pos, g, False])
+    return [[o, n] for o, n, _ in segs]
 
 
 def gaps_of(data, files):
@@ -205,8 +219,8 @@ def recipe(r, family, chunker):
     if fa:
         sp = cache + ".segs.json"
         os.makedirs(os.path.dirname(cache), exist_ok=True)
-        segs = segments(files_of(r, family), os.path.getsize(p))
-        json.dump(merge_padding(segs) if chunker in MERGE_PAD else segs, open(sp, "w"))
+        seg = segments_merged if chunker in MERGE_PAD else segments
+        json.dump(seg(files_of(r, family), os.path.getsize(p)), open(sp, "w"))
         env["FASTCDC_SEGMENTS"] = sp
     else:
         env.pop("FASTCDC_SEGMENTS", None)
