@@ -98,6 +98,9 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
   stores handler responses in `caches.default` keyed without the origin, so an allow-origin header
   added inside would be replayed to every other origin. Adding it after the handler returns keeps
   cached objects origin-free.
+  _Correction (implementation):_ `dispatch` and `PRODUCT_ROUTES` moved out of `index.ts` into
+  `src/dispatch.ts`, so the whole pipeline (CORS included) runs in the Node test lane with an
+  in-memory `Db`. `index.ts` keeps the entry points and wraps `secureResponse` around it.
 - **Why a manifest field is enough.** Without credentials, CORS only decides which pages may
   _read_ responses; any non-browser client can already call these routes, and bearer tokens are
   never ambient. So a repo-authored list cannot widen access to anything a script outside a
@@ -108,7 +111,7 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
   Those share the origin with the admin cookie (R1-09).
 - `Repr-Digest` is not sent today; exposing it now saves a change when P2-05/P2b-04 add it.
 - Migration: one `ALTER TABLE products ADD COLUMN web_origins_json TEXT;` in its own file,
-  numbered on rebase. Regenerate `reference/data-model.mdx` and `reference/validation-codes.mdx`.
+  numbered on rebase (_correction:_ pre-assigned as `0024_product_web_origins.sql`). Regenerate `reference/data-model.mdx` and `reference/validation-codes.mdx`.
 - `routes.mdx` is generated from `get|post|put|patch|delete` only (`gen-reference.mjs:215-239`),
   so `OPTIONS` operations do not change it. Say so in the PR.
 
@@ -139,7 +142,7 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm --filter @polaris-key/worker test -- routeCoverage router release updateFeed portal
+mise exec node@22 -- pnpm --filter @polaris-key/worker test -- routeCoverage router release updateFeed portal cors linkRepo
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check

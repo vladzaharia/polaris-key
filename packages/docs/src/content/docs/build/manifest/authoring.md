@@ -29,11 +29,11 @@ next to `schema.json`. The files are the **manifest baseline**: they describe in
 defaults. Runtime admin changes such as secrets, license/device overrides, live service toggles,
 and operator policy overrides live separately in Polaris Key and are preserved across resync.
 
-| File        | Base name                 | Maps to                                                                                                | What it carries                                                                                                          |
-| ----------- | ------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                   | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                        |
-| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**) |
-| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `edge_mint_config` rows                                             | release provider coordinates + channel/install/appcast/edge-mint settings (required only when releases are enabled)      |
+| File        | Base name                 | Maps to                                                                                                                    | What it carries                                                                                                          |
+| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                        |
+| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**) |
+| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `edge_mint_config` rows                                                                 | release provider coordinates + channel/install/appcast/edge-mint settings (required only when releases are enabled)      |
 
 In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
 (the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
@@ -170,6 +170,25 @@ column (`services_source` flips `manifest` → `admin`) so a later push cannot s
 service back on, nor re-open registration after an operator closed it. "Revert to manifest" flips
 ownership back and changes nothing else — the manifest re-applies on the next resync, not
 immediately, so the operator's escape hatch never depends on a GitHub round trip that can fail.
+
+## Browser origins: `web.origins`
+
+`web.origins` lists up to 16 exact origins, such as `https://play.acme.example` or
+`http://localhost:8060`, that may read this product's device-facing responses from a browser
+with `fetch`. It is persisted to `products.web_origins_json`. Link writes it and every resync
+rewrites it; dropping the block clears it. There is no console override. Entries must be spelled
+exactly as a browser sends `Origin`, and ingest refuses anything else (`invalid_web_origins`,
+`invalid_web_origin`). Credentials are never allowed, and the cookie-bearing identity routes,
+the console, the portal and the docs never answer CORS. The rules, headers and covered routes
+are at [Web clients and CORS](/docs/build/web-cors/).
+
+```jsonc
+{
+  "web": {
+    "origins": ["https://play.acme.example", "http://localhost:8060"],
+  },
+}
+```
 
 ## Device policy: fingerprinting + auto-issued licenses
 
