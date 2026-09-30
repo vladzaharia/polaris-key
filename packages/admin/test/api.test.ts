@@ -310,6 +310,11 @@ describe("api — every product-scoped resource is under its owning service", ()
       () => api.saveUpdateSettings("djdl", {}),
       "update/settings",
     ],
+    [
+      "revertUpdateSettings",
+      () => api.revertUpdateSettings("djdl", ["access"]),
+      "update/settings/revert",
+    ],
   ];
 
   it.each(CASES)("api.%s → %s", async (_name, call, path) => {

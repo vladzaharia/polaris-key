@@ -155,8 +155,8 @@ _offered_ in the first place.
 
 ## The console: Update settings
 
-Four fields, edited together because every one of them is intersected on the same
-eligibility decision:
+`GET|PATCH /manage/api/products/<product>/update/settings`. Six fields, edited together
+because every one of them decides which builds a product offers, and to whom:
 
 - **Metadata access** — governs the version check (and, on Release's side, the changelog
   and install script).
@@ -164,13 +164,42 @@ eligibility decision:
 - **Compat min / Compat max** — the product-wide version window every license's own
   `entitled` window is intersected against, regardless of what any individual license
   grants.
+- **Minimum macOS version** (`minimumSystemVersion`, `^\d+(\.\d+){0,2}$` or `null` to clear)
+  — rendered as `sparkle:minimumSystemVersion` on every appcast item.
+- **Require Sparkle signatures** (`requireSparkleSignature`, boolean, default `true`) — see
+  [Appcast](/docs/services/update/appcast/#the-signature-gate).
 
-A product with no release configuration yet has nowhere to store an access mode, so the
-form disables those two fields and the API answers `422` rather than accepting a value the
-next read wouldn't return — the compatibility window, living on the product row itself,
-stays editable regardless. Saving is a partial patch: an unset field keeps its current
-value, so changing the compat window never requires re-submitting an access mode the form
-never touched.
+A product with no release configuration yet has nowhere to store an access mode or an
+artifact policy, so the form disables those fields and the API answers `422` rather than
+accepting a value the next read wouldn't return — the compatibility window, living on the
+product row itself, stays editable regardless. Saving is a partial patch: an unset field
+keeps its current value, so changing the compat window never requires re-submitting an
+access mode the form never touched.
+
+### Who owns each field
+
+The access modes and the compatibility window are also written by `.pkey/`: a resync
+re-applies `release.access` and `product.compatMin`/`compatMax`. Saving either block here
+**claims** it — `accessSource` / `compatSource` in the response flips from `manifest` to
+`admin` — and a resync then skips a claimed block. That matters most for `entitled`, which
+no manifest can express: without the claim, the next push would quietly downgrade the product
+to the manifest's mode (default `public`). The two access modes share one owner, because the
+console saves them together.
+
+```
+POST /manage/api/products/<product>/update/settings/revert
+{ "fields": ["access" | "compat", …] }
+```
+
+hands the named blocks back to the manifest and changes **nothing else**: the live values stay
+as the operator left them until the next resync re-applies `.pkey/`. The response is the same
+settings object as `GET`; the event is audited as `update.settings.revert`.
+
+The two artifact-policy fields carry no owner because they have no second writer — no manifest
+shape spells them, and they live in a column resync never names. A push can neither set nor
+erase them. Changing either is audited as its own `release.policy.update` event (turning the
+signature requirement off is named explicitly), and the console asks for confirmation before
+switching signatures off.
 
 ## See also
 

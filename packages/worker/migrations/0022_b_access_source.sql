@@ -1,0 +1,11 @@
+-- P0-01 — ONE ownership marker for BOTH release access modes (`metadata_access`,
+-- `artifacts_access`). One marker rather than two because the console saves the pair together
+-- and a half-claimed pair would be impossible to explain on screen.
+--
+--   NULL / 'manifest' => `.pkey/release` owns the modes and a resync reapplies them.
+--   'admin'           => an operator set them through `update/settings`; resync leaves them
+--                        alone. This is what lets `entitled` — which no manifest can express —
+--                        survive the next push instead of being silently downgraded.
+--
+-- ONE statement per file (see 0013/0020).
+ALTER TABLE release_config ADD COLUMN access_source TEXT;

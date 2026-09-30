@@ -631,6 +631,13 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (rel(d).artifactPolicy.architectures = ["bad arch!"]),
   },
   {
+    code: "invalid_architecture",
+    file: "release",
+    schema: "rejects",
+    // The length bound: CHANNEL_RE allows 64 characters in total, so 65 is out for both.
+    mutate: (d) => (rel(d).artifactPolicy.architectures = ["a".repeat(65)]),
+  },
+  {
     code: "invalid_manual_channel",
     file: "release",
     schema: "rejects",
@@ -691,6 +698,21 @@ describe("valid manifests pass both validators", () => {
       schema: true,
       release: true,
     });
+  });
+
+  it("an architecture longer than 32 characters (the validator's CHANNEL_RE bound, P0-01)", () => {
+    // The schema used to cap architectures at 32 characters while the authoritative validator
+    // allowed 64, so an editor flagged manifests the platform accepts. Pin both ends of the
+    // validator's range so the drift cannot return.
+    for (const arch of ["a".repeat(40), "a".repeat(64)]) {
+      const docs = base();
+      rel(docs).artifactPolicy.architectures = ["arm64", arch];
+      expect(tsCodes(docs)).toEqual([]);
+      expect(
+        validateRelease(docs.release),
+        JSON.stringify(validateRelease.errors),
+      ).toBe(true);
+    }
   });
 
   it("the alias shapes (flattened root, licensing nesting, clientSecretRef, tier.profile)", () => {

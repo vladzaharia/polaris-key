@@ -124,11 +124,18 @@ pkey init --product <slug> --name "<Name>" --modules licensing,config
       release baseline, profiles, tiers, provisioning, edge-mint recipes.
 - [ ] Admin-set **values and management states** (per profile/tier/license/device) live in D1 and
       are **not** overwritten by a resync.
-- [ ] Three blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
-      `auto_issue_source`. A live console edit flips the source `manifest` → `admin`, and a
-      resync then **skips** that block — a push cannot silently undo a 3am toggle. "Revert to
-      manifest" hands ownership back and changes nothing else; the manifest re-applies on the
-      **next** resync, not immediately.
+- [ ] Five blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
+      `auto_issue_source` (on the product), `compat_source` (the compat window, claimed from
+      Update settings) and `access_source` (both release access modes together, on
+      `release_config`). A live console edit flips the source `manifest` → `admin`, and a
+      resync then **skips** that block — a push cannot silently undo a 3am toggle, nor
+      downgrade an `entitled` product to the manifest's `public`. "Revert to manifest" hands
+      ownership back and changes nothing else; the manifest re-applies on the **next** resync,
+      not immediately.
+- [ ] The operator-only artifact policy (`requireSparkleSignature`, `minimumSystemVersion`)
+      has **no manifest spelling at all** — it lives in `release_config.operator_policy_json`,
+      which no manifest path writes. Do not try to declare either key (or the `entitled` access
+      mode) in `.pkey/release`; set them in the console's Update settings.
 
 ## Verification
 

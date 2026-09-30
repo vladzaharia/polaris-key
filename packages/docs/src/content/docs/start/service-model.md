@@ -96,7 +96,9 @@ Because `releases` brings Release with it by construction, a legacy manifest can
 ## Who owns the column: `services_source`
 
 `products.services_source` is `manifest` or `admin`, and it is the same machinery as
-`fingerprint_policy_source` and `auto_issue_source`:
+`fingerprint_policy_source`, `auto_issue_source`, `compat_source` (the compatibility window) and
+`release_config.access_source` (both release access modes, claimed and reverted together from
+[Update settings](/docs/services/update/eligibility/#the-console-update-settings)):
 
 - A **resync writes only while the column is `manifest`-owned**, and the guard is the `UPDATE`'s
   own `WHERE … = 'manifest'` predicate rather than a read-then-write in the caller. A push cannot
