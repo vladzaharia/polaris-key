@@ -499,6 +499,45 @@ describe("the appcast refuses a bare-tag / v-tag ambiguity (P2-03)", () => {
     expect(gh.calls).toContain(`${API}/releases/tags/v1.2.0`);
   });
 
+  // The operator remedy the docs publish. Only ignoring the BARE tag works: the enclosure's
+  // pinned lookup (`tags/v<version>` first) never consults ignoreTags, so ignoring `v1.2.0`
+  // makes `latest` pick bare `1.2.0` while the enclosure still resolves `v1.2.0`.
+  const ambiguous = () =>
+    github({
+      releases: [
+        release("1.2.0", {
+          published_at: "2026-01-03T00:00:00Z",
+          assets: [asset("djdl-arm64.dmg", 611)],
+        }),
+        release("v1.2.0", {
+          published_at: "2026-01-02T00:00:00Z",
+          assets: [asset("djdl-arm64.dmg", 612)],
+        }),
+      ],
+    });
+  const ignoring = async (db: Db, tags: string[]) =>
+    db.run(
+      "UPDATE release_config SET ignore_tags_json = ? WHERE product = ?",
+      JSON.stringify(tags),
+      SLUG,
+    );
+
+  it("ignoring the bare tag resolves the ambiguity", async () => {
+    const db = makeTestDb();
+    await seed(db);
+    await ignoring(db, ["1.2.0"]);
+    const res = await appcast(ambiguous(), db);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("/release/dl/1.2.0/djdl-arm64.dmg");
+  });
+
+  it("ignoring the v-tag does NOT resolve it — the pinned lookup ignores ignoreTags", async () => {
+    const db = makeTestDb();
+    await seed(db);
+    await ignoring(db, ["v1.2.0"]);
+    expect((await appcast(ambiguous(), db)).status).toBe(404);
+  });
+
   it("serves a v-tagged item without the extra lookup", async () => {
     const db = makeTestDb();
     await seed(db);

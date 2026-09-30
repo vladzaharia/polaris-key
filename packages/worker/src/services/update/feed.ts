@@ -164,8 +164,10 @@ async function handleAppcast(
   // the bare tag only on its 404 — so when this item came from a bare `1.2.0` and a `v1.2.0` also
   // exists, the DMG a client downloads would be `v1.2.0`'s while the signature below is
   // `1.2.0`'s. Refuse the ambiguity rather than ship a feed whose item and enclosure disagree
-  // (P2-03, wave-1 sync). One extra tag lookup, only for a stable item with a bare tag; an
-  // operator resolves it by adding one of the two tags to `release.ignoreTags`.
+  // (P2-03, wave-1 sync). One extra tag lookup, only for a stable item with a bare tag. An
+  // operator resolves it by adding the BARE tag to `release.ignoreTags` or deleting one of the two
+  // releases; ignoring the `v`-tag does not help, because the pinned lookup never consults
+  // ignoreTags (test/releaseResolution.test.ts pins both).
   if (sel.kind === "stable" && release.tag_name !== `v${segment}`) {
     const shadow = await getReleaseByTag(
       tok,
