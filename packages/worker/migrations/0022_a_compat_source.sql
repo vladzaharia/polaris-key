@@ -1,0 +1,12 @@
+-- P0-01 — ownership marker for the product's compatibility window (`compat_min`/`compat_max`).
+--
+-- Same rule `services_source` (0020) follows:
+--   NULL / 'manifest' => `.pkey/product` owns the window and a resync reapplies it.
+--   'admin'           => an operator set it through `update/settings`; resync leaves it alone.
+-- NULL is read as 'manifest' (COALESCE at the call site), so pre-existing rows stay
+-- manifest-owned without a backfill.
+--
+-- ONE statement per file (see 0013/0020): a bare column addition cannot be made
+-- replay-idempotent in pure SQL, so nothing may sit behind it and be stranded by a failed replay.
+-- The three sibling files lettered 0022_b..d share this package's pre-assigned number.
+ALTER TABLE products ADD COLUMN compat_source TEXT;

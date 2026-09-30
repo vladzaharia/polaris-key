@@ -10,6 +10,10 @@
  *     right methods.
  *  3. The spec contains NO path outside the expected set — documentation for routes that do
  *     not exist is drift too.
+ *
+ * Plus the CORS surface (P0-05): every covered path documents `options` against the one shared
+ * `CorsPreflight` response, no excluded path does, and `core/cors.ts` — what the worker actually
+ * answers — agrees with the spec path by path.
  */
 
 import { readFileSync } from "node:fs";
@@ -17,6 +21,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
+import { matchRoute } from "../src/router.js";
+import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
@@ -175,6 +181,111 @@ describe("spec → router", () => {
       const target = op?.summary?.match(/→ (\/\S+)/)?.[1];
       expect(target, `${path} summary must name its target`).toBeTruthy();
       expect(spec.paths[target!], `${path} → ${target}`).toBeTruthy();
+    }
+  });
+});
+
+/**
+ * The product routes that must NEVER answer CORS (P0-05): they set or read the per-product
+ * browser-session cookie, or they are top-level navigations to the IdP or an HTML page. They stay
+ * first-party. Everything else in the three tables above is covered.
+ */
+const CORS_EXCLUDED = new Set([
+  "/{product}/identity/session",
+  "/{product}/identity/session/license",
+  "/{product}/identity/auth/start",
+  "/{product}/identity/auth/callback",
+  "/{product}/identity/auth/logout",
+  "/{product}/identity/auth/device/verify",
+  "/{product}/config/mint/{mintId}/auth",
+]);
+
+/** Every product path the router serves, from the three tables above. */
+const ALL_PRODUCT_PATHS = [
+  ...Object.values(CORE_KIND_PATHS).flat(),
+  ...SERVICE_PATHS,
+  ...ALIAS_PATHS,
+].map(([path]) => path);
+
+/** A concrete request path for a spec template, so the real router can classify it. */
+function concrete(template: string): string {
+  const samples: Record<string, string> = {
+    product: "acme",
+    deviceId: "dev-1",
+    mintId: "applemusic",
+    version: "1.2.3",
+    asset: "acme-arm64",
+    channel: "beta",
+  };
+  return template.replace(/\{(\w+)\}/g, (_, name: string) => {
+    const value = samples[name];
+    if (!value) throw new Error(`no sample for {${name}} in ${template}`);
+    return value;
+  });
+}
+
+describe("CORS preflight (P0-05)", () => {
+  it("the excluded set names only real routes", () => {
+    for (const path of CORS_EXCLUDED) {
+      expect(ALL_PRODUCT_PATHS, path).toContain(path);
+    }
+  });
+
+  it("every covered path documents options with the shared CorsPreflight response", () => {
+    const missing = ALL_PRODUCT_PATHS.filter(
+      (path) => !CORS_EXCLUDED.has(path),
+    ).filter((path) => {
+      const op = spec.paths[path]?.options as
+        | { responses?: Record<string, { $ref?: string }> }
+        | undefined;
+      return (
+        op?.responses?.["204"]?.$ref !== "#/components/responses/CorsPreflight"
+      );
+    });
+    expect(
+      missing,
+      `covered paths without an options → CorsPreflight operation: ${missing.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("no excluded path documents options", () => {
+    const leaked = [...CORS_EXCLUDED].filter(
+      (path) => spec.paths[path]?.options !== undefined,
+    );
+    expect(
+      leaked,
+      `excluded paths documenting options: ${leaked.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("core/cors.ts covers exactly the paths the spec documents options for", () => {
+    for (const path of ALL_PRODUCT_PATHS) {
+      const route = matchRoute(concrete(path));
+      expect(route.kind, path).not.toBe("notFound");
+      expect(isCorsCoveredRoute(route), path).toBe(
+        spec.paths[path]?.options !== undefined,
+      );
+    }
+  });
+
+  it("the worker's covered service table names only documented service paths", () => {
+    const documented = new Set(SERVICE_PATHS.map(([path]) => path));
+    for (const rel of CORS_SERVICE_PATHS) {
+      expect(documented, rel).toContain(`/{product}/${rel}`);
+    }
+  });
+
+  it("no platform surface is covered, whatever its path", () => {
+    for (const path of [
+      "/manage/api/me",
+      "/manage",
+      "/api/capabilities",
+      "/",
+      "/docs/",
+      "/webhooks/github",
+      "/download/tok",
+    ]) {
+      expect(isCorsCoveredRoute(matchRoute(path)), path).toBe(false);
     }
   });
 });

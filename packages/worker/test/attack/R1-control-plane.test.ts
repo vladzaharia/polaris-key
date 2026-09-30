@@ -36,6 +36,7 @@ import { handleMintAuth } from "../../src/services/config/mint.js";
 import { secureResponse } from "../../src/securityHeaders.js";
 import { loadProduct } from "../../src/core/products.js";
 import {
+  deviceFlowKey,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
 } from "../../src/services/identity/oidc.js";
@@ -725,7 +726,7 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
     expect(confirmed.status).toBe(200);
     expect(confirmed.headers.get("location")).toBeNull();
     const stored = JSON.parse(
-      (await kv.get(`p:djdl:device-flow:${deviceCode}`))!,
+      (await kv.get(await deviceFlowKey(env, "djdl", deviceCode)))!,
     ) as { confirmedAt?: number; deviceId: string };
     // The state-mutating half is gone: a GET cannot mark the flow confirmed.
     expect(stored.confirmedAt).toBeFalsy();
@@ -740,7 +741,7 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
     await seedProduct(db, "djdl");
     const product = (await loadProduct(env, db, "djdl"))!;
     await kv.put(
-      "p:djdl:device-flow:dc",
+      await deviceFlowKey(env, "djdl", "dc"),
       JSON.stringify({
         state: "s",
         deviceId: "attacker-device",

@@ -13,19 +13,19 @@ keys, devices). _Optional_ work packages are off the required path.
 
 | Id                                            | Title                                                                                    | Depends on   | Role        | Weeks    | Status |
 | --------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------ | ----------- | -------- | ------ |
-| [P0-01](wp/P0-01-operator-ownership.md)       | Make operator-owned release settings survive a manifest resync                           | —            | implementer | 0.5–0.75 | todo   |
+| [P0-01](wp/P0-01-operator-ownership.md)       | Make operator-owned release settings survive a manifest resync                           | —            | implementer | 0.5–0.75 | done   |
 | [P0-02](wp/P0-02-release-resolution.md)       | Fix release resolution: tag filter, version ordering, pagination, upsert conflict, R6-10 | —            | implementer | 1–1.25   | todo   |
 | [P0-03](wp/P0-03-release-webhook.md) ✋       | Refresh the release truth store on GitHub `release` webhook events                       | P0-02        | implementer | 0.25     | todo   |
 | [P0-04](wp/P0-04-channel-unification.md) ⚑    | Unify the licence-gate and Release channel vocabularies                                  | —            | sdk-porter  | 0.75–1   | todo   |
-| [P0-05](wp/P0-05-cors.md)                     | Add a per-product CORS allowlist to the Worker                                           | —            | implementer | 0.5–0.75 | todo   |
+| [P0-05](wp/P0-05-cors.md)                     | Add a per-product CORS allowlist to the Worker                                           | —            | implementer | 0.5–0.75 | done   |
 | [P0-06](wp/P0-06-product-devices.md)          | List and manage devices product-wide, not only per licence                               | —            | implementer | 0.25–0.5 | todo   |
 | [P0-07](wp/P0-07-cli-init-validate.md)        | Fix the `pkey init` scaffold and the validate/link disagreement                          | —            | implementer | 0.25     | todo   |
-| [P0-08](wp/P0-08-unknown-slug-tolerance.md)   | Tolerate unknown service slugs in `parseServices` (ship one deploy ahead)                | —            | implementer | 0.1–0.25 | todo   |
+| [P0-08](wp/P0-08-unknown-slug-tolerance.md)   | Tolerate unknown service slugs in `parseServices` (ship one deploy ahead)                | —            | implementer | 0.1–0.25 | done   |
 | [P0-09](wp/P0-09-service-table.md) ✋         | Make the service list data-driven, with a drift gate                                     | P0-08, P0-07 | implementer | 1–1.5    | todo   |
 | [P0-10](wp/P0-10-sparkle-hardening.md) ✋     | Raise Swift's Sparkle floor to 2.9.6 and stream Sparkle verification                     | —            | implementer | 0.25–0.5 | todo   |
 | [P0-11](wp/P0-11-docs-drift.md)               | Fix documentation drift and macOS-only assumptions in health and setup                   | —            | implementer | 0.25–0.5 | todo   |
 | [P0-12](wp/P0-12-edge-mint-hardening.md) ✋   | Harden edge-mint: scope signing secrets and authorise minting                            | —            | implementer | 0.5–0.75 | todo   |
-| [P0-13](wp/P0-13-oidc-flow-key-hashing.md) ✋ | Hash product OIDC `state` and device-code KV key names (finish R12-04)                   | —            | implementer | 0.25–0.5 | todo   |
+| [P0-13](wp/P0-13-oidc-flow-key-hashing.md) ✋ | Hash product OIDC `state` and device-code KV key names (finish R12-04)                   | —            | implementer | 0.25–0.5 | done   |
 
 ## P1: Godot SDK core
 

@@ -27,6 +27,19 @@
         }
       }
     },
+    "web": {
+      "type": "object",
+      "description": "Browser clients (CORS). Origins listed here may read this product's device-facing responses (discovery, JWKS, trust manifest, devices, License, Config, Release downloads, Update and the device-code flow) with fetch. Credentials are never allowed, and the console, portal, docs and cookie-bearing identity routes never answer CORS.",
+      "properties": {
+        "origins": {
+          "type": "array",
+          "description": "Up to 16 exact origins, written as a browser sends them: https://<host>[:port], lower-case, no default port, no path, query, fragment, credentials or wildcard. http is accepted only for http://localhost[:port] and http://127.0.0.1[:port].",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/webOrigin" }
+        }
+      }
+    },
     "licensing": {
       "type": "object",
       "properties": {
@@ -436,6 +449,11 @@
         }
       },
       "required": ["id", "alg", "signingKeySecret"]
+    },
+    "webOrigin": {
+      "type": "string",
+      "maxLength": 267,
+      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*|http://(?:localhost|127\\.0\\.0\\.1))(?::[0-9]{1,5})?$"
     }
   }
 }

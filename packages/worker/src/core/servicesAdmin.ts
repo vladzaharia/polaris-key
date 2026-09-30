@@ -146,8 +146,12 @@ export async function handleServicesAdmin(
   if (errors.length > 0)
     return err(422, ErrorCode.BadRequest, "incoherent services", { errors });
 
-  const next: ProductServices =
-    registration === undefined ? { services } : { services, registration };
+  // `unknown` rides through untouched: a slug a newer build wrote is not ours to drop.
+  const next: ProductServices = {
+    services,
+    ...(registration === undefined ? {} : { registration }),
+    ...(current.unknown ? { unknown: current.unknown } : {}),
+  };
   await setServices(db, slug, serializeServices(next), "admin", now);
 
   const enabled = SERVICE_SLUGS.filter((s) => services[s].enabled);

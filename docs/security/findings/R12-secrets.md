@@ -208,6 +208,17 @@ contains `victim@example.com`.
 as device and download tokens already are. Additionally, stop storing the raw email as the
 magic-link value — store the `portal_accounts.id` resolved at send time.
 
+**Status: Fixed (key names).** Every credential in the table above is now keyed by
+`hashKey(credential, env.KEY_HASH_PEPPER)`: `adminFlowKey` in `admin/auth.ts`, `flowKey` and
+`deviceFlowKey` in `services/identity/oidc.ts`, and `portalFlowKey` and `portalMagicKey` in
+`services/identity/portal/auth.ts`. `R12-secrets.test.ts` → `R12-04` now drives product
+browser sign-in, device-code sign-in, portal OIDC sign-in and magic-link sign-in through the
+real handlers on a KV that records every key it is asked for, and asserts that no key name
+contains the `state`, device code, user code, `nonce`, CSRF token or magic token. The second
+half of the fix direction (store the account id instead of the raw email in the magic-link
+value) is **not** done: the record shape is unchanged. Flows in flight at deploy time fail
+once (600 s TTL) and the user retries; there is no dual read of the old key names.
+
 ---
 
 ## R12-05 — Magic-link token has 72 bits of entropy
