@@ -24,7 +24,7 @@ done
 EXTRA=()
 [ -n "${1:-}" ] && EXTRA=(--eu android.intent.extra.REFERRER "$1")
 "${ADB[@]}" shell am start -a android.intent.action.VIEW -t application/vnd.android.package-archive \
-	-d "content://media/external/downloads/$ID" --grant-read-uri-permission "${EXTRA[@]}" >/dev/null
+	-d "content://media/external/downloads/$ID" --grant-read-uri-permission "${EXTRA[@]}" >/dev/null || true
 for _ in $(seq 1 40); do
 	sleep 3
 	"${ADB[@]}" shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || continue

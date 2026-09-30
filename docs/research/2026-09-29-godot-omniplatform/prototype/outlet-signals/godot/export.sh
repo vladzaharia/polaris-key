@@ -14,7 +14,7 @@ PROTO="$(cd "$HERE/../.." && pwd)"
 OUT="$HERE/../out"
 TARGET="${1:?usage: export.sh macos|linux|windows|android|pack}"
 WORK="$OUT/project"
-mkdir -p "$OUT/$TARGET"
+mkdir -p "$OUT/$TARGET" && touch "$OUT/.gdignore" # keep the editor from importing the exports
 rsync -a --delete --exclude .godot --exclude build --exclude 'outlet-signals/out' "$PROTO/" "$WORK/"
 
 cat >"$WORK/export_presets.cfg" <<EOF
