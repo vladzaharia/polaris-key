@@ -111,10 +111,10 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
 - **Remote phishing** (§5.4): the confirmation page keeps showing the product and the device label
   and requires a button press; a QR scan (`verificationUriComplete`) still lands on it.
 - **R12-04:** the index key is a peppered hash of the code, never the code itself, as the admin
-  flow key does since that fix (`packages/worker/src/admin/auth.ts:33-45`). The existing
-  `p:<slug>:device-flow:<code>` and `p:<slug>:flow:<state>` keys (`oidc.ts:295-301`) still use the
-  secret verbatim although the audit lists R12-04 as fixed; do not change them here (in-flight
-  flows would break on deploy), and report the gap.
+  flow key does since that fix (`packages/worker/src/admin/auth.ts:33-45`). (Correction, P1-06:
+  P0-13 already hashed the `p:<slug>:device-flow:` and `p:<slug>:flow:` keys under
+  `KEY_HASH_PEPPER` — `deviceFlowKey` and `flowKey` in `oidc.ts` — so there is no remaining gap
+  to report; the new `device-user:` index follows the same pattern.)
 - **Compatibility:** `userCode` keeps the `XXXX-XXXX` shape (existing tests match
   `/^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$/`). A host that opened `verificationUri` now lands on the entry
   page and must type the code; hosts should open `verificationUriComplete` (RFC 8628 §3.3.1). Say
@@ -138,8 +138,10 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
       `verificationUri !== verificationUriComplete`, and neither contains the device code.
 - [ ] `GET /djdl/identity/auth/device` returns the entry form with the static-HTML CSP,
       `no-store` and `no-referrer`, and no `<script>`.
-- [ ] `GET …/device?user_code=zk8l qr8n` (lower-case, space) renders the confirmation page for the
-      right flow; the HTML contains the user code and device label and not the device code.
+- [ ] `GET …/device?user_code=wdjb mjht` (the live code, lower-case, space) renders the
+      confirmation page for the right flow; the HTML contains the user code and device label and
+      not the device code. (Correction, P1-06: the earlier example `zk8l qr8n` contains digits,
+      which are outside the §6.1 alphabet and so can never be a valid code.)
 - [ ] `POST` with `user_code` and the page's `csrf` returns `303` to the IdP and sets
       `confirmedAt` on the flow record; the next poll proceeds to the IdP result.
 - [ ] `POST` without `csrf`, with a reused `csrf`, or with a foreign `Origin` returns 403.
