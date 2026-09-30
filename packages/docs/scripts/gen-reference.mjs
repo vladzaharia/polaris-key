@@ -269,6 +269,10 @@ const TABLE_OWNERS = {
     "release_channel_floors",
     "release_health",
     "release_download_tokens",
+    "release_deliverables",
+    "release_builds",
+    "release_channel_policy",
+    "release_yanks",
   ],
   identity: [
     "oidc_config",
