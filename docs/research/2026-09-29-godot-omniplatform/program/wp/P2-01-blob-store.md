@@ -12,6 +12,36 @@
 | Human input | ✋ Cloudflare R2 buckets per environment (prod, staging, dev) with the lock and lifecycle rules below; a **separate registrable domain** for bytes with a custom-domain route; `wrangler deploy` of the new bindings |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                            |
 
+> **Corrections from implementation (2026-09-30).** The code is the fact; where this brief and
+> the branch disagree, the branch wins.
+>
+> - **The bytes host is `dl.plrs.im`, same-site with the console (owner decision).** It is a
+>   `plrs.im` sibling, not a separate registrable domain, which deviates from "Why" and from
+>   README §3.5. It is a Worker custom-domain route (`dl.plrs.im`, `dl-staging.plrs.im`,
+>   `dl-dev.plrs.im`), never an R2 domain. Compensations, recorded in
+>   `docs/security/THREAT-MODEL.md` §3 and pinned in `test/bytesHost.test.ts`: every
+>   bytes-host response sets `X-Content-Type-Options: nosniff` and `Content-Security-Policy:
+sandbox; …`; no HTML, XHTML, SVG, XML, JS, JSON or `text/*` type is ever served there;
+>   `Content-Disposition: attachment` unless the type is allowlisted and the route asks for
+>   `inline`; no cookie is read or set on the host; console session cookies are host-only.
+> - **Real resources exist.** Buckets `polaris-key-blobs-prod|-staging|-dev` were created with
+>   the 180-day age locks and the 1-day `staging/` expiry, `r2.dev` disabled; `wrangler.toml`
+>   binds them by name (no `REPLACE_ME`). `BLOB_ORIGIN` is set per environment.
+> - **`blobResponse(req, bucket, key, opts)`**, not `(req, object, opts)`. R2's native
+>   `onlyIf`/`range` handling compares R2's own etag, while this response's ETag is the
+>   SHA-256, so the builder evaluates `If-None-Match`/`If-Range`/`Range` itself and asks R2
+>   only for the resulting byte range. `opts.host` is `"console" | "bytes"`.
+> - **`promote(bucket, stagingKey, targetKey, {sha256, size}, {db, now})`** takes the D1 handle,
+>   because it records the `blob_objects` row. The binding has no server-side copy, so promote
+>   streams `get` (pinned to the verified etag) into `putVerified`.
+> - `deltaKey` takes an optional `{gated}` like the other builders; `storedKeys(db, keys)` is
+>   added beside `isStored` for P2-02's bulk question; `recordObject` is exported.
+> - The migration is `0026_blob_store.sql` (number pre-assigned). `blob_refs.storage_key` is a
+>   foreign key into `blob_objects`, and `blob_refs.product` cascades from `products`.
+> - P0-05 has not landed: `core/bytesHost.ts` carries a test-pinned `TODO(P0-05): CORS.` at the
+>   point where the central CORS step must run.
+> - Host isolation lives in `core/bytesHost.ts` (`BYTE_ROUTES`, empty), called from `index.ts`.
+
 ## Goal
 
 The Worker has an R2 binding `BLOBS` in every environment and a Core module,
