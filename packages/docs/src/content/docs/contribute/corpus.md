@@ -1,6 +1,6 @@
 ---
 title: "The conformance corpus"
-description: "One generator, four runners, the Swift resource mirror, and how to add a case without hand-editing generated output."
+description: "One generator, four runners, the Swift resource mirror, how to add a case without hand-editing generated output, and the HTTP transcripts recorded beside it."
 sidebar:
   order: 5
   label: "Corpus"
@@ -87,3 +87,53 @@ The gate matrix is different: it is hand-authored, and its carried rows — the 
 from corpus v1 when v1 was deleted — are **frozen**. Nothing may be edited there to make a gate
 change pass. A genuinely new decision is a new row appended in `buildGateMatrixV2`, so the diff
 shows exactly what changed rather than rewriting history that was already pinned.
+
+## HTTP transcripts
+
+Registration, activation and sync are conversations, not pure functions, so the corpus cannot
+pin them. `conformance/transcripts/*.json` does instead: each file is one conversation — the
+requests a client must send and the Worker's real answers — recorded through the production
+router by the Worker's own scenario tests and replayed by every SDK against a fake server that
+serves the recorded responses and asserts each request.
+
+| Piece                  | Where                                                                                   |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| Format (documented)    | `packages/worker/test/transcripts/format.ts`                                            |
+| Recorder and scenarios | `packages/worker/test/transcripts/` (`recorder.ts`, `determinism.ts`, `scenarios/`)     |
+| Drift check            | `packages/worker/test/transcripts.test.ts`, wrapped by `pnpm gen:transcripts`           |
+| Swift mirror           | `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` (generator-owned, like `v2/`) |
+| Node replayer          | `conformance/runners/node/transcripts.test.ts` over `transcriptReplay.ts`               |
+| React replayer         | `packages/sdk-react/test/transcripts.test.ts` (the same engine; discovery only)         |
+| Python replayer        | `sdks/python/tests/test_transcripts.py` over `transcript_replay.py`                     |
+| Swift replayer         | `sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift` over `TranscriptReplay.swift`  |
+
+**Recording.** A scenario seeds a product, builds each request exactly as a wire-contract client
+would, sends it through `dispatchWith` (the router with the request clock injected), asserts
+the server's behaviour as an ordinary test, and declares what a replaying SDK is held to. Values
+from the client's own state are recorded as placeholders (`{deviceId}`, `{version}`,
+`{token}`, `{key}`); values the server chose, such as an ETag, are recorded literally. The
+seven `X-PKey-*` headers are asserted by presence only. Recording is deterministic: `Date` is
+frozen, `crypto.getRandomValues` and `crypto.randomUUID` draw from a stream seeded by the
+scenario id, and the Worker signs with the corpus test key, so every recorded document verifies
+against the corpus pins. Each scenario is recorded twice per run and the two must match.
+
+**Replaying.** An SDK replays a transcript when its `parity.json` marks every id in the
+transcript's `features` `implemented` and none in its `requires` `na`, so a transcript for a
+feature an SDK has not built yet is skipped rather than failing, and runs the moment the
+manifest claims the feature. A replayer fails on an unexpected request, on an expected request
+the SDK never sent, on a header or body that does not match, and on a client outcome that
+differs from the step's `expect`. Each replayer also runs doctored transcripts to prove those
+failures fire. `pnpm parity:check` holds the other end: where a transcript applies to an SDK,
+each feature it proves needs a test tagged `@pkey-feature <id>` that replays
+`conformance/transcripts`.
+
+```sh
+pnpm gen:transcripts            # re-record every scenario, write the files and the Swift mirror
+pnpm gen:transcripts -- --check # the drift guard — exit 1 if anything is stale
+```
+
+Never hand-edit a transcript: change the scenario and re-record. A Worker change that alters a
+recorded response regenerates the transcripts in the same change; if an SDK replayer then
+fails, that SDK has to follow. To add a conversation, add a scenario under
+`packages/worker/test/transcripts/scenarios/`, list it in `scenarios/index.ts`, run
+`pnpm gen:transcripts`, and map any new action in each SDK's replayer.
