@@ -7,6 +7,8 @@ import {
   compileManualChannelRegex,
   DELIVERABLE_KINDS,
   isDeliverableId,
+  isIgnoreTag,
+  MAX_IGNORE_TAG_LENGTH,
   MAX_DELIVERABLE_ID_LENGTH,
   RELEASE_ARCHES,
   RELEASE_PLATFORMS,
@@ -143,6 +145,15 @@ describe("release candidate filter (stableTagPattern, ignoreTags)", () => {
       expect(re.test(tag), tag).toBe(true);
     for (const tag of ["channels", "packs", "v1.2", "v01.2.3", "release-1.2.3"])
       expect(re.test(tag), tag).toBe(false);
+  });
+
+  it("counts an ignore tag's length in code points, as the schema's maxLength does", () => {
+    // 255 astral characters are 510 UTF-16 units: the schema accepts them, so must the validator.
+    expect(isIgnoreTag("\u{1F680}".repeat(MAX_IGNORE_TAG_LENGTH))).toBe(true);
+    expect(isIgnoreTag("\u{1F680}".repeat(MAX_IGNORE_TAG_LENGTH + 1))).toBe(
+      false,
+    );
+    expect(isIgnoreTag("a".repeat(MAX_IGNORE_TAG_LENGTH + 1))).toBe(false);
   });
 
   it("rejects an unsafe pattern and malformed ignore entries", () => {

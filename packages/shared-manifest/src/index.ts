@@ -446,12 +446,17 @@ export function isDeliverableId(value: unknown): value is string {
 /** `release.ignoreTags` bounds: how many exact tag names, and how long each may be. */
 export const MAX_IGNORE_TAGS = 200;
 export const MAX_IGNORE_TAG_LENGTH = 255;
-/** One `release.ignoreTags` entry: a non-empty tag name with no control characters or spaces. */
+/**
+ * One `release.ignoreTags` entry: a non-empty tag name with no control characters or spaces.
+ * Its length is counted in code points, as the schema's `maxLength` counts it, not in UTF-16
+ * units (`value.length`), so the validator and `release.schema.json` agree on an astral tag.
+ */
 export function isIgnoreTag(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const codePoints = [...value].length;
   return (
-    typeof value === "string" &&
-    value.length > 0 &&
-    value.length <= MAX_IGNORE_TAG_LENGTH &&
+    codePoints > 0 &&
+    codePoints <= MAX_IGNORE_TAG_LENGTH &&
     !/[\u0000-\u0020\u007f]/.test(value)
   );
 }
