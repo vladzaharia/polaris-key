@@ -1,0 +1,54 @@
+<!doctype html><meta charset="utf-8" /><title>content vectors</title>
+<script type="module">
+  const w = new Worker("./worker.mjs", { type: "module" });
+  let seq = 0;
+  const pending = new Map();
+  w.onmessage = (e) => {
+    const p = pending.get(e.data.id);
+    pending.delete(e.data.id);
+    e.data.ok ? p.res(e.data.value) : p.rej(new Error(e.data.error));
+  };
+  w.onerror = (e) => {
+    window.__workerError = String(e.message || e);
+  };
+  window.call = (op, args) =>
+    new Promise((res, rej) => {
+      const id = ++seq;
+      pending.set(id, { res, rej });
+      w.postMessage({ id, op, args });
+    });
+  window.pageCaps = () => {
+    const o = {};
+    for (const f of ["gzip", "deflate", "deflate-raw", "brotli", "zstd"]) {
+      try {
+        new DecompressionStream(f);
+        o[f] = true;
+      } catch {
+        o[f] = false;
+      }
+    }
+    return {
+      decompressionStream: o,
+      userAgent: navigator.userAgent,
+      secure: isSecureContext,
+    };
+  };
+  window.cdt = async () => {
+    const sha = async (b) =>
+      [...new Uint8Array(await crypto.subtle.digest("SHA-256", b))]
+        .map((x) => x.toString(16).padStart(2, "0"))
+        .join("");
+    const a = await (await fetch("/cdt/v1.pck")).arrayBuffer();
+    await new Promise((r) => setTimeout(r, 1500));
+    const t = performance.now();
+    const r = await fetch("/cdt/v2.pck");
+    const b = await r.arrayBuffer();
+    return {
+      v1Bytes: a.byteLength,
+      v2Bytes: b.byteLength,
+      v2Sha: await sha(b),
+      ms: performance.now() - t,
+    };
+  };
+  window.ready = true;
+</script>

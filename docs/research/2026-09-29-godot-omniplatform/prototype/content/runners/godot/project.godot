@@ -1,0 +1,7 @@
+config_version=5
+
+[application]
+
+config/name="pkey-content-runner"
+run/main_scene="res://main.tscn"
+run/main_loop_type="ContentRunner"

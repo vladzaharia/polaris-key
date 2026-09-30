@@ -1,0 +1,16 @@
+# Generated test projects (tools/gen_project.py, tools/make_v2.py) and their change list.
+proj_v*/
+v2_changes.json
+# Fonts copied into the generated project (FONTS_DIR default).
+fonts/
+# Exports, manifests, chunk recipes, deltas and runner outputs.
+out/
+# Import/export logs (build.sh, tplrun.sh) and the exported release-template runner.
+logs/
+logs_*.txt
+tpl/
+# Local virtualenv for the offline tools; Godot caches.
+venv/
+__pycache__/
+.godot/
+runner/build/

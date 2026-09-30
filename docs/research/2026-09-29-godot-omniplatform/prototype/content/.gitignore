@@ -1,0 +1,34 @@
+# Vector sets written by `gen/gen.py small|large <dir>` (the default <dir> is vectors/<set>).
+vectors/
+# Built by wasm/build.sh: fetched zstd sources and the decoder modules.
+wasm/zstd-1.5.7/
+wasm/zstd-1.5.7.tar.gz
+*.wasm
+# Built by jvm/build.sh, and the probe classes.
+jvm/lib/
+jvm/out/
+*.class
+# .NET build outputs and local SDK installs.
+dotnet/*/bin*/
+dotnet/*/obj/
+dotnet/sdk*/
+dotnet/dotnet-install.sh
+# Local npm install (only the probe script is source) and extra Node builds.
+npm/*
+!npm/probe.mjs
+nodes/
+# Local Python virtualenvs (py314/, py39/, ...).
+py3*/
+__pycache__/
+# Godot caches and the exported release-template runner.
+.godot/
+runners/godot/tpl/
+runners/godot/build/
+# Probe inputs and outputs (see README), benchmark results, logs.
+probe/**/*.bin
+probe/**/*.zst
+probe/**/*.dcz
+probe/**/*.out
+bench/*.json
+browser-results.json
+*.log

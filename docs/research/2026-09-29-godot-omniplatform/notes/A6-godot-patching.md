@@ -7,8 +7,8 @@ on 2026-09-30. All numbers below come from the re-run. Engine: **Godot 4.7.2-sta
 `ed1daf0bf`)**, headless editor binary and the official `linux_release` export template. Host: a
 4-vCPU Intel Xeon @ 2.10 GHz container, 16 GB RAM, Linux, warm page cache. No GDExtension anywhere;
 every client-side step is GDScript calling stock engine APIs. The repo was not modified apart from
-this note. Code and artefacts live in the scratch experiment (not kept in the repo); script names
-below (`t0_fingerprint.gd` …) refer to it.
+this note. The code now lives in [`prototype/patching/`](../prototype/patching/README.md); script
+names below (`t0_fingerprint.gd` …) refer to it. Generated artefacts are not kept.
 
 Evidence markers: **[M]** measured here, **[S]** read in the 4.7.2 engine source, **[I]** inference.
 
@@ -46,7 +46,7 @@ at a new content-addressed path at next boot.
 
 ### 1.1 Test content
 
-A synthetic but realistic Godot 4.7 project (generator in the scratch experiment), exported for
+A synthetic but realistic Godot 4.7 project (generator in `prototype/patching/tools/gen_project.py`), exported for
 Linux with S3TC/BPTC textures:
 
 | Content                                    | Count | Source size | In the PCK                                          |
@@ -454,7 +454,7 @@ Rules that apply to every rung:
 
 ## 5. Key GDScript snippets
 
-Condensed from the scratch experiment's tested scripts (`lib.gd`, `t3b`, `t4`, `t9`). Error handling
+Condensed from the tested scripts in `prototype/patching/runner/` (`lib.gd`, `t3b`, `t4`, `t9`). Error handling
 trimmed.
 
 **PCK directory parser (v2–v4, unencrypted).** Offsets are made absolute; `base` lets you read a pack
@@ -678,14 +678,18 @@ var data = JSON.parse_string(FileAccess.get_file_as_string("user://pkey/trees/%s
   base was the live content pack.
 - Numbers are single runs on a warm cache, except t3b (three runs, range reported).
 
-## 8. Reproduction (scratch experiment)
+## 8. Reproduction
+
+The experiment's sources now live in [`prototype/patching/`](../prototype/patching/README.md). Its
+README has the prerequisites, the environment variables and step-by-step commands; the paths below
+are relative to it. The engine sources are not vendored; the README lists them at `4.7.2-stable`.
 
 - `build.sh <proj>` (headless import with retries) and `tplrun.sh <release|debug> <Class> args…`
   (export the runner and run it on the official template).
-- Offline tools: `gen_project.py`/`make_v2.py` (content), `manifest.py` (per-file SHA-256 manifest),
-  `pckdiff.py`, `fastcdc.js` (`FASTCDC_SEGMENTS` for file-aware), `chunk_rerun.py` (the chunk
-  tables), `vcd_lite.py`.
-- Runner scripts:
+- Offline tools in `tools/`: `gen_project.py`/`make_v2.py` (content), `manifest.py` (per-file
+  SHA-256 manifest), `pckdiff.py`, `fastcdc.cjs` (`FASTCDC_SEGMENTS` for file-aware),
+  `chunk_rerun.py` (the chunk tables), `vcd_lite.py`.
+- Runner scripts in `runner/`:
   - `t0_fingerprint` (mount matrix)
   - `t1_delta_cost`
   - `t2_rebuild` (`packer`, `packer_res`, `writer`), `t2b_bake`

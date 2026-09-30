@@ -77,3 +77,15 @@ The HTTP probe records five behaviours:
 - A strict JSON validator (Godot's parser accepts trailing commas, leading zeros and raw control
   characters, and silently keeps the last duplicate key).
 - Measurements on real phones and in browsers.
+
+## Other experiments
+
+Two more research experiments live next to this project. Like it, they are not part of the green
+gate.
+
+- [`patching/`](patching/README.md) backs [A6](../notes/A6-godot-patching.md): which patching and
+  content-update methods a pure-GDScript client can run on Godot 4.7.2. Its exported packs are the
+  input of the content vectors.
+- [`content/`](content/README.md) backs [A7](../notes/A7-xlang-content.md): one shared
+  content-delivery vector set, checked against reference appliers in Python, Node, Chromium, the
+  JVM, .NET and GDScript.

@@ -8,7 +8,7 @@ whole-file `zstd --patch-from` deltas and per-file rebuilds, and produce a pack 
 note asks the contract-first follow-up. Can the **same** operations be implemented **identically** in every SDK
 language, and what shared test-vector set keeps them identical?
 
-To answer it I built three things in the scratch experiment (not kept in the repo):
+To answer it I built three things, now kept in [`prototype/content/`](../prototype/content/README.md):
 
 - a small shared vector set;
 - a reference applier and planner in six runtimes (five languages);
@@ -1007,20 +1007,25 @@ reimplement about 450–700 lines, a size measured here for five of them.
 
 ---
 
-## 14. Reproduction (scratch experiment)
+## 14. Reproduction
 
-- **Generator** (the CI stand-in): `gen/gen.py small|large <dir>` (Python 3.14 + zstd CLI + `fastcdc.js`);
+The experiment's sources now live in [`prototype/content/`](../prototype/content/README.md). Its README
+has the prerequisites, the environment variables and step-by-step commands; the paths below are relative
+to it. The input packs come from [`prototype/patching/`](../prototype/patching/README.md) (`PACKS_DIR`).
+
+- **Generator** (the CI stand-in): `gen/gen.py small|large <dir>` (Python 3.14 + zstd CLI + `fastcdc.cjs`);
   planner rows in `gen/planref.py`.
 - **Reference implementation:** `runners/python/pkey_content.py`; runner `runcases.py <dir> stdlib|zstandard`.
 - **JavaScript core:** `runners/js/content.mjs` and `cases.mjs`.
   - Node: `runners/node/run.mjs <dir> zlib|zstd-napi`, `run-wasm.mjs`.
   - Browser: `runners/browser/{server.mjs,index.html,worker.mjs,drive.mjs,cdtcap.mjs,zstddec-prefix.mjs}`.
-- **JVM:** `jvm/Runner.java` (`<dir> [bench]`).
+- **JVM:** `jvm/Runner.java` (`<dir> [bench]`), built by `jvm/build.sh`.
 - **.NET:** `dotnet/runner/Program.cs` (`-p:TF=net10.0|net11.0`; `ZSTD=builtin|sharp`; `probe` and `bench` modes).
 - **Godot:** `runners/godot/content_runner.gd` (`--script` on the editor; exported `.pck` + `linux_release`
   template for the bench).
-- **WASM decoder:** `wasm/zdec.c`.
-- **Probes:** `probe/` (magic base, 153 MiB window, `dcz` body).
+- **WASM decoder:** `wasm/zdec.c`, built by `wasm/build.sh`.
+- **Probes:** `probe/` (magic base, 153 MiB window, `dcz` body) and `npm/probe.mjs` (npm packages).
+- **Throughput:** `bench/` (Python and Node) and the runners' `bench` modes.
 - **Everything at once:** `run-all.sh small|large`.
 
 ---
