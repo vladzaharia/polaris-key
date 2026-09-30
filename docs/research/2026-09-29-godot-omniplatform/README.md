@@ -148,7 +148,9 @@ event** (protocol v4) that every SDK must follow.
    Polaris Key should model _one_ pack identity delivered through several transports, not one
    transport. The same holds for patching: production launchers (Riot, Blizzard, Epic, Steam)
    all use CI-chunked manifests plus a thin client that needs only SHA-256, zstd and HTTP Range.
-   That is exactly what a pure-GDScript client can do ([`CONTENT.md`](CONTENT.md) §7).
+   That is exactly what a pure-GDScript client can do. Measured on Godot 4.7.2 (§5.7), it can
+   also drive Godot's own delta decoder: a v1→v2 update of a 36 MiB pack took 0.6 MB instead of
+   9.8 MB, with a byte-identical result ([`CONTENT.md`](CONTENT.md) §7).
 
 ### 0.5 Difficulty at a glance
 
@@ -332,7 +334,7 @@ The proposed additions go into `start/concepts.md` in the first implementing PR.
 | **requirements**                | constraints on where an artifact or pack may run: `engine` (e.g. `godot-4.7`), `format`, `textures` (`s3tc`/`etc2`/`astc`), `minBuild`, `minOS`, `arch`                                                                                                                                  | the generic "compat key"; generalises to Unity, Electron, etc.                                                   |
 | **delivery policy**             | `essential` \| `prefetch` \| `onDemand`                                                                                                                                                                                                                                                  | Apple Background Assets' vocabulary, reused across transports                                                    |
 | **transport**                   | how a pack's bytes arrive: `embedded`, `pkey-cdn`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`, `flatpak-ext`, `web`                                                                                                                                                          | one pack id, many transports                                                                                     |
-| **patch strategy**              | how an update is obtained: `noop`, `platform`, `chunk`, `delta`, `engine-delta`, `full`, picked by a deterministic client planner                                                                                                                                                        | not "route" (a Worker term)                                                                                      |
+| **patch strategy**              | how an update is obtained: `noop`, `platform`, `delta`, `chunk`, `file`, `full`, picked by a deterministic client planner                                                                                                                                                                | not "route" (a Worker term)                                                                                      |
 | **release key**                 | a developer/CI-held Ed25519 key that signs release manifests                                                                                                                                                                                                                             | Sparkle's EdDSA key generalised; the Worker never holds it                                                       |
 
 ### 3.2 Service model
@@ -591,17 +593,25 @@ Content is a general delivery system, not a Godot feature. The full design is in
     independently; `contentApi` in the pack id because all app versions switch), `play-pad`
     (tied to versionCode), `steam-depot`, `msix-optional`, `flatpak-ext`, `web`.
   - Polaris Key tracks per-outlet availability, e.g. via ASC `BACKGROUND_ASSET_VERSION_*` webhooks.
-- **Patching uses whatever is available**, via the strategy ladder `noop → platform → chunk →
-delta → engine-delta → full`.
+- **Patching uses whatever is available**, via the strategy ladder `noop → platform → delta →
+chunk → file → full`.
   - The client planner is a pure function of the signed menu and local state, conformance-tested
     as `plan-matrix.json`.
-  - Chunk sync uses CI-computed content-defined chunks packed into 4–16 MiB chunk bundles fetched
-    by Range. Any installed or embedded pack is a seed.
-  - Deltas are CI-precomputed for hot pairs only.
+  - `delta`: CI-precomputed per-entry `zstd --patch-from` frames for hot pairs. Godot decodes them
+    with its own engine decoder, reachable from pure GDScript, and bakes a byte-identical full
+    pack.
+  - `chunk`: CI-computed, file-aware content-defined chunks in 4–16 MiB chunk bundles fetched by
+    Range. Any installed or embedded pack is a seed.
+  - `file`: changed files by hash, rebuilt locally.
+  - On a synthetic 36 MiB Godot pack these downloaded 0.60 MB, 1.05 MB and 0.99 MB respectively,
+    against 9.80 MB full, at 0.2–0.45 s of client CPU ([`CONTENT.md`](CONTENT.md) §7.3).
   - Never compute deltas or chunk boundaries in the Worker.
-- **Data-only on store builds**, enforced at publish (the CI verify step rejects scripts,
-  `project.binary`, UID/class caches and native libraries) and again at mount (`replace_files=false`,
-  declared prefixes only).
+- **Data-only on store builds.**
+  - Enforced at publish: the CI verify step rejects scripts, `project.binary`, class caches and
+    native libraries.
+  - Enforced again before mount, by checking the pack's directory against its declared prefixes.
+  - `replace_files` is not a boundary: zips ignore it, and `false` stops a pack's own UIDs
+    registering.
 - **Entitlements.**
   - Paid or supporter packs name a licence `flag` entitlement; on store outlets it comes from
     store commerce (§3.10).
@@ -828,7 +838,7 @@ packs:
     delivery: onDemand
     entitlement: extras.diceSkins
 patch:
-  strategies: [chunk, delta, engine-delta]
+  strategies: [delta, chunk, file]
   chunking: { alg: fastcdc, avg: 65536 }
   deltaBases: hot-pairs
 ```
@@ -1124,6 +1134,9 @@ options, in order of preference:
 2. **Sidecar-PCK swap** for writable portable installs on Windows and Linux.
    - Godot loads `<exe-name>.pck` beside the executable, so the updater verifies a staged pack,
      atomically renames it into place, and restarts (`OS.set_restart_on_exit`).
+   - The per-entry delta bake measured in [`CONTENT.md`](CONTENT.md) §7.3 makes such a code-pack
+     update a few hundred KB, and the result is byte-identical to CI's pack, so one SHA-256
+     verifies it.
    - Not for macOS `.app` bundles (breaks the seal) or `Program Files` installs.
 3. **Custom export templates** built with `disable_path_overrides=no`, keeping Diceroll's current
    design. This carries a large CI cost (6–8 template builds per engine bump) and should be chosen
@@ -1135,22 +1148,44 @@ options, in order of preference:
 boots, and a skipped version. It moves into `updater/` and reports `boot_rolled_back` so the server
 can halt a bad rollout.
 
-### 5.7 Content packs at runtime
+### 5.7 Content at runtime
 
-`PolarisKey.content` does the following:
+`PolarisKey.content` implements [`CONTENT.md`](CONTENT.md) for Godot:
 
-- **Resolves** the pack set pinned by the running build.
-- **Checks** requirements: engine `major.minor`, format, and the texture family from
-  `OS.has_feature("etc2"/"s3tc"/"astc")`. This fixes Diceroll's S3TC-only pack being applied on
-  Linux arm64.
-- **Picks a transport** per outlet.
-- **Downloads** with resume, verifies sha256 against the signed record, and stores content-addressed
-  under `user://pkey/packs/`.
-- **Mounts** in `mountOrder`, one pack per frame, with `replace_files=false`, prefix-checked, from
-  an autoload before first use.
-- **Evicts** hashes not pinned by the current or previous build after a confirmed boot.
+- **Handlers:**
+  - `godot.pck` (restart activation);
+  - `godot.zip` (tolerated, not preferred);
+  - `files.tree`, `l10n.table`, `data.json` (hot activation);
+  - `audio.bank`;
+  - game-registered `custom.*`.
+- **Resolves** the locked or floating pack set, then **checks** requirements: engine
+  `major.minor`, format, `contentApi`, and texture family from `OS.has_feature("etc2"/"s3tc"/"astc")`.
+  There is no runtime texture compression on templates, so each texture family is its own
+  variant. This fixes Diceroll's S3TC-only pack being applied on arm64 Linux.
+- **Picks a transport per outlet** and **plans** with the conformance-tested planner. Every
+  strategy is pure GDScript, measured on 4.7.2 (notes/A6):
 
-**Signals:** `pack_progress(id, bytes, total)`, `pack_mounted(id)`, `pack_failed(id, err)`.
+  | Strategy                                                                                                               | 36 MiB pack, v1→v2 | Client CPU |
+  | ---------------------------------------------------------------------------------------------------------------------- | ------------------ | ---------- |
+  | `delta` (per-entry `zstd --patch-from`, decoded by Godot's own engine decoder via a 5-byte `GDDL` wrapper, then baked) | 0.60 MB            | ~0.23 s    |
+  | `chunk` (file-aware FastCDC 64 KiB)                                                                                    | 1.05 MB            | ~0.4 s     |
+  | `file` (changed entries + GDScript PCK writer)                                                                         | 0.99 MB            | ~0.21 s    |
+  | `full`                                                                                                                 | 9.80 MB            | ~0.2 s     |
+
+- **Always rebuilds a full pack byte-identical to CI's**, verifies one SHA-256, writes it to a new
+  content-addressed path under `user://pkey/store/`, and mounts it at next boot.
+  - Godot never checks a PCK's own MD5s, so verification is the SDK's job.
+  - Native delta overlays are never left mounted: they cost ~2.9 ms per file open per layer,
+    forever.
+  - A mounted pack is never overwritten: that corrupts reads.
+- **Mounts** in `mountOrder`, one pack per frame, from an autoload before first use, after a
+  directory check (declared prefixes, data-only).
+- **Hot types** (trees, translations, data, audio) load from `user://` in milliseconds via
+  `ResourceLoader.load`, `TranslationServer` and `load_from_file`.
+- **Evicts** payloads outside the active and previous sets after a confirmed boot.
+
+**Signals:** `pack_progress(id, bytes, total)`, `pack_ready(id)`, `pack_failed(id, err)`,
+`set_changed(activation)`.
 
 **UX obligations it enforces:**
 
@@ -1159,12 +1194,13 @@ can halt a bad rollout.
 - pause/resume;
 - an "offline, play with installed content" path.
 
-**Known engine issues** to handle or spike:
+**Known engine issues:**
 
 - `load_resource_pack` stalls the UI on Android (godot#105009);
-- there is no unload API;
-- UIDs are not registered for PCKPacker packs (path loads only; forbid `uid://` into packs);
-- web multi-pack behaviour is unverified.
+- there is no unload API, and a mid-session remount serves stale cached resources;
+- pack offsets are 32-bit;
+- on web, `user://` is held entirely in memory, so large packs come from the browser's HTTP cache
+  each session instead.
 
 ### 5.8 UI kit and `PKeyBoot`
 
@@ -1623,15 +1659,15 @@ WinSparkle.
 Estimates are focused engineer-weeks for one experienced engineer. Each phase includes its docs,
 skills and threat-model updates (~10%). Agent assistance compresses calendar time, not review.
 
-| Phase                                                    | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Size     | Depends on          | Gates                                                                                                                            | Outcome                                                                                                                                  |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **P0 Hygiene and unblockers**                            | • operator-ownership `*_source` for access modes, compat window, artifact policy<br>• `release` webhook events<br>• tag filter, version-ordered "newest", pagination<br>• version-conflict fix; R6-10<br>• **channel vocabulary unification**<br>• CORS allowlist<br>• product-wide devices<br>• `init`/`validate` fixes<br>• unknown-slug tolerance<br>• Sparkle floor ≥ 2.9.6<br>• docs drift                                                                                                                                                                                                                                                                                                 | 3–4 wk   | —                   | channel unification touches `gate-matrix.json` (plan mode); `OPTIONS` routes (rule 10)                                           | Polaris Key is correct for any non-macOS product                                                                                         |
-| **P1 Godot SDK core**                                    | • `addons/polaris_key` core (verify, trust, cache, clock, transport)<br>• License / Config (incl. edge-mint) / Devices / Identity (device-code + QR) / Update-check parity<br>• UI kit v1 (gate, activation, sign-in, settings, banner, dev-menu section)<br>• export plugin v1 (build stamp)<br>• GUT corpus runner + CI job<br>• docs page, Asset Store listing<br>• server: RFC 8628 user-code page; `engine`/`outlet` report keys                                                                                                                                                                                                                                                           | 8–11 wk  | P0 (channels, CORS) | sixth conformance language                                                                                                       | **Diceroll adopts managed config, licensing and identity**                                                                               |
-| **P2 Omni-platform truth and publishing**                | • Core blob store (R2) + trusted publisher (GitHub OIDC)<br>• `pkey publish` + `polaris-key/publish` Action<br>• release descriptor ingest; artifact map; platforms/arches incl. `universal`/`wasm32`<br>• outlets registry; build numbers; per-platform resolution<br>• generic + blob routes<br>• policy tables (pin/promote/rollout/halt/yank)<br>• console release matrix v1<br>• public download page v1                                                                                                                                                                                                                                                                                   | 7–9 wk   | P0                  | rules 9 and 10; migrations; threat model                                                                                         | every Diceroll artifact indexed, downloadable and published without long-lived secrets                                                   |
-| **P3 Signed feed, decision, feeds**                      | • **wire v4**: `pkey-feed+jws` + `pkey-release+jws`<br>• corpus: feed, release, `update-matrix`, malleability<br>• five SDKs + Godot<br>• renderers: AltStore/SideStore/PAL, Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync, Obtainium, Scoop/Flathub JSON<br>• F-Droid CI generator + static relay<br>• Godot updater: outlet adapters, sidecar swap, boot guard, Velopack/Sparkle hooks                                                                                                                                                                                                                                                                                     | 8–10 wk  | P2                  | **plan mode; `PROTOCOL_VERSION` 4; all SDKs**                                                                                    | **Diceroll deletes `game/update/*`, `update_manifest.py`, `altstore_source.py`, and the `channels` release**                             |
-| **P4 Content delivery** ([`CONTENT.md`](CONTENT.md) §15) | • **v1** (6–8 wk): `content` service (sixth slug); pack definitions and type registry; single-file packs; full + one zstd delta; transport bindings; marker; install state; locked consumption; Godot content client + `PKeyBoot`; console content view<br>• **v2** (5–7 wk): chunk indexes and chunk bundles on R2; pure-GDScript chunk sync; content channels with server-resolved pack sets; floating consumption; content rollout/halt/floor/yank; GC; `engine-delta` fallback<br>• **v3** (4–6 wk): more types (`l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`, `unity.addressables`); lazy hot-pair deltas; web Compression Dictionary Transport; content-key delegation | 15–21 wk | P2, P3              | sixth-service blast radius (~45 files); wire (`pkey-pack+jws`, `pkey-content+jws`); corpus `plan-matrix.json`, `chunkIndexCases` | Diceroll's content-streaming phases 1–3 run on Polaris Key (v1); small chunk updates (v2); localisation, events and supporter packs (v3) |
-| **P5 Outlet connectors and native plugins**              | • outlet-credential custody<br>• ASC (webhooks, TestFlight, phased release, Background Assets states)<br>• Play (tracks, rollout, priority, Reporting API)<br>• Microsoft Store status<br>• Godot plugins: iOS (`AppDistributor`, Background Assets, StoreKit 2), Android (install source, In-App Updates, PAD, PackageInstaller), macOS Sparkle, Windows Velopack/WinSparkle/StoreContext                                                                                                                                                                                                                                                                                                      | 10–14 wk | P2–P4               | threat model; per-platform CI                                                                                                    | store state in the console; Background Assets packs on iOS; in-app updates on Play                                                       |
-| **P6 Commerce, ops, web**                                | • commerce bridge (App Store Server Notifications v2, Play purchases + RTDN, Steam ownership) → entitlements<br>• App Attest / Play Integrity trust tiers<br>• update funnel + auto-halt + Sentry<br>• optional Polaris-hosted web builds<br>• optional Kotlin SDK (+6–8 wk)                                                                                                                                                                                                                                                                                                                                                                                                                    | 6–9 wk   | P3–P5               | —                                                                                                                                | paid packs on stores; automatic halts                                                                                                    |
+| Phase                                                    | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Size     | Depends on          | Gates                                                                                                                            | Outcome                                                                                                                                  |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0 Hygiene and unblockers**                            | • operator-ownership `*_source` for access modes, compat window, artifact policy<br>• `release` webhook events<br>• tag filter, version-ordered "newest", pagination<br>• version-conflict fix; R6-10<br>• **channel vocabulary unification**<br>• CORS allowlist<br>• product-wide devices<br>• `init`/`validate` fixes<br>• unknown-slug tolerance<br>• Sparkle floor ≥ 2.9.6<br>• docs drift                                                                                                                                                                                                                                                                                                                                    | 3–4 wk   | —                   | channel unification touches `gate-matrix.json` (plan mode); `OPTIONS` routes (rule 10)                                           | Polaris Key is correct for any non-macOS product                                                                                         |
+| **P1 Godot SDK core**                                    | • `addons/polaris_key` core (verify, trust, cache, clock, transport)<br>• License / Config (incl. edge-mint) / Devices / Identity (device-code + QR) / Update-check parity<br>• UI kit v1 (gate, activation, sign-in, settings, banner, dev-menu section)<br>• export plugin v1 (build stamp)<br>• GUT corpus runner + CI job<br>• docs page, Asset Store listing<br>• server: RFC 8628 user-code page; `engine`/`outlet` report keys                                                                                                                                                                                                                                                                                              | 8–11 wk  | P0 (channels, CORS) | sixth conformance language                                                                                                       | **Diceroll adopts managed config, licensing and identity**                                                                               |
+| **P2 Omni-platform truth and publishing**                | • Core blob store (R2) + trusted publisher (GitHub OIDC)<br>• `pkey publish` + `polaris-key/publish` Action<br>• release descriptor ingest; artifact map; platforms/arches incl. `universal`/`wasm32`<br>• outlets registry; build numbers; per-platform resolution<br>• generic + blob routes<br>• policy tables (pin/promote/rollout/halt/yank)<br>• console release matrix v1<br>• public download page v1                                                                                                                                                                                                                                                                                                                      | 7–9 wk   | P0                  | rules 9 and 10; migrations; threat model                                                                                         | every Diceroll artifact indexed, downloadable and published without long-lived secrets                                                   |
+| **P3 Signed feed, decision, feeds**                      | • **wire v4**: `pkey-feed+jws` + `pkey-release+jws`<br>• corpus: feed, release, `update-matrix`, malleability<br>• five SDKs + Godot<br>• renderers: AltStore/SideStore/PAL, Sparkle extensions, WinSparkle, Velopack, `.appinstaller`, zsync, Obtainium, Scoop/Flathub JSON<br>• F-Droid CI generator + static relay<br>• Godot updater: outlet adapters, sidecar swap, boot guard, Velopack/Sparkle hooks                                                                                                                                                                                                                                                                                                                        | 8–10 wk  | P2                  | **plan mode; `PROTOCOL_VERSION` 4; all SDKs**                                                                                    | **Diceroll deletes `game/update/*`, `update_manifest.py`, `altstore_source.py`, and the `channels` release**                             |
+| **P4 Content delivery** ([`CONTENT.md`](CONTENT.md) §15) | • **v1** (6–8 wk): `content` service (sixth slug); pack definitions and type registry; single-file packs; full, per-entry delta and changed-file updates (GDScript via Godot's own decoder); transport bindings; marker; install state; locked consumption; Godot content client + `PKeyBoot`; console content view<br>• **v2** (5–7 wk): chunk indexes and chunk bundles on R2; pure-GDScript chunk sync; content channels with server-resolved pack sets; floating consumption; content rollout/halt/floor/yank; GC<br>• **v3** (4–6 wk): more types (`l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`, `unity.addressables`); lazy hot-pair deltas; web Compression Dictionary Transport; content-key delegation | 15–21 wk | P2, P3              | sixth-service blast radius (~45 files); wire (`pkey-pack+jws`, `pkey-content+jws`); corpus `plan-matrix.json`, `chunkIndexCases` | Diceroll's content-streaming phases 1–3 run on Polaris Key (v1); small chunk updates (v2); localisation, events and supporter packs (v3) |
+| **P5 Outlet connectors and native plugins**              | • outlet-credential custody<br>• ASC (webhooks, TestFlight, phased release, Background Assets states)<br>• Play (tracks, rollout, priority, Reporting API)<br>• Microsoft Store status<br>• Godot plugins: iOS (`AppDistributor`, Background Assets, StoreKit 2), Android (install source, In-App Updates, PAD, PackageInstaller), macOS Sparkle, Windows Velopack/WinSparkle/StoreContext                                                                                                                                                                                                                                                                                                                                         | 10–14 wk | P2–P4               | threat model; per-platform CI                                                                                                    | store state in the console; Background Assets packs on iOS; in-app updates on Play                                                       |
+| **P6 Commerce, ops, web**                                | • commerce bridge (App Store Server Notifications v2, Play purchases + RTDN, Steam ownership) → entitlements<br>• App Attest / Play Integrity trust tiers<br>• update funnel + auto-halt + Sentry<br>• optional Polaris-hosted web builds<br>• optional Kotlin SDK (+6–8 wk)                                                                                                                                                                                                                                                                                                                                                                                                                                                       | 6–9 wk   | P3–P5               | —                                                                                                                                | paid packs on stores; automatic halts                                                                                                    |
 
 **Totals.**
 
@@ -1782,3 +1818,8 @@ synthesis reflects the cross-checked position.
   the corpus, and notes/E4 independently measured its own port at 25–45 ms.
 - notes/A2's Diceroll use cases were written without access to the Diceroll repo; notes/A4 is
   authoritative for Diceroll.
+- notes/E8 treats `zstd --patch-from` as unreachable from GDScript and suggests leaving Godot delta
+  PCKs mounted as overlays. notes/A6 measured both: the engine's own decoder is reachable from
+  pure GDScript, and overlays cost load time on every open, so deltas are baked into full packs.
+- notes/E8 and the first drafts rely on `replace_files=false` for data-only safety. notes/A6 shows
+  that zips ignore it and that it blocks a pack's UIDs. The rule is a directory check before mount.

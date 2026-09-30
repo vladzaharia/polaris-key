@@ -1,7 +1,7 @@
 # Content delivery: many versioned packs, many types, whatever transport is available
 
 **Date:** 2026-09-30 · **Status:** research and proposal. Nothing here is implemented. ·
-**Extends:** [README §3.7](README.md#37-content-packs-content-service), which this document
+**Extends:** [README §3.7](README.md#37-content-delivery-content-service), which this document
 replaces in detail.
 
 The main report treats content as "Godot packs". This document generalises that into a
@@ -57,8 +57,9 @@ It is built on four research tracks:
 - Diceroll's six packs become first-class, independently versioned units, as do future seasonal
   events, supporter skins, music packs and localisations.
 - Store builds stay data-only and store-compliant.
-- A typical update downloads only changed chunks. The industry reports 85%+ chunk reuse between
-  versions; the synthetic Godot numbers are in §7.3.
+- A typical update downloads only what changed. On a synthetic 36 MiB Godot pack, a v1→v2
+  update is 0.60 MB via per-entry deltas (−94%) or 1.05 MB via chunk sync from any older version
+  (−89%), all in pure GDScript (§7.3). The industry reports 85%+ chunk reuse between versions.
 - The same model serves the Swift, Node/Electron, Python, React/web and a future Kotlin or Unity
   SDK.
 
@@ -118,7 +119,7 @@ Where a borrowed industry term collides, it is renamed.
 | **`contentApi`**      | an integer an app build declares for the content shape its code expects; bumped when code and content must change together                                                            |
 | **transport**         | how a release's bytes reach the device: `embedded`, `pkey-cdn`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`, `flatpak-ext`, `web`                                          |
 | **transport binding** | the platform's identity for a release on an outlet (Apple asset pack id + version, Steam depot/manifest, PAD pack + versionCode, …) and its state                                     |
-| **patch strategy**    | how an update is obtained: `noop`, `platform`, `chunk`, `delta`, `engine-delta`, `full`                                                                                               |
+| **patch strategy**    | how an update is obtained: `noop`, `platform`, `delta`, `chunk`, `file`, `full` (§7)                                                                                                  |
 | **install plan**      | the client's chosen strategy, byte/request/disk estimates and fallbacks for one pack update                                                                                           |
 | **seed**              | any verified local payload whose chunk index is known, and which can therefore supply reusable chunks. Embedded packs and every installed pack are seeds                              |
 | **marker**            | a signed `.pkey/pack.json` inside platform-delivered payloads, binding them to a pack release                                                                                         |
@@ -186,18 +187,18 @@ signing and GC come for free; only activation is the game's.
 
 ### 4.2 Initial type registry
 
-| Type                          | Payload                                                                                                                                                        | Activation                                                     | Preferred strategies (`full` always last)                                                                         | Type-specific verify / compat                                                                                                                 |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `godot.pck`                   | one `.pck`, **uncompressed entries** for chunkability                                                                                                          | restart (mount in `mountOrder` at boot, `replace_files=false`) | platform → chunk → `engine-delta` (Godot delta PCK layered over its exact base) → full. See §7.3 for measurements | `engine`, `pckFormat`, texture feature; data-only list at publish and at mount; no `uid://` into packs                                        |
-| `godot.zip`                   | a zip mounted by `load_resource_pack` (stored entries)                                                                                                         | restart                                                        | as `godot.pck`                                                                                                    | as `godot.pck`                                                                                                                                |
-| `files.tree`                  | a directory tree                                                                                                                                               | hot (versioned dir + pointer swap)                             | file-level reuse → chunk for large files → full                                                                   | path safety (no `..`, absolute paths or symlink escapes), modes                                                                               |
-| `archive.zip` / `archive.tar` | archive as a **build input**, delivered and installed as `files.tree` unless the consumer needs the archive itself (then stored entries, deterministic re-zip) | as `files.tree`                                                | as `files.tree`                                                                                                   | zip-slip checks                                                                                                                               |
-| `audio.bank`                  | FMOD `.bank`, Wwise `.bnk`, or a Godot audio pack                                                                                                              | hot if the middleware can reload, else restart                 | chunk → full                                                                                                      | middleware version                                                                                                                            |
-| `l10n.table`                  | `.translation`, PO, CSV or JSON (small)                                                                                                                        | hot (`TranslationServer`)                                      | full (compressed transfer) → delta for large tables                                                               | BCP-47 locale, key-schema version                                                                                                             |
-| `data.json`                   | JSON documents (balance tables, event definitions)                                                                                                             | hot                                                            | full                                                                                                              | JSON Schema version. Tiny, frequently tuned values belong in **managed config** (signed config document, enforced/default states), not a pack |
-| `ml.model`                    | GGUF, ONNX or safetensors                                                                                                                                      | hot (swap path after a load test)                              | chunk (larger average chunk) → full                                                                               | runtime, quantisation, RAM/VRAM needs                                                                                                         |
-| `unity.addressables` (later)  | an Addressables catalog + bundles as a tree                                                                                                                    | Addressables custom provider                                   | file-level reuse                                                                                                  | Unity version, player content version                                                                                                         |
-| `custom.<name>`               | file or tree                                                                                                                                                   | game-registered                                                | as file or tree                                                                                                   | game-registered                                                                                                                               |
+| Type                          | Payload                                                                                                                                                        | Activation                                                                                                                         | Preferred strategies (`full` always last)                                                                                                                                                         | Type-specific verify / compat                                                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `godot.pck`                   | one `.pck`, **uncompressed entries** (compress on the wire or per chunk, never at rest)                                                                        | restart: mount in `mountOrder` at boot, from a new content-addressed path, after a directory check; never overwrite a mounted pack | platform → `delta` (per-entry `zstd --patch-from`, decoded by Godot's own engine and baked into a full pack) → `chunk` (file-aware) → `file` (changed entries + rebuild) → full. Measured in §7.3 | `engine`, `pckFormat`, texture feature; the whole-pack SHA-256 (Godot never checks its per-file MD5s); a **directory check before mount** (declared prefixes only; no scripts, `project.binary` or class cache) |
+| `godot.zip`                   | a zip mounted by `load_resource_pack`                                                                                                                          | restart                                                                                                                            | full; `chunk` only for stored entries                                                                                                                                                             | as `godot.pck`, but avoid for updates: zips cannot express removals, ignore `replace_files` and cannot be mounted at an offset. Accept only when a third party requires it                                      |
+| `files.tree`                  | a directory tree                                                                                                                                               | hot (versioned dir + pointer swap)                                                                                                 | file-level reuse → chunk for large files → full                                                                                                                                                   | path safety (no `..`, absolute paths or symlink escapes), modes                                                                                                                                                 |
+| `archive.zip` / `archive.tar` | archive as a **build input**, delivered and installed as `files.tree` unless the consumer needs the archive itself (then stored entries, deterministic re-zip) | as `files.tree`                                                                                                                    | as `files.tree`                                                                                                                                                                                   | zip-slip checks                                                                                                                                                                                                 |
+| `audio.bank`                  | FMOD `.bank`, Wwise `.bnk`, or a Godot audio pack                                                                                                              | hot if the middleware can reload, else restart                                                                                     | chunk → full                                                                                                                                                                                      | middleware version                                                                                                                                                                                              |
+| `l10n.table`                  | `.translation`, PO, CSV or JSON (small)                                                                                                                        | hot (`TranslationServer`)                                                                                                          | full (compressed transfer) → delta for large tables                                                                                                                                               | BCP-47 locale, key-schema version                                                                                                                                                                               |
+| `data.json`                   | JSON documents (balance tables, event definitions)                                                                                                             | hot                                                                                                                                | full                                                                                                                                                                                              | JSON Schema version. Tiny, frequently tuned values belong in **managed config** (signed config document, enforced/default states), not a pack                                                                   |
+| `ml.model`                    | GGUF, ONNX or safetensors                                                                                                                                      | hot (swap path after a load test)                                                                                                  | chunk (larger average chunk) → full                                                                                                                                                               | runtime, quantisation, RAM/VRAM needs                                                                                                                                                                           |
+| `unity.addressables` (later)  | an Addressables catalog + bundles as a tree                                                                                                                    | Addressables custom provider                                                                                                       | file-level reuse                                                                                                                                                                                  | Unity version, player content version                                                                                                                                                                           |
+| `custom.<name>`               | file or tree                                                                                                                                                   | game-registered                                                                                                                    | as file or tree                                                                                                                                                                                   | game-registered                                                                                                                                                                                                 |
 
 ---
 
@@ -266,8 +267,9 @@ plan(target, installed, seeds, caps):
                  bytes = Σ compressed length of chunks missing from all seeds
                  requests = contiguous runs of missing chunks per chunk bundle
     delta        for each published delta with from == installed payload and caps ∋ method
-                 and memory need ≤ caps.memBudget
-    engine-delta Godot delta PCK layered over the exact installed base (max stack depth 2)
+                 and memory need ≤ caps.memBudget            (pairwise; hot pairs only)
+    file         download changed files by hash, rebuild the container locally
+                 (any installed version whose files index is known)
     full         payload (or its compressed blob)
   cost = bytes + α·requests + β·peakDisk + γ·cpu(strategy)
   choose the minimum-cost feasible strategy; the fallbacks are the rest by cost, full last
@@ -286,21 +288,89 @@ plan(target, installed, seeds, caps):
 
 ### 7.2 What works best for which payload shape
 
-| Payload shape                                                                    | Best strategy                                                        | Why                                                                             |
-| -------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Container with **per-entry** compression (Godot PCK, Unreal IoStore, stored zip) | chunk (content-defined)                                              | resynchronises right after an edit; any old version → latest                    |
-| Container with **whole-container** compression (deflated zip, `.tar.gz`, LZMA)   | fix the container: per-entry compression, or deliver as `files.tree` | defeats chunking _and_ deltas (Blizzard patches decoded content and re-encodes) |
-| Directory tree                                                                   | file-level reuse by hash, then chunk inside large changed files      | cheapest, no container rebuild                                                  |
-| Single large file                                                                | chunk (any old → latest); a delta only for hot pairs                 | deltas are pairwise and hold whole files in RAM                                 |
-| Small file (under 4 MiB)                                                         | full                                                                 | request overhead dominates                                                      |
-| Pack delivered by a platform                                                     | platform                                                             | the platform owns transfer and patching                                         |
+| Payload shape                                                                                                                                                            | Best strategy                                                        | Why                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Container with **per-entry** compression (Godot PCK, Unreal IoStore, stored zip): chunk **each entry separately** ("file-aware"), which halved the bytes for a Godot PCK | chunk (content-defined)                                              | resynchronises right after an edit; any old version → latest                    |
+| Container with **whole-container** compression (deflated zip, `.tar.gz`, LZMA)                                                                                           | fix the container: per-entry compression, or deliver as `files.tree` | defeats chunking _and_ deltas (Blizzard patches decoded content and re-encodes) |
+| Directory tree                                                                                                                                                           | file-level reuse by hash, then chunk inside large changed files      | cheapest, no container rebuild                                                  |
+| Single large file                                                                                                                                                        | chunk (any old → latest); a delta only for hot pairs                 | deltas are pairwise and hold whole files in RAM                                 |
+| Small file (under 4 MiB)                                                                                                                                                 | full                                                                 | request overhead dominates                                                      |
+| Pack delivered by a platform                                                                                                                                             | platform                                                             | the platform owns transfer and patching                                         |
 
 Rule of thumb: full under 4 MiB; full plus one delta for small packs that change every release;
 chunk sync from about 16 MiB up.
 
 ### 7.3 Godot, measured (pure GDScript, 4.7.2)
 
-_Pending: the measurements from `notes/A6` (a re-run was interrupted by a container restart) will be summarised here._
+`notes/A6` measured every strategy on a synthetic 36 MiB PCK: 625 entries, 82% textures, 9.80 MB as
+a whole-file zstd download. From v1 to v2, 24 entries changed, 10 were added and 5 removed. All
+times are on the official release template, 4-vCPU x86 desktop.
+
+| Strategy                                                                                                     | Download                       | Client CPU (36 MB, incl. final SHA-256)                                                   | Works from                                     | Notes                                                                                               |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `full`                                                                                                       | 9.80 MB                        | ~0.2 s                                                                                    | nothing                                        | first install, then record the chunk index as a seed                                                |
+| `delta`: per-entry `zstd --patch-from`, **decoded by Godot's own engine decoder** and baked into a full pack | **0.60 MB (−94%)**             | **~0.23 s**                                                                               | the exact previous release                     | see the mechanism below                                                                             |
+| `chunk`: file-aware FastCDC, 64 KiB average                                                                  | **1.05 MB incl. index (−89%)** | ~0.36–0.45 s (80–100 MB/s)                                                                | **any** older release with a known chunk index | whole-pack FastCDC 64 KiB: 1.93 MB. Fixed-size blocks and whole-file-compressed inputs save nothing |
+| `file`: changed entries + local rebuild                                                                      | 0.99 MB (−90%)                 | ~0.21 s                                                                                   | any release with a known files index           | simplest incremental path                                                                           |
+| Godot's native delta PCK left mounted as an overlay                                                          | 0.60 MB                        | mount < 1 ms, then **+2.9 ms on every open** of a 2.8 MB patched file, per layer, forever | the byte-exact base                            | use only as a decode step, never as the active state                                                |
+| byte-wise bsdiff or rolling hash in GDScript                                                                 | —                              | 1.1–1.7 s per 36 MB                                                                       | —                                              | not viable; keep rolling hashes in CI                                                               |
+
+**How the `delta` strategy works in pure GDScript.**
+
+`PackedByteArray.decompress` cannot apply a `--patch-from` frame, but Godot 4.6+'s delta PCK
+decoder can, and it is reachable without native code:
+
+1. CI (just the zstd CLI and a small PCK writer; no Godot editor needed) publishes a per-entry
+   `zstd --patch-from` frame against the **stored** previous release, plus blobs for added entries.
+2. The client appends a small directory trailer to the old pack. The trailer re-exposes its entries
+   under a private `__pkey/base/` prefix, and is mounted at the trailer's offset.
+3. The client writes a tiny delta PCK whose entries target those private paths, each frame wrapped
+   in the 5-byte `GDDL\x01` header, and mounts it.
+4. The client streams the new pack: unchanged entries are copied by offset, changed ones are read
+   through the decoder, added ones come from blobs.
+5. The trailer is truncated off, restoring the old pack byte for byte.
+
+Results:
+
+- The output is **byte-identical to CI's pack**, so one whole-pack SHA-256 verifies it.
+- The live `res://` namespace is untouched.
+- RAM is bounded by the largest changed entry.
+- Whole-file decode also works: 160 MB was tested, at about 2× the file in RAM.
+- Verify every delta's SHA-256 from the signed menu before feeding it to the decoder.
+- **Caveat:** the `GDDL` wrapper and delta entry flag are engine-internal (Godot 4.6+), not a
+  public API. Pin the method per engine `major.minor` in the SDK's advertised capabilities, run a
+  per-engine conformance check in CI, and keep `chunk` and `file` as fallbacks that need no
+  engine internals.
+
+**Rules the measurements forced:**
+
+- **Always rebuild a full, exporter-identical pack** at a new content-addressed path and mount it at
+  next boot.
+  - Overwriting a mounted pack corrupts reads (118 of 625 files correct) and can return another
+    file's bytes.
+  - Mounting a new version mid-session works (1.4 ms), but `load()` returns stale cached
+    resources and removed files stay visible. So `restart` activation is right for PCKs.
+- **Hash packs yourself.** Godot never checks a PCK's per-file MD5s: a tampered unpatched entry
+  loads with no error.
+- **`replace_files` is not a security boundary.** Zips ignore it. `false` also silently drops a
+  delta patch's full entries and stops the pack's own UIDs registering. Enforce data-only with a
+  directory check before mounting, and keep the "no `uid://` into packs" rule.
+- **No runtime texture compression** on official templates (`Image.compress` to S3TC/BPTC/ETC2
+  fails). Texture packs ship pre-imported `.ctex` per texture family, which is why packs have
+  `variant.texture`.
+- **Loose files hot-load cheaply.** JSON, PO/`.translation` via `TranslationServer`, OGG/WAV via
+  `load_from_file`, TTF, and pre-imported `.ctex`/`.res`/`.scn` via `ResourceLoader.load("user://…")`
+  each load in 0.1–4 ms. That is what makes `files.tree`, `l10n.table` and `data.json` hot types.
+- **Zip is second-class:** it cannot remove files, ignores `replace_files`, has no offsets, and
+  reads about 1.8× slower than PCK. `ZIPPacker` deflate runs at 16 MB/s.
+- **Primitive speeds:**
+  - `HashingContext` SHA-256 ~220 MB/s;
+  - zstd `decompress` 0.8–1.26 GB/s (it needs the exact output size, which the chunk index carries);
+  - a GDScript rolling hash only 20–22 MB/s.
+- **Pack offsets are 32-bit**, so container files that hold several packs must stay under 2 GiB.
+
+**Still unmeasured:** mobile (including the Android `load_resource_pack` stall) and the web build
+itself.
 
 ---
 
@@ -364,7 +434,8 @@ Full JSON sketches are in `notes/E8 §5.4`. The essentials:
 4. **Verify:** per-file SHA-256, payload SHA-256, then type verification.
 5. **Commit:** rename `.part` → `store/<sha>` on the same volume; write the new state by temp +
    rename.
-6. **Activate:** hot types now; restart types at next boot (mount in order, `replace_files=false`).
+6. **Activate:** hot types now; restart types at next boot. Mount in order, from the new
+   content-addressed path, after the directory check. Never overwrite a mounted payload.
 7. **Confirm:** after a successful boot or smoke check, mark confirmed and GC. After N failed
    boots, roll back to `previous` and report it, so the channel can auto-halt.
 8. **Resume:** on relaunch, the journal says what's done; completed ranges are re-hashed cheaply.
@@ -382,8 +453,12 @@ Full JSON sketches are in `notes/E8 §5.4`. The essentials:
 - Write partial data to OPFS or IndexedDB, not the Cache API (it rejects 206).
 - Request `persist()` after engagement.
 - Plan from scratch if storage was evicted.
-- The whole pack set counts against the quota, and Godot keeps mounted `user://` files in memory,
-  so keep web pack sets lean.
+- Godot's web `user://` is an IndexedDB-backed filesystem that is copied **entirely into memory at
+  boot** and written back whole. Everything stored there stays resident for the session.
+- So on web, keep only small state in `user://`. Fetch large packs each session from immutable,
+  content-addressed URLs that the browser's HTTP cache (or OPFS, via page JavaScript) keeps
+  across sessions, and mount them from memory.
+- Web pack sets should stay lean; patching saves bandwidth there, not memory.
 
 ---
 
@@ -443,8 +518,10 @@ separate gated prefix.
   - The CI release key signs pack releases.
   - Optionally, the release key **delegates** a content key restricted to data-only types and a
     pack-id prefix, so a content team can publish without code-release power.
-  - Types that can carry scripts (`godot.pck`, `godot.zip`) always need the release key, and
-    data-only is enforced at publish and at mount.
+  - Types that can carry scripts (`godot.pck`, `godot.zip`) always need the release key.
+  - Data-only is enforced at publish (CI lint) and again before mount, by checking the pack's
+    directory against its declared prefixes. It is never left to `replace_files`, which zips
+    ignore.
 - **What a compromise buys:**
   - The Worker signs only content indexes, so a compromise can choose only among CI-signed releases.
   - The CDN, Apple, Google or Valve can only withhold or corrupt bytes, which verification catches.
@@ -460,15 +537,15 @@ separate gated prefix.
 
 ## 12. Per-SDK integration
 
-| SDK                        | Types (v1 → v3)                                                                             | Transports                                                                                          | Patch strategies                                                                                                     |
-| -------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **Godot**                  | `godot.pck`, `godot.zip`, `files.tree`, `l10n.table`, `data.json`, `audio.bank`, `custom.*` | embedded, pkey-cdn, web; apple-ba (iOS plugin), play-pad (Android plugin), steam-depot (GodotSteam) | noop, platform, chunk (pure GDScript), engine-delta, full; zstd delta only via an optional native accelerator (§7.3) |
-| **Swift** (macOS/iOS apps) | `files.tree`, `ml.model`, `data.json`, `l10n.table`                                         | apple-ba (native), pkey-cdn                                                                         | chunk, delta (native zstd), full                                                                                     |
-| **Node / Electron**        | `files.tree`, `archive.*`, `ml.model`                                                       | pkey-cdn                                                                                            | chunk, delta (zstd/HDiffPatch), full                                                                                 |
-| **Python** (tools, ML)     | `files.tree`, `ml.model`, `data.json`                                                       | pkey-cdn                                                                                            | chunk, delta, full                                                                                                   |
-| **React / web**            | `files.tree`, `data.json`, `l10n.table`                                                     | web                                                                                                 | chunk (OPFS), full                                                                                                   |
-| **Kotlin** (proposed)      | `files.tree`, `ml.model`                                                                    | play-pad, pkey-cdn                                                                                  | chunk, delta, full                                                                                                   |
-| **Unity** (later)          | `unity.addressables`                                                                        | pkey-cdn (custom provider)                                                                          | file-level reuse                                                                                                     |
+| SDK                        | Types (v1 → v3)                                                                             | Transports                                                                                          | Patch strategies                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Godot**                  | `godot.pck`, `godot.zip`, `files.tree`, `l10n.table`, `data.json`, `audio.bank`, `custom.*` | embedded, pkey-cdn, web; apple-ba (iOS plugin), play-pad (Android plugin), steam-depot (GodotSteam) | noop, platform, delta (via Godot's own decoder, pure GDScript), chunk (file-aware), file, full: all pure GDScript (§7.3) |
+| **Swift** (macOS/iOS apps) | `files.tree`, `ml.model`, `data.json`, `l10n.table`                                         | apple-ba (native), pkey-cdn                                                                         | chunk, delta (native zstd), full                                                                                         |
+| **Node / Electron**        | `files.tree`, `archive.*`, `ml.model`                                                       | pkey-cdn                                                                                            | chunk, delta (zstd/HDiffPatch), full                                                                                     |
+| **Python** (tools, ML)     | `files.tree`, `ml.model`, `data.json`                                                       | pkey-cdn                                                                                            | chunk, delta, full                                                                                                       |
+| **React / web**            | `files.tree`, `data.json`, `l10n.table`                                                     | web                                                                                                 | chunk (OPFS), full                                                                                                       |
+| **Kotlin** (proposed)      | `files.tree`, `ml.model`                                                                    | play-pad, pkey-cdn                                                                                  | chunk, delta, full                                                                                                       |
+| **Unity** (later)          | `unity.addressables`                                                                        | pkey-cdn (custom provider)                                                                          | file-level reuse                                                                                                         |
 
 `client-core` gains the shared pieces:
 
@@ -523,11 +600,11 @@ They read `PolarisKey.content` state instead of a hand-rolled store.
 
 ## 15. Phasing and effort
 
-| Phase  | Ships                                                                                                                                                                                                                                                                                                         | Size   | Wire / corpus impact (plan mode)                                                                                                                                   |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **v1** | `content` service skeleton; pack definitions; single-file packs (`godot.pck`, `files.tree` as a tar/zip build input); full downloads + one zstd N−1 delta for native SDKs; type registry and handler contract; transport bindings; marker file; install-state DB; locked consumption via the release manifest | 6–8 wk | `pkey-pack+jws`; corpus `packReleaseCases`, marker vectors                                                                                                         |
-| **v2** | chunk indexes + chunk bundles on R2; chunk sync from seeds (pure GDScript); content channels with server-resolved pack sets (`pkey-content+jws`); floating consumption; rollout/halt/floor/yank for content; server GC and chunk-bundle repacking; `engine-delta` fallback                                    | 5–7 wk | `pkey-content+jws`; corpus `contentIndexCases`, `chunkIndexCases`, `plan-matrix.json`, `applyCases` (tampered chunk, wrong base, truncated chunk bundle); all SDKs |
-| **v3** | more types (`l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`, `unity.addressables`); lazy delta generation for hot pairs (R2 events → Queue → Workflow → Container); Compression Dictionary Transport on web; content-key delegation                                                           | 4–6 wk | delegation record; per-type verify vectors                                                                                                                         |
+| Phase  | Ships                                                                                                                                                                                                                                                                                                                                                            | Size   | Wire / corpus impact (plan mode)                                                                                                                                   |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **v1** | `content` service skeleton; pack definitions; single-file packs (`godot.pck`, `files.tree` as a tar/zip build input); full downloads plus `file` and per-entry `delta` updates (every SDK; GDScript via Godot's own decoder); type registry and handler contract; transport bindings; marker file; install-state DB; locked consumption via the release manifest | 6–8 wk | `pkey-pack+jws`; corpus `packReleaseCases`, marker vectors                                                                                                         |
+| **v2** | chunk indexes (file-aware) + chunk bundles on R2; chunk sync from seeds (pure GDScript); content channels with server-resolved pack sets (`pkey-content+jws`); floating consumption; rollout/halt/floor/yank for content; server GC and chunk-bundle repacking                                                                                                   | 5–7 wk | `pkey-content+jws`; corpus `contentIndexCases`, `chunkIndexCases`, `plan-matrix.json`, `applyCases` (tampered chunk, wrong base, truncated chunk bundle); all SDKs |
+| **v3** | more types (`l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`, `unity.addressables`); lazy delta generation for hot pairs (R2 events → Queue → Workflow → Container); Compression Dictionary Transport on web; content-key delegation                                                                                                              | 4–6 wk | delegation record; per-type verify vectors                                                                                                                         |
 
 This replaces README P4's 7–9 weeks with **15–21 weeks across three increments**. v1 alone
 unblocks Diceroll's content-streaming phases 1–2. v2 brings the small-update win.
@@ -539,8 +616,14 @@ unblocks Diceroll's content-streaming phases 1–2. v2 brings the small-update w
 1. Are Apple asset-pack updates differential in practice? Measure in TestFlight.
 2. Does Cloudflare's origin Range handling cover R2 custom-domain objects on our plan? Measure
    cold-miss behaviour and multi-range requests.
-3. Chunk size for real Diceroll PCK history (32, 64 or 128 KiB), measured against zstd deltas.
-4. GDScript SHA-256 and zstd throughput on low-end Android and in browsers.
-5. Load-time cost of Godot delta PCK layers at stack depth 1–2 on mobile.
-6. Which Steamworks calls expose installed depot manifests on the device?
-7. Can a Unity custom resource provider enforce verification before bundles load?
+3. Chunk size for **real** Diceroll PCK history. The synthetic pair favoured file-aware 64 KiB
+   (16 KiB saved only 5% more at 1.8× the index size); confirm on several real versions,
+   including the any-older-version case.
+4. GDScript SHA-256 and zstd throughput on low-end Android and in browsers (desktop: ~220 MB/s
+   and ~1 GB/s).
+5. The Android `load_resource_pack` stall (godot#105009) with several packs, and web memory with a
+   realistic pack set.
+
+Answered on desktop by `notes/A6`: Godot delta-PCK load cost (+2.9 ms per open per layer, hence
+bake instead of layering); whether a delta applies over a chunk-rebuilt base (yes); whether
+`--patch-from` is reachable from GDScript (yes, via the engine's decoder). 6. Which Steamworks calls expose installed depot manifests on the device? 7. Can a Unity custom resource provider enforce verification before bundles load?
