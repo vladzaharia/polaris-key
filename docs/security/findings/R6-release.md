@@ -863,9 +863,9 @@ inverted for the same reason.
 Fixed later, in work package P0-02 of the Godot omniplatform program, as the feature the table
 below said it needed: a migration and an admin surface.
 
-- **Floor.** `release_channel_floors(product, channel, version, release_id, …)` (migration 0023) holds the highest version each moving channel (`stable`, `beta` without a channel
-  workflow, manual channels; never a pinned `X.Y.Z`, never `pr-<n>`) has resolved to during a
-  truth-store sync. Only the sync raises it; the request path never writes it.
+- **Floor.** A new table, `release_channel_floors` (migration 0023), holds the highest
+  version each moving channel (`stable`, `beta` without a channel workflow, manual channels;
+  never a pinned `X.Y.Z`, never `pr-<n>`) has resolved to during a truth-store sync. Only the sync raises it; the request path never writes it.
 - **Enforcement.** `resolveMovingSelector` (`services/release/gateway.ts`) is the one resolution
   function the download route, the appcast, `/version` and `checkReleaseHealth` share. When the
   pick lands below the floor it looks the floor's release up by tag (one GitHub call): still
