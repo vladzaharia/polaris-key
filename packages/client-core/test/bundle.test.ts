@@ -1,3 +1,4 @@
+// @pkey-feature core.bundle
 // Offline activation bundles — wire contract v3 §7.
 //
 // `conformance/corpus/v2`'s `bundleCases` are the normative pins for this module and run in

@@ -1,3 +1,4 @@
+// @pkey-feature core.sync
 // The signed-document fetch layer — `CoreContext.getDocument`'s status taxonomy (§5), exercised
 // against the stub transport so no network is touched.
 //
