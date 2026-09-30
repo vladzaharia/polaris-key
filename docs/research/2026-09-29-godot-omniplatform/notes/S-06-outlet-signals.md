@@ -75,7 +75,8 @@ Evidence tags follow the other notes: [V] primary source read raw, [M] measured,
    inherited by child processes (emulated here), and a Steam or itch game can itself run inside
    the Steam Flatpak or Snap [I]. Each launcher signal must therefore name _this_ product before
    it counts: the Flatpak app id, the snap name, the Steam app id, the itch game id, or
-   `APPDIR` containing the executable.
+   `APPDIR` containing the executable. The build stamp carries the product's ids (`outletIds`,
+   P1-11), so the check runs offline at first launch (rule 4).
 9. **Proposed precedence change:** below first-party evidence, runtime evidence may move the stamp
    only toward an outlet whose update rights are no wider. A heuristic may turn `direct` into
    `steam`, never `steam` into `direct`. This is the exact failure behind Diceroll's updater
@@ -431,9 +432,11 @@ Notes:
 4. **An identity condition gates every launcher signal** (the table's "identity condition"
    column). The product's Steam app id, itch game id, Flatpak app id, snap name and cask token
    become product-declared, non-secret configuration: the `.pkey/distribution.yaml` outlet
-   entries, README §3.12. The Play Store's certificate digest is the same for every product, so
-   it is platform data in `outlet-matrix.json`. That makes the checks data, not code (AGENTS
-   rule 5).
+   entries, README §3.12. The export plugin (P1-11) copies these outlet identities, plus the
+   bundle or application id, from `.pkey/distribution` into the build stamp (`build.json`), so
+   detection works offline at first launch; the detector receives them with the stamp. The
+   Play Store's certificate digest is the same for every product, so it is platform data in
+   `outlet-matrix.json`. That makes the checks data, not code (AGENTS rule 5).
 5. **Async platform calls get a deadline** (proposed 2 s). A timeout is "no evidence", not
    `unknown`. `AppDistributor.current` hung for at least 100 s on the simulator.
 6. **Detect at every launch and never cache the outlet.** Apple says so for `AppDistributor`, and
@@ -473,11 +476,28 @@ Changed on this branch:
 - **P5-06**: the install source and the initiator digest are not "only readable natively". The
   AAR wraps them for the Kotlin SDK, but Godot's detection does not depend on the AAR. Recording
   the Play Store's certificate digest from a Play device is added to its hand-off.
+- **P5-05**: the `distributor` call is raced against a deadline (a timeout is `unavailable`,
+  meaning no evidence), the `web` case sits behind `#available(iOS 17.5, *)`, and
+  `appTransaction` is marked commerce-only, not a detection source. Its `swift test` criterion
+  now covers the timeout and the 17.5 guard.
+- **P3-11** (Swift readers): the same deadline and 17.5 guard; on macOS the receipt,
+  `ProductionSandbox` marker and signing leaf replace `AppTransaction`; the identity-conditions
+  bullet names the stamp as the carrier of the product's outlet identities.
+- **P1-11** (stamp format): an `outletIds` field (`steamAppId`, `itchGameId`, `flatpakId`,
+  `snapName`, `caskToken`, `bundleId`), copied by the export plugin from `.pkey/distribution`
+  (P2b-02) or, until that exists, from an optional export option, so the identity conditions
+  (rule 4) and the iOS bundle-id rewrite check can run offline at first launch. These are
+  non-secret, product-declared ids. Without the field, P3-11 could not implement rule 4 without
+  reopening P1-11.
 - **S-06** (this brief): acceptance ticked, with the itch limit, and the unmeasured rows listed
   in the hand-off.
 
 Proposed, not edited (they are decisions or research notes):
 
+- **P1-11** (decision part): the stamp stays authoritative for store outlets against every
+  non-attested signal (rule 2), and against attested evidence that does not name a README §3.1
+  outlet, such as a Developer ID leaf on a `steam` or `itch` build (rule 1). P3-11 applies this;
+  P1-11 only carries the stamp.
 - **README §5.5**: "Android … via a tiny plugin" should read "via `JavaClassWrapper` (Godot
   4.4+), no plugin". The Linux row should add "matching the product's Flatpak id or snap name";
   the Steam row should read "`SteamAppId` matching the product's app id, or the library ACF".
@@ -491,9 +511,6 @@ Proposed, not edited (they are decisions or research notes):
   heuristic are refuted.
 - **P1-05**: report only the outlet id and `subkind`, never the raw signals, several of which
   carry account names or keys.
-- **P1-11**: the stamp stays authoritative for store outlets against every non-attested signal
-  (rule 2), and against attested evidence that does not name a README §3.1 outlet, such as a
-  Developer ID leaf on a `steam` or `itch` build (rule 1).
 
 ## Sources
 

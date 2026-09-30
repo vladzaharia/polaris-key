@@ -62,8 +62,12 @@ per artifact, and so mislabels Steam, itch and sideload builds
     `android-app://` referrer.
   - Python: environment, PEP 376 `INSTALLER`, `sys.executable` (not `sys._MEIPASS`) path
     conventions, `ctypes` `GetCurrentPackageFullName` on Windows.
-  - Swift: `AppDistributor.current` behind `#available(iOS 17.4, *)` (the package floor is iOS 17);
-    `AppTransaction` on macOS; code-signature and Caskroom checks.
+  - Swift: `AppDistributor.current` behind `#available(iOS 17.4, *)` (the package floor is iOS 17),
+    raced against a deadline (proposed 2 s; a timeout is `unavailable`, meaning no evidence;
+    [notes/S-06](../../notes/S-06-outlet-signals.md) §1), with the `web` case only behind
+    `#available(iOS 17.5, *)`; on macOS the `_MASReceipt` receipt, its `ProductionSandbox` marker
+    and the signing leaf (`SecCodeCopySigningInformation`), since `AppTransaction` is for commerce
+    only; Caskroom checks.
   - Godot: `/.flatpak-info`, `FLATPAK_ID`, `SNAP_NAME`, `APPIMAGE`/`APPDIR`, `SteamAppId`, the
     Steam library ACF, the itch receipt, the macOS receipt and Mach-O signing leaf, the
     `pkey_outlet_*` feature tags and the build stamp through `PolarisKey.build_info()`
@@ -101,7 +105,11 @@ per artifact, and so mislabels Steam, itch and sideload builds
 - **Identity conditions and restrict-only evidence** ([notes/S-06](../../notes/S-06-outlet-signals.md),
   proposed for `plans/P3-01.md`): a launcher signal counts only when it names this product (Flatpak
   app id, snap name, Steam app id in the env or the library ACF, itch receipt `game.id`, `APPDIR`
-  containing the executable, Android installer equal to the initiator). Non-attested evidence may
+  containing the executable, Android installer equal to the initiator). The ids come from the
+  stamp: [P1-11](P1-11-godot-export-plugin.md)'s export plugin copies the product's outlet
+  identities (Steam app id, itch game id, Flatpak app id, snap name, cask token, bundle or
+  application id) from `.pkey/distribution` into `build.json`, so detection works offline at first
+  launch, and the pure function receives them with the stamp. Non-attested evidence may
   move the stamp only to an outlet with no wider `binaryUpdates`. Attested evidence overrides the
   stamp only when it names a README §3.1 outlet. On macOS only two signing leaves select:
   `Apple Mac OS Application Signing` (`app-store`) and `TestFlight Beta Distribution`
@@ -142,8 +150,9 @@ per artifact, and so mislabels Steam, itch and sideload builds
 - [ ] Node (through `client-core`), Python, Swift and Godot pass every `outlet-matrix.json` row,
       with identical row names; React uses the `client-core` function.
 - [ ] Each SDK's readers have unit tests with faked signals for every outlet its runtime can see.
-- [ ] Swift's `AppDistributor` call is guarded for iOS 17.4 and the package still builds for its
-      iOS 17 floor.
+- [ ] Swift's `AppDistributor` call is guarded for iOS 17.4 (the `web` case for 17.5) and raced
+      against a deadline, a test with a never-resolving fake returns `unavailable` (no evidence),
+      and the package still builds for its iOS 17 floor.
 - [ ] Each update client uses the detected outlet when the host passes none, and the host's value
       when it does (a test per SDK).
 - [ ] The green gate passes (`AGENTS.md`), including the Python, Swift and Godot jobs.

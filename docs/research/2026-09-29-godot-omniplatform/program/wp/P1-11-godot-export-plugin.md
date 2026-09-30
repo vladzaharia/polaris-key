@@ -68,7 +68,15 @@ Godot form of the build identity that `pkey build-info` writes for other build s
 - **Stamp format** (`pkeyBuild: 1`), deterministic, no timestamps: `product`, `version`,
   `build`, `outlet`, `channel`, `engine` (`godot-<major>.<minor>`), `engineVersion`, `platform`,
   `arch`, `packSources` (`embedded` until P4-08), `embeddedPacks` (`[]` until P4-08), `debug`,
-  `sdkVersion`.
+  `sdkVersion`, and `outletIds`: the product's non-secret outlet identities that runtime
+  detection (P3-11) checks offline at first launch
+  ([notes/S-06](../../notes/S-06-outlet-signals.md), precedence rule 4). Keys, each optional:
+  `steamAppId`, `itchGameId`, `flatpakId`, `snapName`, `caskToken`, and `bundleId` (from the
+  preset's `application/bundle_identifier` or `package/unique_name` where the platform has one).
+  The export plugin copies the others from the `.pkey/distribution` outlet entries when that file
+  exists ([P2b-02](P2b-02-distribution-manifest.md)); until then from an optional
+  `polaris_key/outlet_ids` export option (a JSON object). An absent id is simply left out, so the
+  object is `{}` at minimum.
 - `core/build_stamp.gd` (`PKeyBuildStamp`) and `PolarisKey.build_info()`: read the stamp with
   `FileAccess` (data added by `add_file` is not imported); when absent, fall back to
   `application/config/version`, no outlet, the dock's editor channel, and the runtime
@@ -134,8 +142,8 @@ Godot form of the build identity that `pkey build-info` writes for other build s
 - [ ] A headless `--export-release` of the harness preset with `PKEY_BUILD_OUTLET=steam`,
       `PKEY_BUILD_CHANNEL=beta`, `PKEY_BUILD_NUMBER=42` produces a pack whose
       `res://.polaris_key/build.json` has those values, `pkeyBuild: 1`, the version from
-      `application/config/version` and no timestamp; the stamp is byte-identical across two
-      exports.
+      `application/config/version`, an `outletIds` object and no timestamp; the stamp is
+      byte-identical across two exports.
 - [ ] On the release template, `OS.has_feature("pkey_outlet_steam")` and
       `OS.has_feature("pkey_channel_beta")` are true, and `PolarisKey.build_info()` returns the
       stamp.
