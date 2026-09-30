@@ -19,6 +19,7 @@ import { secureResponse } from "./securityHeaders.js";
 import { handleScheduled } from "./scheduled.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
+import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
 
 export { RateLimitDO } from "./rateLimitDo.js";
 
@@ -68,6 +69,10 @@ export default {
 async function dispatch(req: Request, env: Env): Promise<Response> {
   {
     const url = new URL(req.url);
+    // The bytes host (P2-01) reaches ONLY its byte-route allowlist — never the console, the
+    // portal, `/docs` or a product route. With `BLOB_ORIGIN` unset this is always false, and
+    // everything below runs exactly as it did before the bytes host existed.
+    if (isBytesHost(url, env)) return dispatchBytesHost(req, env);
     const route = matchRoute(url.pathname);
     const now = Math.floor(Date.now() / 1000);
     const db = new D1Db(env.DB);
