@@ -36,8 +36,10 @@ Exit codes: `0` success, `1` a validation/runtime failure, `2` an unrecognized c
 
 ### `pkey init`
 
-Scaffolds `.pkey/` in the current directory: `product.yaml` always, `schema.yaml` when
-`config` is among `--modules`, `release.yaml` when `releases` is. `--modules` takes the
+Scaffolds `.pkey/` in the current directory: `product.yaml` and `schema.yaml` always
+(ingest requires both, even with Config off; without `config` the schema is an empty catalog),
+`release.yaml` when `releases` is. The scaffolded tier is `policyDeviceLimit: 5` with no expiry
+field, so its licences do not expire. `--modules` takes the
 **legacy** module vocabulary (`licensing`, `config`, `releases`, `oidc`, `edgeMint` — the same
 names `.pkey/product`'s `modules` block still accepts and translates to the five service
 slugs); omit it and you get `licensing,config`, matching what every product ran before the
@@ -71,11 +73,7 @@ keeps `.pkey/` somewhere other than one level under `node_modules`.
 
 Reads `.pkey/` from the current directory (`product.{json,yaml,yml}` required; `schema` and
 `release` read if present) and runs it through `@polaris-key/manifest`'s
-`validateManifestDocuments` — the same validator the Worker runs on repo-link and resync. One
-gap: repo-link and resync also require a `.pkey/schema` file to exist on disk even when Config
-is off (an empty catalog is enough), while `pkey validate` only requires the file once `config`
-is among the enabled modules — so a Config-less manifest can validate clean locally and still be
-refused on push. Prints the resolved
+`validateIngestDocuments` — the same presence rule plus validator that repo-link and resync apply, so a missing `.pkey/schema` is `missing_schema` locally too. Prints the resolved
 service-slug vocabulary regardless of which vocabulary the manifest wrote in, any required
 secret names, then every warning and error with its file and JSON-pointer path:
 

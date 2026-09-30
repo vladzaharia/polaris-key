@@ -51,6 +51,7 @@ import { isSafeBinaryName } from "./install.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { syncReleaseStore } from "./sync.js";
 import { serializeServices } from "../../core/services.js";
+import { serializeWebOrigins } from "../../core/cors.js";
 
 export type LinkRepoResult =
   | {
@@ -325,6 +326,10 @@ async function registerFromManifest(
           : {}),
       }),
       services_source: "manifest",
+      // The compat window is manifest-owned until an operator sets it in `update/settings`.
+      compat_source: "manifest",
+      // The CORS allowlist (P0-05). Validated by the manifest parser; NULL when undeclared.
+      web_origins_json: serializeWebOrigins(manifest.webOrigins),
       created_at: now,
       modified_at: now,
     }),
@@ -417,6 +422,14 @@ async function registerFromManifest(
         : null,
       metadataAccess: rel?.access.metadata ?? "public",
       artifactsAccess: rel?.access.artifacts ?? "public",
+      // Manifest-owned until an operator claims the modes. `operatorPolicyJson` is deliberately
+      // absent: the operator-only artifact policy has no manifest spelling (R6-03), so a freshly
+      // linked product starts on the fail-safe defaults (signature required, no minimum).
+      accessSource: "manifest",
+      stableTagPattern: rel?.stableTagPattern ?? null,
+      ignoreTagsJson: rel?.ignoreTags.length
+        ? JSON.stringify(rel.ignoreTags)
+        : null,
     }),
   );
 

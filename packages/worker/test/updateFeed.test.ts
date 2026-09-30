@@ -96,17 +96,21 @@ async function seedCfg(
     // No Sparkle key: `requireSparkleSignature` is opted out below so the feed renders unsigned.
     sparkle_ed25519_pub: null,
     summary_marker: "pkey:summary",
-    artifact_policy_json: JSON.stringify({ requireSparkleSignature: false }),
+    artifact_policy_json: null as string | null,
     metadata_access: "public",
     artifacts_access: "public",
+    // The opt-out is OPERATOR policy, so it lives in `operator_policy_json` (P0-01).
+    operator_policy_json: JSON.stringify({
+      requireSparkleSignature: false,
+    }) as string | null,
     ...over,
   };
   await db.run(
     `INSERT INTO release_config
        (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
         manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker,
-        artifact_policy_json, metadata_access, artifacts_access)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        artifact_policy_json, metadata_access, artifacts_access, operator_policy_json)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     row.product,
     row.gh_owner,
     row.gh_repo,
@@ -121,6 +125,7 @@ async function seedCfg(
     row.artifact_policy_json,
     row.metadata_access,
     row.artifacts_access,
+    row.operator_policy_json,
   );
 }
 
@@ -725,7 +730,7 @@ describe("release notes in the feed", () => {
       ["13.0; rm -rf /", null],
     ] as Array<[string, string | null]>) {
       const { db, env, product } = await fixture({
-        artifact_policy_json: JSON.stringify({
+        operator_policy_json: JSON.stringify({
           requireSparkleSignature: false,
           minimumSystemVersion: declared,
         }),
