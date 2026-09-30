@@ -113,6 +113,7 @@ async function clientWith(
   });
 }
 
+// @pkey-feature config.resolve
 describe("layered config — enforced/hidden are locked", () => {
   it("enforced beats both local override and env", async () => {
     // The whole point of the management state: an admin-locked key is not negotiable on the
@@ -142,6 +143,7 @@ describe("layered config — enforced/hidden are locked", () => {
   });
 });
 
+// @pkey-feature config.resolve
 describe("layered config — default precedence (local > env > remote > fallback)", () => {
   const cfg = { "run.concurrency": entry("default", 4) };
 
@@ -195,6 +197,7 @@ describe("layered config — default precedence (local > env > remote > fallback
   });
 });
 
+// @pkey-feature config.resolve
 describe("env var naming — PKEY_CONFIG_ + dotted-key mapping (§8)", () => {
   const cfg = { "run.concurrency": entry("default", 4) };
 
@@ -275,6 +278,7 @@ describe("env value coercion", () => {
   });
 });
 
+// @pkey-feature config.list
 describe("listUserConfig", () => {
   it("excludes hidden entries but getConfig still returns them; marks enforced", async () => {
     const c = await clientWith(
@@ -309,6 +313,7 @@ describe("listUserConfig", () => {
   });
 });
 
+// @pkey-feature config.secret
 describe("secrets are a separate map", () => {
   it("getSecret reads only from `secrets`, never from `config`", async () => {
     // Secrets are never enumerated and never resolved through the override layers — a local

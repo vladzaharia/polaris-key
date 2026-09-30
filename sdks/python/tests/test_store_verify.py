@@ -1,3 +1,4 @@
+# @pkey-feature core.verify core.store
 """Store round-trip (cache v3) + b64url + JWS edge cases (none/malformed/wrong-key)."""
 
 from __future__ import annotations
