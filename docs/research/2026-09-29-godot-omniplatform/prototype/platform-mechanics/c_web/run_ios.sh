@@ -14,7 +14,10 @@ wait_report() { local n0=$1 i; for i in $(seq 1 180); do [ "$(cnt)" -gt "$n0" ] 
 clear_safari() {
   xcrun simctl terminate "$UDID" com.apple.mobilesafari 2>/dev/null; sleep 1
   local DATA; DATA=$(xcrun simctl get_app_container "$UDID" com.apple.mobilesafari data 2>/dev/null)
-  [ -n "$DATA" ] && rm -rf "$DATA/Library/WebKit/WebsiteData" "$DATA/Library/Caches/WebKit" "$DATA/Library/Caches/com.apple.mobilesafari"
+  # iOS 26.5: Safari keeps IndexedDB and Cache Storage under Library/WebKit/com.apple.mobilesafari/
+  # WebsiteData (Library/WebKit/WebsiteData is the older location, erased too).
+  [ -n "$DATA" ] && rm -rf "$DATA/Library/WebKit/com.apple.mobilesafari/WebsiteData" "$DATA/Library/WebKit/WebsiteData" \
+    "$DATA/Library/Caches/WebKit" "$DATA/Library/Caches/com.apple.mobilesafari" "$DATA/Library/Caches/com.apple.WebKit.Networking"
 }
 clear_safari
 for mode in ${MODES:-idb mem}; do for n in 1 3 6; do

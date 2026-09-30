@@ -29,14 +29,14 @@ written down (brief: [S-05](../program/wp/S-05-godot-platform-mechanics.md)):
 
 ## 2. Short answer
 
-| Item | Answer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Label                                             |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| (a)  | The stall scales with **entry count, not bytes**. A 200 MB pack of 8 files mounts in ≤ 8 ms (median); 12,800 entries take 48 ms warm and 208 ms cold from `user://`; 20,000 entries take 46–755 ms (medians; single runs up to 1.5 s). Mounting from a `Thread` works and lowered the median worst frame during the mount in all four matched cells, but did not remove it on this contended emulator, so the thread evidence is inconclusive; the main-thread rule rests on thread safety [I]. A mount in `_ready` held the first `_process` back by 88–276 ms after `_ready` (62–203 ms of it the call). **Default: one pack per frame after the first frame, packs ≤ 2,000 entries for spinner-time mounts; above that, mount only under a loading screen.** | emulated (Android 14 emulator); phone: unmeasured |
-| (b)  | **Yes.** `getPackLocation(name).assetsPath() + "/<name>.pck"` is a plain file under `/data/data/<pkg>/files/assetpacks/<pack>/<v>/<v>/assets/` (`STORAGE_FILES`); `load_resource_pack` mounts it (2.5–4.4 ms, 320/320 SHA-256 checks pass) for both on-demand and fast-follow packs. Install-time packs mount as `res://…pck`.                                                                                                                                                                                                                                                                                                                                                                                                                                  | emulated (`bundletool --local-testing`)           |
-| (c)  | All three delivery paths mount fine (≤ 5 ms per pack) and every pack occupies JS memory once mounted. `user://` (IDBFS) persists but loads everything in it at every boot; the browser HTTP cache is not reliable (Playwright WebKit re-downloaded every time); **the Cache Storage API plus a non-`user://` MEMFS path** persisted across reload and browser restart in Chromium, WebKit and iOS Simulator Safari, with the fastest warm boots. `HTTPRequest.download_file` deletes the file on web in 4.7.2, so it is unusable there.                                                                                                                                                                                                                         | emulated (Chromium, WebKit, iOS Simulator)        |
-| (d)  | From Microsoft's documentation: the install directory (`C:\Program Files\WindowsApps\<full name>`) is **read-only**; new files under `%APPDATA%` (where Godot's `user://` lives) are redirected to `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\…`, kept across package updates and **deleted on uninstall**. P3-10 must keep the sidecar swap disabled under MSIX.                                                                                                                                                                                                                                                                                                                                                                                        | unmeasured (no Windows host)                      |
-| (e)  | Godot as `--mainExe` **survives**: all four `--veloapp-*` hooks reached `OS.get_cmdline_args()` and an autoload that quits from `_init` exited with code 0 in 1.0–1.7 s, well under the 15/30 s limits. But it starts the display server and a window for every hook. A 0.7 MB Rust shim answers in 7–11 ms and applies updates before Godot opens its pack. **Default: ship the shim.** An update replaces the whole app directory, so **a sidecar `.pck` beside the executable is deleted by every update**.                                                                                                                                                                                                                                                  | emulated (macOS); Windows: unmeasured             |
-| (f)  | With `replace_files=true`, UIDs of the main pack and of two independently built packs all resolve (the in-memory UID registry is cumulative). With `replace_files=false` a pack's UIDs never register. `--export-pack` always adds `project.binary` and `.godot/global_script_class_cache.cfg` even to a script-free pack, and mounting such a pack with `replace_files=true` replaces the class cache: `get_global_class_list()` went from 6 to 0. Stripping those two entries fixes it.                                                                                                                                                                                                                                                                       | measured (macOS release template)                 |
+| Item | Answer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Label                                             |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| (a)  | The stall scales with **entry count, not bytes**. A 200 MB pack of 8 files mounts in ≤ 8 ms (median); 12,800 entries take 48 ms warm and 208 ms cold from `user://`; 20,000 entries take 46–755 ms (medians; single runs up to 1.5 s). Mounting from a `Thread` works and lowered the median worst frame during the mount in all four matched cells, but did not remove it on this contended emulator, so the thread evidence is inconclusive; the main-thread rule rests on thread safety [I]. A mount in `_ready` held the first `_process` back by 88–276 ms after `_ready` (62–203 ms of it the call). **Default: one pack per frame after the first frame, packs ≤ 2,000 entries for spinner-time mounts; above that, mount only under a loading screen.**                                    | emulated (Android 14 emulator); phone: unmeasured |
+| (b)  | **Yes.** `getPackLocation(name).assetsPath() + "/<name>.pck"` is a plain file under `/data/data/<pkg>/files/assetpacks/<pack>/<v>/<v>/assets/` (`STORAGE_FILES`); `load_resource_pack` mounts it (2.5–4.4 ms, 320/320 SHA-256 checks pass) for both on-demand and fast-follow packs. Install-time packs mount as `res://…pck`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | emulated (`bundletool --local-testing`)           |
+| (c)  | All three delivery paths mount fine (≤ 5 ms per pack) and every pack occupies JS memory once mounted. `user://` (IDBFS) persists but loads everything in it at every boot; the browser HTTP cache is not reliable (Playwright WebKit re-downloaded every time); **the Cache Storage API plus a non-`user://` MEMFS path** persisted across reload and browser restart in Chromium, WebKit and iOS Simulator Safari (warm boots of 150 MB: 0.7–3.7 s, n = 1 per cell). It is recommended although idb had the faster warm boots in Chromium (0.4–0.5 s against 1.9–3.7 s) and matched it on the iOS Simulator, because idb loads all of `user://`, including packs never mounted, into memory at every boot. `HTTPRequest.download_file` deletes the file on web in 4.7.2, so it is unusable there. | emulated (Chromium, WebKit, iOS Simulator)        |
+| (d)  | From Microsoft's documentation: the install directory (`C:\Program Files\WindowsApps\<full name>`) is **read-only**; new files under `%APPDATA%` (where Godot's `user://` lives) are redirected to `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\…`, kept across package updates and **deleted on uninstall**. P3-10 must keep the sidecar swap disabled under MSIX.                                                                                                                                                                                                                                                                                                                                                                                                                           | unmeasured (no Windows host)                      |
+| (e)  | Godot as `--mainExe` **survives**: all four `--veloapp-*` hooks reached `OS.get_cmdline_args()` and an autoload that quits from `_init` exited with code 0 in 1.0–1.7 s, well under the 15/30 s limits. But it starts the display server and a window for every hook. A 0.7 MB Rust shim answers in 7–11 ms and applies updates before Godot opens its pack. **Default: ship the shim.** An update replaces the whole app directory, so **a sidecar `.pck` beside the executable is deleted by every update**.                                                                                                                                                                                                                                                                                     | emulated (macOS); Windows: unmeasured             |
+| (f)  | With `replace_files=true`, UIDs of the main pack and of two independently built packs all resolve (the in-memory UID registry is cumulative). With `replace_files=false` a pack's UIDs never register. `--export-pack` always adds `project.binary` and `.godot/global_script_class_cache.cfg` even to a script-free pack, and mounting such a pack with `replace_files=true` replaces the class cache: `get_global_class_list()` went from 6 to 0. Stripping those two entries fixes it.                                                                                                                                                                                                                                                                                                          | measured (macOS release template)                 |
 
 ## 3. Environment and method
 
@@ -58,7 +58,7 @@ DEV=emulator-5556 ./b_pad/build_pad.sh
 PKG=org.polariskey.s05pad DEV=emulator-5556 ./a_stall/run_a.sh case pad_fetch warm '"pad":["s05ondemand","s05fastfollow"],"verify":true'
 ./c_web/build_c.sh; (cd c_web && node server.mjs &)
 (cd c_web && node run_c.mjs browsers=chromium,webkit modes=idb,mem,cache chunk=4194304)
-(cd c_web && MODES="idb mem cache" ./run_ios.sh <udid>); python3 tools/summarize_c.py
+(cd c_web && MODES="idb mem cache" BATCH=clean0930b ./run_ios.sh <udid>); IOS_BATCH=clean0930b python3 tools/summarize_c.py
 ./e_velopack/build_e.sh 1.0.0 v1 launcher && ./e_velopack/build_e.sh 1.0.1 v2 launcher
 python3 e_velopack/time_hooks.py godot_main_exe .../S05Game.app/Contents/MacOS/s05game
 python3 e_velopack/time_hooks.py shim .../S05Game.app/Contents/MacOS/s05launcher
@@ -165,28 +165,69 @@ reload, a browser restart and (for 3 packs) an ephemeral context [M]:
 - **cache**: as mem, but the page stores the response in the Cache Storage API (`caches.open`) and
   reads it back from there on later boots.
 
-Time until every pack is in the filesystem ("fetch", ms; 0 = already in `user://` at boot), and
-engine-ready time (`_ready`, ms since navigation start) [M]:
+Every cell below is **one load (n = 1)**; there are no repeats, so differences of a few hundred
+milliseconds between cells are within noise. The probe starts fetching after `_ready`, so the time
+until every pack is mounted is engine-ready time plus fetch time. Columns give 1 / 3 / 6 packs
+(50 / 100 / 150 MB); "ready" is `_ready` in ms since navigation start, "fetch" the time until every
+pack is in the filesystem (0 = already in `user://` at boot), and "at boot" the number of pack files
+already in `user://` when the engine started. Chromium and WebKit rows are `out/c/runs.jsonl`; iOS
+rows are `out/c/reports.jsonl` rows 119–145 (batch `clean0930b`), each series started with Safari's
+website data and caches erased. `tools/summarize_c.py` prints this table [M]:
 
-| Browser    | Path  | Fetch 1 / 3 / 6 packs, first visit    | Fetch 1 / 3 / 6, reload | Fetch 1 / 3 / 6, browser restart | Ready, range over all loads | Pack GETs on reload/restart |
-| ---------- | ----- | ------------------------------------- | ----------------------- | -------------------------------- | --------------------------- | --------------------------- |
-| Chromium   | idb   | 3,537 / 5,350 / 8,994                 | 0 / 0 / 0               | 0 / 0 / 0                        | 304–1,011                   | 0                           |
-| Chromium   | mem   | 2,389 / 3,716 / 24,284                | 939 / 6,358 / 25,867    | 1,183 / 5,235 / 19,684           | 340–6,775                   | 0 (HTTP cache)              |
-| Chromium   | cache | 5,722 / 1,152 / 2,037                 | 1,257 / 2,195 / 3,073   | 1,504 / 1,889 / 1,526            | 527–1,642                   | 0                           |
-| WebKit     | idb   | 911 / 4,114 / 13,598                  | 0 / 1 / 1               | 0 / 1 / 1                        | 1,940–15,246                | 0                           |
-| WebKit     | mem   | 1,929 / 1,207 / 5,062                 | 619 / 3,146 / 723       | 585 / 658 / 1,216                | 870–2,864                   | **all packs again**         |
-| WebKit     | cache | 418 / 529 / 854                       | 106 / 169 / 250         | 184 / 159 / 284                  | 869–1,478                   | 0                           |
-| iOS Safari | idb   | 512 / 736 / 1,461                     | 0 / 0 / 0               | 0 / 0 / 0                        | 634–2,811                   | 0                           |
-| iOS Safari | mem   | 59 / 110 / 161 (cached from idb runs) | 51 / 118 / 171          | 55 / 103 / 152                   | 766–886                     | 0                           |
-| iOS Safari | cache | 350 / 385 / 8,487                     | 131 / 205 / 459         | 143 / 348 / 544                  | 977–3,153                   | 0 (Cache Storage hits)      |
+| Browser    | Path  | Load    | Ready 1 / 3 / 6         | Fetch 1 / 3 / 6        | Ready + fetch 1 / 3 / 6   | At boot   | Pack GETs     |
+| ---------- | ----- | ------- | ----------------------- | ---------------------- | ------------------------- | --------- | ------------- |
+| Chromium   | idb   | first   | 1,011 / 878 / 872       | 3,537 / 5,350 / 8,994  | 4,548 / 6,228 / 9,865     | 0 / 0 / 0 | 1 / 3 / 6     |
+| Chromium   | idb   | reload  | 400 / 488 / 430         | 0 / 0 / 0              | **400 / 488 / 430**       | 1 / 3 / 6 | 0             |
+| Chromium   | idb   | restart | 853 / 916 / 905         | 0 / 0 / 0              | 853 / 916 / 906           | 1 / 3 / 6 | 0             |
+| Chromium   | mem   | first   | 860 / 945 / 2,993       | 2,389 / 3,716 / 24,284 | 3,249 / 4,662 / 27,277    | 0 / 0 / 0 | 1 / 3 / 6     |
+| Chromium   | mem   | reload  | 340 / 842 / 5,614       | 939 / 6,358 / 25,867   | 1,279 / 7,200 / 31,482    | 0 / 0 / 0 | 0             |
+| Chromium   | mem   | restart | 863 / 867 / 6,775       | 1,183 / 5,235 / 19,684 | 2,046 / 6,102 / 26,459    | 0 / 0 / 0 | 0             |
+| Chromium   | cache | first   | 1,042 / 1,299 / 1,214   | 5,722 / 1,152 / 2,037  | 6,764 / 2,450 / 3,250     | 0 / 0 / 0 | 1 / 3 / 6     |
+| Chromium   | cache | reload  | 634 / 527 / 618         | 1,257 / 2,195 / 3,073  | 1,891 / 2,722 / 3,691     | 0 / 0 / 0 | 0             |
+| Chromium   | cache | restart | 1,550 / 1,326 / 1,408   | 1,504 / 1,889 / 1,526  | 3,054 / 3,215 / 2,934     | 0 / 0 / 0 | 0             |
+| WebKit     | idb   | first   | 15,246 / 11,682 / 5,800 | 911 / 4,114 / 13,598   | 16,157 / 15,796 / 19,398  | 0 / 0 / 0 | 1 / 3 / 6     |
+| WebKit     | idb   | reload  | 14,353 / 12,450 / 1,940 | 0 / 1 / 1              | 14,353 / 12,451 / 1,941   | 1 / 3 / 6 | 0             |
+| WebKit     | idb   | restart | 6,590 / 3,482 / 7,757   | 0 / 1 / 1              | 6,590 / 3,483 / 7,758     | 1 / 3 / 6 | 0             |
+| WebKit     | mem   | first   | 2,808 / 1,037 / 1,020   | 1,929 / 1,207 / 5,062  | 4,737 / 2,244 / 6,082     | 0 / 0 / 0 | 1 / 3 / 6     |
+| WebKit     | mem   | reload  | 2,864 / 1,122 / 870     | 619 / 3,146 / 723      | 3,483 / 4,268 / 1,593     | 0 / 0 / 0 | **1 / 3 / 6** |
+| WebKit     | mem   | restart | 1,776 / 1,037 / 1,321   | 585 / 658 / 1,216      | 2,361 / 1,695 / 2,537     | 0 / 0 / 0 | **1 / 3 / 6** |
+| WebKit     | cache | first   | 1,090 / 1,032 / 932     | 418 / 529 / 854        | 1,508 / 1,561 / 1,786     | 0 / 0 / 0 | 1 / 3 / 6     |
+| WebKit     | cache | reload  | 954 / 932 / 869         | 106 / 169 / 250        | **1,060 / 1,101 / 1,119** | 0 / 0 / 0 | 0             |
+| WebKit     | cache | restart | 1,196 / 892 / 989       | 184 / 159 / 284        | 1,380 / 1,051 / 1,273     | 0 / 0 / 0 | 0             |
+| iOS Safari | idb   | first   | 640 / 643 / 598         | 317 / 747 / 1,199      | 957 / 1,390 / 1,797       | 0 / 0 / 0 | 1 / 3 / 6     |
+| iOS Safari | idb   | reload  | 586 / 600 / 668         | 0 / 0 / 0              | **586 / 600 / 668**       | 1 / 3 / 6 | 0             |
+| iOS Safari | idb   | restart | 703 / 683 / 695         | 0 / 1 / 1              | 703 / 684 / 696           | 1 / 3 / 6 | 0             |
+| iOS Safari | mem   | first   | 632 / 625 / 592         | 74 / 128 / 200         | 706 / 753 / 792           | 0 / 0 / 0 | 1 / 3 / 6     |
+| iOS Safari | mem   | reload  | 534 / 541 / 534         | 57 / 93 / 125          | 591 / 634 / 659           | 0 / 0 / 0 | 0             |
+| iOS Safari | mem   | restart | 614 / 625 / 619         | 52 / 111 / 163         | 666 / 736 / 782           | 0 / 0 / 0 | 0             |
+| iOS Safari | cache | first   | 589 / 584 / 577         | 153 / 256 / 354        | 742 / 840 / 931           | 0 / 0 / 0 | 1 / 3 / 6     |
+| iOS Safari | cache | reload  | 538 / 545 / 519         | 73 / 122 / 164         | 611 / 667 / 683           | 0 / 0 / 0 | 0             |
+| iOS Safari | cache | restart | 612 / 619 / 587         | 71 / 128 / 181         | 683 / 747 / 768           | 0 / 0 / 0 | 0             |
 
-- **iOS rows left out of the table** [M]: `out/c/reports.jsonl` rows 49, 52 and 53 are idb, 1-pack
-  `ios_first` loads from the first version of `run_ios.sh`, which opened the same URL each time (no
-  `t=$RANDOM` query parameter). Their engine-ready times were 17,443, 3,786 and 36,601 ms. Row 49
-  was a genuine cold first visit (fetch 3,510 ms, nothing in `user://` at boot); rows 52 and 53
-  found the pack already in `user://`, so they were not first visits. Including them, the iOS idb
-  "Ready" range is 634–36,601 ms and the 1-pack first-visit fetch 512–3,510 ms. They are excluded
-  because the superseded driver cannot say which Safari process or navigation produced them.
+- **Warm boots are a trade-off, not a win for Cache Storage** [M]. Measured as ready + fetch on a
+  reload, idb was fastest in Chromium (0.40–0.49 s against 1.9–3.7 s for cache) and on the iOS
+  Simulator (0.59–0.67 s against 0.61–0.68 s for cache and 0.59–0.66 s for mem, all within noise).
+  Cache Storage was fastest only in Playwright WebKit (1.06–1.12 s), where idb's engine-ready time
+  was 1.9–14.4 s. For 150 MB (6 packs) the cache path's warm boots (reload and restart) were
+  2.9–3.7 s in Chromium, 1.1–1.3 s in WebKit and 0.68–0.77 s on the iOS Simulator. idb boots fast
+  here because its packs are already in memory at `_ready`: Godot's IDBFS copies all of `user://`
+  into MEMFS before the engine starts (next bullets). The recommendation for Cache Storage rests on
+  that cost, not on boot time.
+- **Superseded iOS rows** [M]: the iOS rows among `out/c/reports.jsonl` rows 49–104 (earlier
+  driver versions) and rows 105–118 (an aborted batch) are not in the table, because they did not
+  start clean. The earlier `run_ios.sh` erased Safari's data only once, at the start, and at
+  `Library/WebKit/WebsiteData`, whereas iOS 26.5 Safari keeps IndexedDB and Cache Storage under
+  `Library/WebKit/com.apple.mobilesafari/WebsiteData`. So later series booted with earlier series'
+  files: the idb 3-pack and 6-pack "first visits" (rows 57 and 60) had 1 and 4 pack files already
+  in `user://`, every mem and cache row (63–71, 96–104) and every row of 105–118 had 10 files
+  (300 MB), and rows 52 and 53 (which also reused one URL) found the 1-pack file already there. Only
+  rows 49 and 54 started empty. The driver now erases the right directory and the caches before
+  every mode and pack count, and every first visit in rows 119–145 shows 0 files at boot.
+- **What a full `user://` costs at boot** [M, I]: with those 10 stale files (300 MB) in IDBFS, the
+  iOS Simulator's engine-ready time for the mem and cache paths was 766–3,153 ms (rows 63–71 and
+  96–104),
+  against 519–632 ms with an empty `user://` (rows 128–145). n = 1 per cell and the runs were hours
+  apart, so this is an indication, not a controlled measurement.
 - **Mount time** is trivial on every path: ≤ 1 ms per pack in Chromium, ≤ 5 ms in WebKit and
   ≤ 3 ms in iOS Safari; all SHA-256 checks passed (3/3 per pack, every load) [M].
 - **Memory** (Chromium, V8 heap plus ArrayBuffer backing store after mounting, via CDP) [M]:
@@ -203,7 +244,7 @@ engine-ready time (`_ready`, ms since navigation start) [M]:
 
 - **idb** keeps the whole of `user://` in memory from boot, including packs a session never mounts
   and superseded versions (Godot's IDBFS syncs all of it into MEMFS at start; A6 §2.6 [V], seen as
-  `installed_at_boot` listing all 10 files, 300 MB, in the iOS runs) [M].
+  `installed_at_boot` listing all 10 files, 300 MB, in the superseded iOS rows) [M].
 - **Persistence**: idb and cache both survived reload and browser restart in all three engines. The
   HTTP cache did in Chromium and iOS Safari but not in Playwright WebKit, which fetched every pack
   again on every load (`immutable` headers notwithstanding) [M].

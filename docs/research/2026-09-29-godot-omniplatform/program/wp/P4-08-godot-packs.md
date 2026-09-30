@@ -159,8 +159,11 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   fetches each pack by its content-addressed URL through the Cache Storage API, copies it into a
   MEMFS path outside `user://` (`/pkey/packs/<sha256>.pck`) with the engine's `copyToFS`, and
   GDScript mounts that path; a Cache Storage miss is a normal re-download. This path persisted
-  across reload and browser restart in Chromium, WebKit and iOS Simulator Safari, with warm boots of
-  0.1–3 s for 150 MB. Do not use `HTTPRequest.download_file` on web: in 4.7.2 the file is deleted
+  across reload and browser restart in Chromium, WebKit and iOS Simulator Safari; its warm boots
+  (engine ready plus fetch, 150 MB, n = 1 per cell) were 2.9–3.7 s in Chromium, 1.1–1.3 s in
+  WebKit and 0.68–0.77 s on the iOS Simulator. Keeping packs in `user://` booted faster in Chromium
+  (0.4–0.5 s) but loads every file there, mounted or not, into memory at each boot, which is why it
+  is not the path. Do not use `HTTPRequest.download_file` on web: in 4.7.2 the file is deleted
   after a "successful" download. Cap the total mounted pack bytes on web (default 150 MB on mobile
   browsers, 300 MB on desktop) until device numbers exist.
 
