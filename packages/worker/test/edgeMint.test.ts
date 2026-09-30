@@ -38,6 +38,7 @@ import {
 import { seal } from "../src/keyvault.js";
 import { SqliteDb } from "../src/db/sqlite.js";
 import { listAudit } from "../src/repo.js";
+import { invalidateWidenedEdgeMintApprovals } from "../src/core/edgeMintApproval.js";
 import type { Env } from "../src/env.js";
 
 // A throwaway ES256 (P-256 PKCS#8) private key for tests only.
@@ -383,10 +384,11 @@ interface RecipeList {
 }
 
 /** The approve body an operator's console sends: the recipe exactly as it was shown, and the
- *  sign-in trust the list showed beside it (`null` when Identity was off). */
+ *  sign-in trust and License state the list showed beside it (`null` when Identity was off). */
 function echoOf(
   r: RecipeView,
   identity: IdentityView | null = null,
+  licenseEnabled = true,
 ): Record<string, unknown> {
   return {
     alg: r.alg,
@@ -396,6 +398,7 @@ function echoOf(
     ttlSeconds: r.ttlSeconds,
     audience: r.audience,
     identity,
+    licenseEnabled,
   };
 }
 
@@ -978,7 +981,7 @@ describe("P0-12 the approval binds the sign-in trust it was given under", () => 
       db,
       "POST",
       "/api/products/djdl/config/mint/applemusic/approve",
-      echoOf(listed.recipes[0]!, listed.identity),
+      echoOf(listed.recipes[0]!, listed.identity, listed.licenseEnabled),
     );
     expect(res.status).toBe(200);
     return listed;
@@ -1179,7 +1182,7 @@ describe("P0-12 the approval binds whether the mint checks licences", () => {
       db,
       "POST",
       "/api/products/djdl/config/mint/applemusic/approve",
-      echoOf(listed.recipes[0]!, listed.identity),
+      echoOf(listed.recipes[0]!, listed.identity, listed.licenseEnabled),
     );
     expect(res.status).toBe(200);
     return listed;
@@ -1241,6 +1244,72 @@ describe("P0-12 the approval binds whether the mint checks licences", () => {
       approval: { licenseEnabled: false },
     });
     expect(await mintNow(token)).toBe(200);
+  });
+
+  it("after a License-off push sweeps the approval, a re-approval that echoes License on is refused", async () => {
+    const shown = await approveAsShown();
+    expect(shown.licenseEnabled).toBe(true);
+
+    // A push turns License off; the ingest sweep drops the approval, so the recipe reads
+    // `pending` with no `changedFields` — the card must say License is off, and the approve
+    // call must carry what the operator saw.
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+        identity: { enabled: true },
+      }),
+    );
+    expect(
+      await invalidateWidenedEdgeMintApprovals(db, "djdl", 1, "test push"),
+    ).toEqual(["applemusic"]);
+    const listed = await listRecipes(env, db);
+    expect(listed.licenseEnabled).toBe(false);
+    expect(listed.recipes[0]).toMatchObject({
+      status: "pending",
+      changedFields: [],
+      approval: null,
+    });
+
+    // The console that loaded before the push still believes License is on.
+    const stale = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      echoOf(listed.recipes[0]!, listed.identity, true),
+    );
+    expect(stale.status).toBe(409);
+    expect(stale.body.fields).toEqual(["licenseEnabled"]);
+    expect((await listRecipes(env, db)).recipes[0]!.status).toBe("pending");
+
+    // Omitting it is malformed, not a silent "whatever it is now".
+    const { licenseEnabled: _omitted, ...withoutLicense } = echoOf(
+      listed.recipes[0]!,
+      listed.identity,
+    );
+    const omitted = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      withoutLicense,
+    );
+    expect(omitted.status).toBe(422);
+    expect(omitted.body.fields).toEqual(["licenseEnabled"]);
+
+    // Echoing what is true now is the operator's informed choice, and the audit says so.
+    await approveAsShown();
+    expect((await listRecipes(env, db)).recipes[0]).toMatchObject({
+      status: "approved",
+      approval: { licenseEnabled: false },
+    });
+    const approvals = (await listAudit(db, "djdl", {}))
+      .filter((r) => r.action === "config.mint.approve")
+      .map((r) => r.summary);
+    expect(approvals).toHaveLength(2);
+    expect(approvals.filter((t) => t?.includes("License off"))).toHaveLength(1);
   });
 
   it("turning License on after an approval given with it off only narrows", async () => {

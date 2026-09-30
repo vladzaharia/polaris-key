@@ -267,6 +267,7 @@ async function handleApprove(
       ? []
       : ["ttlSeconds"]),
     ...(audience === "invalid" ? ["audience"] : []),
+    ...(typeof body.licenseEnabled === "boolean" ? [] : ["licenseEnabled"]),
   ];
   if (malformed.length > 0) {
     return err(
@@ -287,11 +288,15 @@ async function handleApprove(
   // Sign-in trust is echoed the same way: the console shows which identity provider and group
   // map can hand out device tokens, and a push that changes them between that view and this
   // click must not be approved unseen. `identity: null` (or absent) means "Identity was off".
+  // Whether License is on is echoed for the same reason: with it off the mint checks no
+  // licence, so a disabled or expired one mints again, and the console warns about exactly
+  // that. A push that turns License off after the card loaded must not ride in on this click.
   const basis = await mintApprovalBasis(db, product);
   const identity = identityWire(basis.identity);
   const stale = [
     ...differingRecipeFields(recipe, echoed),
     ...(sameIdentityEcho(body.identity, identity) ? [] : ["identity"]),
+    ...(body.licenseEnabled === basis.licenseEnabled ? [] : ["licenseEnabled"]),
   ];
   if (stale.length > 0) {
     return err(
@@ -369,6 +374,7 @@ async function handleApprove(
       (identity
         ? ` — sign-in via ${identity.provider ?? "no provider"} ${identity.issuer ?? ""}`.trimEnd()
         : "") +
+      (basis.licenseEnabled ? "" : " — License off: licences not checked") +
       (acknowledged ? " — open registration acknowledged" : ""),
   );
   return adminJson({ ok: true, id, status: "approved" });
