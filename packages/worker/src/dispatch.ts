@@ -43,6 +43,24 @@ export async function dispatch(
   env: Env,
   db: Db,
 ): Promise<Response> {
+  return dispatchWith(req, env, db, Math.floor(Date.now() / 1000));
+}
+
+/**
+ * The router seam (P1b-03): `dispatch` with the request clock injected rather than read.
+ *
+ * Production never calls this directly — `dispatch` reads `Date.now()` exactly as it always did
+ * and hands the result here. It exists so the HTTP-transcript scenarios
+ * (`test/transcripts/`) can drive the REAL router, product loading, CORS and every service at a
+ * pinned instant, which is what makes a recorded conversation byte-stable. A handler that still
+ * reads `Date.now()` itself is pinned by the recorder's fake timers instead.
+ */
+export async function dispatchWith(
+  req: Request,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<Response> {
   const url = new URL(req.url);
   // The bytes host (P2-01) reaches ONLY its byte-route allowlist — never the console, the
   // portal, `/docs` or a product route. With `BLOB_ORIGIN` unset this is always false, and
@@ -50,7 +68,6 @@ export async function dispatch(
   if (isBytesHost(url, env))
     return dispatchBytesHost(req, env, db, BYTE_ROUTES);
   const route = matchRoute(url.pathname);
-  const now = Math.floor(Date.now() / 1000);
 
   if ("product" in route && PRODUCT_ROUTES.has(route.kind)) {
     const product = await loadProduct(env, db, route.product);
