@@ -195,16 +195,16 @@ export async function listDevicesByProduct(
 
 // ── Devices, product-wide (Platform → Devices) ───────────────────────────────
 
-/** `devices.license_id` for a device that holds no licence (open / requires-identity
+/** `devices.license_id` for a device that holds no license (open / requires-identity
  *  registration). Mirrors `NO_LICENSE_ID` in core/devices.ts; repeated here as a literal because
  *  this module only ever depends on `repo.ts` types. */
-const LICENCE_FREE = "";
+const LICENSE_FREE = "";
 
 export interface DeviceListFilter {
   /** `all` drops the status predicate. */
   status: "authorized" | "deauthorized" | "all";
   platform?: string;
-  /** true = holds a licence, false = licence-free, undefined = both. */
+  /** true = holds a license, false = license-free, undefined = both. */
   licensed?: boolean;
   /** Case-insensitive prefix of the device id or the label. */
   q?: string;
@@ -220,7 +220,7 @@ function likePrefix(q: string): string {
 
 /**
  * One page of a product's devices, newest `last_seen` first, `device_id` ascending as the
- * tie-break so the keyset is total. Summaries only: no fingerprint or facts join (the licence
+ * tie-break so the keyset is total. Summaries only: no fingerprint or facts join (the license
  * view's N+1 is deliberately not repeated; detail is fetched on demand).
  *
  * Cost: `status = ?` walks `idx_devices_status (product, status, last_seen DESC)` in order.
@@ -245,8 +245,8 @@ export async function listDevicesPage(
     where.push("platform = ?");
     params.push(f.platform);
   }
-  if (f.licensed === true) where.push(`license_id <> '${LICENCE_FREE}'`);
-  if (f.licensed === false) where.push(`license_id = '${LICENCE_FREE}'`);
+  if (f.licensed === true) where.push(`license_id <> '${LICENSE_FREE}'`);
+  if (f.licensed === false) where.push(`license_id = '${LICENSE_FREE}'`);
   if (f.q) {
     where.push(
       "(device_id LIKE ? ESCAPE '\\' OR (label IS NOT NULL AND label LIKE ? ESCAPE '\\'))",
@@ -274,7 +274,7 @@ export interface DeviceCount {
 export interface DeviceSummaryCounts {
   total: number;
   byStatus: DeviceCount[];
-  licensed: { licensed: number; licenceFree: number };
+  licensed: { licensed: number; licenseFree: number };
   byPlatform: DeviceCount[];
   byArch: DeviceCount[];
   bySdkName: DeviceCount[];
@@ -309,8 +309,8 @@ export async function deviceSummary(
         product,
       ),
       db.first<{ licensed: number | null; free: number | null }>(
-        `SELECT SUM(license_id <> '${LICENCE_FREE}') AS licensed,
-                SUM(license_id = '${LICENCE_FREE}') AS free
+        `SELECT SUM(license_id <> '${LICENSE_FREE}') AS licensed,
+                SUM(license_id = '${LICENSE_FREE}') AS free
          FROM devices WHERE product = ? AND status = 'authorized'`,
         product,
       ),
@@ -324,7 +324,7 @@ export async function deviceSummary(
     byStatus,
     licensed: {
       licensed: split?.licensed ?? 0,
-      licenceFree: split?.free ?? 0,
+      licenseFree: split?.free ?? 0,
     },
     byPlatform,
     byArch,

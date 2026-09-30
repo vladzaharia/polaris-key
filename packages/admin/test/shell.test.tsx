@@ -96,7 +96,7 @@ function boot(services: Enablement | undefined, hash: string): void {
     "/manage/api/products/djdl/devices/summary": {
       total: 0,
       byStatus: [],
-      licensed: { licensed: 0, licenceFree: 0 },
+      licensed: { licensed: 0, licenseFree: 0 },
       byPlatform: [],
       byArch: [],
       bySdkName: [],
@@ -199,8 +199,8 @@ describe("service-grouped nav (D-15)", () => {
   });
 
   it("keeps Platform → Devices for a product with License disabled", async () => {
-    // A free, licence-less game is exactly the product this tab exists for: its devices hold no
-    // licence, so the License section (which is gone) could never have listed them.
+    // A free, license-less game is exactly the product this tab exists for: its devices hold no
+    // license, so the License section (which is gone) could never have listed them.
     boot({ ...ALL_ON, license: { enabled: false } }, "#/p/djdl/devices");
     await screen.findByRole("navigation", { name: "Primary" });
     expect(sectionHeaders()).not.toContain("License");

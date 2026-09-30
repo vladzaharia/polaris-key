@@ -1,6 +1,6 @@
 /**
  * Product-wide devices (`/manage/api/products/<slug>/devices…`): every device of a product,
- * including the ones that hold no licence.
+ * including the ones that hold no license.
  */
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
@@ -113,7 +113,7 @@ function row(n: number, over: Partial<DeviceRow> = {}): DeviceRow {
   };
 }
 
-/** Two licensed devices (on two licences) and three licence-free ones. */
+/** Two licensed devices (on two licenses) and three license-free ones. */
 async function fixture(w: World): Promise<{ licA: string; licB: string }> {
   const { licenseId: licA } = await seedLicenseWithKey(w.db, SLUG, {
     id: "lic_a",
@@ -135,7 +135,7 @@ interface ListBody {
 }
 
 describe("GET /devices (product-wide list)", () => {
-  it("lists licensed and licence-free devices; licensed=false lists only the licence-free", async () => {
+  it("lists licensed and license-free devices; licensed=false lists only the license-free", async () => {
     const w = await world();
     await fixture(w);
 
@@ -266,7 +266,7 @@ describe("GET /devices/summary", () => {
     const s = (await (await w.call("GET", "/devices/summary")).json()) as {
       total: number;
       byStatus: Array<{ value: string; count: number }>;
-      licensed: { licensed: number; licenceFree: number };
+      licensed: { licensed: number; licenseFree: number };
       byPlatform: Array<{ value: string | null; count: number }>;
       byArch: Array<{ value: string | null; count: number }>;
       bySdkName: Array<{ value: string | null; count: number }>;
@@ -277,7 +277,7 @@ describe("GET /devices/summary", () => {
       { value: "authorized", count: 5 },
       { value: "deauthorized", count: 1 },
     ]);
-    expect(s.licensed).toEqual({ licensed: 2, licenceFree: 3 });
+    expect(s.licensed).toEqual({ licensed: 2, licenseFree: 3 });
     expect(s.byPlatform).toEqual([
       { value: "windows", count: 3 },
       { value: "linux", count: 1 },
@@ -309,10 +309,10 @@ describe("GET /devices/summary", () => {
     const w = await world();
     const s = (await (await w.call("GET", "/devices/summary")).json()) as {
       total: number;
-      licensed: { licensed: number; licenceFree: number };
+      licensed: { licensed: number; licenseFree: number };
     };
     expect(s.total).toBe(0);
-    expect(s.licensed).toEqual({ licensed: 0, licenceFree: 0 });
+    expect(s.licensed).toEqual({ licensed: 0, licenseFree: 0 });
   });
 });
 
@@ -347,7 +347,7 @@ describe("GET /devices/<id>", () => {
 });
 
 describe("device actions", () => {
-  it("deauthorizes a licence-free device: status, token record and audit row", async () => {
+  it("deauthorizes a license-free device: status, token record and audit row", async () => {
     const w = await world();
     await fixture(w);
     await upsertDevice(w.db, row(8, { token_hash: "tokhash8" }));
@@ -426,7 +426,7 @@ describe("device actions", () => {
     expect((await w.call("POST", "/devices")).status).toBe(405);
   });
 
-  it("the licence route still refuses a device that belongs to another licence, and shares its effect", async () => {
+  it("the license route still refuses a device that belongs to another license, and shares its effect", async () => {
     const w = await world();
     const { licA, licB } = await fixture(w);
 
@@ -437,13 +437,13 @@ describe("device actions", () => {
     );
     expect(wrong.status).toBe(404);
     expect((await getDevice(w.db, SLUG, id(2)))?.status).toBe("authorized");
-    // A licence-free device is not reachable through any licence either.
+    // A license-free device is not reachable through any license either.
     expect(
       (await w.call("POST", `/license/licenses/${licA}/devices/${id(3)}`))
         .status,
     ).toBe(404);
 
-    // Through the right licence it deauthorizes, with the same audit row.
+    // Through the right license it deauthorizes, with the same audit row.
     const ok = await w.call(
       "DELETE",
       `/license/licenses/${licB}/devices/${id(2)}`,

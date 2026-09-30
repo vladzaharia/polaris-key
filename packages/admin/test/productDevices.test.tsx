@@ -64,7 +64,7 @@ const SUMMARY: ProductDeviceSummary = {
     { value: "authorized", count: 2 },
     { value: "deauthorized", count: 1 },
   ],
-  licensed: { licensed: 1, licenceFree: 1 },
+  licensed: { licensed: 1, licenseFree: 1 },
   byPlatform: [
     { value: "windows", count: 1 },
     { value: "linux", count: 1 },
@@ -122,7 +122,7 @@ afterEach(() => {
 });
 
 describe("Devices view", () => {
-  it("lists licensed and licence-free devices with summary chips and follows nextCursor", async () => {
+  it("lists licensed and license-free devices with summary chips and follows nextCursor", async () => {
     const page1: ProductDevicePage = {
       devices: [
         dev("dev-free"),
@@ -141,7 +141,7 @@ describe("Devices view", () => {
     mount();
 
     await waitFor(() => expect(screen.getByText("dev-free")).toBeTruthy());
-    expect(screen.getByText("Licence-free")).toBeTruthy();
+    expect(screen.getByText("License-free")).toBeTruthy();
     expect(screen.getByText("lic_1")).toBeTruthy();
     expect(screen.getByText(/seat 2/)).toBeTruthy();
     // Default filter is authorized devices only.
@@ -150,7 +150,7 @@ describe("Devices view", () => {
     });
     // Chips come from the summary endpoint.
     await screen.findByText("2 authorized");
-    expect(screen.getByText("1 licence-free")).toBeTruthy();
+    expect(screen.getByText("1 license-free")).toBeTruthy();
 
     await userEvent.click(screen.getByRole("button", { name: "Load more" }));
     await screen.findByText("Steam Deck");
@@ -180,7 +180,7 @@ describe("Devices view", () => {
     );
   });
 
-  it("deauthorizes a licence-free device from the drawer, warning that it can re-register", async () => {
+  it("deauthorizes a license-free device from the drawer, warning that it can re-register", async () => {
     const d = dev("dev-free");
     productDevices.mockResolvedValue({ devices: [d], nextCursor: null });
     productDevice.mockResolvedValue(detail(d));
@@ -192,7 +192,7 @@ describe("Devices view", () => {
 
     await userEvent.click(await screen.findByText("dev-free"));
     const drawer = await screen.findByRole("dialog");
-    await within(drawer).findByText(/Licence-free \(registered/);
+    await within(drawer).findByText(/License-free \(registered/);
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Deauthorize" }),
     );

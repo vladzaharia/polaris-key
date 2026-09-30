@@ -182,7 +182,7 @@ async function handleProductScoped(
 
   // Offline activation bundles (wire v3 §7). CORE for the same reason `services` is: one bundle
   // carries the License document AND the Config document, either of which may be absent, so it
-  // belongs to neither service — a config-only product mints one with no licence in it at all.
+  // belongs to neither service — a config-only product mints one with no license in it at all.
   if (resource === "bundles") {
     return handleBundleMint(req, env, db, session, slug, id, now);
   }
@@ -191,8 +191,8 @@ async function handleProductScoped(
     return handleActivity(req, db, slug);
   }
 
-  // Every device of the product, licensed or not. CORE: a product that issues no licences (open
-  // or requires-identity registration) still has devices, and License's per-licence route cannot
+  // Every device of the product, licensed or not. CORE: a product that issues no licenses (open
+  // or requires-identity registration) still has devices, and License's per-license route cannot
   // reach them.
   if (resource === "devices") {
     return handleProductDevices(

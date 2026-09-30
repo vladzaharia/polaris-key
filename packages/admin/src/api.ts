@@ -520,8 +520,8 @@ export interface DeviceDto {
   facts?: DeviceFactsDto | null;
 }
 
-/** One row of Platform → Devices: the licence view's device without fingerprint/facts, plus the
- *  licence it holds (null = licence-free) and the seat it occupies. */
+/** One row of Platform → Devices: the license view's device without fingerprint/facts, plus the
+ *  license it holds (null = license-free) and the seat it occupies. */
 export interface ProductDeviceDto {
   deviceId: string;
   status: string;
@@ -570,7 +570,7 @@ export interface ProductDeviceSummary {
   total: number;
   byStatus: DeviceCount[];
   /** Authorized devices only, as are the breakdowns below. */
-  licensed: { licensed: number; licenceFree: number };
+  licensed: { licensed: number; licenseFree: number };
   byPlatform: DeviceCount[];
   byArch: DeviceCount[];
   bySdkName: DeviceCount[];
@@ -650,7 +650,7 @@ export interface MintBundleBody {
    *  and let enablement decide rather than asserting a preference the operator never made. */
   includeConfig?: boolean;
   /** REQUIRED when the License service is enabled — there is no authenticated device here to
-   *  infer a licence from, and guessing would silently mint the wrong grant. */
+   *  infer a license from, and guessing would silently mint the wrong grant. */
   licenseId?: string;
 }
 

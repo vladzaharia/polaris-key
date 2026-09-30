@@ -99,22 +99,22 @@ requires-identity registration (a free game, say) has none. **Platform → Devic
 device of the product, licensed or not, and it is never hidden by service enablement.
 
 The table shows one summary row per device: label or id, status, license and seat (or a
-**Licence-free** badge), platform and architecture, app and SDK version, and **last seen**.
+**License-free** badge), platform and architecture, app and SDK version, and **last seen**.
 "Last seen" is the time of the device's most recent check-in; it is not an "online" indicator.
 Fingerprint and software facts are not loaded per row; open a device to see them in the detail
 drawer, which is the same data the license view shows and nothing more (raw hardware values never
 exist server-side).
 
 - **Filters**: status (authorized by default, deauthorized, or all), platform, licensed or
-  licence-free, and a case-insensitive prefix of the device id or label. Results are paged, newest
+  license-free, and a case-insensitive prefix of the device id or label. Results are paged, newest
   last-seen first, 50 at a time. `status=all` scans the product's devices rather than walking the
   status index, so leave it on **authorized** for a very large product unless you need the rest.
-- **Summary chips** count devices by status and by licensed versus licence-free. The platform
+- **Summary chips** count devices by status and by licensed versus license-free. The platform
   chips (click one to filter by it) count **authorized** devices only, as does every other
   breakdown the summary endpoint returns: architecture, SDK name, and the top 20 app versions.
 - **Actions** in the drawer are the same two as on the license panel, with the same effects and
   the same audit events (`device.deauthorize`, `device.fingerprint.reset`):
-  **Deauthorize** and **Reset binding**. Deauthorizing a licence-free device marks it
+  **Deauthorize** and **Reset binding**. Deauthorizing a license-free device marks it
   deauthorized and revokes its token, and frees nothing because it holds no seat. Under open
   registration it can register again on its next start, and the console says so before you
   confirm. Deauthorizing a licensed device here frees its seat exactly as the license panel does.
@@ -125,13 +125,13 @@ public OpenAPI spec, which covers only the client wire):
 | Route                                                                   | Purpose                                                                         |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `GET /manage/api/products/<slug>/devices`                               | Paged list: `status`, `platform`, `licensed`, `q`, `limit` (1-200), `cursor`.   |
-| `GET /manage/api/products/<slug>/devices/summary`                       | Counts by status, platform, arch, licensed/licence-free, SDK, top app versions. |
+| `GET /manage/api/products/<slug>/devices/summary`                       | Counts by status, platform, arch, licensed/license-free, SDK, top app versions. |
 | `GET /manage/api/products/<slug>/devices/<deviceId>`                    | One device with fingerprint and facts.                                          |
 | `POST /manage/api/products/<slug>/devices/<deviceId>/deauthorize`       | Deauthorize.                                                                    |
 | `POST /manage/api/products/<slug>/devices/<deviceId>/fingerprint/reset` | Clear the hardware binding without deauthorizing.                               |
 
 The list returns `{ devices, nextCursor }`; pass `nextCursor` back as `cursor` until it is
-`null`. A licence-free device has `licenseId: null`.
+`null`. A license-free device has `licenseId: null`.
 
 ## Fingerprint policy
 

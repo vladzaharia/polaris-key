@@ -1,10 +1,10 @@
 /**
  * Product-wide devices (`/manage/api/products/<slug>/devices…`): every device of a product,
- * whether or not it holds a licence.
+ * whether or not it holds a license.
  *
  * A CORE per-product resource, not License's: an open- or requires-identity-registration game
- * has devices and no licences at all, and License's `licenses/<id>/devices` can only reach a
- * device through the licence it holds. The two routes share their write effects
+ * has devices and no licenses at all, and License's `licenses/<id>/devices` can only reach a
+ * device through the license it holds. The two routes share their write effects
  * (`core/deviceAdmin.ts`) so a deauthorize means the same thing whichever door it came through.
  *
  *   GET  devices                          paged list (status, platform, licensed, q, limit, cursor)
@@ -15,7 +15,7 @@
  *
  * Reads and writes go through `core/data.ts`; nothing here imports a service.
  *
- * Privacy: only what the licence view already shows. Raw hardware values never exist server-side
+ * Privacy: only what the license view already shows. Raw hardware values never exist server-side
  * (rule 7), and `lastSeen` is "last seen", not "online".
  */
 
@@ -37,7 +37,7 @@ export const DEVICE_PAGE_DEFAULT = 50;
 export const DEVICE_PAGE_MAX = 200;
 const MAX_FILTER_LEN = 64;
 
-/** The list-row shape: the licence view's, minus fingerprint and facts, plus licence + seat. */
+/** The list-row shape: the license view's, minus fingerprint and facts, plus license + seat. */
 function shapeSummary(d: DeviceRow): Record<string, unknown> {
   return {
     deviceId: d.device_id,
@@ -51,7 +51,7 @@ function shapeSummary(d: DeviceRow): Record<string, unknown> {
     appVersion: d.app_version ?? undefined,
     sdkName: d.sdk_name ?? undefined,
     sdkVersion: d.sdk_version ?? undefined,
-    // `''` is the stored sentinel for "no licence" (NO_LICENSE_ID); on the wire it is null.
+    // `''` is the stored sentinel for "no license" (NO_LICENSE_ID); on the wire it is null.
     licenseId: d.license_id === "" ? null : d.license_id,
     seatNo: d.seat_no ?? null,
   };

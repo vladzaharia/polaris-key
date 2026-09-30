@@ -54,8 +54,8 @@ const INITIAL: Filters = {
 };
 
 /**
- * Platform → Devices: every device of the product, including the ones that hold no licence (an
- * open or requires-identity registration game has devices and no licences at all). The table is
+ * Platform → Devices: every device of the product, including the ones that hold no license (an
+ * open or requires-identity registration game has devices and no licenses at all). The table is
  * the summary list; a device's fingerprint and facts load on demand in the detail drawer.
  * "Last seen" is the time of the device's most recent check-in, not a presence indicator.
  */
@@ -161,7 +161,7 @@ export function Devices({ slug }: { slug: string }): React.ReactElement {
       },
       {
         id: "license",
-        header: "Licence",
+        header: "License",
         cell: (r) =>
           r.licenseId ? (
             <span className="font-mono text-xs">
@@ -174,7 +174,7 @@ export function Devices({ slug }: { slug: string }): React.ReactElement {
               ) : null}
             </span>
           ) : (
-            <Badge variant="outline">Licence-free</Badge>
+            <Badge variant="outline">License-free</Badge>
           ),
       },
       {
@@ -241,7 +241,7 @@ export function Devices({ slug }: { slug: string }): React.ReactElement {
           <p className="text-sm text-muted-foreground">
             Every device of{" "}
             <span className="font-medium text-foreground">{slug}</span>,
-            including those that hold no licence.
+            including those that hold no license.
           </p>
         </div>
         <Button
@@ -294,13 +294,13 @@ export function Devices({ slug }: { slug: string }): React.ReactElement {
             value={filters.licensed}
             onValueChange={(v) => set({ licensed: v as LicensedFilter })}
           >
-            <SelectTrigger aria-label="Licence">
+            <SelectTrigger aria-label="License">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="any">Any licence</SelectItem>
+              <SelectItem value="any">Any license</SelectItem>
               <SelectItem value="licensed">Licensed</SelectItem>
-              <SelectItem value="free">Licence-free</SelectItem>
+              <SelectItem value="free">License-free</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -442,7 +442,7 @@ function SummaryChips({
       <Badge variant="success">{n("authorized")} authorized</Badge>
       <Badge variant="default">{n("deauthorized")} deauthorized</Badge>
       <Badge variant="outline">{data.licensed.licensed} licensed</Badge>
-      <Badge variant="outline">{data.licensed.licenceFree} licence-free</Badge>
+      <Badge variant="outline">{data.licensed.licenseFree} license-free</Badge>
       {data.byPlatform.map((p) => {
         const active = p.value != null && p.value === activePlatform;
         return p.value != null ? (
@@ -533,7 +533,7 @@ function DeviceDrawer({
     }
   };
 
-  const licenceFree = detail != null && detail.licenseId === null;
+  const licenseFree = detail != null && detail.licenseId === null;
 
   return (
     <>
@@ -588,9 +588,9 @@ function DeviceDrawer({
         onOpenChange={(o) => !o && setConfirm(null)}
         title="Deauthorize this device?"
         description={
-          licenceFree
-            ? "The device loses access and its token is revoked. It holds no licence, so no seat is freed. Under open registration it can register again on its next start."
-            : "The device loses access and must re-activate to use the licence again. This frees its device seat."
+          licenseFree
+            ? "The device loses access and its token is revoked. It holds no license, so no seat is freed. Under open registration it can register again on its next start."
+            : "The device loses access and must re-activate to use the license again. This frees its device seat."
         }
         confirmLabel="Deauthorize"
         loading={busy}
@@ -636,14 +636,14 @@ function DeviceFacts({
       <Row label="Status">
         <DeviceStatusBadge status={d.status} />
       </Row>
-      <Row label="Licence">
+      <Row label="License">
         {d.licenseId ? (
           <span className="font-mono text-xs">
             {d.licenseId}
             {d.seatNo != null ? ` · seat ${d.seatNo}` : ""}
           </span>
         ) : (
-          "Licence-free (registered, no licence)"
+          "License-free (registered, no license)"
         )}
       </Row>
       <Row label="First seen">{formatStamp(d.firstSeen)}</Row>
