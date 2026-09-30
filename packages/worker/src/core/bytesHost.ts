@@ -3,9 +3,18 @@
  * Host isolation for the bytes host (P2-01).
  *
  * The bytes host (`BLOB_ORIGIN`, e.g. `https://dl.plrs.im`) is the same Worker on a second
- * custom domain. A request that arrives there reaches ONLY the routes listed in `BYTE_ROUTES`;
- * everything else — `/manage`, `/docs`, the portal, discovery, every service route — answers the
- * ordinary not-found. P2-05 and P2b-04 add the first byte routes; P2-01 adds none.
+ * custom domain. A request that arrives there reaches ONLY the byte routes the composition root
+ * lists (`mount.ts` `BYTE_ROUTES`); everything else — `/manage`, `/docs`, the portal, discovery,
+ * every service route — answers the ordinary not-found. P2-05 and P2b-04 add the first byte
+ * routes; P2-01 adds none.
+ *
+ * SERVICE ENABLEMENT: the bytes host does not go through `dispatchService`
+ * (`core/registry.ts`), so it makes that function's enablement check itself. Every byte route
+ * names the service it belongs to, and a route whose service is off for the product never runs:
+ * it answers the same not-found as an unknown product or an unmatched path, so "off" is
+ * indistinguishable from "absent" here too. A product that disables Release (or
+ * Distribution) therefore stops serving bytes on `dl.plrs.im` the moment it does, exactly as
+ * its paths on the console stop answering.
  *
  * WHY THIS IS STRICT (owner decision, recorded in `docs/security/THREAT-MODEL.md` §3): the
  * bytes host is `dl.plrs.im`, a sibling of the console at `key.plrs.im`, so the two are
@@ -28,6 +37,7 @@
 
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
+import type { ServiceSlug } from "./services.js";
 import { notFound } from "./errors.js";
 import { BLOB_CSP, BYTES_HOST_TYPES } from "./blobs.js";
 import { corsPreflight, withCors } from "./cors.js";
@@ -56,16 +66,16 @@ export interface ByteRouteContext {
 export interface ByteRoute {
   /** For logs and tests. */
   readonly name: string;
+  /**
+   * The service this route belongs to. The dispatcher runs the route only while that service is
+   * enabled for the matched product (the check `dispatchService` makes on the console); with it
+   * off the route's code never runs and the host answers not-found.
+   */
+  readonly service: ServiceSlug;
   /** The owning product and path parameters when the route handles `pathname`, else `null`. */
   match(pathname: string): ByteRouteMatch | null;
   handle(req: Request, ctx: ByteRouteContext): Promise<Response>;
 }
-
-/**
- * The bytes-host allowlist. EMPTY in P2-01 by design: P2-05 (release byte routes) and P2b-04
- * (distribution) register theirs here. A route not listed here does not exist on the host.
- */
-export const BYTE_ROUTES: readonly ByteRoute[] = [];
 
 /**
  * A hostname in the form hosts are compared in: lowercase, with any trailing dots removed.
@@ -195,9 +205,10 @@ function withoutCookies(req: Request): Request {
 }
 
 /**
- * Dispatch a request that arrived on the bytes host. Only `routes` can answer; anything else,
- * an unknown product, and any route answer whose type breaks the host's rule (`refusedType`),
- * becomes the plain not-found.
+ * Dispatch a request that arrived on the bytes host. Only `routes` can answer (`dispatch.ts`
+ * passes `mount.ts`'s `BYTE_ROUTES`); anything else, an unknown product, a route whose service
+ * is disabled for that product, and any route answer whose type breaks the host's rule
+ * (`refusedType`), becomes the plain not-found.
  *
  * CORS (P0-05) runs here exactly as `dispatch.ts` runs it for the console's covered routes:
  * the product's own `web.origins` decide; a preflight is answered before the handler runs (so
@@ -209,7 +220,7 @@ export async function dispatchBytesHost(
   req: Request,
   env: Env,
   db: Db,
-  routes: readonly ByteRoute[] = BYTE_ROUTES,
+  routes: readonly ByteRoute[],
 ): Promise<Response> {
   return hardenBytesHostResponse(await answer(req, env, db, routes));
 }
@@ -226,7 +237,12 @@ async function answer(
     if (!matched) continue;
     const product = await loadProduct(env, db, matched.product);
     if (!product) return notFound();
+    // Preflight first, as `dispatch.ts` does for the console: its answer depends only on the
+    // path shape and the product's `web.origins`, so it cannot probe enablement.
     if (req.method === "OPTIONS") return corsPreflight(product, req);
+    // Enablement next, before any route code runs (`dispatchService`'s rule). Same not-found
+    // as an unknown product, so a disabled service cannot be told apart from a missing one.
+    if (!product.services[route.service]?.enabled) return notFound();
     let res = await route.handle(withoutCookies(req), {
       env,
       db,

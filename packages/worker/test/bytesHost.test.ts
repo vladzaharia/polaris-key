@@ -3,8 +3,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import worker from "../src/index.js";
+import { BYTE_ROUTES } from "../src/mount.js";
 import {
-  BYTE_ROUTES,
   bytesHostname,
   dispatchBytesHost,
   isBytesHost,
@@ -19,11 +19,13 @@ import {
   CORS_EXPOSE_HEADERS,
   serializeWebOrigins,
 } from "../src/core/cors.js";
+import { serializeServices, type ServicesMap } from "../src/core/services.js";
+import { setServices } from "../src/repo.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedProduct } from "./seed.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -205,6 +207,30 @@ describe("bytes host: isolation", () => {
   });
 });
 
+/** Enablement written the way the manifest writes it: a full set, through the owning writer. */
+async function setProductServices(
+  db: Db,
+  slug: string,
+  services: Partial<ServicesMap>,
+): Promise<void> {
+  await setServices(
+    db,
+    slug,
+    serializeServices({
+      services: {
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: false },
+        update: { enabled: false },
+        identity: { enabled: false },
+        ...services,
+      },
+    }),
+    "manifest",
+    NOW,
+  );
+}
+
 describe("bytes host: dispatch", () => {
   const SLUG = "djdl";
   const LISTED = "https://play.djdl.example";
@@ -215,6 +241,8 @@ describe("bytes host: dispatch", () => {
     seen.length = 0;
     db = makeTestDb();
     await seedProduct(db, SLUG);
+    // The fake route below belongs to Release, which is off by default.
+    await setProductServices(db, SLUG, { release: { enabled: true } });
     await db.run(
       "UPDATE products SET web_origins_json = ? WHERE slug = ?",
       serializeWebOrigins([LISTED]),
@@ -229,6 +257,7 @@ describe("bytes host: dispatch", () => {
     status = 200,
   ): ByteRoute => ({
     name: "fake",
+    service: "release",
     match: (p) => {
       const m = /^\/([^/]+)\/fake\/(.*)$/.exec(p);
       return m ? { product: m[1]!, params: { rest: m[2]! } } : null;
@@ -283,6 +312,54 @@ describe("bytes host: dispatch", () => {
     expect(await res.json()).toEqual({ error: "not_found" });
     expect(seen).toHaveLength(0);
     expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+  });
+
+  it("a route whose service is disabled for the product never runs and answers not-found", async () => {
+    const route = echo("bytes", octet);
+    const ok = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(ok.status).toBe(200);
+    expect(seen).toHaveLength(1);
+    seen.length = 0;
+
+    // The product turns Release off: its bytes stop answering on the host at once, exactly
+    // as its release paths on the console fall to the registry not-found.
+    await setProductServices(db, SLUG, { release: { enabled: false } });
+    const off = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`, { headers: { origin: LISTED } }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(seen).toHaveLength(0);
+    expect(off.status).toBe(404);
+    // Indistinguishable from an unknown product or an unmatched path on this host.
+    const offBody = await off.json();
+    const absent = await dispatchBytesHost(
+      new Request(`${BYTES}/nobody/fake/a`, { headers: { origin: LISTED } }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(offBody).toEqual(await absent.json());
+    expect(offBody).toEqual({ error: "not_found" });
+    expect(off.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(off.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    expect(off.headers.get("access-control-allow-origin")).toBeNull();
+
+    // A route of another service is judged by ITS service, not Release's.
+    const licensed = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      db,
+      [{ ...route, service: "license" }],
+    );
+    expect(licensed.status).toBe(200);
+    expect(seen).toHaveLength(1);
   });
 
   it("a route that answers with an executable or renderable type is replaced by not-found", async () => {
@@ -573,6 +650,7 @@ describe("bytes host: dispatch", () => {
     // `withCors` returns a product-without-origins response untouched, so this is the case
     // where a route's own headers would otherwise survive.
     await seedProduct(db, "quiet");
+    await setProductServices(db, "quiet", { release: { enabled: true } });
     const res = await dispatchBytesHost(
       new Request(`${BYTES}/quiet/fake/x`, {
         headers: { origin: "https://evil.example" },

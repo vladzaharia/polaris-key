@@ -45,9 +45,17 @@ sandbox; …`; no HTML, XHTML, SVG, XML, JS, JSON or `text/*` type is ever serve
 >   TODO): a byte route's `match` returns `{product, params}`, `dispatchBytesHost(req, env, db)`
 >   loads that product, answers `OPTIONS` with `corsPreflight` before the route runs and wraps
 >   the route's answer in `withCors`, then hardens it. Unknown products answer not-found.
-> - Host isolation lives in `core/bytesHost.ts` (`BYTE_ROUTES`, empty), called from `dispatch.ts`
->   (main moved dispatch out of `index.ts`). The host match ignores case and trailing dots
+> - Host isolation lives in `core/bytesHost.ts`, called from `dispatch.ts` (main moved dispatch
+>   out of `index.ts`), which passes the allowlist `BYTE_ROUTES` from `mount.ts` (empty). It
+>   sits beside `SERVICES` in the composition root because byte routes are service code and
+>   Core must not import services. The host match ignores case and trailing dots
 >   (`dl.plrs.im.` is the same host, and the edge keeps the dot in `req.url`).
+> - **The bytes host gates on service enablement itself.** It does not go through
+>   `dispatchService`, so it repeats that function's check: every `ByteRoute` names its
+>   `service`, and after the `OPTIONS` preflight (which cannot probe enablement, as on the
+>   console) a route whose service is off for the product never runs and answers the same
+>   not-found as an unknown product. A product that turns Release or Distribution off stops
+>   serving bytes on `dl.plrs.im` at once, as P2-05 and P2b-04 assume.
 > - The same-site compensations are enforced by the **dispatcher** for every route answer, not
 >   only by `blobResponse`: a non-error answer needs a `BYTES_HOST_TYPES` type (a body with no
 >   type is refused), `Content-Disposition` is forced to `attachment` unless the route asked for
@@ -239,7 +247,10 @@ mise exec node@22 -- pnpm typecheck
   objects, and both grant a ref only under the THREAT-MODEL §3 rule: a verified promote from
   the product's own `staging/<product>/…` prefix, or a key the product already references.
   P4-14 collects unreferenced objects. P2-05 and P2b-04 use `blobResponse` and
-  `hasRef`, and register their byte routes on the host allowlist. P6-04 must **not** host web
+  `hasRef`, and register their byte routes in `mount.ts` `BYTE_ROUTES`, each naming its
+  `service` (`release` for P2-05; P2b-04's distribution service slug). The bytes host bypasses
+  `dispatchService`, so that `service` field is what keeps a disabled service's bytes from
+  answering; a route must name the service that owns it, never a default-on one. P6-04 must **not** host web
   builds on `dl.plrs.im`: web builds serve HTML and script, which the bytes host refuses, so
   they need their own separate registrable domain (a human input), per THREAT-MODEL §3. P6-04
   may reuse `core/blobs.ts` for storage, but not the bytes host.

@@ -125,8 +125,11 @@ published bytes — it is not permanent immutability. `staging/` is unlocked wit
 
 **Boundary: the bytes host.** The same Worker answers on `dl.plrs.im` (`dl-staging`, `dl-dev`),
 named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allowlist
-(`core/bytesHost.ts` `BYTE_ROUTES`, empty until P2-05/P2b-04); `/manage`, `/docs`, the portal,
-discovery and every product route answer not-found there (`test/bytesHost.test.ts`). The host
+(`mount.ts` `BYTE_ROUTES`, dispatched by `core/bytesHost.ts`; empty until P2-05/P2b-04);
+`/manage`, `/docs`, the portal, discovery and every product route answer not-found there
+(`test/bytesHost.test.ts`). The host does not go through `dispatchService`, so it makes that
+function's enablement check itself: every byte route names its service, and one whose service
+is disabled for the product never runs and answers the same not-found as an unknown product. The host
 match is case-insensitive and ignores trailing dots: the edge routes the fully-qualified
 `dl.plrs.im.` to the Worker with the dot kept in the URL, so an exact comparison would hand
 that spelling the whole console. Every byte route is product-scoped; CORS on the host is the
