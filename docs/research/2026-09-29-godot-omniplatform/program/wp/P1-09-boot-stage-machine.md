@@ -66,6 +66,10 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   (`PolarisKeyCore/Stages.swift`, `StageMatrixTests.swift` over `Resources/v2/`).
 - Docs: the corpus pages (`build/wire/corpus.md`, `contribute/corpus.md`), `gen-reference.mjs`
   for the new family, then `pnpm --filter @polaris-key/docs gen`.
+- **Parity:** [P1b-01](P1b-01-parity-registry.md) has landed, and its four manifests list
+  `ui.stages` as `planned` under this package. Mark it `implemented` in each, with
+  `@pkey-feature ui.stages` tags ([`plans/P1-09.md`](../plans/P1-09.md) §5); otherwise
+  `pnpm parity:check` rule 4 fails once this package is `done`.
 
 **Out** (and where it belongs instead):
 
@@ -82,7 +86,6 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   side).
 - The update decision itself (→ P3's `update-matrix.json`); here `decide` takes its result as an
   input.
-- `sdks/*/parity.json` entries (after [P1b-01](P1b-01-parity-registry.md)).
 
 ## Design notes
 
@@ -177,8 +180,8 @@ proposes moving them to a follow-up and marking `ui.stages` `planned` for those 
 - [ ] `pnpm --filter @polaris-key/docs gen:check` passes and the corpus page lists
       `stage-matrix.json`.
 - [ ] The green gate passes (`AGENTS.md`), Python and Swift included.
-- [ ] Parity manifests mark `ui.stages` implemented for Node, React, Python and Swift (once P1b-01
-      has landed).
+- [ ] Parity manifests mark `ui.stages` implemented for Node, React, Python and Swift, and
+      `mise exec node@22 -- pnpm parity:check` passes.
 
 ## Verify
 
@@ -189,6 +192,7 @@ mise exec node@22 -- pnpm conformance
 ( cd sdks/python && .venv/bin/python -m pytest -q )
 ( cd sdks/swift && swift build && swift test )
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
+mise exec node@22 -- pnpm parity:check
 ```
 
 ## Hand-off
