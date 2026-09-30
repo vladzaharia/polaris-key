@@ -48,7 +48,7 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   (A7's CI stand-in: files index, gaps blob, per-file and whole `--patch-from` deltas, the zstd CLI
   calls), `content/gen/pck.py` (PCK v2–v4 reader and writer), and `patching/tools/` (A6's
   offline tools).
-- [notes/S-05 §4.1, §4.6 and §5](../../notes/S-05.md#5-recommendation-rules-the-named-briefs-adopt)
+- [notes/S-05 §4.1, §4.6 and §5](../../notes/S-05-godot-platform-mechanics.md#5-recommendation-rules-the-named-briefs-adopt)
   (the entry-count limits, the admission list and the strip step) and
   `prototype/platform-mechanics/tools/strip_pack.py`; `f_uid/` holds real `--export-pack` output
   to copy the fixtures from.
@@ -108,7 +108,7 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   vector was built with; check `zstd --version` ≥ 1.5.5 and fail clearly otherwise. The Action
   installs it. Compressed bytes may differ across zstd versions; content addressing makes that
   harmless, but never re-publish an object under an existing hash.
-- **The admission list** ([notes/S-05 §5 (f)](../../notes/S-05.md#5-recommendation-rules-the-named-briefs-adopt),
+- **The admission list** ([notes/S-05 §5 (f)](../../notes/S-05-godot-platform-mechanics.md#5-recommendation-rules-the-named-briefs-adopt),
   measured in §4.6). A `godot.pck` payload may contain only: (1) entries under one of the
   deliverable's `handler.prefixes`, including their `.remap` and `.import` files; (2) the
   `.godot/exported/…` and `.godot/imported/…` files that those `.remap` and `.import` files point

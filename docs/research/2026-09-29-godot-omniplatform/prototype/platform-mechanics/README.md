@@ -1,7 +1,7 @@
 # Godot platform mechanics on 4.7.2 (S-05)
 
 This is research code for [Godot on Polaris Key](../../README.md) that backs
-[notes/S-05](../../notes/S-05.md). It is not part of the green gate and not a published SDK.
+[notes/S-05](../../notes/S-05-godot-platform-mechanics.md). It is not part of the green gate and not a published SDK.
 
 Every probe runs as an **exported project on an official Godot 4.7.2-stable template**
 (`ed1daf0bf`), because official 4.6+ templates ignore `--path`, `--script` and `--main-pack`

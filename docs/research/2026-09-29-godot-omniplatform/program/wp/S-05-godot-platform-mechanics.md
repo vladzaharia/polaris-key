@@ -14,7 +14,7 @@
 
 ## Goal
 
-A research note, `notes/S-05.md`, answers six engine-level questions on
+A research note, `notes/S-05-godot-platform-mechanics.md`, answers six engine-level questions on
 Godot 4.7.x official templates, each with a measured answer and the design consequence:
 
 - **(a)** How long does `ProjectSettings.load_resource_pack` block the UI on Android, as a function
@@ -120,14 +120,14 @@ Q5 repeats (a) and (c). Each answer changes a design already written down:
    `application/run/main_loop_type`, and a README that records the device, OS and template.
 2. Run the items in the order listed under Scope, (a) first. Record cold and warm numbers, and stop
    at the time box.
-3. Write `notes/S-05.md`. Each item ends with the rule the named brief
+3. Write `notes/S-05-godot-platform-mechanics.md`. Each item ends with the rule the named brief
    should adopt.
 4. Copy those rules into the affected briefs (P1-10, P3-10, P4-08, P5-06, P5-07, P5-08), or list
    them in the report for the lead.
 
 ## Acceptance criteria
 
-- [ ] `notes/S-05.md` exists with the provenance blockquote, question,
+- [ ] `notes/S-05-godot-platform-mechanics.md` exists with the provenance blockquote, question,
       short answer per item, method, environment, results, recommendation, affected briefs and
       sources, with evidence tags; items not reached are listed as open, with the reason.
 - [ ] (a) gives stall time against size and entry count, and a per-frame mount budget for the

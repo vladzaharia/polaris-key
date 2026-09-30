@@ -4,7 +4,7 @@
   on a Windows 10 1903+ / Windows 11 machine you may add a throwaway trusted certificate to.
 
 .DESCRIPTION
-  Not run yet: no Windows host was available for S-05 (notes/S-05.md section 4.4 and 7).
+  Not run yet: no Windows host was available for S-05 (notes/S-05-godot-platform-mechanics.md section 4.4 and 7).
   Run it from an elevated Windows PowerShell 5.1 or PowerShell 7 prompt on a disposable VM, after
   build_d.sh has produced ..\build\d\layout-1.0.0.0 and ..\build\d\layout-1.0.1.0 (build_d.sh runs
   on macOS or Linux; copy the whole platform-mechanics directory across).
@@ -166,7 +166,7 @@ finally {
   Write-Host "summary: $(Join-Path $Out 'summary.json')"
 }
 
-# What to read off summary.json for notes/S-05.md section 4.4:
+# What to read off summary.json for notes/S-05-godot-platform-mechanics.md section 4.4:
 #   probe[].user_data_dir / exe / exe_in_windowsapps       -> where user:// points; the path hint
 #   probe[].write_beside_exe.ok                            -> install directory writable? (expect false)
 #   steps[after-probe:install].phys_marker vs real_marker  -> where new user:// files really land

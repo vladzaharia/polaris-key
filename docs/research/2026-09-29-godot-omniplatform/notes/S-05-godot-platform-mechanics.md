@@ -362,7 +362,7 @@ Edited in this branch: [P1-10](../program/wp/P1-10-godot-ui-kit.md), [P3-10](../
 (mount pacing, the web pack path, the (f) rule and `replace_files=true`),
 [P5-06](../program/wp/P5-06-kotlin-aar.md), [P5-07](../program/wp/P5-07-desktop-plugins.md),
 [P5-08](../program/wp/P5-08-platform-pack-transports.md), [D-04](../program/wp/D-04-diceroll-after-p4.md)
-and [S-05](../program/wp/S-05-godot-platform-mechanics.md) (note path).
+and [S-05](../program/wp/S-05-godot-platform-mechanics.md) (the macOS control run in Verify).
 
 Proposed for the lead, not edited:
 
