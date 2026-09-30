@@ -224,18 +224,18 @@ were needed to declare the four SDKs honestly, and later packages should rely on
 
 ## Acceptance criteria
 
-- [ ] `features.json` validates against its schema and contains every id in PARITY §5.1–§5.7.
-- [ ] The four manifests validate, and each lists every registry id.
-- [ ] `mise exec node@22 -- pnpm parity:check` exits 0 on the branch.
-- [ ] `pnpm --filter @polaris-key/tools test` has one failing fixture for each of the five rules,
+- [x] `features.json` validates against its schema and contains every id in PARITY §5.1–§5.7.
+- [x] The four manifests validate, and each lists every registry id.
+- [x] `mise exec node@22 -- pnpm parity:check` exits 0 on the branch.
+- [x] `pnpm --filter @polaris-key/tools test` has one failing fixture for each of the five rules,
       plus an `na` on a runtime the manifest does not list.
-- [ ] Deleting one tag from a proving test makes `pnpm parity:check` fail (shown in the PR).
-- [ ] `reference/parity.mdx` exists, is linked from `reference/index.md`, and
+- [x] Deleting one tag from a proving test makes `pnpm parity:check` fail (shown in the PR).
+- [x] `reference/parity.mdx` exists, is linked from `reference/index.md`, and
       `pnpm --filter @polaris-key/docs gen:check` passes.
-- [ ] CI's `js` job runs `pnpm parity:check`; `AGENTS.md` and `waves.md` list it.
-- [ ] Every `planned` entry names a work package or is `unowned` with a note. The PR lists the
+- [x] CI's `js` job runs `pnpm parity:check`; `AGENTS.md` and `waves.md` list it.
+- [x] Every `planned` entry names a work package or is `unowned` with a note. The PR lists the
       unowned gaps and each new `web` N/A.
-- [ ] The green gate passes (`AGENTS.md`), including `pnpm format` over the new JSON.
+- [x] The green gate passes (`AGENTS.md`), including `pnpm format` over the new JSON.
 
 ## Verify
 
