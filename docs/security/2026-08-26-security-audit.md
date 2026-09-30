@@ -317,7 +317,7 @@ longer carries a †.
 | R10-06 | `POST /<p>/session/license` is an unrate-limited `/activate` clone                             | `packages/worker/src/browserSession.ts:250-292`                                  | **Fixed** †         | Closed by R3-08's rate limit; no R10-lane test was written                                                                                                   |
 | R10-07 | Unauthenticated KV-write amplification on `/<p>/auth/*`                                        | `packages/worker/src/oidc.ts:508-510`                                            | **Fixed** †         | Closed by R8-10's limiter. PoC block is named `R10-05`                                                                                                       |
 | R10-08 | `/webhooks/github` buffers the entire request body before authenticating it                    | `packages/worker/src/githubWebhook.ts:118-124`                                   | **Reported**        | PoC block `R10-06` ×2                                                                                                                                        |
-| R10-09 | Manual-channel regex ReDoS — the 80-char cap is not a guard                                    | `packages/worker/src/release/channels.ts:38`                                     | **Fixed-partial**   | PoC block `R10-07` ×3. The _catalog_ half is fixed (`shared-catalog/src/regex.ts`); `channels.ts:38` still reproduces                                        |
+| R10-09 | Manual-channel regex ReDoS — the 80-char cap is not a guard                                    | `packages/worker/src/release/channels.ts:38`                                     | **Fixed-partial**   | PoC block `R10-07` ×3. Catalog half fixed (`shared-catalog/src/regex.ts`); `channels.ts:38` still reproduces. Widened ‡                                      |
 | R10-10 | `GET /<p>/config` is unrate-limited and writes D1 on every poll                                | `packages/worker/src/licensing.ts:475-566`                                       | **Reported**        | `describe("R10-10 …")` ×2                                                                                                                                    |
 | R10-11 | Uncapped request headers written verbatim into D1 device rows                                  | `packages/worker/src/licensing.ts:65-81`                                         | **Reported**        | PoC block `R10-08` ×2                                                                                                                                        |
 | R10-12 | KV token records have no TTL and are resurrected by _rejected_ requests                        | `packages/worker/src/kv.ts:27-34`                                                | **Fixed** †         | PoC block `R10-09` ×2; fix `expirationTtl: TOKEN_RECORD_TTL_SECONDS` at `kv.ts:46`                                                                           |
@@ -342,6 +342,14 @@ longer carries a †.
 † Divergences in this group are the same three classes as §3.2: R5/R7/R9/R12 documents that predate
 or omit their remediation. R10-06/R10-07/R10-13 were closed by other lanes' rate limits and indexes,
 not by the R10 lane.
+
+‡ R10-09 was widened by P0-02 (release resolution, 2026-09). `release.stableTagPattern` is a second
+sink under the same length-only cap and the same precondition (write access to a linked repo's
+`.pkey/release`). It is reached on every `latest`/`stable` request, in `checkReleaseHealth` and in
+every sync, not only on a manual channel. The release list it runs over is now up to 3 pages live
+(about 600 tests per resolution, against 100 as audited) and up to 1,000 releases per channel per
+sync. Any fix must cover both `manualChannels` and `stableTagPattern`. Details are in
+`findings/R10-dos.md`, R10-09.
 
 ### 3.4 Low (53)
 
@@ -372,7 +380,7 @@ not by the R10 lane.
 | R5-11  | The rate-limit DO never reclaims storage, contradicting its own comment                           | `packages/worker/src/rateLimitDo.ts:5-7`                           | **Fixed** †         | Closed by R10-04b's `alarm()` sweep at `rateLimitDo.ts:93`                                                                                                                 |
 | R6-08  | `aarch64` / `amd64` route aliases raise an unhandled `TypeError`                                  | `packages/worker/src/router.ts:51`                                 | **Fixed**           | `R6-release.test.ts:890` (4 cases)                                                                                                                                         |
 | R6-09  | `streamAsset`/`fetchTextAsset`: relative `Location` → 500; second hop not redirect-guarded        | `packages/worker/src/release/github.ts:121-132`                    | **Accepted risk**   | `R6-release.test.ts:1152`, `:1186` left green — out of lane; needs a GitHub-chained redirect                                                                               |
-| R6-10  | No downgrade/rollback protection on any release surface                                           | `packages/worker/src/release/channels.ts:142-168`                  | **Accepted risk**   | `:1266` left green — needs a migration and an admin surface                                                                                                                |
+| R6-10  | No downgrade/rollback protection on any release surface                                           | `packages/worker/src/services/release/gateway.ts`                  | **Fixed**           | Fixed after this snapshot, in P0-02: `R6-release.test.ts` R6-10 `it("FIXED: …")`; `release_channel_floors` (0023). §1 totals are as audited                                |
 | R6-11  | Served `origin` is taken from the request Host header                                             | `packages/worker/src/release/index.ts:185`                         | **Accepted risk**   | `:779` marked `// NOT FIXED`. Partially mitigated: `ORIGIN_RE` + `shQuote` prevent shell injection                                                                         |
 | R6-12  | Portal `/download/<token>` open redirect + single-use TOCTOU (dormant)                            | `packages/worker/src/portal/api.ts:679-687`                        | **Fixed-partial**   | TOCTOU half fixed by R9-05b/R11-05 (`:1398`); the open redirect (`:1321`) is open and dormant                                                                              |
 | R7-09  | Install-script allowlist on a deprecation path, not migrated to `pnpm-workspace.yaml`             | `package.json:26-31`                                               | **Reported**        | Verified: still in `package.json`; `pnpm-workspace.yaml` has only `packages:`. **The pnpm warning is wrong** — 10.33.2 still reads the field, so the control is live today |
@@ -1177,7 +1185,8 @@ discover at 02:00."_
 **10. Deliberately accepted, recorded so they are not mistaken for oversights.** R3-12
 (entitlement bucket unpruned — changes the meaning of stored production overrides; wants the owner's
 call). R6-09, R6-10, R6-11, R6-13, R6-14 (each with a stated reason in
-`R6-release.md:858-868`; R6-10 and R6-11 need features, not patches — R6-12 is listed there too but
+`R6-release.md:858-868`; R6-10 and R6-11 need features, not patches — R6-10 has since been built
+(P0-02, see its row in §3.4) — R6-12 is listed there too but
 its TOCTOU half was fixed by another lane, so it is Fixed-partial in §3.4, not accepted). R8-07 (`redirect_uris_json`
 NULL — no shipped writer produces one). R11-11 (`D1Db` divergences — would change every hot-path
 read; `runChanges` fails closed). R11-04's full replay-idempotency (a five-table rebuild on D1 with

@@ -26,7 +26,7 @@ Grouped by what triggers them:
 | Devices (operator-driven) | `device.deauthorize`, `device.fingerprint.reset`                                                                    |
 | Config                    | `schema.publish`, `profile.create`, `profile.delete`, `profile.overrides`                                           |
 | Tiers                     | `tier.create`, `tier.update`, `tier.delete`                                                                         |
-| Release                   | `release.resync`                                                                                                    |
+| Release                   | `release.resync`, `release.channel.floor`                                                                           |
 | Update                    | `update.settings.update`                                                                                            |
 | Identity                  | `portal.settings.update`                                                                                            |
 | Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                   |
