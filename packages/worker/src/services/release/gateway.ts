@@ -420,8 +420,11 @@ export async function resolveMovingSelector(
       ? []
       : await listReleases(tok, cfg.gh_owner, cfg.gh_repo, 100, fetchImpl, {
           maxPages: RELEASE_PAGE_CAP.live,
-          stopWhen: (soFar) =>
-            resolveChannel(sel, soFar, channelTags, policy) !== null,
+          // Every selector's match is a per-release predicate, so "the pages so far hold a
+          // match" is "the NEW page holds one": look at each release once here (R10-09 — each
+          // look may run an operator regex), not once per page read.
+          stopWhen: (_soFar, page) =>
+            resolveChannel(sel, page, channelTags, policy) !== null,
         });
   const offered = resolveChannel(sel, listed, channelTags, policy);
 

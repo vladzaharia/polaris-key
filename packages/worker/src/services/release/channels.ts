@@ -211,11 +211,14 @@ export function resolutionPolicy(cfg: {
   const isIgnored = (r: Release) => ignore.has(r.tag_name);
   return {
     isIgnored,
+    // The operator regex runs LAST, after every linear check has had the chance to reject the tag
+    // (R10-09: `stableTagPattern` is compiled under the same length-and-compile rule as a manual
+    // channel, which is not a complexity guard).
     isCandidate: (r) =>
       !r.draft &&
       !isIgnored(r) &&
-      re.test(r.tag_name) &&
-      semverOfTag(r.tag_name) !== null,
+      semverOfTag(r.tag_name) !== null &&
+      re.test(r.tag_name),
     compare: compareReleases,
   };
 }
@@ -266,7 +269,7 @@ export function resolveChannel(
       if (sel.raw === "latest" || sel.raw === "stable")
         return newestOf(
           releases,
-          (r) => isCandidate(r) && !r.prerelease,
+          (r) => !r.prerelease && isCandidate(r),
           compare,
         );
       // A pinned version names its tag exactly; `ignoreTags` does not hide it.
@@ -282,7 +285,7 @@ export function resolveChannel(
           (r) => channelTags.has(r.tag_name) && !isIgnored(r),
           compare,
         );
-      return newestOf(releases, (r) => isCandidate(r) && r.prerelease, compare);
+      return newestOf(releases, (r) => r.prerelease && isCandidate(r), compare);
     case "pr":
       if (channelTags)
         return newestOf(
@@ -299,7 +302,7 @@ export function resolveChannel(
       // Manual channels keep their own regex (not `stableTagPattern`) but skip `ignoreTags`.
       return newestOf(
         releases,
-        (r) => re.test(r.tag_name) && !isIgnored(r),
+        (r) => !isIgnored(r) && re.test(r.tag_name),
         compare,
       );
     }

@@ -180,8 +180,11 @@ export const RELEASE_PAGE_CAP = {
 export interface ListReleasesOptions {
   /** Pages to read at most (default 1: the pre-pagination behaviour). */
   maxPages?: number;
-  /** Stop early once this returns true for everything read so far. */
-  stopWhen?: (soFar: Release[]) => boolean;
+  /**
+   * Stop early once this returns true. `page` is the page just read, so a per-release predicate
+   * can look at each entry once instead of re-scanning `soFar` after every page.
+   */
+  stopWhen?: (soFar: Release[], page: Release[]) => boolean;
 }
 
 /**
@@ -234,8 +237,9 @@ export async function listReleases(
     // would 500 the route.
     if (!Array.isArray(body))
       throw new NotFoundError("releases list: unexpected shape");
-    out.push(...(body as Release[]));
-    if (opts.stopWhen?.(out)) break;
+    const pageReleases = body as Release[];
+    out.push(...pageReleases);
+    if (opts.stopWhen?.(out, pageReleases)) break;
     url = nextPageUrl(res.headers.get("Link"));
   }
   return out;
