@@ -97,7 +97,11 @@ function recipes(
   list: EdgeMintRecipe[],
   registration: EdgeMintRecipesResponse["registration"] = "requires-license",
   anonymousEnroll = false,
-  extra: { identity?: EdgeMintIdentity | null; oidcDefault?: boolean } = {},
+  extra: {
+    identity?: EdgeMintIdentity | null;
+    oidcDefault?: boolean;
+    licenseEnabled?: boolean;
+  } = {},
 ): EdgeMintRecipesResponse {
   const oidcDefault = extra.oidcDefault ?? false;
   return {
@@ -105,6 +109,7 @@ function recipes(
     anonymousEnroll,
     oidcDefault,
     publicMint: registration === "open" || anonymousEnroll || oidcDefault,
+    licenseEnabled: extra.licenseEnabled ?? true,
     identity: extra.identity ?? null,
     recipes: list,
   };
@@ -307,6 +312,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
           approval: {
             ...FIELDS,
             openRegistrationAcknowledged: false,
+            licenseEnabled: true,
             identity: null,
             approvedAt: 1_700_000_000,
             approvedBy: "migration",
@@ -346,6 +352,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
             approval: {
               ...FIELDS,
               openRegistrationAcknowledged: false,
+              licenseEnabled: true,
               identity: null,
               approvedAt: 1_700_000_000,
               approvedBy: "op-1",
@@ -451,6 +458,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
             approval: {
               ...FIELDS,
               openRegistrationAcknowledged: false,
+              licenseEnabled: true,
               identity: IDENTITY,
               approvedAt: 1_700_000_000,
               approvedBy: "op-1",
@@ -473,6 +481,35 @@ describe("Edge-mint recipes card (P0-12)", () => {
     ).toBeTruthy();
     expect(screen.getByText("https://id.example")).toBeTruthy();
     expect(screen.getByText(/approved as:/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Re-approve" })).toBeTruthy();
+  });
+
+  it("explains a recipe whose approval predates License being turned off", async () => {
+    mockApi.edgeMintRecipes.mockResolvedValue(
+      recipes(
+        [
+          recipe({
+            status: "changed",
+            approval: {
+              ...FIELDS,
+              openRegistrationAcknowledged: false,
+              licenseEnabled: true,
+              identity: IDENTITY,
+              approvedAt: 1_700_000_000,
+              approvedBy: "op-1",
+            },
+            changedFields: ["license"],
+          }),
+        ],
+        "requires-identity",
+        false,
+        { identity: IDENTITY, licenseEnabled: false },
+      ),
+    );
+    renderSecrets();
+    expect(
+      await screen.findByText(/License was turned off after this recipe/),
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Re-approve" })).toBeTruthy();
   });
 

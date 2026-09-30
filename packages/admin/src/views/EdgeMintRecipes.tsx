@@ -50,6 +50,14 @@ import {
  * an operator-issued key, and the provider, issuer, client id and group map are all written by
  * the manifest. The card shows them, the approve call echoes them, and a push that changes them
  * makes the recipe `changed` with `identity` among its changed fields.
+ *
+ * And so is License: the mint checks a device's licence only while License is on, so turning it
+ * off (`license`) would let a device whose licence was disabled mint again.
+ *
+ * A manifest push that widens any of these three does not just leave the recipe `changed`: the
+ * ingest deletes the approval (audited as `config.mint.invalidate`), so reverting the push
+ * cannot bring it back. The recipe then reads `pending`, and whatever was issued while it was
+ * widened needs reviewing before it is re-approved.
  */
 
 const FIELD_LABELS: Record<keyof EdgeMintRecipeFields, string> = {
@@ -388,6 +396,14 @@ export function EdgeMintRecipes({
                   was={recipe.approval?.identity ?? null}
                 />
               </div>
+            ) : null}
+            {recipe.changedFields.includes("license") ? (
+              <p className="text-xs text-warning">
+                License was turned off after this recipe was approved, so the
+                mint no longer checks each device&apos;s licence — a disabled or
+                expired licence would mint again. It does not mint until it is
+                re-approved.
+              </p>
             ) : null}
             {recipe.changedFields.includes("registration") ? (
               <p className="text-xs text-warning">

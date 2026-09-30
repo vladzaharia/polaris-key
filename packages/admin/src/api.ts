@@ -124,6 +124,8 @@ export interface EdgeMintRecipe extends EdgeMintRecipeFields {
     | (EdgeMintRecipeFields & {
         /** Whether the approval carries the open-registration acknowledgement. */
         openRegistrationAcknowledged: boolean;
+        /** Whether License was on (licences checked) when the approval was given. */
+        licenseEnabled: boolean;
         /** The sign-in trust recorded with the approval. */
         identity: EdgeMintIdentity | null;
         approvedAt: number;
@@ -132,9 +134,17 @@ export interface EdgeMintRecipe extends EdgeMintRecipeFields {
     | null;
   /** Why a `changed` recipe's approval no longer applies. `registration` means the mint is
    *  public now (open registration, anonymous enrolment or an OIDC default tier) and the
-   *  approval was given without acknowledging that; `identity` means sign-in now trusts a
-   *  different identity provider or group map than the approval recorded. */
-  changedFields: (keyof EdgeMintRecipeFields | "registration" | "identity")[];
+   *  approval was given without acknowledging that; `license` means License was turned off
+   *  since, so device licences are no longer checked; `identity` means sign-in now trusts a
+   *  different identity provider or group map than the approval recorded. A manifest push
+   *  that causes any of these three deletes the approval instead (the recipe reads `pending`;
+   *  the audit log says why), so `changed` for them is seen after an operator's own edit. */
+  changedFields: (
+    | keyof EdgeMintRecipeFields
+    | "registration"
+    | "license"
+    | "identity"
+  )[];
 }
 
 export interface EdgeMintRecipesResponse {
@@ -147,6 +157,8 @@ export interface EdgeMintRecipesResponse {
   /** Open registration, anonymous enrolment or an OIDC default tier: anyone (who can sign in)
    *  can hold a device token, so approving needs the acknowledgement. */
   publicMint: boolean;
+  /** Whether License is on, so the mint checks each device's licence. */
+  licenseEnabled: boolean;
   /** The sign-in trust an approval given now would record; the approve call echoes it. */
   identity: EdgeMintIdentity | null;
   recipes: EdgeMintRecipe[];
