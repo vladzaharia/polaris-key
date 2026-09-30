@@ -1,0 +1,10 @@
+{
+  "name": "pkey-outlet-node-probe",
+  "version": "0.0.0",
+  "bin": {
+    "pkey-outlet-node-probe": "probe.cjs"
+  },
+  "scripts": {
+    "probe": "node probe.cjs"
+  }
+}
