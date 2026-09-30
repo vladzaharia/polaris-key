@@ -44,7 +44,7 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
   `conformance/runners/node/corpusV2.test.ts` (how a matrix is consumed).
 - `packages/client-core/src/{index.ts,gate.ts}` and `package.json` (subpath exports).
 - `sdks/python/tests/test_gate_matrix.py`, `sdks/swift/Tests/PolarisKeyTests/GateMatrixTests.swift`
-  (how the other runners load a matrix), `sdks/swift/Package.swift:107` (the Swift mirror).
+  (how the other runners load a matrix), `sdks/swift/Package.swift:111` (the Swift mirror).
 - `packages/docs/scripts/gen-reference.mjs` (the corpus page lists every family).
 
 ## Scope
