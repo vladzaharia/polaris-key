@@ -28,7 +28,8 @@
  * pass would fail under D1's foreign-key enforcement the moment one live download URL existed.
  * A release withdrawn upstream therefore leaves its row behind — stale, but inert: the portal
  * still gates every download on a live licence, and the artifact URL it holds is GitHub's, which
- * will 404 on its own.
+ * will 404 on its own. What the sync does record is that it is gone: its `release_health` row
+ * turns `degraded` with `{"absentUpstream": true}` once a complete list no longer carries it.
  */
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
@@ -166,6 +167,22 @@ export async function listReleaseHealth(
       ORDER BY subject_kind ASC, subject_id ASC`,
     product,
   );
+}
+
+/**
+ * Every release id the store holds for a product. The truth-store sync hands these to
+ * `releaseStoreStatements` so it can mark a release that has gone from upstream (P0-03) without
+ * the statement builder touching the database.
+ */
+export async function listStoredReleaseIds(
+  db: Db,
+  product: string,
+): Promise<string[]> {
+  const rows = await db.all<{ release_id: string }>(
+    "SELECT release_id FROM release_metadata WHERE product = ? ORDER BY release_id ASC",
+    product,
+  );
+  return rows.map((r) => r.release_id);
 }
 
 export async function listChannelFloors(
@@ -474,6 +491,14 @@ function floorStatement(
  * ORDER IS LOAD-BEARING. `release_artifacts` and `release_channels` both carry a foreign key to
  * `release_metadata(product, release_id)`, which D1 enforces per statement inside a batch, so
  * every metadata row is emitted before anything that references it.
+ *
+ * ABSENT UPSTREAM (P0-03). `storedReleaseIds` is what the store held before this sync, and the
+ * caller passes it ONLY when `releases` is the whole upstream list (the paginated read reached a
+ * page with no `next`). Each stored release that is not among the published ones — deleted, or
+ * unpublished back to a draft — gets `release_health` `degraded` with
+ * `{"absentUpstream": true}`. Its metadata and artifact rows stay (see IDEMPOTENCE above). A
+ * capped or cut-short list passes `null` and marks nothing: absence from a partial read proves
+ * nothing. A release that comes back is re-marked by its ordinary health row on the next sync.
  */
 export function releaseStoreStatements(
   product: string,
@@ -481,6 +506,7 @@ export function releaseStoreStatements(
   releases: Release[],
   now: number,
   floors: ReleaseChannelFloorRow[] = [],
+  storedReleaseIds: readonly string[] | null = null,
 ): DbStatement[] {
   const policy = artifactPolicy(cfg);
   const candidates = resolutionPolicy(cfg);
@@ -537,6 +563,23 @@ export function releaseStoreStatements(
         details_json: JSON.stringify({ assetCount: release.assets.length }),
       }),
     );
+  }
+
+  if (storedReleaseIds) {
+    const upstream = new Set(published.map((r) => r.tag_name));
+    for (const releaseId of storedReleaseIds) {
+      if (upstream.has(releaseId)) continue;
+      health.push(
+        stmtUpsertHealth({
+          product,
+          subject_kind: "release",
+          subject_id: releaseId,
+          status: "degraded",
+          checked_at: now,
+          details_json: JSON.stringify({ absentUpstream: true }),
+        }),
+      );
+    }
   }
 
   const channels: DbStatement[] = [];
