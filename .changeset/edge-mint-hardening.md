@@ -15,7 +15,9 @@ reachable token mint.
   recipe. A push that changes a security-relevant field makes the recipe inert until re-approved;
   resync deletes approvals for recipe ids the manifest dropped. Config's admin API gains
   `GET …/config/mint`, `POST …/config/mint/<id>/approve` (fields echoed back; `409` if stale;
-  `acknowledgeOpenRegistration` required under open registration) and `…/revoke`.
+  `acknowledgeOpenRegistration` required under open registration) and `…/revoke`. The
+  acknowledgement is stored on the approval and re-checked on every mint, so a push that opens
+  registration (or turns License off) after approval makes the recipe `404` until re-approved.
 - **Per-device budget.** Bucket `mintDevice`, 30 mints per device per minute, beside the per-IP one.
 - **Discovery.** `config.mint.available` is true only when an approved recipe exists.
 - **Console.** An Edge-mint recipes card on the Secrets view, a usage selector when setting a

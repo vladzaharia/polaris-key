@@ -100,14 +100,25 @@ token, so an approved recipe is a **public** token mint. That can be the right c
 be a visible one: the approve body must also carry `"acknowledgeOpenRegistration": true` (else
 `422`), and the audit entry records that it was given.
 
+The acknowledgement is stored **on the approval** and checked on every mint, not only when you
+approve. Registration is product state, and a `.pkey/product` push can open it without touching
+the recipe, by declaring `devices.registration: open` or by turning License off so the derived
+policy becomes open. While registration is open, an approval given without the acknowledgement
+does not count: the recipe answers `404`, and the list shows it `changed` with `registration` in
+`changedFields` (the approval's `openRegistrationAcknowledged` is `false`). Re-approve it with the
+acknowledgement to make it mint again. If registration closes again, the earlier approval applies
+again. An approval that already carries the acknowledgement keeps minting whatever the policy
+becomes.
+
 Every change is audited: `config.mint.approve`, `config.mint.revoke`, and `secret.usage` when a
 secret's usage changes. A re-upload of a secret that omits `usage` keeps the stored usage, so
 rotating a key never silently changes what it may sign.
 
 **Upgrading.** Migration `0025a_edge_mint_approvals.sql` backfills both conditions from what was
 deployed: every secret a recipe already named is marked `edge-mint`, and every existing recipe is
-approved as it stands (`approved_by = 'migration'`), so deployed products keep minting. That is the
-status quo, not a weakening — each of those secrets was already mintable. Review the list once
+approved as it stands (`approved_by = 'migration'`), with the open-registration acknowledgement
+recorded, so deployed products keep minting. That is the status quo, not a weakening: each of
+those secrets was already mintable under the product's current policy. Review the list once
 after deploying:
 
 ```sql

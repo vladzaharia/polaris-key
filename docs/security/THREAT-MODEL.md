@@ -81,7 +81,11 @@ Any feature whose security depends on the client _refusing_ to do something is n
   the exception that is held back: a recipe from `.pkey/` is **inert until an operator approves
   it** in the exact form it will run (`edge_mint_approvals`), and any push that changes a
   security-relevant field makes it inert again. A repo writer can name a secret in a recipe but
-  cannot make that secret signable, nor make an unapproved recipe mint.
+  cannot make that secret signable, nor make an unapproved recipe mint. Nor can a push widen an
+  approved recipe into a public mint: the open-registration acknowledgement is stored on the
+  approval and re-checked on every mint, so a push that opens registration (declaring
+  `devices.registration: open`, or turning License off so the derived policy is open) makes an
+  approval given without it stop matching.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -140,9 +144,11 @@ currently holds:
    when License is on): the recipe's signing secret is marked usage `edge-mint`, and an approval
    equal to the current recipe column for column exists. Neither can be set from a `.pkey/`
    manifest; failing the first is `500 misconfigured`, failing the second is the same `404` as an
-   unknown recipe. Under open registration an approval requires an explicit, audited
-   acknowledgement that the token is publicly mintable, and every device is capped at 30 mints a
-   minute beside the per-IP budget.
+   unknown recipe. While the product's effective registration is open, an approval matches only if
+   it carries an explicit, audited acknowledgement that the token is publicly mintable. That is
+   checked on every mint, not only when approving, so registration opening after an approval (by
+   push or by operator) makes the recipe `404` until it is re-approved with the acknowledgement.
+   Every device is also capped at 30 mints a minute beside the per-IP budget.
 2. ❌ A tampered cache should not be able to change _which keys verify signatures_. **Does not hold**
    — the cache overrides pinned keys.
 3. ❌ A compromised signing key should be revocable. **Does not hold** — client trust sets only grow
