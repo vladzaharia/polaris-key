@@ -69,8 +69,9 @@ and devices.
   - `addons/polaris_key/crypto/sha512.gd` → `addons/polaris_key/core/crypto/sha512.gd`;
   - `crypto/ed25519_fast.gd` → `core/crypto/ed25519.gd`; `crypto/ed25519_tweetnacl.gd` →
     `core/crypto/ed25519_ref.gd`; `jws.gd` → `core/jws.gd` (the §5.1 layout);
-  - `tests/suite_{sha512,ed25519,jws,platform,profile}.gd`, `tests/cli.gd`,
-    `vectors/{ed25519,sha512}.json`, `vectors/gen_ed25519.mjs` → `sdks/godot/tests/…`.
+  - `tests/suite_{sha512,ed25519,platform,profile}.gd`, `vectors/{ed25519,sha512}.json` and
+    `vectors/gen_ed25519.mjs` → `sdks/godot/tests/…`; `tests/cli.gd` → `tests/runner.gd` and
+    `tests/suite_jws.gd` → `tests/suite_conformance.gd` (both rewritten below).
 - **Rename** the global classes to the SDK prefix: `PKSha512` → `PKeySha512`, `PKEd25519Fast` →
   `PKeyEd25519`, `PKEd25519Ref` → `PKeyEd25519Ref`, `PKJws` → `PKeyJws`, `PKTestRunner` →
   `PKeyTestRunner`. No behaviour change.
