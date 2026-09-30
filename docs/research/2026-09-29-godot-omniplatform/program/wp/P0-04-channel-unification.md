@@ -50,8 +50,8 @@ would have to send `staging` to pass ([notes/A2 §1.9](../../notes/A2-sdk-port.m
   `packages/sdk-node/src/core/context.ts:181,292`.
 - Corpus: `tools/sign-corpus.ts:1632-2115` (gate-matrix v2: carried rows are frozen, new rows
   are appended in `buildGateMatrixV2`), the runner ports in
-  `conformance/runners/node/corpusV2.test.ts:322-420`, `sdks/python/tests/test_gate_matrix.py:72-94`,
-  `sdks/swift/Tests/PolarisKeyTests/GateMatrixTests.swift:75-93`.
+  `conformance/runners/node/corpusV2.test.ts:322-420`, `sdks/python/tests/test_gate_matrix.py:72-99`,
+  `sdks/swift/Tests/PolarisKeyTests/GateMatrixTests.swift:75-101`.
 - Catalog and console: `products/djdl/catalog.json` (the `channels` flag, enum `stable, staging, pr`),
   `packages/admin/src/views/licenses/shared.tsx:84` (`CHANNELS = ["stable", "beta", "staging", "pr"]`;
   its `onChange` at `:107` drops any value it does not offer), and a second picker in
@@ -103,7 +103,7 @@ order is contract → catalog → corpus → every SDK:
 
 - Canonical names: `stable`; `beta`; `pr-<n>` (`pr` as the family grant); manual names in
   `^[a-z0-9][a-z0-9-]{0,63}$`, the intersection of the manifest's `CHANNEL_RE`
-  (`shared-manifest/src/index.ts:341`, which also allows `A-Z`, `.` and `_`) and the feed routes'
+  (`shared-manifest/src/index.ts:347`, which also allows `A-Z`, `.` and `_`) and the feed routes'
   `^[a-z0-9-]+$` (`update/routes.ts:20`, `router.ts:181`, which has no length bound).
 - Header normalisation: `stable` and `latest` → `stable`; `beta` → `beta`; `staging` → `beta`;
   `pr` or `pr-<n>` → `pr-<n>`; `dev` → `dev` (gate-only pseudo-channel for `0.0.0-dev*` builds,
