@@ -7,26 +7,29 @@ not a published SDK; P5-05 turns the patch and the shim into the Apple plugin pa
 It exports a throwaway Godot 4.7.2 project for iOS ("Export Project Only"), proves the unpatched
 export still builds, adds an Apple-hosted Background Download extension and an App Group to a copy
 with a re-runnable Ruby `xcodeproj` script, builds both for device (unsigned) and simulator, and
-drives `BAAssetPackManager` from GDScript through a small GDExtension. Four data-only asset packs
-(v1 and v2) are built with `xcrun ba-package`; a logging mock server stands in for Apple's CDN on
+drives `BAAssetPackManager` from GDScript through a small GDExtension. Four asset packs (v1 and v2)
+are built with `xcrun ba-package`: three data-only packs, and a "big" pack that is A6's unmodified
+full-project PCK (it holds `project.binary`, the class cache and two `.gdc` scripts, so it is **not**
+data-only and would fail CONTENT §4.2's pre-mount directory check; it is there only as the byte
+baseline the brief asks for); a logging mock server stands in for Apple's CDN on
 the simulator.
 
 ## What is here
 
-| Path                  | What                                                                                                                                                                                                             |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run.sh`              | the harness: `./run.sh shim packs export build sim ids` (or `all`); logs to `build/logs/`                                                                                                                        |
-| `patch/patch_ba.rb`   | the post-export patch: extension target (`com.apple.product-type.extensionkit-extension`), its Swift file, Info.plist and entitlements, embed phase, App Group on both targets, the three `BA*` keys. Idempotent |
-| `shim/pkba.m`         | the GDExtension (C interface only, Objective-C, no godot-cpp): class `PKAppleBA`, one static `cmd(json) -> String`; async ops answer with a request id and push events that `poll` drains                        |
-| `shim/build.sh`       | builds `pkba.xcframework` (ios-arm64, ios-arm64-simulator) and a macOS dylib, and copies them to `godot/bin/`                                                                                                    |
-| `godot/`              | the probe project: `main.gd` runs a plan (`install`, `update`, `mount`, `live`, `emulate`) and logs one JSON line per event to `user://pkba_log.jsonl`                                                           |
-| `packs/make_packs.py` | builds the four packs for v1 and v2 (`pkba-essential-c1`, `-prefetch-`, `-ondemand-`, `-big-`), each with a `.pkey/pack.json` marker, via `xcrun ba-package`; the big pack is A6's 36 MiB v1/v2 pair             |
-| `packs/aar_diff.py`   | offline analysis of a v1/v2 `.aar` pair: container, 1 MiB LZFSE block reuse, `zstd --patch-from` over the archives and over the decoded Apple Archive streams                                                    |
-| `packs/id_rules.sh`   | which asset-pack ids `ba-package` accepts (all of them; App Store Connect is stricter, see the note)                                                                                                             |
-| `mock/serve.py`       | HTTPS stand-in for `xcrun ba-serve` that reads a PEM cert from files (no keychain), serves a `ba-package download-manifest` and the `.aar` files with Range support, and logs bytes sent per request             |
-| `mock/session.sh`     | one measured simulator session: set the served version, launch a plan, save the app and server logs                                                                                                              |
-| `mock/summarize.py`   | condenses a probe log                                                                                                                                                                                            |
-| `asc/upload_pack.mjs` | the App Store Connect upload and poll sequence (Node 22, no deps, ES256 JWT); `--dry-run` prints the requests. The live run is a hand-off                                                                        |
+| Path                  | What                                                                                                                                                                                                                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `run.sh`              | the harness: `./run.sh shim packs export build sim ids` (or `all`); logs to `build/logs/`                                                                                                                                                                                                              |
+| `patch/patch_ba.rb`   | the post-export patch: extension target (`com.apple.product-type.extensionkit-extension`), its Swift file, Info.plist and entitlements, embed phase, App Group on both targets, the three `BA*` keys. Idempotent                                                                                       |
+| `shim/pkba.m`         | the GDExtension (C interface only, Objective-C, no godot-cpp): class `PKAppleBA`, one static `cmd(json) -> String`; async ops answer with a request id and push events that `poll` drains                                                                                                              |
+| `shim/build.sh`       | builds `pkba.xcframework` (ios-arm64, ios-arm64-simulator) and a macOS dylib, and copies them to `godot/bin/`                                                                                                                                                                                          |
+| `godot/`              | the probe project: `main.gd` runs a plan (`install`, `update`, `mount`, `live`, `emulate`) and logs one JSON line per event to `user://pkba_log.jsonl`                                                                                                                                                 |
+| `packs/make_packs.py` | builds the four packs for v1 and v2 (`pkba-essential-c1`, `-prefetch-`, `-ondemand-`, `-big-`), each with a `.pkey/pack.json` marker, via `xcrun ba-package`; the big pack is A6's unmodified 36 MiB full-project PCK pair (scripts, `project.binary`, class cache: not data-only, byte baseline only) |
+| `packs/aar_diff.py`   | offline analysis of a v1/v2 `.aar` pair: container, 1 MiB LZFSE block reuse, `zstd --patch-from` over the archives and over the decoded Apple Archive streams                                                                                                                                          |
+| `packs/id_rules.sh`   | which asset-pack ids `ba-package` accepts (all of them; App Store Connect is stricter, see the note)                                                                                                                                                                                                   |
+| `mock/serve.py`       | HTTPS stand-in for `xcrun ba-serve` that reads a PEM cert from files (no keychain), serves a `ba-package download-manifest` and the `.aar` files with Range support, and logs bytes sent per request                                                                                                   |
+| `mock/session.sh`     | one measured simulator session: set the served version, launch a plan, save the app and server logs                                                                                                                                                                                                    |
+| `mock/summarize.py`   | condenses a probe log                                                                                                                                                                                                                                                                                  |
+| `asc/upload_pack.mjs` | the App Store Connect upload and poll sequence (Node 22, no deps, ES256 JWT); `--dry-run` prints the requests. The live run is a hand-off                                                                                                                                                              |
 
 ## Prerequisites
 
@@ -93,8 +96,13 @@ simulator and `xcrun simctl keychain <udid> reset`.
 **Device and TestFlight (human).** Sign both targets with the team's two App IDs and the App Group,
 archive and upload the patched project; build the packs; then
 `ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_PATH=… ASC_APP_ID=… node asc/upload_pack.mjs --pack-id
-pkba-essential-c1 --aar build/packs/v1/pkba-essential-c1.aar` per pack. The note lists the
-measurements still owed.
+pkba-essential-c1 --aar build/packs/v1/pkba-essential-c1.aar` for each of the **three data-only
+packs** (`pkba-essential-c1`, `pkba-prefetch-c1`, `pkba-ondemand-c1`), and submit only those for
+external review. Do **not** upload `pkba-big-c1`: it carries A6's compiled scripts and
+`project.binary`. To measure a realistic update through Apple's CDN, first rebuild the big pack as
+data only (no `project.binary`, no class or uid cache, no `.gdc`, every path under `pkba/big/`)
+and upload that instead. The note lists the measurements
+still owed.
 
 ## Limits
 

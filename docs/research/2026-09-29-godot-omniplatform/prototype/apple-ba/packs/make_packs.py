@@ -15,6 +15,11 @@ one namespace) holding `content.pck` and a `.pkey/pack.json` marker:
   pkba-ondemand-c1   onDemand                                          small data-only PCK, ~4 MiB
   pkba-big-c1        onDemand                                          the A6 36 MiB v1/v2 pair
 
+The big pack is A6's unmodified full-project PCK, NOT data-only: it holds project.binary, the class
+and uid caches and two .gdc scripts, at res:// root paths. It is here only as the byte baseline for
+the differential question; it would fail CONTENT §4.2's pre-mount directory check and must never be
+uploaded to App Store Connect as is.
+
 v2 of the three small packs changes one 40-byte JSON file (the minimal change); v2 of the big pack
 is A6's v2 (24 changed, 10 added, 5 removed PCK entries: the larger, realistic change).
 

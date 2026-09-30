@@ -4,7 +4,7 @@
 //
 //   node upload_pack.mjs --pack-id pkba-essential-c1 --aar build/packs/v1/pkba-essential-c1.aar \
 //        [--manifest build/packs/src_v1/pkba-essential-c1/Manifest.json] [--checksum] \
-//        [--poll-minutes 120] [--dry-run]
+//        [--expect-resource <backgroundAssets id>] [--poll-minutes 120] [--dry-run]
 //   node upload_pack.mjs --poll-version <backgroundAssetVersions id> [--poll-minutes 120]
 //
 // Credentials come from the environment only and are never logged:
@@ -16,6 +16,15 @@
 // Connect OpenAPI spec 4.5 (BackgroundAssetCreateRequest, BackgroundAssetVersionCreateRequest,
 // BackgroundAssetUploadFileCreateRequest/UpdateRequest). Written and dry-run checked in S-01; the
 // live run is a human hand-off (no API key in the research environment).
+//
+// Guards (S-01 §Recommendation, asset-pack id rule): the id must match
+// ^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$ and be at most 64 characters. A pack id mapped from a dotted
+// Polaris Key id can collide with another pack's (`a.b` and `a-b` both become `a-b-cN`), and a
+// collision would upload into the other pack's asset pack; archived ids cannot be reused. The
+// cross-pack collision check needs the whole product (P5-08). This tool refuses a found asset pack
+// whose resource id differs from --expect-resource, and refuses to create one when
+// --expect-resource is given but nothing is found. Only upload data-only packs: never pkba-big-c1,
+// which is A6's full-project PCK (scripts, project.binary).
 import { createPrivateKey, createHash, sign } from "node:crypto";
 import { readFileSync, statSync, openSync, readSync, closeSync } from "node:fs";
 import { basename } from "node:path";
@@ -31,6 +40,7 @@ const { values: a } = parseArgs({
     "poll-minutes": { type: "string", default: "120" },
     "poll-version": { type: "string" },
     "dry-run": { type: "boolean", default: false },
+    "expect-resource": { type: "string" },
   },
 });
 const env = process.env;
@@ -113,7 +123,16 @@ async function asc(method, path, body) {
 async function findOrCreatePack(packId) {
   const q = `/v1/apps/${appId}/backgroundAssets?filter[assetPackIdentifier]=${encodeURIComponent(packId)}`;
   const found = live ? (await asc("GET", q)).data?.[0] : null;
+  const expect = a["expect-resource"];
+  if (found && expect && found.id !== expect)
+    throw new Error(
+      `asset pack ${packId} is resource ${found.id}, expected ${expect}: refusing to upload into another pack`,
+    );
   if (found) return found.id;
+  if (live && expect)
+    throw new Error(
+      `asset pack ${packId} not found, expected resource ${expect}: refusing to create a new one`,
+    );
   const r = await asc("POST", "/v1/backgroundAssets", {
     data: {
       type: "backgroundAssets",
@@ -235,9 +254,16 @@ async function main() {
     return poll(a["poll-version"], Number(a["poll-minutes"]));
   if (!a["pack-id"] || !a.aar)
     throw new Error("need --pack-id and --aar (or --poll-version)");
-  if (!/^[A-Za-z0-9-]+$/.test(a["pack-id"]))
+  if (
+    !/^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/.test(a["pack-id"]) ||
+    a["pack-id"].length > 64
+  )
     throw new Error(
-      "asset-pack id: ASC accepts only alphanumerics and hyphens",
+      "asset-pack id: ASC accepts only alphanumerics and single hyphens; at most 64 characters here",
+    );
+  if (a["pack-id"] === "pkba-big-c1")
+    throw new Error(
+      "pkba-big-c1 is A6's full-project PCK (scripts, project.binary): upload a data-only rebuild instead",
     );
   const packUuid = await findOrCreatePack(a["pack-id"]);
   log("pack", { id: live ? packUuid : "<id>" });
