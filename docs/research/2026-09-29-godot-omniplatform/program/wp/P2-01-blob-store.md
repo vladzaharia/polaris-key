@@ -189,21 +189,21 @@ console's cookies ([notes/A3 §7.2](../../notes/A3-admin-dx.md#72-web-builds-and
 
 ## Acceptance criteria
 
-- [ ] `test/blobs.test.ts` covers: a put whose bytes do not match the key's hash is refused; a
+- [x] `test/blobs.test.ts` covers: a put whose bytes do not match the key's hash is refused; a
       second put to an existing key is refused; `verifyStaged` accepts R2's stored checksum and
       falls back to a streamed hash; `promote` never writes the target when verification fails.
-- [ ] Header tests: 200 with `ETag`, `Repr-Digest`, `Accept-Ranges`, immutable caching; 206 with
+- [x] Header tests: 200 with `ETag`, `Repr-Digest`, `Accept-Ranges`, immutable caching; 206 with
       `Content-Range`; 416; `If-Range` mismatch returns 200; `If-None-Match` returns 304; gated
       responses are `private, no-store`; console-host responses are always octet-stream attachments.
-- [ ] `test-workerd/blobs.test.ts` passes on miniflare R2, including a streamed hash of an object
+- [x] `test-workerd/blobs.test.ts` passes on miniflare R2, including a streamed hash of an object
       larger than 16 MiB.
-- [ ] `promote` records a `blob_objects` row only after verification; `hasRef(db, product, key)`
+- [x] `promote` records a `blob_objects` row only after verification; `hasRef(db, product, key)`
       is false for another product's ref; `docs gen:check` lists both tables under Core.
-- [ ] Host isolation test passes; with `BLOB_ORIGIN` unset, routing is byte-identical to today.
-- [ ] `wrangler deploy --dry-run` (`pnpm --filter @polaris-key/worker dryrun`) parses the config.
-- [ ] `docs/DEPLOYMENT.md` and `docs/security/THREAT-MODEL.md` are updated; the lock duration and
+- [x] Host isolation test passes; with `BLOB_ORIGIN` unset, routing is byte-identical to today.
+- [x] `wrangler deploy --dry-run` (`pnpm --filter @polaris-key/worker dryrun`) parses the config.
+- [x] `docs/DEPLOYMENT.md` and `docs/security/THREAT-MODEL.md` are updated; the lock duration and
       the GC trade-off are recorded.
-- [ ] The green gate passes (`AGENTS.md`), including `typecheck:workerd` and `test:workerd`.
+- [x] The green gate passes (`AGENTS.md`), including `typecheck:workerd` and `test:workerd`.
 
 ## Verify
 
