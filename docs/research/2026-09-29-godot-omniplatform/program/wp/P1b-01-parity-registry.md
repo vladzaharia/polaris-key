@@ -195,6 +195,13 @@ were needed to declare the four SDKs honestly, and later packages should rely on
   Delivery). `except` is accepted on `planned` entries too (Swift Steam depots: planned, N/A on iOS).
 - React's `na` entries name `web`; on `desktop-bridge` those features belong to the host's Node SDK,
   which each entry's `note` says.
+- New `web` N/As (reason `runtime`, for the human's sign-off): `devices.register` and
+  `license.reregister` (no bearer, no hardware anchor), `devices.manage` and `devices.report`
+  (`/<p>/devices` and `/<p>/devices/report` accept only a device bearer; a browser holds a cookie
+  session), and `identity.devicecode` (a browser signs in with the OIDC redirect). React declares
+  the last three with `except: web`: `devices.manage` and `identity.devicecode` are implemented
+  through the desktop bridge, and `devices.report` is `planned` in P1b-07 for the bridge. This
+  settles the web half P1b-07 defers to P1b-01.
 - `config.mirror` is proven by `tools/gen-mirrors.test.ts` (it renders the TS, Python and Swift
   mirrors), so every manifest lists that file in `testRoots`.
 - Evidence overrode two PARITY §5 marks: Swift `license.channels` (✓) is `planned` in P1b-07 (no

@@ -326,7 +326,13 @@
       "title": "List, rename, deauthorise",
       "service": "core",
       "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
-      "allowedNa": []
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "List, rename and deauthorise call /<p>/devices, which authenticates only with a device bearer token; a browser holds a cookie session and no bearer, so the browser adapter refuses with device-management-unsupported (packages/sdk-react/src/browser/browserAdapter.ts)."
+        }
+      ]
     },
     {
       "id": "devices.report",
@@ -334,7 +340,13 @@
       "title": "Telemetry (allowlisted keys)",
       "service": "core",
       "proof": [{ "kind": "transcript", "wp": "P1b-03" }],
-      "allowedNa": []
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "POST /<p>/devices/report accepts only a device bearer token; a browser holds a cookie session and no bearer, and cannot read the OS or hardware facts the report carries."
+        }
+      ]
     },
     {
       "id": "identity.oidc",
@@ -350,7 +362,13 @@
       "title": "Device-code sign-in (RFC 8628) with QR",
       "service": "identity",
       "proof": [{ "kind": "transcript", "wp": "P1b-08" }],
-      "allowedNa": []
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Device-code sign-in (RFC 8628) exists for inputs that cannot run a browser redirect; a browser is one, and signs in with the OIDC redirect (identity.oidc) instead."
+        }
+      ]
     },
     {
       "id": "release.changelog",

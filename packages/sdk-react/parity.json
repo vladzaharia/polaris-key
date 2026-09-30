@@ -94,17 +94,20 @@
     },
     "devices.manage": {
       "status": "implemented",
-      "note": "Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported."
+      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "note": "New web N/A (P1b-01). Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported."
     },
     "devices.report": {
       "status": "planned",
       "wp": "P1b-07",
-      "note": "P1b-07 adds desktop reporting through the bridge. Browser telemetry is unowned: POST /<p>/devices/report accepts only a bearer."
+      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "note": "New web N/A (P1b-01). P1b-07 adds desktop reporting through the bridge. POST /<p>/devices/report accepts only a device bearer, which a browser does not hold."
     },
     "identity.oidc": { "status": "implemented" },
     "identity.devicecode": {
       "status": "implemented",
-      "note": "Through the desktop bridge (beginSignIn/pollSignIn). Browser device-code sign-in is unowned (P1b-08 Out)."
+      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "note": "New web N/A (P1b-01). Through the desktop bridge (beginSignIn/pollSignIn). A browser signs in with the OIDC redirect (identity.oidc)."
     },
     "release.changelog": { "status": "planned", "wp": "P1b-07" },
     "release.download": { "status": "planned", "wp": "P1b-07" },
