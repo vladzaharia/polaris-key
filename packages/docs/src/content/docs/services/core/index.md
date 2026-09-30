@@ -58,7 +58,7 @@ dispatchService(registry, slug, services, ctx)
 ```
 
 The parser behind that column is strict and fail-safe at once: anything structurally wrong —
-bad JSON, an unknown slug, a non-boolean `enabled`, a `registration` value outside the three
+bad JSON, an unknown slug with a malformed value, a non-boolean `enabled`, a `registration` value outside the three
 policies — discards the **whole** record and reads as the defaults (License and Config on, the
 rest off). Half-honouring a typo is how a typo turns into a silently disabled service.
 
