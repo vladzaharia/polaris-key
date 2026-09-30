@@ -293,7 +293,7 @@ export async function resyncRepo(
     await db.run(
       `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
          sparkle_ed25519_pub = ?, summary_marker = ?, manual_channels_json = ?,
-         artifact_policy_json = ?
+         artifact_policy_json = ?, stable_tag_pattern = ?, ignore_tags_json = ?
          WHERE product = ?`,
       rel.channelWorkflow || null,
       rel.betaBranch || "main",
@@ -302,6 +302,8 @@ export async function resyncRepo(
       rel.summaryMarker || "pkey:summary",
       rel.manualChannels.length ? JSON.stringify(rel.manualChannels) : null,
       rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,
+      rel.stableTagPattern,
+      rel.ignoreTags.length ? JSON.stringify(rel.ignoreTags) : null,
       slug,
     );
     // The two access modes share ONE owner (`access_source`, 0022_b). Once an operator claims
@@ -437,6 +439,7 @@ export async function resyncRepo(
   if (syncedCfg) {
     const storeStmts = await releaseStoreSyncStatements(
       env,
+      db,
       syncedCfg,
       now,
       fetchImpl,

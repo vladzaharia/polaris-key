@@ -100,16 +100,16 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
 
 ## Acceptance criteria
 
-- [ ] CLI test: `pkey init --modules releases` writes `product.yaml`, `schema.yaml` and
+- [x] CLI test: `pkey init --modules releases` writes `product.yaml`, `schema.yaml` and
       `release.yaml`, and `pkey validate` exits 0.
-- [ ] CLI test: deleting `schema.yaml` from that directory makes `pkey validate` exit 1 with
+- [x] CLI test: deleting `schema.yaml` from that directory makes `pkey validate` exit 1 with
       `missing_schema`, matching what `parseManifest` returns for the same files.
-- [ ] Manifest test: the scaffolded tier normalises to `policyDeviceLimit: 5`,
+- [x] Manifest test: the scaffolded tier normalises to `policyDeviceLimit: 5`,
       `policyExpiryDays: null`.
-- [ ] Manifest test: a tier with `deviceLimit` or `maxOfflineDays` yields `tier_ignored_field`
+- [x] Manifest test: a tier with `deviceLimit` or `maxOfflineDays` yields `tier_ignored_field`
       warnings and no error.
-- [ ] `schema-parity.test.ts` passes with the new entry; `gen:check` passes.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `schema-parity.test.ts` passes with the new entry; `gen:check` passes.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
@@ -126,3 +126,18 @@ P0-09 changes the scaffold's module block to canonical slugs from the service ta
 build on the scaffold this package leaves. P2-06 (`pkey release …`) and P1-12 (Godot onboarding
 docs) assume `pkey init && pkey validate` produces a linkable manifest. When done:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-07 done`.
+
+## Implementation notes
+
+- The ingest rule is `validateIngestDocuments` (`@polaris-key/manifest`). It takes a product that
+  may be `undefined`, so "product and schema present" is one rule: a missing product is reported
+  as `missing_product` (a second new code, with its own mutation-table entry) alongside a missing
+  schema. `parseManifest` formats whole-document errors as `file: message` (pointer `/` is
+  dropped) so the existing worker test expectations (`schema: ... required`) hold; the CLI prints
+  `file/`-prefixed lines as before.
+- `validateManifestDocuments` keeps its Config-conditional behaviour for author-side callers; both
+  entry points share one emit site for `missing_schema`, so the generated reference has one row.
+- With Config off, a present schema is checked for presence and that it normalises to a catalog
+  (`invalid_schema`, which link already refused via `compileAll(null)`); its content is NOT
+  shape-validated, so link and resync accept exactly what they accepted before. (An earlier
+  revision shape-validated it; review caught that as a behaviour change and it was reverted.)

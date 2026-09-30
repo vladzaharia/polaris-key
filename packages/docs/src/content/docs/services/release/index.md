@@ -58,7 +58,11 @@ Every version-shaped path in Release and Update — a changelog entry, a downloa
 appcast item — resolves against the same small vocabulary of **channels**. `stable` (or
 `latest`, or a bare pinned `X.Y.Z` tag) is the floor every product and every license holds.
 `beta` and `pr-<n>` resolve through an optional GitHub Actions workflow the product
-configures, falling back to prerelease heuristics when it hasn't. Beyond the built-ins, a
+configures, falling back to prerelease heuristics when it hasn't. Only tags that are real app
+releases are candidates, and the highest semver wins rather than the newest by creation order.
+`release.stableTagPattern` and `release.ignoreTags` say which tags count, so a rolling
+`channels` or `packs` release never becomes `latest`. A channel also never silently drops
+below the highest version a sync has seen it serve. Beyond the built-ins, a
 product may declare **manual channels** — a name bound to an anchored regular expression
 over release tags — for anything project-specific, like a `nightly` or `canary` line:
 `release.manualChannels` in the [release manifest](/docs/build/manifest/authoring/) is the

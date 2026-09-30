@@ -35,6 +35,10 @@ export interface ReleaseConfigRow {
   /** OPERATOR-owned artifact policy (0022_c): requireSparkleSignature, minimumSystemVersion.
    *  No manifest path ever writes this column. */
   operator_policy_json?: string | null;
+  /** `release.stableTagPattern` (0023). NULL ⇒ `DEFAULT_STABLE_TAG_PATTERN`. */
+  stable_tag_pattern?: string | null;
+  /** `release.ignoreTags` as a JSON array (0023). NULL ⇒ none. */
+  ignore_tags_json?: string | null;
 }
 
 /** A release config that has the GitHub coordinates needed to talk to the API. */
