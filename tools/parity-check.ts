@@ -17,7 +17,8 @@
 //
 //   1. a registry id is missing from a manifest, or a manifest names an id the registry lacks;
 //   2. an `implemented` entry has no tagged test under the manifest's testRoots, or, for a
-//      corpus proof that exists, no tagged file names the corpus file (or family) it loads;
+//      corpus proof that exists, no tagged file LOADS the corpus file — names it in a string
+//      literal, not merely in prose — (and, for a family proof, names the family);
 //   3. an `na` or `except` names a runtime or trait the manifest does not list, or a
 //      runtime/reason pair the registry does not allow, or an `na` leaves one of the
 //      manifest's runtimes uncovered (unless it names a trait the manifest lists);
@@ -267,6 +268,24 @@ function mentions(text: string, token: string): boolean {
   return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}([^A-Za-z0-9_-]|$)`).test(
     text,
   );
+}
+
+/**
+ * Does `text` actually LOAD the corpus file a proof names? A whole-word mention is not enough —
+ * a tagged file that merely says "edge cases" would satisfy `cases.json` — so the file has to
+ * appear as a STRING LITERAL: `v2("cases.json")`, `/ "gate-matrix.json"`, Swift's
+ * `forResource: "cases"`, a directory as `"content"` or `"content/"`, optionally behind a path
+ * (`"corpus/v2/cases.json"`). A family proof additionally needs the family named (the key the
+ * runner reads, `corpus.bundleCases`). Prose in comments and docstrings is not a load.
+ */
+function loadsCorpus(text: string, proof: Proof): boolean {
+  const file = proof.file ?? "";
+  const base = file.replace(/\/$/, "").replace(/\.json$/, "");
+  const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const tail = file.endsWith("/") ? "/?" : "(?:\\.json)?";
+  const literal = new RegExp(`(["'])(?:[^"'\\n]*/)?${escaped}${tail}\\1`);
+  if (!literal.test(text)) return false;
+  return proof.family ? mentions(text, proof.family) : true;
 }
 
 /** A corpus proof is enforced once what it names exists; until then it must name an owner. */
@@ -598,11 +617,11 @@ export function checkParity(options: ParityOptions): ParityResult {
             const state = corpusProofState(root, proof);
             if (!state.active) continue;
             const loads = [...tagged].some((file) =>
-              mentions(textByFile.get(file) ?? "", state.token),
+              loadsCorpus(textByFile.get(file) ?? "", proof),
             );
             if (!loads)
               violations.push(
-                `[rule 2] ${where}: ${id} is proven by corpus ${proof.file}${proof.family ? `#${proof.family}` : ""}, but no file tagged @pkey-feature ${id} loads "${state.token}"`,
+                `[rule 2] ${where}: ${id} is proven by corpus ${proof.file}${proof.family ? `#${proof.family}` : ""}, but no file tagged @pkey-feature ${id} loads it (a string literal naming "${proof.file}"${proof.family ? ` and the family ${state.token}` : ""})`,
               );
           }
         }

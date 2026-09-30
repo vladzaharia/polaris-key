@@ -193,8 +193,55 @@ describe("rule 2 — an implemented entry has a tagged test", () => {
       tests: { ...TESTS, "verify.test.ts": `// @pkey-feature demo.verify\n` },
     });
     expect(violations).toEqual([
-      '[rule 2] demo: demo.verify is proven by corpus mini.json, but no file tagged @pkey-feature demo.verify loads "mini"',
+      '[rule 2] demo: demo.verify is proven by corpus mini.json, but no file tagged @pkey-feature demo.verify loads it (a string literal naming "mini.json")',
     ]);
+  });
+
+  it("does not count a prose mention of the corpus file as loading it", () => {
+    const { violations } = run({
+      tests: {
+        ...TESTS,
+        "verify.test.ts": `// @pkey-feature demo.verify\n// Covers the edge cases, like mini.json does.\n`,
+      },
+    });
+    expect(violations).toHaveLength(1);
+  });
+
+  it("accepts the load calls each runner actually makes", () => {
+    for (const load of [
+      `readFileSync(v2("mini.json"))`,
+      `CORPUS_DIR / 'mini.json'`,
+      `join(here, "corpus/v2/mini.json")`,
+      `Bundle.module.url(forResource: "mini", withExtension: "json")`,
+    ])
+      expect(
+        run({
+          tests: {
+            ...TESTS,
+            "verify.test.ts": `// @pkey-feature demo.verify\n${load}\n`,
+          },
+        }).violations,
+        load,
+      ).toEqual([]);
+  });
+
+  it("requires a family proof's runner to name the family as well as the file", () => {
+    const r = registry();
+    (r.features as Json[])[0]!.proof = [
+      { kind: "corpus", file: "mini.json", family: "cases" },
+    ];
+    const bare = run({ registry: r });
+    expect(bare.violations).toEqual([
+      '[rule 2] demo: demo.verify is proven by corpus mini.json#cases, but no file tagged @pkey-feature demo.verify loads it (a string literal naming "mini.json" and the family cases)',
+    ]);
+    const named = run({
+      registry: r,
+      tests: {
+        ...TESTS,
+        "verify.test.ts": `// @pkey-feature demo.verify\nconst { cases } = load("mini.json");\n`,
+      },
+    });
+    expect(named.violations).toEqual([]);
   });
 
   it("does not count a corpus basename that is only a prefix of another word", () => {
