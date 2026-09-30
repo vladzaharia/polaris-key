@@ -93,6 +93,7 @@ vectors today, so backends can diverge silently
 - **Parity registry** (once P1b-01 has landed): entries `release.record` (`releaseRecordCases`),
   `update.feed` (`feedCases`), `update.decide` (`update-matrix.json`) and `outlet.detect`
   (`outlet-matrix.json`) point at the new proofs, `planned` in every SDK manifest.
+- **Wave-1 sync:** **Negative Ed25519 vectors.** Add corpus vectors for S >= L (and S+L), a small-order public key (identity, order-8), a non-canonical R (R with y >= p, or x = 0 with the sign bit set), so every SDK's verifier refuses what P0-10's streaming verifier refuses and WebCrypto may accept.
 
 **Out** (and where it belongs instead):
 
