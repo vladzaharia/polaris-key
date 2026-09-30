@@ -146,8 +146,11 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   needs the exact size, which every zstd reference carries.
 - **Mount pacing** (S-05 §4.1, Android 14 emulator): the stall grows with a pack's entry count,
   not its size (about 16 µs per entry cold from `user://`, 4 µs warm; a 200 MB pack of 8 files
-  mounts in ≤ 8 ms). Mount after the first frame, one pack per frame, on the main thread (a
-  `Thread` did not remove the hitch); mounting in `_ready` delayed the first frame by about 1.1 s.
+  mounts in ≤ 8 ms). Mount after the first frame, one pack per frame, on the main thread, because
+  `PackedData` and the UID registry are not documented as thread-safe while the main thread loads
+  resources (a `Thread` mount lowered the worst frame but did not remove it on the contended
+  emulator, so the thread evidence is inconclusive). A mount in `_ready` held the first `_process`
+  back by 88–276 ms, about its own call time.
   Packs of up to 2,000 entries may mount while the spinner runs; larger ones only under a loading
   screen. The pack lint ([P4-03](P4-03-ci-patch-artifacts.md)) warns above 2,000 entries per pack
   and fails above 20,000; the directory check logs the entry count. The low-end
