@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments can emit, extrac
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 71 distinct emit sites.
+codes with their JSON-pointer paths. 74 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -40,6 +40,8 @@ the offending value, or the allowed set.
 | `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_fingerprint` | error | product | `/fingerprint` | fingerprint must be an object. |
 | `invalid_group_name` | error | product | `/oidc/groupRoleMap/${group}` | oidc.groupRoleMap keys must be plain group names (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
+| `invalid_ignore_tags` | error | release | `/release/ignoreTags/${i}` | release.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
+| `invalid_ignore_tags` | error | release | `/release/ignoreTags` | release.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
 | `invalid_manual_channel` | error | release | `/release/manualChannels` | release.manualChannels must be an array of \{ name, regex \} entries. |
 | `invalid_manual_channel` | error | release | `${at}/name` | manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
@@ -69,6 +71,7 @@ the offending value, or the allowed set.
 | `invalid_secret_url_template` | error | product | `/provisioning/${i}/secretUrlTemplate` | provisioning.secretUrlTemplate $\{problem\}. |
 | `invalid_semver` | error | product | `/licensing/tiers/${i}/${bound}` | Tier $\{bound\} must be a semver string. |
 | `invalid_slug` | error | product | `/product/slug` | product.slug must match ^[a-z0-9-]\{1,64\}$. |
+| `invalid_stable_tag_pattern` | error | release | `/release/stableTagPattern` | release.stableTagPattern must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
 | `invalid_tier_fingerprint_mode` | error | product | `/licensing/tiers/${i}/policyFingerprint` | Tier policyFingerprint must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be non-empty simple identifiers. |
 | `invalid_tier_label` | error | product | `/licensing/tiers/${i}/label` | Tier label |
