@@ -74,9 +74,12 @@ Diceroll's `BootShell` states (notes/A4 §2.7) are the design it generalises.
 - Renderers: React `<PolarisBoot>` and SwiftUI `PolarisBootView` (report §8 item 6; not owned by
   any work package yet), a terminal renderer for Node and Python (optional).
 - Implementing the boot guard (slots, staged swaps, restarts) (→ [P3-10](P3-10-godot-updater.md));
-  its rows are decided here (decision 5).
+  the launch-decision rows are pinned here, and the confirmation rows come from
+  [P3-02](P3-02-wire-v4-contract-corpus.md) (decision 5).
 - Pack rows for `fetch`/`mount` (size disclosure, cellular choice, pause, ordered mounts)
-  (→ [P4-08](P4-08-godot-packs.md) with [P4-04](P4-04-content-corpus-v1.md)).
+  (→ planned by [P4-01](P4-01-packs-plan.md) and emitted by
+  [P4-04](P4-04-content-corpus-v1.md); [P4-08](P4-08-godot-packs.md) implements the Godot host
+  side).
 - The update decision itself (→ P3's `update-matrix.json`); here `decide` takes its result as an
   input.
 - `sdks/*/parity.json` entries (after [P1b-01](P1b-01-parity-registry.md)).
@@ -195,8 +198,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
   the Godot mirror in its runner.
 - Later rows for P3-10 (boot confirmation) and P4-08 (packs) extend the same file. Neither package
   is plan-mode, so [`plans/P1-09.md`](../plans/P1-09.md) §4.5 routes the extensions through
-  P3-01 and P3-02, and through P4-01 with P4-04 or P4-06. P3-10 and P4-08 then implement those
-  rows.
+  P3-01 and P3-02, and through P4-01 and P4-04. P3-02 and P4-04 are plan-mode and gated on the
+  corpus and all SDKs. P3-10 then implements only the host side of the confirmation rows, and
+  P4-06, P4-07 and P4-08 only the host side of the pack rows.
 - Renderers other than Godot are unowned; record that in the plan so the lead can schedule them.
 - Set the status with
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1-09 done`.
