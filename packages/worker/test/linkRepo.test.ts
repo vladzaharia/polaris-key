@@ -33,6 +33,7 @@ import {
   getActiveSchema,
   getProductSyncState,
   getProduct,
+  setAutoIssuePolicy,
   setServices,
 } from "../src/repo.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
@@ -1471,6 +1472,94 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe("open");
     expect(await approvalCount(w.db)).toBe(0);
     expect(await invalidations(w.db)).toHaveLength(1);
+  });
+
+  // A push can also THROW half-way rather than be refused: the manifest validator does not reject
+  // a duplicated `edgeMint[].id`, so the final batch fails on the `edge_mint_config` primary key —
+  // after `setAutoIssuePolicy` has already written anonymous enrolment. The sweep runs in a
+  // `finally`, so a repo writer cannot skip it this way; otherwise an operator's console revert
+  // would make the approval apply again to a stranger enrolled in between.
+  it("a push that throws after widening still drops the approval; a console revert does not restore it", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+
+    await expect(
+      resyncRepo(
+        w.env,
+        w.db,
+        "acme",
+        NOW + 100,
+        filesWith(
+          [BASE_RECIPE, BASE_RECIPE],
+          JSON.stringify({
+            ...JSON.parse(PRODUCT_JSON),
+            autoIssue: { enabled: true, tierId: "pro", mode: "anonymous" },
+          }),
+        ),
+      ),
+    ).rejects.toThrow(/UNIQUE/);
+    const anon = (await loadProduct(w.env, w.db, "acme"))!;
+    expect(mintIsPublic(anon)).toBe(true);
+    expect(await approvalCount(w.db)).toBe(0);
+    const audited = await invalidations(w.db);
+    expect(audited).toHaveLength(1);
+    expect(audited[0]).toMatchObject({
+      target_id: "applemusic",
+      actor_sub: null,
+    });
+
+    const enrolled = await handleEnroll(
+      mkReq(
+        "POST",
+        { "x-pkey-device": "stranger" },
+        {
+          fingerprint: {
+            components: {
+              machineUuid: "u".repeat(FINGERPRINT_COMPONENT_LENGTH),
+              boardSerial: "b".repeat(FINGERPRINT_COMPONENT_LENGTH),
+              cpuModel: "c".repeat(FINGERPRINT_COMPONENT_LENGTH),
+            },
+            hwid: "ignored",
+          },
+        },
+      ),
+      w.env,
+      w.db,
+      anon,
+      NOW,
+    );
+    expect(enrolled.status).toBe(200);
+    const { token: stranger } = (await enrolled.json()) as { token: string };
+
+    // The operator's obvious fix: turn anonymous enrolment off in the console.
+    await setAutoIssuePolicy(
+      w.db,
+      "acme",
+      JSON.stringify({ enabled: false, tierId: "pro", mode: "anonymous" }),
+      "admin",
+      NOW + 200,
+    );
+    const strangerMint = async () =>
+      (
+        await handleMintToken(
+          mkReq("POST", { authorization: `Bearer ${stranger}` }),
+          w.env,
+          w.db,
+          (await loadProduct(w.env, w.db, "acme"))!,
+          "applemusic",
+          NOW,
+        )
+      ).status;
+    expect(mintIsPublic((await loadProduct(w.env, w.db, "acme"))!)).toBe(false);
+    expect(await strangerMint()).toBe(404);
+
+    // A clean push afterwards does not bring it back either.
+    await w.resync([BASE_RECIPE]);
+    expect(await strangerMint()).toBe(404);
+    expect(await w.mint()).toBe(404);
+    expect(await approvalCount(w.db)).toBe(0);
   });
 
   it("an unchanged or narrowing resync never drops an approval", async () => {

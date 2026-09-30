@@ -80,8 +80,10 @@ async function readManifestFile(
  *
  * P0-12. Whatever the outcome, an edge-mint approval the product has WIDENED is deleted once the
  * manifest has been applied (`invalidateWidenedEdgeMintApprovals`): the writes below are not one
- * transaction, and a push refused half-way (a bad catalog, a tier still in use) can already have
- * written `services_json` or `auto_issue_json`.
+ * transaction, and a push refused half-way (a bad catalog, a tier still in use) — or one that
+ * THROWS half-way (a D1 constraint in the final batch) — can already have written `services_json`
+ * or `auto_issue_json`. The sweep therefore runs in a `finally`: a repo writer must not be able to
+ * skip it by making the ingest fail after the widening writes.
  */
 export async function resyncRepo(
   env: Env,
@@ -90,17 +92,23 @@ export async function resyncRepo(
   now: number,
   fetchImpl: FetchImpl = fetch,
 ): Promise<ResyncResult> {
-  const result = await applyRepoManifest(env, db, slug, now, fetchImpl);
-  // Every manifest-owned input to an approval is written by now: `services_json` and
-  // `auto_issue_json` by the un-batched writes, `oidc_config` in the batch. An approval this push
-  // widened is dropped here, audited as `config.mint.invalidate`, and its recipe is `pending`
-  // until an operator re-approves it — a later push that reverts the widening cannot restore it.
-  const dropped = await invalidateWidenedEdgeMintApprovals(
-    db,
-    slug,
-    now,
-    "widened by a manifest push",
-  );
+  let result: ResyncResult;
+  let dropped: string[];
+  try {
+    result = await applyRepoManifest(env, db, slug, now, fetchImpl);
+  } finally {
+    // Every manifest-owned input to an approval that this push got to write is written by now:
+    // `services_json` and `auto_issue_json` by the un-batched writes, `oidc_config` in the batch.
+    // An approval this push widened is dropped here, audited as `config.mint.invalidate`, and its
+    // recipe is `pending` until an operator re-approves it — a later push, or a console edit, that
+    // reverts the widening cannot restore it. Runs on the throw path too.
+    dropped = await invalidateWidenedEdgeMintApprovals(
+      db,
+      slug,
+      now,
+      "widened by a manifest push",
+    );
+  }
   if (
     result.ok &&
     dropped.length > 0 &&
