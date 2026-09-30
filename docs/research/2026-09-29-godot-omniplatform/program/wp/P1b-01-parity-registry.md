@@ -78,8 +78,9 @@ optional Kotlin, C# and Tauri work declare their progress against it
 - Generated feature-id and reason constants in each language (→ [P1b-02](P1b-02-sdk-constants.md)).
 - Enforcing `transcript` proofs (→ [P1b-03](P1b-03-http-transcripts.md) extends the checker).
 - Closing any gap (→ P1b-04 to P1b-09, and the P3, P4 and P5 packages named in the manifests).
-- `client.supports()` and capability telemetry (`core.caps`): no work package owns them yet. Record
-  `planned` and unowned, and list it in the PR (see Hand-off).
+- `client.supports()` and capability telemetry (`core.caps`) (→ [P1b-10](P1b-10-core-caps.md)).
+  _Corrected while building:_ this brief was written before P1b-10 existed; `workpackages.json`
+  now lists it and its brief owns `core.caps`, so the manifests record `planned` in P1b-10.
 - Kotlin, C# and Tauri manifests (→ [P6-05](P6-05-kotlin-sdk.md), [X-01](X-01-dotnet-sdk.md),
   [X-02](X-02-tauri-plugin.md)).
 
@@ -162,9 +163,11 @@ cases to settle while writing the manifests:
   `devices.register`, `devices.report`, `license.reregister`, `core.local` or `core.bundle`. For each,
   either add an `allowedNa` with a written reason (the human signs it off in review) or mark it
   `planned` with an owner.
-- No work package closes `core.caps`, React `core.local`, `identity.oidc` (Node, Python ✗; Swift ◐),
-  `ui.kit` (Swift ◐), `update.driver` (Node ◐, Python ◐, React ✗) or Swift `devices.report` (◐, only
-  inside sync, which P1b-07 may absorb). Mark them unowned.
+- No work package closes React `core.local`, `identity.oidc` (Node, Python ✗; Swift ◐), `ui.kit`
+  (Swift ◐) or `update.driver` (Node ◐, Python ◐, React ✗). Mark them unowned. _Corrected while
+  building:_ `core.caps` is owned by [P1b-10](P1b-10-core-caps.md), and P1b-07's scope includes
+  Swift `devices.report` ("expose the snapshot report as public API"), so both are `planned` with
+  an owner.
 
 **The page.** The emitter reads the JSON files directly; `gen-reference.mjs` is a dependency-free
 `.mjs`, so do not import the TypeScript checker. One table per service family, one column per SDK;
@@ -174,6 +177,33 @@ lints `src/**/*.mdx`.
 
 **Location.** The registry lives in `conformance/parity/`, outside `conformance/corpus/**`, so it is
 not a corpus-touching package and does not take the one corpus lane (program README §5).
+
+**As built (corrections recorded while implementing).** The shapes above held; these additions
+were needed to declare the four SDKs honestly, and later packages should rely on them:
+
+- `features.json` also carries `runtimes`, `traits` and `families` lists (so the checker can reject
+  an unknown runtime, trait or family), a `title` per `sdks[]` row, a `family` per feature (the page
+  groups by it: PARITY §5.1-§5.7), and an optional `note`.
+- A proof may carry `wp`, the package that adds it, and a corpus proof may name a case `family`
+  inside its file (`cases.json` + `releaseRecordCases`). A corpus proof whose file (or family) does
+  not exist yet must name its `wp`; the checker starts enforcing it the moment the file exists.
+  For a family, the tagged file must mention the family name rather than the file basename.
+- An `allowedNa` `runtime` may be `*` (any runtime), but only for a reason decided at runtime
+  (`packs.apply.delta`: `dependency`, `version`).
+- A manifest may list `traits` (Node and Python list `headless`). An `na` entry's `runtime` may be
+  an array when the SDK is N/A on several of its runtimes (Swift: `["macos", "ios"]` for Play Asset
+  Delivery). `except` is accepted on `planned` entries too (Swift Steam depots: planned, N/A on iOS).
+- React's `na` entries name `web`; on `desktop-bridge` those features belong to the host's Node SDK,
+  which each entry's `note` says.
+- `config.mirror` is proven by `tools/gen-mirrors.test.ts` (it renders the TS, Python and Swift
+  mirrors), so every manifest lists that file in `testRoots`.
+- Evidence overrode two PARITY §5 marks: Swift `license.channels` (✓) is `planned` in P1b-07 (no
+  test, and its empty-entitlement answer disagrees with the Worker), and React `core.cache` (✓) is
+  `planned`, unowned (the browser adapter is online-only; only the desktop host caches). Swift
+  `license.enroll`, `license.entitlements` and `config.schema` had no test naming them;
+  `sdks/swift/Tests/PolarisKeyTests/LicenseSurfaceTests.swift` adds one for each.
+- The generated reference pages are listed in `packages/docs/.prettierignore` (the generator is the
+  formatting authority), so "prettier-clean" means the docs `lint` passes, as for every other page.
 
 ## Steps
 
@@ -220,6 +250,6 @@ mise exec node@22 -- pnpm format
   [P1b-03](P1b-03-http-transcripts.md) adds `transcript`-proof enforcement to the checker.
 - Every later package updates the manifests it touches (the template's acceptance line). A new SDK
   (Godot in P1-01, P6-05, X-01, X-02) starts with a manifest in which everything is `planned`.
-- Give the lead the unowned list, starting with `core.caps` (`supports()` and the typed
-  `Unsupported` result from PARITY §2.2), which no package owns.
+- Give the lead the unowned list (`pnpm parity:check` prints it; the page's "Unowned gaps"
+  section renders it). `core.caps` is not on it: [P1b-10](P1b-10-core-caps.md) owns it.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1b-01 done`.
