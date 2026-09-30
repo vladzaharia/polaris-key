@@ -16,16 +16,17 @@ import {
   type ProductSyncStateRow,
 } from "../../repo.js";
 import { loadPublicSigningKey } from "../../core/products.js";
-import {
-  serviceStateOf,
-  type RegistrationPolicy,
-} from "../../core/services.js";
+import { serviceStateOf } from "../../core/services.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
 } from "../../services/identity/portal/repo.js";
 import { countKeysByLicense } from "../repo.js";
-import { approvalMatchesRecipe } from "../../services/config/mint.js";
+import {
+  approvalMatchesRecipe,
+  mintIsPublic,
+} from "../../services/config/mint.js";
+import { parseAutoIssue } from "../../core/fingerprint.js";
 
 interface RequiredSecretStatus {
   name: string;
@@ -177,7 +178,10 @@ export async function productView(
     db,
     p.slug,
     Boolean(signingPublicKey),
-    services.effectiveRegistration,
+    mintIsPublic({
+      registration: services.effectiveRegistration,
+      autoIssue: parseAutoIssue(p.auto_issue_json),
+    }),
   );
   const portalSettings = await getPortalProductSettings(db, p.slug);
   return {
@@ -222,8 +226,9 @@ async function productSetupView(
   db: Db,
   product: string,
   signingConfigured: boolean,
-  /** The EFFECTIVE policy: an approval under a closed policy does not count once it is open. */
-  registration: RegistrationPolicy,
+  /** `mintIsPublic` of the product: an approval given while the mint was closed does not count
+   *  once it is public. */
+  publicMint: boolean,
 ): Promise<Record<string, unknown>> {
   const oidc = await db.first<OidcSetupRow>(
     "SELECT provider, issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
@@ -232,7 +237,7 @@ async function productSetupView(
   const edgeMint = await db.all<EdgeMintSetupRow>(
     `SELECT c.id, c.signing_key_secret,
             CASE WHEN a.id IS NULL THEN 'pending'
-                 WHEN ${approvalMatchesRecipe(registration)} THEN 'approved'
+                 WHEN ${approvalMatchesRecipe(publicMint)} THEN 'approved'
                  ELSE 'changed' END AS approval
        FROM edge_mint_config c
        LEFT JOIN edge_mint_approvals a ON a.product = c.product AND a.id = c.id

@@ -5,14 +5,15 @@
  * A recipe (`edge_mint_config`) arrives from a linked repo's `.pkey/` manifest, so on its own it
  * is repo-authored policy: before this existed, a repo writer (or a mistaken recipe) could turn
  * any PEM-shaped product secret into a token mint reachable by every device of the product —
- * which, under open registration, is anyone. The mint route now signs only when an operator
+ * which, under open registration or anonymous enrolment, is anyone. The mint route now signs only when an operator
  * approved the recipe in the EXACT form it will run, and this is where that approval is given.
  *
  *   GET  config/mint              every recipe with its status (approved | pending | changed),
- *                                 its signing secret's usage, and the product's effective
- *                                 registration policy
+ *                                 its signing secret's usage, the product's effective
+ *                                 registration policy, whether anonymous enrolment is on, and
+ *                                 whether the mint is therefore public (`publicMint`)
  *   POST config/mint/<id>/approve the recipe's fields ECHOED back, plus
- *                                 `acknowledgeOpenRegistration: true` when registration is open
+ *                                 `acknowledgeOpenRegistration: true` when the mint is public
  *   POST config/mint/<id>/revoke  drop the approval; the recipe answers 404 again
  *
  * ── WHY THE FIELDS ARE ECHOED ──────────────────────────────────────────────────────────────
@@ -25,16 +26,19 @@
  *
  * ── WHY OPEN REGISTRATION NEEDS AN ACKNOWLEDGEMENT ─────────────────────────────────────────
  *
- * With `registration: "open"` any installation can register and hold a device token, so an
- * approved recipe is a public token mint. That can be right — it is the operator's decision —
- * but it has to be a visible one: the flag is required, and the audit row says it was given.
+ * With `registration: "open"` any installation can register and hold a device token; with
+ * anonymous auto-issue enrolment on, any caller can get a licence and a device token from
+ * `POST /<p>/license/enroll`. Either way an approved recipe is a public token mint
+ * (`mintIsPublic` in `../mint.ts`). That can be right — it is the operator's decision — but it
+ * has to be a visible one: the flag is required, and the audit row says it was given.
  *
  * The acknowledgement is stored ON the approval (`open_registration_acknowledged`), not just
- * checked once. Registration is product state a `.pkey/product` push can change — declare
- * `devices.registration: open`, or turn License off so the derived policy is open — without
- * touching the recipe. The mint route re-checks it on every request: while registration is open
- * an approval without the acknowledgement does not match, the recipe answers 404, and this list
- * reports it `changed` with `registration` among its changed fields.
+ * checked once. Both settings are product state a `.pkey/product` push can change — declare
+ * `devices.registration: open`, turn License off so the derived policy is open, or enable
+ * anonymous `autoIssue` — without touching the recipe. The mint route re-checks it on every
+ * request: while the mint is public an approval without the acknowledgement does not match, the
+ * recipe answers 404, and this list reports it `changed` with `registration` among its changed
+ * fields.
  */
 
 import { ErrorCode } from "../../../core/errors.js";
@@ -46,6 +50,8 @@ import {
   readBody,
 } from "../../../core/adminApi.js";
 import { getProductSecretUsage } from "../../../core/products.js";
+import { allowsAnonymousEnroll } from "../../../core/fingerprint.js";
+import { mintIsPublic } from "../mint.js";
 import type { ConfigAdminContext } from "./index.js";
 
 interface RecipeRow {
@@ -94,7 +100,7 @@ function differingFields(a: RecipeRow, b: RecipeRow): WireField[] {
 
 /**
  * Why an approval no longer applies: the differing recipe fields, plus `registration` when the
- * product is open now and the approval was given without the open-registration acknowledgement.
+ * mint is public now (`mintIsPublic`) and the approval was given without the acknowledgement.
  * Empty means the approval matches — the same rule as `approvalMatchesRecipe` in `../mint.ts`.
  */
 function approvalMismatch(
@@ -152,7 +158,7 @@ function statusOf(
 }
 
 async function handleList(ctx: ConfigAdminContext): Promise<Response> {
-  const open = ctx.product.registration === "open";
+  const open = mintIsPublic(ctx.product);
   const rows = await listRecipes(ctx);
   const recipes = [];
   for (const { recipe, approval } of rows) {
@@ -189,7 +195,12 @@ async function handleList(ctx: ConfigAdminContext): Promise<Response> {
           : [],
     });
   }
-  return adminJson({ registration: ctx.product.registration, recipes });
+  return adminJson({
+    registration: ctx.product.registration,
+    anonymousEnroll: allowsAnonymousEnroll(ctx.product.autoIssue),
+    publicMint: open,
+    recipes,
+  });
 }
 
 /** The echoed value for a nullable text column: absent and `null` both mean NULL. */
@@ -253,13 +264,13 @@ async function handleApprove(
     );
   }
 
-  const open = product.registration === "open";
+  const open = mintIsPublic(product);
   const acknowledged = body.acknowledgeOpenRegistration === true;
   if (open && !acknowledged) {
     return err(
       422,
       ErrorCode.BadRequest,
-      "registration is open: anyone who installs this product can mint this token; set acknowledgeOpenRegistration to approve",
+      "the mint is public (open registration or anonymous enrolment): anyone who installs this product can mint this token; set acknowledgeOpenRegistration to approve",
       { fields: ["acknowledgeOpenRegistration"] },
     );
   }
@@ -267,8 +278,8 @@ async function handleApprove(
   // The ECHOED values, which equal the recipe as it was just read. If a push changes the recipe
   // after this point, the approval stops matching — which is exactly the intended failure. The
   // acknowledgement is recorded with it: an approval given without one stops matching if a push
-  // later opens registration. An operator may acknowledge ahead of time on a closed product (the
-  // API accepts the flag either way); the console only offers it while registration is open.
+  // later makes the mint public. An operator may acknowledge ahead of time on a closed product
+  // (the API accepts the flag either way); the console only offers it while the mint is public.
   await db.run(
     `INSERT INTO edge_mint_approvals
        (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,

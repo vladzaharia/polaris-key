@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
+import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
   seedProductSecret,
+  seedTier,
   TEST_KEK,
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
@@ -23,7 +25,9 @@ import {
   getEdgeMintConfig,
   handleMintAuth,
   handleMintToken,
+  mintIsPublic,
 } from "../src/services/config/mint.js";
+import { handleEnroll } from "../src/services/license/enroll.js";
 import { configService } from "../src/services/config/index.js";
 import { handleAdmin } from "../src/admin/index.js";
 import {
@@ -355,13 +359,17 @@ interface RecipeView {
   changedFields: string[];
 }
 
-async function listRecipes(
-  env: Env,
-  db: SqliteDb,
-): Promise<{ registration: string; recipes: RecipeView[] }> {
+async function listRecipes(env: Env, db: SqliteDb): Promise<RecipeList> {
   const res = await admin(env, db, "GET", "/api/products/djdl/config/mint");
   expect(res.status).toBe(200);
-  return res.body as unknown as { registration: string; recipes: RecipeView[] };
+  return res.body as unknown as RecipeList;
+}
+
+interface RecipeList {
+  registration: string;
+  anonymousEnroll: boolean;
+  publicMint: boolean;
+  recipes: RecipeView[];
 }
 
 /** The approve body an operator's console sends: the recipe exactly as it was shown. */
@@ -586,7 +594,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
         db,
         "djdl",
         "applemusic",
-        product.registration,
+        mintIsPublic(product),
       ),
     ).toBeNull();
   });
@@ -606,7 +614,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
         db,
         "djdl",
         "applemusic",
-        product.registration,
+        mintIsPublic(product),
       ),
     ).toBeNull();
   });
@@ -635,7 +643,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
         db,
         "djdl",
         "applemusic",
-        product.registration,
+        mintIsPublic(product),
       ),
     ).toBeNull();
 
@@ -717,6 +725,111 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       changedFields: [],
       approval: { openRegistrationAcknowledged: true },
     });
+  });
+
+  // Anonymous auto-issue makes the mint public while registration still reads requires-license:
+  // `POST /<p>/license/enroll` hands any caller a licence and a device token. A push can turn it
+  // on (autoIssue is manifest-owned until an operator claims it), so it needs the same
+  // acknowledgement as open registration.
+  it("an approval given without the acknowledgement stops matching when anonymous enrolment turns on", async () => {
+    await seedTier(db, "djdl", "free", { deviceLimit: 5 });
+    await seedRecipe(db, {}, { approve: false });
+    const listedClosed = await listRecipes(env, db);
+    expect(listedClosed).toMatchObject({
+      registration: "requires-license",
+      anonymousEnroll: false,
+      publicMint: false,
+    });
+    expect(
+      (
+        await admin(
+          env,
+          db,
+          "POST",
+          "/api/products/djdl/config/mint/applemusic/approve",
+          echoOf(listedClosed.recipes[0]!),
+        )
+      ).status,
+    ).toBe(200);
+
+    await db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({ enabled: true, tierId: "free", mode: "anonymous" }),
+    );
+    const anon = (await loadProduct(env, db, "djdl"))!;
+    expect(anon.registration).toBe("requires-license");
+    expect(mintIsPublic(anon)).toBe(true);
+
+    // Anyone: no key, no sign-in, a usable device token.
+    const enrolled = await handleEnroll(
+      mkReq(
+        "POST",
+        { "x-pkey-device": "stranger" },
+        {
+          fingerprint: {
+            components: {
+              machineUuid: "u".repeat(FINGERPRINT_COMPONENT_LENGTH),
+              boardSerial: "b".repeat(FINGERPRINT_COMPONENT_LENGTH),
+              cpuModel: "c".repeat(FINGERPRINT_COMPONENT_LENGTH),
+            },
+            hwid: "ignored",
+          },
+        },
+      ),
+      env,
+      db,
+      anon,
+      NOW,
+    );
+    expect(enrolled.status).toBe(200);
+    const { token } = (await enrolled.json()) as { token: string };
+    expect((await mint(env, db, anon, token)).status).toBe(404);
+    const fragment = (await configService.discoveryFragment!({
+      product: anon,
+      env,
+      db,
+      base: "https://key.plrs.im/djdl",
+    })) as { mint: { available: boolean } };
+    expect(fragment.mint.available).toBe(false);
+
+    const listed = await listRecipes(env, db);
+    expect(listed).toMatchObject({
+      registration: "requires-license",
+      anonymousEnroll: true,
+      publicMint: true,
+    });
+    expect(listed.recipes[0]).toMatchObject({
+      status: "changed",
+      changedFields: ["registration"],
+    });
+    const refused = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      echoOf(listed.recipes[0]!),
+    );
+    expect(refused.status).toBe(422);
+    expect(refused.body.fields).toEqual(["acknowledgeOpenRegistration"]);
+
+    const accepted = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      { ...echoOf(listed.recipes[0]!), acknowledgeOpenRegistration: true },
+    );
+    expect(accepted.status).toBe(200);
+    expect((await mint(env, db, anon, token)).status).toBe(200);
+  });
+
+  it("oidcDefault auto-issue alone is not a public mint", async () => {
+    await db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({ enabled: true, tierId: "free", mode: "oidcDefault" }),
+    );
+    const p = (await loadProduct(env, db, "djdl"))!;
+    expect(mintIsPublic(p)).toBe(false);
   });
 
   it("reports a changed recipe with the fields that changed", async () => {
@@ -836,40 +949,51 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     files.filter((f) => f >= "0025"),
   ];
 
-  it("a djdl-shaped fixture (recipe + secret) mints exactly as before", async () => {
-    // A database as production has it the moment before this change deploys.
+  // djdl's real recipe (products/djdl/product.json).
+  const djdl = JSON.parse(
+    readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        "..",
+        "..",
+        "..",
+        "products",
+        "djdl",
+        "product.json",
+      ),
+      "utf8",
+    ),
+  ) as {
+    devices?: { registration?: string };
+    edgeMint: Array<{
+      id: string;
+      alg: string;
+      signingKeySecret: string;
+      kid: string;
+      claimsTemplate: Record<string, unknown>;
+      ttlSeconds: number;
+    }>;
+  };
+  const recipe = djdl.edgeMint[0]!;
+
+  /**
+   * A database as production has it the moment before this change deploys — djdl's recipe and
+   * its sealed signing secret, written with the pre-0025 column set (there is no `usage` yet) —
+   * then the deploy: 0025 onward, plus one replay of the idempotent backfill, which must converge
+   * rather than duplicate or fail. `products` columns are set BEFORE the migration runs, because
+   * the backfill reads the product's policy at deploy time.
+   */
+  async function migrated(
+    productColumns: { services_json?: string; auto_issue_json?: string } = {},
+  ): Promise<{ handle: Database.Database; db: SqliteDb }> {
     const handle = new Database(":memory:");
     const runScript = handle.exec.bind(handle);
     for (const f of beforeUsage) runScript(sqlFor(f));
     const db = new SqliteDb(handle);
     await seedProduct(db, "djdl");
-
-    // djdl's real recipe (products/djdl/product.json) and its sealed signing secret, written
-    // with the pre-0025 column set — there is no `usage` yet.
-    const djdl = JSON.parse(
-      readFileSync(
-        join(
-          MIGRATIONS_DIR,
-          "..",
-          "..",
-          "..",
-          "products",
-          "djdl",
-          "product.json",
-        ),
-        "utf8",
-      ),
-    ) as {
-      edgeMint: Array<{
-        id: string;
-        alg: string;
-        signingKeySecret: string;
-        kid: string;
-        claimsTemplate: Record<string, unknown>;
-        ttlSeconds: number;
-      }>;
-    };
-    const recipe = djdl.edgeMint[0]!;
+    for (const [col, value] of Object.entries(productColumns)) {
+      await db.run(`UPDATE products SET ${col} = ? WHERE slug = 'djdl'`, value);
+    }
     const sealed = await seal({ PLATFORM_KEK: TEST_KEK } as Env, ES_PEM, {
       product: "djdl",
       kind: "product-secret",
@@ -902,11 +1026,24 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
       recipe.ttlSeconds,
     );
 
-    // Deploy: apply 0025 onward. Then replay the (idempotent) backfill file once more — it must
-    // converge rather than duplicate or fail.
     for (const f of fromUsage) runScript(sqlFor(f));
     const backfill = fromUsage.find((f) => f.includes("edge_mint_approvals"))!;
     runScript(sqlFor(backfill));
+    return { handle, db };
+  }
+
+  function approvals(handle: Database.Database): unknown[] {
+    return handle
+      .prepare(
+        "SELECT id, approved_by, open_registration_acknowledged FROM edge_mint_approvals WHERE product = 'djdl'",
+      )
+      .all();
+  }
+
+  it("a djdl-shaped fixture (closed registration) mints exactly as before, and goes inert if a push later opens registration", async () => {
+    // djdl itself runs requires-license, which is what the fixture's default services give.
+    expect(djdl.devices?.registration).toBe("requires-license");
+    const { handle, db } = await migrated();
 
     expect(
       handle
@@ -915,23 +1052,18 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
         )
         .all(),
     ).toEqual([{ product: "djdl", name: recipe.signingKeySecret }]);
-    expect(
-      handle
-        .prepare(
-          "SELECT id, approved_by, open_registration_acknowledged FROM edge_mint_approvals WHERE product = 'djdl'",
-        )
-        .all(),
-    ).toEqual([
-      // The backfill carries today's behaviour, including under open registration.
+    // Closed at deploy: the approval covers today's policy, and NO acknowledgement is invented.
+    expect(approvals(handle)).toEqual([
       {
         id: recipe.id,
         approved_by: "migration",
-        open_registration_acknowledged: 1,
+        open_registration_acknowledged: 0,
       },
     ]);
 
     const env = makeEnv(new KvMock(), ["djdl"]);
     const product = (await loadProduct(env, db, "djdl"))!;
+    expect(product.registration).toBe("requires-license");
     const token = await activate(env, db, product);
     const res = await mint(env, db, product, token, recipe.id);
     expect(res.status).toBe(200);
@@ -945,14 +1077,83 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     });
     expect(body.expiresAt).toBe(NOW + recipe.ttlSeconds);
 
-    // A product already running open registration keeps minting too: the backfill recorded the
-    // acknowledgement, because that recipe was already a public mint before the upgrade.
+    // After deploy a push opens registration: the migrated approval must NOT widen into a public
+    // mint. The recipe answers 404 until an operator re-approves it with the acknowledgement.
     await db.run(
       "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
       JSON.stringify({ registration: "open" }),
     );
     const opened = (await loadProduct(env, db, "djdl"))!;
     expect(opened.registration).toBe("open");
-    expect((await mint(env, db, opened, token, recipe.id)).status).toBe(200);
+    expect((await mint(env, db, opened, token, recipe.id)).status).toBe(404);
+
+    // Same for a push that turns on anonymous enrolment.
+    await db.run(
+      "UPDATE products SET services_json = NULL, auto_issue_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({ enabled: true, tierId: "free", mode: "anonymous" }),
+    );
+    const anon = (await loadProduct(env, db, "djdl"))!;
+    expect(anon.registration).toBe("requires-license");
+    expect((await mint(env, db, anon, token, recipe.id)).status).toBe(404);
+  });
+
+  const ALREADY_PUBLIC: Array<[string, Record<string, string>]> = [
+    [
+      "declared open registration",
+      { services_json: JSON.stringify({ registration: "open" }) },
+    ],
+    [
+      "License off with Identity off (derived open)",
+      {
+        services_json: JSON.stringify({
+          license: { enabled: false },
+          config: { enabled: true },
+        }),
+      },
+    ],
+    [
+      "anonymous auto-issue enrolment",
+      {
+        auto_issue_json: JSON.stringify({
+          enabled: true,
+          tierId: "free",
+          mode: "anonymous",
+        }),
+      },
+    ],
+  ];
+  for (const [how, columns] of ALREADY_PUBLIC) {
+    it(`a product already public at deploy (${how}) records the acknowledgement and keeps minting`, async () => {
+      const { handle, db } = await migrated(columns);
+      expect(approvals(handle)).toEqual([
+        {
+          id: recipe.id,
+          approved_by: "migration",
+          open_registration_acknowledged: 1,
+        },
+      ]);
+      const env = makeEnv(new KvMock(), ["djdl"]);
+      const product = (await loadProduct(env, db, "djdl"))!;
+      expect(mintIsPublic(product)).toBe(true);
+      const token = await activate(env, db, product);
+      expect((await mint(env, db, product, token, recipe.id)).status).toBe(200);
+    });
+  }
+
+  it("an oidcDefault-only product is not public at deploy: no acknowledgement", async () => {
+    const { handle } = await migrated({
+      auto_issue_json: JSON.stringify({
+        enabled: true,
+        tierId: "free",
+        mode: "oidcDefault",
+      }),
+    });
+    expect(approvals(handle)).toEqual([
+      {
+        id: recipe.id,
+        approved_by: "migration",
+        open_registration_acknowledged: 0,
+      },
+    ]);
   });
 });

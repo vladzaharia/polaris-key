@@ -1088,6 +1088,25 @@ describe("admin api", () => {
       pendingApproval: [],
     });
     expect(s.nextActions.map((a) => a.id)).not.toContain("edge-mint:music");
+
+    // Anonymous enrolment makes the mint public: an approval without the acknowledgement no
+    // longer counts, and the recipe is back on the checklist.
+    await db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({ enabled: true, tierId: "free", mode: "anonymous" }),
+    );
+    s = await setup();
+    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
+      status: "needs-approval",
+      pendingApproval: ["music"],
+    });
+    await approveEdgeMintRecipe(db, "djdl", "music", {
+      acknowledgeOpenRegistration: true,
+    });
+    s = await setup();
+    expect(s.modules.find((m) => m.id === "edgeMint")?.status).toBe(
+      "configured",
+    );
   });
 
   it("keys/rotate stages a new key, then break-glass activation retires the old key", async () => {

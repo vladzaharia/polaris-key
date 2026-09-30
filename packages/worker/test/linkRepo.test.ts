@@ -16,6 +16,7 @@ import { handleActivate } from "../src/services/license/activation.js";
 import {
   getApprovedEdgeMintConfig,
   handleMintToken,
+  mintIsPublic,
 } from "../src/services/config/mint.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
@@ -1166,12 +1167,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     );
     expect(n?.n).toBe(0);
     expect(
-      await getApprovedEdgeMintConfig(
-        db,
-        "acme",
-        "applemusic",
-        "requires-license",
-      ),
+      await getApprovedEdgeMintConfig(db, "acme", "applemusic", false),
     ).toBeNull();
   });
 
@@ -1248,7 +1244,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       );
       expect(await w.mint()).toBe(404);
       expect(
-        await getApprovedEdgeMintConfig(w.db, "acme", "applemusic", "open"),
+        await getApprovedEdgeMintConfig(w.db, "acme", "applemusic", true),
       ).toBeNull();
 
       // Re-approved WITH the acknowledgement: mints under open registration.
@@ -1258,6 +1254,37 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       expect(await w.mint()).toBe(200);
     });
   }
+
+  // Anonymous auto-issue is the other way a push makes the mint public: `POST /<p>/license/enroll`
+  // hands any caller a licence and a device token while the effective registration still reads
+  // `requires-license`. The acknowledgement must be required there too.
+  it("a push that enables anonymous autoIssue makes a closed approval 404 until re-approved with the acknowledgement", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+
+    await w.resync(
+      [BASE_RECIPE],
+      JSON.stringify({
+        ...JSON.parse(PRODUCT_JSON),
+        autoIssue: { enabled: true, tierId: "pro", mode: "anonymous" },
+      }),
+    );
+    const product = (await loadProduct(w.env, w.db, "acme"))!;
+    expect(product.registration).toBe("requires-license");
+    expect(mintIsPublic(product)).toBe(true);
+    expect(await w.mint()).toBe(404);
+
+    expect(
+      await getApprovedEdgeMintConfig(w.db, "acme", "applemusic", true),
+    ).toBeNull();
+
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic", {
+      acknowledgeOpenRegistration: true,
+    });
+    expect(await w.mint()).toBe(200);
+  });
 
   it("closing registration again restores an approval given without the acknowledgement", async () => {
     const w = await linked();
