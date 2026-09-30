@@ -6,13 +6,16 @@ Code.
 
 ## Skills
 
-Two project skills are installed under `.claude/skills/`. Invoke the matching one instead of
+Three project skills are installed under `.claude/skills/`. Invoke the matching one instead of
 improvising:
 
 - **`authoring-pkey-manifests`** — creating or editing a product's `.pkey/product`, `.pkey/schema`
   or `.pkey/release`, and registering or resyncing that product.
 - **`adding-a-catalog-entry`** — adding a `config`, `secret` or `flag` key to a product's config
   catalog and publishing it.
+- **`running-the-omniplatform-program`** — leading the Godot-on-Polaris-Key execution program in
+  `docs/research/2026-09-29-godot-omniplatform/program/`: choosing ready work packages and
+  dispatching the `pkey-*` role agents in `.claude/agents/`.
 
 ## Running commands
 

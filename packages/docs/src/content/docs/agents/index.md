@@ -43,8 +43,9 @@ So the agent-readable source of truth is **the repository**, not the deployed si
 
 - `AGENTS.md` — conventions, gates, hard rules. Read first, always.
 - `CLAUDE.md` — Claude Code specifics only.
-- `.claude/skills/` — two packaged procedures, `authoring-pkey-manifests` and
-  `adding-a-catalog-entry`.
+- `.claude/skills/` — three packaged procedures: `authoring-pkey-manifests`,
+  `adding-a-catalog-entry` and `running-the-omniplatform-program`. The last one drives the role
+  agents in `.claude/agents/` through the work packages of the Godot-on-Polaris-Key program.
 - `CONTRIBUTING.md`, `README.md`, `docs/` — the long-form human material, all git-tracked.
 - The tests named in [Conventions](/docs/agents/conventions/) — every rule that matters is
   enforced by one, so an agent can check its own work without reading prose at all.

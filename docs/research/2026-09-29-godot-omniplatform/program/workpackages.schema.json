@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Work-package graph for the Godot-on-Polaris-Key program",
+  "type": "object",
+  "required": [
+    "program",
+    "version",
+    "phases",
+    "roles",
+    "statuses",
+    "workPackages"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "program": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 },
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "roles": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^pkey-[a-z-]+$" }
+    },
+    "statuses": { "type": "array", "items": { "type": "string" } },
+    "workPackages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "phase",
+          "lane",
+          "role",
+          "estimateWeeks",
+          "deps",
+          "planMode",
+          "gates",
+          "humanInputs",
+          "repo",
+          "optional",
+          "refs",
+          "brief",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D)-\\d{2}$"
+          },
+          "title": { "type": "string", "minLength": 1 },
+          "phase": { "type": "string" },
+          "stage": {
+            "type": "string",
+            "description": "sub-phase, e.g. v1/v2/v3 for packs or sdk-wave"
+          },
+          "lane": {
+            "type": "string",
+            "description": "the kind of work, used to spread concurrency"
+          },
+          "role": { "type": "string", "pattern": "^pkey-[a-z-]+$" },
+          "estimateWeeks": {
+            "type": "array",
+            "items": { "type": "number", "exclusiveMinimum": 0 },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "deps": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "planMode": { "type": "boolean" },
+          "gates": { "type": "array", "items": { "type": "string" } },
+          "humanInputs": { "type": "array", "items": { "type": "string" } },
+          "repo": { "type": "string" },
+          "optional": { "type": "boolean" },
+          "refs": { "type": "array", "items": { "type": "string" } },
+          "brief": { "type": "string", "pattern": "^wp/.+\\.md$" },
+          "status": {
+            "enum": [
+              "todo",
+              "planning",
+              "awaiting-approval",
+              "in-progress",
+              "in-review",
+              "done",
+              "blocked",
+              "dropped"
+            ]
+          },
+          "milestone": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
