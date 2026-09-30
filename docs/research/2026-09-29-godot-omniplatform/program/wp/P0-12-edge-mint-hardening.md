@@ -67,6 +67,15 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   current `edge_mint_config` row column for column; otherwise it answers exactly like an unknown
   recipe (`404 not_found`). Any push that changes a security-relevant field makes the recipe inert
   until re-approved. Resync deletes approvals for recipe ids the manifest no longer declares.
+  _Correction (implementation):_ the table also carries `open_registration_acknowledged`
+  (`INTEGER NOT NULL DEFAULT 0`). Registration is product state, not a recipe column, and a
+  `.pkey/product` push can open it (declare `devices.registration: open`, or turn License off)
+  without touching the recipe. Checking the acknowledgement only at approve time would let such a
+  push widen a closed-product approval into a public mint, so the flag is stored on the approval
+  and re-checked on every mint: while the effective registration is `open`, an approval without
+  it does not match (404, reported `changed` with `registration` in `changedFields`). The
+  migration backfill records `1`, because every backfilled recipe already minted under the
+  product's current policy.
 - **Admin API** under Config's admin handler (`services/config/admin/index.ts`):
   `GET /manage/api/products/<slug>/config/mint` (each recipe with status `approved`, `pending` or
   `changed`, its secret's usage, and the product's effective registration policy);
@@ -85,6 +94,11 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   approvals table; an idempotent backfill that marks every secret currently named by an
   `edge_mint_config` row as `edge-mint` and copies every current recipe into `edge_mint_approvals`
   (`approved_by = 'migration'`), so deployed products keep minting.
+  _Correction (implementation):_ the lead pre-assigned the number `0025`, so the two files use
+  the lettered-suffix convention of `0022_*`: `0025_a_product_secret_usage.sql` (the bare
+  `ALTER`, alone in its file) and `0025_b_edge_mint_approvals.sql` (the table plus both
+  idempotent backfill statements), which sort and apply in that order in wrangler and
+  `test/helpers.ts`.
 - **Docs:** `services/config/edge-mint.md` (the recipe, the guard, the responses table, discovery),
   `admin/secrets-and-keys.md`, and the `authoring-pkey-manifests` skill (recipes need approval).
 - **Threat model:** A5 gains the scoping rule; §3 and §5 say edge-mint recipes from `.pkey/` are
@@ -129,16 +143,16 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
 
 ## Acceptance criteria
 
-- [ ] Test: a recipe naming a general-usage secret returns `500 misconfigured` and mints nothing.
-- [ ] Test: a new recipe arriving by resync returns `404` until approved, then mints.
-- [ ] Test: changing the recipe's `claimsTemplate`, `audience`, `alg`, `kid`, `ttlSeconds` or
+- [x] Test: a recipe naming a general-usage secret returns `500 misconfigured` and mints nothing.
+- [x] Test: a new recipe arriving by resync returns `404` until approved, then mints.
+- [x] Test: changing the recipe's `claimsTemplate`, `audience`, `alg`, `kid`, `ttlSeconds` or
       `signingKeySecret` by resync makes it `404` again; an unchanged resync keeps it approved.
-- [ ] Test: approve with stale echoed fields is refused; approve on an `open` product without
+- [x] Test: approve with stale echoed fields is refused; approve on an `open` product without
       `acknowledgeOpenRegistration` is refused.
-- [ ] Test: after the migration, a djdl-shaped fixture (recipe + secret) mints exactly as before.
-- [ ] Test: the per-device bucket returns `429` after 30 mints in a minute from one device.
-- [ ] Test: discovery `config.mint.available` is false while every recipe is pending.
-- [ ] `THREAT-MODEL.md` and `services/config/edge-mint.md` describe both conditions; `gen:check`,
+- [x] Test: after the migration, a djdl-shaped fixture (recipe + secret) mints exactly as before.
+- [x] Test: the per-device bucket returns `429` after 30 mints in a minute from one device.
+- [x] Test: discovery `config.mint.available` is false while every recipe is pending.
+- [x] `THREAT-MODEL.md` and `services/config/edge-mint.md` describe both conditions; `gen:check`,
       `check:links` and the green gate pass (`AGENTS.md`).
 
 ## Verify
