@@ -737,6 +737,8 @@ export const rows = [
           quotes: [
             "This API cannot be used with apps or add-ons that use mandatory app updates and Store-managed consumable add-ons.",
             "You cannot use the Microsoft Store submission API to create an app in Partner Center",
+            "then the API will return an unknown tier for the pricing part. You can continue using this API to update modules other than",
+            "with apps or add-ons that are on Pricing Version 2",
           ],
         },
       ),
