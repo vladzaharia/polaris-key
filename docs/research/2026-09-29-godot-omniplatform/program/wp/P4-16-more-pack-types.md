@@ -1,16 +1,16 @@
 # P4-16 More pack types in every SDK: `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`
 
-| Field       | Value                                                                                                                |
-| ----------- | -------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v3)                                                                                                       |
-| Size        | 1–1.5 engineer-weeks                                                                                                 |
-| Depends on  | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md)             |
-| Unblocks    | none                                                                                                                 |
-| Role        | `pkey-sdk-porter` (the Godot handlers may go to `pkey-godot-engineer`)                                               |
-| Plan mode   | no                                                                                                                   |
+| Field       | Value                                                                                                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v3)                                                                                                                                                                          |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                    |
+| Depends on  | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md)                                                                                |
+| Unblocks    | none                                                                                                                                                                                    |
+| Role        | `pkey-sdk-porter` (the Godot handlers may go to `pkey-godot-engineer`)                                                                                                                  |
+| Plan mode   | no                                                                                                                                                                                      |
 | Gates       | none in the graph; in practice rule 9 (the v1 validator accepts only `godot.pck` and `files.tree`, and P4-01 names this package to widen it); per-type corpus vectors would need a plan |
-| Human input | none                                                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                            |
+| Human input | none                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                               |
 
 ## Goal
 
@@ -20,13 +20,13 @@ table, implementing the full handler contract with the type-specific verificatio
 typed "unsupported here" result that the parity registry allows. `custom.<name>` works end to end
 in every SDK through `registerHandler`, and the CLI lints the new types at publish.
 
-| SDK         | Handlers added here                                 |
-| ----------- | --------------------------------------------------- |
+| SDK         | Handlers added here                                              |
+| ----------- | ---------------------------------------------------------------- |
 | Godot       | `godot.zip`, `l10n.table`, `data.json`, `audio.bank`, `custom.*` |
-| Swift       | `ml.model`, `data.json`, `l10n.table`, `custom.*`   |
-| Node        | `ml.model`, `custom.*`                              |
-| Python      | `ml.model`, `data.json`, `custom.*`                 |
-| React / web | `data.json`, `l10n.table`, `custom.*`               |
+| Swift       | `ml.model`, `data.json`, `l10n.table`, `custom.*`                |
+| Node        | `ml.model`, `custom.*`                                           |
+| Python      | `ml.model`, `data.json`, `custom.*`                              |
+| React / web | `data.json`, `l10n.table`, `custom.*`                            |
 
 `files.tree` (and, for Godot, `godot.pck`) come from v1 (P4-06, P4-07, P4-08). If a v1 package
 did not deliver `files.tree` in an SDK that CONTENT §13 lists for it, add it here. `godot.zip` is

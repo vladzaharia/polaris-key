@@ -65,12 +65,15 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
   `PKeyOptions.fingerprint_enabled` opt-out. On web, `enroll()` returns
   `unsupported`/`runtime` (no anchor).
 - **Re-acquire strategies** plugged into P1-02's `PKeyTokenManager`: `license_token` (`POST
-  /<p>/license/token`) and `reregister` (`POST /<p>/devices/register`, keyless, same device id).
-  The token's source (`activate`, `enroll`, `register`, `identity`, `bundle`) is persisted beside
-  the token; `register` selects `reregister`, every other or unknown source selects
-  `license_token`. Exactly one attempt per sync pass, whichever strategy.
-- `deactivate()`: `POST /license/deauthorize` best-effort, then a mandatory local wipe (token,
-  token source, cache; the device id stays). A wipe failure is returned, never swallowed.
+  /<p>/license/token`) and `reregister` (`POST /<p>/devices/register`, keyless, same device id,
+  the fingerprint when enabled, no `Authorization`). The rule is P1b-06's, so every SDK chooses
+  alike: re-register when License is disabled for the product, or when the current token was
+  minted by `devices.register()` in this process, or, after a restart, when there is no verified
+  licence document and no imported bundle; otherwise `license/token`. The token source
+  (`activate`, `enroll`, `register`, `identity`) is kept in memory only. Exactly one attempt per
+  sync pass, whichever strategy.
+- `deactivate()`: `POST /license/deauthorize` best-effort, then a mandatory local wipe (token and
+  cache; the device id stays). A wipe failure is returned, never swallowed.
 - Build-gate port and `gate-matrix.json` in the runner, faithful to the **server**
   (`worker/src/core/gate.ts`), not to the stale Node port.
 - Channel header values restricted to P0-04's vocabulary; anything else is refused at
@@ -97,9 +100,14 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
   left by an imported bundle is `bundle`; a token supersedes a bundle.
 - **Re-registration is safe to attempt.** The server refuses `/devices/register` for an id bound
   to a real licence with the same `403 registration_closed` it uses for every refusal
-  (`register.ts:147-160`), so a wrong strategy choice cannot evict a seat. It can still waste the
-  one attempt, which is why the token source is persisted rather than guessed from cache state.
-  A `403` or `429` from either strategy ends the pass as a hard 401 (`lastSyncUnauthorized`).
+  (`register.ts:147-160`), so a wrong strategy choice cannot evict a seat; it only wastes the one
+  attempt. A `403` or `429` from either strategy ends the pass as a hard 401
+  (`lastSyncUnauthorized`). Persisting a token source would change the cache contract, which
+  P1b-06 leaves to a plan if its heuristic proves insufficient; Godot does not persist one either.
+- **`entitled_channels()`** follows the Worker (`packages/worker/src/core/entitlements.ts:109-113`),
+  as P1b-07 settles for every SDK: the `channels` entitlement's string values, in order,
+  de-duplicated, and `["stable"]` when it is absent or not an array. Swift's `[]` is the outlier
+  P1b-07 changes.
 - **Web and mobile:** `enroll()` needs the `machineUuid` anchor and is impossible on web
   (notes/A2 §3.4). On iOS a re-enrol after the vendor's apps are uninstalled mints a new free
   licence; document it, do not work around it.
@@ -127,13 +135,16 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
 - [ ] Fake-server tests map each activation response to its `kind`: 200, 401, 403
       `device_limit` (nested body) and 403 `fingerprint_required`, 409 `hardware_mismatch` (flat
       body with `drift`, `changed`), 404 on enrol, 403 `enroll_claimed`, 429.
-- [ ] A 401 on a document fetch for a `register`-sourced token triggers exactly one `POST
-      /devices/register` and one retry; for an `activate`-sourced token exactly one `POST
-      /license/token`; two parallel 401s still cause one call; a second 401 records `revoked`.
-- [ ] `deactivate()` with the server unreachable still wipes the token, token source and cache,
-      keeps the device id, and reports the remote failure.
-- [ ] `entitled_channels()` returns the string members of the `channels` entitlement and `[]`
-      when absent; `is_entitled` is true only for `value == true`.
+- [ ] A 401 on a document fetch with License disabled, or for a token minted by `register()`,
+      or after a restart with no verified licence document and no bundle, triggers exactly one
+      `POST /devices/register` (no `Authorization`) and one retry; a licensed device triggers
+      exactly one `POST /license/token`; two parallel 401s still cause one call; a `403
+      registration_closed` records the hard 401 with no second attempt.
+- [ ] `deactivate()` with the server unreachable still wipes the token and cache, keeps the
+      device id, and reports the remote failure.
+- [ ] `entitled_channels()` returns the de-duplicated string members of the `channels`
+      entitlement in order, and `["stable"]` when it is absent or not an array; `is_entitled` is
+      true only for `value == true`.
 - [ ] `enroll()` on a web export returns `unsupported` with reason `runtime`.
 - [ ] The green gate passes (`AGENTS.md`), including the `godot` CI job.
 - [ ] `sdks/godot/parity.json` marks `license.gate`, `license.activate`, `license.enroll`
@@ -151,10 +162,9 @@ godot --headless --path sdks/godot -- --pkey-test license,conformance
 
 - `PolarisKey.license` as above, and `PKeyActivationResult`, which P1-10's activation panel
   maps to copy.
-- The persisted token source and the rule that chooses a re-acquire strategy: P1b-06 ports the
-  same rule to the other SDKs and its transcript becomes the reference; if the transcript
-  disagrees, Godot follows it.
-- P1-07 sets the token source `identity` when device-code sign-in completes.
+- The re-acquire rule is P1b-06's; once its `register-reregister-401` transcript exists
+  (P1b-03), the Godot suite replays it, and if the transcript disagrees, Godot follows it.
+- P1-07 sets the in-memory token source `identity` when device-code sign-in completes.
 - Note for the graph: enrolment and activation use P1-05's `PKeyFingerprint.collect()`, which
   is not a declared dependency; confirm P1-05 is done before starting, or ship activation
   without a fingerprint (recorded `unverified` server-side) and enrolment behind P1-05.

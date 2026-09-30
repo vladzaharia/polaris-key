@@ -64,8 +64,8 @@ per artifact, and so mislabels Steam, itch and sideload builds
     conventions, `ctypes` `GetCurrentPackageFullName` on Windows.
   - Swift: `AppDistributor.current` behind `#available(iOS 17.4, *)` (the package floor is iOS 17);
     `AppTransaction` on macOS; code-signature and Caskroom checks.
-  - Godot: `FLATPAK_ID`, `SNAP`, `APPIMAGE`, `SteamAppId`, feature tags and the build stamp
-    `res://.polaris_key/build.json`; iOS and Android signals come from plugin hooks that return
+  - Godot: `FLATPAK_ID`, `SNAP`, `APPIMAGE`, `SteamAppId`, the `pkey_outlet_*` feature tags and
+    the build stamp through `PolarisKey.build_info()` ([P1-11](P1-11-godot-export-plugin.md)); iOS and Android signals come from plugin hooks that return
     "unavailable" until [P5-05](P5-05-apple-plugin-package.md) and [P5-06](P5-06-kotlin-aar.md).
 - **Wiring**: the update client uses the detected outlet when the host passes none; a host
   override always wins. The result is available to the host (for UI and support diagnostics).
@@ -128,7 +128,8 @@ mise exec node@22 -- pnpm --filter @polaris-key/react test
 ( cd sdks/swift && swift build && swift test )
 ```
 
-Run the Godot runner with P1-01's command on the editor and on a release template.
+For Godot, P1-01's runner on the editor and a release template:
+`GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh`.
 
 ## Hand-off
 

@@ -1,16 +1,16 @@
 # P4-10 Chunk indexes and chunk bundles in CI; content corpus v2
 
-| Field       | Value                                                                                                                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v2)                                                                                                                                                                                                   |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                             |
-| Depends on  | [P4-03](P4-03-ci-patch-artifacts.md), [P4-04](P4-04-content-corpus-v1.md)                                                                                                                                        |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-17](P4-17-lazy-deltas.md)                                                                                                                                                 |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                            |
-| Plan mode   | yes: `program/plans/P4-10.md` is written and approved before any code                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v2)                                                                                                                                                                                                          |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                    |
+| Depends on  | [P4-03](P4-03-ci-patch-artifacts.md), [P4-04](P4-04-content-corpus-v1.md)                                                                                                                                               |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-17](P4-17-lazy-deltas.md)                                                                                                                                                        |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                   |
+| Plan mode   | yes: `program/plans/P4-10.md` is written and approved before any code                                                                                                                                                   |
 | Gates       | plan mode; corpus (content-corpus drift gate, `pnpm gen:corpus -- --check`, Swift and Godot mirrors, generated `corpus.mdx`); all SDKs (every runner loads the new sections); rule 9 if chunking is manifest-configured |
-| Human input | approval of the plan (merging the plan PR); nothing else                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                        |
+| Human input | approval of the plan (merging the plan PR); nothing else                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                               |
 
 ## Goal
 

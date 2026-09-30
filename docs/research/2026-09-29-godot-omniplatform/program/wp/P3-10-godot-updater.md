@@ -157,6 +157,7 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
 - [ ] Staged code is dropped on a channel switch, an engine change, or a binary at least as new.
 - [ ] With no native plugin installed, `binary` with `method: native` degrades to a download link and
       boot continues.
+- [ ] The Godot stage machine passes the boot-guard rows of `stage-matrix.json`.
 - [ ] No SDK code passes `--main-pack`, `--path`, `--scene` or `-s` (a test greps the addon).
 - [ ] Windows rename behaviour is measured and the chosen approach recorded in the PR.
 - [ ] The Godot CI job passes on the editor and a release template; the green gate passes for the

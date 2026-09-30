@@ -1,16 +1,16 @@
 # P4-18 Web deltas via Compression Dictionary Transport, with the WASM decoder fallback
 
-| Field       | Value                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P4: Packs (v3)                                                                                                                 |
-| Size        | 1–1 engineer-weeks                                                                                                             |
-| Depends on  | [P4-11](P4-11-chunk-sync-sdks.md)                                                                                              |
-| Unblocks    | none                                                                                                                           |
-| Role        | `pkey-implementer`                                                                                                             |
-| Plan mode   | no: the stored artifact and the descriptor do not change; `dcz` framing is added at the edge                                   |
+| Field       | Value                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P4: Packs (v3)                                                                                                                                   |
+| Size        | 1–1 engineer-weeks                                                                                                                               |
+| Depends on  | [P4-11](P4-11-chunk-sync-sdks.md)                                                                                                                |
+| Unblocks    | none                                                                                                                                             |
+| Role        | `pkey-implementer`                                                                                                                               |
+| Plan mode   | no: the stored artifact and the descriptor do not change; `dcz` framing is added at the edge                                                     |
 | Gates       | none in the graph; in practice rule 10 (the payload URL is a new route: OpenAPI, `routeCoverage`, `routes.mdx`) and the Chromium runner (P1b-05) |
-| Human input | none                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                      |
+| Human input | none                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                        |
 
 ## Goal
 

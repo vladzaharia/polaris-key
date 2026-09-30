@@ -128,8 +128,8 @@ rollout_bp, rollout_salt, state, mirrored, source)` from P2b-04, which is alread
   the lock age, not the grace period, bounds how soon anything goes. If a prefix was locked
   indefinitely, GC cannot collect there: escalate instead of weakening the lock.
 - **Bookkeeping.** P2-01's tables are `blob_objects(storage_key, sha256, size, kind
-  blob|bundle|delta, gated, verified_at, created_at)` and `blob_refs(product, storage_key,
-  ref_kind, ref_id, created_at)`. `blob_refs` rows written at ingest (P2-04, P4-02, P4-10) are
+blob|bundle|delta, gated, verified_at, created_at)` and `blob_refs(product, storage_key,
+ref_kind, ref_id, created_at)`. `blob_refs` rows written at ingest (P2-04, P4-02, P4-10) are
   the per-release references; liveness comes from the hooks, not from the existence of a ref.
 - **Sweep mechanics.** Mark `unreferenced_since`; after the grace period, re-check references,
   delete from R2, then delete the row. Keep `scheduled.ts`'s three properties: product-scoped,

@@ -39,8 +39,12 @@ install ([notes/A4 §5.7](../../notes/A4-diceroll-mapping.md)).
   caveats), [§5.5](../../README.md#55-distribution-layer-one-build-any-outlet) (build stamp).
 - [notes/A2 §1](../../notes/A2-sdk-port.md) (the verify order and strict JSON rules to port);
   [notes/A5 §3](../../notes/A5-godot-empirical.md#3-pure-gdscript-ed25519-verify) (timings).
-- What P1-01 and [P1-02](P1-02-godot-core.md) landed in `sdks/godot`: the `jws`, strict JSON,
-  trust, clock, cache and transport modules, the corpus mirror and the runner command.
+- What [P1-01](P1-01-godot-scaffold.md) and [P1-02](P1-02-godot-core.md) landed in
+  `sdks/godot/addons/polaris_key/`: `core/jws.gd`, `core/json_strict.gd` (`PKeyJson`),
+  `core/cache.gd`, `store/file_store.gd`, `core/transport.gd`, the runner
+  (`tests/runner.gd`, `tests/suite_conformance.gd`) and the mirror `tests/corpus/v2/`.
+- [P1-11](P1-11-godot-export-plugin.md)'s `core/build_stamp.gd` (`PKeyBuildStamp`,
+  `PolarisKey.build_info()`) and the stamp fields.
 - The reference implementation from [P3-05](P3-05-v4-react.md) in `packages/client-core/src`,
   when it has landed.
 
@@ -54,9 +58,9 @@ install ([notes/A4 §5.7](../../notes/A4-diceroll-mapping.md)).
   `decide_update` in `distribution/decision.gd`, and the outlet capability defaults table.
 - Configuration: `pinned_release_keys` in `res://polaris_key.tres` beside `pinned_trust_keys`
   (README §5.1), never merged with the product trust set.
-- Decision inputs from the build stamp `res://.polaris_key/build.json` (version, build number,
-  outlet, channel, engine, platform, arch) when P1-11 has written one, otherwise from project
-  settings; `install_id` is the SDK's device id.
+- Decision inputs from `PolarisKey.build_info()` (the stamp `res://.polaris_key/build.json`:
+  `version`, `build`, `outlet`, `channel`, `engine`, `platform`, `arch`), which falls back to
+  project settings when there is no stamp; `install_id` is the SDK's device id.
 - Cache: the plan's new slices in `user://pkey/<product>/managed.json`, written atomically
   (temp file and rename, as P1-02 does), re-verified on load, with the `seq` floor derived from
   the re-verified feed.
@@ -117,10 +121,11 @@ install ([notes/A4 §5.7](../../notes/A4-diceroll-mapping.md)).
 
 ## Verify
 
-Use the runner command P1-01 documented (README §5.11 proposes
-`sdks/godot/tests/run_conformance.gd`), on the editor and on a release template, plus:
-
 ```sh
+# P1-01's runner: the editor, then a release template
+GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh
+# the 4.4 source-compatibility floor
+GODOT_BIN=godot-4.4.1 sdks/godot/tools/run_tests.sh
 mise exec node@22 -- pnpm gen:corpus -- --check
 ```
 

@@ -7,7 +7,7 @@
 | Depends on  | [P4-12](P4-12-compat-resolution.md), [P4-08](P4-08-godot-packs.md)                                             |
 | Unblocks    | none (milestone: localisation, events and supporter packs)                                                     |
 | Role        | `pkey-implementer`                                                                                             |
-| Plan mode   | no, because P4-01 reserved `provides[]` and `removes[]` in the pack record (see Design notes) |
+| Plan mode   | no, because P4-01 reserved `provides[]` and `removes[]` in the pack record (see Design notes)                  |
 | Gates       | none in the graph; in practice rule 9 for the deliverable's `provides` policy, and every SDK for `isAvailable` |
 | Human input | none                                                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                                                      |

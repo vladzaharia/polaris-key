@@ -61,7 +61,7 @@ decision is conformance-tested like the licence gate, so these rows are what kee
 - Worker: revocation ingest on the publish submit route (signature checked against the product's
   release keys); resolution skips revoked releases (a P4-12 hook); the update feed composer adds
   `packSets`, pack floors, revocations and per-outlet narrowing, reading distribution's transports
-  through the Core hooks.
+  through the `delivery` and `outletCapabilities` hooks (P2b-01).
 - CLI: `pkey release revoke <deliverable>@<version> [--replacement <version>] --reason <text>`,
   signed with the release key.
 - Corpus: `feedCases` for the new fields, `releaseRecordCases` for `kind: revocation`,
@@ -122,8 +122,8 @@ decision is conformance-tested like the licence gate, so these rows are what kee
 - **Narrowing** (CONTENT §6.6): effective binding = declared binding ∧ transport capability,
   evaluated per outlet when the feed is composed. `play-pad` narrows `compatible` to pinned;
   `apple-ba` keeps it (the level is in the asset-pack id, e.g. `foes.c3`); `embedded` is a baseline
-  under a CDN overlay. Update reads distribution's transports through Core hooks; the only service
-  import stays `update → release`.
+  under a CDN overlay. Update reads distribution's transports through the Core descriptor hooks;
+  the only service import stays `update → release`.
 - **Active set and `packSetId`.** The device's active set is its record's pins, then its holds
   over the feed set, then the feed set (P4-12's proposal). The formula is P4-01's (pinned by
   `packSetIdCases`, P4-04); add cases for an active set that mixes pins, holds and feed entries.

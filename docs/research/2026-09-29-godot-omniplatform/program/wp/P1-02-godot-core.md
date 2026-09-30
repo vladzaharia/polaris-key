@@ -75,7 +75,8 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 - `store/file_store.gd` behind a `PKeyStore` interface: `user://pkey/<product>/{device, token,
   managed.json}`, 0600 via `FileAccess.set_unix_permissions` on macOS and Linux, temp file plus
   `DirAccess.rename_absolute` for every write, a write-once device id whose write failure is
-  surfaced.
+  surfaced, and `store_status()` in P1b-09's shape (`backend`: `file` or `indexeddb`; `degraded`
+  with a reason when persistence is not durable).
 - `device_id.gd`: `PKeyDeviceId.from_raw(slug, raw)` and a default raw source
   (`OS.get_unique_id()`; on web or on failure a random 16-byte UUID).
 - `transport.gd`, `discovery.gd`, `token.gd`, `sync.gd`, `errors.gd`, `result.gd`,
@@ -121,11 +122,13 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
   responses; `accept_gzip = false` for any `Range` request; https only, except
   `http://localhost|127.0.0.1|[::1]`. `HTTPRequest` nodes live under the autoload. On web the
   browser follows redirects and strips credentials itself; cross-origin calls need P0-05.
-- **Headers:** the seven `X-PKey-*` headers. `X-PKey-SDK: polaris-key-godot`,
-  `X-PKey-SDK-Version: SDK_VERSION`. No canonical platform/arch set exists yet (report §9.1 #17);
-  use the report's vocabulary ([§3.1](../../README.md#31-vocabulary): `windows`, `macos`,
-  `linux`, `ios`, `android`, `web`; `x86_64`, `arm64`, `armv7`, `wasm32`) from one table in
-  `core/headers.gd`, which P1b-02's generated constants replace.
+- **Headers:** the seven `X-PKey-*` headers, with `X-PKey-SDK-Version: SDK_VERSION`. The SDK id
+  is `polaris-key-godot` (notes/A2 §5.4) unless [P1b-04](P1b-04-headers-config-corpora.md)'s plan
+  has settled on short ids (it recommends `godot`). No canonical platform or arch set exists yet
+  (report §9.1 #17); use the report's vocabulary ([§3.1](../../README.md#31-vocabulary):
+  `windows`, `macos`, `linux`, `ios`, `android`, `web`; `x86_64`, `arm64`, `armv7`, `wasm32`,
+  omitting anything else) from one table in `core/headers.gd`. P1b-02 generates
+  `core/constants_generated.gd` to replace it, and P1b-04's `headers.json` pins the mapping.
 - **Version** is `PKeyOptions.version`, else `application/config/version`; it must be semver,
   refused at `configure` otherwise. The channel is `PKeyOptions.default_channel` until the build
   stamp (P1-11) supplies one.
@@ -205,6 +208,7 @@ mise exec node@22 -- pnpm gen:corpus -- --check
   (`product`, `base_url`, `version`, `default_channel`, `pinned_trust_keys`,
   `pinned_release_keys` (unused until P3-08), `expected_services`, `local_only`,
   `refresh_interval_seconds`).
+- **Generated constants path** for P1b-02: `addons/polaris_key/core/constants_generated.gd`.
 - Divergences found (lone surrogate, anything else) are listed in the PR for P3-02.
 - Set the status with
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1-02 done`.

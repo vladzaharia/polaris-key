@@ -83,7 +83,8 @@ vectors today, so backends can diverge silently
   added to `KEYS`; `feedCases` and `releaseRecordCases` in `cases.json`; `update-matrix.json` and
   `outlet-matrix.json` beside it, each with its version constant; the same files in
   `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` (`.copy("Resources/v2")` in `Package.swift`
-  bundles new files automatically) and in the Godot mirror if it exists.
+  bundles new files automatically) and in the Godot mirror `sdks/godot/tests/corpus/v2/`
+  (`GODOT_V2_RESOURCES`, added by P1-01) if it exists.
 - **Generator self-checks** that throw on inconsistency: every feed-pinned hash equals the
   SHA-256 of the record vector it names (except in the cases built to mismatch), every negative
   case differs from its valid twin in the one property it tests, and ids are unique.
@@ -123,6 +124,9 @@ vectors today, so backends can diverge silently
   (`test_conformance.py:48`, `ConformanceTests.swift:30`), so `feedCases`, `releaseRecordCases`
   and the two new files break nothing here. [P3-05](P3-05-v4-react.md) is the first full proof of
   them; run it next, so a corpus mistake surfaces once rather than in five SDKs.
+- **Boot-guard rows.** If the plan appends boot-guard rows to `stage-matrix.json` (its item 20),
+  the existing stage runners (`client-core` through the Node runner, and Godot's) read every row,
+  so make them pass here or follow the plan's assignment; never leave a runner red.
 - **Keep `corpusVersion: 2`** unless the plan says otherwise: the Node (`:179`), Python (`:61`) and
   Swift (`:185`) runners assert it.
 - **Deterministic output.** Ed25519 is deterministic and the clocks are fixed constants. Add v4
@@ -184,8 +188,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 mise exec node@22 -- pnpm format
 ```
 
-Run the Godot runner with the command [P1-01](P1-01-godot-scaffold.md) documented, on the editor
-and a release template.
+If `sdks/godot` exists, also run [P1-01](P1-01-godot-scaffold.md)'s runner on the editor and a
+release template:
+`GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh`.
 
 ## Hand-off
 

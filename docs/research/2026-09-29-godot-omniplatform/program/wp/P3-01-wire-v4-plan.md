@@ -187,8 +187,9 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
     interim release-key-only option of README §3.3 is used for Diceroll's minimum slice.
 20. Boot-guard rows for `stage-matrix.json`. [P1-09](P1-09-boot-stage-machine.md) hands them to
     P3-10 "under its own plan", but P3-10 is not plan-mode. [Plan them here (rollback after two
-    failed boots, the skipped version, the `boot_rolled_back` event) so P3-02 emits them, and name
-    the stage machines that must pass them: `client-core` in P3-05, Godot in P3-10.]
+    failed boots, the skipped version, the `boot_rolled_back` event) so P3-02 emits them.] The
+    stage runners read every row, so say whether P3-02 also updates `client-core`'s
+    `bootTransition` and the Godot port, or which package makes the new rows pass.
 21. Update telemetry event names (README §3.6: `update_applied`, `update_confirmed`,
     `update_reverted`, `pack_failed`, `boot_rolled_back`). They travel on the unsigned
     `devices/report` and are not a wire change. [Fix the names here so P3-10 and P6-03 agree;
