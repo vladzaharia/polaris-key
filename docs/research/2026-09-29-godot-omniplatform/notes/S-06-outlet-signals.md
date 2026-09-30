@@ -1,0 +1,455 @@
+> Research note for [Godot on Polaris Key](../README.md), 2026-09-30. Spike S-06
+> ([brief](../program/wp/S-06-outlet-signals.md)). A working paper kept for its evidence and
+> sources; the README synthesis is the cross-checked position. The probes are kept in
+> [`prototype/outlet-signals/`](../prototype/outlet-signals/README.md). Home directories, account
+> names, Apple team ids and device identifiers are removed from every quoted observation.
+
+# S-06: outlet-detection signals the research could not verify
+
+## Question
+
+Which outlet-detection signals in [notes/E9 §1.1](E9-runtime-building-blocks.md#11-signal-catalogue)
+that are not tagged [V], and which detection items in [E9 §13](E9-runtime-building-blocks.md#13-spikes-and-open-questions)
+(3, 4, 11, 12), actually behave as assumed? Which of them can Godot read in pure GDScript? And
+what signal-to-outlet table, with confidence levels and precedence over the build stamp, should
+P3-01 put in `outlet-matrix.json`?
+
+Every result row below carries one label:
+
+- **measured**: a real install, launcher or client produced the value on this machine;
+- **emulated**: the value was injected by hand in the layout or environment the real launcher
+  produces, which proves the reader and Godot's reach, not what the launcher writes;
+- **source**: read from the launcher's or platform's own source code or reference documentation;
+- **unmeasured**: no observation, with the reason.
+
+Evidence tags follow the other notes: [V] primary source read raw, [M] measured, [S] summary,
+[I] inference.
+
+## Short answer
+
+1. **Android needs no native code to detect its outlet in Godot.** On Godot 4.7.2 the
+   `AndroidRuntime` singleton plus `JavaClassWrapper` reach `PackageManager.getInstallSourceInfo`
+   from pure GDScript [M]. This contradicts README §5.5 ("via a tiny plugin"), P3-11 and P5-06
+   ("only readable natively").
+2. **Android's installer of record is forgeable, but the initiator is not.** Running
+   `adb install -i com.android.vending` records Play as the installer, with `initiatingPackageName=com.android.shell`
+   and `packageSource=OTHER` [M]. Obtainium's root and Shizuku modes do exactly this on purpose
+   ("pretend to be Google Play") [V]. Real Obtainium and F-Droid installs set installer, initiator
+   and update owner to themselves and `packageSource=STORE` [M]. A Chrome download goes through the
+   system installer with `packageSource=DOWNLOADED_FILE` [M]. So `play` needs installer **and**
+   initiator equal to `com.android.vending`. A real Play install was not measured.
+3. **macOS store outlets are readable from plain files, without StoreKit.** The Mac App Store
+   receipt exists for App Store and TestFlight installs. Only the TestFlight receipt contains
+   `ProductionSandbox`. The leaf signing certificate, read as ASCII from the tail of the Mach-O,
+   is `Apple Mac OS Application Signing` (App Store), `TestFlight Beta Distribution` (TestFlight)
+   or `Developer ID Application` (direct) [M, 9 installed apps and the probe under 4 signings]. Godot does this in 1–4 ms with
+   `FileAccess` [M]. `AppTransaction.shared` outside the App Store throws in about 30 ms instead of
+   hanging [M]. On a real TestFlight build it was not run.
+4. **Steam's environment variables are real on macOS; `steam_appid.txt` is not a dev-mode signal.**
+   A game launched by the macOS Steam client got `SteamAppId`, `SteamGameId`,
+   `SteamOverlayGameId`, `SteamClientLaunch=1` and `SteamEnv=1` [M]. The real app manifests have
+   `appid`, `installdir`, `buildid`, `TargetBuildID` and `StateFlags` [M]. But 4 of 12 installed
+   release games ship `steam_appid.txt`, so its presence does not mean dev mode (refuted) [M].
+   Windows, Linux and Proton were not measured.
+5. **Flatpak's signals are real, but they do not name the remote.** Under a real `flatpak run`
+   (1.16.6), Godot sees `/.flatpak-info`, `FLATPAK_ID`, `container=flatpak` and
+   `OS.is_sandboxed()==true` [M]. `/.flatpak-info` names the app and runtime but not the remote,
+   so `flathub` is an inference from "is a Flatpak". Snap and AppImage were emulated only.
+6. **iOS `AppDistributor.current` never returned on the simulator** (timeouts of 30 s and 100 s,
+   iOS 26.5) [M]. Every caller needs a deadline. On devices (development, ad hoc, AltStore,
+   SideStore) it was not measured: there is no iPhone here. AltStore rewrites the bundle id to
+   `<id>.<TEAMID>` and writes the original id into `ALTBundleIdentifier`. SideStore uses the same
+   suffix without that key [V source]. The `web` case exists from **iOS 17.5**, not 17.4 [V].
+7. **Windows was not measured.** There is no Windows machine, and Wine could not start (no
+   Rosetta). The rows are documentation only [V]. A PowerShell probe is ready for the handoff.
+8. **An environment signal needs an identity check.** Launcher environment variables are
+   inherited by child processes (emulated here), and a Steam or itch game can itself run inside
+   the Steam Flatpak or Snap [I]. Each launcher signal must therefore name _this_ product before
+   it counts: the Flatpak app id, the snap name, the Steam app id, the itch game id, or
+   `APPDIR` containing the executable.
+9. **Proposed precedence change:** below first-party evidence, runtime evidence may move the stamp
+   only toward an outlet whose update rights are no wider. A heuristic may turn `direct` into
+   `steam`, never `steam` into `direct`. This is the exact failure behind Diceroll's updater
+   running inside Steam and itch ([README §9.2](../README.md#92-diceroll-for-the-diceroll-side)
+   item 2).
+
+## Environment
+
+| Item            | Value                                                                                                                                                                                           |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Host            | Apple M5 Pro, 64 GB, macOS 27.0 (26A428), arm64; region US                                                                                                                                      |
+| Godot           | 4.7.2-stable official (`ed1daf0bf`), official export templates (macOS universal, Linux arm64, Windows x86_64, Android `android_debug.apk`)                                                      |
+| Xcode / Swift   | Xcode 27.0 (27A266a); `swiftc` targets `arm64-apple-ios17.4-simulator` and `arm64-apple-macos13`                                                                                                |
+| iOS             | Simulator iOS 26.5 (23F77); no physical device                                                                                                                                                  |
+| Android         | Emulator 37.1.11.0, AVD `google_apis` arm64, Android 16 (API 36, `BE4B.251210.005`); Chrome 134.0.6998.135; Package Installer 16; Obtainium 1.6.17; F-Droid client 1.23.2                       |
+| Steam (macOS)   | Steam client, public beta channel, bootstrapper 6.1, 12 installed games in the default library                                                                                                  |
+| Steam (Windows) | a CrossOver Preview 27.0.0 bottle with the Windows Steam client and 3 games: files read only, because `wine` could not start on this host (`Bad CPU type`: no Rosetta)                          |
+| Linux           | OrbStack Docker 29.4.0 (arm64). Emulated runs in `debian:bookworm-slim`. The real Flatpak run used `debian:trixie-slim`, Flatpak 1.16.6, `org.freedesktop.Platform//24.08` aarch64 from Flathub |
+| Node            | Node 22.13.1 (mise), npm 10.9.2, pnpm 11.22.0; Homebrew formulae `gh` 2.92.0 and `jq` 1.8.1                                                                                                     |
+| Web             | Playwright 1.63.0 with Chromium 153.0.8010.12 and WebKit 26.6                                                                                                                                   |
+| macOS apps read | Mac App Store: Keynote, Xcode, Infuse, TestFlight. TestFlight build: one third-party app. Developer ID with Homebrew Cask: Obsidian 1.12.7, Godot 4.7.2, Steam 6.0, Google Chrome 148           |
+| Signing         | the probe was signed locally with the machine's existing Apple Development, Apple Distribution and Developer ID identities. Nothing was uploaded, notarised or distributed                      |
+
+## Method
+
+The probes are in [`prototype/outlet-signals/`](../prototype/outlet-signals/README.md):
+
+- **GDScript probe** (`godot/outlet_probe.gd`, the `outlet` suite of the prototype runner). It
+  prints one JSON document with every signal pure GDScript can reach: environment variables,
+  `/.flatpak-info`, the Steam library and ACF, `steam_appid.txt`, the itch receipt, the macOS
+  receipt, provisioning profile, code signature and Caskroom link, Windows path conventions, and
+  Android `getInstallSourceInfo` through `AndroidRuntime`. `outlet acf <dir>` and
+  `outlet bundle <app>` run the Steam and macOS readers against real installs, read-only.
+- **Swift probe** (`swift/OutletProbe.swift`, built without an Xcode project): `AppDistributor`,
+  `AppTransaction`, `SecCodeCopySigningInformation` and the bundle files, each raced against a
+  timeout.
+- **Android** (`android/`): the Godot probe is packed into the official debug template
+  (`assemble-apk.sh`), then installed by `adb` variants (`run-variants.sh`), by the system Package
+  Installer with and without a browser referrer (`system-installer.sh`), and by Chrome
+  (`chrome-download.sh`). Obtainium and F-Droid were driven by hand through `uiautomator` (steps
+  in the README).
+- **Linux** (`godot/linux-docker.sh`, `godot/linux-flatpak.sh`), **macOS layouts**
+  (`godot/emulate-layouts.sh`), **web** (`web/display-mode.mjs`), **Node** (`node/probe.cjs`) and
+  **Windows**
+  (`windows/probe.ps1`, not run).
+
+Key commands (full list in the README):
+
+```sh
+./godot/export.sh macos|linux|windows && ./android/assemble-apk.sh
+out/macos/OutletProbe.app/Contents/MacOS/pkey-ed25519-lab --headless -- outlet bundle /Applications/Keynote.app
+out/macos/OutletProbe.app/Contents/MacOS/pkey-ed25519-lab --headless -- outlet acf "$HOME/Library/Application Support/Steam/steamapps"
+open steam://rungameid/<appid>; ps -wwE -p <game pid>        # Steam-set environment of a real game
+SERIAL=emulator-5558 ./android/run-variants.sh && SERIAL=emulator-5558 ./android/system-installer.sh [referrer]
+./swift/build.sh ios-sim && xcrun simctl launch --console-pty <udid> org.example.pkey.outletprobe
+./godot/linux-flatpak.sh; node web/display-mode.mjs
+```
+
+## Results
+
+### 1. iOS
+
+| Signal (E9 row)                           | Install type                                                | Observed                                                                                                                                                | Verdict                                                                   | Label      | Tag |
+| ----------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------- | --- |
+| `AppDistributor.current` (§13 item 4)     | simulator, ad hoc signed                                    | never resolved: `timeout after 100.0s`, then `timeout after 30.0s` on a second launch                                                                   | **refuted** as "returns `other`": it can hang, so a deadline is mandatory | measured   | [M] |
+| `AppDistributor.current`                  | development-signed, ad hoc, AltStore, SideStore on a device | —                                                                                                                                                       | not verified: no iPhone, no AltStore/SideStore install                    | unmeasured | —   |
+| `AppTransaction.shared`                   | simulator                                                   | `throws: StoreKitError unknown` after 6569 ms, then 35 ms                                                                                               | verified: no transaction outside the store                                | measured   | [M] |
+| `embedded.mobileprovision`                | simulator                                                   | `absent` (simulator builds carry none)                                                                                                                  | not verified on a device                                                  | unmeasured | [I] |
+| bundle-id rewrite by AltStore             | AltStore (source)                                           | `CFBundleIdentifier` = `<original>.<TEAMID>` (the older format was `com.<TEAMID>.<original>`); Info.plist gains `ALTBundleIdentifier` = the original id | verified from source; the on-device observation is missing                | source     | [V] |
+| bundle-id rewrite by SideStore            | SideStore (source)                                          | `CFBundleIdentifier` = `<target>.<TEAMID>`; no `ALTBundleIdentifier` write found                                                                        | verified from source                                                      | source     | [V] |
+| `AppDistributor` `web` case (§13 item 11) | Web Distribution (EU)                                       | the case exists from **iOS 17.5**; `other` and `appStore` from 17.4                                                                                     | not verified: there is no Web Distribution build                          | source     | [V] |
+| `Bundle.appStoreReceiptURL`               | simulator                                                   | non-nil `…/receipt`, file absent                                                                                                                        | a non-nil URL means nothing: check that the file exists                   | measured   | [M] |
+
+### 2. macOS
+
+Real bundles, read by the Godot probe (`outlet bundle`) and by `codesign -dvv`:
+
+| Bundle                       | `_MASReceipt/receipt` | `ProductionSandbox` in receipt | leaf certificate (Mach-O tail, GDScript) | `codesign` authority | `embedded.provisionprofile` | Caskroom link          |
+| ---------------------------- | --------------------- | ------------------------------ | ---------------------------------------- | -------------------- | --------------------------- | ---------------------- |
+| Keynote (App Store)          | present, 4615 B       | no                             | Apple Mac OS Application Signing         | same                 | absent                      | —                      |
+| Xcode (App Store)            | present, 4850 B       | no                             | Apple Mac OS Application Signing         | same                 | absent                      | —                      |
+| Infuse (App Store)           | present, 8106 B       | no                             | Apple Mac OS Application Signing         | same                 | absent                      | —                      |
+| TestFlight.app (App Store)   | present, 4847 B       | no                             | Apple Mac OS Application Signing         | same                 | absent                      | —                      |
+| third-party app (TestFlight) | present, 4833 B       | **yes**                        | **TestFlight Beta Distribution**         | same                 | absent                      | —                      |
+| Obsidian (Developer ID)      | absent                | —                              | Developer ID Application                 | same                 | absent                      | `obsidian/1.12.7`      |
+| Godot (Developer ID)         | absent                | —                              | Developer ID Application                 | same                 | absent                      | `godot/4.7.2`          |
+| Steam (Developer ID)         | absent                | —                              | Developer ID Application                 | same                 | **present**                 | `steam/6.0`            |
+| Chrome (Developer ID)        | absent                | —                              | Developer ID Application                 | same                 | **present**                 | `google-chrome/148.0…` |
+| probe, Apple Development     | absent                | —                              | Apple Development                        | same                 | absent                      | —                      |
+| probe, Apple Distribution    | absent                | —                              | Apple Distribution                       | same                 | absent                      | —                      |
+| probe, Developer ID          | absent                | —                              | Developer ID Application                 | same                 | absent                      | —                      |
+| probe, ad hoc                | absent                | —                              | none                                     | `Signature=adhoc`    | absent                      | —                      |
+
+| Signal (E9 row)                                                    | Observed                                                                                                                                                                                                                                                                                              | Verdict                                                                                                                                                           | Label                 | Tag     |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------- |
+| `Contents/_MASReceipt/receipt`                                     | present on all 5 App Store and TestFlight bundles, absent on all others                                                                                                                                                                                                                               | verified                                                                                                                                                          | measured              | [M]     |
+| TestFlight vs App Store                                            | the receipt's ASCII `ProductionSandbox` and the `TestFlight Beta Distribution` leaf, both on the one TestFlight app and on none of the 4 App Store apps                                                                                                                                               | verified on one TestFlight install: two independent file signals agree                                                                                            | measured              | [M]     |
+| `AppTransaction.shared.environment` (§13 item 4)                   | outside the App Store: `throws StoreKitError systemError(noAccount)` in about 32 ms for ad hoc, Apple Development, Apple Distribution and Developer ID                                                                                                                                                | refuted as "can hang" on macOS. The TestFlight = `sandbox` value was not observed (it needs code inside a TestFlight build); the receipt type points the same way | measured / unmeasured | [M]/[I] |
+| signing authority (Developer ID vs Apple Distribution/Development) | four distinct leaf names, readable by `SecCodeCopySigningInformation`, `codesign` and a byte search of the Mach-O tail                                                                                                                                                                                | verified                                                                                                                                                          | measured              | [M]     |
+| `embedded.provisionprofile` as a development hint                  | present in the Developer ID builds of Steam and Chrome                                                                                                                                                                                                                                                | **refuted** as a development-build signal on macOS                                                                                                                | measured              | [M]     |
+| Homebrew Cask path                                                 | `/opt/homebrew/Caskroom/<token>/<version>/<App>.app` is a symlink to `/Applications/<App>.app` for all 4 casks; the app path alone is `/Applications`                                                                                                                                                 | verified: detection needs the Caskroom link, not the app path                                                                                                     | measured              | [M]     |
+| App Sandbox                                                        | an ad hoc build with `com.apple.security.app-sandbox` gets `APP_SANDBOX_CONTAINER_ID=<bundle id>`, and Godot's `OS.is_sandboxed()==true` (it reads that variable [V source]). The Caskroom scan returns nothing in the sandbox; the Mach-O tail read and `OS.execute("/usr/bin/codesign")` still work | verified                                                                                                                                                          | measured              | [M]     |
+
+Cost in Godot (release template, µs): Mach-O tail read 576–4043; `codesign` through `OS.execute`
+17 706–1 275 685 (Xcode, a large bundle); Caskroom scan 5 350–42 730; whole probe 39–438 ms [M].
+
+### 3. Windows
+
+| Signal (E9 row, §13 item 12)              | Observed                                                                                                                                                                                                                                          | Verdict                                                                                                | Label      | Tag     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------- | ------- |
+| `GetCurrentPackageFullName`               | documented: `ERROR_INSUFFICIENT_BUFFER` means identity, `APPMODEL_ERROR_NO_PACKAGE` (15700) means none; Windows 10 1709+                                                                                                                          | documentation only                                                                                     | source     | [V]     |
+| `Package.Current.SignatureKind`           | documented: `Store` (3) is "signed by the Windows Store"; `Developer` is any other trusted certificate, and "does not imply … a development build"; `None` is an unsigned layout (F5)                                                             | documentation only                                                                                     | source     | [V]     |
+| sparse package vs packaged install        | documented: a package with an external location holds only a manifest, and `Package.EffectiveExternalLocation` / `EffectiveExternalPath` (10.0.19041+) returns the external folder. The value for a full package (expected empty) is undocumented | not verified: no Windows machine                                                                       | unmeasured | [V]/[I] |
+| `GetAppInstallerInfo()`                   | —                                                                                                                                                                                                                                                 | not verified                                                                                           | unmeasured | —       |
+| App Installer vs Store vs sideloaded MSIX | —                                                                                                                                                                                                                                                 | not verified                                                                                           | unmeasured | —       |
+| winget, Scoop, Chocolatey paths           | —                                                                                                                                                                                                                                                 | not verified. The probe checks `…/Microsoft/WinGet/Packages/`, `…/scoop/apps/` and `…/chocolatey/lib/` | unmeasured | [I]     |
+| Windows Steam ACF format                  | the manifests in the CrossOver bottle have the same keys as macOS; `libraryfolders.vdf` stores `"path" "C:\\Program Files (x86)\\Steam"` with escaped backslashes                                                                                 | verified as a file format                                                                              | measured   | [M]     |
+
+### 4. Linux
+
+| Signal (E9 row)                                            | Observed                                                                                                                                                                                                                                                                                     | Verdict                                                                                                        | Label             | Tag     |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------- | ------- |
+| `/.flatpak-info`                                           | real `flatpak run`: `[Application] name=org.example.OutletProbe`, `runtime=runtime/org.freedesktop.Platform/aarch64/24.08`; `[Instance] branch=master`, `arch=aarch64`, `flatpak-version=1.16.6`, `instance-path=~/.var/app/<id>`, the commits and extensions. **No remote or origin field** | verified. The file says "Flatpak" and which app, not "Flathub"                                                 | measured          | [M]     |
+| `FLATPAK_ID`, `container`                                  | `FLATPAK_ID=org.example.OutletProbe`, `FLATPAK_SANDBOX_DIR=~/.var/app/<id>/sandbox`, `container=flatpak`                                                                                                                                                                                     | verified                                                                                                       | measured          | [M]     |
+| Godot inside Flatpak                                       | `OS.is_sandboxed()==true`, `OS.get_executable_path()=/app/bin/outletprobe`, `OS.get_version()="24.08 (Flatpak runtime)"`, `OS.get_distribution_name()="Freedesktop SDK"`, `user://` under `~/.var/app/<id>/data/godot/app_userdata/…`                                                        | verified                                                                                                       | measured          | [M]     |
+| `/.flatpak-info` is unforgeable in-sandbox                 | flatpak writes it through a sealed fd so the app "cannot modify" it                                                                                                                                                                                                                          | verified from source                                                                                           | source            | [V]     |
+| `SNAP`, `SNAP_NAME`, `SNAP_REVISION`, `SNAP_INSTANCE_NAME` | snapd sets these plus `SNAP_VERSION`, `SNAP_ARCH`, `SNAP_INSTANCE_KEY`, `SNAP_DATA`, `SNAP_COMMON` and others (`snap/snapenv/snapenv.go`). Injected by hand, the Godot template reads them, and `OS.is_sandboxed()` turns true once `SNAP`, `SNAP_NAME` and `SNAP_REVISION` are all set      | names verified from source; the real snapd launch was not run (snapd needs systemd, which the container lacks) | source + emulated | [V]     |
+| `APPIMAGE`, `APPDIR`, `OWD`, `ARGV0`                       | read by the template when injected                                                                                                                                                                                                                                                           | re-check passed (E9 already [V])                                                                               | emulated          | [V]     |
+| Godot `OS.is_sandboxed()` on Linux                         | true for `/.flatpak-info`, for `SNAP`+`SNAP_NAME`+`SNAP_REVISION`, or for `/run/host/container-manager` (toolbox/distrobox)                                                                                                                                                                  | verified from source. It cannot tell Flatpak from Snap from a toolbox, so it is not an outlet signal           | source + measured | [V]/[M] |
+
+### 5. Steam (§13 item 3)
+
+| Signal (E9 row)                               | Platform                                                                        | Observed                                                                                                                                                                                                                                                                                                                                                                       | Verdict                                                                                               | Label               | Tag |
+| --------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------- | --- |
+| `SteamAppId`, `SteamGameId` set by the client | macOS                                                                           | a real game (appid 3166810) launched with `steam://rungameid/…` had `SteamAppId=3166810`, `SteamGameId=3166810`, `SteamOverlayGameId=3166810`, `SteamClientLaunch=1`, `SteamEnv=1`, `STEAM_APP_BUNDLE_PATH=/Applications/Steam.app`, `Steam3Master=127.0.0.1:<port>`, `DYLD_INSERT_LIBRARIES` (the overlay), plus `SteamUser` and `SteamAppUser` carrying the **account name** | verified on macOS. The account-name variables are personal data and must never be read into telemetry | measured            | [M] |
+| same                                          | Windows, Linux, Proton                                                          | —                                                                                                                                                                                                                                                                                                                                                                              | not verified: no Windows or Linux Steam client runs here                                              | unmeasured          | —   |
+| non-Steam shortcut environment                | any                                                                             | —                                                                                                                                                                                                                                                                                                                                                                              | not verified: adding a shortcut edits the user's `shortcuts.vdf`                                      | unmeasured          | —   |
+| `appmanifest_<id>.acf` fields                 | macOS (real library of 12 games), Windows format (CrossOver bottle, files only) | keys in order: `appid`, `Universe`, `name`, `StateFlags`, `installdir`, `LastUpdated`, `LastPlayed`, `SizeOnDisk`, `StagingSize`, `buildid`, `LastOwner`, `DownloadType`, `UpdateResult`, `BytesToDownload`, …, `TargetBuildID`, `AutoUpdateBehavior`, …, `InstalledDepots`, `UserConfig{language}`, `MountedConfig{language}`                                                 | verified. `LastOwner` is a SteamID64 (personal): read `appid`/`installdir`/`buildid` only             | measured            | [M] |
+| `buildid` semantics                           | macOS                                                                           | two games showed `StateFlags=6` with `buildid` 22883144 < `TargetBuildID` 25234622 before the client ran; after it ran they showed `StateFlags=4` and `buildid` equal to the target                                                                                                                                                                                            | verified: `buildid` is the installed build; `TargetBuildID` is the pending one                        | measured            | [M] |
+| beta key                                      | macOS                                                                           | no `BetaKey` in any of the 12 manifests (none are on a beta branch)                                                                                                                                                                                                                                                                                                            | not verified: opting a game into a beta would change the user's install                               | unmeasured          | —   |
+| library from the executable path              | macOS                                                                           | `<library>/steamapps/common/<installdir>/…/<exe>` and `<library>/steamapps/appmanifest_<appid>.acf` whose `installdir` matches: real layout at `~/Library/Application Support/Steam`. The probe's resolver ran on an emulated copy in about 1 ms                                                                                                                               | verified (layout measured, resolver emulated)                                                         | measured + emulated | [M] |
+| `steam_appid.txt` means dev mode              | macOS                                                                           | shipped in 4 of 12 installed release games (at the game root, in `Contents/MacOS/` and in `Contents/Resources/`)                                                                                                                                                                                                                                                               | **refuted**                                                                                           | measured            | [M] |
+| inherited environment                         | macOS                                                                           | a process started with `SteamAppId`/`SteamGameId` in its environment, outside any library, reads them unchanged                                                                                                                                                                                                                                                                | environment alone does not prove the Steam outlet                                                     | emulated            | [M] |
+
+### 6. itch
+
+| Signal                       | Observed                                                                                                                                                                                                        | Verdict                                                                                                      | Label    | Tag |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------- | --- |
+| launch environment           | butler's launch endpoint sets `ITCHIO_APP=1` on every launch, and `ITCHIO_API_KEY` plus `ITCHIO_API_KEY_EXPIRES_AT` when the game's manifest asks for scope `profile:me` (`ITCHIO_OFFLINE_MODE=1` when offline) | verified from source; not observed from the itch app (not installed; installing games needs an itch account) | source   | [V] |
+| install receipt              | butler writes `<install folder>/.itch/receipt.json.gz` with `game`, `upload`, `build`, `files` and `installerName`                                                                                              | verified from source                                                                                         | source   | [V] |
+| receipt reader in GDScript   | on an emulated cave, the probe walked up from the executable to `.itch/receipt.json.gz`, gunzipped and parsed it: `game_id=1001`, `upload_id=2002`, `build_id=3003`, `installerName=archive`, in 5.4 ms         | verified reader                                                                                              | emulated | [M] |
+| `ITCHIO_API_KEY` is a secret | the probe records only its length                                                                                                                                                                               | a detector must never log or report it                                                                       | —        | [I] |
+
+### 7. Android
+
+The Godot probe read these values itself through `AndroidRuntime` and `JavaClassWrapper`, and
+`dumpsys package` confirmed each one. `pS` is `packageSource`: 0 unspecified, 1 other, 2 store,
+3 local file, 4 downloaded file.
+
+| Install path                                                                    | installing                          | initiating           | originating (dumpsys only) | pS  | updateOwner          | initiator signing info | Label                           |
+| ------------------------------------------------------------------------------- | ----------------------------------- | -------------------- | -------------------------- | --- | -------------------- | ---------------------- | ------------------------------- |
+| `adb install`                                                                   | null                                | com.android.shell    | null                       | 1   | null                 | no                     | measured                        |
+| `pm install-create/-write/-commit` (session from shell)                         | null                                | com.android.shell    | null                       | 1   | null                 | no                     | measured                        |
+| `adb install -i com.android.vending`                                            | **com.android.vending**             | com.android.shell    | null                       | 1   | null                 | no                     | measured                        |
+| `adb install --update-ownership -i com.android.vending`                         | com.android.vending                 | com.android.shell    | null                       | 1   | com.android.vending  | no                     | measured                        |
+| `adb install -i org.fdroid.fdroid` (client not installed)                       | null                                | com.android.shell    | null                       | 1   | null                 | no                     | measured                        |
+| `adb install -i dev.imranr.obtainium` (not installed)                           | null                                | com.android.shell    | null                       | 1   | null                 | no                     | measured                        |
+| system Package Installer, `VIEW` on a Downloads file                            | com.google.android.packageinstaller | same                 | com.android.shell          | 3   | null                 | yes                    | measured                        |
+| same, with `EXTRA_REFERRER` (as a browser sets it)                              | com.google.android.packageinstaller | same                 | com.android.shell          | 4   | null                 | yes                    | measured                        |
+| **Chrome download**, opened from Chrome's Downloads                             | com.google.android.packageinstaller | same                 | **com.android.chrome**     | 4   | null                 | yes                    | measured                        |
+| **Obtainium 1.6.17**, "Direct APK link" source                                  | dev.imranr.obtainium                | dev.imranr.obtainium | null                       | 2   | dev.imranr.obtainium | yes                    | measured                        |
+| **F-Droid client 1.23.2**, an app from the main repo                            | org.fdroid.fdroid                   | org.fdroid.fdroid    | null                       | 2   | org.fdroid.fdroid    | — (dumpsys only)       | measured                        |
+| an update by `adb install -r -i com.android.vending` over the Obtainium install | com.android.vending                 | com.android.shell    | null                       | 1   | **cleared**          | no                     | measured                        |
+| Play (production or a test track)                                               | —                                   | —                    | —                          | —   | —                    | —                      | unmeasured: no Play Console app |
+
+Sources for the installer side [V]: F-Droid's `SessionInstallManager.getSessionParams` sets
+`INSTALL_REASON_USER`, `PACKAGE_SOURCE_STORE` (API 33+) and `setRequestUpdateOwnership(true)`
+(API 34+). Obtainium's stock installer (its fork of `android_package_installer`) sets the same
+three. Its root installer runs `pm install -r -i 'com.android.vending'` and its Shizuku installer
+passes `com.android.vending` when `shizukuPretendToBeGooglePlay` is on.
+
+Findings:
+
+- **`installingPackageName` is a claim.** Any caller with shell rights records any _installed_
+  package as the installer. `-i` with a package that is not on the device is silently dropped
+  (null) [M]. `initiatingPackageName` and its signing info show who really installed the app [M].
+- **`originatingPackageName` is hidden from the app.** `dumpsys` shows Chrome as the originator,
+  but the app itself reads `null` (the API needs `INSTALL_PACKAGES`) [M].
+- **Every install or update rewrites the fields** and can clear the update owner [M]. So detect at
+  every launch.
+- **`adb` is `OTHER` (1), not `UNSPECIFIED` (0)**, on API 36 [M].
+- Godot's Android template installs as `com.godot.game` in these runs. The reads cost 13–765 ms
+  for the whole probe (the first JNI wrap dominates) [M].
+
+### 8. Web (low priority)
+
+| Signal                                      | Observed                                                                       | Verdict                                                                                               | Label      | Tag |
+| ------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------- | --- |
+| `matchMedia('(display-mode: standalone)')`  | Chromium tab `false`; Chromium `--app=<url>` window `true`; WebKit tab `false` | verified. It also matches an app window that was never installed, so it means "runs in an app window" | measured   | [M] |
+| `navigator.standalone`                      | absent in Chromium; present and `false` in desktop WebKit 26.6                 | presence is not an iOS signal: check the value                                                        | measured   | [M] |
+| `navigator.getInstalledRelatedApps`         | a function in desktop Chromium 153, undefined in WebKit                        | available on Chromium only                                                                            | measured   | [M] |
+| TWA `document.referrer` = `android-app://…` | a `Referer: android-app://…` header left `document.referrer` empty             | not verified: the browser drops that header, so it cannot be emulated; a real TWA is needed           | unmeasured | —   |
+| a real installed PWA                        | —                                                                              | not verified                                                                                          | unmeasured | —   |
+
+### 9. Node CLIs and Homebrew formulae (E9's other non-[V] rows)
+
+Measured with `node/probe.cjs` (Node 22.13.1, npm 10.9.2, pnpm 11.22.0) and `realpath` of two
+Homebrew formula binaries:
+
+| Launch               | `npm_config_user_agent`                                  | `npm_execpath` | `npm_lifecycle_event` | script path                                             | `isSea()` | Label    | Tag |
+| -------------------- | -------------------------------------------------------- | -------------- | --------------------- | ------------------------------------------------------- | --------- | -------- | --- |
+| `node probe.cjs`     | unset                                                    | unset          | unset                 | the file                                                | false     | measured | [M] |
+| `npm run probe`      | `npm/10.9.2 node/v22.13.1 darwin arm64 workspaces/false` | npm-cli.js     | `probe`               | the file                                                | false     | measured | [M] |
+| `pnpm run probe`     | `pnpm/11.22.0 npm/? node/v26.0.0 darwin arm64`           | pnpm           | `probe`               | the file                                                | false     | measured | [M] |
+| `npx <tarball>`      | npm's                                                    | npm-cli.js     | `npx`                 | `~/.npm/_npx/<hash>/node_modules/<pkg>/…`               | false     | measured | [M] |
+| `pnpm dlx <tarball>` | pnpm's                                                   | unset          | unset                 | `~/Library/pnpm/store/v11/links/…/node_modules/<pkg>/…` | false     | measured | [M] |
+
+- The user agent describes **the package manager's own Node**, not the one running the script:
+  pnpm reported `node/v26.0.0` while the script ran on 22.13.1 [M]. Parse only its first token.
+- Only `npx` leaves `_npx` in the path. `pnpm dlx` runs from the pnpm store [M].
+- Homebrew formulae: `/opt/homebrew/bin/gh` resolves to `/opt/homebrew/Cellar/gh/2.92.0/bin/gh`,
+  and `jq` to `…/Cellar/jq/1.8.1/bin/jq` [M]. The Cellar realpath rule holds for formulae; casks
+  need the Caskroom link (§2).
+- None of these is an outlet id in README §3.1. They matter for the `pkey` CLI and Node or Python
+  apps, and map to `direct` with a `subkind` (`npm`, `pnpm`, `npx`, `homebrew`).
+
+### 10. Godot reach per signal
+
+| Signal                                                                                                   | Pure GDScript                                                                                                                                                          | Native needed                                                                                         |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Linux: `/.flatpak-info`, `FLATPAK_ID`, `SNAP*`, `APPIMAGE`/`APPDIR`                                      | yes: `FileAccess`, `OS.get_environment` [M]                                                                                                                            | —                                                                                                     |
+| Steam: environment, library + ACF, `steam_appid.txt`                                                     | yes: `OS.get_environment`, `OS.get_executable_path`, `DirAccess`, `RegEx` [M]                                                                                          | `GetAppBuildId`/`GetCurrentBetaName` need GodotSteam (not needed to detect)                           |
+| itch: `ITCHIO_APP`, `.itch/receipt.json.gz`                                                              | yes: `decompress_dynamic(…, COMPRESSION_GZIP)` + `JSON` [M]                                                                                                            | —                                                                                                     |
+| macOS: receipt, `ProductionSandbox`, leaf certificate, provisioning profile, sandbox                     | yes: byte search with `FileAccess` [M]; `OS.execute("/usr/bin/codesign")` is optional and slower                                                                       | `AppTransaction` (Swift): not needed for detection                                                    |
+| macOS: Homebrew Cask                                                                                     | yes: `DirAccess.is_link`/`read_link` [M]                                                                                                                               | —                                                                                                     |
+| Windows: path conventions                                                                                | yes: `OS.get_executable_path` [I]                                                                                                                                      | —                                                                                                     |
+| Windows: package identity, `SignatureKind`, `GetAppInstallerInfo`, external location                     | no (Godot 4.7.2 has no package-identity API)                                                                                                                           | a GDExtension, or `OS.execute` of `windows/probe.ps1` if a child inherits the identity [I, to verify] |
+| Android: `getInstallSourceInfo`, `getPackageSource`, `getUpdateOwnerPackageName`, initiator signing info | **yes**: `Engine.get_singleton("AndroidRuntime").getApplicationContext().getPackageManager()` and `JavaClassWrapper.wrap("android.os.Build$VERSION")` [M, Godot 4.7.2] | —                                                                                                     |
+| iOS: `embedded.mobileprovision`, `ALTBundleIdentifier` in `Info.plist`                                   | file presence and a byte search yes [I, not run on a device]                                                                                                           | `AppDistributor.current` (Swift, async)                                                               |
+| Web: display mode                                                                                        | `JavaScriptBridge.eval` [I]                                                                                                                                            | —                                                                                                     |
+
+## Proposed signal-to-outlet table (for `outlet-matrix.json`)
+
+Confidence levels, highest first:
+
+- **`attested`**: the OS or a store vouches, and the app cannot fake it without re-signing or root.
+- **`declared`**: an installer or launcher says so; another program could say the same.
+- **`heuristic`**: an environment variable or path convention.
+- **`stamp`**: the build stamp (P1-11).
+
+A signal counts only if its **identity condition** holds. Rows marked "stamp-restricting" follow
+rule 2 below.
+
+| Signal (`<platform>.<signal>`) | Reads                                                                                  | Identity condition                                                        | Implies outlet                                                                                                                                                                                                                                                                                               | Confidence                                                                                          | Precedence                                                         | Godot pure | Status                               |
+| ------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------- | ------------------------------------ |
+| `ios.appDistributor`           | `AppDistributor.current` (iOS 17.4+; `web` 17.5+), 2 s deadline                        | —                                                                         | `appStore`→`app-store`, `testFlight`→`testflight`, `marketplace(id)`→`altstore-pal` when the id is AltStore PAL's, `web`→`direct` (see note a), `other`→ no evidence                                                                                                                                         | attested                                                                                            | overrides stamp                                                    | no (Swift) | source; the device run is unmeasured |
+| `ios.bundleIdRewrite`          | runtime bundle id ≠ stamped bundle id; `ALTBundleIdentifier` in Info.plist             | the original id equals the stamp's                                        | `altstore`                                                                                                                                                                                                                                                                                                   | declared                                                                                            | stamp-restricting                                                  | yes [I]    | source                               |
+| `ios.provisioningProfile`      | `embedded.mobileprovision` present                                                     | —                                                                         | not App Store (development, ad hoc or sideload)                                                                                                                                                                                                                                                              | heuristic                                                                                           | never selects an outlet alone; vetoes `app-store` from the stamp   | yes [I]    | unmeasured                           |
+| `macos.masReceipt`             | `Contents/_MASReceipt/receipt` exists                                                  | —                                                                         | `app-store`                                                                                                                                                                                                                                                                                                  | attested                                                                                            | overrides stamp                                                    | yes [M]    | measured                             |
+| `macos.receiptSandbox`         | the receipt contains `ProductionSandbox`                                               | the receipt exists                                                        | `testflight`                                                                                                                                                                                                                                                                                                 | attested                                                                                            | overrides `macos.masReceipt`                                       | yes [M]    | measured (1 app)                     |
+| `macos.signingLeaf`            | leaf CN from the Mach-O tail or `SecCodeCopySigningInformation`                        | —                                                                         | `Apple Mac OS Application Signing`→`app-store`; `TestFlight Beta Distribution`→`testflight`; `Developer ID Application`→ not a store (`direct` or a cask); `Apple Development`/ad hoc → development                                                                                                          | attested                                                                                            | agrees with the receipt, else `unknown`                            | yes [M]    | measured                             |
+| `macos.homebrewCask`           | `Caskroom/<declared token>/*/<App>.app` links to this bundle                           | the token is product-declared (no Caskroom enumeration)                   | `direct` with sub-kind `homebrew` (note b)                                                                                                                                                                                                                                                                   | heuristic                                                                                           | stamp-restricting                                                  | yes [M]    | measured                             |
+| `windows.packageIdentity`      | `GetCurrentPackageFullName` succeeds                                                   | the family name is the product's                                          | a packaged install (see the next rows)                                                                                                                                                                                                                                                                       | attested                                                                                            | overrides stamp                                                    | no         | source                               |
+| `windows.signatureKind`        | `Package.Current.SignatureKind == Store`                                               | identity present                                                          | `ms-store`                                                                                                                                                                                                                                                                                                   | attested                                                                                            | overrides `windows.appInstallerUri`                                | no         | source                               |
+| `windows.appInstallerUri`      | `GetAppInstallerInfo()` is non-null                                                    | identity present                                                          | `app-installer`                                                                                                                                                                                                                                                                                              | attested                                                                                            | overrides stamp                                                    | no         | source                               |
+| `windows.externalLocation`     | `EffectiveExternalPath` is non-empty (19041+)                                          | identity present                                                          | sparse identity: not an outlet, so keep the stamp (`direct` or `winget`)                                                                                                                                                                                                                                     | attested                                                                                            | never overrides the stamp's outlet                                 | no         | source; needs a device               |
+| `windows.pathConvention`       | executable under `WinGet/Packages`, `scoop/apps`, `chocolatey/lib`                     | —                                                                         | `winget` for WinGet; Scoop and Chocolatey have no outlet id → `direct`                                                                                                                                                                                                                                       | heuristic                                                                                           | stamp-restricting                                                  | yes [I]    | unmeasured                           |
+| `linux.flatpakInfo`            | `/.flatpak-info` `[Application] name`                                                  | **equals the product's Flatpak app id**                                   | `flathub` (see note c)                                                                                                                                                                                                                                                                                       | attested                                                                                            | overrides stamp                                                    | yes [M]    | measured                             |
+| `linux.flatpakForeign`         | `/.flatpak-info` present with a different app id (for example the Steam Flatpak)       | —                                                                         | no evidence for Flathub; defer to launcher signals                                                                                                                                                                                                                                                           | —                                                                                                   | —                                                                  | yes [M]    | measured (reader)                    |
+| `linux.snapEnv`                | `SNAP_NAME` (+ `SNAP`, `SNAP_REVISION`)                                                | **equals the product's snap name**; revision `x<n>` marks a local install | `snap` (`x<n>` → `direct`)                                                                                                                                                                                                                                                                                   | declared                                                                                            | stamp-restricting                                                  | yes [M]    | source + emulated                    |
+| `linux.appImageEnv`            | `APPIMAGE`, `APPDIR`                                                                   | **`APPDIR` is a prefix of `OS.get_executable_path()`**                    | `direct` with sub-kind `appimage` (AppImageUpdate may self-update)                                                                                                                                                                                                                                           | declared                                                                                            | stamp-restricting                                                  | yes [M]    | emulated                             |
+| `steam.libraryManifest`        | `<lib>/steamapps/common/<installdir>/…` + `appmanifest_<appid>.acf`                    | the ACF `appid` equals the product's Steam app id                         | `steam`                                                                                                                                                                                                                                                                                                      | declared                                                                                            | stamp-restricting; beats `steam.appIdEnv`                          | yes [M]    | measured (macOS)                     |
+| `steam.appIdEnv`               | `SteamAppId` (with `SteamClientLaunch=1`)                                              | equals the product's Steam app id                                         | `steam`                                                                                                                                                                                                                                                                                                      | heuristic                                                                                           | stamp-restricting                                                  | yes [M]    | measured (macOS)                     |
+| `steam.appIdFile`              | `steam_appid.txt`                                                                      | —                                                                         | none: diagnostic only                                                                                                                                                                                                                                                                                        | —                                                                                                   | never used                                                         | yes [M]    | refuted                              |
+| `itch.receipt`                 | `.itch/receipt.json.gz` above the executable                                           | the receipt's `game.id` equals the product's itch game id                 | `itch`                                                                                                                                                                                                                                                                                                       | declared                                                                                            | stamp-restricting; beats `itch.appEnv`                             | yes [M]    | source + emulated                    |
+| `itch.appEnv`                  | `ITCHIO_APP=1`                                                                         | —                                                                         | `itch`                                                                                                                                                                                                                                                                                                       | heuristic                                                                                           | stamp-restricting                                                  | yes [M]    | source                               |
+| `android.installSource`        | `installingPackageName`, `initiatingPackageName`, initiator signing certificate        | installer == initiator and, for `play`, Play's certificate                | `com.android.vending`→`play` (`play-testing` is not distinguishable on the device, so the stamp or channel decides); `dev.imranr.obtainium`→`obtainium`; `org.fdroid.fdroid` (and the Droid-ify and Neo Store clients [I])→`fdroid-repo`; `…packageinstaller`→`direct`; `com.android.shell` or null→`direct` | attested when installer == initiator with a signer match; declared when installer == initiator only | overrides the stamp when attested; stamp-restricting when declared | yes [M]    | measured (all but Play)              |
+| `android.installerMismatch`    | installer ≠ initiator (for example Play claimed by the shell)                          | —                                                                         | `direct`: never `play`                                                                                                                                                                                                                                                                                       | declared                                                                                            | vetoes `play` from the stamp's claim                               | yes [M]    | measured                             |
+| `android.packageSource`        | `STORE`, `LOCAL_FILE`, `DOWNLOADED_FILE`, `OTHER`, `UNSPECIFIED` (API 33+)             | —                                                                         | confirms, never selects                                                                                                                                                                                                                                                                                      | declared                                                                                            | tie-breaker only                                                   | yes [M]    | measured                             |
+| `android.updateOwner`          | `getUpdateOwnerPackageName()` (API 34+)                                                | —                                                                         | confirms the installer (which store will update)                                                                                                                                                                                                                                                             | declared                                                                                            | tie-breaker only                                                   | yes [M]    | measured                             |
+| `web.displayMode`              | `display-mode: standalone`, `navigator.standalone === true`                            | —                                                                         | `web` (installed or app window): the same outlet                                                                                                                                                                                                                                                             | heuristic                                                                                           | —                                                                  | yes [I]    | measured                             |
+| `node.packageManager`          | first token of `npm_config_user_agent`; `_npx` or a pnpm store path in the module path | the module path contains the product's package name                       | `direct` with sub-kind `npm`, `pnpm` or `npx`                                                                                                                                                                                                                                                                | heuristic                                                                                           | stamp-restricting                                                  | n/a        | measured                             |
+| `macos.homebrewFormula`        | the executable's realpath is under `…/Cellar/<declared formula>/`                      | the formula name is product-declared                                      | `direct` with sub-kind `homebrew`                                                                                                                                                                                                                                                                            | heuristic                                                                                           | stamp-restricting                                                  | yes [I]    | measured (realpath)                  |
+
+Notes:
+
+- a. **`AppDistributor.web` must not map to the `web` outlet.** README §3.1's `web` is the browser
+  build. iOS Web Distribution is an app installed from the developer's site, so it is `direct`
+  (or a new id, `ios-web`). P3-01 decides.
+- b. **Homebrew, Scoop, Chocolatey and AppImage are not outlet ids** in README §3.1, but they
+  change who updates the app (`brew upgrade`, `scoop update`, AppImageUpdate). Proposal: a
+  `subkind` field on the detection result, with the capability defaults of `direct` unless P3-01
+  adds ids. The same `subkind` covers the Node CLI channels (§9).
+- c. **Flatpak does not expose its remote.** `flathub` is right only when the product publishes
+  its Flatpak only there. A product with its own Flatpak repo needs a stamp (`pkey_outlet_*` in
+  the Flatpak build) to tell them apart.
+
+## Recommendation
+
+### Precedence rules (proposed edit to P3-01 item 11 and P3-11's design note)
+
+1. **Attested beats everything, including the stamp.** Store receipts, signing leaves, Flatpak
+   info with a matching id, Windows package identity, and Android installer == initiator with the
+   store's certificate.
+2. **Declared and heuristic evidence may only restrict.** They can change the stamped outlet
+   only to one whose `binaryUpdates` is no wider: order `self` > `store` > `none`. A `direct`
+   stamp with the matching Steam manifest becomes `steam`. A `steam`, `itch` or `app-store` stamp
+   never becomes `direct` through an environment variable or path. This keeps the updater off
+   Steam and itch, which is Diceroll's bug (README §9.2 item 2), even when a launcher leaks its
+   environment into a process it did not install.
+3. **An identity condition gates every launcher signal** (the table's "identity condition"
+   column). The product's Steam app id, itch game id, Flatpak app id, snap name, cask token and
+   Android signing expectations become product-declared, non-secret configuration: the
+   `.pkey/distribution.yaml` outlet entries, README §3.12. That makes the checks data, not code
+   (AGENTS rule 5).
+4. **Async platform calls get a deadline** (proposed 2 s). A timeout is "no evidence", not
+   `unknown`. `AppDistributor.current` hung for at least 100 s on the simulator.
+5. **Detect at every launch and never cache the outlet.** Apple says so for `AppDistributor`, and
+   Android rewrites the installer on every install or update [M].
+6. **`unknown`** arises only when there is no stamp and no attested evidence. It takes the most
+   restrictive capabilities (`binaryUpdates: none`, no channel switch).
+7. **Privacy** (AGENTS rule 7): read only the markers that name this product. Never enumerate
+   Caskroom, the Steam library's other manifests or other installed packages. Never read
+   `SteamUser`/`SteamAppUser`, the ACF `LastOwner`, or `ITCHIO_API_KEY` into anything that leaves
+   the device.
+
+### Recommended defaults, so dependents can proceed before the outstanding device runs
+
+| Where a device measurement is outstanding    | Default until measured                                                                                                                                                                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Play production vs test tracks               | `com.android.vending` as both installer and initiator → `play`; the track comes from the stamp or channel, never from the device; Play's certificate check is optional until P5-06 records Play's certificate digest                       |
+| iOS development, ad hoc, AltStore, SideStore | `AppDistributor` timeout or `other` → keep the stamp; a runtime bundle id different from the stamp's, or `ALTBundleIdentifier` → `altstore` (restricting: no self-update, no store IAP)                                                    |
+| iOS Web Distribution                         | treat as `direct` behind `#available(iOS 17.5, *)`; revisit when a Web Distribution build exists                                                                                                                                           |
+| macOS TestFlight via `AppTransaction`        | do not call `AppTransaction` for detection; the receipt and leaf rows are enough and are pure GDScript. Use `AppTransaction` only for commerce (P5-05)                                                                                     |
+| Windows packaging                            | GDScript: path conventions only, with the stamp deciding `ms-store`/`app-installer`/`direct`/`winget`. Native readers (Node `koffi`, Python `ctypes` and `winrt`, .NET) implement `windows.*` as documented, behind fake-environment tests |
+| Steam on Windows, Linux and Proton           | assume the same variable names and ACF keys as macOS (the ACF format was confirmed from Windows files); require the ACF `appid` match; keep `steam_appid.txt` out of detection                                                             |
+| itch                                         | receipt `game.id` match → `itch`; `ITCHIO_APP=1` alone is restricting-only                                                                                                                                                                 |
+| Snap                                         | `SNAP_NAME` match → `snap`; revision `x<n>` → `direct`                                                                                                                                                                                     |
+
+## Affected briefs
+
+Changed on this branch:
+
+- **P3-11**: Godot's Android readers are pure GDScript (`AndroidRuntime` plus `JavaClassWrapper`)
+  and need no plugin hook. Added the identity-condition and restrict-only rules to the design
+  notes, and pointed at this note for which signals are verified.
+- **P5-06**: the install source is not "only readable natively". The AAR can still wrap it, but
+  detection does not depend on the AAR.
+- **S-06** (this brief): acceptance ticked, with the itch limit, and the unmeasured rows listed
+  in the hand-off.
+
+Proposed, not edited (they are decisions or research notes):
+
+- **README §5.5**: "Android … via a tiny plugin" should read "via `JavaClassWrapper` (Godot
+  4.4+), no plugin". The Linux row should add "matching the product's Flatpak id or snap name";
+  the Steam row should read "`SteamAppId` matching the product's app id, or the library ACF".
+- **P3-01 item 11**: take the confidence levels (`attested`/`declared`/`heuristic`/`stamp`), the
+  precedence rules above, the identity-condition column, and a `subkind` field (Homebrew, Scoop,
+  Chocolatey, AppImage). Decide `AppDistributor.web` → `direct` or `ios-web`.
+- **notes/E9 §1.1**: the `AppDistributor` `web` case is iOS 17.5+. The Steam, macOS and Flatpak
+  rows can move to [M]. The `steam_appid.txt` "dev mode" claim and the macOS provisioning-profile
+  heuristic are refuted.
+- **P1-05**: report only the outlet id and `subkind`, never the raw signals, several of which
+  carry account names or keys.
+- **P1-11**: the stamp stays authoritative for store outlets against every non-attested signal
+  (rule 2).
+
+## Sources
+
+Primary sources read raw [V], retrieved 2026-09-30:
+
+- Godot 4.7.2-stable: `platform/linuxbsd/os_linuxbsd.cpp` (`is_sandboxed`) and
+  `platform/macos/os_macos.mm` (`is_sandboxed` reads `APP_SANDBOX_CONTAINER_ID`),
+  `raw.githubusercontent.com/godotengine/godot/4.7.2-stable/…`.
+- F-Droid client `app/src/main/kotlin/org/fdroid/install/SessionInstallManager.kt` (gitlab.com/fdroid/fdroidclient @ `a99c0cd`, 2026-09-30).
+- Obtainium `lib/installers/{root,shizuku,stock}_installer.dart`, `lib/providers/settings_provider.dart` (github.com/ImranR98/Obtainium @ `af286fa`, 2026-09-13); `android_package_installer` `Installer.kt` (@ `c9e144f`).
+- AltStore `AltStore/Operations/FetchProvisioningProfilesOperation.swift`, `ResignAppOperation.swift`, `Shared/Extensions/Bundle+AltStore.swift` (github.com/altstoreio/AltStore @ `56854e6`, 2026-07-14).
+- SideStore `SideStore/Core/Operations/PipelineOperations/{FetchProvisioningProfiles,ResignApp}Operation.swift` (github.com/SideStore/SideStore @ `0dd743f`, 2026-09-20).
+- butler `endpoints/launch/launch.go` (github.com/itchio/butler @ `d56a41a`, 2026-09-26); hush `bfs/receipt.go` (github.com/itchio/hush, master).
+- snapd `snap/snapenv/snapenv.go`; flatpak `common/flatpak-run.c` (master).
+- Apple documentation JSON: `marketplacekit/appdistributor`, `…/appdistributor/web` (iOS 17.5), `…/appdistributor/other`, `storekit/apptransaction/environment`, `storekit/appstore/environment/sandbox` (developer.apple.com/tutorials/data/documentation/…).
+- Microsoft Learn: [Detect package identity and runtime context](https://learn.microsoft.com/en-us/windows/msix/detect-package-identity); [PackageSignatureKind](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.packagesignaturekind); [Package.EffectiveExternalLocation](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.package.effectiveexternallocation); [Grant package identity by packaging with external location](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/grant-identity-to-nonpackaged-apps).
+
+Measured [M]: every "measured" row above. The raw outputs are regenerated by the probes into
+`prototype/outlet-signals/out/` (git-ignored). Values quoted here have home paths, account names
+and team ids removed.
