@@ -12,6 +12,8 @@
 //   expect    (ctx) => string[]  extra checks that return failure messages
 //   canary    { title } the URL is expected to be a soft-404 with this <title> (tests a moved page)
 
+import { newerChangelogEntries } from "./lib.mjs";
+
 const APPLE_NEWS = "https://developer.apple.com/news/";
 const ANDROID_DV = "https://developer.android.com/developer-verification";
 const PLAY_HELP =
@@ -284,6 +286,8 @@ export const rows = [
           "will need to report transactions and pay the relevant service fees starting on October 1, 2026.",
           "On September 17, 2026, we notified developers enrolled in external content links that they now have until December 1, 2026 to report successful download and pay the relevant service fees.",
         ],
+        // Added text is invisible to quotes: fail if the page gains a dated entry after 2026-09-17.
+        expect: ({ text }) => newerChangelogEntries(text, "2026-09-17"),
       }),
       src(
         "blog",

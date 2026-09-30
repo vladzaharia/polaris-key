@@ -13,12 +13,25 @@ cd docs/research/2026-09-29-godot-omniplatform/prototype/policy-recheck
 mise exec node@22 -- node --test lib.test.mjs          # offline tests of the helpers
 mise exec node@22 -- node recheck.mjs                  # all rows
 mise exec node@22 -- node recheck.mjs --rows 4,6,16    # only some rows
+mise exec node@22 -- node recheck.mjs --rows 1-5,12,14 # ranges work; the table below pastes as is
 mise exec node@22 -- node recheck.mjs --json           # machine-readable
 ```
 
 Node 22 or later (global `fetch`), no dependencies, no credentials, read-only. Exit code 0: every
 quote is still present. Exit code 1: at least one row needs a human to re-read the page and
-decide whether the fact changed, moved or was reworded.
+decide whether the fact changed, moved or was reworded. Exit code 2: bad usage (a `--rows` item
+that does not parse, or a row number not in `checks.mjs`); nothing was checked, so it is never a
+pass.
+
+**What a PASS proves.** Only that the quoted text is still present on the page. Text that was
+_added_ is invisible to a quote check: the one change this spike found (row 8, the 2026-09-17
+extension of the US external-content-links reporting date) was an addition. Added text is caught
+only where a source carries a changelog guard, an `expect` that fails when the page gains a dated
+entry newer than the last one read: row 8 `us-update` (after 2026-09-17), row 9 (Billing Library
+releases newer than 9.1.x), row 12 (Flathub `requirements.md` commits after 2026-09-21) and the row
+16 (App Store Connect API versions newer than 4.5). A row without a guard can pass while the page grows a new
+paragraph, so treat PASS as "the facts this note cites have not been removed or reworded", not as
+"nothing changed".
 
 Outputs go to `out/` (git-ignored): `results.json` (status, bytes, page date, text hash and
 failures per source) and one text snapshot per source, which is what to diff against when a row
@@ -53,7 +66,9 @@ matching. A failing quote means "read the page", not "the fact is false".
 - `developer.apple.com/support/dma-and-apps-in-the-european-union/` now answers HTTP 200 with a
   "Page Not Found" title. It is kept as a canary source on row 4; the live pages are
   `support/apps-in-the-eu/` and the EU marketplace and web-distribution pages.
-- Several policy pages print no date. The harness records the page date only where one exists, and
-  the text hash lets a later run see that the page changed.
+- Several policy pages print no date. The harness records the page date only where one exists. It
+  also stores a text hash per source in `out/results.json`, but `out/` is git-ignored and no
+  baseline is committed or compared, so the hash is only a hint for a manual diff; it does not
+  detect changes on its own.
 - The harness reads Flathub's documentation and never opens, comments on or automates anything on
   Flathub (its generative-AI policy forbids agent-driven pull requests).

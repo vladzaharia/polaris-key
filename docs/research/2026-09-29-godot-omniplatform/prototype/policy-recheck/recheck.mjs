@@ -2,11 +2,12 @@
 // Re-run the S-07 policy checklist against the live primary sources.
 //
 //   node recheck.mjs                 all 18 rows
-//   node recheck.mjs --rows 4,6,16   only those rows (what a connector package re-runs)
+//   node recheck.mjs --rows 1-5,12,14   only those rows; ranges allowed (what a connector package re-runs)
 //   node recheck.mjs --json          machine-readable result on stdout
 //   node recheck.mjs --out DIR       where snapshots go (default ./out, git-ignored)
 //
-// Exit code 0: every quote still present. 1: at least one row needs a human re-read.
+// Exit code 0: every quote still present (and no guarded changelog has grown). 1: at least one row needs a
+// human re-read. 2: bad usage (unparseable or unknown --rows), nothing was checked.
 // Node 22+ (global fetch). No dependencies. The harness never authenticates and never writes to any site.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -19,6 +20,7 @@ import {
   htmlToText,
   mdToText,
   norm,
+  parseRows,
   sha256,
 } from "./lib.mjs";
 
@@ -26,9 +28,23 @@ const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
-const wanted = opt("--rows", "")
-  ? new Set(opt("--rows", "").split(",").map(Number))
-  : null;
+let wanted = null;
+if (args.includes("--rows")) {
+  try {
+    wanted = new Set(parseRows(opt("--rows", "")));
+  } catch (e) {
+    console.error(`recheck: ${e.message}`);
+    process.exit(2);
+  }
+  const known = new Set(rows.map((r) => r.row));
+  const unknown = [...wanted].filter((n) => !known.has(n));
+  if (unknown.length) {
+    console.error(
+      `recheck: --rows names row(s) not in checks.mjs: ${unknown.join(", ")} (rows ${Math.min(...known)}-${Math.max(...known)})`,
+    );
+    process.exit(2);
+  }
+}
 const outDir = opt("--out", join(here, "out"));
 const UA = "Mozilla/5.0 (compatible; polaris-key-policy-recheck/1.0)";
 
