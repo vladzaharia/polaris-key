@@ -72,10 +72,12 @@ further conditions hold, and neither can be set from a manifest:
    until it is approved again; an unchanged resync keeps it approved; a resync that drops the
    recipe id deletes its approval, so re-adding the id later starts pending. `authPageTemplate` is
    not part of the approval: it does not change what is signed, and the `/auth` page ships its
-   own script-free policy. The approval is also bound to the two product settings that decide
-   who can hold a device token at all — whether the mint is [public](#public-mints) and which
-   [identity provider](#sign-in-trust) sign-in trusts — because a push can change both without
-   touching the recipe.
+   own script-free policy. The approval is also bound to the three product settings that decide
+   who can hold a device token the mint accepts — whether the mint is [public](#public-mints),
+   whether [License is checked](#license-checks) and which [identity provider](#sign-in-trust)
+   sign-in trusts — because a push can change each of them without touching the recipe. A push
+   that widens one of them drops the approval for good (see
+   [Widening is permanent](#widening-is-permanent)).
 
 An unapproved (or changed) recipe answers **exactly** like an unknown one — `404 not_found` — so
 the device-facing contract is unchanged: 404 means "not available here".
@@ -88,11 +90,11 @@ secret's usage, the product's effective registration policy, whether anonymous e
 OIDC default tier is on, and — when Identity is on — the identity provider and group map an
 approval would cover. Behind it is Config's admin API:
 
-| Endpoint                                                    | Does                                                                                                                                                                                                                                                     |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /manage/api/products/<slug>/config/mint`               | `{ registration, anonymousEnroll, oidcDefault, publicMint, identity, recipes[] }` — `identity` is the sign-in trust (or `null` with Identity off); each recipe's fields, `status`, `secretUsage`, the stored `approval` (or `null`) and `changedFields`. |
-| `POST /manage/api/products/<slug>/config/mint/<id>/approve` | Approves. The body **echoes** the recipe's fields and `identity` as the operator saw them (see below).                                                                                                                                                   |
-| `POST /manage/api/products/<slug>/config/mint/<id>/revoke`  | Drops the approval; the recipe answers `404` again.                                                                                                                                                                                                      |
+| Endpoint                                                    | Does                                                                                                                                                                                                                                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /manage/api/products/<slug>/config/mint`               | `{ registration, anonymousEnroll, oidcDefault, publicMint, licenseEnabled, identity, recipes[] }` — `identity` is the sign-in trust (or `null` with Identity off); each recipe's fields, `status`, `secretUsage`, the stored `approval` (or `null`) and `changedFields`. |
+| `POST /manage/api/products/<slug>/config/mint/<id>/approve` | Approves. The body **echoes** the recipe's fields and `identity` as the operator saw them (see below).                                                                                                                                                                   |
+| `POST /manage/api/products/<slug>/config/mint/<id>/revoke`  | Drops the approval; the recipe answers `404` again.                                                                                                                                                                                                                      |
 
 The approve body carries `alg`, `signingKeySecret`, `kid`, `claimsTemplateJson` (the stored JSON
 string), `ttlSeconds` and `audience`, exactly as `GET` returned them, plus the `identity` object
@@ -125,9 +127,20 @@ off) so the derived policy becomes open, or enabling `autoIssue` (manifest-owned
 edits the policy in the console). While the mint is public, an approval given without the
 acknowledgement does not count: the recipe answers `404`, and the list shows it `changed` with
 `registration` in `changedFields` (the approval's `openRegistrationAcknowledged` is `false`).
-Re-approve it with the acknowledgement to make it mint again. If the mint becomes closed again,
-the earlier approval applies again. An approval that already carries the acknowledgement keeps
+Re-approve it with the acknowledgement to make it mint again. A push that makes the mint public
+also deletes such an approval (see [Widening is permanent](#widening-is-permanent)), so closing
+the mint again does not bring it back. An approval that already carries the acknowledgement keeps
 minting whatever the policy becomes.
+
+### License checks
+
+The mint requires a usable licence only while the License service is on. With Identity on, a push
+that turns License off keeps the mint closed (registration derives `requires-identity`) but stops
+checking licences, so a device whose licence an operator disabled, or that expired, could mint
+again. The approval therefore records whether License was on (`licenseEnabled`); an approval
+given with License on does not apply while it is off — the recipe answers `404` and the list shows
+it `changed` with `license` in `changedFields`. Turning License **on** only narrows, so it never
+invalidates an approval.
 
 ### Sign-in trust
 
@@ -147,14 +160,32 @@ keys is not a change). Otherwise the recipe answers `404` and the list shows it 
 the new trust in view, is the operator's decision. Turning Identity **off** only removes a way to
 get a token, so it never invalidates an approval.
 
+### Widening is permanent
+
+Each of the three conditions above is checked on every mint, so a widening refuses at once. But a
+check against the product _as it stands_ is not enough on its own: a push that widens issuance
+(opens enrolment, turns License off, aims sign-in at an issuer the pusher controls) and a second
+push that reverts it would leave the approval applying again, while the licences and device
+tokens handed out in between keep working. So the manifest ingest also **deletes** every approval
+the product has widened: resync sweeps before its first write and after its last, and audits each
+dropped approval as `config.mint.invalidate`; linking a product deletes every approval row under
+its slug. After the revert the recipe is `pending`, and it mints again only when an operator
+re-approves it.
+
+Before re-approving, review the audit log from the `config.mint.invalidate` entry on, and disable
+the licences and devices you did not intend: a re-approval drops nothing that was issued while the
+approval was widened. A change to a recipe field is not swept — a changed recipe signs nothing
+meanwhile — so reverting it restores the approval. An operator's own console edit that widens the
+product is swept at the next link or resync; until then the per-mint check refuses.
+
 What this does not cover: the approval trusts the identity provider itself. Anyone that provider
 signs in with a mapped group — including an account its administrator adds later — is covered, as
 is anyone at all under an OIDC default tier (which is why that counts as public). Choosing the
 provider remains an operator decision: a change to a custom issuer's host is also refused at
 ingest unless the host is in `OIDC_ISSUER_ALLOWLIST`.
 
-Every change is audited: `config.mint.approve`, `config.mint.revoke`, and `secret.usage` when a
-secret's usage changes. A re-upload of a secret that omits `usage` keeps the stored usage, so
+Every change is audited: `config.mint.approve`, `config.mint.revoke`, `config.mint.invalidate`
+when an ingest drops a widened approval, and `secret.usage` when a secret's usage changes. A re-upload of a secret that omits `usage` keeps the stored usage, so
 rotating a key never silently changes what it may sign.
 
 **Upgrading.** Migration `0025_b_edge_mint_approvals.sql` backfills both conditions from what was
@@ -165,9 +196,10 @@ current policy. The acknowledgement is recorded **only** where the mint was alre
 deploy (open registration, anonymous enrolment, or an OIDC default tier with Identity on);
 everywhere else — djdl, which runs `requires-license`, included — the migrated approval carries
 none, so a later push that makes the mint public turns the recipe inert until an operator
-re-approves it with the acknowledgement. The sign-in trust is recorded as deployed too (for djdl:
-Identity on, the platform provider and its group map), so a later push that changes it turns the
-recipe inert the same way. Review the list once after deploying:
+re-approves it with the acknowledgement. Whether License was on and the sign-in trust are
+recorded as deployed too (for djdl: License on, Identity on, the platform provider and its group
+map), so a later push that turns License off or changes the sign-in trust turns the recipe inert
+the same way. Review the list once after deploying:
 
 ```sql
 SELECT product, name FROM product_secrets WHERE usage = 'edge-mint';

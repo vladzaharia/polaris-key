@@ -53,7 +53,10 @@ approved without it, the recipe shows _Changed since approval_ and stops minting
 re-approve it. When Identity is on, the card also shows the identity provider and group map an
 approval covers, because signing in is how people get device tokens without a key; a push that
 changes them makes the recipe _Changed since approval_ too, with the approved values beside the new
-ones. The setup checklist lists each recipe awaiting approval
+ones, and so does turning License off after an approval given with it on. When the change arrives
+by a manifest push, the ingest also drops the approval (audited as `config.mint.invalidate`), so
+the recipe returns to _Pending approval_ and a later push that reverts the change does not restore
+it: review the licences and devices issued in between before you re-approve. The setup checklist lists each recipe awaiting approval
 and each recipe secret not yet marked edge-mint. The full rule, the admin endpoints and the
 upgrade backfill are in [Edge-mint](/docs/services/config/edge-mint/#two-operator-conditions).
 

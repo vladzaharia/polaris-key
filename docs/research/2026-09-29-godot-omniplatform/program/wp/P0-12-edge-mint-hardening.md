@@ -87,7 +87,8 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   `core/identityTrust.ts`). While Identity is on, an approval matches only if they are unchanged
   (group map compared structurally); otherwise it is `changed` with `identity` in
   `changedFields`. Turning Identity off never invalidates. The approve body echoes `identity`
-  (409 if stale). One TypeScript rule, `approvalMismatch` in `services/config/mint.ts`, now
+  (409 if stale). One TypeScript rule, `approvalMismatch` in `core/edgeMintApproval.ts` (re-exported by
+  `services/config/mint.ts`), now
   decides for the token route, discovery, the admin list and approve, and the setup checklist
   (the earlier SQL join fragment is gone). The migration backfill records the acknowledgement
   `1` only where the mint was already public at deploy (a SQL mirror of `mintIsPublic` over
@@ -96,6 +97,19 @@ cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identit
   inert if a later push makes it public or rewrites its OIDC trust. Residual, recorded in
   THREAT-MODEL §3: the approval trusts the IdP itself — whoever it signs in with a mapped group
   is covered.
+  _Correction (second review):_ the mint checks licences only while License is on, and with
+  Identity on a push that turns License off keeps the mint closed (`requires-identity`) while a
+  device whose licence was disabled or expired mints again. So the approval also records
+  `license_enabled`, and while License is off an approval given with it on is `changed` with
+  `license` in `changedFields`. And a per-request check alone let a widen-then-revert pair of
+  pushes restore the approval while the licences and device tokens issued in between kept
+  working, so the manifest ingest makes a product-side widening permanent: resync deletes every
+  approval `productWidening` reports (public without acknowledgement, License turned off,
+  sign-in trust changed) before its first write and after its last, auditing each as
+  `config.mint.invalidate`; link deletes every approval row under the slug. The rule moved to
+  `core/edgeMintApproval.ts` because the ingest (Release) may not import Config. Recipe-field
+  changes are not swept. Residual (THREAT-MODEL §3): what was issued while widened survives a
+  re-approval — the operator reviews the audit log first.
 - **Admin API** under Config's admin handler (`services/config/admin/index.ts`):
   `GET /manage/api/products/<slug>/config/mint` (each recipe with status `approved`, `pending` or
   `changed`, its secret's usage, and the product's effective registration policy);
