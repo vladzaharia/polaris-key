@@ -92,8 +92,10 @@ per artifact, and so mislabels Steam, itch and sideload builds
   are unit-tested with faked environments, because each runtime sees different signals.
 - **Precedence** as the plan fixes it: first-party platform evidence (for example
   `AppDistributor`, MSIX `SignatureKind`) over installer-declared evidence (Android) over
-  environment and path heuristics over the build stamp; `unknown` when nothing applies, with the
-  restrictive capabilities the plan assigns.
+  environment and path heuristics over the build stamp, except that below attested evidence,
+  runtime evidence may only restrict the stamp or veto it (next bullet): a heuristic never turns a
+  `steam` or `itch` stamp into `direct`. `unknown` when nothing applies, with the restrictive
+  capabilities the plan assigns.
 - **Detection never widens capabilities.** It chooses an outlet; the outlet's compiled defaults and
   the feed's narrowing decide what the install may do.
 - **Identity conditions and restrict-only evidence** ([notes/S-06](../../notes/S-06-outlet-signals.md),
@@ -108,7 +110,9 @@ per artifact, and so mislabels Steam, itch and sideload builds
   drops the stamp and gives `unknown` when the stamp names the vetoed outlet, and changes nothing
   otherwise: Android installer ≠ initiator against `play`; an iOS provisioning profile against
   `app-store`; a non-store macOS leaf against `app-store`/`testflight`; a snap revision `x<n>`
-  against `snap`.
+  against `snap`; a Windows `SignatureKind` of `Developer` or `Enterprise` against `ms-store`.
+  Windows package identity alone selects nothing (a sparse package has identity too): it gates the
+  other `windows.*` rows, and when none of them fires the stamp stands.
   On Android only `play` can be `attested`, and only when the initiator digest equals the Play
   Store's recorded digest; until P5-06's device checklist records it, Android `play` evidence is
   `declared` (restricting only), in Godot and every SDK. Async platform calls get a deadline,
