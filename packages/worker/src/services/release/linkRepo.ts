@@ -30,6 +30,7 @@ import {
   getProduct,
   setAutoIssuePolicy,
   setFingerprintPolicy,
+  stmtDeleteOrphanEdgeMintApprovals,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
   stmtInsertProduct,
@@ -434,6 +435,10 @@ async function registerFromManifest(
       }),
     );
   }
+  // P0-12: a freshly linked product's recipes are PENDING — a link never writes an approval,
+  // because an approval is the operator's decision and the manifest is the repo's. The delete
+  // is defensive (a new slug has no approvals); it keeps link and resync one rule.
+  statements.push(stmtDeleteOrphanEdgeMintApprovals(slug));
 
   await db.batch(statements);
 

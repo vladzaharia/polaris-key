@@ -7,7 +7,8 @@
  *
  * Minimal-viable scope (diff-then-update): we re-parse the manifest and update the catalog
  * (new active schema version), the release block (channel/binary/marker/pub), and the OIDC +
- * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here.
+ * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here, and
+ * edge-mint APPROVALS are never written here (P0-12) — only orphaned ones are deleted.
  */
 
 import { Catalog } from "@polaris-key/catalog";
@@ -25,6 +26,7 @@ import {
   setAutoIssuePolicy,
   setFingerprintPolicy,
   setServices,
+  stmtDeleteOrphanEdgeMintApprovals,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
   stmtInsertProfile,
@@ -397,6 +399,12 @@ export async function resyncRepo(
       }),
     );
   }
+  // P0-12: approvals are the operator's, so a resync never WRITES one — the re-inserted rows
+  // above stay approved only where they are column-for-column what an operator approved, and a
+  // changed field leaves the recipe inert (404) until it is approved again. What a resync does
+  // own is cleanup: a recipe id the manifest no longer declares takes its approval with it, so
+  // a later push re-adding that id with the same fields cannot inherit a stale approval.
+  stmts.push(stmtDeleteOrphanEdgeMintApprovals(slug));
   updated.push("edgeMint");
 
   // ── release truth store: the same pass, one extra GitHub read (P2.T2) ───────

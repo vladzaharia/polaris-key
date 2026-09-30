@@ -3,7 +3,20 @@ import { parseServices } from "../src/core/services.js";
 import { signJws, verifyJws } from "@polaris-key/jws";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW } from "./seed.js";
+import {
+  approveEdgeMintRecipe,
+  makeEnv,
+  mkReq,
+  NOW,
+  seedLicenseWithKey,
+  seedProductSecret,
+} from "./seed.js";
+import { loadProduct } from "../src/core/products.js";
+import { handleActivate } from "../src/services/license/activation.js";
+import {
+  getApprovedEdgeMintConfig,
+  handleMintToken,
+} from "../src/services/config/mint.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
@@ -993,5 +1006,167 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       "acme",
     );
     expect(max?.v).toBe(1);
+  });
+});
+
+// ── P0-12: edge-mint recipes arriving by push are inert until an operator approves them ─────
+describe("edge-mint approvals across link and resync (P0-12)", () => {
+  // A throwaway ES256 (P-256 PKCS#8) key for tests only (the same one edgeMint.test.ts uses).
+  const ES_PEM =
+    "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgav85fotyJ04AYsKF\nDojZziUJg9TuJamPiszlECztPLuhRANCAATgaZHNpIiLDSEQHY4H4BE5HnA9L8hR\n11WcM/ABvqCnO5CWZyHKWoEnKnKnmQwVibF2w5YwimX7Z1hIqJPHGCTB\n-----END PRIVATE KEY-----";
+
+  const BASE_RECIPE = {
+    id: "applemusic",
+    alg: "ES256",
+    signingKeySecret: "MINT_KEY__ACME",
+    kid: "KID1",
+    claimsTemplate: { iss: "TEAMID" },
+    ttlSeconds: 3600,
+    audience: "appstoreconnect-v1",
+  };
+  const releaseWith = (edgeMint: Array<Record<string, unknown>>) =>
+    JSON.stringify({ ...JSON.parse(RELEASE_JSON), edgeMint });
+  const filesWith = (edgeMint: Array<Record<string, unknown>>) =>
+    stubFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": releaseWith(edgeMint),
+    }).fetchImpl;
+
+  /** Link `acme` with no recipes, seal an edge-mint signing key, and activate one device. */
+  async function linked(): Promise<{
+    db: Db;
+    env: Env;
+    token: string;
+    resync: (edgeMint: Array<Record<string, unknown>>) => Promise<void>;
+    mint: () => Promise<number>;
+  }> {
+    const db = makeTestDb();
+    const env = envFor();
+    const link = await linkRepo(
+      env,
+      db,
+      "https://github.com/acme-org/acme-app",
+      NOW,
+      filesWith([]),
+    );
+    expect(link.ok).toBe(true);
+    await seedProductSecret(db, "acme", "MINT_KEY__ACME", ES_PEM, "edge-mint");
+    await seedProductSecret(db, "acme", "OTHER_KEY", ES_PEM, "edge-mint");
+    const product = (await loadProduct(env, db, "acme"))!;
+    const { key } = await seedLicenseWithKey(db, "acme");
+    const act = await handleActivate(
+      mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": "d1" }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const { token } = (await act.json()) as { token: string };
+    let tick = 0;
+    return {
+      db,
+      env,
+      token,
+      resync: async (edgeMint) => {
+        const res = await resyncRepo(
+          env,
+          db,
+          "acme",
+          NOW + ++tick,
+          filesWith(edgeMint),
+        );
+        expect(res.ok).toBe(true);
+      },
+      mint: async () =>
+        (
+          await handleMintToken(
+            mkReq("POST", { authorization: `Bearer ${token}` }),
+            env,
+            db,
+            (await loadProduct(env, db, "acme"))!,
+            "applemusic",
+            NOW,
+          )
+        ).status,
+    };
+  }
+
+  it("a freshly linked product's recipes are pending: link never writes an approval", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    const link = await linkRepo(
+      env,
+      db,
+      "https://github.com/acme-org/acme-app",
+      NOW,
+      filesWith([BASE_RECIPE]),
+    );
+    expect(link.ok).toBe(true);
+    const n = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM edge_mint_approvals WHERE product = 'acme'",
+    );
+    expect(n?.n).toBe(0);
+    expect(
+      await getApprovedEdgeMintConfig(db, "acme", "applemusic"),
+    ).toBeNull();
+  });
+
+  it("a new recipe arriving by resync returns 404 until approved, then mints", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    expect(await w.mint()).toBe(404);
+
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+  });
+
+  it("an unchanged resync keeps the recipe approved", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    await w.resync([BASE_RECIPE]);
+    await w.resync([BASE_RECIPE]);
+    expect(await w.mint()).toBe(200);
+  });
+
+  const CHANGES: Array<[string, Record<string, unknown>]> = [
+    ["claimsTemplate", { claimsTemplate: { iss: "SOMEONE-ELSE" } }],
+    ["audience", { audience: "https://attacker.example" }],
+    ["alg", { alg: "RS256" }],
+    ["kid", { kid: "KID2" }],
+    ["ttlSeconds", { ttlSeconds: 86400 }],
+    ["signingKeySecret", { signingKeySecret: "OTHER_KEY" }],
+  ];
+  for (const [field, change] of CHANGES) {
+    it(`changing ${field} by resync makes the recipe 404 again`, async () => {
+      const w = await linked();
+      await w.resync([BASE_RECIPE]);
+      await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+      expect(await w.mint()).toBe(200);
+
+      await w.resync([{ ...BASE_RECIPE, ...change }]);
+      expect(await w.mint()).toBe(404);
+      // The approval is kept (it still records what the operator saw) — it just no longer
+      // matches. Pushing the approved values back makes it live again without re-approval.
+      await w.resync([BASE_RECIPE]);
+      expect(await w.mint()).toBe(200);
+    });
+  }
+
+  it("dropping a recipe from the manifest deletes its approval, so re-adding it is pending", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+
+    await w.resync([]);
+    const n = await w.db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM edge_mint_approvals WHERE product = 'acme'",
+    );
+    expect(n?.n).toBe(0);
+
+    await w.resync([BASE_RECIPE]);
+    expect(await w.mint()).toBe(404);
   });
 });

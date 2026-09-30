@@ -14,13 +14,13 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import { handleConfigRoutes } from "./routes.js";
-import { hasEdgeMintRecipes } from "./mint.js";
+import { hasApprovedEdgeMintRecipes } from "./mint.js";
 import { handleConfigAdmin } from "./admin/index.js";
 
 export const configService: ServiceDescriptor = {
   slug: "config",
   handle: handleConfigRoutes,
-  /** `config/{catalog,profiles}` on the console API (§R1). */
+  /** `config/{catalog,profiles,mint}` on the console API (§R1; `mint` is P0-12). */
   adminHandle: handleConfigAdmin,
   /**
    * Config's slice of `/.well-known/polaris.json` (design spec §4.3): the document and catalog
@@ -30,6 +30,9 @@ export const configService: ServiceDescriptor = {
    * advertised: recipe ids are operator-chosen and a client that needs one was told which by the
    * catalog entry whose `delivery` is `edgeMint`. Publishing the inventory to anonymous callers
    * would enumerate a product's third-party integrations for nothing.
+   *
+   * It counts APPROVED recipes only (P0-12): a recipe that arrived by push and is still pending
+   * operator approval cannot be minted, so advertising it would only send clients to a 404.
    */
   discoveryFragment: async ({ product, db, base }: DiscoveryContext) => ({
     enabled: true,
@@ -38,15 +41,16 @@ export const configService: ServiceDescriptor = {
       document: `${base}/config/document`,
       schema: `${base}/config/schema`,
     },
-    mint: { available: await hasEdgeMintRecipes(db, product.slug) },
+    mint: { available: await hasApprovedEdgeMintRecipes(db, product.slug) },
   }),
 };
 
 export { handleConfigDocument, resolveConfigPayload } from "./document.js";
 export { handleSchema } from "./schema.js";
 export {
+  getApprovedEdgeMintConfig,
   getEdgeMintConfig,
   handleMintAuth,
   handleMintToken,
-  hasEdgeMintRecipes,
+  hasApprovedEdgeMintRecipes,
 } from "./mint.js";

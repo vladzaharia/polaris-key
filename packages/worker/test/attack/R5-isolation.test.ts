@@ -18,6 +18,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  approveEdgeMintRecipe,
   seedProductSecret,
   seedTier,
 } from "../seed.js";
@@ -585,6 +586,9 @@ describe("R5-06 edge-mint recipes are not entitlement-gated", () => {
       "https://api.example.com",
       null,
     );
+    // Approved, and its key below marked edge-mint (P0-12), so what these tests pin is the
+    // entitlement and tenant scoping — not the approval gate, which edgeMint.test.ts owns.
+    await approveEdgeMintRecipe(db, slug, id);
   }
 
   it("a free-tier device mints the premium recipe it was never granted", async () => {
@@ -596,6 +600,7 @@ describe("R5-06 edge-mint recipes are not entitlement-gated", () => {
       ACME,
       "mintkey",
       "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----",
+      "edge-mint",
     );
     await seedTier(db, ACME, "free");
     await seedRecipe(db, ACME, "premium-partner-api");
@@ -638,6 +643,7 @@ describe("R5-06 edge-mint recipes are not entitlement-gated", () => {
       ACME,
       "mintkey",
       "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----",
+      "edge-mint",
     );
     await seedRecipe(db, ACME, "acme-secret-recipe");
     const evilco = (await loadProduct(e, db, EVILCO))!;
