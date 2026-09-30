@@ -28,6 +28,7 @@ export {
   setAutoIssuePolicy,
   setFingerprintPolicy,
   setServices,
+  stmtDeleteOrphanEdgeMintApprovals,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
   stmtInsertProduct,

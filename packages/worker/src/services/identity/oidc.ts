@@ -236,11 +236,13 @@ async function resolveOidcConfig(
     }
     let clientSecret: string | undefined;
     if (row.client_secret_secret) {
+      // A secret an operator marked for edge-minting is not an OIDC client secret (P0-12).
       clientSecret = await openProductSecret(
         db,
         env,
         product.slug,
         row.client_secret_secret,
+        "general",
       );
       if (!clientSecret) {
         return errorResponse(

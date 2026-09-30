@@ -107,12 +107,15 @@ export async function seedProduct(
 }
 
 /** Seal `value` under the test KEK and upsert it into product_secrets as `name`. Used by
- *  edge-mint tests: the recipe's `signing_key_secret` is now a product_secrets NAME. */
+ *  edge-mint tests: the recipe's `signing_key_secret` is now a product_secrets NAME. `usage`
+ *  is written as given (`"edge-mint"` for key material a recipe may sign with, P0-12); omitted,
+ *  a new secret is general. */
 export async function seedProductSecret(
   db: Db,
   slug: string,
   name: string,
   value: string,
+  usage?: "edge-mint" | null,
 ): Promise<void> {
   const enc_value_json = await seal({ PLATFORM_KEK: TEST_KEK } as Env, value, {
     product: slug,
@@ -123,9 +126,33 @@ export async function seedProductSecret(
     product: slug,
     name,
     enc_value_json,
+    ...(usage !== undefined ? { usage } : {}),
     created_at: NOW,
     modified_at: NOW,
   });
+}
+
+/**
+ * Approve an edge-mint recipe exactly as it is currently stored — what an operator's
+ * `POST …/config/mint/<id>/approve` records (P0-12). Tests that exercise SIGNING call this after
+ * seeding the recipe; tests of the approval gate itself go through the admin API instead.
+ */
+export async function approveEdgeMintRecipe(
+  db: Db,
+  slug: string,
+  id: string,
+): Promise<void> {
+  await db.run(
+    `INSERT OR REPLACE INTO edge_mint_approvals
+       (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
+        approved_at, approved_by)
+     SELECT product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds,
+            audience, ?, 'test'
+       FROM edge_mint_config WHERE product = ? AND id = ?`,
+    NOW,
+    slug,
+    id,
+  );
 }
 
 /** The real djdl product catalog (from products/djdl/catalog.json) — used by tests that

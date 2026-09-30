@@ -141,16 +141,54 @@ export async function loadProduct(
   }
 }
 
-/** Open a sealed per-product secret by name. Returns undefined if the row is absent or the
- *  sealed value fails to decrypt (fail-closed — never a wrong/partial value). */
+/**
+ * What a product secret may be used for (P0-12). `general` is every ordinary secret (stored as
+ * NULL); `edge-mint` is key material an operator has explicitly marked for the Config service's
+ * edge-mint route. The value is set only through the admin API, never by a `.pkey/` manifest —
+ * that is the whole point: a repo writer can NAME a secret in a recipe, but cannot make a
+ * secret signable by naming it.
+ */
+export type SecretUsage = "general" | "edge-mint";
+
+/** The usage a stored `product_secrets.usage` value means, or `null` for a value this code
+ *  does not recognise — which matches NO requested usage (fail closed). */
+export function secretUsageOf(
+  stored: string | null | undefined,
+): SecretUsage | null {
+  if (stored === null || stored === undefined) return "general";
+  if (stored === "edge-mint") return "edge-mint";
+  return null;
+}
+
+/** The usage of a stored secret by name: `undefined` when there is no such row, `null` when
+ *  the stored value is unrecognised. Never opens the sealed value. */
+export async function getProductSecretUsage(
+  db: Db,
+  product: string,
+  name: string,
+): Promise<SecretUsage | null | undefined> {
+  const row = await getProductSecret(db, product, name);
+  if (!row) return undefined;
+  return secretUsageOf(row.usage);
+}
+
+/**
+ * Open a sealed per-product secret by name, for ONE required usage. Returns undefined if the
+ * row is absent, if its usage is not `usage`, or if the sealed value fails to decrypt
+ * (fail-closed — never a wrong/partial value). A usage mismatch deliberately reads as
+ * "missing": the caller's existing fail-closed branch (500 `misconfigured`) is the right
+ * answer, and the value is never unsealed at all.
+ */
 export async function openProductSecret(
   db: Db,
   env: Env,
   product: string,
   name: string,
+  usage: SecretUsage,
 ): Promise<string | undefined> {
   const row = await getProductSecret(db, product, name);
   if (!row) return undefined;
+  if (secretUsageOf(row.usage) !== usage) return undefined;
   try {
     return await open(env, row.enc_value_json, {
       product,
