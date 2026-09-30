@@ -14,11 +14,11 @@ could disagree with it.
 
 ## The three files
 
-| File        | Base name                 | Required when                                          | Carries                                                                                           |
-| ----------- | ------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| **schema**  | `schema.{json,yaml,yml}`  | always (content validated only when Config is enabled) | the config catalog: `{ schemaVersion, entries[] }`                                                |
-| **product** | `product.{json,yaml,yml}` | always                                                 | metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks |
-| **release** | `release.{json,yaml,yml}` | Release is enabled                                     | provider coordinates + channel/install/appcast/edge-mint settings                                 |
+| File        | Base name                 | Required when                                          | Carries                                                                                                            |
+| ----------- | ------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **schema**  | `schema.{json,yaml,yml}`  | always (content validated only when Config is enabled) | the config catalog: `{ schemaVersion, entries[] }`                                                                 |
+| **product** | `product.{json,yaml,yml}` | always                                                 | metadata, enabled services, device registration policy, browser origins, OIDC, profiles, tiers, provisioning hooks |
+| **release** | `release.{json,yaml,yml}` | Release is enabled                                     | provider coordinates + channel/install/appcast/edge-mint settings                                                  |
 
 Each file's **base name** selects its role; the **extension** is a pure format preference,
 resolved independently per file in the fixed order `.json`, then `.yaml`, then `.yml` — so a
