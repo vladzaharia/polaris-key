@@ -29,6 +29,7 @@
  */
 
 import type { ServiceSlug } from "./api.js";
+import type { ServiceAccentToken } from "./services.generated.js";
 
 export type Tab =
   // platform / core
@@ -59,16 +60,11 @@ export type Tab =
 export type View = Tab | "license" | "profile";
 
 /**
- * A section's `data-service` token (D-17). License brands as `key` and Identity as `id` per the
- * brand registry; Config/Release/Update take their own slug; the platform substrate is `core`.
+ * A section's `data-service` token (D-17). Each service's token is its service-table row's
+ * `console.accent` (License brands as `key` and Identity as `id` per the brand registry; the
+ * others take their own slug); the platform substrate is `core`, which is not a service.
  */
-export type ServiceAccent =
-  | "core"
-  | "key"
-  | "config"
-  | "release"
-  | "update"
-  | "id";
+export type ServiceAccent = "core" | ServiceAccentToken;
 
 export interface NavItem {
   tab: Tab;

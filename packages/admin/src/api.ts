@@ -44,6 +44,7 @@ export type {
   UiHints,
 } from "@polaris-key/catalog";
 import type { ManagementState, ProductCatalog } from "@polaris-key/catalog";
+import type { ServiceSlug } from "./services.generated.js";
 
 // ── identity ──────────────────────────────────────────────────────────────────
 export interface ProductRef {
@@ -305,13 +306,9 @@ export interface ResyncResult {
 }
 
 // ── services (per-product enablement) ─────────────────────────────────────────
-/** The five opt-in services layered over the always-on Core substrate. */
-export type ServiceSlug =
-  | "license"
-  | "config"
-  | "release"
-  | "update"
-  | "identity";
+/** The opt-in services layered over the always-on Core substrate — generated from the service
+ *  table (`tools/services.json`) by `pnpm gen:services`. */
+export type { ServiceSlug };
 
 /** How a device may register (spec §2.3). Derived from the enablement set unless declared. */
 export type RegistrationPolicy =
