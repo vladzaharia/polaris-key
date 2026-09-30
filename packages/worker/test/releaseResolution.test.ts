@@ -598,6 +598,63 @@ describe("channel floors (R6-10)", () => {
     expect((await getChannelFloor(db, SLUG, "stable"))?.version).toBe("2.1.0");
   });
 
+  it("a sync over a capped list agrees with the live route about a floor release it did not reach (P2-03)", async () => {
+    const db = makeTestDb();
+    await seed(db);
+    const env = envFor();
+    const state: GitHubState = { releases: [release("v2.0.0")] };
+    const gh = github(state);
+    await syncReleaseStore(env, db, SLUG, NOW, gh.fetchImpl);
+    expect((await getChannelFloor(db, SLUG, "stable"))?.version).toBe("2.0.0");
+
+    // 1,000 newer backports fill every page the sync reads; v2.0.0 sits on page 11.
+    const backports = Array.from({ length: 1000 }, (_, i) =>
+      release(`v1.0.${i}`),
+    );
+    state.releases = [...backports, release("v2.0.0")];
+    gh.calls.length = 0;
+    await syncReleaseStore(env, db, SLUG, NOW + 60, gh.fetchImpl);
+    expect(
+      gh.calls.filter((u) => u.includes("/releases?per_page")),
+    ).toHaveLength(10);
+    expect(gh.calls).toContain(`${API}/releases/tags/v2.0.0`);
+    const stable = (await listReleaseChannels(db, SLUG)).find(
+      (c) => c.channel === "stable",
+    );
+    expect(stable?.release_id).toBe("v2.0.0");
+    const health = (await listReleaseHealth(db, SLUG)).find(
+      (h) => h.subject_kind === "channel" && h.subject_id === "stable",
+    );
+    expect(health?.status).toBe("healthy");
+    // The live route gives the same answer through its own tag lookup.
+    expect(await latestVersion(env, db, gh.fetchImpl)).toMatchObject({
+      status: 200,
+      version: "2.0.0",
+    });
+
+    // Gone for real: the store says blocked, and so does the live route.
+    state.releases = backports;
+    await syncReleaseStore(env, db, SLUG, NOW + 120, gh.fetchImpl);
+    expect(
+      (await listReleaseHealth(db, SLUG)).find(
+        (h) => h.subject_kind === "channel" && h.subject_id === "stable",
+      )?.status,
+    ).toBe("blocked");
+    expect((await latestVersion(env, db, gh.fetchImpl)).status).toBe(404);
+  });
+
+  it("a sync over an uncapped list pays no tag lookup for a missing floor release", async () => {
+    const db = makeTestDb();
+    await seed(db);
+    const state: GitHubState = { releases: [release("v2.0.0")] };
+    const gh = github(state);
+    await syncReleaseStore(envFor(), db, SLUG, NOW, gh.fetchImpl);
+    state.releases = [release("v1.0.0")];
+    gh.calls.length = 0;
+    await syncReleaseStore(envFor(), db, SLUG, NOW + 60, gh.fetchImpl);
+    expect(gh.calls.filter((u) => u.includes("/releases/tags/"))).toEqual([]);
+  });
+
   it("a page of newer prereleases plus a backport still serves the floor release", async () => {
     const db = makeTestDb();
     await seed(db);

@@ -543,6 +543,13 @@ export function releaseStoreStatements(
   releases: Release[],
   now: number,
   floors: ReleaseChannelFloorRow[] = [],
+  /**
+   * Floor releases the (capped) list did not reach but a tag lookup found (`sync.ts`). They are
+   * recorded like any listed release and hold their channel up exactly as the live route's own
+   * lookup does; they are NOT candidates for any other channel, since the live route would not
+   * have read them either.
+   */
+  held: Release[] = [],
 ): DbStatement[] {
   const policy = artifactPolicy(cfg);
   const candidates = resolutionPolicy(cfg);
@@ -551,6 +558,12 @@ export function releaseStoreStatements(
   // Drafts are not published software. They are visible to the installation token and invisible
   // to everyone the portal serves, so ingesting them would list a release nobody can download.
   const published = releases.filter((r) => !r.draft);
+  const recorded = [
+    ...published,
+    ...held.filter(
+      (h) => !h.draft && !published.some((p) => p.tag_name === h.tag_name),
+    ),
+  ];
 
   const metadata: DbStatement[] = [];
   const artifacts: DbStatement[] = [];
@@ -558,7 +571,7 @@ export function releaseStoreStatements(
 
   // Publication order, the same order 0027_h's backfill numbers `seq` in: an undated release
   // first (SQLite sorts NULL low), then by date, ties by tag.
-  const inPublishOrder = published
+  const inPublishOrder = recorded
     .map((release) => ({
       release,
       at: publishedAtSeconds(release.published_at),
@@ -636,12 +649,27 @@ export function releaseStoreStatements(
     const floor = floorName
       ? floors.find((f) => f.channel === floorName)
       : undefined;
-    // R6-10. The sync read up to 1,000 releases, so a floor release that is not among them is
-    // gone: the channel resolves to NOTHING rather than to the older release still listed. The
-    // live route makes the same call (with a tag lookup, since it reads fewer pages), and
-    // `checkReleaseHealth` names the floor so an operator can lower it deliberately.
-    const regressed = floor ? isBelowFloor(offered, floor) : false;
-    const resolved = regressed ? null : offered;
+    // R6-10. A floor release that is neither in the list nor in `held` is gone: the channel
+    // resolves to NOTHING rather than to the older release still listed. The live route makes
+    // the same call, and `checkReleaseHealth` names the floor so an operator can lower it
+    // deliberately. One the capped list did not reach but a tag lookup found (`held`) still
+    // holds the channel up — the same answer, and the same "is it still something this selector
+    // would pick" test, as `resolveMovingSelector`.
+    const below = floor ? isBelowFloor(offered, floor) : false;
+    const holding =
+      below && floor && sel
+        ? (held.find((h) =>
+            floor.release_id
+              ? h.tag_name === floor.release_id
+              : semverOfTag(h.tag_name) === floor.version,
+          ) ?? null)
+        : null;
+    const heldUp =
+      holding && sel && resolveChannel(sel, [holding], undefined, candidates)
+        ? holding
+        : null;
+    const regressed = below && !heldUp;
+    const resolved = regressed ? null : (heldUp ?? offered);
     if (floorName && resolved) {
       const stmt = floorStatement(product, floorName, resolved, floor, now);
       if (stmt) floorStmts.push(stmt);
