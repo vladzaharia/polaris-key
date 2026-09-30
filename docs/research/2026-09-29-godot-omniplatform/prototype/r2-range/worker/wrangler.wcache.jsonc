@@ -1,0 +1,15 @@
+// Path B with Workers Caching (the cache in front of the Worker, launched 2026). Same script;
+// Cloudflare strips Range before invoking the Worker, stores the full 200 and slices ranges itself
+// (developers.cloudflare.com/workers/cache/configuration/#range-requests). Needs wrangler >= 4.69
+// for `cache.enabled`, >= 4.107 for `cross_version_cache`.
+{
+  "name": "pk-r2-probe-wcache",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-30",
+  "workers_dev": true,
+  "r2_buckets": [
+    { "binding": "BUCKET", "bucket_name": "polaris-key-blobs-dev" },
+  ],
+  "vars": { "CACHE_FILL_ON_RANGE": "0", "WORKERS_CACHE": "1" },
+  "cache": { "enabled": true },
+}
