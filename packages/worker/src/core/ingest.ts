@@ -16,8 +16,8 @@
  * complete inventory of what the ingest may touch, in one core-owned file, so widening it is a
  * visible edit here rather than an unnoticed new import inside a service.
  *
- * Nothing is defined here. Every symbol keeps its definition (and its comments) in `repo.ts` or
- * `admin/repo.ts`; adding behaviour to a re-export module is how a façade becomes a second
+ * Nothing is defined here. Every symbol keeps its definition (and its comments) in `repo.ts`,
+ * `admin/repo.ts` or `edgeMintApproval.ts`; adding behaviour to a re-export module is how a façade becomes a second
  * implementation.
  */
 
@@ -41,6 +41,8 @@ export {
   upsertProductSyncState,
   type ProductRow,
 } from "../repo.js";
+
+export { invalidateWidenedEdgeMintApprovals } from "./edgeMintApproval.js";
 
 export {
   countLicensesUsingProfile,

@@ -56,6 +56,25 @@
  * the recipe `changed` with `identity` among its changed fields. Turning Identity OFF is a
  * narrowing and never invalidates an approval. The approve body echoes the identity it was
  * shown, for the same reason it echoes the recipe.
+ *
+ * ── WHY LICENSE IS PART OF THE APPROVAL ────────────────────────────────────────────────────
+ *
+ * The mint checks a device's licence only while the License service is on. A push that turns
+ * License off with Identity on leaves the mint closed (registration derives `requires-identity`)
+ * but stops that check, so a device whose licence an operator disabled, or that expired, mints
+ * again. The approval records `license_enabled`; while License is off an approval given with it
+ * on is `changed` with `license` among its changed fields.
+ *
+ * ── WHY A WIDENING DELETES THE APPROVAL AT INGEST ──────────────────────────────────────────
+ *
+ * The three product-side conditions above are re-checked on every request, but that alone
+ * compares the approval with the product as it stands: push a widening, collect a licence or a
+ * device token, push the revert, and the approval would apply again with the credential still
+ * working. So link and resync delete every approval the product has widened
+ * (`invalidateWidenedEdgeMintApprovals`, `core/edgeMintApproval.ts`) and audit it as
+ * `config.mint.invalidate`; after a revert the recipe is `pending`, not `approved`. What was
+ * issued while it was widened survives a re-approval — the audit summary tells the operator to
+ * review it. Recipe-field changes are not swept: a changed recipe signs nothing meanwhile.
  */
 
 import { ErrorCode } from "../../../core/errors.js";
@@ -195,6 +214,7 @@ async function handleList(ctx: ConfigAdminContext): Promise<Response> {
             ...wireFields(approval),
             openRegistrationAcknowledged:
               approval.open_registration_acknowledged === 1,
+            licenseEnabled: approval.license_enabled === 1,
             identity: approvedIdentityWire(approval),
             approvedAt: approval.approved_at,
             approvedBy: approval.approved_by,
@@ -213,6 +233,7 @@ async function handleList(ctx: ConfigAdminContext): Promise<Response> {
       ctx.product.services.identity.enabled &&
       allowsOidcDefault(ctx.product.autoIssue),
     publicMint: basis.publicMint,
+    licenseEnabled: basis.licenseEnabled,
     identity: identityWire(basis.identity),
     recipes,
   });
@@ -300,14 +321,15 @@ async function handleApprove(
   await db.run(
     `INSERT INTO edge_mint_approvals
        (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
-        open_registration_acknowledged, identity_enabled, oidc_provider, oidc_issuer,
-        oidc_client_id, oidc_group_role_map_json, approved_at, approved_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        open_registration_acknowledged, license_enabled, identity_enabled, oidc_provider,
+        oidc_issuer, oidc_client_id, oidc_group_role_map_json, approved_at, approved_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, id) DO UPDATE SET
        alg = excluded.alg, signing_key_secret = excluded.signing_key_secret,
        kid = excluded.kid, claims_template_json = excluded.claims_template_json,
        ttl_seconds = excluded.ttl_seconds, audience = excluded.audience,
        open_registration_acknowledged = excluded.open_registration_acknowledged,
+       license_enabled = excluded.license_enabled,
        identity_enabled = excluded.identity_enabled,
        oidc_provider = excluded.oidc_provider, oidc_issuer = excluded.oidc_issuer,
        oidc_client_id = excluded.oidc_client_id,
@@ -322,6 +344,9 @@ async function handleApprove(
     echoed.ttl_seconds,
     echoed.audience,
     acknowledged ? 1 : 0,
+    // Whether the mint is checking licences now. Turning License off later is a widening
+    // (`license`): a device whose licence was disabled or expired would mint again.
+    basis.licenseEnabled ? 1 : 0,
     // The identity inputs exactly as just compared with the echo. Recorded whether or not
     // Identity is on: with it off they are inert, and turning Identity on later is itself a
     // change (`identity_enabled` 0) that makes the approval stop applying.

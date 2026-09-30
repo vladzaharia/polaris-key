@@ -13,6 +13,8 @@ import {
 } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
+import { handleEnroll } from "../src/services/license/enroll.js";
+import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
 import {
   getApprovedEdgeMintConfig,
   handleMintToken,
@@ -1298,7 +1300,27 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     expect(await w.mint()).toBe(200);
   });
 
-  it("closing registration again restores an approval given without the acknowledgement", async () => {
+  // The per-request check compares an approval with the product AS IT STANDS, so on its own a
+  // push that widens issuance and a second push that reverts it would leave the approval applying
+  // again — with the credentials handed out in between still working. The ingest therefore
+  // DELETES an approval the product has widened; after the revert the recipe is pending.
+  const approvalCount = async (db: Db): Promise<number> =>
+    (
+      await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM edge_mint_approvals WHERE product = 'acme'",
+      )
+    )?.n ?? -1;
+  const invalidations = async (db: Db) =>
+    db.all<{
+      action: string;
+      target_id: string;
+      summary: string;
+      actor_sub: string | null;
+    }>(
+      "SELECT action, target_id, summary, actor_sub FROM audit WHERE product = 'acme' AND action = 'config.mint.invalidate'",
+    );
+
+  it("closing registration again does NOT restore an approval given without the acknowledgement", async () => {
     const w = await linked();
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
@@ -1310,7 +1332,157 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       }),
     );
     expect(await w.mint()).toBe(404);
+    expect(await approvalCount(w.db)).toBe(0);
+    const audited = await invalidations(w.db);
+    expect(audited).toHaveLength(1);
+    expect(audited[0]).toMatchObject({
+      target_id: "applemusic",
+      actor_sub: null,
+    });
+    expect(audited[0]!.summary).toContain("became public");
+
     await w.resync([BASE_RECIPE]);
+    expect(await w.mint()).toBe(404);
+    expect(await approvalCount(w.db)).toBe(0);
+
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+  });
+
+  it("widen, enrol a stranger, revert: the stranger's token does not mint until an operator re-approves", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+
+    // Push 1: anonymous enrolment on.
+    await w.resync(
+      [BASE_RECIPE],
+      JSON.stringify({
+        ...JSON.parse(PRODUCT_JSON),
+        autoIssue: { enabled: true, tierId: "pro", mode: "anonymous" },
+      }),
+    );
+    const anon = (await loadProduct(w.env, w.db, "acme"))!;
+    const enrolled = await handleEnroll(
+      mkReq(
+        "POST",
+        { "x-pkey-device": "stranger" },
+        {
+          fingerprint: {
+            components: {
+              machineUuid: "u".repeat(FINGERPRINT_COMPONENT_LENGTH),
+              boardSerial: "b".repeat(FINGERPRINT_COMPONENT_LENGTH),
+              cpuModel: "c".repeat(FINGERPRINT_COMPONENT_LENGTH),
+            },
+            hwid: "ignored",
+          },
+        },
+      ),
+      w.env,
+      w.db,
+      anon,
+      NOW,
+    );
+    expect(enrolled.status).toBe(200);
+    const { token: stranger } = (await enrolled.json()) as { token: string };
+
+    // Push 2: reverted. The product is closed again, and the stranger's licence is still active.
+    // (Dropping `autoIssue` from the manifest would leave the stored policy as it was, so the
+    // revert turns it off explicitly.)
+    await w.resync(
+      [BASE_RECIPE],
+      JSON.stringify({
+        ...JSON.parse(PRODUCT_JSON),
+        autoIssue: { enabled: false, tierId: "pro", mode: "anonymous" },
+      }),
+    );
+    const closed = (await loadProduct(w.env, w.db, "acme"))!;
+    expect(mintIsPublic(closed)).toBe(false);
+    const strangerMint = async () =>
+      (
+        await handleMintToken(
+          mkReq("POST", { authorization: `Bearer ${stranger}` }),
+          w.env,
+          w.db,
+          closed,
+          "applemusic",
+          NOW,
+        )
+      ).status;
+    expect(await strangerMint()).toBe(404);
+    expect(await w.mint()).toBe(404);
+    expect(await approvalCount(w.db)).toBe(0);
+    expect(await invalidations(w.db)).toHaveLength(1);
+
+    // The residual the operator is told about: a re-approval covers what was issued meanwhile,
+    // so the stranger's licence has to be reviewed and disabled by hand.
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await strangerMint()).toBe(200);
+  });
+
+  it("a widening a failed ingest left behind is dropped before the next push can revert it", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    // As if a push had written `services_json` and then failed before its sweep ran.
+    await w.db.run(
+      "UPDATE products SET services_json = ? WHERE slug = 'acme'",
+      JSON.stringify({ registration: "open" }),
+    );
+    await w.resync([BASE_RECIPE]);
+    expect(await approvalCount(w.db)).toBe(0);
+    expect(await w.mint()).toBe(404);
+  });
+
+  it("a push refused half-way still drops the approval its early writes widened", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    const badSchema = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "run.name",
+          kind: "config",
+          category: "run",
+          label: "Name",
+          description: "",
+          schema: { type: "string", pattern: 42 },
+        },
+      ],
+    });
+    const res = await resyncRepo(
+      w.env,
+      w.db,
+      "acme",
+      NOW + 100,
+      stubFetch({
+        ".pkey/schema.json": badSchema,
+        ".pkey/product.json": JSON.stringify({
+          ...JSON.parse(PRODUCT_JSON),
+          devices: { registration: "open" },
+        }),
+        ".pkey/release.json": releaseWith([BASE_RECIPE]),
+      }).fetchImpl,
+    );
+    expect(res.ok).toBe(false);
+    // `services_json` was written before the catalog was refused.
+    expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe("open");
+    expect(await approvalCount(w.db)).toBe(0);
+    expect(await invalidations(w.db)).toHaveLength(1);
+  });
+
+  it("an unchanged or narrowing resync never drops an approval", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    await w.resync([BASE_RECIPE]);
+    // A recipe-field change is not a widening: the approval is kept and applies after a revert.
+    await w.resync([{ ...BASE_RECIPE, kid: "KID2" }]);
+    await w.resync([BASE_RECIPE]);
+    expect(await approvalCount(w.db)).toBe(1);
+    expect(await invalidations(w.db)).toHaveLength(0);
     expect(await w.mint()).toBe(200);
   });
 
@@ -1402,6 +1574,69 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
     await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
     expect(await w.mint()).toBe(200);
+  });
+
+  it("a sign-in trust push that is reverted leaves the recipe pending", async () => {
+    const w = await linked();
+    w.env.OIDC_ISSUER_ALLOWLIST = "id.example, idp.attacker.example";
+    await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+
+    await w.resync(
+      [BASE_RECIPE],
+      JSON.stringify({
+        ...IDENTITY_PRODUCT,
+        oidc: {
+          ...IDENTITY_PRODUCT.oidc,
+          issuer: "https://idp.attacker.example",
+          groupRoleMap: {
+            "acme-admins": { role: "admin" },
+            pwned: { role: "user", tier: "pro" },
+          },
+        },
+      }),
+    );
+    expect(await approvalCount(w.db)).toBe(0);
+    await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
+    expect(await w.mint()).toBe(404);
+    const audited = await invalidations(w.db);
+    expect(audited).toHaveLength(1);
+    expect(audited[0]!.summary).toContain("identity provider");
+  });
+
+  // The mint checks a device's licence only while License is on. With Identity on, a push that
+  // turns License off keeps the mint closed (requires-identity) — but a device whose licence an
+  // operator disabled would mint again. The approval records License, and the ingest drops it.
+  it("a push that turns License off does not bring back a disabled licence", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    expect(await w.mint()).toBe(200);
+    await w.db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = 'acme'",
+    );
+    expect(await w.mint()).toBe(401);
+
+    await w.resync(
+      [BASE_RECIPE],
+      JSON.stringify({
+        ...IDENTITY_PRODUCT,
+        modules: {
+          license: { enabled: false },
+          config: { enabled: true },
+          identity: { enabled: true },
+        },
+      }),
+    );
+    const off = (await loadProduct(w.env, w.db, "acme"))!;
+    expect(off.registration).toBe("requires-identity");
+    expect(mintIsPublic(off)).toBe(false);
+    expect(await w.mint()).toBe(404);
+    expect(await approvalCount(w.db)).toBe(0);
+    expect((await invalidations(w.db))[0]!.summary).toContain(
+      "License was turned off",
+    );
   });
 
   it("dropping a recipe from the manifest deletes its approval, so re-adding it is pending", async () => {

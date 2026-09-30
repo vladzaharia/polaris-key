@@ -377,6 +377,7 @@ interface RecipeList {
   anonymousEnroll: boolean;
   oidcDefault: boolean;
   publicMint: boolean;
+  licenseEnabled: boolean;
   identity: IdentityView | null;
   recipes: RecipeView[];
 }
@@ -1148,6 +1149,121 @@ describe("P0-12 the approval binds the sign-in trust it was given under", () => 
   });
 });
 
+// The mint checks a device's licence only while License is on. With Identity on, turning License
+// off derives `requires-identity`, so the mint stays closed and the acknowledgement never comes
+// into it — but a device whose licence an operator disabled would mint again. The approval
+// records `license_enabled`, and turning License off is a widening of its own.
+describe("P0-12 the approval binds whether the mint checks licences", () => {
+  let db: SqliteDb;
+  let env: Env;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = adminEnv();
+    await seedProduct(db, "djdl");
+    await seedProductSecret(
+      db,
+      "djdl",
+      "applemusic_devkey",
+      ES_PEM,
+      "edge-mint",
+    );
+    await setIdentity(db);
+    await seedRecipe(db, {}, { approve: false });
+  });
+
+  async function approveAsShown(): Promise<RecipeList> {
+    const listed = await listRecipes(env, db);
+    const res = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      echoOf(listed.recipes[0]!, listed.identity),
+    );
+    expect(res.status).toBe(200);
+    return listed;
+  }
+
+  async function mintNow(token: string): Promise<number> {
+    return (await mint(env, db, (await loadProduct(env, db, "djdl"))!, token))
+      .status;
+  }
+
+  it("a push that turns License off does not bring back a disabled device: 404 until re-approved", async () => {
+    const shown = await approveAsShown();
+    expect(shown.licenseEnabled).toBe(true);
+    const token = await activate(
+      env,
+      db,
+      (await loadProduct(env, db, "djdl"))!,
+    );
+    expect(await mintNow(token)).toBe(200);
+
+    // The operator disables the device's licence: the mint refuses it.
+    const disabled = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/license/licenses/lic_djdl_dev-1/disable",
+    );
+    expect(disabled.status).toBe(200);
+    expect(await mintNow(token)).toBe(401);
+
+    // A push turns License off. Identity stays on, so registration derives requires-identity and
+    // the mint is not public — the only thing that changed is that licences are not checked.
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+        identity: { enabled: true },
+      }),
+    );
+    const off = (await loadProduct(env, db, "djdl"))!;
+    expect(off.registration).toBe("requires-identity");
+    expect(mintIsPublic(off)).toBe(false);
+    expect(await mintNow(token)).toBe(404);
+    expect(await getApprovedEdgeMintConfig(db, off, "applemusic")).toBeNull();
+
+    const listed = await listRecipes(env, db);
+    expect(listed).toMatchObject({ licenseEnabled: false, publicMint: false });
+    expect(listed.recipes[0]).toMatchObject({
+      status: "changed",
+      changedFields: ["license"],
+      approval: { licenseEnabled: true },
+    });
+
+    // Re-approving with License off is the operator's decision to mint without licence checks.
+    await approveAsShown();
+    expect((await listRecipes(env, db)).recipes[0]).toMatchObject({
+      status: "approved",
+      approval: { licenseEnabled: false },
+    });
+    expect(await mintNow(token)).toBe(200);
+  });
+
+  it("turning License on after an approval given with it off only narrows", async () => {
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+        identity: { enabled: true },
+      }),
+    );
+    await approveAsShown();
+    await setIdentity(db);
+    expect((await loadProduct(env, db, "djdl"))!.services.license.enabled).toBe(
+      true,
+    );
+    expect((await listRecipes(env, db)).recipes[0]).toMatchObject({
+      status: "approved",
+      changedFields: [],
+    });
+  });
+});
+
 describe("P0-12 per-device mint budget", () => {
   it("returns 429 after 30 mints in a minute from one device, while another device still mints", async () => {
     const db = makeTestDb();
@@ -1473,14 +1589,15 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     expect(
       handle
         .prepare(
-          `SELECT open_registration_acknowledged, identity_enabled, oidc_provider, oidc_issuer,
-                  oidc_client_id, oidc_group_role_map_json
+          `SELECT open_registration_acknowledged, license_enabled, identity_enabled, oidc_provider,
+                  oidc_issuer, oidc_client_id, oidc_group_role_map_json
              FROM edge_mint_approvals WHERE product = 'djdl'`,
         )
         .all(),
     ).toEqual([
       {
         open_registration_acknowledged: 0,
+        license_enabled: 1,
         identity_enabled: 1,
         oidc_provider: "platform",
         oidc_issuer: null,
@@ -1531,6 +1648,87 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     const token = await activate(env, db, product);
     expect((await mint(env, db, product, token, recipe.id)).status).toBe(200);
   });
+
+  it("records License off at deploy (with Identity on the mint is closed), and the approval applies", async () => {
+    const { handle, db } = await migrated(
+      {
+        services_json: JSON.stringify({
+          license: { enabled: false },
+          config: { enabled: true },
+          identity: { enabled: true },
+        }),
+      },
+      DJDL_OIDC,
+    );
+    expect(
+      handle
+        .prepare(
+          "SELECT open_registration_acknowledged, license_enabled, identity_enabled FROM edge_mint_approvals WHERE product = 'djdl'",
+        )
+        .all(),
+    ).toEqual([
+      {
+        open_registration_acknowledged: 0,
+        license_enabled: 0,
+        identity_enabled: 1,
+      },
+    ]);
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const product = (await loadProduct(env, db, "djdl"))!;
+    expect(product.registration).toBe("requires-identity");
+    expect(
+      await getApprovedEdgeMintConfig(db, product, recipe.id),
+    ).not.toBeNull();
+  });
+
+  // `parseServices` rejects a column whole — and reads the DEFAULTS (License on, Identity off,
+  // registration derived) — when any entry is malformed. The backfill must read the same thing,
+  // or it would record License off (or an open mint) on a column the worker reads as closed.
+  const REJECTED: Array<[string, string]> = [
+    [
+      "a service entry without a boolean enabled",
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: "yes" },
+      }),
+    ],
+    [
+      "an unknown registration policy",
+      JSON.stringify({
+        registration: "wide-open",
+        license: { enabled: false },
+      }),
+    ],
+    [
+      "a non-object service entry",
+      JSON.stringify({ license: { enabled: false }, update: true }),
+    ],
+  ];
+  for (const [how, services_json] of REJECTED) {
+    it(`reads a services column the parser rejects (${how}) as the defaults`, async () => {
+      const { handle, db } = await migrated({ services_json });
+      expect(
+        handle
+          .prepare(
+            "SELECT open_registration_acknowledged, license_enabled, identity_enabled FROM edge_mint_approvals WHERE product = 'djdl'",
+          )
+          .all(),
+      ).toEqual([
+        {
+          open_registration_acknowledged: 0,
+          license_enabled: 1,
+          identity_enabled: 0,
+        },
+      ]);
+      const env = makeEnv(new KvMock(), ["djdl"]);
+      const product = (await loadProduct(env, db, "djdl"))!;
+      expect(product.services.license.enabled).toBe(true);
+      expect(mintIsPublic(product)).toBe(false);
+      expect(
+        await getApprovedEdgeMintConfig(db, product, recipe.id),
+      ).not.toBeNull();
+    });
+  }
 
   it("an oidcDefault product with Identity off is not public at deploy: no acknowledgement", async () => {
     const { handle } = await migrated({

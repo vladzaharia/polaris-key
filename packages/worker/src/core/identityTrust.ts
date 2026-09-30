@@ -13,7 +13,7 @@
  * push can point sign-in at an issuer the pusher controls, or map a group they belong to onto a
  * tier, without touching anything else.
  *
- * The edge-mint approval (`services/config/mint.ts`) records these values when an operator
+ * The edge-mint approval (`core/edgeMintApproval.ts`) records these values when an operator
  * approves a recipe and stops matching when they change. Config may not read Identity's table
  * directly (suite spec §5.2: cross-service data goes through a Core-mediated seam), so the read
  * lives here. It is read-only, and it returns the raw column values: comparison, not
