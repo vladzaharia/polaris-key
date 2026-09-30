@@ -625,8 +625,10 @@ change:
   confirmation page, whose form posts `user_code` + `csrf` — never the device code — back to the
   same route. Confirmation is the shared `confirmDeviceFlow` (Origin check, single-use CSRF, 303
   with `no-referrer`/`no-store`). Unknown, expired and malformed codes share one generic 404 page.
-- A per-IP `authDeviceEntry` bucket (30·60s, fail-closed); deliberately no product-wide bucket,
-  which one attacker could exhaust to lock every player out.
+- An `authDeviceEntry` bucket (30·60s, fail-closed) keyed per client network — the IPv4 address
+  or the IPv6 /64 (`clientNetwork`), since one host holds a whole /64 (R10-04b); deliberately no
+  product-wide bucket, which one attacker could exhaust to lock every player out. The
+  brute-force numbers and their residuals are in `THREAT-MODEL.md`.
 - `/auth/device/verify?device_code=` is unchanged, for flows in flight across the deploy.
 
 The two R8-02 PoCs that asserted the residual now assert the fix

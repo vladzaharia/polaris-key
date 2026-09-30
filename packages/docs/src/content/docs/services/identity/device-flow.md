@@ -154,16 +154,23 @@ from a botnet even if the per-IP budget is spread across many addresses:
 | Route                       | Per-IP budget | Per-flow budget |
 | --------------------------- | ------------- | --------------- |
 | `POST /device/start`        | 60 / 60s      | —               |
-| `GET`/`POST /device`        | 30 / 60s      | —               |
+| `GET`/`POST /device`        | 30 / 60s ¹    | —               |
 | `GET`/`POST /device/verify` | 60 / 60s      | —               |
 | `POST /device/poll`         | 120 / 60s     | 40 / 60s        |
 
+¹ Per client _network_ rather than per address: an IPv4 address, or an IPv6 /64. One IPv6 host
+is routed a whole /64, so a per-address budget on the one route that guards a guessable code
+would be free to rotate around. The other routes still key on the full address.
+
 The user code carries its own index for the same 600 seconds, and it is deleted with the flow
 when a poll returns `ready` or `timeout`. There is deliberately no product-wide budget on the
-user-code page: one attacker could exhaust it and lock every player out of sign-in. Blind
-guessing is instead bounded by the code space — 20⁸ ≈ 2.6 × 10¹⁰ codes — against a 600-second
-lifetime and 30 guesses a minute per IP, and a guess that lands still has to be confirmed by a
-button press on a page that names the product and the device.
+user-code page: one attacker could exhaust it and lock every player out of sign-in. The
+per-network budget (30 guesses a minute per IPv4 address or IPv6 /64) slows a single host, but
+an attacker with many networks — an IPv6 /48, a botnet — is limited only by the product's one
+rate-limit object. What actually bounds blind guessing is the code space — 20⁸ ≈ 2.6 × 10¹⁰
+codes — against a 600-second lifetime, and a guess that lands can only confirm someone else's
+flow into the attacker's own account; it never yields a device token. The security threat model
+works the numbers.
 
 Every one of these is a refusal, `429 rate_limited` (or, for the poll interval specifically,
 `429 slow_down`) — never a silent drop, so a well-behaved client can tell "back off" from "the

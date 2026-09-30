@@ -193,17 +193,29 @@ or a form on this path. The user code is drawn independently of it, so learning 
 index is keyed by a peppered hash (R12-04), lives for the flow's 600 s and is deleted with it.
 
 **Brute force (RFC 8628 §5.1).** The code space is 20⁸ ≈ 2.56 × 10¹⁰ (RFC 8628 §6.1's
-consonant alphabet). The page allows 30 requests per minute per IP, fail-closed, so one address
-gets at most 300 guesses in a code's 600-second life: with N codes live at once, a single
-address hits one with probability about 300·N / 2.56 × 10¹⁰ — 1.2 × 10⁻⁵ even with 1,000 live
-flows. A botnet scales that linearly with its addresses (10,000 addresses against 1,000 live
-flows is roughly 0.12 per 10-minute window). What a hit buys is bounded: it can render and
-confirm SOMEONE ELSE's flow and sign it in under the attacker's own IdP identity (the device ends
-up on the attacker's account, not the reverse), or re-render the page to invalidate the real
-user's single-use CSRF token so their click 403s and they reload. It cannot obtain a device
-token, a license, the device code, or the victim's identity. There is deliberately no
-product-wide bucket: one attacker could exhaust it and lock every player of a product out of
-sign-in.
+consonant alphabet). The page allows 30 requests per minute per _client network_, fail-closed:
+an IPv4 address, or an IPv6 **/64** (`clientNetwork` in `core/rateLimit.ts`). The /64 matters
+because one ordinary IPv6 host is routed a whole /64 — 2⁶⁴ source addresses at no cost
+(R10-04b) — so a per-address key, which every other bucket still uses (`clientIp`), would give a
+single host an unlimited supply of fresh budgets. One network therefore gets at most 300 guesses
+in a code's 600-second life: with N codes live at once it hits one with probability about
+300·N / 2.56 × 10¹⁰ — 1.2 × 10⁻⁵ even with 1,000 live flows.
+
+That per-network figure is not the whole bound. An attacker holding an IPv6 /48 (65,536 /64s,
+a common end-site assignment) or a botnet multiplies it by the networks it controls, and the
+ceiling is then the product's single `RateLimitDO` (R10-04a), of the order of 1,000 checks a
+second shared with every other bucket of that product. At that ceiling — which also degrades
+the product's other rate-limited routes, a visible attack in its own right — 1,000 live flows
+give about 6 × 10⁵ guesses per 600 s and one hit roughly every 7 hours; at a more sustainable
+200 guesses a second, one every day and a half; with 10 live flows, a hundred times rarer. What
+actually bounds guessing is the code space, the 600-second lifetime and the limited value of a
+hit. A hit can render and confirm SOMEONE ELSE's flow and sign it in under the attacker's own
+IdP identity (the device ends up on the attacker's account, not the reverse), or re-render the
+page to invalidate the real user's single-use CSRF token so their click 403s and they reload. It
+cannot obtain a device token, a license, the device code, or the victim's identity. There is
+deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
+product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
+`clientIp`, and sharding the rate-limit Durable Object (R10-04a).
 
 **Remote phishing (RFC 8628 §5.4).** An attacker can start a flow on their own device and send a
 victim the `verificationUriComplete` link; if the victim confirms and signs in, the attacker's

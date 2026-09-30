@@ -242,6 +242,11 @@ deletes the _key_. A key created by one request from one IP in 2026 is still res
 `id` is `clientIp(req)`. Over IPv6 an attacker with a routed /64 controls 2^64 distinct source
 addresses at zero cost, each one minting a permanent DO storage key.
 
+_Later change (P1-06):_ the RFC 8628 user-code page's `authDeviceEntry` bucket is the first
+per-client bucket that guards a guessable secret, so it keys on `clientNetwork(req)` — the IPv4
+address, or the IPv6 /64 — instead. That bounds both the rotation and the key growth for that one
+bucket; every other bucket still keys on `clientIp` (aggregating them is unowned).
+
 Quantified (KV-backed DO pricing — `wrangler.toml` uses `new_classes`, not
 `new_sqlite_classes`): key `activate:<ipv6>` ≈ 48 B, value ≈ 30 B, plus per-key overhead.
 

@@ -77,8 +77,10 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
   - an unknown or expired code re-renders the entry form with one generic message (status 404);
   - the static-HTML CSP and headers from `staticHtmlSecurityHeaders`, `no-store`,
     `referrer-policy: no-referrer`, no script.
-- A per-IP rate-limit bucket `authDeviceEntry` (for example 30 per 60 s), fail-closed in
-  `FAIL_MODE`.
+- A per-client rate-limit bucket `authDeviceEntry` (for example 30 per 60 s), fail-closed in
+  `FAIL_MODE`. _Correction (review):_ keyed per client network (`clientNetwork`: the IPv4 address
+  or the IPv6 /64), not the raw `clientIp`, because one IPv6 host holds a whole /64 (R10-04b) and
+  this is the one bucket whose budget is the brute-force bound.
 - The existing `/identity/auth/device/verify?device_code=` stays unchanged, for flows in flight
   during the deploy and for any client that builds that URL.
 - `authDeviceEntry` in the identity discovery fragment and its OpenAPI example.
