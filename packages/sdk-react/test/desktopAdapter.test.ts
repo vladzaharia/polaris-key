@@ -76,6 +76,7 @@ describe("DesktopAdapter — construction", () => {
   });
 });
 
+// @pkey-feature core.sync license.deactivate
 describe("DesktopAdapter — bridge method proxying", () => {
   it("refresh re-pulls state through the bridge", async () => {
     const bridge = makeFakeBridge(okBridgeState());
@@ -164,6 +165,7 @@ describe("DesktopAdapter — bridge method proxying", () => {
   });
 });
 
+// @pkey-feature license.activate
 describe("DesktopAdapter — submitKey", () => {
   it("submitKey applies the fresh state on an ok result", async () => {
     const bridge = makeFakeBridge(emptyBridgeState());
@@ -234,6 +236,7 @@ function emptyCaps() {
   };
 }
 
+// @pkey-feature identity.devicecode
 describe("DesktopAdapter — OIDC sign-in", () => {
   it("returns a verification handle and applies state once polling settles", async () => {
     const bridge = makeFakeBridge(emptyBridgeState());
@@ -286,6 +289,7 @@ describe("DesktopAdapter — OIDC sign-in", () => {
   });
 });
 
+// @pkey-feature core.sync
 describe("DesktopAdapter — stateChanged push channel", () => {
   it("a pushed state updates the snapshot (hot reload)", async () => {
     const bridge = makeFakeBridge(okBridgeState());

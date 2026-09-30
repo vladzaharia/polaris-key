@@ -44,6 +44,7 @@ final class UpdateTests: XCTestCase {
     }
 
     // ── Feed URL construction ────────────────────────────────────────────────────────
+    // @pkey-feature update.driver
     /// The feed comes from the PUBLISHED fragment, not from string-building: §R1 moved these
     /// paths and left aliases behind, so a host that hard-codes one breaks the next time they
     /// move.
@@ -79,6 +80,7 @@ final class UpdateTests: XCTestCase {
         XCTAssertNil(UpdateArch.normalize("ppc64"))
     }
 
+    // @pkey-feature update.driver
     /// A channel feed is a PATH sibling, not a query parameter. The Worker publishes a
     /// `{channel}` template; preferring it keeps the substitution the product's decision.
     func testChannelFeedUsesThePublishedTemplate() {
@@ -154,6 +156,7 @@ final class UpdateTests: XCTestCase {
     }
 
     // ── entitled-mode headers ────────────────────────────────────────────────────────
+    // @pkey-feature update.driver
     /// In `entitled` mode the appcast itself is behind the device credential, so Sparkle's OWN
     /// requests need the bearer token — that is what `SPUUpdater.httpHeaders` is for.
     func testEntitledFeedHeadersCarryTheBearerToken() {
@@ -179,6 +182,7 @@ final class UpdateTests: XCTestCase {
     }
 
     // ── The SUPublicEDKey anchor (D-24) ──────────────────────────────────────────────
+    // @pkey-feature update.driver
     /// The failure this catches is real and SILENT: an app that ships Sparkle without
     /// `SUPublicEDKey` does not fail to build, launch, or check for updates — it simply installs
     /// unsigned payloads.
@@ -233,6 +237,7 @@ final class UpdateTests: XCTestCase {
                 transport: server.transport, expectedServices: services))
     }
 
+    // @pkey-feature update.check
     /// `updateAvailable` is computed from the HOST APPLICATION's version, not the SDK's — the SDK
     /// ships inside the thing being updated — and with the same comparator the server's build
     /// gate uses, so a version check can never recommend a build the gate then blocks.
@@ -258,6 +263,7 @@ final class UpdateTests: XCTestCase {
         XCTAssertFalse(beyond.updateAvailable)
     }
 
+    // @pkey-feature update.check
     /// The `entitled` refusal carries the server's machine-readable code, so a host can tell
     /// "not entitled to that channel" from "the feed is down".
     func testEntitledRefusalSurfacesTheWireCode() async throws {
@@ -276,6 +282,7 @@ final class UpdateTests: XCTestCase {
         XCTAssertEqual(request?.url.query, "channel=beta")
     }
 
+    // @pkey-feature update.check
     /// D-21 — the sub-client refuses before a socket is opened when the product does not run
     /// Update at all.
     func testUpdateClientRefusesWhenTheServiceIsDisabled() async throws {

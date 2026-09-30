@@ -1,3 +1,4 @@
+// @pkey-feature core.verify
 // Base64URL round-trip + edge-case tests. The decoder must accept the URL-safe alphabet
 // with or without padding and reject garbage, since it's the first thing the verifier runs
 // on attacker-controlled JWS segments.

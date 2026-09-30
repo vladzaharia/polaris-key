@@ -189,6 +189,7 @@ describe("splitSessionDoc — the fused artifact becomes the v3 pair", () => {
   });
 });
 
+// @pkey-feature identity.oidc
 describe("BrowserAdapter — signInWithOidc redirect", () => {
   it("navigates to the identity auth entrypoint with a return_to and never returns a handle", async () => {
     const navigate = vi.fn();
@@ -208,6 +209,7 @@ describe("BrowserAdapter — signInWithOidc redirect", () => {
   });
 });
 
+// @pkey-feature license.activate
 describe("BrowserAdapter — submitKey", () => {
   it("posts a license key to the identity session route and refreshes the session", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
@@ -269,6 +271,7 @@ describe("BrowserAdapter — submitKey", () => {
   });
 });
 
+// @pkey-feature license.deactivate
 describe("BrowserAdapter — signOut", () => {
   it("posts logout (echoing CSRF) and resets to needs-activation", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
@@ -336,6 +339,7 @@ describe("BrowserAdapter — signOut", () => {
   });
 });
 
+// @pkey-feature core.sync
 describe("BrowserAdapter — 401 / refresh handling", () => {
   it("a hard 401 after a live session ⇒ revoked", async () => {
     let authed = true;
@@ -423,6 +427,7 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
   });
 });
 
+// @pkey-feature update.check
 describe("BrowserAdapter — update checks", () => {
   it("calls GET /<product>/update/version and compares the HOST version", async () => {
     const seen: string[] = [];

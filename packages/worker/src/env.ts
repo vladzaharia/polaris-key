@@ -10,6 +10,22 @@ export interface Env {
   HOT: KVNamespace;
   RL: DurableObjectNamespace;
   ASSETS?: Fetcher;
+  /**
+   * The Core blob store (P2-01, `core/blobs.ts`): one R2 bucket per environment holding
+   * content-addressed objects under `blobs/`, `bundles/`, `deltas/`, `gated/` (age-locked) and
+   * `staging/` (CI uploads, expired after a day). OPTIONAL on purpose: an unbound store means
+   * "no blob store", every byte route answers not-found, and the Worker otherwise runs exactly
+   * as it did before the binding existed.
+   */
+  BLOBS?: R2Bucket;
+  /**
+   * The bytes host's origin, e.g. `https://dl.plrs.im`. A request whose host is this origin's
+   * host reaches ONLY the byte routes (`core/bytesHost.ts`); everything else there — the
+   * console, the portal, `/docs`, discovery — answers not-found. Unset (or unparsable) ⇒ there
+   * is no bytes host and routing is byte-identical to a Worker without it. A `[vars]` value, not
+   * a secret: it is public and differs per environment.
+   */
+  BLOB_ORIGIN?: string;
 
   // platform-wide secrets / vars (optional so tests can omit them)
   //

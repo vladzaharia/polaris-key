@@ -1,16 +1,16 @@
 # P0-07 Fix the `pkey init` scaffold and the validate/link disagreement
 
-| Field       | Value                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------ |
-| Phase       | P0: Hygiene and unblockers                                                                             |
-| Size        | 0.25 engineer-weeks                                                                                    |
-| Depends on  | none                                                                                                   |
-| Unblocks    | [P0-09](P0-09-service-table.md)                                                                        |
-| Role        | `pkey-implementer`                                                                                     |
-| Plan mode   | no                                                                                                     |
-| Gates       | CLI and manifest tests; rule 9 parity stays green (one new warning code); generated `validation-codes` |
-| Human input | none                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                              |
+| Field       | Value                                                                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P0: Hygiene and unblockers                                                                                                                             |
+| Size        | 0.25 engineer-weeks                                                                                                                                    |
+| Depends on  | none                                                                                                                                                   |
+| Unblocks    | [P0-09](P0-09-service-table.md)                                                                                                                        |
+| Role        | `pkey-implementer`                                                                                                                                     |
+| Plan mode   | no                                                                                                                                                     |
+| Gates       | CLI and manifest tests; rule 9 parity stays green (two new codes: warning `tier_ignored_field`, error `missing_product`); generated `validation-codes` |
+| Human input | none                                                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                              |
 
 ## Goal
 

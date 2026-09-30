@@ -187,19 +187,21 @@ always has the current list.
 ## 6. Human inputs
 
 Agents must not invent or fetch these. Ask early, because several gate the critical path. The full
-register, per work package, is generated into [`INDEX.md`](INDEX.md#human-inputs). In summary:
+register, per work package, is generated into [`INDEX.md`](INDEX.md#human-inputs); the
+execution-order checklist of deploys, real-service checks and PR-body items is
+[`HANDOFF.md`](HANDOFF.md). In summary:
 
-| Kind                   | What                                                                                                                                                                    |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Approvals              | every plan in `plans/` (listed in [`INDEX.md`](INDEX.md#plans)); merges; go/no-go on optional work (P6-04, P6-05, X-01, X-02); the Godot addon's licence (P1-12)        |
-| Deploys                | P0-08 in production before any new service slug (P0-09, P2b-01); P0-13; P1-06 before P1-07's end-to-end check and D-02                                                  |
-| Cloudflare             | R2 buckets per environment, a separate registrable domain and zone for bytes, an R2 parent API token; later Queues, Workflows and Containers                            |
-| GitHub                 | subscribe the GitHub App to Release events; a Marketplace listing for `polaris-key/publish`; a `release` Environment for Diceroll's Ed25519 release key                 |
-| Apple                  | developer account, App Store Connect API key, App Store Server API key, App Attest, TestFlight, a Mac with Xcode 26+, iOS devices                                       |
-| Google                 | Play service account, Console test track, a Cloud project linked in Play Console, Android devices, developer verification for `gg.vlad.diceroll`                        |
-| Microsoft, Steam       | a Partner Center app registration; a Steamworks partner account and Web API key                                                                                         |
-| Signing and publishing | code-signing certificates for Windows and macOS; the Android release keystore; the F-Droid repo key; NuGet, crates.io, npm and Maven Central accounts for optional SDKs |
-| Access                 | read access to Diceroll's release history (S-03); devices and store accounts for the outlet-signal spike (S-06)                                                         |
+| Kind                   | What                                                                                                                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Approvals              | every plan in `plans/` (listed in [`INDEX.md`](INDEX.md#plans)); merges; go/no-go on optional work (P6-04, P6-05, X-01, X-02); the Godot addon's licence (P1-12)                                                               |
+| Deploys                | P0-08 in production before any new service slug (P0-09, P2b-01); P0-13; P1-06 before P1-07's end-to-end check and D-02                                                                                                         |
+| Cloudflare             | R2 buckets per environment and the bytes host `dl.plrs.im` (created; same-site with the console, owner decision), a separate registrable domain only for P6-04, an R2 parent API token; later Queues, Workflows and Containers |
+| GitHub                 | subscribe the GitHub App to Release events; a Marketplace listing for `polaris-key/publish`; a `release` Environment for Diceroll's Ed25519 release key                                                                        |
+| Apple                  | developer account, App Store Connect API key, App Store Server API key, App Attest, TestFlight, a Mac with Xcode 26+, iOS devices                                                                                              |
+| Google                 | Play service account, Console test track, a Cloud project linked in Play Console, Android devices, developer verification for `gg.vlad.diceroll`                                                                               |
+| Microsoft, Steam       | a Partner Center app registration; a Steamworks partner account and Web API key                                                                                                                                                |
+| Signing and publishing | code-signing certificates for Windows and macOS; the Android release keystore; the F-Droid repo key; NuGet, crates.io, npm and Maven Central accounts for optional SDKs                                                        |
+| Access                 | read access to Diceroll's release history (S-03); devices and store accounts for the outlet-signal spike (S-06)                                                                                                                |
 
 While waiting, a package can usually proceed against fixtures, recorded payloads or fakes; its
 brief says which.

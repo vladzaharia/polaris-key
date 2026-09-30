@@ -146,6 +146,7 @@ describe("projectState", () => {
   });
 });
 
+// @pkey-feature license.entitlements
 describe("readConfig / readEntitled", () => {
   const state = projectState(
     "desktop",
@@ -173,6 +174,7 @@ describe("readConfig / readEntitled", () => {
 // Precedence per key: enforced|hidden (remote, locked) > local override > remote-default >
 // fallback. The `env` layer `@polaris-key/client-core` also supports is deliberately starved here.
 
+// @pkey-feature config.resolve
 describe("resolveConfigValue (precedence)", () => {
   const entries = {
     locked: entry("enforced", "server"),
@@ -223,6 +225,7 @@ describe("resolveConfig (effective map)", () => {
   });
 });
 
+// @pkey-feature config.resolve
 describe("projectState honors local overrides", () => {
   const config = {
     enforcedKey: entry("enforced", "srv"),
@@ -291,6 +294,7 @@ describe("getConfigSource (provenance)", () => {
   });
 });
 
+// @pkey-feature config.list
 describe("listUserConfig (settings-UI enumeration)", () => {
   const config = {
     enforcedKey: entry("enforced", "srv"),

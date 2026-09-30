@@ -63,6 +63,7 @@ final class TransportTests: XCTestCase {
     }
 
     // ── §7.3 local-only ──────────────────────────────────────────────────────────────
+    // @pkey-feature core.local
     /// Everything offline still works; anything that would dial rejects with `local-only`. The
     /// refusal is at the DIAL — before a URL is built or a header is assembled — so a local-only
     /// build cannot make a request even by accident.
@@ -105,6 +106,7 @@ final class TransportTests: XCTestCase {
         guard case .error = await c.discover() else { return XCTFail("discovery must refuse") }
     }
 
+    // @pkey-feature core.local
     /// `sync()` on a local-only client with no credential is a no-op, not a throw: an
     /// unactivated client that polls must generate no traffic at all.
     func testLocalOnlySyncWithoutACredentialIsSilent() async throws {
@@ -117,6 +119,7 @@ final class TransportTests: XCTestCase {
         XCTAssertTrue(result.documents.isEmpty)
     }
 
+    // @pkey-feature core.local license.deactivate
     /// Deactivation still works offline: it treats the refusal exactly as it treats being
     /// unreachable, because the local wipe was always the part that mattered.
     func testLocalOnlyDeactivateStillWipesLocalState() async throws {
@@ -145,6 +148,7 @@ final class TransportTests: XCTestCase {
     }
 
     // ── §6 the device principal ──────────────────────────────────────────────────────
+    // @pkey-feature devices.register
     /// `POST /devices/register` is a CORE surface: a config-only product's installs need an
     /// identity to fetch a document AS and a credential to fetch it WITH, and no licence key.
     func testRegisterMintsACredentialWithNoLicenceKey() async throws {
@@ -173,6 +177,7 @@ final class TransportTests: XCTestCase {
         XCTAssertNil(request?.headers["authorization"])
     }
 
+    // @pkey-feature devices.register
     /// The two closed policies answer with the SAME 403 — deliberately indistinguishable, so a
     /// client cannot probe which one a product runs.
     func testRegistrationPolicyRefusals() async throws {
@@ -194,6 +199,7 @@ final class TransportTests: XCTestCase {
     }
 
     // ── §6 device management ─────────────────────────────────────────────────────────
+    // @pkey-feature devices.manage
     /// `GET/PATCH/DELETE /<p>/devices[/:id]` are CORE surfaces, available under every
     /// registration policy — a device roster is a property of the product's fleet, not of any
     /// one grant. Only THIS device's status is derived from a signature we checked; another
@@ -238,6 +244,7 @@ final class TransportTests: XCTestCase {
         XCTAssertEqual(deletes.count, 1)
     }
 
+    // @pkey-feature devices.manage
     /// Without a credential there is no roster to fetch, so the answer is THIS DEVICE ALONE —
     /// the honest offline answer, not an error.
     func testDeviceRosterOfflineIsThisDeviceAlone() async throws {
@@ -250,6 +257,7 @@ final class TransportTests: XCTestCase {
         XCTAssertTrue(devices[0].current)
     }
 
+    // @pkey-feature devices.manage
     /// Deauthorizing THIS device is a full local deactivation, never a roster call.
     func testDeauthorizingSelfIsALocalDeactivation() async throws {
         let store = InMemoryStore(deviceId: "dev")
@@ -266,6 +274,7 @@ final class TransportTests: XCTestCase {
     }
 
     // ── The activation ladder ────────────────────────────────────────────────────────
+    // @pkey-feature license.activate
     /// The Worker emits two error envelopes: routes that MOVED keep the flat v2 shape, and v3
     /// surfaces use the nested one. A 403 meaning "device limit" and a 403 meaning "fingerprint
     /// required" are different outcomes, so both spellings are read.
@@ -303,6 +312,7 @@ final class TransportTests: XCTestCase {
         }
     }
 
+    // @pkey-feature license.activate
     /// A host that opted out of fingerprinting sends a byte-identical request to one that has
     /// nothing to report: the body is omitted entirely rather than sent as `{}`.
     func testActivationWithoutAFingerprintSendsNoBody() async throws {
@@ -321,6 +331,7 @@ final class TransportTests: XCTestCase {
         XCTAssertEqual(request?.headers["authorization"], "Bearer PKEY-KEY")
     }
 
+    // @pkey-feature license.activate
     /// Activation raises an EVENT rather than syncing inline, and the facade turns that into a
     /// FORCED sync — so a stale ETag cannot 304 away the very first document.
     func testActivationTriggersAForcedSync() async throws {
@@ -350,6 +361,7 @@ final class TransportTests: XCTestCase {
         XCTAssertNil(request?.headers["if-none-match"], "the post-activation sync is forced")
     }
 
+    // @pkey-feature core.sync
     /// The bridge contract: one snapshot of everything a UI layer renders from.
     func testSyncStateSnapshot() async throws {
         let signer = TestSigner(kid: "bridge-key")

@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/parity/features.schema.json",
+  "title": "Polaris Key feature registry (conformance/parity/features.json)",
+  "description": "Every SDK-facing Polaris Key feature, with a stable id, the service that owns it, how it is proven, and the typed N/As the registry allows per runtime or trait (PARITY §2.2, §3.1). Hand-written; tools/parity-check.ts validates it against this schema and cross-checks every SDK's parity manifest against it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "registryVersion",
+    "reasons",
+    "runtimes",
+    "traits",
+    "families",
+    "sdks",
+    "features"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "registryVersion": { "const": 1 },
+    "reasons": {
+      "description": "The typed-N/A reason enum (PARITY §2.2). Only `runtime` N/As are declared in manifests; the other reasons are decided at runtime.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/reason" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "runtimes": {
+      "description": "Every runtime id a manifest or an allowedNa may name.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/runtimeRow" },
+      "minItems": 1
+    },
+    "traits": {
+      "description": "SDK-wide properties that stand in for a runtime in an allowedNa (e.g. `headless`: the SDK ships no UI toolkit). A manifest opts into a trait by listing it.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/runtimeRow" }
+    },
+    "families": {
+      "description": "The feature families, in page order (PARITY §5.1-§5.7). One table per family on the parity page.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title"],
+        "properties": {
+          "id": { "$ref": "#/$defs/slug" },
+          "title": { "type": "string", "minLength": 1 }
+        }
+      },
+      "minItems": 1
+    },
+    "sdks": {
+      "description": "Every SDK with a parity manifest. The checker reads each manifest from its repo-relative path.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "manifest"],
+        "properties": {
+          "id": { "$ref": "#/$defs/slug" },
+          "title": { "type": "string", "minLength": 1 },
+          "manifest": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._/-]+/parity\\.json$"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "features": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/feature" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "featureId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
+    },
+    "reason": {
+      "enum": ["runtime", "outlet", "product", "dependency", "version"]
+    },
+    "runtimeRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    },
+    "wpId": {
+      "description": "A work-package id from docs/research/2026-09-29-godot-omniplatform/program/workpackages.json.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*-[0-9]{2}$"
+    },
+    "proof": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "corpus",
+            "transcript",
+            "unit",
+            "generated",
+            "device",
+            "snapshot"
+          ]
+        },
+        "file": {
+          "description": "corpus: the file under conformance/corpus/v2/ (a trailing slash names a directory).",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+(\\.json|/)$"
+        },
+        "family": {
+          "description": "corpus: a case family inside the file (e.g. `releaseRecordCases` in cases.json).",
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9]*$"
+        },
+        "command": {
+          "description": "generated: the drift-gate command that regenerates and compares the output.",
+          "type": "string",
+          "minLength": 1
+        },
+        "wp": {
+          "description": "The work package that adds this proof. A corpus proof whose file or family does not exist yet must name one; the checker enforces the proof once it exists.",
+          "$ref": "#/$defs/wpId"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "corpus" } } },
+          "then": { "required": ["file"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "generated" } } },
+          "then": { "required": ["command"] }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "allowedNa": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "reason", "why"],
+      "properties": {
+        "runtime": {
+          "description": "A runtime id, a trait id, or `*` (any runtime; only for a reason decided at runtime).",
+          "type": "string",
+          "pattern": "^([a-z][a-z0-9-]*|\\*)$"
+        },
+        "reason": { "$ref": "#/$defs/reason" },
+        "why": { "type": "string", "minLength": 1 }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "family", "title", "service", "proof", "allowedNa"],
+      "properties": {
+        "id": { "$ref": "#/$defs/featureId" },
+        "family": { "$ref": "#/$defs/slug" },
+        "title": {
+          "description": "The capability, as PARITY §5 names it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "service": {
+          "description": "The Worker service that owns the server side, or `sdk` for a client-only feature.",
+          "enum": [
+            "core",
+            "license",
+            "config",
+            "identity",
+            "release",
+            "update",
+            "distribution",
+            "sdk"
+          ]
+        },
+        "proof": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/proof" },
+          "minItems": 1
+        },
+        "allowedNa": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/allowedNa" }
+        },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

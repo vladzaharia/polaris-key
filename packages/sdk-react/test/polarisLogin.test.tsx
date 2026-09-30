@@ -1,3 +1,4 @@
+// @pkey-feature ui.kit
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
