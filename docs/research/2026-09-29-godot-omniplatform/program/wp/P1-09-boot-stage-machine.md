@@ -163,9 +163,10 @@ proposes moving them to a follow-up and marking `ui.stages` `planned` for those 
       emitted events and the outcome, and every probe of the file's `accepts` table
       ([`plans/P1-09.md`](../plans/P1-09.md) §4.1).
 - [ ] `mise exec node@22 -- pnpm --filter @polaris-key/client-core test` passes the unit
-      properties the corpus cannot express: purity, that an ignored event returns its input
-      object, and defaults. The rows and probes run in the Node runner, not the `client-core`
-      suite, as `bundleCases` do.
+      properties the corpus cannot express ([`plans/P1-09.md`](../plans/P1-09.md) §9): purity,
+      that an ignored event returns its input object, that malformed events are ignored, the
+      defaults, and that the gate's pass set equals `isUsable`. The rows and probes run in the
+      Node runner, not the `client-core` suite, as `bundleCases` do.
 - [ ] `( cd sdks/python && .venv/bin/python -m pytest -q tests/test_stage_matrix.py )` and
       `( cd sdks/swift && swift test --filter StageMatrixTests )` pass every row and every probe.
 - [ ] `bootTransition` is pure: no I/O, no clock, no randomness (a unit test calls it twice with
