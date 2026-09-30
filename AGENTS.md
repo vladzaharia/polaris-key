@@ -30,7 +30,7 @@ sdks/
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node runner
                      + parity/ (features.json registry; each SDK keeps its own parity.json)
-tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts
+tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-services.ts + services.json
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
                      security/ (threat model, wire contract v3, audit + findings)
