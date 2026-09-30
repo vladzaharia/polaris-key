@@ -76,8 +76,10 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
   cache; the device id stays). A wipe failure is returned, never swallowed.
 - Build-gate port and `gate-matrix.json` in the runner, faithful to the **server**
   (`worker/src/core/gate.ts`), not to the stale Node port.
-- Channel header values restricted to P0-04's vocabulary; anything else is refused at
-  `configure`.
+- `X-PKey-Channel` in P0-04's vocabulary: the canonical `stable`, `beta` and `pr-<n>`, or a
+  product's manual channel name (P0-04 proposes `^[a-z0-9][a-z0-9-]{0,63}$`); never the legacy
+  aliases `staging` or `dev` in new builds. `configure` refuses a malformed value, which the
+  server would answer with `channel-not-entitled`.
 
 **Out** (and where it belongs instead):
 
@@ -124,8 +126,8 @@ beta channel only works once P0-04 unifies the gate and Release vocabularies (re
 1. Read the P0-04 plan and confirm the regenerated `gate-matrix.json` is in both mirrors.
 2. Port the build-gate check and add `gate-matrix.json` to `suite_conformance.gd`.
 3. Write the endpoints (activate, enrol, token, deauthorize) with both error spellings.
-4. Add the token-source record and the two re-acquire strategies; wire them into the token
-   manager.
+4. Track the in-memory token source and add the two re-acquire strategies; wire them into the
+   token manager.
 5. Write `services/license.gd` and the unit suite against the fake server.
 
 ## Acceptance criteria

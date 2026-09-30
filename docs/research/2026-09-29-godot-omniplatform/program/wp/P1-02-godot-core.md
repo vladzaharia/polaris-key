@@ -139,7 +139,10 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
   signal-based join, ETag/304, the half-life refetch (`effectiveNow > expiresAt − 1800`), one
   shared re-acquire per pass through an injected callable (P1-03 supplies it), a hard 401 records
   `lastSyncUnauthorized`, a 403 build block records `blocked`, 200/304 clears both, one cache
-  write. Read both error-body spellings (nested and flat, notes/A2 §1.13).
+  write. Read both error-body spellings (nested and flat, notes/A2 §1.13). There are no generic
+  retries, as in every SDK today; a 429 surfaces as `rate_limited`. The refresh loop is off by
+  default (`refresh_interval_seconds`, a `Timer` child) and, when on, also syncs on
+  `NOTIFICATION_APPLICATION_RESUMED`.
 - **Capabilities** are fail-closed (D-21): discovery this session, else
   `PKeyOptions.expected_services`, else licence and config only.
 - **Results** (settles PARITY §11 question 3): `PKeyResult extends RefCounted` with `ok`,
