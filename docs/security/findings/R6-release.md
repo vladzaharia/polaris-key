@@ -781,8 +781,13 @@ whose signature fails (a rotated key, a `.sig` made before stapling, a bogus sid
 writer) would re-download and re-hash the DMG, limited only by the 30/min per-IP metadata limiter.
 The verifier reports `valid` / `invalid` / `incomplete`; only the first two are memoised, so a
 mid-stream transport failure or a body past the cap is retried rather than pinned. Residual: the
-first miss per (asset, signature, key) still costs one full download; publish-time verification
-(P3-03) would move that off the request path. See R10-05.
+memo only helps once a verdict lands. There is no single-flight, so every miss that arrives
+while a stream is in flight (or before the verdict has propagated through KV, up to ~60 s per
+colo) pays its own full download; and verification runs inline rather than under
+`ctx.waitUntil`, so a request that the client aborts, or that hits the CPU limit, never
+memoises — a client that aborts each request just before the end can repeat a near-2 GiB
+upstream read up to the 30/min per-IP `release` limit. Publish-time verification (P3-03) removes
+this from the unauthenticated request path. See R10-05 for the cost model.
 
 _Not done:_ fix direction #3, signing/verifying on the direct `/dmg` path. The DMG bytes are
 never rewritten by the gateway and Sparkle pins client-side, so the marginal gain over the

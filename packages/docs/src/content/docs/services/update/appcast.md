@@ -107,8 +107,10 @@ the whole `/appcast.xml` response answers `404` rather than shipping an item Spa
 refuse to install anyway. The DMG is streamed through the check rather than held in
 memory, so any DMG up to GitHub's 2 GiB asset limit can be verified. A verified verdict is
 cached for 30 days and a failed one for a day, keyed to the exact asset, signature, and
-public key involved, so neither a hot channel nor a broken release re-downloads the same
-bytes on every request. Any change to those inputs is a new key — GitHub gives a
+public key involved, so once a check has completed, later requests reuse its verdict instead
+of downloading the DMG again. Until a verdict is cached — including when requests arrive
+while the first check is still streaming, or when a request is aborted before its check
+finishes — each request still performs its own full check. Any change to those inputs is a new key — GitHub gives a
 re-uploaded asset a new id — so a swapped asset or a rotated key can never reuse a stale
 verdict.
 
