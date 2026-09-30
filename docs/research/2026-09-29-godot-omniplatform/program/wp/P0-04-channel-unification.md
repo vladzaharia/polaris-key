@@ -45,14 +45,17 @@ would have to send `staging` to pass ([notes/A2 §1.9](../../notes/A2-sdk-port.m
   and `install.ts:128-138` (the installer advertises `staging`, which Release does not know).
 - Clients: `packages/client-core/src/semver.ts:51-57`, `sdks/python/src/polaris_key/core/semver.py:86-95`,
   `sdks/swift/Sources/PolarisKeyCore/Semver.swift:14-19,76-80` (public `enum Channel`),
-  `sdks/swift/Sources/PolarisKeyCore/CoreContext.swift:225`, `sdks/swift/Sources/PolarisKeyUpdate/UpdateFeed.swift:113-125`,
+  `sdks/swift/Sources/PolarisKeyCore/CoreContext.swift:225`, `sdks/swift/Sources/PolarisKeyUpdate/UpdateFeed.swift:96-104`
+  (`allowedChannels(from:)`; `:113-125` is `feedHeaders`),
   `packages/sdk-node/src/core/context.ts:181,292`.
 - Corpus: `tools/sign-corpus.ts:1632-2115` (gate-matrix v2: carried rows are frozen, new rows
   are appended in `buildGateMatrixV2`), the runner ports in
   `conformance/runners/node/corpusV2.test.ts:322-420`, `sdks/python/tests/test_gate_matrix.py:72-94`,
   `sdks/swift/Tests/PolarisKeyTests/GateMatrixTests.swift:75-93`.
 - Catalog and console: `products/djdl/catalog.json` (the `channels` flag, enum `stable, staging, pr`),
-  `packages/admin/src/views/licenses/shared.tsx:84` (`CHANNELS = ["stable", "beta", "staging", "pr"]`).
+  `packages/admin/src/views/licenses/shared.tsx:84` (`CHANNELS = ["stable", "beta", "staging", "pr"]`;
+  its `onChange` at `:107` drops any value it does not offer), and a second picker in
+  `packages/admin/src/views/tiers/dialogs.tsx:34` (`["stable", "beta", "alpha", "nightly", "internal"]`).
 - [notes/A1 §1.3](../../notes/A1-release-update.md#13-channel-model) (the mismatch, and manual
   channel names that the feed routes cannot reach).
 
@@ -66,9 +69,9 @@ would have to send `staging` to pass ([notes/A2 §1.9](../../notes/A2-sdk-port.m
 - Appended `gate-matrix.json` rows, the Swift mirror, and the three runner ports updated.
 - Release accepts `staging` as an alias selector for `beta` unless the product declares a manual
   channel named `staging` (manual wins).
-- The djdl fixture catalog's `channels` enum gains `beta` (keeps `staging`); the console's channel
-  picker shows the canonical names, the product's manual channels, and `staging` only as a
-  labelled legacy alias.
+- The djdl fixture catalog's `channels` enum gains `beta` (keeps `staging`); both console channel
+  pickers (licence and tier) show the canonical names, the product's manual channels, and `staging`
+  only as a labelled legacy alias.
 - Docs: `WIRE-CONTRACT-V3.md`, `start/concepts.md` (glossary: "channel"), the License and Update
   pages that list channel values.
 
@@ -98,8 +101,10 @@ order is contract → catalog → corpus → every SDK:
 
 **Proposed semantics** (the plan confirms or amends):
 
-- Canonical names: `stable`; `beta`; `pr-<n>` (`pr` as the family grant); manual names in the
-  feed-route alphabet `^[a-z0-9][a-z0-9-]{0,63}$` (`update/routes.ts:20`).
+- Canonical names: `stable`; `beta`; `pr-<n>` (`pr` as the family grant); manual names in
+  `^[a-z0-9][a-z0-9-]{0,63}$`, the intersection of the manifest's `CHANNEL_RE`
+  (`shared-manifest/src/index.ts:341`, which also allows `A-Z`, `.` and `_`) and the feed routes'
+  `^[a-z0-9-]+$` (`update/routes.ts:20`, `router.ts:181`, which has no length bound).
 - Header normalisation: `stable` and `latest` → `stable`; `beta` → `beta`; `staging` → `beta`;
   `pr` or `pr-<n>` → `pr-<n>`; `dev` → `dev` (gate-only pseudo-channel for `0.0.0-dev*` builds,
   still entitlement-checked per R3-01); any other well-formed name → itself, which must be
