@@ -34,26 +34,39 @@ function leToBigInt(bytes: Uint8Array): bigint {
 }
 
 /**
- * Verify an Ed25519 `signature` by `publicKey` over the bytes of `body`, reading it chunk by
- * chunk. More than `maxBytes` of body is a `false` verdict, enforced while streaming — the
- * caller's `Content-Length` pre-check is only a cheap early refusal.
+ * The outcome of a streaming verification.
  *
- * Returns `false` (never throws) for every failure: wrong lengths, undecodable points,
- * `S >= L`, an oversized body, a body that errors mid-stream, or a signature that does not
- * verify. `body === null` is an empty message.
+ * - `valid`: the signature verifies over the whole body.
+ * - `invalid`: a final, deterministic "no" — a malformed key or signature, `S >= L`, an
+ *   undecodable or small-order point, or a body read to its end within the cap that the
+ *   signature does not cover. The same inputs over the same bytes always give this answer, so
+ *   a caller may memoise it.
+ * - `incomplete`: no verdict was reached — the body errored mid-stream or ran past `maxBytes`.
+ *   A retry may succeed (or the cap may change), so a caller must not memoise it.
  */
-export async function streamingEd25519Verify(
+export type Ed25519StreamVerdict = "valid" | "invalid" | "incomplete";
+
+/**
+ * Check an Ed25519 `signature` by `publicKey` over the bytes of `body`, reading it chunk by
+ * chunk, and say whether the answer is final ({@link Ed25519StreamVerdict}). More than
+ * `maxBytes` of body is `incomplete`, enforced while streaming — the caller's `Content-Length`
+ * pre-check is only a cheap early refusal. Never throws. `body === null` is an empty message.
+ */
+export async function streamingEd25519Check(
   publicKey: Uint8Array,
   signature: Uint8Array,
   body: ReadableStream<Uint8Array> | null,
   maxBytes: number,
-): Promise<boolean> {
+): Promise<Ed25519StreamVerdict> {
   const reader = body?.getReader();
+  // Set once the whole body has been hashed. After that every step is a pure function of the
+  // inputs and the (immutable) bytes, so even a throw is a final `invalid`.
+  let complete = false;
   try {
-    if (publicKey.length !== 32 || signature.length !== 64) return false;
+    if (publicKey.length !== 32 || signature.length !== 64) return "invalid";
     const rBytes = signature.subarray(0, 32);
     const s = leToBigInt(signature.subarray(32, 64));
-    if (s >= L) return false;
+    if (s >= L) return "invalid";
 
     let A: ReturnType<typeof Point.fromBytes>;
     let R: ReturnType<typeof Point.fromBytes>;
@@ -61,9 +74,9 @@ export async function streamingEd25519Verify(
       A = Point.fromBytes(publicKey, false);
       R = Point.fromBytes(rBytes, false);
     } catch {
-      return false;
+      return "invalid";
     }
-    if (A.isSmallOrder()) return false;
+    if (A.isSmallOrder()) return "invalid";
 
     const hash = createHash("sha512");
     hash.update(rBytes);
@@ -74,21 +87,41 @@ export async function streamingEd25519Verify(
         const { done, value } = await reader.read();
         if (done) break;
         total += value.byteLength;
-        if (total > maxBytes) return false;
+        if (total > maxBytes) return "incomplete";
         // Hash the chunk on the spot and drop it: the reader may reuse its buffer.
         hash.update(value);
       }
     }
+    complete = true;
     const k = leToBigInt(new Uint8Array(hash.digest())) % L;
 
     // Variable-time multiplication is fine here: every input is public.
     const lhs = Point.BASE.multiplyUnsafe(s);
     const rhs = R.add(A.multiplyUnsafe(k));
-    return lhs.equals(rhs);
+    return lhs.equals(rhs) ? "valid" : "invalid";
   } catch {
-    // A body that errors mid-stream, or an arithmetic edge noble refuses: fail closed.
-    return false;
+    // Before the body is complete this is a body that errored mid-stream: no verdict. After,
+    // it is an arithmetic edge noble refuses for these exact inputs: a final no.
+    return complete ? "invalid" : "incomplete";
   } finally {
     await reader?.cancel().catch(() => undefined);
   }
+}
+
+/**
+ * Verify an Ed25519 `signature` by `publicKey` over the bytes of `body`, reading it chunk by
+ * chunk. `true` only for {@link streamingEd25519Check}'s `valid`; every failure — wrong
+ * lengths, undecodable points, `S >= L`, an oversized body, a body that errors mid-stream, or
+ * a signature that does not verify — is `false`, never a throw.
+ */
+export async function streamingEd25519Verify(
+  publicKey: Uint8Array,
+  signature: Uint8Array,
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<boolean> {
+  return (
+    (await streamingEd25519Check(publicKey, signature, body, maxBytes)) ===
+    "valid"
+  );
 }

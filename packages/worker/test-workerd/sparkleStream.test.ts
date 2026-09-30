@@ -127,5 +127,24 @@ describe("streaming Ed25519 verification on workerd", () => {
         fetchImpl: async () => new Response(body(total)),
       }),
     ).toBe(false);
+
+    // A final negative (the body read to the end, the signature over other bytes) is memoised
+    // too, so a failing release does not re-download the DMG on every appcast miss.
+    let badFetches = 0;
+    const bad = {
+      ...input,
+      assetId: 4244,
+      fetchImpl: async () => {
+        badFetches++;
+        return new Response(body(total - 1));
+      },
+    };
+    expect(await verifySparkleSignature(env, "workerd-sparkle", bad)).toBe(
+      false,
+    );
+    expect(await verifySparkleSignature(env, "workerd-sparkle", bad)).toBe(
+      false,
+    );
+    expect(badFetches).toBe(1);
   });
 });

@@ -1109,6 +1109,23 @@ software-distribution outage:
 "private" and "absent" stay indistinguishable. This is what makes exhaustion diagnosable
 instead of looking like a withdrawn release.
 
+**Addendum (P0-10): an appcast miss can now cost a full DMG download.** The cost model above
+treats the metadata surfaces as cheap and only `cli`/`dmg` as moving artifact bytes. Since
+R6-03 the appcast also reads the DMG — the worker verifies its Sparkle EdDSA signature — and
+P0-10 made that read a stream with a 2 GiB cap (GitHub's asset maximum) where it used to refuse
+anything past 256 MiB. So one uncached `GET /<p>/appcast.xml` can cost up to 2 GiB of upstream
+read and seconds of Worker CPU, and the 30/min/IP `release` bucket alone would let one IP drive
+~60 GiB/min. What bounds it is the verdict memo in KV keyed by (product, asset id, signature,
+public key): a positive verdict for 30 days, and — added for exactly this reason — a _final_
+negative verdict (the body was read to the end within the cap and the signature does not cover
+it, or the key/signature is malformed) for 24 h. A failing 404 is not edge-cached, so without
+the negative memo a release with a rotated key, a pre-stapling `.sig` or a bogus sidecar would
+re-download on every miss. A mid-stream failure or an over-cap body is not memoised, so it is
+retried. Residual: the first miss per (asset, signature, key) — and one per day per failing
+tuple — still pays the full download; moving verification to publish time (P3-03) would take it
+off the request path. Tests: `releaseSparkleStream.test.ts` → "memoises a final negative
+verdict for a day, so the next request does not fetch".
+
 ## R10-15 — unbounded `.sig` read
 
 `fetchTextAsset` now takes `maxBytes` (default `MAX_TEXT_ASSET_BYTES = 4096`; a Sparkle EdDSA

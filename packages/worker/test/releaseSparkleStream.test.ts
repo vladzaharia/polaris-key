@@ -11,7 +11,10 @@
  *      flipped bit in M, R and S each, so the rewrite is not a looser verifier;
  *   2. it verifies a 300 MiB body while holding at most one chunk of it;
  *   3. the byte cap holds with, without, and against a lying `Content-Length`, and S >= L is
- *      refused — all as `false`, never a throw.
+ *      refused — all as `false`, never a throw;
+ *   4. a final negative verdict is memoised like a positive one, so an unauthenticated appcast
+ *      request for a release whose signature fails cannot re-download the DMG every time,
+ *      while a verdict that was never reached (mid-stream failure, body past the cap) is not.
  *
  * The R6-03 route fixtures (valid, tampered, wrong key, missing sidecar) live in
  * `release.test.ts` and `attack/R6-release.test.ts` and run unchanged against the new path.
@@ -21,8 +24,12 @@ import { createHash } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { describe, expect, it } from "vitest";
 import type { Env } from "../src/core/platform.js";
-import { streamingEd25519Verify } from "../src/services/release/ed25519Stream.js";
 import {
+  streamingEd25519Check,
+  streamingEd25519Verify,
+} from "../src/services/release/ed25519Stream.js";
+import {
+  NEGATIVE_VERIFY_CACHE_TTL_SECONDS,
   VERIFY_CACHE_TTL_SECONDS,
   verifySparkleSignature,
 } from "../src/services/release/sparkle.js";
@@ -258,6 +265,45 @@ const RFC8032_VECTORS = [
     sig: "6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3ac18ff9b538d16f290ae67f760984dc6594a7c15e9716ed28dc027beceea1ec40a",
   },
   {
+    name: "TEST 1024 (1023 bytes, many chunks)",
+    pub: "278117fc144c72340f67d0f2316e8386ceffbf2b2428c9c51fef7c597f1d426e",
+    msg: [
+      "08b8b2b733424243760fe426a4b54908632110a66c2f6591eabd3345e3e4eb98",
+      "fa6e264bf09efe12ee50f8f54e9f77b1e355f6c50544e23fb1433ddf73be84d8",
+      "79de7c0046dc4996d9e773f4bc9efe5738829adb26c81b37c93a1b270b20329d",
+      "658675fc6ea534e0810a4432826bf58c941efb65d57a338bbd2e26640f89ffbc",
+      "1a858efcb8550ee3a5e1998bd177e93a7363c344fe6b199ee5d02e82d522c4fe",
+      "ba15452f80288a821a579116ec6dad2b3b310da903401aa62100ab5d1a36553e",
+      "06203b33890cc9b832f79ef80560ccb9a39ce767967ed628c6ad573cb116dbef",
+      "efd75499da96bd68a8a97b928a8bbc103b6621fcde2beca1231d206be6cd9ec7",
+      "aff6f6c94fcd7204ed3455c68c83f4a41da4af2b74ef5c53f1d8ac70bdcb7ed1",
+      "85ce81bd84359d44254d95629e9855a94a7c1958d1f8ada5d0532ed8a5aa3fb2",
+      "d17ba70eb6248e594e1a2297acbbb39d502f1a8c6eb6f1ce22b3de1a1f40cc24",
+      "554119a831a9aad6079cad88425de6bde1a9187ebb6092cf67bf2b13fd65f270",
+      "88d78b7e883c8759d2c4f5c65adb7553878ad575f9fad878e80a0c9ba63bcbcc",
+      "2732e69485bbc9c90bfbd62481d9089beccf80cfe2df16a2cf65bd92dd597b07",
+      "07e0917af48bbb75fed413d238f5555a7a569d80c3414a8d0859dc65a46128ba",
+      "b27af87a71314f318c782b23ebfe808b82b0ce26401d2e22f04d83d1255dc51a",
+      "ddd3b75a2b1ae0784504df543af8969be3ea7082ff7fc9888c144da2af58429e",
+      "c96031dbcad3dad9af0dcbaaaf268cb8fcffead94f3c7ca495e056a9b47acdb7",
+      "51fb73e666c6c655ade8297297d07ad1ba5e43f1bca32301651339e22904cc8c",
+      "42f58c30c04aafdb038dda0847dd988dcda6f3bfd15c4b4c4525004aa06eeff8",
+      "ca61783aacec57fb3d1f92b0fe2fd1a85f6724517b65e614ad6808d6f6ee34df",
+      "f7310fdc82aebfd904b01e1dc54b2927094b2db68d6f903b68401adebf5a7e08",
+      "d78ff4ef5d63653a65040cf9bfd4aca7984a74d37145986780fc0b16ac451649",
+      "de6188a7dbdf191f64b5fc5e2ab47b57f7f7276cd419c17a3ca8e1b939ae49e4",
+      "88acba6b965610b5480109c8b17b80e1b7b750dfc7598d5d5011fd2dcc5600a3",
+      "2ef5b52a1ecc820e308aa342721aac0943bf6686b64b2579376504ccc493d97e",
+      "6aed3fb0f9cd71a43dd497f01f17c0e2cb3797aa2a2f256656168e6c496afc5f",
+      "b93246f6b1116398a346f1a641f3b041e989f7914f90cc2c7fff357876e506b5",
+      "0d334ba77c225bc307ba537152f3f1610e4eafe595f6d9d90d11faa933a15ef1",
+      "369546868a7f3a45a96768d40fd9d03412c091c6315cf4fde7cb68606937380d",
+      "b2eaaa707b4c4185c32eddcdd306705e4dc1ffc872eeee475a64dfac86aba41c",
+      "0618983f8741c5ef68d3a101e8a3b8cac60c905c15fc910840b94c00a0b9d0",
+    ].join(""),
+    sig: "0aab4c900501b3e24d7cdf4663326a3a87df5e4843b2cbdb67cbf6e460fec350aa5371b1508f9f4528ecea23c436d94b5e8fcd4f681e30a6ac00a9704a188a03",
+  },
+  {
     name: "TEST SHA(abc)",
     pub: "ec172b93ad5e563bf4932c70e1245034c35467ef2efd4d64ebf819683467e2bf",
     msg: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
@@ -327,7 +373,9 @@ describe("streamingEd25519Verify agrees with WebCrypto", () => {
     }
     // Exactly the 200 untampered signatures verify; every tampered one is refused by both.
     expect(accepted).toBe(200);
-  });
+    // ~800 pure-JS point multiplications: well under a second alone, but give a loaded CI
+    // runner room rather than the 5 s default.
+  }, 60_000);
 
   it("refuses S >= L (the malleable S + L twin WebCrypto also refuses)", async () => {
     const { pub, sign } = await freshKeypair();
@@ -380,6 +428,49 @@ describe("streamingEd25519Verify agrees with WebCrypto", () => {
       },
     });
     expect(await streamingEd25519Verify(pub, sig, broken, MiB)).toBe(false);
+  });
+
+  it("says which failures are final (invalid) and which reached no verdict (incomplete)", async () => {
+    const { pub, sign } = await freshKeypair();
+    const msg = new Uint8Array(4096).fill(7);
+    const sig = await sign(msg);
+    const rand = prng(0x0ca5e);
+    const check = (
+      p: Uint8Array,
+      s: Uint8Array,
+      m: Uint8Array | ReadableStream<Uint8Array>,
+      cap = MiB,
+    ) =>
+      streamingEd25519Check(
+        p,
+        s,
+        m instanceof Uint8Array ? chunkedStream(m, rand) : m,
+        cap,
+      );
+
+    expect(await check(pub, sig, msg)).toBe("valid");
+    // Final: the whole body was read within the cap and the signature does not cover it.
+    expect(await check(pub, sig, flip(msg, 100))).toBe("invalid");
+    // Final: refused before a byte of body is needed.
+    const sPlusL = new Uint8Array(sig);
+    sPlusL.set(bigIntToLe32(leToBigInt(sig.subarray(32)) + L), 32);
+    expect(await check(pub, sPlusL, msg)).toBe("invalid");
+    expect(await check(bigIntToLe32((1n << 255n) - 19n), sig, msg)).toBe(
+      "invalid",
+    );
+    // No verdict: the body ran past the cap, or broke off mid-stream.
+    expect(await check(pub, sig, msg, 1024)).toBe("incomplete");
+    let sent = false;
+    const breaksAfterOneChunk = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent) controller.error(new TypeError("connection reset"));
+        else {
+          sent = true;
+          controller.enqueue(msg.slice(0, 1000));
+        }
+      },
+    });
+    expect(await check(pub, sig, breaksAfterOneChunk)).toBe("incomplete");
   });
 });
 
@@ -610,7 +701,7 @@ describe("verifySparkleSignature (streaming path)", () => {
     expect(kv.keys()).toEqual([]);
   });
 
-  it("returns false for a missing asset and for a signature over different bytes", async () => {
+  it("returns false for a missing asset without memoising anything", async () => {
     const { env, kv, publicKey, signature } = await setup(MiB);
     expect(
       await verifySparkleSignature(
@@ -623,13 +714,67 @@ describe("verifySparkleSignature (streaming path)", () => {
         ),
       ),
     ).toBe(false);
+    expect(kv.keys()).toEqual([]);
+  });
+
+  it("memoises a final negative verdict for a day, so the next request does not fetch", async () => {
+    const { env, kv, publicKey, signature } = await setup(MiB);
+    // The signature covers MiB bytes; GitHub serves MiB - 1, read to the end within the cap.
+    const stats = newStats();
     expect(
       await verifySparkleSignature(
         env,
         "djdl",
-        input(publicKey, signature, serving(newStats(), MiB - 1)),
+        input(publicKey, signature, serving(stats, MiB - 1, String(MiB - 1))),
+      ),
+    ).toBe(false);
+    expect(stats.produced).toBe(MiB - 1);
+    const [key] = kv.keys();
+    expect(key).toContain("sparkle-sig");
+    expect(await kv.get(key!)).toBe("0");
+    expect(NEGATIVE_VERIFY_CACHE_TTL_SECONDS).toBe(86_400);
+    expect(kv.ttlOf(key!)).toBe(86_400);
+
+    // The second (unauthenticated, cache-missing) appcast request costs a KV read, not a DMG.
+    const again = await verifySparkleSignature(
+      env,
+      "djdl",
+      input(publicKey, signature, async () => {
+        throw new Error("must not fetch");
+      }),
+    );
+    expect(again).toBe(false);
+  });
+
+  it("does not memoise a verification that broke off mid-stream", async () => {
+    const { env, kv, publicKey, signature } = await setup(MiB);
+    let pulls = 0;
+    const flaky = async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (pulls++ > 3)
+              controller.error(new TypeError("connection reset"));
+            else controller.enqueue(new Uint8Array(16 * 1024));
+          },
+        }),
+      );
+    expect(
+      await verifySparkleSignature(
+        env,
+        "djdl",
+        input(publicKey, signature, flaky),
       ),
     ).toBe(false);
     expect(kv.keys()).toEqual([]);
+
+    // The next request tries again, and a good body verifies.
+    expect(
+      await verifySparkleSignature(
+        env,
+        "djdl",
+        input(publicKey, signature, serving(newStats(), MiB, String(MiB))),
+      ),
+    ).toBe(true);
   });
 });

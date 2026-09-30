@@ -758,6 +758,9 @@ endpoint in both the present and absent cases.
 **Tests:** R6-03 × 2 inverted (bogus `.sig` → 404, `requireSparkleSignature:false` no longer
 reaches the column and the unsigned feed 404s), plus a new positive test proving a _genuine_
 signature over the DMG bytes still renders — i.e. this is verification, not blanket denial.
+`release.test.ts`'s "generates an appcast reading the sibling .sig asset" was rewritten to use a
+real Ed25519 keypair and a real signature (the `"SIG_BASE64=="` fixture is exactly what R6-03
+was about).
 
 **Follow-up (P0-10): streaming verification.** `fetchAssetBytes` read the whole DMG with
 `res.arrayBuffer()` before checking its size, against a 256 MiB cap inside a 128 MB isolate, so a
@@ -771,9 +774,15 @@ small-order keys are refused, and the equation is cofactorless; a property test 
 with WebCrypto on 200 random cases and the RFC 8032 §7.1 vectors. The cap is now GitHub's 2 GiB
 asset maximum, enforced while streaming whatever `Content-Length` says, and the verdict memo's TTL
 is 30 days (the key covers every input and a re-uploaded asset gets a new id).
-`release.test.ts`'s "generates an appcast reading the sibling .sig asset" was rewritten to use a
-real Ed25519 keypair and a real signature (the `"SIG_BASE64=="` fixture is exactly what R6-03
-was about).
+Because a miss is now a full DMG download of up to 2 GiB rather than a refusal past 256 MiB, a
+_final_ negative verdict is memoised too (`"0"`, 24 h TTL): the appcast is unauthenticated and
+its 404 is not edge-cached, so without it every cache-missing `GET /<p>/appcast.xml` for a release
+whose signature fails (a rotated key, a `.sig` made before stapling, a bogus sidecar from a repo
+writer) would re-download and re-hash the DMG, limited only by the 30/min per-IP metadata limiter.
+The verifier reports `valid` / `invalid` / `incomplete`; only the first two are memoised, so a
+mid-stream transport failure or a body past the cap is retried rather than pinned. Residual: the
+first miss per (asset, signature, key) still costs one full download; publish-time verification
+(P3-03) would move that off the request path. See R10-05.
 
 _Not done:_ fix direction #3, signing/verifying on the direct `/dmg` path. The DMG bytes are
 never rewritten by the gateway and Sparkle pins client-side, so the marginal gain over the
