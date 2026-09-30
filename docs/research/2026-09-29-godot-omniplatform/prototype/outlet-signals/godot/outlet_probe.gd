@@ -41,6 +41,11 @@ func run(args: PackedStringArray) -> void:
 					"buildid": kv.get("buildid"), "BetaKey": kv.get("BetaKey", ""), "StateFlags": kv.get("StateFlags")})
 		print("OUTLET_ACF_JSON ", JSON.stringify(rows))
 		return
+	# `outlet bundle <path.app>`: run the macOS bundle checks against another installed app, read-only.
+	if args.size() >= 2 and args[0] == "bundle":
+		_home = OS.get_environment("HOME")
+		print("OUTLET_BUNDLE_JSON ", JSON.stringify(_macos_bundle(args[1])))
+		return
 	var t0 := Time.get_ticks_usec()
 	var out := collect()
 	out["probe_usec"] = Time.get_ticks_usec() - t0
@@ -227,12 +232,25 @@ func _macos(exe: String) -> Dictionary:
 	if i < 0:
 		r["bundle"] = null
 		return r
-	var bundle := exe.substr(0, i + 4)
+	return _macos_bundle(exe.substr(0, i + 4))
+
+
+func _macos_bundle(bundle: String) -> Dictionary:
+	var r := {}
 	r["bundle"] = _redact(bundle)
 	var receipt := bundle.path_join("Contents/_MASReceipt/receipt")
 	r["mas_receipt_exists"] = FileAccess.file_exists(receipt)
 	if r["mas_receipt_exists"]:
-		r["mas_receipt_bytes"] = FileAccess.get_file_as_bytes(receipt).size()
+		var raw := FileAccess.get_file_as_bytes(receipt)
+		r["mas_receipt_bytes"] = raw.size()
+		# The receipt is an unencrypted PKCS#7 container; its receipt-type attribute is plain ASCII
+		# ("Production" or "ProductionSandbox"), so a byte search needs no ASN.1 parser.
+		var hex := raw.hex_encode()
+		var needle := "ProductionSandbox".to_ascii_buffer().hex_encode()
+		var at := hex.find(needle)
+		while at >= 0 and at % 2 == 1:
+			at = hex.find(needle, at + 1)
+		r["mas_receipt_production_sandbox"] = at >= 0
 	r["embedded_provisionprofile_exists"] = FileAccess.file_exists(bundle.path_join("Contents/embedded.provisionprofile"))
 	# Code signature through the codesign tool (OS.execute); no native call is available to GDScript.
 	var t0 := Time.get_ticks_usec()
@@ -247,6 +265,7 @@ func _macos(exe: String) -> Dictionary:
 		elif line.begins_with("TeamIdentifier="):
 			sig["team_identifier_set"] = line.substr(15) != "not set"
 	r["codesign"] = sig
+	r["exe_tail_signing"] = _exe_tail_signing(bundle)
 	# Homebrew Cask: Caskroom/<token>/<version>/<Name>.app is a symlink to the installed bundle.
 	t0 = Time.get_ticks_usec()
 	var cask = null
@@ -266,6 +285,38 @@ func _macos(exe: String) -> Dictionary:
 					cask = {"token": token, "version": ver}
 	r["homebrew_cask"] = cask
 	r["homebrew_cask_usec"] = Time.get_ticks_usec() - t0
+	return r
+
+
+# Sandbox-safe alternative to codesign: the leaf certificate's common name sits in the embedded
+# code signature, which the linker places at the end of the (last slice of the) Mach-O.
+func _exe_tail_signing(bundle: String) -> Dictionary:
+	var t0 := Time.get_ticks_usec()
+	var plist := FileAccess.get_file_as_string(bundle.path_join("Contents/Info.plist"))
+	var m := RegEx.create_from_string("<key>CFBundleExecutable</key>\\s*<string>([^<]+)</string>").search(plist)
+	var r := {"leaf": null}
+	var exe_name := ""
+	if m != null:
+		exe_name = m.get_string(1)
+	else: # binary plist: fall back to the executable named after the bundle, else the first file
+		var files := DirAccess.get_files_at(bundle.path_join("Contents/MacOS"))
+		var want := bundle.get_file().get_basename()
+		exe_name = want if want in files else (files[0] if files.size() > 0 else "")
+	var f := FileAccess.open(bundle.path_join("Contents/MacOS").path_join(exe_name), FileAccess.READ)
+	if f == null:
+		r["error"] = "open failed"
+		return r
+	var n := mini(65536, f.get_length())
+	f.seek(f.get_length() - n)
+	var hex := f.get_buffer(n).hex_encode()
+	for cn in ["TestFlight Beta Distribution", "Apple Mac OS Application Signing", "Developer ID Application",
+			"Apple Distribution", "Apple Development", "Mac Developer", "3rd Party Mac Developer Application"]:
+		var at := hex.find(cn.to_ascii_buffer().hex_encode())
+		if at >= 0 and at % 2 == 0:
+			r["leaf"] = cn
+			break
+	r["tail_bytes"] = n
+	r["usec"] = Time.get_ticks_usec() - t0
 	return r
 
 
