@@ -40,9 +40,8 @@ export interface ValidationResult {
   errors: ValidationMessage[];
   warnings: ValidationMessage[];
   /**
-   * The enabled set, reported in Polaris Key SERVICE-SLUG vocabulary (`license`, `config`,
-   * `release`, `update`, `identity`) whichever vocabulary the manifest wrote — the validator
-   * translates.
+   * The enabled set, reported in Polaris Key SERVICE-SLUG vocabulary (`SERVICE_SLUGS`, in
+   * canonical order) whichever vocabulary the manifest wrote — the validator translates.
    */
   enabledModules: ServiceSlug[];
   requiredSecrets: string[];
