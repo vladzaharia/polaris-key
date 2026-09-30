@@ -1,7 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Release's admin surface — `/manage/api/products/<slug>/release/{health,resync,releases}`.
+ * Release's admin surface — `/manage/api/products/<slug>/release/{health,resync,releases}` and
+ * `…/release/channels/<channel>/floor` (P0-02, R6-10).
  *
  * `health` and `resync` were already service-shaped under the old admin handler; they move here
  * verbatim (§R1) so the service owns its own console API. `releases` is new: the truth store now
@@ -15,21 +16,54 @@
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
-import { adminJson, adminNotFound, audit, err } from "../../core/adminApi.js";
+import {
+  adminJson,
+  adminNotFound,
+  audit,
+  err,
+  readBody,
+} from "../../core/adminApi.js";
+import { compareSemver, parseSemver } from "../../core/entitlements.js";
 import { upsertProductSyncState } from "../../core/ingest.js";
+import {
+  classifyChannel,
+  floorChannelOf,
+  parseManualChannels,
+} from "./channels.js";
+import { getReleaseConfig } from "./config.js";
 import { checkReleaseHealth } from "./health.js";
 import { resyncRepo } from "./resync.js";
 import {
+  channelNames,
+  clearChannelFloor,
+  getChannelFloor,
+  listChannelFloors,
   listReleaseArtifacts,
   listReleaseChannels,
   listReleaseHealth,
   listReleaseMetadata,
+  lowerChannelFloor,
+  releaseIdForVersion,
+  type ReleaseChannelFloorRow,
 } from "./store.js";
+
+function floorView(f: ReleaseChannelFloorRow) {
+  return {
+    channel: f.channel,
+    version: f.version,
+    releaseId: f.release_id,
+    raisedAt: f.raised_at,
+    loweredBy: f.lowered_by,
+    loweredAt: f.lowered_at,
+  };
+}
 
 export async function handleReleaseAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
   const { req, env, db, product, rest, session, now } = ctx;
+  if (rest.length === 3 && rest[0] === "channels" && rest[2] === "floor")
+    return handleChannelFloor(ctx, rest[1] as string);
   if (rest.length !== 1) return null;
   const slug = product.slug;
 
@@ -75,6 +109,7 @@ export async function handleReleaseAdmin(
         releaseId: c.release_id,
         modifiedAt: c.modified_at,
       })),
+      floors: (await listChannelFloors(db, slug)).map(floorView),
     });
   }
 
@@ -124,4 +159,104 @@ export async function handleReleaseAdmin(
     `Resynced ${slug} from its linked repo`,
   );
   return adminJson({ ok: true, slug, updated: result.updated });
+}
+
+/**
+ * `POST …/release/channels/<channel>/floor` — lower or clear a channel floor (R6-10).
+ *
+ * `{ "version": "1.0.0" }` lowers the floor to that version; `{ "clear": true }` removes it.
+ * Raising is refused: the floor is the highest version a SYNC has seen, and an operator-raised
+ * floor would be a way to 404 a channel by typo. A floor stuck too high (a typo'd `v10.0.0`
+ * that was deleted later) is exactly the case this endpoint exists for, and `checkReleaseHealth`
+ * names it. Audited as `release.channel.floor`.
+ */
+async function handleChannelFloor(
+  ctx: ServiceContext & { session: AdminSession },
+  channel: string,
+): Promise<Response> {
+  const { req, db, product, session, now } = ctx;
+  const slug = product.slug;
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+
+  const cfg = await getReleaseConfig(db, slug);
+  if (!cfg || !channelNames(cfg).includes(channel)) return adminNotFound();
+  const sel = classifyChannel(
+    channel,
+    parseManualChannels(cfg.manual_channels_json),
+  );
+  if (!sel || floorChannelOf(sel, cfg) !== channel) {
+    return err(422, ErrorCode.BadRequest, "this channel is not floored", {
+      fields: ["channel"],
+    });
+  }
+
+  const body = await readBody(req);
+  const clear = body.clear === true;
+  const version = body.version;
+  if (clear === (version !== undefined)) {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      'send exactly one of { "version": "X.Y.Z" } or { "clear": true }',
+      { fields: ["version", "clear"] },
+    );
+  }
+
+  const existing = await getChannelFloor(db, slug, channel);
+  if (!existing) return adminNotFound();
+
+  if (clear) {
+    await clearChannelFloor(db, slug, channel);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "release.channel.floor",
+      { kind: "channel", id: channel },
+      `Cleared the ${channel} floor for ${slug} (was ${existing.version})`,
+    );
+    return adminJson({ ok: true, channel, floor: null });
+  }
+
+  if (typeof version !== "string" || !parseSemver(version)) {
+    return err(422, ErrorCode.BadRequest, "version must be X.Y.Z semver", {
+      fields: ["version"],
+    });
+  }
+  if (
+    parseSemver(existing.version) &&
+    compareSemver(version, existing.version) > 0
+  ) {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "a floor can only be lowered; the sync raises it",
+      { fields: ["version"] },
+    );
+  }
+  await lowerChannelFloor(
+    db,
+    slug,
+    channel,
+    { version, releaseId: await releaseIdForVersion(db, slug, version) },
+    session.email || session.sub,
+    now,
+  );
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    "release.channel.floor",
+    { kind: "channel", id: channel },
+    `Lowered the ${channel} floor for ${slug} from ${existing.version} to ${version}`,
+  );
+  const floor = await getChannelFloor(db, slug, channel);
+  return adminJson({
+    ok: true,
+    channel,
+    floor: floor ? floorView(floor) : null,
+  });
 }

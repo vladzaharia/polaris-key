@@ -499,6 +499,9 @@ newer release disappears from the list, with a `public` cache header.
 `release_config`, refuse to serve below it, and surface a `needs-attention` health check when
 the resolved latest regresses.
 
+**Status** — **Fixed in P0-02** (2026-09-30). See
+[R6-10 — downgrade protection — Fixed](#r6-10--downgrade-protection--fixed) under Remediation.
+
 ---
 
 ### R6-11 — Served `origin` comes from the request Host header — **Low**
@@ -762,6 +765,33 @@ signature over the DMG bytes still renders — i.e. this is verification, not bl
 real Ed25519 keypair and a real signature (the `"SIG_BASE64=="` fixture is exactly what R6-03
 was about).
 
+**Follow-up (P0-10): streaming verification.** `fetchAssetBytes` read the whole DMG with
+`res.arrayBuffer()` before checking its size, against a 256 MiB cap inside a 128 MB isolate, so a
+large DMG was an uncatchable out-of-memory crash rather than a clean 404. It is replaced by
+`fetchAssetStream` plus `streamingEd25519Verify` (`services/release/ed25519Stream.ts`): the
+SHA-512 of `R || A || M` is computed incrementally (`node:crypto`) as the body streams, and the
+PureEdDSA equation is finished with `@noble/curves` (pinned `2.4.0`, a new Worker runtime
+dependency: a T6 supply-chain surface, accepted because it is audited and dependency-free apart
+from `@noble/hashes`). Strictness does not loosen: `S ≥ L`, non-canonical or undecodable points and
+small-order keys are refused, and the equation is cofactorless; a property test checks agreement
+with WebCrypto on 200 random cases and the RFC 8032 §7.1 vectors. The cap is now GitHub's 2 GiB
+asset maximum, enforced while streaming whatever `Content-Length` says, and the verdict memo's TTL
+is 30 days (the key covers every input and a re-uploaded asset gets a new id).
+Because a miss is now a full DMG download of up to 2 GiB rather than a refusal past 256 MiB, a
+_final_ negative verdict is memoised too (`"0"`, 24 h TTL): the appcast is unauthenticated and
+its 404 is not edge-cached, so without it every cache-missing `GET /<p>/appcast.xml` for a release
+whose signature fails (a rotated key, a `.sig` made before stapling, a bogus sidecar from a repo
+writer) would re-download and re-hash the DMG, limited only by the 30/min per-IP metadata limiter.
+The verifier reports `valid` / `invalid` / `incomplete`; only the first two are memoised, so a
+mid-stream transport failure or a body past the cap is retried rather than pinned. Residual: the
+memo only helps once a verdict lands. There is no single-flight, so every miss that arrives
+while a stream is in flight (or before the verdict has propagated through KV, up to ~60 s per
+colo) pays its own full download; and verification runs inline rather than under
+`ctx.waitUntil`, so a request that the client aborts, or that hits the CPU limit, never
+memoises — a client that aborts each request just before the end can repeat a near-2 GiB
+upstream read up to the 30/min per-IP `release` limit. Publish-time verification (P3-03) removes
+this from the unauthenticated request path. See R10-05 for the cost model.
+
 _Not done:_ fix direction #3, signing/verifying on the direct `/dmg` path. The DMG bytes are
 never rewritten by the gateway and Sparkle pins client-side, so the marginal gain over the
 appcast check did not justify a full-artifact hash on every download.
@@ -855,12 +885,44 @@ is what breaks them.
 **Tests:** R6-08 × 4 inverted; the R10 lane's duplicate `R10-02` × 2 and the R9 lane's `R9-14`
 inverted for the same reason.
 
+### R6-10 — downgrade protection — **Fixed**
+
+Fixed later, in work package P0-02 of the Godot omniplatform program, as the feature the table
+below said it needed: a migration and an admin surface.
+
+- **Floor.** A new table, `release_channel_floors` (migration 0023), holds the highest
+  version each moving channel (`stable`, `beta` without a channel workflow, manual channels;
+  never a pinned `X.Y.Z`, never `pr-<n>`) has resolved to during a truth-store sync. Only the sync raises it; the request path never writes it.
+- **Enforcement.** `resolveMovingSelector` (`services/release/gateway.ts`) is the one resolution
+  function the download route, the appcast, `/version` and `checkReleaseHealth` share. When the
+  pick lands below the floor it looks the floor's release up by tag (one GitHub call): still
+  there (it sat on a page not read) ⇒ serve it; gone ⇒ `404 no release for selector`, so no
+  `cache-control: public` downgrade is ever emitted. The truth-store channel row refuses the
+  same downgrade and records `release_health` as `blocked`.
+- **Health.** `checkReleaseHealth` reports a `channel-regressed` check (error) naming the floor
+  and what the list now offers. The follow-up lookup for a non-stable floor is guarded: a quota
+  refusal or upstream failure there becomes a `channel-floor-unverified-<channel>` warning, so a
+  GitHub hiccup never turns the health report into a 500.
+- **Operator override.** `POST /manage/api/products/<slug>/release/channels/<channel>/floor`
+  with `{ "version": "1.0.0" }` lowers the floor (never raises it) and `{ "clear": true }`
+  removes it; both are audited as `release.channel.floor`.
+
+The fix direction's "compare against a client-reported version" half is not done: no client
+version is accepted on these routes, and the floor alone closes the deleted-release primitive.
+The floor table is a stop-gap that P2-03 folds into `release_channel_policy.min_supported`.
+
+**Tests:** the R6-10 PoC is now a regression test, `it("FIXED: once a sync has seen v2.0.0,
+deleting it 404s latest until an operator lowers the floor")`. It gains the sync step the PoC
+never had (without a sync there is no floor), then asserts `/version` 404s without a public
+cache header, health reports `channel-regressed` naming `2.0.0` and `v1.0.0`, and after the
+admin endpoint lowers the floor `v1.0.0` serves. `test/releaseResolution.test.ts` covers the
+floor's raise-only behaviour and the still-listed-elsewhere case.
+
 ### Deliberately NOT fixed (PoCs left green on purpose)
 
 | ID       | Why                                                                                                                                                                                                                                                                                                                                                                                       |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | R6-09    | `streamAsset`'s relative-`Location` `TypeError` and the unguarded second hop. Out of the assigned set; reaching hop 2 needs GitHub itself to 302 into a chain. ~15 lines in `github.ts` (try/catch → `NotFoundError`, plus `redirect:"manual"` and a bounded re-check loop) when scheduled.                                                                                               |
-| R6-10    | Downgrade/rollback protection needs a persisted `min_version` per (product, channel) — a migration and an admin surface, i.e. a feature, not a patch.                                                                                                                                                                                                                                     |
 | R6-11    | Origin from the `Host` header. Needs a `PUBLIC_ORIGIN` var + `wrangler.toml`, both outside this lane. **Partially mitigated**: `ORIGIN_RE` + `shQuote` mean a hostile Host can no longer inject shell, only a wrong URL.                                                                                                                                                                  |
 | R6-12    | Portal `/download/<token>` open redirect + TOCTOU lives in `portal/api.ts`, another owner. Still dormant (nothing writes `release_artifacts.source_url`).                                                                                                                                                                                                                                 |
 | R6-13    | CDATA breakout in `renderAppcast`. One-line fix, but unreachable (no caller supplies `descriptionHtml`) and flipping it would churn another lane's expectations for no live gain.                                                                                                                                                                                                         |

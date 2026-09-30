@@ -44,6 +44,14 @@ aggregates **all** validation errors, and returns a `ParsedManifest` ready for D
 schema is compiled through `@polaris-key/catalog` before anything is written so malformed
 JSON-Schema fragments fail during import/resync, not during a client request.
 
+`pkey init` writes `product.yaml` and `schema.yaml` every time (plus `release.yaml` when releases
+are selected): ingest requires the schema even when Config is off, and `pkey validate` applies the
+same rule as link/resync, reporting a missing one as `missing_schema`. Without the `config`
+module the scaffolded catalog is empty (`schemaVersion: 1`, `catalog: []`). The scaffolded tier
+sets `policyDeviceLimit: 5` and no expiry; a tier `deviceLimit` is ignored and a tier
+`maxOfflineDays` sets the licence expiry (`policyExpiryDays`), not offline grace, so `pkey
+validate` warns with `tier_ignored_field` for either.
+
 ## The catalog: `ConfigEntry`
 
 The schema file is a `ProductCatalog`: a `schemaVersion` (bumped on incompatible shape

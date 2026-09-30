@@ -5,9 +5,10 @@
  * post-remediation each one asserts that the same attack now FAILS. Test names are
  * unchanged so the mapping back to docs/security/findings/R6-release.md survives.
  *
- * Still-green attacks (R6-08 redirect handling, R6-09 CDATA, R6-10 downgrade, R6-11 portal,
- * and the request-Host origin) document findings that were deliberately NOT remediated in
- * this pass — see the Remediation section of the finding doc.
+ * Still-green attacks (R6-08 redirect handling, R6-09 CDATA, R6-11 portal, and the
+ * request-Host origin) document findings that were deliberately NOT remediated in this pass —
+ * see the Remediation section of the finding doc. R6-10 (downgrade) was fixed in P0-02 and is
+ * now a regression test.
  */
 
 import { describe, expect, it } from "vitest";
@@ -34,6 +35,14 @@ import { defaultInstallScript } from "../../src/services/release/install.js";
 import { linkRepo } from "../../src/services/release/linkRepo.js";
 import { handleGithubWebhook } from "../../src/githubWebhook.js";
 import { getReleaseConfig } from "../../src/services/release/index.js";
+import { syncReleaseStore } from "../../src/services/release/sync.js";
+import { checkReleaseHealth } from "../../src/services/release/health.js";
+import { handleAdmin } from "../../src/admin/index.js";
+import {
+  ADMIN_COOKIE,
+  CSRF_HEADER,
+  issueSession,
+} from "../../src/admin/session.js";
 import { handlePortalDownload } from "../../src/services/identity/portal/api.js";
 import {
   createPortalDownloadToken,
@@ -1331,10 +1340,17 @@ describe("R6-09 appcast <description> CDATA breakout (latent)", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("R6-10 downgrade: deleting the newest release silently makes an older one latest", () => {
-  it("/version and the appcast follow the release list with no floor and no client-version input", async () => {
+  // FIXED (P0-02). A truth-store sync now records the highest version each moving channel has
+  // resolved to (`release_channel_floors`). Live resolution that lands below the floor looks the
+  // floor's release up by tag: still there ⇒ served; gone ⇒ 404, and `checkReleaseHealth`
+  // reports `channel-regressed`. Only an operator lowering the floor (audited) lets the older
+  // release through. The PoC gains the sync step it never had — without one there is no floor.
+  it("FIXED: once a sync has seen v2.0.0, deleting it 404s latest until an operator lowers the floor", async () => {
     const db = makeTestDb();
     await seedReleaseConfig(db);
     const env = envFor();
+    env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
+    env.PLATFORM_ADMIN_GROUP = "platform-admins";
 
     let releases = [
       release({ tag_name: "v2.0.0" }),
@@ -1346,38 +1362,77 @@ describe("R6-10 downgrade: deleting the newest release silently makes an older o
         return new Response(JSON.stringify({ token: "t" }), { status: 200 });
       if (url.includes("/releases?per_page"))
         return new Response(JSON.stringify(releases), { status: 200 });
+      // `tags/<tag>` for the floor lookup: only what is still published.
+      const tag = url.match(/\/releases\/tags\/([^/?]+)$/)?.[1];
+      const hit = releases.find((r) => r.tag_name === tag);
+      if (hit) return new Response(JSON.stringify(hit), { status: 200 });
       return new Response("nf", { status: 404 });
     };
+    const latest = () =>
+      handleRelease(
+        req(),
+        env,
+        db,
+        makeProduct(),
+        "version",
+        { version: "latest" },
+        fetchImpl,
+      );
 
-    const before = await handleRelease(
-      req(),
-      env,
-      db,
-      makeProduct(),
-      "version",
-      { version: "latest" },
-      fetchImpl,
-    );
+    const before = await latest();
     expect(((await before.json()) as { version: string }).version).toBe(
       "2.0.0",
     );
+    // The truth-store sync (push, webhook or manual resync) sees v2.0.0 and floors stable.
+    await syncReleaseStore(env, db, SLUG, NOW, fetchImpl);
 
     // The repo owner (or anyone who can delete a release) removes v2.0.0.
     releases = [release({ tag_name: "v1.0.0" })];
 
-    const after = await handleRelease(
-      req(),
+    const after = await latest();
+    // No silent downgrade: the channel refuses rather than promoting v1.0.0 to latest…
+    expect(after.status).toBe(404);
+    expect(after.headers.get("cache-control") ?? "").not.toContain("public");
+    // …and health says why, naming the floor and what the list now offers.
+    const health = await checkReleaseHealth(env, db, SLUG, NOW, fetchImpl);
+    const regressed = health.checks.find((c) => c.id === "channel-regressed");
+    expect(regressed?.status).toBe("error");
+    expect(regressed?.message).toContain("2.0.0");
+    expect(regressed?.message).toContain("v1.0.0");
+
+    // A deliberate withdrawal: an operator lowers the floor, and only then does v1.0.0 serve.
+    const { token, session } = await issueSession(
+      env,
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: ["platform-admins"],
+      },
+      NOW,
+    );
+    const path = `/api/products/${SLUG}/release/channels/stable/floor`;
+    const lowered = await handleAdmin(
+      new Request(`https://key.plrs.im/manage${path}`, {
+        method: "POST",
+        headers: {
+          cookie: `${ADMIN_COOKIE}=${token}`,
+          [CSRF_HEADER]: session.csrf,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ version: "1.0.0" }),
+      }) as unknown as Request,
       env,
       db,
-      makeProduct(),
-      "version",
-      { version: "latest" },
-      fetchImpl,
+      path,
+      { now: NOW },
     );
-    // Silent downgrade: no floor, no comparison against any client-reported version.
-    expect(((await after.json()) as { version: string }).version).toBe("1.0.0");
-    // …and the response is cacheable-public with no rollback marker.
-    expect(after.headers.get("cache-control")).toContain("public");
+    expect(lowered.status).toBe(200);
+    const served = await latest();
+    expect(served.status).toBe(200);
+    expect(((await served.json()) as { version: string }).version).toBe(
+      "1.0.0",
+    );
   });
 });
 

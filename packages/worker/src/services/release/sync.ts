@@ -26,14 +26,14 @@
 
 import type { Db, DbStatement, Env } from "../../core/platform.js";
 import type { FetchImpl } from "./githubApp.js";
-import { listReleases } from "./github.js";
+import { listReleases, RELEASE_PAGE_CAP } from "./github.js";
 import {
   getReleaseConfig,
   isResolved,
   type ReleaseConfigRow,
 } from "./config.js";
 import { installationToken } from "./gateway.js";
-import { releaseStoreStatements } from "./store.js";
+import { listChannelFloors, releaseStoreStatements } from "./store.js";
 
 // ── The platform-facing façade ───────────────────────────────────────────────
 
@@ -59,10 +59,15 @@ export { getReleaseConfig } from "./config.js";
  * The statements that bring `release_metadata` / `release_artifacts` / `release_channels` /
  * `release_health` up to date with what GitHub currently publishes.
  *
- * ONE extra `listReleases` call per sync — the same 100-release page the download and feed
- * routes already read — and no per-asset requests: everything the store records is carried in
- * that response. That bound matters, because a sync is triggered by a repo push and the
- * installation quota is 5,000/hour for every product on the installation (R10-05).
+ * One paginated `listReleases` read per sync — up to `RELEASE_PAGE_CAP.sync` pages of 100
+ * (1,000 releases), following `Link: rel="next"`, so a busy repo cannot push its last stable
+ * release off the store (P0-02) — and no per-asset requests: everything the store records is
+ * carried in those responses. A repo with fewer than 100 releases still costs ONE call. That
+ * bound matters, because a sync is triggered by a repo push and the installation quota is
+ * 5,000/hour for every product on the installation (R10-05).
+ *
+ * The channel floors (R6-10) are read here, before the fetch, and handed to the pure statement
+ * builder, which raises them conditionally on what it read.
  *
  * Returns `[]` — never throws, never partially applies — when the product has no GitHub
  * coordinates or GitHub is unavailable. The truth store is a CACHE of upstream state; failing a
@@ -72,12 +77,14 @@ export { getReleaseConfig } from "./config.js";
  */
 export async function releaseStoreSyncStatements(
   env: Env,
+  db: Db,
   cfg: ReleaseConfigRow,
   now: number,
   fetchImpl: FetchImpl,
 ): Promise<DbStatement[]> {
   if (!isResolved(cfg)) return [];
   try {
+    const floors = await listChannelFloors(db, cfg.product);
     const token = await installationToken(env, cfg, now, fetchImpl);
     const releases = await listReleases(
       token,
@@ -85,8 +92,9 @@ export async function releaseStoreSyncStatements(
       cfg.gh_repo,
       100,
       fetchImpl,
+      { maxPages: RELEASE_PAGE_CAP.sync },
     );
-    return releaseStoreStatements(cfg.product, cfg, releases, now);
+    return releaseStoreStatements(cfg.product, cfg, releases, now, floors);
   } catch {
     // No log line: the worker carries no logging sink by design. The absence of a `releases`
     // entry in the sync result — and `release_health`'s unchanged `checked_at` — is the signal.
@@ -110,7 +118,7 @@ export async function syncReleaseStore(
 ): Promise<number> {
   const cfg = await getReleaseConfig(db, product);
   if (!cfg) return 0;
-  const stmts = await releaseStoreSyncStatements(env, cfg, now, fetchImpl);
+  const stmts = await releaseStoreSyncStatements(env, db, cfg, now, fetchImpl);
   if (stmts.length > 0) await db.batch(stmts);
   return stmts.length;
 }
