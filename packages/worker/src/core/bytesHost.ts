@@ -71,7 +71,7 @@ export const BYTE_ROUTES: readonly ByteRoute[] = [];
  * A hostname in the form hosts are compared in: lowercase, with any trailing dots removed.
  * `dl.plrs.im.` (the fully-qualified form) is the same DNS name as `dl.plrs.im`, and the edge
  * routes it to this Worker with the dot still in `req.url` — so an exact comparison would let
- * `https://dl.plrs.im./manage` skip host isolation and reach the console.
+ * `https://dl.plrs.im./manage` skip host isolation and reach the console routes.
  */
 function normalizeHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/\.+$/, "");
