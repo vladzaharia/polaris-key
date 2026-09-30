@@ -1030,7 +1030,7 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
     expect(longer).toBeGreaterThan(short * 8);
   }, 20_000);
 
-  it("cost is multiplied by the release list length (up to 100 per request)", () => {
+  it("cost is multiplied by the release list length (up to 3 pages of 100 per request since P0-02)", () => {
     const single = Math.max(timeMatch(24, 1), 1);
     const batch = timeMatch(24, 10);
     expect(batch).toBeGreaterThan(single * 5);

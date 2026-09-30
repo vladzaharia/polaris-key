@@ -426,6 +426,10 @@ async function registerFromManifest(
       // absent: the operator-only artifact policy has no manifest spelling (R6-03), so a freshly
       // linked product starts on the fail-safe defaults (signature required, no minimum).
       accessSource: "manifest",
+      stableTagPattern: rel?.stableTagPattern ?? null,
+      ignoreTagsJson: rel?.ignoreTags.length
+        ? JSON.stringify(rel.ignoreTags)
+        : null,
     }),
   );
 
