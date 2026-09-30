@@ -115,8 +115,9 @@ Implementation notes (corrections recorded while implementing):
   phrases). Run it as `packages/docs docs/RUNBOOK.md docs/security docs/superpowers` for the
   intended check; it returns nothing there.
 - The `?channel=` and OpenAPI "pinned" fixes also stop saying `v1.2.3` is a selector: the
-  route only accepts a bare `1.2.3`, which already matches both a `v1.2.3` and a `1.2.3` tag
-  (`resolveChannel`), so no P0-02 dependency was needed for the wording.
+  route only accepts a bare `1.2.3`, which today is looked up as the `v1.2.3` tag
+  (`resolveRelease` fetches only `/releases/tags/v<version>`). Matching an unprefixed `1.2.3`
+  tag is P0-02's scope, so the wording states today's behaviour and leaves that claim to P0-02.
 - The "ships DMGs" helper is `shipsDmgs`/`requiresDmg` in `services/release/config.ts`.
   Release health evaluates it against the GitHub release list; the console setup state reads
   the truth store through `latestReleaseHasDmg` (`services/release/store.ts`).

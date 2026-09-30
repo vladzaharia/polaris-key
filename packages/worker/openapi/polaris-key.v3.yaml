@@ -1420,7 +1420,7 @@ paths:
           required: true
           description: >
             A selector, not necessarily a semver: `latest`, `stable`, a pinned bare `1.2.3`
-            (which matches a `v1.2.3` or a `1.2.3` tag; a `v`-prefixed selector is not
+            (looked up as the `v1.2.3` tag; a `v`-prefixed selector is not
             accepted), `beta`, `pr-42`, or an operator-defined channel name. Pinned selectors
             get `max-age=86400, immutable`; moving ones `max-age=120`.
           schema: { type: string }
