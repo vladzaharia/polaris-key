@@ -21,7 +21,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { validateManifestDocuments } from "../src/index.js";
+import {
+  validateIngestDocuments,
+  validateManifestDocuments,
+} from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const schemasDir = join(here, "..", "schemas", "v1");
@@ -42,7 +45,7 @@ const validateRelease = ajv.compile(
 );
 
 type Docs = {
-  product: Record<string, unknown>;
+  product: Record<string, unknown> | undefined;
   schema?: unknown;
   release?: unknown;
 };
@@ -192,7 +195,9 @@ function base(): Docs {
 }
 
 function tsCodes(docs: Docs): string[] {
-  const res = validateManifestDocuments(docs);
+  // The ingest rule is a superset of the author-side check (it adds document presence), so
+  // every code either emits is reachable through it.
+  const res = validateIngestDocuments(docs);
   return [...res.errors, ...res.warnings].map((e) => e.code);
 }
 
@@ -280,6 +285,25 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => delete d.schema,
   },
   {
+    // Ingest requires the schema even with Config off; only validateIngestDocuments (which
+    // tsCodes uses) reports it, and the schema cannot express a missing sibling document.
+    code: "missing_schema",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => {
+      p(d).modules.config = { enabled: false };
+      delete d.schema;
+    },
+  },
+  {
+    // A missing document has no JSON to validate; the product schema rejects `undefined` as
+    // "not an object", which is the closest the schema gets.
+    code: "missing_product",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (d.product = undefined),
+  },
+  {
     code: "invalid_schema",
     file: "schema",
     schema: "rejects",
@@ -297,6 +321,20 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     // managementDefault is CONFIG-only; entries[1] is the secret entry.
     mutate: (d) => ((d.schema as any).entries[1].managementDefault = "default"),
+  },
+  {
+    // Warnings share the table: a warning is still a code the validator emits. The JSON schema
+    // tolerates unknown tier keys, so it accepts.
+    code: "tier_ignored_field",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).licensing.tiers[0].deviceLimit = 5),
+  },
+  {
+    code: "tier_ignored_field",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).licensing.tiers[0].maxOfflineDays = 14),
   },
   {
     code: "invalid_profile_id",

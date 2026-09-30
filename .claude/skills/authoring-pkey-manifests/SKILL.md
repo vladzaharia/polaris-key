@@ -20,8 +20,9 @@ canonical glossary).
 ### 1. Scaffold
 
 - [ ] Run `pkey init` in the product repo root. It creates `.pkey/` and writes YAML:
-      `product.yaml` always; `schema.yaml` when the `config` module is selected; `release.yaml`
-      when `releases` is selected.
+      `product.yaml` and `schema.yaml` always (ingest requires both, even with Config off; without
+      `config` the schema is an empty catalog, `schemaVersion: 1` and `catalog: []`); `release.yaml`
+      when `releases` is selected. The scaffolded tier is `policyDeviceLimit: 5` with no expiry.
 - [ ] Other flags: `--admin-group`, `--release-owner`, `--release-repo`, `--force` (overwrite).
       With no `--modules`, the default is `licensing,config`.
 - [ ] Do **not** hand-create the directory if `pkey init` will do it — the scaffold writes the
