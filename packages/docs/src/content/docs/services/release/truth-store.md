@@ -149,6 +149,9 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
 4. **Channel floors** — one `channel-regressed` error per floored channel whose floor release
    is gone, naming the floor and what the release list now offers (see
    [Channel floors](/docs/services/update/eligibility/#channel-floors-no-silent-downgrade)).
+   A non-stable floor the pages already read do not reach costs one more resolution; if that
+   GitHub lookup fails (quota or an upstream error), the check is a
+   `channel-floor-unverified-<channel>` warning instead, and the rest of the report stands.
 5. **Latest release** — what `stable` resolves to, through the same resolution function the
    download route, the appcast and the version check use: candidate filter, semver order,
    page cap and floor included.

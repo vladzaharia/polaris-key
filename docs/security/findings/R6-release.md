@@ -873,7 +873,9 @@ below said it needed: a migration and an admin surface.
   `cache-control: public` downgrade is ever emitted. The truth-store channel row refuses the
   same downgrade and records `release_health` as `blocked`.
 - **Health.** `checkReleaseHealth` reports a `channel-regressed` check (error) naming the floor
-  and what the list now offers.
+  and what the list now offers. The follow-up lookup for a non-stable floor is guarded: a quota
+  refusal or upstream failure there becomes a `channel-floor-unverified-<channel>` warning, so a
+  GitHub hiccup never turns the health report into a 500.
 - **Operator override.** `POST /manage/api/products/<slug>/release/channels/<channel>/floor`
   with `{ "version": "1.0.0" }` lowers the floor (never raises it) and `{ "clear": true }`
   removes it; both are audited as `release.channel.floor`.

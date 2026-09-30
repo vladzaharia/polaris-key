@@ -143,6 +143,9 @@ interface GitHubState {
   byTag?: Record<string, Release>;
   /** Asset bodies by asset id. */
   assets?: Record<number, string>;
+  /** Once this many list calls have been served, every further GitHub call answers `fail`. */
+  failAfterListCalls?: number;
+  fail?: { status: number; headers?: Record<string, string> };
 }
 
 /** A GitHub stub over mutable state; `calls` records every URL requested (minus the token). */
@@ -153,6 +156,15 @@ function github(state: GitHubState): { fetchImpl: FetchImpl; calls: string[] } {
     if (url.includes("/access_tokens"))
       return new Response(JSON.stringify({ token: "ghs_t" }), { status: 200 });
     calls.push(url);
+    const listCalls = calls.filter((c) => /\/releases\?per_page=/.test(c));
+    if (
+      state.failAfterListCalls !== undefined &&
+      listCalls.length > state.failAfterListCalls
+    )
+      return new Response("upstream", {
+        status: state.fail?.status ?? 500,
+        headers: state.fail?.headers ?? {},
+      });
     const list = url.match(/\/releases\?per_page=\d+(?:&page=(\d+))?$/);
     if (list) {
       const per = state.perPage ?? 100;
@@ -615,6 +627,47 @@ describe("channel floors (R6-10)", () => {
     expect(regressed?.message).toContain("offers v1.0.0");
     expect(health.status).toBe("error");
   });
+
+  it.each([
+    ["quota exhaustion", 403, { "X-RateLimit-Remaining": "0" }],
+    ["an upstream 500", 500, {}],
+  ] as const)(
+    "health survives %s while verifying a non-stable floor",
+    async (_label, status, headers) => {
+      const db = makeTestDb();
+      await seed(db);
+      const env = envFor();
+      const state: GitHubState = {
+        releases: [
+          release("v2.1.0-rc.1", { prerelease: true }),
+          release("v2.0.0"),
+        ],
+      };
+      const gh = github(state);
+      await syncReleaseStore(env, db, SLUG, NOW, gh.fetchImpl);
+      expect((await getChannelFloor(db, SLUG, "beta"))?.version).toBe(
+        "2.1.0-rc.1",
+      );
+
+      // The rc was promoted: page 1 holds no prerelease, so beta LOOKS below its floor and
+      // health pays for a second resolution, whose first GitHub call fails.
+      state.releases = [release("v2.1.0"), release("v2.0.0")];
+      state.failAfterListCalls =
+        gh.calls.filter((c) => c.includes("/releases?per_page=")).length + 1;
+      state.fail = { status, headers };
+      const health = await checkReleaseHealth(env, db, SLUG, NOW, gh.fetchImpl);
+      expect(health.release?.tag).toBe("v2.1.0");
+      expect(health.checks.map((c) => c.id)).not.toContain("channel-regressed");
+      const unverified = health.checks.find(
+        (c) => c.id === "channel-floor-unverified-beta",
+      );
+      expect(unverified?.status).toBe("warning");
+      expect(unverified?.message).toContain("2.1.0-rc.1");
+      expect(
+        health.checks.find((c) => c.id === "channel-regressed-beta"),
+      ).toBeUndefined();
+    },
+  );
 
   it("the admin floor endpoint lowers but never raises, clears, and refuses unfloored channels", async () => {
     const db = makeTestDb();

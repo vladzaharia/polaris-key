@@ -15,7 +15,7 @@ import {
   type ResolvedConfig,
 } from "./config.js";
 import { resolveMovingSelector, type MovingResolution } from "./gateway.js";
-import { NotFoundError } from "./github.js";
+import { NotFoundError, UpstreamRateLimitedError } from "./github.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import { isBelowFloor, listChannelFloors } from "./store.js";
 
@@ -417,15 +417,37 @@ async function regressionChecks(
       )
     )
       continue;
-    const res = await resolveMovingSelector(
-      env,
-      db,
-      cfg,
-      token,
-      sel,
-      now,
-      fetchImpl,
-    );
+    // These calls run after the guarded GitHub block above, so they need their own guard: a
+    // quota refusal or an upstream failure here must degrade to a warning on this one channel,
+    // never throw away the whole report (and the stable result an operator came here for).
+    let res: MovingResolution;
+    try {
+      res = await resolveMovingSelector(
+        env,
+        db,
+        cfg,
+        token,
+        sel,
+        now,
+        fetchImpl,
+      );
+    } catch (err) {
+      if (
+        !(err instanceof NotFoundError) &&
+        !(err instanceof UpstreamRateLimitedError)
+      )
+        throw err;
+      out.push(
+        check(
+          `channel-floor-unverified-${floor.channel}`,
+          `Channel floor (${floor.channel})`,
+          "warning",
+          `${floor.channel} is floored at ${floor.version}, but the releases read so far do not reach it ` +
+            `and the follow-up GitHub lookup failed (${err.message}), so whether the floor release still exists is unknown.`,
+        ),
+      );
+      continue;
+    }
     if (res.regressed) out.push(regressedCheck(res, floor.channel));
   }
   return out;
