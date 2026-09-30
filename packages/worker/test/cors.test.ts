@@ -84,8 +84,8 @@ async function seed(
     `INSERT INTO release_config
        (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
         manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker,
-        artifact_policy_json, metadata_access, artifacts_access)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        artifact_policy_json, metadata_access, artifacts_access, operator_policy_json)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     SLUG,
     "acme",
     "djdl",
@@ -97,9 +97,11 @@ async function seed(
     null,
     null,
     "pkey:summary",
+    "{}",
+    "public",
+    "public",
+    // The signature opt-out is operator policy, stored in `operator_policy_json` since P0-01.
     JSON.stringify({ requireSparkleSignature: false }),
-    "public",
-    "public",
   );
 }
 
