@@ -16,13 +16,16 @@ import {
   type ProductSyncStateRow,
 } from "../../repo.js";
 import { loadPublicSigningKey } from "../../core/products.js";
-import { serviceStateOf } from "../../core/services.js";
+import {
+  serviceStateOf,
+  type RegistrationPolicy,
+} from "../../core/services.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
 } from "../../services/identity/portal/repo.js";
 import { countKeysByLicense } from "../repo.js";
-import { APPROVAL_MATCHES_RECIPE } from "../../services/config/mint.js";
+import { approvalMatchesRecipe } from "../../services/config/mint.js";
 
 interface RequiredSecretStatus {
   name: string;
@@ -164,18 +167,19 @@ export async function productView(
         trustKeys: { [signingKid]: signingPublicKey },
       }
     : null;
-  const setup = await productSetupView(
-    env,
-    db,
-    p.slug,
-    Boolean(signingPublicKey),
-  );
-  const portalSettings = await getPortalProductSettings(db, p.slug);
   // D-15: the console's nav is a projection of enablement, and the SHELL needs the answer before
   // it can draw the sidebar that frames the view. Carrying it on the product row the shell
   // already loads is what keeps the nav from popping in after its own content; a second
   // round-trip to `…/services` would be a strictly slower way to render the same tree.
   const services = serviceStateOf(p);
+  const setup = await productSetupView(
+    env,
+    db,
+    p.slug,
+    Boolean(signingPublicKey),
+    services.effectiveRegistration,
+  );
+  const portalSettings = await getPortalProductSettings(db, p.slug);
   return {
     slug: p.slug,
     name: p.name,
@@ -218,6 +222,8 @@ async function productSetupView(
   db: Db,
   product: string,
   signingConfigured: boolean,
+  /** The EFFECTIVE policy: an approval under a closed policy does not count once it is open. */
+  registration: RegistrationPolicy,
 ): Promise<Record<string, unknown>> {
   const oidc = await db.first<OidcSetupRow>(
     "SELECT provider, issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
@@ -226,7 +232,7 @@ async function productSetupView(
   const edgeMint = await db.all<EdgeMintSetupRow>(
     `SELECT c.id, c.signing_key_secret,
             CASE WHEN a.id IS NULL THEN 'pending'
-                 WHEN ${APPROVAL_MATCHES_RECIPE} THEN 'approved'
+                 WHEN ${approvalMatchesRecipe(registration)} THEN 'approved'
                  ELSE 'changed' END AS approval
        FROM edge_mint_config c
        LEFT JOIN edge_mint_approvals a ON a.product = c.product AND a.id = c.id

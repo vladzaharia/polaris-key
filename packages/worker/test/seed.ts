@@ -141,14 +141,16 @@ export async function approveEdgeMintRecipe(
   db: Db,
   slug: string,
   id: string,
+  opts: { acknowledgeOpenRegistration?: boolean } = {},
 ): Promise<void> {
   await db.run(
     `INSERT OR REPLACE INTO edge_mint_approvals
        (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
-        approved_at, approved_by)
+        open_registration_acknowledged, approved_at, approved_by)
      SELECT product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds,
-            audience, ?, 'test'
+            audience, ?, ?, 'test'
        FROM edge_mint_config WHERE product = ? AND id = ?`,
+    opts.acknowledgeOpenRegistration ? 1 : 0,
     NOW,
     slug,
     id,

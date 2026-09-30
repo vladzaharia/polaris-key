@@ -112,9 +112,16 @@ export interface EdgeMintRecipe extends EdgeMintRecipeFields {
   status: "approved" | "pending" | "changed";
   secretUsage: SecretUsage | "missing" | "unrecognised";
   approval:
-    | (EdgeMintRecipeFields & { approvedAt: number; approvedBy: string })
+    | (EdgeMintRecipeFields & {
+        /** Whether the approval carries the open-registration acknowledgement. */
+        openRegistrationAcknowledged: boolean;
+        approvedAt: number;
+        approvedBy: string;
+      })
     | null;
-  changedFields: (keyof EdgeMintRecipeFields)[];
+  /** Why a `changed` recipe's approval no longer applies. `registration` means the product's
+   *  registration is open now and the approval was given without acknowledging that. */
+  changedFields: (keyof EdgeMintRecipeFields | "registration")[];
 }
 
 export interface EdgeMintRecipesResponse {

@@ -28,6 +28,13 @@
  * With `registration: "open"` any installation can register and hold a device token, so an
  * approved recipe is a public token mint. That can be right — it is the operator's decision —
  * but it has to be a visible one: the flag is required, and the audit row says it was given.
+ *
+ * The acknowledgement is stored ON the approval (`open_registration_acknowledged`), not just
+ * checked once. Registration is product state a `.pkey/product` push can change — declare
+ * `devices.registration: open`, or turn License off so the derived policy is open — without
+ * touching the recipe. The mint route re-checks it on every request: while registration is open
+ * an approval without the acknowledgement does not match, the recipe answers 404, and this list
+ * reports it `changed` with `registration` among its changed fields.
  */
 
 import { ErrorCode } from "../../../core/errors.js";
@@ -52,6 +59,7 @@ interface RecipeRow {
 }
 
 interface ApprovalRow extends RecipeRow {
+  open_registration_acknowledged: number;
   approved_at: number;
   approved_by: string;
 }
@@ -82,6 +90,24 @@ function wireFields(row: RecipeRow): Record<WireField, string | number | null> {
 /** Which wire fields differ between two rows (strict equality; NULL equals NULL). */
 function differingFields(a: RecipeRow, b: RecipeRow): WireField[] {
   return FIELDS.filter(([, col]) => a[col] !== b[col]).map(([wire]) => wire);
+}
+
+/**
+ * Why an approval no longer applies: the differing recipe fields, plus `registration` when the
+ * product is open now and the approval was given without the open-registration acknowledgement.
+ * Empty means the approval matches — the same rule as `approvalMatchesRecipe` in `../mint.ts`.
+ */
+function approvalMismatch(
+  recipe: RecipeRow,
+  approval: ApprovalRow,
+  open: boolean,
+): Array<WireField | "registration"> {
+  return [
+    ...differingFields(recipe, approval),
+    ...(open && approval.open_registration_acknowledged !== 1
+      ? (["registration"] as const)
+      : []),
+  ];
 }
 
 /** Parsed for display only. Never used to decide anything; a corrupt column shows as null. */
@@ -117,14 +143,16 @@ async function listRecipes(
 function statusOf(
   recipe: RecipeRow,
   approval: ApprovalRow | null,
+  open: boolean,
 ): "approved" | "pending" | "changed" {
   if (!approval) return "pending";
-  return differingFields(recipe, approval).length === 0
+  return approvalMismatch(recipe, approval, open).length === 0
     ? "approved"
     : "changed";
 }
 
 async function handleList(ctx: ConfigAdminContext): Promise<Response> {
+  const open = ctx.product.registration === "open";
   const rows = await listRecipes(ctx);
   const recipes = [];
   for (const { recipe, approval } of rows) {
@@ -133,7 +161,7 @@ async function handleList(ctx: ConfigAdminContext): Promise<Response> {
       ctx.product.slug,
       recipe.signing_key_secret,
     );
-    const status = statusOf(recipe, approval);
+    const status = statusOf(recipe, approval, open);
     recipes.push({
       id: recipe.id,
       ...wireFields(recipe),
@@ -149,13 +177,15 @@ async function handleList(ctx: ConfigAdminContext): Promise<Response> {
       approval: approval
         ? {
             ...wireFields(approval),
+            openRegistrationAcknowledged:
+              approval.open_registration_acknowledged === 1,
             approvedAt: approval.approved_at,
             approvedBy: approval.approved_by,
           }
         : null,
       changedFields:
         status === "changed" && approval
-          ? differingFields(recipe, approval)
+          ? approvalMismatch(recipe, approval, open)
           : [],
     });
   }
@@ -224,7 +254,8 @@ async function handleApprove(
   }
 
   const open = product.registration === "open";
-  if (open && body.acknowledgeOpenRegistration !== true) {
+  const acknowledged = body.acknowledgeOpenRegistration === true;
+  if (open && !acknowledged) {
     return err(
       422,
       ErrorCode.BadRequest,
@@ -234,16 +265,20 @@ async function handleApprove(
   }
 
   // The ECHOED values, which equal the recipe as it was just read. If a push changes the recipe
-  // after this point, the approval stops matching — which is exactly the intended failure.
+  // after this point, the approval stops matching — which is exactly the intended failure. The
+  // acknowledgement is recorded with it: an approval given without one stops matching if a push
+  // later opens registration. An operator may acknowledge ahead of time on a closed product (the
+  // API accepts the flag either way); the console only offers it while registration is open.
   await db.run(
     `INSERT INTO edge_mint_approvals
        (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
-        approved_at, approved_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        open_registration_acknowledged, approved_at, approved_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, id) DO UPDATE SET
        alg = excluded.alg, signing_key_secret = excluded.signing_key_secret,
        kid = excluded.kid, claims_template_json = excluded.claims_template_json,
        ttl_seconds = excluded.ttl_seconds, audience = excluded.audience,
+       open_registration_acknowledged = excluded.open_registration_acknowledged,
        approved_at = excluded.approved_at, approved_by = excluded.approved_by`,
     slug,
     id,
@@ -253,6 +288,7 @@ async function handleApprove(
     echoed.claims_template_json,
     echoed.ttl_seconds,
     echoed.audience,
+    acknowledged ? 1 : 0,
     now,
     session.sub,
   );
@@ -264,7 +300,7 @@ async function handleApprove(
     "config.mint.approve",
     { kind: "edgeMint", id },
     `Approved edge-mint recipe ${id} (${echoed.alg}, signs with ${echoed.signing_key_secret})` +
-      (open ? " — open registration acknowledged" : ""),
+      (acknowledged ? " — open registration acknowledged" : ""),
   );
   return adminJson({ ok: true, id, status: "approved" });
 }

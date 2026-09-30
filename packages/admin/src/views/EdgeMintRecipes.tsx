@@ -39,6 +39,10 @@ import {
  * The approve call echoes the fields shown here: if the recipe changed after this view loaded,
  * the server refuses (409) and the operator reloads to see what changed, so they never approve
  * something they did not see.
+ *
+ * The open-registration acknowledgement is part of the approval too: if registration opens after
+ * an approval that did not acknowledge it (a push can do that without touching the recipe), the
+ * recipe is `changed` with `registration` among its changed fields.
  */
 
 const FIELD_LABELS: Record<keyof EdgeMintRecipeFields, string> = {
@@ -301,6 +305,13 @@ export function EdgeMintRecipes({
               </div>
             </div>
             <RecipeFields recipe={recipe} />
+            {recipe.changedFields.includes("registration") ? (
+              <p className="text-xs text-warning">
+                Registration became open after this recipe was approved. It does
+                not mint until it is re-approved with the open-registration
+                acknowledgement.
+              </p>
+            ) : null}
             {recipe.secretUsage !== "edge-mint" ? (
               <p className="text-xs text-muted-foreground">
                 Set <span className="font-mono">{recipe.signingKeySecret}</span>{" "}

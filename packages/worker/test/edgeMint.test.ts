@@ -582,7 +582,12 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     expect(res.status).toBe(409);
     expect(res.body.fields).toEqual(["claimsTemplateJson"]);
     expect(
-      await getApprovedEdgeMintConfig(db, "djdl", "applemusic"),
+      await getApprovedEdgeMintConfig(
+        db,
+        "djdl",
+        "applemusic",
+        product.registration,
+      ),
     ).toBeNull();
   });
 
@@ -597,7 +602,12 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     );
     expect(res.status).toBe(422);
     expect(
-      await getApprovedEdgeMintConfig(db, "djdl", "applemusic"),
+      await getApprovedEdgeMintConfig(
+        db,
+        "djdl",
+        "applemusic",
+        product.registration,
+      ),
     ).toBeNull();
   });
 
@@ -621,7 +631,12 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     expect(refused.status).toBe(422);
     expect(refused.body.fields).toEqual(["acknowledgeOpenRegistration"]);
     expect(
-      await getApprovedEdgeMintConfig(db, "djdl", "applemusic"),
+      await getApprovedEdgeMintConfig(
+        db,
+        "djdl",
+        "applemusic",
+        product.registration,
+      ),
     ).toBeNull();
 
     const accepted = await admin(
@@ -636,6 +651,72 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       (r) => r.action === "config.mint.approve",
     );
     expect(row?.summary).toContain("open registration acknowledged");
+  });
+
+  it("an approval given under requires-license stops matching when registration opens, until re-approved with the acknowledgement", async () => {
+    await seedRecipe(db, {}, { approve: false });
+    const token = await activate(env, db, product);
+    const shown = (await listRecipes(env, db)).recipes[0]!;
+    // Closed policy: no acknowledgement is asked for, and none is recorded.
+    expect(
+      (
+        await admin(
+          env,
+          db,
+          "POST",
+          "/api/products/djdl/config/mint/applemusic/approve",
+          echoOf(shown),
+        )
+      ).status,
+    ).toBe(200);
+    expect((await mint(env, db, product, token)).status).toBe(200);
+
+    // A push (or an operator edit) opens registration without touching the recipe.
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({ registration: "open" }),
+    );
+    const opened = (await loadProduct(env, db, "djdl"))!;
+    expect(opened.registration).toBe("open");
+    expect((await mint(env, db, opened, token)).status).toBe(404);
+    const fragment = (await configService.discoveryFragment!({
+      product: opened,
+      env,
+      db,
+      base: "https://key.plrs.im/djdl",
+    })) as { mint: { available: boolean } };
+    expect(fragment.mint.available).toBe(false);
+
+    const listed = await listRecipes(env, db);
+    expect(listed.registration).toBe("open");
+    expect(listed.recipes[0]).toMatchObject({
+      status: "changed",
+      changedFields: ["registration"],
+      approval: { openRegistrationAcknowledged: false },
+    });
+
+    const refused = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      echoOf(listed.recipes[0]!),
+    );
+    expect(refused.status).toBe(422);
+    const accepted = await admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      { ...echoOf(listed.recipes[0]!), acknowledgeOpenRegistration: true },
+    );
+    expect(accepted.status).toBe(200);
+    expect((await mint(env, db, opened, token)).status).toBe(200);
+    expect((await listRecipes(env, db)).recipes[0]).toMatchObject({
+      status: "approved",
+      changedFields: [],
+      approval: { openRegistrationAcknowledged: true },
+    });
   });
 
   it("reports a changed recipe with the fields that changed", async () => {
@@ -837,10 +918,17 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     expect(
       handle
         .prepare(
-          "SELECT id, approved_by FROM edge_mint_approvals WHERE product = 'djdl'",
+          "SELECT id, approved_by, open_registration_acknowledged FROM edge_mint_approvals WHERE product = 'djdl'",
         )
         .all(),
-    ).toEqual([{ id: recipe.id, approved_by: "migration" }]);
+    ).toEqual([
+      // The backfill carries today's behaviour, including under open registration.
+      {
+        id: recipe.id,
+        approved_by: "migration",
+        open_registration_acknowledged: 1,
+      },
+    ]);
 
     const env = makeEnv(new KvMock(), ["djdl"]);
     const product = (await loadProduct(env, db, "djdl"))!;
@@ -856,5 +944,15 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
       exp: NOW + recipe.ttlSeconds,
     });
     expect(body.expiresAt).toBe(NOW + recipe.ttlSeconds);
+
+    // A product already running open registration keeps minting too: the backfill recorded the
+    // acknowledgement, because that recipe was already a public mint before the upgrade.
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({ registration: "open" }),
+    );
+    const opened = (await loadProduct(env, db, "djdl"))!;
+    expect(opened.registration).toBe("open");
+    expect((await mint(env, db, opened, token, recipe.id)).status).toBe(200);
   });
 });

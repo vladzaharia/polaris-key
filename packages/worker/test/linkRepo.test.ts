@@ -1026,10 +1026,13 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
   };
   const releaseWith = (edgeMint: Array<Record<string, unknown>>) =>
     JSON.stringify({ ...JSON.parse(RELEASE_JSON), edgeMint });
-  const filesWith = (edgeMint: Array<Record<string, unknown>>) =>
+  const filesWith = (
+    edgeMint: Array<Record<string, unknown>>,
+    productJson: string = PRODUCT_JSON,
+  ) =>
     stubFetch({
       ".pkey/schema.json": SCHEMA_JSON,
-      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/product.json": productJson,
       ".pkey/release.json": releaseWith(edgeMint),
     }).fetchImpl;
 
@@ -1038,7 +1041,10 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     db: Db;
     env: Env;
     token: string;
-    resync: (edgeMint: Array<Record<string, unknown>>) => Promise<void>;
+    resync: (
+      edgeMint: Array<Record<string, unknown>>,
+      productJson?: string,
+    ) => Promise<void>;
     mint: () => Promise<number>;
   }> {
     const db = makeTestDb();
@@ -1068,13 +1074,13 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       db,
       env,
       token,
-      resync: async (edgeMint) => {
+      resync: async (edgeMint, productJson) => {
         const res = await resyncRepo(
           env,
           db,
           "acme",
           NOW + ++tick,
-          filesWith(edgeMint),
+          filesWith(edgeMint, productJson),
         );
         expect(res.ok).toBe(true);
       },
@@ -1108,7 +1114,12 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     );
     expect(n?.n).toBe(0);
     expect(
-      await getApprovedEdgeMintConfig(db, "acme", "applemusic"),
+      await getApprovedEdgeMintConfig(
+        db,
+        "acme",
+        "applemusic",
+        "requires-license",
+      ),
     ).toBeNull();
   });
 
@@ -1153,6 +1164,64 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       expect(await w.mint()).toBe(200);
     });
   }
+
+  // The acknowledgement of open registration is bound to the approval: a push that opens
+  // registration without touching the recipe must not widen an approval given under a closed
+  // policy into a public mint.
+  const OPENINGS: Array<[string, Record<string, unknown>]> = [
+    [
+      "declares devices.registration: open",
+      { devices: { registration: "open" } },
+    ],
+    [
+      "turns License off, so the derived registration is open",
+      { modules: { license: { enabled: false }, config: { enabled: true } } },
+    ],
+  ];
+  for (const [how, productChange] of OPENINGS) {
+    it(`a push that ${how} makes an approved recipe 404 until re-approved with the acknowledgement`, async () => {
+      const w = await linked();
+      await w.resync([BASE_RECIPE]);
+      // Approved while registration is requires-license: no acknowledgement was asked for.
+      await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+      expect(await w.mint()).toBe(200);
+
+      const opened = JSON.stringify({
+        ...JSON.parse(PRODUCT_JSON),
+        ...productChange,
+      });
+      await w.resync([BASE_RECIPE], opened);
+      expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe(
+        "open",
+      );
+      expect(await w.mint()).toBe(404);
+      expect(
+        await getApprovedEdgeMintConfig(w.db, "acme", "applemusic", "open"),
+      ).toBeNull();
+
+      // Re-approved WITH the acknowledgement: mints under open registration.
+      await approveEdgeMintRecipe(w.db, "acme", "applemusic", {
+        acknowledgeOpenRegistration: true,
+      });
+      expect(await w.mint()).toBe(200);
+    });
+  }
+
+  it("closing registration again restores an approval given without the acknowledgement", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    await w.resync(
+      [BASE_RECIPE],
+      JSON.stringify({
+        ...JSON.parse(PRODUCT_JSON),
+        devices: { registration: "open" },
+      }),
+    );
+    expect(await w.mint()).toBe(404);
+    await w.resync([BASE_RECIPE]);
+    expect(await w.mint()).toBe(200);
+  });
 
   it("dropping a recipe from the manifest deletes its approval, so re-adding it is pending", async () => {
     const w = await linked();

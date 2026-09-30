@@ -16,12 +16,15 @@
 //   1. the recipe's `signing_key_secret` names a product secret whose USAGE is `edge-mint`
 //      (`openProductSecret(..., "edge-mint")`; a general secret reads as missing → 500
 //      `misconfigured`), and
-//   2. an `edge_mint_approvals` row equals the current recipe column for column. No approval,
-//      or an approval of different values, answers exactly like an unknown recipe (404).
+//   2. an `edge_mint_approvals` row equals the current recipe column for column, and — while
+//      the product's effective registration is `open` — records the operator's open-registration
+//      acknowledgement. No approval, an approval of different values, or an approval given under
+//      a closed policy that a later push opened, answers exactly like an unknown recipe (404).
 
 import type { Env, Db } from "../../core/platform.js";
 import { bearer, staticHtmlSecurityHeaders } from "../../core/platform.js";
 import { type Product, openProductSecret } from "../../core/products.js";
+import type { RegistrationPolicy } from "../../core/services.js";
 import { errorResponse } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws } from "@polaris-key/jws";
@@ -168,24 +171,41 @@ export async function getEdgeMintConfig(
  * CURRENT recipe equals the approved value. `IS` rather than `=` so two NULLs (no kid, no
  * audience) compare equal. `auth_page_template` is deliberately absent: it does not change what
  * is signed, and the `/auth` page ships its own script-free policy.
+ *
+ * Registration is the one input that is not a recipe column: it lives on the product, and a
+ * `.pkey/product` push can open it (declare `devices.registration: open`, or turn License off so
+ * the derived policy is open) without touching the recipe. An approval given under a closed
+ * policy is not the operator's decision that ANYONE may mint, so while the product's EFFECTIVE
+ * registration is `open` the approval must also carry the acknowledgement. Pass the resolved
+ * policy (`Product.registration`), never the declared one.
  */
-export const APPROVAL_MATCHES_RECIPE = `a.product = c.product AND a.id = c.id
+export function approvalMatchesRecipe(
+  registration: RegistrationPolicy,
+): string {
+  const columns = `a.product = c.product AND a.id = c.id
    AND a.alg IS c.alg
    AND a.signing_key_secret IS c.signing_key_secret
    AND a.kid IS c.kid
    AND a.claims_template_json IS c.claims_template_json
    AND a.ttl_seconds IS c.ttl_seconds
    AND a.audience IS c.audience`;
+  return registration === "open"
+    ? `${columns}
+   AND a.open_registration_acknowledged = 1`
+    : columns;
+}
 
-/** The recipe row, but ONLY when an operator approved exactly these values (P0-12). */
+/** The recipe row, but ONLY when an operator approved exactly these values under the product's
+ *  current registration policy (P0-12). */
 export async function getApprovedEdgeMintConfig(
   db: Db,
   product: string,
   id: string,
+  registration: RegistrationPolicy,
 ): Promise<EdgeMintRow | null> {
   return db.first<EdgeMintRow>(
     `SELECT c.* FROM edge_mint_config c
-       JOIN edge_mint_approvals a ON ${APPROVAL_MATCHES_RECIPE}
+       JOIN edge_mint_approvals a ON ${approvalMatchesRecipe(registration)}
       WHERE c.product = ? AND c.id = ?`,
     product,
     id,
@@ -199,10 +219,11 @@ export async function getApprovedEdgeMintConfig(
 export async function hasApprovedEdgeMintRecipes(
   db: Db,
   product: string,
+  registration: RegistrationPolicy,
 ): Promise<boolean> {
   const row = await db.first<{ id: string }>(
     `SELECT c.id FROM edge_mint_config c
-       JOIN edge_mint_approvals a ON ${APPROVAL_MATCHES_RECIPE}
+       JOIN edge_mint_approvals a ON ${approvalMatchesRecipe(registration)}
       WHERE c.product = ? LIMIT 1`,
     product,
   );
@@ -285,8 +306,15 @@ export async function handleMintToken(
 
   // Unknown, never approved, and approved-but-since-changed are ONE answer: the device-facing
   // contract says 404 means "not available", and an unapproved recipe must not be
-  // distinguishable from a missing one.
-  const cfg = await getApprovedEdgeMintConfig(db, product.slug, mintId);
+  // distinguishable from a missing one. "Changed" includes the product's registration opening
+  // after an approval that did not acknowledge it — re-checked here on every request, because a
+  // push can open registration without touching the recipe.
+  const cfg = await getApprovedEdgeMintConfig(
+    db,
+    product.slug,
+    mintId,
+    product.registration,
+  );
   if (!cfg) return errorResponse(404, "not_found", "no such edge-mint recipe");
   if (cfg.alg !== "ES256" && cfg.alg !== "RS256" && cfg.alg !== "EdDSA") {
     return errorResponse(500, "misconfigured", `unsupported alg ${cfg.alg}`);

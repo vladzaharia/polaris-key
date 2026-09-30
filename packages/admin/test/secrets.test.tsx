@@ -255,6 +255,7 @@ describe("Edge-mint recipes card (P0-12)", () => {
           ttlSeconds: 86400,
           approval: {
             ...FIELDS,
+            openRegistrationAcknowledged: false,
             approvedAt: 1_700_000_000,
             approvedBy: "migration",
           },
@@ -280,6 +281,49 @@ describe("Edge-mint recipes card (P0-12)", () => {
       expect(mockApi.revokeEdgeMintRecipe).toHaveBeenCalledWith(
         "djdl",
         "applemusic",
+      ),
+    );
+  });
+
+  it("explains a recipe whose approval predates open registration, and re-approves with the acknowledgement", async () => {
+    mockApi.edgeMintRecipes.mockResolvedValue(
+      recipes(
+        [
+          recipe({
+            status: "changed",
+            approval: {
+              ...FIELDS,
+              openRegistrationAcknowledged: false,
+              approvedAt: 1_700_000_000,
+              approvedBy: "op-1",
+            },
+            changedFields: ["registration"],
+          }),
+        ],
+        "open",
+      ),
+    );
+    mockApi.approveEdgeMintRecipe.mockResolvedValue({
+      ok: true,
+      id: "applemusic",
+      status: "approved",
+    });
+    renderSecrets();
+    expect(
+      await screen.findByText(/Registration became open after this recipe/),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Re-approve" }));
+    const dialog = await screen.findByRole("dialog");
+    const approve = within(dialog).getByRole("button", { name: "Approve" });
+    expect((approve as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.click(within(dialog).getByRole("checkbox"));
+    await userEvent.click(approve);
+    await waitFor(() =>
+      expect(mockApi.approveEdgeMintRecipe).toHaveBeenCalledWith(
+        "djdl",
+        "applemusic",
+        FIELDS,
+        true,
       ),
     );
   });

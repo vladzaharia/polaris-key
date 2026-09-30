@@ -666,17 +666,27 @@ describe("Core surfaces accept a registered device when License is disabled", ()
       null,
       null,
     );
-    await approveEdgeMintRecipe(w.db, "djdl", "applemusic");
     const { token } = await register(w);
-    const res = await handleMintToken(
-      mkReq("POST", { authorization: `Bearer ${token}` }),
-      w.env,
-      w.db,
-      w.product,
-      "applemusic",
-      NOW,
-    );
-    expect(res.status).toBe(200);
+    const mint = async () =>
+      (
+        await handleMintToken(
+          mkReq("POST", { authorization: `Bearer ${token}` }),
+          w.env,
+          w.db,
+          w.product,
+          "applemusic",
+          NOW,
+        )
+      ).status;
+    // A config-only product derives OPEN registration, so an approval counts only when it
+    // carries the operator's open-registration acknowledgement (P0-12).
+    expect(w.product.registration).toBe("open");
+    await approveEdgeMintRecipe(w.db, "djdl", "applemusic");
+    expect(await mint()).toBe(404);
+    await approveEdgeMintRecipe(w.db, "djdl", "applemusic", {
+      acknowledgeOpenRegistration: true,
+    });
+    expect(await mint()).toBe(200);
   });
 });
 

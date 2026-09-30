@@ -11,6 +11,14 @@
 --
 -- Values are stored rather than hashed so this backfill is a plain INSERT … SELECT and so the
 -- console can show an operator exactly what changed.
+--
+-- `open_registration_acknowledged` binds the operator's open-registration acknowledgement to the
+-- approval. Registration is not a recipe column — it lives on the product and a `.pkey/product`
+-- push can change it (declare `devices.registration: open`, or turn License off so the derived
+-- policy becomes open). So the mint route re-checks it on every request: while the product's
+-- EFFECTIVE registration is `open`, an approval matches only if this flag is 1. An approval
+-- given under requires-license therefore stops matching the moment a push opens registration,
+-- and the recipe answers 404 until an operator re-approves it with the acknowledgement.
 CREATE TABLE IF NOT EXISTS edge_mint_approvals (
   product              TEXT NOT NULL REFERENCES products(slug),
   id                   TEXT NOT NULL,
@@ -20,6 +28,7 @@ CREATE TABLE IF NOT EXISTS edge_mint_approvals (
   claims_template_json TEXT,
   ttl_seconds          INTEGER NOT NULL,
   audience             TEXT,
+  open_registration_acknowledged INTEGER NOT NULL DEFAULT 0,
   approved_at          INTEGER NOT NULL,
   approved_by          TEXT NOT NULL,
   PRIMARY KEY (product, id)
@@ -28,8 +37,10 @@ CREATE TABLE IF NOT EXISTS edge_mint_approvals (
 -- ── Backfill: deployed products keep minting through the upgrade ─────────────────────────────
 --
 -- This trusts today's references, which is the status quo rather than a weakening: every
--- secret marked here was already mintable before this migration. An operator reviews the list
--- once after deploy:
+-- secret marked here was already mintable before this migration, and every recipe approved
+-- here already minted under the product's current registration policy — so the backfill also
+-- records the open-registration acknowledgement (1), or an existing open-registration product
+-- would stop minting on deploy. An operator reviews the list once after deploy:
 --
 --   SELECT product, name FROM product_secrets WHERE usage = 'edge-mint';
 --
@@ -45,7 +56,7 @@ UPDATE product_secrets
 
 INSERT OR IGNORE INTO edge_mint_approvals
   (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
-   approved_at, approved_by)
+   open_registration_acknowledged, approved_at, approved_by)
 SELECT product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
-       CAST(strftime('%s', 'now') AS INTEGER), 'migration'
+       1, CAST(strftime('%s', 'now') AS INTEGER), 'migration'
   FROM edge_mint_config;

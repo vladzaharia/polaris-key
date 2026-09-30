@@ -41,7 +41,13 @@ export const configService: ServiceDescriptor = {
       document: `${base}/config/document`,
       schema: `${base}/config/schema`,
     },
-    mint: { available: await hasApprovedEdgeMintRecipes(db, product.slug) },
+    mint: {
+      available: await hasApprovedEdgeMintRecipes(
+        db,
+        product.slug,
+        product.registration,
+      ),
+    },
   }),
 };
 
