@@ -26,6 +26,7 @@ import {
   type RegistrationPolicy,
   type ServicesMap,
 } from "./services.js";
+import { parseWebOrigins } from "./cors.js";
 
 export interface Product {
   slug: string;
@@ -47,6 +48,9 @@ export interface Product {
   /** Who may mint a device token here (wire v3 §6). Already RESOLVED — an undeclared policy is
    *  derived from `services` at load, so no caller re-implements the derivation. */
   registration: RegistrationPolicy;
+  /** The exact browser origins this product answers CORS for (P0-05, `web.origins`). Empty
+   *  when undeclared or unreadable, which means no `Access-Control-*` header is ever sent. */
+  webOrigins: readonly string[];
 }
 
 export interface PublicSigningKey {
@@ -135,6 +139,7 @@ export async function loadProduct(
         parsedServices.services,
         parsedServices.registration,
       ),
+      webOrigins: parseWebOrigins(row.web_origins_json),
     };
   } catch {
     return null;

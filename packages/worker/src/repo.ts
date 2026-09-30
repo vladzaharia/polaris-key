@@ -30,6 +30,10 @@ export interface ProductRow {
   // `core/services.ts`; NULL reads back as the defaults (license + config).
   services_json?: string | null;
   services_source?: string | null;
+  // The per-product CORS allowlist (migrations/0024): a JSON array of exact origins from the
+  // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
+  // resync rewrites it. NULL reads back as "no origin allowed". Parsed by `core/cors.ts`.
+  web_origins_json?: string | null;
   created_at: number;
   modified_at: number;
 }
@@ -657,8 +661,8 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
   return {
     sql: `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
             default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
-            services_json, services_source, created_at, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            services_json, services_source, web_origins_json, created_at, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.slug,
       row.name,
@@ -673,6 +677,7 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       row.release_source,
       row.services_json ?? null,
       row.services_source ?? null,
+      row.web_origins_json ?? null,
       row.created_at,
       row.modified_at,
     ],

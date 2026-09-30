@@ -44,6 +44,7 @@ import { manifestIssuerRefusal } from "./linkRepo.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSyncStatements } from "./sync.js";
 import { serializeServices } from "../../core/services.js";
+import { serializeWebOrigins } from "../../core/cors.js";
 
 export type ResyncResult =
   | { ok: true; updated: string[] }
@@ -176,16 +177,20 @@ export async function resyncRepo(
 
   const updated: string[] = [];
 
+  // `web_origins_json` (P0-05) rides with the product metadata: it is manifest-owned with no
+  // operator claim, so it is rewritten unconditionally, and dropping `web.origins` from
+  // `.pkey/product` clears it back to NULL (no origin allowed) rather than freezing the old list.
   await db.run(
     `UPDATE products SET name = ?, compat_min = ?, compat_max = ?,
        default_max_offline_days = ?, default_device_limit = ?, admin_group = ?,
-       modified_at = ? WHERE slug = ?`,
+       web_origins_json = ?, modified_at = ? WHERE slug = ?`,
     manifest.product.name,
     manifest.product.compatMin,
     manifest.product.compatMax,
     manifest.product.defaultMaxOfflineDays,
     manifest.product.defaultDeviceLimit,
     manifest.product.adminGroup,
+    serializeWebOrigins(manifest.webOrigins),
     now,
     slug,
   );
