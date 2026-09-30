@@ -1,0 +1,14 @@
+-- P0-05: the per-product CORS allowlist.
+--
+-- `web.origins` in `.pkey/product` lists the exact browser origins that may READ this product's
+-- device-facing responses (discovery, JWKS, trust manifest, devices, License, Config, Release
+-- downloads, Update, the device-code flow). Stored as a JSON array of origin strings, already
+-- validated at ingest (`@polaris-key/manifest`'s `webOriginProblem`). Manifest-owned: link
+-- writes it and every resync rewrites it, so there is no `_source` column beside it.
+--
+-- NULL means "never declared" and reads back as the empty list — no origin gets any
+-- `Access-Control-*` header — which is exactly today's behaviour for every existing row.
+--
+-- ONE statement per file (see 0013/0014): a bare ALTER cannot be made replay-idempotent in
+-- pure SQL, so nothing may sit behind it and be stranded by a failed replay.
+ALTER TABLE products ADD COLUMN web_origins_json TEXT;

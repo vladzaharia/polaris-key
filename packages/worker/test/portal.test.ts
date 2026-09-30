@@ -123,11 +123,12 @@ describe("customer portal", () => {
     );
     expect(start.status).toBe(200);
     expect(sent[0]?.to).toBe("ada@example.com");
-    const token = kv
-      .keys()
-      .find((key) => key.startsWith("portal:magic:"))
-      ?.replace("portal:magic:", "");
+    // The token reaches the user only through the emailed link. R12-04: the KV key is a
+    // peppered hash of it, so it cannot be read back out of a key listing.
+    const link = /https:\/\/\S+/.exec(sent[0]!.text)?.[0];
+    const token = link ? new URL(link).searchParams.get("token") : null;
     expect(token).toBeTruthy();
+    expect(kv.keys().some((key) => key.includes(token!))).toBe(false);
 
     const verified = await handleMagicVerify(
       req("GET", `/magic/verify?token=${encodeURIComponent(token!)}`),
