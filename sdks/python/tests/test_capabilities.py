@@ -1,3 +1,4 @@
+# @pkey-feature core.discover
 """Capability resolution + discovery — wire contract v3, D-21.
 
 Three sources, in strictly decreasing precedence: a discovery document loaded this session

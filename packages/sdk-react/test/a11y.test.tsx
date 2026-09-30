@@ -1,3 +1,4 @@
+// @pkey-feature ui.kit
 // Accessibility coverage for the drop-in UI: gate dialog roles + focus management, the
 // grace banner status region, login keyboard nav (Enter submits), labelled inputs +
 // role=alert errors, and the new <PolarisLogout>. These assert the WCAG-AA affordances the

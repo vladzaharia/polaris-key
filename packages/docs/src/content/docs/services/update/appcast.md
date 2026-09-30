@@ -65,8 +65,9 @@ Each rendered `<item>` carries:
 - **`sparkle:version`** and **`sparkle:shortVersionString`** — both taken from the release
   tag. Polaris Key doesn't distinguish a marketing version from a separate build number;
   the tag is the version, in both fields.
-- **`sparkle:minimumSystemVersion`** — present only when the product's artifact policy
-  declares one, and only after its value passes a shape check (Sparkle compares it, never
+- **`sparkle:minimumSystemVersion`** — present only when an operator set a minimum macOS
+  version in [Update settings](/docs/services/update/eligibility/#the-console-update-settings)
+  (no manifest can declare it), and only after its value passes a shape check (Sparkle compares it, never
   displays it, so a value it can't parse would silently make every update ineligible).
 - **`<description>`** — the same curated changelog summary the changelog endpoint extracts
   (see Release's [Artifacts](/docs/services/release/artifacts/) page), HTML-escaped and
@@ -103,9 +104,14 @@ signature over the DMG's own bytes against the product's configured public key �
 merely checks that a sidecar file happens to exist. A release whose signature fails to
 verify, or whose product requires one it doesn't have, is dropped from the feed entirely:
 the whole `/appcast.xml` response answers `404` rather than shipping an item Sparkle would
-refuse to install anyway. A verified verdict is cached for a day, keyed to the exact
-asset, signature, and public key involved, so a hot channel doesn't re-verify the same
-bytes on every request — and so a swapped asset or a rotated key can never reuse a stale
+refuse to install anyway. The DMG is streamed through the check rather than held in
+memory, so any DMG up to GitHub's 2 GiB asset limit can be verified. A verified verdict is
+cached for 30 days and a failed one for a day, keyed to the exact asset, signature, and
+public key involved, so once a check has completed, later requests reuse its verdict instead
+of downloading the DMG again. Until a verdict is cached — including when requests arrive
+while the first check is still streaming, or when a request is aborted before its check
+finishes — each request still performs its own full check. Any change to those inputs is a new key — GitHub gives a
+re-uploaded asset a new id — so a swapped asset or a rotated key can never reuse a stale
 verdict.
 
 :::caution[This is a publishing gate, not the trust boundary]
@@ -117,7 +123,10 @@ see [Swift client & Sparkle](/docs/services/update/sparkle/) for why.
 :::
 
 Whether a product requires a signature at all is an operator-only setting — a `.pkey/`
-manifest push can declare a Sparkle public key, but it can never turn the _requirement_ off.
+manifest push can declare a Sparkle public key, but it can never turn the _requirement_ off, and
+it can never turn an operator's deliberate "off" back on either: the setting lives in its own
+column that no resync writes. The console's Update settings view asks for confirmation before
+switching it off, and the change is audited as `release.policy.update`.
 A product with no key configured and no requirement set ships an unsigned appcast item on
 purpose; that combination has to be chosen deliberately by whoever configures the release,
 not by whatever the repository happens to contain.

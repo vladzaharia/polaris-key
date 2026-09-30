@@ -183,6 +183,7 @@ const status =
 
 // ══════════════════════════════════════════════════════════════════════════════════════════
 
+// @pkey-feature devices.register
 describe("devices.register() — the keyless mint path (§6)", () => {
   it("POSTs /<p>/devices/register with the device header and NO Authorization, even holding a stale token", async () => {
     // §6: a client re-registering is asking for a FRESH credential, not authenticating with
@@ -255,6 +256,7 @@ describe("devices.register() — the keyless mint path (§6)", () => {
   });
 });
 
+// @pkey-feature devices.register
 describe("devices.register() — the fingerprint body is present or absent, never faked", () => {
   it("sends {fingerprint} as JSON when collection is enabled and produced one", async () => {
     const h = await harness({
@@ -290,6 +292,7 @@ describe("devices.register() — the fingerprint body is present or absent, neve
   });
 });
 
+// @pkey-feature devices.manage
 describe("devices.list() — the product's roster for this credential", () => {
   it("GETs /<p>/devices with the bearer and returns body.devices", async () => {
     const roster = [
@@ -333,6 +336,7 @@ describe("devices.list() — the product's roster for this credential", () => {
   });
 });
 
+// @pkey-feature devices.manage
 describe("devices.rename() / .deauthorize() — the per-device routes", () => {
   it("PATCHes /<p>/devices/:id with {label} and DELETEs the same path", async () => {
     const h = await harness({ respond: ok({}), token: STALE_TOKEN });
@@ -392,6 +396,7 @@ describe("devices.rename() / .deauthorize() — the per-device routes", () => {
   });
 });
 
+// @pkey-feature devices.report
 describe("devices.report() — best-effort telemetry that can never fail a caller", () => {
   it("POSTs /<p>/devices/report with the bearer and answers true", async () => {
     const h = await harness({ respond: ok({}), token: STALE_TOKEN });
@@ -425,6 +430,7 @@ describe("devices.report() — best-effort telemetry that can never fail a calle
   });
 });
 
+// @pkey-feature devices.report devices.facts
 describe("devices.report() — the body is built from RE-VERIFIED documents (R4-05)", () => {
   it("reports the decoded config and entitlement values from the cached signed documents", async () => {
     // v1 echoed the on-disk cache back verbatim, so a forged local file authored the one

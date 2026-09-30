@@ -1,3 +1,4 @@
+// @pkey-feature core.local
 // `@polaris-key/node/local` — the transportless profile (offline depth 3).
 //
 // The suite has three offline depths: online-with-grace, bundle-activated, and LOCAL-ONLY — a

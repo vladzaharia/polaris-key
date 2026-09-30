@@ -46,6 +46,7 @@ ROSTER = [
 
 
 # ── registration (§6) ───────────────────────────────────────────────────────────────
+# @pkey-feature devices.register
 def test_register_mints_and_stores_a_token() -> None:
     c = make_client(routes())
     r = c.devices.register()
@@ -55,6 +56,7 @@ def test_register_mints_and_stores_a_token() -> None:
     c.close()
 
 
+# @pkey-feature devices.register
 def test_register_sends_the_fingerprint_when_collection_is_on() -> None:
     seen: Dict[str, Any] = {}
 
@@ -95,6 +97,7 @@ def test_register_with_fingerprint_off_sends_no_body_at_all() -> None:
     c.close()
 
 
+# @pkey-feature devices.register
 @pytest.mark.parametrize(
     "status,kind",
     [(403, "registration-closed"), (429, "rate-limited"), (404, "not-configured"), (500, "error")],
@@ -138,6 +141,7 @@ def test_registration_does_not_fire_the_activation_event() -> None:
 
 
 # ── the roster (the parity gap) ─────────────────────────────────────────────────────
+# @pkey-feature devices.manage
 def test_list_calls_the_real_endpoint() -> None:
     c = make_client(routes(devices=ROSTER))
     c._tokens.set(TOKEN)
@@ -164,6 +168,7 @@ def test_list_devices_blends_local_state_into_the_roster() -> None:
     c.close()
 
 
+# @pkey-feature devices.manage
 def test_rename_and_deauthorize_hit_the_real_endpoints() -> None:
     seen: Dict[str, Any] = {"calls": []}
 
@@ -229,6 +234,7 @@ def test_a_roster_body_without_devices_is_an_empty_list_not_a_crash() -> None:
 
 
 # ── telemetry ───────────────────────────────────────────────────────────────────────
+# @pkey-feature devices.report
 def test_report_posts_to_devices_report_and_is_built_from_verified_docs() -> None:
     """R4-05: v1 echoed the on-disk cache back verbatim, so a forged local file authored
     the one signal that would have revealed the forgery. The snapshot is read from the
@@ -262,6 +268,7 @@ def test_report_posts_to_devices_report_and_is_built_from_verified_docs() -> Non
     c.close()
 
 
+# @pkey-feature devices.report
 def test_report_without_a_credential_is_a_no_op() -> None:
     def exploding(r: httpx.Request) -> httpx.Response:
         raise AssertionError("must not dial")

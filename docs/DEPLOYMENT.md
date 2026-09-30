@@ -15,6 +15,8 @@ Target account and fixed values:
 | Worker env           | `prod`                                         |
 | D1 database          | `polaris_key_prod`                             |
 | KV namespace         | `POLARIS_HOT_prod`                             |
+| R2 blob bucket       | `polaris-key-blobs-prod` (bound as `BLOBS`)    |
+| Bytes host           | `https://dl.plrs.im` (`BLOB_ORIGIN`)           |
 | PocketID issuer      | `https://id.plrs.im`                           |
 | Platform admin group | `admins`                                       |
 | GitHub App           | `polaris-key`                                  |
@@ -198,6 +200,75 @@ Apply all D1 migrations:
 
 ```sh
 npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
+```
+
+### Blob store (R2) and the bytes host
+
+The Core blob store (`packages/worker/src/core/blobs.ts`) keeps content-addressed release
+bytes in one R2 bucket per environment, bound as `BLOBS`, and serves them through the Worker
+on a second custom domain, the **bytes host**. Both are already declared in `wrangler.toml`:
+
+| Env     | Bucket                      | Bytes host (`BLOB_ORIGIN`)   |
+| ------- | --------------------------- | ---------------------------- |
+| prod    | `polaris-key-blobs-prod`    | `https://dl.plrs.im`         |
+| staging | `polaris-key-blobs-staging` | `https://dl-staging.plrs.im` |
+| dev     | `polaris-key-blobs-dev`     | `https://dl-dev.plrs.im`     |
+
+The three buckets already exist in the `Polaris` account with the rules below, so this is for
+bootstrapping a fresh account or re-checking one. If a bucket is missing, `wrangler deploy
+--env <env>` fails on the `BLOBS` binding; remove the `[[env.<env>.r2_buckets]]` block to
+deploy without a store (the Worker then treats it as absent and every byte route answers
+not-found). For each environment:
+
+```sh
+cd packages/worker
+B=polaris-key-blobs-prod    # or -staging / -dev
+
+npx wrangler r2 bucket create "$B"
+
+# Age locks: nothing under a locked prefix can be deleted or overwritten for 180 days.
+npx wrangler r2 bucket lock add "$B" lock-blobs   blobs/   --retention-days 180
+npx wrangler r2 bucket lock add "$B" lock-bundles bundles/ --retention-days 180
+npx wrangler r2 bucket lock add "$B" lock-deltas  deltas/  --retention-days 180
+npx wrangler r2 bucket lock add "$B" lock-gated   gated/   --retention-days 180
+
+# CI uploads land in staging/ and are promoted (verified, then copied) by the Worker.
+# staging/ is NOT locked; anything left there expires after a day.
+npx wrangler r2 bucket lifecycle add "$B" expire-staging staging/ --expire-days 1 \
+  --abort-multipart-days 1
+
+# Every read goes through the Worker. Never expose the bucket directly.
+npx wrangler r2 bucket dev-url disable "$B"
+npx wrangler r2 bucket lock list "$B"
+npx wrangler r2 bucket lifecycle list "$B"
+```
+
+Rules for the bucket, each one load-bearing:
+
+- **Age lock, not indefinite.** 180 days is long enough to roll back to any build a channel
+  could still point at, and short enough that the garbage collector (P4-14) can eventually
+  delete an unreferenced object. An indefinite lock would make that impossible; the trade-off
+  is recorded in `docs/security/THREAT-MODEL.md` §3.
+- **No R2 public domain and no `r2.dev`.** Do not attach a custom domain to the bucket in the
+  R2 dashboard. A direct R2 domain cannot set the ETag to the SHA-256, add `Repr-Digest`, or
+  check that the requesting product references the object.
+- **The bytes host is a Worker custom domain.** `dl.plrs.im` (and the staging/dev siblings) is a
+  `[[env.<env>.routes]]` entry with `custom_domain = true` on this Worker; `wrangler deploy`
+  creates its DNS record and certificate. It is not an R2 custom domain.
+- **Same-site with the console.** `dl.plrs.im` is a `plrs.im` sibling, so it is same-site with
+  `key.plrs.im`. That is an owner decision; the Worker compensates (`sandbox` CSP, `nosniff`,
+  no HTML/SVG/XML/script types, no cookies read or set on the host, host-only console
+  cookies). Do not put anything else on `dl.plrs.im`, and never add a `Domain=plrs.im` cookie
+  anywhere on the platform.
+
+After the next deploy, check the isolation from outside:
+
+```sh
+curl -sI https://dl.plrs.im/manage | grep -iE '^(HTTP|content-security-policy|x-content-type-options)'
+# HTTP/2 404, content-security-policy: sandbox; ..., x-content-type-options: nosniff
+# The fully-qualified form (trailing dot) must answer the same, not the console:
+curl -sI https://dl.plrs.im./manage | grep -iE '^(HTTP|content-security-policy|x-content-type-options)'
+# HTTP/2 404, content-security-policy: sandbox; ..., x-content-type-options: nosniff
 ```
 
 ## 4. Worker secrets
@@ -428,6 +499,10 @@ Validate portal email:
 - D1 migrations are applied to `polaris_key_prod`.
 - KV namespace `POLARIS_HOT_prod` is bound as `HOT`.
 - Durable Object namespace `RL` is bound in prod.
+- R2 bucket `polaris-key-blobs-prod` is bound as `BLOBS`, with 180-day age locks on `blobs/`,
+  `bundles/`, `deltas/` and `gated/`, a 1-day expiry on `staging/`, and `r2.dev` disabled.
+- `https://dl.plrs.im/manage` and `https://dl.plrs.im./manage` (trailing dot) answer 404 with
+  `content-security-policy: sandbox; …`.
 - Email Service binding `EMAIL` is present in prod and can send as `noreply@plrs.im`.
 - GitHub App webhooks validate with `GITHUB_WEBHOOK_SECRET`.
 - DJDL is linked through `.pkey/`, not seeded.
@@ -472,3 +547,8 @@ Portal says email sign-in is disabled.
 - Only `env.prod` carries real IDs. For `staging`/`dev`, replace the `REPLACE_ME_*_D1_ID`
   and `REPLACE_ME_*_KV_ID` placeholders in `wrangler.toml` with IDs from the resource
   creation commands.
+
+`wrangler deploy --env <env>` fails on the `BLOBS` R2 binding.
+
+- The bucket `polaris-key-blobs-<env>` does not exist in the account. Create it with the lock,
+  lifecycle and `dev-url disable` commands in §3 "Blob store (R2) and the bytes host".
