@@ -102,7 +102,8 @@ vectors today, so backends can diverge silently
 - Outlet detection in the SDKs (→ [P3-11](P3-11-outlet-detection.md)).
 - Record ingest, feed routes and signing in the Worker (→ [P3-03](P3-03-feed-composition.md)).
 - Pack records, pack sets, content rows and revocations (→ [P4-01](P4-01-packs-plan.md),
-  [P4-13](P4-13-revocation-floors-decision.md)); content-key delegation (→ [P4-19](P4-19-content-key-delegation.md)).
+  [P4-13](P4-13-revocation-floors-decision.md)); content-key delegation
+  (→ [P4-19](P4-19-content-key-delegation.md)).
 
 ## Design notes
 

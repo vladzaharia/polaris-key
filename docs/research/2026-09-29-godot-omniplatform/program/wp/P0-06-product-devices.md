@@ -1,16 +1,16 @@
 # P0-06 List and manage devices product-wide, not only per licence
 
-| Field       | Value                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                     |
-| Size        | 0.25–0.5 engineer-weeks                                                                        |
-| Depends on  | none                                                                                           |
-| Unblocks    | none                                                                                           |
-| Role        | `pkey-implementer`                                                                             |
-| Plan mode   | no                                                                                             |
+| Field       | Value                                                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene and unblockers                                                                                                              |
+| Size        | 0.25–0.5 engineer-weeks                                                                                                                 |
+| Depends on  | none                                                                                                                                    |
+| Unblocks    | none                                                                                                                                    |
+| Role        | `pkey-implementer`                                                                                                                      |
+| Plan mode   | no                                                                                                                                      |
 | Gates       | worker + admin tests; console help-link drift gate (`docsLinks.test.ts`); docs `check:links` (rule 10 does not apply, see Design notes) |
-| Human input | none                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                      |
+| Human input | none                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                               |
 
 ## Goal
 
@@ -69,7 +69,7 @@ issue #12 and [§6.2](../../README.md#62-administrator-operator) item 5 ("Device
 **Out** (and where it belongs instead):
 
 - Breakdowns by outlet, engine and channel: the report keys do not exist yet (→ P1-05 adds
-  `engine`/`outlet`; P2b-* add outlet data).
+  `engine`/`outlet`; P2b-\* add outlet data).
 - Normalising platform and arch values across SDKs (→ P1b-04, `headers.json`).
 - Bulk actions, CSV export, dormant-device sweeps.
 - Any change to the licence-scoped endpoints' behaviour.

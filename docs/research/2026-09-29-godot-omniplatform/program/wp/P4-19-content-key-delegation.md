@@ -105,6 +105,8 @@ TUF-style delegation).
 - **Wire version.** A new `kind` inside `pkey-release+jws`. If v4 SDKs reject unknown kinds, old
   clients simply never accept delegated packs, which is safe; the plan states whether that needs a
   `PROTOCOL_VERSION` change.
+- **Corpus concurrency.** Only one corpus-touching package may be in flight (program README §5);
+  coordinate with P4-10 and P4-13.
 
 ## Steps
 

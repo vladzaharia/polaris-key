@@ -6,10 +6,10 @@
 | Size        | 0.75–1 engineer-weeks                                                                                      |
 | Depends on  | none                                                                                                       |
 | Unblocks    | [P1-03](P1-03-godot-license.md)                                                                            |
-| Role        | `pkey-wire-planner` (plan), then `pkey-implementer` and `pkey-sdk-porter` for the approved plan           |
-| Plan mode   | **yes**: `program/plans/P0-04.md` must be approved (merged) before any code                               |
+| Role        | `pkey-wire-planner` (plan), then `pkey-implementer` and `pkey-sdk-porter` for the approved plan            |
+| Plan mode   | **yes**: `program/plans/P0-04.md` must be approved (merged) before any code                                |
 | Gates       | plan mode; corpus `gate-matrix.json` + Swift mirror (`pnpm gen:corpus -- --check`); all SDKs; catalog data |
-| Human input | approval of the plan and its open questions; djdl's own `.pkey/schema` edit (follow-up, not blocking)     |
+| Human input | approval of the plan and its open questions; djdl's own `.pkey/schema` edit (follow-up, not blocking)      |
 | Repo        | `vladzaharia/polaris-key`                                                                                  |
 
 ## Goal
@@ -36,7 +36,8 @@ would have to send `staging` to pass ([notes/A2 §1.9](../../notes/A2-sdk-port.m
 
 ## Read first
 
-- `AGENTS.md` (rules 1, 2, 4) and `CLAUDE.md` (plan mode); `program/plans/README.md` (plan format).
+- `AGENTS.md` (rules 1, 2, 4); `program/README.md` §3 and §7 (plan mode); `program/plans/README.md`
+  (the plan format).
 - `docs/security/WIRE-CONTRACT-V3.md` §5 and the client-metadata header list (around line 147).
 - Server: `packages/worker/src/core/gate.ts:51-157`, `core/entitledAccess.ts:126-135`
   (`channelAllowed`: the Release-side rule, `pr-N` allowed by `pr`), `services/release/channels.ts`,
@@ -117,7 +118,7 @@ order is contract → catalog → corpus → every SDK:
    widens accepted header values and every old client stays valid. The plan must say so
    explicitly against rule 2.
 2. Should SDKs send `beta` for `0.0.0-staging*` builds, or keep sending `staging`? Recommend
-   `beta`: the alias keeps old servers irrelevant because this server change ships first.
+   `beta`: the Worker change is deployed before any SDK release, and it accepts both spellings.
 3. Swift's public `enum Channel` gains `.beta`: adding a case breaks exhaustive `switch`es in
    adopters' code. Recommend adding it with a release note; the alternative is a `String`-backed
    struct, which is a larger API change.

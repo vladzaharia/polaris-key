@@ -102,19 +102,20 @@ them once is cheaper than reconciling five PRs.
    record; CONTENT §9 lists a singular `variant`. Recommend `variants[]` in one record, so an app
    pin names one record and the device picks its variant. Per variant: `variant`
    (`texture`/`locale`/`quality`), `payload {size, sha256}`, `full {sha256, bytes, size, codec}`,
-   `files {format: "pkey-files/1", layout, sha256, bytes, gaps?}`, `deltas[]`, `requires
-{engine, contentApi: {<appDeliverable>: range}, features, packs}`, `conflicts`. Release level:
-   `deliverable`, `kind`, `version`, `seq`, `type`, `formatVersion`, `entitlement`, `provenance`.
-   Reserve `chunks`, `provides`, `removes`.
+   `files {format: "pkey-files/1", layout, sha256, bytes, gaps?}`, `deltas[]`, `conflicts`, and
+   `requires` (`engine`, `contentApi: {<appDeliverable>: range}`, `features`, `packs`). Release
+   level: `deliverable`, `kind`, `version`, `seq`, `type`, `formatVersion`, `entitlement`,
+   `provenance`. Reserve `chunks`, `provides`, `removes`.
 3. **Size.** Records obey the 65,536-byte decoded payload cap unless P3-01 changed it. Per-file
    detail therefore lives in hash-pinned side objects (the files index, per-file delta
    descriptors), never inline. State the worst case for the Diceroll-sized pack (625 entries).
 4. **Every zstd reference carries its decoded `size`** (A7 §5; Godot's `decompress` needs it).
 5. **File blobs.** The planner needs `blobBytes` per file (A7 §4.1), but `pkey-files/1` (A7 §3.3)
-   has no blob fields. Recommend each files-index entry gains `blob {sha256, bytes, codec}` of its
-   stored object, every stored object is addressed by the SHA-256 of its stored bytes (so `ETag`
-   and `Repr-Digest` match, README §3.5), and CI publishes a blob for every file, deduplicated by
-   hash, so `file` works from any older release.
+   has no blob fields; A7's generator keyed blobs by the **decoded** file hash (`files/<sha256>`)
+   and kept the codec in the test case, which production cannot do. Recommend each files-index
+   entry gains `blob {sha256, bytes, codec}` of its stored object, every stored object is addressed
+   by the SHA-256 of its stored bytes (so `ETag` and `Repr-Digest` match, README §3.5), and CI
+   publishes a blob for every file, deduplicated by hash, so `file` works from any older release.
 6. **Tree payloads.** Recommend `payload.sha256` = `treeDigest` (A7 §3.3) and a `full` object that
    is one zstd frame of the files concatenated in index order, split by the index on apply (the
    container rule with empty gaps).
@@ -229,7 +230,8 @@ them once is cheaper than reconciling five PRs.
 - [ ] The corpus section lists every file, section, case id and approximate size, and adds up the
       budget.
 - [ ] Every new manifest rule has a named error code and a `rejects`/`accepts` classification.
-- [ ] One names table covers every identifier downstream briefs will quote.
+- [ ] One names table covers every identifier downstream briefs will quote, and every name that
+      P3-01 reserved (`kind: pack`, `content`, the record hash) is used as P3-01 defined it.
 - [ ] `workpackages.json` shows `awaiting-approval`; `node check.mjs` and prettier pass.
 
 ## Verify
@@ -245,7 +247,8 @@ git diff --name-only origin/main...HEAD   # only the plan, workpackages.json and
 
 P4-02 takes the manifest fields, publish rules, tables and roles; P4-03 takes the record, files
 index, delta and marker shapes and the pin source; P4-04 takes the corpus layout, generator
-design, cases and mirrors. When the human approves, set
-`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-01 done` in the plan
-PR before it merges. If P4-02 to P4-04 later need to deviate from the plan, they amend it in a
-small plan PR first.
+design, cases and mirrors (its own short plan, `plans/P4-04.md`, only fills in what this one
+leaves open); P4-05 to P4-09 take the names table. If a later package needs to deviate, it amends
+this plan in a small plan PR first. The planner sets `awaiting-approval`; the lead sets
+`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-01 done` once the
+human merges the plan PR.

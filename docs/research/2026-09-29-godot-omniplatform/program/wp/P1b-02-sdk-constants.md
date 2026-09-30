@@ -1,16 +1,16 @@
 # P1b-02 Generate SDK constants: error codes, header values, enums, feature ids
 
-| Field       | Value                                                                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                                     |
-| Size        | 1–1 engineer-weeks                                                                                                                                  |
-| Depends on  | [P1b-01](P1b-01-parity-registry.md), [P0-09](P0-09-service-table.md)                                                                                |
-| Unblocks    | [P1b-04](P1b-04-headers-config-corpora.md)                                                                                                          |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                          |
-| Plan mode   | no (it must not edit `shared-protocol` or `client-core`; see Design notes)                                                                          |
-| Gates       | a new drift gate (`pnpm gen:constants -- --check`, in CI and the green gate); the generated `reference/error-codes.mdx` page (AGENTS rule 3)       |
-| Human input | none                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                           |
+| Field       | Value                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                              |
+| Size        | 1–1 engineer-weeks                                                                                                                           |
+| Depends on  | [P1b-01](P1b-01-parity-registry.md), [P0-09](P0-09-service-table.md)                                                                         |
+| Unblocks    | [P1b-04](P1b-04-headers-config-corpora.md)                                                                                                   |
+| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                   |
+| Plan mode   | no (it must not edit `shared-protocol` or `client-core`; see Design notes)                                                                   |
+| Gates       | a new drift gate (`pnpm gen:constants -- --check`, in CI and the green gate); the generated `reference/error-codes.mdx` page (AGENTS rule 3) |
+| Human input | none                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                    |
 
 ## Goal
 

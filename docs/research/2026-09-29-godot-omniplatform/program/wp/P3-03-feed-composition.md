@@ -93,7 +93,8 @@ update decision and for the app-updater feeds of [P3-09](P3-09-updater-feeds.md)
 - Sparkle, WinSparkle, Velopack, `.appinstaller`, zsync and extended `/version` renderers
   (→ [P3-09](P3-09-updater-feeds.md)).
 - Pack records, pack sets, pack floors and revocations in the feed
-  (→ [P4-02](P4-02-pack-deliverables.md), [P4-12](P4-12-compat-resolution.md), [P4-13](P4-13-revocation-floors-decision.md)).
+  (→ [P4-02](P4-02-pack-deliverables.md), [P4-12](P4-12-compat-resolution.md),
+  [P4-13](P4-13-revocation-floors-decision.md)).
 - Update funnel and auto-halt (→ [P6-03](P6-03-update-funnel-autohalt.md)); rollout and halt
   controls themselves (→ [P2b-04](P2b-04-rollouts-delivery.md)).
 - SDK verification (→ [P3-04](P3-04-v4-node.md) to [P3-08](P3-08-v4-godot.md)).
@@ -173,8 +174,8 @@ mise exec node@22 -- pnpm typecheck
   [P3-09](P3-09-updater-feeds.md) reuses. The composer's per-outlet view (target release, rollout,
   halt, availability) as a function P3-09's renderers call rather than re-deriving.
 - Record storage keyed by hash and deliverable, which [P4-02](P4-02-pack-deliverables.md) extends
-  to `kind: pack`; the feed's reserved `packSets` and revocation slots, filled by [P4-12](P4-12-compat-resolution.md) and
-  [P4-13](P4-13-revocation-floors-decision.md).
+  to `kind: pack`; the feed's reserved `packSets` and revocation slots, filled by
+  [P4-12](P4-12-compat-resolution.md) and [P4-13](P4-13-revocation-floors-decision.md).
 - `update_feed_state` and the composer, which [P6-03](P6-03-update-funnel-autohalt.md) reads when
   it halts a rollout.
 - `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P3-03 done` in the PR

@@ -1,0 +1,160 @@
+# P0-12 Harden edge-mint: scope signing secrets and authorise minting
+
+| Field       | Value                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene and unblockers                                                                                      |
+| Size        | 0.5–0.5 engineer-weeks                                                                                          |
+| Depends on  | none                                                                                                            |
+| Unblocks    | [P1-04](P1-04-godot-config.md)                                                                                  |
+| Role        | `pkey-implementer`                                                                                              |
+| Plan mode   | no (the device-facing route keeps its wire contract)                                                            |
+| Gates       | threat model; D1 migrations; `TABLE_OWNERS` + generated `data-model`; docs `check:links`                        |
+| Human input | after deploy, an operator reviews the secrets the migration marked `edge-mint` and approves nothing new blindly |
+| Repo        | `vladzaharia/polaris-key`                                                                                       |
+
+## Goal
+
+A `.pkey/` push can no longer turn an arbitrary product secret into a publicly reachable token
+mint. Edge-mint signs only with product secrets an operator has marked for edge-minting, and only
+with recipes an operator has approved in the exact form they will run. Existing djdl minting keeps
+working through the upgrade. The threat model records the new rule.
+
+## Why
+
+Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) issue #5 (High,
+latent) and [notes/A3 §7.3](../../notes/A3-admin-dx.md#73-store-api-credentials-inside-pkey):
+
+- Recipes are repo-authored (`.pkey/product` or `.pkey/release` `edgeMint[]`); the validator
+  checks only the shape of `signingKeySecret` (`packages/shared-manifest/src/index.ts:1197-1206`).
+- `handleMintToken` opens **any** product secret by that name
+  (`packages/worker/src/services/config/mint.ts:226-234`, `openProductSecret` in
+  `core/products.ts:146-163`).
+- The template may set `iss` and any non-reserved claim; only `iat`/`exp`/`nbf`/`aud` are stripped
+  (`mint.ts:168-181`), and `aud` comes from the recipe.
+- The route asks only for a device token of the product, plus a usable licence when License is on
+  (`mint.ts:214-219`). Under `open` registration anyone can get a device token.
+
+So a repo writer, or a mistaken recipe, can mint tokens from any PEM-shaped product secret. Today
+that is Apple MusicKit for djdl; once store credentials exist it would be a public App Store
+Connect or Play token mint. The report treats this as a hard design constraint for outlet
+credentials (P5-01), and Godot will be the first SDK to call edge-mint for leaderboard and
+cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identity) "Secrets").
+
+## Read first
+
+- `AGENTS.md` and `docs/security/THREAT-MODEL.md` (§2 A5, §3 "Boundaries that are weaker than they
+  look", §5 semi-trusted inputs, §6 property 1, §9 review triggers).
+- `packages/worker/src/services/config/mint.ts` (whole file) and `services/config/index.ts:25-45`
+  (the discovery `mint.available` bit).
+- `packages/worker/src/core/products.ts:146-163`, `packages/worker/src/keyvault.ts` (seal kinds and
+  AAD), `packages/worker/src/admin/handlers/products.ts:847-890` (write-only secret PUT).
+- `packages/worker/src/services/release/resync.ts:382-400` and `linkRepo.ts` (recipes are
+  deleted and re-inserted on every push), `migrations/0001_init.sql:160-170`, `0003_keyvault.sql:22-33`.
+- `packages/worker/test/edgeMint.test.ts`, `test/attack/R12-secrets.test.ts`.
+- `packages/docs/src/content/docs/services/config/edge-mint.md`.
+
+## Scope
+
+**In:**
+
+- **Scope secrets.** `product_secrets.usage` (`NULL` = general, or `edge-mint`), set only through
+  the admin API: `PUT /manage/api/products/<slug>/secrets/<name>` accepts an optional
+  `"usage": "edge-mint"`. `openProductSecret` takes a required-usage argument; edge-mint asks for
+  `edge-mint`, the OIDC client secret path asks for general. A mismatch reads as "missing" and the
+  route returns today's `500 misconfigured`.
+- **Authorise recipes.** A new table `edge_mint_approvals(product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, approved_at, approved_by)`,
+  primary key `(product, id)`. The route mints only when an approval exists whose fields equal the
+  current `edge_mint_config` row column for column; otherwise it answers exactly like an unknown
+  recipe (`404 not_found`). Any push that changes a security-relevant field makes the recipe inert
+  until re-approved. Resync deletes approvals for recipe ids the manifest no longer declares.
+- **Admin API** under Config's admin handler (`services/config/admin/index.ts`):
+  `GET /manage/api/products/<slug>/config/mint` (each recipe with status `approved`, `pending` or
+  `changed`, its secret's usage, and the product's effective registration policy);
+  `POST …/config/mint/<id>/approve` with the recipe fields echoed back (refused if they no longer
+  match, so an operator never approves something they did not see) and, when the effective
+  registration is `open`, `"acknowledgeOpenRegistration": true`;
+  `POST …/config/mint/<id>/revoke`. Audit events `config.mint.approve`, `config.mint.revoke`,
+  `secret.usage`.
+- **Per-device rate limit** in addition to the per-IP one: bucket `mintDevice`, keyed by device id,
+  30 per 60 seconds.
+- **Discovery:** `config.mint.available` is true only when an approved recipe exists.
+- **Console:** an "Edge-mint recipes" card (Config section or the Secrets view) with approve and
+  revoke, the open-registration warning, and a usage selector when setting a secret; a setup
+  checklist item for pending recipes.
+- **Migrations** (numbered on rebase): `ALTER TABLE product_secrets ADD COLUMN usage TEXT;`; the
+  approvals table; an idempotent backfill that marks every secret currently named by an
+  `edge_mint_config` row as `edge-mint` and copies every current recipe into `edge_mint_approvals`
+  (`approved_by = 'migration'`), so deployed products keep minting.
+- **Docs:** `services/config/edge-mint.md` (the recipe, the guard, the responses table, discovery),
+  `admin/secrets-and-keys.md`, and the `authoring-pkey-manifests` skill (recipes need approval).
+- **Threat model:** A5 gains the scoping rule; §3 and §5 say edge-mint recipes from `.pkey/` are
+  inert until an operator approves them; §6 property 1 names the two conditions; §9 adds "a new
+  product-secret usage or sealed kind" as a review trigger.
+
+**Out** (and where it belongs instead):
+
+- Outlet credentials as a separate sealed kind in their own table, unreachable from
+  `openProductSecret` and edge-mint (→ P5-01, which also extracts `signEs256`/`signRs256` into
+  `core/jwt.ts`).
+- Binding usage into the AEAD associated data (`pkey:v2:<product>:<kind>:<id>`, `keyvault.ts`):
+  stronger, but it needs every existing secret re-sealed; revisit in P5-01.
+- Edge-mint in the SDKs (→ [P1-04](P1-04-godot-config.md) for Godot, P1b-08 for Node, Python, Swift).
+- The `/auth` page (`handleMintAuth`), which already ships a script-free policy.
+
+## Design notes
+
+- **No wire change.** The device-facing route keeps its paths, methods, success body and error
+  codes; an unapproved recipe is indistinguishable from a missing one. No OpenAPI, corpus or SDK
+  change, so no plan mode. If a new error code seems necessary, stop and escalate.
+- **Compare columns, not hashes.** Storing the approved values makes the migration backfill a
+  plain `INSERT … SELECT` and makes "what changed" easy to show in the console.
+- **The backfill trusts today's references.** That is the status quo, not a weakening: every
+  secret it marks was already mintable. The human input above is to look at the list once
+  (`SELECT product, name FROM product_secrets WHERE usage = 'edge-mint'`).
+- **Open registration.** Approval is the operator's explicit decision that "anyone who installs
+  this product may mint this token". The acknowledgement flag makes that visible in the audit log.
+- **TABLE_OWNERS:** add `edge_mint_approvals` under Config in
+  `packages/docs/scripts/gen-reference.mjs:248`, then regenerate `reference/data-model.mdx`.
+- The admin API is narrative-only for `routeCoverage` (`test/routeCoverage.test.ts:28-44`);
+  document the endpoints on the docs site.
+
+## Steps
+
+1. Migrations and repository functions (usage read/write, approvals CRUD); regenerate data-model.
+2. `openProductSecret` with required usage; update both callers.
+3. Approval check, per-device rate limit and discovery bit in `mint.ts` / `config/index.ts`.
+4. Resync and link: delete orphaned approvals; never write approvals from a manifest.
+5. Admin endpoints, console card, checklist item, secret usage selector.
+6. Tests, docs, threat model, changeset.
+
+## Acceptance criteria
+
+- [ ] Test: a recipe naming a general-usage secret returns `500 misconfigured` and mints nothing.
+- [ ] Test: a new recipe arriving by resync returns `404` until approved, then mints.
+- [ ] Test: changing the recipe's `claimsTemplate`, `audience`, `alg`, `kid`, `ttlSeconds` or
+      `signingKeySecret` by resync makes it `404` again; an unchanged resync keeps it approved.
+- [ ] Test: approve with stale echoed fields is refused; approve on an `open` product without
+      `acknowledgeOpenRegistration` is refused.
+- [ ] Test: after the migration, a djdl-shaped fixture (recipe + secret) mints exactly as before.
+- [ ] Test: the per-device bucket returns `429` after 30 mints in a minute from one device.
+- [ ] Test: discovery `config.mint.available` is false while every recipe is pending.
+- [ ] `THREAT-MODEL.md` and `services/config/edge-mint.md` describe both conditions; `gen:check`,
+      `check:links` and the green gate pass (`AGENTS.md`).
+
+## Verify
+
+```sh
+mise exec node@22 -- pnpm --filter @polaris-key/worker test -- edgeMint R12-secrets linkRepo admin
+mise exec node@22 -- pnpm --filter @polaris-key/admin test
+mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
+mise exec node@22 -- pnpm typecheck
+```
+
+## Hand-off
+
+P1-04 (Godot config client) and P1b-08 (edge-mint in Node, Python, Swift) rely on the unchanged
+route contract: `GET|POST /<p>/config/mint/<id>/token` with a device bearer token →
+`200 { token, expiresAt }`; `404` means "not available" (unknown or not approved); discovery
+`config.mint.available` says whether to try. P5-01 builds outlet-credential custody on the rule
+this package establishes: a secret's usage is set by an operator, never by a manifest. When done:
+`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-12 done`.

@@ -1,16 +1,16 @@
 # D-01 Diceroll: fix updater issues that need no Polaris Key changes
 
-| Field       | Value                                                                                                                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "Now", before any Polaris Key change                                                                                                                                             |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                |
-| Depends on  | none                                                                                                                                                                                                                                |
-| Unblocks    | none in the graph; [D-03](D-03-diceroll-after-p3.md) builds on its per-artifact stamps and signing-key list                                                                                                                         |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                                                               |
-| Plan mode   | no                                                                                                                                                                                                                                  |
-| Gates       | Diceroll's CI (`ci.yml`: tests including the updater suites, `tools/ci/selftest.sh`, export smoke) and one tagged pre-release through `release.yml`                                                                                 |
+| Field       | Value                                                                                                                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "Now", before any Polaris Key change                                                                                                                                                                     |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                        |
+| Depends on  | none                                                                                                                                                                                                                                                        |
+| Unblocks    | none in the graph; [D-03](D-03-diceroll-after-p3.md) builds on its per-artifact stamps and signing-key list                                                                                                                                                 |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                                                                                          |
+| Gates       | Diceroll's CI (`ci.yml`: tests including the updater suites, `tools/ci/selftest.sh`, export smoke) and one tagged pre-release through `release.yml`                                                                                                         |
 | Human input | Android developer verification registration. Also needed, not in the graph: the App Store Apple ID for the real listing URL (if the app exists), the release keystore in CI secrets, and access to Windows, Linux and macOS machines to run exported builds |
-| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                              |
+| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                                                      |
 
 > **Re-verify first.** Every Diceroll path and line below comes from
 > [notes/A4](../../notes/A4-diceroll-mapping.md), read at Diceroll commit `4e78bb6` on 2026-09-29.
@@ -29,7 +29,7 @@ Polaris Key code or service is involved. **Diceroll deletes nothing at this step
 
 - **#1:** the updater relaunches with `--main-pack` (`game/update/updater.gd:313`), which official
   Godot 4.6+ templates ignore (godotengine/godot#111909). Staged code packs most likely never
-  apply on shipped desktop builds, and every launch may relaunch
+  apply on shipped desktop builds, and the updater may churn `boot_attempts`
   ([README §0.4](../../README.md#04-findings-that-should-change-plans-now) item 1).
 - **#2:** Steam and itch upload the `github`-stamped zips (`release.yml:403-461`), so the updater is
   live inside those installs, contrary to `docs/RELEASE.md:107-108`.
@@ -103,9 +103,14 @@ Polaris Key code or service is involved. **Diceroll deletes nothing at this step
 
 ## Design notes
 
-- **Keep Diceroll's stamp vocabulary** (`github | web | play | appstore | testflight | steam | itch |
-dev`, `update_policy.gd:17-21`). Polaris Key's outlet ids (`direct`, `altstore`, `obtainium`, …,
-  [README §3.1](../../README.md#31-vocabulary)) arrive with the SDK's export plugin in D-03.
+- **Keep Diceroll's stamp vocabulary** (`github`, `web`, `play`, `appstore`, `testflight`,
+  `steam`, `itch`, `dev`; `update_policy.gd:17-21`). Polaris Key's outlet ids (`direct`,
+  `altstore`, `obtainium`, …, [README §3.1](../../README.md#31-vocabulary)) arrive with the SDK's
+  export plugin in D-03.
+- **One pack, two platforms.** The published desktop pack is exported from the Linux preset
+  (`tools/export.sh:224-238`), so the swap puts a Linux-exported pack beside the Windows executable.
+  The old updater meant to do the same, but it never ran; prove the Windows build boots on it, or
+  publish a Windows-exported pack as well.
 - **Never overwrite a pack in use.** Overwriting a mounted pack corrupts reads
   ([notes/A6 §2.7](../../notes/A6-godot-patching.md#27-mount-semantics)), so the swap happens only as
   the process exits. Godot opens pack files per read rather than holding them open, but Windows

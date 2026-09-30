@@ -1,16 +1,16 @@
 # D-02 Diceroll: adopt the Godot SDK for config, licensing, identity and update checks
 
-| Field       | Value                                                                                                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P1"                                                                                                                                                                      |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                               |
-| Depends on  | [P1-12](P1-12-godot-release.md)                                                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                             |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P1"                                                                                                                                                                     |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                              |
+| Depends on  | [P1-12](P1-12-godot-release.md)                                                                                                                                                                                                   |
 | Unblocks    | none in the graph; [D-03](D-03-diceroll-after-p3.md) builds on the registered product and the installed SDK                                                                                                                       |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                                                              |
-| Plan mode   | no                                                                                                                                                                                                                                 |
-| Gates       | `pkey validate` clean in the Diceroll repo; Diceroll's CI; no Polaris Key gate (no change there)                                                                                                                                   |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                             |
+| Plan mode   | no                                                                                                                                                                                                                                |
+| Gates       | `pkey validate` clean in the Diceroll repo; Diceroll's CI; no Polaris Key gate (no change there)                                                                                                                                  |
 | Human input | none in the graph. Needed in practice: a platform admin links the Diceroll repository in the console (registration mints the product key); and, for the web build, its origins added to the CORS allowlist once P0-05 has shipped |
-| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                             |
+| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                            |
 
 > **Re-verify first.** Diceroll paths below come from [notes/A4](../../notes/A4-diceroll-mapping.md)
 > (Diceroll `4e78bb6`, 2026-09-29); this brief was written without access to the Diceroll
@@ -74,7 +74,8 @@ resolution agrees with Diceroll's own decisions before D-03 hands updates over.
 - Settings: a sign-in row (`PKeySignInDialog`: user code, QR, open or copy link) and a licence status
   row. Dev menu: the SDK's section registered through `DevMenu.register_section`; COPY DIAGNOSTICS
   gains device id, licence status and the SDK's update-check result.
-- **Update check, report-only:** call the SDK's check (P1-08) after the title shows; show its result
+- **Update check, report-only:** call `PolarisKey.update.check` (P1-08) after the title shows,
+  without connecting its `update_available(check)` signal to any prompt; show its result
   in the dev menu and diagnostics; log when it disagrees with Diceroll's `UpdatePolicy.decide()`.
   Diceroll's updater stays the only thing that prompts or downloads.
 - Tests in Diceroll's suite for: offline boot with defaults, a kill switch honoured, the entitlement
@@ -120,8 +121,8 @@ resolution agrees with Diceroll's own decisions before D-03 hands updates over.
 
 ## Acceptance criteria
 
-- [ ] `pkey validate` exits 0; the product is linked (human-confirmed); `pkey doctor --base-url
-https://key.plrs.im --product diceroll` passes.
+- [ ] `pkey validate` exits 0; the product is linked (human-confirmed); `pkey doctor` against
+      `https://key.plrs.im` passes (the command is in Verify).
 - [ ] Exported builds boot and play with the network off and no cached documents.
 - [ ] A tuning change and a kill-switch flip made in the console reach a running build on its next
       sync; a test covers each with a recorded config document.

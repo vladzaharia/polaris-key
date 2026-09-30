@@ -40,8 +40,9 @@ per artifact, and so mislabels Steam, itch and sideload builds
 - [notes/E9 §1](../../notes/E9-runtime-building-blocks.md#1-outlet-detection): the signal
   catalogue (§1.1, with verification tags) and what is pure per runtime (§1.2).
 - [README §5.5](../../README.md#55-distribution-layer-one-build-any-outlet) (runtime detection
-  overrides the stamp when the platform knows better); [PARITY §2.2](../../PARITY.md#22-typed-unsupported-here)
-  and [§8](../../PARITY.md#8-parity-gaps-to-close-now) (the `AppDistributor` iOS 17.4 guard, P3).
+  overrides the stamp when the platform knows better);
+  [PARITY §2.2](../../PARITY.md#22-typed-unsupported-here) and
+  [§8](../../PARITY.md#8-parity-gaps-to-close-now) (the `AppDistributor` iOS 17.4 guard, P3).
 - The decision wiring each SDK got in [P3-04](P3-04-v4-node.md) to [P3-08](P3-08-v4-godot.md);
   `conformance/runners/node`, `sdks/python/tests/`, `sdks/swift/Tests/PolarisKeyTests/`, the Godot
   runner.
@@ -97,8 +98,10 @@ per artifact, and so mislabels Steam, itch and sideload builds
 
 ## Steps
 
-1. Confirm P3-02 is `done` and the SDK wave has landed where it matters (P3-08 for Godot);
-   branch `wp/P3-11-outlet-detection`.
+1. Confirm P3-02 is `done`; branch `wp/P3-11-outlet-detection`. The Godot part needs P1-02, and
+   the wiring step needs each SDK's wave package (P3-04 to P3-08). Where one has not landed, ship
+   the pure function and readers for that SDK, and leave the default-outlet wiring to its wave
+   package with a note in the PR.
 2. The pure function and runner sections, one SDK per commit.
 3. Signal readers with fake-environment tests, one SDK per commit.
 4. Wire the default outlet into each update client; docs; `parity.json`. Set `in-review`.

@@ -1,16 +1,16 @@
 # P0-09 Make the service list data-driven, with a drift gate
 
-| Field       | Value                                                                                                                         |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                                                    |
-| Size        | 1–1.5 engineer-weeks                                                                                                          |
-| Depends on  | [P0-08](P0-08-unknown-slug-tolerance.md) (merged **and deployed**)                                                           |
-| Unblocks    | [P1b-02](P1b-02-sdk-constants.md), [P2-01](P2-01-blob-store.md), [P2b-01](P2b-01-distribution-service.md)                    |
-| Role        | `pkey-implementer`                                                                                                            |
-| Plan mode   | no (no wire shape changes; stop and escalate if one appears)                                                                  |
+| Field       | Value                                                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene and unblockers                                                                                                                         |
+| Size        | 1–1.5 engineer-weeks                                                                                                                               |
+| Depends on  | [P0-08](P0-08-unknown-slug-tolerance.md) (merged **and deployed**)                                                                                 |
+| Unblocks    | [P1b-02](P1b-02-sdk-constants.md), [P2-01](P2-01-blob-store.md), [P2b-01](P2b-01-distribution-service.md)                                          |
+| Role        | `pkey-implementer`                                                                                                                                 |
+| Plan mode   | no (no wire shape changes; stop and escalate if one appears)                                                                                       |
 | Gates       | new drift gate `pnpm gen:services -- --check` (joins the green gate, CI and pre-commit); rule 3 banner family; all SDKs; rule 9 parity stays green |
-| Human input | confirmation that P0-08 is in production before this merges (record the deploy in the PR)                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                     |
+| Human input | confirmation that P0-08 is in production before this merges (record the deploy in the PR)                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                          |
 
 ## Goal
 
@@ -34,7 +34,7 @@ are planned (`distribution`, and any later one), so the table pays for itself tw
 
 ## Read first
 
-- `AGENTS.md` (rules 3, 5, 6, 9) and `CLAUDE.md`.
+- `AGENTS.md` (rules 3, 5, 6, 9) and `program/README.md` §7.
 - [P0-08](P0-08-unknown-slug-tolerance.md): the unknown-slug passthrough this builds on.
 - [notes/A3 §5.3](../../notes/A3-admin-dx.md#53-blast-radius-of-a-sixth-service-content) (the
   blast-radius list) and [PARITY §4.4](../../PARITY.md#44-generated-constants) (the later
@@ -48,30 +48,30 @@ are planned (`distribution`, and any later one), so the table pays for itself tw
 
 The enumerations, verified against the code (line numbers at the time of writing):
 
-| Where | What it enumerates | After this package |
-| --- | --- | --- |
-| `packages/worker/src/core/services.ts:20-66` | `ServiceSlug`, `SERVICE_SLUGS`, `DEFAULT_SERVICES`, `defaults()` | imported from `@polaris-key/manifest` (generated) |
-| `packages/worker/src/core/services.ts:250-280` | coherence rules (`update_requires_release`) | hand-written; test ties each table `requires` edge to a literal code |
-| `packages/worker/src/router.ts:40-46` | `SERVICE_NAMESPACES` | built from `SERVICE_SLUGS` |
-| `packages/worker/src/mount.ts:18-31` | `SERVICES` registry (imports) | hand-written; test: keys equal the table |
-| `packages/worker/src/core/discovery.ts:74-80` | discovery `services` literal | built by iterating `SERVICE_SLUGS` |
-| `packages/worker/openapi/polaris-key.v3.yaml` (discovery `services.required`, ~line 2918) | five slugs | test: equals the table, in order |
-| `packages/worker/test/boundaries.test.ts:184` and `registry`, `services`, `surfaces`, `router` tests | "all five" lists | iterate `SERVICE_SLUGS`; boundaries also asserts `src/services/<slug>/` exists |
-| `packages/shared-manifest/src/index.ts:13-47` | `ProductModule`, `ServiceSlug`, `SERVICE_SLUGS` | generated `src/services.generated.ts` |
-| `packages/shared-manifest/src/index.ts:268-284` | `MODULE_SERVICES`, `DEFAULT_ENABLED` | generated from `legacyModules`, `defaultEnabled` |
-| `packages/shared-manifest/schemas/v1/product.schema.json` (`modules.properties`) | slugs + legacy names | hand-written; test: keys equal slugs ∪ legacy names |
-| `packages/cli/src/manifest.ts:9-14,72-78` | legacy module list, init scaffold | generated list; scaffold writes canonical slugs; `--modules` accepts both vocabularies |
-| `packages/admin/src/api.ts:309-314` | `ServiceSlug` | generated `src/services.generated.ts` |
-| `packages/admin/src/api.ts:349-356` | `SERVICE_ERROR_MESSAGES` | hand-written; test: a message per coherence code |
-| `packages/admin/src/views/services/ServicesCard.tsx:70-106,492-500` | `SERVICE_ROWS`, `emptyEnablement` | rows from the generated table (label, summary, icon name) |
-| `packages/admin/src/route.ts:33-52,65-71,103-207` | `Tab`, `ServiceAccent`, `SECTIONS` | hand-written views; test: one section per slug with the table's accent |
-| `packages/admin/src/components/Shell.tsx:60-80`, `styles.css:113-161` | tab icons, accent tokens | hand-written; test: dark and light `[data-service="<accent>"]` rules per slug |
-| `packages/sdk-node/src/discovery.ts:25-40` | `ServiceSlug`, `SERVICE_SLUGS` | generated `src/services.generated.ts` |
-| `packages/sdk-react/src/core/services.ts:21-66` | `ServiceSlug`, `SERVICE_SLUGS`, `noServices`, `defaultServices` | generated `src/core/services.generated.ts` |
-| `sdks/python/src/polaris_key/discovery.py:54-72` | `SERVICE_SLUGS`, `_map`, `DEFAULT_SERVICES` | generated `polaris_key/_services.py` |
-| `sdks/swift/Sources/PolarisKeyCore/Discovery.swift:31-37` | `enum ServiceSlug` | generated `ServiceSlug.generated.swift` |
-| `packages/docs/astro.config.mjs:56-61` | sidebar entries | hand-written; test: an entry and a `services/<slug>/` directory per slug |
-| docs prose, `AGENTS.md`, `CLAUDE.md`, the manifest skill, `README.md`, `THREAT-MODEL.md` | "five services" | an "Adding a service" checklist in `contribute/layout.md` |
+| Where                                                                                                             | What it enumerates                                               | After this package                                                                     |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `packages/worker/src/core/services.ts:20-66`                                                                      | `ServiceSlug`, `SERVICE_SLUGS`, `DEFAULT_SERVICES`, `defaults()` | imported from `@polaris-key/manifest` (generated)                                      |
+| `packages/worker/src/core/services.ts:250-280`                                                                    | coherence rules (`update_requires_release`)                      | hand-written; test ties each table `requires` edge to a literal code                   |
+| `packages/worker/src/router.ts:40-46`                                                                             | `SERVICE_NAMESPACES`                                             | built from `SERVICE_SLUGS`                                                             |
+| `packages/worker/src/mount.ts:18-31`                                                                              | `SERVICES` registry (imports)                                    | hand-written; test: keys equal the table                                               |
+| `packages/worker/src/core/discovery.ts:74-80`                                                                     | discovery `services` literal                                     | built by iterating `SERVICE_SLUGS`                                                     |
+| `packages/worker/openapi/polaris-key.v3.yaml` (discovery `services.required`, ~line 2918)                         | five slugs                                                       | test: equals the table, in order                                                       |
+| `packages/worker/test/boundaries.test.ts:184` and `registry`, `services`, `surfaces`, `router` tests              | "all five" lists                                                 | iterate `SERVICE_SLUGS`; boundaries also asserts `src/services/<slug>/` exists         |
+| `packages/shared-manifest/src/index.ts:13-47`                                                                     | `ProductModule`, `ServiceSlug`, `SERVICE_SLUGS`                  | generated `src/services.generated.ts`                                                  |
+| `packages/shared-manifest/src/index.ts:268-284`                                                                   | `MODULE_SERVICES`, `DEFAULT_ENABLED`                             | generated from `legacyModules`, `defaultEnabled`                                       |
+| `packages/shared-manifest/schemas/v1/product.schema.json` (`modules.properties`)                                  | slugs + legacy names                                             | hand-written; test: keys equal slugs ∪ legacy names                                    |
+| `packages/cli/src/manifest.ts:9-14,72-78`                                                                         | legacy module list, init scaffold                                | generated list; scaffold writes canonical slugs; `--modules` accepts both vocabularies |
+| `packages/admin/src/api.ts:309-314`                                                                               | `ServiceSlug`                                                    | generated `src/services.generated.ts`                                                  |
+| `packages/admin/src/api.ts:349-356`                                                                               | `SERVICE_ERROR_MESSAGES`                                         | hand-written; test: a message per coherence code                                       |
+| `packages/admin/src/views/services/ServicesCard.tsx:70-106,492-500`                                               | `SERVICE_ROWS`, `emptyEnablement`                                | rows from the generated table (label, summary, icon name)                              |
+| `packages/admin/src/route.ts:33-52,65-71,103-207`                                                                 | `Tab`, `ServiceAccent`, `SECTIONS`                               | hand-written views; test: one section per slug with the table's accent                 |
+| `packages/admin/src/components/Shell.tsx:60-80`, `styles.css:113-161`                                             | tab icons, accent tokens                                         | hand-written; test: dark and light `[data-service="<accent>"]` rules per slug          |
+| `packages/sdk-node/src/discovery.ts:25-40`                                                                        | `ServiceSlug`, `SERVICE_SLUGS`                                   | generated `src/services.generated.ts`                                                  |
+| `packages/sdk-react/src/core/services.ts:21-66`                                                                   | `ServiceSlug`, `SERVICE_SLUGS`, `noServices`, `defaultServices`  | generated `src/core/services.generated.ts`                                             |
+| `sdks/python/src/polaris_key/discovery.py:54-72`                                                                  | `SERVICE_SLUGS`, `_map`, `DEFAULT_SERVICES`                      | generated `polaris_key/_services.py`                                                   |
+| `sdks/swift/Sources/PolarisKeyCore/Discovery.swift:31-37`                                                         | `enum ServiceSlug`                                               | generated `ServiceSlug.generated.swift`                                                |
+| `packages/docs/astro.config.mjs:56-61`                                                                            | sidebar entries                                                  | hand-written; test: an entry and a `services/<slug>/` directory per slug               |
+| docs prose, `AGENTS.md` and the other agent instruction files, the manifest skill, `README.md`, `THREAT-MODEL.md` | "five services"                                                  | an "Adding a service" checklist in `contribute/layout.md`                              |
 
 Files that only import the types (`sdk-node` `core/context.ts`, `cli/*.ts`; `sdk-react`
 `browser/*`, `desktop/*`, `react/Provider.tsx`; Swift `CoreContext.swift`, `PolarisKeyClient.swift`)
@@ -102,7 +102,7 @@ need no change. `products/gen-seed.ts` already iterates `SERVICE_SLUGS`.
 - **Why not one import everywhere.** The Worker and CLI already depend on `@polaris-key/manifest`,
   so they import it. The console and the SDKs do not, and must not grow a dependency on a
   manifest parser; they get generated files. `client-core` is avoided on purpose: touching it is
-  plan mode (`CLAUDE.md`), and nothing here needs it.
+  plan mode (`program/README.md` §7), and nothing here needs it.
 - **Coherence codes stay literal.** `schema-parity.test.ts` extracts error codes from the
   validator **source** (rule 9), so codes built from table data would vanish from its sweep. Keep
   `update_requires_release` as a literal in both validators; a test asserts that every `requires`

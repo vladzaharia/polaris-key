@@ -1,16 +1,16 @@
 # P0-03 Refresh the release truth store on GitHub `release` webhook events
 
-| Field       | Value                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------ |
-| Phase       | P0: Hygiene and unblockers                                                                 |
-| Size        | 0.25–0.25 engineer-weeks                                                                   |
-| Depends on  | [P0-02](P0-02-release-resolution.md)                                                       |
-| Unblocks    | none                                                                                       |
-| Role        | `pkey-implementer`                                                                         |
-| Plan mode   | no                                                                                         |
-| Gates       | worker tests (webhook, R6-06/R6-07 attack tests stay green)                                |
+| Field       | Value                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene and unblockers                                                                |
+| Size        | 0.25–0.25 engineer-weeks                                                                  |
+| Depends on  | [P0-02](P0-02-release-resolution.md)                                                      |
+| Unblocks    | none                                                                                      |
+| Role        | `pkey-implementer`                                                                        |
+| Plan mode   | no                                                                                        |
+| Gates       | worker tests; the R6-07 webhook attack tests stay green                                   |
 | Human input | subscribe the `polaris-key` GitHub App to **Release** events (App settings), after deploy |
-| Repo        | `vladzaharia/polaris-key`                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                 |
 
 ## Goal
 
@@ -34,12 +34,13 @@ and portal lag behind what the device routes (which call GitHub live) already se
 
 - `AGENTS.md`.
 - `packages/worker/src/githubWebhook.ts` in full: HMAC check, the delivery-GUID replay guard
-  (R6-06, recorded before event dispatch at `:139-152`), and the installation binding (R6-05,
-  `:206-217`).
+  (recorded before event dispatch, `:136-152`), and the installation binding (`:206-221`). The code
+  comments call these R6-06 and R6-05; the attack suite files both under R6-07
+  (`test/attack/R6-release.test.ts:951`).
 - `packages/worker/src/services/release/sync.ts` (`syncReleaseStore`, `releaseStoreSyncStatements`).
 - The P0-02 changes to pagination, ordering and floors (this package depends on them).
 - Tests: `packages/worker/test/linkRepo.test.ts:861-960` (webhook), `test/attack/R6-release.test.ts`
-  (R6-05, R6-07), `test/attack/R10-dos.test.ts`.
+  (R6-07), `test/attack/R10-dos.test.ts`.
 - `docs/DEPLOYMENT.md:132-151` (the GitHub App's required settings).
 
 ## Scope
@@ -52,10 +53,10 @@ and portal lag behind what the device routes (which call GitHub live) already se
   `payload.installation.id`, run `syncReleaseStore`. Drafts are already ignored by the sync.
 - Keep the signature check and replay guard exactly where they are; both already run before the
   event switch.
-- Mark releases that are in the store but no longer upstream: after a fully paginated list
-  (P0-02), write `release_health` for each missing release as `degraded` with
-  `details_json: {"absentUpstream": true}`. Rows are never deleted (`store.ts:23-31`: download
-  tokens reference them).
+- Mark releases that are in the store but no longer upstream: when the paginated list was read
+  to the end (no unread `next` page under P0-02's cap), write `release_health` for each missing
+  release as `degraded` with `details_json: {"absentUpstream": true}`. A capped, incomplete list
+  marks nothing. Rows are never deleted (`store.ts:23-31`: download tokens reference them).
 - Response body: `{ ok: true, event: "release", action, results: [{ product, ok, statements }] }`.
 - Docs: `docs/DEPLOYMENT.md` App settings table (Events: Push, Release);
   `services/release/github-sync.md` describes both events.
@@ -74,7 +75,7 @@ and portal lag behind what the device routes (which call GitHub live) already se
   sync. `release_health.checked_at` is the release sync's record.
 - **Installation binding is mandatory** (R6-05): one webhook secret covers every installation, so
   a delivery for repo X signed by the platform secret must still carry the installation id that
-  owns X. Reuse the check at `githubWebhook.ts:206-217`, factored into a helper both paths call.
+  owns X. Reuse the check at `githubWebhook.ts:206-221`, factored into a helper both paths call.
 - The payload is attacker-shaped once the secret leaks. Read only `repository.owner.login`,
   `repository.name` and `installation.id` from it; never trust `release.*` fields for writes:
   the sync re-reads GitHub with the installation token.

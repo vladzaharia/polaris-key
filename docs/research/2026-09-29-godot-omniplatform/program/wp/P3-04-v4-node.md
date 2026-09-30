@@ -22,7 +22,7 @@ through the Node SDK's own wiring, and the `seq` floor survives a restart.
 
 ## Why
 
-Node is one of the five languages that must decide identically about downgrades, floors and
+Node is one of the six SDK languages that must decide identically about downgrades, floors and
 outlet capabilities ([README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-products)
 item 4; [PARITY §5.5](../../PARITY.md#55-release-and-update)). Its CLIs and Electron main
 processes are "verify, then stage" hosts ([notes/E9 §2.3](../../notes/E9-runtime-building-blocks.md)),
@@ -42,7 +42,8 @@ proposed.
 - `packages/sdk-node/src/update/client.ts` (today's `check()` and `appcastUrl()`),
   `src/client.ts` (`PolarisKeyClientOptions`, per-service option bags), `src/core/context.ts`
   (`CoreOptions`, `pinnedTrust`), `src/core/cache.ts` (the load procedure is the security
-  boundary), `src/core/store.ts`, `src/discovery.ts` (`appcastUrlFrom`), `src/cli/`.
+  boundary), `src/core/store.ts` (`FileStore`, `KeyringStore`), `src/discovery.ts`
+  (`appcastUrlFrom`).
 - `packages/sdk-node/test/releaseUpdate.test.ts`, `test/sync.test.ts`, `test/store.test.ts`.
 - The `client-core` functions and cache slice types from [P3-05](P3-05-v4-react.md).
 
@@ -52,8 +53,8 @@ proposed.
 
 - **Options.** An `update` option bag on `PolarisKeyClientOptions` (proposed
   `UpdateClientOptions`): `pinnedReleaseKeys` (kid → raw Ed25519 key, base64url), `outlet`
-  (host-supplied until [P3-11](P3-11-outlet-detection.md)), `buildNumber`, and the plan's
-  capability narrowing input. `CoreOptions.version` stays the installed version.
+  (host-supplied until [P3-11](P3-11-outlet-detection.md)) and `buildNumber`.
+  `CoreOptions.version` stays the installed version.
 - **`UpdateClient`**: the plan's methods (proposed `feed({channel})`, `releaseRecord(hash)` and
   `decide({channel, staged?, skipVersion?})`), using discovery's feed and record endpoints from
   [P3-03](P3-03-feed-composition.md), the device id as `installId`, and `client-core` for every
@@ -62,8 +63,6 @@ proposed.
   through Core's read-modify-write (`cache.ts` `patch()`); on load, re-verify them with
   `checkFreshness: false` and derive the `seq` floor; drop anything that fails.
 - **Discovery.** Parse the new endpoints in `src/discovery.ts`.
-- **CLI adapters.** If `src/cli/commands.ts` exposes an update check, surface the decision there
-  too, in the one core command both front ends wrap.
 - **Tests**: a projection suite (proposed `test/updateMatrixParity.test.ts`) that maps each
   `update-matrix.json` row's installed state onto client options and asserts the SDK's decision;
   `feedCases` and `releaseRecordCases` replayed through `UpdateClient` with a fake fetch; restart
@@ -77,6 +76,8 @@ proposed.
 - The pure functions and the Node runner sections (→ [P3-05](P3-05-v4-react.md)).
 - Outlet detection (→ [P3-11](P3-11-outlet-detection.md)).
 - Handing off to Velopack, `electron-updater` or a SEA self-replace (`update.driver`; not in P3).
+- An update command in the CLI adapters (`src/cli/`): there is none today, and adding one is
+  separate work.
 - Packs (→ [P4-06](P4-06-client-core-packs.md)).
 
 ## Design notes

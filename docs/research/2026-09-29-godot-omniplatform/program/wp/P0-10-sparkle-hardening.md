@@ -1,15 +1,15 @@
 # P0-10 Raise Swift's Sparkle floor to 2.9.6 and stream Sparkle verification
 
-| Field       | Value                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                  |
-| Size        | 0.25–0.5 engineer-weeks                                                                     |
-| Depends on  | none                                                                                        |
-| Unblocks    | none                                                                                        |
-| Role        | `pkey-implementer`                                                                          |
-| Plan mode   | no                                                                                          |
+| Field       | Value                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| Phase       | P0: Hygiene and unblockers                                                                 |
+| Size        | 0.25–0.5 engineer-weeks                                                                    |
+| Depends on  | none                                                                                       |
+| Unblocks    | none                                                                                       |
+| Role        | `pkey-implementer`                                                                         |
+| Plan mode   | no                                                                                         |
 | Gates       | worker tests + `test:workerd`; Swift build and tests (macOS); new worker dependency review |
-| Human input | none (a macOS runner for `swift test`; CI provides one)                                     |
+| Human input | none (a macOS runner for `swift test`; CI provides one)                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                  |
 
 ## Goal

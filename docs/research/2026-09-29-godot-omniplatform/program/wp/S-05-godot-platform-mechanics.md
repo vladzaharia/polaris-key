@@ -1,16 +1,16 @@
 # S-05 Spike: Godot platform mechanics (Android pack stall, PAD paths, web multi-pack, MSIX `user://`, Velopack hooks)
 
-| Field       | Value                                                                                                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | S: Spikes                                                                                                                                                                                                                          |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                               |
-| Depends on  | none                                                                                                                                                                                                                               |
+| Field       | Value                                                                                                                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | S: Spikes                                                                                                                                                                                                                                 |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                      |
+| Depends on  | none                                                                                                                                                                                                                                      |
 | Unblocks    | none in the graph; informs [P3-10](P3-10-godot-updater.md), [P4-08](P4-08-godot-packs.md), [P1-10](P1-10-godot-ui-kit.md), [P5-06](P5-06-kotlin-aar.md), [P5-07](P5-07-desktop-plugins.md) and [P5-08](P5-08-platform-pack-transports.md) |
-| Role        | `pkey-spike-runner`                                                                                                                                                                                                                |
-| Plan mode   | no                                                                                                                                                                                                                                 |
-| Gates       | none beyond `pnpm format` on the files it adds                                                                                                                                                                                     |
-| Human input | none in the graph. Needed in practice: an Android phone (the low-end one from S-04 if possible), a Windows 10/11 machine where a self-signed certificate may be trusted, and a Mac or iPhone for the Safari web run                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                          |
+| Role        | `pkey-spike-runner`                                                                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                                                                        |
+| Gates       | none beyond `pnpm format` on the files it adds                                                                                                                                                                                            |
+| Human input | none in the graph. Needed in practice: an Android phone (the low-end one from S-04 if possible), a Windows 10/11 machine where a self-signed certificate may be trusted, and a Mac or iPhone for the Safari web run                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                 |
 
 ## Goal
 
@@ -51,7 +51,8 @@ Q5 repeats (a) and (c). Each answer changes a design already written down:
   (P3-10, P5-07).
 - A6 showed pack UIDs register only with `replace_files=true`
   ([notes/A6 §2.7](../../notes/A6-godot-patching.md#27-mount-semantics)), and Diceroll's own experiment
-  saw `class_name` globals drop from 180 to 0 when a pack carried a class cache
+  saw `class_name` globals drop from 180 to 0 when an export pack that dragged in autoload scripts
+  and caches was mounted with `replace_files=true`
   ([notes/A4 §2.4](../../notes/A4-diceroll-mapping.md#24-building-and-mounting-52)). The directory
   check in P4-08 needs the exact rule.
 

@@ -1,16 +1,16 @@
 # P1b-03 Capture HTTP transcripts from Worker tests and replay them in every SDK
 
-| Field       | Value                                                                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                                                                                                           |
-| Size        | 2–3 engineer-weeks                                                                                                                                                                                                        |
-| Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                                                                                                                       |
-| Unblocks    | [P1b-06](P1b-06-reregister-401.md), [P1b-07](P1b-07-license-config-release-gaps.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                                                                                        |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                                                                                                |
-| Plan mode   | no (transcripts are not the signed corpus; nothing here changes the wire)                                                                                                                                                 |
-| Gates       | a new drift gate (`pnpm gen:transcripts -- --check` plus a Worker freshness test); all SDKs replay; a generator-owned Swift mirror; the `parity:check` extension. No new route, so rule 10 is untouched                   |
-| Human input | none                                                                                                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                                                                                         |
+| Size        | 2–3 engineer-weeks                                                                                                                                                                                      |
+| Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                                                                                                     |
+| Unblocks    | [P1b-06](P1b-06-reregister-401.md), [P1b-07](P1b-07-license-config-release-gaps.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                                                                      |
+| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                                                                              |
+| Plan mode   | no (transcripts are not the signed corpus; nothing here changes the wire)                                                                                                                               |
+| Gates       | a new drift gate (`pnpm gen:transcripts -- --check` plus a Worker freshness test); all SDKs replay; a generator-owned Swift mirror; the `parity:check` extension. No new route, so rule 10 is untouched |
+| Human input | none                                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                               |
 
 ## Goal
 
@@ -82,6 +82,7 @@ as re-register-on-401 went unnoticed (README §9.1 #14). P1b-06, P1b-07 and P1b-
   Each replayer reads its own `parity.json` and replays the transcripts whose `features` are all
   `implemented`, so a new transcript for a missing feature does not break an SDK until it claims the
   feature.
+
 - **The checker.** Extend `tools/parity-check.ts`: an `implemented` feature with a `transcript` proof
   needs at least one transcript that lists it and a tagged replayer in that SDK.
 - CI step, `AGENTS.md` green gate and `waves.md` row for `pnpm gen:transcripts -- --check`. Add a
@@ -120,7 +121,7 @@ come from new scenario tests through the router seam. They can reuse the seeds a
 
 **Format** (`transcriptVersion: 1`; keep the field names):
 
-```jsonc
+```text
 {
   "transcriptVersion": 1,
   "id": "sync-etag-304",
@@ -131,30 +132,25 @@ come from new scenario tests through the router seam. They can reuse the seeds a
   "now": 1700000000,
   "trust": { "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI" },
   "initial": { "deviceId": "…", "token": "pkeyt_…", "version": "2.0.0", "services": ["license", "config"] },
-  "steps": [
-    {
-      "action": "sync", // discover | sync | activate | enroll | register | deactivate | report
-      "args": { "force": false },
-      "exchanges": {
-        "ordered": false, // true only where the protocol orders requests (PARITY §2.3)
-        "items": [
-          {
-            "request": {
-              "method": "GET",
-              "path": "/djdl/license/document",
-              "headers": { "authorization": "Bearer {token}", "if-none-match": "\"…\"" },
-              "requiredHeaders": ["x-pkey-device", "x-pkey-version", "x-pkey-channel", "x-pkey-sdk",
-                                  "x-pkey-sdk-version", "x-pkey-platform", "x-pkey-arch"],
-              "body": null // or { "json": {…}, "match": "subset" }
-            },
-            "response": { "status": 200, "headers": { "etag": "\"…\"" }, "body": "eyJ…" },
-            "capture": { "token": "$.token" } // optional: bind a value for later steps
-          }
-        ]
-      },
-      "expect": { "result": "applied", "licenseStatus": "ok" }
-    }
-  ]
+  "steps": [{
+    "action": "sync",                      // discover | sync | activate | enroll | register | deactivate | report
+    "args": { "force": false },
+    "exchanges": {
+      "ordered": false,                    // true only where the protocol orders requests (PARITY §2.3)
+      "items": [{
+        "request": {
+          "method": "GET", "path": "/djdl/license/document",
+          "headers": { "authorization": "Bearer {token}", "if-none-match": "\"…\"" },
+          "requiredHeaders": ["x-pkey-device", "x-pkey-version", "x-pkey-channel", "x-pkey-sdk",
+                              "x-pkey-sdk-version", "x-pkey-platform", "x-pkey-arch"],
+          "body": null                     // or { "json": {…}, "match": "subset" }
+        },
+        "response": { "status": 200, "headers": { "etag": "\"…\"" }, "body": "eyJ…" },
+        "capture": { "token": "$.token" }  // optional: bind a value for later steps
+      }]
+    },
+    "expect": { "result": "applied", "licenseStatus": "ok" }
+  }]
 }
 ```
 

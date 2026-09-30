@@ -1,16 +1,16 @@
 # P1b-04 Add `headers.json` and `config-matrix.json` to the corpus
 
-| Field       | Value                                                                                                                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                                                                                                            |
-| Size        | 0.75–1 engineer-weeks                                                                                                                                                                                                      |
-| Depends on  | [P1b-02](P1b-02-sdk-constants.md)                                                                                                                                                                                          |
-| Unblocks    | none                                                                                                                                                                                                                       |
-| Role        | `pkey-wire-planner` for the plan (see `.claude/agents/`); after approval, `pkey-sdk-porter` or `pkey-implementer` executes it                                                                                               |
-| Plan mode   | **yes**: `program/plans/P1b-04.md` needs human approval before any code                                                                                                                                                    |
-| Gates       | plan mode; the corpus drift gate (`pnpm gen:corpus -- --check`, Swift mirror included); all SDKs; the generated `reference/corpus.mdx` page (AGENTS rule 3); one corpus-touching package in flight at a time               |
-| Human input | approval of the plan, including the header vocabulary and the compatibility choice in Design notes                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P1b: SDK parity                                                                                                                                                                                              |
+| Size        | 0.75–1 engineer-weeks                                                                                                                                                                                        |
+| Depends on  | [P1b-02](P1b-02-sdk-constants.md)                                                                                                                                                                            |
+| Unblocks    | none                                                                                                                                                                                                         |
+| Role        | `pkey-wire-planner` for the plan (see `.claude/agents/`); after approval, `pkey-sdk-porter` or `pkey-implementer` executes it                                                                                |
+| Plan mode   | **yes**: `program/plans/P1b-04.md` needs human approval before any code                                                                                                                                      |
+| Gates       | plan mode; the corpus drift gate (`pnpm gen:corpus -- --check`, Swift mirror included); all SDKs; the generated `reference/corpus.mdx` page (AGENTS rule 3); one corpus-touching package in flight at a time |
+| Human input | approval of the plan, including the header vocabulary and the compatibility choice in Design notes                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                    |
 
 ## Goal
 
@@ -26,7 +26,7 @@ After an approved plan:
 
 ## Why
 
-Header values differ across SDKs, so analytics and fingerprints drift
+Header values differ across SDKs, so the Worker's device records and analytics split by SDK
 ([README §9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) #17):
 
 - Node sends `os.platform()` and `os.arch()` (`win32`, `darwin`, `x64`;
@@ -37,8 +37,8 @@ Header values differ across SDKs, so analytics and fingerprints drift
   (`sdks/swift/Sources/PolarisKeyCore/Platform.swift`);
 - the React browser adapter sends `browser` (`packages/sdk-react/src/browser/browserAdapter.ts:211`).
 
-Config precedence is implemented four times (`client-core/src/config.ts`, Python
-`config/resolve.py`, Swift `ConfigClient.swift`, and Godot next) with no shared vectors, and its
+Config precedence is implemented three times (`client-core/src/config.ts`, Python
+`config/resolve.py`, Swift `ConfigClient.swift`), with Godot next, and has no shared vectors. Its
 environment-variable JSON parsing is exactly the kind of rule languages disagree on
 ([PARITY §4.1](../../PARITY.md#41-corpora-behaviour-as-data), [§5.3](../../PARITY.md#53-config)).
 
@@ -120,16 +120,19 @@ environment-variable JSON parsing is exactly the kind of rule languages disagree
 
 **`headers.json` shape** (proposed):
 
-```jsonc
+```text
 {
   "headersVersion": 1,
   "canonical": { "platform": ["macos", "…"], "arch": ["arm64", "…"], "sdk": ["node", "…"] },
   "cases": [
-    { "id": "node-win32-x64", "sdk": "node", "input": { "platform": "win32", "arch": "x64" },
+    { "id": "node-win32-x64", "sdk": "node",
+      "input": { "platform": "win32", "arch": "x64" },
       "expect": { "x-pkey-platform": "windows", "x-pkey-arch": "x86_64" } },
-    { "id": "python-windows-amd64", "sdk": "python", "input": { "system": "Windows", "machine": "AMD64" },
+    { "id": "python-windows-amd64", "sdk": "python",
+      "input": { "system": "Windows", "machine": "AMD64" },
       "expect": { "x-pkey-platform": "windows", "x-pkey-arch": "x86_64" } },
-    { "id": "python-linux-aarch64", "sdk": "python", "input": { "system": "Linux", "machine": "aarch64" },
+    { "id": "python-linux-aarch64", "sdk": "python",
+      "input": { "system": "Linux", "machine": "aarch64" },
       "expect": { "x-pkey-platform": "linux", "x-pkey-arch": "arm64" } }
   ]
 }

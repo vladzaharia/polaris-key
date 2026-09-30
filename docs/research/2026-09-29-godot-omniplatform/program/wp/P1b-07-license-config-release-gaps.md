@@ -1,16 +1,16 @@
 # P1b-07 Close licence, config and release gaps: `entitledChannels`, catalog fetch, release client, React bundle import and telemetry
 
-| Field       | Value                                                                                                                         |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                               |
-| Size        | 1–1.5 engineer-weeks (tight: see Design notes for the split point)                                                            |
-| Depends on  | [P1b-03](P1b-03-http-transcripts.md)                                                                                          |
-| Unblocks    | none                                                                                                                          |
-| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                                                                     |
-| Plan mode   | no                                                                                                                            |
+| Field       | Value                                                                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                    |
+| Size        | 1–1.5 engineer-weeks (tight: see Design notes for the split point)                                                                 |
+| Depends on  | [P1b-03](P1b-03-http-transcripts.md)                                                                                               |
+| Unblocks    | none                                                                                                                               |
+| Role        | `pkey-sdk-porter` (see `.claude/agents/`)                                                                                          |
+| Plan mode   | no                                                                                                                                 |
 | Gates       | all SDKs; new transcripts through P1b-03's harness (`pnpm gen:transcripts -- --check`); `pnpm parity:check`; Swift `Package.swift` |
-| Human input | none                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                     |
+| Human input | none                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                          |
 
 ## Goal
 

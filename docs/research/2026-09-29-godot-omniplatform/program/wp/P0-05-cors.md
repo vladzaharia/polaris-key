@@ -1,16 +1,16 @@
 # P0-05 Add a per-product CORS allowlist to the Worker
 
-| Field       | Value                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                                |
-| Size        | 0.5–0.75 engineer-weeks                                                                                   |
-| Depends on  | none                                                                                                      |
-| Unblocks    | [P6-04](P6-04-hosted-web.md)                                                                              |
-| Role        | `pkey-implementer`                                                                                        |
-| Plan mode   | no                                                                                                        |
+| Field       | Value                                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P0: Hygiene and unblockers                                                                                                                                                           |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                                                                              |
+| Depends on  | none                                                                                                                                                                                 |
+| Unblocks    | [P6-04](P6-04-hosted-web.md)                                                                                                                                                         |
+| Role        | `pkey-implementer`                                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                                   |
 | Gates       | rule 9 (`web.origins` validator + mutation table + schema); rule 10 (`OPTIONS` in spec + `routeCoverage`); D1 migration; generated `validation-codes` and `data-model`; threat model |
-| Human input | none                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                 |
+| Human input | none                                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                            |
 
 ## Goal
 
@@ -67,7 +67,8 @@ blobs, and `OPTIONS` handling that goes through the OpenAPI/`routeCoverage` gate
 - **Preflight.** `OPTIONS` on a covered product path returns 204 with the allow-origin header,
   `Access-Control-Allow-Methods: GET, POST, PATCH, DELETE`,
   `Access-Control-Allow-Headers: Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch`
-  (listed explicitly: `*` does not cover `Authorization`), and `Access-Control-Max-Age: 600`. A
+  (listed explicitly, built from the constants in `packages/shared-protocol/src/core.ts:224-230`:
+  `*` does not cover `Authorization`), and `Access-Control-Max-Age: 600`. A
   disallowed origin gets 204 with no `Access-Control-*` headers. The answer does not depend on
   whether the service behind the path is enabled, so preflight cannot reveal enablement.
 - **Covered paths:** every `CORE_KIND_PATHS` and `SERVICE_PATHS` entry in `routeCoverage.test.ts`

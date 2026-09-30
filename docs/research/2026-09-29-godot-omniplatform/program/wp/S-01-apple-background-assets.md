@@ -1,16 +1,16 @@
 # S-01 Spike: Apple-hosted Background Assets from a Godot iOS export
 
-| Field       | Value                                                                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | S: Spikes                                                                                                                                                                                                  |
-| Size        | 1–1.5 engineer-weeks (time box: stop at 1.5 and report what is known)                                                                                                                                      |
-| Depends on  | none                                                                                                                                                                                                       |
-| Unblocks    | [P5-05](P5-05-apple-plugin-package.md) (and, through it, [P5-08](P5-08-platform-pack-transports.md) and [D-05](D-05-diceroll-after-p6.md))                                                                 |
-| Role        | `pkey-spike-runner`                                                                                                                                                                                        |
-| Plan mode   | no                                                                                                                                                                                                         |
-| Gates       | none beyond `pnpm format` on the files it adds; no product code changes                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                             |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | S: Spikes                                                                                                                                                                                                         |
+| Size        | 1–1.5 engineer-weeks (time box: stop at 1.5 and report what is known)                                                                                                                                             |
+| Depends on  | none                                                                                                                                                                                                              |
+| Unblocks    | [P5-05](P5-05-apple-plugin-package.md) (and, through it, [P5-08](P5-08-platform-pack-transports.md) and [D-05](D-05-diceroll-after-p6.md))                                                                        |
+| Role        | `pkey-spike-runner`                                                                                                                                                                                               |
+| Plan mode   | no                                                                                                                                                                                                                |
+| Gates       | none beyond `pnpm format` on the files it adds; no product code changes                                                                                                                                           |
 | Human input | Apple developer account; TestFlight (an internal tester group); an iOS 26 device. Also needed, not in the graph: a Mac with Xcode 26 or later, and an App Store Connect API key with the Developer role or higher |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                         |
 
 ## Goal
 
@@ -31,9 +31,9 @@ P5-05 should turn into a product.
 ## Why
 
 Background Assets is the App Store pack transport (`apple-ba`) in the design
-([README §4.1](../../README.md#41-ios-and-ipados), [CONTENT §7](../../CONTENT.md#7-transports)), and
-decision 12 ships Diceroll's iOS v1 as a full IPA until this path is proven
-([README §11](../../README.md#11-decisions-needed)). [README §12](../../README.md#12-risks-and-open-questions)
+([README §4.1](../../README.md#41-ios-and-ipados), [CONTENT §7](../../CONTENT.md#7-transports)).
+Decision 12 ships Diceroll's iOS v1 as a full IPA and adopts Background Assets later, "when content
+drops between app versions matter" ([README §11](../../README.md#11-decisions-needed)). [README §12](../../README.md#12-risks-and-open-questions)
 names the risk: the extension target and App Group cannot be added by Godot's iOS export or its
 `.gdip` plugin system, so CI must patch the exported project. Nobody has tried it
 ([notes/E1 §E8](../../notes/E1-apple.md#e8-how-the-godot-game-consumes-packs) item 4). Whether updates
@@ -153,8 +153,8 @@ mise exec node@22 -- pnpm format
 ## Hand-off
 
 P5-05 receives the patch recipe (it wires it as a per-preset post-export step that sideload IPAs
-skip), the shim's lessons for its `PolarisKeyApple` class and its signals `pack_progress(id, bytes,
-total)`, `pack_ready(id, path)` and `pack_failed(id, err)`, and the asset-pack id rules. P5-02 gets the
+skip), the asset-pack id rules, and the shim's lessons for its `PolarisKeyApple` class and signals:
+`pack_progress(id, bytes, total)`, `pack_ready(id, path)` and `pack_failed(id, err)`. P5-02 gets the
 observed state machine and event names; P5-08 gets the upload procedure and timings; CONTENT §7
 and the planner's `platform` strategy get the differential answer. If the answer is no-go, the
 note must say what `apple-ba` falls back to (`pkey-cdn` with a background `URLSession` in P5-05).

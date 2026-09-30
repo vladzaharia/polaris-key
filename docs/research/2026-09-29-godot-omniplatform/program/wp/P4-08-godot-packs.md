@@ -50,9 +50,10 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 - [CONTENT §4.1–§4.2](../../CONTENT.md#41-handler-contract-every-sdk), [§10](../../CONTENT.md#10-client-pipeline-every-sdk),
   [§14](../../CONTENT.md#14-experiences) (player experience); [README §5.9](../../README.md#59-editor-and-export-plugin),
   [§5.12](../../README.md#512-packaging-and-versions) (engine floor and feature gates).
-- Reference code: `docs/research/2026-09-29-godot-omniplatform/prototype/patching/` (runners
-  `t2_rebuild`, `t4_delta_trick`, `t7_semantics`, `t9_private_bake`) and `prototype/content/` (A7's
-  `content_runner.gd`); `prototype/README.md` (HTTP findings: gzip breaks `Range`,
+- Reference code in `docs/research/2026-09-29-godot-omniplatform/prototype/`:
+  `patching/runner/` (`lib.gd`, `t2_rebuild.gd`, `t4_delta_trick.gd`, `t7_semantics.gd`,
+  `t9_private_bake.gd`), `content/runners/godot/content_runner.gd` (A7's 690-line runner, with
+  the release-template export) and `README.md` (HTTP findings: gzip breaks `Range`,
   `download_file` truncates, redirects forward `Authorization`).
 - The Godot SDK as P1-01, P1-10 and P3-08 left it: `sdks/godot/addons/polaris_key/`, `PKeyBoot`,
   the stage machine from P1-09, the corpus runner and CI job, the release-record verifier.
@@ -73,8 +74,9 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
   the active set's content-addressed paths, after the directory check, `replace_files=false` for
   full, disjoint-prefix, uid-free packs (A6 §6).
 - **`files.tree` handler** (hot: `user://pkey/trees/<sha256>/` plus a pointer swap).
-- **Embedded baselines** listed by the build stamp: verify marker and hash once, record them as
-  installed and as delta bases.
+- **Embedded baselines**: packs shipped in the build with their markers (P4-03 writes the markers),
+  found in one configured `res://` directory (proposed `res://pkey_packs/`) or listed in the build
+  stamp; verify marker and hash once, then record them as installed and as delta bases.
 - **Install state** at `user://pkey/content/state.json` (temp file plus rename), P4-06's machine;
   roll back to `previous` after N failed boots, sharing P3-10's boot guard if it has landed.
 - **A transport interface** (how a pack's bytes arrive and how the SDK learns the installed
@@ -100,8 +102,9 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 - Platform transports: Background Assets, PAD, Steam depots (→ P5-05, P5-06, P5-08).
 - Web builds with large packs (IDBFS keeps all of `user://` in memory, A6 §2.6): v1 supports small
   packs on web; the large-pack web strategy waits for S-05's findings.
-- Export-plugin UI for choosing embedded or lean packs per preset, unless P1-11 already has it
-  (see the report).
+- Export-plugin UI for choosing embedded or lean packs per preset (README §5.9). P1-11 builds only
+  the build stamp and the dock, and no work package owns this yet; v1 games place embedded packs
+  and their markers themselves.
 
 ## Design notes
 

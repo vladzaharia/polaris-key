@@ -35,9 +35,15 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
 
 ## Read first
 
-- `AGENTS.md`, `CLAUDE.md`, and the brief and code of P4-06, P4-07 and P4-08 (handler contract,
-  install state `state.json` with `active`, `previous`, `inflight`, `observed`,
-  `confirmedBootSeq`; the planner; the zstd dependency each SDK chose).
+- `AGENTS.md`, `CLAUDE.md`, and the brief and code of P4-06, P4-07 and P4-08: the packs modules
+  (`@polaris-key/client-core/packs`, `polaris_key/update/packs/`, the Swift `PolarisKeyPacks`
+  target, `addons/polaris_key/packs/` — proposed names; use what landed), the injected ports
+  (incremental SHA-256, `zstd.decode(frame, size)`, `fetch` with `Range`/`If-Range`, byte sources
+  and sinks `read(offset, length)` / `write(offset, bytes)`), install state `state.json` (`active`,
+  `previous`, `inflight`, `observed`, `confirmedBootSeq`), the planner, the zstd dependency each
+  SDK chose, and the content runners (`conformance/runners/node/content.test.ts`,
+  `sdks/python/tests/test_content_conformance.py`, Swift `ContentConformanceTests`, the Godot
+  runner).
 - [CONTENT §8.1](../../CONTENT.md#81-the-strategy-ladder-and-planner),
   [§10](../../CONTENT.md#10-client-pipeline-every-sdk) (journal, `.part`, commit, resume, web) and
   [§13](../../CONTENT.md#13-per-sdk-integration).
@@ -51,16 +57,18 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
   truncates).
 - [notes/E8 §5.7](../../notes/E8-content-delivery.md#57-storage-layout-and-garbage-collection)
   (client storage layout: `pkey/index/<sha256>` for seed indexes).
-- The P4-10 parser (`client-core`) and corpus v2.
+- The P4-10 parser (`@polaris-key/client-core/packs`) and the corpus sections it added.
 
 ## Scope
 
 **In:**
 
-- `client-core`: the chunk applier with injected `{sha256, zstd, fetch}` (the shape that ran
-  unchanged in Node and Chromium in A7), the seed registry, and the planner wiring of
-  `installed[].chunks`. Node and React wiring; React stages in OPFS from a dedicated worker.
-- Python and Swift: parser, applier, seed registry, `Range` fetching.
+- `client-core`: the chunk applier over P4-06's injected ports (the shape that ran unchanged in
+  Node and Chromium in A7), the seed registry, and feeding `installed[].chunks` to the planner.
+  The planner itself is complete (P4-06 costs chunk candidates over inline records); only the
+  capability flips. Node and React wiring; React stages in OPFS through P4-06's storage adapter.
+- Python and Swift: parser (the P4-06 and P4-07 briefs assign it here), applier, seed registry,
+  `Range` fetching.
 - Godot: parser (`PackedByteArray.decode_u32`/`decode_u64`), applier, `HTTPClient`-based `Range`
   fetching.
 - Seed indexes in every SDK: after any install whose record has `chunks`, fetch the index by hash,
@@ -68,8 +76,8 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
   (`…/pkey/index/<sha256>`). Embedded baselines become seeds through their release records.
 - Journal and resume: a per-run completion bitmap in `staging/<planId>/journal.json`; on resume,
   completed ranges are re-hashed before reuse.
-- `caps.strategies` gains `chunk`; `parity.json` marks `packs.index` and `packs.apply.chunk`
-  implemented.
+- `caps.strategies` gains `chunk`; `parity.json` marks `packs.index.chunks` (P4-01 split
+  `packs.index`) and `packs.apply.chunk` implemented.
 - An HTTP transcript for a chunk-bundle `Range` fetch with `If-Range`, if P1b-03's transcript
   machinery exists.
 
@@ -105,8 +113,8 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
   authorisation P4-05 defined on every request and never cache the response.
 - **zstd.** Plain decode only, to exactly `len` bytes (every chunk record carries it; Godot's
   `decompress(len, FileAccess.COMPRESSION_ZSTD)` needs it). Use the dependency each SDK already
-  has: `node:zlib` (22.15+) or the shared WASM decoder; Python 3.14 `compression.zstd` or
-  `zstandard`; libzstd via SwiftPM; the Godot engine.
+  has: `node:zlib` (22.15+) or `@polaris-key/zstd-wasm` (P4-06); Python 3.14 `compression.zstd` or
+  `zstandard`; libzstd via SwiftPM (P4-07); the Godot engine.
 - **Output.** Pre-allocate a `.part` file on the same volume as `store/`, write at the target
   offset, rename to `store/<sha>` on commit, write state by temp + rename (CONTENT §10). Godot
   never overwrites a mounted pack: new content-addressed path, restart activation (P4-08).
@@ -149,7 +157,7 @@ every SDK passes ([PARITY §5.6](../../PARITY.md#56-packs)).
       strategy; an interrupted install resumes and reuses completed runs.
 - [ ] A cross-pack test: a chunk moved from pack A to pack B is copied from A's installed payload.
 - [ ] `caps.strategies` includes `chunk` in every SDK; `pnpm parity:check` passes with
-      `packs.index` and `packs.apply.chunk` implemented (once P1b-01 has landed).
+      `packs.index.chunks` and `packs.apply.chunk` implemented (once P1b-01 has landed).
 - [ ] The green gate passes (`AGENTS.md`), including Python and Swift.
 - [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 

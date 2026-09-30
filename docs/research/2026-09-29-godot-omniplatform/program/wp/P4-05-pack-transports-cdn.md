@@ -65,9 +65,9 @@ authorised per request because a hash is never a secret
   object of the release is present with matching size and hash (checked through Core's blob refs);
   `embedded` per (app release, outlet) from the builds' `embeds`, read through the hook.
 - **Byte serving** of every pack object role through P2b-04's blob route: `GET` and `HEAD`, single
-  `Range`, `If-Range` on the strong `ETag`, `Repr-Digest: sha-256=:…:` (RFC 9530), `Cache-Control:
-public, max-age=31536000, immutable, no-transform` for ungated objects, and CORS exposure of
-  `ETag, Content-Range, Repr-Digest` for `web`.
+  `Range`, `If-Range` on the strong `ETag`, `Repr-Digest: sha-256=:…:` (RFC 9530),
+  `Cache-Control: public, max-age=31536000, immutable, no-transform` for ungated objects, and CORS
+  exposure of `ETag, Content-Range, Repr-Digest` for `web`.
 - **Gated delivery.** `dist_access` for a pack deliverable with `entitlement`: its objects are
   uploaded to and served from the gated prefix only; each request is authorised by device token
   and the licence's entitlement flag; responses are `private, no-store`. The public path never

@@ -45,8 +45,11 @@ SDKs is the repo's order (`AGENTS.md` rule 2), so this lands before any SDK appl
   [§4.4](../../notes/A7-xlang-content.md#44-the-plan-rows-plan-matrix) (the 23 rows),
   [§5](../../notes/A7-xlang-content.md#5-corpus-encoding-and-runner-expectations) (encoding,
   `<ref>`, `mutate` ops, runner rules), §14 (the scratch generator's structure).
-- Reference code to port: `docs/research/2026-09-29-godot-omniplatform/prototype/content/` (A7's
-  generator, reference planner and Python reference runner).
+- Reference code to port, in `docs/research/2026-09-29-godot-omniplatform/prototype/content/`:
+  `gen/gen.py` (the generator; Python 3.14 plus the zstd CLI 1.5.5), `gen/planref.py` (the 23 plan
+  rows), `gen/refapply.py` (expected verdicts come from the reference runner),
+  `runners/python/pkey_content.py` and `runcases.py` (the reference implementation and runner),
+  and its `README.md` (prerequisites, drift check by regeneration).
 - Code: `tools/sign-corpus.ts` (`reconcile` at line 2313, `main` at 2334, `SWIFT_V2_RESOURCES`),
   `conformance/runners/node/corpusV2.test.ts`, `sdks/python/tests/test_conformance.py`,
   `sdks/swift/Package.swift` (`.copy("Resources/v2")`),
@@ -69,7 +72,9 @@ SDKs is the repo's order (`AGENTS.md` rule 2), so this lands before any SDK appl
 - **Content set.** A7's v1/v2 PCK pair (v1 5,257,944 B, 147 files; v2 5,255,248 B, 151 files: 120
   reused, 22 changed, 9 added, 5 removed), minus chunk objects: `payload/v1.full.zst`, the
   whole-payload delta, the per-file deltas, files indexes, gaps blob and file blobs, reshaped to
-  P4-01's formats.
+  P4-01's formats. A7's `gen/gen.py` starts from the patching experiment's 37 MB Godot exports,
+  which the repo does not hold; the port starts from the small v1/v2 payloads instead, which the
+  committed set reproduces (v1 from its full blob, v2 by the `file` strategy).
 - **`cases.json`** (`contentCorpusVersion: 1`): `applyCases` `full-v1`, `full-v1-tampered`,
   `delta-whole-v1-to-v2`, `delta-whole-wrong-base`, `delta-whole-wrong-base-unchecked`,
   `delta-whole-artifact-tampered`, `file-v1-to-v2`, `file-delta-v1-to-v2`, `file-delta-tree`,

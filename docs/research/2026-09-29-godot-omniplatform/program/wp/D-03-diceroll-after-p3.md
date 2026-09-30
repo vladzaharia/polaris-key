@@ -1,16 +1,16 @@
 # D-03 Diceroll: publish through the Action, take feeds from Polaris Key, delete the old updater
 
-| Field       | Value                                                                                                                                                                                                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P2–P3"                                                                                                                                                                                                       |
-| Size        | 1–2 engineer-weeks                                                                                                                                                                                                                                                     |
-| Depends on  | [P3-10](P3-10-godot-updater.md), [P2b-05](P2b-05-storefront-feeds.md), [P2-06](P2-06-publish-cli-action.md)                                                                                                                                                            |
-| Unblocks    | none in the graph                                                                                                                                                                                                                                                      |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                                  |
-| Plan mode   | no                                                                                                                                                                                                                                                                     |
-| Gates       | `pkey validate` clean; Diceroll's CI; one tagged pre-release published end to end through the Action                                                                                                                                                                   |
+| Field       | Value                                                                                                                                                                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P2–P3"                                                                                                                                                                                                              |
+| Size        | 1–2 engineer-weeks                                                                                                                                                                                                                                                            |
+| Depends on  | [P3-10](P3-10-godot-updater.md), [P2b-05](P2b-05-storefront-feeds.md), [P2-06](P2-06-publish-cli-action.md)                                                                                                                                                                   |
+| Unblocks    | none in the graph                                                                                                                                                                                                                                                             |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                                                                                            |
+| Gates       | `pkey validate` clean; Diceroll's CI; one tagged pre-release published end to end through the Action                                                                                                                                                                          |
 | Human input | none in the graph. Needed in practice: a GitHub Environment `release` with required reviewers holding the new Ed25519 release key; the trusted-publisher policy set in the console; an F-Droid repo signing key as a CI secret; the go-ahead to retire the `channels` release |
-| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                                                                 |
+| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                                                                        |
 
 > **Re-verify first.** Diceroll paths below come from [notes/A4](../../notes/A4-diceroll-mapping.md)
 > (Diceroll `4e78bb6`, 2026-09-29) plus what D-01 and D-02 changed; this brief was written without
@@ -68,21 +68,24 @@ attack (#13) and missing SideStore fields (#14) ([README §9.2](../../README.md#
   the public release key and the trusted publisher; `.pkey/distribution`: outlets `direct`,
   `app-store`, `testflight`, `altstore`, `play`, `obtainium`, `fdroid-repo`, `steam`, `itch`, `web`
   (README §3.12 is the illustrative shape; the field names are the validators' from P2-04 and P2b-02).
-- `release.yml`: `polaris-key/publish@v1` after the existing export and signing steps, the release
+- `release.yml`: `polaris-key/publish@v1` (or `vladzaharia/polaris-key/actions/publish@<sha>` until
+  P2-06's listing exists) after the existing export and signing steps, the release
   key from the `release` Environment, the F-Droid index generation and signing step P2b-05 defines.
 - Build stamp: the SDK export plugin's per-preset Outlet and Channel options (P1-11), overridden per
   artifact in CI through `get_or_env`, keeping D-01's one-stamp-per-artifact rule.
 - Updater: the SDK's (P3-10): outlet adapters, the sidecar-PCK swap on portable Windows and Linux
   x86_64, and the boot guard (rollback after two failed boots, reported as `boot_rolled_back`).
-  Diceroll connects the SDK's signals to its banner and settings toggle.
+  Diceroll connects the SDK's signals to its banner and settings toggle, and configures the
+  outlet adapters P3-10 provides (`PKeyOutletAdapter`).
 - The bridge and the key inventory (Design notes).
 - Tests in Diceroll for the properties players can see: no downgrade on channel switch, rollback,
   no update activity on store, Steam and itch builds.
 
 **Out** (and where it belongs instead):
 
-- Sparkle on macOS and Velopack for the Windows installer need P5-07's native bridges, which are
-  not a dependency. If P5-07 has landed, adopt them here; otherwise macOS and installer builds get
+- Sparkle on macOS and Velopack for the Windows installer need P5-07's implementations of P3-10's
+  `PKeySparkleBridge` and `PKeyVelopackBridge` (and Velopack's launcher shim), which are not a
+  dependency. If P5-07 has landed, adopt them here; otherwise macOS and installer builds get
   the SDK's binary prompt and the gap is recorded in the PR (→ [P5-07](P5-07-desktop-plugins.md)).
 - Packs (→ [D-04](D-04-diceroll-after-p4.md)); store transports, In-App Updates and IAP
   (→ [D-05](D-05-diceroll-after-p6.md)).

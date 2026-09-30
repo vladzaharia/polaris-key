@@ -75,9 +75,10 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
 
 - Any change to code, the corpus or generated files (→ [P3-02](P3-02-wire-v4-contract-corpus.md)).
 - Implementing ingest, the feed routes and composition (→ [P3-03](P3-03-feed-composition.md)).
-- `kind: pack` records, pack sets, bindings and `plan-matrix.json` (→ [P4-01](P4-01-packs-plan.md));
-  revocations, pack floors and content rows of `update-matrix.json` (→ [P4-13](P4-13-revocation-floors-decision.md));
-  content-key delegation (→ [P4-19](P4-19-content-key-delegation.md)). The plan reserves their slots only.
+- `kind: pack` records, pack sets, bindings and `plan-matrix.json`
+  (→ [P4-01](P4-01-packs-plan.md)); revocations, pack floors and the content rows of
+  `update-matrix.json` (→ [P4-13](P4-13-revocation-floors-decision.md)); content-key delegation
+  (→ [P4-19](P4-19-content-key-delegation.md)). The plan reserves their slots only.
 - App-updater feed renderers (→ [P3-09](P3-09-updater-feeds.md)), except the extended
   `/update/version` shape if it becomes a `shared-protocol` type.
 
@@ -148,7 +149,8 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
    bucket is computed by `rolloutBucket` and passed in, because WebCrypto hashing is async.
    Define `installId` [the SDK's device id] and the exact bytes and endianness of the bucket.
 10. Outlet capability defaults per outlet id: where they live [a block in `update-matrix.json`,
-    later emitted by [P1b-02](P1b-02-sdk-constants.md)'s `gen-sdk-constants`] and how the feed narrows them.
+    later emitted by [P1b-02](P1b-02-sdk-constants.md)'s `gen-sdk-constants`] and how the feed
+    narrows them.
 11. `outlet-matrix.json`: row schema, signal vocabulary from notes/E9 §1.1 (named
     `<platform>.<signal>`), confidence levels, precedence of runtime evidence over the build
     stamp, the `unknown` outcome and its capabilities, and how unverified signals are marked
@@ -171,7 +173,8 @@ bump, and `CLAUDE.md` makes it plan-mode: contract → catalog → corpus → ev
     `application/jose`; discovery fields `update.endpoints.feed` and `release.endpoints.record`;
     channel-name collisions with the new path words.
 16. The manifest field `.pkey/release` `releaseKeys: [{kid, ed25519}]` (rule 9), which work
-    package adds it [P3-03, unless [P2-04](P2-04-release-descriptor.md) already has], and `contentKeys` reserved for P4-19.
+    package adds it [P3-03, unless P2-04 already has; see
+    [P2-04](P2-04-release-descriptor.md)], and `contentKeys` reserved for P4-19.
 17. The extended `/update/version` shape if P3-09 needs a `shared-protocol` type.
 18. The SDK order and assignment. [P3-02 → P3-05 (the `client-core` reference and the Node
     runner) → P3-04, P3-06, P3-07, P3-08 in parallel → P3-11.] No typed N/A for `update.feed`,

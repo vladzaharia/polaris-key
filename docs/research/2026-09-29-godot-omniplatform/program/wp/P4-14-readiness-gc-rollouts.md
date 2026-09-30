@@ -122,15 +122,22 @@ rollout_bp, rollout_salt, state, mirrored, source)` from P2b-04, which is alread
   a later refinement with P6-03.
 
 - **Bucket locks.** README §3.5 puts objects "immutable under R2 bucket locks", and E8 §5.7 uses
-  locks as a minimum age. A delete before the lock age fails, so sweep only objects older than the
-  lock rule for their prefix. If P2-01 set an indefinite lock on a prefix, GC cannot collect
-  there: escalate instead of weakening the lock.
+  locks as a minimum age. P2-01 locks `blobs/`, `bundles/`, `deltas/` and `gated/` **by age**
+  (proposed 180 days) precisely so this GC is possible. A delete before the lock age fails, so
+  sweep only objects whose `created_at` is older than the lock rule for their prefix; in practice
+  the lock age, not the grace period, bounds how soon anything goes. If a prefix was locked
+  indefinitely, GC cannot collect there: escalate instead of weakening the lock.
+- **Bookkeeping.** P2-01's tables are `blob_objects(storage_key, sha256, size, kind
+  blob|bundle|delta, gated, verified_at, created_at)` and `blob_refs(product, storage_key,
+  ref_kind, ref_id, created_at)`. `blob_refs` rows written at ingest (P2-04, P4-02, P4-10) are
+  the per-release references; liveness comes from the hooks, not from the existence of a ref.
 - **Sweep mechanics.** Mark `unreferenced_since`; after the grace period, re-check references,
   delete from R2, then delete the row. Keep `scheduled.ts`'s three properties: product-scoped,
   idempotent (a second run deletes nothing new), fault-isolated per product. Batch R2 deletes
   (at most 1,000 keys per call) and cap the work per tick to stay inside CPU and subrequest
   limits; the next tick resumes.
-- **Gated prefix** objects follow the same rules. Never move an object between prefixes.
+- **Gated prefix** objects (`gated/…`, P2-01's key builders) follow the same rules. Never move an
+  object between prefixes.
 
 ## Steps
 

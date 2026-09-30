@@ -1,16 +1,16 @@
 # S-03 Spike: chunk size and reuse on real Diceroll PCK history
 
-| Field       | Value                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | S: Spikes                                                                                                                                              |
-| Size        | 0.5–0.75 engineer-weeks                                                                                                                                |
-| Depends on  | none                                                                                                                                                   |
+| Field       | Value                                                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | S: Spikes                                                                                                                                                               |
+| Size        | 0.5–0.75 engineer-weeks                                                                                                                                                 |
+| Depends on  | none                                                                                                                                                                    |
 | Unblocks    | none in the graph; informs [P4-10](P4-10-chunk-indexes.md) (the default chunker parameters), [P4-03](P4-03-ci-patch-artifacts.md) and [P4-11](P4-11-chunk-sync-sdks.md) |
-| Role        | `pkey-spike-runner`                                                                                                                                    |
-| Plan mode   | no                                                                                                                                                     |
-| Gates       | none beyond `pnpm format` on the files it adds                                                                                                         |
-| Human input | read access to `vladzaharia/diceroll` releases (a token that can download its release assets)                                                           |
-| Repo        | `vladzaharia/polaris-key` (reads `vladzaharia/diceroll` release assets; writes nothing there)                                                          |
+| Role        | `pkey-spike-runner`                                                                                                                                                     |
+| Plan mode   | no                                                                                                                                                                      |
+| Gates       | none beyond `pnpm format` on the files it adds                                                                                                                          |
+| Human input | read access to `vladzaharia/diceroll` releases (a token that can download its release assets)                                                                           |
+| Repo        | `vladzaharia/polaris-key` (reads `vladzaharia/diceroll` release assets; writes nothing there)                                                                           |
 
 ## Goal
 

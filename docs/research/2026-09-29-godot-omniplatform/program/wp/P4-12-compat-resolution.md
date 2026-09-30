@@ -43,7 +43,8 @@ deliverables, `pinned` packs and `contentApi` on app records; this adds the othe
   [§3.12](../../README.md#312-what-dicerolls-pkey-would-look-like-illustrative) (illustrative
   `.pkey/release`), and [§11](../../README.md#11-decisions-needed) decisions 1 (guardrails),
   13, 18 and 19.
-- The P2-03, P2-04 and P4-02 code: release tables (`release_deliverables`, `release_builds`,
+- The P2-03, P2-04, P3-03 and P4-02 code: release tables (`release_records`, `release_pins`,
+  `release_deliverables`, `release_builds`,
   `release_channel_policy`, `release_yanks`), the release descriptor ingest, the publish submit
   route and its ticket, the `.pkey/release` deliverables validator.
 - `packages/worker/src/services/release/` (today's `channels.ts`, `store.ts`, `admin.ts`),
@@ -58,16 +59,19 @@ deliverables, `pinned` packs and `contentApi` on app records; this adds the othe
 **In:**
 
 - A pack module `packages/worker/src/services/release/packs/` (README decision 1 guardrail):
-  `resolve.ts` (pure), `checks.ts`, `holds.ts` and storage, behind the `releaseCatalog` hook.
+  `resolve.ts` (pure), `checks.ts`, `holds.ts` and storage, behind the descriptor hook (README
+  §3.2 calls it `releaseCatalog`, README §10 `buildCatalog`; use the name P2b-01 landed). P4-02
+  started this module; extend it.
 - A migration adding `release_sets`, `release_holds` and pack floors keyed per `contentApi`, with
   `TABLE_OWNERS.release` updated and `data-model.mdx` regenerated.
 - Resolution and its triggers; `packSetId`; hold mirroring at app-record ingest.
 - The floor operation for pack deliverables takes a `contentApi` (admin API and
   `pkey release` CLI), operator-owned with a `source` guard.
 - Publish checks in both directions, and the dry run.
-- `.pkey/release` (rule 9): `binding: compatible | standalone`, `requires.contentApi` keyed by app
-  deliverable, `requires.packs`, `conflicts`, per-pack `channels`, and the app's
-  `content.packChannels`.
+- `.pkey/release` (rule 9): widen P4-02's `binding: pinned`-only rule to
+  `compatible | standalone`; add `requires.contentApi` keyed by app deliverable, `requires.packs`,
+  `conflicts`, per-pack `channels`, and the app's `content.packChannels` (the record slots
+  `holds[]` and `packChannels` were reserved by P3-01 and P4-01).
 - Hook functions update, distribution and the console read (see Hand-off).
 
 **Out** (and where it belongs instead):
@@ -106,15 +110,19 @@ deliverables, `pinned` packs and `contentApi` on app records; this adds the othe
   packs' variant axes (texture, locale, quality). Propose a canonical variant key such as
   `locale=fr;texture=astc` (axes sorted). Identical sets for different selectors share a
   `packSetId`, so the feed can deduplicate.
-- **`packSetId`**: if P4-01 fixed the formula (v1 reports it in telemetry), use it. Otherwise
-  propose lowercase hex SHA-256 of the canonical JSON array `[[packId, releaseRecordSha256], …]`
-  sorted by `packId` bytes, without whitespace. Devices compute the id of their _active_ set (pins
-  ∪ holds ∪ the feed's set) with the same function, so it is wire-visible and P4-13 pins it in
-  the corpus. One implementation, exported for reuse.
+- **`packSetId`** is one function across v1 and v2 (P4-01 decision 11): P4-01 recommends
+  lowercase hex SHA-256 of the UTF-8 lines `<packId> <releaseSha256>\n` sorted by pack-id bytes,
+  pinned by `packSetIdCases` in the content corpus (P4-04), with the record hash as P3-01 defines
+  it (SHA-256 over the ASCII compact JWS). The Worker has `@polaris-key/client-core` only as a
+  dev dependency today, so either make it a runtime dependency and import `packSetId` from
+  `@polaris-key/client-core/packs`, or compute it in the Worker with WebCrypto and prove it against
+  `packSetIdCases` in a Worker test (the Worker already runs `fingerprint.json` the same way).
+  Devices compute the id of their _active_ set (pins ∪ holds ∪ the feed's set).
 - **Holds** (open point to settle in the PR). `release_sets` is keyed without the app release, so
   a hold cannot live inside a set, yet the research says resolution "honours holds". Proposal:
   devices apply their record's holds over the feed set, as they apply pins (P4-13 adds the
-  decision rows), and release (a) mirrors holds into `release_holds` at ingest, (b) at app
+  decision rows), and release (a) mirrors holds into `release_holds` at ingest, the way P4-02
+  mirrors pins into `release_pins`, (b) at app
   publish, checks that the level's set with each hold substituted still satisfies dependencies and
   conflicts, (c) at pack publish, refuses a release that would make any live app release's held set
   unsatisfiable, and (d) exposes held releases as live references for GC.
@@ -145,10 +153,11 @@ deliverables, `pinned` packs and `contentApi` on app records; this adds the othe
     satisfies; every `required` compatible pack has at least one compatible release on each of the
     app's channels.
   - Both report the resulting sets and the app releases that receive them.
-- **Dry run.** Prefer a `dryRun: true` field on the existing submit call (P2-02, P2-06) to a new
-  path; if a new path is unavoidable, it is rule 10 (OpenAPI + `routeCoverage`). The CLI joins
-  release's report with distribution's availability (a separate call) to show outlets, so release
-  stays distribution-free.
+- **Dry run.** `pkey release publish --dry-run` exists from P4-03 and prints the structured
+  refusals P3-03 and P4-02 return. Extend its report with the before/after sets; prefer a
+  `dryRun: true` field on the existing submit call to a new path (a new path is rule 10: OpenAPI +
+  `routeCoverage`). The CLI joins release's report with distribution's availability (a separate
+  call) to show outlets, so release stays distribution-free.
 - **Rule 9.** Each new validator error code needs a mutation-table entry and a schema change.
   Proposed codes: `invalid_pack_binding`; `missing_content_api_range` (a `compatible` pack without
   `requires.contentApi`); `standalone_with_content_api`; `unknown_content_api_app` (a key that is
@@ -202,10 +211,11 @@ mise exec node@22 -- pnpm typecheck
 
 Downstream packages rely on these names (propose, then keep):
 
-- `releaseCatalog` hook functions: `liveLevels(product, appDeliverable, channel)`,
+- Hook functions (on the descriptor hook, whatever P2b-01 named it):
+  `liveLevels(product, appDeliverable, channel)`,
   `packSets(product, channel)` (rows of `release_sets` with `set_json` and `unsatisfied`),
-  `packFloors(product, channel)`, `holdsFor(product, appReleaseId)`, and the shared
-  `packSetId(entries)` function.
+  `packFloors(product, channel)` and `holdsFor(product, appReleaseId)`; `packSetId` as defined
+  above.
 - **P4-13** composes the feed from these and freezes the wire form of sets, floors and
   `unsatisfied`; it also makes resolution skip revoked releases.
 - **P4-14** reads required sets for readiness and live references for GC.

@@ -19,7 +19,7 @@ ingests CI-signed `kind: pack` release records and records their variants and pa
 ingests app release records whose `content` block carries `contentApi`, the exact pack releases the
 app pins and what each build embeds, and it refuses an app release whose pins break the v1 rules.
 Afterwards, "which app releases pin which pack releases" is one query, and distribution, update
-and the console read it through the `releaseCatalog` hook.
+and the console read it through release's descriptor hook.
 
 ## Why
 
@@ -80,10 +80,10 @@ day one means P4-12 can resolve `compatible` packs per live level without re-sig
   declared pack deliverable; where the pinned **record** carries `requires.contentApi.<app>` or
   `requires.packs`, the app's level and the pinned set satisfy them; every `required` and every
   `baseline: embedded` pack is pinned; `embeds` name only pinned packs.
-- **Migration** with P4-01's tables and columns (proposed: `release_pins(product, app_release_id,
-pack_deliverable, pack_release_id, required)`, `release_metadata.content_api`,
-  `release_builds.embeds_json`, artifact role `files-gaps`); `TABLE_OWNERS` entries; regenerated
-  `data-model.mdx` and `validation-codes.mdx`.
+- **Migration** with P4-01's tables and columns. Proposed: `release_pins` (`product`,
+  `app_release_id`, `pack_deliverable`, `pack_release_id`, `required`),
+  `release_metadata.content_api`, `release_builds.embeds_json`, and the artifact role
+  `files-gaps`. `TABLE_OWNERS` entries; regenerated `data-model.mdx` and `validation-codes.mdx`.
 - **The release descriptor hook** (README §3.2 calls it `releaseCatalog`, README §10
   `buildCatalog`; use the name P2b-01 landed) gains pack deliverables, pack releases with variants
   and objects, pins and embeds, for P4-05, P4-09 and update.
@@ -126,18 +126,18 @@ pack_deliverable, pack_release_id, required)`, `release_metadata.content_api`,
   from the blob store (bounded by its recorded `bytes`) to check file blobs; never trust sizes from
   the request body.
 - **Migrations** are numbered when rebasing onto the default branch, never in advance (program
-  README §5). A CHECK-constraint change on `release_artifacts.role` needs a table rebuild, as
-  `0016_drop_dead_pii.sql` shows.
+  README §5). If P2-03 put a CHECK constraint on `release_artifacts.role`, adding a role needs a
+  table rebuild, as `0016_drop_dead_pii.sql` shows.
 
 ## Steps
 
 1. Read the approved plan; list its manifest rules, error codes, tables and roles in the PR body.
-2. Validator rules, mutation-table entries and schema changes; fixtures; `pnpm --filter
-@polaris-key/manifest test` green.
+2. Validator rules, mutation-table entries and schema changes; fixtures; the manifest tests
+   green.
 3. Migration and `TABLE_OWNERS`; regenerate the reference pages.
 4. Pack record ingest, then app `content` ingest, each with positive and negative tests using
    records signed by a test release key (reuse P3-03's fixtures).
-5. Extend the `releaseCatalog` hook; add the report key; write the docs page and glossary terms.
+5. Extend the descriptor hook; add the report key; write the docs page and glossary terms.
 
 ## Acceptance criteria
 

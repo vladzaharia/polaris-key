@@ -1,16 +1,16 @@
 # P1b-05 Add Chromium and minimum-version runners; fix the Node runner's build-gate port
 
-| Field       | Value                                                                                                                                                                                           |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                                                                                 |
-| Size        | 0.75–1 engineer-weeks                                                                                                                                                                           |
-| Depends on  | none in the graph; Part C cannot land before [P0-04](P0-04-channel-unification.md)'s approved plan re-baselines `gate-matrix.json` (see Design notes)                                          |
-| Unblocks    | none                                                                                                                                                                                            |
-| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                                                                      |
-| Plan mode   | no for Parts A and B; Part C needs a corpus row change, which only an approved plan may make                                                                                                   |
-| Gates       | CI (new jobs); for Part C, the corpus drift gate (`pnpm gen:corpus -- --check`) through P0-04's plan                                                                                            |
-| Human input | none for A and B; Part C rides on the human's approval of P0-04's plan                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                       |
+| Field       | Value                                                                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                                       |
+| Size        | 0.75–1 engineer-weeks                                                                                                                                 |
+| Depends on  | none in the graph; Part C cannot land before [P0-04](P0-04-channel-unification.md)'s approved plan re-baselines `gate-matrix.json` (see Design notes) |
+| Unblocks    | none                                                                                                                                                  |
+| Role        | `pkey-implementer` (see `.claude/agents/`)                                                                                                            |
+| Plan mode   | no for Parts A and B; Part C needs a corpus row change, which only an approved plan may make                                                          |
+| Gates       | CI (new jobs); for Part C, the corpus drift gate (`pnpm gen:corpus -- --check`) through P0-04's plan                                                  |
+| Human input | none for A and B; Part C rides on the human's approval of P0-04's plan                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                             |
 
 ## Goal
 

@@ -44,9 +44,10 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   layout, what CI must produce, "against the stored base bytes").
 - [CONTENT §4.2](../../CONTENT.md#42-initial-type-registry) (`godot.pck`, `files.tree` rules),
   [§7](../../CONTENT.md#7-transports) (marker), [§9](../../CONTENT.md#9-formats).
-- Reference code: `docs/research/2026-09-29-godot-omniplatform/prototype/content/` (A7's CI
-  stand-in: files index, gaps, per-file and whole deltas) and `prototype/patching/` (A6's PCK
-  reader and writer).
+- Reference code in `docs/research/2026-09-29-godot-omniplatform/prototype/`: `content/gen/gen.py`
+  (A7's CI stand-in: files index, gaps blob, per-file and whole `--patch-from` deltas, the zstd CLI
+  calls), `content/gen/pck.py` (PCK v2–v4 reader and writer), and `patching/tools/` (A6's
+  offline tools).
 - [P2-06](P2-06-publish-cli-action.md): the `pkey release` commands, signing, upload tickets and
   the Action this extends. Code: `packages/cli/src/index.ts` (command switch at line 66),
   `packages/cli/test/`.
@@ -77,8 +78,8 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 - **Marker** in P4-01's format, written next to each variant's payload as a build output the app
   export embeds.
 - **App records.** `--deliverable app` stamps `content.contentApi` from
-  `deliverables.app.content`, `pins` from the embedded packs' markers plus `--pin
-<packId>@<version>`, and `embeds` per build (or P4-01's alternative).
+  `deliverables.app.content`, `pins` from the embedded packs' markers plus explicit
+  `--pin <packId>@<version>` flags, and `embeds` per build (or P4-01's alternative).
 - `--dry-run` report: lint results, objects (new vs deduplicated), bytes per strategy, pins,
   refusals the Worker would raise that the CLI can see. Action inputs for all of it.
 
@@ -89,7 +90,8 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 - Platform transport steps: `xcrun ba-package`, PAD modules, Steam depots (→ P5-08).
 - Content-key signing (→ P4-19); `provides`/`removes` and the content-interface fingerprint
   (→ P4-20).
-- `archive.*` conversion and `godot.zip` (not in any v1 package; see the report on owners).
+- `archive.*` conversion and `godot.zip` (no work package owns them yet; P4-16's type list omits
+  them).
 - Worker-side checks (→ [P4-02](P4-02-pack-deliverables.md)); serving (→ P4-05).
 
 ## Design notes
@@ -106,8 +108,9 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   `.godot/imported/t512_05.png-….s3tc.ctex`). The prefix rule admits `.godot/imported/` entries
   whose source path lies under a declared prefix, and the `.import`/`.remap` files under it.
   Whether `.godot/uid_cache.bin` may ship is P4-01's call (A6 §2.7: UIDs register from it; the
-  Diceroll rule is "no `uid://` into packs"). Share one implementation with the device-side check
-  in [P4-08](P4-08-godot-packs.md) by pinning both to the same vectors.
+  Diceroll rule is "no `uid://` into packs"). Keep the rule table (prefix admission, denylist) in
+  one documented form and reuse the same fixture PCKs in the device-side check of
+  [P4-08](P4-08-godot-packs.md), so the two cannot drift.
 - **Container rebuild is type-neutral** (gap₀, file₀, gap₁, …): the CLI must prove its index and
   gaps blob rebuild the payload byte for byte before it publishes.
 - **Per-entry deltas** only for files whose path exists in the base with a different hash; added
@@ -117,7 +120,7 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 
 ## Steps
 
-1. Test fixtures: a tiny PCK v4 writer in the test helpers (port the `prototype/patching/` writer)
+1. Test fixtures: a tiny PCK v4 writer in the test helpers (port `prototype/content/gen/pck.py`)
    producing v1 and v2 with changed, added and removed entries, one forbidden script, and one
    path outside the prefixes; a small tree pair.
 2. PCK directory reader and the type lints.

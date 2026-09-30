@@ -68,16 +68,17 @@ off to exactly these feeds.
   enclosures and CI-provided `sparkle:edSignature`, reusing the renderer.
 - **Velopack**: `releases.<velopack-channel>.json` (`Assets` with `PackageId`, `Version`, `Type`,
   `FileName` as absolute distribution URLs, `SHA1`, `SHA256`, `Size`, notes), per Polaris channel
-  and OS/arch.
+  and OS/arch. Velopack clients append `arch`, `os`, `rid`, `id` and `localVersion`; key the cache
+  only on the ones the renderer reads.
 - **App Installer**: an `.appinstaller` per channel in the `2021` namespace with `MainPackage`
   identity from `.pkey/distribution` and the build's 4-part version, `OnLaunch`,
   `ShowPrompt` and `AutomaticBackgroundTask` as the operator configures them;
   `application/appinstaller`.
 - **zsync**: a stable per-channel `.zsync` URL for each AppImage build whose `URL:` header points
   at the current AppImage's Range-capable distribution URL.
-- **Extended `/update/version`**: keep `version`, `tag`, `url`; add build number, SHA-256, size,
-  URL, minimum OS and `critical`, selectable by platform, arch and outlet, with stable field
-  names Scoop and Flathub can read.
+- **Extended `/update/version`**: keep `version`, `tag` and `url` (today the GitHub release page);
+  add build number, SHA-256, size, a download URL, minimum OS and `critical`, selectable by
+  platform, arch and outlet, with stable field names Scoop and Flathub can read.
 - Routes (proposed; final names in the PR and the spec): `/{product}/update/{channel}/winsparkle.xml`,
   `/{product}/update/{channel}/velopack/releases.{file}.json`,
   `/{product}/update/{channel}/app.appinstaller`,
@@ -90,7 +91,7 @@ off to exactly these feeds.
 **Out** (and where it belongs instead):
 
 - The signed channel feed and record routes (→ [P3-03](P3-03-feed-composition.md)).
-- Storefront feeds: AltStore, F-Droid, Obtainium, Scoop and Flathub manifests (→ P2b-05).
+- Storefront feeds: AltStore, F-Droid, Obtainium, Scoop and Flathub manifests (→ [P2b-05](P2b-05-storefront-feeds.md)).
 - Native updater bridges in Godot (→ [P5-07](P5-07-desktop-plugins.md)); the GDScript hooks that
   call them (→ [P3-10](P3-10-godot-updater.md)).
 - Signed Sparkle feeds (`SURequireSignedFeed`): not with dynamic rendering (notes/E1).
@@ -104,7 +105,7 @@ off to exactly these feeds.
   (in the release descriptor or record) and are checked at ingest; Velopack relies on hashes and
   Authenticode; MSIX on the publisher certificate; AppImage on zsync hashes. Do not buffer whole
   installers to re-verify them in the isolate: `sparkle.ts` buffers up to 256 MiB in a 128 MB
-  isolate today (README §9.1 #11). Use P0-10's streaming verifier, or the record's SHA-256 plus a
+  isolate today (README §9.1 #11). Use [P0-10](P0-10-sparkle-hardening.md)'s streaming verifier, or the record's SHA-256 plus a
   streaming digest.
 - **Enclosure and asset URLs are immutable and Range-capable**, served by distribution. winget
   and some updaters reject redirects; use the streaming path where the notes say so.
@@ -120,7 +121,8 @@ off to exactly these feeds.
 - **Rollout mapping.** Sparkle's phased rollout is client-side in seven groups and cannot express a
   basis-point bucket; document the mapping you choose. Feeds without any rollout concept serve the
   previous release until the rollout completes, or the new one to everybody; state which per feed.
-- **CORS** on `/update/version` comes from P0-05's allowlist; this package does not add its own.
+- **CORS** on `/update/version` comes from [P0-05](P0-05-cors.md)'s allowlist; this package does
+  not add its own.
 
 ## Steps
 
@@ -165,6 +167,6 @@ App Installer and `appimageupdatetool` at the preview routes, and record the res
 - The route paths and discovery endpoints for each feed, which [P3-10](P3-10-godot-updater.md)'s
   hooks and [P5-07](P5-07-desktop-plugins.md)'s native bridges point at, and which D-03 wires into
   Diceroll's exports (`SUFeedURL`, Velopack base URL, AppImage update information).
-- The renderer functions, reusable by P2b-05 for storefront JSON.
+- The renderer functions, reusable by [P2b-05](P2b-05-storefront-feeds.md) for storefront JSON.
 - `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P3-09 done` in the PR
   that completes the work.

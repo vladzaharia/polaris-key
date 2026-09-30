@@ -47,9 +47,9 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
 
 **In:**
 
-- `core/models.py`: `TYP_FEED = "pkey-feed+jws"`, `TYP_RELEASE = "pkey-release+jws"` (unless
-  P3-02 already added them), and frozen
-  dataclasses for the feed, the release record and the decision (names per the plan).
+- `core/models.py`: `TYP_FEED = "pkey-feed+jws"` and `TYP_RELEASE = "pkey-release+jws"` (unless
+  P3-02 already added them), and frozen dataclasses for the feed, the release record and the
+  decision (names per the plan).
 - Pure functions (names per the plan; proposed): `verify_feed`, `record_hash`,
   `verify_release_record`, `rollout_bucket`, `decide_update`, and the outlet capability defaults
   table. Each returns `None` or a typed refusal on failure, never raises for a bad artifact.
@@ -60,8 +60,6 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
   `install_id`. `check()` and `appcast_url()` are unchanged.
 - Options: `pinned_release_keys`, `outlet` (host-supplied until [P3-11](P3-11-outlet-detection.md))
   and `build_number`, in the same place the plan puts them for the other SDKs.
-- `cli/core.py`: surface the decision in the one core command the argparse, click and typer
-  front ends wrap, if an update command exists.
 - Tests: new parametrised sections in `tests/test_conformance.py` for `feedCases` and
   `releaseRecordCases`; a new `tests/test_update_matrix.py` for every row and bucket vector;
   wiring tests in `tests/test_release_update.py` (reload floor, hash-before-signature, stale feed).
@@ -72,6 +70,7 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
 
 - Outlet detection, including PEP 376 `INSTALLER` and MSIX identity probes (→ [P3-11](P3-11-outlet-detection.md)).
 - The Velopack Python hand-off (`update.driver`; not in P3).
+- An update command in `cli/core.py`: there is none today, and adding one is separate work.
 - Packs (→ [P4-07](P4-07-python-swift-packs.md)).
 
 ## Design notes
@@ -94,7 +93,7 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
 1. Confirm P3-02 is `done` (P3-05 ideally too); branch `wp/P3-06-v4-python`.
 2. Models and pure functions; the conformance and matrix tests go green.
 3. Cache slices and reload derivation.
-4. Update client, options, CLI core.
+4. Update client and options.
 5. Docs, `parity.json`. Full pytest; set `in-review`.
 
 ## Acceptance criteria

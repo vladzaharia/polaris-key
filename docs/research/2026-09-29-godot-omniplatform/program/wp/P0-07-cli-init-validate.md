@@ -1,16 +1,16 @@
 # P0-07 Fix the `pkey init` scaffold and the validate/link disagreement
 
-| Field       | Value                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                            |
-| Size        | 0.25–0.25 engineer-weeks                                                                              |
-| Depends on  | none                                                                                                  |
-| Unblocks    | none                                                                                                  |
-| Role        | `pkey-implementer`                                                                                    |
-| Plan mode   | no                                                                                                    |
+| Field       | Value                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| Phase       | P0: Hygiene and unblockers                                                                             |
+| Size        | 0.25–0.25 engineer-weeks                                                                               |
+| Depends on  | none                                                                                                   |
+| Unblocks    | none                                                                                                   |
+| Role        | `pkey-implementer`                                                                                     |
+| Plan mode   | no                                                                                                     |
 | Gates       | CLI and manifest tests; rule 9 parity stays green (one new warning code); generated `validation-codes` |
-| Human input | none                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                             |
+| Human input | none                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                              |
 
 ## Goal
 

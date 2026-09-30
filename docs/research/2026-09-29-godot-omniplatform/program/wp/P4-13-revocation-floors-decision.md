@@ -81,16 +81,24 @@ decision is conformance-tested like the licence gate, so these rows are what kee
 
 ## Design notes
 
+- **The slots exist.** P3-01's plan reserves, for P4: in the record, `kind: revocation` and
+  `content: {contentApi, pins[], holds[], expects[], packChannels}`; in the feed, `packSets`, pack
+  floors per `contentApi` and revocations; in the decision, `packs`, `prestage`, `content-floor`
+  and `revoked-content`. v4 verifiers "verify, then refuse to act on" reserved kinds. This package
+  fills those slots rather than inventing shapes, and its plan states what a v4 SDK that predates
+  it does with a feed that carries them (it keeps using a revoked release until upgraded; say so).
 - **Feed fields** (names from CONTENT §6.9; the plan freezes them): `packSets` keyed by
   `contentApi` → `{packSetId, packs[] {id, version, release}}` per (platform, variant) selector
   (CONTENT §9 sketches `sets[] {select, packs[], rollout}`); pack floors per level; revocations in
   force; per-outlet binding narrowing (proposed `narrowed: {<outlet>: {<packId>: "pinned"}}`); the
   `unsatisfied` marker P4-12 stores. Pinned packs have no feed entry.
-- **Feed partitioning, a contradiction to settle.** README §3.3 says the feed is signed "per
-  channel and selector (`contentApi`, platform, variant)"; CONTENT §6.9 has one feed carrying
-  `packSets` keyed by `contentApi`; CONTENT §11's route is one feed per channel
-  (`GET /<p>/update/<channel>/feed.jws`). Follow what P3-01 decided. Otherwise recommend one feed
-  per channel carrying every live level, so a device about to update its binary already holds the
+- **Feed partitioning.** The research disagrees with itself: README §3.3 says the feed is signed
+  "per channel and selector (`contentApi`, platform, variant)", CONTENT §6.9 has one feed carrying
+  `packSets` keyed by `contentApi`, and CONTENT §11's route is one feed per channel
+  (`GET /<p>/update/<channel>/feed.jws`). P3-01's plan answers it (its brief recommends one feed per
+  (product, channel) with a `selector` object that P4 extends with `contentApi` and variant, served
+  at the route P3-03 landed, proposed `GET /{product}/update/feed/{channel}`). Follow it; carrying
+  every live level in one feed also means a device about to update its binary already holds the
   next level's set for pre-staging.
 - **Size.** The v3 payload cap is 65,536 bytes (`docs/security/WIRE-CONTRACT-V3.md` §1); use v4's
   value. Levels × platforms × variants × packs × revocations can approach it. Add a generator test
@@ -99,8 +107,9 @@ decision is conformance-tested like the licence gate, so these rows are what kee
 - **Revocation record**: a `pkey-release+jws` with `kind: revocation`, proposed body
   `{deliverable, target (release record sha256), replacement?, reason, seq}`. Only the CI release
   key may sign one; a delegated content key may not (P4-19). The feed lists revocation record
-  hashes; the client fetches each by hash and verifies it against the **pinned release keys**, never
-  the Worker's trust set. A replacement must be the same deliverable. SDKs refuse to mount a revoked
+  hashes (the record hash P3-01 defined: SHA-256 over the ASCII compact JWS); the client fetches
+  each from the record route by hash and verifies it against the **pinned release keys**
+  (`pinnedReleaseKeys`), never the Worker's trust set. A replacement must be the same deliverable. SDKs refuse to mount a revoked
   release (embedded baselines and pinned packs included) and swap in the replacement if it is
   compatible with the device (level, engine, variant); otherwise `blocked(revoked-content)`.
 - **Yank vs revoke** (CONTENT §6.7 item 6): a yank stops new serving; devices keep what they have. A
@@ -116,8 +125,8 @@ decision is conformance-tested like the licence gate, so these rows are what kee
   under a CDN overlay. Update reads distribution's transports through Core hooks; the only service
   import stays `update → release`.
 - **Active set and `packSetId`.** The device's active set is its record's pins, then its holds
-  over the feed set, then the feed set (P4-12's proposal). It computes the id with P4-12's
-  function; corpus vectors pin the formula.
+  over the feed set, then the feed set (P4-12's proposal). The formula is P4-01's (pinned by
+  `packSetIdCases`, P4-04); add cases for an active set that mixes pins, holds and feed entries.
 - **Decision precedence.** The plan writes one order and the rows pin it. Proposed:
   `blocked(app-floor)` → mandatory `binary`/`store` → `blocked(revoked-content)` →
   `blocked(content-floor)` → `binary` with `prestage[]` → `packs` → `none`.
@@ -145,11 +154,14 @@ decision is conformance-tested like the licence gate, so these rows are what kee
   | `mandatory-store-supersedes-packs`           | `store`                                                                                                 |
   | `non-mandatory-binary-with-pack-update`      | as the plan decides (the Diceroll invariant is "the binary supersedes content")                         |
 
-- **Wire version.** If P3-01 and P4-01 reserved these fields as optional in v4, no
-  `PROTOCOL_VERSION` bump is needed; confirm that v4 parsers tolerate the fields being present.
-  Otherwise the plan explains the bump and what happens to clients and Workers already deployed.
+- **Wire version.** Because P3-01 reserved these slots, no `PROTOCOL_VERSION` bump should be
+  needed; the plan confirms that v4 parsers accept the fields being present and non-empty. If the
+  approved plans differ, the plan explains the bump and what happens to clients and Workers
+  already deployed.
 - **Generated constants** (once P1b-02 exists): the `blocked` reasons and new enums go through
   `tools/gen-sdk-constants.ts`, not hand-written per SDK.
+- **Corpus concurrency.** Only one corpus-touching package may be in flight (program README §5);
+  coordinate with P4-10 and P4-19.
 
 ## Steps
 

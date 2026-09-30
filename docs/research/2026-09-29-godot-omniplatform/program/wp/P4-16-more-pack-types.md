@@ -8,7 +8,7 @@
 | Unblocks    | none                                                                                                                 |
 | Role        | `pkey-sdk-porter` (the Godot handlers may go to `pkey-godot-engineer`)                                               |
 | Plan mode   | no                                                                                                                   |
-| Gates       | none in the graph; rule 9 if the `.pkey/release` `type` list has to widen; per-type corpus vectors would need a plan |
+| Gates       | none in the graph; in practice rule 9 (the v1 validator accepts only `godot.pck` and `files.tree`, and P4-01 names this package to widen it); per-type corpus vectors would need a plan |
 | Human input | none                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                            |
 
@@ -22,21 +22,22 @@ in every SDK through `registerHandler`, and the CLI lints the new types at publi
 
 | SDK         | Handlers added here                                 |
 | ----------- | --------------------------------------------------- |
-| Godot       | `l10n.table`, `data.json`, `audio.bank`, `custom.*` |
+| Godot       | `godot.zip`, `l10n.table`, `data.json`, `audio.bank`, `custom.*` |
 | Swift       | `ml.model`, `data.json`, `l10n.table`, `custom.*`   |
 | Node        | `ml.model`, `custom.*`                              |
 | Python      | `ml.model`, `data.json`, `custom.*`                 |
 | React / web | `data.json`, `l10n.table`, `custom.*`               |
 
 `files.tree` (and, for Godot, `godot.pck`) come from v1 (P4-06, P4-07, P4-08). If a v1 package
-did not deliver `files.tree` in an SDK that CONTENT §13 lists for it, add it here.
+did not deliver `files.tree` in an SDK that CONTENT §13 lists for it, add it here. `godot.zip` is
+here because P4-08 routes it here; P4-03 notes that no v1 package owns it.
 
 ## Why
 
 v1 and v2 carry Godot PCKs and file trees. Localisation, event data, audio banks and ML models are
 what make packs useful beyond Diceroll's art ([CONTENT §6.8](../../CONTENT.md#68-diceroll-worked-through):
-French localisation as a `standalone` `l10n.table`, events as `data.json`). The graph ties this to
-the milestone "Localisation, events and supporter packs". Types are plugins (CONTENT principle 4),
+French localisation as a `standalone` `l10n.table`, events as `data.json`), and README P4's v3
+outcome is "localisation, events and supporter packs". Types are plugins (CONTENT principle 4),
 so this is per-SDK handler work over the shared transport, patching, signing and GC.
 
 ## Read first
@@ -60,7 +61,7 @@ so this is per-SDK handler work over the shared transport, patching, signing and
 - Type-specific verification (below) and typed N/A results for unsupported pairs.
 - `custom.<name>` end to end: registration, opaque file or tree payload, the game's activation.
 - CLI lints per new type in `pkey release publish`.
-- If P4-02's validator restricts `type` to the v1 types, widen it (rule 9: validator rule,
+- Widen the `.pkey/release` `type` rule that P4-02 limited to `godot.pck` and `files.tree` (rule 9: validator rule,
   mutation-table entry, schema, regenerated `validation-codes.mdx`).
 - `parity.json` entries and tagged tests for each SDK.
 
@@ -77,6 +78,10 @@ so this is per-SDK handler work over the shared transport, patching, signing and
 ## Design notes
 
 - **Type checks** (CONTENT §4.2):
+  - `godot.zip`: as `godot.pck` (engine, directory check, restart activation), but tolerated, not
+    preferred: zips cannot express removals, ignore `replace_files` and cannot be mounted at an
+    offset. Strategy `full`; `chunk` only for stored entries. The CI lint requires stored entries
+    and the same data-only rules as P4-03's `godot.pck` lint.
   - `l10n.table`: a BCP-47 locale matching the variant, and a key-schema version the handler
     supports. Hot activation; in Godot through `TranslationServer` (remove the previous
     translation on swap). Strategy: full, compressed on the wire; delta only for large tables.

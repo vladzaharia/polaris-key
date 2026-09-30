@@ -40,9 +40,10 @@ Background Assets transport later ([A7 §10.1](../../notes/A7-xlang-content.md#1
   background `URLSession`), [§11.2](../../notes/A7-xlang-content.md#112-one-small-dependency-per-sdk-none-for-godot).
 - [CONTENT §4.1](../../CONTENT.md#41-handler-contract-every-sdk), [§10](../../CONTENT.md#10-client-pipeline-every-sdk);
   [PARITY §5.6](../../PARITY.md#56-packs), [§6.2](../../PARITY.md#62-zstd-one-codec-at-most-one-dependency-per-sdk).
-- The reference implementations: `packages/client-core/src/packs/` once P4-06 lands, and
-  `docs/research/2026-09-29-godot-omniplatform/prototype/content/` (A7's Python library and runner,
-  456 + 129 lines).
+- The reference implementations: `packages/client-core/src/packs/` once P4-06 lands, and in
+  `docs/research/2026-09-29-godot-omniplatform/prototype/content/`:
+  `runners/python/pkey_content.py` and `runcases.py` (A7's Python library and runner, 456 + 129
+  lines, stdlib and `zstandard` modes) and `probe/magic/` (the dictionary-magic probes).
 - Code: `sdks/python/pyproject.toml` (`requires-python = ">=3.9"`, dependencies),
   `sdks/python/src/polaris_key/update/`, `core/telemetry.py`, `tests/test_conformance.py`
   (corpus path at line 44); `sdks/swift/Package.swift` (targets; `PolarisKeyUpdate` is macOS-only

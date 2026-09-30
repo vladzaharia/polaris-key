@@ -14,10 +14,10 @@
 
 ## Goal
 
-`@polaris-key/client-core` verifies a `pkey-feed+jws`, fetches-by-hash-then-verifies a
-`pkey-release+jws` against pinned release keys, computes the rollout bucket and returns the update
-decision, and the Node conformance runner proves all three against `feedCases`,
-`releaseRecordCases` and every `update-matrix.json` row. The React SDK exposes the decision to a
+`@polaris-key/client-core` verifies a `pkey-feed+jws`, checks a `pkey-release+jws` against the
+feed's hash pin and then against pinned release keys, computes the rollout bucket and returns the
+update decision, all without I/O. The Node conformance runner proves all three against
+`feedCases`, `releaseRecordCases` and every `update-matrix.json` row. The React SDK exposes the decision to a
 browser or desktop host and renders it in `<UpdatePrompt>`. This is the JavaScript reference
 implementation of wire v4; [P3-04](P3-04-v4-node.md) builds the Node SDK on it.
 
@@ -65,11 +65,13 @@ mistake once, in the reference, instead of in five languages.
 - **Node runner sections** in `conformance/runners/node`: `feedCases`, `releaseRecordCases`,
   every `update-matrix.json` row and bucket vector, through the functions above.
 - **React**: a headless hook (proposed `useUpdateDecision`) beside `useLatestVersion`, which is
-  kept; the browser adapter fetches the feed and the record (discovery endpoints from P3-03) and
-  persists the slices in its store; the desktop adapter asks the Node host over the existing
-  bridge (`invoke("update", …)`); `<UpdatePrompt>` renders `store`, `binary`, `platform`,
-  `blocked(app-floor)` and mandatory states; a new `updateMatrixParity.test.ts` proves the
-  adapters feed `decideUpdate` the right inputs.
+  kept. The browser adapter fetches the feed and the record (discovery endpoints from P3-03) and
+  persists the slices in its store. The desktop adapter calls the bridge's
+  `invoke("update", "decide", …)` (`src/desktop/bridge.ts`), which an Electron host answers with
+  the Node SDK's `client.update.decide()` from [P3-04](P3-04-v4-node.md); test it with a fake
+  bridge. `<UpdatePrompt>` renders `store`, `binary`, `platform`, `blocked(app-floor)` and
+  mandatory states. A new `updateMatrixParity.test.ts` proves the adapters feed `decideUpdate`
+  the right inputs.
 - If the Chromium runner from P1b-05 exists, it runs the three new sections too.
 - `packages/client-core/README.md` subpath table; `packages/docs/src/content/docs/build/sdks/react.mdx`.
 - `parity.json` for React (which covers `client-core`, PARITY §1): `update.feed`,

@@ -45,8 +45,11 @@ reference to read.
   [§8.1](../../CONTENT.md#81-the-strategy-ladder-and-planner), [§10](../../CONTENT.md#10-client-pipeline-every-sdk)
   (the pipeline, install state, web), [PARITY §5.6](../../PARITY.md#56-packs),
   [§6.2](../../PARITY.md#62-zstd-one-codec-at-most-one-dependency-per-sdk).
-- Reference code: `docs/research/2026-09-29-godot-omniplatform/prototype/content/` (A7's
-  JavaScript core and case interpreter, and the decoder-only WASM build).
+- Reference code in `docs/research/2026-09-29-godot-omniplatform/prototype/content/`:
+  `runners/js/content.mjs` (the isomorphic core with injected SHA-256 and zstd) and
+  `runners/js/cases.mjs` (the case interpreter), `runners/node/run.mjs` and `run-wasm.mjs`,
+  `runners/browser/` (worker, OPFS and `Range` probes), `wasm/zdec.c`, `wasm/build.sh` and
+  `runners/browser/zstddec-prefix.mjs` (the decoder-only WASM build and its loader).
 - Code: `packages/client-core/src/index.ts:1-5` ("WebCrypto only, zero Node APIs, no I/O"),
   `src/errors.ts`, `src/store.ts`, `package.json` (subpath exports);
   `packages/sdk-node/src/update/client.ts`, `src/core/telemetry.ts`;

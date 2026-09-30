@@ -66,8 +66,8 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
   `versionFromTag(tag)`; ties (`v1.2.0` and `1.2.0`) go to the later `published_at`. One shared
   function used by the live routes, the truth-store channel rows and `checkReleaseHealth`.
 - **Pagination.** `listReleases` follows `Link: rel="next"` up to a page cap. The truth-store
-  sync reads up to 10 pages (1,000 releases). Live resolution stops at the first page that yields
-  a candidate, then reads at most one more page to confirm ordering, capped at 3 pages.
+  sync reads up to 10 pages (1,000 releases). Live resolution reads pages until it has seen a
+  candidate, capped at 3 pages, and picks the highest candidate among the pages it read.
 - **Pinned lookups** try `tags/v<version>` and, on 404, `tags/<version>` (`github.ts:123-127`),
   so unprefixed tags can be pinned and the stable appcast's pinned enclosure resolves.
 - **Upsert conflict.** A migration replaces the unique index with a non-unique one
@@ -75,9 +75,10 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
   `CREATE INDEX IF NOT EXISTS idx_release_metadata_version ON release_metadata(product, version);`).
   Nothing in `src/` looks a release up by version, so uniqueness buys nothing.
 - **R6-10 floor.** A new table `release_channel_floors(product, channel, version, release_id, raised_at, lowered_by, lowered_at)`
-  holds the highest version each moving channel has resolved to during a truth-store sync. Live
-  resolution of a moving selector refuses (404 `no release for selector`) any candidate below the
-  floor. `checkReleaseHealth` reports a `channel-regressed` check (`error`) naming the floor and
+  holds the highest version each moving channel has resolved to during a truth-store sync. When
+  live resolution of a moving selector picks a candidate below the floor, it looks the floor's
+  release up by tag (one call): if it still exists (a higher release sat on an unread page), serve
+  it; if it is gone, refuse with 404 `no release for selector`. `checkReleaseHealth` reports a `channel-regressed` check (`error`) naming the floor and
   what the list now offers. An operator lowers or clears a floor with
   `POST /manage/api/products/<slug>/release/channels/<channel>/floor` (`{ "version": "1.0.0" }` or
   `{ "clear": true }`), audited as `release.channel.floor`.
@@ -89,7 +90,8 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
   and operator channel policy (→ P2-03). The floor table is a stop-gap P2-03 folds into
   `release_channel_policy.min_supported`.
 - Per-platform resolution and caching resolution to cut GitHub quota (→ P2-05).
-- Accepting a `v1.2.3` *selector*, and fixing the OpenAPI text that promises it (→ [P0-11](P0-11-docs-drift.md)).
+- Accepting a `v1.2.3` _selector_ is not planned; correcting the OpenAPI text that promises it
+  belongs to [P0-11](P0-11-docs-drift.md).
 - Hiding non-candidate releases from the portal list (→ P2-03, P2b-06).
 
 ## Design notes
@@ -100,7 +102,8 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
   compare, so the comparator only ever sees parseable versions; add a local strict comparator if
   sharing `core/entitlements.ts` is awkward.
 - The floor is raised only by the sync (no hot-path writes). Live resolution does one extra D1
-  read for moving selectors. Pinned selectors are never floored. `pr-N` channels are not floored.
+  read for moving selectors, and one extra GitHub call only in the below-floor case. Pinned
+  selectors are never floored. `pr-N` channels are not floored.
 - A floor stuck too high (a typo'd `v10.0.0` deleted later) is the operator's call: health says so,
   the admin endpoint fixes it. The console button can wait for P2-07; the endpoint and health
   check are required here.
@@ -132,6 +135,8 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
       `latest` is `v1.10.0`; with `ignoreTags: [v1.10.0]` it is `v1.4.0`.
 - [ ] Test: 150 releases across two pages with the only stable one on page 2 → `latest` resolves;
       the sync ingests all 150.
+- [ ] Test: after a sync has floored `stable` at v2.0.0, a page 1 holding 100 newer prereleases
+      and a v1.9.9 backport still serves v2.0.0 (through the floor lookup), not v1.9.9.
 - [ ] Test: a repo tagging `1.2.3` (no `v`) serves `/release/dl/1.2.3/…` and a working appcast enclosure.
 - [ ] Test: releases `v1.2.0` and `1.2.0` in one sync, and a stored `1.2.0` row followed by a new
       `v1.2.0` tag, both resync without error.

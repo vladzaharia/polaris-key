@@ -54,16 +54,16 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   §B1 (AppImage: `APPIMAGE`, `appimageupdatetool`); [notes/E4](../../notes/E4-godot-ecosystem.md)
   (self-update in Godot).
 - `sdks/godot`: P3-08's `distribution/decision.gd` and update service; P1-02's transport and
-  persistence; [P1-10](P1-10-godot-ui-kit.md)'s `PKeyBoot` shell; [P1-11](P1-11-godot-export-plugin.md)'s
-  build stamp.
+  persistence; [P1-10](P1-10-godot-ui-kit.md)'s `PKeyBoot` shell;
+  [P1-11](P1-11-godot-export-plugin.md)'s build stamp.
 - [P3-09](P3-09-updater-feeds.md)'s feed routes (Sparkle, WinSparkle, Velopack, zsync).
 
 ## Scope
 
 **In:**
 
-- **Outlet adapters** in `distribution/outlets/` (README §5.1 lists the files), one per outlet id
-  in the plan, behind one interface (proposed `PKeyOutletAdapter`: `id()`, `capabilities()`,
+- **Outlet adapters** in `distribution/outlets/`, one per outlet id in the plan, behind one
+  interface (proposed `PKeyOutletAdapter`: `id()`, `capabilities()`,
   `apply(decision) -> result`). `store` opens the decision's listing or deep link; `platform`
   shows the outlet's own message; `binary` dispatches on `method`.
 - **Native hook interfaces** (proposed `PKeySparkleBridge`, `PKeyVelopackBridge`,
@@ -95,8 +95,9 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
 **Out** (and where it belongs instead):
 
 - The native plugins behind the hooks, and Velopack's launcher shim
-  (→ [P5-07](P5-07-desktop-plugins.md)); iOS in-app store sheet (→ [P5-05](P5-05-apple-plugin-package.md));
-  Play In-App Updates and `PackageInstaller` (→ [P5-06](P5-06-kotlin-aar.md)).
+  (→ [P5-07](P5-07-desktop-plugins.md)); the iOS in-app store sheet
+  (→ [P5-05](P5-05-apple-plugin-package.md)); Play In-App Updates and `PackageInstaller`
+  (→ [P5-06](P5-06-kotlin-aar.md)).
 - Outlet detection signals (→ [P3-11](P3-11-outlet-detection.md)); this package takes the outlet
   from the build stamp and, once it exists, the detector.
 - Packs, pack mounts and delta-baked code packs (→ [P4-08](P4-08-godot-packs.md)); P3 downloads
@@ -109,6 +110,10 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
 - **Never relaunch with `--main-pack`, `--path`, `--scene` or `-s`.** Custom export templates are
   the only way to keep them, and the SDK does not support that path (README §5.6 option 3).
   Override packs at `_init()` are not used for code (option 4).
+- **Adapters are per outlet, mechanisms are not outlets.** README §5.1's file list mixes outlet
+  ids (`app_store`, `steam`) with updater mechanisms (`velopack`, `sparkle`, `appimage`, `apk`).
+  Key the adapters on the README §3.1 outlet ids the plan fixes, and put the mechanisms behind
+  `binary.method` and the bridges.
 - **Capabilities only narrow.** The compiled outlet defaults from P3-08 are the ceiling; the feed
   can lower them. A store, Steam or itch build can never be talked into self-updating code.
 - **Verify, then act.** Godot never checks a PCK's own hashes, so the SDK verifies the staged file
