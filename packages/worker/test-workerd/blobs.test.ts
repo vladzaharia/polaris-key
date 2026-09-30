@@ -26,6 +26,9 @@ import { D1Db } from "../src/db/d1.js";
 import { NOW, seedProduct } from "./seed.js";
 
 const MiB = 1024 * 1024;
+/** Real R2 I/O through miniflare, including two 17 MiB objects generated, hashed, uploaded and
+ *  streamed: ~2 s on an idle machine, so vitest's 5 s default is too tight for a loaded runner. */
+const R2_LANE = { timeout: 60_000 };
 
 function randomBytes(n: number): Uint8Array {
   const out = new Uint8Array(n);
@@ -44,7 +47,7 @@ function bucket(): R2Bucket {
   return env.BLOBS;
 }
 
-describe("putVerified on R2", () => {
+describe("putVerified on R2", R2_LANE, () => {
   it("R2 refuses bytes that do not hash to the sha256 option", async () => {
     const good = randomBytes(4096);
     const bad = randomBytes(4096);
@@ -86,7 +89,7 @@ describe("putVerified on R2", () => {
   });
 });
 
-describe("verifyStaged + promote on R2", () => {
+describe("verifyStaged + promote on R2", R2_LANE, () => {
   it("streams a >16 MiB object through the native DigestStream", async () => {
     const big = randomBytes(17 * MiB + 3);
     const h = await hexSha256(big);
@@ -184,7 +187,7 @@ describe("verifyStaged + promote on R2", () => {
   });
 });
 
-describe("blobResponse on R2", () => {
+describe("blobResponse on R2", R2_LANE, () => {
   it("serves 200, 206, 416, 304 and HEAD with the SHA-256 validators", async () => {
     const bytes = randomBytes(100_000);
     const h = await hexSha256(bytes);
@@ -251,7 +254,7 @@ describe("blobResponse on R2", () => {
   });
 });
 
-describe("bytes host isolation on workerd", () => {
+describe("bytes host isolation on workerd", R2_LANE, () => {
   it("the console, portal and docs answer not-found, sandboxed, on the bytes host", async () => {
     for (const path of [
       "/",
