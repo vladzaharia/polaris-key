@@ -47,7 +47,7 @@ P2-01 and P2b-04 and the chunk-bundle size for P4-10.
 ## Read first
 
 - `AGENTS.md` and `.claude/agents/pkey-spike-runner.md`.
-- [README §3.5](../../README.md#35-storage-and-byte-delivery) and [§11](../../README.md#11-decisions-needed) decision 4 (R2, content-addressed, separate registrable domain).
+- [README §3.5](../../README.md#35-storage-and-byte-delivery) and [§11](../../README.md#11-decisions-needed) decision 4 (R2, content-addressed; P2-01 landed the bytes host as `dl.plrs.im`, same-site, not a separate registrable domain).
 - [CONTENT §10](../../CONTENT.md#10-client-pipeline-every-sdk) (fetch, resume, web: `Cache.put` rejects 206) and [§11](../../CONTENT.md#11-server-side-by-service) (the `distribution/blob/<sha>` route).
 - [notes/E5 §4.2–§4.4](../../notes/E5-frontier-tech.md#42-range-resume-integrity-headers) (Range, `Repr-Digest`, R2 limits, presigned URLs only on the S3 endpoint, WAF token auth, serving design).
 - [notes/E8 §2.5](../../notes/E8-content-delivery.md#25-cloudflare-and-r2-facts-that-constrain-the-chunk-transport).

@@ -1,16 +1,16 @@
 # P6-04 Optional: Polaris-hosted, channel-pinned web builds
 
-| Field       | Value                                                                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P6: Commerce, ops, web (optional)                                                                                                                                                      |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [P2-01](P2-01-blob-store.md), [P0-05](P0-05-cors.md), [P2b-04](P2b-04-rollouts-delivery.md), [P2-05](P2-05-release-routes.md)                                                          |
-| Unblocks    | none                                                                                                                                                                                   |
-| Role        | `pkey-implementer`                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                     |
-| Gates       | none listed. In practice: rule 10 or a narrative-only decision for the new route kind, a `wrangler.toml` route on the byte domain, and a threat-model note on hosting third-party code |
-| Human input | none listed. In practice: DNS and a Worker route for the web-hosting hostname on the separate registrable domain P2-01 set up                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                              |
+| Field       | Value                                                                                                                                                                                                                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web (optional)                                                                                                                                                                                                                                                                     |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                                  |
+| Depends on  | [P2-01](P2-01-blob-store.md), [P0-05](P0-05-cors.md), [P2b-04](P2b-04-rollouts-delivery.md), [P2-05](P2-05-release-routes.md)                                                                                                                                                                         |
+| Unblocks    | none                                                                                                                                                                                                                                                                                                  |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                    |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                    |
+| Gates       | none listed. In practice: rule 10 or a narrative-only decision for the new route kind, a `wrangler.toml` custom-domain route on the web-hosting domain, and a threat-model note on hosting third-party code                                                                                           |
+| Human input | none listed. In practice: a **new, separate registrable domain** (not `plrs.im`) with DNS and a Worker route for the web-hosting hostname. P2-01 did not set one up: its bytes host `dl.plrs.im` is same-site with the console and refuses HTML and script by design, so web builds cannot live there |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                             |
 
 This is a kickoff brief for an optional package. The implementer turns it into a short plan in the
 PR description before writing code.
@@ -18,7 +18,7 @@ PR description before writing code.
 ## Goal
 
 A product can publish a Godot (or any) web export as an app release, and players open
-`https://<bytes-domain>/<product>/<channel>/` to get the build that channel points at. Every build is
+`https://<web-hosting-domain>/<product>/<channel>/` to get the build that channel points at. Every build is
 also reachable, immutable, at `/<product>/b/<buildId>/`. Files come from R2 with the right content
 types and precompressed Brotli, and cross-origin isolation headers are sent only for threaded
 builds. Moving the channel pointer moves the players on their next load.
@@ -29,7 +29,7 @@ builds. Moving the channel pointer moves the players on their next load.
   (decision 9 in [§11](../../README.md#11-decisions-needed)).
 - Workers static assets cap files at 25 MiB, too small for Godot's `.wasm` and `.pck`, so hosting
   must be R2 behind a thin Worker route, on a separate registrable domain so it never shares a site
-  with the console's cookies ([§3.11](../../README.md#311-web), [§3.5](../../README.md#35-storage-and-byte-delivery)).
+  with the console's cookies. P2-01 shipped `dl.plrs.im` as a same-site `plrs.im` sibling (owner decision) with compensating controls (sandbox CSP, `nosniff`, `attachment`, no `text/html`/SVG/JS/JSON, host-only cookies); web builds are exactly what those controls forbid, so this package needs its own domain ([§3.11](../../README.md#311-web), [§3.5](../../README.md#35-storage-and-byte-delivery)).
 
 ## Read first
 
@@ -55,6 +55,7 @@ builds. Moving the channel pointer moves the players on their next load.
 - COOP/COEP/CORP only when the manifest marks the build threaded; none for single-threaded builds.
 - A per-channel service-worker scope, so a Godot PWA export updates when the pointer moves.
 - Tests with a fake R2 and a fake release catalog; operator docs.
+- **Wave-1 sync:** **Own domain, not `dl.plrs.im`.** The bytes host refuses HTML, script, SVG, JSON and `text/*` by design (sandbox CSP, `nosniff`, `attachment`, host-only cookies; THREAT-MODEL §3). Do not register web-hosting routes in `BYTE_ROUTES`; reuse `core/blobs.ts` for storage only, on the new domain's own host isolation.
 
 **Out** (and where it belongs instead):
 
@@ -91,6 +92,7 @@ builds. Moving the channel pointer moves the players on their next load.
       pointer serves the new build on reload (recorded in the PR).
 - [ ] Route coverage and generated pages are fresh.
 - [ ] The green gate passes (`AGENTS.md`).
+- [ ] No web-hosting route is registered on `dl.plrs.im` or in `mount.ts` `BYTE_ROUTES`; the hosting domain is not a `plrs.im` sibling (test or documented check).
 
 ## Verify
 

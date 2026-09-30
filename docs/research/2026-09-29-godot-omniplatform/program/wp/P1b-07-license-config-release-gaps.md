@@ -95,6 +95,7 @@ least one SDK, so this is porting, not design, with one semantic fix (`entitledC
 - **Transcripts** through P1b-03's harness: `config-schema-fetch`, and `release-changelog` covering
   the changelog and the entitled 403.
 - Manifests and tags; the SDK docs pages (`build/sdks/*.mdx`).
+- **Wave-1 sync:** **License entitlement corpus (from P1b-01).** Add a `licenseDocCases` expectation for entitlements, profile and licence id to the corpus, then a corpus proof for `license.entitlements` in the parity registry; align `PARITY.md` §5, which still names `cases.json` for `license.entitlements` and `gen-mirrors --check` for `config.mirror`, with the registry.
 
 **Out** (and where it belongs instead):
 
