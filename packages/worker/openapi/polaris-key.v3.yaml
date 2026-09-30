@@ -197,17 +197,7 @@ paths:
                   value:
                     services:
                       license: { enabled: false }
-                      config:
-                        {
-                          enabled: true,
-                          schemaVersion: 3,
-                          endpoints:
-                            {
-                              document: https://key.plrs.im/cfg/config/document,
-                              schema: https://key.plrs.im/cfg/config/schema,
-                            },
-                          mint: { available: false },
-                        }
+                      config: { enabled: true, schemaVersion: 3, endpoints: { document: https://key.plrs.im/cfg/config/document, schema: https://key.plrs.im/cfg/config/schema }, mint: { available: false } }
                       release: { enabled: false }
                       update: { enabled: false }
                       identity: { enabled: false }
@@ -306,8 +296,7 @@ paths:
               # The body is a base64url JWS string, so the shape a client actually consumes is
               # its DECODED payload. Named here rather than as `schema` because the wire body
               # really is a string.
-              x-polaris-decoded-payload:
-                { $ref: "#/components/schemas/TrustManifestPayload" }
+              x-polaris-decoded-payload: { $ref: "#/components/schemas/TrustManifestPayload" }
               examples:
                 manifest:
                   summary: The compact JWS as served
@@ -497,10 +486,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidJson:
-                  { value: { error: bad_request, message: invalid json } }
-                missingId:
-                  { value: { error: bad_request, message: missing device id } }
+                invalidJson: { value: { error: bad_request, message: invalid json } }
+                missingId: { value: { error: bad_request, message: missing device id } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: The target is visible but is not this token's own device — LEGACY FLAT.
@@ -509,11 +496,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 notSelf:
-                  value:
-                    {
-                      error: forbidden,
-                      message: a device token may only manage its own device,
-                    }
+                  value: { error: forbidden, message: a device token may only manage its own device }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     delete:
@@ -542,11 +525,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 notSelf:
-                  value:
-                    {
-                      error: forbidden,
-                      message: a device token may only manage its own device,
-                    }
+                  value: { error: forbidden, message: a device token may only manage its own device }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
@@ -589,13 +568,7 @@ paths:
               snapshot:
                 summary: A full snapshot with one declared probe (test/fingerprintActivation.test.ts)
                 value:
-                  os:
-                    {
-                      name: darwin,
-                      version: "15.1",
-                      build: 24B83,
-                      kernel: 24.1.0,
-                    }
+                  os: { name: darwin, version: "15.1", build: 24B83, kernel: 24.1.0 }
                   hardware: { cpuModel: Apple M3, cpuCores: 12, ramMb: 36864 }
                   runtime: { name: node, version: 22.13.1 }
                   locale: en-US
@@ -624,8 +597,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidBody:
-                  { value: { error: bad_request, message: invalid body } }
+                invalidBody: { value: { error: bad_request, message: invalid body } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "413":
@@ -637,11 +609,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                tooLarge:
-                  {
-                    value:
-                      { error: body_too_large, message: report body too large },
-                  }
+                tooLarge: { value: { error: body_too_large, message: report body too large } }
     options:
       operationId: preflightReportDeviceFacts
       tags: [core]
@@ -838,8 +806,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingDevice:
-                  { value: { error: bad_request, message: missing device id } }
+                missingDevice: { value: { error: bad_request, message: missing device id } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
@@ -851,20 +818,10 @@ paths:
               examples:
                 deviceLimit:
                   summary: test/licensing.test.ts
-                  value:
-                    {
-                      error: device_limit,
-                      message: device limit reached,
-                      limit: 1,
-                      deviceCount: 1,
-                    }
+                  value: { error: device_limit, message: device limit reached, limit: 1, deviceCount: 1 }
                 fingerprintRequired:
                   summary: test/fingerprintActivation.test.ts
-                  value:
-                    {
-                      error: fingerprint_required,
-                      message: this tier requires a hardware fingerprint,
-                    }
+                  value: { error: fingerprint_required, message: this tier requires a hardware fingerprint }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "409":
           description: >
@@ -880,30 +837,14 @@ paths:
                     error: hardware_mismatch
                     message: hardware changed; re-activation required
                     drift: 7
-                    changed:
-                      [
-                        machineUuid,
-                        boardSerial,
-                        cpuModel,
-                        primaryMac,
-                        bootVolumeUuid,
-                        ramBucket,
-                        machineModel,
-                      ]
+                    changed: [machineUuid, boardSerial, cpuModel, primaryMac, bootVolumeUuid, ramBucket, machineModel]
         "429":
           description: 30 activations per 60 s per client IP — LEGACY FLAT. No `Retry-After`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  {
-                    value:
-                      {
-                        error: rate_limited,
-                        message: too many activation attempts,
-                      },
-                  }
+                limited: { value: { error: rate_limited, message: too many activation attempts } }
     options:
       operationId: preflightActivate
       tags: [license]
@@ -1002,8 +943,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingDevice:
-                  { value: { error: bad_request, message: missing device id } }
+                missingDevice: { value: { error: bad_request, message: missing device id } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
@@ -1014,31 +954,15 @@ paths:
               examples:
                 noFingerprint:
                   summary: test/enroll.test.ts
-                  value:
-                    {
-                      error: fingerprint_required,
-                      message: enrollment requires a hardware fingerprint,
-                    }
+                  value: { error: fingerprint_required, message: enrollment requires a hardware fingerprint }
                 noAnchor:
                   summary: Same code, different message
-                  value:
-                    {
-                      error: fingerprint_required,
-                      message: enrollment requires a machine anchor in the hardware fingerprint,
-                    }
+                  value: { error: fingerprint_required, message: enrollment requires a machine anchor in the hardware fingerprint }
                 claimed:
-                  value:
-                    {
-                      error: enroll_claimed,
-                      message: "this machine's free license has been claimed; sign in to use it",
-                    }
+                  value: { error: enroll_claimed, message: "this machine's free license has been claimed; sign in to use it" }
                 disabled:
                   summary: Operator-disabled anonymous row
-                  value:
-                    {
-                      error: license_disabled,
-                      message: "this machine's free license has been disabled",
-                    }
+                  value: { error: license_disabled, message: "this machine's free license has been disabled" }
         "404":
           description: >
             Auto-issue is off for this product, or its configured tier is missing — LEGACY
@@ -1050,8 +974,7 @@ paths:
               examples:
                 disabled:
                   summary: test/enroll.test.ts
-                  value:
-                    { error: enroll_disabled, message: enrollment is disabled }
+                  value: { error: enroll_disabled, message: enrollment is disabled }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "409":
           description: Hardware drift on the re-enrolling machine — LEGACY FLAT (as `activate`).
@@ -1060,13 +983,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 hardwareMismatch:
-                  value:
-                    {
-                      error: hardware_mismatch,
-                      message: hardware changed; re-activation required,
-                      drift: 3,
-                      changed: [cpuModel, primaryMac, ramBucket],
-                    }
+                  value: { error: hardware_mismatch, message: hardware changed; re-activation required, drift: 3, changed: [cpuModel, primaryMac, ramBucket] }
         "429":
           description: >
             The product's `rateLimitPerHour` per client IP over a 3600 s window — LEGACY
@@ -1075,28 +992,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  {
-                    value:
-                      {
-                        error: rate_limited,
-                        message: too many enrollment attempts,
-                      },
-                  }
+                limited: { value: { error: rate_limited, message: too many enrollment attempts } }
         "500":
           description: The license could not be issued — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                failed:
-                  {
-                    value:
-                      {
-                        error: enroll_failed,
-                        message: could not issue a license,
-                      },
-                  }
+                failed: { value: { error: enroll_failed, message: could not issue a license } }
     options:
       operationId: preflightEnroll
       tags: [license]
@@ -1143,8 +1046,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingDevice:
-                  { value: { error: bad_request, message: missing device id } }
+                missingDevice: { value: { error: bad_request, message: missing device id } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
@@ -1153,11 +1055,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  {
-                    value:
-                      { error: rate_limited, message: too many token requests },
-                  }
+                limited: { value: { error: rate_limited, message: too many token requests } }
     options:
       operationId: preflightReacquireToken
       tags: [license]
@@ -1242,8 +1140,7 @@ paths:
           content:
             application/jwt:
               schema: { $ref: "#/components/schemas/CompactJws" }
-              x-polaris-decoded-payload:
-                { $ref: "#/components/schemas/LicenseDocPayload" }
+              x-polaris-decoded-payload: { $ref: "#/components/schemas/LicenseDocPayload" }
               examples:
                 signed:
                   summary: Header `{"alg":"EdDSA","typ":"pkey-license+jws","kid":"test-kid"}`
@@ -1272,11 +1169,7 @@ paths:
                 channelNotAllowed:
                   summary: No `allowedRange` on this branch, deliberately
                   value:
-                    error:
-                      {
-                        code: channel_not_allowed,
-                        reason: channel-not-entitled,
-                      }
+                    error: { code: channel_not_allowed, reason: channel-not-entitled }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
       operationId: preflightGetLicenseDocument
@@ -1325,8 +1218,7 @@ paths:
           content:
             application/jwt:
               schema: { $ref: "#/components/schemas/CompactJws" }
-              x-polaris-decoded-payload:
-                { $ref: "#/components/schemas/ConfigDocPayload" }
+              x-polaris-decoded-payload: { $ref: "#/components/schemas/ConfigDocPayload" }
               examples:
                 signed:
                   summary: Header `{"alg":"EdDSA","typ":"pkey-config+jws","kid":"test-kid"}`
@@ -1427,14 +1319,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                noCatalog:
-                  {
-                    value:
-                      {
-                        error: not_found,
-                        message: no active schema for product,
-                      },
-                  }
+                noCatalog: { value: { error: not_found, message: no active schema for product } }
                 serviceDisabled:
                   summary: The registry's nested body, for contrast
                   value: { error: { code: not_found } }
@@ -1491,43 +1376,23 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                noRecipe:
-                  {
-                    value:
-                      { error: not_found, message: no such edge-mint recipe },
-                  }
+                noRecipe: { value: { error: not_found, message: no such edge-mint recipe } }
         "429":
           description: 60 mints per 60 s per client IP — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  {
-                    value:
-                      { error: rate_limited, message: too many mint requests },
-                  }
+                limited: { value: { error: rate_limited, message: too many mint requests } }
         "500":
           description: The recipe cannot be executed — LEGACY FLAT, one code, three messages.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                unsupportedAlg:
-                  {
-                    value:
-                      { error: misconfigured, message: unsupported alg HS256 },
-                  }
-                missingKey:
-                  { value: { error: misconfigured, message: missing mint key } }
-                badTemplate:
-                  {
-                    value:
-                      {
-                        error: misconfigured,
-                        message: mint claims template is not valid JSON,
-                      },
-                  }
+                unsupportedAlg: { value: { error: misconfigured, message: unsupported alg HS256 } }
+                missingKey: { value: { error: misconfigured, message: missing mint key } }
+                badTemplate: { value: { error: misconfigured, message: mint claims template is not valid JSON } }
     post:
       operationId: mintTokenPost
       tags: [config]
@@ -1565,30 +1430,21 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                noRecipe:
-                  {
-                    value:
-                      { error: not_found, message: no such edge-mint recipe },
-                  }
+                noRecipe: { value: { error: not_found, message: no such edge-mint recipe } }
         "429":
           description: 60 mints per 60 s per client IP — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  {
-                    value:
-                      { error: rate_limited, message: too many mint requests },
-                  }
+                limited: { value: { error: rate_limited, message: too many mint requests } }
         "500":
           description: The recipe cannot be executed — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingKey:
-                  { value: { error: misconfigured, message: missing mint key } }
+                missingKey: { value: { error: misconfigured, message: missing mint key } }
     options:
       operationId: preflightMintTokenGet
       tags: [config]
@@ -1773,18 +1629,15 @@ paths:
           required: true
           description: >
             A selector, not necessarily a semver: `latest`, `stable`, a pinned bare `1.2.3`
-            (looked up as the `v1.2.3` tag, then as `1.2.3` if that 404s; a
-            `v`-prefixed selector is not accepted), `beta`, `pr-42`, or an operator-defined channel name. Pinned selectors
+            (looked up as the `v1.2.3` tag, then as `1.2.3` if that 404s; a `v`-prefixed
+            selector is not accepted), `beta`, `pr-42`, or an operator-defined channel name.
+            Pinned selectors
             get `max-age=86400, immutable`; moving ones `max-age=120`.
           schema: { type: string }
         - name: asset
           in: path
           required: true
-          schema:
-            {
-              type: string,
-              pattern: "^.+-(arm64|aarch64|x86_64|amd64)(\\.dmg)?$",
-            }
+          schema: { type: string, pattern: "^.+-(arm64|aarch64|x86_64|amd64)(\\.dmg)?$" }
         - name: checksum
           in: query
           required: false
@@ -1852,14 +1705,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  {
-                    value:
-                      {
-                        error: rate_limited,
-                        message: too many release requests,
-                      },
-                  }
+                limited: { value: { error: rate_limited, message: too many release requests } }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
     options:
       operationId: preflightDownloadArtifact
@@ -2106,20 +1952,10 @@ paths:
                         activatedAt: 1690000000
                       payload:
                         config:
-                          app.theme:
-                            {
-                              state: enforced,
-                              value: dark,
-                              updatedAt: 1756252800,
-                            }
+                          app.theme: { state: enforced, value: dark, updatedAt: 1756252800 }
                         secrets: {}
                         entitlements:
-                          polarisVpn:
-                            {
-                              state: enforced,
-                              value: true,
-                              updatedAt: 1756252800,
-                            }
+                          polarisVpn: { state: enforced, value: true, updatedAt: 1756252800 }
                 blocked:
                   summary: The build gate refused this page's version
                   value:
@@ -2140,11 +1976,7 @@ paths:
               examples:
                 catalogUnavailable:
                   summary: test/browserSession.test.ts
-                  value:
-                    {
-                      error: catalog_unavailable,
-                      message: active catalog could not validate the config payload,
-                    }
+                  value: { error: catalog_unavailable, message: active catalog could not validate the config payload }
   /{product}/identity/session/license:
     post:
       operationId: sessionFromLicenseKey
@@ -2185,8 +2017,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidBody:
-                  { value: { error: bad_request, message: invalid body } }
+                invalidBody: { value: { error: bad_request, message: invalid body } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: The license's seat pool is exhausted — LEGACY FLAT.
@@ -2194,16 +2025,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                deviceLimit:
-                  {
-                    value:
-                      {
-                        error: device_limit,
-                        message: device limit reached,
-                        limit: 5,
-                        deviceCount: 5,
-                      },
-                  }
+                deviceLimit: { value: { error: device_limit, message: device limit reached, limit: 5, deviceCount: 5 } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 30 attempts per 60 s per client IP — LEGACY FLAT.
@@ -2211,14 +2033,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  {
-                    value:
-                      {
-                        error: rate_limited,
-                        message: too many session attempts,
-                      },
-                  }
+                limited: { value: { error: rate_limited, message: too many session attempts } }
   /{product}/identity/auth/start:
     get:
       operationId: authStart
@@ -2258,35 +2073,22 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                crossOriginReturn:
-                  {
-                    value:
-                      { error: bad_request, message: return_to not allowed },
-                  }
-                redirectNotAllowListed:
-                  {
-                    value:
-                      {
-                        error: bad_request,
-                        message: redirect_uri not allow-listed,
-                      },
-                  }
+                crossOriginReturn: { value: { error: bad_request, message: return_to not allowed } }
+                redirectNotAllowListed: { value: { error: bad_request, message: redirect_uri not allow-listed } }
         "404":
           description: The product has no OIDC configuration — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                disabled:
-                  { value: { error: disabled, message: oidc is disabled } }
+                disabled: { value: { error: disabled, message: oidc is disabled } }
         "429":
           description: 60 starts per 60 s per client IP — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  { value: { error: rate_limited, message: too many requests } }
+                limited: { value: { error: rate_limited, message: too many requests } }
         "500":
           description: >
             The stored OIDC configuration cannot be used — LEGACY FLAT, one code and several
@@ -2296,30 +2098,9 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingCustom:
-                  {
-                    value:
-                      {
-                        error: misconfigured,
-                        message: custom oidc config missing,
-                      },
-                  }
-                issuerNotPermitted:
-                  {
-                    value:
-                      {
-                        error: misconfigured,
-                        message: custom oidc issuer is not permitted,
-                      },
-                  }
-                secretUnavailable:
-                  {
-                    value:
-                      {
-                        error: misconfigured,
-                        message: oidc client secret unavailable,
-                      },
-                  }
+                missingCustom: { value: { error: misconfigured, message: custom oidc config missing } }
+                issuerNotPermitted: { value: { error: misconfigured, message: custom oidc issuer is not permitted } }
+                secretUnavailable: { value: { error: misconfigured, message: oidc client secret unavailable } }
   /{product}/identity/auth/callback:
     get:
       operationId: authCallback
@@ -2356,7 +2137,7 @@ paths:
               examples:
                 signedIn:
                   summary: The page body, verbatim
-                  value: '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You''re signed in</h1><p>You can close this tab and return to the app.</p>'
+                  value: "<!doctype html><meta charset=utf-8><title>Signed in</title><body style=\"font-family:system-ui;padding:3rem;text-align:center\"><h1>You're signed in</h1><p>You can close this tab and return to the app.</p>"
         "302":
           description: >
             The BROWSER branch — the flow carried a `return_to`, so the session cookie is set
@@ -2373,8 +2154,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missing:
-                  { value: { error: bad_request, message: missing code/state } }
+                missing: { value: { error: bad_request, message: missing code/state } }
                 unknownState:
                   summary: Absent, corrupt, or already consumed
                   value: { error: bad_request, message: unknown state }
@@ -2386,13 +2166,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                idTokenInvalid:
-                  { value: { error: unauthorized, message: id token invalid } }
-                licenseUnavailable:
-                  {
-                    value:
-                      { error: unauthorized, message: license unavailable },
-                  }
+                idTokenInvalid: { value: { error: unauthorized, message: id token invalid } }
+                licenseUnavailable: { value: { error: unauthorized, message: license unavailable } }
         "403":
           description: The identity verified but is not entitled to this product — LEGACY FLAT.
           content:
@@ -2402,16 +2177,7 @@ paths:
                 notEntitled:
                   summary: test/oidcEdge.test.ts
                   value: { error: forbidden, message: not entitled }
-                deviceLimit:
-                  {
-                    value:
-                      {
-                        error: device_limit,
-                        message: device limit reached,
-                        limit: 5,
-                        deviceCount: 5,
-                      },
-                  }
+                deviceLimit: { value: { error: device_limit, message: device limit reached, limit: 5, deviceCount: 5 } }
         "429":
           description: >
             60 callbacks per 60 s per client IP AND 5 per 60 s per `state` — LEGACY FLAT. The
@@ -2420,26 +2186,16 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  { value: { error: rate_limited, message: too many requests } }
+                limited: { value: { error: rate_limited, message: too many requests } }
         "502":
           description: The IdP answered unusably — LEGACY FLAT, one code and three messages.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                exchangeFailed:
-                  {
-                    value:
-                      { error: oidc_error, message: token exchange failed },
-                  }
-                responseInvalid:
-                  {
-                    value:
-                      { error: oidc_error, message: token response invalid },
-                  }
-                noIdToken:
-                  { value: { error: oidc_error, message: no id_token } }
+                exchangeFailed: { value: { error: oidc_error, message: token exchange failed } }
+                responseInvalid: { value: { error: oidc_error, message: token response invalid } }
+                noIdToken: { value: { error: oidc_error, message: no id_token } }
   /{product}/identity/auth/poll:
     get:
       operationId: authPoll
@@ -2490,19 +2246,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missing:
-                  {
-                    value:
-                      { error: bad_request, message: missing state/device },
-                  }
+                missing: { value: { error: bad_request, message: missing state/device } }
         "429":
           description: 120 polls per 60 s per client IP AND 40 per 60 s per `state` — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  { value: { error: rate_limited, message: too many requests } }
+                limited: { value: { error: rate_limited, message: too many requests } }
     options:
       operationId: preflightAuthPoll
       tags: [identity]
@@ -2553,8 +2304,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                csrfMismatch:
-                  { value: { error: forbidden, message: csrf mismatch } }
+                csrfMismatch: { value: { error: forbidden, message: csrf mismatch } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /{product}/identity/auth/device/start:
     post:
@@ -2618,18 +2368,15 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidJson:
-                  { value: { error: bad_request, message: invalid json } }
-                missingDevice:
-                  { value: { error: bad_request, message: missing device id } }
+                invalidJson: { value: { error: bad_request, message: invalid json } }
+                missingDevice: { value: { error: bad_request, message: missing device id } }
         "404":
           description: The product has no OIDC configuration — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                disabled:
-                  { value: { error: disabled, message: oidc is disabled } }
+                disabled: { value: { error: disabled, message: oidc is disabled } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 60 starts per 60 s per client IP — LEGACY FLAT.
@@ -2637,22 +2384,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  { value: { error: rate_limited, message: too many requests } }
+                limited: { value: { error: rate_limited, message: too many requests } }
         "500":
           description: The stored OIDC configuration cannot be used — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                misconfigured:
-                  {
-                    value:
-                      {
-                        error: misconfigured,
-                        message: custom oidc issuer is not permitted,
-                      },
-                  }
+                misconfigured: { value: { error: misconfigured, message: custom oidc issuer is not permitted } }
     options:
       operationId: preflightDeviceAuthStart
       tags: [identity]
@@ -2707,16 +2446,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingCode:
-                  { value: { error: bad_request, message: missing code } }
+                missingCode: { value: { error: bad_request, message: missing code } }
         "404":
           description: Unknown or lapsed device code — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                expired:
-                  { value: { error: not_found, message: device code expired } }
+                expired: { value: { error: not_found, message: device code expired } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 60 requests per 60 s per client IP — LEGACY FLAT.
@@ -2724,8 +2461,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  { value: { error: rate_limited, message: too many requests } }
+                limited: { value: { error: rate_limited, message: too many requests } }
     post:
       operationId: deviceAuthVerify
       tags: [identity]
@@ -2768,8 +2504,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                missingCode:
-                  { value: { error: bad_request, message: missing code } }
+                missingCode: { value: { error: bad_request, message: missing code } }
         "403":
           description: >
             Cross-site `Origin`, or a missing/mismatched `csrf` — LEGACY FLAT. One message for
@@ -2778,16 +2513,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                confirmationFailed:
-                  { value: { error: forbidden, message: confirmation failed } }
+                confirmationFailed: { value: { error: forbidden, message: confirmation failed } }
         "404":
           description: Unknown or lapsed device code, or the flow record is gone — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                expired:
-                  { value: { error: not_found, message: device code expired } }
+                expired: { value: { error: not_found, message: device code expired } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 60 requests per 60 s per client IP — LEGACY FLAT.
@@ -2795,8 +2528,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                limited:
-                  { value: { error: rate_limited, message: too many requests } }
+                limited: { value: { error: rate_limited, message: too many requests } }
   /{product}/identity/auth/device/poll:
     post:
       operationId: deviceAuthPoll
@@ -2846,24 +2578,15 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                invalidJson:
-                  { value: { error: bad_request, message: invalid json } }
-                missing:
-                  {
-                    value:
-                      {
-                        error: bad_request,
-                        message: missing deviceCode/deviceId,
-                      },
-                  }
+                invalidJson: { value: { error: bad_request, message: invalid json } }
+                missing: { value: { error: bad_request, message: missing deviceCode/deviceId } }
         "401":
           description: The `deviceId` is not the one the flow was started for — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
-                mismatch:
-                  { value: { error: unauthorized, message: device mismatch } }
+                mismatch: { value: { error: unauthorized, message: device mismatch } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: >
@@ -3350,11 +3073,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/FlatError" }
           examples:
-            limited:
-              {
-                value:
-                  { error: rate_limited, message: too many release requests },
-              }
+            limited: { value: { error: rate_limited, message: too many release requests } }
     UpstreamRateLimited:
       description: >
         GitHub's quota is exhausted, so release truth is momentarily unknowable — LEGACY
@@ -3369,14 +3088,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/FlatError" }
           examples:
-            upstream:
-              {
-                value:
-                  {
-                    error: upstream_rate_limited,
-                    message: release metadata is temporarily unavailable,
-                  },
-              }
+            upstream: { value: { error: upstream_rate_limited, message: release metadata is temporarily unavailable } }
   schemas:
     CompactJws:
       type: string
@@ -3411,10 +3123,7 @@ components:
           $ref: "#/components/schemas/AllowedRange"
       examples:
         - { error: { code: unauthorized } }
-        - {
-            error: { code: version_blocked, reason: version-too-old },
-            allowedRange: { min: "2.0.0", max: "99.0.0" },
-          }
+        - { error: { code: version_blocked, reason: version-too-old }, allowedRange: { min: "2.0.0", max: "99.0.0" } }
     FlatError:
       type: object
       description: >
@@ -3445,12 +3154,7 @@ components:
           items: { $ref: "#/components/schemas/FingerprintComponent" }
       examples:
         - { error: unauthorized }
-        - {
-            error: device_limit,
-            message: device limit reached,
-            limit: 1,
-            deviceCount: 1,
-          }
+        - { error: device_limit, message: device limit reached, limit: 1, deviceCount: 1 }
     AllowedRange:
       type: object
       description: >
@@ -3485,16 +3189,7 @@ components:
         One hashed hardware signal. `machineUuid` is the ANCHOR: when it matches, drift
         tolerance widens by one. The order here is canonical — the composite digest is built
         by iterating it, so every SDK must use this order rather than a native map ordering.
-      enum:
-        [
-          machineUuid,
-          boardSerial,
-          cpuModel,
-          primaryMac,
-          bootVolumeUuid,
-          ramBucket,
-          machineModel,
-        ]
+      enum: [machineUuid, boardSerial, cpuModel, primaryMac, bootVolumeUuid, ramBucket, machineModel]
     FingerprintEnvelope:
       type: object
       description: >
@@ -3517,8 +3212,7 @@ components:
               additionalProperties:
                 type: string
                 pattern: "^[A-Za-z0-9_-]{22}$"
-              propertyNames:
-                { $ref: "#/components/schemas/FingerprintComponent" }
+              propertyNames: { $ref: "#/components/schemas/FingerprintComponent" }
             hwid:
               type: string
               description: Ignored. Recomputed server-side from the components.
@@ -3535,19 +3229,7 @@ components:
         version is `protocolVersion`; the product's catalog version is `schemaVersion`. All
         three are deliberately different counters. `product` and `slug` are the same string,
         carried twice for client convenience.
-      required:
-        [
-          version,
-          protocolVersion,
-          schemaVersion,
-          product,
-          slug,
-          name,
-          baseUrl,
-          core,
-          trust,
-          services,
-        ]
+      required: [version, protocolVersion, schemaVersion, product, slug, name, baseUrl, core, trust, services]
       properties:
         version: { type: integer, const: 2 }
         protocolVersion: { type: integer, const: 3 }
@@ -3586,16 +3268,7 @@ components:
                   description: OMITTED when `registration` is `requires-license`.
         trust:
           type: object
-          required:
-            [
-              jwksUrl,
-              trustManifestUrl,
-              cacheSeconds,
-              pinnedKeys,
-              signingKid,
-              signingPub,
-              keys,
-            ]
+          required: [jwksUrl, trustManifestUrl, cacheSeconds, pinnedKeys, signingKid, signingPub, keys]
           properties:
             jwksUrl: { type: string, format: uri }
             trustManifestUrl: { type: string, format: uri }
@@ -3676,17 +3349,7 @@ components:
         each success, so a key's ABSENCE is its revocation. Entries that are not
         EdDSA/OKP/Ed25519 are skipped rather than fatal — a future-alg key must not brick
         current verifiers.
-      required:
-        [
-          schemaVersion,
-          aud,
-          iss,
-          issuedAt,
-          expiresAt,
-          jwksUrl,
-          cacheSeconds,
-          keys,
-        ]
+      required: [schemaVersion, aud, iss, issuedAt, expiresAt, jwksUrl, cacheSeconds, keys]
       properties:
         schemaVersion: { type: integer, const: 1 }
         aud: { type: string }
@@ -3749,17 +3412,7 @@ components:
         `app.minVersion`, `app.maxVersion`, `deviceLimit`) beside the catalog's own flags.
         Licence STATE (`ok`/`grace`/…) is never in the document; the client gate derives it.
         Carries no `config`, `secrets` or `payload`.
-      required:
-        [
-          iss,
-          aud,
-          deviceId,
-          issuedAt,
-          expiresAt,
-          graceUntil,
-          licenseId,
-          entitlements,
-        ]
+      required: [iss, aud, deviceId, issuedAt, expiresAt, graceUntil, licenseId, entitlements]
       properties:
         iss: { type: string, const: key.plrs.im }
         aud: { type: string }
@@ -3784,18 +3437,11 @@ components:
           expiresAt: 1756256400
           graceUntil: 1758844800
           licenseId: lic_djdl_1
-          profile:
-            {
-              name: Ada Lovelace,
-              firstName: Ada,
-              email: ada@example.com,
-              activatedAt: 1690000000,
-            }
+          profile: { name: Ada Lovelace, firstName: Ada, email: ada@example.com, activatedAt: 1690000000 }
           entitlements:
             polarisVpn: { state: default, value: true, updatedAt: 1756252800 }
             license.tier: { state: enforced, value: pro, updatedAt: 1756252800 }
-            channels:
-              { state: enforced, value: [stable, beta], updatedAt: 1756252800 }
+            channels: { state: enforced, value: [stable, beta], updatedAt: 1756252800 }
             deviceLimit: { state: enforced, value: 3, updatedAt: 1756252800 }
     ConfigDocPayload:
       type: object
@@ -3804,18 +3450,7 @@ components:
         envelope claims, not under a wrapper. Contains no licence fields whatsoever — that is
         the wire-level guarantee of service independence (D-08), since a config-enabled,
         licence-disabled product issues these to any registered device.
-      required:
-        [
-          iss,
-          aud,
-          deviceId,
-          issuedAt,
-          expiresAt,
-          graceUntil,
-          schemaVersion,
-          config,
-          secrets,
-        ]
+      required: [iss, aud, deviceId, issuedAt, expiresAt, graceUntil, schemaVersion, config, secrets]
       properties:
         iss: { type: string, const: key.plrs.im }
         aud: { type: string }
@@ -3849,22 +3484,7 @@ components:
         A device row as the wire renders it (`shapeDevice`). The token hash, seat number,
         stored overrides and last telemetry blob are deliberately NOT exposed. `licenseId` is
         the empty string for a device registered without a licence.
-      required:
-        [
-          id,
-          licenseId,
-          label,
-          status,
-          current,
-          firstSeen,
-          lastSeen,
-          userAgent,
-          platform,
-          arch,
-          appVersion,
-          sdkName,
-          sdkVersion,
-        ]
+      required: [id, licenseId, label, status, current, firstSeen, lastSeen, userAgent, platform, arch, appVersion, sdkName, sdkVersion]
       properties:
         id: { type: string }
         licenseId:
@@ -3958,8 +3578,7 @@ components:
             At most 32 entries; probe ids are truncated to 64 characters and an entry whose
             `present` is not a boolean is skipped.
           maxProperties: 32
-          additionalProperties:
-            { $ref: "#/components/schemas/DeviceProbeResult" }
+          additionalProperties: { $ref: "#/components/schemas/DeviceProbeResult" }
         sdk: { type: string }
         sdkVersion: { type: string }
         appVersion: { type: string }
@@ -3991,20 +3610,7 @@ components:
         A licence row as activation and enrollment render it (`shapeLicense`). `channels` is
         always an array — `[]` when the row carries none. The identity link, groups, stored
         overrides and enrollment hwid are not exposed.
-      required:
-        [
-          id,
-          status,
-          name,
-          email,
-          tierId,
-          activatedAt,
-          expiresAt,
-          maxOfflineDays,
-          channels,
-          minVersion,
-          maxVersion,
-        ]
+      required: [id, status, name, email, tierId, activatedAt, expiresAt, maxOfflineDays, channels, minVersion, maxVersion]
       properties:
         id: { type: string }
         status: { type: string }
@@ -4079,23 +3685,14 @@ components:
         ui:
           type: object
           properties:
-            widget:
-              {
-                type: string,
-                enum: [password, select, textarea, switch, stepper],
-              }
+            widget: { type: string, enum: [password, select, textarea, switch, stepper] }
             help: { type: string }
             placeholder: { type: string }
             order: { type: integer }
-            scopes:
-              {
-                type: array,
-                items: { type: string, enum: [profile, license, device] },
-              }
+            scopes: { type: array, items: { type: string, enum: [profile, license, device] } }
             advanced: { type: boolean }
             unit: { type: string }
-            optionLabels:
-              { type: object, additionalProperties: { type: string } }
+            optionLabels: { type: object, additionalProperties: { type: string } }
             adminSection: { type: string }
         dependsOn:
           type: object
@@ -4104,11 +3701,7 @@ components:
             key: { type: string }
             equals: {}
         appliesTo: { type: array, items: { type: string, enum: [cli, app] } }
-        accessor:
-          {
-            type: string,
-            description: A dotted path into the client's own config object.,
-          }
+        accessor: { type: string, description: A dotted path into the client's own config object. }
         deprecated: { type: boolean }
         since: { type: string }
     MintedToken:
@@ -4155,8 +3748,7 @@ components:
         no parameters, so it cannot vary by architecture or channel.
       required: [version, tag, url]
       properties:
-        version:
-          { type: string, description: The tag with one leading `v` stripped. }
+        version: { type: string, description: The tag with one leading `v` stripped. }
         tag: { type: string }
         url: { type: string, format: uri }
     ManagedPayload:
@@ -4182,19 +3774,7 @@ components:
         served UNSIGNED as JSON. Wire v3 split this into `pkey-license+jws` +
         `pkey-config+jws`; the browser session is the last minter, and this schema goes with it
         when the React SDK migrates. `deviceId` is always `browser:<licenseId>`.
-      required:
-        [
-          schemaVersion,
-          aud,
-          iss,
-          licenseId,
-          deviceId,
-          issuedAt,
-          expiresAt,
-          graceUntil,
-          profile,
-          payload,
-        ]
+      required: [schemaVersion, aud, iss, licenseId, deviceId, issuedAt, expiresAt, graceUntil, profile, payload]
       properties:
         schemaVersion: { type: integer }
         aud: { type: string }
@@ -4224,11 +3804,7 @@ components:
           description: Present only when the build gate refused this build.
           required: [reason]
           properties:
-            reason:
-              {
-                type: string,
-                enum: [version-too-old, version-too-new, channel-not-entitled],
-              }
+            reason: { type: string, enum: [version-too-old, version-too-new, channel-not-entitled] }
             allowedRange: { $ref: "#/components/schemas/AllowedRange" }
         csrfToken:
           type: string
@@ -4266,8 +3842,7 @@ components:
       required: [status, interval]
       properties:
         status: { type: string, const: slow_down }
-        interval:
-          { type: integer, description: Seconds to wait before the next poll. }
+        interval: { type: integer, description: Seconds to wait before the next poll. }
     DeviceAuthStartRequest:
       type: object
       description: >
@@ -4285,17 +3860,7 @@ components:
         RFC 8628 in shape, camelCase in spelling. `verificationUriComplete` is currently the
         identical string to `verificationUri`. `pollUrl` and `status` are additions RFC 8628
         does not define.
-      required:
-        [
-          status,
-          deviceCode,
-          userCode,
-          verificationUri,
-          verificationUriComplete,
-          expiresIn,
-          interval,
-          pollUrl,
-        ]
+      required: [status, deviceCode, userCode, verificationUri, verificationUriComplete, expiresIn, interval, pollUrl]
       properties:
         status: { type: string, const: pending }
         deviceCode: { type: string }
