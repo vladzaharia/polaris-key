@@ -1,11 +1,22 @@
-# Content delivery: many versioned packs, many types, whatever transport is available
+# Content packs: many versioned packs, many types, delivered through whatever is available
 
 **Date:** 2026-09-30 · **Status:** research and proposal. Nothing here is implemented. ·
-**Extends:** [README §3.7](README.md#37-content-delivery-content-service), which this document
-replaces in detail.
+**Extends:** [README §3.7](README.md#37-content-packs-across-release-distribution-and-update),
+which this document expands.
 
-The main report treats content as "Godot packs". This document generalises that into a
-**product-agnostic content delivery system** built into Polaris Key:
+The main report first treated content as "Godot packs". This document generalises that into a
+**product-agnostic content model**. Packs are handled **exactly like the application itself**,
+across the same three services:
+
+- **Release** records what exists: every pack is a release _deliverable_ with its own versions,
+  channels, requirements, dependencies, CI-signed release records, patch artifacts and yanks.
+- **Distribution** delivers it: our CDN, embedded, Apple Background Assets, Play Asset Delivery,
+  Steam depots, MSIX optional packages, Flatpak or the browser. It also tracks availability,
+  rollouts and halts per outlet.
+- **Update** decides what an installed app should do: which pack set to have, and how to patch to
+  it.
+
+What this document covers:
 
 - **Many packs.** A product can ship any number of content packs.
 - **Different types.** Godot PCKs, file trees, archives, audio banks, localisation tables, data,
@@ -34,9 +45,9 @@ It is built on four research tracks:
    `(packId, version)`, and a CI-signed record pins its payload and file/chunk indexes by SHA-256.
    Whatever delivered the bytes (our CDN, Apple, Google, Steam, the browser, the app bundle),
    they must verify against that record.
-2. **Everything below the channel pointer is immutable and content-addressed.** Only the
-   Worker-signed **content index** per channel is mutable. It is short-lived, device-less and
-   edge-cacheable.
+2. **Everything below the channel pointer is immutable and content-addressed.** Only update's
+   Worker-signed **channel feed** is mutable. It is short-lived, device-less and edge-cacheable, and
+   it carries the app's release _and_ the resolved pack set.
 3. **Chunk boundaries are computed only in CI.** The client needs SHA-256, zstd and HTTP Range, all
    native in Godot and every other SDK. Content-defined chunking runs at publish time.
 4. **Types are plugins.** Type, transport, patch strategy and activation are orthogonal axes. Each
@@ -63,9 +74,15 @@ It is built on four research tracks:
 - The same model serves the Swift, Node/Electron, Python, React/web and a future Kotlin or Unity
   SDK.
 
-**Cost.** Phased so v1 is small. v1 (single-file packs, full + one delta, type registry, transport
-bindings) is about 6–8 engineer-weeks. v2 (chunk sync, content channels with pack sets, GC) adds
-5–7. v3 (more types, lazy deltas, content-key delegation) adds 4–6. See §15.
+**Cost.** There is no new service and no new document type: packs ride release, distribution and
+update, and wire v4's two documents. Phased so v1 is small:
+
+- v1 (pack deliverables, full + file + per-entry delta, the handler contract, transports) is about
+  5–7 engineer-weeks.
+- v2 (chunk sync, floating pack sets, GC) adds 5–7.
+- v3 (more types, lazy deltas, content-key delegation) adds 4–6.
+
+See §15.
 
 ---
 
@@ -73,22 +90,22 @@ bindings) is about 6–8 engineer-weeks. v2 (chunk sync, content channels with p
 
 **Functional:**
 
-| #   | Requirement                                                                                                                                                                                                  |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| F1  | A product declares **any number of packs**, each with a **type**                                                                                                                                             |
-| F2  | Each pack has an **independent version line** (semver + a monotonic `seq`) and can be published to **content channels** (`stable`, `beta`, event or custom) independently of app releases                    |
-| F3  | Packs declare **compatibility**: engine, pack format, the app's content API level, platform/arch, GPU features (texture family), locale, and **dependencies** on other packs (semver ranges), plus conflicts |
-| F4  | Packs may have **variants**: texture family, locale, quality tier                                                                                                                                            |
-| F5  | Packs have a **delivery policy** (`essential` / `prefetch` / `onDemand`), a **required** flag and an activation mode (`hot` / `restart`)                                                                     |
-| F6  | Packs may be **entitlement-gated** (a licence `flag`); on store outlets the entitlement originates from store commerce (README §3.10)                                                                        |
-| F7  | Each pack is delivered through the **best transport available on the outlet**: platform-native where it exists or is mandatory, Polaris Key CDN elsewhere, embedded where shipped with the build             |
-| F8  | Updates are **patched** with the cheapest strategy the client supports, falling back to a full download                                                                                                      |
-| F9  | Code builds can **pin** exact pack releases; live content can **float** on a channel between code releases                                                                                                   |
-| F10 | **Rollout, halt, floor and yank** per content channel, with the same machinery as release channels (README §3.9)                                                                                             |
-| F11 | **Offline:** installed and embedded packs work with no network; required-set checks are local                                                                                                                |
-| F12 | **Rollback** to the previous pack set after a failed boot or smoke check                                                                                                                                     |
-| F13 | **Garbage collection** on client and server                                                                                                                                                                  |
-| F14 | **Telemetry**: strategy used, bytes, duration, failures, to find hot patch pairs and auto-halt                                                                                                               |
+| #   | Requirement                                                                                                                                                                                                    |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | A product declares **any number of packs**, each with a **type**                                                                                                                                               |
+| F2  | Each pack is a release **deliverable** with an **independent version line** (semver + a monotonic `seq`) and its own **channels** (`stable`, `beta`, event or custom), published independently of app releases |
+| F3  | Packs declare **compatibility**: engine, pack format, the app's content API level, platform/arch, GPU features (texture family), locale, and **dependencies** on other packs (semver ranges), plus conflicts   |
+| F4  | Packs may have **variants**: texture family, locale, quality tier                                                                                                                                              |
+| F5  | Packs have a **delivery policy** (`essential` / `prefetch` / `onDemand`), a **required** flag and an activation mode (`hot` / `restart`)                                                                       |
+| F6  | Packs may be **entitlement-gated** (a licence `flag`); on store outlets the entitlement originates from store commerce (README §3.10)                                                                          |
+| F7  | Each pack is delivered through the **best transport available on the outlet**: platform-native where it exists or is mandatory, Polaris Key CDN elsewhere, embedded where shipped with the build               |
+| F8  | Updates are **patched** with the cheapest strategy the client supports, falling back to a full download                                                                                                        |
+| F9  | Code builds can **pin** exact pack releases; live content can **float** on a channel between code releases                                                                                                     |
+| F10 | **Channel pointer, floor and yank** per pack (release), and **rollout and halt** per pack per outlet (distribution): the same machinery as the app (README §3.9)                                               |
+| F11 | **Offline:** installed and embedded packs work with no network; required-set checks are local                                                                                                                  |
+| F12 | **Rollback** to the previous pack set after a failed boot or smoke check                                                                                                                                       |
+| F13 | **Garbage collection** on client and server                                                                                                                                                                    |
+| F14 | **Telemetry**: strategy used, bytes, duration, failures, to find hot patch pairs and auto-halt                                                                                                                 |
 
 **Non-functional:** data-only content on store builds; signed and verifiable offline; resumable;
 atomic; anonymous and cacheable index; low client CPU; **workable in pure GDScript** (no native
@@ -102,65 +119,73 @@ These nouns extend README §3.1 and avoid the reserved words ("catalog" is the c
 "bundle" is the offline bundle, "surface" and "route" are Worker terms, "profile" is taken twice).
 Where a borrowed industry term collides, it is renamed.
 
-| Term                  | Meaning                                                                                                                                                                                                                       |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **pack**              | a named, independently versioned unit of content (`diceroll.foes`)                                                                                                                                                            |
-| **pack type**         | the payload format and its handler: `godot.pck`, `files.tree`, `archive.zip`, `audio.bank`, `l10n.table`, `data.json`, `ml.model`, `custom.<name>`, …                                                                         |
-| **handler**           | the SDK component implementing a type's lifecycle (stage, verify, activate, …)                                                                                                                                                |
-| **pack release**      | one immutable version of one pack (and variant), CI-signed (`pkey-pack+jws`)                                                                                                                                                  |
-| **variant**           | a release axis within a pack: texture family, locale, quality tier                                                                                                                                                            |
-| **payload**           | the materialised bytes of a release: one file, or a file tree                                                                                                                                                                 |
-| **files index**       | per-file path, size and SHA-256 of a payload (`pkey-files/1`)                                                                                                                                                                 |
-| **chunk index**       | the CI-computed chunking of a payload: chunk id (SHA-256), length, compressed length, bundle and offset (`pkey-chunks/1`, binary)                                                                                             |
-| **chunk bundle**      | an immutable 4–16 MiB container of compressed chunks in file order, fetched by Range. It is named "chunk bundle" and never bare "bundle", which is the offline bundle                                                         |
-| **content channel**   | a channel for content; same semantics as release channels (pointer, rollout, halt, floor)                                                                                                                                     |
-| **pack set**          | a resolved, locked list of exact pack releases that satisfies all constraints for one selector (channel × `contentApi` × platform × variant)                                                                                  |
-| **content index**     | the Worker-signed, device-less, short-lived document per content channel listing pack sets, rollout, halts, floors, per-outlet availability and available deltas (`pkey-content+jws`)                                         |
-| **`contentApi`**      | an integer an app build declares for the content shape its code expects; bumped when code and content must change together                                                                                                    |
-| **transport**         | how a release's bytes reach the device: `embedded`, `pkey-cdn`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`, `flatpak-ext`, `web`                                                                                  |
-| **transport binding** | the platform's identity for a release on an outlet (Apple asset pack id + version, Steam depot/manifest, PAD pack + versionCode, …) and its state; an availability record owned by the **distribution** service (README §3.8) |
-| **patch strategy**    | how an update is obtained: `noop`, `platform`, `delta`, `chunk`, `file`, `full` (§7)                                                                                                                                          |
-| **install plan**      | the client's chosen strategy, byte/request/disk estimates and fallbacks for one pack update                                                                                                                                   |
-| **seed**              | any verified local payload whose chunk index is known, and which can therefore supply reusable chunks. Embedded packs and every installed pack are seeds                                                                      |
-| **marker**            | a signed `.pkey/pack.json` inside platform-delivered payloads, binding them to a pack release                                                                                                                                 |
-| **activation**        | `hot` (usable immediately) or `restart` (takes effect next boot; e.g. Godot PCKs cannot be unmounted)                                                                                                                         |
+| Term                  | Meaning                                                                                                                                                                                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **pack**              | a release **deliverable** of kind `pack`: a named, independently versioned unit of content (`diceroll.foes`). The app is the deliverable of kind `app`                                                                                                    |
+| **pack type**         | the payload format and its handler: `godot.pck`, `files.tree`, `archive.zip`, `audio.bank`, `l10n.table`, `data.json`, `ml.model`, `custom.<name>`, …                                                                                                     |
+| **handler**           | the SDK component implementing a type's lifecycle (stage, verify, activate, …)                                                                                                                                                                            |
+| **pack release**      | one release of a pack deliverable (and variant): an ordinary **release record** (`pkey-release+jws`) with `kind: pack`, signed by the CI release key or a delegated content key                                                                           |
+| **variant**           | a release axis within a pack: texture family, locale, quality tier                                                                                                                                                                                        |
+| **payload**           | the materialised bytes of a release: one file, or a file tree                                                                                                                                                                                             |
+| **files index**       | per-file path, size and SHA-256 of a payload (`pkey-files/1`)                                                                                                                                                                                             |
+| **chunk index**       | the CI-computed chunking of a payload: chunk id (SHA-256), length, compressed length, bundle and offset (`pkey-chunks/1`, binary)                                                                                                                         |
+| **chunk bundle**      | an immutable 4–16 MiB container of compressed chunks in file order, fetched by Range. It is named "chunk bundle" and never bare "bundle", which is the offline bundle                                                                                     |
+| **channel**           | a pack's release channels: pointer, `includes`, floor and yank in release; rollout and halt per outlet in distribution. "Content channel" just means a channel of pack deliverables, e.g. `events`                                                        |
+| **pack set**          | a resolved, locked list of exact pack releases that satisfies all constraints for one selector (channel × `contentApi` × platform × variant)                                                                                                              |
+| **channel feed**      | update's Worker-signed, device-less, short-lived feed per channel (`pkey-feed+jws`). For packs it lists the resolved pack sets, plus distribution's per-outlet availability, rollout and halts, and the delta menu. There is no separate content document |
+| **`contentApi`**      | an integer an app build declares for the content shape its code expects; bumped when code and content must change together                                                                                                                                |
+| **transport**         | how a release's bytes reach the device: `embedded`, `pkey-cdn`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`, `flatpak-ext`, `web`                                                                                                              |
+| **transport binding** | the platform's identity for a release on an outlet (Apple asset pack id + version, Steam depot/manifest, PAD pack + versionCode, …) and its state; an availability record owned by the **distribution** service (README §3.8)                             |
+| **patch strategy**    | how an update is obtained: `noop`, `platform`, `delta`, `chunk`, `file`, `full` (§7)                                                                                                                                                                      |
+| **install plan**      | the client's chosen strategy, byte/request/disk estimates and fallbacks for one pack update                                                                                                                                                               |
+| **seed**              | any verified local payload whose chunk index is known, and which can therefore supply reusable chunks. Embedded packs and every installed pack are seeds                                                                                                  |
+| **marker**            | a signed `.pkey/pack.json` inside platform-delivered payloads, binding them to a pack release                                                                                                                                                             |
+| **activation**        | `hot` (usable immediately) or `restart` (takes effect next boot; e.g. Godot PCKs cannot be unmounted)                                                                                                                                                     |
 
 ---
 
-## 3. Object model
+## 3. Where packs live across the three services
 
 ```text
 Product
- ├─ PackDefinition        .pkey/content.yaml → D1 content_packs (operator-owned fields guarded)
- │    id, type, variants, compat axes, policy, entitlement, transports per outlet, patch config
+ ├─ RELEASE — what exists
+ │   ├─ Deliverable app                    kind app
+ │   └─ Deliverable <packId> …             kind pack, pack type, variants, requirements, policy,
+ │        │                                entitlement  (.pkey/release → release_deliverables)
+ │        └─ Release (version, seq)        CI-signed pkey-release+jws, immutable, fetched by hash
+ │             ├─ variant payload           artifact role payload        → blobs/sha256/<h>
+ │             ├─ files index               artifact role files-index    → pkey-files/1
+ │             ├─ chunk index               artifact role chunk-index    → pkey-chunks/1 (binary)
+ │             ├─ chunk bundles             artifact role chunk-bundle   → bundles/sha256/<h>
+ │             ├─ deltas[]                  artifact role delta          → deltas/<from>/<to>.<m>
+ │             └─ requires/depends          engine, format, contentApi, features, platform, locale,
+ │                                          packs, conflicts
+ │   ├─ Channel policy per deliverable      pointer, includes, floor, critical, yank
+ │   └─ Pack sets                           resolved lock per (channel, contentApi, platform, variant)
  │
- ├─ PackRelease           CI-signed pkey-pack+jws, immutable, fetched by hash
- │    ├─ payload           blobs/sha256/<h>             (single-file types; full-download object)
- │    ├─ files index       blobs/sha256/<h>             pkey-files/1
- │    ├─ chunk index       blobs/sha256/<h>             pkey-chunks/1 (binary, 48-byte records)
- │    ├─ chunk bundles     bundles/sha256/<h>           4–16 MiB, file order, immutable
- │    ├─ deltas[]          deltas/<from>/<to>.<method>  optional, added lazily for hot pairs
- │    └─ requires/depends  engine, format, contentApi, features, platform, locale, packs, conflicts
+ ├─ DISTRIBUTION — how it reaches devices and outlets
+ │   ├─ Transports per deliverable/outlet  pkey-cdn · embedded · apple-ba · play-pad · steam-depot
+ │   │                                     · msix-optional · flatpak-ext · web
+ │   ├─ Availability per release/outlet    platform ids + state (e.g. ASC BACKGROUND_ASSET_* webhooks)
+ │   ├─ Rollout / halt per outlet
+ │   ├─ Delivery access (entitlement gating) and byte serving (Range, gated prefix, CORS)
+ │   └─ Storefront listings where a storefront supports packs
  │
- ├─ TransportBinding      owned by the DISTRIBUTION service (README §3.8): dist_availability rows
- │                        with subject_kind = pack_release; platform ids + state, fed by CI
- │                        reports and connectors (e.g. ASC BACKGROUND_ASSET_* webhooks). Content
- │                        reads them through the `availability` descriptor hook
- │
- ├─ PackSet               resolved lock per (channel, contentApi, platform, variant)
- │
- └─ ContentIndex          Worker-signed pkey-content+jws per content channel:
-                          seq, expiresAt, sets[], rollout, halted, floors, availability, deltas
+ └─ UPDATE — what the installed app should do
+     ├─ Channel feed pkey-feed+jws          app release + pack set + availability/rollout/halts +
+     │                                      floors + delta menu, per selector
+     ├─ Update decision (update-matrix)     app: none | packs | code-ready | binary | store | …
+     └─ Pack install planning (plan-matrix) per pack: noop | platform | delta | chunk | file | full
 ```
 
-**Two ways to consume content.**
+**Two ways to consume packs.**
 
-- **Locked:** an app build's release manifest (`pkey-release+jws`, README §3.3) pins exact pack
-  releases. This is deterministic, like Steam's "build = set of depot manifests" and Unity's
-  catalog per player build.
-- **Floating:** the build follows a content channel. The content index hands it the pack set for
-  its `contentApi`, which lets content ship between code releases (seasonal events, balance data,
-  new cosmetics).
+- **Locked:** an app release record (`pkey-release+jws`, README §3.3) pins exact pack releases.
+  This is deterministic, like Steam's "build = set of depot manifests" and Unity's catalog per
+  player build.
+- **Floating:** the app follows a pack channel. The channel feed hands it the release-resolved pack
+  set for its `contentApi`, which lets content ship between app releases (seasonal events,
+  localisations, new cosmetics).
 
 A build can mix the two: core packs locked, event packs floating.
 
@@ -184,7 +209,7 @@ A build can mix the two: core packs locked, event packs floating.
 
 **Custom types.** A product may declare `type: custom.<name>`. The server treats the payload
 opaquely (a file or a tree), and the game registers the handler with the SDK
-(`PolarisKey.content.register_handler("custom.dialogue", MyHandler.new())`). Transport, patching,
+(`PolarisKey.update.packs.register_handler("custom.dialogue", MyHandler.new())`). Transport, patching,
 signing and GC come for free; only activation is the game's.
 
 ### 4.2 Initial type registry
@@ -208,13 +233,17 @@ signing and GC come for free; only activation is the game's.
 
 - **Versions:** each pack has semver `version` plus monotonic `seq`. Releases are immutable; a fix
   is a new release.
-- **Channels:** content channels mirror release channels: a pointer per channel, optional
-  `includes` (beta ⊇ stable), rollout basis points with salt, halt, floor (minimum version), and
-  yank (resolvable only by explicit pin). The policy is operator-owned and survives resync.
+- **Channels:** a pack's channels are ordinary release channels:
+  - **release** holds the pointer per channel, optional `includes` (beta ⊇ stable), floor and yank
+    (resolvable only by explicit pin);
+  - **distribution** holds rollout basis points with salt, and halt, per outlet.
+
+  Both are operator-owned and survive resync.
+
 - **Compatibility axes:** `engine` (range), type `formatVersion`, `contentApi` (range), `features`
   (e.g. `astc`), `platform`/`arch`, `locale`, `packs` (dependency ranges), `conflicts`.
 - **Resolution happens on the server, at publish.**
-  - When a release is published or a channel pointer moves, CI or a Worker job resolves one
+  - When a release is published or a channel pointer moves, **release** resolves one
     **pack set** per selector: the highest version of each pack satisfying every constraint, ties
     broken by `seq`.
   - Unsatisfiable selectors fail the publish; they never reach clients.
@@ -234,7 +263,8 @@ signing and GC come for free; only activation is the game's.
 
 ## 6. Transports
 
-A pack's transport is chosen per outlet in `.pkey/content.yaml` (`transports: {app-store: apple-ba, default: pkey-cdn}`).
+Transports are **distribution** configuration: a pack's transport is chosen per outlet in
+`.pkey/distribution` (`transports: {packs: {app-store: apple-ba}, default: pkey-cdn}`).
 A pack uses **one transport per outlet**, never a mix for the same pack on the same install.
 
 | Transport       | Used on                                                                                        | Hosts the bytes                                                                    | Versioning and patching done by                         | How Polaris Key knows the installed version                                                                    | Notes                                                                                              |
@@ -278,7 +308,7 @@ plan(target, installed, seeds, caps):
   if peakDisk > freeDisk: offer "replace in place" (loses rollback), only with consent
 ```
 
-- **Deterministic.** The planner is a pure function of (content index, installed state, seed
+- **Deterministic.** The planner is a pure function of (channel feed and release records, installed state, seed
   indexes, capabilities). It becomes the corpus file `plan-matrix.json` (like `gate-matrix.json`
   and README §3.6's `update-matrix.json`), so every SDK chooses identically.
 - **First install:** take the single full blob, then _record its chunk index as a seed_, so the
@@ -380,19 +410,21 @@ itself.
 
 Full JSON sketches are in `notes/E8 §5.4`. The essentials:
 
-- **Pack definition** (`.pkey/content.yaml` → D1):
+- **Pack deliverable definition** (`.pkey/release` `deliverables.<packId>` → D1 `release_deliverables`):
   - `packId`, `type`, `variants`, `contentApi`;
   - handler options (`mountOrder`, `prefixes`, `activation`);
   - policy (`required`, `delivery`, `cellular`, `keepPrevious`), `entitlement`, `channels`;
-  - `transports` per outlet;
   - patch config (strategies, chunking parameters, delta bases);
   - `contentPolicy.dataOnly`.
-- **Pack release** (`pkey-pack+jws`, CI release key or a delegated content key):
+  - Transports per outlet are **distribution** configuration (`.pkey/distribution`), not part of the
+    pack definition.
+- **Pack release record** (`pkey-release+jws` with `kind: pack`; CI release key or a delegated content
+  key):
   - `packId`, `version`, `seq`, `type`, `variant`;
   - `payload {size, sha256, blob}`, `files {format, sha256}`, `chunks {format, sha256, params}`;
   - `deltas[]`, `requires`, `conflicts`, `entitlement`, `marker`, `provenance`.
   - Platform ids are **not** in here, because platforms assign them after signing. They live in
-    transport bindings and the content index.
+    distribution's availability records and in the channel feed.
 - **Files index** (`pkey-files/1`, JSON): `{path, size, sha256, mode, chunks[]}` per file.
 - **Chunk index** (`pkey-chunks/1`, binary):
   - a 64-byte header, then fixed 48-byte little-endian records
@@ -404,7 +436,7 @@ Full JSON sketches are in `notes/E8 §5.4`. The essentials:
     `godot-delta-pck`), `artifact`;
   - apply needs (`memBytes`, `tmpDiskBytes`, `minSdk`);
   - `layerOver` and `maxStack` for Godot delta PCKs.
-- **Content index** (`pkey-content+jws`, Worker-signed, device-less):
+- **Channel feed, pack part** (`pkey-feed+jws`, update's Worker-signed, device-less feed):
   - `product`, `channel`, `seq`, `issuedAt`, `expiresAt`;
   - `sets[] {select, packs[] {id, version, release}, rollout}`;
   - `availability` per release per outlet (platform ids and state), `halted`, `floors`, `deltas`.
@@ -421,7 +453,7 @@ Full JSON sketches are in `notes/E8 §5.4`. The essentials:
 ## 9. Client pipeline (every SDK)
 
 1. **Preflight:**
-   - Verify the chain content index → pack release (by hash) → files/chunk indexes (by hash).
+   - Verify the chain channel feed → pack release record (by hash) → files/chunk indexes (by hash).
    - Check type/format/compat and entitlement.
    - Check `freeDisk ≥ peakDisk` (Godot: `DirAccess.get_space_left()`) and the memory budget.
    - Disclose size (Apple 4.2.3(ii)) and ask on cellular where policy says so.
@@ -464,25 +496,30 @@ Full JSON sketches are in `notes/E8 §5.4`. The essentials:
 
 ---
 
-## 10. Server side
+## 10. Server side, by service
 
-**Worker routes** (all new routes need an OpenAPI spec entry and a `routeCoverage` entry, rule 10):
+**Worker routes** (all new routes need an OpenAPI spec entry and a `routeCoverage` entry, rule 10).
+Packs add routes to the existing services, not a new one:
 
-| Route                                  | Purpose                                                                                                                                                            |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /<p>/content/<channel>/index.jws` | content index; public, edge-cached, short TTL                                                                                                                      |
-| `GET /<p>/content/release/<sha>`       | pack release                                                                                                                                                       |
-| `GET /<p>/content/blob/<sha>`          | indexes, payloads, chunk bundles, deltas: Range-capable, immutable, with `Repr-Digest`. Gated packs are served from a gated prefix and authorised per request      |
-| `POST /<p>/content/publish/*`          | trusted-publisher (GitHub OIDC) upload tickets, finalize (verify size and SHA-256), submit pack releases, move channel pointers                                    |
-| (distribution)                         | transport bindings are distribution's availability records: ASC `BACKGROUND_ASSET_VERSION_*` webhooks and CI reports for PAD/Steam/MSIX land there, not in content |
-| `POST /<p>/devices/report`             | content telemetry (allowlisted keys)                                                                                                                               |
+| Service      | Route                                                   | Purpose                                                                                                                                               |
+| ------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| release      | `POST /<p>/release/publish/*`                           | trusted-publisher (GitHub OIDC) upload tickets, finalize (verify size and SHA-256), submit release records for any deliverable, move channel pointers |
+| release      | `GET /<p>/release/record/<sha>`                         | a release record (app or pack) by hash                                                                                                                |
+| distribution | `GET /<p>/distribution/blob/<sha>` (on the byte domain) | payloads, indexes, chunk bundles, deltas: Range-capable, immutable, `Repr-Digest`; gated deliverables from a gated prefix, authorised per request     |
+| distribution | connector webhooks, CI reports                          | availability per release per outlet, including ASC `BACKGROUND_ASSET_VERSION_*` and PAD/Steam/MSIX reports                                            |
+| update       | `GET /<p>/update/<channel>/feed.jws`                    | the channel feed: app release + pack sets + availability/rollout/halts + delta menu; public, edge-cached, short TTL                                   |
+| core         | `POST /<p>/devices/report`                              | pack install telemetry (allowlisted keys)                                                                                                             |
 
 **D1:**
 
-- `content_packs(product, pack_id, type, def_json, def_source)`
-- `content_releases(product, pack_id, version, seq, release_sha256, payload_sha256, files_sha256, chunks_sha256, variant_json, requires_json, created_at, yanked)`
-- `content_objects(hash, kind, size, created_at)` and `content_object_refs(release_sha256, hash)`
-- `content_sets(product, channel, select_json, set_json, rollout_bp, rollout_salt, halted, source)`
+- **release:**
+  - `release_deliverables(product, deliverable_id, kind, pack_type, def_json, def_source)`;
+  - `release_metadata` (+ `deliverable_id`, `seq`) and `release_builds` (pack variants);
+  - `release_artifacts` with roles `payload`, `files-index`, `chunk-index`, `chunk-bundle`,
+    `delta`;
+  - `release_channel_policy`, `release_sets`, `release_yanks`.
+- **distribution:** `dist_transports`, `dist_availability`, `dist_rollouts`, `dist_access`.
+- **core:** `blob_objects(hash, kind, size, created_at)`, `blob_refs(release_sha256, hash)`.
 
 **R2:** `blobs/sha256/…`, `bundles/sha256/…`, `deltas/<from>/<to>.<method>`, bucket locks, plus a
 separate gated prefix.
@@ -495,12 +532,13 @@ separate gated prefix.
   old bundle ages out.
 - Deltas are disposable caches outside the hot-pair policy.
 
-**CI tooling** (`pkey pack …` and the `polaris-key/publish` Action):
+**CI tooling** (`pkey release publish --deliverable <packId>` and the `polaris-key/publish`
+Action):
 
-- `pkey pack build` builds the files index, content-defined chunks (FastCDC), chunk bundles and
+- The publish step builds the files index, content-defined chunks (FastCDC), chunk bundles and
   optional deltas against the last _N_ releases. It records the chunker version and parameters and
   never re-chunks history.
-- `pkey pack verify` lints each type (data-only list for `godot.pck`, stored entries for zips, path
+- It lints each type (data-only list for `godot.pck`, stored entries for zips, path
   safety) and signs with the release key or a delegated content key.
 - Upload: new objects only (dedupe by hash).
 - Per-transport steps:
@@ -509,7 +547,7 @@ separate gated prefix.
   - Steam depot build scripts;
   - MSIX optional packages.
 
-  Each writes the marker and reports the binding.
+  Each writes the marker and reports availability to **distribution**.
 
 ---
 
@@ -524,7 +562,7 @@ separate gated prefix.
     directory against its declared prefixes. It is never left to `replace_files`, which zips
     ignore.
 - **What a compromise buys:**
-  - The Worker signs only content indexes, so a compromise can choose only among CI-signed releases.
+  - The Worker signs only channel feeds, so a compromise can choose only among CI-signed releases.
   - The CDN, Apple, Google or Valve can only withhold or corrupt bytes, which verification catches.
 - **Hashes:** SHA-256 everywhere. Never inherit the weak hashes of the formats we wrap (Godot's
   per-file MD5, Steam/Epic SHA-1, Blizzard MD5, Riot 64-bit ids).
@@ -537,6 +575,12 @@ separate gated prefix.
 ---
 
 ## 12. Per-SDK integration
+
+Every SDK exposes packs through the **update** sub-client's pack facet (`client.update.packs`:
+`ensure`, `state`, `isAvailable`, `registerHandler`, with progress events), mirroring the service
+that decides them. Release data (`client.release`) and delivery details (`client.distribution`)
+are available for tooling but not needed by game code. Cross-SDK parity is covered in its own
+design note.
 
 | SDK                        | Types (v1 → v3)                                                                             | Transports                                                                                          | Patch strategies                                                                                                         |
 | -------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -562,17 +606,20 @@ Per-type handlers stay per SDK.
 ## 13. Experiences
 
 - **Developer:**
-  - `.pkey/content.yaml` declares packs.
-  - `pkey pack build|verify|publish|promote|yank` runs locally or in the Action.
-  - The Godot export plugin lists packs per preset (embedded / lean) and sets transports per outlet.
-  - In code, `PolarisKey.content.ensure(["event.halloween"])` returns progress signals and a
-    result, and `PolarisKey.content.is_available(id)` backs UI badges.
-- **Administrator.** The console's Content section shows:
-  - packs → releases (size, dedupe ratio against the previous release, types, variants);
-  - channels and pack sets (per selector), rollout/halt/floor/yank;
-  - transport states per outlet (e.g. "App Store asset pack `foes.c3` v7: in review");
-  - hot delta pairs and generated deltas;
-  - failure and fallback rates.
+  - `.pkey/release` declares packs as deliverables beside the app.
+  - `.pkey/distribution` says which transport carries them on which outlet.
+  - `pkey release publish --deliverable <packId>`, `promote`, `pin` and `yank` work exactly as for
+    the app, locally or in the Action.
+  - The Godot export plugin lists packs per preset (embedded / lean).
+  - In code, `PolarisKey.update.packs.ensure(["diceroll.events.halloween"])` returns progress
+    signals and a result, and `PolarisKey.update.packs.is_available(id)` backs UI badges.
+- **Administrator.** No separate content section: packs appear wherever the app does.
+  - **Release:** deliverables → releases (size, dedupe ratio against the previous release, types,
+    variants); channel pointers, floors, yanks; resolved pack sets per selector.
+  - **Distribution matrix:** pack releases × outlets, with transport states (e.g. "App Store asset
+    pack `foes.c3` v7: in review") and rollout/halt.
+  - **Update health:** install-plan strategies, hot delta pairs and generated deltas, failure and
+    fallback rates.
 - **Player:**
   - Required packs load inside `PKeyBoot` (README §5.8) with size disclosure and cellular choice.
   - Optional packs stream in the background, with per-item "downloading" badges.
@@ -591,23 +638,23 @@ Per-type handlers stay per SDK.
 | `diceroll.audio`                                     | `godot.pck` or `audio.bank`           | apple-ba / embedded / steam-depot / pkey-cdn / pkey-cdn                 | prefetch; music could become `files.tree` of `.ogg` loaded at runtime               |
 | `diceroll.foes`, `diceroll.nature`, `diceroll.extra` | `godot.pck`                           | as `core3d`                                                             | per-texture-family variants (`s3tc`, `etc2`/`astc`) fix today's S3TC-on-arm64 issue |
 | `diceroll.l10n.<locale>` (future)                    | `l10n.table`                          | pkey-cdn everywhere (hot)                                               | ship new languages between app releases                                             |
-| `diceroll.events.<name>` (future)                    | `godot.pck` (data-only) + `data.json` | apple-ba / pkey-cdn / …                                                 | floating on an `events` content channel, `contentApi`-gated                         |
+| `diceroll.events.<name>` (future)                    | `godot.pck` (data-only) + `data.json` | apple-ba / pkey-cdn / …                                                 | floating on an `events` channel, `contentApi`-gated                                 |
 | `diceroll.supporter.skins` (future)                  | `godot.pck`                           | pkey-cdn (gated) direct; IAP-gated on stores                            | entitlement `extras.diceSkins` via the commerce bridge                              |
 
 Diceroll keeps `packs.gd` and `needs.gd` (content id → packs) and its `Content.available()` gating.
-They read `PolarisKey.content` state instead of a hand-rolled store.
+They read `PolarisKey.update.packs` state instead of a hand-rolled store.
 
 ---
 
 ## 15. Phasing and effort
 
-| Phase  | Ships                                                                                                                                                                                                                                                                                                                                                            | Size   | Wire / corpus impact (plan mode)                                                                                                                                   |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **v1** | `content` service skeleton; pack definitions; single-file packs (`godot.pck`, `files.tree` as a tar/zip build input); full downloads plus `file` and per-entry `delta` updates (every SDK; GDScript via Godot's own decoder); type registry and handler contract; transport bindings; marker file; install-state DB; locked consumption via the release manifest | 6–8 wk | `pkey-pack+jws`; corpus `packReleaseCases`, marker vectors                                                                                                         |
-| **v2** | chunk indexes (file-aware) + chunk bundles on R2; chunk sync from seeds (pure GDScript); content channels with server-resolved pack sets (`pkey-content+jws`); floating consumption; rollout/halt/floor/yank for content; server GC and chunk-bundle repacking                                                                                                   | 5–7 wk | `pkey-content+jws`; corpus `contentIndexCases`, `chunkIndexCases`, `plan-matrix.json`, `applyCases` (tampered chunk, wrong base, truncated chunk bundle); all SDKs |
-| **v3** | more types (`l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`, `unity.addressables`); lazy delta generation for hot pairs (R2 events → Queue → Workflow → Container); Compression Dictionary Transport on web; content-key delegation                                                                                                              | 4–6 wk | delegation record; per-type verify vectors                                                                                                                         |
+| Phase  | Ships                                                                                                                                                                                                                                                                                                                                                                                                                                                | Size   | Wire / corpus impact (plan mode)                                                                                                                                 |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v1** | **release:** pack deliverables (types, variants, requirements, dependencies), locked pack sets in the app's release record, patch artifacts (files index, per-entry deltas)<br>**distribution:** CDN and embedded transports for packs, availability, delivery gating, marker file<br>**update:** the pack part of the channel feed; the handler contract, install state, full/file/delta strategies in every SDK (GDScript via Godot's own decoder) | 5–7 wk | release records with `kind: pack` inside wire v4's `pkey-release+jws`; corpus `releaseRecordCases` (pack kind), marker vectors, apply vectors for file and delta |
+| **v2** | **release:** file-aware chunk indexes and chunk bundles; floating pack sets resolved per selector<br>**distribution:** chunk-bundle delivery; per-outlet rollout and halt for packs; platform transports (Background Assets, PAD, Steam) as their connectors land; server GC and chunk-bundle repacking<br>**update:** chunk sync from seeds in every SDK; floating consumption                                                                      | 5–7 wk | the channel feed's pack-set fields; corpus `chunkIndexCases`, `plan-matrix.json`, `applyCases` (tampered chunk, wrong base, truncated chunk bundle); all SDKs    |
+| **v3** | more types (`l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`, `unity.addressables`); lazy delta generation for hot pairs (R2 events → Queue → Workflow → Container); Compression Dictionary Transport on web; content-key delegation                                                                                                                                                                                                  | 4–6 wk | delegation record; per-type verify vectors                                                                                                                       |
 
-This replaces README P4's 7–9 weeks with **15–21 weeks across three increments**. v1 alone
+This is README P4: **14–20 weeks across three increments**, with no new service. v1 alone
 unblocks Diceroll's content-streaming phases 1–2. v2 brings the small-update win.
 
 ---
