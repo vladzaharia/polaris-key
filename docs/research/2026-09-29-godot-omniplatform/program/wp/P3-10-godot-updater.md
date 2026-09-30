@@ -81,7 +81,9 @@ itch builds run its updater today ([README §4.7](../../README.md#47-steam-and-i
   previous; `OS.set_restart_on_exit`. Refuse where the directory is not writable, inside a macOS
   `.app`, under `Program Files`, in MSIX, Flatpak or Snap installs, and in Velopack installs (S-05
   §4.5: an update replaces the whole app directory, and a sidecar beside the executable was deleted
-  by the first update). Detect MSIX from `\WindowsApps\` in `OS.get_executable_path()` (S-05 §4.4);
+  by the first update). Detect MSIX when `OS.get_executable_path()` contains a `WindowsApps` path segment
+  (Godot returns `/` on Windows; compare case-insensitively on either separator, and give the fake
+  a `C:/Program Files/WindowsApps/...` path) (S-05 §4.4);
   the MSIX install directory is read-only by design.
 - **Slots and boot guard** in `updater/slots.gd` and `updater/boot_guard.gd`: staged, current and
   previous under `user://pkey/<product>/updates/` with a meta file (version, build number, record
