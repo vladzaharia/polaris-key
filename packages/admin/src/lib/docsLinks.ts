@@ -29,6 +29,7 @@ export const DOCS_LINKS = {
   resync: "/docs/build/manifest/",
   servicesRevert: "/docs/admin/services-enablement/",
   fingerprintRevert: "/docs/services/license/policy/",
+  updateSettingsRevert: "/docs/services/update/eligibility/",
   // Inline explainer callouts
   manifestNote: "/docs/build/manifest/",
   updateAccessNote: "/docs/services/update/eligibility/",

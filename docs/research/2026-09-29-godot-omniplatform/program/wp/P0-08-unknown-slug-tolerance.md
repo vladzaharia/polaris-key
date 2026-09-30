@@ -74,12 +74,12 @@ Record<string, { enabled: boolean }>`), and `serializeServices` writes them afte
 
 ## Acceptance criteria
 
-- [ ] `parseServices('{"release":{"enabled":false},"distribution":{"enabled":true}}')` yields
+- [x] `parseServices('{"release":{"enabled":false},"distribution":{"enabled":true}}')` yields
       `release.enabled === false` (not the default) and keeps `distribution` in the passthrough.
-- [ ] `serializeServices(parseServices(x)) === x` for a record with an unknown well-formed slug.
-- [ ] A malformed unknown value (`"distribution": true`) still returns the defaults.
-- [ ] The admin services editor does not drop unknown slugs.
-- [ ] The green gate passes.
+- [x] `serializeServices(parseServices(x)) === x` for a record with an unknown well-formed slug.
+- [x] A malformed unknown value (`"distribution": true`) still returns the defaults.
+- [x] The admin services editor does not drop unknown slugs.
+- [x] The green gate passes.
 
 ## Verify
 

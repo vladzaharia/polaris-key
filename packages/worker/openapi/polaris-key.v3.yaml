@@ -27,6 +27,15 @@
 # two schemas. Mixing them inside one handler is the thing to avoid; carrying both across the
 # migration is the point.
 #
+# ── CORS (P0-05) ─────────────────────────────────────────────────────────────────────────────
+#
+# Every path a browser page on one of the product's `web.origins` may call documents an
+# `options` operation answered by the single shared `CorsPreflight` response. The seven
+# cookie-bearing or navigation-only identity/edge-mint paths document none, because they answer
+# no CORS; neither do the admin, portal, docs or webhook surfaces (not in this file at all).
+# `test/routeCoverage.test.ts` pins both directions against `core/cors.ts`. The generated
+# route table lists get/post/put/patch/delete only, so these operations do not appear there.
+#
 # Every operation carries its real request/response schemas and at least one example lifted
 # from the worker's own tests. Response bodies here are what the HANDLERS emit; where a route
 # serves a compact JWS the DECODED payload is documented as a sibling schema (`LicenseDocPayload`,
@@ -194,6 +203,18 @@ paths:
                       identity: { enabled: false }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+    options:
+      operationId: preflightGetDiscovery
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/.well-known/jwks.json:
     get:
       operationId: getJwks
@@ -235,6 +256,18 @@ paths:
                         kid: test-kid-2024
                         x: Wm5tQ2hZa0xxUjhuVDBzWXAydmNFZ0hqNkJmM1FkTncK
         "404": { $ref: "#/components/responses/LegacyNotFound" }
+    options:
+      operationId: preflightGetJwks
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/.well-known/polaris-trust.jws:
     get:
       operationId: getTrustManifest
@@ -269,6 +302,18 @@ paths:
                   summary: The compact JWS as served
                   value: eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QranEzIiwia2lkIjoidGVzdC1raWQifQ.eyJzY2hlbWFWZXJzaW9uIjoxfQ.c2lnbmF0dXJl
         "404": { $ref: "#/components/responses/LegacyNotFound" }
+    options:
+      operationId: preflightGetTrustManifest
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/devices:
     get:
       operationId: listDevices
@@ -326,6 +371,18 @@ paths:
                         sdkVersion: null
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+    options:
+      operationId: preflightListDevices
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/devices/{deviceId}:
     parameters:
       - { $ref: "#/components/parameters/Product" }
@@ -471,6 +528,16 @@ paths:
                   value: { error: forbidden, message: a device token may only manage its own device }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+    options:
+      operationId: preflightGetDevice
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/devices/report:
     post:
       operationId: reportDeviceFacts
@@ -543,6 +610,18 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 tooLarge: { value: { error: body_too_large, message: report body too large } }
+    options:
+      operationId: preflightReportDeviceFacts
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/devices/register:
     post:
       operationId: registerDevice
@@ -620,6 +699,18 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
               examples:
                 limited: { value: { error: { code: rate_limited } } }
+    options:
+      operationId: preflightRegisterDevice
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── license ───────────────────────────────────────────────────────────────────
   /{product}/license/activate:
@@ -754,6 +845,18 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 limited: { value: { error: rate_limited, message: too many activation attempts } }
+    options:
+      operationId: preflightActivate
+      tags: [license]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/license/enroll:
     post:
       operationId: enroll
@@ -897,6 +1000,18 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 failed: { value: { error: enroll_failed, message: could not issue a license } }
+    options:
+      operationId: preflightEnroll
+      tags: [license]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/license/token:
     post:
       operationId: reacquireToken
@@ -941,6 +1056,18 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 limited: { value: { error: rate_limited, message: too many token requests } }
+    options:
+      operationId: preflightReacquireToken
+      tags: [license]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/license/deauthorize:
     post:
       operationId: deauthorizeSelf
@@ -965,6 +1092,18 @@ paths:
                   value: { ok: true }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+    options:
+      operationId: preflightDeauthorizeSelf
+      tags: [license]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/license/document:
     get:
       operationId: getLicenseDocument
@@ -1032,6 +1171,18 @@ paths:
                   value:
                     error: { code: channel_not_allowed, reason: channel-not-entitled }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+    options:
+      operationId: preflightGetLicenseDocument
+      tags: [license]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── config ────────────────────────────────────────────────────────────────────
   /{product}/config/document:
@@ -1088,6 +1239,18 @@ paths:
                   value:
                     error: { code: catalog_unavailable }
                     message: active catalog could not validate the config payload
+    options:
+      operationId: preflightGetConfigDocument
+      tags: [config]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/config/schema:
     get:
       operationId: getCatalog
@@ -1160,6 +1323,18 @@ paths:
                 serviceDisabled:
                   summary: The registry's nested body, for contrast
                   value: { error: { code: not_found } }
+    options:
+      operationId: preflightGetCatalog
+      tags: [config]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/config/mint/{mintId}/token:
     parameters:
       - { $ref: "#/components/parameters/Product" }
@@ -1270,6 +1445,16 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 missingKey: { value: { error: misconfigured, message: missing mint key } }
+    options:
+      operationId: preflightMintTokenGet
+      tags: [config]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/config/mint/{mintId}/auth:
     get:
       operationId: mintAuthPage
@@ -1351,6 +1536,18 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightGetChangelog
+      tags: [release]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/release/install.sh:
     get:
       operationId: getInstallScript
@@ -1382,6 +1579,18 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightGetInstallScript
+      tags: [release]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/release/dl/{version}/{asset}:
     get:
       operationId: downloadArtifact
@@ -1497,6 +1706,20 @@ paths:
               examples:
                 limited: { value: { error: rate_limited, message: too many release requests } }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightDownloadArtifact
+      tags: [release]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: version, in: path, required: true, schema: { type: string } }
+        - { name: asset, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── update ────────────────────────────────────────────────────────────────────
   /{product}/update/appcast.xml:
@@ -1547,6 +1770,18 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightGetAppcast
+      tags: [update]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/update/{channel}/appcast.xml:
     get:
       operationId: getChannelAppcast
@@ -1592,6 +1827,19 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightGetChannelAppcast
+      tags: [update]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/update/version:
     get:
       operationId: getLatestVersion
@@ -1631,6 +1879,18 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightGetLatestVersion
+      tags: [update]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── identity ──────────────────────────────────────────────────────────────────
   /{product}/identity/session:
@@ -1993,6 +2253,18 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 limited: { value: { error: rate_limited, message: too many requests } }
+    options:
+      operationId: preflightAuthPoll
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/auth/logout:
     post:
       operationId: authLogout
@@ -2119,6 +2391,18 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 misconfigured: { value: { error: misconfigured, message: custom oidc issuer is not permitted } }
+    options:
+      operationId: preflightDeviceAuthStart
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/auth/device/verify:
     parameters:
       - { $ref: "#/components/parameters/Product" }
@@ -2320,6 +2604,18 @@ paths:
                   value: { status: slow_down, interval: 2 }
                 rateLimited:
                   value: { error: rate_limited, message: too many requests }
+    options:
+      operationId: preflightDeviceAuthPoll
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── permanent aliases ─────────────────────────────────────────────────────────
   /{product}/appcast.xml:
@@ -2367,6 +2663,18 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightAliasAppcast
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/{channel}/appcast.xml:
     get:
       operationId: aliasChannelAppcast
@@ -2408,6 +2716,19 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightAliasChannelAppcast
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/install.sh:
     get:
       operationId: aliasInstall
@@ -2433,6 +2754,18 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightAliasInstall
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/version:
     get:
       operationId: aliasVersion
@@ -2464,6 +2797,18 @@ paths:
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/ReleaseRateLimited" }
         "503": { $ref: "#/components/responses/UpstreamRateLimited" }
+    options:
+      operationId: preflightAliasVersion
+      tags: [aliases]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
 components:
   securitySchemes:
@@ -2600,6 +2945,38 @@ components:
       schema: { type: string }
       example: pkey_djdl_session=; Path=/djdl; Max-Age=0; HttpOnly; Secure; SameSite=Lax
   responses:
+    CorsPreflight:
+      description: >
+        CORS preflight (P0-05). Always `204` with no body. When the request's `Origin` is
+        exactly one of the product's `web.origins` (`.pkey/product`), the allow headers below
+        are attached; for any other origin, or a product that lists none, the 204 carries no
+        `Access-Control-*` header at all, which a browser treats as a refused preflight.
+        `Access-Control-Allow-Credentials` is never sent: no cookie crosses origins here, and
+        the cookie-bearing identity routes, the console, the portal and the docs site answer
+        no CORS at all.
+
+
+        The actual (non-preflight) response on the same path carries
+        `Access-Control-Allow-Origin: <that origin>` and `Access-Control-Expose-Headers:
+        ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest` for a listed origin,
+        and `Vary: Origin` whenever the product lists any origin.
+      headers:
+        Access-Control-Allow-Origin:
+          description: The request's own `Origin`, echoed exactly. Never `*`.
+          schema: { type: string }
+          example: https://diceroll.gg
+        Access-Control-Allow-Methods:
+          schema: { type: string, const: "GET, POST, PATCH, DELETE" }
+        Access-Control-Allow-Headers:
+          description: Listed explicitly (a `*` would not cover `Authorization`).
+          schema:
+            type: string
+            const: "Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch"
+        Access-Control-Max-Age:
+          schema: { type: string, const: "600" }
+        Vary:
+          description: "`Origin`, whenever the product lists any origin."
+          schema: { type: string }
     NotFound:
       description: >
         Not found — including "the product does not exist", "the service is not enabled for
