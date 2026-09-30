@@ -46,7 +46,8 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   [§7](../../CONTENT.md#7-transports) (marker), [§9](../../CONTENT.md#9-formats).
 - Reference code in `docs/research/2026-09-29-godot-omniplatform/prototype/`: `content/gen/gen.py`
   (A7's CI stand-in: files index, gaps blob, per-file and whole `--patch-from` deltas, the zstd CLI
-  calls), `content/gen/pck.py` (PCK v2–v4 reader and writer), and `patching/tools/` (A6's
+  calls), `content/gen/pck.py` (PCK reader and writer; the reader parses only the v3/v4 layout, and the
+  writer's defaults stamp format 4, engine 4.7.2 and pack flags 2), and `patching/tools/` (A6's
   offline tools).
 - [notes/S-05 §4.1, §4.6 and §5](../../notes/S-05-godot-platform-mechanics.md#5-recommendation-rules-the-named-briefs-adopt)
   (the entry-count limits, the admission list and the strip step) and
@@ -62,11 +63,13 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
 
 - `--deliverable <packId>` for `godot.pck` and `files.tree`, one payload per declared variant,
   located through the `.pkey/release` artifact map (P2-04).
-- **Strip, then lint by type.** `godot.pck`: first remove `project.binary` and
-  `.godot/global_script_class_cache.cfg`, which `--export-pack` always adds, and write the stripped
-  PCK back in place (see below). Then lint: an unencrypted PCK v2–v4; only the entries S-05's (f)
-  rule admits (below); the header's engine version inside `requires.engine`; **warn above 2,000
-  entries and fail above 20,000** (the mount stall grows with entry count, S-05 §4.1).
+- **Check the header, strip, then lint by type.** `godot.pck`: first read the header and fail
+  unless it is a PCK v2–v4 with no encrypted directory, no sparse bundle and no encrypted entry.
+  Then remove `project.binary` and `.godot/global_script_class_cache.cfg`, which `--export-pack`
+  always adds, and write the stripped PCK back in place with the source header's format version,
+  engine version and pack flags (see below). Then lint: only the entries S-05's (f) rule admits
+  (below); the header's engine version inside `requires.engine`; **warn above 2,000 entries and
+  fail above 20,000** (the mount stall grows with entry count, S-05 §4.1).
   `files.tree`: A7 §3.3 path rules, no symlinks. Every failure names the path.
 - **Files index.** `layout: container` for PCKs (offsets from the PCK directory, ascending,
   non-overlapping; one zstd gaps blob of every uncovered byte); `layout: tree` with `treeDigest`.
@@ -124,9 +127,16 @@ enforced here first and again on the device ([CONTENT §12](../../CONTENT.md#12-
   `.godot/global_script_class_cache.cfg`, even to a project with no scripts, and a pack mounted with
   either replaces the main pack's copy (S-05 §4.6: `get_global_class_list()` went from 6 to 0).
   `publish` removes exactly those two entries before it lints, hashes and indexes the payload,
-  rebuilds the PCK directory as `prototype/platform-mechanics/tools/strip_pack.py` does, writes the
-  result back in place (so the embedded copy is the one the marker pins) and reports the strip in
-  `--dry-run`. It removes nothing else; any other forbidden entry is a lint failure.
+  rebuilds the PCK directory, preserving the header's format version, engine version and pack
+  flags, as `prototype/platform-mechanics/tools/strip_pack.py` does (after checking the header is an
+  unencrypted, non-sparse PCK v2–v4), writes the result back in place (so the embedded copy is the
+  one the marker pins) and reports the strip in `--dry-run`. It removes nothing else; any other
+  forbidden entry is a lint failure. `strip_pack.py` refuses v2, because the research `pck.py`
+  reader assumes the v3/v4 layout (a directory offset after the file base). A v2 PCK has no
+  directory offset: its directory follows 16 reserved words straight after the header (Godot
+  4.7.2 `core/io/file_access_pack.cpp`). The CLI must parse that layout, or refuse v2. After the
+  rewrite, re-read the output and check that its header and every kept entry's path, size, MD5 and
+  flags match the source; `strip_pack.py` does this.
 - **Container rebuild is type-neutral** (gap₀, file₀, gap₁, …): the CLI must prove its index and
   gaps blob rebuild the payload byte for byte before it publishes.
 - **Per-entry deltas** only for files whose path exists in the base with a different hash; added

@@ -340,6 +340,11 @@ script) [M]:
   (281 B → 76 B), but the main pack's UIDs keep resolving [M].
 - `tools/strip_pack.py` removing only `project.binary` and the class cache gives a pack whose UIDs
   still resolve and which leaves `get_global_class_list()` at 6 [M].
+  The tool keeps the source header's format version, engine version and pack flags. It refuses v2,
+  an encrypted directory, a sparse bundle and encrypted entries, and re-reads its output to check
+  the header and every kept entry's path, size, MD5 and flags. Its output for the (f) packs is
+  byte-identical to the first version's, and `run_f.sh`, re-run with it on 2026-09-30, gave the
+  same results in all 8 cases apart from mount timings [M].
 
 The brief's desktop control run of `prototype/patching/tplrun.sh` needs the Linux templates and
 cannot run on macOS; `tplrun_mac.sh` is the macOS equivalent and `run_f.sh` was re-run with it on
