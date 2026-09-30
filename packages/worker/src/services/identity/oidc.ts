@@ -330,11 +330,80 @@ export async function deviceFlowKey(
   return `p:${product}:device-flow:${await hashKey(code, env.KEY_HASH_PEPPER)}`;
 }
 
-function deviceUserCode(state: string): string {
-  return state
-    .slice(0, 8)
-    .toUpperCase()
-    .replace(/(.{4})/, "$1-");
+// ── the RFC 8628 user code ──────────────────────────────────────────────────
+//
+// The code a human types on the entry page (`/<p>/identity/auth/device`). It is generated
+// INDEPENDENTLY of the secret `deviceCode` — it used to be the device code's first eight
+// characters, case-folded, so the "show the user" value leaked part of the poll credential and
+// the only page a human could reach carried the whole device code in its URL (R8-02 residual).
+//
+// RFC 8628 §6.1's consonant alphabet: no vowels (no accidental words), no digits (no 0/O, 1/I
+// confusion), case-insensitive on input. Eight characters is 20^8 ≈ 2.56e10 codes (~34.5 bits).
+
+/** RFC 8628 §6.1's recommended user-code alphabet (20 consonants). */
+export const USER_CODE_ALPHABET = "BCDFGHJKLMNPQRSTVWXZ";
+const USER_CODE_LENGTH = 8;
+/** Retries on an index collision before giving up (a collision among live codes is ~1e-10). */
+const USER_CODE_ATTEMPTS = 5;
+
+/** A fresh user code, normalised (no separator). Rejection sampling keeps it unbiased:
+ *  240 is the largest multiple of 20 that fits in a byte. */
+function generateUserCode(): string {
+  let out = "";
+  while (out.length < USER_CODE_LENGTH) {
+    for (const b of randomBytes(USER_CODE_LENGTH * 2)) {
+      if (b >= 240) continue;
+      out += USER_CODE_ALPHABET[b % USER_CODE_ALPHABET.length];
+      if (out.length === USER_CODE_LENGTH) break;
+    }
+  }
+  return out;
+}
+
+/** `WDJBMJHT` → `WDJB-MJHT`, the display (and `userCode` wire) form. */
+function formatUserCode(normalised: string): string {
+  return `${normalised.slice(0, 4)}-${normalised.slice(4)}`;
+}
+
+/**
+ * What a human typed (or a QR code carried) → the canonical code, or `null` when it cannot be
+ * one. Upper-case; spaces and hyphens dropped; anything outside the alphabet, or the wrong
+ * length, is invalid — never "corrected", so a lookup only ever happens for a well-formed code.
+ */
+export function normalizeUserCode(
+  raw: string | null | undefined,
+): string | null {
+  if (!raw || raw.length > 64) return null;
+  const code = raw.toUpperCase().replace(/[\s-]/g, "");
+  if (code.length !== USER_CODE_LENGTH) return null;
+  for (const ch of code) if (!USER_CODE_ALPHABET.includes(ch)) return null;
+  return code;
+}
+
+/**
+ * KV key for the user-code index: normalised user code → the flow's `deviceCode`.
+ *
+ * R12-04: a user code is a short-lived bearer handle for the confirmation page, so the key name
+ * is its peppered hash — a HOT listing yields nothing a visitor could type. The value is the
+ * device code, which never leaves the server on this path.
+ */
+export async function deviceUserKey(
+  env: Env,
+  product: string,
+  normalisedUserCode: string,
+): Promise<string> {
+  return `p:${product}:device-user:${await hashKey(normalisedUserCode, env.KEY_HASH_PEPPER)}`;
+}
+
+/** Drop a flow's user-code index. Records written before the independent code existed carry a
+ *  prefix-derived code that does not normalise, and never had an index. */
+async function deleteUserCodeIndex(
+  env: Env,
+  product: string,
+  userCode: string,
+): Promise<void> {
+  const code = normalizeUserCode(userCode);
+  if (code) await env.HOT.delete(await deviceUserKey(env, product, code));
 }
 
 function safeReturnTo(req: Request, raw: string | null): string | undefined {
@@ -792,7 +861,17 @@ export async function handleAuthDeviceStart(
   const flow = await beginAuthFlow(req, env, db, product, undefined, deviceId);
   if (flow instanceof Response) return flow;
   const deviceCode = b64url(randomBytes(16));
-  const userCode = deviceUserCode(deviceCode);
+  // The user code is independent of the device code (RFC 8628 §6.1). A live collision would
+  // point two flows at one code, so an occupied index slot means "draw again".
+  let userKey: string | null = null;
+  let code = "";
+  for (let i = 0; i < USER_CODE_ATTEMPTS && !userKey; i++) {
+    code = generateUserCode();
+    const key = await deviceUserKey(env, product.slug, code);
+    if ((await env.HOT.get(key)) === null) userKey = key;
+  }
+  if (!userKey) return errorResponse(503, "unavailable", "try again");
+  const userCode = formatUserCode(code);
   const deviceRecord: DeviceFlowRecord = {
     state: flow.state,
     deviceId,
@@ -805,13 +884,17 @@ export async function handleAuthDeviceStart(
     JSON.stringify(deviceRecord),
     { expirationTtl: FLOW_TTL_SECONDS },
   );
-  const verificationUri = `${new URL(req.url).origin}/${product.slug}/identity/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}`;
+  await env.HOT.put(userKey, deviceCode, { expirationTtl: FLOW_TTL_SECONDS });
+  // The page a human types the code into, and the same page with the code pre-filled for a QR
+  // code or a clickable link (RFC 8628 §3.2, §3.3.1). Neither carries the device code: that is
+  // the poll credential and stays between this server and the polling client.
+  const verificationUri = `${new URL(req.url).origin}/${product.slug}/identity/auth/device`;
   return json({
     status: "pending",
     deviceCode,
     userCode,
     verificationUri,
-    verificationUriComplete: verificationUri,
+    verificationUriComplete: `${verificationUri}?user_code=${userCode}`,
     expiresIn: FLOW_TTL_SECONDS,
     interval: DEVICE_POLL_INTERVAL_SECONDS,
     pollUrl: `${new URL(req.url).origin}/${product.slug}/identity/auth/device/poll`,
@@ -838,22 +921,20 @@ async function readConfirmToken(req: Request): Promise<string | null> {
 }
 
 /** POST half of device verification: mark the flow user-confirmed and hand the browser on to
- *  the IdP. Requires the CSRF token minted on the GET render, so neither a prefetch nor a
- *  cross-site form can confirm a flow (or read `state`/`nonce`) on the visitor's behalf. */
+ *  the IdP. Requires the CSRF token minted on the confirmation page's render, so neither a
+ *  prefetch nor a cross-site form can confirm a flow (or read `state`/`nonce`) on the visitor's
+ *  behalf. Shared by `/device/verify` (device code in the URL) and `/device` (user code). */
 async function confirmDeviceFlow(
   req: Request,
   env: Env,
   product: Product,
   deviceCode: string,
   record: DeviceFlowRecord,
-  url: URL,
+  token: string | null,
   now: number,
 ): Promise<Response> {
-  // Browsers always send Origin on a form POST; a cross-site submission is refused outright.
-  const origin = req.headers.get("origin");
-  if (origin && origin !== url.origin)
+  if (!sameOriginPost(req))
     return errorResponse(403, "forbidden", "confirmation failed");
-  const token = await readConfirmToken(req);
   if (!record.csrf || !token || token !== record.csrf)
     return errorResponse(403, "forbidden", "confirmation failed");
 
@@ -886,10 +967,241 @@ async function confirmDeviceFlow(
   });
 }
 
+/** Browsers always send `Origin` on a form POST; a cross-site submission is refused outright. */
+function sameOriginPost(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  return !origin || origin === new URL(req.url).origin;
+}
+
+/** Headers for the device-flow HTML pages: the static-page bundle, no Referer, no caching.
+ *  `formTarget` widens `form-action` by exactly one origin — the IdP the confirmation POST
+ *  303s to — because browsers apply `form-action` to every redirect a form submission follows,
+ *  so `'self'` alone would block the hand-off the confirmation button exists to make. */
+function deviceHtmlHeaders(formTarget?: string): Headers {
+  // R1-09: `index.ts`'s `secureResponse` backstop would supply this policy anyway, but a
+  // handler that emits HTML should not depend on the dispatcher — a direct call (a test, or a
+  // future internal caller) must be hardened too. `staticHtmlSecurityHeaders` preserves the
+  // `referrer-policy` set here.
+  const headers = staticHtmlSecurityHeaders(
+    new Headers({
+      "content-type": "text/html; charset=utf-8",
+      // A device-flow URL can hold a device or user code: never let it ride along as a
+      // Referer, and never let a shared cache keep the page (R8-02).
+      "referrer-policy": "no-referrer",
+      "cache-control": "no-store",
+    }),
+  );
+  let idp: string | null = null;
+  try {
+    if (formTarget) idp = new URL(formTarget).origin;
+  } catch {
+    idp = null;
+  }
+  if (idp && idp !== "null") {
+    headers.set(
+      "content-security-policy",
+      headers
+        .get("content-security-policy")!
+        .replace("form-action 'self'", `form-action 'self' ${idp}`),
+    );
+  }
+  return headers;
+}
+
+const PAGE_STYLE = {
+  body: "font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #0c0f17; color: #f8fafc;",
+  main: "max-width: 440px; margin: 12vh auto; padding: 32px;",
+  button:
+    "display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border:0; border-radius:8px; background:#5b7cfa; color:#fff; font:inherit; font-weight:650; cursor:pointer;",
+};
+
+/** Mint a fresh single-use CSRF token onto the record and render the confirmation page: the
+ *  product, the device label and the user code, and one button. `hidden` are the extra fields
+ *  the form posts back alongside `csrf` — the user code on `/device`, nothing on `/verify`
+ *  (whose action URL already carries the device code). */
+async function renderDeviceConfirmation(
+  env: Env,
+  product: Product,
+  deviceCode: string,
+  record: DeviceFlowRecord,
+  action: string,
+  hidden: Record<string, string>,
+): Promise<Response> {
+  const csrf = b64url(randomBytes(16));
+  record.csrf = csrf;
+  await env.HOT.put(
+    await deviceFlowKey(env, product.slug, deviceCode),
+    JSON.stringify(record),
+    { expirationTtl: FLOW_TTL_SECONDS },
+  );
+  const deviceLabel = record.deviceName || record.deviceId;
+  const hiddenInputs = Object.entries(hidden)
+    .map(
+      ([name, value]) =>
+        `\n      <input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
+    )
+    .join("");
+  const html = `<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Authorize ${escapeHtml(product.name)}</title>
+<body style="${PAGE_STYLE.body}">
+  <main style="${PAGE_STYLE.main}">
+    <p style="color:#9aa4b2; margin:0 0 8px;">Polaris Key</p>
+    <h1 style="font-size: 28px; margin:0 0 16px;">Authorize ${escapeHtml(product.name)}</h1>
+    <p style="line-height:1.5; color:#cbd5e1;">An app is asking to activate this device. Check that the code and device match what the app shows before signing in.</p>
+    <dl style="display:grid; grid-template-columns: 110px 1fr; gap:10px; margin:24px 0; color:#cbd5e1;">
+      <dt>Code</dt><dd style="margin:0; color:#fff; font-weight:700; letter-spacing:.08em;">${escapeHtml(record.userCode)}</dd>
+      <dt>Device</dt><dd style="margin:0;">${escapeHtml(deviceLabel)}</dd>
+      <dt>Product</dt><dd style="margin:0;">${escapeHtml(product.slug)}</dd>
+    </dl>
+    <form method="post" action="${escapeHtml(action)}">${hiddenInputs}
+      <input type="hidden" name="csrf" value="${escapeHtml(csrf)}">
+      <button type="submit" style="${PAGE_STYLE.button}">Continue to sign in</button>
+    </form>
+  </main>
+</body>`;
+  return new Response(html, {
+    status: 200,
+    headers: deviceHtmlHeaders(record.authorizeUrl),
+  });
+}
+
+/** The code-entry form: one text field, posted back to `/device`. `error` renders the single
+ *  generic "not valid or expired" line — the page never says WHICH (RFC 8628 §5.1). */
+function renderDeviceEntry(
+  product: Product,
+  action: string,
+  status: 200 | 404,
+): Response {
+  const error =
+    status === 404
+      ? `\n    <p role="alert" style="line-height:1.5; color:#fca5a5; margin:0 0 16px;">That code is not valid or has expired. Check the code on your device and try again.</p>`
+      : "";
+  const html = `<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Connect a device to ${escapeHtml(product.name)}</title>
+<body style="${PAGE_STYLE.body}">
+  <main style="${PAGE_STYLE.main}">
+    <p style="color:#9aa4b2; margin:0 0 8px;">Polaris Key</p>
+    <h1 style="font-size: 28px; margin:0 0 16px;">Connect a device to ${escapeHtml(product.name)}</h1>
+    <p style="line-height:1.5; color:#cbd5e1;">Enter the code shown on your device.</p>${error}
+    <form method="post" action="${escapeHtml(action)}">
+      <label for="user_code" style="display:block; margin:24px 0 8px; color:#cbd5e1;">Code</label>
+      <input id="user_code" name="user_code" type="text" required autofocus autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" placeholder="XXXX-XXXX" style="box-sizing:border-box; width:100%; min-height:42px; padding:0 12px; margin:0 0 16px; border:1px solid #334155; border-radius:8px; background:#111827; color:#fff; font:inherit; font-size:20px; letter-spacing:.08em; text-transform:uppercase;">
+      <button type="submit" style="${PAGE_STYLE.button}">Continue</button>
+    </form>
+  </main>
+</body>`;
+  return new Response(html, { status, headers: deviceHtmlHeaders() });
+}
+
+/** The user code and CSRF token from an entry-route POST. `csrf` is `undefined` when the field
+ *  is ABSENT (the entry form: look the code up and render the confirmation) and a string —
+ *  possibly empty — when present (the confirmation form: confirm, and 403 unless it matches). */
+async function readEntryForm(
+  req: Request,
+): Promise<{ userCode: string | null; csrf: string | undefined }> {
+  const text = await req.text().catch(() => "");
+  if ((req.headers.get("content-type") ?? "").includes("application/json")) {
+    const body = parseJsonColumn<Record<string, unknown>>(text) ?? {};
+    return {
+      userCode: typeof body.user_code === "string" ? body.user_code : null,
+      csrf:
+        "csrf" in body
+          ? typeof body.csrf === "string"
+            ? body.csrf
+            : ""
+          : undefined,
+    };
+  }
+  const form = new URLSearchParams(text);
+  return {
+    userCode: form.get("user_code"),
+    csrf: form.has("csrf") ? (form.get("csrf") ?? "") : undefined,
+  };
+}
+
+/**
+ * `GET`/`POST /<product>/identity/auth/device` — the RFC 8628 user-code page, the
+ * `verificationUri` a device-code client shows (`verificationUriComplete` adds `?user_code=`).
+ *
+ *   - `GET` with no `user_code`: the entry form (one field, POSTs back here).
+ *   - `GET ?user_code=`, or a `POST` with `user_code` and NO `csrf` field: look the code up and
+ *     render the confirmation page with a fresh single-use CSRF token. Its form posts
+ *     `user_code` + `csrf` back here — never the device code.
+ *   - `POST` with `user_code` and a `csrf` field: `confirmDeviceFlow` (Origin check, CSRF check,
+ *     stamp `confirmedAt`, 303 to the IdP).
+ *   - an unknown, expired or malformed code: the entry form again with one generic line, 404.
+ *
+ * The secret device code never appears in a URL, a page or a form on this path: anyone holding
+ * it plus the device id (the page shows the id when no `deviceName` was given) could race the
+ * real device for the token once the user confirms. The code → device-code lookup stays
+ * server-side, through the peppered `deviceUserKey` index.
+ */
+export async function handleAuthDeviceEntry(
+  req: Request,
+  env: Env,
+  product: Product,
+): Promise<Response> {
+  if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
+  const now = Math.floor(Date.now() / 1000);
+  // Per IP only. A product-wide bucket would let one attacker exhaust it and lock every player
+  // out of sign-in; 20^8 codes over a 600 s lifetime is what makes blind guessing hopeless.
+  const limited = await rateLimited(env, product, now, {
+    bucket: "authDeviceEntry",
+    id: clientIp(req),
+    limit: 30,
+    windowSec: 60,
+  });
+  if (limited) return limited;
+  const url = new URL(req.url);
+  const action = `${url.origin}/${product.slug}/identity/auth/device`;
+
+  let rawCode: string | null;
+  let csrf: string | undefined;
+  if (req.method === "POST") {
+    if (!sameOriginPost(req))
+      return errorResponse(403, "forbidden", "confirmation failed");
+    const form = await readEntryForm(req);
+    rawCode = form.userCode ?? url.searchParams.get("user_code");
+    csrf = form.csrf;
+  } else {
+    rawCode = url.searchParams.get("user_code");
+  }
+  if (!rawCode?.trim() && csrf === undefined)
+    return renderDeviceEntry(product, action, 200);
+
+  const userCode = normalizeUserCode(rawCode);
+  const deviceCode = userCode
+    ? await env.HOT.get(await deviceUserKey(env, product.slug, userCode))
+    : null;
+  const raw = deviceCode
+    ? await env.HOT.get(await deviceFlowKey(env, product.slug, deviceCode))
+    : null;
+  const record = raw ? parseFlowRecord<DeviceFlowRecord>(raw) : null;
+  if (!userCode || !deviceCode || !record) {
+    // A confirmation POST for a code that has gone away is still a refused confirmation.
+    if (csrf !== undefined)
+      return errorResponse(403, "forbidden", "confirmation failed");
+    return renderDeviceEntry(product, action, 404);
+  }
+
+  if (csrf !== undefined)
+    return confirmDeviceFlow(req, env, product, deviceCode, record, csrf, now);
+  return renderDeviceConfirmation(env, product, deviceCode, record, action, {
+    user_code: formatUserCode(userCode),
+  });
+}
+
 /** GET /<product>/identity/auth/device/verify — render the confirmation page.
  *  POST /<product>/identity/auth/device/verify — confirm it. The GET is deliberately side-effect free:
  *  it used to accept `?confirm=1`, which made an `<img src>` enough to confirm a flow AND
- *  handed the caller `state` + `nonce` in the 302 (R8-02). */
+ *  handed the caller `state` + `nonce` in the 302 (R8-02).
+ *
+ *  Kept for flows started before `/device` existed and for any client that builds this URL;
+ *  `/device/start` no longer hands it out. */
 export async function handleAuthDeviceVerify(
   req: Request,
   env: Env,
@@ -913,51 +1225,18 @@ export async function handleAuthDeviceVerify(
   const record = parseFlowRecord<DeviceFlowRecord>(raw);
   if (!record) return errorResponse(404, "not_found", "device code expired");
 
-  if (req.method === "POST")
-    return confirmDeviceFlow(req, env, product, deviceCode, record, url, now);
-
-  const csrf = b64url(randomBytes(16));
-  record.csrf = csrf;
-  await env.HOT.put(deviceKey, JSON.stringify(record), {
-    expirationTtl: FLOW_TTL_SECONDS,
-  });
-  const deviceLabel = record.deviceName || record.deviceId;
-  const html = `<!doctype html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Authorize ${escapeHtml(product.name)}</title>
-<body style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #0c0f17; color: #f8fafc;">
-  <main style="max-width: 440px; margin: 12vh auto; padding: 32px;">
-    <p style="color:#9aa4b2; margin:0 0 8px;">Polaris Key</p>
-    <h1 style="font-size: 28px; margin:0 0 16px;">Authorize ${escapeHtml(product.name)}</h1>
-    <p style="line-height:1.5; color:#cbd5e1;">A desktop app is asking to activate this device. Confirm the code and device before signing in.</p>
-    <dl style="display:grid; grid-template-columns: 110px 1fr; gap:10px; margin:24px 0; color:#cbd5e1;">
-      <dt>Code</dt><dd style="margin:0; color:#fff; font-weight:700; letter-spacing:.08em;">${escapeHtml(record.userCode)}</dd>
-      <dt>Device</dt><dd style="margin:0;">${escapeHtml(deviceLabel)}</dd>
-      <dt>Product</dt><dd style="margin:0;">${escapeHtml(product.slug)}</dd>
-    </dl>
-    <form method="post" action="${escapeHtml(url.toString())}">
-      <input type="hidden" name="csrf" value="${escapeHtml(csrf)}">
-      <button type="submit" style="display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border:0; border-radius:8px; background:#5b7cfa; color:#fff; font:inherit; font-weight:650; cursor:pointer;">Continue to sign in</button>
-    </form>
-  </main>
-</body>`;
-  return new Response(html, {
-    status: 200,
-    // R1-09: `index.ts`'s `secureResponse` backstop would supply this policy anyway, but a
-    // handler that emits HTML should not depend on the dispatcher — a direct call (a test, or
-    // a future internal caller) must be hardened too. `staticHtmlSecurityHeaders` preserves
-    // the `referrer-policy` set here.
-    headers: staticHtmlSecurityHeaders(
-      new Headers({
-        "content-type": "text/html; charset=utf-8",
-        // The address bar holds the device code: never let it ride along as a Referer, and
-        // never let a shared cache keep the page (R8-02).
-        "referrer-policy": "no-referrer",
-        "cache-control": "no-store",
-      }),
-    ),
-  });
+  if (req.method === "POST") {
+    const token = await readConfirmToken(req);
+    return confirmDeviceFlow(req, env, product, deviceCode, record, token, now);
+  }
+  return renderDeviceConfirmation(
+    env,
+    product,
+    deviceCode,
+    record,
+    url.toString(),
+    {},
+  );
 }
 
 function mapClaims(payload: Record<string, unknown>): OidcIdentity {
@@ -1310,6 +1589,7 @@ export async function handleAuthDevicePoll(
     .catch(() => null)) as { status?: string } | null;
   if (bodyOut?.status === "ready" || bodyOut?.status === "timeout") {
     await env.HOT.delete(deviceKey);
+    await deleteUserCodeIndex(env, product.slug, deviceFlow.userCode);
   }
   return res;
 }

@@ -75,6 +75,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   authStart: "closed",
   authDeviceStart: "closed",
   authDeviceVerify: "closed",
+  // The RFC 8628 user-code page: the only brake on guessing a live code (§5.1) besides the
+  // code space itself, so an outage must not turn it into an unlimited oracle.
+  authDeviceEntry: "closed",
   authCallback: "closed",
   authCallbackState: "closed",
   authPoll: "closed",

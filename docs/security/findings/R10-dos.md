@@ -361,6 +361,11 @@ not. Workers request billing and D1 row-read billing stack on top.
 request` (25 requests ⇒ 50 KV records, no 429),
 `… GET /<p>/auth/start costs 1 KV write per anonymous request`.
 
+_Later change (P1-06):_ the RFC 8628 user-code page added a third record per device flow, the
+user-code index `p:<p>:device-user:<hash>`, so the PoC now reads `costs 3 KV writes` (25
+requests ⇒ 75 records). The per-IP `authDeviceStart` bucket that closed this finding bounds it
+the same way.
+
 **Fix direction.** Rate-limit the flow-start endpoints per IP (they are the only `/auth/*`
 routes that _create_ state; poll/callback only read it). A 10/min/IP bucket is generous for a
 human sign-in.

@@ -9,6 +9,8 @@
  * Two findings are deliberately NOT fixed and their tests still assert the (unchanged)
  * behaviour: R8-03 (no browser binding on any of the three flows) and R8-07
  * (`redirect_uris_json` fails open on NULL). See the Remediation section of the finding doc.
+ * R8-02's two residuals (the device code in `verificationUri`, and `userCode` derived from it)
+ * were closed by P1-06's RFC 8628 user-code page; their PoCs below now assert the fix.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -36,12 +38,14 @@ import {
   applyProvisioning,
   handleAuthCallback,
   handleAuthDevicePoll,
+  handleAuthDeviceEntry,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
   handleAuthPoll,
   handleAuthStart,
   flowKey,
   deviceFlowKey,
+  deviceUserKey,
 } from "../../src/services/identity/oidc.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 // Wire v3 split `validateDeviceToken` in two: core answers "is this token a live device row",
@@ -458,6 +462,13 @@ describe("R8-01 /auth/poll device-id confusion", () => {
         ctx.product,
       ),
     );
+    await counted("authDeviceEntry", () =>
+      handleAuthDeviceEntry(
+        req(`${ORIGIN}/djdl/identity/auth/device?user_code=BCDF-GHJK`),
+        ctx.env,
+        ctx.product,
+      ),
+    );
     await counted("authDevicePoll", () =>
       handleAuthDevicePoll(
         req(`${ORIGIN}/djdl/auth/device/poll`, {
@@ -500,11 +511,31 @@ describe("R8-02 device-code flow weaknesses", () => {
         verificationUri: string;
         verificationUriComplete: string;
       };
-    // NOT FIXED (documented residual): the "show the user a URL" value is still the secret
-    // device code — splitting it into an independent user code is an RFC 8628 redesign that
-    // would change the public device-flow contract.
-    expect(verificationUri).toBe(verificationUriComplete);
-    expect(verificationUri).toContain(encodeURIComponent(deviceCode));
+    // FIXED (P1-06; was the documented residual): the "show the user a URL" values are the
+    // RFC 8628 user-code page, which never carries the secret device code. The human types
+    // (or scans) the independent user code; the lookup stays server-side.
+    expect(verificationUri).not.toBe(verificationUriComplete);
+    expect(verificationUri).toBe(`${ORIGIN}/djdl/identity/auth/device`);
+    expect(verificationUriComplete).toMatch(
+      /\/djdl\/identity\/auth\/device\?user_code=[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/,
+    );
+    for (const uri of [verificationUri, verificationUriComplete]) {
+      expect(uri).not.toContain(deviceCode);
+      expect(uri).not.toContain(encodeURIComponent(deviceCode));
+    }
+    // …and the page a QR scan lands on shows the flow without ever echoing the device code.
+    const scanned = await handleAuthDeviceEntry(
+      req(verificationUriComplete),
+      ctx.env,
+      ctx.product,
+    );
+    expect(scanned.status).toBe(200);
+    const scannedHtml = await scanned.text();
+    expect(scannedHtml).not.toContain(deviceCode);
+    expect(scannedHtml).not.toContain("device_code");
+
+    // The legacy by-device-code page below is kept for flows in flight across the deploy; its
+    // own hardening is unchanged.
 
     // FIXED: `?confirm=1` on a GET no longer mutates anything and no longer hands back a
     // Location at all — an <img src>/prefetch gets a plain HTML page.
@@ -612,15 +643,23 @@ describe("R8-02 device-code flow weaknesses", () => {
       userCode: string;
       interval: number;
     };
-    // NOT FIXED (documented residual): the user code is still derived from the device code.
+    // FIXED (P1-06; was the documented residual): the user code is drawn independently from
+    // RFC 8628 §6.1's consonant alphabet, so it reveals nothing about the device code.
     //
-    // Assert against the exact construction rather than stripping dashes. `deviceCode` is
-    // base64url, whose alphabet INCLUDES `-`, so `userCode.replace("-", "")` removed whichever
-    // dash came first — sometimes one belonging to the code itself rather than the separator.
-    // That made this test fail roughly whenever the first 8 characters happened to contain a
-    // dash: a real flake, not a real regression.
+    // Assert against the exact OLD construction rather than stripping dashes: `deviceCode` is
+    // base64url, whose alphabet INCLUDES `-`, so a dash-stripping comparison flaked whenever
+    // the first 8 characters happened to contain one.
     const head = body.deviceCode.slice(0, 8).toUpperCase();
-    expect(body.userCode).toBe(`${head.slice(0, 4)}-${head.slice(4, 8)}`);
+    expect(body.userCode).not.toBe(`${head.slice(0, 4)}-${head.slice(4, 8)}`);
+    expect(body.userCode).toMatch(
+      /^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/,
+    );
+    // Only the peppered hash of the code names its index key (R12-04).
+    const normalised = body.userCode.replace("-", "");
+    expect(
+      await ctx.env.HOT.get(await deviceUserKey(ctx.env, "djdl", normalised)),
+    ).toBe(body.deviceCode);
+    for (const key of ctx.kv.keys()) expect(key).not.toContain(normalised);
     expect(body.interval).toBe(2);
 
     // FIXED: a second poll inside the advertised interval is told to slow down.

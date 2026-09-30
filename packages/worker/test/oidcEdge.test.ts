@@ -16,13 +16,17 @@ import {
   authorizeAndMint,
   activateFromIdentity,
   deviceFlowKey,
+  deviceUserKey,
   flowKey,
   handleAuthCallback,
+  handleAuthDeviceEntry,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
   handleAuthPoll,
   handleAuthStart,
+  normalizeUserCode,
+  USER_CODE_ALPHABET,
   type OidcIdentity,
 } from "../src/services/identity/oidc.js";
 import { getLicense, getLicenseBySub } from "../src/repo.js";
@@ -351,9 +355,14 @@ describe("handleAuthPoll states", () => {
       interval: number;
     };
     expect(body.deviceCode).toBeTruthy();
+    // Still the XXXX-XXXX shape older callers match, now drawn from RFC 8628 §6.1's alphabet.
     expect(body.userCode).toMatch(/^[A-Z0-9_-]{4}-[A-Z0-9_-]{4}$/);
-    expect(body.verificationUri).toContain(
-      "https://key.plrs.im/djdl/identity/auth/device/verify?device_code=",
+    expect(body.userCode).toMatch(
+      /^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/,
+    );
+    // The human-facing URL is the code-entry page; it no longer carries the device code.
+    expect(body.verificationUri).toBe(
+      "https://key.plrs.im/djdl/identity/auth/device",
     );
     expect(body.pollUrl).toBe(
       "https://key.plrs.im/djdl/identity/auth/device/poll",
@@ -479,6 +488,437 @@ describe("handleAuthPoll states", () => {
       NOW,
     );
     expect(res.status).toBe(401);
+  });
+});
+
+// ── RFC 8628 user-code page: GET/POST /<p>/identity/auth/device (P1-06) ──────────
+describe("the RFC 8628 user-code page", () => {
+  let db: SqliteDb;
+  let env: Env;
+  let kv: KvMock;
+  let product: Product;
+
+  const ORIGIN = "https://key.plrs.im";
+  const ENTRY = `${ORIGIN}/djdl/identity/auth/device`;
+  const USER_CODE_RE = /^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    kv = new KvMock();
+    env = makeEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedOidc(db);
+    product = (await loadProduct(env, db, "djdl"))!;
+  });
+
+  interface StartBody {
+    deviceCode: string;
+    userCode: string;
+    verificationUri: string;
+    verificationUriComplete: string;
+    expiresIn: number;
+    interval: number;
+  }
+
+  async function start(deviceName?: string): Promise<StartBody> {
+    const res = await handleAuthDeviceStart(
+      new Request(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceId: "steamdeck-1", deviceName }),
+      }) as unknown as Request,
+      env,
+      db,
+      product,
+    );
+    expect(res.status).toBe(200);
+    return (await res.json()) as StartBody;
+  }
+
+  const entry = (
+    url: string,
+    init?: RequestInit & { ip?: string },
+  ): Promise<Response> =>
+    handleAuthDeviceEntry(
+      new Request(url, {
+        ...init,
+        headers: {
+          "cf-connecting-ip": init?.ip ?? "203.0.113.7",
+          ...(init?.headers as Record<string, string> | undefined),
+        },
+      }) as unknown as Request,
+      env,
+      product,
+    );
+
+  const postForm = (
+    fields: Record<string, string>,
+    origin: string | null = ORIGIN,
+  ): Promise<Response> =>
+    entry(ENTRY, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        ...(origin ? { origin } : {}),
+      },
+      body: new URLSearchParams(fields).toString(),
+    });
+
+  const csrfOf = (html: string): string =>
+    html.match(/name="csrf" value="([^"]+)"/)![1]!;
+
+  const expectStaticHtmlHeaders = (res: Response): void => {
+    expect(res.headers.get("content-type")).toContain("text/html");
+    expect(res.headers.get("content-security-policy")).toContain(
+      "default-src 'none'",
+    );
+    expect(res.headers.get("x-frame-options")).toBe("DENY");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+  };
+
+  const poll = (deviceCode: string, now: number) =>
+    handleAuthDevicePoll(
+      new Request(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceCode, deviceId: "steamdeck-1" }),
+      }) as unknown as Request,
+      env,
+      db,
+      product,
+      now,
+    );
+
+  it("normalises what a human types, and refuses anything outside the alphabet", () => {
+    expect(USER_CODE_ALPHABET).toBe("BCDFGHJKLMNPQRSTVWXZ");
+    expect(normalizeUserCode("wdjb-mjht")).toBe("WDJBMJHT");
+    expect(normalizeUserCode(" wdjb mjht ")).toBe("WDJBMJHT");
+    expect(normalizeUserCode("WD-JB-MJ-HT")).toBe("WDJBMJHT");
+    expect(normalizeUserCode("ZK8L-QR8N")).toBeNull(); // digits are not in the alphabet
+    expect(normalizeUserCode("ABCD-EFGH")).toBeNull(); // nor are vowels
+    expect(normalizeUserCode("WDJB-MJH")).toBeNull(); // too short
+    expect(normalizeUserCode("WDJB-MJHTB")).toBeNull(); // too long
+    expect(normalizeUserCode("")).toBeNull();
+    expect(normalizeUserCode(null)).toBeNull();
+  });
+
+  it("issues an independent user code and two URLs that never carry the device code", async () => {
+    const body = await start();
+    expect(body.userCode).toMatch(USER_CODE_RE);
+    // Not derived from the device code: the old construction was its first 8 chars, folded.
+    const head = body.deviceCode.slice(0, 8).toUpperCase();
+    expect(body.userCode).not.toBe(`${head.slice(0, 4)}-${head.slice(4, 8)}`);
+    expect(body.verificationUri).toBe(ENTRY);
+    expect(body.verificationUriComplete).toBe(
+      `${ENTRY}?user_code=${body.userCode}`,
+    );
+    expect(body.verificationUri).not.toBe(body.verificationUriComplete);
+    for (const uri of [body.verificationUri, body.verificationUriComplete]) {
+      expect(uri).not.toContain(body.deviceCode);
+      expect(uri).not.toContain(encodeURIComponent(body.deviceCode));
+    }
+    expect(body.expiresIn).toBe(600);
+    expect(body.interval).toBe(2);
+
+    // The index maps the peppered hash of the NORMALISED code to the device code, for the
+    // flow's lifetime.
+    const normalised = body.userCode.replace("-", "");
+    const indexKey = await deviceUserKey(env, "djdl", normalised);
+    expect(await kv.get(indexKey)).toBe(body.deviceCode);
+    expect(kv.ttlOf(indexKey)).toBe(600);
+    // R12-04: no KV key NAME carries the user code (in either spelling) or the device code.
+    for (const key of kv.keys()) {
+      expect(key).not.toContain(normalised);
+      expect(key).not.toContain(body.userCode);
+      expect(key).not.toContain(body.deviceCode);
+    }
+  });
+
+  it("draws a different code for every flow", async () => {
+    const codes = new Set<string>();
+    for (let i = 0; i < 20; i++) codes.add((await start()).userCode);
+    expect(codes.size).toBe(20);
+  });
+
+  it("GET with no code renders the entry form: static-HTML CSP, no-store, no-referrer, no script", async () => {
+    const res = await entry(ENTRY);
+    expect(res.status).toBe(200);
+    expectStaticHtmlHeaders(res);
+    // The entry form posts only to this origin: `form-action` is exactly `'self'`.
+    expect(res.headers.get("content-security-policy")).toContain(
+      "form-action 'self';",
+    );
+    const html = await res.text();
+    expect(html).not.toMatch(/<script/i);
+    expect(html).toContain(`<form method="post" action="${ENTRY}">`);
+    expect(html).toContain('name="user_code"');
+    expect(html).not.toContain('name="csrf"');
+    expect(html).not.toContain('role="alert"');
+  });
+
+  it("GET ?user_code= (lower-case, space) renders the confirmation page for the right flow, without the device code", async () => {
+    await start("Other device"); // a second live flow the lookup must not land on
+    const body = await start("Steam Deck");
+    const typed = body.userCode.toLowerCase().replace("-", " ");
+    const res = await entry(`${ENTRY}?user_code=${encodeURIComponent(typed)}`);
+    expect(res.status).toBe(200);
+    expectStaticHtmlHeaders(res);
+    // The confirmation POST 303s to the IdP, and browsers apply `form-action` to that
+    // redirect: the page allows exactly that one extra origin.
+    expect(res.headers.get("content-security-policy")).toContain(
+      "form-action 'self' https://id.example;",
+    );
+    const html = await res.text();
+    expect(html).not.toMatch(/<script/i);
+    expect(html).toContain(body.userCode);
+    expect(html).toContain("Steam Deck");
+    expect(html).not.toContain("Other device");
+    expect(html).not.toContain(body.deviceCode);
+    expect(html).not.toContain("device_code");
+    // The form posts the user code back to this route, never the device code.
+    expect(html).toContain(`<form method="post" action="${ENTRY}">`);
+    expect(html).toContain(
+      `<input type="hidden" name="user_code" value="${body.userCode}">`,
+    );
+    const stored = JSON.parse(
+      (await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)))!,
+    ) as { csrf?: string; confirmedAt?: number };
+    expect(stored.csrf).toBe(csrfOf(html));
+    // Rendering is side-effect free as far as the flow is concerned.
+    expect(stored.confirmedAt).toBeUndefined();
+  });
+
+  it("POST from the entry form (a code, no csrf field) renders the confirmation page", async () => {
+    const body = await start("Steam Deck");
+    const res = await postForm({ user_code: body.userCode.toLowerCase() });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Steam Deck");
+    expect(html).toContain('name="csrf"');
+    expect(html).not.toContain(body.deviceCode);
+  });
+
+  it("POST with the page's csrf confirms (303 to the IdP) and the flow then completes on poll", async () => {
+    const body = await start("Steam Deck");
+    const page = await entry(`${ENTRY}?user_code=${body.userCode}`);
+    const csrf = csrfOf(await page.text());
+
+    const confirm = await postForm({ user_code: body.userCode, csrf });
+    expect(confirm.status).toBe(303);
+    const location = new URL(confirm.headers.get("location")!);
+    expect(location.origin + location.pathname).toBe(
+      "https://id.example/authorize",
+    );
+    expect(confirm.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(confirm.headers.get("cache-control")).toBe("no-store");
+
+    // confirmedAt is stamped on BOTH records — the flow the pollers read, and the device one.
+    const state = location.searchParams.get("state")!;
+    const flow = JSON.parse(
+      (await kv.get(await flowKey(env, "djdl", state)))!,
+    ) as {
+      confirmedAt?: number;
+      deviceId?: string;
+    };
+    expect(flow.confirmedAt).toBeTruthy();
+    expect(flow.deviceId).toBe("steamdeck-1");
+    const device = JSON.parse(
+      (await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)))!,
+    ) as { confirmedAt?: number; csrf?: string };
+    expect(device.confirmedAt).toBeTruthy();
+    expect(device.csrf).toBeUndefined(); // single-use
+
+    // Confirmed but the IdP has not called back yet: the poll waits on the IdP.
+    expect(
+      ((await (await poll(body.deviceCode, NOW)).json()) as { status: string })
+        .status,
+    ).toBe("pending");
+    // The IdP callback lands and binds a licence to the flow (what handleAuthCallback writes).
+    const r = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r)) throw new Error("expected license");
+    await kv.put(
+      await flowKey(env, "djdl", state),
+      JSON.stringify({ ...flow, licenseId: r.licenseId }),
+    );
+    const ready = (await (await poll(body.deviceCode, NOW + 5)).json()) as {
+      status: string;
+      token?: string;
+    };
+    expect(ready.status).toBe("ready");
+    expect(ready.token?.startsWith("pkeyt_")).toBe(true);
+
+    // Ready deletes the flow AND its user-code index: the code is dead on the entry page.
+    const indexKey = await deviceUserKey(
+      env,
+      "djdl",
+      body.userCode.replace("-", ""),
+    );
+    expect(await kv.get(indexKey)).toBeNull();
+    expect(
+      await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)),
+    ).toBeNull();
+    expect((await entry(`${ENTRY}?user_code=${body.userCode}`)).status).toBe(
+      404,
+    );
+  });
+
+  it("refuses a confirmation POST with no csrf, a reused csrf, or a foreign Origin (403)", async () => {
+    const body = await start();
+    const csrf = csrfOf(
+      await (await entry(`${ENTRY}?user_code=${body.userCode}`)).text(),
+    );
+
+    // No csrf: the confirmation form's field is present but empty.
+    expect(
+      (await postForm({ user_code: body.userCode, csrf: "" })).status,
+    ).toBe(403);
+    // A token that is not the one the page minted.
+    expect(
+      (await postForm({ user_code: body.userCode, csrf: "forged" })).status,
+    ).toBe(403);
+    // A foreign Origin, even carrying the real token…
+    expect(
+      (
+        await postForm(
+          { user_code: body.userCode, csrf },
+          "https://evil.attacker.test",
+        )
+      ).status,
+    ).toBe(403);
+    // …and a foreign Origin cannot even drive the lookup-and-render half.
+    expect(
+      (
+        await postForm(
+          { user_code: body.userCode },
+          "https://evil.attacker.test",
+        )
+      ).status,
+    ).toBe(403);
+    // None of that confirmed anything.
+    const before = JSON.parse(
+      (await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)))!,
+    ) as { confirmedAt?: number };
+    expect(before.confirmedAt).toBeUndefined();
+
+    // The real token works once…
+    expect((await postForm({ user_code: body.userCode, csrf })).status).toBe(
+      303,
+    );
+    // …and a replay of it is refused.
+    expect((await postForm({ user_code: body.userCode, csrf })).status).toBe(
+      403,
+    );
+  });
+
+  it("answers an unknown, malformed or expired code with the one generic 404 page", async () => {
+    const body = await start();
+    const unknown = await entry(`${ENTRY}?user_code=BCDF-GHJK`);
+    const malformed = await entry(`${ENTRY}?user_code=ZK8L-QR8N`);
+    // Expired: the index outlived the flow record (or vice versa) — still just "not valid".
+    await kv.delete(await deviceFlowKey(env, "djdl", body.deviceCode));
+    const expired = await entry(`${ENTRY}?user_code=${body.userCode}`);
+    const posted = await postForm({ user_code: "BCDF-GHJK" });
+
+    const pages: string[] = [];
+    for (const res of [unknown, malformed, expired, posted]) {
+      expect(res.status).toBe(404);
+      expectStaticHtmlHeaders(res);
+      const html = await res.text();
+      expect(html).toContain("That code is not valid or has expired.");
+      expect(html).not.toMatch(/<script/i);
+      pages.push(html);
+    }
+    // One message, whatever the reason: the page never says WHICH.
+    expect(new Set(pages).size).toBe(1);
+    // A confirmation for a code that has gone away is a refused confirmation, not a page.
+    expect((await postForm({ user_code: "BCDF-GHJK", csrf: "x" })).status).toBe(
+      403,
+    );
+  });
+
+  it("rate-limits the page per IP (429), independently for each IP", async () => {
+    let first429 = -1;
+    for (let i = 0; i < 40 && first429 < 0; i++) {
+      const res = await entry(`${ENTRY}?user_code=BCDF-GHJK`, {
+        ip: "198.51.100.9",
+      });
+      if (res.status === 429) first429 = i;
+    }
+    expect(first429).toBe(30);
+    // A different client is unaffected: there is no product-wide bucket to exhaust.
+    expect((await entry(ENTRY, { ip: "198.51.100.10" })).status).toBe(200);
+  });
+
+  it("fails CLOSED when the limiter is unavailable", async () => {
+    env.RL = {
+      idFromName: (name: string) => ({ name }) as unknown as DurableObjectId,
+      get: () => ({
+        fetch: async () => {
+          throw new Error("Durable Object reset because its code was updated");
+        },
+      }),
+    } as unknown as DurableObjectNamespace;
+    expect((await entry(ENTRY)).status).toBe(429);
+  });
+
+  it("deletes the index when the poll reports a timeout", async () => {
+    const body = await start();
+    const page = await entry(`${ENTRY}?user_code=${body.userCode}`);
+    const csrf = csrfOf(await page.text());
+    const confirm = await postForm({ user_code: body.userCode, csrf });
+    const state = new URL(confirm.headers.get("location")!).searchParams.get(
+      "state",
+    )!;
+    // The OIDC flow record expires first (it is what a timeout means to the poller).
+    await kv.delete(await flowKey(env, "djdl", state));
+    expect(
+      ((await (await poll(body.deviceCode, NOW)).json()) as { status: string })
+        .status,
+    ).toBe("timeout");
+    expect(
+      await kv.get(
+        await deviceUserKey(env, "djdl", body.userCode.replace("-", "")),
+      ),
+    ).toBeNull();
+    expect(
+      await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)),
+    ).toBeNull();
+  });
+
+  it("still completes a flow started before the user code existed (prefix-style code, no index)", async () => {
+    const r = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r)) throw new Error("expected license");
+    await kv.put(
+      await flowKey(env, "djdl", "legacy-state"),
+      JSON.stringify({
+        verifier: "v",
+        nonce: "n",
+        redirectUri: "r",
+        deviceId: "steamdeck-1",
+        confirmedAt: NOW,
+        licenseId: r.licenseId,
+      }),
+    );
+    await kv.put(
+      await deviceFlowKey(env, "djdl", "legacy-code"),
+      JSON.stringify({
+        state: "legacy-state",
+        deviceId: "steamdeck-1",
+        userCode: "ZK8L-QR8N",
+        authorizeUrl: "https://id.example/authorize",
+        confirmedAt: NOW,
+      }),
+    );
+    const res = (await (await poll("legacy-code", NOW)).json()) as {
+      status: string;
+    };
+    expect(res.status).toBe("ready");
+  });
+
+  it("answers anything but GET and POST with 405", async () => {
+    expect((await entry(ENTRY, { method: "PUT" })).status).toBe(405);
   });
 });
 
