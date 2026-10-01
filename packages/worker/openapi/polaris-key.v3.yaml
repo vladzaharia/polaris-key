@@ -556,12 +556,14 @@ paths:
         per report; deleted with the device.
 
 
-        Fifteen top-level keys survive the allowlist; anything else is dropped SILENTLY
+        Seventeen top-level keys survive the allowlist; anything else is dropped SILENTLY
         rather than refused, so a newer SDK reporting a field this worker does not know still
         succeeds. `os`/`hardware`/`runtime`/`locale`/`timezone`/`probes` are projected into
         typed columns (strings truncated to 128 chars, probe ids and probe versions to 64);
         the rest are kept as an opaque blob. A probe entry whose `present` is not a boolean is
-        skipped. An empty body is valid and means `{}`. Auth requires a usable license only
+        skipped. `engine` keeps only its known fields (strings truncated to 128 chars,
+        `debug` only as a boolean) and `outlet` is truncated to 64 chars; either is dropped
+        when it has the wrong type. An empty body is valid and means `{}`. Auth requires a usable license only
         when the product enables the License service (D-08).
       security: [{ deviceToken: [] }]
       parameters: [{ $ref: "#/components/parameters/Product" }]
@@ -589,6 +591,28 @@ paths:
                   config: { proxy: "on" }
                   entitlements: { beta: true }
                   gate: { licensed: true }
+              engine:
+                summary: A Godot game's engine facts and outlet (test/licensingEdge.test.ts)
+                value:
+                  os: { name: darwin, version: "15.1", kernel: macOS }
+                  runtime: { name: godot, version: 4.7.2.stable.official }
+                  sdk: polaris-key-godot
+                  sdkVersion: 0.1.0
+                  appVersion: 1.4.0
+                  platform: macos
+                  arch: arm64
+                  engine:
+                    id: godot-4.7
+                    version: 4.7.2.stable.official
+                    renderer: forward_plus
+                    videoAdapter: Apple M3
+                    videoVendor: Apple
+                    videoApi: Metal 3.2
+                    display: macOS
+                    debug: false
+                  outlet: steam
+                  config: {}
+                  entitlements: {}
       responses:
         "200":
           description: Recorded.
@@ -3767,9 +3791,10 @@ components:
       type: object
       description: >
         The device's software snapshot. Deliberately narrow: no installed-app enumeration,
-        only product-declared probes. Fifteen top-level keys survive the allowlist and
+        only product-declared probes. Seventeen top-level keys survive the allowlist and
         anything else is dropped silently. The first six are projected into typed columns
-        (strings truncated to 128 characters); the rest are stored as an opaque blob.
+        (strings truncated to 128 characters); the rest are stored as an opaque blob, with
+        `engine` and `outlet` bounded first.
       additionalProperties: false
       properties:
         os:
@@ -3820,6 +3845,32 @@ components:
           description: Opaque pass-through.
           additionalProperties: true
         timestamp: { type: integer }
+        engine:
+          type: object
+          description: >
+            A game engine's build facts (the Godot SDK). Only these fields are kept; strings
+            are truncated to 128 characters, `debug` is kept only as a boolean, and any
+            other field is dropped.
+          additionalProperties: false
+          properties:
+            id:
+              type: string
+              maxLength: 128
+              description: The engine in the requirements form, such as `godot-4.7`.
+            version: { type: string, maxLength: 128 }
+            renderer: { type: string, maxLength: 128 }
+            videoAdapter: { type: string, maxLength: 128 }
+            videoVendor: { type: string, maxLength: 128 }
+            videoApi: { type: string, maxLength: 128 }
+            display: { type: string, maxLength: 128 }
+            debug: { type: boolean }
+        outlet:
+          type: string
+          maxLength: 64
+          description: >
+            The store or channel the build was published through (`direct`, `steam`, `itch`,
+            `app-store`, …), from the build stamp. Truncated to 64 characters; the id itself
+            is not validated.
     RegistrationResult:
       type: object
       description: Keyless registration's answer — the token and the device id it is bound to.
