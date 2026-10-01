@@ -19,9 +19,8 @@
     "core.errors": { "status": "planned", "wp": "P1b-02" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
     "core.store": {
-      "status": "planned",
-      "wp": "P1b-09",
-      "note": "keyring is an optional extra; without it tokens go to a 0600 file and the SDK does not report it."
+      "status": "implemented",
+      "note": "keyring is an optional extra; without it the token is in a 0600 file and store_status() reports keyring-unavailable."
     },
     "license.gate": { "status": "implemented" },
     "license.activate": { "status": "implemented" },
@@ -39,11 +38,7 @@
       "status": "implemented",
       "note": "The Python mirror is rendered by tools/gen-mirrors.ts."
     },
-    "devices.fingerprint": {
-      "status": "planned",
-      "wp": "P1b-09",
-      "note": "Two Windows components vanish without wmic; the Linux anchor depends on privilege."
-    },
+    "devices.fingerprint": { "status": "implemented" },
     "devices.facts": { "status": "implemented" },
     "devices.register": { "status": "implemented" },
     "devices.manage": { "status": "implemented" },

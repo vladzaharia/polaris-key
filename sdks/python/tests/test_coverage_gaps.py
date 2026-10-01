@@ -2,7 +2,7 @@
 
 * ``FileStore`` secure-write 0600 + ``O_NOFOLLOW`` symlink refusal.
 * ``derive_device_id`` per-OS branches (macOS ioreg / Windows registry / Linux file),
-  driven by monkeypatching the platform + the subprocess/file reads.
+  driven through the injectable platform + command runner/file reader (P1b-09).
 * The full ``CoreContext.get_document`` status taxonomy (304/401/403/429/200/other/network).
 * Device facts + probe declarations.
 * The framework-agnostic CLI ``core`` result mapping against a real client.
@@ -30,6 +30,7 @@ from polaris_key.core.context import (
 from polaris_key.core.models import AllowedRange
 from polaris_key.devices.deviceid import derive_device_id, raw_os_device_id
 from polaris_key.devices.facts import ProbeDeclaration, collect_facts, run_probes
+from polaris_key.devices.fingerprint import FingerprintIO
 from polaris_key.devices.store import FileStore
 
 from helpers import PRODUCT, TOKEN, make_client, routes, sign_config, sign_license
@@ -81,23 +82,26 @@ def test_the_cache_file_is_symlink_guarded_too(tmp_path) -> None:
 
 
 # ── derive_device_id per-OS branches ────────────────────────────────────────────────
-def test_device_id_macos_branch(monkeypatch) -> None:
-    monkeypatch.setattr(deviceid.sys, "platform", "darwin", raising=False)
+def _io(commands=None, files=None) -> FingerprintIO:
+    """A fake command runner + file reader (P1b-09's injectable seam)."""
+    commands = commands or {}
+    files = files or {}
+    return FingerprintIO(
+        run=lambda args, timeout: commands.get(args[0]),
+        read=lambda path: files.get(path),
+    )
+
+
+def test_device_id_macos_branch() -> None:
     fake_out = '    "IOPlatformUUID" = "ABCDEF01-2345-6789-ABCD-EF0123456789"\n'
-
-    class _Res:
-        stdout = fake_out
-
-    monkeypatch.setattr(deviceid.subprocess, "run", lambda *a, **k: _Res())
-    assert raw_os_device_id() == "ABCDEF01-2345-6789-ABCD-EF0123456789"
-    a = derive_device_id(PRODUCT)
-    b = derive_device_id(PRODUCT)
+    io = _io(commands={"ioreg": fake_out})
+    assert raw_os_device_id("darwin", io) == "ABCDEF01-2345-6789-ABCD-EF0123456789"
+    a = derive_device_id(PRODUCT, "fixed")
+    b = derive_device_id(PRODUCT, "fixed")
     assert a == b and len(a) == 32
 
 
 def test_device_id_windows_branch_via_reg_fallback(monkeypatch) -> None:
-    monkeypatch.setattr(deviceid.sys, "platform", "win32", raising=False)
-
     # Force the winreg import to fail so the `reg query` text-parse fallback runs.
     import builtins
 
@@ -109,31 +113,20 @@ def test_device_id_windows_branch_via_reg_fallback(monkeypatch) -> None:
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", _no_winreg)
+    io = _io(
+        commands={
+            "reg": (
+                "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\n"
+                "    MachineGuid    REG_SZ    11111111-2222-3333-4444-555555555555\n"
+            )
+        }
+    )
+    assert raw_os_device_id("win32", io) == "11111111-2222-3333-4444-555555555555"
 
-    class _Res:
-        stdout = (
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\n"
-            "    MachineGuid    REG_SZ    11111111-2222-3333-4444-555555555555\n"
-        )
 
-    monkeypatch.setattr(deviceid.subprocess, "run", lambda *a, **k: _Res())
-    assert raw_os_device_id() == "11111111-2222-3333-4444-555555555555"
-
-
-def test_device_id_linux_branch_reads_machine_id(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(deviceid.sys, "platform", "linux", raising=False)
-    machine_id = tmp_path / "linux-machine-id"
-    machine_id.write_text("deadbeefcafebabe\n")
-
-    real_open = open
-
-    def _fake_open(path, *args, **kwargs):
-        if path == "/etc/machine-id":
-            return real_open(str(machine_id), *args, **kwargs)
-        raise OSError("not found")
-
-    monkeypatch.setattr("builtins.open", _fake_open)
-    assert raw_os_device_id() == "deadbeefcafebabe"
+def test_device_id_linux_branch_reads_machine_id() -> None:
+    io = _io(files={"/etc/machine-id": "deadbeefcafebabe\n"})
+    assert raw_os_device_id("linux", io) == "deadbeefcafebabe"
 
 
 def test_device_id_falls_back_to_uuid_when_unavailable(monkeypatch) -> None:
@@ -279,7 +272,9 @@ def test_cli_activate_then_status_then_deactivate() -> None:
     assert st.code == 0
     assert any("Status: ok" in line for line in st.lines)
     assert any("Licensed to: Grace Hopper" in line for line in st.lines)
-    assert st.lines[-1] == "Usable: True"
+    assert "Usable: True" in st.lines
+    # P1b-09: the token store is named last.
+    assert st.lines[-1] == "Token store: memory"
 
     d = core.deactivate(c)
     assert d.code == 0 and any("Deactivated" in line for line in d.lines)

@@ -103,7 +103,17 @@ from .stages import (
     boot_transition,
     initial_boot_state,
 )
-from .store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle, Store
+from .dirs import ProductDirs, default_dir_bases, exclude_from_backup, resolve_dirs
+from .store import (
+    CACHE_FORMAT_VERSION,
+    STORE_BACKENDS,
+    STORE_DEGRADED_REASONS,
+    CacheRecord,
+    ImportedBundle,
+    Store,
+    StoreDegraded,
+    StoreStatus,
+)
 from .sync import DocOutcome, SyncDeps, SyncResult, sync
 from .telemetry import build_snapshot, report_snapshot
 from .token import TokenManager
@@ -162,6 +172,14 @@ __all__ = [
     "CACHE_FORMAT_VERSION",
     "ImportedBundle",
     "Store",
+    "StoreStatus",
+    "StoreDegraded",
+    "STORE_BACKENDS",
+    "STORE_DEGRADED_REASONS",
+    "ProductDirs",
+    "resolve_dirs",
+    "default_dir_bases",
+    "exclude_from_backup",
     # token / sync / telemetry
     "TokenManager",
     "sync",
