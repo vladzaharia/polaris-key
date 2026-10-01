@@ -87,12 +87,16 @@ describe("channelForVersion", () => {
   it("derives the channel from the version-string encoding", () => {
     expect(channelForVersion("1.2.3")).toBe("stable");
     expect(channelForVersion("0.0.0-dev+abc")).toBe("dev");
-    expect(channelForVersion("0.0.0-staging+abc")).toBe("staging");
+    // P0-04: `staging` is the legacy spelling of `beta` (WIRE-CONTRACT-V3 §5.1 rule 2).
+    expect(channelForVersion("0.0.0-staging+abc")).toBe("beta");
+    expect(channelForVersion("0.0.0-beta.3")).toBe("beta");
     expect(channelForVersion("0.0.0-pr42+abc")).toBe("pr");
     expect(channelForVersion("0.0.0-pr-42+abc")).toBe("pr");
   });
   it("treats a bare release version as stable", () => {
     expect(channelForVersion("2.0.0")).toBe("stable");
+    // Only the `0.0.0-<word>` sentinels carry a channel.
+    expect(channelForVersion("2.0.0-beta.1")).toBe("stable");
   });
   it("treats unparseable/unknown as stable", () => {
     expect(channelForVersion("weird")).toBe("stable");

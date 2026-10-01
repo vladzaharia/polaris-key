@@ -30,7 +30,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { verifyJws, type TrustSet } from "@polaris-key/jws";
-import type { ManagedEntry } from "@polaris-key/protocol/core";
+import {
+  CHANNEL_ALIASES,
+  CHANNEL_BETA,
+  CHANNEL_DEV,
+  CHANNEL_NAME_PATTERN,
+  CHANNEL_PR,
+  CHANNEL_STABLE,
+  PR_CHANNEL_PATTERN,
+  PR_NUMBER_MAX_DIGITS,
+  type ManagedEntry,
+} from "@polaris-key/protocol/core";
 import type {
   ActivationSource,
   AllowedRange,
@@ -169,6 +179,28 @@ interface MatrixRow {
     allowedRange?: AllowedRange;
   };
 }
+
+/** The rows P0-04 appended to gate-matrix v2 (WIRE-CONTRACT-V3 §5.1). */
+const P0_04_CHANNEL_ROWS = [
+  "ok — beta header, channels [stable, beta]",
+  "ok — beta header, channels [stable, staging] (alias)",
+  "ok — staging header, channels [stable, beta] (alias)",
+  "channel-not-entitled — beta header, channels [stable]",
+  "ok — manual channel header, entitled by name",
+  "channel-not-entitled — manual channel header, not entitled",
+  "channel-not-entitled — malformed channel header",
+  "ok — 0.0.0-beta build with beta entitlement",
+  "channel-not-entitled — 0.0.0-beta build without a beta entitlement",
+  "ok — 0.0.0-staging build is the beta channel, channels [stable, beta]",
+  "ok — latest header is the stable channel",
+  "ok — pr-42 header, channels grant the pr family",
+  "ok — pr header on a 0.0.0-pr-42 build, channels [stable, pr-42]",
+  "channel-not-entitled — pr-7 header, channels grant only pr-42",
+  "channel-not-entitled — stable header cannot loosen a 0.0.0-pr-42 build",
+  "channel-not-entitled — dev header without the dev entitlement",
+  "version-too-old — dev build without the dev entitlement gets no bypass (R3-01)",
+  "ok — dev build with the dev entitlement bypasses the window (R3-01)",
+] as const;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const v2 = (name: string): string =>
@@ -329,10 +361,12 @@ describe(`conformance corpus v${corpus.corpusVersion} — clock floor (§4.2)`, 
   }
 });
 
-// ── The build-gate port (mirrors packages/worker/src/gate.ts `checkBuildGate`) ──────────
-// Rebuilt here from client-core's exported semver/channel primitives rather than imported:
-// that surface is exactly what every SDK must keep in lockstep, and the fixture is the
-// oracle. Python and Swift port these same ~40 lines against the same rows.
+// ── The build-gate port (mirrors packages/worker/src/core/gate.ts `checkBuildGate`) ─────
+// Rebuilt here from client-core's exported semver/channel primitives and the protocol's
+// channel constants rather than imported: that surface is exactly what every SDK must keep in
+// lockstep, and the fixture is the oracle (the Worker replays the same rows through the real
+// gate in packages/worker/test/gateMatrixCorpus.test.ts). Python and Swift port these same
+// lines against the same rows. It follows WIRE-CONTRACT-V3 §5.1 rules 2–5.
 function strEnt(e: ManagedEntry | undefined): string | undefined {
   return e && typeof e.value === "string" ? e.value : undefined;
 }
@@ -357,14 +391,42 @@ function tighterMax(
   if (!b) return a;
   return compareSemver(a, b) <= 0 ? a : b;
 }
-function normalizeChannel(header: string): "stable" | "staging" | "pr" | "dev" {
-  if (header === "staging") return "staging";
-  if (header === "pr" || /^pr-?\d*/.test(header)) return "pr";
-  if (header === "dev") return "dev";
-  return "stable";
+const CHANNEL_NAME_RE = new RegExp(CHANNEL_NAME_PATTERN);
+const PR_CHANNEL_RE = new RegExp(PR_CHANNEL_PATTERN);
+const PR_N_RE = /^pr-[0-9]+$/;
+function prChannel(digits: string): string {
+  return digits.length > PR_NUMBER_MAX_DIGITS ? CHANNEL_PR : `pr-${digits}`;
 }
+/** §5.1 rule 2: the family, with a PR build narrowed to its own `pr-<n>`. */
+function impliedChannel(version: string): string {
+  const family = channelForVersion(version);
+  if (family !== CHANNEL_PR) return family;
+  const digits = version.match(/^0\.0\.0-pr-?([0-9]+)/)?.[1];
+  return digits ? prChannel(digits) : CHANNEL_PR;
+}
+/** §5.1 rule 3: `null` is a malformed header, which the gate refuses. */
+function normalizeChannelHeader(header: string, version: string): string | null {
+  if (Object.hasOwn(CHANNEL_ALIASES, header))
+    return CHANNEL_ALIASES[header as keyof typeof CHANNEL_ALIASES];
+  if (header === CHANNEL_PR) {
+    const implied = impliedChannel(version);
+    return PR_N_RE.test(implied) ? implied : CHANNEL_PR;
+  }
+  const pr = header.match(PR_CHANNEL_RE);
+  if (pr?.[1] !== undefined) return prChannel(pr[1]);
+  return CHANNEL_NAME_RE.test(header) ? header : null;
+}
+/** §5.1 rule 4: `stable` always; exact name; `staging` covers `beta`; `pr` covers `pr-<n>`. */
+function channelEntitled(granted: readonly string[], channel: string): boolean {
+  if (channel === CHANNEL_STABLE) return true;
+  if (granted.includes(channel)) return true;
+  if (channel === CHANNEL_BETA && granted.includes("staging")) return true;
+  return PR_N_RE.test(channel) && granted.includes(CHANNEL_PR);
+}
+/** §5.1 rule 5, in order: dev bypass by grant, version window, malformed header, channels. */
 function checkBuildGate(g: MatrixRow["gate"]): BlockedState | undefined {
-  if (isDevBuild(g.version)) return undefined;
+  const granted = arrEnt(g.entitlements["channels"]) ?? [CHANNEL_STABLE];
+  if (isDevBuild(g.version) && granted.includes(CHANNEL_DEV)) return undefined;
   const min = tighterMin(g.compatMin, strEnt(g.entitlements["app.minVersion"]));
   const max = tighterMax(g.compatMax, strEnt(g.entitlements["app.maxVersion"]));
   const allowedRange: AllowedRange = {};
@@ -374,10 +436,13 @@ function checkBuildGate(g: MatrixRow["gate"]): BlockedState | undefined {
     return { reason: "version-too-old", allowedRange };
   if (max && compareSemver(g.version, max) > 0)
     return { reason: "version-too-new", allowedRange };
-  const channel = normalizeChannel(g.channel ?? channelForVersion(g.version));
-  if (channel !== "stable" && channel !== "dev") {
-    const allowed = arrEnt(g.entitlements["channels"]) ?? ["stable"];
-    if (!allowed.includes(channel)) return { reason: "channel-not-entitled" };
+  const declared =
+    g.channel === undefined ? null : normalizeChannelHeader(g.channel, g.version);
+  if (g.channel !== undefined && declared === null)
+    return { reason: "channel-not-entitled" };
+  for (const channel of new Set([impliedChannel(g.version), declared])) {
+    if (channel !== null && !channelEntitled(granted, channel))
+      return { reason: "channel-not-entitled" };
   }
   return undefined;
 }
@@ -428,6 +493,18 @@ describe(`gate-matrix v${matrix.gateMatrixVersion} (§5)`, () => {
       );
     });
   }
+});
+
+// @pkey-feature license.gate
+describe("gate-matrix v2 covers the P0-04 channel rows", () => {
+  it("has the 18 channel rows and no longer has the retired dev-bypass row", () => {
+    const names = new Set(matrix.rows.map((r) => r.name));
+    expect(matrix.rows).toHaveLength(38);
+    for (const name of P0_04_CHANNEL_ROWS) expect(names, name).toContain(name);
+    expect(names).not.toContain(
+      "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel",
+    );
+  });
 });
 
 // ── §7 — offline bundle import, all-or-nothing, in the contract's numbered order ────────
