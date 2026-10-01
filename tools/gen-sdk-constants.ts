@@ -665,7 +665,9 @@ export function buildModel(sources: Sources): Model {
     ...WIRE_LIMIT_EXPORTS.map((name) => {
       const value = protocol[name];
       if (typeof value !== "number" || !Number.isSafeInteger(value))
-        throw new Error(`@polaris-key/protocol/core exports no integer ${name}`);
+        throw new Error(
+          `@polaris-key/protocol/core exports no integer ${name}`,
+        );
       return {
         name,
         doc: `Wire contract v4 limit \`${name}\` (\`@polaris-key/protocol/core\`).`,
