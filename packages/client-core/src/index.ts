@@ -10,8 +10,27 @@
 export {
   CLOCK_SKEW_SECONDS,
   MAX_GRACE_SECONDS,
+  NO_NON_WIRE_INTEGERS,
   REFRESH_MARGIN_SECONDS,
+  isWireInteger,
 } from "./claims.js";
+
+export {
+  compareVersions,
+  parseVersion,
+  type ParsedVersion,
+} from "./version.js";
+
+export {
+  feedClaims,
+  type FeedClaimsOptions,
+  type FeedClaimsRefusal,
+} from "./feed.js";
+
+export {
+  releaseRecordClaims,
+  type ReleaseRecordClaimsOptions,
+} from "./record.js";
 
 export {
   CONFIG_DOC,
@@ -83,6 +102,11 @@ export {
 } from "./store.js";
 
 export {
+  BOOT_CONFIRMATIONS,
+  BOOT_DECISIONS,
+  BOOT_OK_SECONDS,
+  bootConfirmation,
+  type BootConfirmation,
   BOOT_EMIT_TYPES,
   BOOT_EVENT_TYPES,
   BOOT_GUARD_ACTIONS,

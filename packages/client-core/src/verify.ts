@@ -15,7 +15,12 @@ import { verifyJws, type JwsTyp, type TrustSet } from "@polaris-key/jws";
 import { ISSUER, type DocClaims } from "@polaris-key/protocol/core";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
-import { CLOCK_SKEW_SECONDS, MAX_GRACE_SECONDS } from "./claims.js";
+import {
+  CLOCK_SKEW_SECONDS,
+  MAX_GRACE_SECONDS,
+  NO_NON_WIRE_INTEGERS,
+  isWireInteger,
+} from "./claims.js";
 
 /** A JSON object — not an array, not null. Managed maps must be exactly this. */
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -32,8 +37,12 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
  * the Worker hardcodes — that one IS allow-listed, in trust.ts.) What is enforceable, and what
  * R2-08's `schemaVersion: 999` payload actually violated, is the SHAPE.
  */
-function isValidSchemaVersion(v: unknown): boolean {
-  return typeof v === "number" && Number.isInteger(v) && v >= 1;
+function isValidSchemaVersion(
+  v: unknown,
+  nonWire: ReadonlySet<string>,
+): boolean {
+  // V4 §3: an integer claim decided from its token, minimum 1.
+  return isWireInteger(v, "/schemaVersion", 1, nonWire);
 }
 
 export interface VerifyOptions {
@@ -67,8 +76,9 @@ export interface VerifyOptions {
  */
 export interface DocTypeSpec<T extends DocClaims> {
   typ: JwsTyp;
-  /** Per-document claim validation, run only after the envelope passes. */
-  validate: (doc: T) => boolean;
+  /** Per-document claim validation, run only after the envelope passes. `nonWire` is the
+   *  verified payload's non-wire-integer pointer set (WIRE-CONTRACT-V4 §3). */
+  validate: (doc: T, nonWire: ReadonlySet<string>) => boolean;
 }
 
 /** `pkey-license+jws` — grants. `entitlements` is the sole carrier of grant data (D-20). */
@@ -77,7 +87,8 @@ export const LICENSE_DOC: DocTypeSpec<LicenseDoc> = {
   validate: (doc) => {
     if (typeof doc.licenseId !== "string" || doc.licenseId === "") return false;
     if (!isPlainObject(doc.entitlements)) return false;
-    // `profile` is optional, but a present one must be an object — never a smuggled scalar.
+    // `profile` is optional, but a present one must be an object — never a smuggled scalar, and
+    // never a present `null` (WIRE-CONTRACT-V4 §3 "presence").
     if (doc.profile !== undefined && !isPlainObject(doc.profile)) return false;
     return true;
   },
@@ -86,8 +97,8 @@ export const LICENSE_DOC: DocTypeSpec<LicenseDoc> = {
 /** `pkey-config+jws` — config + secrets, and no license fields whatsoever (§2.2, D-08). */
 export const CONFIG_DOC: DocTypeSpec<ConfigDoc> = {
   typ: "pkey-config+jws",
-  validate: (doc) => {
-    if (!isValidSchemaVersion(doc.schemaVersion)) return false;
+  validate: (doc, nonWire) => {
+    if (!isValidSchemaVersion(doc.schemaVersion, nonWire)) return false;
     if (!isPlainObject(doc.config)) return false;
     if (!isPlainObject(doc.secrets)) return false;
     return true;
@@ -103,16 +114,18 @@ function validateEnvelope(
   doc: DocClaims,
   opts: VerifyOptions,
   now: number,
+  nonWire: ReadonlySet<string> = NO_NON_WIRE_INTEGERS,
 ): boolean {
   if (doc.aud !== opts.expectedAud) return false;
   // The issuer is the fixed `key.plrs.im` (Amendment A1), never a caller-derived hostname —
   // an attacker-controlled base URL must not be able to name its own issuer (§8).
   if (doc.iss !== (opts.expectedIss ?? ISSUER)) return false;
   if (doc.deviceId !== opts.deviceId) return false;
+  // V4 §3: every timestamp is an integer claim, decided from its token, minimum 0.
   if (
-    typeof doc.issuedAt !== "number" ||
-    typeof doc.expiresAt !== "number" ||
-    typeof doc.graceUntil !== "number"
+    !isWireInteger(doc.issuedAt, "/issuedAt", 0, nonWire) ||
+    !isWireInteger(doc.expiresAt, "/expiresAt", 0, nonWire) ||
+    !isWireInteger(doc.graceUntil, "/graceUntil", 0, nonWire)
   ) {
     return false;
   }
@@ -153,8 +166,9 @@ export async function verifyDoc<T extends DocClaims>(
   const doc = v.payload;
   if (!isPlainObject(doc)) return null;
   const now = opts.now ?? Math.floor(Date.now() / 1000);
-  if (!validateEnvelope(doc as DocClaims, opts, now)) return null;
-  if (!spec.validate(doc)) return null;
+  if (!validateEnvelope(doc as DocClaims, opts, now, v.nonWireIntegers))
+    return null;
+  if (!spec.validate(doc, v.nonWireIntegers)) return null;
   return doc;
 }
 
