@@ -15,7 +15,7 @@
  *   - **429.** `RATE_LIMIT_EXCEEDED`: retried after `Retry-After` (capped), else an exponential
  *     backoff with jitter, at most `maxRetries` times; then `AscError(429)`.
  *   - **Errors carry a status line only** (`AscError.message`), never a response body: the
- *     message may end up in `outlet_credentials.last_error` and the console.
+ *     message may end up in `outlet_credentials.last_error` and on the console page.
  *
  * `fetchImpl` and `sleep` are injectable; the tests drive the client against a fake ASC server.
  */
