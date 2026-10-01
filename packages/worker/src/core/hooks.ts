@@ -390,10 +390,23 @@ export interface RolloutRecord {
 }
 
 /**
+ * One of the product's LIVE outlets as the signed feed composes it (P3-03): its product outlet
+ * id, its kind, the identity fields `.pkey/distribution` declared (P2b-02's normalised identity:
+ * `appleId`, `packageName`, `platforms`, …) and whether an operator narrowed its capabilities.
+ */
+export interface DeliveryOutlet {
+  outletId: string;
+  kind: string;
+  identity: Record<string, unknown>;
+  /** True when an operator owns a capability narrowing (`outletCapabilities` answers it). */
+  narrowed: boolean;
+}
+
+/**
  * Distribution's read-only view of how releases reach devices and outlets (README §3.2).
  * P2b-01 shipped it with no outlets (the default transport, empty availability); P2b-04 added
  * rollouts, delivery access and delivery URLs; P2b-03 added availability, submissions and the key
- * inventory.
+ * inventory; P3-03 added the outlet list.
  */
 export interface Delivery {
   /** The transport a deliverable uses on an outlet that names none. */
@@ -410,6 +423,8 @@ export interface Delivery {
   submissions(releaseId: string): Promise<SubmissionRecord[]>;
   /** The key inventory (operator entries only), optionally narrowed to one purpose. */
   keys(q?: { purpose?: string }): Promise<KeyRecord[]>;
+  /** The product's live outlets, by id (P3-03, the signed feed's outlet entries). */
+  outlets(): Promise<DeliveryOutlet[]>;
   /** The rollout on one outlet's channel for a deliverable, or `null` when there is none. */
   rollout(q: {
     deliverable: string;

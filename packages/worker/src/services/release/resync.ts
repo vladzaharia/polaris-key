@@ -48,6 +48,7 @@ import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSyncStatements } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
+import { releaseKeysForSync } from "./records.js";
 import { parseServices, serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
@@ -60,7 +61,15 @@ import {
 import { randomId } from "../../core/platform.js";
 
 export type ResyncResult =
-  | { ok: true; updated: string[] }
+  | {
+      ok: true;
+      updated: string[];
+      /**
+       * Parts of the manifest the sync refused while applying the rest (P3-03:
+       * `release_key_is_product_key`, which keeps the previous `releaseKeys`). Absent when none.
+       */
+      refused?: { code: string; path: string; message: string }[];
+    }
   | { ok: false; error: string; errors?: string[] };
 
 async function readManifestFile(
@@ -280,6 +289,7 @@ async function applyRepoManifest(
   );
 
   const updated: string[] = [];
+  const refused: { code: string; path: string; message: string }[] = [];
 
   // `web_origins_json` (P0-05) rides with the product metadata: it is manifest-owned with no
   // operator claim, so it is rewritten unconditionally, and dropping `web.origins` from
@@ -410,6 +420,24 @@ async function applyRepoManifest(
       rel.ignoreTags.length ? JSON.stringify(rel.ignoreTags) : null,
       slug,
     );
+    // `releaseKeys` (P3-03): never a product signing key, current or retired. A refused set keeps
+    // the previous value — a partial set would drop a key CI may already sign with — and is
+    // reported, as the rest of the manifest is still applied.
+    const releaseKeys = await releaseKeysForSync(db, slug, rel.releaseKeys);
+    if (releaseKeys.ok) {
+      await db.run(
+        "UPDATE release_config SET release_keys_json = ? WHERE product = ?",
+        releaseKeys.json,
+        slug,
+      );
+    } else {
+      for (const r of releaseKeys.refused)
+        refused.push({
+          code: r.code,
+          path: "/release/releaseKeys",
+          message: r.message,
+        });
+    }
     // The two access modes share ONE owner (`access_source`, 0022_b). Once an operator claims
     // them, this matches no row: a manifest cannot express `entitled`, so without the guard every
     // push would silently downgrade an entitled product to the manifest's mode (default public).
@@ -616,7 +644,7 @@ async function applyRepoManifest(
   }
 
   if (droppedBefore.length > 0) updated.push("edgeMintApprovals");
-  return { ok: true, updated };
+  return { ok: true, updated, ...(refused.length > 0 ? { refused } : {}) };
 }
 
 /** The audit row for a manifest-driven publisher change, in the resync's batch. */

@@ -346,6 +346,7 @@ const TABLE_OWNERS = {
     "release_builds",
     "release_channel_policy",
     "release_yanks",
+    "release_records",
   ],
   distribution: [
     "dist_outlets",
@@ -359,6 +360,7 @@ const TABLE_OWNERS = {
     "dist_connector_events",
     "dist_connector_settings",
   ],
+  update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [
     "oidc_config",
     "provisioning_config",

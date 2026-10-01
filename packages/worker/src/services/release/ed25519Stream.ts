@@ -11,8 +11,12 @@
  *   - the public key and `R` must be canonical point encodings (y < p; no x = 0 with the sign
  *     bit set), otherwise the verdict is `false`;
  *   - `S` must be fully reduced (`S < L`), otherwise `false` (the malleability check);
- *   - a small-order public key is refused (a real Sparkle key is never one);
+ *   - a small-order public key or `R` is refused (a real Sparkle key or signature is never one;
+ *     WIRE-CONTRACT-V4 §1.1 check 3, which P3-03 aligned this verifier with);
  *   - the equation is the cofactorless `[S]B == R + [k]A`.
+ *
+ * `ed25519SignaturePrecheck` runs every one of those checks that needs no message, so a caller can
+ * refuse a malformed key or signature before it opens a download (P0-10 follow-up, P3-03).
  *
  * Memory: the verifier holds the hash state and the chunk the reader handed it, nothing else.
  * The reader is cancelled on every exit path, so an early `false` (bad key, oversized body)
@@ -34,6 +38,26 @@ function leToBigInt(bytes: Uint8Array): bigint {
 }
 
 /**
+ * Every check that needs no message bytes: lengths, `S < L`, canonical encodings of `A` and `R`,
+ * neither of small order. `false` means the verdict is a final `invalid` whatever the body —
+ * so a caller can skip the download (`sparkle.ts` does). Never throws.
+ */
+export function ed25519SignaturePrecheck(
+  publicKey: Uint8Array,
+  signature: Uint8Array,
+): boolean {
+  try {
+    if (publicKey.length !== 32 || signature.length !== 64) return false;
+    if (leToBigInt(signature.subarray(32, 64)) >= L) return false;
+    const A = Point.fromBytes(publicKey, false);
+    const R = Point.fromBytes(signature.subarray(0, 32), false);
+    return !A.isSmallOrder() && !R.isSmallOrder();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The outcome of a streaming verification.
  *
  * - `valid`: the signature verifies over the whole body.
@@ -41,8 +65,9 @@ function leToBigInt(bytes: Uint8Array): bigint {
  *   undecodable or small-order point, or a body read to its end within the cap that the
  *   signature does not cover. The same inputs over the same bytes always give this answer, so
  *   a caller may memoise it.
- * - `incomplete`: no verdict was reached — the body errored mid-stream or ran past `maxBytes`.
- *   A retry may succeed (or the cap may change), so a caller must not memoise it.
+ * - `incomplete`: no verdict was reached — the body errored mid-stream, ran past `maxBytes`, or
+ *   ended at another length than `expectedBytes` (a truncated clean EOF, or a wrong-but-2xx
+ *   body). A retry may succeed (or the cap may change), so a caller must not memoise it.
  */
 export type Ed25519StreamVerdict = "valid" | "invalid" | "incomplete";
 
@@ -57,6 +82,8 @@ export async function streamingEd25519Check(
   signature: Uint8Array,
   body: ReadableStream<Uint8Array> | null,
   maxBytes: number,
+  /** The length the body must have (the release asset's listed size); omitted, any length. */
+  expectedBytes?: number,
 ): Promise<Ed25519StreamVerdict> {
   const reader = body?.getReader();
   // Set once the whole body has been hashed. After that every step is a pure function of the
@@ -76,22 +103,28 @@ export async function streamingEd25519Check(
     } catch {
       return "invalid";
     }
-    if (A.isSmallOrder()) return "invalid";
+    if (A.isSmallOrder() || R.isSmallOrder()) return "invalid";
 
     const hash = createHash("sha512");
     hash.update(rBytes);
     hash.update(publicKey);
+    let total = 0;
     if (reader) {
-      let total = 0;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         total += value.byteLength;
         if (total > maxBytes) return "incomplete";
+        if (expectedBytes !== undefined && total > expectedBytes)
+          return "incomplete";
         // Hash the chunk on the spot and drop it: the reader may reuse its buffer.
         hash.update(value);
       }
     }
+    // Not the listed length: the body is not the asset (a truncated EOF, a wrong body). No
+    // verdict, so no memo — a negative here would drop a good release from the feed for a day.
+    if (expectedBytes !== undefined && total !== expectedBytes)
+      return "incomplete";
     complete = true;
     const k = leToBigInt(new Uint8Array(hash.digest())) % L;
 

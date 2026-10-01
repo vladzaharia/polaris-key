@@ -8,6 +8,16 @@ export type {
 } from "./types.js";
 export { Catalog, type ValidationResult } from "./catalog.js";
 export {
+  representabilityIssue,
+  catalogKeyIssue,
+  describeRepresentabilityIssue,
+  hasLoneSurrogate,
+  numberInWireRange,
+  MAX_VALUE_DEPTH,
+  type RepresentabilityIssue,
+  type RepresentabilityRule,
+} from "./representable.js";
+export {
   prepareSchema,
   validatePrepared,
   UnsupportedSchemaError,

@@ -68,7 +68,7 @@ import type { LicenseRow } from "./data.js";
 import { licenseUsable } from "./devices.js";
 import { docProfile, resolveEntitlements } from "./authz.js";
 import { loadProduct } from "./products.js";
-import { signDoc } from "./signing.js";
+import { isStrictJsonError, signDoc } from "./signing.js";
 import { signTrustManifest } from "./trust.js";
 import {
   buildLicenseDoc,
@@ -255,91 +255,113 @@ export async function handleBundleMint(
   const device = await getDevice(db, slug, deviceId);
 
   const docs: BundleDoc["docs"] = {};
-
-  if (license) {
-    const entitlements = await resolveEntitlements(
-      db,
-      slug,
-      license,
-      device,
-      now,
-    );
-    // No build gate. `/license/document` gates on the CLIENT's version/channel headers, and
-    // there is no client here — the machine this is for has never spoken to us. Minting is an
-    // operator decision; the window still rides along as enforced entitlements, so the gate
-    // that matters (the client's) still applies to whatever build eventually imports this.
-    const doc = buildLicenseDoc({
-      aud: slug,
-      deviceId,
-      licenseId: license.id,
-      now,
-      maxOfflineDays: graceDays,
-      profile: docProfile(license),
-      entitlements,
-    });
-    docs.license = await signDoc(
-      doc,
-      product.signingKeyPem,
-      product.signingKid,
-      "pkey-license+jws",
-    );
-  }
-
-  if (includeConfig) {
-    const payload = await resolveConfigPayload(
-      db,
-      env,
-      slug,
-      license,
-      device,
-      now,
-    );
-    // Fail closed, exactly as `/config/document` does: a catalog that cannot validate its own
-    // payload must not produce a signed document, least of all one destined for a machine that
-    // cannot be corrected afterwards.
-    if (!payload) {
-      return err(
-        500,
-        "catalog_unavailable",
-        "the active catalog could not validate the config payload",
+  const bundleId = ulid(now);
+  // The three `signDoc` calls and the `signTrustManifest` call are caught together: a guard
+  // refusal on any of them (a stored value no v4 verifier would accept, plans/P3-01.md §2.2)
+  // answers `500 document_not_representable` in the console's body shape, never a throw.
+  let typ = "pkey-license+jws";
+  let jws: string;
+  try {
+    if (license) {
+      const entitlements = await resolveEntitlements(
+        db,
+        slug,
+        license,
+        device,
+        now,
+      );
+      // No build gate. `/license/document` gates on the CLIENT's version/channel headers, and
+      // there is no client here — the machine this is for has never spoken to us. Minting is an
+      // operator decision; the window still rides along as enforced entitlements, so the gate
+      // that matters (the client's) still applies to whatever build eventually imports this.
+      const doc = buildLicenseDoc({
+        aud: slug,
+        deviceId,
+        licenseId: license.id,
+        now,
+        maxOfflineDays: graceDays,
+        profile: docProfile(license),
+        entitlements,
+      });
+      docs.license = await signDoc(
+        doc,
+        product.signingKeyPem,
+        product.signingKid,
+        "pkey-license+jws",
       );
     }
-    const doc = buildConfigDoc({
-      aud: slug,
-      deviceId,
-      now,
-      maxOfflineDays: graceDays,
-      schemaVersion: product.schemaVersion,
-      payload,
-    });
-    docs.config = await signDoc(
-      doc,
-      product.signingKeyPem,
-      product.signingKid,
-      "pkey-config+jws",
-    );
-  }
 
-  const bundleId = ulid(now);
-  const bundle: BundleDoc = {
-    bundleId,
-    aud: slug,
-    deviceId,
-    issuedAt: now,
-    expiresAt: now + BUNDLE_IMPORT_WINDOW_SECONDS,
-    docs,
+    if (includeConfig) {
+      typ = "pkey-config+jws";
+      const payload = await resolveConfigPayload(
+        db,
+        env,
+        slug,
+        license,
+        device,
+        now,
+      );
+      // Fail closed, exactly as `/config/document` does: a catalog that cannot validate its own
+      // payload must not produce a signed document, least of all one destined for a machine that
+      // cannot be corrected afterwards.
+      if (!payload) {
+        return err(
+          500,
+          "catalog_unavailable",
+          "the active catalog could not validate the config payload",
+        );
+      }
+      const doc = buildConfigDoc({
+        aud: slug,
+        deviceId,
+        now,
+        maxOfflineDays: graceDays,
+        schemaVersion: product.schemaVersion,
+        payload,
+      });
+      docs.config = await signDoc(
+        doc,
+        product.signingKeyPem,
+        product.signingKid,
+        "pkey-config+jws",
+      );
+    }
+
+    typ = "pkey-trust+jws";
     // The manifest the SERVED route would emit, byte-identical (`signTrustManifest` is shared).
     // It is verified against PINS at import, so this cannot introduce a key the host app has
     // not already agreed to trust — it only saves the air-gapped machine a fetch it can never
     // make.
-    trust: await signTrustManifest(db, product, now, new URL(req.url).origin),
-  };
-  const jws = await signDoc(
-    bundle,
-    product.signingKeyPem,
-    product.signingKid,
-    "pkey-bundle+jws",
-  );
+    const trust = await signTrustManifest(
+      db,
+      product,
+      now,
+      new URL(req.url).origin,
+    );
+    typ = "pkey-bundle+jws";
+    const bundle: BundleDoc = {
+      bundleId,
+      aud: slug,
+      deviceId,
+      issuedAt: now,
+      expiresAt: now + BUNDLE_IMPORT_WINDOW_SECONDS,
+      docs,
+      trust,
+    };
+    jws = await signDoc(
+      bundle,
+      product.signingKeyPem,
+      product.signingKid,
+      "pkey-bundle+jws",
+    );
+  } catch (e) {
+    if (!isStrictJsonError(e)) throw e;
+    return err(
+      500,
+      ErrorCode.DocumentNotRepresentable,
+      `the ${typ} document could not be signed: a stored value breaks the wire contract's strict JSON or integer rules; run check:representable`,
+    );
+  }
 
   const carried = [
     docs.license ? "license" : null,

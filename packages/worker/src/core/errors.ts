@@ -28,6 +28,13 @@ export const ErrorCode = {
    *  `enroll_claimed` because the guidance differs: signing in will not reach it, and
    *  re-enrolling around the disable would bypass a deliberate refusal. */
   LicenseDisabled: "license_disabled",
+  /** A written value no signed document could carry (plans/P3-01.md §2.2): a lone surrogate,
+   *  U+0000 in a member name, canonically equivalent sibling names, a number out of range or
+   *  more than 32 levels. Answered `422` with `fields` by the console's write paths. */
+  ValueNotRepresentable: "value_not_representable",
+  /** A stored value the signer guards refuse: the route answers `500` rather than signing a
+   *  document no wire-v4 verifier would accept (plans/P3-01.md §2.2). */
+  DocumentNotRepresentable: "document_not_representable",
 } as const;
 
 export function json(

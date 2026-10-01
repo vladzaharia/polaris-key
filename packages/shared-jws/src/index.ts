@@ -731,7 +731,47 @@ export async function importVerifyKey(
   );
 }
 
-/** Sign an arbitrary JSON-serialisable payload into a compact JWS. */
+/**
+ * Thrown by the signers (`signJws` here, and the Worker's `signDoc` integer guard) when a
+ * document would break WIRE-CONTRACT-V4's strict-JSON or integer rules, so no v4 verifier would
+ * accept it. Signing refuses instead of emitting bytes every strict verifier rejects: the
+ * Worker's signing routes turn it into `500 document_not_representable` (plans/P3-01.md §2.2,
+ * "Keeping the signer total").
+ */
+export class StrictJsonError extends Error {
+  constructor(
+    /** Which serialized part broke the rules: the protected header, or the payload. */
+    readonly part: "header" | "payload",
+    message: string,
+  ) {
+    super(message);
+    this.name = "StrictJsonError";
+  }
+}
+
+/**
+ * The signer guard (V4 §1.2 rules 5, 7, 8 and 9 on the SERIALIZED text): a lone surrogate
+ * (which `JSON.stringify` writes as an ASCII `\ud800` escape), U+0000 in a member name, a
+ * number outside rule 8's range, or nesting past `MAX_JSON_DEPTH`. `JSON.stringify` cannot
+ * break the other rules (it writes well-formed UTF-16, no BOM, no literal outside JSON, no
+ * raw control character and no duplicate member), so `scanStrictJson` over its output is the
+ * whole check. A payload that is not an object fails it too: no Polaris Key document is one.
+ */
+function assertStrictJson(text: string, part: "header" | "payload"): void {
+  if (!scanStrictJson(text).ok) {
+    throw new StrictJsonError(
+      part,
+      `the ${part} breaks WIRE-CONTRACT-V4 §1.2 (a lone surrogate, U+0000 in a member name, a number out of range, or nesting past ${MAX_JSON_DEPTH} levels), so no strict verifier would accept it`,
+    );
+  }
+}
+
+/**
+ * Sign an arbitrary JSON-serialisable payload into a compact JWS.
+ *
+ * Throws `StrictJsonError` when the serialized header or payload breaks V4 §1.2 (see
+ * `assertStrictJson`), before any key is imported.
+ */
 export async function signJws(
   payload: unknown,
   signingKeyPem: string,
@@ -744,10 +784,16 @@ export async function signJws(
   const header: JwsHeader = typ
     ? { alg: "EdDSA", typ, kid }
     : { alg: "EdDSA", kid };
+  const headerText = JSON.stringify(header);
+  // `JSON.stringify` answers `undefined` (not a string) for `undefined` or a function; the
+  // guard refuses that rather than signing the text "undefined".
+  const payloadText = JSON.stringify(payload) as string | undefined;
+  assertStrictJson(headerText, "header");
+  assertStrictJson(payloadText ?? "", "payload");
   const signingInput =
-    base64UrlEncodeString(JSON.stringify(header)) +
+    base64UrlEncodeString(headerText) +
     "." +
-    base64UrlEncodeString(JSON.stringify(payload));
+    base64UrlEncodeString(payloadText ?? "");
   const key = await importSigningKey(signingKeyPem);
   const sig = await crypto.subtle.sign(
     { name: "Ed25519" },

@@ -70,6 +70,11 @@ export { parsePayload, redactPayload } from "../admin/lib/redact.js";
 export { applyOverrides, type OverrideUpdate } from "../admin/lib/overrides.js";
 
 export {
+  WriteChecks,
+  catalogRepresentabilityResponse,
+} from "../admin/lib/writeChecks.js";
+
+export {
   licenseSummary,
   loadCatalog,
   parseJsonColumn,
