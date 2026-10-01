@@ -111,6 +111,8 @@ GET /<product>/release/blobs/sha256/<hash>
 - **blobs** serves a content-addressed object only when an artifact of **this** product
   references it. Another product holding the same bytes does not count, and the answer is the
   same not-found as for an unknown hash, so the route reveals nothing about other tenants.
+  Under `entitled` the object must also belong to a release the caller's licence covers
+  ([Access modes](#access-modes)).
 
 An artifact's bytes are taken from the first location that has them, in this order:
 
@@ -204,6 +206,12 @@ four-part `1.2.3.4`, a `2.0.0.1` tag, `3.0.0beta`) cannot be placed in it, so wh
 window is bounded (a licence, tier or the product's compatibility range sets a minimum or
 maximum) such a version is refused with `version_blocked` rather than waved through. This
 applies to `/release/dl`, `/release/builds` and `/release/files` alike.
+
+A blob URL names a hash, not a release, and a hash is no secret: signed manifests publish it.
+Under `entitled`, `/release/blobs` therefore serves an object only if at least one release of
+this product with an artifact of that digest passes the same check `/release/files` applies to
+that release's version. Otherwise it answers that release's refusal (`version_blocked`, say),
+or the plain not-found when no release artifact carries the hash at all.
 
 A client that already handles the nested shape for license documents needs nothing new to
 handle an `entitled` refusal on a download.

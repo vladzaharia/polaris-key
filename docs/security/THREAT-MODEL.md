@@ -107,7 +107,8 @@ uploads. Its write paths, and nothing else:
   gated content is authorised per request and served `private, no-store`. Until that per-request
   check exists (P2b-04, P4-05), Release's build and file routes refuse a location under
   `gated/` outright, whatever the product's access mode, and the blob route reads only the
-  ungated key (P2-05).
+  ungated key and, under `entitled`, re-checks the licence against every release that carries
+  the hash (§5; P2-05).
 - **Clients verify against the signed manifest, not the headers.** `Repr-Digest` and the ETag
   help resumption; integrity rests on the hash in a signed document.
 - **A product earns a `blob_ref` only by proving it had the bytes.** `blob_objects` is shared
@@ -469,6 +470,10 @@ artifacts, and a `beta` grant opens the `staging` alias of it: `staging` is the 
 `compareSemver` calls an unparseable version equal to both bounds, so a pinned version that is not
 semver (a four-part `1.2.3.4`, a tag like `2.0.0.1`) is refused with `version_blocked` whenever the
 window is bounded, on `/release/dl`, `/release/builds` and `/release/files` alike (P2-05).
+`/release/blobs` names a hash rather than a release, so the gateway's decision there proves only
+a usable licence; under `entitled` a blob is served only if a release of this product whose
+artifact carries that digest passes the `/release/files` check for its version, and a hash no
+release artifact carries answers not-found (P2-05).
 
 ## 6. What the licensing enforcement actually promises
 

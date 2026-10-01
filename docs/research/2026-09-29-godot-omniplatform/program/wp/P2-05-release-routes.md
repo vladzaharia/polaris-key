@@ -187,6 +187,13 @@ the caching and redirect advice in [§3.5](../../README.md#35-storage-and-byte-d
   (`1.2.3.4`, `2.0.0.1`) is refused with `version_blocked` whenever the window is bounded
   (`access.ts` `enforceReleaseAccess`, so `/release/dl` is covered too): `compareSemver` calls
   an unparseable version equal to both bounds, which let it pass any window.
+- **Third review round.** Under `entitled`, the blob route's gateway decision names no version
+  (`params = {}` classifies as `stable`, which every grant holds), so it proved only a usable
+  licence and any R2-held payload outside the window was one hash away. `bytes.ts`
+  `entitledBlobRefusal` now serves a blob only if a release of this product whose artifact has
+  that `sha256` (index `idx_release_artifacts_sha256`) passes `enforceReleaseAccess` for its
+  version; otherwise it answers the first refusal, or the flat not-found when no release
+  artifact carries the hash (a pack-object-only ref, until P2b-04 / P4-05).
 
 ## Steps
 

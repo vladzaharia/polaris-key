@@ -398,12 +398,14 @@ describe("build and file routes", () => {
   });
 });
 
-describe("the entitled access mode on the build and file routes", () => {
+describe("the entitled access mode on the build, file and blob routes", () => {
   /** v1.0.0, v1.1.0 and a four-part `v1.2.3.4`, each with the `cli-arm64` build. */
   async function entitledSetup(window: { maxVersion: string }) {
     const db = makeTestDb();
     await seedReleaseProduct(db, { artifacts_access: "entitled" });
     const env = envFor({ blobOrigin: BYTES });
+    const r2 = new R2Mock();
+    env.BLOBS = asR2(r2);
     const fourPart = release("v1.2.3.4", [
       {
         id: 301,
@@ -452,7 +454,7 @@ describe("the entitled access mode on the build and file routes", () => {
     );
     expect(act.status).toBe(200);
     const token = ((await act.json()) as { token: string }).token;
-    return { env, db, gh, token };
+    return { env, db, gh, r2, token };
   }
 
   it("a version the window cannot order (four-part, non-semver) is refused, never waved through", async () => {
@@ -484,6 +486,70 @@ describe("the entitled access mode on the build and file routes", () => {
       );
       expect(ok.status, origin).toBe(200);
       expect(new Uint8Array(await ok.arrayBuffer())).toEqual(ASSET_BYTES[101]);
+    }
+  });
+
+  it("a blob is served only if a release carrying its digest passes the licence's window", async () => {
+    // The gateway's decision for a blob names no version, so it proves only a usable licence;
+    // without the per-release check, a licence capped at 1.0.0 could fetch v1.1.0 by hash.
+    const s = await entitledSetup({ maxVersion: "1.0.0" });
+    const auth = { headers: { authorization: `Bearer ${s.token}` } };
+    const digest = async (
+      releaseId: string,
+      artifactId: string,
+      bytes: Uint8Array,
+      buildId: string | null,
+    ) => {
+      await storeBlob(s.db, s.r2, SLUG, bytes);
+      const set = stmtSetArtifactModel({
+        product: SLUG,
+        releaseId,
+        artifactId,
+        buildId,
+        role: "payload",
+        sha256: sha256Hex(bytes),
+      });
+      await s.db.run(set.sql, ...set.params);
+      return sha256Hex(bytes);
+    };
+    const v100 = await digest("v1.0.0", "101", ASSET_BYTES[101]!, "cli-arm64");
+    const v110 = await digest("v1.1.0", "201", ASSET_BYTES[201]!, "cli-arm64");
+    // The four-part release's payload already carries its digest (entitledSetup).
+    await storeBlob(s.db, s.r2, SLUG, ASSET_BYTES[301]!);
+    const v1234 = sha256Hex(ASSET_BYTES[301]!);
+    // Identical bytes in a release inside the window and one outside it: served.
+    const SHARED = bytesOf(2048, 5);
+    await digest("v1.0.0", "102", SHARED, null);
+    const shared = await digest("v1.1.0", "202", SHARED, null);
+    // Referenced by this product, but by no release artifact (a pack object, say).
+    await storeBlob(s.db, s.r2, SLUG, BLOB);
+
+    for (const origin of [BYTES, CONSOLE]) {
+      const at = (hex: string) =>
+        `${origin}/${SLUG}/release/blobs/sha256/${hex}`;
+      for (const [hex, code] of [
+        [v110, "version_blocked"],
+        [v1234, "version_blocked"],
+      ] as const) {
+        const res = await get(s, at(hex), auth);
+        expect(res.status, `${origin} ${hex}`).toBe(403);
+        expect(await res.json(), `${origin} ${hex}`).toMatchObject({
+          error: { code },
+        });
+      }
+      const orphan = await get(s, at(BLOB_HEX), auth);
+      expect(orphan.status, origin).toBe(404);
+
+      const ok = await get(s, at(v100), auth);
+      expect(ok.status, origin).toBe(200);
+      expect(new Uint8Array(await ok.arrayBuffer())).toEqual(ASSET_BYTES[101]);
+      const both = await get(s, at(shared), auth);
+      expect(both.status, origin).toBe(200);
+      expect(new Uint8Array(await both.arrayBuffer())).toEqual(SHARED);
+
+      // No device token: refused before any release is looked at.
+      const anon = await get(s, at(v100));
+      expect(anon.status, origin).toBe(401);
     }
   });
 });
