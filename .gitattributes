@@ -3,3 +3,7 @@
 # (fetch_godot.sh matches `<hash>  <file>$`), and the GDScript, fixtures and vectors are compared
 # byte for byte. text=auto still leaves any binary file alone.
 sdks/godot/** text=auto eol=lf
+
+# The polaris-key/publish Action's GENERATED bundle (P2-06): `bundle:action -- --check` compares it
+# byte for byte, so it keeps LF on every checkout; linguist-generated collapses it in PR diffs.
+actions/publish/dist/** text eol=lf linguist-generated=true

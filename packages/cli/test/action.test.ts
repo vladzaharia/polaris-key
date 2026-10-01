@@ -190,6 +190,33 @@ describe("the standalone bundle", () => {
     const help = await run(process.execPath, [out, "help"]);
     expect(help.stdout).toContain("pkey release publish");
   }, 60_000);
+
+  // The Action runs its COMMITTED dist/index.js. A bare `dist/` in the root .gitignore once
+  // swallowed it: the bundle existed only in the author's checkout, `--check` passed there and
+  // failed on every clean clone, and `uses: …/actions/publish@<sha>` had no entry point. Pin that
+  // git does not ignore the bundle's path, and that action.yml points at that path.
+  it("the bundle path is not git-ignored and is the Action's entry point", async () => {
+    const bundle = "actions/publish/dist/index.js";
+    const ignored = await run("git", ["check-ignore", "-q", bundle], {
+      cwd: repoRoot,
+    }).then(
+      () => true,
+      (err: { code?: number }) => {
+        // 1 = not ignored. Anything else (128: no git checkout) is surfaced, not passed.
+        if (err.code === 1) return false;
+        throw err;
+      },
+    );
+    expect(
+      ignored,
+      `${bundle} is git-ignored, so the Action would ship without it`,
+    ).toBe(false);
+    const actionYml = await readFile(
+      path.join(repoRoot, "actions/publish/action.yml"),
+      "utf8",
+    );
+    expect(actionYml).toMatch(/^\s+main:\s*dist\/index\.js\s*$/m);
+  });
 });
 
 describe("SigV4", () => {
