@@ -2,6 +2,8 @@
 # freshness suite), so prettier must never rewrite them.
 packages/worker/src/docsCsp.generated.ts
 packages/docs/src/content/docs/reference/
+# P2b-05's storefront feed goldens: byte-compared against the rendered feed bodies.
+packages/worker/test/fixtures/feeds/
 
 # Build caches.
 packages/docs/.astro/
