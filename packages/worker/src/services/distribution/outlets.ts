@@ -10,6 +10,12 @@
  * `manifestIngestStatements` names either column, so an operator's narrowing survives every push
  * (and a repo can never widen one — it cannot even express it).
  *
+ * `kind` is manifest-owned but ONE-WAY: the capability defaults are keyed by it, so an existing
+ * row takes a new kind only when that does not widen its defaults (`kindsNarrowableTo`). A push
+ * that re-kinds `altstore-beta` from `altstore` to `direct` updates identity and listing and
+ * leaves the kind (and so what installed copies may do) where it was; a wider kind needs a new
+ * outlet id. This holds for a removed row coming back too — copies installed through it exist.
+ *
  * ── IDEMPOTENT BY CONSTRUCTION ──────────────────────────────────────────────────────────────
  *
  * A hook returns statements and cannot read, so the "only if changed" decision lives in SQL: the
@@ -26,6 +32,7 @@ import {
   type ParsedManifest,
 } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../core/platform.js";
+import { kindsNarrowableTo } from "./capabilities.js";
 
 /** A `dist_outlets` row. */
 export interface DistOutletRow {
@@ -74,17 +81,20 @@ export function manifestIngestStatements(
 
   for (const outlet of dist.outlets) {
     const listing = outletListing(dist, outlet.id);
+    // The stored kinds this row may move from without widening (always includes its own).
+    const from = kindsNarrowableTo(outlet.kind);
+    const inFrom = `dist_outlets.kind IN (${from.map(() => "?").join(", ")})`;
     stmts.push({
       sql: `INSERT INTO dist_outlets
               (product, outlet_id, kind, identity_json, listing_json, created_at, modified_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (product, outlet_id) DO UPDATE SET
-              kind = excluded.kind,
+              kind = CASE WHEN ${inFrom} THEN excluded.kind ELSE dist_outlets.kind END,
               identity_json = excluded.identity_json,
               listing_json = excluded.listing_json,
               removed_at = NULL,
               modified_at = excluded.modified_at
-            WHERE dist_outlets.kind IS NOT excluded.kind
+            WHERE (dist_outlets.kind IS NOT excluded.kind AND ${inFrom})
                OR dist_outlets.identity_json IS NOT excluded.identity_json
                OR dist_outlets.listing_json IS NOT excluded.listing_json
                OR dist_outlets.removed_at IS NOT NULL`,
@@ -96,6 +106,8 @@ export function manifestIngestStatements(
         listing ? JSON.stringify(listing) : null,
         now,
         now,
+        ...from,
+        ...from,
       ],
     });
   }

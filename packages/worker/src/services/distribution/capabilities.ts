@@ -10,10 +10,16 @@
  *   - `.pkey/distribution` cannot say anything about them at all
  *     (`capabilities_not_manifest_writable`), and no ingest writes either column.
  *
+ * The KIND the defaults are looked up by is manifest-owned, so it is guarded too: an id that is
+ * itself a kind cannot be given another (`outlet_kind_mismatch`), and the ingest lets an existing
+ * outlet change kind only when the new kind's defaults are no wider than the old's
+ * (`kindsNarrowableTo`) — otherwise the row keeps its kind, and the copies already installed
+ * through that outlet keep their capabilities. A wider kind needs a new outlet id.
+ *
  * Reading back ALSO clamps (`effectiveCapabilities`): a stored override that is somehow wider
- * than today's default — a row written before a default was tightened, the kind changed by a
- * later push, a hand edit in the D1 console — answers with the narrower of the two, so the
- * server never widens past the compiled table (the rule P3-01's client applies too).
+ * than today's default — a row written before a default was tightened, a hand edit in the D1
+ * console — answers with the narrower of the two, so the server never widens past the compiled
+ * table (the rule P3-01's client applies too).
  *
  * The table is PROPOSED (P2b-02 brief). Once P3-01's `outlet-matrix.json` is approved it is the
  * source of truth, and this table must then match it.
@@ -197,4 +203,28 @@ export function effectiveCapabilities(
       (out as Record<CapabilityKey, unknown>)[key] = value;
   }
   return out;
+}
+
+/**
+ * Does re-kinding an outlet from `from` to `to` keep every DEFAULT capability equal or narrower?
+ * The manifest owns an outlet's kind, and the default table is keyed by kind, so a kind change is
+ * a change of default; the ingest only lets an existing outlet take a new kind when this holds
+ * (`kindsNarrowableTo`). `commerce` follows `narrows`: only the same value or `none`, so even
+ * `store-iap` → `own` counts as a widening.
+ */
+export function kindChangeNarrows(from: OutletKind, to: OutletKind): boolean {
+  const base = DEFAULT_CAPABILITIES[from];
+  const next = DEFAULT_CAPABILITIES[to];
+  return CAPABILITY_KEYS.every((key) => narrows(key, next[key], base));
+}
+
+/**
+ * Every kind an existing outlet row may move FROM to take kind `to` without widening its
+ * defaults; always includes `to` itself. A row whose stored kind is not in the list (or is one
+ * this build does not know) keeps its kind.
+ */
+export function kindsNarrowableTo(to: OutletKind): OutletKind[] {
+  return (Object.keys(DEFAULT_CAPABILITIES) as OutletKind[]).filter((from) =>
+    kindChangeNarrows(from, to),
+  );
 }

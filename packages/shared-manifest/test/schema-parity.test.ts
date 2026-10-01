@@ -1210,6 +1210,20 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (outlet(d, "altstore-beta").kind = "altstore-classic"),
   },
   {
+    code: "outlet_kind_mismatch",
+    file: "distribution",
+    schema: "rejects",
+    // An id that IS a kind cannot be re-kinded: that would swap the App Store outlet's store
+    // capability defaults for the self-hosted ones.
+    mutate: (d) => (outlet(d, "app-store").kind = "web"),
+  },
+  {
+    code: "outlet_kind_mismatch",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).outlets.steam = { kind: "direct" }),
+  },
+  {
     code: "invalid_outlet_identity",
     file: "distribution",
     schema: "rejects",
@@ -1597,9 +1611,15 @@ describe("valid manifests pass both validators", () => {
     );
     expect(schema.$defs.platforms.items.enum).toEqual([...RELEASE_PLATFORMS]);
     for (const kind of OUTLET_KINDS) {
-      const fields = Object.keys(
-        schema.$defs[`outlet_${kind}`].properties,
-      ).filter((k) => k !== "listing" && k !== "capabilities");
+      const props = schema.$defs[`outlet_${kind}`].properties;
+      // An id that is itself a kind may only repeat it (outlet_kind_mismatch).
+      expect(props.kind, kind).toEqual({ const: kind });
+      expect(schema.properties.outlets.properties[kind], kind).toEqual({
+        $ref: `#/$defs/outlet_${kind}`,
+      });
+      const fields = Object.keys(props).filter(
+        (k) => k !== "kind" && k !== "listing" && k !== "capabilities",
+      );
       expect(fields, kind).toEqual([...OUTLET_IDENTITY_FIELDS[kind]]);
     }
   });

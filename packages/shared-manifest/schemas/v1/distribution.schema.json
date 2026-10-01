@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/distribution.schema.json",
   "title": "Polaris Key distribution manifest (.pkey/distribution)",
-  "description": "The distribution document of a .pkey/ manifest: the product's outlets with their store identities, the transport each deliverable uses per outlet, and the store listing. Optional: with the distribution service on and no document, the product has one implicit outlet, direct, served by pkey-cdn. Outlet capabilities are operator-owned and may not appear anywhere in this file. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative, and the cross-document checks (artifact, channel and deliverable references into .pkey/release) are validator-only. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
+  "description": "The distribution document of a .pkey/ manifest: the product's outlets with their store identities, the transport each deliverable uses per outlet, and the store listing. Optional: with the distribution service on and no document, the product has one implicit outlet, direct, served by pkey-cdn. Outlet capabilities are operator-owned and may not appear anywhere in this file. Mirrors validateManifestDocuments in @polaris-key/manifest; the TypeScript validator is authoritative, and the cross-document checks (artifact, channel and deliverable references into .pkey/release) are validator-only. The $id URL is an identifier, not a fetchable locator \u2014 this file ships inside the @polaris-key/manifest npm package.",
   "type": "object",
   "properties": {
     "apiVersion": {
@@ -10,7 +10,7 @@
     },
     "capabilities": false,
     "outlets": {
-      "description": "Outlets keyed by outlet id. An id that is itself an outlet kind may omit kind; any other id (altstore-beta) needs one. Absent means the implicit direct outlet; {} declares none.",
+      "description": "Outlets keyed by outlet id. An id that is itself an outlet kind is that kind: it may omit kind, and an explicit kind must repeat the id. Any other id (altstore-beta) needs a kind. Absent means the implicit direct outlet; {} declares none.",
       "type": "object",
       "maxProperties": 32,
       "propertyNames": {
@@ -18,208 +18,55 @@
       },
       "properties": {
         "direct": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_direct"
-          }
+          "$ref": "#/$defs/outlet_direct"
         },
         "app-store": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_app-store"
-          }
+          "$ref": "#/$defs/outlet_app-store"
         },
         "testflight": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_testflight"
-          }
+          "$ref": "#/$defs/outlet_testflight"
         },
         "altstore": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_altstore"
-          }
+          "$ref": "#/$defs/outlet_altstore"
         },
         "altstore-pal": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_altstore-pal"
-          }
+          "$ref": "#/$defs/outlet_altstore-pal"
         },
         "play": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_play"
-          }
+          "$ref": "#/$defs/outlet_play"
         },
         "play-testing": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_play-testing"
-          }
+          "$ref": "#/$defs/outlet_play-testing"
         },
         "obtainium": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_obtainium"
-          }
+          "$ref": "#/$defs/outlet_obtainium"
         },
         "fdroid-repo": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_fdroid-repo"
-          }
+          "$ref": "#/$defs/outlet_fdroid-repo"
         },
         "ms-store": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_ms-store"
-          }
+          "$ref": "#/$defs/outlet_ms-store"
         },
         "app-installer": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_app-installer"
-          }
+          "$ref": "#/$defs/outlet_app-installer"
         },
         "steam": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_steam"
-          }
+          "$ref": "#/$defs/outlet_steam"
         },
         "itch": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_itch"
-          }
+          "$ref": "#/$defs/outlet_itch"
         },
         "flathub": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_flathub"
-          }
+          "$ref": "#/$defs/outlet_flathub"
         },
         "snap": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_snap"
-          }
+          "$ref": "#/$defs/outlet_snap"
         },
         "winget": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_winget"
-          }
+          "$ref": "#/$defs/outlet_winget"
         },
         "web": {
-          "if": {
-            "type": "object",
-            "required": ["kind"]
-          },
-          "then": {
-            "$ref": "#/$defs/outlet"
-          },
-          "else": {
-            "$ref": "#/$defs/outlet_web"
-          }
+          "$ref": "#/$defs/outlet_web"
         }
       },
       "additionalProperties": {
@@ -492,6 +339,9 @@
       "description": "The identity fields a direct outlet reads: platforms, homebrewCask. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "direct"
+        },
         "platforms": {
           "$ref": "#/$defs/platforms"
         },
@@ -508,6 +358,9 @@
       "description": "The identity fields a app-store outlet reads: appleId, bundleId. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "app-store"
+        },
         "appleId": {
           "$ref": "#/$defs/appleId"
         },
@@ -524,6 +377,9 @@
       "description": "The identity fields a testflight outlet reads: appleId, bundleId. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "testflight"
+        },
         "appleId": {
           "$ref": "#/$defs/appleId"
         },
@@ -540,6 +396,9 @@
       "description": "The identity fields a altstore outlet reads: artifact, bundleId. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "altstore"
+        },
         "artifact": {
           "$ref": "#/$defs/artifact"
         },
@@ -556,6 +415,9 @@
       "description": "The identity fields a altstore-pal outlet reads: artifact, bundleId, marketplaceId. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "altstore-pal"
+        },
         "artifact": {
           "$ref": "#/$defs/artifact"
         },
@@ -575,6 +437,9 @@
       "description": "The identity fields a play outlet reads: packageName, tracks. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "play"
+        },
         "packageName": {
           "$ref": "#/$defs/packageName"
         },
@@ -591,6 +456,9 @@
       "description": "The identity fields a play-testing outlet reads: packageName, tracks. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "play-testing"
+        },
         "packageName": {
           "$ref": "#/$defs/packageName"
         },
@@ -607,6 +475,9 @@
       "description": "The identity fields a obtainium outlet reads: artifact, packageName. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "obtainium"
+        },
         "artifact": {
           "$ref": "#/$defs/artifact"
         },
@@ -623,6 +494,9 @@
       "description": "The identity fields a fdroid-repo outlet reads: artifact, packageName. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "fdroid-repo"
+        },
         "artifact": {
           "$ref": "#/$defs/artifact"
         },
@@ -639,6 +513,9 @@
       "description": "The identity fields a ms-store outlet reads: productId, packageFamilyName. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "ms-store"
+        },
         "productId": {
           "$ref": "#/$defs/productId"
         },
@@ -655,6 +532,9 @@
       "description": "The identity fields a app-installer outlet reads: packageFamilyName. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "app-installer"
+        },
         "packageFamilyName": {
           "$ref": "#/$defs/packageFamilyName"
         },
@@ -668,6 +548,9 @@
       "description": "The identity fields a steam outlet reads: appId, branches. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "steam"
+        },
         "appId": {
           "$ref": "#/$defs/numericId"
         },
@@ -684,6 +567,9 @@
       "description": "The identity fields a itch outlet reads: target, gameId. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "itch"
+        },
         "target": {
           "$ref": "#/$defs/target"
         },
@@ -700,6 +586,9 @@
       "description": "The identity fields a flathub outlet reads: appId. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "flathub"
+        },
         "appId": {
           "$ref": "#/$defs/flatpakId"
         },
@@ -713,6 +602,9 @@
       "description": "The identity fields a snap outlet reads: name. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "snap"
+        },
         "name": {
           "$ref": "#/$defs/name"
         },
@@ -726,6 +618,9 @@
       "description": "The identity fields a winget outlet reads: packageIdentifier. Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "winget"
+        },
         "packageIdentifier": {
           "$ref": "#/$defs/packageIdentifier"
         },
@@ -739,6 +634,9 @@
       "description": "The identity fields a web outlet reads (none). Other keys are ignored.",
       "type": "object",
       "properties": {
+        "kind": {
+          "const": "web"
+        },
         "listing": {
           "$ref": "#/$defs/listing"
         },
@@ -785,7 +683,7 @@
       "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
     },
     "tracks": {
-      "description": "Declared channel → Play track. Keys must be declared channels (validator-checked).",
+      "description": "Declared channel \u2192 Play track. Keys must be declared channels (validator-checked).",
       "type": "object",
       "maxProperties": 32,
       "additionalProperties": {
@@ -803,7 +701,7 @@
       "pattern": "^[A-Za-z0-9.-]{3,50}_[a-z0-9]{13}$"
     },
     "branches": {
-      "description": "Declared channel → Steam branch. Keys must be declared channels (validator-checked).",
+      "description": "Declared channel \u2192 Steam branch. Keys must be declared channels (validator-checked).",
       "type": "object",
       "maxProperties": 32,
       "additionalProperties": {

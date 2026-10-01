@@ -111,6 +111,19 @@ describe("normalizeDistribution", () => {
     expect(d.routes).toHaveLength(6);
   });
 
+  it("never re-kinds an id that is itself a kind (outlet_kind_mismatch)", () => {
+    const d = normalizeDistribution({
+      outlets: {
+        "app-store": { kind: "web" },
+        steam: { kind: "direct" },
+        play: { kind: "play" },
+      },
+    });
+    // The mismatched entries are refused by the validator; normalising them anyway yields
+    // nothing rather than a self-hosted outlet under a store's id.
+    expect(d.outlets.map((o) => [o.id, o.kind])).toEqual([["play", "play"]]);
+  });
+
   it("merges a per-outlet listing over the document's", () => {
     const d = normalizeDistribution({
       outlets: {
@@ -184,6 +197,40 @@ describe("parseManifest and .pkey/distribution", () => {
       "obtainium",
       "steam",
     ]);
+  });
+
+  it("refuses an explicit kind that differs from a kind-named id", () => {
+    const res = parse({ outlets: { "app-store": { kind: "web" } } });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors).toEqual([
+      expect.stringMatching(/^distribution\/outlets\/app-store\/kind: /),
+    ]);
+  });
+
+  it("routes only the deliverables Release ingests, so pack spam cannot multiply rows", () => {
+    const packs: Record<string, unknown> = {};
+    for (let i = 0; i < 2000; i++) packs[`pack-${i}`] = { kind: "pack" };
+    const outlets: Record<string, unknown> = {};
+    for (let i = 0; i < 32; i++) outlets[`web-${i}`] = { kind: "web" };
+    const rel = {
+      release: {
+        ...release.release,
+        deliverables: { ...release.release.deliverables, ...packs },
+      },
+    };
+    const res = parse(
+      {
+        outlets,
+        transports: { deliverables: { "pack-7": { "web-0": "web" } } },
+      },
+      rel,
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const routes = res.manifest.distribution!.routes;
+    expect(routes).toHaveLength(32);
+    expect(routes.every((r) => r.deliverableId === "app")).toBe(true);
   });
 
   it("carries the implicit document when Distribution is on and the file is absent", () => {

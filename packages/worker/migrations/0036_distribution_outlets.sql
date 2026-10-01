@@ -8,6 +8,9 @@
 --
 --   - `identity_json` and `listing_json` are MANIFEST-owned: every resync rewrites them. The
 --     listing is stored MERGED (the document's listing with the outlet's own override over it).
+--   - `kind` is manifest-owned but one-way: the capability defaults are keyed by it, so an
+--     existing row takes a new kind only when that does not widen its defaults
+--     (`kindsNarrowableTo`); otherwise it keeps the old one.
 --   - `capabilities_json` / `capabilities_source` are OPERATOR-owned and never written by an
 --     ingest. `capabilities_source = 'default'` means the per-kind default table applies
 --     (`services/distribution/capabilities.ts`); `'admin'` means an operator narrowed it, and

@@ -2046,6 +2046,22 @@ function distributionDeliverables(
   return out;
 }
 
+/**
+ * The deliverables that get a transport route (`dist_transports` rows): only those Release
+ * actually ingests. A pack is ignored today (`pack_deliverables_not_supported`), so only `app` is
+ * routed and an ingest writes at most MAX_OUTLETS transport rows. Routing every declared pack
+ * would let one push from a product's repo turn a 64 KiB release.yaml of `{kind: pack}` entries
+ * into tens of thousands of statements in the shared D1 batch (thousands of packs × 32 outlets).
+ * The validator still sees every declared deliverable (`distributionContext`), so a
+ * `transports.deliverables.<pack>` entry validates now and is routed once packs are ingested
+ * (P4-02, which must then bound the pack count itself).
+ */
+function routedDeliverables(
+  relRoot: Record<string, unknown> | null,
+): DistributionDeliverable[] {
+  return distributionDeliverables(relRoot).filter((d) => d.kind !== "pack");
+}
+
 /** A `stableTagPattern` value: a string the manual-channel safety rule compiles. One rule for
  *  both spellings (the release root, P0-02, and `deliverables.app.versioning`, P2-04). */
 function isTagPattern(value: unknown): boolean {
@@ -2567,7 +2583,7 @@ export function parseManifest(
   ) {
     parsed.distribution = normalizeDistribution(
       docs.distribution,
-      distributionDeliverables(releaseDoc),
+      routedDeliverables(releaseDoc),
     );
   }
   if (productRoot.fingerprint !== undefined) {

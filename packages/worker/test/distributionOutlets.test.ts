@@ -39,10 +39,13 @@ import { distributionService } from "../src/services/distribution/index.js";
 import {
   DEFAULT_CAPABILITIES,
   effectiveCapabilities,
+  kindChangeNarrows,
+  kindsNarrowableTo,
   narrows,
   overrideProblem,
 } from "../src/services/distribution/capabilities.js";
-import { OUTLET_KINDS } from "@polaris-key/manifest";
+import { manifestIngestStatements as distributionIngestStatements } from "../src/services/distribution/outlets.js";
+import { OUTLET_KINDS, parseManifest } from "@polaris-key/manifest";
 
 const SLUG = "dice";
 const INGEST = manifestIngestFor(SERVICES);
@@ -551,6 +554,143 @@ describe("outletCapabilities", () => {
       ...DEFAULT_CAPABILITIES["app-store"],
       dataUpdates: false,
     });
+  });
+});
+
+describe("a push cannot widen capabilities by changing an outlet's kind", () => {
+  const withBeta = (kind: string) =>
+    DISTRIBUTION_YAML.replace(
+      "  web: {}\n",
+      `  web: {}\n  altstore-beta:\n    kind: ${kind}\n`,
+    );
+  const resync = (
+    env: Env,
+    db: Db,
+    yaml: string,
+    now: number,
+  ): ReturnType<typeof resyncRepo> =>
+    resyncRepo(
+      env,
+      db,
+      SLUG,
+      now,
+      github(files({ ".pkey/distribution.yaml": yaml })),
+      INGEST,
+    );
+  const kindOf = async (db: Db, id: string) =>
+    (await outlets(db)).find((r) => r.outlet_id === id)!.kind;
+
+  it("an id that is itself a kind cannot be re-kinded: the push is refused, nothing written", async () => {
+    const { db, env } = await linked();
+    const before = await outlets(db);
+    const res = await resync(
+      env,
+      db,
+      DISTRIBUTION_YAML.replace(
+        '    appleId: "1234567890"\n',
+        '    kind: web\n    appleId: "1234567890"\n',
+      ),
+      NOW + 10,
+    );
+    expect(res.ok).toBe(false);
+    expect(await outlets(db)).toEqual(before);
+    expect(
+      await (await hooksFor(env, db)).outletCapabilities("app-store"),
+    ).toEqual({ outletId: "app-store", ...DEFAULT_CAPABILITIES["app-store"] });
+  });
+
+  it("a custom outlet keeps its kind when a push would widen it, and the push is otherwise applied", async () => {
+    const { db, env } = await linked({
+      ".pkey/distribution.yaml": withBeta("altstore"),
+    });
+    expect(await kindOf(db, "altstore-beta")).toBe("altstore");
+
+    const widened = withBeta("direct").replace("appId: 480", "appId: 481");
+    expect((await resync(env, db, widened, NOW + 10)).ok).toBe(true);
+    // The steam change landed; the kind change did not.
+    expect(await kindOf(db, "altstore-beta")).toBe("altstore");
+    const steam = (await outlets(db)).find((r) => r.outlet_id === "steam")!;
+    expect(JSON.parse(steam.identity_json).appId).toBe("481");
+    const caps = await (
+      await hooksFor(env, db)
+    ).outletCapabilities("altstore-beta");
+    expect(caps).toEqual({
+      outletId: "altstore-beta",
+      ...DEFAULT_CAPABILITIES.altstore,
+    });
+    expect(caps!.codeUpdates).toBe(false);
+
+    // Re-pushing the held change is a no-op: the row does not churn.
+    const beta = (await outlets(db)).find(
+      (r) => r.outlet_id === "altstore-beta",
+    )!;
+    expect((await resync(env, db, widened, NOW + 20)).ok).toBe(true);
+    expect(
+      (await outlets(db)).find((r) => r.outlet_id === "altstore-beta"),
+    ).toEqual(beta);
+  });
+
+  it("a removed custom outlet coming back with a wider kind keeps its old kind", async () => {
+    const { db, env } = await linked({
+      ".pkey/distribution.yaml": withBeta("altstore"),
+    });
+    expect((await resync(env, db, DISTRIBUTION_YAML, NOW + 10)).ok).toBe(true);
+    expect((await resync(env, db, withBeta("web"), NOW + 20)).ok).toBe(true);
+    const row = (await outlets(db)).find(
+      (r) => r.outlet_id === "altstore-beta",
+    )!;
+    expect(row.removed_at).toBeNull();
+    expect(row.kind).toBe("altstore");
+  });
+
+  it("a narrowing kind change is applied", async () => {
+    const { db, env } = await linked({
+      ".pkey/distribution.yaml": withBeta("web"),
+    });
+    expect(await kindOf(db, "altstore-beta")).toBe("web");
+    expect((await resync(env, db, withBeta("altstore"), NOW + 10)).ok).toBe(
+      true,
+    );
+    expect(await kindOf(db, "altstore-beta")).toBe("altstore");
+    expect(
+      (await outlets(db)).find((r) => r.outlet_id === "altstore-beta")!
+        .modified_at,
+    ).toBe(NOW + 10);
+  });
+
+  it("kindChangeNarrows compares every default capability", () => {
+    expect(kindChangeNarrows("app-store", "web")).toBe(false);
+    expect(kindChangeNarrows("altstore", "direct")).toBe(false);
+    // store-iap → own is a different commerce channel, not a narrowing.
+    expect(kindChangeNarrows("app-store", "altstore")).toBe(false);
+    expect(kindChangeNarrows("app-store", "testflight")).toBe(true);
+    expect(kindChangeNarrows("web", "altstore")).toBe(true);
+    for (const kind of OUTLET_KINDS)
+      expect(kindsNarrowableTo(kind)).toContain(kind);
+  });
+});
+
+describe("the ingest's cost is bounded for untrusted input (R10)", () => {
+  it("thousands of declared packs across 32 outlets stay at one transport row per outlet", () => {
+    const deliverables: Record<string, unknown> = {
+      app: JSON.parse(RELEASE).release.deliverables.app,
+    };
+    for (let i = 0; i < 2400; i++) deliverables[`p${i}`] = { kind: "pack" };
+    const outletsDoc: Record<string, unknown> = {};
+    for (let i = 0; i < 32; i++) outletsDoc[`site-${i}`] = { kind: "web" };
+    const parsed = parseManifest({
+      product: PRODUCT(),
+      schema: SCHEMA,
+      release: JSON.stringify({
+        release: { ...JSON.parse(RELEASE).release, deliverables },
+      }),
+      distribution: JSON.stringify({ outlets: outletsDoc }),
+    });
+    expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
+    if (!parsed.ok) return;
+    const stmts = distributionIngestStatements(parsed.manifest, SLUG, NOW);
+    // 32 outlet upserts + 1 removal sweep + 1 transport delete + 32 transport inserts.
+    expect(stmts).toHaveLength(32 + 1 + 1 + 32);
   });
 });
 

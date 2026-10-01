@@ -381,10 +381,15 @@ export interface DistributionContext {
   deliverables: ReadonlyMap<string, string>;
 }
 
-/** The kind an outlet entry resolves to, or `null` when it names none this build knows. */
+/**
+ * The kind an outlet entry resolves to, or `null` when it names none this build knows. An id
+ * that is itself a kind IS that kind: an explicit `kind` there must repeat the id
+ * (`outlet_kind_mismatch`), so `app-store: { kind: web }` can never re-kind the App Store outlet
+ * into a self-hosted one and widen what its installed copies may do.
+ */
 function outletKindOf(id: string, entry: unknown): OutletKind | null {
   const kind = isRecord(entry) ? entry.kind : undefined;
-  if (kind === undefined) return isOutletKind(id) ? id : null;
+  if (isOutletKind(id)) return kind === undefined || kind === id ? id : null;
   return isOutletKind(kind) ? kind : null;
 }
 
@@ -528,6 +533,16 @@ function validateOutlet(
       `/outlets/${id}`,
       "invalid_outlet_identity",
       `each outlet must be an object (write ${id}: {} for an outlet with no identity fields).`,
+    );
+    return;
+  }
+  if (isOutletKind(id) && entry.kind !== undefined && entry.kind !== id) {
+    add(
+      errors,
+      "distribution",
+      `/outlets/${id}/kind`,
+      "outlet_kind_mismatch",
+      `outlet ${id} is itself an outlet kind, so its kind may only be ${id} (or omitted); declare another id, such as ${id}-beta, for an outlet of a different kind.`,
     );
     return;
   }
